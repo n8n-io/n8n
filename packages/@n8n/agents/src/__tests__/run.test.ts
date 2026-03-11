@@ -117,31 +117,6 @@ describe('AgentRun', () => {
 		);
 	});
 
-	it('should support approve', async () => {
-		const stateHandler = jest.fn();
-		const run = new AgentRun(new Promise(() => {}));
-		run.on('stateChange', stateHandler);
-
-		await run.approve('approval-123');
-
-		expect(run.state).toBe('running');
-		// No state change emitted because running -> running is a no-op
-		expect(stateHandler).not.toHaveBeenCalled();
-	});
-
-	it('should support deny', async () => {
-		const stateHandler = jest.fn();
-		const run = new AgentRun(new Promise(() => {}));
-		run.on('stateChange', stateHandler);
-
-		await run.deny('approval-123', 'Not authorized');
-
-		expect(run.state).toBe('failed');
-		expect(stateHandler).toHaveBeenCalledWith(
-			expect.objectContaining({ from: 'running', to: 'failed' }),
-		);
-	});
-
 	it('should support multiple handlers for same event', () => {
 		const handler1 = jest.fn();
 		const handler2 = jest.fn();

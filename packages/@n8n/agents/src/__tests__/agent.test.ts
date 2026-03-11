@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention, @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
+import { z } from 'zod';
+
 import { Agent } from '../agent';
 import type { BuiltTool, BuiltMemory, BuiltGuardrail, BuiltEval } from '../types';
 
@@ -137,6 +139,45 @@ describe('Agent', () => {
 			expect(() =>
 				buildAgent(new TestableAgent('assistant').model('anthropic/claude-sonnet-4')),
 			).toThrow('Agent "assistant" requires instructions');
+		});
+
+		it('should throw if interruptible tools are used without checkpoint', () => {
+			const interruptibleTool: BuiltTool = {
+				name: 'delete',
+				description: 'Delete something',
+				_mastraTool: { __isTool: true },
+				_suspendSchema: z.object({ message: z.string() }),
+				_resumeSchema: z.object({ approved: z.boolean() }),
+			};
+
+			expect(() =>
+				buildAgent(
+					new TestableAgent('assistant')
+						.model('anthropic/claude-sonnet-4')
+						.instructions('You are helpful.')
+						.tool(interruptibleTool),
+				),
+			).toThrow('checkpoint');
+		});
+
+		it('should build successfully with interruptible tools and checkpoint', () => {
+			const interruptibleTool: BuiltTool = {
+				name: 'delete',
+				description: 'Delete something',
+				_mastraTool: { __isTool: true },
+				_suspendSchema: z.object({ message: z.string() }),
+				_resumeSchema: z.object({ approved: z.boolean() }),
+			};
+
+			const agent = buildAgent(
+				new TestableAgent('assistant')
+					.model('anthropic/claude-sonnet-4')
+					.instructions('You are helpful.')
+					.tool(interruptibleTool)
+					.checkpoint('memory'),
+			);
+
+			expect(agent.name).toBe('assistant');
 		});
 	});
 

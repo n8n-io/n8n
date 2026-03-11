@@ -2,18 +2,14 @@
 import { z } from 'zod';
 
 import { Tool } from '../tool';
-import type { ToolContext } from '../types';
 
 describe('Tool', () => {
 	const inputSchema = z.object({ query: z.string() });
 	const outputSchema = z.object({ result: z.string() });
 
 	type Input = z.infer<typeof inputSchema>;
-	type Output = z.infer<typeof outputSchema>;
 
-	const handler: (input: Input, ctx: ToolContext) => Promise<Output> = jest.fn(
-		async ({ query }: Input) => ({ result: `found: ${query}` }),
-	);
+	const handler = jest.fn(async ({ query }: Input) => ({ result: `found: ${query}` }));
 
 	afterEach(() => jest.clearAllMocks());
 
@@ -63,26 +59,62 @@ describe('Tool', () => {
 		expect(tool.name).toBe('test');
 	});
 
-	it('should support requiresApproval as boolean', () => {
-		const tool = new Tool('dangerous')
-			.description('Dangerous action')
-			.input(inputSchema)
-			.requiresApproval()
-			.handler(handler)
-			.build();
+	describe('suspend/resume', () => {
+		const suspendSchema = z.object({ reason: z.string() });
+		const resumeSchema = z.object({ approved: z.boolean() });
 
-		expect(tool._approval).toBe(true);
-	});
+		it('should build a tool with suspend and resume schemas', () => {
+			const tool = new Tool('interruptible')
+				.description('A tool that can be interrupted')
+				.input(inputSchema)
+				.output(outputSchema)
+				.suspend(suspendSchema)
+				.resume(resumeSchema)
+				.handler(async ({ query }, ctx) => {
+					if (!ctx.resumeData) {
+						await ctx.suspend({ reason: 'needs approval' });
+					}
+					return { result: `found: ${query}` };
+				})
+				.build();
 
-	it('should support requiresApproval as predicate', () => {
-		const predicate = ({ query }: Input) => query.includes('delete');
-		const tool = new Tool('conditional')
-			.description('Conditionally dangerous')
-			.input(inputSchema)
-			.requiresApproval(predicate)
-			.handler(handler)
-			.build();
+			expect(tool.name).toBe('interruptible');
+			expect(tool._suspendSchema).toBe(suspendSchema);
+			expect(tool._resumeSchema).toBe(resumeSchema);
+		});
 
-		expect(typeof tool._approval).toBe('function');
+		it('should have undefined schemas when suspend/resume are not used', () => {
+			const tool = new Tool('simple')
+				.description('A simple tool')
+				.input(inputSchema)
+				.output(outputSchema)
+				.handler(handler)
+				.build();
+
+			expect(tool._suspendSchema).toBeUndefined();
+			expect(tool._resumeSchema).toBeUndefined();
+		});
+
+		it('should throw if suspend is declared without resume', () => {
+			expect(() =>
+				new Tool('broken')
+					.description('Missing resume')
+					.input(inputSchema)
+					.suspend(suspendSchema)
+					.handler(async ({ query }) => ({ result: query }))
+					.build(),
+			).toThrow('Tool "broken" has .suspend() but missing .resume()');
+		});
+
+		it('should throw if resume is declared without suspend', () => {
+			expect(() =>
+				new Tool('broken')
+					.description('Missing suspend')
+					.input(inputSchema)
+					.resume(resumeSchema)
+					.handler(async ({ query }) => ({ result: query }))
+					.build(),
+			).toThrow('Tool "broken" has .resume() but missing .suspend()');
+		});
 	});
 });

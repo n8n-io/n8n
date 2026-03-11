@@ -42,15 +42,20 @@ const searchTool = new Tool('web-search')
 	}));
 
 const writeFileTool = new Tool('write-file')
-	.description('Write content to a file (requires approval)')
+	.description('Write content to a file (suspends for confirmation)')
 	.input(
 		z.object({
 			path: z.string().describe('File path to write to'),
 			content: z.string().describe('Content to write'),
 		}),
 	)
-	.requiresApproval()
-	.handler(async ({ path, content }) => {
+	.suspend(z.object({ message: z.string(), severity: z.string() }))
+	.resume(z.object({ approved: z.boolean() }))
+	.handler(async ({ path, content }, ctx) => {
+		if (!ctx.resumeData) {
+			await ctx.suspend({ message: `Write to "${path}"?`, severity: 'warning' });
+		}
+		if (!ctx.resumeData!.approved) return { written: false };
 		console.log(`  [Mock] Would write ${content.length} chars to ${path}`);
 		return { written: true };
 	});

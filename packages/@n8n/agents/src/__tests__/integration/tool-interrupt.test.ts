@@ -4,32 +4,37 @@ import {
 	describeIf,
 	collectStreamChunks,
 	chunksOfType,
-	createAgentWithApprovalTool,
+	createAgentWithInterruptibleTool,
 	createAgentWithMixedTools,
 } from './helpers';
 import type { StreamChunk } from '../../index';
 
 const describe = describeIf('anthropic');
 
-describe('tool approval integration', () => {
-	it('pauses the stream when a tool requires approval', async () => {
-		const agent = createAgentWithApprovalTool('anthropic');
+describe('tool interrupt integration', () => {
+	it('pauses the stream when a tool suspends', async () => {
+		const agent = createAgentWithInterruptibleTool('anthropic');
 
 		const { fullStream } = await agent.streamText('Delete the file /tmp/test.txt');
 
 		const chunks = await collectStreamChunks(fullStream);
 		const chunkTypes = chunks.map((c) => c.type);
 
-		expect(chunkTypes).toContain('tool-call-approval');
+		expect(chunkTypes).toContain('tool-call-suspended');
 
-		const approvalChunks = chunksOfType(chunks, 'tool-call-approval');
-		expect(approvalChunks.length).toBe(1);
+		const suspendedChunks = chunksOfType(chunks, 'tool-call-suspended');
+		expect(suspendedChunks.length).toBe(1);
 
-		const approval = approvalChunks[0] as StreamChunk & { type: 'tool-call-approval' };
-		expect(approval.tool).toBe('delete_file');
-		expect(approval.runId).toBeTruthy();
+		const suspended = suspendedChunks[0] as StreamChunk & { type: 'tool-call-suspended' };
+		expect(suspended.toolName).toBe('delete_file');
+		expect(suspended.runId).toBeTruthy();
+		expect(suspended.toolCallId).toBeTruthy();
+		expect(suspended.suspendPayload).toEqual(
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			expect.objectContaining({ message: expect.any(String), severity: 'destructive' }),
+		);
 
-		// No tool-result should appear (tool is paused)
+		// No tool-result should appear (tool is suspended)
 		const contentChunks = chunks.filter(
 			(c) =>
 				c.type === 'content' &&
@@ -39,19 +44,19 @@ describe('tool approval integration', () => {
 		expect(contentChunks).toHaveLength(0);
 	});
 
-	it('resumes the stream after approval', async () => {
-		const agent = createAgentWithApprovalTool('anthropic');
+	it('resumes the stream after resume with approval', async () => {
+		const agent = createAgentWithInterruptibleTool('anthropic');
 
 		const { fullStream } = await agent.streamText('Delete the file /tmp/test.txt');
 
 		const chunks = await collectStreamChunks(fullStream);
-		const approvalChunks = chunksOfType(chunks, 'tool-call-approval');
-		expect(approvalChunks.length).toBe(1);
+		const suspendedChunks = chunksOfType(chunks, 'tool-call-suspended');
+		expect(suspendedChunks.length).toBe(1);
 
-		const approval = approvalChunks[0] as StreamChunk & { type: 'tool-call-approval' };
-		const { fullStream: resumedStream } = await agent.approveToolCall(
-			approval.runId!,
-			approval.toolCallId,
+		const suspended = suspendedChunks[0] as StreamChunk & { type: 'tool-call-suspended' };
+		const { fullStream: resumedStream } = await agent.resume(
+			{ approved: true },
+			{ runId: suspended.runId!, toolCallId: suspended.toolCallId! },
 		);
 
 		const resumedChunks = await collectStreamChunks(resumedStream);
@@ -69,19 +74,19 @@ describe('tool approval integration', () => {
 		expect(resumedTypes).toContain('text-delta');
 	});
 
-	it('resumes the stream after denial', async () => {
-		const agent = createAgentWithApprovalTool('anthropic');
+	it('resumes the stream after resume with denial', async () => {
+		const agent = createAgentWithInterruptibleTool('anthropic');
 
 		const { fullStream } = await agent.streamText('Delete the file /tmp/test.txt');
 
 		const chunks = await collectStreamChunks(fullStream);
-		const approvalChunks = chunksOfType(chunks, 'tool-call-approval');
-		expect(approvalChunks.length).toBe(1);
+		const suspendedChunks = chunksOfType(chunks, 'tool-call-suspended');
+		expect(suspendedChunks.length).toBe(1);
 
-		const approval = approvalChunks[0] as StreamChunk & { type: 'tool-call-approval' };
-		const { fullStream: resumedStream } = await agent.declineToolCall(
-			approval.runId!,
-			approval.toolCallId,
+		const suspended = suspendedChunks[0] as StreamChunk & { type: 'tool-call-suspended' };
+		const { fullStream: resumedStream } = await agent.resume(
+			{ approved: false },
+			{ runId: suspended.runId!, toolCallId: suspended.toolCallId! },
 		);
 
 		const resumedChunks = await collectStreamChunks(resumedStream);
@@ -90,7 +95,7 @@ describe('tool approval integration', () => {
 		expect(resumedTypes).toContain('text-delta');
 	});
 
-	it('auto-approves non-approval tools while pausing approval tools', async () => {
+	it('auto-executes non-interruptible tools while suspending interruptible ones', async () => {
 		const agent = createAgentWithMixedTools('anthropic');
 
 		const { fullStream } = await agent.streamText(
@@ -98,9 +103,6 @@ describe('tool approval integration', () => {
 		);
 
 		const chunks = await collectStreamChunks(fullStream);
-
-		const allTypes = [...new Set(chunks.map((c) => c.type))];
-		console.log('All chunk types:', allTypes);
 
 		// list_files should auto-execute — its result should appear as content
 		const toolResultChunks = chunks.filter(
@@ -112,15 +114,15 @@ describe('tool approval integration', () => {
 		);
 		expect(toolResultChunks.length).toBeGreaterThan(0);
 
-		// delete_file should be paused for approval
-		const approvalChunks = chunksOfType(chunks, 'tool-call-approval');
-		const deleteApproval = approvalChunks.find(
-			(c) => (c as StreamChunk & { type: 'tool-call-approval' }).tool === 'delete_file',
+		// delete_file should be suspended
+		const suspendedChunks = chunksOfType(chunks, 'tool-call-suspended');
+		const deleteSuspended = suspendedChunks.find(
+			(c) => (c as StreamChunk & { type: 'tool-call-suspended' }).toolName === 'delete_file',
 		);
 
-		// If the LLM called delete_file, it should have been paused
-		if (deleteApproval) {
-			expect(deleteApproval).toBeDefined();
+		// If the LLM called delete_file, it should have been suspended
+		if (deleteSuspended) {
+			expect(deleteSuspended).toBeDefined();
 		}
 	});
 });

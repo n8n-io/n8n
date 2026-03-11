@@ -69,20 +69,24 @@ export function createAgentWithAddTool(provider: 'anthropic' | 'openai'): Agent 
 }
 
 /**
- * Create an agent with a tool that requires approval.
+ * Create an agent with a tool that can suspend (interrupt) for confirmation.
  */
-export function createAgentWithApprovalTool(provider: 'anthropic' | 'openai'): Agent {
+export function createAgentWithInterruptibleTool(provider: 'anthropic' | 'openai'): Agent {
 	const deleteTool = new Tool('delete_file')
 		.description('Delete a file at the given path')
-		.input(
-			z.object({
-				path: z.string().describe('File path to delete'),
-			}),
-		)
-		.handler(async ({ path }) => ({ deleted: true, path }))
-		.requiresApproval();
+		.input(z.object({ path: z.string().describe('File path to delete') }))
+		.output(z.object({ deleted: z.boolean(), path: z.string() }))
+		.suspend(z.object({ message: z.string(), severity: z.string() }))
+		.resume(z.object({ approved: z.boolean() }))
+		.handler(async ({ path }, ctx) => {
+			if (!ctx.resumeData) {
+				await ctx.suspend({ message: `Delete "${path}"?`, severity: 'destructive' });
+			}
+			if (!ctx.resumeData!.approved) return { deleted: false, path };
+			return { deleted: true, path };
+		});
 
-	return new Agent('test-approval-agent')
+	return new Agent('test-interrupt-agent')
 		.model(getModel(provider))
 		.instructions(
 			'You are a file manager. When asked to delete a file, use the delete_file tool. Be concise.',
@@ -92,16 +96,12 @@ export function createAgentWithApprovalTool(provider: 'anthropic' | 'openai'): A
 }
 
 /**
- * Create an agent with two tools — one requiring approval, one not.
+ * Create an agent with two tools — one interruptible, one not.
  */
 export function createAgentWithMixedTools(provider: 'anthropic' | 'openai'): Agent {
 	const listTool = new Tool('list_files')
 		.description('List files in a directory')
-		.input(
-			z.object({
-				dir: z.string().describe('Directory path'),
-			}),
-		)
+		.input(z.object({ dir: z.string().describe('Directory path') }))
 		.handler(async ({ dir }) => ({
 			files: ['readme.md', 'index.ts', 'package.json'],
 			dir,
@@ -109,13 +109,17 @@ export function createAgentWithMixedTools(provider: 'anthropic' | 'openai'): Age
 
 	const deleteTool = new Tool('delete_file')
 		.description('Delete a file at the given path — dangerous operation')
-		.input(
-			z.object({
-				path: z.string().describe('File path to delete'),
-			}),
-		)
-		.handler(async ({ path }) => ({ deleted: true, path }))
-		.requiresApproval();
+		.input(z.object({ path: z.string().describe('File path to delete') }))
+		.output(z.object({ deleted: z.boolean(), path: z.string() }))
+		.suspend(z.object({ message: z.string(), severity: z.string() }))
+		.resume(z.object({ approved: z.boolean() }))
+		.handler(async ({ path }, ctx) => {
+			if (!ctx.resumeData) {
+				await ctx.suspend({ message: `Delete "${path}"?`, severity: 'destructive' });
+			}
+			if (!ctx.resumeData!.approved) return { deleted: false, path };
+			return { deleted: true, path };
+		});
 
 	return new Agent('test-mixed-agent')
 		.model(getModel(provider))

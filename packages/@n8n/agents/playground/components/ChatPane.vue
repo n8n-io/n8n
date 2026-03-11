@@ -27,8 +27,8 @@
 				:key="i"
 				:msg="msg"
 				:show-avatar="msg.role === 'user' || i === 0 || activeMessages[i - 1].role !== 'assistant'"
-				@approve="approveToolCall(i)"
-				@deny="denyToolCall(i)"
+				@approve="resumeToolCall(i, true)"
+				@deny="resumeToolCall(i, false)"
 			/>
 			<div v-if="loading" class="flex gap-3 px-4 py-3">
 				<div
@@ -91,8 +91,9 @@ import type { UploadedFile } from './FileUpload.vue';
 interface PendingApproval {
 	runId: string;
 	toolCallId: string;
-	tool: string;
+	toolName: string;
 	input: unknown;
+	suspendPayload: unknown;
 }
 
 interface Message {
@@ -200,43 +201,7 @@ function scrollToBottom() {
 	});
 }
 
-async function approveToolCall(msgIndex: number) {
-	const msg = activeMessages.value[msgIndex];
-	if (!msg?.pendingApproval) return;
-
-	const { runId, toolCallId } = msg.pendingApproval;
-	const messages = props.mode === 'build' ? buildMessages : testMessages;
-
-	// Mark this approval message as resolved
-	messages.value[msgIndex] = {
-		...messages.value[msgIndex],
-		pendingApproval: undefined,
-		approvalStatus: 'approved',
-	};
-	loading.value = true;
-	scrollToBottom();
-
-	// The approve endpoint returns a new SSE stream — read it as a new response
-	try {
-		const response = await fetch('/api/agent/approve', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ runId, toolCallId }),
-		});
-
-		const reader = response.body?.getReader();
-		if (reader) {
-			await handleTestResponse(reader, messages);
-		}
-	} catch {
-		// handled by handleTestResponse
-	} finally {
-		loading.value = false;
-		scrollToBottom();
-	}
-}
-
-async function denyToolCall(msgIndex: number) {
+async function resumeToolCall(msgIndex: number, approved: boolean) {
 	const msg = activeMessages.value[msgIndex];
 	if (!msg?.pendingApproval) return;
 
@@ -246,16 +211,16 @@ async function denyToolCall(msgIndex: number) {
 	messages.value[msgIndex] = {
 		...messages.value[msgIndex],
 		pendingApproval: undefined,
-		approvalStatus: 'denied',
+		approvalStatus: approved ? 'approved' : 'denied',
 	};
 	loading.value = true;
 	scrollToBottom();
 
 	try {
-		const response = await fetch('/api/agent/deny', {
+		const response = await fetch('/api/agent/resume', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ runId, toolCallId }),
+			body: JSON.stringify({ runId, toolCallId, data: { approved } }),
 		});
 
 		const reader = response.body?.getReader();
@@ -502,8 +467,8 @@ async function handleTestResponse(
 					output: tr.output,
 				});
 				pendingToolCall = undefined;
-			} else if (data.approval) {
-				const approval = data.approval as PendingApproval;
+			} else if (data.suspended) {
+				const approval = data.suspended as PendingApproval;
 				loading.value = false;
 
 				if (accumulated.trim() || toolCalls.length > 0 || serverFiles.length > 0) {

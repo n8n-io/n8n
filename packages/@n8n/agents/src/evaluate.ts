@@ -18,15 +18,14 @@ export interface DatasetRow {
 	/** Expected answer (used by evals like correctness/similarity). */
 	expected?: string;
 	/**
-	 * Per-tool approval overrides. By default all tools are auto-approved
-	 * during evaluations. Use this to test denial scenarios.
+	 * Per-tool resume data overrides for evaluation. By default all suspended
+	 * tools are auto-resumed with `{ approved: true }` during evaluations.
+	 * Use this to test denial or custom resume scenarios.
 	 *
-	 * @example
-	 * ```typescript
-	 * { input: 'Delete the file', approvals: { delete_file: 'deny' } }
-	 * ```
+	 * - `'deny'` is shorthand for `{ approved: false }`
+	 * - An object value is passed as-is to `agent.resume()`
 	 */
-	approvals?: Record<string, 'approve' | 'deny'>;
+	resumeData?: Record<string, 'deny' | Record<string, unknown>>;
 }
 
 export interface EvaluateConfig {
@@ -46,15 +45,16 @@ interface CollectedToolResult {
  * Run a dataset through an agent and score the results with evals.
  *
  * All dataset rows and evals run in parallel for maximum throughput.
- * Tools with `.requiresApproval()` are **auto-approved by default** during
- * evals. Use `approvals` in dataset rows to override per tool.
+ * Suspended tool calls are **auto-resumed with `{ approved: true }`** during
+ * evals. Use `resumeData` in dataset rows to override per tool.
  *
  * @example
  * ```typescript
  * const results = await evaluate(agent, {
  *   dataset: [
  *     { input: 'What is 2+2?', expected: '4' },
- *     { input: 'Delete temp files', approvals: { delete_file: 'deny' } },
+ *     { input: 'Delete temp files', resumeData: { delete_file: 'deny' } },
+ *     { input: 'Book flight', resumeData: { book: { seat: '12A' } } },
  *   ],
  *   evals: [correctness, similarity],
  * });
@@ -70,14 +70,14 @@ export async function evaluate(
 		dataset.map(async (row) => {
 			const { fullStream, getResult } = await agent.streamText(row.input);
 
-			// Drain stream with approval handling, collecting tool results
-			// from ALL streams (including resumed streams after approval).
+			// Drain stream with interrupt handling, collecting tool results
+			// from ALL streams (including resumed streams after interrupts).
 			const collectedToolResults: CollectedToolResult[] = [];
-			await drainStreamWithApprovals(
+			await drainStreamWithInterrupts(
 				fullStream.getReader(),
 				agent,
 				collectedToolResults,
-				row.approvals,
+				row.resumeData,
 			);
 
 			const result = await getResult();
@@ -146,19 +146,19 @@ export async function evaluate(
 }
 
 /**
- * Drain a fullStream, auto-approving tool calls unless overridden.
- * Collects tool results from ALL streams (original + resumed after approval)
+ * Drain a fullStream, auto-resuming suspended tools unless overridden.
+ * Collects tool results from ALL streams (original + resumed after interrupts)
  * since getResult().toolCalls may not capture results from resumed streams.
  *
  * The stream uses the SDK's StreamChunk format where:
  * - Tool results are `{ type: 'content', content: { type: 'tool-result', ... } }`
- * - Approval requests are `{ type: 'tool-call-approval', runId, tool, toolCallId }`
+ * - Suspend events are `{ type: 'tool-call-suspended', runId, toolName, toolCallId }`
  */
-async function drainStreamWithApprovals(
+async function drainStreamWithInterrupts(
 	reader: ReadableStreamDefaultReader<unknown>,
 	agent: Agent<Provider | undefined>,
 	collected: CollectedToolResult[],
-	approvals?: Record<string, 'approve' | 'deny'>,
+	resumeOverrides?: Record<string, 'deny' | Record<string, unknown>>,
 ): Promise<void> {
 	while (true) {
 		const { done, value } = await reader.read();
@@ -184,19 +184,29 @@ async function drainStreamWithApprovals(
 			});
 		}
 
-		// Handle approval requests
-		if (chunk.type === 'tool-call-approval') {
-			const decision = chunk.tool ? (approvals?.[chunk.tool] ?? 'approve') : 'approve';
+		// Handle suspended tool calls
+		if (chunk.type === 'tool-call-suspended') {
+			const toolName = chunk.toolName ?? '';
+			const override = toolName ? resumeOverrides?.[toolName] : undefined;
 			const runId = chunk.runId ?? '';
-			const toolCallId = chunk.toolCallId;
+			const toolCallId = chunk.toolCallId ?? '';
 
-			if (decision === 'approve') {
-				const resumed = await agent.approveToolCall(runId, toolCallId);
-				await drainStreamWithApprovals(resumed.fullStream.getReader(), agent, collected, approvals);
+			let data: Record<string, unknown>;
+			if (override === 'deny') {
+				data = { approved: false };
+			} else if (override && typeof override === 'object') {
+				data = override;
 			} else {
-				const resumed = await agent.declineToolCall(runId, toolCallId);
-				await drainStreamWithApprovals(resumed.fullStream.getReader(), agent, collected, approvals);
+				data = { approved: true };
 			}
+
+			const resumed = await agent.resume(data, { runId, toolCallId });
+			await drainStreamWithInterrupts(
+				resumed.fullStream.getReader(),
+				agent,
+				collected,
+				resumeOverrides,
+			);
 			return;
 		}
 	}

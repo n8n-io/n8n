@@ -15,13 +15,7 @@ import type { ContentMetadata, Message, MessageContent } from './message';
 
 // --- Run States ---
 
-export type RunState =
-	| 'running'
-	| 'waiting_approval'
-	| 'paused'
-	| 'blocked'
-	| 'completed'
-	| 'failed';
+export type RunState = 'running' | 'suspended' | 'paused' | 'blocked' | 'completed' | 'failed';
 
 // --- Run Events ---
 
@@ -47,7 +41,7 @@ export interface StateChangeEvent {
 	from: RunState;
 	to: RunState;
 	context: {
-		approvalId?: string;
+		suspendId?: string;
 		pauseId?: string;
 		reason?: string;
 	};
@@ -223,23 +217,22 @@ export type StreamChunk = ContentMetadata &
 				id?: string;
 		  }
 		| {
-				type: 'tool-call-approval';
+				type: 'tool-call-suspended';
 				runId?: string;
 				toolCallId?: string;
-				tool?: string;
+				toolName?: string;
 				input?: unknown;
+				suspendPayload?: unknown;
 		  }
 	);
 
 // --- Tool Context ---
 
-export interface PauseOptions {
-	reason: string;
-	requestedInput?: z.ZodType;
-}
+export type ToolContext = Record<string, never>;
 
-export interface ToolContext {
-	pause: (options: PauseOptions) => Promise<void>;
+export interface InterruptibleToolContext<S = unknown, R = unknown> {
+	suspend: (payload: S) => Promise<void>;
+	resumeData: R | undefined;
 }
 
 // --- Built types (opaque handles returned by .build()) ---
@@ -248,7 +241,8 @@ export interface BuiltTool {
 	readonly name: string;
 	readonly description: string;
 	/** @internal */ readonly _mastraTool: unknown;
-	/** @internal */ readonly _approval?: boolean | ((input: unknown) => boolean | Promise<boolean>);
+	/** @internal */ readonly _suspendSchema?: z.ZodType;
+	/** @internal */ readonly _resumeSchema?: z.ZodType;
 	/** @internal */ readonly _toMessage?: (output: unknown) => Message | undefined;
 	/** @internal */ readonly _storeResults?: boolean;
 }
@@ -290,14 +284,10 @@ export interface BuiltAgent {
 		getResult: () => Promise<AgentResult>;
 	}>;
 	asTool(description: string): BuiltTool;
-	approveToolCall(
-		runId: string,
-		toolCallId?: string,
-	): Promise<{ fullStream: ReadableStream<unknown> }>;
-	declineToolCall(
-		runId: string,
-		toolCallId?: string,
-	): Promise<{ fullStream: ReadableStream<unknown> }>;
+	resume(
+		data: unknown,
+		options: { runId: string; toolCallId: string },
+	): Promise<{ fullStream: ReadableStream<StreamChunk> }>;
 }
 
 export interface BuiltNetwork {
@@ -311,8 +301,6 @@ export interface Run {
 	readonly state: RunState;
 	readonly result: Promise<AgentResult>;
 	on<E extends RunEvent>(event: E, handler: (data: RunEventMap[E]) => void): void;
-	approve(approvalId: string): Promise<void>;
-	deny(approvalId: string, reason?: string): Promise<void>;
 	resume(pauseId: string, data: unknown): Promise<void>;
 	abort(reason?: string): void;
 }
@@ -332,7 +320,7 @@ export type PiiDetectionType = 'email' | 'phone' | 'credit-card' | 'ssn' | 'addr
 export type RunSnapshot = Record<string, unknown>;
 
 /**
- * Interface for persisting agent execution snapshots (used for tool approval / human-in-the-loop).
+ * Interface for persisting agent execution snapshots (used for tool suspend/resume / human-in-the-loop).
  *
  * The execution engine implements this backed by its own database.
  * The SDK uses it internally to provide durable snapshot storage that

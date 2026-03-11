@@ -57,16 +57,6 @@ export class AgentRun implements Run {
 	// --- Control methods (called by engine) ---
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async approve(_approvalId: string): Promise<void> {
-		this.transition('running');
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await
-	async deny(_approvalId: string, _reason?: string): Promise<void> {
-		this.transition('failed');
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async resume(_pauseId: string, _data: unknown): Promise<void> {
 		this.transition('running');
 	}

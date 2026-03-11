@@ -16,6 +16,7 @@ import type {
 	Provider,
 	Run,
 	RunOptions,
+	StreamChunk,
 	ThinkingConfig,
 	ThinkingConfigFor,
 } from './types';
@@ -106,8 +107,11 @@ export class Agent<P extends Provider | undefined = undefined> {
 		return this;
 	}
 
-	/** Add a tool to the agent's capabilities. Accepts a built tool or a Tool builder (which will be built automatically). */
-	tool(t: BuiltTool | { build(): BuiltTool }): this {
+	/** Add a tool to the agent's capabilities. Accepts a built tool, a Tool builder, or a provider-defined tool. */
+	tool(t: BuiltTool | BuiltProviderTool | { build(): BuiltTool }): this {
+		if ('_providerTool' in t) {
+			return this.providerTool(t);
+		}
 		const built = '_mastraTool' in t ? t : t.build();
 		this.tools.push(built);
 		return this;
@@ -145,8 +149,8 @@ export class Agent<P extends Provider | undefined = undefined> {
 	}
 
 	/**
-	 * Set the checkpoint storage for tool approval (human-in-the-loop).
-	 * Required when any tool uses `.requiresApproval()`.
+	 * Set the checkpoint storage for tool suspend/resume (human-in-the-loop).
+	 * Required when any tool uses `.suspend()` / `.resume()`.
 	 *
 	 * - `'memory'` — in-process storage (lost on restart, fine for dev)
 	 * - A storage provider instance (e.g. `new LibSQLStore(...)`, `new PgStore(...)`)
@@ -156,7 +160,7 @@ export class Agent<P extends Provider | undefined = undefined> {
 	 * const agent = new Agent('assistant')
 	 *   .model('anthropic/claude-sonnet-4-5')
 	 *   .instructions('...')
-	 *   .tool(dangerousTool) // has .requiresApproval()
+	 *   .tool(interruptibleTool) // has .suspend() / .resume()
 	 *   .checkpoint('memory')
 	 *   .build();
 	 * ```
@@ -251,20 +255,12 @@ export class Agent<P extends Provider | undefined = undefined> {
 		return [...this.agentEvals];
 	}
 
-	/** Approve a pending tool call. Returns the resumed stream. Lazy-builds on first call. */
-	async approveToolCall(
-		runId: string,
-		toolCallId?: string,
-	): Promise<{ fullStream: ReadableStream<unknown> }> {
-		return await this.ensureBuilt().approveToolCall(runId, toolCallId);
-	}
-
-	/** Decline a pending tool call. Returns the resumed stream. Lazy-builds on first call. */
-	async declineToolCall(
-		runId: string,
-		toolCallId?: string,
-	): Promise<{ fullStream: ReadableStream<unknown> }> {
-		return await this.ensureBuilt().declineToolCall(runId, toolCallId);
+	/** Resume a suspended tool call with data. Returns the resumed stream. Lazy-builds on first call. */
+	async resume(
+		data: unknown,
+		options: { runId: string; toolCallId: string },
+	): Promise<{ fullStream: ReadableStream<StreamChunk> }> {
+		return await this.ensureBuilt().resume(data, options);
 	}
 
 	/** Run the agent with a prompt or messages. Lazy-builds on first call. */
@@ -296,10 +292,10 @@ export class Agent<P extends Provider | undefined = undefined> {
 			throw new Error(`Agent "${this.name}" requires instructions`);
 		}
 
-		const hasApprovalTools = this.tools.some((t) => t._approval);
-		if (hasApprovalTools && !this.checkpointStore) {
+		const hasInterruptibleTools = this.tools.some((t) => t._suspendSchema);
+		if (hasInterruptibleTools && !this.checkpointStore) {
 			throw new Error(
-				`Agent "${this.name}" has tools with .requiresApproval() but no checkpoint storage. ` +
+				`Agent "${this.name}" has tools with .suspend()/.resume() but no checkpoint storage. ` +
 					"Add .checkpoint('memory') for in-process storage, " +
 					'or pass a persistent store (e.g. LibSQLStore, PgStore).',
 			);
@@ -368,12 +364,8 @@ export class Agent<P extends Provider | undefined = undefined> {
 				};
 			},
 
-			async approveToolCall(runId: string, toolCallId?: string) {
-				return await adapter.approveToolCall(runId, toolCallId);
-			},
-
-			async declineToolCall(runId: string, toolCallId?: string) {
-				return await adapter.declineToolCall(runId, toolCallId);
+			async resume(data: unknown, opts: { runId: string; toolCallId: string }) {
+				return await adapter.resume(data, opts);
 			},
 		};
 	}

@@ -55,6 +55,7 @@ interface MastraStreamChunk {
 		result?: unknown;
 		providerMetadata?: Record<string, unknown>;
 		error?: { message?: string };
+		suspendPayload?: unknown;
 		inputTokens?: number;
 		outputTokens?: number;
 		finishReason?: string;
@@ -109,6 +110,10 @@ function toAgentResult(
 		steps,
 		output,
 	};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 /**
@@ -204,14 +209,17 @@ function createMastraToStreamChunkTransform(
 				});
 				return;
 			}
-			if (chunk.type === 'tool-call-approval' && payload?.toolName) {
+			if (chunk.type === 'tool-call-suspended') {
+				const sp = isRecord(chunk.payload) ? chunk.payload : {};
+				const suspendPayload = 'suspendPayload' in sp ? sp.suspendPayload : sp;
 				controller.enqueue({
 					...(providerMetadata && { providerMetadata }),
-					type: 'tool-call-approval',
+					type: 'tool-call-suspended',
 					runId: chunk.runId,
-					toolCallId: payload.toolCallId,
-					tool: payload.toolName,
-					input: payload.args,
+					toolCallId: typeof sp.toolCallId === 'string' ? sp.toolCallId : undefined,
+					toolName: typeof sp.toolName === 'string' ? sp.toolName : undefined,
+					input: sp.args,
+					suspendPayload,
 				});
 				return;
 			}
@@ -619,34 +627,29 @@ export class MastraAdapter {
 	}
 
 	/**
-	 * Approve a pending tool call. Returns the resumed stream.
+	 * Resume a suspended tool call. Returns the resumed stream.
 	 */
-	async approveToolCall(
-		runId: string,
-		toolCallId?: string,
-	): Promise<{ fullStream: ReadableStream<unknown> }> {
-		const output = await this.mastraAgent.approveToolCall({ runId, toolCallId });
+	async resume(
+		data: unknown,
+		options: { runId: string; toolCallId: string },
+	): Promise<{ fullStream: ReadableStream<StreamChunk> }> {
+		const resumable = this.mastraAgent as unknown as {
+			resumeStream: (
+				data: unknown,
+				options: { runId: string; toolCallId: string },
+			) => Promise<{
+				runId?: string;
+				fullStream: ReadableStream<unknown>;
+				text: Promise<string>;
+			}>;
+		};
+		const output = await resumable.resumeStream(data, {
+			runId: options.runId,
+			toolCallId: options.toolCallId,
+		});
 		const fullStream = (output.fullStream as ReadableStream<MastraStreamChunk>).pipeThrough(
 			createMastraToStreamChunkTransform(this.toolToMessageMap),
 		);
-		return {
-			fullStream,
-		};
-	}
-
-	/**
-	 * Decline a pending tool call. Returns the resumed stream.
-	 */
-	async declineToolCall(
-		runId: string,
-		toolCallId?: string,
-	): Promise<{ fullStream: ReadableStream<unknown> }> {
-		const output = await this.mastraAgent.declineToolCall({ runId, toolCallId });
-		const fullStream = (output.fullStream as ReadableStream<MastraStreamChunk>).pipeThrough(
-			createMastraToStreamChunkTransform(this.toolToMessageMap),
-		);
-		return {
-			fullStream,
-		};
+		return { fullStream };
 	}
 }

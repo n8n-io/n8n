@@ -136,12 +136,14 @@ export default defineEventHandler(async (event) => {
 					} else {
 						sse.send({ text: 'Received unknown content type: ' + c.type });
 					}
-				} else if (chunk.type === 'tool-call-approval' && 'tool' in chunk) {
+				} else if (chunk.type === 'tool-call-suspended' && 'toolName' in chunk) {
 					sse.send({
-						approval: {
+						suspended: {
+							runId: chunk.runId,
 							toolCallId: chunk.toolCallId,
-							tool: chunk.tool,
+							toolName: chunk.toolName,
 							input: chunk.input,
+							suspendPayload: chunk.suspendPayload,
 						},
 					});
 				} else if (chunk.type === 'error' && 'error' in chunk) {

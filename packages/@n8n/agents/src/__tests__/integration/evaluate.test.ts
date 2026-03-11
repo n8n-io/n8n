@@ -192,7 +192,7 @@ describe('evaluate() integration', () => {
 		expect(run.scores['domain-helpfulness'].reasoning).toBeTruthy();
 	});
 
-	it('auto-approves tool calls with requiresApproval during eval', async () => {
+	it('auto-resumes interruptible tool calls during eval', async () => {
 		const { createAgentWithMixedTools } = await import('./helpers');
 		const agent = createAgentWithMixedTools('anthropic');
 

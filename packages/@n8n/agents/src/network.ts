@@ -30,13 +30,13 @@ export class Network {
 
 	/** Set the coordinator agent that routes tasks to specialists. Accepts a built agent or an Agent builder. */
 	coordinator(a: BuiltAgent | { build(): BuiltAgent }): this {
-		this.coordinatorAgent = 'approveToolCall' in a ? a : a.build();
+		this.coordinatorAgent = 'resume' in a ? a : a.build();
 		return this;
 	}
 
 	/** Add a specialist agent to the network. Accepts a built agent or an Agent builder. */
 	agent(a: BuiltAgent | { build(): BuiltAgent }): this {
-		this.agents.push('approveToolCall' in a ? a : a.build());
+		this.agents.push('resume' in a ? a : a.build());
 		return this;
 	}
 

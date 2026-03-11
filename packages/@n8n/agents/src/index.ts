@@ -16,6 +16,7 @@ export type {
 	EvalRunResult,
 	EvalResults,
 	ToolContext,
+	InterruptibleToolContext,
 	CheckpointStore,
 	RunSnapshot,
 	StreamChunk,

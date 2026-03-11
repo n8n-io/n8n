@@ -3,9 +3,15 @@ import type { z } from 'zod';
 
 import type { Message, MessageContent } from './message';
 import { toMastraContent } from './runtime/message-adapter';
-import type { BuiltTool, ToolContext } from './types';
+import type { BuiltTool, InterruptibleToolContext, ToolContext } from './types';
 
 type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
+
+type HandlerContext<S, R> = S extends ZodObjectSchema
+	? R extends ZodObjectSchema
+		? InterruptibleToolContext<z.infer<S>, z.infer<R>>
+		: ToolContext
+	: ToolContext;
 
 /**
  * Builder for creating type-safe tool definitions.
@@ -22,10 +28,14 @@ type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
  *
  * @template TInput - Zod schema type for the tool's input
  * @template TOutput - Zod schema type for the tool's output
+ * @template TSuspend - Zod schema type for the suspend payload
+ * @template TResume - Zod schema type for the resume payload
  */
 export class Tool<
 	TInput extends ZodObjectSchema = ZodObjectSchema,
 	TOutput extends ZodObjectSchema = ZodObjectSchema,
+	TSuspend extends ZodObjectSchema | undefined = undefined,
+	TResume extends ZodObjectSchema | undefined = undefined,
 > {
 	private name: string;
 
@@ -35,9 +45,14 @@ export class Tool<
 
 	private outputSchema?: TOutput;
 
-	private handlerFn?: (input: z.infer<TInput>, ctx: ToolContext) => Promise<z.infer<TOutput>>;
+	private suspendSchemaValue?: ZodObjectSchema;
 
-	private approval?: boolean | ((input: z.infer<TInput>) => boolean | Promise<boolean>);
+	private resumeSchemaValue?: ZodObjectSchema;
+
+	private handlerFn?: (
+		input: z.infer<TInput>,
+		ctx: HandlerContext<TSuspend, TResume>,
+	) => Promise<z.infer<TOutput>>;
 
 	// TODO: allow returning an array of messages
 	private toMessageFn?: (output: z.infer<TOutput>) => Message;
@@ -56,16 +71,30 @@ export class Tool<
 	}
 
 	/** Set the input Zod schema. Required before building. */
-	input<S extends ZodObjectSchema>(schema: S): Tool<S, TOutput> {
-		const self = this as unknown as Tool<S, TOutput>;
+	input<S extends ZodObjectSchema>(schema: S): Tool<S, TOutput, TSuspend, TResume> {
+		const self = this as unknown as Tool<S, TOutput, TSuspend, TResume>;
 		self.inputSchema = schema;
 		return self;
 	}
 
 	/** Set the output Zod schema. Optional. */
-	output<S extends ZodObjectSchema>(schema: S): Tool<TInput, S> {
-		const self = this as unknown as Tool<TInput, S>;
+	output<S extends ZodObjectSchema>(schema: S): Tool<TInput, S, TSuspend, TResume> {
+		const self = this as unknown as Tool<TInput, S, TSuspend, TResume>;
 		self.outputSchema = schema;
+		return self;
+	}
+
+	/** Set the suspend payload schema. Must be paired with .resume(). */
+	suspend<S extends ZodObjectSchema>(schema: S): Tool<TInput, TOutput, S, TResume> {
+		const self = this as unknown as Tool<TInput, TOutput, S, TResume>;
+		self.suspendSchemaValue = schema;
+		return self;
+	}
+
+	/** Set the resume payload schema. Must be paired with .suspend(). */
+	resume<R extends ZodObjectSchema>(schema: R): Tool<TInput, TOutput, TSuspend, R> {
+		const self = this as unknown as Tool<TInput, TOutput, TSuspend, R>;
+		self.resumeSchemaValue = schema;
 		return self;
 	}
 
@@ -73,19 +102,13 @@ export class Tool<
 	 * Set the handler function that executes when the tool is called.
 	 * Required before building.
 	 */
-	handler(fn: (input: z.infer<TInput>, ctx: ToolContext) => Promise<z.infer<TOutput>>): this {
+	handler(
+		fn: (
+			input: z.infer<TInput>,
+			ctx: HandlerContext<TSuspend, TResume>,
+		) => Promise<z.infer<TOutput>>,
+	): this {
 		this.handlerFn = fn;
-		return this;
-	}
-
-	/**
-	 * Mark this tool as requiring approval before execution.
-	 *
-	 * - Call with no arguments to always require approval.
-	 * - Call with a predicate to conditionally require approval based on input.
-	 */
-	requiresApproval(predicate?: (input: z.infer<TInput>) => boolean | Promise<boolean>): this {
-		this.approval = predicate ?? true;
 		return this;
 	}
 
@@ -115,6 +138,7 @@ export class Tool<
 	 * Validate configuration and produce a `BuiltTool`.
 	 *
 	 * @throws if name, description, input schema, or handler is missing.
+	 * @throws if suspend is declared without resume or vice versa.
 	 */
 	build(): BuiltTool {
 		if (!this.name) {
@@ -130,9 +154,17 @@ export class Tool<
 			throw new Error(`Tool "${this.name}" requires a handler`);
 		}
 
-		const handler = this.handlerFn;
+		const hasSuspend = this.suspendSchemaValue !== undefined;
+		const hasResume = this.resumeSchemaValue !== undefined;
 
-		const needsApproval = this.approval !== undefined && this.approval !== false;
+		if (hasSuspend && !hasResume) {
+			throw new Error(`Tool "${this.name}" has .suspend() but missing .resume()`);
+		}
+		if (hasResume && !hasSuspend) {
+			throw new Error(`Tool "${this.name}" has .resume() but missing .suspend()`);
+		}
+
+		const handler = this.handlerFn;
 
 		const toMessage = this.toMessageFn
 			? (output: unknown): Message | undefined => {
@@ -162,21 +194,40 @@ export class Tool<
 				}
 			: undefined;
 
+		const suspendSchema = this.suspendSchemaValue;
+		const resumeSchema = this.resumeSchemaValue;
+
 		const mastraTool = createTool({
 			id: this.name,
 			description: this.desc,
 			inputSchema: this.inputSchema,
 			outputSchema: this.outputSchema,
 			...(toModelOutput ? { toModelOutput } : {}),
-			...(needsApproval ? { requireApproval: true } : {}),
-			execute: async (inputData, _context) => {
-				const toolCtx: ToolContext = {
-					// eslint-disable-next-line @typescript-eslint/require-await
-					pause: async (_options) => {
-						throw new Error('pause() is not yet supported');
-					},
-				};
-				return await handler(inputData, toolCtx);
+			...(suspendSchema ? { suspendSchema } : {}),
+			...(resumeSchema ? { resumeSchema } : {}),
+			execute: async (inputData, mastraCtx) => {
+				if (hasSuspend) {
+					// Mastra passes suspend/resumeData on ctx.agent
+					const agentCtx = (mastraCtx as Record<string, unknown>)?.agent ?? {};
+					const interruptCtx: InterruptibleToolContext = {
+						suspend: async (payload) => {
+							return await (agentCtx as { suspend: (p: unknown) => Promise<void> }).suspend(
+								payload,
+							);
+						},
+						resumeData: (agentCtx as { resumeData?: unknown }).resumeData ?? undefined,
+					};
+					return await (handler as (input: unknown, ctx: unknown) => Promise<unknown>)(
+						inputData,
+						interruptCtx,
+					);
+				}
+
+				const toolCtx: ToolContext = {} as ToolContext;
+				return await (handler as (input: unknown, ctx: unknown) => Promise<unknown>)(
+					inputData,
+					toolCtx,
+				);
 			},
 		});
 
@@ -184,7 +235,8 @@ export class Tool<
 			name: this.name,
 			description: this.desc,
 			_mastraTool: mastraTool,
-			_approval: this.approval as BuiltTool['_approval'],
+			_suspendSchema: suspendSchema,
+			_resumeSchema: resumeSchema,
 			_toMessage: toMessage,
 			_storeResults: this.persistResults || undefined,
 		};

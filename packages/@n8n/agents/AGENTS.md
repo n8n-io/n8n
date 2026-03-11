@@ -96,16 +96,14 @@ Without this, all messages are silently lost — no error is thrown.
 `config.memory` OR `config.checkpointStorage` is configured, not just for
 checkpoint storage.
 
-### 2. `requireToolApproval` is boolean only
+### 2. Tool suspend/resume uses Mastra's native mechanism
 
-Mastra's `requireToolApproval` option is `boolean` — there is no way to
-selectively require approval for specific tools. Setting `true` pauses on
-ALL tool calls, not just the ones with `.requiresApproval()`.
-
-**Our workaround:** `mastra-adapter.ts` wraps the `fullStream` with a filter
-that intercepts `tool-call-approval` chunks. If the tool is NOT in the
-approval set, it auto-approves by calling `mastraAgent.approveToolCall()` and
-splices the resumed stream back in. This is transparent to consumers.
+Tools that declare `.suspend()` and `.resume()` schemas use Mastra's
+`suspendSchema`/`resumeSchema` on `createTool`. The handler accesses
+`ctx.agent.suspend(payload)` (returns branded void) and `ctx.agent.resumeData`.
+On the agent side, `agent.resumeStream(data, { runId, toolCallId })` resumes
+a suspended run. The adapter maps `tool-call-suspended` chunks to the SDK's
+`StreamChunk` type and provides a single `resume()` method.
 
 ### 3. `tool-call-delta` chunks are buffered (not truly incremental)
 
@@ -119,15 +117,12 @@ as the LLM generates it) is NOT possible through Mastra's `fullStream` API.
 This is the primary motivation for eventually replacing Mastra with direct
 AI SDK usage.
 
-### 4. `approveToolCall` returns a stream (undocumented)
+### 4. `resumeStream` returns a stream
 
-`mastraAgent.approveToolCall()` returns `MastraModelOutput` (with `fullStream`,
-`textStream`, etc.) — the resumed execution stream. The non-streaming variant
-`approveToolCallGenerate()` discards this. The return type and streaming
-behavior are not documented.
-
-**Our workaround:** The adapter's `approveToolCall()` and `declineToolCall()`
-return `{ fullStream }` so consumers can read the resumed stream.
+`mastraAgent.resumeStream()` returns `MastraModelOutput` (with `fullStream`,
+`textStream`, etc.) — the resumed execution stream. The adapter's `resume()`
+method pipes this through the standard stream transform and returns
+`{ fullStream }` so consumers can read the resumed stream.
 
 ### 5. ESM-only packages break Jest
 
