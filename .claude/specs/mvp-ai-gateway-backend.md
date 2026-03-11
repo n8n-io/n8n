@@ -147,8 +147,9 @@ Returns usage statistics for the current period (in-memory for MVP).
   "totalRequests": 142,
   "totalInputTokens": 45200,
   "totalOutputTokens": 12800,
-  "byCategory": {
-    "balanced": { "requests": 98, "inputTokens": 31000, "outputTokens": 8500 }
+  "totalCost": 0,
+  "byModel": {
+    "openai/gpt-4.1-mini": { "requests": 98, "inputTokens": 31000, "outputTokens": 8500, "cost": 0 }
   }
 }
 ```
@@ -241,26 +242,33 @@ This is identical to configuring ChatOpenAI for any OpenAI-compatible provider.
 
 ### MVP: In-Memory
 
-Track per-request usage in memory:
+Track per-request usage in memory, grouped by model:
 
-```typescript
-interface UsageRecord {
-  timestamp: Date;
-  workflowId?: string;
-  executionId?: string;
-  category: string;
-  resolvedModel: string;
-  inputTokens: number;
-  outputTokens: number;
+```json
+{
+  "totalRequests": 13,
+  "totalInputTokens": 8000,
+  "totalOutputTokens": 3500,
+  "totalCost": 0,
+  "byModel": {
+    "openai/gpt-4.1-mini": { "requests": 10, "inputTokens": 5000, "outputTokens": 2000, "cost": 0 }
+  }
 }
 ```
 
-Records are kept in an array (capped at 10,000). The usage endpoint aggregates
-them on read. Data is lost on restart — acceptable for MVP.
+Records are kept in an array (capped at 10,000). Data is lost on restart.
+Wired to the execution path via `EventService`: the module listens for
+`ai-llm-generated-output` events (emitted by LangChain's `N8nLlmTracing`)
+and calls `usageService.track()` with model name and token counts.
+Only LangChain-based nodes (AI Agent path) emit these events; direct API
+nodes (OpenAI v1 transport) do not.
 
-### Future: Database
+### Future: OpenRouter Activity API
 
-Add an `ai_gateway_usage` entity and migration for persistent tracking.
+`AiGatewayService.getActivity()` exists and can fetch usage from OpenRouter's
+`GET /api/v1/activity` endpoint, but requires a management API key (different
+from the provisioning key). When available, this provides persistent,
+source-of-truth usage data with cost.
 
 ---
 
@@ -274,6 +282,7 @@ call OpenRouter directly). The admin endpoints handle their own errors:
 | Gateway disabled | Module does not initialize | N/A |
 | OpenRouter API key missing | Credential not provisioned | N/A |
 | SDK model listing fails | `{ error: "..." }` | 502 |
+| Activity fetch fails | Returns empty usage (zeros) | 200 |
 
 When credits are exhausted (future), the error from OpenRouter propagates to
 the node execution as a workflow error with a clear message.
@@ -285,8 +294,8 @@ the node execution as a workflow error with a clear message.
 ### Unit Tests (Jest)
 
 - `AiGatewayModelService`: category resolution, passthrough for unknown categories
-- `AiGatewayService`: config state, credential provisioning, SDK model listing with cache
-- `AiGatewayUsageService`: tracking, aggregation, extraction
+- `AiGatewayService`: config state, credential provisioning, SDK model listing with cache, OpenRouter activity fetching with aggregation and caching
+- `AiGatewayUsageService`: in-memory tracking, aggregation by model
 
 ### Future: Proxy Layer
 

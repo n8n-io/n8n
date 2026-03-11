@@ -147,4 +147,90 @@ describe('AiGatewayService', () => {
 			expect(mockModelsList).toHaveBeenCalledTimes(2);
 		});
 	});
+
+	describe('getActivity', () => {
+		it('should fetch and aggregate activity from OpenRouter', async () => {
+			const mockActivity = {
+				data: [
+					{
+						date: '2026-03-10',
+						model: 'openai/gpt-4.1-mini',
+						usage: 0.05,
+						requests: 10,
+						prompt_tokens: 5000,
+						completion_tokens: 2000,
+					},
+					{
+						date: '2026-03-10',
+						model: 'anthropic/claude-4-sonnet',
+						usage: 0.12,
+						requests: 3,
+						prompt_tokens: 3000,
+						completion_tokens: 1500,
+					},
+				],
+			};
+
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: true,
+				json: async () => mockActivity,
+			} as Response);
+
+			const result = await service.getActivity();
+
+			expect(result.totalRequests).toBe(13);
+			expect(result.totalInputTokens).toBe(8000);
+			expect(result.totalOutputTokens).toBe(3500);
+			expect(result.totalCost).toBeCloseTo(0.17);
+			expect(result.byModel['openai/gpt-4.1-mini']).toEqual({
+				requests: 10,
+				inputTokens: 5000,
+				outputTokens: 2000,
+				cost: 0.05,
+			});
+			expect(result.byModel['anthropic/claude-4-sonnet']).toEqual({
+				requests: 3,
+				inputTokens: 3000,
+				outputTokens: 1500,
+				cost: 0.12,
+			});
+		});
+
+		it('should return empty usage when OpenRouter returns an error', async () => {
+			jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: false,
+				status: 403,
+			} as Response);
+
+			const result = await service.getActivity();
+
+			expect(result.totalRequests).toBe(0);
+			expect(result.totalCost).toBe(0);
+			expect(result.byModel).toEqual({});
+		});
+
+		it('should cache activity data', async () => {
+			const mockActivity = {
+				data: [
+					{
+						date: '2026-03-10',
+						model: 'openai/gpt-4.1-mini',
+						usage: 0.01,
+						requests: 1,
+						prompt_tokens: 100,
+						completion_tokens: 50,
+					},
+				],
+			};
+			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+				ok: true,
+				json: async () => mockActivity,
+			} as Response);
+
+			await service.getActivity();
+			await service.getActivity();
+
+			expect(fetchSpy).toHaveBeenCalledTimes(1);
+		});
+	});
 });
