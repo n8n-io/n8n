@@ -37,15 +37,11 @@ import type {
 
 import { parseSDKCode } from '../../ast-interpreter/parser';
 import { generateDefaultNodeName } from '../node-type-utils';
-import type {
-	WorkflowJSON,
-	NodeJSON,
-	IConnections,
-	IConnection,
-	IDataObject,
-} from '../../types/base';
-import type { SemanticGraph } from '../types';
-import { buildSemanticGraph, semanticGraphToWorkflowJSON } from '../semantic-graph';
+import type { WorkflowJSON, NodeJSON, IConnections, IDataObject } from '../../types/base';
+import type { SemanticGraph, SemanticNode, AiConnectionType } from '../types';
+import { semanticGraphToWorkflowJSON } from '../semantic-graph';
+import { getOutputName, getInputName, getOutputIndex } from '../semantic-registry';
+import { isTriggerNodeType } from '../../utils/trigger-detection';
 import { AI_CONNECTION_TO_CONFIG_KEY, AI_CONNECTION_TO_BUILDER } from '../constants';
 
 // Build reverse maps: builder name → connection type, config key → connection type
@@ -63,14 +59,14 @@ for (const [connType, configKey] of Object.entries(AI_CONNECTION_TO_CONFIG_KEY))
 // ---------------------------------------------------------------------------
 
 interface ParserState {
-	nodes: NodeJSON[];
-	connections: IConnections;
+	graphNodes: Map<string, SemanticNode>;
+	nodeInsertionOrder: string[];
 	varToNode: Map<string, { nodeName: string; outputIndex: number }>;
 	workflowName: string;
 	nodeCounter: number;
 	usedNames: Set<string>;
 	/** Lookup by explicit name+type → existing node (for deduplication of cross-trigger shared nodes) */
-	nodesByName: Map<string, NodeJSON>;
+	nodesByName: Map<string, SemanticNode>;
 	insideMap: boolean;
 	/** Depth counter for if/else/switch branches — nodes inside branches don't get executeOnce */
 	branchDepth: number;
@@ -272,11 +268,11 @@ function createNodeId(counter: number): string {
 }
 
 interface CreateNodeResult {
-	node: NodeJSON;
+	node: SemanticNode;
 	isNew: boolean;
 }
 
-function createNodeJSON(config: NodeConfig, state: ParserState): CreateNodeResult {
+function createSemanticNode(config: NodeConfig, state: ParserState): CreateNodeResult {
 	// Deduplicate: if same explicit name + same type already exists, reuse it
 	// (happens with cross-trigger convergence where two triggers share a downstream node)
 	if (config.name) {
@@ -302,7 +298,7 @@ function createNodeJSON(config: NodeConfig, state: ParserState): CreateNodeResul
 	const position: [number, number] = [state.nodeCounter * 200, 0];
 	state.nodeCounter++;
 
-	const node: NodeJSON = {
+	const json: NodeJSON = {
 		id,
 		name,
 		type: config.type,
@@ -312,49 +308,63 @@ function createNodeJSON(config: NodeConfig, state: ParserState): CreateNodeResul
 	};
 
 	if (config.credentials) {
-		node.credentials = config.credentials as NodeJSON['credentials'];
+		json.credentials = config.credentials as NodeJSON['credentials'];
 	}
 
 	if (config.sampleData && config.sampleData.length > 0) {
-		node.output = config.sampleData as IDataObject[];
+		json.output = config.sampleData as IDataObject[];
 	}
 
-	state.nodes.push(node);
-	state.nodesByName.set(`${name}::${config.type}`, node);
+	const semanticNode: SemanticNode = {
+		name,
+		type: config.type,
+		json,
+		outputs: new Map(),
+		inputSources: new Map(),
+		subnodes: [],
+		annotations: {
+			isTrigger: isTriggerNodeType(config.type),
+			isCycleTarget: false,
+			isConvergencePoint: false,
+		},
+	};
 
-	return { node, isNew: true };
+	state.graphNodes.set(name, semanticNode);
+	state.nodeInsertionOrder.push(name);
+	state.nodesByName.set(`${name}::${config.type}`, semanticNode);
+
+	return { node: semanticNode, isNew: true };
 }
 
-function addConnection(
+function addSemanticEdge(
 	state: ParserState,
-	fromNodeName: string,
-	toNodeName: string,
+	fromName: string,
+	toName: string,
 	fromOutputIndex: number = 0,
 	toInputIndex: number = 0,
-	connectionType: string = 'main',
 ): void {
-	if (!state.connections[fromNodeName]) {
-		state.connections[fromNodeName] = {};
-	}
-	const nodeConns = state.connections[fromNodeName];
-	if (!nodeConns[connectionType]) {
-		nodeConns[connectionType] = [];
-	}
-	const outputs = nodeConns[connectionType];
+	const fromNode = state.graphNodes.get(fromName);
+	const toNode = state.graphNodes.get(toName);
+	if (!fromNode || !toNode) return;
 
-	// Ensure the array is large enough
-	while (outputs.length <= fromOutputIndex) {
-		outputs.push([]);
+	const outputSlot = getOutputName(fromNode.type, fromOutputIndex, fromNode.json);
+	const inputSlot = getInputName(toNode.type, toInputIndex, toNode.json);
+
+	// Add to source's outputs
+	let targets = fromNode.outputs.get(outputSlot);
+	if (!targets) {
+		targets = [];
+		fromNode.outputs.set(outputSlot, targets);
 	}
-	if (!outputs[fromOutputIndex]) {
-		outputs[fromOutputIndex] = [];
+	targets.push({ target: toName, targetInputSlot: inputSlot });
+
+	// Add to target's inputSources
+	let sources = toNode.inputSources.get(inputSlot);
+	if (!sources) {
+		sources = [];
+		toNode.inputSources.set(inputSlot, sources);
 	}
-	const conn: IConnection = {
-		node: toNodeName,
-		type: connectionType,
-		index: toInputIndex,
-	};
-	(outputs[fromOutputIndex] as IConnection[]).push(conn);
+	sources.push({ from: fromName, outputSlot });
 }
 
 // ---------------------------------------------------------------------------
@@ -818,6 +828,9 @@ function resolveOutputIndex(expr: Expression, state: ParserState): number {
 function processSubnodes(config: NodeConfig, parentNodeName: string, state: ParserState): void {
 	if (!config.subnodes) return;
 
+	const parentNode = state.graphNodes.get(parentNodeName);
+	if (!parentNode) return;
+
 	for (const [key, subnodeConfigsRaw] of Object.entries(config.subnodes)) {
 		// Map config key (e.g. 'model') to connection type (e.g. 'ai_languageModel')
 		// Also accept raw connection types for backward compatibility
@@ -838,16 +851,20 @@ function processSubnodes(config: NodeConfig, parentNodeName: string, state: Pars
 				version: subnodeRaw.version as number | undefined,
 			};
 
-			const { node: subnodeJSON } = createNodeJSON(subnodeConfig, state);
+			const { node: subnodeNode } = createSemanticNode(subnodeConfig, state);
 
 			// Position subnode below its parent node (AI subnodes render beneath)
-			const parentNode = state.nodes.find((n) => n.name === parentNodeName);
-			if (parentNode) {
-				subnodeJSON.position = [parentNode.position[0] + i * 200, parentNode.position[1] + 200];
-			}
+			subnodeNode.json.position = [
+				parentNode.json.position[0] + i * 200,
+				parentNode.json.position[1] + 200,
+			];
 
-			// Connect subnode to parent using the AI connection type
-			addConnection(state, subnodeJSON.name!, parentNodeName, 0, i, connectionType);
+			// Register as AI subnode on parent
+			parentNode.subnodes.push({
+				connectionType: connectionType as AiConnectionType,
+				subnodeName: subnodeNode.name,
+				index: i,
+			});
 		}
 	}
 }
@@ -873,17 +890,17 @@ function processNodeVarDeclaration(
 		}
 		if (execConfig) {
 			const config = extractNodeConfig(execConfig);
-			const { node: nodeJSON, isNew } = createNodeJSON(config, state);
-			if (isNew) processSubnodes(config, nodeJSON.name!, state);
+			const { node: sNode, isNew } = createSemanticNode(config, state);
+			if (isNew) processSubnodes(config, sNode.name, state);
 
 			const mapping = state.varToNode.get(mapMatch.sourceVar);
 			if (mapping) {
-				addConnection(state, mapping.nodeName, nodeJSON.name!, mapping.outputIndex);
+				addSemanticEdge(state, mapping.nodeName, sNode.name, mapping.outputIndex);
 			}
 			if (isIdentifier(declarator.id)) {
-				state.varToNode.set(declarator.id.name, { nodeName: nodeJSON.name!, outputIndex: 0 });
+				state.varToNode.set(declarator.id.name, { nodeName: sNode.name, outputIndex: 0 });
 			}
-			state.lastNodeInScope = { nodeName: nodeJSON.name!, outputIndex: 0 };
+			state.lastNodeInScope = { nodeName: sNode.name, outputIndex: 0 };
 			return isIdentifier(declarator.id) ? declarator.id.name : undefined;
 		}
 	}
@@ -905,18 +922,18 @@ function processNodeVarDeclaration(
 					params: filterParams,
 					version: 2,
 				};
-				const { node: filterNodeJSON } = createNodeJSON(filterConfig, state);
+				const { node: filterNode } = createSemanticNode(filterConfig, state);
 
 				// Connect source → Filter node
 				const mapping = state.varToNode.get(filterMatch.sourceVar);
 				if (mapping) {
-					addConnection(state, mapping.nodeName, filterNodeJSON.name!, mapping.outputIndex);
+					addSemanticEdge(state, mapping.nodeName, filterNode.name, mapping.outputIndex);
 				}
 
 				// Handle LHS: Identifier (kept only) or ArrayPattern (kept + discarded)
 				if (isIdentifier(declarator.id)) {
 					state.varToNode.set(declarator.id.name, {
-						nodeName: filterNodeJSON.name!,
+						nodeName: filterNode.name,
 						outputIndex: 0,
 					});
 				} else if (declarator.id.type === 'ArrayPattern') {
@@ -924,13 +941,13 @@ function processNodeVarDeclaration(
 						const el = declarator.id.elements[i];
 						if (el && isIdentifier(el)) {
 							state.varToNode.set(el.name, {
-								nodeName: filterNodeJSON.name!,
+								nodeName: filterNode.name,
 								outputIndex: i,
 							});
 						}
 					}
 				}
-				state.lastNodeInScope = { nodeName: filterNodeJSON.name!, outputIndex: 0 };
+				state.lastNodeInScope = { nodeName: filterNode.name, outputIndex: 0 };
 				return isIdentifier(declarator.id) ? declarator.id.name : undefined;
 			}
 		}
@@ -944,11 +961,11 @@ function processNodeVarDeclaration(
 	const execMatch = matchExecuteNodeCall(declarator.init);
 	if (execMatch) {
 		const config = extractNodeConfig(execMatch.config);
-		const { node: nodeJSON, isNew } = createNodeJSON(config, state);
+		const { node: sNode, isNew } = createSemanticNode(config, state);
 		if (isNew && state.branchDepth === 0) {
-			nodeJSON.executeOnce = true;
+			sNode.json.executeOnce = true;
 		}
-		if (isNew) processSubnodes(config, nodeJSON.name!, state);
+		if (isNew) processSubnodes(config, sNode.name, state);
 
 		if (execMatch.inputsArray) {
 			// Array input syntax: executeNode({...}, [inputA, inputB])
@@ -959,30 +976,30 @@ function processNodeVarDeclaration(
 					const sourceName = resolveInputVar(el, state);
 					if (sourceName) {
 						const sourceOutputIndex = resolveOutputIndex(el, state);
-						addConnection(state, sourceName, nodeJSON.name!, sourceOutputIndex, i);
+						addSemanticEdge(state, sourceName, sNode.name, sourceOutputIndex, i);
 					}
 				}
 			}
 		} else if (state.lastNodeInScope) {
-			addConnection(
+			addSemanticEdge(
 				state,
 				state.lastNodeInScope.nodeName,
-				nodeJSON.name!,
+				sNode.name,
 				state.lastNodeInScope.outputIndex,
 			);
 		}
 		if (isIdentifier(declarator.id)) {
-			state.varToNode.set(declarator.id.name, { nodeName: nodeJSON.name!, outputIndex: 0 });
+			state.varToNode.set(declarator.id.name, { nodeName: sNode.name, outputIndex: 0 });
 		} else if (declarator.id.type === 'ArrayPattern') {
 			// Destructuring: const [a, b, c] = executeNode({...})
 			for (let i = 0; i < declarator.id.elements.length; i++) {
 				const el = declarator.id.elements[i];
 				if (el && isIdentifier(el)) {
-					state.varToNode.set(el.name, { nodeName: nodeJSON.name!, outputIndex: i });
+					state.varToNode.set(el.name, { nodeName: sNode.name, outputIndex: i });
 				}
 			}
 		}
-		state.lastNodeInScope = { nodeName: nodeJSON.name!, outputIndex: 0 };
+		state.lastNodeInScope = { nodeName: sNode.name, outputIndex: 0 };
 		return isIdentifier(declarator.id) ? declarator.id.name : undefined;
 	}
 
@@ -991,35 +1008,35 @@ function processNodeVarDeclaration(
 	if (!match) return undefined;
 
 	const config = extractNodeConfig(match.configExpr);
-	const { node: nodeJSON } = createNodeJSON(config, state);
+	const { node: sNode } = createSemanticNode(config, state);
 
 	// Process subnodes
-	processSubnodes(config, nodeJSON.name!, state);
+	processSubnodes(config, sNode.name, state);
 
 	// Determine input source
 	if (match.inputArg) {
 		const sourceNodeName = resolveInputVar(match.inputArg, state);
 		const sourceOutputIndex = resolveOutputIndex(match.inputArg, state);
 		if (sourceNodeName) {
-			addConnection(state, sourceNodeName, nodeJSON.name!, sourceOutputIndex);
+			addSemanticEdge(state, sourceNodeName, sNode.name, sourceOutputIndex);
 		}
 	} else if (state.lastNodeInScope) {
 		// node({...})() with no input — use implicit chaining
-		addConnection(
+		addSemanticEdge(
 			state,
 			state.lastNodeInScope.nodeName,
-			nodeJSON.name!,
+			sNode.name,
 			state.lastNodeInScope.outputIndex,
 		);
 	}
-	state.lastNodeInScope = { nodeName: nodeJSON.name!, outputIndex: 0 };
+	state.lastNodeInScope = { nodeName: sNode.name, outputIndex: 0 };
 
 	// Handle different LHS patterns
 	const lhs = declarator.id;
 
 	if (isIdentifier(lhs)) {
 		// Simple: const foo = node({...})(input)
-		state.varToNode.set(lhs.name, { nodeName: nodeJSON.name!, outputIndex: 0 });
+		state.varToNode.set(lhs.name, { nodeName: sNode.name, outputIndex: 0 });
 		return lhs.name;
 	}
 
@@ -1028,7 +1045,7 @@ function processNodeVarDeclaration(
 		for (let i = 0; i < lhs.elements.length; i++) {
 			const el = lhs.elements[i];
 			if (el && isIdentifier(el)) {
-				state.varToNode.set(el.name, { nodeName: nodeJSON.name!, outputIndex: i });
+				state.varToNode.set(el.name, { nodeName: sNode.name, outputIndex: i });
 			}
 		}
 		return undefined;
@@ -1065,15 +1082,15 @@ function processIfStatement(
 		params: ifParams,
 		version: 2,
 	};
-	const { node: ifNodeJSON } = createNodeJSON(ifConfig, state);
+	const { node: ifNode } = createSemanticNode(ifConfig, state);
 
 	// Connect input to IF node — prefer lastNodeInScope for implicit chaining
 	// over inputVarName (which always points to the trigger param).
 	if (state.lastNodeInScope) {
-		addConnection(
+		addSemanticEdge(
 			state,
 			state.lastNodeInScope.nodeName,
-			ifNodeJSON.name!,
+			ifNode.name,
 			state.lastNodeInScope.outputIndex,
 		);
 	} else if (inputVarName) {
@@ -1086,7 +1103,7 @@ function processIfStatement(
 				{ type: 'Identifier', name: inputVarName } as Identifier,
 				state,
 			);
-			addConnection(state, sourceNodeName, ifNodeJSON.name!, sourceOutputIndex);
+			addSemanticEdge(state, sourceNodeName, ifNode.name, sourceOutputIndex);
 		}
 	}
 
@@ -1097,9 +1114,9 @@ function processIfStatement(
 
 	// Process true branch (consequent) — remap to IF output 0
 	if (inputVarName) {
-		state.varToNode.set(inputVarName, { nodeName: ifNodeJSON.name!, outputIndex: 0 });
+		state.varToNode.set(inputVarName, { nodeName: ifNode.name, outputIndex: 0 });
 	}
-	state.lastNodeInScope = { nodeName: ifNodeJSON.name!, outputIndex: 0 };
+	state.lastNodeInScope = { nodeName: ifNode.name, outputIndex: 0 };
 	state.branchDepth++;
 	const trueStatements = getBlockStatements(stmt.consequent);
 	processStatements(trueStatements, state, inputVarName);
@@ -1108,9 +1125,9 @@ function processIfStatement(
 	// Process false branch (alternate) — remap to IF output 1
 	if (stmt.alternate) {
 		if (inputVarName) {
-			state.varToNode.set(inputVarName, { nodeName: ifNodeJSON.name!, outputIndex: 1 });
+			state.varToNode.set(inputVarName, { nodeName: ifNode.name, outputIndex: 1 });
 		}
-		state.lastNodeInScope = { nodeName: ifNodeJSON.name!, outputIndex: 1 };
+		state.lastNodeInScope = { nodeName: ifNode.name, outputIndex: 1 };
 		state.branchDepth++;
 		const falseStatements = getBlockStatements(stmt.alternate);
 		processStatements(falseStatements, state, inputVarName);
@@ -1162,14 +1179,14 @@ function processSwitchStatement(
 		params: switchParams,
 		version: 3,
 	};
-	const { node: switchNodeJSON } = createNodeJSON(switchConfig, state);
+	const { node: switchNode } = createSemanticNode(switchConfig, state);
 
 	// Connect input to Switch node — prefer lastNodeInScope for implicit chaining
 	if (state.lastNodeInScope) {
-		addConnection(
+		addSemanticEdge(
 			state,
 			state.lastNodeInScope.nodeName,
-			switchNodeJSON.name!,
+			switchNode.name,
 			state.lastNodeInScope.outputIndex,
 		);
 	} else if (inputVarName) {
@@ -1182,7 +1199,7 @@ function processSwitchStatement(
 				{ type: 'Identifier', name: inputVarName } as Identifier,
 				state,
 			);
-			addConnection(state, sourceNodeName, switchNodeJSON.name!, sourceOutputIndex);
+			addSemanticEdge(state, sourceNodeName, switchNode.name, sourceOutputIndex);
 		}
 	}
 
@@ -1195,9 +1212,9 @@ function processSwitchStatement(
 	for (let i = 0; i < caseStatements.length; i++) {
 		const sc = caseStatements[i];
 		if (inputVarName) {
-			state.varToNode.set(inputVarName, { nodeName: switchNodeJSON.name!, outputIndex: i });
+			state.varToNode.set(inputVarName, { nodeName: switchNode.name, outputIndex: i });
 		}
-		state.lastNodeInScope = { nodeName: switchNodeJSON.name!, outputIndex: i };
+		state.lastNodeInScope = { nodeName: switchNode.name, outputIndex: i };
 		state.branchDepth++;
 		processStatements(sc.consequent, state, inputVarName);
 		state.branchDepth--;
@@ -1207,11 +1224,11 @@ function processSwitchStatement(
 	if (defaultCase) {
 		if (inputVarName) {
 			state.varToNode.set(inputVarName, {
-				nodeName: switchNodeJSON.name!,
+				nodeName: switchNode.name,
 				outputIndex: caseStatements.length,
 			});
 		}
-		state.lastNodeInScope = { nodeName: switchNodeJSON.name!, outputIndex: caseStatements.length };
+		state.lastNodeInScope = { nodeName: switchNode.name, outputIndex: caseStatements.length };
 		state.branchDepth++;
 		processStatements(defaultCase.consequent, state, inputVarName);
 		state.branchDepth--;
@@ -1264,45 +1281,33 @@ function buildSubWorkflowJSON(tryNodes: NodeJSON[], subConnections: IConnections
 }
 
 /**
- * Extract connections that belong exclusively to try-block nodes.
- * Returns the extracted connections and removes them from state.
- * Also finds and removes the predecessor connection to the first try-block node.
+ * Find and remove the predecessor edge from a non-try node to the first try-block node.
  */
-function extractTryBlockConnections(
+function findAndRemovePredecessorEdge(
 	state: ParserState,
 	tryNodeNames: Set<string>,
-): {
-	subConnections: IConnections;
-	predecessor: { fromNode: string; outputIndex: number } | undefined;
-} {
-	const subConnections: IConnections = {};
-	let predecessor: { fromNode: string; outputIndex: number } | undefined;
+): { fromNode: string; outputIndex: number } | undefined {
 	const firstTryNodeName = [...tryNodeNames][0];
+	let predecessor: { fromNode: string; outputIndex: number } | undefined;
 
-	for (const fromNode of Object.keys(state.connections)) {
-		const nodeConns = state.connections[fromNode];
-		if (!nodeConns.main) continue;
-
-		if (tryNodeNames.has(fromNode)) {
-			// This is an intra-try-block connection — extract it
-			subConnections[fromNode] = nodeConns;
-			delete state.connections[fromNode];
-		} else {
-			// Check if any outputs target a try-block node — track predecessor
-			for (let outIdx = 0; outIdx < nodeConns.main.length; outIdx++) {
-				const targets = nodeConns.main[outIdx];
-				if (!targets) continue;
-				const tryTargetIdx = targets.findIndex((t) => t.node === firstTryNodeName);
-				if (tryTargetIdx >= 0) {
-					predecessor = { fromNode, outputIndex: outIdx };
-					// Remove this specific target
-					targets.splice(tryTargetIdx, 1);
+	for (const [nodeName, node] of state.graphNodes) {
+		if (tryNodeNames.has(nodeName)) continue;
+		for (const [outputSlot, targets] of node.outputs) {
+			const targetIdx = targets.findIndex((t) => t.target === firstTryNodeName);
+			if (targetIdx >= 0) {
+				const outputIndex = getOutputIndex(node.type, outputSlot, node.json);
+				predecessor = { fromNode: nodeName, outputIndex };
+				targets.splice(targetIdx, 1);
+				if (targets.length === 0) {
+					node.outputs.delete(outputSlot);
 				}
+				break;
 			}
 		}
+		if (predecessor) break;
 	}
 
-	return { subConnections, predecessor };
+	return predecessor;
 }
 
 /**
@@ -1314,12 +1319,12 @@ function processTryStatement(
 	inputVarName: string | undefined,
 ): void {
 	// Track which nodes exist before processing try block
-	const nodeCountBefore = state.nodes.length;
+	const nodeCountBefore = state.nodeInsertionOrder.length;
 
 	// Process try block
 	processStatements(stmt.block.body, state, inputVarName);
 
-	const tryBlockNodeCount = state.nodes.length - nodeCountBefore;
+	const tryBlockNodeCount = state.nodeInsertionOrder.length - nodeCountBefore;
 
 	if (tryBlockNodeCount >= 2) {
 		// Multi-node try block: wrap in executeWorkflow sub-workflow
@@ -1340,20 +1345,21 @@ function processTrySingleNode(
 	nodeCountBefore: number,
 ): void {
 	// Mark nodes added in try block with onError: continueErrorOutput
-	for (let i = nodeCountBefore; i < state.nodes.length; i++) {
-		state.nodes[i].onError = 'continueErrorOutput';
+	for (let i = nodeCountBefore; i < state.nodeInsertionOrder.length; i++) {
+		const node = state.graphNodes.get(state.nodeInsertionOrder[i]);
+		if (node) node.json.onError = 'continueErrorOutput';
 	}
 
 	// Process catch block
 	if (stmt.handler && stmt.handler.body) {
-		const errorNodeCountBefore = state.nodes.length;
+		const errorNodeCountBefore = state.nodeInsertionOrder.length;
 
 		const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
 		const originalLastNode = state.lastNodeInScope;
 		if (inputVarName && nodeCountBefore < errorNodeCountBefore) {
-			const lastTryNode = state.nodes[errorNodeCountBefore - 1];
-			state.varToNode.set(inputVarName, { nodeName: lastTryNode.name!, outputIndex: 1 });
-			state.lastNodeInScope = { nodeName: lastTryNode.name!, outputIndex: 1 };
+			const lastTryNodeName = state.nodeInsertionOrder[errorNodeCountBefore - 1];
+			state.varToNode.set(inputVarName, { nodeName: lastTryNodeName, outputIndex: 1 });
+			state.lastNodeInScope = { nodeName: lastTryNodeName, outputIndex: 1 };
 		}
 
 		state.branchDepth++;
@@ -1369,8 +1375,8 @@ function processTrySingleNode(
 		}
 
 		if (nodeCountBefore < errorNodeCountBefore) {
-			const lastTryNode = state.nodes[errorNodeCountBefore - 1];
-			state.lastNodeInScope = { nodeName: lastTryNode.name!, outputIndex: 0 };
+			const lastTryNodeName = state.nodeInsertionOrder[errorNodeCountBefore - 1];
+			state.lastNodeInScope = { nodeName: lastTryNodeName, outputIndex: 0 };
 		} else {
 			state.lastNodeInScope = originalLastNode;
 		}
@@ -1386,23 +1392,38 @@ function processTryMultiNode(
 	inputVarName: string | undefined,
 	nodeCountBefore: number,
 ): void {
-	// Extract try-block nodes from state and adjust counter so
-	// subsequent node ids/positions stay consistent for round-trip
-	const tryNodes = state.nodes.splice(nodeCountBefore);
-	state.nodeCounter -= tryNodes.length;
-	const tryNodeNames = new Set(tryNodes.map((n) => n.name!));
+	// Extract try-block node names from insertion order and adjust counter
+	const tryNodeNames = state.nodeInsertionOrder.splice(nodeCountBefore);
+	state.nodeCounter -= tryNodeNames.length;
+	const tryNodeNameSet = new Set(tryNodeNames);
 
-	// Remove onError that might have been set, and strip executeOnce from sub-workflow nodes
-	for (const n of tryNodes) {
-		delete n.onError;
-		delete n.executeOnce;
+	// Extract SemanticNodes from graph
+	const extractedNodes: SemanticNode[] = [];
+	for (const name of tryNodeNames) {
+		const node = state.graphNodes.get(name);
+		if (node) {
+			extractedNodes.push(node);
+			state.graphNodes.delete(name);
+		}
 	}
 
-	// Extract intra-try-block connections and find predecessor
-	const { subConnections, predecessor } = extractTryBlockConnections(state, tryNodeNames);
+	// Remove onError and executeOnce from sub-workflow nodes
+	for (const n of extractedNodes) {
+		delete n.json.onError;
+		delete n.json.executeOnce;
+	}
 
-	// Build sub-workflow JSON
-	const subWorkflowJSON = buildSubWorkflowJSON(tryNodes, subConnections);
+	// Find and remove predecessor edge
+	const predecessor = findAndRemovePredecessorEdge(state, tryNodeNameSet);
+
+	// Build sub-workflow using semantic graph → JSON conversion
+	const subGraph: SemanticGraph = {
+		nodes: new Map(extractedNodes.map((n) => [n.name, n])),
+		roots: [tryNodeNames[0]],
+		cycleEdges: new Map(),
+	};
+	const subJSON = semanticGraphToWorkflowJSON(subGraph, 'Sub-workflow');
+	const subWorkflowJSON = buildSubWorkflowJSON(subJSON.nodes, subJSON.connections);
 
 	// Create the executeWorkflow wrapper node
 	const execWfConfig: NodeConfig = {
@@ -1415,24 +1436,21 @@ function processTryMultiNode(
 		},
 		version: 1.3,
 	};
-	const { node: execWfNode } = createNodeJSON(execWfConfig, state);
+	const { node: execWfNode } = createSemanticNode(execWfConfig, state);
 	if (state.branchDepth === 0) {
-		execWfNode.executeOnce = true;
+		execWfNode.json.executeOnce = true;
 	}
-	execWfNode.onError = 'continueErrorOutput';
+	execWfNode.json.onError = 'continueErrorOutput';
 
 	// Reconnect predecessor → executeWorkflow
 	if (predecessor) {
-		addConnection(state, predecessor.fromNode, execWfNode.name!, predecessor.outputIndex);
-	} else if (state.lastNodeInScope) {
-		// Fallback: connect from lastNodeInScope before try block
-		// (this was already done by processStatements, but we extracted those nodes)
+		addSemanticEdge(state, predecessor.fromNode, execWfNode.name, predecessor.outputIndex);
 	}
 
 	// Remap any varToNode entries that pointed to try-block nodes
 	for (const [varName, mapping] of state.varToNode.entries()) {
-		if (tryNodeNames.has(mapping.nodeName)) {
-			state.varToNode.set(varName, { nodeName: execWfNode.name!, outputIndex: 0 });
+		if (tryNodeNameSet.has(mapping.nodeName)) {
+			state.varToNode.set(varName, { nodeName: execWfNode.name, outputIndex: 0 });
 		}
 	}
 
@@ -1442,9 +1460,9 @@ function processTryMultiNode(
 
 		// Catch block connects from executeWorkflow's error output (index 1)
 		if (inputVarName) {
-			state.varToNode.set(inputVarName, { nodeName: execWfNode.name!, outputIndex: 1 });
+			state.varToNode.set(inputVarName, { nodeName: execWfNode.name, outputIndex: 1 });
 		}
-		state.lastNodeInScope = { nodeName: execWfNode.name!, outputIndex: 1 };
+		state.lastNodeInScope = { nodeName: execWfNode.name, outputIndex: 1 };
 
 		state.branchDepth++;
 		processStatements(stmt.handler.body.body, state, inputVarName);
@@ -1460,7 +1478,7 @@ function processTryMultiNode(
 		}
 
 		// After try/catch, lastNodeInScope → executeWorkflow success output (index 0)
-		state.lastNodeInScope = { nodeName: execWfNode.name!, outputIndex: 0 };
+		state.lastNodeInScope = { nodeName: execWfNode.name, outputIndex: 0 };
 	}
 }
 
@@ -1526,24 +1544,24 @@ function processBatchCall(
 		version,
 		...(name ? { name } : {}),
 	};
-	const { node: sibNodeJSON } = createNodeJSON(sibConfig, state);
+	const { node: sibNode } = createSemanticNode(sibConfig, state);
 
 	// Connect source → SplitInBatches
 	if (sourceNodeName) {
-		addConnection(state, sourceNodeName, sibNodeJSON.name!, sourceOutputIndex);
+		addSemanticEdge(state, sourceNodeName, sibNode.name, sourceOutputIndex);
 	} else if (state.lastNodeInScope) {
-		addConnection(
+		addSemanticEdge(
 			state,
 			state.lastNodeInScope.nodeName,
-			sibNodeJSON.name!,
+			sibNode.name,
 			state.lastNodeInScope.outputIndex,
 		);
 	}
 
 	// Process loop body: nodes connect from SplitInBatches output 1 (loop)
-	state.lastNodeInScope = { nodeName: sibNodeJSON.name!, outputIndex: 1 };
+	state.lastNodeInScope = { nodeName: sibNode.name, outputIndex: 1 };
 
-	const nodesBeforeBody = state.nodes.length;
+	const nodesBeforeBody = state.nodeInsertionOrder.length;
 	if (callbackArg) {
 		const body = callbackArg.body;
 		const bodyStatements = body.type === 'BlockStatement' ? (body as BlockStatement).body : [];
@@ -1551,29 +1569,29 @@ function processBatchCall(
 	}
 
 	// Connect lastNodeInScope (success path) back to SplitInBatches
-	if (state.lastNodeInScope && state.lastNodeInScope.nodeName !== sibNodeJSON.name!) {
-		addConnection(
+	if (state.lastNodeInScope && state.lastNodeInScope.nodeName !== sibNode.name) {
+		addSemanticEdge(
 			state,
 			state.lastNodeInScope.nodeName,
-			sibNodeJSON.name!,
+			sibNode.name,
 			state.lastNodeInScope.outputIndex,
 		);
 	}
 
 	// Also connect any terminal loop body nodes (e.g., error handler paths
 	// inside try/catch) that have no outgoing main connections.
-	for (let i = nodesBeforeBody; i < state.nodes.length; i++) {
-		const bodyNode = state.nodes[i];
-		const nodeConns = state.connections[bodyNode.name!]?.main;
-		const hasOutgoing =
-			nodeConns !== undefined && nodeConns.some((slot) => slot && slot.length > 0);
+	for (let i = nodesBeforeBody; i < state.nodeInsertionOrder.length; i++) {
+		const bodyNodeName = state.nodeInsertionOrder[i];
+		const bodyNode = state.graphNodes.get(bodyNodeName);
+		if (!bodyNode) continue;
+		const hasOutgoing = [...bodyNode.outputs.values()].some((targets) => targets.length > 0);
 		if (!hasOutgoing) {
-			addConnection(state, bodyNode.name!, sibNodeJSON.name!, 0);
+			addSemanticEdge(state, bodyNodeName, sibNode.name, 0);
 		}
 	}
 
 	// After batch: lastNodeInScope = SplitInBatches output 0 (done)
-	state.lastNodeInScope = { nodeName: sibNodeJSON.name!, outputIndex: 0 };
+	state.lastNodeInScope = { nodeName: sibNode.name, outputIndex: 0 };
 }
 
 /**
@@ -1665,20 +1683,20 @@ function processWaitCall(
 		params: waitParams,
 		version: 1.1,
 	};
-	const { node: waitNodeJSON } = createNodeJSON(waitConfig, state);
+	const { node: waitNode } = createSemanticNode(waitConfig, state);
 
 	// Connect last setup node → Wait
 	if (state.lastNodeInScope) {
-		addConnection(
+		addSemanticEdge(
 			state,
 			state.lastNodeInScope.nodeName,
-			waitNodeJSON.name!,
+			waitNode.name,
 			state.lastNodeInScope.outputIndex,
 		);
 	}
 
 	// After wait: continuation connects from Wait output 0
-	state.lastNodeInScope = { nodeName: waitNodeJSON.name!, outputIndex: 0 };
+	state.lastNodeInScope = { nodeName: waitNode.name, outputIndex: 0 };
 }
 
 /**
@@ -1740,14 +1758,14 @@ function processStatement(
 						const execMatch = matchExecuteNodeCall(body);
 						if (execMatch) {
 							const config = extractNodeConfig(execMatch.config);
-							const { node: nodeJSON, isNew } = createNodeJSON(config, state);
-							if (isNew) processSubnodes(config, nodeJSON.name!, state);
+							const { node: sNode, isNew } = createSemanticNode(config, state);
+							if (isNew) processSubnodes(config, sNode.name, state);
 
 							const mapping = state.varToNode.get(mapMatch.sourceVar);
 							if (mapping) {
-								addConnection(state, mapping.nodeName, nodeJSON.name!, mapping.outputIndex);
+								addSemanticEdge(state, mapping.nodeName, sNode.name, mapping.outputIndex);
 							}
-							state.lastNodeInScope = { nodeName: nodeJSON.name!, outputIndex: 0 };
+							state.lastNodeInScope = { nodeName: sNode.name, outputIndex: 0 };
 						}
 					}
 					break;
@@ -1757,25 +1775,25 @@ function processStatement(
 				const match = matchNodeCall(exprStmt.expression);
 				if (match) {
 					const config = extractNodeConfig(match.configExpr);
-					const { node: nodeJSON } = createNodeJSON(config, state);
+					const { node: sNode } = createSemanticNode(config, state);
 
-					processSubnodes(config, nodeJSON.name!, state);
+					processSubnodes(config, sNode.name, state);
 
 					if (match.inputArg) {
 						const sourceNodeName = resolveInputVar(match.inputArg, state);
 						const sourceOutputIndex = resolveOutputIndex(match.inputArg, state);
 						if (sourceNodeName) {
-							addConnection(state, sourceNodeName, nodeJSON.name!, sourceOutputIndex);
+							addSemanticEdge(state, sourceNodeName, sNode.name, sourceOutputIndex);
 						}
 					} else if (state.lastNodeInScope) {
-						addConnection(
+						addSemanticEdge(
 							state,
 							state.lastNodeInScope.nodeName,
-							nodeJSON.name!,
+							sNode.name,
 							state.lastNodeInScope.outputIndex,
 						);
 					}
-					state.lastNodeInScope = { nodeName: nodeJSON.name!, outputIndex: 0 };
+					state.lastNodeInScope = { nodeName: sNode.name, outputIndex: 0 };
 				}
 			}
 			break;
@@ -1835,7 +1853,7 @@ function processOnTriggerCall(callExpr: CallExpression, state: ParserState): voi
 	if (configArg.type === 'SpreadElement' || !isObjectExpression(configArg)) return;
 
 	const config = extractNodeConfig(configArg);
-	const { node: triggerJSON } = createNodeJSON(config, state);
+	const { node: triggerNode } = createSemanticNode(config, state);
 
 	// If there's a callback function, process its body
 	if (callExpr.arguments.length >= 2) {
@@ -1850,11 +1868,11 @@ function processOnTriggerCall(callExpr: CallExpression, state: ParserState): voi
 			if (fn.params.length > 0 && isIdentifier(fn.params[0])) {
 				paramName = fn.params[0].name;
 				state.varToNode.set(paramName, {
-					nodeName: triggerJSON.name!,
+					nodeName: triggerNode.name,
 					outputIndex: 0,
 				});
 			}
-			state.lastNodeInScope = { nodeName: triggerJSON.name!, outputIndex: 0 };
+			state.lastNodeInScope = { nodeName: triggerNode.name, outputIndex: 0 };
 
 			// Get the body statements
 			let bodyStatements: Statement[];
@@ -1960,20 +1978,16 @@ function processWorkflowBody(
 // ---------------------------------------------------------------------------
 
 /**
- * Parse a data-flow code string and convert it back to WorkflowJSON.
- *
- * @param code - The data-flow code string
- * @returns The WorkflowJSON representation
- * @throws Error if the code cannot be parsed
+ * Parse data-flow code and build the internal parser state as a SemanticGraph.
  */
-function internalParseToJSON(code: string): WorkflowJSON {
+function parseToGraph(code: string): { graph: SemanticGraph; name: string } {
 	const program = parseSDKCode(code);
 
 	const { name, bodyFn } = findWorkflowCall(program);
 
 	const state: ParserState = {
-		nodes: [],
-		connections: {},
+		graphNodes: new Map(),
+		nodeInsertionOrder: [],
 		varToNode: new Map(),
 		workflowName: name,
 		nodeCounter: 0,
@@ -1986,19 +2000,24 @@ function internalParseToJSON(code: string): WorkflowJSON {
 
 	processWorkflowBody(bodyFn, state);
 
-	// Collect sampleData from nodes into pinData
-	const pinData: Record<string, IDataObject[]> = {};
-	for (const node of state.nodes) {
-		if (node.output && node.output.length > 0 && node.name) {
-			pinData[node.name] = node.output;
+	// Identify roots: triggers + nodes with no inputSources (excluding subnodes)
+	const subnodeNames = new Set<string>();
+	for (const [, node] of state.graphNodes) {
+		for (const sub of node.subnodes) {
+			subnodeNames.add(sub.subnodeName);
+		}
+	}
+	const roots: string[] = [];
+	for (const [nodeName, node] of state.graphNodes) {
+		if (subnodeNames.has(nodeName)) continue;
+		if (node.annotations.isTrigger || node.inputSources.size === 0) {
+			roots.push(nodeName);
 		}
 	}
 
 	return {
+		graph: { nodes: state.graphNodes, roots, cycleEdges: new Map() },
 		name: state.workflowName,
-		nodes: state.nodes,
-		connections: state.connections,
-		...(Object.keys(pinData).length > 0 ? { pinData } : {}),
 	};
 }
 
@@ -2007,22 +2026,26 @@ function internalParseToJSON(code: string): WorkflowJSON {
  * This is the canonical intermediate representation shared with the generation pipeline.
  */
 export function parseDataFlowCodeToGraph(code: string): SemanticGraph {
-	const json = internalParseToJSON(code);
-	return buildSemanticGraph(json);
+	return parseToGraph(code).graph;
 }
 
 /**
  * Parse data-flow code to WorkflowJSON.
- * Routes through SemanticGraph for normalized output.
+ * Builds SemanticGraph directly then converts to JSON.
  */
 export function parseDataFlowCode(code: string): WorkflowJSON {
-	const json = internalParseToJSON(code);
-	const graph = buildSemanticGraph(json);
-	const result = semanticGraphToWorkflowJSON(graph, json.name);
+	const { graph, name } = parseToGraph(code);
+	const result = semanticGraphToWorkflowJSON(graph, name);
 
-	// Preserve pinData (collected from node.output fields, already in SemanticNode.json)
-	if (json.pinData && Object.keys(json.pinData).length > 0) {
-		result.pinData = json.pinData;
+	// Collect pinData from node.json.output fields
+	const pinData: Record<string, IDataObject[]> = {};
+	for (const [, node] of graph.nodes) {
+		if (node.json.output && node.json.output.length > 0) {
+			pinData[node.name] = node.json.output;
+		}
+	}
+	if (Object.keys(pinData).length > 0) {
+		result.pinData = pinData;
 	}
 
 	return result;
