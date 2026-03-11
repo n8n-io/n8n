@@ -371,7 +371,7 @@ function extractUrl(value: string) {
 // The original uses the URL constructor which is a Web API unavailable inside
 // the V8 isolate. A minimal regex extracts the pathname instead.
 function extractUrlPath(value: string) {
-	const match = /^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/[^/?#]*([^?#]*)/.exec(value);
+	const match = /^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/[^/?#[\]]+([^?#]*)/.exec(value);
 	if (!match) return undefined;
 	return match[1] || '/';
 }
