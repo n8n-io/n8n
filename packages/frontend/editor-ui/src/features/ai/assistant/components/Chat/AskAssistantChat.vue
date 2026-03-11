@@ -38,9 +38,9 @@ const showUsabilityNotice = computed(
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	// If there is no current session running, initialize the support chat session
 	if (!assistantStore.currentSessionId) {
-		await assistantStore.initSupportChat(content);
+		await assistantStore.initSupportChat(workflowId.value, content);
 	} else {
-		await assistantStore.sendMessage({ text: content, quickReplyType });
+		await assistantStore.sendMessage(workflowId.value, { text: content, quickReplyType });
 	}
 	const task = assistantStore.chatSessionTask;
 	const solutionCount = assistantStore.chatMessages.filter(

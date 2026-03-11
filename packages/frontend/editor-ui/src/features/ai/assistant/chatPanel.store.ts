@@ -10,6 +10,7 @@ import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.sto
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { MERGE_ASK_BUILD_EXPERIMENT } from '@/app/constants/experiments';
 import type { ICredentialType } from 'n8n-workflow';
@@ -178,7 +179,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			return;
 		}
 		const assistantStore = useAssistantStore();
-		await assistantStore.initCredHelp(credentialType);
+		const workflowsStore = useWorkflowsStore();
+		await assistantStore.initCredHelp(workflowsStore.workflowId, credentialType);
 		await open({ mode: 'assistant' });
 	}
 
@@ -196,7 +198,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			return;
 		}
 		const assistantStore = useAssistantStore();
-		await assistantStore.initErrorHelper(context);
+		const workflowsStore = useWorkflowsStore();
+		await assistantStore.initErrorHelper(workflowsStore.workflowId, context);
 		await open({ mode: 'assistant' });
 	}
 
