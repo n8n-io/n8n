@@ -30,7 +30,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@currents/playwright": "^1.15.3",
+    "@currents/playwright": "^1.20.0",
     "@n8n/api-types": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/db": "workspace:*",
