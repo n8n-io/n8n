@@ -1,7 +1,11 @@
 import { mock } from 'jest-mock-extended';
 
-import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
-import { Logger } from '@n8n/backend-common';
+import type {
+	CredentialsRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+} from '@n8n/db';
+import type { Logger } from '@n8n/backend-common';
 
 const mockModelsList = jest.fn();
 
@@ -12,7 +16,7 @@ jest.mock('@openrouter/sdk', () => ({
 }));
 
 import { AiGatewayService } from '../ai-gateway.service';
-import { AiGatewayConfig } from '../ai-gateway.config';
+import type { AiGatewayConfig } from '../ai-gateway.config';
 import type { OwnershipService } from '@/services/ownership.service';
 
 describe('AiGatewayService', () => {
