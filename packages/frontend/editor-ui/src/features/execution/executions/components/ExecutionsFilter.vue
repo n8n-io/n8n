@@ -101,19 +101,21 @@ const versionFilterOptions = computed(() => {
 
 watch(
 	() => props.workflowId,
-	async (workflowId) => {
+	(workflowId) => {
 		workflowVersions.value = [];
 		filter.workflowVersionId = 'all';
 		if (!workflowId) return;
-		try {
-			workflowVersions.value = await makeRestApiRequest<ExecutionVersion[]>(
-				rootStore.restApiContext,
-				'GET',
-				`/executions/versions/${workflowId}`,
-			);
-		} catch {
-			// silently ignore — versions may not be available
-		}
+		void makeRestApiRequest<ExecutionVersion[]>(
+			rootStore.restApiContext,
+			'GET',
+			`/executions/versions/${workflowId}`,
+		)
+			.then((versions) => {
+				workflowVersions.value = versions;
+			})
+			.catch(() => {
+				// silently ignore — versions may not be available
+			});
 	},
 	{ immediate: true },
 );
