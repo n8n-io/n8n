@@ -197,6 +197,8 @@ const expressionEditDialogVisible = ref(false);
 const remoteParameterOptions = ref<INodePropertyOptions[]>([]);
 const remoteParameterOptionsLoading = ref(false);
 const remoteParameterOptionsLoadingIssues = ref<string | null>(null);
+const computedParameterValueLoading = ref(false);
+const computedParameterValueIssues = ref<string | null>(null);
 const textEditDialogVisible = ref(false);
 const editDialogClosing = ref(false);
 const tempValue = ref('');
@@ -271,6 +273,10 @@ const isJsonPasswordField = computed<boolean>(() => {
 
 const hasRemoteMethod = computed<boolean>(() => {
 	return !!getTypeOption('loadOptionsMethod') || !!getTypeOption('loadOptions');
+});
+
+const hasComputeMethod = computed<boolean>(() => {
+	return !!getTypeOption('computeMethod');
 });
 
 const parameterOptions = computed(() => {
@@ -451,6 +457,34 @@ const dependentParametersValues = computedAsync(async () => {
 		for (let parameterPath of loadOptionsDependsOn) {
 			parameterPath = resolveRelativePath(props.path, parameterPath);
 
+			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+		}
+
+		return returnValues.join('|');
+	} catch {
+		return null;
+	}
+}, null);
+
+const computeMethodDependentParametersValues = computedAsync(async () => {
+	// Reference dependencies to ensure reactivity tracking
+	void ndvStore.activeNode?.parameters;
+	void props.parameter;
+	void props.path;
+
+	const computeMethodDependsOn = getTypeOption('computeMethodDependsOn');
+
+	if (computeMethodDependsOn === undefined) {
+		return null;
+	}
+
+	const currentNodeParameters = node.value?.parameters;
+	try {
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
+
+		const returnValues: string[] = [];
+		for (let parameterPath of computeMethodDependsOn) {
+			parameterPath = resolveRelativePath(props.path, parameterPath);
 			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 		}
 
@@ -786,6 +820,52 @@ async function loadRemoteParameterOptions() {
 	}
 
 	remoteParameterOptionsLoading.value = false;
+}
+
+async function loadComputedValue() {
+	if (
+		!node.value ||
+		!hasComputeMethod.value ||
+		computedParameterValueLoading.value ||
+		!props.parameter
+	) {
+		return;
+	}
+
+	computedParameterValueIssues.value = null;
+	computedParameterValueLoading.value = true;
+
+	try {
+		const currentNodeParameters = node.value?.parameters;
+		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
+			props.parameter,
+			currentNodeParameters,
+		)) as INodeParameters;
+		const methodName = getTypeOption('computeMethod') as string;
+
+		const result = await nodeTypesStore.getNodeComputedValue({
+			nodeTypeAndVersion: {
+				name: node.value.type,
+				version: node.value.typeVersion,
+			},
+			path: props.path,
+			methodName,
+			currentNodeParameters: resolvedNodeParameters,
+			credentials: node.value.credentials,
+			projectId: projectsStore.currentProjectId,
+			workflowId: workflowsStore.workflowId,
+		});
+
+		valueChanged(result);
+	} catch (error: unknown) {
+		if (error instanceof Error) {
+			computedParameterValueIssues.value = error.message;
+		} else {
+			computedParameterValueIssues.value = String(error);
+		}
+	}
+
+	computedParameterValueLoading.value = false;
 }
 
 function closeCodeEditDialog() {
@@ -1130,7 +1210,9 @@ async function optionSelected(command: string) {
 
 	switch (command) {
 		case 'resetValue':
-			return valueChanged(props.parameter.default);
+			valueChanged(props.parameter.default);
+			if (hasComputeMethod.value) void loadComputedValue();
+			return;
 
 		case 'addExpression':
 			valueChanged(formatAsExpression(props.modelValue, props.parameter.type));
@@ -1280,6 +1362,9 @@ watch(
 		if (hasRemoteMethod.value && node.value) {
 			void loadRemoteParameterOptions();
 		}
+		if (hasComputeMethod.value && node.value) {
+			void loadComputedValue();
+		}
 	},
 	{ immediate: true },
 );
@@ -1288,6 +1373,11 @@ watch(dependentParametersValues, async () => {
 	// Reload the remote parameters whenever a parameter
 	// on which the current field depends on changes
 	await loadRemoteParameterOptions();
+});
+
+watch(computeMethodDependentParametersValues, async () => {
+	// Recompute the value whenever a parameter on which the current field depends changes
+	await loadComputedValue();
 });
 
 watch(
@@ -1713,11 +1803,16 @@ onUpdated(async () => {
 					:rows="editorRows"
 					:disabled="
 						isReadOnly ||
+						hasComputeMethod ||
 						remoteParameterOptionsLoading ||
 						remoteParameterOptionsLoadingIssues !== null
 					"
 					:title="displayTitle"
-					:placeholder="getPlaceholder()"
+					:placeholder="
+						computedParameterValueLoading
+							? i18n.baseText('parameterInput.loadingOptions')
+							: getPlaceholder()
+					"
 					data-test-id="parameter-input-field"
 					@update:model-value="
 						isJsonPasswordField

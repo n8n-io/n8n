@@ -12,14 +12,8 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { loadOptions, resourceMapping } from './methods';
-import {
-	findResourceKey,
-	getCategoryClient,
-	getLinkedAccountCategory,
-	omitEmpty,
-	type ModelOperation,
-} from './utils';
+import { computeMethod, loadOptions, resourceMapping } from './methods';
+import { findResourceKey, getCategoryClient, omitEmpty, type ModelOperation } from './utils';
 
 export class MergeDev implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,6 +29,15 @@ export class MergeDev implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'mergeDevApi', required: true }],
 		properties: [
+			{
+				displayName: 'Category',
+				name: 'category',
+				type: 'string',
+				typeOptions: {
+					computeMethod: 'getMergeDevCategory',
+				},
+				default: '',
+			},
 			{
 				displayName: 'Model',
 				name: 'commonModels',
@@ -140,7 +143,7 @@ export class MergeDev implements INodeType {
 		],
 	};
 
-	methods = { loadOptions, resourceMapping };
+	methods = { computeMethod, loadOptions, resourceMapping };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -152,7 +155,7 @@ export class MergeDev implements INodeType {
 		}>('mergeDevApi');
 		const merge = new MergeClient({ apiKey, accountToken });
 
-		const category = await getLinkedAccountCategory(merge);
+		const category = this.getNodeParameter('category', 0) as string;
 		const categoryClient = getCategoryClient(merge, category);
 
 		const actionsResult = await categoryClient.availableActions.retrieve();
