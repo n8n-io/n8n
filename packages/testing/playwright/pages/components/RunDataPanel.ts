@@ -119,6 +119,10 @@ export class RunDataPanel {
 		return this.root.getByTestId('related-execution-link');
 	}
 
+	getHoveringItems() {
+		return this.root.getByTestId('hovering-item');
+	}
+
 	getNodeErrorMessageHeader(): Locator {
 		return this.root.getByTestId('node-error-message');
 	}

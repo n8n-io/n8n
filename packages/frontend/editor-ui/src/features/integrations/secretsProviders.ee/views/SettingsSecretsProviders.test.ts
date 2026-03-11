@@ -28,7 +28,18 @@ vi.mock('vue-router', async () => {
 	};
 });
 
+const mockShowMessage = vi.fn();
+const mockShowError = vi.fn();
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: vi.fn(() => ({
+		showMessage: mockShowMessage,
+		showError: mockShowError,
+	})),
+}));
+
 const mockReloadConnection = vi.fn();
+const mockActivateConnection = vi.fn();
 
 vi.mock('../composables/useSecretsProviderConnection.ee', () => ({
 	useSecretsProviderConnection: () => ({
@@ -41,6 +52,7 @@ vi.mock('../composables/useSecretsProviderConnection.ee', () => ({
 		createConnection: vi.fn(),
 		updateConnection: vi.fn(),
 		testConnection: vi.fn(),
+		activateConnection: mockActivateConnection,
 	}),
 }));
 
@@ -82,6 +94,7 @@ describe('SettingsSecretsProviders', () => {
 		mockFetchProviders.mockResolvedValue(undefined);
 		mockFetchActiveConnections.mockResolvedValue(undefined);
 		mockFetchConnection.mockResolvedValue(undefined);
+		mockActivateConnection.mockResolvedValue(undefined);
 		mockIsEnterpriseEnabled.value = false;
 		mockProviders.value = [];
 		mockActiveProviders.value = [];
@@ -346,6 +359,70 @@ describe('SettingsSecretsProviders', () => {
 			});
 
 			expect(mockFetchConnection).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('handleActivate', () => {
+		const activeProviders: SecretProviderConnection[] = [
+			{
+				id: '1',
+				name: 'aws-prod',
+				type: 'awsSecretsManager',
+				state: 'connected',
+				isEnabled: false,
+				projects: [],
+				settings: {},
+				secretsCount: 5,
+				secrets: [],
+				createdAt: '2024-01-20T10:00:00Z',
+				updatedAt: '2024-01-20T10:00:00Z',
+			},
+		];
+
+		it('should call activateConnection, fetchConnection and show success toast on success', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			mockIsEnterpriseEnabled.value = true;
+			mockIsLoading.value = false;
+			mockActiveProviders.value = activeProviders;
+
+			const rbacStore = useRBACStore();
+			rbacStore.globalScopes = ['externalSecretsProvider:update'];
+
+			mockActivateConnection.mockResolvedValue({ ...activeProviders[0], isEnabled: true });
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			await userEvent.click(getByTestId('action-activate'));
+
+			await vi.waitFor(() => {
+				expect(mockActivateConnection).toHaveBeenCalledWith('aws-prod');
+			});
+
+			expect(mockFetchConnection).toHaveBeenCalledWith('aws-prod');
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+
+		it('should show error toast and not fetch connection when activation fails', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			mockIsEnterpriseEnabled.value = true;
+			mockIsLoading.value = false;
+			mockActiveProviders.value = activeProviders;
+
+			const rbacStore = useRBACStore();
+			rbacStore.globalScopes = ['externalSecretsProvider:update'];
+
+			mockActivateConnection.mockRejectedValue(new Error('Activation failed'));
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			await userEvent.click(getByTestId('action-activate'));
+
+			await vi.waitFor(() => {
+				expect(mockActivateConnection).toHaveBeenCalledWith('aws-prod');
+			});
+
+			expect(mockFetchConnection).not.toHaveBeenCalled();
+			expect(mockShowError).toHaveBeenCalled();
 		});
 	});
 });

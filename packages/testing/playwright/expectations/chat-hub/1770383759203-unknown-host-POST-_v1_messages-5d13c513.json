@@ -18,7 +18,7 @@
 						"content": "Hello"
 					}
 				],
-				"system": "reply in Japanese\n\n__e2e_system_prompt_placeholder__"
+				"system": "Combine provided tools and knowledge to answer questions.\n\n__e2e_system_prompt_placeholder__\n\n## Instructions from the user\n\n> reply in Japanese"
 			},
 			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNS0yMDI1MTEwMSIsInN0cmVhbSI6dHJ1ZSwibWF4X3Rva2VucyI6ODE5MiwidGhpbmtpbmciOnsidHlwZSI6ImRpc2FibGVkIn0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJIZWxsbyJ9XSwic3lzdGVtIjoicmVwbHkgaW4gSmFwYW5lc2VcblxuX19lMmVfc3lzdGVtX3Byb21wdF9wbGFjZWhvbGRlcl9fIn0="
 		}

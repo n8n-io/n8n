@@ -388,6 +388,66 @@ describe('WorkflowIndexService', () => {
 			);
 		});
 
+		it('should extract dataTableId from all data-table-related node types', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.dataTable',
+					parameters: { dataTableId: { mode: 'name', value: 'My Table 1' } },
+				}),
+				createNode({
+					id: 'node-2',
+					type: 'n8n-nodes-base.dataTableTool',
+					parameters: { dataTableId: { mode: 'id', value: 'table-2' } },
+				}),
+				createNode({
+					id: 'node-3',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					parameters: { source: 'dataTable', dataTableId: { mode: 'list', value: 'table-3' } },
+				}),
+				createNode({
+					id: 'node-4',
+					type: 'n8n-nodes-base.evaluation',
+					parameters: { source: 'dataTable', dataTableId: { mode: 'list', value: 'table-4' } },
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			const dataTableDeps = call[1].dependencies.filter(
+				(d: { dependencyType: string }) => d.dependencyType === 'dataTableId',
+			);
+
+			expect(dataTableDeps).toHaveLength(4);
+			expect(dataTableDeps).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						dependencyType: 'dataTableId',
+						dependencyKey: 'My Table 1',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-1', mode: 'name' }),
+					}),
+					expect.objectContaining({
+						dependencyType: 'dataTableId',
+						dependencyKey: 'table-2',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-2', mode: 'id' }),
+					}),
+					expect.objectContaining({
+						dependencyType: 'dataTableId',
+						dependencyKey: 'table-3',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-3', mode: 'list' }),
+					}),
+					expect.objectContaining({
+						dependencyType: 'dataTableId',
+						dependencyKey: 'table-4',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-4', mode: 'list' }),
+					}),
+				]),
+			);
+		});
+
 		it('should insert placeholder for workflow with no nodes', async () => {
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
