@@ -367,13 +367,13 @@ function extractUrl(value: string) {
 	return matched[0];
 }
 
+// DIVERGENCE from packages/workflow/src/extensions/string-extensions.ts:
+// The original uses the URL constructor which is a Web API unavailable inside
+// the V8 isolate. A minimal regex extracts the pathname instead.
 function extractUrlPath(value: string) {
-	try {
-		const url = new URL(value);
-		return url.pathname;
-	} catch (error) {
-		return undefined;
-	}
+	const match = /^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/[^/?#]*([^?#]*)/.exec(value);
+	if (!match) return undefined;
+	return match[1] || '/';
 }
 
 function parseJson(value: string): unknown {

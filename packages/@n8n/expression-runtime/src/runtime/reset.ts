@@ -1,7 +1,7 @@
 import { extend, extendOptional } from '../extensions/extend';
 import { extendedFunctions } from '../extensions/function-extensions';
 
-import { __sanitize, SafeObject, SafeError } from './safe-globals';
+import { __sanitize } from './safe-globals';
 import { createDeepLazyProxy } from './lazy-proxy';
 
 // ============================================================================
