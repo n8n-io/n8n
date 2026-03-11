@@ -1,4 +1,4 @@
-workflow({ name: 'Batch Poll' }, () => {
+workflow({ name: 'F15: Batch poll (SplitInBatches pattern)' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
 		batch(items, (item) => {
 			const check_Status = executeNode({

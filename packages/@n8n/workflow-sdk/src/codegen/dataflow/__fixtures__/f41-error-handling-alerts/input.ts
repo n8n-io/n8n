@@ -1,4 +1,4 @@
-workflow({ name: 'Error handling alerts with Google Sheets, Telegram and Gmail' }, () => {
+workflow({ name: 'F41: Error Handling Alerts' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.errorTrigger', params: {}, version: 1 }, (items) => {});
 	const log_error = items.map((item) =>
 		executeNode({

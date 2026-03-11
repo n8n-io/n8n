@@ -1,4 +1,4 @@
-workflow({ name: 'JSON String Validator via Webhook' }, () => {
+workflow({ name: 'F37: JSON String Validator' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.webhook',

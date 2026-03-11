@@ -1,4 +1,4 @@
-workflow({ name: 'Email New Leads' }, () => {
+workflow({ name: 'F42: Email New Leads' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.scheduleTrigger',
@@ -38,10 +38,8 @@ workflow({ name: 'Email New Leads' }, () => {
 					version: 4.7,
 				}),
 			);
-			const filter1 = get_row_s_in_sheet3.filter(
-				(item) => /* unknown operator: empty */ item.json.Contacted,
-			);
-			const append_or_update_row_in_sheet1 = filter1.map((item) =>
+			const filter = get_row_s_in_sheet3.filter((item) => item.json.Contacted);
+			const append_or_update_row_in_sheet1 = filter.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.googleSheets',
 					name: 'Append or update row in sheet1',

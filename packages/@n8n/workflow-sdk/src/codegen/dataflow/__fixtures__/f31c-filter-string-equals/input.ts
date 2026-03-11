@@ -1,10 +1,10 @@
-workflow({ name: 'Filter String Equals' }, () => {
+workflow({ name: 'F31c: Filter — string equals (===)' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.manualTrigger',
 			params: {},
 			version: 1,
-			sampleData: [
+			outputSampleData: [
 				{
 					id: 1,
 					name: 'Leanne Graham',
@@ -15,7 +15,7 @@ workflow({ name: 'Filter String Equals' }, () => {
 			],
 		},
 		(items) => {
-			const users = items.map((item) =>
+			const get_Users = items.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Get Users',
@@ -23,8 +23,8 @@ workflow({ name: 'Filter String Equals' }, () => {
 					version: 4,
 				}),
 			);
-			const bret = users.filter((item) => item.json.username === 'Bret');
-			const notify = bret.map((item) =>
+			const filter = get_Users.filter((item) => item.json.username === 'Bret');
+			const notify_User = filter.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Notify User',

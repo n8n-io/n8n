@@ -186,7 +186,7 @@ describe('Fixture execution with pin data', () => {
 	const fixtures = loadFixtures();
 
 	for (const fixture of fixtures) {
-		// Parse early to check for sampleData-based pin data in code
+		// Parse early to check for outputSampleData-based pin data in code
 		const earlyParsed = parseDataFlowCode(fixture.input);
 		const hasPinDataInCode = Object.keys(earlyParsed.pinData ?? {}).length > 0;
 
@@ -205,7 +205,7 @@ describe('Fixture execution with pin data', () => {
 			// Step 1: Parse data-flow code → WorkflowJSON
 			const parsed = earlyParsed;
 
-			// Step 2: Build pin data — merge sampleData from code with pin-data.json
+			// Step 2: Build pin data — merge outputSampleData from code with pin-data.json
 			const codePinData = parsed.pinData ?? {};
 			const filePinData = (fixture.pinData as Record<string, unknown>) ?? {};
 			const mergedPinData = { ...filePinData, ...codePinData };

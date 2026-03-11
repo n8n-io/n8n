@@ -1,4 +1,4 @@
-workflow({ name: 'SSL Expiry Alert' }, () => {
+workflow({ name: 'F44: SSL Expiry Alert' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.scheduleTrigger',
@@ -54,10 +54,7 @@ workflow({ name: 'SSL Expiry Alert' }, () => {
 					name: 'URLs to Monitor',
 					params: {
 						columns: {
-							value: {
-								URL: expr('{{ $json.result.host }}'),
-								KnownExpiryDate: expr('{{ $json.result.valid_till }}'),
-							},
+							value: { URL: item.json.result.host, KnownExpiryDate: item.json.result.valid_till },
 							schema: [
 								{
 									id: 'Website ',
@@ -129,25 +126,23 @@ workflow({ name: 'SSL Expiry Alert' }, () => {
 					version: 4.5,
 				}),
 			);
-			if (check_SSL[0].json.result.days_left <= 7) {
-				const send_Alert_Email = executeNode({
-					type: 'n8n-nodes-base.gmail',
-					name: 'Send Alert Email',
-					params: {
-						sendTo: 'user@example.com',
-						message: expr(
-							'SSL Expiry - {{ $json.result.days_left }} Days Left - {{ $json.result.host }}',
-						),
-						options: { appendAttribution: false },
-						subject: expr(
-							'SSL Expiry - {{ $json.result.days_left }} Days Left - {{ $json.result.host }}',
-						),
-						emailType: 'text',
-					},
-					credentials: { gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' } },
-					version: 2.1,
-				});
-			}
+			uRLs_to_Monitor.map((item) => {
+				if (item.json.result.days_left <= 7) {
+					const send_Alert_Email = executeNode({
+						type: 'n8n-nodes-base.gmail',
+						name: 'Send Alert Email',
+						params: {
+							sendTo: 'user@example.com',
+							message: `SSL Expiry - ${item.json.result.days_left} Days Left - ${item.json.result.host}`,
+							options: { appendAttribution: false },
+							subject: `SSL Expiry - ${item.json.result.days_left} Days Left - ${item.json.result.host}`,
+							emailType: 'text',
+						},
+						credentials: { gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' } },
+						version: 2.1,
+					});
+				}
+			});
 		},
 	);
 });

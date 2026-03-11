@@ -1,4 +1,4 @@
-workflow({ name: 'QR Code Generator via Webhook' }, () => {
+workflow({ name: 'F36: QR Code Generator via Webhook' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.webhook',
@@ -17,9 +17,7 @@ workflow({ name: 'QR Code Generator via Webhook' }, () => {
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Generate QR Code',
 					params: {
-						url: expr(
-							'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $json.body.data }}',
-						),
+						url: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${item.json.body.data}`,
 						method: expr('GET'),
 						options: {},
 					},

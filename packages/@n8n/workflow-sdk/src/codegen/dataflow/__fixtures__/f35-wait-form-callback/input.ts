@@ -1,6 +1,6 @@
-workflow({ name: 'Wait Form Callback' }, () => {
+workflow({ name: 'F35: Wait form with resumeUrl callback' }, () => {
 	onTrigger(
-		{ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1, sampleData: [{ id: 1 }] },
+		{ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1, outputSampleData: [{ id: 1 }] },
 		(items) => {
 			waitOnForm(
 				{ formTitle: 'Approval Required', formDescription: 'Please approve this request' },

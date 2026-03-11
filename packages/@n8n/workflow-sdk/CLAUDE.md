@@ -24,10 +24,10 @@ Data-flow is preferred because LLMs already know TypeScript control flow — no 
 - `$now.toISO()`, `$today`, `$execution.id` — n8n globals used directly (instead of `expr('{{ $now.toISO() }}')`)
 - `expr('{{ complex expression }}')` — wrap complex n8n expressions that can't be represented as simple identifiers
 - `item.json.field` — direct field access inside `.map()` callbacks
-- Native `if (items[0].json.field === value)` → IF node branching (array-level: `items[0].json`)
-- Native `switch (items[0].json.field)` → Switch node routing
+- `items.map((item) => { if (item.json.field === value) { ... } else { ... } })` → IF node branching (per-item)
+- `items.map((item) => { switch (item.json.field) { ... } })` → Switch node routing (per-item)
 - Native `try { ... } catch (e) { ... }` → error handling (continueErrorOutput)
-- `items.filter((item) => condition)` → Filter node (item-level: `item.json`, not `items[0].json`)
+- `items.filter((item) => condition)` → Filter node (per-item: `item.json`)
 - `batch(source, config?, (item) => { ... })` — batch processing via SplitInBatches. Config: `{ params?: { batchSize }, version?, name? }`. Omitted when all defaults (batchSize 1, version 3, auto name).
 - `const [out0, out1, out2] = node({ ... })(input)` — multi-output destructuring
 - `subnodes: { ai_languageModel: { type, params, version } }` — AI sub-connections
@@ -68,7 +68,7 @@ The `executeOnce` flag on `NodeJSON` distinguishes per-item vs execute-once node
 
 Both use the same V2 conditions parameter format, but serve different purposes:
 
-- **IF node** (`n8n-nodes-base.if`): branches workflow into two paths. Data-flow: `if/else` block. Outputs: `trueBranch`/`falseBranch`.
+- **IF node** (`n8n-nodes-base.if`): branches workflow into two paths. Data-flow: `.map()` with `if/else` block. Outputs: `trueBranch`/`falseBranch`.
 - **Filter node** (`n8n-nodes-base.filter`): filters items matching a condition (pass-through). Data-flow: `.filter()` call. Outputs: `kept`/`discarded`.
 
 Key difference in code generation: Filter's kept branch is a **continuation** (downstream nodes keep `.map()` wrapping), not a **branch** (`insideBranch` stays false). This prevents round-trip issues where downstream nodes would incorrectly get `executeOnce: true`.

@@ -1,4 +1,4 @@
-workflow({ name: 'Conexion SAP' }, () => {
+workflow({ name: 'F45: SAP Connection' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.manualTrigger',
@@ -50,12 +50,14 @@ workflow({ name: 'Conexion SAP' }, () => {
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'SAP Connection',
 					params: {
-						url: expr('{{ $json.sap_url }}Login'),
+						url: `${set_Login_Data.json.sap_url}Login`,
 						method: 'POST',
 						options: { allowUnauthorizedCerts: true },
-						jsonBody: expr(
-							'{\n       "UserName": "{{ $json.sap_username }}",\n       "Password": "{{ $json.sap_password }}",\n       "CompanyDB": "{{ $json.sap_companydb }}"\n}',
-						),
+						jsonBody: `{
+       "UserName": "${set_Login_Data.json.sap_username}",
+       "Password": "${set_Login_Data.json.sap_password}",
+       "CompanyDB": "${set_Login_Data.json.sap_companydb}"
+}`,
 						sendBody: true,
 						specifyBody: 'json',
 					},

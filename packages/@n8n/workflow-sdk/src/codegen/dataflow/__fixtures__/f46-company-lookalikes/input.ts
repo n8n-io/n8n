@@ -1,4 +1,6 @@
-workflow({ name: 'Find Similar Companies to your Best Customers with CompanyEnrich' }, () => {
+import { $now } from 'n8n';
+
+workflow({ name: 'F46: Company Lookalikes' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
 		const read_Source_List = items.map((item) =>
 			executeNode({
@@ -72,7 +74,7 @@ workflow({ name: 'Find Similar Companies to your Best Customers with CompanyEnri
 			params: {
 				columns: {
 					value: {
-						'Added Date': expr('{{ $now }}'),
+						'Added Date': $now,
 						'Source Domain': item.json.Domain,
 						'Similar Domain': item.json.items.domain,
 						'Similarity Score': expr('{{ $json.metadata.scores[$json.items.id] }}'),

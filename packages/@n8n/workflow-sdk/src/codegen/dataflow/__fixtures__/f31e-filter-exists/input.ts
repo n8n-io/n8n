@@ -1,10 +1,10 @@
-workflow({ name: 'Filter Field Exists' }, () => {
+workflow({ name: 'F31e: Filter — field exists (!== undefined)' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.manualTrigger',
 			params: {},
 			version: 1,
-			sampleData: [
+			outputSampleData: [
 				{
 					id: 1,
 					name: 'Leanne Graham',
@@ -15,7 +15,7 @@ workflow({ name: 'Filter Field Exists' }, () => {
 			],
 		},
 		(items) => {
-			const users = items.map((item) =>
+			const get_Users = items.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Get Users',
@@ -23,8 +23,8 @@ workflow({ name: 'Filter Field Exists' }, () => {
 					version: 4,
 				}),
 			);
-			const withWebsite = users.filter((item) => item.json.website !== undefined);
-			const notify = withWebsite.map((item) =>
+			const filter = get_Users.filter((item) => item.json.website !== undefined);
+			const notify_User = filter.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Notify User',

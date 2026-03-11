@@ -1,4 +1,4 @@
-workflow({ name: 'Pin Data Test' }, () => {
+workflow({ name: 'F24: Execution with pin data only (ManualTrigger → Set → Set)' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
 		const set_Values = executeNode({
 			type: 'n8n-nodes-base.set',
@@ -10,7 +10,7 @@ workflow({ name: 'Pin Data Test' }, () => {
 				options: {},
 			},
 			version: 3.4,
-			sampleData: [{ greeting: 'hello' }],
+			output: [{ greeting: 'hello' }],
 		});
 		const format_Output = executeNode({
 			type: 'n8n-nodes-base.set',
@@ -24,7 +24,7 @@ workflow({ name: 'Pin Data Test' }, () => {
 				options: {},
 			},
 			version: 3.4,
-			sampleData: [{ message: 'hello' }],
+			output: [{ message: 'hello' }],
 		});
 	});
 });

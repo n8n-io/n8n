@@ -558,6 +558,61 @@ function memberExprToFieldPath(expr: Expression): string | undefined {
 	return undefined;
 }
 
+/**
+ * Convert a JS AST expression back to an n8n expression string.
+ * Handles complex expressions like ternaries, &&/|| chains, etc.
+ * Returns `={{ ... }}` wrapped string or undefined if conversion fails.
+ */
+function jsExprToN8nExpr(expr: Expression): string | undefined {
+	function convert(e: Expression): string | undefined {
+		if (e.type === 'MemberExpression') {
+			const fieldPath = memberExprToFieldPath(e);
+			if (fieldPath !== undefined) return `$json.${fieldPath}`;
+			return undefined;
+		}
+		if (isLiteral(e)) {
+			const lit = e as Literal;
+			if (typeof lit.value === 'boolean') return String(lit.value);
+			if (typeof lit.value === 'number') return String(lit.value);
+			if (typeof lit.value === 'string') return `'${lit.value}'`;
+			return undefined;
+		}
+		if (e.type === 'LogicalExpression') {
+			const le = e as LogicalExpression;
+			const left = convert(le.left as Expression);
+			const right = convert(le.right);
+			if (left === undefined || right === undefined) return undefined;
+			return `${left} ${le.operator} ${right}`;
+		}
+		if (e.type === 'ConditionalExpression') {
+			const test = convert(e.test);
+			const cons = convert(e.consequent);
+			const alt = convert(e.alternate);
+			if (test === undefined || cons === undefined || alt === undefined) return undefined;
+			return `${test} ? ${cons} : ${alt}`;
+		}
+		if (e.type === 'UnaryExpression') {
+			const ue = e as UnaryExpression;
+			const arg = convert(ue.argument);
+			if (arg === undefined) return undefined;
+			return `${ue.operator}${arg}`;
+		}
+		if (e.type === 'BinaryExpression') {
+			const be = e as BinaryExpression;
+			if (be.left.type === 'PrivateIdentifier') return undefined;
+			const left = convert(be.left);
+			const right = convert(be.right);
+			if (left === undefined || right === undefined) return undefined;
+			return `${left} ${be.operator} ${right}`;
+		}
+		return undefined;
+	}
+
+	const result = convert(expr);
+	if (result === undefined) return undefined;
+	return `={{ ${result} }}`;
+}
+
 // ---------------------------------------------------------------------------
 // Condition extraction from if/switch AST
 // ---------------------------------------------------------------------------
@@ -789,6 +844,42 @@ function buildSwitchParameters(fieldPath: string, caseValues: unknown[]): Record
 					},
 					leftValue: `={{ $json.${fieldPath} }}`,
 					rightValue: value,
+				},
+			],
+		},
+	}));
+
+	return {
+		rules: {
+			values: rules,
+		},
+		options: {
+			fallbackOutput: 'extra',
+		},
+	};
+}
+
+function buildSwitchBooleanParameters(
+	n8nExpr: string,
+	caseValues: unknown[],
+): Record<string, unknown> {
+	const rules: Record<string, unknown>[] = caseValues.map((value) => ({
+		conditions: {
+			options: {
+				version: 2,
+				caseSensitive: true,
+				typeValidation: 'loose',
+			},
+			combinator: 'and',
+			conditions: [
+				{
+					operator: {
+						type: 'boolean',
+						operation: value === true ? 'true' : 'false',
+						singleValue: true,
+					},
+					leftValue: n8nExpr,
+					rightValue: '',
 				},
 			],
 		},
@@ -1255,10 +1346,26 @@ function processSwitchStatement(
 		}
 	}
 
-	// Create Switch node
-	const switchParams = fieldPath
-		? buildSwitchParameters(fieldPath, caseValues)
-		: { rules: { values: [] } };
+	// Create Switch node parameters
+	let switchParams: Record<string, unknown>;
+	if (fieldPath) {
+		switchParams = buildSwitchParameters(fieldPath, caseValues);
+	} else {
+		// Try complex expression fallback
+		const n8nExpr = jsExprToN8nExpr(stmt.discriminant);
+		if (n8nExpr) {
+			// Check if case values are booleans → use boolean operators
+			const allBooleans = caseValues.every((v) => typeof v === 'boolean');
+			if (allBooleans) {
+				switchParams = buildSwitchBooleanParameters(n8nExpr, caseValues);
+			} else {
+				// Non-boolean complex expression — not yet supported for round-trip
+				switchParams = { rules: { values: [] } };
+			}
+		} else {
+			switchParams = { rules: { values: [] } };
+		}
+	}
 	const switchConfig: NodeConfig = {
 		type: 'n8n-nodes-base.switch',
 		params: switchParams,
@@ -1834,19 +1941,44 @@ function processStatement(
 					}
 				}
 
-				// Check for .map() call without assignment (expression body only)
+				// Check for .map() call without assignment
 				const mapMatch = isMapCall(exprStmt.expression);
 				if (mapMatch) {
-					const { callback } = mapMatch;
+					const { callback, sourceVar } = mapMatch;
 					const { body } = callback;
-					if (body.type !== 'BlockStatement' && isCallExpression(body)) {
+
+					if (body.type === 'BlockStatement') {
+						// Block body: may contain switch/if/executeNode statements
+						const callbackParam = callback.params[0];
+						const paramName =
+							callbackParam && isIdentifier(callbackParam as Expression)
+								? (callbackParam as Identifier).name
+								: undefined;
+
+						// Map callback parameter to same node as source variable
+						if (paramName) {
+							const sourceMapping = state.varToNode.get(sourceVar);
+							if (sourceMapping) {
+								state.varToNode.set(paramName, { ...sourceMapping });
+							}
+						}
+
+						processStatements(body.body, state, paramName ?? inputVarName);
+
+						if (paramName) {
+							state.varToNode.delete(paramName);
+						}
+						break;
+					}
+
+					if (isCallExpression(body)) {
 						const execMatch = matchExecuteNodeCall(body);
 						if (execMatch) {
 							const config = extractNodeConfig(execMatch.config);
 							const { node: sNode, isNew } = createSemanticNode(config, state);
 							if (isNew) processSubnodes(config, sNode.name, state);
 
-							const mapping = state.varToNode.get(mapMatch.sourceVar);
+							const mapping = state.varToNode.get(sourceVar);
 							if (mapping) {
 								addSemanticEdge(state, mapping.nodeName, sNode.name, mapping.outputIndex);
 							}

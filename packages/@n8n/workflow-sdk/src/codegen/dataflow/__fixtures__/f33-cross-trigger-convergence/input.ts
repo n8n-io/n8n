@@ -1,11 +1,11 @@
-workflow({ name: 'Cross Trigger' }, () => {
+workflow({ name: 'F33: Cross-trigger convergence (webhook + schedule → same processor)' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.webhook',
 			name: 'Orders Webhook',
 			params: { path: '/orders', options: {} },
 			version: 2,
-			sampleData: [{ source: 'webhook', data: 'order-123' }],
+			outputSampleData: [{ source: 'webhook', data: 'order-123' }],
 		},
 		(items) => {
 			const process_Data = items.map((item) =>
@@ -24,7 +24,7 @@ workflow({ name: 'Cross Trigger' }, () => {
 			name: 'Hourly Check',
 			params: { rule: { interval: [{ field: 'hours', betweenInterval: 1 }] } },
 			version: 1.2,
-			sampleData: [{ source: 'schedule' }],
+			outputSampleData: [{ source: 'schedule' }],
 		},
 		(items) => {
 			const process_Data = items.map((item) =>

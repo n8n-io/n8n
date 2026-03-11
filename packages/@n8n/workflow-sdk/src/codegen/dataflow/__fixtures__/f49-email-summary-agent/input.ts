@@ -1,4 +1,4 @@
-workflow({ name: 'Email Summary Agent' }, () => {
+workflow({ name: 'F49: Email Summary Agent' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.scheduleTrigger',

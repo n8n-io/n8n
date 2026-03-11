@@ -1,10 +1,10 @@
-workflow({ name: 'Filter AND Combinator' }, () => {
+workflow({ name: 'F31g: Filter — AND combinator (&&)' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.manualTrigger',
 			params: {},
 			version: 1,
-			sampleData: [
+			outputSampleData: [
 				{
 					id: 1,
 					name: 'Leanne Graham',
@@ -15,7 +15,7 @@ workflow({ name: 'Filter AND Combinator' }, () => {
 			],
 		},
 		(items) => {
-			const users = items.map((item) =>
+			const get_Users = items.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Get Users',
@@ -23,8 +23,10 @@ workflow({ name: 'Filter AND Combinator' }, () => {
 					version: 4,
 				}),
 			);
-			const filtered = users.filter((item) => item.json.id > 3 && item.json.email.includes('.biz'));
-			const notify = filtered.map((item) =>
+			const filter = get_Users.filter(
+				(item) => item.json.id > 3 && item.json.email.includes('.biz'),
+			);
+			const notify_User = filter.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Notify User',

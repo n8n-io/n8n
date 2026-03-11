@@ -1,4 +1,4 @@
-workflow({ name: 'API fundamentals' }, () => {
+workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, () => {
 	onTrigger(
 		{ type: 'n8n-nodes-base.manualTrigger', name: 'Start Tutorial', params: {}, version: 1 },
 		(items) => {
@@ -44,7 +44,7 @@ workflow({ name: 'API fundamentals' }, () => {
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: '1. The Customer (GET Menu Item)',
-					params: { url: `${item.json.base_url}/tutorial/api/menu`, options: {} },
+					params: { url: expr('{{ $json.base_url }}/tutorial/api/menu'), options: {} },
 					version: 4.1,
 				}),
 			);
@@ -53,7 +53,7 @@ workflow({ name: 'API fundamentals' }, () => {
 					type: 'n8n-nodes-base.httpRequest',
 					name: '2. The Customer (GET with Query Params)',
 					params: {
-						url: `${item.json.base_url}/tutorial/api/order`,
+						url: expr('{{ $json.base_url }}/tutorial/api/order'),
 						options: {},
 						sendQuery: true,
 						queryParameters: { parameters: [{ name: 'extra_cheese', value: 'true' }] },
@@ -66,7 +66,7 @@ workflow({ name: 'API fundamentals' }, () => {
 					type: 'n8n-nodes-base.httpRequest',
 					name: '3. The Customer (POST with Body)',
 					params: {
-						url: `${item.json.base_url}/tutorial/api/review`,
+						url: expr('{{ $json.base_url }}/tutorial/api/review'),
 						method: 'POST',
 						options: {},
 						sendBody: true,
@@ -85,7 +85,7 @@ workflow({ name: 'API fundamentals' }, () => {
 					type: 'n8n-nodes-base.httpRequest',
 					name: '4. The Customer (GET with Headers/Auth)',
 					params: {
-						url: `${item.json.base_url}/tutorial/api/secret-dish`,
+						url: expr('{{ $json.base_url }}/tutorial/api/secret-dish'),
 						options: {},
 						sendHeaders: true,
 						headerParameters: { parameters: [{ name: 'x-api-key', value: 'super-secret-key' }] },
@@ -98,7 +98,7 @@ workflow({ name: 'API fundamentals' }, () => {
 					type: 'n8n-nodes-base.httpRequest',
 					name: '5. The Customer (Request with Timeout)',
 					params: {
-						url: `${item.json.base_url}/tutorial/api/slow-service`,
+						url: expr('{{ $json.base_url }}/tutorial/api/slow-service'),
 						options: { timeout: 2000 },
 					},
 					version: 4.1,
@@ -138,33 +138,35 @@ workflow({ name: 'API fundamentals' }, () => {
 			version: 2,
 		},
 		(items) => {
-			if (items[0].json.query.extra_cheese) {
-				const prepare_Cheese_Pizza = executeNode({
-					type: 'n8n-nodes-base.set',
-					name: 'Prepare Cheese Pizza',
-					params: {
-						options: {},
-						assignments: {
-							assignments: [
-								{ id: '12345', name: 'order', type: 'string', value: 'Pizza with extra cheese' },
-							],
+			items.map((item) => {
+				if (item.json.query.extra_cheese) {
+					const prepare_Cheese_Pizza = executeNode({
+						type: 'n8n-nodes-base.set',
+						name: 'Prepare Cheese Pizza',
+						params: {
+							options: {},
+							assignments: {
+								assignments: [
+									{ id: '12345', name: 'order', type: 'string', value: 'Pizza with extra cheese' },
+								],
+							},
 						},
-					},
-					version: 3.4,
-				});
-			} else {
-				const prepare_Plain_Pizza = executeNode({
-					type: 'n8n-nodes-base.set',
-					name: 'Prepare Plain Pizza',
-					params: {
-						options: {},
-						assignments: {
-							assignments: [{ id: '12345', name: 'order', type: 'string', value: 'Plain Pizza' }],
+						version: 3.4,
+					});
+				} else {
+					const prepare_Plain_Pizza = executeNode({
+						type: 'n8n-nodes-base.set',
+						name: 'Prepare Plain Pizza',
+						params: {
+							options: {},
+							assignments: {
+								assignments: [{ id: '12345', name: 'order', type: 'string', value: 'Plain Pizza' }],
+							},
 						},
-					},
-					version: 3.4,
-				});
-			}
+						version: 3.4,
+					});
+				}
+			});
 		},
 	);
 	onTrigger(
@@ -188,18 +190,8 @@ workflow({ name: 'API fundamentals' }, () => {
 					assignments: {
 						assignments: [
 							{ id: '12345', name: 'status', type: 'string', value: 'review_received' },
-							{
-								id: '67890',
-								name: 'your_comment',
-								type: 'string',
-								value: items.json.body.comment,
-							},
-							{
-								id: '91011',
-								name: 'your_rating',
-								type: 'number',
-								value: items.json.body.rating,
-							},
+							{ id: '67890', name: 'your_comment', type: 'string', value: items.json.body.comment },
+							{ id: '91011', name: 'your_rating', type: 'number', value: items.json.body.rating },
 						],
 					},
 				},
@@ -215,29 +207,31 @@ workflow({ name: 'API fundamentals' }, () => {
 			version: 2,
 		},
 		(items) => {
-			if (items[0].json.headers['x-api-key'] === 'super-secret-key') {
-				const respond_with_Secret = executeNode({
-					type: 'n8n-nodes-base.respondToWebhook',
-					name: 'Respond with Secret',
-					params: {
-						options: {},
-						respondWith: 'json',
-						responseBody: '{\n  "dish": "The Chef\'s Special Truffle Pasta"\n}',
-					},
-					version: 1.4,
-				});
-			} else {
-				const respond_Unauthorized_401 = executeNode({
-					type: 'n8n-nodes-base.respondToWebhook',
-					name: 'Respond: Unauthorized (401)',
-					params: {
-						options: { responseCode: 401 },
-						respondWith: 'text',
-						responseBody: 'You are not authorized to see the secret dish.',
-					},
-					version: 1.4,
-				});
-			}
+			items.map((item) => {
+				if (item.json.headers['x-api-key'] === 'super-secret-key') {
+					const respond_with_Secret = executeNode({
+						type: 'n8n-nodes-base.respondToWebhook',
+						name: 'Respond with Secret',
+						params: {
+							options: {},
+							respondWith: 'json',
+							responseBody: '{\n  "dish": "The Chef\'s Special Truffle Pasta"\n}',
+						},
+						version: 1.4,
+					});
+				} else {
+					const respond_Unauthorized_401 = executeNode({
+						type: 'n8n-nodes-base.respondToWebhook',
+						name: 'Respond: Unauthorized (401)',
+						params: {
+							options: { responseCode: 401 },
+							respondWith: 'text',
+							responseBody: 'You are not authorized to see the secret dish.',
+						},
+						version: 1.4,
+					});
+				}
+			});
 		},
 	);
 	onTrigger(

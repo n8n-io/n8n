@@ -1,4 +1,4 @@
-workflow({ name: 'Mixed Execution' }, () => {
+workflow({ name: 'F11: Mixed execution — execute-once fetch, then per-item processing' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
 		const fetch_Users = executeNode({
 			type: 'n8n-nodes-base.httpRequest',
@@ -10,13 +10,9 @@ workflow({ name: 'Mixed Execution' }, () => {
 			executeNode({
 				type: 'n8n-nodes-base.emailSend',
 				name: 'Send Email',
-				params: {
-					toEmail: item.json.email,
-					subject: 'Welcome',
-					text: item.json.name,
-				},
+				params: { toEmail: item.json.email, subject: 'Welcome', text: item.json.name },
 				version: 2,
-				sampleData: [{}],
+				output: [{}],
 			}),
 		);
 	});

@@ -1,4 +1,4 @@
-workflow({ name: 'Three Node Chain' }, () => {
+workflow({ name: 'F02: Three-node chain with parameters (ManualTrigger → HTTP → Set)' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
 		const hTTP_Request = items.map((item) =>
 			executeNode({
@@ -12,9 +12,7 @@ workflow({ name: 'Three Node Chain' }, () => {
 				type: 'n8n-nodes-base.set',
 				params: {
 					options: {},
-					assignments: {
-						assignments: [{ id: 'a1', name: 'key', type: 'string', value: 'val' }],
-					},
+					assignments: { assignments: [{ id: 'a1', name: 'key', type: 'string', value: 'val' }] },
 				},
 				version: 3.4,
 			}),

@@ -1,4 +1,4 @@
-workflow({ name: 'AI Agent with Tools' }, () => {
+workflow({ name: 'F20: AI agent with tools and memory (subnode builders)' }, () => {
 	onTrigger(
 		{
 			type: '@n8n/n8n-nodes-langchain.chatTrigger',
@@ -24,15 +24,15 @@ workflow({ name: 'AI Agent with Tools' }, () => {
 					tools: [
 						tool({
 							type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
-							name: 'API Request',
 							params: { url: 'https://api.example.com' },
 							version: 1.1,
+							name: 'API Request',
 						}),
 						tool({
 							type: '@n8n/n8n-nodes-langchain.toolCode',
-							name: 'Custom Code',
 							params: { code: 'return []' },
 							version: 1.3,
+							name: 'Custom Code',
 						}),
 					],
 					memory: memory({

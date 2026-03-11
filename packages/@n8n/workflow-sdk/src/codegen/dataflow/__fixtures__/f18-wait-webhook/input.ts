@@ -1,4 +1,4 @@
-workflow({ name: 'Wait Webhook' }, () => {
+workflow({ name: 'F18: Wait for webhook (pause and resume)' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
 		waitOnWebhook(() => {
 			const start_Request = executeNode({

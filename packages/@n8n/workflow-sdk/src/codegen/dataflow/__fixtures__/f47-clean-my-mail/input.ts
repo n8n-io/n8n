@@ -1,4 +1,4 @@
-workflow({ name: 'Clean My Mail' }, () => {
+workflow({ name: 'F47: Clean My Mail' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.scheduleTrigger',

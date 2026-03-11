@@ -1,4 +1,4 @@
-workflow({ name: 'Execute Once Chain' }, () => {
+workflow({ name: 'F09: Execute-once chain (ManualTrigger → HTTP Request → Set)' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
 		const hTTP_Request = executeNode({
 			type: 'n8n-nodes-base.httpRequest',

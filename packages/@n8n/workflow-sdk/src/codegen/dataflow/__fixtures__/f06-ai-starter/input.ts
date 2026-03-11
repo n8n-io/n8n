@@ -1,4 +1,4 @@
-workflow({ name: 'Demo: My first AI Agent in n8n' }, () => {
+workflow({ name: 'F06: AI starter (Chat Trigger → Agent + OpenAI model)' }, () => {
 	onTrigger(
 		{
 			type: '@n8n/n8n-nodes-langchain.chatTrigger',

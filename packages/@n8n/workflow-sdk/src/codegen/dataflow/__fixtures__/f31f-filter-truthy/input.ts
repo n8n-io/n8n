@@ -1,10 +1,10 @@
-workflow({ name: 'Filter Truthy' }, () => {
+workflow({ name: 'F31f: Filter — truthy check (item.json.field)' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.manualTrigger',
 			params: {},
 			version: 1,
-			sampleData: [
+			outputSampleData: [
 				{
 					id: 1,
 					name: 'Leanne Graham',
@@ -15,7 +15,7 @@ workflow({ name: 'Filter Truthy' }, () => {
 			],
 		},
 		(items) => {
-			const users = items.map((item) =>
+			const get_Users = items.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Get Users',
@@ -23,8 +23,8 @@ workflow({ name: 'Filter Truthy' }, () => {
 					version: 4,
 				}),
 			);
-			const hasPhone = users.filter((item) => item.json.phone);
-			const notify = hasPhone.map((item) =>
+			const filter = get_Users.filter((item) => item.json.phone);
+			const notify_User = filter.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Notify User',

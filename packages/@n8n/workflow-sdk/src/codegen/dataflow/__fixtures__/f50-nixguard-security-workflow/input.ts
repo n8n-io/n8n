@@ -1,4 +1,4 @@
-workflow({ name: 'NixGuard Security Workflow' }, () => {
+workflow({ name: 'F50: NixGuard Security Workflow' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.webhook',
@@ -66,7 +66,10 @@ workflow({ name: 'NixGuard Security Workflow' }, () => {
 						type: 'n8n-nodes-base.slack',
 						name: '(Optional) Send Slack Alert for High-Risk Events',
 						params: {
-							text: expr('🚨 *NixGuard IP Analysis* 🚨\n\n*AI Summary:*\n{{ $json.ai_summary }}'),
+							text: `🚨 *NixGuard IP Analysis* 🚨
+
+*AI Summary:*
+${item.json.ai_summary}`,
 							otherOptions: {},
 							authentication: 'oAuth2',
 						},

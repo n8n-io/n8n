@@ -1,11 +1,11 @@
-workflow({ name: 'Sub Workflow' }, () => {
+workflow({ name: 'F19: Sub-workflow (execute child workflow)' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
-		const report = executeNode({
+		const generate_Report = executeNode({
 			type: 'n8n-nodes-base.executeWorkflow',
 			name: 'Generate Report',
 			params: { workflowId: 'abc123' },
 			version: 1,
-			sampleData: [{ reportData: 'Monthly Summary' }],
+			output: [{ reportData: 'Monthly Summary' }],
 		});
 		const send_Report = executeNode({
 			type: 'n8n-nodes-base.httpRequest',

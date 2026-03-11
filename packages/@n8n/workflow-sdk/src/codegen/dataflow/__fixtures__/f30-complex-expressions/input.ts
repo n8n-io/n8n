@@ -1,26 +1,24 @@
 import { $now } from 'n8n';
 
-workflow({ name: 'Complex Expressions' }, () => {
+workflow({ name: 'F30: Complex expressions ($now, variable refs in params)' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.manualTrigger',
 			params: {},
 			version: 1,
-			sampleData: [{ baseUrl: 'https://api.example.com', id: '42', name: 'Test' }],
+			outputSampleData: [{ baseUrl: 'https://api.example.com', id: '42', name: 'Test' }],
 		},
 		(items) => {
-			const fetch_Config = executeNode({
+			const hTTP_Request = executeNode({
 				type: 'n8n-nodes-base.httpRequest',
 				params: {
 					url: `${items.json.baseUrl}/config`,
 					sendHeaders: true,
-					headerParameters: {
-						parameters: [{ name: 'X-Timestamp', value: $now.toISO() }],
-					},
+					headerParameters: { parameters: [{ name: 'X-Timestamp', value: $now.toISO() }] },
 				},
 				version: 4,
 			});
-			const update_Record = fetch_Config.map((item) =>
+			const update_Record = hTTP_Request.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Update Record',

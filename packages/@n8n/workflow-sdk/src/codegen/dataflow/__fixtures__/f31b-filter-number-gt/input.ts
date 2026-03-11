@@ -1,10 +1,10 @@
-workflow({ name: 'Filter Number Greater Than' }, () => {
+workflow({ name: 'F31b: Filter — number greater than (>)' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.manualTrigger',
 			params: {},
 			version: 1,
-			sampleData: [
+			outputSampleData: [
 				{
 					id: 1,
 					name: 'Leanne Graham',
@@ -15,7 +15,7 @@ workflow({ name: 'Filter Number Greater Than' }, () => {
 			],
 		},
 		(items) => {
-			const users = items.map((item) =>
+			const get_Users = items.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Get Users',
@@ -23,8 +23,8 @@ workflow({ name: 'Filter Number Greater Than' }, () => {
 					version: 4,
 				}),
 			);
-			const highId = users.filter((item) => item.json.id > 5);
-			const notify = highId.map((item) =>
+			const filter = get_Users.filter((item) => item.json.id > 5);
+			const notify_User = filter.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Notify User',

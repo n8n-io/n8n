@@ -319,7 +319,8 @@ function buildNodeConfig(node: SemanticNode, ctx: DataFlowContext, prevVarName?:
 	}
 
 	if (node.json.output && node.json.output.length > 0) {
-		parts.push(`sampleData: ${formatValue(node.json.output)}`);
+		const key = node.annotations.isTrigger ? 'outputSampleData' : 'output';
+		parts.push(`${key}: ${formatValue(node.json.output)}`);
 	}
 
 	return `{ ${parts.join(', ')} }`;
@@ -580,16 +581,11 @@ function generateChainNodes(
  */
 function n8nExprToJs(expr: string, inputVar: string, itemLevel = false): string {
 	if (typeof expr !== 'string') return String(expr);
-	const match = expr.match(
-		/^=\{\{\s*\$json((?:\.[a-zA-Z_$][a-zA-Z0-9_$]*|\["[^"]*"\]|\['[^']*'\])*)\s*\}\}$/,
-	);
-	if (match) {
-		if (itemLevel) {
-			return `${inputVar}.json${match[1]}`;
-		}
-		return `${inputVar}[0].json${match[1]}`;
-	}
-	return `/* ${expr} */`;
+	const m = expr.match(/^=\{\{\s*(.*?)\s*\}\}$/s);
+	if (!m) return `/* ${expr} */`;
+	const inner = m[1];
+	const prefix = itemLevel ? `${inputVar}.json` : `${inputVar}[0].json`;
+	return inner.replace(/\$json/g, prefix);
 }
 
 /**
@@ -748,31 +744,35 @@ function generateIfElseNode(
 	inputVar: string,
 ): CompositeNodeResult {
 	const indent = getIndent(depth);
+	const innerIndent = getIndent(depth + 1);
 	const lines: string[] = [];
 
 	ctx.currentTriggerNodes?.add(node.ifNode.name);
 
-	const conditionExpr = extractIfCondition(node.ifNode.json.parameters, inputVar);
+	const conditionExpr = extractIfCondition(node.ifNode.json.parameters, 'item', true);
+
+	lines.push(`${indent}${inputVar}.map((item) => {`);
 
 	if (conditionExpr) {
-		lines.push(`${indent}if (${conditionExpr}) {`);
+		lines.push(`${innerIndent}if (${conditionExpr}) {`);
 	} else {
-		lines.push(`${indent}// Complex condition - see IF node parameters`);
-		lines.push(`${indent}if (/* complex */) {`);
+		lines.push(`${innerIndent}// Complex condition - see IF node parameters`);
+		lines.push(`${innerIndent}if (/* complex */) {`);
 	}
 
 	// True branch body
-	const trueBranchCode = generateBranchBody(node.trueBranch, ctx, depth + 1, inputVar);
+	const trueBranchCode = generateBranchBody(node.trueBranch, ctx, depth + 2, 'item');
 	lines.push(trueBranchCode);
 
 	// False branch
 	if (node.falseBranch !== null) {
-		lines.push(`${indent}} else {`);
-		const falseBranchCode = generateBranchBody(node.falseBranch, ctx, depth + 1, inputVar);
+		lines.push(`${innerIndent}} else {`);
+		const falseBranchCode = generateBranchBody(node.falseBranch, ctx, depth + 2, 'item');
 		lines.push(falseBranchCode);
 	}
 
-	lines.push(`${indent}}`);
+	lines.push(`${innerIndent}}`);
+	lines.push(`${indent}});`);
 
 	return { code: lines.join('\n'), varName: null };
 }
@@ -848,6 +848,7 @@ interface SwitchRulesBlock {
 function extractSwitchInfo(
 	params: IDataObject | undefined,
 	inputVar: string,
+	itemLevel = false,
 ): { field: string; caseValues: string[] } | null {
 	if (!params) return null;
 
@@ -861,7 +862,25 @@ function extractSwitchInfo(
 	const firstConditions = firstRule.conditions?.conditions;
 	if (!Array.isArray(firstConditions) || firstConditions.length === 0) return null;
 
-	const field = n8nExprToJs(firstConditions[0].leftValue, inputVar);
+	const firstOp = firstConditions[0].operator;
+	const field = n8nExprToJs(firstConditions[0].leftValue, inputVar, itemLevel);
+
+	// Check if all rules use boolean operators (true/false with singleValue)
+	const isBoolean = firstOp?.type === 'boolean' && firstOp?.singleValue === true;
+
+	if (isBoolean) {
+		const caseValues: string[] = [];
+		for (const rule of rules.values) {
+			const ruleConditions = rule.conditions?.conditions;
+			if (Array.isArray(ruleConditions) && ruleConditions.length > 0) {
+				const op = ruleConditions[0].operator;
+				caseValues.push(op?.operation === 'true' ? 'true' : 'false');
+			} else {
+				caseValues.push(`/* unknown */`);
+			}
+		}
+		return { field, caseValues };
+	}
 
 	// Extract case values from each rule's rightValue
 	const caseValues: string[] = [];
@@ -887,21 +906,24 @@ function generateSwitchCaseNode(
 	inputVar: string,
 ): CompositeNodeResult {
 	const indent = getIndent(depth);
-	const caseIndent = getIndent(depth + 1);
-	const bodyIndent = getIndent(depth + 2);
+	const innerIndent = getIndent(depth + 1);
+	const caseIndent = getIndent(depth + 2);
+	const bodyIndent = getIndent(depth + 3);
 
 	ctx.currentTriggerNodes?.add(node.switchNode.name);
 	const lines: string[] = [];
 
-	const switchInfo = extractSwitchInfo(node.switchNode.json.parameters, inputVar);
+	const switchInfo = extractSwitchInfo(node.switchNode.json.parameters, 'item', true);
 	const rules = (node.switchNode.json.parameters?.rules as SwitchRulesBlock | undefined)?.values;
 	const numRules = rules?.length ?? 0;
 
+	lines.push(`${indent}${inputVar}.map((item) => {`);
+
 	if (switchInfo) {
-		lines.push(`${indent}switch (${switchInfo.field}) {`);
+		lines.push(`${innerIndent}switch (${switchInfo.field}) {`);
 	} else {
-		lines.push(`${indent}// Complex switch - see Switch node parameters`);
-		lines.push(`${indent}switch (/* unknown */) {`);
+		lines.push(`${innerIndent}// Complex switch - see Switch node parameters`);
+		lines.push(`${innerIndent}switch (/* unknown */) {`);
 	}
 
 	for (let i = 0; i < node.cases.length; i++) {
@@ -919,13 +941,14 @@ function generateSwitchCaseNode(
 			lines.push(`${caseIndent}case /* case ${caseIndex} */: {`);
 		}
 
-		const branchBody = generateBranchBody(branch, ctx, depth + 2, inputVar);
+		const branchBody = generateBranchBody(branch, ctx, depth + 3, 'item');
 		lines.push(branchBody);
 		lines.push(`${bodyIndent}break;`);
 		lines.push(`${caseIndent}}`);
 	}
 
-	lines.push(`${indent}}`);
+	lines.push(`${innerIndent}}`);
+	lines.push(`${indent}});`);
 
 	return { code: lines.join('\n'), varName: null };
 }

@@ -1,4 +1,4 @@
-workflow({ name: '📨 Send AI summaries of incoming emails from Gmail to Telegram' }, () => {
+workflow({ name: 'F48: Gmail AI Summary to Telegram' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.gmailTrigger',
@@ -79,9 +79,12 @@ workflow({ name: '📨 Send AI summaries of incoming emails from Gmail to Telegr
 					type: '@n8n/n8n-nodes-langchain.agent',
 					name: 'Summary generation agent',
 					params: {
-						text: expr(
-							'Summarize the following email in this language: {{ $json.summary_language }}\n\nFrom: {{ $json.from }}\nSubject: {{ $json.subject }}\n\n{{ $json.message }}',
-						),
+						text: `Summarize the following email in this language: ${item.json.summary_language}
+
+From: ${item.json.from}
+Subject: ${item.json.subject}
+
+${item.json.message}`,
 						options: {
 							systemMessage:
 								"You summarize emails in a short, natural, and informal way. Use a casual tone, like you're talking to a friend. Always write in the language specified by the user. Include who sent the email, what it\u2019s about, the most relevant details (like purchase info, prices, discounts, dates, or refund conditions), and ignore anything redundant or overly formal. Avoid robotic language, lists, or instructions like \u201Ckeep this email.\u201D Just say what matters.",

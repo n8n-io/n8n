@@ -1,4 +1,4 @@
-workflow({ name: 'Multi Output' }, () => {
+workflow({ name: 'F07: Multi-input/output (Compare Datasets with 2 inputs → 3 branches)' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {});
 	const data_B = items.map((item) =>
 		executeNode({
@@ -6,7 +6,7 @@ workflow({ name: 'Multi Output' }, () => {
 			name: 'Data B',
 			params: {},
 			version: 3.4,
-			sampleData: [
+			output: [
 				{ id: 2, name: 'Robert' },
 				{ id: 3, name: 'Charlie' },
 			],
@@ -18,7 +18,7 @@ workflow({ name: 'Multi Output' }, () => {
 			name: 'Data A',
 			params: {},
 			version: 3.4,
-			sampleData: [
+			output: [
 				{ id: 1, name: 'Alice' },
 				{ id: 2, name: 'Bob' },
 			],

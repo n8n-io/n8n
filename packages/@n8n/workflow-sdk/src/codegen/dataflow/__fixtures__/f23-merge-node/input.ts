@@ -1,4 +1,4 @@
-workflow({ name: 'Merge Workflow' }, () => {
+workflow({ name: 'F23: Merge node (fan-out → 2 inputs → merged output)' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {});
 	const fetch_Users = items.map((item) =>
 		executeNode({

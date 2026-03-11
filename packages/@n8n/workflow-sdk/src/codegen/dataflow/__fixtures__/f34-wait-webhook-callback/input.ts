@@ -1,6 +1,6 @@
-workflow({ name: 'Wait Webhook Callback' }, () => {
+workflow({ name: 'F34: Wait webhook with resumeUrl callback' }, () => {
 	onTrigger(
-		{ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1, sampleData: [{ id: 1 }] },
+		{ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1, outputSampleData: [{ id: 1 }] },
 		(items) => {
 			waitOnWebhook((resumeUrl) => {
 				const notify_Service = executeNode({

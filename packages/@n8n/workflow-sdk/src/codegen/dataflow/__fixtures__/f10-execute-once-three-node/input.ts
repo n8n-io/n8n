@@ -1,4 +1,4 @@
-workflow({ name: 'Execute Once Three Node' }, () => {
+workflow({ name: 'F10: Execute-once three-node chain (Fetch → Transform → Send)' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
 		const fetch_Data = executeNode({
 			type: 'n8n-nodes-base.httpRequest',
@@ -11,9 +11,7 @@ workflow({ name: 'Execute Once Three Node' }, () => {
 			name: 'Transform',
 			params: {
 				assignments: {
-					assignments: [
-						{ id: '1', name: 'username', type: 'string', value: expr('{{ $json.name }}') },
-					],
+					assignments: [{ id: '1', name: 'username', type: 'string', value: fetch_Data.json.name }],
 				},
 			},
 			version: 3.4,
@@ -25,9 +23,7 @@ workflow({ name: 'Execute Once Three Node' }, () => {
 				url: 'https://hooks.example.com/notify',
 				method: 'POST',
 				sendBody: true,
-				bodyParameters: {
-					parameters: [{ name: 'user', value: expr('{{ $json.username }}') }],
-				},
+				bodyParameters: { parameters: [{ name: 'user', value: transform.json.username }] },
 			},
 			version: 4,
 		});

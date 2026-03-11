@@ -1,4 +1,4 @@
-workflow({ name: 'Error Handling' }, () => {
+workflow({ name: 'F05: Error handling (Trigger → HTTP with onError → error handler)' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
 		try {
 			const hTTP_Request = executeNode({

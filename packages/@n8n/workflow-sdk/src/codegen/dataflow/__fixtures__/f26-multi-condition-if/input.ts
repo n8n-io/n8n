@@ -1,27 +1,32 @@
-workflow({ name: 'Multi Condition Notification' }, () => {
-	onTrigger(
-		{
-			type: 'n8n-nodes-base.manualTrigger',
-			params: {},
-			version: 1,
-			sampleData: [{ status: 'active', priority: 8 }],
-		},
-		(items) => {
-			if (items[0].json.status === 'active' && items[0].json.priority > 5) {
-				const send_Notification = executeNode({
-					type: 'n8n-nodes-base.httpRequest',
-					name: 'Send Notification',
-					params: { url: 'https://api.example.com/notify', method: 'POST' },
-					version: 4,
+workflow(
+	{ name: 'F26: Multi-condition IF (AND combinator — status active AND priority > 5)' },
+	() => {
+		onTrigger(
+			{
+				type: 'n8n-nodes-base.manualTrigger',
+				params: {},
+				version: 1,
+				outputSampleData: [{ status: 'active', priority: 8 }],
+			},
+			(items) => {
+				items.map((item) => {
+					if (item.json.status === 'active' && item.json.priority > 5) {
+						const send_Notification = executeNode({
+							type: 'n8n-nodes-base.httpRequest',
+							name: 'Send Notification',
+							params: { url: 'https://api.example.com/notify', method: 'POST' },
+							version: 4,
+						});
+					} else {
+						const skip_Notification = executeNode({
+							type: 'n8n-nodes-base.set',
+							name: 'Skip Notification',
+							params: {},
+							version: 3.4,
+						});
+					}
 				});
-			} else {
-				const skip_Notification = executeNode({
-					type: 'n8n-nodes-base.set',
-					name: 'Skip Notification',
-					params: {},
-					version: 3.4,
-				});
-			}
-		},
-	);
-});
+			},
+		);
+	},
+);

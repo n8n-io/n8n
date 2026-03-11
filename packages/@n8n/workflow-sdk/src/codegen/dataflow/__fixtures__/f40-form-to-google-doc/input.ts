@@ -1,4 +1,4 @@
-workflow({ name: 'Form to Google Doc' }, () => {
+workflow({ name: 'F40: Form to Google Doc' }, () => {
 	onTrigger(
 		{
 			type: 'n8n-nodes-base.formTrigger',
