@@ -1862,5 +1862,385 @@ describe('dataflow-generator', () => {
 				expect(code).toContain("openAiApi: { id: '1', name: 'OpenAI' }");
 			});
 		});
+
+		describe('multi-input nodes (array input syntax)', () => {
+			it('generates array input syntax for merge node with 2 inputs', () => {
+				const json: WorkflowJSON = {
+					name: 'Merge Workflow',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'Fetch Users',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [200, -100],
+							parameters: { url: 'https://api.example.com/users' },
+						},
+						{
+							id: '3',
+							name: 'Fetch Orders',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [200, 100],
+							parameters: { url: 'https://api.example.com/orders' },
+						},
+						{
+							id: '4',
+							name: 'Merge',
+							type: 'n8n-nodes-base.merge',
+							typeVersion: 3,
+							position: [400, 0],
+							parameters: {
+								mode: 'combine',
+								combineBy: 'combineByPosition',
+							},
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [
+								[
+									{ node: 'Fetch Users', type: 'main', index: 0 },
+									{ node: 'Fetch Orders', type: 'main', index: 0 },
+								],
+							],
+						},
+						'Fetch Users': {
+							main: [[{ node: 'Merge', type: 'main', index: 0 }]],
+						},
+						'Fetch Orders': {
+							main: [[{ node: 'Merge', type: 'main', index: 1 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should contain array input syntax: executeNode({...}, [var0, var1])
+				expect(code).toContain('[fetch_Users, fetch_Orders]');
+				expect(code).toContain("type: 'n8n-nodes-base.merge'");
+				// Should NOT contain the unsupported pattern comment
+				expect(code).not.toContain('// TODO: unsupported pattern');
+			});
+
+			it('generates array input syntax for Compare Datasets with multi-output', () => {
+				const json: WorkflowJSON = {
+					name: 'Compare Workflow',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'Data A',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [200, -100],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'Data B',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [200, 100],
+							parameters: {},
+						},
+						{
+							id: '4',
+							name: 'Compare Datasets',
+							type: 'n8n-nodes-base.compareDatasets',
+							typeVersion: 1,
+							position: [400, 0],
+							parameters: {
+								mergeByFields: {
+									values: [{ field1: 'id', field2: 'id' }],
+								},
+							},
+						},
+						{
+							id: '5',
+							name: 'Only In A',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [600, -100],
+							parameters: {},
+						},
+						{
+							id: '6',
+							name: 'Only In B',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [600, 0],
+							parameters: {},
+						},
+						{
+							id: '7',
+							name: 'In Both',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [600, 100],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [
+								[
+									{ node: 'Data A', type: 'main', index: 0 },
+									{ node: 'Data B', type: 'main', index: 0 },
+								],
+							],
+						},
+						'Data A': {
+							main: [[{ node: 'Compare Datasets', type: 'main', index: 0 }]],
+						},
+						'Data B': {
+							main: [[{ node: 'Compare Datasets', type: 'main', index: 1 }]],
+						},
+						'Compare Datasets': {
+							main: [
+								[{ node: 'Only In A', type: 'main', index: 0 }],
+								[{ node: 'Only In B', type: 'main', index: 0 }],
+								[{ node: 'In Both', type: 'main', index: 0 }],
+							],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should have array input syntax with destructuring
+				expect(code).toContain('[data_A, data_B]');
+				expect(code).toContain('compare_Datasets_0');
+				expect(code).toContain('compare_Datasets_1');
+				expect(code).toContain('compare_Datasets_2');
+			});
+
+			it('does not emit array input for single-input multi-output nodes', () => {
+				// Compare Datasets with only 1 input — should NOT emit array syntax
+				const json: WorkflowJSON = {
+					name: 'Single Input Multi Output',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'Compare Datasets',
+							type: 'n8n-nodes-base.compareDatasets',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'Only In A',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [400, -100],
+							parameters: {},
+						},
+						{
+							id: '4',
+							name: 'In Both',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [400, 100],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [[{ node: 'Compare Datasets', type: 'main', index: 0 }]],
+						},
+						'Compare Datasets': {
+							main: [
+								[{ node: 'Only In A', type: 'main', index: 0 }],
+								[],
+								[{ node: 'In Both', type: 'main', index: 0 }],
+							],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should NOT contain array input syntax — only single input
+				expect(code).not.toMatch(/executeNode\([^)]+,\s*\[/);
+				// Should still have multi-output destructuring
+				expect(code).toContain('compare_Datasets_0');
+				expect(code).toContain('compare_Datasets_2');
+			});
+
+			it('generates merge with downstream chain after merge', () => {
+				const json: WorkflowJSON = {
+					name: 'Merge With Downstream',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'Fetch Users',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [200, -100],
+							parameters: { url: 'https://api.example.com/users' },
+						},
+						{
+							id: '3',
+							name: 'Fetch Orders',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [200, 100],
+							parameters: { url: 'https://api.example.com/orders' },
+						},
+						{
+							id: '4',
+							name: 'Merge',
+							type: 'n8n-nodes-base.merge',
+							typeVersion: 3,
+							position: [400, 0],
+							parameters: { mode: 'combine', combineBy: 'combineByPosition' },
+						},
+						{
+							id: '5',
+							name: 'Process Result',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [600, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [
+								[
+									{ node: 'Fetch Users', type: 'main', index: 0 },
+									{ node: 'Fetch Orders', type: 'main', index: 0 },
+								],
+							],
+						},
+						'Fetch Users': {
+							main: [[{ node: 'Merge', type: 'main', index: 0 }]],
+						},
+						'Fetch Orders': {
+							main: [[{ node: 'Merge', type: 'main', index: 1 }]],
+						},
+						Merge: {
+							main: [[{ node: 'Process Result', type: 'main', index: 0 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should emit merge with array inputs
+				expect(code).toContain('[fetch_Users, fetch_Orders]');
+				// Should emit downstream node chained from merge
+				expect(code).toContain('process_Result');
+				expect(code).toContain('merge_node.map');
+			});
+
+			it('orders fan-out leaf targets before chain targets', () => {
+				// Verifies that simple leaves (Data B) come before chains (Data A → Compare)
+				// so array input references are resolvable
+				const json: WorkflowJSON = {
+					name: 'Fan-Out Order',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'Data A',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [200, -100],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'Data B',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [200, 100],
+							parameters: {},
+						},
+						{
+							id: '4',
+							name: 'Compare Datasets',
+							type: 'n8n-nodes-base.compareDatasets',
+							typeVersion: 1,
+							position: [400, 0],
+							parameters: {},
+						},
+						{
+							id: '5',
+							name: 'Result',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [600, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [
+								[
+									{ node: 'Data A', type: 'main', index: 0 },
+									{ node: 'Data B', type: 'main', index: 0 },
+								],
+							],
+						},
+						'Data A': {
+							main: [[{ node: 'Compare Datasets', type: 'main', index: 0 }]],
+						},
+						'Data B': {
+							main: [[{ node: 'Compare Datasets', type: 'main', index: 1 }]],
+						},
+						'Compare Datasets': {
+							main: [[{ node: 'Result', type: 'main', index: 0 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Data B (leaf target) should appear before Data A → Compare chain
+				const dataBIndex = code.indexOf('data_B');
+				const dataAIndex = code.indexOf('data_A');
+				expect(dataBIndex).toBeLessThan(dataAIndex);
+			});
+		});
 	});
 });

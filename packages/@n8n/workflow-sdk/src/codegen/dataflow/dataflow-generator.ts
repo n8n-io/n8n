@@ -172,6 +172,41 @@ function formatDataFlowValue(value: unknown, prevVarName: string): string {
 }
 
 /**
+ * Build array input argument string for multi-input nodes.
+ * Returns `[var0, var1]` if the node has multiple input sources, or undefined.
+ */
+function buildMultiInputArgs(node: SemanticNode, ctx: DataFlowContext): string | undefined {
+	if (node.inputSources.size <= 1) return undefined;
+
+	// Build sparse array indexed by input slot number
+	const maxIndex = Math.max(
+		...[...node.inputSources.keys()].map((slot) => extractInputIndex(slot)),
+	);
+	const inputVars: string[] = new Array(maxIndex + 1).fill('undefined');
+
+	for (const [inputSlot, sources] of node.inputSources) {
+		const idx = extractInputIndex(inputSlot);
+		if (sources.length > 0) {
+			const sourceName = sources[0].from;
+			const varName = ctx.nodeNameToVarName.get(sourceName);
+			if (varName) {
+				inputVars[idx] = varName;
+			}
+		}
+	}
+
+	return `[${inputVars.join(', ')}]`;
+}
+
+/**
+ * Extract numeric index from input slot name (e.g., 'input0' → 0, 'inputA' → 0)
+ */
+function extractInputIndex(slot: string): number {
+	const match = slot.match(/(\d+)$/);
+	return match ? parseInt(match[1], 10) : 0;
+}
+
+/**
  * Build the config object string for a node (trigger or regular).
  * Includes: type, name (if non-default), params, credentials, version, subnodes.
  */
@@ -857,8 +892,15 @@ function generateMultiOutputNode(
 		}
 	}
 
-	// Generate: const [var0, _, var2] = executeNode({ ... });
-	lines.push(`${indent}const [${destructuredVars.join(', ')}] = executeNode(${config});`);
+	// Check if source node has multiple input sources (e.g., Compare Datasets with 2 inputs)
+	const inputArgs = buildMultiInputArgs(sourceNode, ctx);
+	if (inputArgs) {
+		lines.push(
+			`${indent}const [${destructuredVars.join(', ')}] = executeNode(${config}, ${inputArgs});`,
+		);
+	} else {
+		lines.push(`${indent}const [${destructuredVars.join(', ')}] = executeNode(${config});`);
+	}
 
 	// Generate downstream code for each output target using .map()
 	const sortedOutputs = [...multiOutput.outputTargets.entries()].sort((a, b) => a[0] - b[0]);
@@ -908,8 +950,17 @@ function generateFanOutNode(
 	if (sourceResult.code) lines.push(sourceResult.code);
 	const sourceVar = sourceResult.varName ?? inputVar;
 
+	// Sort targets: leaves first, then composites. This ensures simple branches
+	// (e.g., Data B) are defined before chains that reference them via array inputs
+	// (e.g., Compare Datasets with [data_A, data_B]).
+	const sortedTargets = [...fanOut.targets].sort((a, b) => {
+		const aWeight = a.kind === 'leaf' ? 0 : 1;
+		const bWeight = b.kind === 'leaf' ? 0 : 1;
+		return aWeight - bWeight;
+	});
+
 	// Generate each target using .map() from source variable
-	for (const target of fanOut.targets) {
+	for (const target of sortedTargets) {
 		if (target.kind === 'leaf') {
 			const targetNode = (target as LeafNode).node;
 			const targetVarName = getUniqueVarName(targetNode.name, ctx);
@@ -924,6 +975,79 @@ function generateFanOutNode(
 	}
 
 	return { code: lines.join('\n'), varName: null };
+}
+
+/**
+ * Generate deferred connection code for multi-input nodes (Merge, etc.).
+ * Groups deferred connections by target node and emits:
+ *   const merged = executeNode({ ... }, [source0, source1]);
+ */
+function generateDeferredConnections(
+	tree: CompositeTree,
+	ctx: DataFlowContext,
+	depth: number,
+): string | undefined {
+	const indent = getIndent(depth);
+	const lines: string[] = [];
+
+	// Group deferred connections by target node name.
+	// Skip connections to multi-output nodes (like Compare Datasets) — those are
+	// already handled by generateMultiOutputNode() via buildMultiInputArgs().
+	const byTarget = new Map<string, { node: SemanticNode; inputs: Map<number, string> }>();
+	for (const conn of tree.deferredConnections) {
+		const targetName = conn.targetNode.name;
+
+		// Check if target is already emitted inline as a multiOutput source
+		// by looking for it in the composite tree roots. Multi-output nodes
+		// use buildMultiInputArgs() directly, so skip them here.
+		const targetGraphNode = ctx.graph.nodes.get(targetName);
+		if (targetGraphNode) {
+			const hasMultipleOutputSlots =
+				[...targetGraphNode.outputs.keys()].filter((k) => k !== 'error').length > 1;
+			if (hasMultipleOutputSlots) continue;
+		}
+
+		if (!byTarget.has(targetName)) {
+			byTarget.set(targetName, { node: conn.targetNode, inputs: new Map() });
+		}
+		const entry = byTarget.get(targetName)!;
+
+		// Resolve source variable name
+		const sourceVarName = ctx.nodeNameToVarName.get(conn.sourceNodeName);
+		if (sourceVarName) {
+			const varRef =
+				conn.sourceOutputIndex > 0 ? `${sourceVarName}_${conn.sourceOutputIndex}` : sourceVarName;
+			entry.inputs.set(conn.targetInputIndex, varRef);
+		}
+	}
+
+	// Generate executeNode() call with array inputs for each target
+	for (const [targetName, { node, inputs }] of byTarget) {
+		const varName = getUniqueVarName(targetName, ctx);
+		const config = buildNodeConfig(node, ctx);
+
+		// Build sparse input array
+		const maxInputIdx = Math.max(...inputs.keys());
+		const inputVars: string[] = [];
+		for (let i = 0; i <= maxInputIdx; i++) {
+			inputVars.push(inputs.get(i) ?? 'undefined');
+		}
+
+		lines.push(`${indent}const ${varName} = executeNode(${config}, [${inputVars.join(', ')}]);`);
+	}
+
+	// Generate deferred merge downstream chains
+	for (const downstream of tree.deferredMergeDownstreams) {
+		const mergeVarName = ctx.nodeNameToVarName.get(downstream.mergeNode.name);
+		if (downstream.downstreamChain && mergeVarName) {
+			const result = generateCompositeNode(downstream.downstreamChain, ctx, depth, mergeVarName);
+			if (result.code) {
+				lines.push(result.code);
+			}
+		}
+	}
+
+	return lines.length > 0 ? lines.join('\n') : undefined;
 }
 
 /**
@@ -959,6 +1083,15 @@ export function generateDataFlowCode(
 		const result = generateCompositeNode(root, ctx, 1, 'items');
 		if (result.code) {
 			lines.push(result.code);
+		}
+	}
+
+	// Process deferred connections — emit multi-input nodes (e.g., Merge)
+	// Uses same depth as roots (depth=1 inside the workflow wrapper)
+	if (tree.deferredConnections.length > 0) {
+		const deferredCode = generateDeferredConnections(tree, ctx, 1);
+		if (deferredCode) {
+			lines.push(deferredCode);
 		}
 	}
 

@@ -683,4 +683,233 @@ describe('dataflow round-trip', () => {
 			expect(aiConnections).toBe(true);
 		});
 	});
+
+	describe('multi-input nodes', () => {
+		it('round-trips Trigger → fan-out [Fetch Users, Fetch Orders] → Merge', () => {
+			const original: WorkflowJSON = {
+				name: 'Merge Workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'Fetch Users',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4,
+						position: [200, -100],
+						parameters: { url: 'https://api.example.com/users' },
+					},
+					{
+						id: '3',
+						name: 'Fetch Orders',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4,
+						position: [200, 100],
+						parameters: { url: 'https://api.example.com/orders' },
+					},
+					{
+						id: '4',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3,
+						position: [400, 0],
+						parameters: {
+							mode: 'combine',
+							combineBy: 'combineByPosition',
+						},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [
+							[
+								{ node: 'Fetch Users', type: 'main', index: 0 },
+								{ node: 'Fetch Orders', type: 'main', index: 0 },
+							],
+						],
+					},
+					'Fetch Users': {
+						main: [[{ node: 'Merge', type: 'main', index: 0 }]],
+					},
+					'Fetch Orders': {
+						main: [[{ node: 'Merge', type: 'main', index: 1 }]],
+					},
+				},
+			};
+
+			const code = generateDataFlowWorkflowCode(original);
+			const parsed = parseDataFlowCode(code);
+
+			// Should have 4 nodes
+			expect(parsed.nodes).toHaveLength(4);
+
+			// Verify node types match
+			const origTypes = new Set(original.nodes.map((n) => n.type));
+			const parsedTypes = new Set(parsed.nodes.map((n) => n.type));
+			expect(parsedTypes).toEqual(origTypes);
+
+			// Verify merge node has correct parameters
+			const mergeNode = parsed.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(mergeNode).toBeDefined();
+			expect((mergeNode!.parameters as Record<string, unknown>).mode).toBe('combine');
+
+			// Verify connections: both Fetch nodes → Merge at different input indices
+			const fetchUsers = parsed.nodes.find((n) => n.name === 'Fetch Users');
+			const fetchOrders = parsed.nodes.find((n) => n.name === 'Fetch Orders');
+			expect(fetchUsers).toBeDefined();
+			expect(fetchOrders).toBeDefined();
+
+			// Fetch Users → Merge input 0
+			const usersConns = parsed.connections[fetchUsers!.name!]?.main?.[0];
+			expect(usersConns).toBeDefined();
+			const usersToMerge = usersConns?.find((c: { node: string }) => c.node === mergeNode!.name);
+			expect(usersToMerge).toBeDefined();
+			expect(usersToMerge!.index).toBe(0);
+
+			// Fetch Orders → Merge input 1
+			const ordersConns = parsed.connections[fetchOrders!.name!]?.main?.[0];
+			expect(ordersConns).toBeDefined();
+			const ordersToMerge = ordersConns?.find((c: { node: string }) => c.node === mergeNode!.name);
+			expect(ordersToMerge).toBeDefined();
+			expect(ordersToMerge!.index).toBe(1);
+		});
+
+		it('round-trips Compare Datasets with 2 inputs and 3 outputs', () => {
+			const original: WorkflowJSON = {
+				name: 'Compare Workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'Data A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [200, -100],
+						parameters: {},
+					},
+					{
+						id: '3',
+						name: 'Data B',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [200, 100],
+						parameters: {},
+					},
+					{
+						id: '4',
+						name: 'Compare Datasets',
+						type: 'n8n-nodes-base.compareDatasets',
+						typeVersion: 1,
+						position: [400, 0],
+						parameters: {
+							mergeByFields: {
+								values: [{ field1: 'id', field2: 'id' }],
+							},
+						},
+					},
+					{
+						id: '5',
+						name: 'Only In A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [600, -100],
+						parameters: {},
+					},
+					{
+						id: '6',
+						name: 'Only In B',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [600, 0],
+						parameters: {},
+					},
+					{
+						id: '7',
+						name: 'In Both',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [600, 100],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [
+							[
+								{ node: 'Data A', type: 'main', index: 0 },
+								{ node: 'Data B', type: 'main', index: 0 },
+							],
+						],
+					},
+					'Data A': {
+						main: [[{ node: 'Compare Datasets', type: 'main', index: 0 }]],
+					},
+					'Data B': {
+						main: [[{ node: 'Compare Datasets', type: 'main', index: 1 }]],
+					},
+					'Compare Datasets': {
+						main: [
+							[{ node: 'Only In A', type: 'main', index: 0 }],
+							[{ node: 'Only In B', type: 'main', index: 0 }],
+							[{ node: 'In Both', type: 'main', index: 0 }],
+						],
+					},
+				},
+			};
+
+			const code = generateDataFlowWorkflowCode(original);
+			const parsed = parseDataFlowCode(code);
+
+			// Should have all 7 nodes
+			expect(parsed.nodes).toHaveLength(7);
+
+			// Verify node types match
+			const origTypes = original.nodes.map((n) => n.type).sort();
+			const parsedTypes = parsed.nodes.map((n) => n.type).sort();
+			expect(parsedTypes).toEqual(origTypes);
+
+			// Verify Compare Datasets has correct parameters
+			const compareNode = parsed.nodes.find((n) => n.type === 'n8n-nodes-base.compareDatasets');
+			expect(compareNode).toBeDefined();
+			expect((compareNode!.parameters as Record<string, unknown>).mergeByFields).toBeDefined();
+
+			// Verify both inputs connect
+			const dataA = parsed.nodes.find((n) => n.name === 'Data A');
+			const dataB = parsed.nodes.find((n) => n.name === 'Data B');
+			expect(dataA).toBeDefined();
+			expect(dataB).toBeDefined();
+
+			// Data A → Compare Datasets input 0
+			const dataAConns = parsed.connections[dataA!.name!]?.main?.[0];
+			expect(dataAConns).toBeDefined();
+			const aToCompare = dataAConns?.find((c: { node: string }) => c.node === compareNode!.name);
+			expect(aToCompare).toBeDefined();
+			expect(aToCompare!.index).toBe(0);
+
+			// Data B → Compare Datasets input 1
+			const dataBConns = parsed.connections[dataB!.name!]?.main?.[0];
+			expect(dataBConns).toBeDefined();
+			const bToCompare = dataBConns?.find((c: { node: string }) => c.node === compareNode!.name);
+			expect(bToCompare).toBeDefined();
+			expect(bToCompare!.index).toBe(1);
+
+			// Compare Datasets has 3 outputs
+			const compareConns = parsed.connections[compareNode!.name!]?.main;
+			expect(compareConns).toBeDefined();
+			expect(compareConns.filter((c) => c !== null && c.length > 0).length).toBe(3);
+		});
+	});
 });

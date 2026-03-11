@@ -585,15 +585,25 @@ function buildSwitchParameters(fieldPath: string, caseValues: unknown[]): Record
 // ---------------------------------------------------------------------------
 
 /**
- * Check if a call expression is `executeNode({...})`.
- * Returns the config ObjectExpression if matched.
+ * Check if a call expression is `executeNode({...})` or `executeNode({...}, [a, b])`.
+ * Returns the config ObjectExpression and optional inputs ArrayExpression if matched.
  */
-function matchExecuteNodeCall(expr: CallExpression): ObjectExpression | undefined {
+function matchExecuteNodeCall(
+	expr: CallExpression,
+): { config: ObjectExpression; inputsArray?: ArrayExpression } | undefined {
 	if (!isIdentifier(expr.callee) || expr.callee.name !== 'executeNode') return undefined;
 	if (expr.arguments.length === 0) return undefined;
 	const configArg = expr.arguments[0];
 	if (configArg.type === 'SpreadElement' || !isObjectExpression(configArg)) return undefined;
-	return configArg;
+	// Check for optional second argument: array of input variables
+	let inputsArray: ArrayExpression | undefined;
+	if (expr.arguments.length >= 2) {
+		const secondArg = expr.arguments[1];
+		if (secondArg.type !== 'SpreadElement' && secondArg.type === 'ArrayExpression') {
+			inputsArray = secondArg;
+		}
+	}
+	return { config: configArg, inputsArray };
 }
 
 /**
@@ -734,7 +744,8 @@ function processNodeVarDeclaration(
 		let execConfig: ObjectExpression | undefined;
 		const { body } = callback;
 		if (body.type !== 'BlockStatement' && isCallExpression(body)) {
-			execConfig = matchExecuteNodeCall(body);
+			const match = matchExecuteNodeCall(body);
+			execConfig = match?.config;
 		}
 		if (execConfig) {
 			const config = extractNodeConfig(execConfig);
@@ -793,12 +804,13 @@ function processNodeVarDeclaration(
 	}
 
 	// Pattern B: const x = executeNode({...}) or const [a, b] = executeNode({...})
+	// Also supports array input syntax: executeNode({...}, [inputA, inputB])
 	// Direct executeNode() calls (not inside .map()) are "execute once" nodes,
 	// unless they're inside a branch (if/else/switch) where the branching node
 	// controls item flow and executeOnce is not semantically meaningful.
-	const execConfig = matchExecuteNodeCall(declarator.init);
-	if (execConfig) {
-		const config = extractNodeConfig(execConfig);
+	const execMatch = matchExecuteNodeCall(declarator.init);
+	if (execMatch) {
+		const config = extractNodeConfig(execMatch.config);
 		const nodeJSON = createNodeJSON(config, state);
 		if (state.branchDepth === 0) {
 			nodeJSON.executeOnce = true;
@@ -806,7 +818,20 @@ function processNodeVarDeclaration(
 		state.nodes.push(nodeJSON);
 		processSubnodes(config, nodeJSON.name!, state);
 
-		if (state.lastNodeInScope) {
+		if (execMatch.inputsArray) {
+			// Array input syntax: executeNode({...}, [inputA, inputB])
+			// Each array element connects to a different input index of this node
+			for (let i = 0; i < execMatch.inputsArray.elements.length; i++) {
+				const el = execMatch.inputsArray.elements[i];
+				if (el && el.type !== 'SpreadElement') {
+					const sourceName = resolveInputVar(el, state);
+					if (sourceName) {
+						const sourceOutputIndex = resolveOutputIndex(el, state);
+						addConnection(state, sourceName, nodeJSON.name!, sourceOutputIndex, i);
+					}
+				}
+			}
+		} else if (state.lastNodeInScope) {
 			addConnection(
 				state,
 				state.lastNodeInScope.nodeName,
@@ -1430,9 +1455,9 @@ function processStatement(
 					const { callback } = mapMatch;
 					const { body } = callback;
 					if (body.type !== 'BlockStatement' && isCallExpression(body)) {
-						const execConfig = matchExecuteNodeCall(body);
-						if (execConfig) {
-							const config = extractNodeConfig(execConfig);
+						const execMatch = matchExecuteNodeCall(body);
+						if (execMatch) {
+							const config = extractNodeConfig(execMatch.config);
 							const nodeJSON = createNodeJSON(config, state);
 							state.nodes.push(nodeJSON);
 							processSubnodes(config, nodeJSON.name!, state);

@@ -279,6 +279,256 @@ describe('dataflow-parser', () => {
 			expect(result.connections[compareName].main.length).toBeGreaterThanOrEqual(2);
 		});
 
+		it('parses executeNode with array input syntax for multi-input nodes', () => {
+			// Uses .map() for input nodes (realistic generator output for per-item nodes)
+			const code = `workflow({ name: 'Test' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
+					const dataA = items.map((item) =>
+						executeNode({ type: 'n8n-nodes-base.set', name: 'Data A', params: {}, version: 3 }),
+					);
+					const dataB = items.map((item) =>
+						executeNode({ type: 'n8n-nodes-base.set', name: 'Data B', params: {}, version: 3 }),
+					);
+					const [onlyInA, onlyInB, inBoth] = executeNode({
+						type: 'n8n-nodes-base.compareDatasets',
+						params: { mergeByFields: { values: [{ field1: 'id', field2: 'id' }] } },
+						version: 1,
+					}, [dataA, dataB]);
+				});
+			});`;
+			const result = parseDataFlowCode(code);
+
+			const compareNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.compareDatasets');
+			expect(compareNode).toBeDefined();
+
+			const dataANode = result.nodes.find((n) => n.name === 'Data A');
+			const dataBNode = result.nodes.find((n) => n.name === 'Data B');
+			expect(dataANode).toBeDefined();
+			expect(dataBNode).toBeDefined();
+
+			// Data A → Compare Datasets input 0
+			const connA = getConnection(result.connections, dataANode!.name!);
+			expect(connA.node).toBe(compareNode!.name);
+			expect(connA.index).toBe(0);
+
+			// Data B → Compare Datasets input 1
+			const connB = getConnection(result.connections, dataBNode!.name!);
+			expect(connB.node).toBe(compareNode!.name);
+			expect(connB.index).toBe(1);
+
+			// Destructured outputs should map to Compare Datasets output indices
+			// (verified via varToNode internally — test that downstream would work)
+		});
+
+		it('parses executeNode with array input and simple binding (merge)', () => {
+			// Uses .map() for input nodes (realistic generator output for per-item nodes)
+			const code = `workflow({ name: 'Test' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
+					const fetchUsers = items.map((item) =>
+						executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch Users', params: { url: 'https://api.example.com/users' }, version: 4 }),
+					);
+					const fetchOrders = items.map((item) =>
+						executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch Orders', params: { url: 'https://api.example.com/orders' }, version: 4 }),
+					);
+					const merged = executeNode({
+						type: 'n8n-nodes-base.merge',
+						params: { mode: 'combine', combineBy: 'combineByPosition' },
+						version: 3,
+					}, [fetchUsers, fetchOrders]);
+				});
+			});`;
+			const result = parseDataFlowCode(code);
+
+			const mergeNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(mergeNode).toBeDefined();
+
+			const usersNode = result.nodes.find((n) => n.name === 'Fetch Users');
+			const ordersNode = result.nodes.find((n) => n.name === 'Fetch Orders');
+			expect(usersNode).toBeDefined();
+			expect(ordersNode).toBeDefined();
+
+			// Fetch Users → Merge input 0
+			const connUsers = getConnection(result.connections, usersNode!.name!);
+			expect(connUsers.node).toBe(mergeNode!.name);
+			expect(connUsers.index).toBe(0);
+
+			// Fetch Orders → Merge input 1
+			const connOrders = getConnection(result.connections, ordersNode!.name!);
+			expect(connOrders.node).toBe(mergeNode!.name);
+			expect(connOrders.index).toBe(1);
+		});
+
+		it('ignores non-array second argument in executeNode()', () => {
+			// executeNode(config, someVar) — second arg is not an array, should be ignored
+			const code = `workflow({ name: 'Test' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
+					const source = items.map((item) =>
+						executeNode({ type: 'n8n-nodes-base.set', name: 'Source', params: {}, version: 3 }),
+					);
+					const target = executeNode({
+						type: 'n8n-nodes-base.merge',
+						params: {},
+						version: 3,
+					}, source);
+				});
+			});`;
+			const result = parseDataFlowCode(code);
+			// Should still create both nodes, connected via lastNodeInScope
+			const sourceNode = result.nodes.find((n) => n.name === 'Source');
+			const mergeNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(sourceNode).toBeDefined();
+			expect(mergeNode).toBeDefined();
+			// Connection from source → merge via lastNodeInScope (not array input)
+			const conn = getConnection(result.connections, sourceNode!.name!);
+			expect(conn.node).toBe(mergeNode!.name);
+			expect(conn.index).toBe(0); // default input 0
+		});
+
+		it('handles empty array input in executeNode()', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
+					const target = executeNode({
+						type: 'n8n-nodes-base.merge',
+						params: {},
+						version: 3,
+					}, []);
+				});
+			});`;
+			const result = parseDataFlowCode(code);
+			const mergeNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(mergeNode).toBeDefined();
+			// No connections since array is empty (no lastNodeInScope either since trigger has no chain)
+		});
+
+		it('skips unresolvable variables in array input', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
+					const dataA = items.map((item) =>
+						executeNode({ type: 'n8n-nodes-base.set', name: 'Data A', params: {}, version: 3 }),
+					);
+					const target = executeNode({
+						type: 'n8n-nodes-base.merge',
+						params: {},
+						version: 3,
+					}, [dataA, unknownVar]);
+				});
+			});`;
+			const result = parseDataFlowCode(code);
+			const mergeNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			const dataANode = result.nodes.find((n) => n.name === 'Data A');
+			expect(mergeNode).toBeDefined();
+			expect(dataANode).toBeDefined();
+			// Data A → Merge input 0 should be connected
+			const conn = getConnection(result.connections, dataANode!.name!);
+			expect(conn.node).toBe(mergeNode!.name);
+			expect(conn.index).toBe(0);
+			// unknownVar at index 1 is silently skipped — no connection for input 1
+		});
+
+		it('handles array input with destructured output variables', () => {
+			// Tests resolveOutputIndex: destructured var carries output index info
+			const code = `workflow({ name: 'Test' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
+					const [out0, out1] = executeNode({
+						type: 'n8n-nodes-base.compareDatasets',
+						name: 'Compare',
+						params: {},
+						version: 1,
+					});
+					const mergeResult = executeNode({
+						type: 'n8n-nodes-base.merge',
+						params: {},
+						version: 3,
+					}, [out0, out1]);
+				});
+			});`;
+			const result = parseDataFlowCode(code);
+			const compareNode = result.nodes.find((n) => n.name === 'Compare');
+			const mergeNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(compareNode).toBeDefined();
+			expect(mergeNode).toBeDefined();
+			// out0 (Compare output 0) → Merge input 0
+			const conn0 = getConnection(result.connections, compareNode!.name!, 0);
+			expect(conn0.node).toBe(mergeNode!.name);
+			expect(conn0.index).toBe(0);
+			// out1 (Compare output 1) → Merge input 1
+			const conn1 = getConnection(result.connections, compareNode!.name!, 1);
+			expect(conn1.node).toBe(mergeNode!.name);
+			expect(conn1.index).toBe(1);
+		});
+
+		it('does not set executeOnce for array-input nodes inside branches', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
+					const dataA = items.map((item) =>
+						executeNode({ type: 'n8n-nodes-base.set', name: 'Data A', params: {}, version: 3 }),
+					);
+					const dataB = items.map((item) =>
+						executeNode({ type: 'n8n-nodes-base.set', name: 'Data B', params: {}, version: 3 }),
+					);
+					if (items[0].json.active === true) {
+						const merged = executeNode({
+							type: 'n8n-nodes-base.merge',
+							params: {},
+							version: 3,
+						}, [dataA, dataB]);
+					}
+				});
+			});`;
+			const result = parseDataFlowCode(code);
+			const mergeNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(mergeNode).toBeDefined();
+			// Inside a branch (branchDepth > 0), executeOnce should NOT be set
+			expect(mergeNode!.executeOnce).toBeUndefined();
+		});
+
+		it('sets executeOnce for array-input nodes at top level', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
+					const dataA = items.map((item) =>
+						executeNode({ type: 'n8n-nodes-base.set', name: 'Data A', params: {}, version: 3 }),
+					);
+					const dataB = items.map((item) =>
+						executeNode({ type: 'n8n-nodes-base.set', name: 'Data B', params: {}, version: 3 }),
+					);
+					const merged = executeNode({
+						type: 'n8n-nodes-base.merge',
+						params: {},
+						version: 3,
+					}, [dataA, dataB]);
+				});
+			});`;
+			const result = parseDataFlowCode(code);
+			const mergeNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(mergeNode).toBeDefined();
+			// At top level (branchDepth === 0), executeOnce IS set
+			expect(mergeNode!.executeOnce).toBe(true);
+		});
+
+		it('skips spread elements in array input', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
+					const dataA = items.map((item) =>
+						executeNode({ type: 'n8n-nodes-base.set', name: 'Data A', params: {}, version: 3 }),
+					);
+					const merged = executeNode({
+						type: 'n8n-nodes-base.merge',
+						params: {},
+						version: 3,
+					}, [dataA, ...otherInputs]);
+				});
+			});`;
+			// Should not throw — spread elements are silently skipped
+			const result = parseDataFlowCode(code);
+			const mergeNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(mergeNode).toBeDefined();
+			// Only dataA → Merge input 0 connected; spread at index 1 skipped
+			const dataANode = result.nodes.find((n) => n.name === 'Data A');
+			const conn = getConnection(result.connections, dataANode!.name!);
+			expect(conn.node).toBe(mergeNode!.name);
+			expect(conn.index).toBe(0);
+		});
+
 		it('throws on missing workflow() call', () => {
 			const code = `const x = 1;`;
 			expect(() => parseDataFlowCode(code)).toThrow();

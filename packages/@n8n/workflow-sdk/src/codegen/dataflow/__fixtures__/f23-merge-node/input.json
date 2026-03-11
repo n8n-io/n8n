@@ -1,0 +1,71 @@
+{
+	"name": "Merge Workflow",
+	"nodes": [
+		{
+			"id": "1",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "2",
+			"name": "Fetch Users",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4,
+			"position": [200, -100],
+			"parameters": {
+				"url": "https://api.example.com/users"
+			}
+		},
+		{
+			"id": "3",
+			"name": "Fetch Orders",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4,
+			"position": [200, 100],
+			"parameters": {
+				"url": "https://api.example.com/orders"
+			}
+		},
+		{
+			"id": "4",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"parameters": {
+				"mode": "combine",
+				"combineBy": "combineByPosition"
+			}
+		},
+		{
+			"id": "5",
+			"name": "Process Result",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [600, 0],
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{ "node": "Fetch Users", "type": "main", "index": 0 },
+					{ "node": "Fetch Orders", "type": "main", "index": 0 }
+				]
+			]
+		},
+		"Fetch Users": {
+			"main": [[{ "node": "Merge", "type": "main", "index": 0 }]]
+		},
+		"Fetch Orders": {
+			"main": [[{ "node": "Merge", "type": "main", "index": 1 }]]
+		},
+		"Merge": {
+			"main": [[{ "node": "Process Result", "type": "main", "index": 0 }]]
+		}
+	}
+}

@@ -11,40 +11,71 @@
 		},
 		{
 			"id": "2",
-			"name": "Compare Datasets",
-			"type": "n8n-nodes-base.compareDatasets",
-			"typeVersion": 1,
-			"position": [200, 0],
+			"name": "Data A",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [200, -100],
 			"parameters": {}
 		},
 		{
 			"id": "3",
-			"name": "Only In A",
+			"name": "Data B",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3,
-			"position": [400, -100],
+			"position": [200, 100],
 			"parameters": {}
 		},
 		{
 			"id": "4",
-			"name": "Only In B",
-			"type": "n8n-nodes-base.set",
-			"typeVersion": 3,
+			"name": "Compare Datasets",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 1,
 			"position": [400, 0],
-			"parameters": {}
+			"parameters": {
+				"mergeByFields": {
+					"values": [{ "field1": "id", "field2": "id" }]
+				}
+			}
 		},
 		{
 			"id": "5",
+			"name": "Only In A",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [600, -100],
+			"parameters": {}
+		},
+		{
+			"id": "6",
+			"name": "Only In B",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [600, 0],
+			"parameters": {}
+		},
+		{
+			"id": "7",
 			"name": "In Both",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3,
-			"position": [400, 100],
+			"position": [600, 100],
 			"parameters": {}
 		}
 	],
 	"connections": {
 		"Manual Trigger": {
+			"main": [
+				[
+					{ "node": "Data A", "type": "main", "index": 0 },
+					{ "node": "Data B", "type": "main", "index": 0 }
+				]
+			]
+		},
+		"Data A": {
 			"main": [[{ "node": "Compare Datasets", "type": "main", "index": 0 }]]
+		},
+		"Data B": {
+			"main": [[{ "node": "Compare Datasets", "type": "main", "index": 1 }]]
 		},
 		"Compare Datasets": {
 			"main": [
