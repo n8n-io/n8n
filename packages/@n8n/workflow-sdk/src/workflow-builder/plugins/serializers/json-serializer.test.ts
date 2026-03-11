@@ -1,4 +1,4 @@
-import { jsonSerializer } from './json-serializer';
+import { jsonSerializer, resolveWorkflowBuilderValues } from './json-serializer';
 import type { SerializerContext } from '../types';
 
 // Helper to create a mock serializer context
@@ -91,6 +91,75 @@ describe('jsonSerializer', () => {
 			const result = jsonSerializer.serialize(ctx);
 
 			expect(result.connections).toEqual({});
+		});
+	});
+
+	describe('resolveWorkflowBuilderValues', () => {
+		it('serializes WorkflowBuilder-like objects to JSON strings', () => {
+			const mockBuilder = {
+				toJSON: () => ({ nodes: [], connections: {} }),
+				add: () => mockBuilder,
+			};
+
+			const result = resolveWorkflowBuilderValues({
+				source: 'parameter',
+				workflowJson: mockBuilder,
+			});
+
+			expect(typeof result.workflowJson).toBe('string');
+			expect(JSON.parse(result.workflowJson as string)).toEqual({
+				nodes: [],
+				connections: {},
+			});
+		});
+
+		it('resolves PlaceholderImpl-like objects via toJSON()', () => {
+			const mockPlaceholder = {
+				__placeholder: true,
+				toJSON: () => '={{ $json.value }}',
+			};
+
+			const result = resolveWorkflowBuilderValues({
+				fieldValue: mockPlaceholder,
+			});
+
+			expect(result.fieldValue).toBe('={{ $json.value }}');
+		});
+
+		it('recurses into nested objects', () => {
+			const mockBuilder = {
+				toJSON: () => ({ nodes: [{ type: 'test' }], connections: {} }),
+				add: () => mockBuilder,
+			};
+
+			const result = resolveWorkflowBuilderValues({
+				nested: {
+					workflowJson: mockBuilder,
+				},
+			});
+
+			const nested = result.nested as Record<string, unknown>;
+			expect(typeof nested.workflowJson).toBe('string');
+			expect(JSON.parse(nested.workflowJson as string)).toEqual({
+				nodes: [{ type: 'test' }],
+				connections: {},
+			});
+		});
+
+		it('preserves regular values unchanged', () => {
+			const result = resolveWorkflowBuilderValues({
+				source: 'parameter',
+				workflowJson: '{"nodes":[],"connections":{}}',
+				count: 42,
+				flag: true,
+			});
+
+			expect(result).toEqual({
+				source: 'parameter',
+				workflowJson: '{"nodes":[],"connections":{}}',
+				count: 42,
+				flag: true,
+			});
 		});
 	});
 });

@@ -1075,6 +1075,83 @@ function processSwitchStatement(
 }
 
 /**
+ * Build a sub-workflow JSON from extracted try-block nodes and their connections.
+ */
+function buildSubWorkflowJSON(tryNodes: NodeJSON[], subConnections: IConnections): WorkflowJSON {
+	const triggerNode: NodeJSON = {
+		id: 'sub-trigger',
+		name: 'Execute Workflow Trigger',
+		type: 'n8n-nodes-base.executeWorkflowTrigger',
+		typeVersion: 1.1,
+		position: [0, 0] as [number, number],
+		parameters: {},
+	};
+
+	const subNodes = [triggerNode, ...tryNodes];
+	// Re-index positions
+	for (let i = 0; i < subNodes.length; i++) {
+		subNodes[i].position = [i * 200, 0];
+	}
+
+	// Add connection from trigger to first try node
+	const firstTryNodeName = tryNodes[0].name!;
+	const allSubConnections: IConnections = {
+		'Execute Workflow Trigger': {
+			main: [[{ node: firstTryNodeName, type: 'main', index: 0 }]],
+		},
+		...subConnections,
+	};
+
+	return {
+		name: 'Sub-workflow',
+		nodes: subNodes,
+		connections: allSubConnections,
+	};
+}
+
+/**
+ * Extract connections that belong exclusively to try-block nodes.
+ * Returns the extracted connections and removes them from state.
+ * Also finds and removes the predecessor connection to the first try-block node.
+ */
+function extractTryBlockConnections(
+	state: ParserState,
+	tryNodeNames: Set<string>,
+): {
+	subConnections: IConnections;
+	predecessor: { fromNode: string; outputIndex: number } | undefined;
+} {
+	const subConnections: IConnections = {};
+	let predecessor: { fromNode: string; outputIndex: number } | undefined;
+	const firstTryNodeName = [...tryNodeNames][0];
+
+	for (const fromNode of Object.keys(state.connections)) {
+		const nodeConns = state.connections[fromNode];
+		if (!nodeConns.main) continue;
+
+		if (tryNodeNames.has(fromNode)) {
+			// This is an intra-try-block connection — extract it
+			subConnections[fromNode] = nodeConns;
+			delete state.connections[fromNode];
+		} else {
+			// Check if any outputs target a try-block node — track predecessor
+			for (let outIdx = 0; outIdx < nodeConns.main.length; outIdx++) {
+				const targets = nodeConns.main[outIdx];
+				if (!targets) continue;
+				const tryTargetIdx = targets.findIndex((t) => t.node === firstTryNodeName);
+				if (tryTargetIdx >= 0) {
+					predecessor = { fromNode, outputIndex: outIdx };
+					// Remove this specific target
+					targets.splice(tryTargetIdx, 1);
+				}
+			}
+		}
+	}
+
+	return { subConnections, predecessor };
+}
+
+/**
  * Process a try/catch statement for error handling.
  */
 function processTryStatement(
@@ -1088,6 +1165,26 @@ function processTryStatement(
 	// Process try block
 	processStatements(stmt.block.body, state, inputVarName);
 
+	const tryBlockNodeCount = state.nodes.length - nodeCountBefore;
+
+	if (tryBlockNodeCount >= 2) {
+		// Multi-node try block: wrap in executeWorkflow sub-workflow
+		processTryMultiNode(stmt, state, inputVarName, nodeCountBefore);
+	} else {
+		// Single-node try block: keep existing behavior
+		processTrySingleNode(stmt, state, inputVarName, nodeCountBefore);
+	}
+}
+
+/**
+ * Handle single-node try/catch — existing behavior (set onError on the node).
+ */
+function processTrySingleNode(
+	stmt: TryStatement,
+	state: ParserState,
+	inputVarName: string | undefined,
+	nodeCountBefore: number,
+): void {
 	// Mark nodes added in try block with onError: continueErrorOutput
 	for (let i = nodeCountBefore; i < state.nodes.length; i++) {
 		state.nodes[i].onError = 'continueErrorOutput';
@@ -1097,9 +1194,6 @@ function processTryStatement(
 	if (stmt.handler && stmt.handler.body) {
 		const errorNodeCountBefore = state.nodes.length;
 
-		// Remap inputVarName so that `(items)` inside catch block resolves to
-		// the last try-block node's error output (index 1), preventing spurious
-		// connections from the trigger.
 		const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
 		const originalLastNode = state.lastNodeInScope;
 		if (inputVarName && nodeCountBefore < errorNodeCountBefore) {
@@ -1112,8 +1206,6 @@ function processTryStatement(
 		processStatements(stmt.handler.body.body, state, inputVarName);
 		state.branchDepth--;
 
-		// Restore inputVarName mapping so nodes after try/catch don't
-		// accidentally connect from the error output.
 		if (inputVarName) {
 			if (originalMapping) {
 				state.varToNode.set(inputVarName, originalMapping);
@@ -1122,14 +1214,100 @@ function processTryStatement(
 			}
 		}
 
-		// After try/catch, lastNodeInScope should point to the last try-block
-		// node's success output (index 0) so subsequent statements chain from it.
 		if (nodeCountBefore < errorNodeCountBefore) {
 			const lastTryNode = state.nodes[errorNodeCountBefore - 1];
 			state.lastNodeInScope = { nodeName: lastTryNode.name!, outputIndex: 0 };
 		} else {
 			state.lastNodeInScope = originalLastNode;
 		}
+	}
+}
+
+/**
+ * Handle multi-node try/catch — wrap try-block nodes in an executeWorkflow sub-workflow.
+ */
+function processTryMultiNode(
+	stmt: TryStatement,
+	state: ParserState,
+	inputVarName: string | undefined,
+	nodeCountBefore: number,
+): void {
+	// Extract try-block nodes from state and adjust counter so
+	// subsequent node ids/positions stay consistent for round-trip
+	const tryNodes = state.nodes.splice(nodeCountBefore);
+	state.nodeCounter -= tryNodes.length;
+	const tryNodeNames = new Set(tryNodes.map((n) => n.name!));
+
+	// Remove onError that might have been set, and strip executeOnce from sub-workflow nodes
+	for (const n of tryNodes) {
+		delete n.onError;
+		delete n.executeOnce;
+	}
+
+	// Extract intra-try-block connections and find predecessor
+	const { subConnections, predecessor } = extractTryBlockConnections(state, tryNodeNames);
+
+	// Build sub-workflow JSON
+	const subWorkflowJSON = buildSubWorkflowJSON(tryNodes, subConnections);
+
+	// Create the executeWorkflow wrapper node
+	const execWfConfig: NodeConfig = {
+		type: 'n8n-nodes-base.executeWorkflow',
+		name: 'Execute Workflow',
+		params: {
+			source: 'parameter',
+			workflowJson: JSON.stringify(subWorkflowJSON),
+			options: {},
+		},
+		version: 1.3,
+	};
+	const execWfNode = createNodeJSON(execWfConfig, state);
+	if (state.branchDepth === 0) {
+		execWfNode.executeOnce = true;
+	}
+	execWfNode.onError = 'continueErrorOutput';
+	state.nodes.push(execWfNode);
+
+	// Reconnect predecessor → executeWorkflow
+	if (predecessor) {
+		addConnection(state, predecessor.fromNode, execWfNode.name!, predecessor.outputIndex);
+	} else if (state.lastNodeInScope) {
+		// Fallback: connect from lastNodeInScope before try block
+		// (this was already done by processStatements, but we extracted those nodes)
+	}
+
+	// Remap any varToNode entries that pointed to try-block nodes
+	for (const [varName, mapping] of state.varToNode.entries()) {
+		if (tryNodeNames.has(mapping.nodeName)) {
+			state.varToNode.set(varName, { nodeName: execWfNode.name!, outputIndex: 0 });
+		}
+	}
+
+	// Process catch block
+	if (stmt.handler && stmt.handler.body) {
+		const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
+
+		// Catch block connects from executeWorkflow's error output (index 1)
+		if (inputVarName) {
+			state.varToNode.set(inputVarName, { nodeName: execWfNode.name!, outputIndex: 1 });
+		}
+		state.lastNodeInScope = { nodeName: execWfNode.name!, outputIndex: 1 };
+
+		state.branchDepth++;
+		processStatements(stmt.handler.body.body, state, inputVarName);
+		state.branchDepth--;
+
+		// Restore inputVarName mapping
+		if (inputVarName) {
+			if (originalMapping) {
+				state.varToNode.set(inputVarName, originalMapping);
+			} else {
+				state.varToNode.delete(inputVarName);
+			}
+		}
+
+		// After try/catch, lastNodeInScope → executeWorkflow success output (index 0)
+		state.lastNodeInScope = { nodeName: execWfNode.name!, outputIndex: 0 };
 	}
 }
 

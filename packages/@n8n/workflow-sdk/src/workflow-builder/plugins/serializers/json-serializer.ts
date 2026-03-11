@@ -23,6 +23,40 @@ import {
 import type { SerializerPlugin, SerializerContext } from '../types';
 
 /**
+ * Resolve special objects in parameter values:
+ * - PlaceholderImpl (duck-typed via __placeholder + toJSON): calls toJSON() to get the placeholder string
+ * - WorkflowBuilder (duck-typed via toJSON + add): calls JSON.stringify(toJSON()) to serialize to JSON string
+ */
+export function resolveWorkflowBuilderValues(
+	obj: Record<string, unknown>,
+): Record<string, unknown> {
+	const result = { ...obj };
+	for (const [key, value] of Object.entries(result)) {
+		if (
+			value &&
+			typeof value === 'object' &&
+			'__placeholder' in value &&
+			'toJSON' in value &&
+			typeof (value as Record<string, unknown>).toJSON === 'function'
+		) {
+			result[key] = (value as { toJSON(): unknown }).toJSON();
+		} else if (
+			value &&
+			typeof value === 'object' &&
+			'toJSON' in value &&
+			typeof (value as Record<string, unknown>).toJSON === 'function' &&
+			'add' in value &&
+			typeof (value as Record<string, unknown>).add === 'function'
+		) {
+			result[key] = JSON.stringify((value as { toJSON(): unknown }).toJSON());
+		} else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+			result[key] = resolveWorkflowBuilderValues(value as Record<string, unknown>);
+		}
+	}
+	return result;
+}
+
+/**
  * Serialize a single node to NodeJSON format.
  */
 function serializeNode(
@@ -65,7 +99,8 @@ function serializeNode(
 	// For fromJSON nodes, preserve parameters as-is.
 	let serializedParams: IDataObject | undefined;
 	if (config.parameters) {
-		const parsed = deepCopy(config.parameters);
+		const resolved = resolveWorkflowBuilderValues(config.parameters as Record<string, unknown>);
+		const parsed = deepCopy(resolved) as IDataObject;
 		if (isFromJson) {
 			serializedParams = parsed;
 		} else {

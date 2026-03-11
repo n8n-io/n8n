@@ -19,14 +19,17 @@ Data-flow is preferred because LLMs already know TypeScript control flow — no 
 - `workflow({ name }, callback)` — top-level wrapper
 - `onTrigger({ type, params, version }, (items) => ...)` — trigger entry point
 - `node({ type, name?, params, version, subnodes? })(input)` — create node, returns output variable
+- `items.map((item) => node({ ... })(items))` — per-item execution (`.map()` wrapping)
 - `expr('{{ $json.field }}')` — wrap n8n expressions
-- Native `if (items[0].json.field === value)` → IF node branching
+- `item.json.field` — direct field access inside `.map()` callbacks
+- Native `if (items[0].json.field === value)` → IF node branching (array-level: `items[0].json`)
 - Native `switch (items[0].json.field)` → Switch node routing
 - Native `try { ... } catch (e) { ... }` → error handling (continueErrorOutput)
+- `items.filter((item) => condition)` → Filter node (item-level: `item.json`, not `items[0].json`)
 - `const [out0, out1, out2] = node({ ... })(input)` — multi-output destructuring
 - `subnodes: { ai_languageModel: { type, params, version } }` — AI sub-connections
 
-See `src/codegen/dataflow/__fixtures__/f01-f08/` for full examples of each pattern.
+See `src/codegen/dataflow/__fixtures__/f01-f21/` for full examples of each pattern.
 
 ## Architecture
 
@@ -38,7 +41,7 @@ WorkflowJSON → Semantic Graph → Graph Annotator → Composite Tree → Code
 
 1. **Semantic graph** (`semantic-graph.ts`): index-based connections → named edges
 2. **Graph annotator** (`graph-annotator.ts`): detect cycles and convergence
-3. **Composite builder** (`composite-builder.ts`): group into tree (chain, ifElse, switchCase, merge, loop, fanOut, multiOutput)
+3. **Composite builder** (`composite-builder.ts`): group into tree (chain, ifElse, switchCase, filter, merge, loop, fanOut, multiOutput)
 4. **Code generator**: emit format-specific code from composite tree
 
 ### Code → JSON (parsing)
@@ -46,11 +49,56 @@ WorkflowJSON → Semantic Graph → Graph Annotator → Composite Tree → Code
 - **Data-flow**: Acorn AST parser with static walking (`dataflow-parser.ts`)
 - **SDK**: custom AST interpreter (`parse-workflow-code.ts`)
 
+### executeOnce Semantics
+
+The `executeOnce` flag on `NodeJSON` distinguishes per-item vs execute-once nodes:
+
+- **Per-item** (default, `executeOnce` unset): node runs once per item. Code uses `.map()`: `items.map((item) => executeNode(...))`
+- **Execute-once** (`executeOnce: true`): node runs once for all items. Code uses direct call: `executeNode(...)`
+
+**Parser** (`dataflow-parser.ts`): tracks `branchDepth` counter in state. Only sets `executeOnce = true` when a direct `executeNode()` call is at top-level (`branchDepth === 0`). Inside `if/else`, `switch/case`, or `try/catch` blocks, `branchDepth > 0` so `executeOnce` is never set — branch nodes always use the parent's execution mode.
+
+**Generator** (`dataflow-generator.ts`): uses `insideBranch` flag in context. Emits `.map()` wrapping only when `!node.json.executeOnce && !ctx.insideBranch`. Inside branches and error handlers, `insideBranch = true` suppresses `.map()` to avoid double-wrapping.
+
+### Filter vs IF Node
+
+Both use the same V2 conditions parameter format, but serve different purposes:
+
+- **IF node** (`n8n-nodes-base.if`): branches workflow into two paths. Data-flow: `if/else` block. Outputs: `trueBranch`/`falseBranch`.
+- **Filter node** (`n8n-nodes-base.filter`): filters items matching a condition (pass-through). Data-flow: `.filter()` call. Outputs: `kept`/`discarded`.
+
+Key difference in code generation: Filter's kept branch is a **continuation** (downstream nodes keep `.map()` wrapping), not a **branch** (`insideBranch` stays false). This prevents round-trip issues where downstream nodes would incorrectly get `executeOnce: true`.
+
+In the SDK format, both use `.onTrue()`/`.onFalse()` — the `isIfNodeType()` guard accepts both types.
+
+### Adding a New Composite Node Type
+
+**CRITICAL: Always use TDD.** Write failing tests first (parser test, generator test, round-trip test), then implement. This applies both during planning (plan which tests to write) and implementation (write tests before production code).
+
+To add a new composite (like Filter was added alongside IF), touch these files in order:
+
+1. **`semantic-registry.ts`**: add to `CompositeType` union, register in `NODE_SEMANTICS` with outputs/inputs/composite
+2. **`composite-tree.ts`**: add interface (e.g. `FilterCompositeNode`), add to `CompositeNode` union
+3. **`composite-builder.ts`**: add `buildXxx()` function + `case` in switch + `case` in `getDownstreamTargetName`
+4. **`dataflow-parser.ts`**: add/update parsing pattern to produce the new node type
+5. **`dataflow-generator.ts`**: add `generateXxxNode()` + `case` in `generateCompositeNode` switch
+6. **`code-generator.ts`**: add `generateXxxSDK()` + `case` in `generateComposite` + `case` in `collectNestedMultiOutputs`
+7. **`constants/node-types.ts`**: add constant + type guard if needed
+
+Tests to add/update for each layer: `node-types.test.ts`, `semantic-registry.test.ts`, `composite-builder.test.ts`, `code-generator.test.ts`, `dataflow-generator.test.ts`, `dataflow-parser.test.ts`, `dataflow-roundtrip.test.ts`.
+
+### Round-Trip Validation
+
+The compiler test (`compiler.test.ts`) validates fixtures via JSON-level comparison, not code string comparison. This means formatting differences don't count as mismatches — only semantic differences (different nodes or connections) do. The report (`generate-report.ts`) shows ROUND-TRIP OK/MISMATCH badges based on this JSON equality check.
+
 ### Key Modules
 
 - `src/codegen/code-generator.ts` — SDK format code generator
 - `src/codegen/parse-workflow-code.ts` — SDK format parser
 - `src/codegen/dataflow/` — data-flow format generator + parser
+- `src/codegen/dataflow/compiler.test.ts` — round-trip fixture tests with HTML report
+- `src/codegen/dataflow/generate-report.ts` — HTML report generator for fixture results
+- `src/codegen/dataflow/compiler-types.ts` — shared types for compiler tests/report
 - `src/codegen/composite-tree.ts` — intermediate tree representation
 - `src/codegen/semantic-graph.ts` — named-edge connection graph
 - `src/workflow-builder/` — fluent builder runtime API

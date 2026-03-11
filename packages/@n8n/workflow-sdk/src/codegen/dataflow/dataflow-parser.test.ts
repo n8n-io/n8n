@@ -559,4 +559,270 @@ describe('parseDataFlowCode', () => {
 			);
 		});
 	});
+
+	describe('multi-node try/catch wrapping', () => {
+		it('should wrap multiple try-block nodes in an executeWorkflow sub-workflow', () => {
+			const code = `workflow({ name: 'Multi Node Error Handling' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    try {
+      const hTTP_Request = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://api.example.com' }, version: 4 });
+      const transform = executeNode({ type: 'n8n-nodes-base.set', name: 'Transform', params: {}, version: 3 });
+    } catch (e) {
+      const error_Handler = executeNode({ type: 'n8n-nodes-base.set', name: 'Error Handler', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Should have 3 nodes: Manual Trigger, Execute Workflow, Error Handler
+			expect(result.nodes).toHaveLength(3);
+			expect(result.nodes[0].type).toBe('n8n-nodes-base.manualTrigger');
+			expect(result.nodes[1].type).toBe('n8n-nodes-base.executeWorkflow');
+			expect(result.nodes[2].name).toBe('Error Handler');
+
+			// Execute Workflow should have onError: continueErrorOutput
+			expect(result.nodes[1].onError).toBe('continueErrorOutput');
+
+			// Execute Workflow params should have source and workflowJson
+			const execParams = result.nodes[1].parameters as Record<string, unknown>;
+			expect(execParams.source).toBe('parameter');
+			expect(typeof execParams.workflowJson).toBe('string');
+
+			// Sub-workflow should contain executeWorkflowTrigger + HTTP Request + Transform
+			const subWf = JSON.parse(execParams.workflowJson as string);
+			expect(subWf.nodes).toHaveLength(3);
+			expect(subWf.nodes[0].type).toBe('n8n-nodes-base.executeWorkflowTrigger');
+			expect(subWf.nodes[1].type).toBe('n8n-nodes-base.httpRequest');
+			expect(subWf.nodes[2].type).toBe('n8n-nodes-base.set');
+			expect(subWf.nodes[2].name).toBe('Transform');
+
+			// Sub-workflow connections: trigger → HTTP Request → Transform
+			expect(subWf.connections['Execute Workflow Trigger']?.main?.[0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: 'HTTP Request' })]),
+			);
+			expect(subWf.connections['HTTP Request']?.main?.[0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: 'Transform' })]),
+			);
+
+			// Outer connections: Trigger → Execute Workflow
+			expect(result.connections['Manual Trigger']?.main?.[0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: result.nodes[1].name })]),
+			);
+
+			// Execute Workflow error output (index 1) → Error Handler
+			const execConns = result.connections[result.nodes[1].name!]?.main;
+			expect(execConns?.[1]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: 'Error Handler' })]),
+			);
+		});
+
+		it('should keep single-node try/catch behavior unchanged', () => {
+			const code = `workflow({ name: 'Error Handling' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    try {
+      const hTTP_Request = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://api.example.com' }, version: 4 });
+    } catch (e) {
+      const error_Handler = executeNode({ type: 'n8n-nodes-base.set', name: 'Error Handler', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Should have 3 nodes: Trigger, HTTP Request (with onError), Error Handler
+			expect(result.nodes).toHaveLength(3);
+			expect(result.nodes[0].type).toBe('n8n-nodes-base.manualTrigger');
+			expect(result.nodes[1].type).toBe('n8n-nodes-base.httpRequest');
+			expect(result.nodes[1].onError).toBe('continueErrorOutput');
+			expect(result.nodes[2].name).toBe('Error Handler');
+
+			// HTTP Request error output → Error Handler
+			const httpConns = result.connections['HTTP Request']?.main;
+			expect(httpConns?.[1]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: 'Error Handler' })]),
+			);
+		});
+
+		it('should chain nodes after try/catch from executeWorkflow success output', () => {
+			const code = `workflow({ name: 'After Try' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    try {
+      const a = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://a.com' }, version: 4 });
+      const b = executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'HTTP B', params: { url: 'https://b.com' }, version: 4 });
+    } catch (e) {
+      const err = executeNode({ type: 'n8n-nodes-base.set', name: 'Error Handler', params: {}, version: 3 });
+    }
+    const final = executeNode({ type: 'n8n-nodes-base.set', name: 'Final', params: {}, version: 3 });
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Should have 4 nodes: Trigger, Execute Workflow, Error Handler, Final
+			expect(result.nodes).toHaveLength(4);
+			const execWfNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.executeWorkflow');
+			expect(execWfNode).toBeDefined();
+
+			const finalNode = result.nodes.find((n) => n.name === 'Final');
+			expect(finalNode).toBeDefined();
+
+			// Execute Workflow success output (index 0) → Final
+			const execConns = result.connections[execWfNode!.name!]?.main;
+			expect(execConns?.[0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: 'Final' })]),
+			);
+		});
+
+		it('should set executeOnce on the executeWorkflow node at top-level', () => {
+			const code = `workflow({ name: 'ExecOnce' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    try {
+      const a = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://a.com' }, version: 4 });
+      const b = executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 });
+    } catch (e) {
+      const err = executeNode({ type: 'n8n-nodes-base.set', name: 'Err', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+			const execWfNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.executeWorkflow');
+
+			expect(execWfNode!.executeOnce).toBe(true);
+		});
+
+		it('should strip onError and executeOnce from sub-workflow nodes', () => {
+			const code = `workflow({ name: 'Clean Sub' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    try {
+      const a = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://a.com' }, version: 4 });
+      const b = executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 });
+    } catch (e) {
+      const err = executeNode({ type: 'n8n-nodes-base.set', name: 'Err', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+			const execWfNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.executeWorkflow');
+			const subWf = JSON.parse(
+				(execWfNode!.parameters as Record<string, unknown>).workflowJson as string,
+			);
+
+			// Sub-workflow nodes (skip trigger) should not have onError or executeOnce
+			for (const node of subWf.nodes.slice(1)) {
+				expect(node.onError).toBeUndefined();
+				expect(node.executeOnce).toBeUndefined();
+			}
+		});
+
+		it('should produce sequential node ids without gaps', () => {
+			const code = `workflow({ name: 'Ids' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    try {
+      const a = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://a.com' }, version: 4 });
+      const b = executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 });
+    } catch (e) {
+      const err = executeNode({ type: 'n8n-nodes-base.set', name: 'Err', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+			const ids = result.nodes.map((n) => n.id);
+
+			// Should be node-0, node-1, node-2 — no gaps from extracted try-block nodes
+			expect(ids).toEqual(['node-0', 'node-1', 'node-2']);
+		});
+
+		it('should handle three or more nodes in try block', () => {
+			const code = `workflow({ name: 'Three Nodes' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    try {
+      const a = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://a.com' }, version: 4 });
+      const b = executeNode({ type: 'n8n-nodes-base.set', name: 'Transform', params: {}, version: 3 });
+      const c = executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Send', params: { url: 'https://b.com', method: 'POST' }, version: 4 });
+    } catch (e) {
+      const err = executeNode({ type: 'n8n-nodes-base.set', name: 'Err', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Outer: Trigger, Execute Workflow, Err
+			expect(result.nodes).toHaveLength(3);
+			expect(result.nodes[1].type).toBe('n8n-nodes-base.executeWorkflow');
+
+			const subWf = JSON.parse(
+				(result.nodes[1].parameters as Record<string, unknown>).workflowJson as string,
+			);
+
+			// Sub-workflow: trigger + 3 extracted nodes
+			expect(subWf.nodes).toHaveLength(4);
+			expect(subWf.nodes[0].type).toBe('n8n-nodes-base.executeWorkflowTrigger');
+			expect(subWf.nodes[1].type).toBe('n8n-nodes-base.httpRequest');
+			expect(subWf.nodes[2].name).toBe('Transform');
+			expect(subWf.nodes[3].name).toBe('Send');
+
+			// Sub-workflow chain: trigger → HTTP → Transform → Send
+			expect(subWf.connections['Execute Workflow Trigger']?.main?.[0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: 'HTTP Request' })]),
+			);
+			expect(subWf.connections['HTTP Request']?.main?.[0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: 'Transform' })]),
+			);
+			expect(subWf.connections['Transform']?.main?.[0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: 'Send' })]),
+			);
+		});
+
+		it('should handle multi-node try block without catch', () => {
+			const code = `workflow({ name: 'No Catch' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    try {
+      const a = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://a.com' }, version: 4 });
+      const b = executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 });
+    } catch (e) {
+    }
+    const after = executeNode({ type: 'n8n-nodes-base.set', name: 'After', params: {}, version: 3 });
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Outer: Trigger, Execute Workflow, After
+			expect(result.nodes).toHaveLength(3);
+			expect(result.nodes[1].type).toBe('n8n-nodes-base.executeWorkflow');
+			expect(result.nodes[2].name).toBe('After');
+
+			// Execute Workflow success output → After
+			const execConns = result.connections[result.nodes[1].name!]?.main;
+			expect(execConns?.[0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: 'After' })]),
+			);
+		});
+
+		it('should round-trip multi-node try/catch through generate and re-parse', () => {
+			const { generateDataFlowWorkflowCode } = require('./index');
+			const code = `workflow({ name: 'Round Trip' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    try {
+      const a = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://a.com' }, version: 4 });
+      const b = executeNode({ type: 'n8n-nodes-base.set', name: 'Transform', params: {}, version: 3 });
+    } catch (e) {
+      const err = executeNode({ type: 'n8n-nodes-base.set', name: 'Error Handler', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			const parsed = parseDataFlowCode(code);
+			const reGenerated = generateDataFlowWorkflowCode(parsed);
+			const reParsed = parseDataFlowCode(reGenerated);
+
+			expect(reParsed.nodes).toEqual(parsed.nodes);
+			expect(reParsed.connections).toEqual(parsed.connections);
+		});
+	});
 });
