@@ -20,10 +20,6 @@ import { type WebSocket, Server as WSServer } from 'ws';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
 import { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
-import type {
-	TaskBrokerServerInitRequest,
-	TaskBrokerServerInitResponse,
-} from '@/task-runners/task-broker/task-broker-types';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 
 type IncomingUpgradeRequest = IncomingMessage & { url: string; ws?: WebSocket };
@@ -163,12 +159,11 @@ export class TaskBrokerServer {
 				message: { message: 'Too many requests' },
 			});
 
-		this.app.use(
-			this.upgradeEndpoint,
-			createRateLimiter(),
-			(req: TaskBrokerServerInitRequest, res: TaskBrokerServerInitResponse) =>
-				this.taskBrokerWsServer.handleRequest(req, res),
-		);
+		this.app.use(this.upgradeEndpoint, createRateLimiter(), (_req, res) => {
+			// This endpoint only serves WebSocket upgrades which bypass Express.
+			// Any plain HTTP request reaching here is invalid.
+			res.status(426).json({ message: 'Upgrade Required' });
+		});
 
 		const authEndpoint = `${this.getEndpointBasePath()}/auth`;
 		this.app.post(

@@ -22,11 +22,11 @@ describe('TaskBrokerServer', () => {
 
 	describe('/runners/_ws', () => {
 		it('should return 429 when too many requests are made', async () => {
-			await agent.post('/runners/_ws').send({}).expect(500);
-			await agent.post('/runners/_ws').send({}).expect(500);
-			await agent.post('/runners/_ws').send({}).expect(500);
-			await agent.post('/runners/_ws').send({}).expect(500);
-			await agent.post('/runners/_ws').send({}).expect(500);
+			await agent.post('/runners/_ws').send({}).expect(426);
+			await agent.post('/runners/_ws').send({}).expect(426);
+			await agent.post('/runners/_ws').send({}).expect(426);
+			await agent.post('/runners/_ws').send({}).expect(426);
+			await agent.post('/runners/_ws').send({}).expect(426);
 			await agent.post('/runners/_ws').send({}).expect(429);
 		});
 	});
