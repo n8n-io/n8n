@@ -777,7 +777,15 @@ export class CredentialsService {
 			return props;
 		};
 		const properties = getExtendedProps(credType);
-		return this.redactValues(copiedData, properties);
+		const redacted = this.redactValues(copiedData, properties);
+		// Custom Auth: mask JSON after save (not marked as secret; redacted by type + field)
+		if (credential.type === 'httpCustomAuth' && 'json' in redacted) {
+			redacted.json =
+				redacted.json && String(redacted.json).length > 0
+					? CREDENTIAL_BLANKING_VALUE
+					: CREDENTIAL_EMPTY_VALUE;
+		}
+		return redacted;
 	}
 
 	private redactValues(data: ICredentialDataDecryptedObject, props: INodeProperties[]) {
