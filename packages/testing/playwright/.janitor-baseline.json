@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-03-10T15:03:43.108Z",
-	"totalViolations": 539,
+	"generated": "2026-03-10T16:33:25.292Z",
+	"totalViolations": 523,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -234,19 +234,7 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 157,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "5244a408a8df"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 180,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "5244a408a8df"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 184,
+				"line": 161,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
@@ -264,61 +252,49 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 200,
+				"line": 196,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 221,
+				"line": 204,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 239,
+				"line": 212,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 243,
+				"line": 233,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 253,
+				"line": 255,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 262,
+				"line": 259,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 270,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "5244a408a8df"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 274,
+				"line": 269,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
 				"line": 278,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "5244a408a8df"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 282,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
@@ -360,6 +336,18 @@
 			},
 			{
 				"rule": "scope-lockdown",
+				"line": 310,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 314,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
 				"line": 318,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
@@ -372,55 +360,49 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 326,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "5244a408a8df"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 330,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "5244a408a8df"
-			},
-			{
-				"rule": "scope-lockdown",
 				"line": 334,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 340,
+				"line": 338,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 360,
+				"line": 342,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 366,
+				"line": 346,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 377,
+				"line": 350,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 385,
+				"line": 356,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 389,
+				"line": 376,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 382,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
@@ -432,91 +414,91 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 397,
+				"line": 401,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 425,
+				"line": 405,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 429,
+				"line": 409,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 429,
+				"line": 413,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 433,
+				"line": 441,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 437,
+				"line": 445,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 455,
+				"line": 445,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 459,
+				"line": 449,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 459,
+				"line": 453,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 470,
+				"line": 471,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 479,
+				"line": 475,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 510,
+				"line": 475,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 520,
+				"line": 486,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 521,
+				"line": 495,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 526,
+				"line": 501,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
@@ -528,7 +510,13 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 542,
+				"line": 540,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 541,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
@@ -540,25 +528,25 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 565,
+				"line": 550,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 571,
+				"line": 562,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 583,
+				"line": 566,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 587,
+				"line": 585,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
@@ -570,19 +558,7 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 595,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "5244a408a8df"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 595,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "5244a408a8df"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 599,
+				"line": 603,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
@@ -606,13 +582,19 @@
 			},
 			{
 				"rule": "scope-lockdown",
+				"line": 615,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
 				"line": 619,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 623,
+				"line": 627,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
@@ -630,127 +612,121 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 661,
+				"line": 639,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 697,
+				"line": 643,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 701,
+				"line": 651,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 706,
+				"line": 655,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 711,
+				"line": 681,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 715,
+				"line": 717,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 751,
+				"line": 721,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 755,
+				"line": 726,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 755,
+				"line": 731,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 759,
+				"line": 735,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 765,
+				"line": 771,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 793,
+				"line": 775,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 797,
+				"line": 775,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 801,
+				"line": 779,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 805,
+				"line": 785,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 810,
+				"line": 813,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 816,
+				"line": 817,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 820,
+				"line": 821,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 820,
+				"line": 825,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 828,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "5244a408a8df"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 832,
+				"line": 830,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
@@ -762,13 +738,43 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 872,
+				"line": 840,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 876,
+				"line": 840,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 848,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 852,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 856,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 892,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 896,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "5244a408a8df"
 			}
@@ -2301,26 +2307,6 @@
 				"hash": "f13800d70ddd"
 			}
 		],
-		"tests/e2e/workflows/editor/canvas/canvas-zoom.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 241,
-				"message": "Chained locator call in test: n8n.canvas.nodeByName('n8n').getByTestId('overflow-node-b...",
-				"hash": "3d500494797e"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 242,
-				"message": "Direct page locator call: n8n.page.getByTestId('context-menu-item-open').click()",
-				"hash": "803edc6e2d15"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 242,
-				"message": "Direct page locator call: n8n.page.getByTestId('context-menu-item-open')",
-				"hash": "049003f6550b"
-			}
-		],
 		"tests/e2e/workflows/editor/code/code-node.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -2357,56 +2343,6 @@
 				"line": 51,
 				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Run Once for Each I...",
 				"hash": "354ddeafe76a"
-			}
-		],
-		"tests/e2e/workflows/editor/execution/execution.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 150,
-				"message": "Direct page locator call: n8n.page.getByTestId('copy-input').click()",
-				"hash": "20e9bf63ae83"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 150,
-				"message": "Direct page locator call: n8n.page.getByTestId('copy-input')",
-				"hash": "dd5c167f4482"
-			},
-			{
-				"rule": "api-purity",
-				"line": 154,
-				"message": "Raw API call detected: request.get(",
-				"hash": "5128d500e46f"
-			}
-		],
-		"tests/e2e/workflows/editor/execution/inject-previous.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 60,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().locator('[contenteditable=\"true...",
-				"hash": "cae3335d44be"
-			}
-		],
-		"tests/e2e/workflows/editor/execution/logs.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 268,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel .getDataContainer() .locator('a')",
-				"hash": "6a673016ebff"
-			},
-			{
-				"rule": "api-purity",
-				"line": 278,
-				"message": "Raw API call detected: request.get(",
-				"hash": "5128d500e46f"
-			}
-		],
-		"tests/e2e/workflows/editor/expressions/inline.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 54,
-				"message": "Chained locator call in test: n8n.ndv.getParameterInput('value').getByRole('textbox')",
-				"hash": "e6c73a21e494"
 			}
 		],
 		"tests/e2e/workflows/editor/expressions/mapping.spec.ts": [
@@ -2747,26 +2683,6 @@
 				"hash": "6e9d8666bad6"
 			}
 		],
-		"tests/e2e/workflows/editor/ndv/pinning.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 82,
-				"message": "Chained locator call in test: runDataHeader.getByRole('button', { name: 'Edit Output' })",
-				"hash": "aa1904651d9c"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 178,
-				"message": "Chained locator call in test: n8n.ndv.getAssignmentValue('assignments').getByText('Expr...",
-				"hash": "25491e82dd43"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 187,
-				"message": "Chained locator call in test: n8n.ndv.getParameterInputHint().getByText(expectedOutput)",
-				"hash": "393fc24d0bf4"
-			}
-		],
 		"tests/e2e/workflows/editor/ndv/resource-locator.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -2829,34 +2745,6 @@
 				"hash": "160fc14cc93a"
 			}
 		],
-		"tests/e2e/workflows/editor/ndv/schema-preview.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 16,
-				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().getByText('No input data')",
-				"hash": "89dc9850c2d6"
-			}
-		],
-		"tests/e2e/workflows/editor/subworkflows/debugging.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 43,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.getTbodyCell(0, 0).locator('a')",
-				"hash": "11bb70e5e4f9"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 90,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.getTbodyCell(0, 0).locator('a')",
-				"hash": "11bb70e5e4f9"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 104,
-				"message": "Chained locator call in test: n8n.ndv.outputPanel.getTbodyCell(0, 0).locator('a')",
-				"hash": "11bb70e5e4f9"
-			}
-		],
 		"tests/e2e/workflows/editor/subworkflows/workflow-selector.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -2901,14 +2789,6 @@
 				"line": 215,
 				"message": "Chained locator call in test: n8n.canvas.getVisibleDropdown().locator('li')",
 				"hash": "4febc57392da"
-			}
-		],
-		"tests/e2e/workflows/editor/workflow-actions/archive.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 41,
-				"message": "Chained locator call in test: n8n.workflowSettingsModal.getArchiveMenuItem().locator('..')",
-				"hash": "ec8d53703e0b"
 			}
 		],
 		"tests/e2e/workflows/editor/workflow-actions/settings.spec.ts": [
@@ -3155,14 +3035,6 @@
 				"hash": "36b71f3e9617"
 			}
 		],
-		"tests/e2e/workflows/templates/templates.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 247,
-				"message": "Chained locator call in test: n8n.templates.getDescription().locator('img')",
-				"hash": "5f06d991a2b6"
-			}
-		],
 		"composables/CanvasComposer.ts": [
 			{
 				"rule": "no-page-in-flow",
@@ -3303,6 +3175,22 @@
 			{
 				"rule": "api-purity",
 				"line": 123,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			}
+		],
+		"tests/e2e/workflows/editor/execution/execution.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 154,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			}
+		],
+		"tests/e2e/workflows/editor/execution/logs.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 275,
 				"message": "Raw API call detected: request.get(",
 				"hash": "5128d500e46f"
 			}
