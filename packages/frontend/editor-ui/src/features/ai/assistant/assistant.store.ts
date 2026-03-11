@@ -398,9 +398,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		resetAssistantChat();
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		const activeNode = workflowsStore.activeNode() as INode;
-		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
-			excludeParameterValues: !allowSendingParameterValues.value,
-		});
+		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(
+			workflowsStore.workflowId,
+			activeNode,
+			{
+				excludeParameterValues: !allowSendingParameterValues.value,
+			},
+		);
 		// For the initial message, only provide visual context if the task is support
 		const visualContext =
 			chatSessionTask.value === 'support'
@@ -478,6 +482,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}
 
 		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
+			workflowsStore.workflowId,
 			context.node,
 			{ excludeParameterValues: !allowSendingParameterValues.value },
 		);
@@ -618,9 +623,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				nodeExecutionStatus.value = 'not_executed';
 			}
 			const activeNode = workflowsStore.activeNode() as INode;
-			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
-				excludeParameterValues: !allowSendingParameterValues.value,
-			});
+			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(
+				workflowsStore.workflowId,
+				activeNode,
+				{
+					excludeParameterValues: !allowSendingParameterValues.value,
+				},
+			);
 			const userContext = await getVisualContext(nodeInfo);
 
 			if (streamingAbortController.value) {

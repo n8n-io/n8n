@@ -207,11 +207,11 @@ function onSelectChangedNode(nodeId: string) {
 }
 
 async function onCodeReplace(index: number) {
-	await builderStore.applyCodeDiff(workflowId, index);
+	await builderStore.applyCodeDiff(workflowId.value, index);
 }
 
 async function onCodeUndo(index: number) {
-	await builderStore.undoCodeDiff(workflowId, index);
+	await builderStore.undoCodeDiff(workflowId.value, index);
 }
 
 const disabledTooltip = computed(() => {

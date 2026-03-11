@@ -6,7 +6,7 @@ import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import AskModeEmptyState from './AskModeEmptyState.vue';
 
 const emit = defineEmits<{
@@ -14,7 +14,7 @@ const emit = defineEmits<{
 }>();
 
 const assistantStore = useAssistantStore();
-const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
@@ -59,14 +59,14 @@ async function onUserMessage(content: string, quickReplyType?: string, isFeedbac
 }
 
 async function onCodeReplace(index: number) {
-	await assistantStore.applyCodeDiff(workflowsStore.workflowId, index);
+	await assistantStore.applyCodeDiff(workflowId.value, index);
 	telemetry.track('User clicked solution card action', {
 		action: 'replace_code',
 	});
 }
 
 async function undoCodeDiff(index: number) {
-	await assistantStore.undoCodeDiff(workflowsStore.workflowId, index);
+	await assistantStore.undoCodeDiff(workflowId.value, index);
 	telemetry.track('User clicked solution card action', {
 		action: 'undo_code_replace',
 	});
