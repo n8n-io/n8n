@@ -1,13 +1,24 @@
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 
-import ivm from 'isolated-vm';
-
 import type { IDataObject } from 'n8n-workflow';
 
+// Lazy-loaded isolated-vm — avoids loading the native module at startup.
+// The module is only loaded when combineBySql is actually used.
+type IsolatedVm = typeof import('isolated-vm');
+let _ivm: IsolatedVm | null = null;
+
+async function getIvm(): Promise<IsolatedVm> {
+	if (!_ivm) {
+		const mod = await import('isolated-vm');
+		_ivm = mod.default;
+	}
+	return _ivm!;
+}
+
 // Singleton – recreated only after resetSandboxCache() (tests) or isolate disposal.
-let sandboxIsolate: ivm.Isolate | null = null;
-let sandboxContext: ivm.Context | null = null;
+let sandboxIsolate: import('isolated-vm').Isolate | null = null;
+let sandboxContext: import('isolated-vm').Context | null = null;
 
 /** Disposes the cached isolate. Exposed for tests only. */
 export function resetSandboxCache(): void {
@@ -19,10 +30,12 @@ export function resetSandboxCache(): void {
 }
 
 /** Returns a cached isolated-vm context with alasql pre-loaded. Creates it on first call. */
-export async function loadAlaSqlSandbox(): Promise<ivm.Context> {
+export async function loadAlaSqlSandbox(): Promise<import('isolated-vm').Context> {
 	if (sandboxContext && sandboxIsolate && !sandboxIsolate.isDisposed) {
 		return sandboxContext;
 	}
+
+	const ivm = await getIvm();
 
 	sandboxIsolate = new ivm.Isolate({ memoryLimit: 64 }); // 64 MB hard limit
 	sandboxContext = await sandboxIsolate.createContext();
@@ -41,7 +54,7 @@ export async function loadAlaSqlSandbox(): Promise<ivm.Context> {
  * Only JSON-serialisable values cross the isolate boundary.
  */
 export async function runAlaSqlInSandbox(
-	context: ivm.Context,
+	context: import('isolated-vm').Context,
 	tableData: unknown[][],
 	query: string,
 ): Promise<IDataObject[]> {

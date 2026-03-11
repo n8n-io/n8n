@@ -1,8 +1,11 @@
 // Main exports
 export { ExpressionEvaluator } from './evaluator/expression-evaluator';
 
-// Bridge exports
-export { IsolatedVmBridge } from './bridge/isolated-vm-bridge';
+// Bridge exports — IsolatedVmBridge uses isolated-vm (native module).
+// Kept as a type-only re-export to avoid loading the native binary at startup.
+// Consumers needing the class at runtime should use:
+//   const { IsolatedVmBridge } = await import('@n8n/expression-runtime/bridge/isolated-vm-bridge');
+export type { IsolatedVmBridge } from './bridge/isolated-vm-bridge';
 
 // Types
 export type {
