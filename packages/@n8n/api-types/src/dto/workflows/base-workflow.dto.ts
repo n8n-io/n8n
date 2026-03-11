@@ -5,7 +5,9 @@ export const WORKFLOW_NAME_MAX_LENGTH = 128;
 
 export const workflowNameSchema = z
 	.string()
-	.min(1, { message: 'Workflow name is required' })
+	.min(1, {
+		error: 'Workflow name is required',
+	})
 	.max(WORKFLOW_NAME_MAX_LENGTH, {
 		message: `Workflow name must be ${WORKFLOW_NAME_MAX_LENGTH} characters or less`,
 	});
@@ -14,20 +16,20 @@ export const workflowDescriptionSchema = z.string().nullable();
 
 // Use z.custom() with type predicates for better type safety
 export const workflowNodesSchema = z.custom<INode[]>((val) => Array.isArray(val), {
-	message: 'Nodes must be an array',
+	error: 'Nodes must be an array',
 });
 
 export const workflowConnectionsSchema = z.custom<IConnections>(
 	(val) => typeof val === 'object' && val !== null && !Array.isArray(val),
 	{
-		message: 'Connections must be an object',
+		error: 'Connections must be an object',
 	},
 );
 
 export const workflowSettingsSchema = z.custom<IWorkflowSettings>(
 	(val) => val === null || (typeof val === 'object' && val !== null && !Array.isArray(val)),
 	{
-		message: 'Settings must be an object or null',
+		error: 'Settings must be an object or null',
 	},
 );
 
@@ -46,7 +48,7 @@ export const workflowStaticDataSchema = z.preprocess(
 	z.custom<IDataObject | null>(
 		(val) => val === null || (typeof val === 'object' && val !== null && !Array.isArray(val)),
 		{
-			message: 'Static data must be an object or null',
+			error: 'Static data must be an object or null',
 		},
 	),
 );
@@ -55,7 +57,7 @@ export const workflowStaticDataSchema = z.preprocess(
 export const workflowPinDataSchema = z.custom<IPinData | null>(
 	(val) => val === null || (typeof val === 'object' && val !== null && !Array.isArray(val)),
 	{
-		message: 'Pin data must be an object or null',
+		error: 'Pin data must be an object or null',
 	},
 );
 

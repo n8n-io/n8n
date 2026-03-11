@@ -55,7 +55,7 @@ export class EventBusController {
 		// And ZodClass doesn't support discriminated unions directly
 		const parseResult = CreateDestinationDto.safeParse(req.body);
 		if (!parseResult.success) {
-			throw new BadRequestError(parseResult.error.errors[0].message);
+			throw new BadRequestError(parseResult.error.issues[0].message);
 		}
 
 		const body = parseResult.data;

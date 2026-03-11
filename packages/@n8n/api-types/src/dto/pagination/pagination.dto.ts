@@ -9,10 +9,10 @@ const skipValidator = z
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : 0))
 	.refine((val) => !isNaN(val) && Number.isInteger(val), {
-		message: 'Param `skip` must be a valid integer',
+		error: 'Param `skip` must be a valid integer',
 	})
 	.refine((val) => val >= 0, {
-		message: 'Param `skip` must be a non-negative integer',
+		error: 'Param `skip` must be a non-negative integer',
 	});
 
 export const createTakeValidator = (maxItems: number, allowInfinity: boolean = false) =>
@@ -21,7 +21,7 @@ export const createTakeValidator = (maxItems: number, allowInfinity: boolean = f
 		.optional()
 		.transform((val) => (val ? parseInt(val, 10) : 10))
 		.refine((val) => !isNaN(val) && Number.isInteger(val), {
-			message: 'Param `take` must be a valid integer',
+			error: 'Param `take` must be a valid integer',
 		})
 		.refine(
 			(val) => {
@@ -29,7 +29,7 @@ export const createTakeValidator = (maxItems: number, allowInfinity: boolean = f
 				return true;
 			},
 			{
-				message: 'Param `take` must be a non-negative integer',
+				error: 'Param `take` must be a non-negative integer',
 			},
 		)
 		.transform((val) => Math.min(val, maxItems));
@@ -46,10 +46,10 @@ const offsetValidator = z
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : 0))
 	.refine((val) => !isNaN(val) && Number.isInteger(val), {
-		message: 'Param `offset` must be a valid integer',
+		error: 'Param `offset` must be a valid integer',
 	})
 	.refine((val) => val >= 0, {
-		message: 'Param `offset` must be a non-negative integer',
+		error: 'Param `offset` must be a non-negative integer',
 	});
 
 const createLimitValidator = (maxItems: number) =>
@@ -58,10 +58,10 @@ const createLimitValidator = (maxItems: number) =>
 		.optional()
 		.transform((val) => (val ? parseInt(val, 10) : 100))
 		.refine((val) => !isNaN(val) && Number.isInteger(val), {
-			message: 'Param `limit` must be a valid integer',
+			error: 'Param `limit` must be a valid integer',
 		})
 		.refine((val) => val >= 0, {
-			message: 'Param `limit` must be a non-negative integer',
+			error: 'Param `limit` must be a non-negative integer',
 		})
 		.transform((val) => Math.min(val, maxItems));
 

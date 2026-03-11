@@ -17,7 +17,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 > {
 	constructor(
 		private context: ISupplyDataFunctions,
-		zodSchema: z.ZodSchema<object>,
+		zodSchema: z.ZodType<object>,
 	) {
 		super(zodSchema);
 	}
@@ -121,7 +121,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 	}
 
 	static async fromZodJsonSchema(
-		zodSchema: z.ZodSchema<object>,
+		zodSchema: z.ZodType<object>,
 		nodeVersion: number,
 		context: ISupplyDataFunctions,
 	): Promise<N8nStructuredOutputParser> {
@@ -145,9 +145,9 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 							);
 						},
 						{
-							message:
-								'One and only one of __structured__output__object and __structured__output__array should be present.',
 							path: [STRUCTURED_OUTPUT_KEY],
+							error:
+								'One and only one of __structured__output__object and __structured__output__array should be present.',
 						},
 					),
 			});

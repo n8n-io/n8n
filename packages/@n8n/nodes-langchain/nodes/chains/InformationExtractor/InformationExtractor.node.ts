@@ -267,7 +267,7 @@ export class InformationExtractor implements INodeType {
 				jsonSchema = jsonParse<JSONSchema7>(inputSchema);
 			}
 
-			const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
+			const zodSchema = convertJsonSchemaToZod<z.ZodType<object>>(jsonSchema);
 
 			parser = OutputFixingParser.fromLLM(llm, StructuredOutputParser.fromZodSchema(zodSchema));
 		}

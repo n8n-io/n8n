@@ -40,71 +40,63 @@ export const insightsSummaryDataSchemas = {
 	}),
 } as const;
 
-export const insightsSummarySchema = z.object(insightsSummaryDataSchemas).strict();
+export const insightsSummarySchema = z.strictObject(insightsSummaryDataSchemas);
 export type InsightsSummary = z.infer<typeof insightsSummarySchema>;
 
 export const insightsByWorkflowDataSchemas = {
 	count: z.number(),
 	data: z.array(
-		z
-			.object({
-				// Workflow id will be null if the workflow has been deleted
-				workflowId: z.string().nullable(),
-				workflowName: z.string(),
-				// Project id will be null if the project has been deleted
-				projectId: z.string().nullable(),
-				projectName: z.string(),
-				total: z.number(),
-				succeeded: z.number(),
-				failed: z.number(),
-				failureRate: z.number(),
-				runTime: z.number(),
-				averageRunTime: z.number(),
-				timeSaved: z.number(),
-			})
-			.strict(),
-	),
-} as const;
-
-export const insightsByWorkflowSchema = z.object(insightsByWorkflowDataSchemas).strict();
-export type InsightsByWorkflow = z.infer<typeof insightsByWorkflowSchema>;
-
-export const insightsByTimeDataSchemas = {
-	date: z.string().refine((val) => !isNaN(Date.parse(val)) && new Date(val).toISOString() === val, {
-		message: 'Invalid date format, must be ISO 8601 format',
-	}),
-	values: z
-		.object({
+		z.strictObject({
+			// Workflow id will be null if the workflow has been deleted
+			workflowId: z.string().nullable(),
+			workflowName: z.string(),
+			// Project id will be null if the project has been deleted
+			projectId: z.string().nullable(),
+			projectName: z.string(),
 			total: z.number(),
 			succeeded: z.number(),
 			failed: z.number(),
 			failureRate: z.number(),
+			runTime: z.number(),
 			averageRunTime: z.number(),
 			timeSaved: z.number(),
-		})
-		.strict(),
+		}),
+	),
 } as const;
-export const insightsByTimeSchema = z.object(insightsByTimeDataSchemas).strict();
+
+export const insightsByWorkflowSchema = z.strictObject(insightsByWorkflowDataSchemas);
+export type InsightsByWorkflow = z.infer<typeof insightsByWorkflowSchema>;
+
+export const insightsByTimeDataSchemas = {
+	date: z.string().refine((val) => !isNaN(Date.parse(val)) && new Date(val).toISOString() === val, {
+		error: 'Invalid date format, must be ISO 8601 format',
+	}),
+	values: z.strictObject({
+		total: z.number(),
+		succeeded: z.number(),
+		failed: z.number(),
+		failureRate: z.number(),
+		averageRunTime: z.number(),
+		timeSaved: z.number(),
+	}),
+} as const;
+export const insightsByTimeSchema = z.strictObject(insightsByTimeDataSchemas);
 export type InsightsByTime = z.infer<typeof insightsByTimeSchema>;
 
 export const restrictedInsightsByTimeDataSchema = {
 	date: z.string().refine((val) => !isNaN(Date.parse(val)) && new Date(val).toISOString() === val, {
-		message: 'Invalid date format, must be ISO 8601 format',
+		error: 'Invalid date format, must be ISO 8601 format',
 	}),
-	values: z
-		.object({
-			timeSaved: z.number(),
-		})
-		.strict(),
+	values: z.strictObject({
+		timeSaved: z.number(),
+	}),
 } as const;
-export const restrictedInsightsByTimeSchema = z.object(restrictedInsightsByTimeDataSchema).strict();
+export const restrictedInsightsByTimeSchema = z.strictObject(restrictedInsightsByTimeDataSchema);
 export type RestrictedInsightsByTime = z.infer<typeof restrictedInsightsByTimeSchema>;
 
-export const insightsDateRangeSchema = z
-	.object({
-		key: z.enum(['day', 'week', '2weeks', 'month', 'quarter', '6months', 'year']),
-		licensed: z.boolean(),
-		granularity: z.enum(['hour', 'day', 'week']),
-	})
-	.strict();
+export const insightsDateRangeSchema = z.strictObject({
+	key: z.enum(['day', 'week', '2weeks', 'month', 'quarter', '6months', 'year']),
+	licensed: z.boolean(),
+	granularity: z.enum(['hour', 'day', 'week']),
+});
 export type InsightsDateRange = z.infer<typeof insightsDateRangeSchema>;

@@ -52,9 +52,9 @@ describe('checkForStructuredTools', () => {
 		await expect(
 			checkForStructuredTools(tools, mockNode, 'Conversation Agent'),
 		).rejects.toMatchObject({
-			message:
-				'The selected tools are not supported by "Conversation Agent", please use "Tools Agent" instead',
 			description: 'Incompatible connected tools: "dynamic-tool"',
+			error:
+				'The selected tools are not supported by "Conversation Agent", please use "Tools Agent" instead',
 		});
 	});
 
@@ -100,9 +100,9 @@ describe('checkForStructuredTools', () => {
 		await expect(
 			checkForStructuredTools(tools, mockNode, 'Conversation Agent'),
 		).rejects.toMatchObject({
-			message:
-				'The selected tools are not supported by "Conversation Agent", please use "Tools Agent" instead',
 			description: 'Incompatible connected tools: "dynamic-tool"',
+			error:
+				'The selected tools are not supported by "Conversation Agent", please use "Tools Agent" instead',
 		});
 	});
 });

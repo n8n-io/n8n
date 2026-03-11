@@ -9,7 +9,7 @@ export const parseEnum = (jsonSchema: JsonSchemaObject & { enum: Serializable[] 
 
 	if (jsonSchema.enum.length === 1) {
 		// union does not work when there is only one element
-		return z.literal(jsonSchema.enum[0] as z.Primitive);
+		return z.literal(jsonSchema.enum[0] as z.core.util.Literal);
 	}
 
 	if (jsonSchema.enum.every((x) => typeof x === 'string')) {
@@ -17,9 +17,9 @@ export const parseEnum = (jsonSchema: JsonSchemaObject & { enum: Serializable[] 
 	}
 
 	return z.union(
-		jsonSchema.enum.map((x) => z.literal(x as z.Primitive)) as unknown as [
-			z.ZodTypeAny,
-			z.ZodTypeAny,
+		jsonSchema.enum.map((x) => z.literal(x as z.core.util.Literal)) as unknown as [
+			z.ZodType,
+			z.ZodType,
 		],
 	);
 };

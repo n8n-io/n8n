@@ -7,7 +7,7 @@ import { Z } from '../../zod-class';
 const dataTableFilterQueryValidator = z.string().transform((val, ctx) => {
 	if (!val) {
 		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
+			code: 'custom',
 			message: 'Filter is required for delete operations',
 			path: ['filter'],
 		});
@@ -21,7 +21,7 @@ const dataTableFilterQueryValidator = z.string().transform((val, ctx) => {
 			// Ensure filters array is not empty
 			if (!result.filters || result.filters.length === 0) {
 				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
+					code: 'custom',
 					message: 'At least one filter condition is required for delete operations',
 					path: ['filter'],
 				});
@@ -30,7 +30,7 @@ const dataTableFilterQueryValidator = z.string().transform((val, ctx) => {
 			return result;
 		} catch (e) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'Invalid filter fields',
 				path: ['filter'],
 			});
@@ -38,7 +38,7 @@ const dataTableFilterQueryValidator = z.string().transform((val, ctx) => {
 		}
 	} catch (e) {
 		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
+			code: 'custom',
 			message: 'Invalid filter format',
 			path: ['filter'],
 		});

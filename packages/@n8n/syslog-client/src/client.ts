@@ -82,7 +82,7 @@ export class SyslogClient extends EventEmitter {
 
 		const validationResult = clientOptionsSchema.safeParse(options ?? {});
 		if (!validationResult.success) {
-			throw ValidationError.fromZod('Invalid client options', validationResult.error.errors);
+			throw ValidationError.fromZod('Invalid client options', validationResult.error.issues);
 		}
 
 		const opts = validationResult.data;
@@ -163,7 +163,7 @@ export class SyslogClient extends EventEmitter {
 		// Validate options
 		const validationResult = logOptionsSchema.safeParse(options);
 		if (!validationResult.success) {
-			errorCb(ValidationError.fromZod('Invalid log options', validationResult.error.errors));
+			errorCb(ValidationError.fromZod('Invalid log options', validationResult.error.issues));
 			return;
 		}
 

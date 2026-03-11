@@ -17,7 +17,7 @@ const filterValidator = z
 				return dataTableFilterSchema.parse(parsed);
 			} catch (e) {
 				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
+					code: 'custom',
 					message: 'Invalid filter fields',
 					path: ['filter'],
 				});
@@ -25,7 +25,7 @@ const filterValidator = z
 			}
 		} catch (e) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'Invalid filter format',
 				path: ['filter'],
 			});
@@ -41,7 +41,7 @@ const sortByValidator = z
 
 		if (!val.includes(':')) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'Invalid sort format, expected <columnName>:<asc/desc>',
 				path: ['sort'],
 			});
@@ -56,7 +56,7 @@ const sortByValidator = z
 			const errorMessage =
 				e instanceof z.ZodError ? e.errors[0]?.message : 'Invalid sort columnName';
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: errorMessage,
 				path: ['sortBy'],
 			});
@@ -66,7 +66,7 @@ const sortByValidator = z
 		direction = direction?.toUpperCase();
 		if (direction !== 'ASC' && direction !== 'DESC') {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'Invalid sort direction',
 				path: ['sort'],
 			});

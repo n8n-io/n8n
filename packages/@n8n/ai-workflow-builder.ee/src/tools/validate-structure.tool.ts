@@ -10,7 +10,7 @@ import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createErrorResponse, createSuccessResponse } from './helpers/response';
 import { getEffectiveWorkflow } from './helpers/state';
 
-const validateStructureSchema = z.object({}).strict().default({});
+const validateStructureSchema = z.strictObject({}).default({});
 
 export const VALIDATE_STRUCTURE_TOOL: BuilderToolBase = {
 	toolName: 'validate_structure',
@@ -60,7 +60,7 @@ export function createValidateStructureTool(parsedNodeTypes: INodeTypeDescriptio
 			} catch (error) {
 				if (error instanceof z.ZodError) {
 					const validationError = new ValidationError('Invalid input parameters', {
-						extra: { errors: error.errors },
+						extra: { errors: error.issues },
 					});
 					reporter.error(validationError);
 					return createErrorResponse(config, validationError);

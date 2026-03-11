@@ -110,6 +110,6 @@ export class AiBuilderChatRequestDto extends Z.class({
 			})
 			.optional(),
 		mode: z.enum(['build', 'plan']).optional(),
-		resumeData: z.union([z.record(z.unknown()), z.array(z.unknown())]).optional(),
+		resumeData: z.union([z.record(z.string(), z.unknown()), z.array(z.unknown())]).optional(),
 	}),
 }) {}

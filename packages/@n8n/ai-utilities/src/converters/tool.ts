@@ -2,7 +2,7 @@ import type { FunctionDefinition } from '@langchain/core/language_models/base';
 import type * as LangchainChatModels from '@langchain/core/language_models/chat_models';
 import type * as LangchainTools from '@langchain/core/tools';
 import type { JSONSchema7 } from 'json-schema';
-import { ZodSchema, type ZodTypeAny } from 'zod';
+import { ZodSchema, ZodType } from 'zod';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import type * as N8nTools from '../types/tool';
@@ -17,7 +17,7 @@ export function fromLcTool(tool: LangchainChatModels.BindToolsInput): N8nTools.T
 			type: 'function',
 			name: structuredTool.name,
 			description: structuredTool.description,
-			inputSchema: structuredTool.schema as JSONSchema7 | ZodTypeAny,
+			inputSchema: structuredTool.schema as JSONSchema7 | ZodType,
 		};
 	}
 	if ('schema' in tool && 'func' in tool) {
@@ -26,7 +26,7 @@ export function fromLcTool(tool: LangchainChatModels.BindToolsInput): N8nTools.T
 			type: 'function',
 			name: structuredTool.name,
 			description: structuredTool.description,
-			inputSchema: structuredTool.schema as JSONSchema7 | ZodTypeAny,
+			inputSchema: structuredTool.schema as JSONSchema7 | ZodType,
 		};
 	}
 	if ('name' in tool && 'schema' in tool) {
@@ -35,7 +35,7 @@ export function fromLcTool(tool: LangchainChatModels.BindToolsInput): N8nTools.T
 			type: 'function',
 			name: structuredTool.name,
 			description: structuredTool.description,
-			inputSchema: structuredTool.schema as JSONSchema7 | ZodTypeAny,
+			inputSchema: structuredTool.schema as JSONSchema7 | ZodType,
 		};
 	}
 	if ('function' in tool && 'type' in tool && tool.type === 'function') {

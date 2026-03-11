@@ -62,7 +62,7 @@ describe('parseSchema', () => {
 					? z.number().safeParse(value)
 					: z.boolean().safeParse(value);
 				if (!result.success) {
-					result.error.errors.forEach((error) => ctx.addIssue(error));
+					result.error.issues.forEach((error) => ctx.addIssue(error));
 				}
 			}),
 		);

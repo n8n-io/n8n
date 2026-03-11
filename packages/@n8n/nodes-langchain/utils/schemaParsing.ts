@@ -48,7 +48,7 @@ export function generateSchemaFromExample(
 	return schema;
 }
 
-export function convertJsonSchemaToZod<T extends z.ZodTypeAny = z.ZodTypeAny>(schema: JSONSchema7) {
+export function convertJsonSchemaToZod<T extends z.ZodType = z.ZodType>(schema: JSONSchema7) {
 	return jsonSchemaToZod<T>(schema);
 }
 

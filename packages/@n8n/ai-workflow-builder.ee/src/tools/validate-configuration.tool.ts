@@ -15,7 +15,7 @@ import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createErrorResponse, createSuccessResponse } from './helpers/response';
 import { getEffectiveWorkflow } from './helpers/state';
 
-const validateConfigurationSchema = z.object({}).strict().default({});
+const validateConfigurationSchema = z.strictObject({}).default({});
 
 export const VALIDATE_CONFIGURATION_TOOL: BuilderToolBase = {
 	toolName: 'validate_configuration',
@@ -79,7 +79,7 @@ export function createValidateConfigurationTool(
 			} catch (error) {
 				if (error instanceof z.ZodError) {
 					const validationError = new ValidationError('Invalid input parameters', {
-						extra: { errors: error.errors },
+						extra: { errors: error.issues },
 					});
 					reporter.error(validationError);
 					return createErrorResponse(config, validationError);

@@ -31,9 +31,8 @@ export const parseOneOf = (jsonSchema: JsonSchemaObject & { oneOf: JsonSchema[] 
 
 		if (schemas.length - unionErrors.length !== 1) {
 			ctx.addIssue({
-				path: ctx.path,
 				code: 'invalid_union',
-				unionErrors,
+				errors: unionErrors.map((error) => error.issues),
 				message: 'Invalid input: Should pass single schema',
 			});
 		}

@@ -1,18 +1,16 @@
 import { z } from 'zod';
 
 // Versioned schema (V1 with all fields from RFC)
-const InstanceRegistrationSchemaV1 = z
-	.object({
-		schemaVersion: z.literal(1),
-		instanceKey: z.string(),
-		hostId: z.string(),
-		instanceType: z.enum(['main', 'worker', 'webhook']),
-		instanceRole: z.enum(['leader', 'follower', 'unset']),
-		version: z.string(),
-		registeredAt: z.number(),
-		lastSeen: z.number(),
-	})
-	.passthrough();
+const InstanceRegistrationSchemaV1 = z.looseObject({
+	schemaVersion: z.literal(1),
+	instanceKey: z.string(),
+	hostId: z.string(),
+	instanceType: z.enum(['main', 'worker', 'webhook']),
+	instanceRole: z.enum(['leader', 'follower', 'unset']),
+	version: z.string(),
+	registeredAt: z.number(),
+	lastSeen: z.number(),
+});
 
 // Discriminated union for future schema versions
 export const instanceRegistrationSchema = z.discriminatedUnion('schemaVersion', [

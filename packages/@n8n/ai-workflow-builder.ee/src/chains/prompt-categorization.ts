@@ -13,7 +13,7 @@ export async function promptCategorizationChain(
 ): Promise<PromptCategorization> {
 	const categorizationSchema = z.object({
 		techniques: z
-			.array(z.nativeEnum(WorkflowTechnique))
+			.array(z.enum(WorkflowTechnique))
 			.min(0)
 			.describe('Workflow techniques identified in the prompt'),
 		confidence: z

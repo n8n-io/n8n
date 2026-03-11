@@ -85,7 +85,7 @@ export = {
 		async (req: Create, res: Response) => {
 			const { data, error } = InviteUsersRequestDto.safeParse(req.body);
 			if (error) {
-				return res.status(400).json(error.errors[0]);
+				return res.status(400).json(error.issues[0]);
 			}
 
 			const usersInvited = await Container.get(InvitationController).inviteUser(
@@ -111,7 +111,7 @@ export = {
 			const validation = RoleChangeRequestDto.safeParse(req.body);
 			if (validation.error) {
 				return res.status(400).json({
-					message: validation.error.errors[0],
+					message: validation.error.issues[0],
 				});
 			}
 

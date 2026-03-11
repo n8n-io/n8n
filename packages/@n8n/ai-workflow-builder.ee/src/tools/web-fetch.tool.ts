@@ -78,7 +78,7 @@ export const WEB_FETCH_TOOL: BuilderToolBase = {
 };
 
 const webFetchSchema = z.object({
-	url: z.string().url().describe('The URL to fetch content from'),
+	url: z.url().describe('The URL to fetch content from'),
 });
 
 /**
@@ -289,7 +289,7 @@ export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager
 			} catch (error) {
 				if (error instanceof z.ZodError) {
 					const validationError = new ValidationError('Invalid URL input', {
-						extra: { errors: error.errors },
+						extra: { errors: error.issues },
 					});
 					reporter.error(validationError);
 					return createErrorResponse(config, validationError);

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const credentialResolverIdSchema = z.string().max(36);
 export const credentialResolverNameSchema = z.string().trim().min(1).max(255);
 export const credentialResolverTypeNameSchema = z.string().trim().min(1).max(255);
-export const credentialResolverConfigSchema = z.record(z.unknown());
+export const credentialResolverConfigSchema = z.record(z.string(), z.unknown());
 
 export const credentialResolverSchema = z.object({
 	id: credentialResolverIdSchema,
@@ -19,7 +19,7 @@ export const credentialResolverTypeSchema = z.object({
 	name: credentialResolverTypeNameSchema,
 	displayName: z.string().trim().min(1).max(255),
 	description: z.string().trim().max(1024).optional(),
-	options: z.array(z.record(z.unknown())).optional(),
+	options: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
 export const credentialResolverTypesSchema = z.array(credentialResolverTypeSchema);

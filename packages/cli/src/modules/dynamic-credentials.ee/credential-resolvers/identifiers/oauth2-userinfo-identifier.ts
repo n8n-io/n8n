@@ -25,18 +25,16 @@ export const OAuth2UserInfoOptionsSchema = z.object({
 type OAuth2UserInfoOptions = z.infer<typeof OAuth2UserInfoOptionsSchema>;
 
 const OAuth2MetadataSchema = z.object({
-	issuer: z.string().url(),
-	userinfo_endpoint: z.string().url(),
+	issuer: z.url(),
+	userinfo_endpoint: z.url(),
 });
 
 type OAuth2Metadata = z.infer<typeof OAuth2MetadataSchema>;
 
-export const UserInfoResponseSchema = z
-	.object({
-		// Standard optional fields
-		sub: z.string().optional(),
-	})
-	.passthrough();
+export const UserInfoResponseSchema = z.looseObject({
+	// Standard optional fields
+	sub: z.string().optional(),
+});
 
 export type UserInfoResponse = z.infer<typeof UserInfoResponseSchema>;
 

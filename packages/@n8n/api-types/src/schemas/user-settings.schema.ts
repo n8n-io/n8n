@@ -22,6 +22,6 @@ export const userSettingsSchema = z.object({
 	npsSurvey: npsSurveySchema.optional(),
 	easyAIWorkflowOnboarded: z.boolean().optional(),
 	userClaimedAiCredits: z.boolean().optional(),
-	dismissedCallouts: z.record(z.boolean()).optional(),
+	dismissedCallouts: z.record(z.string(), z.boolean()).optional(),
 });
 export type UserSettings = z.infer<typeof userSettingsSchema>;

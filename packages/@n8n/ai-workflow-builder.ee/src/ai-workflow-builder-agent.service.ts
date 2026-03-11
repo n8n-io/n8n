@@ -549,7 +549,7 @@ export class AiWorkflowBuilderService {
 				const parsed = AiWorkflowBuilderService.questionsInterruptSchema.safeParse(m);
 				if (parsed.success) return parsed.data;
 				this.logger?.warn('[HITL] Invalid questions interrupt data', {
-					errors: parsed.error.errors,
+					errors: parsed.error.issues,
 				});
 				continue;
 			}
@@ -558,7 +558,7 @@ export class AiWorkflowBuilderService {
 				const parsed = AiWorkflowBuilderService.planInterruptSchema.safeParse(m);
 				if (parsed.success) return parsed.data;
 				this.logger?.warn('[HITL] Invalid plan interrupt data', {
-					errors: parsed.error.errors,
+					errors: parsed.error.issues,
 				});
 				continue;
 			}
@@ -567,7 +567,7 @@ export class AiWorkflowBuilderService {
 				const parsed = AiWorkflowBuilderService.webFetchApprovalInterruptSchema.safeParse(m);
 				if (parsed.success) return parsed.data;
 				this.logger?.warn('[HITL] Invalid web_fetch_approval interrupt data', {
-					errors: parsed.error.errors,
+					errors: parsed.error.issues,
 				});
 				continue;
 			}

@@ -32,7 +32,7 @@ export = {
 		async (req: AuthenticatedRequest, res: Response) => {
 			const payload = CreateProjectDto.safeParse(req.body);
 			if (payload.error) {
-				return res.status(400).json(payload.error.errors[0]);
+				return res.status(400).json(payload.error.issues[0]);
 			}
 
 			const project = await Container.get(ProjectController).createProject(req, res, payload.data);
@@ -46,7 +46,7 @@ export = {
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const payload = UpdateProjectWithRelationsDto.safeParse(req.body);
 			if (payload.error) {
-				return res.status(400).json(payload.error.errors[0]);
+				return res.status(400).json(payload.error.issues[0]);
 			}
 
 			await Container.get(ProjectController).updateProject(
@@ -65,7 +65,7 @@ export = {
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const query = DeleteProjectDto.safeParse(req.query);
 			if (query.error) {
-				return res.status(400).json(query.error.errors[0]);
+				return res.status(400).json(query.error.issues[0]);
 			}
 
 			await Container.get(ProjectController).deleteProject(
@@ -161,7 +161,7 @@ export = {
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const payload = AddUsersToProjectDto.safeParse(req.body);
 			if (payload.error) {
-				return res.status(400).json(payload.error.errors[0]);
+				return res.status(400).json(payload.error.issues[0]);
 			}
 
 			try {
@@ -185,7 +185,7 @@ export = {
 		async (req: AuthenticatedRequest<{ projectId: string; userId: string }>, res: Response) => {
 			const payload = ChangeUserRoleInProject.safeParse(req.body);
 			if (payload.error) {
-				return res.status(400).json(payload.error.errors[0]);
+				return res.status(400).json(payload.error.issues[0]);
 			}
 
 			const { projectId, userId } = req.params;

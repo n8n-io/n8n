@@ -26,7 +26,7 @@ const ensureOriginalIndex = (arr: JsonSchema[]) => {
 export function parseAllOf(
 	jsonSchema: JsonSchemaObject & { allOf: JsonSchema[] },
 	refs: Refs,
-): z.ZodTypeAny {
+): z.ZodType {
 	if (jsonSchema.allOf.length === 0) {
 		return z.never();
 	}

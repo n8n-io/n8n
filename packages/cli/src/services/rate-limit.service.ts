@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import assert from 'node:assert';
-import type { ZodTypeAny } from 'zod';
+import type { ZodType } from 'zod';
 import type { ZodClass } from '@n8n/api-types';
 
 const defaultLimits: Required<RateLimiterLimits> = {
@@ -74,7 +74,7 @@ export class RateLimitService {
 		});
 	}
 
-	private extractBodyIdentifier(body: unknown, fieldName: string, fieldSchema: ZodTypeAny): string {
+	private extractBodyIdentifier(body: unknown, fieldName: string, fieldSchema: ZodType): string {
 		if (!body || typeof body !== 'object') {
 			return 'skip:empty-body';
 		}

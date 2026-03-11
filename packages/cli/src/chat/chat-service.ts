@@ -317,7 +317,7 @@ export class ChatService {
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				throw new UnexpectedError(
-					`Chat message validation error: ${error.errors.map((error) => error.message).join(', ')}`,
+					`Chat message validation error: ${error.issues.map((error) => error.message).join(', ')}`,
 				);
 			}
 			throw error;

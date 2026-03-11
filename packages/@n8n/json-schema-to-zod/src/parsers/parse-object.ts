@@ -47,9 +47,8 @@ export function parseObject(
 ): z.ZodTypeAny {
 	const hasPatternProperties = Object.keys(objectSchema.patternProperties ?? {}).length > 0;
 
-	const propertiesSchema:
-		| z.ZodObject<Record<string, z.ZodTypeAny>, 'strip', z.ZodTypeAny>
-		| undefined = parseObjectProperties(objectSchema, refs);
+	const propertiesSchema: z.ZodObject<Record<string, z.ZodType>> | undefined =
+		parseObjectProperties(objectSchema, refs);
 	let zodSchema: z.ZodTypeAny | undefined = propertiesSchema;
 
 	const additionalProperties =
@@ -89,30 +88,50 @@ export function parseObject(
 		} else {
 			if (additionalProperties) {
 				zodSchema = z.record(
+					z.string(),
 					z.union([...patternPropertyValues, additionalProperties] as [z.ZodTypeAny, z.ZodTypeAny]),
 				);
 			} else if (patternPropertyValues.length > 1) {
-				zodSchema = z.record(z.union(patternPropertyValues as [z.ZodTypeAny, z.ZodTypeAny]));
+				zodSchema = z.record(
+					z.string(),
+					z.union(patternPropertyValues as [z.ZodTypeAny, z.ZodTypeAny]),
+				);
 			} else {
-				zodSchema = z.record(patternPropertyValues[0]);
+				zodSchema = z.record(z.string(), patternPropertyValues[0]);
 			}
 		}
 
 		const objectPropertyKeys = new Set(Object.keys(objectSchema.properties ?? {}));
-		zodSchema = zodSchema.superRefine((value: Record<string, unknown>, ctx) => {
-			for (const key in value) {
-				let wasMatched = objectPropertyKeys.has(key);
+		zodSchema = (zodSchema as z.ZodObject<Record<string, z.ZodType>>).superRefine(
+			(value: Record<string, unknown>, ctx) => {
+				for (const key in value) {
+					let wasMatched = objectPropertyKeys.has(key);
 
-				for (const patternPropertyKey in objectSchema.patternProperties) {
-					const regex = new RegExp(patternPropertyKey);
-					if (key.match(regex)) {
-						wasMatched = true;
-						const result = parsedPatternProperties[patternPropertyKey].safeParse(value[key]);
+					for (const patternPropertyKey in objectSchema.patternProperties) {
+						const regex = new RegExp(patternPropertyKey);
+						if (key.match(regex)) {
+							wasMatched = true;
+							const result = parsedPatternProperties[patternPropertyKey].safeParse(value[key]);
+							if (!result.success) {
+								ctx.addIssue({
+									path: [key],
+									code: 'custom',
+									message: `Invalid input: Key matching regex /${key}/ must match schema`,
+									params: {
+										issues: result.error.issues,
+									},
+								});
+							}
+						}
+					}
+
+					if (!wasMatched && additionalProperties) {
+						const result = additionalProperties.safeParse(value[key]);
 						if (!result.success) {
 							ctx.addIssue({
-								path: [...ctx.path, key],
+								path: [key],
 								code: 'custom',
-								message: `Invalid input: Key matching regex /${key}/ must match schema`,
+								message: 'Invalid input: must match catchall schema',
 								params: {
 									issues: result.error.issues,
 								},
@@ -120,22 +139,8 @@ export function parseObject(
 						}
 					}
 				}
-
-				if (!wasMatched && additionalProperties) {
-					const result = additionalProperties.safeParse(value[key]);
-					if (!result.success) {
-						ctx.addIssue({
-							path: [...ctx.path, key],
-							code: 'custom',
-							message: 'Invalid input: must match catchall schema',
-							params: {
-								issues: result.error.issues,
-							},
-						});
-					}
-				}
-			}
-		});
+			},
+		);
 	}
 
 	let output: z.ZodTypeAny;
@@ -155,9 +160,9 @@ export function parseObject(
 		if (hasPatternProperties) {
 			output = zodSchema!;
 		} else if (additionalProperties) {
-			output = z.record(additionalProperties);
+			output = z.record(z.string(), additionalProperties);
 		} else {
-			output = z.record(z.any());
+			output = z.record(z.string(), z.any());
 		}
 	}
 

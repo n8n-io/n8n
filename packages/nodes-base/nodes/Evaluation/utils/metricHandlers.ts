@@ -214,7 +214,6 @@ export const metricHandlers = {
 				.describe('detailed step-by-step analysis of the response helpfulness'),
 			reasoning_summary: z.string().describe('one sentence summary of the response helpfulness'),
 			score: z
-				.number()
 				.int()
 				.min(1)
 				.max(5)
@@ -307,7 +306,6 @@ export const metricHandlers = {
 				.describe('detailed step-by-step analysis of factual accuracy and similarity'),
 			reasoning_summary: z.string().describe('one sentence summary focusing on key differences'),
 			score: z
-				.number()
 				.int()
 				.min(1)
 				.max(5)

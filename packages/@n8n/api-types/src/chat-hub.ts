@@ -323,7 +323,7 @@ export const StrictTimeZoneSchema = z
 	.max(50)
 	.regex(/^[A-Za-z0-9_/+-]+$/)
 	.refine(isValidTimeZone, {
-		message: 'Unknown or invalid time zone',
+		error: 'Unknown or invalid time zone',
 	});
 
 export const TimeZoneSchema = StrictTimeZoneSchema.optional().catch(undefined);
@@ -331,12 +331,13 @@ export const TimeZoneSchema = StrictTimeZoneSchema.optional().catch(undefined);
 export type ChatAttachment = z.infer<typeof chatAttachmentSchema>;
 
 export class ChatHubSendMessageRequest extends Z.class({
-	messageId: z.string().uuid(),
-	sessionId: z.string().uuid(),
+	messageId: z.uuid(),
+	sessionId: z.uuid(),
 	message: z.string(),
 	model: chatHubConversationModelSchema,
-	previousMessageId: z.string().uuid().nullable(),
+	previousMessageId: z.uuid().nullable(),
 	credentials: z.record(
+		z.string(),
 		z.object({
 			id: z.string(),
 			name: z.string(),
@@ -350,6 +351,7 @@ export class ChatHubSendMessageRequest extends Z.class({
 export class ChatHubRegenerateMessageRequest extends Z.class({
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
+		z.string(),
 		z.object({
 			id: z.string(),
 			name: z.string(),
@@ -360,9 +362,10 @@ export class ChatHubRegenerateMessageRequest extends Z.class({
 
 export class ChatHubEditMessageRequest extends Z.class({
 	message: z.string(),
-	messageId: z.string().uuid(),
+	messageId: z.uuid(),
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
+		z.string(),
 		z.object({
 			id: z.string(),
 			name: z.string(),
@@ -382,7 +385,7 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 			name: z.string(),
 		})
 		.optional(),
-	toolIds: z.array(z.string().uuid()).optional(),
+	toolIds: z.array(z.uuid()).optional(),
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
@@ -454,7 +457,7 @@ export interface ChatHubMessageDto {
 
 export class ChatHubConversationsRequest extends Z.class({
 	limit: z.coerce.number().int().min(1).max(100),
-	cursor: z.string().uuid().optional(),
+	cursor: z.uuid().optional(),
 }) {}
 
 export interface ChatHubConversationsResponse {
@@ -507,7 +510,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	credentialId: z.string(),
 	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
-	toolIds: z.array(z.string().uuid()),
+	toolIds: z.array(z.uuid()),
 }) {}
 
 export class ChatHubUpdateAgentRequest extends Z.class({
@@ -519,7 +522,7 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	credentialId: z.string().optional(),
 	provider: chatHubLLMProviderSchema.optional(),
 	model: z.string().max(64).optional(),
-	toolIds: z.array(z.string().uuid()).optional(),
+	toolIds: z.array(z.uuid()).optional(),
 }) {}
 
 export interface MessageChunk {

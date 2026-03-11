@@ -117,7 +117,7 @@ function formatDisplayOptionsRequirements(displayOptions: DisplayOptions): strin
 
 export type ResolveSchemaConfig = {
 	parameters: Record<string, unknown>;
-	schema: z.ZodTypeAny;
+	schema: z.ZodType;
 	required: boolean;
 	displayOptions: DisplayOptions;
 	/** Default values for properties referenced in displayOptions (used when property is not set) */
@@ -126,7 +126,7 @@ export type ResolveSchemaConfig = {
 	isToolNode?: boolean;
 };
 
-export type ResolveSchemaFn = (config: ResolveSchemaConfig) => z.ZodTypeAny;
+export type ResolveSchemaFn = (config: ResolveSchemaConfig) => z.ZodType;
 
 /**
  * Check if a field should be visible based on displayOptions and current parameter values.
@@ -154,7 +154,7 @@ export function resolveSchema({
 	displayOptions,
 	defaults = {},
 	isToolNode,
-}: ResolveSchemaConfig): z.ZodTypeAny {
+}: ResolveSchemaConfig): z.ZodType {
 	const context: DisplayOptionsContext = { parameters, defaults, isToolNode };
 	const isVisible = matchesDisplayOptionsCore(context, displayOptions);
 

@@ -49,8 +49,8 @@ export async function twitterApiRequest(
 				this.getNode(),
 				'The operation requires Twitter Api to be either Basic or Pro.',
 			);
-		} else if (error.errors && error.error?.errors[0].message.includes('must be ')) {
-			throw new NodeOperationError(this.getNode(), error.error.errors[0].message as string);
+		} else if (error.issues && error.error?.errors[0].message.includes('must be ')) {
+			throw new NodeOperationError(this.getNode(), error.error.issues[0].message as string);
 		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

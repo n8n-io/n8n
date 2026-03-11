@@ -100,64 +100,55 @@ type FlagGroup =
 // Model ID validation schema
 const modelIdSchema = z.enum(AVAILABLE_MODELS as [ModelId, ...ModelId[]]);
 
-const cliSchema = z
-	.object({
-		suite: z
-			.enum([
-				'llm-judge',
-				'pairwise',
-				'programmatic',
-				'similarity',
-				'introspection',
-				'binary-checks',
-			])
-			.default('llm-judge'),
-		backend: z.enum(['local', 'langsmith']).default('local'),
-		agent: z.enum(['code-builder', 'multi-agent']).default('code-builder'),
+const cliSchema = z.strictObject({
+	suite: z
+		.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity', 'introspection', 'binary-checks'])
+		.default('llm-judge'),
+	backend: z.enum(['local', 'langsmith']).default('local'),
+	agent: z.enum(['code-builder', 'multi-agent']).default('code-builder'),
 
-		verbose: z.boolean().default(false),
-		repetitions: z.coerce.number().int().positive().default(DEFAULTS.REPETITIONS),
-		concurrency: z.coerce.number().int().positive().default(DEFAULTS.CONCURRENCY),
-		timeoutMs: z.coerce.number().int().positive().default(DEFAULTS.TIMEOUT_MS),
-		experimentName: z.string().min(1).optional(),
-		outputDir: z.string().min(1).optional(),
-		outputCsv: z.string().min(1).optional(),
-		datasetName: z.string().min(1).optional(),
-		maxExamples: z.coerce.number().int().positive().optional(),
-		filter: z.array(z.string().min(1)).default([]),
-		notionId: z.string().min(1).optional(),
-		technique: z.string().min(1).optional(),
+	verbose: z.boolean().default(false),
+	repetitions: z.int().positive().default(DEFAULTS.REPETITIONS),
+	concurrency: z.int().positive().default(DEFAULTS.CONCURRENCY),
+	timeoutMs: z.int().positive().default(DEFAULTS.TIMEOUT_MS),
+	experimentName: z.string().min(1).optional(),
+	outputDir: z.string().min(1).optional(),
+	outputCsv: z.string().min(1).optional(),
+	datasetName: z.string().min(1).optional(),
+	maxExamples: z.coerce.number().int().positive().optional(),
+	filter: z.array(z.string().min(1)).default([]),
+	notionId: z.string().min(1).optional(),
+	technique: z.string().min(1).optional(),
 
-		subgraph: z.enum(['responder', 'discovery', 'builder', 'configurator']).optional(),
-		datasetFile: z.string().min(1).optional(),
-		regenerate: z.boolean().default(false),
-		writeBack: z.boolean().default(false),
+	subgraph: z.enum(['responder', 'discovery', 'builder', 'configurator']).optional(),
+	datasetFile: z.string().min(1).optional(),
+	regenerate: z.boolean().default(false),
+	writeBack: z.boolean().default(false),
 
-		testCase: z.string().min(1).optional(),
-		promptsCsv: z.string().min(1).optional(),
+	testCase: z.string().min(1).optional(),
+	promptsCsv: z.string().min(1).optional(),
 
-		prompt: z.string().min(1).optional(),
-		dos: z.string().min(1).optional(),
-		donts: z.string().min(1).optional(),
+	prompt: z.string().min(1).optional(),
+	dos: z.string().min(1).optional(),
+	donts: z.string().min(1).optional(),
 
-		numJudges: z.coerce.number().int().positive().default(DEFAULTS.NUM_JUDGES),
+	numJudges: z.int().positive().default(DEFAULTS.NUM_JUDGES),
 
-		checks: z.string().min(1).optional(),
-		langsmith: z.boolean().optional(),
-		templateExamples: z.boolean().default(false),
-		webhookUrl: z.string().url().optional(),
-		webhookSecret: z.string().min(16).optional(),
+	checks: z.string().min(1).optional(),
+	langsmith: z.boolean().optional(),
+	templateExamples: z.boolean().default(false),
+	webhookUrl: z.url().optional(),
+	webhookSecret: z.string().min(16).optional(),
 
-		// Model configuration
-		model: modelIdSchema.default(DEFAULT_MODEL),
-		judgeModel: modelIdSchema.optional(),
-		supervisorModel: modelIdSchema.optional(),
-		responderModel: modelIdSchema.optional(),
-		discoveryModel: modelIdSchema.optional(),
-		builderModel: modelIdSchema.optional(),
-		parameterUpdaterModel: modelIdSchema.optional(),
-	})
-	.strict();
+	// Model configuration
+	model: modelIdSchema.default(DEFAULT_MODEL),
+	judgeModel: modelIdSchema.optional(),
+	supervisorModel: modelIdSchema.optional(),
+	responderModel: modelIdSchema.optional(),
+	discoveryModel: modelIdSchema.optional(),
+	builderModel: modelIdSchema.optional(),
+	parameterUpdaterModel: modelIdSchema.optional(),
+});
 
 type CliKey = keyof z.infer<typeof cliSchema>;
 

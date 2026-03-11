@@ -16,20 +16,22 @@ export class SSHClientsConfig {
 			.transform((value) => Number.parseInt(value))
 			.superRefine((value, ctx) => {
 				if (Number.isNaN(value)) {
-					return ctx.addIssue({
+					ctx.addIssue({
 						message: 'must be a valid integer',
 						code: 'custom',
 					});
+					return;
 				}
 
 				if (value <= 0) {
-					return ctx.addIssue({
+					ctx.addIssue({
 						message: 'must be positive',
 						code: 'too_small',
 						minimum: 0,
 						inclusive: false,
 						type: 'number',
 					});
+					return;
 				}
 			}),
 	)

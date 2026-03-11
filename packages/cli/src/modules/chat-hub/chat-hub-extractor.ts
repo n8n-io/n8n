@@ -102,7 +102,7 @@ export class ChatHubExtractor implements IContextEstablishmentHook {
 					};
 				} else {
 					this.logger.warn('Invalid format for encryptedMetadata in chathub extractor', {
-						errors: chatHubInformation.error.errors,
+						errors: chatHubInformation.error.issues,
 					});
 				}
 			} catch (error) {

@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 
 expect.extend({
-	toMatchZod(this: jest.MatcherContext, actual: z.ZodTypeAny, expected: z.ZodTypeAny) {
+	toMatchZod(this: jest.MatcherContext, actual: z.ZodType, expected: z.ZodType) {
 		const actualSerialized = JSON.stringify(actual._def, null, 2);
 		const expectedSerialized = JSON.stringify(expected._def, null, 2);
 		const pass = this.equals(actualSerialized, expectedSerialized);

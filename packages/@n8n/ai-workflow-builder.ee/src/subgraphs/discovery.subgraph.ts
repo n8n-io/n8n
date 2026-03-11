@@ -521,7 +521,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 					this.logger?.error(
 						'[Discovery] Invalid discovery output schema - returning empty results',
 						{
-							errors: parseResult.error.errors,
+							errors: parseResult.error.issues,
 							lastMessageContent:
 								typeof lastMessage?.content === 'string'
 									? lastMessage.content.substring(0, 200)

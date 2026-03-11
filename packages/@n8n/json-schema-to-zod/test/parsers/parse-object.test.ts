@@ -13,7 +13,7 @@ describe('parseObject', () => {
 				},
 				{ path: [], seen: new Map() },
 			),
-		).toMatchZod(z.record(z.any()));
+		).toMatchZod(z.record(z.string(), z.any()));
 	});
 
 	test('should handle with empty properties', () => {
@@ -65,7 +65,7 @@ describe('parseObject', () => {
 				},
 				{ path: [], seen: new Map() },
 			),
-		).toMatchZod(z.object({ myString: z.string() }).strict());
+		).toMatchZod(z.strictObject({ myString: z.string() }));
 	});
 
 	test('With properties - should handle additionalProperties when set to true', () => {
@@ -113,7 +113,7 @@ describe('parseObject', () => {
 				},
 				{ path: [], seen: new Map() },
 			),
-		).toMatchZod(z.record(z.never()));
+		).toMatchZod(z.record(z.string(), z.never()));
 	});
 
 	test('Without properties - should handle additionalProperties when set to true', () => {
@@ -125,7 +125,7 @@ describe('parseObject', () => {
 				},
 				{ path: [], seen: new Map() },
 			),
-		).toMatchZod(z.record(z.any()));
+		).toMatchZod(z.record(z.string(), z.any()));
 	});
 
 	test('Without properties - should handle additionalProperties when provided a schema', () => {
@@ -138,7 +138,7 @@ describe('parseObject', () => {
 
 				{ path: [], seen: new Map() },
 			),
-		).toMatchZod(z.record(z.number()));
+		).toMatchZod(z.record(z.string(), z.number()));
 	});
 
 	test('Without properties - should include falsy defaults', () => {
@@ -389,7 +389,7 @@ describe('parseObject', () => {
 		);
 	});
 
-	const run = (zodSchema: z.ZodTypeAny, data: unknown) => zodSchema.safeParse(data);
+	const run = (zodSchema: z.ZodType, data: unknown) => zodSchema.safeParse(data);
 
 	test('Functional tests - run', () => {
 		expect(run(z.string(), 'hello')).toEqual({
@@ -440,14 +440,14 @@ describe('parseObject', () => {
 					expected: 'string',
 					received: 'undefined',
 					path: ['a'],
-					message: 'Required',
+					error: 'Required',
 				},
 				{
 					code: 'invalid_type',
 					expected: 'number',
 					received: 'string',
 					path: ['b'],
-					message: 'Expected number, received string',
+					error: 'Expected number, received string',
 				},
 			]),
 		});
@@ -482,21 +482,21 @@ describe('parseObject', () => {
 					expected: 'string',
 					received: 'undefined',
 					path: ['a'],
-					message: 'Required',
+					error: 'Required',
 				},
 				{
 					code: 'invalid_type',
 					expected: 'number',
 					received: 'string',
 					path: ['b'],
-					message: 'Expected number, received string',
+					error: 'Expected number, received string',
 				},
 				{
 					code: 'invalid_type',
 					expected: 'boolean',
 					received: 'string',
 					path: ['x'],
-					message: 'Expected boolean, received string',
+					error: 'Expected boolean, received string',
 				},
 			]),
 		});
@@ -557,7 +557,7 @@ describe('parseObject', () => {
 					expected: 'array',
 					received: 'string',
 					path: ['.'],
-					message: 'Expected array, received string',
+					error: 'Expected array, received string',
 				},
 			]),
 		});
@@ -643,7 +643,7 @@ describe('parseObject', () => {
 			additionalProperties: { type: 'boolean' },
 		};
 
-		const expected = z.record(z.boolean());
+		const expected = z.record(z.string(), z.boolean());
 
 		const result = parseObject(schema, { path: [], seen: new Map() });
 
@@ -661,7 +661,7 @@ describe('parseObject', () => {
 		};
 
 		const expected = z
-			.record(z.union([z.array(z.any()), z.array(z.any()).min(1), z.boolean()]))
+			.record(z.string(), z.union([z.array(z.any()), z.array(z.any()).min(1), z.boolean()]))
 			.superRefine((value, ctx) => {
 				for (const key in value) {
 					let evaluated = false;
@@ -719,7 +719,6 @@ describe('parseObject', () => {
 				{
 					path: [','],
 					code: 'custom',
-					message: 'Invalid input: Key matching regex /,/ must match schema',
 					params: {
 						issues: [
 							{
@@ -728,11 +727,12 @@ describe('parseObject', () => {
 								type: 'array',
 								inclusive: true,
 								exact: false,
-								message: 'Array must contain at least 1 element(s)',
 								path: [],
+								error: 'Array must contain at least 1 element(s)',
 							},
 						],
 					},
+					error: 'Invalid input: Key matching regex /,/ must match schema',
 				},
 			]),
 		});
@@ -746,7 +746,7 @@ describe('parseObject', () => {
 			},
 		};
 
-		const expected = z.record(z.array(z.any())).superRefine((value, ctx) => {
+		const expected = z.record(z.string(), z.array(z.any())).superRefine((value, ctx) => {
 			for (const key in value) {
 				if (key.match(new RegExp('\\\\.'))) {
 					const result = z.array(z.any()).safeParse(value[key]);
@@ -779,7 +779,7 @@ describe('parseObject', () => {
 		};
 
 		const expected = z
-			.record(z.union([z.array(z.any()), z.array(z.any()).min(1)]))
+			.record(z.string(), z.union([z.array(z.any()), z.array(z.any()).min(1)]))
 			.superRefine((value, ctx) => {
 				for (const key in value) {
 					if (key.match(new RegExp('\\.'))) {
@@ -824,7 +824,6 @@ describe('parseObject', () => {
 				{
 					path: [','],
 					code: 'custom',
-					message: 'Invalid input: Key matching regex /,/ must match schema',
 					params: {
 						issues: [
 							{
@@ -833,11 +832,12 @@ describe('parseObject', () => {
 								type: 'array',
 								inclusive: true,
 								exact: false,
-								message: 'Array must contain at least 1 element(s)',
 								path: [],
+								error: 'Array must contain at least 1 element(s)',
 							},
 						],
 					},
+					error: 'Invalid input: Key matching regex /,/ must match schema',
 				},
 			]),
 		});

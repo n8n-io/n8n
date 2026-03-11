@@ -5,7 +5,7 @@ import { Z } from '../../zod-class';
 export class OidcConfigDto extends Z.class({
 	clientId: z.string().min(1),
 	clientSecret: z.string().min(1),
-	discoveryEndpoint: z.string().url(),
+	discoveryEndpoint: z.url(),
 	loginEnabled: z.boolean().optional().default(false),
 	prompt: z
 		.enum(['none', 'login', 'consent', 'select_account', 'create'])

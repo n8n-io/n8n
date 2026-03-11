@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Config, Env } from '../decorators';
 
 /** Schema for sample rates (0.0 to 1.0). */
-export const sampleRateSchema = z.number({ coerce: true }).min(0).max(1);
+export const sampleRateSchema = z.coerce.number().min(0).max(1);
 
 @Config
 export class SentryConfig {
@@ -42,7 +42,7 @@ export class SentryConfig {
 	 *
 	 * @default 500
 	 */
-	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_THRESHOLD', z.number({ coerce: true }).int().positive())
+	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_THRESHOLD', z.int().positive())
 	eventLoopBlockThreshold: number = 500;
 
 	/**

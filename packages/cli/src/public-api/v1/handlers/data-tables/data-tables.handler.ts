@@ -76,7 +76,7 @@ export = {
 				const payload = PublicApiListDataTableQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
 					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid query parameters',
+						message: payload.error.issues[0]?.message || 'Invalid query parameters',
 					});
 				}
 
@@ -142,7 +142,7 @@ export = {
 				const payload = CreateDataTableDto.safeParse(req.body);
 				if (!payload.success) {
 					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid request body',
+						message: payload.error.issues[0]?.message || 'Invalid request body',
 					});
 				}
 
@@ -201,7 +201,7 @@ export = {
 				const payload = UpdateDataTableDto.safeParse(req.body);
 				if (!payload.success) {
 					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid request body',
+						message: payload.error.issues[0]?.message || 'Invalid request body',
 					});
 				}
 

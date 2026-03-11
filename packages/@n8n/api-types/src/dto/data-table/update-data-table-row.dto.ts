@@ -16,7 +16,7 @@ const updateDataTableRowShape = {
 	data: z
 		.record(dataTableColumnNameSchema, dataTableColumnValueSchema)
 		.refine((obj) => Object.keys(obj).length > 0, {
-			message: 'data must not be empty',
+			error: 'data must not be empty',
 		}),
 	returnData: z.boolean().optional().default(false),
 	dryRun: z.boolean().optional().default(false),

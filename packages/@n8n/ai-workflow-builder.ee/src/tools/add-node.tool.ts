@@ -51,8 +51,7 @@ const baseSchema = {
 			'REQUIRED: Explain your reasoning about initial parameters. Consider: Does this node have dynamic inputs/outputs? Does it need mode/operation/resource parameters? For example: "Vector Store has dynamic inputs based on mode, so I need to set mode:insert for document input" or "Gmail needs resource:message and operation:send to send emails"',
 		),
 	initialParameters: z
-		.object({})
-		.passthrough()
+		.looseObject({})
 		.describe(
 			'Initial parameters to set on the node. This includes: (1) connection-affecting parameters like mode, hasOutputParser, textSplittingMode; (2) resource/operation for nodes with multiple resources (Gmail, Notion, Google Sheets, etc.). Pass an empty object {} if no initial parameters are needed.',
 		),
@@ -241,7 +240,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 				// Handle validation or unexpected errors
 				if (error instanceof z.ZodError) {
 					const validationError = new ValidationError('Invalid input parameters', {
-						extra: { errors: error.errors },
+						extra: { errors: error.issues },
 					});
 					reporter.error(validationError);
 					return createErrorResponse(config, validationError);

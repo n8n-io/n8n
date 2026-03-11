@@ -26,14 +26,12 @@ const VALID_SORT_OPTIONS = [
 ] as const;
 
 // Filter schema - only allow specific properties
-export const filterSchema = z
-	.object({
-		parentFolderId: z.string().optional(),
-		name: z.string().optional(),
-		tags: z.array(z.string()).optional(),
-		excludeFolderIdAndDescendants: z.string().optional(),
-	})
-	.strict();
+export const filterSchema = z.strictObject({
+	parentFolderId: z.string().optional(),
+	name: z.string().optional(),
+	tags: z.array(z.string()).optional(),
+	excludeFolderIdAndDescendants: z.string().optional(),
+});
 
 // ---------------------
 // Parameter Validators
@@ -51,7 +49,7 @@ const filterValidator = z
 				return filterSchema.parse(parsed);
 			} catch (e) {
 				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
+					code: 'custom',
 					message: 'Invalid filter fields',
 					path: ['filter'],
 				});
@@ -59,7 +57,7 @@ const filterValidator = z
 			}
 		} catch (e) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'Invalid filter format',
 				path: ['filter'],
 			});
@@ -73,7 +71,7 @@ const skipValidator = z
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : 0))
 	.refine((val) => !isNaN(val), {
-		message: 'Skip must be a valid number',
+		error: 'Skip must be a valid number',
 	});
 
 // Take parameter validation
@@ -82,7 +80,7 @@ const takeValidator = z
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : 10))
 	.refine((val) => !isNaN(val), {
-		message: 'Take must be a valid number',
+		error: 'Take must be a valid number',
 	});
 
 // Select parameter validation
@@ -104,7 +102,7 @@ const selectValidator = z
 				);
 			} catch (e) {
 				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
+					code: 'custom',
 					message: `Invalid select fields. Valid fields are: ${VALID_SELECT_FIELDS.join(', ')}`,
 					path: ['select'],
 				});
@@ -112,7 +110,7 @@ const selectValidator = z
 			}
 		} catch (e) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'Invalid select format',
 				path: ['select'],
 			});

@@ -87,7 +87,9 @@ export const FieldTypeSchema: z.ZodType<FieldType> = z.enum([
 // it's unclear whether functions are really expected.
 const ObjectLikeSchema = z.custom<object>(
 	(v) => (typeof v === 'object' && v !== null) || typeof v === 'function',
-	{ message: 'Expected a non-primitive object' },
+	{
+		error: 'Expected a non-primitive object',
+	},
 );
 
 export const GenericValueSchema: z.ZodType<GenericValue> = z.union([
@@ -219,7 +221,7 @@ export const IPostReceiveSetSchema: z.ZodType<IPostReceiveSet> = IPostReceiveBas
 export const IPostReceiveSetKeyValueSchema: z.ZodType<IPostReceiveSetKeyValue> =
 	IPostReceiveBaseSchema.extend({
 		type: z.literal('setKeyValue'),
-		properties: z.record(z.union([z.string(), z.number()])),
+		properties: z.record(z.string(), z.union([z.string(), z.number()])),
 	});
 
 export const IPostReceiveSortSchema: z.ZodType<IPostReceiveSort> = IPostReceiveBaseSchema.extend({
@@ -362,7 +364,7 @@ export const ResourceMapperFieldSchema: z.ZodType<ResourceMapperField> = z.objec
 
 export const ResourceMapperValueSchema: z.ZodType<ResourceMapperValue> = z.object({
 	mappingMode: z.string(),
-	value: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])),
+	value: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])),
 	matchingColumns: z.array(z.string()),
 	schema: z.array(ResourceMapperFieldSchema),
 	attemptToConvertTypes: z.boolean(),

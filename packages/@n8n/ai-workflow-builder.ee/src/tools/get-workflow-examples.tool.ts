@@ -182,7 +182,7 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				// Handle validation or unexpected errors
 				if (error instanceof z.ZodError) {
 					const validationError = new ValidationError('Invalid input parameters', {
-						extra: { errors: error.errors },
+						extra: { errors: error.issues },
 					});
 					reporter.error(validationError);
 					return createErrorResponse(config, validationError);

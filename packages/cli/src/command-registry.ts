@@ -129,7 +129,7 @@ export class CommandRegistry {
 					.object({
 						help: z.boolean().alias('h').describe('Show CLI help'),
 					})
-					.merge(flagsSchema).shape,
+					.extend(flagsSchema.shape).shape,
 			);
 			for (const [flagName, flagSchema] of flagEntries) {
 				let schemaDef = flagSchema._def as z.ZodTypeDef & {

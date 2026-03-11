@@ -12,6 +12,6 @@ export const nodeVersionSchema = z
 			);
 		},
 		{
-			message: 'Invalid node version. Must be in format: major.minor',
+			error: 'Invalid node version. Must be in format: major.minor',
 		},
 	);

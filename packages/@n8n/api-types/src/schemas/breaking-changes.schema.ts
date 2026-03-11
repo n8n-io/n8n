@@ -79,7 +79,7 @@ const breakingChangeReportDataSchema = {
 	workflowResults: z.array(workflowRuleResultsSchema),
 } as const;
 
-const breakingChangeReportSchema = z.object(breakingChangeReportDataSchema).strict();
+const breakingChangeReportSchema = z.strictObject(breakingChangeReportDataSchema);
 
 const breakingChangeLightReportDataSchema = {
 	generatedAt: z.date(),
@@ -93,7 +93,7 @@ const breakingChangeLightReportDataSchema = {
 	),
 } as const;
 
-const breakingChangeLightReportSchema = z.object(breakingChangeLightReportDataSchema).strict();
+const breakingChangeLightReportSchema = z.strictObject(breakingChangeLightReportDataSchema);
 
 const breakingChangeReportResultDataSchema = z.object({
 	report: breakingChangeReportSchema,

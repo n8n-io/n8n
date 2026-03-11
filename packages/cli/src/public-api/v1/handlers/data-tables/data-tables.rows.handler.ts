@@ -76,7 +76,7 @@ export = {
 				const payload = PublicApiListDataTableContentQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
 					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid query parameters',
+						message: payload.error.issues[0]?.message || 'Invalid query parameters',
 					});
 				}
 
@@ -120,7 +120,7 @@ export = {
 				const payload = AddDataTableRowsDto.safeParse(req.body);
 				if (!payload.success) {
 					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid request body',
+						message: payload.error.issues[0]?.message || 'Invalid request body',
 					});
 				}
 
@@ -150,7 +150,7 @@ export = {
 				const payload = UpdateDataTableRowDto.safeParse(req.body);
 				if (!payload.success) {
 					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid request body',
+						message: payload.error.issues[0]?.message || 'Invalid request body',
 					});
 				}
 
@@ -182,7 +182,7 @@ export = {
 				const payload = UpsertDataTableRowDto.safeParse(req.body);
 				if (!payload.success) {
 					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid request body',
+						message: payload.error.issues[0]?.message || 'Invalid request body',
 					});
 				}
 
@@ -214,7 +214,7 @@ export = {
 				const payload = DeleteDataTableRowsDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
 					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid query parameters',
+						message: payload.error.issues[0]?.message || 'Invalid query parameters',
 					});
 				}
 

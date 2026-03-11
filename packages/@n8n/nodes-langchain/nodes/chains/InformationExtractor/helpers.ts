@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AttributeDefinition } from './types';
 
 function makeAttributeSchema(attributeDefinition: AttributeDefinition, required: boolean = true) {
-	let schema: z.ZodTypeAny;
+	let schema: z.ZodType;
 
 	if (attributeDefinition.type === 'string') {
 		schema = z.string();
@@ -12,7 +12,7 @@ function makeAttributeSchema(attributeDefinition: AttributeDefinition, required:
 	} else if (attributeDefinition.type === 'boolean') {
 		schema = z.boolean();
 	} else if (attributeDefinition.type === 'date') {
-		schema = z.string().date();
+		schema = z.iso.date();
 	} else {
 		schema = z.unknown();
 	}

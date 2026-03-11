@@ -36,8 +36,8 @@ export const dataTableSchema = z.object({
 	id: dataTableIdSchema,
 	name: dataTableNameSchema,
 	columns: z.array(dataTableColumnSchema),
-	createdAt: z.string().datetime(),
-	updatedAt: z.string().datetime(),
+	createdAt: z.iso.datetime(),
+	updatedAt: z.iso.datetime(),
 });
 export type DataTable = z.infer<typeof dataTableSchema>;
 export type DataTableColumn = z.infer<typeof dataTableColumnSchema>;
@@ -54,8 +54,7 @@ export type DataTableListOptions = Partial<ListDataTableQueryDto> & {
 
 export type DataTableListSortBy = ListDataTableQueryDto['sortBy'];
 
-export const dateTimeSchema = z
-	.string()
+export const dateTimeSchema = z.iso
 	.datetime({ offset: true })
 	.transform((s) => new Date(s))
 	.pipe(z.date());

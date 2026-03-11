@@ -18,14 +18,14 @@ const nameSchema = () =>
 		.min(1)
 		.max(32)
 		.refine(xssCheck, {
-			message: 'Potentially malicious string',
+			error: 'Potentially malicious string',
 		})
 		.refine(urlCheck, {
-			message: 'Potentially malicious string',
+			error: 'Potentially malicious string',
 		});
 
 export class UserUpdateRequestDto extends Z.class({
-	email: z.string().email(),
+	email: z.email(),
 	firstName: nameSchema().optional(),
 	lastName: nameSchema().optional(),
 	mfaCode: z.string().optional(),

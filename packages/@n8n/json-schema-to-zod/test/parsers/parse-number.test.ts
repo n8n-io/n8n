@@ -8,21 +8,21 @@ describe('parseNumber', () => {
 			parseNumber({
 				type: 'integer',
 			}),
-		).toMatchZod(z.number().int());
+		).toMatchZod(z.int());
 
 		expect(
 			parseNumber({
 				type: 'integer',
 				multipleOf: 1,
 			}),
-		).toMatchZod(z.number().int());
+		).toMatchZod(z.int());
 
 		expect(
 			parseNumber({
 				type: 'number',
 				multipleOf: 1,
 			}),
-		).toMatchZod(z.number().int());
+		).toMatchZod(z.int());
 	});
 
 	test('should handle maximum with exclusiveMinimum', () => {
@@ -78,6 +78,6 @@ describe('parseNumber', () => {
 					maximum: 'nuts',
 				},
 			}),
-		).toMatchZod(z.number().int('ayy').multipleOf(2, 'lmao').gt(0, 'deez').lte(2, 'nuts'));
+		).toMatchZod(z.int('ayy').multipleOf(2, 'lmao').gt(0, 'deez').lte(2, 'nuts'));
 	});
 });

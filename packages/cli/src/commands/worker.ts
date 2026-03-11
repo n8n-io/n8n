@@ -20,7 +20,7 @@ import { BaseCommand } from './base-command';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 const flagsSchema = z.object({
-	concurrency: z.number().int().default(10).describe('How many jobs can run in parallel.'),
+	concurrency: z.int().default(10).describe('How many jobs can run in parallel.'),
 });
 
 @Command({

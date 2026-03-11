@@ -23,7 +23,7 @@ export = {
 		async (req: AuthenticatedRequest, res: Response) => {
 			const payload = CreateVariableRequestDto.safeParse(req.body);
 			if (payload.error) {
-				return res.status(400).json(payload.error.errors[0]);
+				return res.status(400).json(payload.error.issues[0]);
 			}
 			await Container.get(VariablesController).createVariable(req, res, payload.data);
 
@@ -36,7 +36,7 @@ export = {
 		async (req: AuthenticatedRequest<{ id: string }>, res: Response) => {
 			const payload = UpdateVariableRequestDto.safeParse(req.body);
 			if (payload.error) {
-				return res.status(400).json(payload.error.errors[0]);
+				return res.status(400).json(payload.error.issues[0]);
 			}
 			await Container.get(VariablesController).updateVariable(req, res, payload.data);
 

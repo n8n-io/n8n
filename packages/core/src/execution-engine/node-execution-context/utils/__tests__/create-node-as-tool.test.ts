@@ -397,7 +397,7 @@ describe('createNodeAsTool', () => {
 
 			const tool = createNodeAsTool(options).response;
 
-			expect(tool.schema.shape.complexJson._def.innerType).toBeInstanceOf(z.ZodEffects);
+			expect(tool.schema.shape.complexJson._zod.def.innerType).toBeInstanceOf(z.ZodEffects);
 			expect(tool.schema.shape.complexJson.description).toBe('Param with complex JSON default');
 			expect(tool.schema.shape.complexJson._def.defaultValue()).toEqual({
 				nested: { key: 'value' },
@@ -498,7 +498,7 @@ describe('createNodeAsTool', () => {
 
 			const tool = createNodeAsTool(options).response;
 
-			expect(tool.schema.shape.excessArgs._def.innerType).toBeInstanceOf(z.ZodString);
+			expect(tool.schema.shape.excessArgs._zod.def.innerType).toBeInstanceOf(z.ZodString);
 			expect(tool.schema.shape.excessArgs.description).toBe('Param with excess arguments');
 			expect(tool.schema.shape.excessArgs._def.defaultValue()).toBe('default');
 		});

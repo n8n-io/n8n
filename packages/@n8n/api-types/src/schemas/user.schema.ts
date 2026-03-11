@@ -27,7 +27,7 @@ export const userBaseSchema = z.object({
 	id: z.string(),
 	firstName: z.string().nullable().optional(),
 	lastName: z.string().nullable().optional(),
-	email: z.string().email().nullable().optional(),
+	email: z.email().nullable().optional(),
 	role: roleSchema.optional(),
 });
 
@@ -36,7 +36,7 @@ export const userDetailSchema = userBaseSchema.extend({
 	isOwner: z.boolean().optional(),
 	signInType: z.string().optional(),
 	settings: userSettingsSchema.nullable().optional(),
-	personalizationAnswers: z.object({}).passthrough().nullable().optional(),
+	personalizationAnswers: z.looseObject({}).nullable().optional(),
 	projectRelations: z.array(userProjectSchema).nullable().optional(),
 	mfaEnabled: z.boolean().optional(),
 	lastActiveAt: z.string().nullable().optional(),

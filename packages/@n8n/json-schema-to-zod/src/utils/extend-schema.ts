@@ -3,15 +3,16 @@ import type { z } from 'zod';
 import type { JsonSchemaObject } from '../types';
 
 export function extendSchemaWithMessage<
-	TZod extends z.ZodTypeAny,
+	TIn extends z.ZodType,
+	TOut extends z.ZodType,
 	TJson extends JsonSchemaObject,
 	TKey extends keyof TJson,
 >(
-	zodSchema: TZod,
+	zodSchema: TIn,
 	jsonSchema: TJson,
 	key: TKey,
-	extend: (zodSchema: TZod, value: NonNullable<TJson[TKey]>, errorMessage?: string) => TZod,
-) {
+	extend: (zodSchema: TIn, value: NonNullable<TJson[TKey]>, errorMessage?: string) => TOut,
+): TIn | TOut {
 	const value = jsonSchema[key];
 
 	if (value !== undefined) {

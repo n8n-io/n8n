@@ -269,13 +269,13 @@ export function createRemoveConnectionTool(logger?: Logger): BuilderTool {
 
 				if (error instanceof z.ZodError) {
 					const validationError = new ValidationError('Invalid connection removal parameters', {
-						field: error.errors[0]?.path.join('.'),
-						value: error.errors[0]?.message,
+						field: error.issues[0]?.path.join('.'),
+						value: error.issues[0]?.message,
 					});
 					toolError = {
 						message: validationError.message,
 						code: 'VALIDATION_ERROR',
-						details: error.errors,
+						details: error.issues,
 					};
 				} else {
 					toolError = {

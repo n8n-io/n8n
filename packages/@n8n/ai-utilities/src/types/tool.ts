@@ -1,5 +1,5 @@
 import type { JSONSchema7 } from 'json-schema';
-import type { ZodTypeAny, ZodEffects, ZodSchema } from 'zod';
+import type { ZodEffects, ZodSchema, ZodType } from 'zod';
 
 export interface FunctionTool {
 	type: 'function';
@@ -16,7 +16,7 @@ export interface FunctionTool {
 	/**
 	 * JSON or Zod schema describing the tool's parameters
 	 */
-	inputSchema: JSONSchema7 | ZodSchema<any> | ZodEffects<ZodTypeAny>;
+	inputSchema: JSONSchema7 | ZodSchema<any> | ZodEffects<ZodType>;
 
 	/**
 	 * Whether this tool should be called strictly according to schema

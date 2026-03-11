@@ -39,7 +39,7 @@ export function extractFromAIParameters(nodeParameters: INodeParameters): FromAI
  * Creates a Zod schema from $fromAI arguments.
  */
 export function createZodSchemaFromArgs(args: FromAIArgument[]): z.ZodObject<z.ZodRawShape> {
-	const schemaObj = args.reduce((acc: Record<string, z.ZodTypeAny>, placeholder) => {
+	const schemaObj = args.reduce((acc: Record<string, z.ZodType>, placeholder) => {
 		acc[placeholder.key] = generateZodSchema(placeholder);
 		return acc;
 	}, {});

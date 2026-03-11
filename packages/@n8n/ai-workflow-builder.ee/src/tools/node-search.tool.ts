@@ -18,7 +18,7 @@ const searchQuerySchema = z.object({
 	queryType: z.enum(['name', 'subNodeSearch']).describe('Type of search to perform'),
 	query: z.string().optional().describe('Search term to filter results'),
 	connectionType: z
-		.nativeEnum(NodeConnectionTypes)
+		.enum(NodeConnectionTypes)
 		.optional()
 		.describe('For subNodeSearch: connection type like ai_languageModel, ai_tool, etc.'),
 });
@@ -178,7 +178,7 @@ export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]) {
 				// Handle validation or unexpected errors
 				if (error instanceof z.ZodError) {
 					const validationError = new ValidationError('Invalid input parameters', {
-						extra: { errors: error.errors },
+						extra: { errors: error.issues },
 					});
 					reporter.error(validationError);
 					return createErrorResponse(config, validationError);

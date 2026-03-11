@@ -27,8 +27,8 @@ export const OAuth2IntrospectionOptionsSchema = z.object({
 type OAuth2IntrospectionOptions = z.infer<typeof OAuth2IntrospectionOptionsSchema>;
 
 const OAuth2MetadataSchema = z.object({
-	issuer: z.string().url(),
-	introspection_endpoint: z.string().url(),
+	issuer: z.url(),
+	introspection_endpoint: z.url(),
 	// This could be an well defined enum, but to make sure we are not failing validation
 	// of unknown values, we keep it as string
 	introspection_endpoint_auth_methods_supported: z.array(z.string()).optional(),
@@ -36,25 +36,23 @@ const OAuth2MetadataSchema = z.object({
 
 type OAuth2Metadata = z.infer<typeof OAuth2MetadataSchema>;
 
-export const TokenIntrospectionResponseSchema = z
-	.object({
-		// Core fields
-		active: z.boolean(),
+export const TokenIntrospectionResponseSchema = z.looseObject({
+	// Core fields
+	active: z.boolean(),
 
-		// Standard optional fields
-		scope: z.string().optional(),
-		client_id: z.string().optional(),
-		username: z.string().optional(),
-		token_type: z.string().optional(),
-		exp: z.number().int().optional(),
-		iat: z.number().int().optional(),
-		nbf: z.number().int().optional(),
-		sub: z.string().optional(),
-		aud: z.union([z.string(), z.array(z.string())]).optional(),
-		iss: z.string().optional(),
-		jti: z.string().optional(),
-	})
-	.passthrough(); // Allow additional custom claims
+	// Standard optional fields
+	scope: z.string().optional(),
+	client_id: z.string().optional(),
+	username: z.string().optional(),
+	token_type: z.string().optional(),
+	exp: z.int().optional(),
+	iat: z.int().optional(),
+	nbf: z.int().optional(),
+	sub: z.string().optional(),
+	aud: z.union([z.string(), z.array(z.string())]).optional(),
+	iss: z.string().optional(),
+	jti: z.string().optional(),
+}); // Allow additional custom claims
 
 export type TokenIntrospectionResponse = z.infer<typeof TokenIntrospectionResponseSchema>;
 

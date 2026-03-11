@@ -215,7 +215,7 @@ export class OutputParserStructured implements INodeType {
 				? generateSchemaFromExample(jsonExample, jsonExampleAllFieldsRequired)
 				: jsonParse<JSONSchema7>(inputSchema);
 
-		const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
+		const zodSchema = convertJsonSchemaToZod<z.ZodType<object>>(jsonSchema);
 		const nodeVersion = this.getNode().typeVersion;
 
 		const autoFix = this.getNodeParameter('autoFix', itemIndex, false) as boolean;

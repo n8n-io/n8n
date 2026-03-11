@@ -4,54 +4,65 @@ import type { JsonSchemaObject } from '../types';
 import { extendSchemaWithMessage } from '../utils/extend-schema';
 
 export const parseString = (jsonSchema: JsonSchemaObject & { type: 'string' }) => {
-	let zodSchema = z.string();
+	let stringSchema = z.string();
+
+	stringSchema = extendSchemaWithMessage(
+		stringSchema,
+		jsonSchema,
+		'pattern',
+		(zs, pattern, errorMsg) => zs.regex(new RegExp(pattern), errorMsg),
+	);
+
+	stringSchema = extendSchemaWithMessage(
+		stringSchema,
+		jsonSchema,
+		'minLength',
+		(zs, minLength, errorMsg) => zs.min(minLength, errorMsg),
+	);
+
+	stringSchema = extendSchemaWithMessage(
+		stringSchema,
+		jsonSchema,
+		'maxLength',
+		(zs, maxLength, errorMsg) => zs.max(maxLength, errorMsg),
+	);
+
+	let zodSchema: z.ZodType<string> = stringSchema;
 
 	zodSchema = extendSchemaWithMessage(zodSchema, jsonSchema, 'format', (zs, format, errorMsg) => {
 		switch (format) {
 			case 'email':
-				return zs.email(errorMsg);
+				return z.email(errorMsg);
 			case 'ip':
-				return zs.ip(errorMsg);
+				return z.union([z.ipv4(), z.ipv6()]);
 			case 'ipv4':
-				return zs.ip({ version: 'v4', message: errorMsg });
+				return z.ipv4();
 			case 'ipv6':
-				return zs.ip({ version: 'v6', message: errorMsg });
+				return z.ipv6();
 			case 'uri':
-				return zs.url(errorMsg);
+				return z.url(errorMsg);
 			case 'uuid':
-				return zs.uuid(errorMsg);
+				return z.uuid(errorMsg);
 			case 'date-time':
-				return zs.datetime({ offset: true, message: errorMsg });
+				return z.iso.datetime({ offset: true, message: errorMsg });
 			case 'time':
-				return zs.time(errorMsg);
+				return z.iso.time(errorMsg);
 			case 'date':
-				return zs.date(errorMsg);
+				return z.iso.date(errorMsg);
 			case 'binary':
-				return zs.base64(errorMsg);
+				return z.base64(errorMsg);
 			case 'duration':
-				return zs.duration(errorMsg);
+				return z.iso.duration(errorMsg);
 			default:
 				return zs;
 		}
 	});
 
-	zodSchema = extendSchemaWithMessage(zodSchema, jsonSchema, 'contentEncoding', (zs, _, errorMsg) =>
-		zs.base64(errorMsg),
-	);
-	zodSchema = extendSchemaWithMessage(zodSchema, jsonSchema, 'pattern', (zs, pattern, errorMsg) =>
-		zs.regex(new RegExp(pattern), errorMsg),
-	);
 	zodSchema = extendSchemaWithMessage(
 		zodSchema,
 		jsonSchema,
-		'minLength',
-		(zs, minLength, errorMsg) => zs.min(minLength, errorMsg),
-	);
-	zodSchema = extendSchemaWithMessage(
-		zodSchema,
-		jsonSchema,
-		'maxLength',
-		(zs, maxLength, errorMsg) => zs.max(maxLength, errorMsg),
+		'contentEncoding',
+		(_zs, _pattern, errorMsg) => z.base64(errorMsg),
 	);
 
 	return zodSchema;

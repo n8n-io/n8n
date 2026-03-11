@@ -59,11 +59,11 @@ export interface IAbstractEventMessage {
 // Circuit Breaker Options Schema
 const circuitBreakerSchema = z
 	.object({
-		maxFailures: z.number().int().positive().optional(),
-		maxDuration: z.number().int().positive().optional(),
-		halfOpenRequests: z.number().int().positive().optional(),
-		failureWindow: z.number().int().positive().optional(),
-		maxConcurrentHalfOpenRequests: z.number().int().positive().optional(),
+		maxFailures: z.int().positive().optional(),
+		maxDuration: z.int().positive().optional(),
+		halfOpenRequests: z.int().positive().optional(),
+		failureWindow: z.int().positive().optional(),
+		maxConcurrentHalfOpenRequests: z.int().positive().optional(),
 	})
 	.optional();
 
@@ -82,8 +82,8 @@ const webhookParameterOptionsSchema = z
 	.object({
 		batch: z
 			.object({
-				batchSize: z.number().int().positive().optional(),
-				batchInterval: z.number().int().positive().optional(),
+				batchSize: z.int().positive().optional(),
+				batchInterval: z.int().positive().optional(),
 			})
 			.optional(),
 		allowUnauthorizedCerts: z.boolean().optional(),
@@ -92,7 +92,7 @@ const webhookParameterOptionsSchema = z
 			.object({
 				redirect: z.object({
 					followRedirects: z.boolean().optional(),
-					maxRedirects: z.number().int().positive().optional(),
+					maxRedirects: z.int().positive().optional(),
 				}),
 			})
 			.transform((val) => val.redirect)
@@ -114,17 +114,17 @@ const webhookParameterOptionsSchema = z
 				proxy: z.object({
 					protocol: z.enum(['https', 'http']),
 					host: z.string(),
-					port: z.number().int().positive(),
+					port: z.int().positive(),
 				}),
 			})
 			.transform((val) => val.proxy)
 			.optional(),
-		timeout: z.number().int().positive().optional(),
+		timeout: z.int().positive().optional(),
 		socket: z
 			.object({
 				keepAlive: z.boolean().optional(),
-				maxSockets: z.number().int().positive().optional(),
-				maxFreeSockets: z.number().int().positive().optional(),
+				maxSockets: z.int().positive().optional(),
+				maxFreeSockets: z.int().positive().optional(),
 			})
 			.optional(),
 	})
@@ -144,7 +144,7 @@ export const MessageEventBusDestinationOptionsSchema = z.object({
 	label: z.string().min(1).optional(),
 	enabled: z.boolean().optional(),
 	subscribedEvents: z.array(z.string()).optional(),
-	credentials: z.record(z.unknown()).optional(),
+	credentials: z.record(z.string(), z.unknown()).optional(),
 	anonymizeAuditMessages: z.boolean().optional(),
 	circuitBreaker: circuitBreakerSchema,
 });
@@ -153,9 +153,9 @@ export const MessageEventBusDestinationOptionsSchema = z.object({
 export const MessageEventBusDestinationWebhookOptionsSchema =
 	MessageEventBusDestinationOptionsSchema.extend({
 		__type: z.literal('$$MessageEventBusDestinationWebhook'),
-		url: z.string().url(),
+		url: z.url(),
 		responseCodeMustMatch: z.boolean().optional(),
-		expectedStatusCode: z.number().int().optional(),
+		expectedStatusCode: z.int().optional(),
 		method: z.string().optional(),
 		authentication: z
 			.enum(['predefinedCredentialType', 'genericCredentialType', 'none'])
@@ -178,7 +178,7 @@ export const MessageEventBusDestinationWebhookOptionsSchema =
 export const MessageEventBusDestinationSentryOptionsSchema =
 	MessageEventBusDestinationOptionsSchema.extend({
 		__type: z.literal('$$MessageEventBusDestinationSentry'),
-		dsn: z.string().url(),
+		dsn: z.url(),
 		tracesSampleRate: z.number().min(0).max(1).optional(),
 		sendPayload: z.boolean().optional(),
 	});
@@ -187,11 +187,11 @@ export const MessageEventBusDestinationSentryOptionsSchema =
 export const MessageEventBusDestinationSyslogOptionsSchema =
 	MessageEventBusDestinationOptionsSchema.extend({
 		__type: z.literal('$$MessageEventBusDestinationSyslog'),
-		expectedStatusCode: z.number().int().optional(),
+		expectedStatusCode: z.int().optional(),
 		host: z.string().min(1),
-		port: z.number().int().positive().optional(),
+		port: z.int().positive().optional(),
 		protocol: z.enum(['udp', 'tcp', 'tls']).optional(),
-		facility: z.number().int().min(0).max(23).optional(),
+		facility: z.int().min(0).max(23).optional(),
 		app_name: z.string().optional(),
 		eol: z.string().optional(),
 		tlsCa: z.string().optional(),

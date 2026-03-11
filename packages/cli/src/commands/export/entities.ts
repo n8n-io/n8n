@@ -16,7 +16,7 @@ const flagsSchema = z.object({
 		.describe(
 			'Include execution history data tables, these are excluded by default as they can be very large',
 		)
-		.default(false),
+		.prefault(false),
 	keyFile: z
 		.string()
 		.describe('Optional path to a file containing a custom encryption key')

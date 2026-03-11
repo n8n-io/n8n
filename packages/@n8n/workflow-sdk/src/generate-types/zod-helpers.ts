@@ -169,7 +169,7 @@ export function optionsWithExpression<T extends string | number | boolean>(
  */
 export function multiOptionsSchema<T extends string | number | boolean>(
 	values: T[],
-): z.ZodArray<z.ZodTypeAny> {
+): z.ZodArray<z.ZodType> {
 	if (values.length === 0) {
 		return z.array(z.string());
 	}

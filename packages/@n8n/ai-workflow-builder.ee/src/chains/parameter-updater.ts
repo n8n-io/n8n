@@ -22,8 +22,7 @@ import type { ParameterUpdaterOptions } from '../types/config';
 export const parametersSchema = z
 	.object({
 		parameters: z
-			.object({})
-			.passthrough()
+			.looseObject({})
 			.describe(
 				"The complete updated parameters object for the node. This should be a JSON object that matches the node's parameter structure. Include ALL existing parameters plus the requested changes.",
 			),

@@ -14,7 +14,7 @@ describe('parseString', () => {
 			errorMessage: { format: 'hello' },
 		});
 
-		expect(code).toMatchZod(z.string().datetime({ offset: true, message: 'hello' }));
+		expect(code).toMatchZod(z.iso.datetime({ offset: true, error: 'hello' }));
 
 		expect(run(code, datetime)).toEqual({ success: true, data: datetime });
 	});
@@ -25,7 +25,7 @@ describe('parseString', () => {
 				type: 'string',
 				format: 'email',
 			}),
-		).toMatchZod(z.string().email());
+		).toMatchZod(z.email());
 	});
 
 	test('ip', () => {
@@ -34,14 +34,14 @@ describe('parseString', () => {
 				type: 'string',
 				format: 'ip',
 			}),
-		).toMatchZod(z.string().ip());
+		).toMatchZod(z.union([z.ipv4(), z.ipv6()]));
 
 		expect(
 			parseString({
 				type: 'string',
 				format: 'ipv6',
 			}),
-		).toMatchZod(z.string().ip({ version: 'v6' }));
+		).toMatchZod(z.ipv6());
 	});
 
 	test('uri', () => {
@@ -50,7 +50,7 @@ describe('parseString', () => {
 				type: 'string',
 				format: 'uri',
 			}),
-		).toMatchZod(z.string().url());
+		).toMatchZod(z.url());
 	});
 
 	test('uuid', () => {
@@ -59,7 +59,7 @@ describe('parseString', () => {
 				type: 'string',
 				format: 'uuid',
 			}),
-		).toMatchZod(z.string().uuid());
+		).toMatchZod(z.uuid());
 	});
 
 	test('time', () => {
@@ -68,7 +68,7 @@ describe('parseString', () => {
 				type: 'string',
 				format: 'time',
 			}),
-		).toMatchZod(z.string().time());
+		).toMatchZod(z.iso.time());
 	});
 
 	test('date', () => {
@@ -77,7 +77,7 @@ describe('parseString', () => {
 				type: 'string',
 				format: 'date',
 			}),
-		).toMatchZod(z.string().date());
+		).toMatchZod(z.iso.date());
 	});
 
 	test('duration', () => {
@@ -86,7 +86,7 @@ describe('parseString', () => {
 				type: 'string',
 				format: 'duration',
 			}),
-		).toMatchZod(z.string().duration());
+		).toMatchZod(z.iso.duration());
 	});
 
 	test('base64', () => {
@@ -95,7 +95,7 @@ describe('parseString', () => {
 				type: 'string',
 				contentEncoding: 'base64',
 			}),
-		).toMatchZod(z.string().base64());
+		).toMatchZod(z.base64());
 
 		expect(
 			parseString({
@@ -105,14 +105,14 @@ describe('parseString', () => {
 					contentEncoding: 'x',
 				},
 			}),
-		).toMatchZod(z.string().base64('x'));
+		).toMatchZod(z.base64('x'));
 
 		expect(
 			parseString({
 				type: 'string',
 				format: 'binary',
 			}),
-		).toMatchZod(z.string().base64());
+		).toMatchZod(z.base64());
 
 		expect(
 			parseString({
@@ -122,7 +122,7 @@ describe('parseString', () => {
 					format: 'x',
 				},
 			}),
-		).toMatchZod(z.string().base64('x'));
+		).toMatchZod(z.base64('x'));
 	});
 
 	test('should accept errorMessage', () => {
@@ -140,13 +140,6 @@ describe('parseString', () => {
 					maxLength: 'nuts',
 				},
 			}),
-		).toMatchZod(
-			z
-				.string()
-				.ip({ version: 'v4', message: 'ayy' })
-				.regex(new RegExp('x'), 'lmao')
-				.min(1, 'deez')
-				.max(2, 'nuts'),
-		);
+		).toMatchZod(z.ipv4().regex(new RegExp('x'), 'lmao').min(1, 'deez').max(2, 'nuts'));
 	});
 });

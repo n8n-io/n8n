@@ -23,7 +23,7 @@ const questionResponseSchema = z.object({
 });
 
 const answersArraySchema = z.array(questionResponseSchema);
-const answersRecordSchema = z.record(z.union([z.string(), z.array(z.string())]));
+const answersRecordSchema = z.record(z.string(), z.union([z.string(), z.array(z.string())]));
 
 type PlannerQuestionInput = z.infer<typeof plannerQuestionSchema>;
 type SubmitQuestionsInput = z.infer<typeof submitQuestionsInputSchema>;

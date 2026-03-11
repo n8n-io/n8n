@@ -15,7 +15,7 @@ const customGlobalRoleSchema = z
 	.string()
 	.nonempty()
 	.refine((val) => !globalRoleSchema.safeParse(val).success, {
-		message: 'This global role value is not assignable',
+		error: 'This global role value is not assignable',
 	});
 
 export const assignableGlobalRoleSchema = z.union([
@@ -42,7 +42,7 @@ export const customProjectRoleSchema = z
 	.string()
 	.nonempty()
 	.refine((val) => !systemProjectRoleSchema.safeParse(val).success, {
-		message: 'This global role value is not assignable',
+		error: 'This global role value is not assignable',
 	});
 
 // Those are all the system roles for projects
@@ -60,7 +60,7 @@ export const workflowSharingRoleSchema = z.enum(['workflow:owner', 'workflow:edi
 const ALL_SCOPES_LOOKUP_SET = new Set(ALL_SCOPES as string[]);
 
 export const scopeSchema = z.string().refine((val) => ALL_SCOPES_LOOKUP_SET.has(val), {
-	message: 'Invalid scope',
+	error: 'Invalid scope',
 });
 
 export const roleSchema = z.object({

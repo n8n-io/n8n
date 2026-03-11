@@ -8,12 +8,10 @@ import { z } from 'zod';
 
 import { GuardrailError, type GuardrailResult, type LLMConfig } from '../actions/types';
 
-const LlmResponseSchema = z
-	.object({
-		confidenceScore: z.number().min(0).max(1).describe('Confidence score between 0.0 and 1.0'),
-		flagged: z.boolean().describe('Whether the input violates the guardrail (true) or not (false)'),
-	})
-	.strict();
+const LlmResponseSchema = z.strictObject({
+	confidenceScore: z.number().min(0).max(1).describe('Confidence score between 0.0 and 1.0'),
+	flagged: z.boolean().describe('Whether the input violates the guardrail (true) or not (false)'),
+});
 
 export const LLM_SYSTEM_RULES = `Only respond with the json object and nothing else.
 

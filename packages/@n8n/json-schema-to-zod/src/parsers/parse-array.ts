@@ -9,7 +9,7 @@ export const parseArray = (jsonSchema: JsonSchemaObject & { type: 'array' }, ref
 		return z.tuple(
 			jsonSchema.items.map((v, i) =>
 				parseSchema(v, { ...refs, path: [...refs.path, 'items', i] }),
-			) as [z.ZodTypeAny],
+			) as [z.ZodType],
 		);
 	}
 

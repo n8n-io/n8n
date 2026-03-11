@@ -2,7 +2,7 @@ import { assignableGlobalRoleSchema } from '@n8n/permissions';
 import { z } from 'zod';
 
 const invitedUserSchema = z.object({
-	email: z.string().email(),
+	email: z.email(),
 	role: assignableGlobalRoleSchema.default('global:member'),
 });
 

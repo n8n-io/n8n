@@ -46,7 +46,6 @@ const flagsSchema = z.object({
 		)
 		.optional(),
 	concurrency: z
-		.number()
 		.int()
 		.default(1)
 		.describe('How many workflows can run in parallel. Defaults to 1 which means no concurrency.'),
@@ -85,7 +84,6 @@ const flagsSchema = z.object({
 		.describe('File containing a comma separated list of workflow IDs to skip.')
 		.optional(),
 	retries: z
-		.number()
 		.int()
 		.default(1)
 		.describe('Retries failed workflows up to N tries. Default is 1. Set 0 to disable.'),

@@ -10,7 +10,7 @@ export const folderNameSchema = z
 	.superRefine((name, ctx) => {
 		if (name === '') {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'Folder name cannot be empty',
 			});
 			return;
@@ -18,7 +18,7 @@ export const folderNameSchema = z
 
 		if (illegalCharacterRegex.test(name)) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'Folder name contains invalid characters',
 			});
 			return;
@@ -26,7 +26,7 @@ export const folderNameSchema = z
 
 		if (dotsOnlyRegex.test(name)) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'Folder name cannot consist of dots only',
 			});
 			return;
@@ -34,7 +34,7 @@ export const folderNameSchema = z
 
 		if (name.startsWith('.')) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'Folder name cannot start with a dot',
 			});
 		}

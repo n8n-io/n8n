@@ -6,7 +6,7 @@ export class BinaryDataQueryDto extends Z.class({
 	id: z
 		.string()
 		.refine((id) => id.includes(':'), {
-			message: 'Missing binary data mode',
+			error: 'Missing binary data mode',
 		})
 		.refine(
 			(id) => {
@@ -14,7 +14,7 @@ export class BinaryDataQueryDto extends Z.class({
 				return ['database', 'filesystem', 'filesystem-v2', 's3'].includes(mode);
 			},
 			{
-				message: 'Invalid binary data mode',
+				error: 'Invalid binary data mode',
 			},
 		),
 	action: z.enum(['view', 'download']),

@@ -3,7 +3,7 @@ import type { z } from 'zod';
 import { parseSchema } from './parsers/parse-schema';
 import type { JsonSchemaToZodOptions, JsonSchema } from './types';
 
-export const jsonSchemaToZod = <T extends z.ZodTypeAny = z.ZodTypeAny>(
+export const jsonSchemaToZod = <T extends z.ZodType = z.ZodType>(
 	schema: JsonSchema,
 	options: JsonSchemaToZodOptions = {},
 ): T => {

@@ -23,8 +23,8 @@ class ParseError extends Error {}
  * @param placeholder The FromAIArgument object containing key, type, description, and defaultValue.
  * @returns A Zod schema corresponding to the placeholder's type and constraints.
  */
-export function generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
-	let schema: z.ZodTypeAny;
+export function generateZodSchema(placeholder: FromAIArgument): z.ZodType {
+	let schema: z.ZodType;
 
 	switch (placeholder.type?.toLowerCase()) {
 		case 'string':
@@ -37,7 +37,7 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
 			schema = z.boolean();
 			break;
 		case 'json': {
-			interface CustomSchemaDef extends z.ZodTypeDef {
+			interface CustomSchemaDef {
 				jsonSchema?: {
 					anyOf: [
 						{
@@ -63,7 +63,7 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
 					return Object.keys(data).length > 0;
 				},
 				{
-					message: 'Value must be a non-empty object or a non-empty array',
+					error: 'Value must be a non-empty object or a non-empty array',
 				},
 			);
 
@@ -74,7 +74,7 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
 			>;
 
 			// Attach the updated `jsonSchema` metadata to the internal definition.
-			typedSchema._def.jsonSchema = {
+			typedSchema._zod.def.jsonSchema = {
 				anyOf: [
 					{
 						type: 'object',

@@ -47,8 +47,8 @@ describe('N8nStructuredOutputParser', () => {
 
 			expect(result).toEqual({
 				output: {
-					message: '## Example\n```bash\n--set globals.enable=false\n```\n',
 					status: 'completed',
+					error: '## Example\n```bash\n--set globals.enable=false\n```\n',
 				},
 			});
 		});
@@ -147,8 +147,8 @@ describe('N8nStructuredOutputParser', () => {
 
 			expect(result).toEqual({
 				output: {
-					message: 'Simple message',
 					status: 'completed',
+					error: 'Simple message',
 				},
 			});
 		});
@@ -176,8 +176,8 @@ describe('N8nStructuredOutputParser', () => {
 
 			expect(result).toEqual({
 				output: {
-					message: 'Simple message',
 					status: 'completed',
+					error: 'Simple message',
 				},
 			});
 		});
@@ -201,7 +201,7 @@ describe('N8nStructuredOutputParser', () => {
 
 			expect(result).toEqual({
 				output: {
-					message: 'Line 1\nLine 2\n"quoted"',
+					error: 'Line 1\nLine 2\n"quoted"',
 				},
 			});
 		});

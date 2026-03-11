@@ -41,14 +41,12 @@ export type { ResolveSchemaConfig, ResolveSchemaFn } from './resolve-schema';
  * Resource Mapper Value schema (object format)
  * Used for mapping input data to columns/fields
  */
-const resourceMapperObjectSchema = z
-	.object({
-		mappingMode: z.string(),
-		value: z.unknown().optional(),
-		schema: z.array(z.unknown()).optional(),
-		cachedResultName: z.string().optional(),
-	})
-	.passthrough();
+const resourceMapperObjectSchema = z.looseObject({
+	mappingMode: z.string(),
+	value: z.unknown().optional(),
+	schema: z.array(z.unknown()).optional(),
+	cachedResultName: z.string().optional(),
+});
 
 /**
  * Resource Mapper Value schema - accepts object format OR expression

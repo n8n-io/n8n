@@ -55,7 +55,7 @@ const filterValidatorSchema = z
 				return userFilterSchema.parse(parsed);
 			} catch (e) {
 				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
+					code: 'custom',
 					message: 'Invalid filter fields',
 					path: ['filter'],
 				});
@@ -63,7 +63,7 @@ const filterValidatorSchema = z
 			}
 		} catch (e) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'Invalid filter format',
 				path: ['filter'],
 			});

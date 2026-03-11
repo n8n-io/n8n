@@ -8,8 +8,7 @@ const isTimeNullOrInFuture = (value: number | null) => {
 };
 
 export class CreateApiKeyRequestDto extends UpdateApiKeyRequestDto.extend({
-	expiresAt: z
-		.number()
-		.nullable()
-		.refine(isTimeNullOrInFuture, { message: 'Expiration date must be in the future or null' }),
+	expiresAt: z.number().nullable().refine(isTimeNullOrInFuture, {
+		error: 'Expiration date must be in the future or null',
+	}),
 }) {}

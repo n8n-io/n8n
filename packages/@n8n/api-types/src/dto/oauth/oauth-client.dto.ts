@@ -11,8 +11,8 @@ export class OAuthClientResponseDto extends Z.class({
 	redirectUris: z.array(z.string()),
 	grantTypes: z.array(z.string()),
 	tokenEndpointAuthMethod: z.string(),
-	createdAt: z.string().datetime(), // Using string for date serialization over HTTP
-	updatedAt: z.string().datetime(),
+	createdAt: z.iso.datetime(), // Using string for date serialization over HTTP
+	updatedAt: z.iso.datetime(),
 }) {}
 
 /**
@@ -26,8 +26,8 @@ export class ListOAuthClientsResponseDto extends Z.class({
 			redirectUris: z.array(z.string()),
 			grantTypes: z.array(z.string()),
 			tokenEndpointAuthMethod: z.string(),
-			createdAt: z.string().datetime(),
-			updatedAt: z.string().datetime(),
+			createdAt: z.iso.datetime(),
+			updatedAt: z.iso.datetime(),
 		}),
 	),
 	count: z.number(),

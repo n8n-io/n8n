@@ -9,8 +9,8 @@ export const parseMultipleType = (
 ) => {
 	return z.union(
 		jsonSchema.type.map((type) => parseSchema({ ...jsonSchema, type } as JsonSchema, refs)) as [
-			z.ZodTypeAny,
-			z.ZodTypeAny,
+			z.ZodType,
+			z.ZodType,
 		],
 	);
 };

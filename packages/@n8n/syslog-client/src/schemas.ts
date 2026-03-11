@@ -18,14 +18,14 @@ const createEnumSchema = (enumObject: object, name: string) => {
  */
 export const clientOptionsSchema = z.object({
 	syslogHostname: z.string().optional(),
-	port: z.number().int().positive().max(65535).optional(),
-	tcpTimeout: z.number().int().positive().optional(),
+	port: z.int().positive().max(65535).optional(),
+	tcpTimeout: z.int().positive().optional(),
 	facility: createEnumSchema(Facility, 'facility').optional(),
 	severity: createEnumSchema(Severity, 'severity').optional(),
 	rfc3164: z.boolean().optional(),
 	appName: z.string().max(48).optional(), // RFC 5424 limit
-	dateFormatter: z.function().args(z.date()).returns(z.string()).optional(),
-	udpBindAddress: z.string().ip().optional(),
+	dateFormatter: z.function({ input: [z.date()], output: z.string() }).optional(),
+	udpBindAddress: z.union([z.ipv4(), z.ipv6()]).optional(),
 	transport: createEnumSchema(Transport, 'transport').optional(),
 	tlsCA: z
 		.union([z.string(), z.array(z.string()), z.instanceof(Buffer), z.array(z.instanceof(Buffer))])

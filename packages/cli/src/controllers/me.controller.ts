@@ -198,7 +198,7 @@ export class MeController {
 		const passwordValidation = passwordSchema.safeParse(newPassword);
 		if (!passwordValidation.success) {
 			throw new BadRequestError(
-				passwordValidation.error.errors.map(({ message }) => message).join(' '),
+				passwordValidation.error.issues.map(({ message }) => message).join(' '),
 			);
 		}
 

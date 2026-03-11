@@ -46,7 +46,7 @@ export async function venafiApiRequest(
 		);
 	} catch (error) {
 		if (error.response?.body?.error) {
-			let errors = error.response.body.error.errors;
+			let errors = error.response.body.error.issues;
 
 			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier

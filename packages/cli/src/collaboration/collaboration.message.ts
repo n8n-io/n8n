@@ -7,41 +7,31 @@ export type CollaborationMessage =
 	| WriteAccessReleaseRequestedMessage
 	| WriteAccessHeartbeatMessage;
 
-export const workflowOpenedMessageSchema = z
-	.object({
-		type: z.literal('workflowOpened'),
-		workflowId: z.string().min(1),
-	})
-	.strict();
+export const workflowOpenedMessageSchema = z.strictObject({
+	type: z.literal('workflowOpened'),
+	workflowId: z.string().min(1),
+});
 
-export const workflowClosedMessageSchema = z
-	.object({
-		type: z.literal('workflowClosed'),
-		workflowId: z.string().min(1),
-	})
-	.strict();
+export const workflowClosedMessageSchema = z.strictObject({
+	type: z.literal('workflowClosed'),
+	workflowId: z.string().min(1),
+});
 
-export const writeAccessRequestedMessageSchema = z
-	.object({
-		type: z.literal('writeAccessRequested'),
-		workflowId: z.string().min(1),
-		force: z.boolean().optional(),
-	})
-	.strict();
+export const writeAccessRequestedMessageSchema = z.strictObject({
+	type: z.literal('writeAccessRequested'),
+	workflowId: z.string().min(1),
+	force: z.boolean().optional(),
+});
 
-export const writeAccessReleaseRequestedMessageSchema = z
-	.object({
-		type: z.literal('writeAccessReleaseRequested'),
-		workflowId: z.string().min(1),
-	})
-	.strict();
+export const writeAccessReleaseRequestedMessageSchema = z.strictObject({
+	type: z.literal('writeAccessReleaseRequested'),
+	workflowId: z.string().min(1),
+});
 
-export const writeAccessHeartbeatMessageSchema = z
-	.object({
-		type: z.literal('writeAccessHeartbeat'),
-		workflowId: z.string().min(1),
-	})
-	.strict();
+export const writeAccessHeartbeatMessageSchema = z.strictObject({
+	type: z.literal('writeAccessHeartbeat'),
+	workflowId: z.string().min(1),
+});
 
 export const workflowMessageSchema = z.discriminatedUnion('type', [
 	workflowOpenedMessageSchema,

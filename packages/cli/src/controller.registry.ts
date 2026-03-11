@@ -102,7 +102,7 @@ export class ControllerRegistry {
 							const output = paramType.safeParse(req[arg.type]);
 							if (output.success) args.push(output.data);
 							else {
-								return res.status(400).json(output.error.errors[0]);
+								return res.status(400).json(output.error.issues[0]);
 							}
 						}
 					} else throw new UnexpectedError('Unknown arg type: ' + arg.type);

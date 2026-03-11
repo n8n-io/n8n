@@ -21,7 +21,7 @@ export class TaskBrokerAuthController {
 	async createGrantToken(req: AuthlessRequest) {
 		const result = await taskBrokerAuthRequestBodySchema.safeParseAsync(req.body);
 		if (!result.success) {
-			throw new BadRequestError(result.error.errors[0].code);
+			throw new BadRequestError(result.error.issues[0].code);
 		}
 
 		const { token: authToken } = result.data;

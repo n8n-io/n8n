@@ -13,7 +13,7 @@ export const parseAnyOf = (jsonSchema: JsonSchemaObject & { anyOf: JsonSchema[] 
 			: z.union(
 					jsonSchema.anyOf.map((schema, i) =>
 						parseSchema(schema, { ...refs, path: [...refs.path, 'anyOf', i] }),
-					) as [z.ZodTypeAny, z.ZodTypeAny],
+					) as [z.ZodType, z.ZodType],
 				)
 		: z.any();
 };

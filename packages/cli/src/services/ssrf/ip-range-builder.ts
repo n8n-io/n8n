@@ -65,7 +65,7 @@ function parseCidr(
 	return { network, prefix, family };
 }
 
-const cidrSchema = z.string().cidr();
+const cidrSchema = z.union([z.cidrv4(), z.cidrv6()]);
 
 function validateIp(ip: string): 'ipv4' | 'ipv6' | null {
 	const version = isIP(ip);

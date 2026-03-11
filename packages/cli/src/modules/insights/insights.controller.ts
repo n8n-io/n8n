@@ -113,14 +113,14 @@ export class InsightsController {
 					return true;
 				},
 				{
-					message: 'endDate must be the same as or after startDate',
 					path: ['endDate'],
+					error: 'endDate must be the same as or after startDate',
 				},
 			);
 
 		const result = schema.safeParse(query);
 		if (!result.success) {
-			throw new BadRequestError(result.error.errors.map(({ message }) => message).join(' '));
+			throw new BadRequestError(result.error.issues.map(({ message }) => message).join(' '));
 		}
 	}
 

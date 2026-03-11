@@ -11,7 +11,7 @@ const flagsSchema = z.object({
 		.string()
 		.describe('Input directory that holds output files for import')
 		.default('./outputs'),
-	truncateTables: z.coerce.boolean().describe('Truncate tables before import').default(false),
+	truncateTables: z.coerce.boolean().describe('Truncate tables before import').prefault(false),
 	keyFile: z
 		.string()
 		.describe('Optional path to a file containing a custom encryption key')
@@ -19,11 +19,11 @@ const flagsSchema = z.object({
 	skipMigrationChecks: z.coerce
 		.boolean()
 		.describe('Skip migration validation checks')
-		.default(false),
+		.prefault(false),
 	skipTogglingForeignKeyConstraints: z.coerce
 		.boolean()
 		.describe('Skip disabling foreign key constraints')
-		.default(false),
+		.prefault(false),
 });
 
 @Command({

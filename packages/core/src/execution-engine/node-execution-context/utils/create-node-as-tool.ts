@@ -81,7 +81,7 @@ export function getSchema(node: INode) {
 	const uniqueArguments = Array.from(uniqueArgsMap.values());
 
 	// Generate Zod schema from unique arguments
-	const schemaObj = uniqueArguments.reduce((acc: Record<string, z.ZodTypeAny>, placeholder) => {
+	const schemaObj = uniqueArguments.reduce((acc: Record<string, z.ZodType>, placeholder) => {
 		acc[placeholder.key] = generateZodSchema(placeholder);
 		return acc;
 	}, {});

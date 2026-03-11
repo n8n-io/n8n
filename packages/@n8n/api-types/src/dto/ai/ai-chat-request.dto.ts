@@ -5,7 +5,7 @@ import { Z } from '../../zod-class';
 
 export class AiChatRequestDto
 	extends Z.class({
-		payload: z.object({}).passthrough(), // Allow any object shape
+		payload: z.looseObject({}), // Allow any object shape
 		sessionId: z.string().optional(),
 	})
 	implements AiAssistantSDK.ChatRequestPayload {}

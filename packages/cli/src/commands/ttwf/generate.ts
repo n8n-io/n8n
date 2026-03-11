@@ -47,13 +47,11 @@ const flagsSchema = z.object({
 		.describe('Output file name to save the results. Default is ttwf-results.jsonl')
 		.default('ttwf-results.jsonl'),
 	limit: z
-		.number()
 		.int()
 		.alias('l')
 		.describe('Number of items from the dataset to process. Only valid with --input.')
 		.default(-1),
 	concurrency: z
-		.number()
 		.int()
 		.alias('c')
 		.describe('Number of items to process in parallel. Only valid with --input.')

@@ -1,7 +1,7 @@
 import type { Constructable } from '@n8n/di';
-import type { ZodObject, ZodTypeAny } from 'zod';
+import type { ZodObject, ZodType } from 'zod';
 
-type FlagsSchema = ZodObject<Record<string, ZodTypeAny>>;
+type FlagsSchema = ZodObject<Record<string, ZodType>>;
 
 export type CommandOptions = {
 	name: string;

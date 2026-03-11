@@ -3,12 +3,12 @@ import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 import { StructuredOutputParser } from '@langchain/classic/output_parsers';
 import type { ISupplyDataFunctions, IDataObject } from 'n8n-workflow';
 import { NodeConnectionTypes, jsonParse, NodeOperationError } from 'n8n-workflow';
-import type { ZodTypeAny } from 'zod';
+import type { ZodType } from 'zod';
 import { ZodBoolean, ZodNullable, ZodNumber, ZodObject, ZodOptional } from 'zod';
 
 import type { ZodObjectAny } from '../types/types';
 
-const getSimplifiedType = (schema: ZodTypeAny) => {
+const getSimplifiedType = (schema: ZodType) => {
 	if (schema instanceof ZodObject) {
 		return 'object';
 	} else if (schema instanceof ZodNumber) {
@@ -22,7 +22,7 @@ const getSimplifiedType = (schema: ZodTypeAny) => {
 	return 'string';
 };
 
-const getParametersDescription = (parameters: Array<[string, ZodTypeAny]>) =>
+const getParametersDescription = (parameters: Array<[string, ZodType]>) =>
 	parameters
 		.map(
 			([name, schema]) =>
@@ -33,7 +33,7 @@ const getParametersDescription = (parameters: Array<[string, ZodTypeAny]>) =>
 export const prepareFallbackToolDescription = (toolDescription: string, schema: ZodObject<any>) => {
 	let description = `${toolDescription}`;
 
-	const toolParameters = Object.entries<ZodTypeAny>(schema.shape);
+	const toolParameters = Object.entries<ZodType>(schema.shape);
 
 	if (toolParameters.length) {
 		description += `

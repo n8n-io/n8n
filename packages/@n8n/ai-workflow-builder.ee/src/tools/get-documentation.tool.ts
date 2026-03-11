@@ -28,7 +28,7 @@ export const DocumentationType = {
 const bestPracticesRequestSchema = z.object({
 	type: z.literal(DocumentationType.BEST_PRACTICES),
 	techniques: z
-		.array(z.nativeEnum(WorkflowTechnique))
+		.array(z.enum(WorkflowTechnique))
 		.min(1)
 		.describe('Workflow techniques to get best practices for'),
 });
@@ -39,7 +39,7 @@ const bestPracticesRequestSchema = z.object({
 const nodeRecommendationsRequestSchema = z.object({
 	type: z.literal(DocumentationType.NODE_RECOMMENDATIONS),
 	categories: z
-		.array(z.nativeEnum(RecommendationCategory))
+		.array(z.enum(RecommendationCategory))
 		.min(1)
 		.describe('Task categories to get node recommendations for'),
 });
@@ -176,7 +176,7 @@ export function createGetDocumentationTool() {
 			} catch (error) {
 				if (error instanceof z.ZodError) {
 					const validationError = new ValidationError('Invalid input parameters', {
-						extra: { errors: error.errors },
+						extra: { errors: error.issues },
 					});
 					reporter.error(validationError);
 					return createErrorResponse(config, validationError);

@@ -25,7 +25,7 @@ const FILTER_OPTIONS = {
 };
 
 // Filter schema - only allow specific properties
-const filterSchema = z.object(FILTER_OPTIONS).strict();
+const filterSchema = z.strictObject(FILTER_OPTIONS);
 // ---------------------
 // Parameter Validators
 // ---------------------
@@ -42,7 +42,7 @@ const filterValidator = z
 				return filterSchema.parse(parsed);
 			} catch (e) {
 				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
+					code: 'custom',
 					message: 'Invalid filter fields',
 					path: ['filter'],
 				});
@@ -50,7 +50,7 @@ const filterValidator = z
 			}
 		} catch (e) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'Invalid filter format',
 				path: ['filter'],
 			});

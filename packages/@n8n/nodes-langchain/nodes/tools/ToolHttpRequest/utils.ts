@@ -791,7 +791,7 @@ export const configureToolFunction = (
 };
 
 function makeParameterZodSchema(parameter: ToolParameter) {
-	let schema: z.ZodTypeAny;
+	let schema: z.ZodType;
 
 	if (parameter.type === 'string') {
 		schema = z.string();
@@ -800,7 +800,7 @@ function makeParameterZodSchema(parameter: ToolParameter) {
 	} else if (parameter.type === 'boolean') {
 		schema = z.boolean();
 	} else if (parameter.type === 'json') {
-		schema = z.record(z.any());
+		schema = z.record(z.string(), z.any());
 	} else {
 		schema = z.string();
 	}
