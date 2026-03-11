@@ -3,7 +3,6 @@ import {
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 	ActionResultRequestDto,
-	ComputeValueRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Post, RestController, Body } from '@n8n/decorators';
@@ -152,34 +151,6 @@ export class DynamicNodeParametersController {
 			path,
 			additionalData,
 			nodeTypeAndVersion,
-		);
-	}
-
-	@Post('/compute-value')
-	async getComputedValue(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: ComputeValueRequestDto,
-	): Promise<NodeParameterValueType> {
-		await this.dynamicNodeParametersService.refineResourceIds(req.user, payload);
-
-		const { currentNodeParameters, nodeTypeAndVersion, path, credentials, methodName, projectId } =
-			payload;
-
-		const additionalData = await getBase({
-			userId: req.user.id,
-			projectId,
-			currentNodeParameters,
-		});
-		additionalData.dataTableProjectId = projectId;
-
-		return await this.dynamicNodeParametersService.getComputedValue(
-			methodName,
-			path,
-			additionalData,
-			nodeTypeAndVersion,
-			currentNodeParameters,
-			credentials,
 		);
 	}
 

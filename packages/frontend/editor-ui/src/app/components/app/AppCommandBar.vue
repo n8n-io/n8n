@@ -5,11 +5,9 @@ import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useStyles } from '@/app/composables/useStyles';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
-import { useProvideWorkflowId } from '@/app/composables/useProvideWorkflowId';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const route = useRoute();
-useProvideWorkflowId();
 const { APP_Z_INDEXES } = useStyles();
 
 const {

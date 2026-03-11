@@ -1,7 +1,6 @@
 import type {
 	ActionResultRequestDto,
 	CommunityNodeType,
-	ComputeValueRequestDto,
 	GetNodeTypesByIdentifierRequestDto,
 	OptionsRequestDto,
 	ResourceLocatorRequestDto,
@@ -141,18 +140,6 @@ export async function getNodeParameterActionResult(
 		context,
 		'POST',
 		'/dynamic-node-parameters/action-result',
-		sendData,
-	);
-}
-
-export async function getNodeComputedValue(
-	context: IRestApiContext,
-	sendData: ComputeValueRequestDto,
-): Promise<NodeParameterValueType> {
-	return await makeRestApiRequest(
-		context,
-		'POST',
-		'/dynamic-node-parameters/compute-value',
 		sendData,
 	);
 }

@@ -4,7 +4,6 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { ref, computed } from 'vue';
 import SetupPanelCards from '@/features/setupPanel/components/SetupPanelCards.vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type {
 	SetupCardItem,
 	TriggerSetupState,
@@ -54,13 +53,7 @@ vi.mock('./cards/CredentialTypeSetupCard.vue', () => ({
 	},
 }));
 
-const renderComponent = createComponentRenderer(SetupPanelCards, {
-	global: {
-		provide: {
-			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
-		},
-	},
-});
+const renderComponent = createComponentRenderer(SetupPanelCards);
 
 const createTriggerCard = (overrides: Partial<TriggerSetupState> = {}): SetupCardItem => ({
 	type: 'trigger',

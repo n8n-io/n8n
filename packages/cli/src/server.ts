@@ -106,8 +106,6 @@ export class Server extends AbstractServer {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
-		this.markAsReady();
-
 		this.eventService.emit('server-started');
 	}
 

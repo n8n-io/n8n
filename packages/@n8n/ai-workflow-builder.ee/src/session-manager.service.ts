@@ -127,33 +127,6 @@ export class SessionManagerService {
 	}
 
 	/**
-	 * Convert a pending HITL interrupt into a formatted message for the session.
-	 */
-	private formatPendingHitlMessage(hitl: HITLInterruptValue): Record<string, unknown> | undefined {
-		if (hitl.type === 'questions') {
-			return {
-				role: 'assistant',
-				type: hitl.type,
-				questions: hitl.questions,
-				...(hitl.introMessage ? { introMessage: hitl.introMessage } : {}),
-			};
-		}
-		if (hitl.type === 'plan') {
-			return { role: 'assistant', type: hitl.type, plan: hitl.plan };
-		}
-		if (hitl.type === 'web_fetch_approval') {
-			return {
-				role: 'assistant',
-				type: hitl.type,
-				requestId: hitl.requestId,
-				url: hitl.url,
-				domain: hitl.domain,
-			};
-		}
-		return undefined;
-	}
-
-	/**
 	 * Append an entry to the HITL interaction history for a thread.
 	 * Called when a questions or plan interrupt is resumed.
 	 */
@@ -234,11 +207,6 @@ export class SessionManagerService {
 					answers: Array.isArray(entry.answers) ? entry.answers : [],
 				},
 			];
-		}
-
-		// web_fetch_decided — no messages to replay (approval is handled inline)
-		if (entry.type === 'web_fetch_decided') {
-			return [];
 		}
 
 		// plan_decided (reject or modify — approved plans survive in the checkpoint)
@@ -453,8 +421,18 @@ export class SessionManagerService {
 
 				const pendingHitl = this.getPendingHitl(threadId);
 				if (pendingHitl) {
-					const hitlMessage = this.formatPendingHitlMessage(pendingHitl);
-					if (hitlMessage) formattedMessages.push(hitlMessage);
+					formattedMessages.push({
+						role: 'assistant',
+						type: pendingHitl.type,
+						...(pendingHitl.type === 'questions'
+							? {
+									questions: pendingHitl.questions,
+									...(pendingHitl.introMessage ? { introMessage: pendingHitl.introMessage } : {}),
+								}
+							: {
+									plan: pendingHitl.plan,
+								}),
+					});
 				}
 
 				sessions.push({
@@ -493,8 +471,18 @@ export class SessionManagerService {
 
 				const pendingHitl = this.getPendingHitl(threadId);
 				if (pendingHitl) {
-					const hitlMessage = this.formatPendingHitlMessage(pendingHitl);
-					if (hitlMessage) formattedMessages.push(hitlMessage);
+					formattedMessages.push({
+						role: 'assistant',
+						type: pendingHitl.type,
+						...(pendingHitl.type === 'questions'
+							? {
+									questions: pendingHitl.questions,
+									...(pendingHitl.introMessage ? { introMessage: pendingHitl.introMessage } : {}),
+								}
+							: {
+									plan: pendingHitl.plan,
+								}),
+					});
 				}
 
 				sessions.push({

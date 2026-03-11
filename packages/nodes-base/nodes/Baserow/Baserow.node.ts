@@ -11,11 +11,13 @@ import {
 import {
 	baserowApiRequest,
 	baserowApiRequestAllItems,
+	getJwtToken,
 	TableFieldMapper,
 	toOptions,
 } from './GenericFunctions';
 import { operationFields } from './OperationDescription';
 import type {
+	BaserowCredentials,
 	FieldsUiValues,
 	GetAllAdditionalOptions,
 	LoadedResource,
@@ -23,17 +25,13 @@ import type {
 	Row,
 } from './types';
 
-function getCredentialType(authentication: string): string {
-	return authentication === 'databaseToken' ? 'baserowTokenApi' : 'baserowApi';
-}
-
 export class Baserow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Baserow',
 		name: 'baserow',
 		icon: 'file:baserow.svg',
 		group: ['output'],
-		version: [1, 1.1],
+		version: 1,
 		description: 'Consume the Baserow API',
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		defaults: {
@@ -46,39 +44,9 @@ export class Baserow implements INodeType {
 			{
 				name: 'baserowApi',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['usernamePassword'],
-					},
-				},
-			},
-			{
-				name: 'baserowTokenApi',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['databaseToken'],
-					},
-				},
 			},
 		],
 		properties: [
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'Username & Password',
-						value: 'usernamePassword',
-					},
-					{
-						name: 'Database Token',
-						value: 'databaseToken',
-					},
-				],
-				default: 'usernamePassword',
-			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -103,24 +71,6 @@ export class Baserow implements INodeType {
 					},
 				},
 				options: [
-					{
-						name: 'Batch Create',
-						value: 'batchCreate',
-						description: 'Create up to 200 rows in one request',
-						action: 'Create multiple rows',
-					},
-					{
-						name: 'Batch Delete',
-						value: 'batchDelete',
-						description: 'Delete up to 200 rows in one request',
-						action: 'Delete multiple rows',
-					},
-					{
-						name: 'Batch Update',
-						value: 'batchUpdate',
-						description: 'Update up to 200 rows in one request',
-						action: 'Update multiple rows',
-					},
 					{
 						name: 'Create',
 						value: 'create',
@@ -161,50 +111,44 @@ export class Baserow implements INodeType {
 	methods = {
 		loadOptions: {
 			async getDatabaseIds(this: ILoadOptionsFunctions) {
-				const credentialType = getCredentialType(
-					this.getNodeParameter('authentication', 0) as string,
-				);
+				const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
+				const jwtToken = await getJwtToken.call(this, credentials);
 				const endpoint = '/api/applications/';
 				const databases = (await baserowApiRequest.call(
 					this,
 					'GET',
 					endpoint,
-					credentialType,
+					jwtToken,
 				)) as LoadedResource[];
+				// Baserow has different types of applications, we only want the databases
+				// https://api.baserow.io/api/redoc/#tag/Applications/operation/list_all_applications
 				return toOptions(databases.filter((database) => database.type === 'database'));
 			},
 
 			async getTableIds(this: ILoadOptionsFunctions) {
-				const authentication = this.getNodeParameter('authentication', 0) as string;
-				const credentialType = getCredentialType(authentication);
-
-				let endpoint: string;
-				if (authentication === 'databaseToken') {
-					endpoint = '/api/database/tables/all-tables/';
-				} else {
-					const databaseId = this.getNodeParameter('databaseId', 0) as string;
-					endpoint = `/api/database/tables/database/${databaseId}/`;
-				}
+				const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
+				const jwtToken = await getJwtToken.call(this, credentials);
+				const databaseId = this.getNodeParameter('databaseId', 0) as string;
+				const endpoint = `/api/database/tables/database/${databaseId}/`;
 				const tables = (await baserowApiRequest.call(
 					this,
 					'GET',
 					endpoint,
-					credentialType,
+					jwtToken,
 				)) as LoadedResource[];
 				return toOptions(tables);
 			},
 
 			async getTableFields(this: ILoadOptionsFunctions) {
-				const credentialType = getCredentialType(
-					this.getNodeParameter('authentication', 0) as string,
-				);
+				const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
+				const jwtToken = await getJwtToken.call(this, credentials);
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const endpoint = `/api/database/fields/table/${tableId}/`;
 				const fields = (await baserowApiRequest.call(
 					this,
 					'GET',
 					endpoint,
-					credentialType,
+					jwtToken,
 				)) as LoadedResource[];
 				return toOptions(fields);
 			},
@@ -218,150 +162,10 @@ export class Baserow implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as Operation;
 
 		const tableId = this.getNodeParameter('tableId', 0) as string;
-		const credentialType = getCredentialType(this.getNodeParameter('authentication', 0) as string);
-		const fields = await mapper.getTableFields.call(this, tableId, credentialType);
+		const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
+		const jwtToken = await getJwtToken.call(this, credentials);
+		const fields = await mapper.getTableFields.call(this, tableId, jwtToken);
 		mapper.createMappings(fields);
-
-		if (operation === 'batchCreate') {
-			// ----------------------------------
-			//           batchCreate
-			// ----------------------------------
-
-			// https://api.baserow.io/api/redoc/#tag/Database-table-rows/operation/batch_create_database_table_rows
-
-			const dataToSend = this.getNodeParameter('dataToSend', 0) as
-				| 'defineBelow'
-				| 'autoMapInputData';
-			const itemsPayload: IDataObject[] = [];
-
-			if (dataToSend === 'autoMapInputData') {
-				for (let i = 0; i < items.length; i++) {
-					const body: IDataObject = {};
-					const incomingKeys = Object.keys(items[i].json);
-					const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-					const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
-
-					for (const key of incomingKeys) {
-						if (inputDataToIgnore.includes(key)) continue;
-						body[key] = items[i].json[key];
-						mapper.namesToIds(body);
-					}
-					itemsPayload.push(body);
-				}
-			} else {
-				const rowsUi = this.getNodeParameter('rowsUi.rowValues', 0, []) as Array<{
-					fieldsUi: { fieldValues: Array<{ fieldId: string; fieldValue: string }> };
-				}>;
-				for (const row of rowsUi) {
-					const body: IDataObject = {};
-					for (const field of row.fieldsUi.fieldValues) {
-						body[`field_${field.fieldId}`] = field.fieldValue;
-					}
-					itemsPayload.push(body);
-				}
-			}
-
-			const endpoint = `/api/database/rows/table/${tableId}/batch/`;
-			const response = await baserowApiRequest.call(this, 'POST', endpoint, credentialType, {
-				items: itemsPayload,
-			});
-
-			response.items.forEach((row: Row) => mapper.idsToNames(row));
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(response.items),
-				{ itemData: { item: 0 } },
-			);
-			returnData.push.apply(returnData, executionData);
-			return [returnData];
-		}
-
-		if (operation === 'batchUpdate') {
-			// ----------------------------------
-			//           batchUpdate
-			// ----------------------------------
-
-			// https://api.baserow.io/api/redoc/#tag/Database-table-rows/operation/batch_update_database_table_rows
-
-			const dataToSend = this.getNodeParameter('dataToSend', 0) as
-				| 'defineBelow'
-				| 'autoMapInputData';
-			const itemsPayload: IDataObject[] = [];
-
-			if (dataToSend === 'autoMapInputData') {
-				for (let i = 0; i < items.length; i++) {
-					const body: IDataObject = {};
-					body.id = items[i].json.id;
-
-					const incomingKeys = Object.keys(items[i].json);
-					const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-					const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
-
-					for (const key of incomingKeys) {
-						if (inputDataToIgnore.includes(key)) continue;
-						body[key] = items[i].json[key];
-						mapper.namesToIds(body);
-					}
-					itemsPayload.push(body);
-				}
-			} else {
-				const rowsUi = this.getNodeParameter('rowsUi.rowValues', 0, []) as Array<{
-					id: string;
-					fieldsUi: { fieldValues: Array<{ fieldId: string; fieldValue: string }> };
-				}>;
-				for (const row of rowsUi) {
-					const body: IDataObject = { id: row.id };
-					for (const field of row.fieldsUi.fieldValues) {
-						body[`field_${field.fieldId}`] = field.fieldValue;
-					}
-					itemsPayload.push(body);
-				}
-			}
-
-			const endpoint = `/api/database/rows/table/${tableId}/batch/`;
-			const response = await baserowApiRequest.call(this, 'PATCH', endpoint, credentialType, {
-				items: itemsPayload,
-			});
-
-			response.items.forEach((row: Row) => mapper.idsToNames(row));
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(response.items),
-				{ itemData: { item: 0 } },
-			);
-			returnData.push.apply(returnData, executionData);
-			return [returnData];
-		}
-
-		if (operation === 'batchDelete') {
-			// ----------------------------------
-			//           batchDelete
-			// ----------------------------------
-
-			// https://api.baserow.io/api/redoc/#tag/Database-table-rows/operation/batch_delete_database_table_rows
-
-			const dataToSend = this.getNodeParameter('dataToSend', 0) as
-				| 'defineBelow'
-				| 'autoMapInputData';
-			let ids: string[];
-
-			if (dataToSend === 'autoMapInputData') {
-				const propertyName = this.getNodeParameter('rowIdProperty', 0) as string;
-				ids = items.map((item) => {
-					return String(item.json[propertyName]);
-				});
-			} else {
-				ids = this.getNodeParameter('rowIds', 0) as string[];
-			}
-
-			const endpoint = `/api/database/rows/table/${tableId}/batch-delete/`;
-			await baserowApiRequest.call(this, 'POST', endpoint, credentialType, { items: ids });
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray([{ success: true, deleted: ids }]),
-				{ itemData: { item: 0 } },
-			);
-			returnData.push(...executionData);
-			return [returnData];
-		}
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -404,7 +208,7 @@ export class Baserow implements INodeType {
 						this,
 						'GET',
 						endpoint,
-						credentialType,
+						jwtToken,
 						{},
 						qs,
 					)) as Row[];
@@ -414,7 +218,7 @@ export class Baserow implements INodeType {
 						this.helpers.returnJsonArray(rows),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//             get
@@ -424,14 +228,14 @@ export class Baserow implements INodeType {
 
 					const rowId = this.getNodeParameter('rowId', i) as string;
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-					const row = await baserowApiRequest.call(this, 'GET', endpoint, credentialType);
+					const row = await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
 
 					mapper.idsToNames(row as Row);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(row as Row),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'create') {
 					// ----------------------------------
 					//             create
@@ -463,20 +267,14 @@ export class Baserow implements INodeType {
 					}
 
 					const endpoint = `/api/database/rows/table/${tableId}/`;
-					const createdRow = await baserowApiRequest.call(
-						this,
-						'POST',
-						endpoint,
-						credentialType,
-						body,
-					);
+					const createdRow = await baserowApiRequest.call(this, 'POST', endpoint, jwtToken, body);
 
 					mapper.idsToNames(createdRow as Row);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(createdRow as Row),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//             update
@@ -510,20 +308,14 @@ export class Baserow implements INodeType {
 					}
 
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-					const updatedRow = await baserowApiRequest.call(
-						this,
-						'PATCH',
-						endpoint,
-						credentialType,
-						body,
-					);
+					const updatedRow = await baserowApiRequest.call(this, 'PATCH', endpoint, jwtToken, body);
 
 					mapper.idsToNames(updatedRow as Row);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(updatedRow as Row),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//             delete
@@ -534,13 +326,13 @@ export class Baserow implements INodeType {
 					const rowId = this.getNodeParameter('rowId', i) as string;
 
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-					await baserowApiRequest.call(this, 'DELETE', endpoint, credentialType);
+					await baserowApiRequest.call(this, 'DELETE', endpoint, jwtToken);
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						[{ json: { success: true } }],
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

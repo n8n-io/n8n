@@ -1,4 +1,3 @@
-export * from './breaking-change-rule';
 export * from './controller';
 export * from './command';
 export { Debounce } from './debounce';

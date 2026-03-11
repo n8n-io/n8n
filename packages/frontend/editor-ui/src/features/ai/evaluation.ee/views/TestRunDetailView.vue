@@ -5,7 +5,8 @@ import TestTableBase from '../components/shared/TestTableBase.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -65,7 +66,7 @@ const testCases = ref<TestCaseExecutionRecord[]>([]);
 const hasFailedTestCases = ref<boolean>(false);
 
 const runId = computed(() => router.currentRoute.value.params.runId as string);
-const workflowId = useInjectWorkflowId();
+const workflowId = injectStrict(WorkflowIdKey);
 const workflowName = computed(
 	() => workflowsListStore.getWorkflowById(workflowId.value)?.name ?? '',
 );

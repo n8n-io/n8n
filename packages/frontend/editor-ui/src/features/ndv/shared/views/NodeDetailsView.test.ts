@@ -18,8 +18,6 @@ import {
 	mockNodes,
 } from '@/__tests__/mocks';
 import type { Workflow } from 'n8n-workflow';
-import { computed } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', () => {
 	return {
@@ -58,7 +56,6 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	return {
 		pinia,
-		workflow,
 		workflowObject: workflowsStore.workflowObject as Workflow,
 		nodeName: node.name,
 	};
@@ -80,16 +77,13 @@ describe('NodeDetailsView', () => {
 	});
 
 	it('should render correctly', async () => {
-		const { pinia, workflow, workflowObject } = await createPiniaStore(true);
+		const { pinia, workflowObject } = await createPiniaStore(true);
 
 		const renderComponent = createComponentRenderer(NodeDetailsView, {
 			props: {
 				workflowObject,
 			},
 			global: {
-				provide: {
-					[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
-				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -107,16 +101,13 @@ describe('NodeDetailsView', () => {
 
 	describe('keyboard listener', () => {
 		test('should register and unregister keydown listener based on modal open state', async () => {
-			const { pinia, workflow, workflowObject } = await createPiniaStore(true);
+			const { pinia, workflowObject } = await createPiniaStore(true);
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
 				props: {
 					workflowObject,
 				},
 				global: {
-					provide: {
-						[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
-					},
 					mocks: {
 						$route: {
 							name: VIEWS.WORKFLOW,
@@ -151,7 +142,7 @@ describe('NodeDetailsView', () => {
 		});
 
 		test('should unregister keydown listener on unmount', async () => {
-			const { pinia, workflow, workflowObject, nodeName } = await createPiniaStore(false);
+			const { pinia, workflowObject, nodeName } = await createPiniaStore(false);
 			const ndvStore = useNDVStore(pinia);
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
@@ -159,9 +150,6 @@ describe('NodeDetailsView', () => {
 					workflowObject,
 				},
 				global: {
-					provide: {
-						[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
-					},
 					mocks: {
 						$route: {
 							name: VIEWS.WORKFLOW,

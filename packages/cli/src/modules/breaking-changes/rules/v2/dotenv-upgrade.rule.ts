@@ -1,4 +1,4 @@
-import { BreakingChangeRule } from '@n8n/decorators';
+import { Service } from '@n8n/di';
 import { constants } from 'node:fs';
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -10,7 +10,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@BreakingChangeRule({ version: 'v2' })
+@Service()
 export class DotenvUpgradeRule implements IBreakingChangeInstanceRule {
 	id: string = 'dotenv-upgrade-v2';
 	getMetadata(): BreakingChangeRuleMetadata {

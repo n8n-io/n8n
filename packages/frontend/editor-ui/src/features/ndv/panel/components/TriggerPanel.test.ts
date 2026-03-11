@@ -6,8 +6,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { setActivePinia } from 'pinia';
-import { computed } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
@@ -36,11 +34,6 @@ describe('TriggerPanel.vue', () => {
 	it('renders default state', () => {
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
-			global: {
-				provide: {
-					[WorkflowIdKey as unknown as string]: computed(() => '1'),
-				},
-			},
 		});
 		expect(getByTestId('trigger-header')).toBeInTheDocument();
 		expect(getByTestId('trigger-header')).toHaveTextContent('Pull in events from Webhook');
@@ -52,11 +45,6 @@ describe('TriggerPanel.vue', () => {
 		workflowsStore.executedNode = 'Webhook';
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
-			global: {
-				provide: {
-					[WorkflowIdKey as unknown as string]: computed(() => '1'),
-				},
-			},
 		});
 		expect(getByTestId('trigger-listening')).toBeInTheDocument();
 	});
@@ -66,11 +54,6 @@ describe('TriggerPanel.vue', () => {
 		workflowsStore.executedNode = 'OtherNode';
 		const { queryByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
-			global: {
-				provide: {
-					[WorkflowIdKey as unknown as string]: computed(() => '1'),
-				},
-			},
 		});
 		expect(queryByTestId('trigger-listening')).not.toBeInTheDocument();
 	});
@@ -81,11 +64,6 @@ describe('TriggerPanel.vue', () => {
 		workflowsStore.workflowObject.getParentNodes = vi.fn(() => ['Webhook']);
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
-			global: {
-				provide: {
-					[WorkflowIdKey as unknown as string]: computed(() => '1'),
-				},
-			},
 		});
 		expect(getByTestId('trigger-listening')).toBeInTheDocument();
 	});
@@ -96,11 +74,6 @@ describe('TriggerPanel.vue', () => {
 		workflowsStore.workflowObject.getParentNodes = vi.fn(() => []);
 		const { queryByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
-			global: {
-				provide: {
-					[WorkflowIdKey as unknown as string]: computed(() => '1'),
-				},
-			},
 		});
 		expect(queryByTestId('trigger-listening')).not.toBeInTheDocument();
 	});

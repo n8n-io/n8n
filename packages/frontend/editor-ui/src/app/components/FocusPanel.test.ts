@@ -10,8 +10,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { useVueFlow } from '@vue-flow/core';
 import type { INodeProperties } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { reactive, computed } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { reactive } from 'vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import FocusPanel from './FocusPanel.vue';
 
@@ -25,11 +24,6 @@ describe('FocusPanel', () => {
 	const renderComponent = createComponentRenderer(FocusPanel, {
 		props: {
 			isCanvasReadOnly: false,
-		},
-		global: {
-			provide: {
-				[WorkflowIdKey as unknown as string]: computed(() => 'w0'),
-			},
 		},
 	});
 

@@ -3,7 +3,6 @@ import type {
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
-	INode,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -24,7 +23,6 @@ import {
 	removeCircularRefs,
 	sleep,
 	isDomainAllowed,
-	ensureError,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -46,7 +44,6 @@ import {
 import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
-
 import { binaryToStringWithEncodingDetection } from './utils/buffer-decoding';
 
 function toText<T>(data: T) {
@@ -444,12 +441,19 @@ export class HttpRequestV3 implements INodeType {
 					} else if (specifyBody === 'json') {
 						// body is specified using JSON
 						if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {
-							requestOptions.body = parseJsonParameter(
-								this.getNode(),
-								jsonBodyParameter,
-								'JSON Body',
-								itemIndex,
-							);
+							try {
+								JSON.parse(jsonBodyParameter);
+							} catch {
+								throw new NodeOperationError(
+									this.getNode(),
+									'JSON parameter needs to be valid JSON',
+									{
+										itemIndex,
+									},
+								);
+							}
+
+							requestOptions.body = jsonParse(jsonBodyParameter);
 						} else {
 							requestOptions.body = jsonBodyParameter;
 						}
@@ -503,12 +507,19 @@ export class HttpRequestV3 implements INodeType {
 						requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValue);
 					} else if (specifyQuery === 'json') {
 						// query is specified using JSON
-						requestOptions.qs = parseJsonParameter(
-							this.getNode(),
-							jsonQueryParameter,
-							'JSON Query Parameters',
-							itemIndex,
-						);
+						try {
+							JSON.parse(jsonQueryParameter);
+						} catch {
+							throw new NodeOperationError(
+								this.getNode(),
+								'JSON parameter needs to be valid JSON',
+								{
+									itemIndex,
+								},
+							);
+						}
+
+						requestOptions.qs = jsonParse(jsonQueryParameter);
 					}
 				}
 
@@ -521,12 +532,20 @@ export class HttpRequestV3 implements INodeType {
 							parametersToKeyValue,
 						);
 					} else if (specifyHeaders === 'json') {
-						additionalHeaders = parseJsonParameter(
-							this.getNode(),
-							jsonHeadersParameter,
-							'JSON Headers',
-							itemIndex,
-						);
+						// body is specified using JSON
+						try {
+							JSON.parse(jsonHeadersParameter);
+						} catch {
+							throw new NodeOperationError(
+								this.getNode(),
+								'JSON parameter needs to be valid JSON',
+								{
+									itemIndex,
+								},
+							);
+						}
+
+						additionalHeaders = jsonParse(jsonHeadersParameter);
 					}
 					requestOptions.headers = {
 						...requestOptions.headers,
@@ -1128,27 +1147,5 @@ export class HttpRequestV3 implements INodeType {
 		}
 
 		return [returnItems];
-	}
-}
-
-/**
- * Parses a JSON string and returns the result.
- *
- * @throws {NodeOperationError} if the string is not valid JSON.
- */
-function parseJsonParameter(
-	node: INode,
-	jsonString: string,
-	fieldName: string,
-	itemIndex: number,
-): IDataObject {
-	try {
-		return JSON.parse(jsonString) as IDataObject;
-	} catch (e) {
-		const error = ensureError(e);
-		throw new NodeOperationError(node, `The value in the "${fieldName}" field is not valid JSON`, {
-			itemIndex,
-			description: error.message,
-		});
 	}
 }

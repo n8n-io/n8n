@@ -1,7 +1,6 @@
-import { reactive, computed } from 'vue';
+import { reactive } from 'vue';
 import { mock } from 'vitest-mock-extended';
 import { createPinia, setActivePinia } from 'pinia';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { waitFor, cleanup, fireEvent, within, screen } from '@testing-library/vue';
 
 import RunDataJsonActions from './RunDataJsonActions.vue';
@@ -162,9 +161,6 @@ describe('RunDataJsonActions', () => {
 				runIndex: 1,
 			},
 			global: {
-				provide: {
-					[WorkflowIdKey as unknown as string]: computed(() => '1'),
-				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -216,9 +212,6 @@ describe('RunDataJsonActions', () => {
 				runIndex: 0,
 			},
 			global: {
-				provide: {
-					[WorkflowIdKey as unknown as string]: computed(() => '1'),
-				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -274,9 +267,6 @@ describe('RunDataJsonActions', () => {
 				runIndex: 1,
 			},
 			global: {
-				provide: {
-					[WorkflowIdKey as unknown as string]: computed(() => '1'),
-				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -319,9 +309,6 @@ describe('RunDataJsonActions', () => {
 				runIndex: 1,
 			},
 			global: {
-				provide: {
-					[WorkflowIdKey as unknown as string]: computed(() => '1'),
-				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -364,9 +351,6 @@ describe('RunDataJsonActions', () => {
 				runIndex: 1,
 			},
 			global: {
-				provide: {
-					[WorkflowIdKey as unknown as string]: computed(() => '1'),
-				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,

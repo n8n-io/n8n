@@ -32,7 +32,6 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	ipAddress?: string;
 	userAgent?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
-	rejectionReason?: string;
 }
 
 export interface EventMessageAuditOptions extends AbstractEventMessageOptions {

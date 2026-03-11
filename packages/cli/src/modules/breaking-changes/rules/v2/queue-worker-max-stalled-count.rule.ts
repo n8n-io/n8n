@@ -1,4 +1,5 @@
-import { BreakingChangeRule } from '@n8n/decorators';
+import { Service } from '@n8n/di';
+
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -6,7 +7,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@BreakingChangeRule({ version: 'v2' })
+@Service()
 export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRule {
 	id: string = 'queue-worker-max-stalled-count-v2';
 

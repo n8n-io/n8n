@@ -43,7 +43,9 @@ export class TemplateCredentialSetupPage extends BasePage {
 	}
 
 	getSetupCredentialModalSteps(): Locator {
-		return this.getCanvasCredentialModal().getByTestId('setup-credentials-form-step');
+		return this.page
+			.getByTestId('setup-workflow-credentials-modal')
+			.getByTestId('setup-credentials-form-step');
 	}
 
 	getCreateCredentialButton(appName: string): Locator {

@@ -44,15 +44,12 @@ type ActionHandlerMethod = (
 ) => Promise<NodeParameterValueType>;
 type ResourceMappingMethod = (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
 
-type ComputeMethod = (this: ILoadOptionsFunctions) => Promise<NodeParameterValueType>;
-
 type NodeMethod =
 	| LocalResourceMappingMethod
 	| ListSearchMethod
 	| LoadOptionsMethod
 	| ActionHandlerMethod
-	| ResourceMappingMethod
-	| ComputeMethod;
+	| ResourceMappingMethod;
 
 @Service()
 export class DynamicNodeParametersService {
@@ -255,23 +252,6 @@ export class DynamicNodeParametersService {
 		);
 	}
 
-	/** Returns the computed value for a parameter using a computeMethod */
-	async getComputedValue(
-		methodName: string,
-		path: string,
-		additionalData: IWorkflowExecuteAdditionalData,
-		nodeTypeAndVersion: INodeTypeNameVersion,
-		currentNodeParameters: INodeParameters,
-		credentials?: INodeCredentials,
-	): Promise<NodeParameterValueType> {
-		const nodeType = this.getNodeType(nodeTypeAndVersion);
-		const method = this.getMethod('computeMethod', methodName, nodeType);
-		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
-		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs);
-	}
-
 	/** Returns the result of the action handler */
 	async getActionResult(
 		handler: string,
@@ -311,15 +291,13 @@ export class DynamicNodeParametersService {
 		methodName: string,
 		nodeType: INodeType,
 	): ActionHandlerMethod;
-	private getMethod(type: 'computeMethod', methodName: string, nodeType: INodeType): ComputeMethod;
 	private getMethod(
 		type:
 			| 'resourceMapping'
 			| 'localResourceMapping'
 			| 'listSearch'
 			| 'loadOptions'
-			| 'actionHandler'
-			| 'computeMethod',
+			| 'actionHandler',
 		methodName: string,
 		nodeType: INodeType,
 	): NodeMethod {

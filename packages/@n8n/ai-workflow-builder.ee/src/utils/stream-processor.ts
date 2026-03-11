@@ -10,7 +10,6 @@ import type {
 	HITLInterruptValue,
 	PlanInterruptValue,
 	QuestionsInterruptValue,
-	WebFetchApprovalInterruptValue,
 } from '../types/planning';
 import type {
 	AgentMessageChunk,
@@ -18,7 +17,6 @@ import type {
 	PlanChunk,
 	QuestionsChunk,
 	ToolProgressChunk,
-	WebFetchApprovalChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
 } from '../types/streaming';
@@ -198,16 +196,6 @@ function isPlanInterruptValue(value: unknown): value is PlanInterruptValue {
 	return value.type === 'plan' && isRecord(value.plan);
 }
 
-function isWebFetchApprovalInterruptValue(value: unknown): value is WebFetchApprovalInterruptValue {
-	if (!isRecord(value)) return false;
-	return (
-		value.type === 'web_fetch_approval' &&
-		typeof value.requestId === 'string' &&
-		typeof value.url === 'string' &&
-		typeof value.domain === 'string'
-	);
-}
-
 function extractInterruptPayload(
 	update: unknown,
 ): { value: HITLInterruptValue; id?: string } | null {
@@ -223,11 +211,7 @@ function extractInterruptPayload(
 	if (!isRecord(value)) return null;
 	const id = typeof first.id === 'string' ? first.id : undefined;
 
-	if (
-		isQuestionsInterruptValue(value) ||
-		isPlanInterruptValue(value) ||
-		isWebFetchApprovalInterruptValue(value)
-	) {
+	if (isQuestionsInterruptValue(value) || isPlanInterruptValue(value)) {
 		return { value, id };
 	}
 
@@ -241,17 +225,6 @@ function processInterrupt(interruptValue: HITLInterruptValue, id?: string): Stre
 			type: 'questions',
 			introMessage: interruptValue.introMessage,
 			questions: interruptValue.questions,
-		};
-		return { messages: [chunk], ...(id ? { interruptId: id } : {}) };
-	}
-
-	if (interruptValue.type === 'web_fetch_approval') {
-		const chunk: WebFetchApprovalChunk = {
-			role: 'assistant',
-			type: 'web_fetch_approval',
-			requestId: interruptValue.requestId,
-			url: interruptValue.url,
-			domain: interruptValue.domain,
 		};
 		return { messages: [chunk], ...(id ? { interruptId: id } : {}) };
 	}
@@ -580,8 +553,7 @@ function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>>
 
 function tryFormatHitlMessage(msg: AIMessage): Record<string, unknown> | null {
 	const messageType = msg.additional_kwargs?.messageType;
-	if (messageType !== 'questions' && messageType !== 'plan' && messageType !== 'web_fetch_approval')
-		return null;
+	if (messageType !== 'questions' && messageType !== 'plan') return null;
 	if (typeof msg.content !== 'string') return null;
 
 	let parsed: unknown;
@@ -602,22 +574,6 @@ function tryFormatHitlMessage(msg: AIMessage): Record<string, unknown> | null {
 			type: 'questions',
 			questions,
 			...(introMessage ? { introMessage } : {}),
-		};
-	}
-
-	if (messageType === 'web_fetch_approval') {
-		if (
-			typeof parsed.requestId !== 'string' ||
-			typeof parsed.url !== 'string' ||
-			typeof parsed.domain !== 'string'
-		)
-			return null;
-		return {
-			role: 'assistant',
-			type: 'web_fetch_approval',
-			requestId: parsed.requestId,
-			url: parsed.url,
-			domain: parsed.domain,
 		};
 	}
 

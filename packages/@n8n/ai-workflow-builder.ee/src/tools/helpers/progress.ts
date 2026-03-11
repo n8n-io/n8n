@@ -124,16 +124,11 @@ export function createProgressReporter<TToolName extends string = string>(
 		};
 	};
 
-	const setCustomTitle = (title: string): void => {
-		customDisplayTitle = title;
-	};
-
 	return {
 		start,
 		progress,
 		complete,
 		error,
-		setCustomTitle,
 		createBatchReporter,
 	};
 }

@@ -7,8 +7,6 @@ import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/Cred
 import type { CredentialTypeSetupState } from '@/features/setupPanel/setupPanel.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
-import { computed } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('@/features/credentials/components/CredentialPicker/CredentialPicker.vue', () => ({
 	default: {
@@ -67,13 +65,7 @@ vi.mock('@/features/setupPanel/composables/useTriggerExecution', async () => {
 	};
 });
 
-const renderComponent = createComponentRenderer(CredentialTypeSetupCard, {
-	global: {
-		provide: {
-			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
-		},
-	},
-});
+const renderComponent = createComponentRenderer(CredentialTypeSetupCard);
 
 const createState = (
 	overrides: Partial<CredentialTypeSetupState> = {},
