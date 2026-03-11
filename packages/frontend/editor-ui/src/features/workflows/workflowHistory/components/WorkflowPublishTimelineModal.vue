@@ -1,12 +1,24 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nText, N8nLoading, N8nIcon } from '@n8n/design-system';
+import {
+	N8nHeading,
+	N8nText,
+	N8nLoading,
+	N8nIcon,
+	N8nCallout,
+	N8nTooltip,
+} from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
+import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
 import dateformat from 'dateformat';
+
+const DOWNTIME_DISCLAIMER_CALLOUT = 'publishTimelineDowntimeDisclaimer';
+/** Threshold to filter out transient deactivation/reactivation gaps during version changes */
+const MIN_UNPUBLISHED_DURATION_MS = 2000;
 
 const props = defineProps<{
 	modalName: string;
@@ -17,14 +29,17 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
 
+const { isCalloutDismissed, dismissCallout } = useCalloutHelpers();
 const isLoading = ref(true);
 const events = ref<PublishTimelineEvent[]>([]);
+const versionNames = ref<Map<string, string | null>>(new Map());
 
 type TimelinePeriod = {
 	status: 'published' | 'unpublished';
 	startedAt: Date;
 	endedAt: Date | null;
 	versionId: string | null;
+	versionName: string | null;
 	user: string | null;
 	isCurrent: boolean;
 };
@@ -37,29 +52,25 @@ const periods = computed<TimelinePeriod[]>(() => {
 	for (let idx = 0; idx < events.value.length; idx++) {
 		const event = events.value[idx];
 		const nextEvent = events.value[idx + 1];
+		const isActivated = event.event === 'activated';
 
-		if (event.event === 'activated') {
-			result.push({
-				status: 'published',
-				startedAt: new Date(event.createdAt),
-				endedAt: nextEvent ? new Date(nextEvent.createdAt) : null,
-				versionId: event.versionId,
-				user: event.user ? `${event.user.firstName} ${event.user.lastName}` : null,
-				isCurrent: !nextEvent,
-			});
-		} else {
-			result.push({
-				status: 'unpublished',
-				startedAt: new Date(event.createdAt),
-				endedAt: nextEvent ? new Date(nextEvent.createdAt) : null,
-				versionId: null,
-				user: event.user ? `${event.user.firstName} ${event.user.lastName}` : null,
-				isCurrent: !nextEvent,
-			});
-		}
+		result.push({
+			status: isActivated ? 'published' : 'unpublished',
+			startedAt: new Date(event.createdAt),
+			endedAt: nextEvent ? new Date(nextEvent.createdAt) : null,
+			versionId: isActivated ? event.versionId : null,
+			versionName: isActivated ? (versionNames.value.get(event.versionId) ?? null) : null,
+			user: event.user ? `${event.user.firstName} ${event.user.lastName}` : null,
+			isCurrent: !nextEvent,
+		});
 	}
 
-	return result.reverse();
+	// Filter out brief unpublished periods — these are not actual unpublishes
+	// but version changes where the workflow was deactivated and immediately reactivated
+	return result.toReversed().filter((period) => {
+		if (period.status !== 'unpublished' || period.endedAt === null) return true;
+		return period.endedAt.getTime() - period.startedAt.getTime() >= MIN_UNPUBLISHED_DURATION_MS;
+	});
 });
 
 const formatDate = (date: Date) => {
@@ -93,7 +104,22 @@ watch(isModalOpen, async (open) => {
 	if (!open) return;
 	isLoading.value = true;
 	try {
-		events.value = await workflowHistoryStore.getPublishTimeline(props.workflowId);
+		const timelineEvents = await workflowHistoryStore.getPublishTimeline(props.workflowId);
+		const activatedVersionIds = [
+			...new Set(timelineEvents.filter((e) => e.event === 'activated').map((e) => e.versionId)),
+		];
+		const nameMap = new Map<string, string | null>();
+		if (activatedVersionIds.length > 0) {
+			const versions = await workflowHistoryStore.lookupVersions(props.workflowId, {
+				versionIds: activatedVersionIds,
+				fields: ['name'],
+			});
+			for (const version of versions) {
+				nameMap.set(version.versionId, version.name ?? null);
+			}
+		}
+		versionNames.value = nameMap;
+		events.value = timelineEvents;
 	} finally {
 		isLoading.value = false;
 	}
@@ -109,33 +135,37 @@ watch(isModalOpen, async (open) => {
 		</template>
 		<template #content>
 			<div :class="$style.content">
+				<N8nCallout
+					v-if="!isCalloutDismissed(DOWNTIME_DISCLAIMER_CALLOUT)"
+					theme="info"
+					:class="$style.disclaimer"
+				>
+					{{ i18n.baseText('workflowHistory.publishTimeline.downtimeDisclaimer') }}
+					<template #trailingContent>
+						<N8nIcon
+							icon="times"
+							size="small"
+							:class="$style.dismissButton"
+							@click="dismissCallout(DOWNTIME_DISCLAIMER_CALLOUT)"
+						/>
+					</template>
+				</N8nCallout>
 				<N8nLoading v-if="isLoading" :rows="4" />
 				<div v-else-if="periods.length === 0" :class="$style.empty">
 					<N8nText>{{ i18n.baseText('workflowHistory.publishTimeline.empty') }}</N8nText>
 				</div>
 				<template v-else>
-					<div :class="$style.legend">
-						<div :class="$style.legendItem">
-							<span :class="[$style.legendDot, $style.dotPublished]" />
-							<N8nText size="small">
-								{{ i18n.baseText('workflowHistory.publishTimeline.event.activated') }}
-							</N8nText>
-						</div>
-						<div :class="$style.legendItem">
-							<span :class="[$style.legendDot, $style.dotUnpublished]" />
-							<N8nText size="small">
-								{{ i18n.baseText('workflowHistory.publishTimeline.event.deactivated') }}
-							</N8nText>
-						</div>
-					</div>
-
 					<div :class="$style.timeline">
 						<div v-for="(period, idx) in periods" :key="idx" :class="$style.timelineItem">
 							<div :class="$style.timelineIndicator">
 								<span
 									:class="[
 										$style.timelineDot,
-										period.status === 'published' ? $style.dotPublished : $style.dotUnpublished,
+										period.status === 'unpublished'
+											? $style.dotUnpublished
+											: period.isCurrent
+												? $style.dotPublished
+												: $style.dotPastPublished,
 									]"
 								/>
 								<span v-if="idx < periods.length - 1" :class="$style.timelineLine" />
@@ -144,41 +174,45 @@ watch(isModalOpen, async (open) => {
 								<div :class="$style.timelineHeader">
 									<N8nText :bold="true" size="small">
 										<template v-if="period.status === 'published'">
-											{{ i18n.baseText('workflowHistory.publishTimeline.event.activated') }}
+											{{
+												period.versionName ??
+												i18n.baseText('workflowHistory.publishTimeline.event.activated')
+											}}
 										</template>
 										<template v-else>
 											{{ i18n.baseText('workflowHistory.publishTimeline.event.deactivated') }}
 										</template>
-									</N8nText>
-									<N8nText v-if="period.isCurrent" size="small" color="text-light">
-										<template v-if="period.status === 'published'">
-											{{ i18n.baseText('workflowHistory.publishTimeline.currentlyPublished') }}
+										<template v-if="period.user">
+											<N8nText size="small" color="text-light">
+												&middot;
+												{{
+													i18n.baseText('workflowHistory.publishTimeline.by', {
+														interpolate: { user: period.user },
+													})
+												}}
+											</N8nText>
 										</template>
-										<template v-else>
-											{{ i18n.baseText('workflowHistory.publishTimeline.currentlyUnpublished') }}
-										</template>
 									</N8nText>
+									<N8nTooltip
+										:content="
+											period.status === 'published'
+												? i18n.baseText('workflowHistory.publishTimeline.activeDuration', {
+														interpolate: {
+															duration: formatDuration(period.startedAt, period.endedAt),
+														},
+													})
+												: i18n.baseText('workflowHistory.publishTimeline.inactiveDuration', {
+														interpolate: {
+															duration: formatDuration(period.startedAt, period.endedAt),
+														},
+													})
+										"
+									>
+										<N8nText size="small" color="text-light">
+											{{ formatDate(period.startedAt) }}
+										</N8nText>
+									</N8nTooltip>
 								</div>
-								<N8nText size="small" color="text-light">
-									{{ formatDate(period.startedAt) }}
-									<template v-if="period.user">
-										&middot;
-										{{
-											i18n.baseText('workflowHistory.publishTimeline.by', {
-												interpolate: { user: period.user },
-											})
-										}}
-									</template>
-								</N8nText>
-								<div :class="$style.durationBadge">
-									<N8nIcon icon="clock" size="small" />
-									<N8nText size="small">
-										{{ formatDuration(period.startedAt, period.endedAt) }}
-									</N8nText>
-								</div>
-								<N8nText v-if="period.versionId" size="small" color="text-light">
-									Version {{ period.versionId.substring(0, 8) }}
-								</N8nText>
 							</div>
 						</div>
 					</div>
@@ -191,6 +225,17 @@ watch(isModalOpen, async (open) => {
 <style module lang="scss">
 .content {
 	min-height: 200px;
+	max-height: 70vh;
+	overflow-y: auto;
+}
+
+.disclaimer {
+	margin-bottom: var(--spacing--sm);
+}
+
+.dismissButton {
+	cursor: pointer;
+	color: var(--color--text--tint-2);
 }
 
 .empty {
@@ -200,32 +245,16 @@ watch(isModalOpen, async (open) => {
 	min-height: 200px;
 }
 
-.legend {
-	display: flex;
-	gap: var(--spacing--sm);
-	margin-bottom: var(--spacing--lg);
-}
-
-.legendItem {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.legendDot {
-	display: inline-block;
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	flex-shrink: 0;
-}
-
 .dotPublished {
 	background-color: var(--color--success);
 }
 
+.dotPastPublished {
+	border: var(--border-width) var(--border-style) var(--color--text--tint-2);
+}
+
 .dotUnpublished {
-	background-color: var(--color--foreground--shade-1);
+	background-color: var(--color--danger);
 }
 
 .timeline {
@@ -265,6 +294,7 @@ watch(isModalOpen, async (open) => {
 .timelineContent {
 	display: flex;
 	flex-direction: column;
+	flex-grow: 1;
 	gap: var(--spacing--5xs);
 	padding-bottom: var(--spacing--sm);
 }
@@ -272,16 +302,7 @@ watch(isModalOpen, async (open) => {
 .timelineHeader {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	gap: var(--spacing--2xs);
-}
-
-.durationBadge {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	background-color: var(--color--background);
-	border-radius: var(--radius);
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	width: fit-content;
 }
 </style>

@@ -84,6 +84,35 @@ export const getWorkflowVersionsByIds = async (
 	return data;
 };
 
+export type WorkflowHistoryLookupField =
+	| 'authors'
+	| 'createdAt'
+	| 'updatedAt'
+	| 'name'
+	| 'description';
+
+export type WorkflowHistoryLookupParams = {
+	versionIds: string[];
+	fields: WorkflowHistoryLookupField[];
+};
+
+export type WorkflowHistoryLookupResult = {
+	versionId: string;
+} & Partial<Pick<WorkflowHistory, WorkflowHistoryLookupField>>;
+
+export const lookupWorkflowVersions = async (
+	context: IRestApiContext,
+	workflowId: string,
+	params: WorkflowHistoryLookupParams,
+): Promise<WorkflowHistoryLookupResult[]> => {
+	const { data } = await post(
+		context.baseUrl,
+		`/workflow-history/workflow/${workflowId}/versions/lookup`,
+		params,
+	);
+	return data;
+};
+
 export type PublishTimelineEvent = {
 	id: number;
 	workflowId: string;
