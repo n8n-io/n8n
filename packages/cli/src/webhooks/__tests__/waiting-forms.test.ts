@@ -1,8 +1,16 @@
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
-import { getWebhookSandboxCSP } from 'n8n-core';
+import { getWebhookSandboxCSP, isWebhookHtmlSandboxingDisabled } from 'n8n-core';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n8n-workflow';
+
+jest.mock('n8n-core', () => ({
+	...jest.requireActual('n8n-core'),
+	isWebhookHtmlSandboxingDisabled: jest.fn().mockReturnValue(false),
+	getWebhookSandboxCSP: jest
+		.fn()
+		.mockReturnValue('sandbox allow-downloads allow-forms allow-modals'),
+}));
 
 import type { WaitingWebhookRequest } from '../webhook.types';
 

@@ -8,10 +8,9 @@ import {
 	OperationalError,
 } from 'n8n-workflow';
 
-import { handleNewlines, sanitizeCustomCss, sanitizeHtml, validateSafeRedirectUrl } from './utils';
+import { getWebhookSandboxCSP, isWebhookHtmlSandboxingDisabled } from 'n8n-core';
 
-const SANDBOX_CSP =
-	'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols';
+import { handleNewlines, sanitizeCustomCss, sanitizeHtml, validateSafeRedirectUrl } from './utils';
 
 const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): IDataObject => {
 	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
@@ -73,8 +72,8 @@ export const renderFormCompletion = async (
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
-	if (respondWith !== 'redirect') {
-		res.setHeader('Content-Security-Policy', SANDBOX_CSP);
+	if (respondWith !== 'redirect' && !isWebhookHtmlSandboxingDisabled()) {
+		res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 	}
 
 	res.render('form-trigger-completion', {
