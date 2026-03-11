@@ -49,6 +49,7 @@ import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canv
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 import { N8nIcon, N8nInfoTip, N8nInput, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 defineOptions({ name: 'FocusPanel' });
 
@@ -69,6 +70,7 @@ const inputField = ref<InstanceType<typeof N8nInput> | HTMLElement>();
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
+const workflowId = useInjectWorkflowId();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
@@ -77,7 +79,7 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const ndvStore = useNDVStore();
-const vueFlow = useVueFlow(workflowsStore.workflowId);
+const vueFlow = useVueFlow(workflowId.value);
 const { renameNode } = useCanvasOperations();
 
 const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
