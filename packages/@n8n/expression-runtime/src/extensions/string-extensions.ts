@@ -369,11 +369,43 @@ function extractUrl(value: string) {
 
 // DIVERGENCE from packages/workflow/src/extensions/string-extensions.ts:
 // The original uses the URL constructor which is a Web API unavailable inside
-// the V8 isolate. A minimal regex extracts the pathname instead.
+// the V8 isolate. A simple imperative parser extracts the pathname instead.
+// It requires a scheme (e.g. "https://") followed by a non-empty host, then
+// returns everything from the first "/" up to "?" or "#" (or "/" if no path).
 function extractUrlPath(value: string) {
-	const match = /^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/[^/?#[\]]+([^?#]*)/.exec(value);
-	if (!match) return undefined;
-	return match[1] || '/';
+	const protoEnd = value.indexOf('://');
+	if (protoEnd < 1) return undefined;
+
+	// Validate scheme: first char must be a letter, rest alphanumeric/+/-/.
+	const firstChar = value.charCodeAt(0);
+	if (!((firstChar >= 65 && firstChar <= 90) || (firstChar >= 97 && firstChar <= 122))) {
+		return undefined;
+	}
+
+	const hostStart = protoEnd + 3;
+	if (hostStart >= value.length) return undefined;
+
+	// Find where host ends (first /, ?, or #)
+	let pathStart = hostStart;
+	while (
+		pathStart < value.length &&
+		value[pathStart] !== '/' &&
+		value[pathStart] !== '?' &&
+		value[pathStart] !== '#'
+	) {
+		pathStart++;
+	}
+
+	// No path segment found
+	if (pathStart >= value.length || value[pathStart] !== '/') return '/';
+
+	// Find where path ends (first ? or #)
+	let pathEnd = pathStart;
+	while (pathEnd < value.length && value[pathEnd] !== '?' && value[pathEnd] !== '#') {
+		pathEnd++;
+	}
+
+	return value.slice(pathStart, pathEnd) || '/';
 }
 
 function parseJson(value: string): unknown {
