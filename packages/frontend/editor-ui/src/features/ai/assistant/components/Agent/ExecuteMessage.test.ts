@@ -115,6 +115,7 @@ describe('ExecuteMessage', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflow.id = 'test-workflow';
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		logsStore = mockedStore(useLogsStore);
 		uiStore = mockedStore(useUIStore);
@@ -143,9 +144,6 @@ describe('ExecuteMessage', () => {
 		workflowsStore.setSelectedTriggerNodeName = vi.fn((name: string | undefined) => {
 			selectedTriggerNodeNameRef.value = name;
 		});
-		workflowsStore.getNodeByName = vi.fn(
-			(name: string) => workflowNodes.find((node) => node.name === name) ?? null,
-		);
 		logsStore.toggleOpen = vi.fn();
 		nodeTypesStore.isTriggerNode = vi
 			.fn()
