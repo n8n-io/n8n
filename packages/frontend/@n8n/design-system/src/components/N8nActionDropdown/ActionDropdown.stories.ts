@@ -1,6 +1,6 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
-import N8nDropdown from './ActionDropdown.vue';
+import N8nDropdown from '../N8nDropdown';
 
 export default {
 	title: 'Core/ActionDropdown',

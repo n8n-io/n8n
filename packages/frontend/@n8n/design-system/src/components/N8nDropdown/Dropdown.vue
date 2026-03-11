@@ -1,4 +1,4 @@
-<script setup lang="ts" generic="T = string, D = never">
+<script setup lang="ts" generic="T = string, D = never, U extends IUser = IUser">
 import { useDebounceFn } from '@vueuse/core';
 import {
 	DropdownMenuRoot,
@@ -24,7 +24,8 @@ import N8nDropdownItem from './DropdownMenuItem.vue';
 import N8nDropdownSearch from './DropdownMenuSearch.vue';
 import type { IconOrEmoji } from '../N8nIconPicker/types';
 import type { IconName } from '../N8nIcon/icons';
-import type { UserAction } from '../../types';
+import type { IUser, UserAction } from '../../types';
+import { useParentScroll } from '../../composables/useParentScroll';
 
 export interface N8nDropdownOption<V = string | number> {
 	label: string;
@@ -32,7 +33,7 @@ export interface N8nDropdownOption<V = string | number> {
 	disabled?: boolean;
 }
 
-interface N8nDropdownProps<T, D = never> {
+interface N8nDropdownProps<T, D = never, U extends IUser = IUser> {
 	/** Options for legacy select mode. */
 	options?: Array<N8nDropdownOption<T>>;
 	/** Placeholder text shown in legacy select mode. */
@@ -44,7 +45,7 @@ interface N8nDropdownProps<T, D = never> {
 	/** Menu items for unified action-menu mode. */
 	items?: Array<DropdownMenuItemProps<T, D>>;
 	/** Legacy ActionToggle actions alias, remapped to `items`. */
-	actions?: Array<UserAction<any>>;
+	actions?: Array<UserAction<U>>;
 	/** Controlled open state (canonical). */
 	modelValue?: boolean;
 	/** Initial open state for uncontrolled mode. */
@@ -93,13 +94,13 @@ interface N8nDropdownProps<T, D = never> {
 	theme?: 'default' | 'dark';
 	/** Legacy alias controlling ellipsis orientation. */
 	iconOrientation?: 'horizontal' | 'vertical';
-	/** Deprecated legacy prop kept for compatibility; no-op. */
+	/** Closes action-menu mode when the nearest scrollable parent scrolls. */
 	closeOnParentScroll?: boolean;
 }
 
 defineOptions({ name: 'N8nDropdown', inheritAttrs: false });
 
-const props = withDefaults(defineProps<N8nDropdownProps<T, D>>(), {
+const props = withDefaults(defineProps<N8nDropdownProps<T, D, U>>(), {
 	options: () => [],
 	items: () => [],
 	actions: () => [],
@@ -136,7 +137,7 @@ const emit = defineEmits<{
 	'submenu:toggle': [itemId: T, open: boolean];
 	'visible-change': [open: boolean];
 	visibleChange: [open: boolean];
-	'item-mouseup': [action: UserAction<any>];
+	'item-mouseup': [action: UserAction<U>];
 }>();
 
 const slots = defineSlots<DropdownMenuSlots<T, D> & {
@@ -151,20 +152,29 @@ const $style = useCssModule();
 const internalOpen = ref(props.defaultOpen ?? false);
 const searchRef = ref<{ focus: () => void } | null>(null);
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
+const rootRef = ref<HTMLElement | null>(null);
 const defaultTriggerRef = ref<HTMLButtonElement | null>(null);
 const searchTerm = ref('');
 const openSubMenuIndex = ref(-1);
+const selectedOption = ref<T | undefined>();
 const controlledOpen = computed(() => props.modelValue ?? props.visible);
 const resolvedLoadingRows = computed(() => props.loadingRowCount ?? props.loadingItemCount);
 const resolvedPopperClass = computed(() => props.extraPopperClass ?? props.popperClass);
 
 const isOptionsMode = computed(() => props.options.length > 0 && props.items.length === 0 && props.actions.length === 0);
+const isActionToggleMode = computed(() => props.actions.length > 0);
 const hasLegacyActivatorSlot = computed(() => Boolean(slots.activator));
 const hasTriggerSlot = computed(
 	() => Boolean(slots.trigger) || hasLegacyActivatorSlot.value || (!isOptionsMode.value && Boolean(slots.default)),
 );
 
-const selectedOptionLabel = computed(() => props.placeholder);
+const selectedOptionLabel = computed(() => {
+	if (selectedOption.value === undefined) {
+		return props.placeholder;
+	}
+
+	return props.options.find((option) => option.value === selectedOption.value)?.label ?? props.placeholder;
+});
 
 const normalizedActivatorIcon = computed<IconOrEmoji>(() => {
 	const icon = props.activatorIcon;
@@ -231,6 +241,14 @@ const getItemTestId = (id: T) => {
 	return `action-${String(id)}`;
 };
 
+const getLegacyMenuItemSlotProps = (item: DropdownMenuItemProps<T, D>) => {
+	if (props.items.length === 0) {
+		return item;
+	}
+
+	return props.items.find((candidate) => candidate.id === item.id) ?? item;
+};
+
 const placementParts = computed(() => {
 	const [sideValue, alignValue] = props.placement.split('-');
 	return {
@@ -268,6 +286,9 @@ const navigation = useMenuKeyboardNavigation({
 });
 
 const { highlightedIndex } = navigation;
+const { attachScrollListeners, detachScrollListeners } = useParentScroll(rootRef, () => {
+	close();
+});
 
 const emitOpenEvents = (open: boolean) => {
 	emit('update:modelValue', open);
@@ -279,6 +300,13 @@ const emitOpenEvents = (open: boolean) => {
 const handleOpenChange = (open: boolean) => {
 	internalOpen.value = open;
 	emitOpenEvents(open);
+	if (props.closeOnParentScroll && !isOptionsMode.value) {
+		if (open) {
+			attachScrollListeners();
+		} else {
+			detachScrollListeners();
+		}
+	}
 
 	if (!open) {
 		navigation.reset();
@@ -313,9 +341,9 @@ const handleContentKeydown = (event: KeyboardEvent) => {
 
 const handleSubMenuOpenChange = (index: number, open: boolean) => {
 	const item = normalizedItems.value[index];
-	if (item) {
-		emit('submenu:toggle', item.id, open);
-	}
+	if (!item) return;
+
+	emit('submenu:toggle', item.id, open);
 
 	if (open) {
 		openSubMenuIndex.value = index;
@@ -341,6 +369,10 @@ const handleItemSearch = (term: string, itemId: T) => {
 };
 
 const handleItemSelect = (value: T) => {
+	if (isOptionsMode.value) {
+		selectedOption.value = value;
+	}
+
 	emit('select', value);
 	emit('action', value);
 
@@ -355,27 +387,31 @@ const handleItemSelect = (value: T) => {
 };
 
 const handleLegacyClick = (event: MouseEvent) => {
-	if (!isOptionsMode.value) {
-		event.stopPropagation();
-		event.preventDefault();
+	if (!isActionToggleMode.value) return;
 
-		if (event.target === event.currentTarget) {
-			// Preserve ActionToggle behavior where clicking the wrapper opens the menu.
-			// Triggering the actual button keeps internal Reka state (focus/pointer handling) in sync.
-			defaultTriggerRef.value?.click();
-		}
-	}
+	event.stopPropagation();
+	event.preventDefault();
+
+	if (event.target !== event.currentTarget) return;
+
+	// Preserve ActionToggle behavior where clicking the wrapper opens the menu.
+	// Triggering the actual button keeps internal Reka state (focus/pointer handling) in sync.
+	defaultTriggerRef.value?.click();
 };
 
 const open = () => {
 	if (props.disabled) return;
 	internalOpen.value = true;
 	emitOpenEvents(true);
+	if (props.closeOnParentScroll && !isOptionsMode.value) {
+		attachScrollListeners();
+	}
 };
 
 const close = () => {
 	internalOpen.value = false;
 	emitOpenEvents(false);
+	detachScrollListeners();
 	navigation.reset();
 	openSubMenuIndex.value = -1;
 };
@@ -393,6 +429,13 @@ watch(
 	(newValue) => {
 		if (newValue !== undefined) {
 			internalOpen.value = newValue;
+			if (props.closeOnParentScroll && !isOptionsMode.value) {
+				if (newValue) {
+					attachScrollListeners();
+				} else {
+					detachScrollListeners();
+				}
+			}
 			if (!newValue) {
 				navigation.reset();
 				openSubMenuIndex.value = -1;
@@ -420,7 +463,7 @@ defineExpose({
 </script>
 
 <template>
-	<span v-bind="attrs" @click="handleLegacyClick">
+	<span ref="rootRef" v-bind="attrs" @click="handleLegacyClick">
 		<DropdownMenuRoot :open="internalOpen" :modal="false" @update:open="handleOpenChange">
 		<DropdownMenuTrigger
 			v-if="hasTriggerSlot"
@@ -441,7 +484,6 @@ defineExpose({
 			<button
 				ref="defaultTriggerRef"
 				type="button"
-				role="button"
 				:aria-controls="resolvedMenuContentId"
 			:data-test-id="isOptionsMode ? 'dropdown-trigger' : 'action-toggle'"
 			:class="[
@@ -541,7 +583,7 @@ defineExpose({
 											<slot name="item-label" v-bind="slotProps" />
 										</template>
 										<template v-else-if="slots.menuItem" #item-label="slotProps">
-											<slot name="menuItem" v-bind="slotProps.item" />
+											<slot name="menuItem" v-bind="getLegacyMenuItemSlotProps(slotProps.item)" />
 										</template>
 										<template #item-trailing="slotProps">
 											<slot v-if="slots['item-trailing']" name="item-trailing" v-bind="slotProps" />
