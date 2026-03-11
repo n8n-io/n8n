@@ -8,6 +8,7 @@ import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
 import type { Workflow } from 'n8n-workflow';
 import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
@@ -45,11 +46,11 @@ const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVu
 
 const workflow = toRef(props, 'workflow');
 const workflowObject = toRef(props, 'workflowObject');
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const nodes = computed(() => {
-	return props.showFallbackNodes
-		? [...props.workflow.nodes, ...props.fallbackNodes]
-		: props.workflow.nodes;
+	const allNodes = workflowDocumentStore?.value?.allNodes ?? [];
+	return props.showFallbackNodes ? [...allNodes, ...props.fallbackNodes] : allNodes;
 });
 const connections = computed(() => props.workflow.connections);
 
