@@ -1115,6 +1115,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return qb;
 	}
 
+	async getDistinctVersionIds(workflowId: string): Promise<string[]> {
+		const result = await this.createQueryBuilder('execution')
+			.innerJoin('execution.executionData', 'ed')
+			.select('DISTINCT ed.workflowVersionId', 'workflowVersionId')
+			.where('execution.workflowId = :workflowId', { workflowId })
+			.andWhere('ed.workflowVersionId IS NOT NULL')
+			.getRawMany<{ workflowVersionId: string }>();
+
+		return result.map((r) => r.workflowVersionId);
+	}
+
 	async getAllIds() {
 		const executions = await this.find({ select: ['id'], order: { id: 'ASC' } });
 

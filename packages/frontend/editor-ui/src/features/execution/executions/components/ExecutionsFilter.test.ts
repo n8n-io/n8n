@@ -3,17 +3,16 @@ import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import ExecutionsFilter from '../components/ExecutionsFilter.vue';
 import type { IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterType } from '../executions.types';
-import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import { createComponentRenderer } from '@/__tests__/render';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
+import * as restApiClient from '@n8n/rest-api-client';
 
 vi.mock('vue-router', () => ({
 	useRoute: () =>
@@ -276,16 +275,19 @@ describe('ExecutionsFilter', () => {
 	describe('version filter', () => {
 		const workflowId = faker.string.uuid();
 
-		const makeVersions = (count: number): WorkflowHistory[] =>
+		type ExecutionVersion = { versionId: string; name: string | null; createdAt: string };
+		const makeVersions = (count: number): ExecutionVersion[] =>
 			Array.from({ length: count }, (_, i) => ({
 				versionId: faker.string.uuid(),
-				authors: 'test',
 				createdAt: `2025-10-${String(10 + i).padStart(2, '0')}T10:00:00.000Z`,
-				updatedAt: `2025-10-${String(10 + i).padStart(2, '0')}T10:00:00.000Z`,
-				workflowPublishHistory: [],
 				name: i === 0 ? 'Named version' : null,
-				description: null,
 			}));
+
+		let makeRestApiRequestSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			makeRestApiRequestSpy = vi.spyOn(restApiClient, 'makeRestApiRequest');
+		});
 
 		it('should not show version select when no workflowId is provided', async () => {
 			const { getByTestId, queryByTestId } = renderComponent();
@@ -296,8 +298,7 @@ describe('ExecutionsFilter', () => {
 		});
 
 		it('should show version select when workflowId is provided and versions exist', async () => {
-			const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-			workflowHistoryStore.getWorkflowHistory.mockResolvedValue(makeVersions(3));
+			makeRestApiRequestSpy.mockResolvedValue(makeVersions(3));
 
 			const { getByTestId } = renderComponent({
 				props: { workflowId },
@@ -310,8 +311,7 @@ describe('ExecutionsFilter', () => {
 		});
 
 		it('should not show version select when version fetch returns empty', async () => {
-			const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-			workflowHistoryStore.getWorkflowHistory.mockResolvedValue([]);
+			makeRestApiRequestSpy.mockResolvedValue([]);
 
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: { workflowId },
@@ -324,8 +324,7 @@ describe('ExecutionsFilter', () => {
 
 		it('should emit filter with workflowVersionId when a version is selected', async () => {
 			const versions = makeVersions(2);
-			const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-			workflowHistoryStore.getWorkflowHistory.mockResolvedValue(versions);
+			makeRestApiRequestSpy.mockResolvedValue(versions);
 
 			const { getByTestId, emitted } = renderComponent({
 				props: { workflowId },
@@ -351,8 +350,7 @@ describe('ExecutionsFilter', () => {
 
 		it('should reset version filter when workflowId changes', async () => {
 			const versions = makeVersions(2);
-			const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-			workflowHistoryStore.getWorkflowHistory.mockResolvedValue(versions);
+			makeRestApiRequestSpy.mockResolvedValue(versions);
 
 			const { getByTestId, emitted, rerender } = renderComponent({
 				props: { workflowId },
@@ -370,7 +368,7 @@ describe('ExecutionsFilter', () => {
 
 			// Change workflowId
 			const newWorkflowId = faker.string.uuid();
-			workflowHistoryStore.getWorkflowHistory.mockResolvedValue(makeVersions(1));
+			makeRestApiRequestSpy.mockResolvedValue(makeVersions(1));
 			await rerender({ workflowId: newWorkflowId });
 
 			await waitFor(() => {
@@ -383,8 +381,7 @@ describe('ExecutionsFilter', () => {
 		});
 
 		it('should not show version select when version fetch fails', async () => {
-			const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-			workflowHistoryStore.getWorkflowHistory.mockRejectedValue(new Error('Not found'));
+			makeRestApiRequestSpy.mockRejectedValue(new Error('Not found'));
 
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: { workflowId },
@@ -392,7 +389,7 @@ describe('ExecutionsFilter', () => {
 
 			await userEvent.click(getByTestId('executions-filter-button'));
 			await waitFor(() => {
-				expect(workflowHistoryStore.getWorkflowHistory).toHaveBeenCalled();
+				expect(makeRestApiRequestSpy).toHaveBeenCalled();
 			});
 
 			expect(queryByTestId('executions-filter-version-select')).not.toBeInTheDocument();

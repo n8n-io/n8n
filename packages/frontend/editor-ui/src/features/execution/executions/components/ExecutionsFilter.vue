@@ -9,8 +9,8 @@ import type { IWorkflowDb, IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterMetadata, ExecutionFilterType } from '../executions.types';
 import { i18n as locale } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
-import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
@@ -40,7 +40,7 @@ export type ExecutionFilterProps = {
 const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
 
 const settingsStore = useSettingsStore();
-const workflowHistoryStore = useWorkflowHistoryStore();
+const rootStore = useRootStore();
 const { debounce } = useDebounce();
 
 const telemetry = useTelemetry();
@@ -79,8 +79,8 @@ const getDefaultFilter = (): ExecutionFilterType => ({
 });
 const filter = reactive(getDefaultFilter());
 
-const WORKFLOW_VERSIONS_LIMIT = 100;
-const workflowVersions = ref<WorkflowHistory[]>([]);
+type ExecutionVersion = { versionId: string; name: string | null; createdAt: string };
+const workflowVersions = ref<ExecutionVersion[]>([]);
 
 const versionFilterOptions = computed(() => {
 	const options: Array<{ id: string; name: string }> = [
@@ -106,9 +106,11 @@ watch(
 		filter.workflowVersionId = 'all';
 		if (!workflowId) return;
 		try {
-			workflowVersions.value = await workflowHistoryStore.getWorkflowHistory(workflowId, {
-				take: WORKFLOW_VERSIONS_LIMIT,
-			});
+			workflowVersions.value = await makeRestApiRequest<ExecutionVersion[]>(
+				rootStore.restApiContext,
+				'GET',
+				`/executions/versions/${workflowId}`,
+			);
 		} catch {
 			// silently ignore — versions may not be available
 		}
@@ -341,11 +343,7 @@ onBeforeMount(() => {
 				<div v-if="props.workflowId && versionFilterOptions.length > 1" :class="$style.group">
 					<N8nTooltip placement="right">
 						<template #content>
-							{{
-								locale.baseText('executionsFilter.version.hint', {
-									interpolate: { limit: WORKFLOW_VERSIONS_LIMIT },
-								})
-							}}
+							{{ locale.baseText('executionsFilter.version.hint') }}
 						</template>
 						<span :class="[$style.label, $style.savedDataLabel]">
 							<span>{{ locale.baseText('executionsFilter.version') }}</span>
