@@ -44,7 +44,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
 	const environmentsStore = useEnvironmentsStore();
-	const workflowState = injectWorkflowState();
 	const templatesStore = useTemplatesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -747,7 +746,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		void testCredentialInBackground(credentialId, credential.name, credentialType);
 
 		for (const nodeName of getAffectedNodeNames(credentialType, sourceNodeName)) {
-			const node = workflowsStore.getNodeByName(nodeName);
+			const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
 			if (!node) continue;
 			if (skipHttpRequestType && isHttpRequestNodeType(node.type)) continue;
 
@@ -757,7 +756,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			const prevCred = node.credentials?.[credentialType];
 			const prevId = typeof prevCred === 'string' ? undefined : prevCred?.id;
 			if (prevId) autoAppliedCredentialIds.value.delete(prevId);
-			workflowState.updateNodeProperties({
+			workflowDocumentStore?.value?.updateNodeProperties({
 				name: nodeName,
 				properties: {
 					credentials: {
@@ -786,7 +785,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			const updatedCredentials = { ...node.credentials };
 			delete updatedCredentials[credentialType];
 
-			workflowState.updateNodeProperties({
+			workflowDocumentStore?.value?.updateNodeProperties({
 				name: nodeName,
 				properties: {
 					credentials: updatedCredentials,
