@@ -153,7 +153,7 @@ async function createContainer(
 	}
 
 	const waitStrategy = isWorker ? WORKER_WAIT_STRATEGY : MAIN_WAIT_STRATEGY;
-	const ports = hostPort ? [{ container: 5678, host: hostPort }, 5679] : [5678, 5679];
+	const ports = hostPort ? [{ container: 5678, host: hostPort }, 5679] : [5678];
 
 	container = container.withExposedPorts(...ports).withWaitStrategy(waitStrategy);
 
