@@ -591,7 +591,7 @@ describe('WorkflowIndexService', () => {
 			await service.buildIndex();
 
 			// Verify findWorkflowsNeedingIndexing was called with correct pagination
-			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenCalledWith(100); // default batch size
+			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenCalledWith(10); // default batch size
 
 			// Verify updateDependenciesForWorkflow was called for each workflow
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledTimes(
