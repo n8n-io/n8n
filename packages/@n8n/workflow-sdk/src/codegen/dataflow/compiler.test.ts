@@ -133,6 +133,23 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 			expect(reGenerated).toContain("name: 'My Auth'");
 		});
 
+		it('generates variable references instead of expr() for $json expressions', () => {
+			const code = `workflow({ name: 'VarRef Test' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const fetch_Data = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://api.example.com/users' }, version: 4 });
+    const transform = executeNode({ type: 'n8n-nodes-base.set', params: { value: fetch_Data.json.name }, version: 3 });
+  });
+});`;
+			const parsed = parseDataFlowCode(code);
+			// The param should be stored as an n8n expression
+			expect(parsed.nodes[2]!.parameters!.value).toBe('={{ $json.name }}');
+
+			const reGenerated = generateDataFlowWorkflowCode(parsed);
+			// The regenerated code should use variable references, not expr()
+			expect(reGenerated).not.toContain('expr(');
+			expect(reGenerated).toContain('.json.name');
+		});
+
 		it('preserves AI subnodes through code → JSON → code', () => {
 			const code = `workflow({ name: 'AI Test' }, () => {
   onTrigger({ type: '@n8n/n8n-nodes-langchain.chatTrigger', params: {}, version: 1 }, (items) => {

@@ -98,12 +98,12 @@ describe('dataflow-generator', () => {
 			// Should have trigger wrapping the chain
 			expect(code).toContain("onTrigger({ type: 'n8n-nodes-base.manualTrigger'");
 			// Should have const assignments inside callback
-			expect(code).toContain('const hTTP_Request = node(');
+			expect(code).toContain('const hTTP_Request = executeNode(');
 			expect(code).toContain("type: 'n8n-nodes-base.httpRequest'");
-			expect(code).toContain('})(items);');
-			expect(code).toContain('const set = node(');
+			expect(code).toContain('});');
+			expect(code).toContain('const set = executeNode(');
 			expect(code).toContain("type: 'n8n-nodes-base.set'");
-			expect(code).toContain('})(hTTP_Request);');
+			expect(code).toContain('});');
 		});
 
 		it('includes name in config when it differs from default', () => {
@@ -170,10 +170,10 @@ describe('dataflow-generator', () => {
 			const code = generateFromWorkflow(json);
 
 			// The node config should not include a name property since it matches default
-			// Extract the node() call substring - it uses nested braces for params
-			const nodeCallMatch = code.match(/node\(\{.+?\}\)\(items\)/);
+			// Extract the executeNode() call substring
+			const nodeCallMatch = code.match(/executeNode\(\{.+?\}\)/);
 			expect(nodeCallMatch).toBeTruthy();
-			// The node() call should not include "name:" since HTTP Request is the default
+			// The executeNode() call should not include "name:" since HTTP Request is the default
 			expect(nodeCallMatch![0]).not.toContain('name:');
 		});
 
@@ -361,8 +361,7 @@ describe('dataflow-generator', () => {
 			expect(code).toContain("httpBasicAuth: { id: '1', name: 'My Auth' }");
 		});
 
-		it('emits TODO comment for unsupported patterns', () => {
-			// A merge node creates a merge composite which is unsupported in this step
+		it('generates for...of for SplitInBatches pattern', () => {
 			const json: WorkflowJSON = {
 				name: 'Test Workflow',
 				nodes: [
@@ -392,7 +391,7 @@ describe('dataflow-generator', () => {
 
 			const code = generateFromWorkflow(json);
 
-			expect(code).toContain('// TODO: unsupported pattern');
+			expect(code).toContain('for (const item of');
 		});
 
 		describe('IF/Else handling', () => {
@@ -463,8 +462,8 @@ describe('dataflow-generator', () => {
 
 				expect(code).toContain("if (items[0].json.status === 'active')");
 				expect(code).toContain('} else {');
-				expect(code).toContain('const true_Branch = node(');
-				expect(code).toContain('const false_Branch = node(');
+				expect(code).toContain('const true_Branch = executeNode(');
+				expect(code).toContain('const false_Branch = executeNode(');
 			});
 
 			it('generates if block with true-only branch (no else)', () => {
@@ -523,7 +522,7 @@ describe('dataflow-generator', () => {
 
 				expect(code).toContain("if (items[0].json.status === 'active')");
 				expect(code).not.toContain('} else {');
-				expect(code).toContain('const true_Branch = node(');
+				expect(code).toContain('const true_Branch = executeNode(');
 			});
 
 			it('generates if block with boolean true condition (truthy check)', () => {
@@ -1049,9 +1048,9 @@ describe('dataflow-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain('const handler_A = node(');
-				expect(code).toContain('const handler_B = node(');
-				expect(code).toContain('const fallback = node(');
+				expect(code).toContain('const handler_A = executeNode(');
+				expect(code).toContain('const handler_B = executeNode(');
+				expect(code).toContain('const fallback = executeNode(');
 				expect(code).toContain('break;');
 			});
 		});
@@ -1099,8 +1098,8 @@ describe('dataflow-generator', () => {
 				const code = generateFromWorkflow(json);
 				expect(code).toContain('try {');
 				expect(code).toContain('} catch');
-				expect(code).toContain('const hTTP_Request = node(');
-				expect(code).toContain('const error_Handler = node(');
+				expect(code).toContain('const hTTP_Request = executeNode(');
+				expect(code).toContain('const error_Handler = executeNode(');
 			});
 
 			it('generates normal code for leaf nodes without errorHandler', () => {
@@ -1133,7 +1132,7 @@ describe('dataflow-generator', () => {
 				const code = generateFromWorkflow(json);
 				expect(code).not.toContain('try {');
 				expect(code).not.toContain('catch');
-				expect(code).toContain('const hTTP_Request = node(');
+				expect(code).toContain('const hTTP_Request = executeNode(');
 			});
 		});
 
@@ -1199,7 +1198,7 @@ describe('dataflow-generator', () => {
 				const code = generateFromWorkflow(json);
 				// Should have array destructuring
 				expect(code).toContain('const [');
-				expect(code).toContain('] = node(');
+				expect(code).toContain('] = executeNode(');
 			});
 
 			it('uses _ placeholder for unused output indices', () => {
@@ -1310,8 +1309,8 @@ describe('dataflow-generator', () => {
 				};
 				const code = generateFromWorkflow(json);
 				// Each output target should be generated using its variable
-				expect(code).toContain('const handle_A = node(');
-				expect(code).toContain('const handle_B = node(');
+				expect(code).toContain('const handle_A = compare_Datasets_0.map((item) =>');
+				expect(code).toContain('const handle_B = compare_Datasets_1.map((item) =>');
 			});
 		});
 
@@ -1356,7 +1355,7 @@ describe('dataflow-generator', () => {
 				};
 				const code = generateFromWorkflow(json);
 				expect(code).toContain('subnodes:');
-				expect(code).toContain('ai_languageModel');
+				expect(code).toContain('model: languageModel(');
 				expect(code).toContain("type: '@n8n/n8n-nodes-langchain.lmChatOpenAi'");
 			});
 
@@ -1411,10 +1410,10 @@ describe('dataflow-generator', () => {
 				};
 				const code = generateFromWorkflow(json);
 				expect(code).toContain('subnodes:');
-				// ai_tool should always be array
-				expect(code).toMatch(/ai_tool: \[/);
-				// ai_languageModel single item should not be array
-				expect(code).toMatch(/ai_languageModel: \{/);
+				// tools should always be array
+				expect(code).toMatch(/tools: \[/);
+				// model (single item) should not be array
+				expect(code).toMatch(/model: languageModel\(/);
 			});
 
 			it('includes subnode params, version, and credentials', () => {

@@ -1,4 +1,3 @@
 {
-	"title": "F14: Loop with try-catch (SplitInBatches + error handling)",
-	"skip": "Needs for...of parser support"
+	"title": "F14: Loop with try-catch (SplitInBatches + error handling)"
 }

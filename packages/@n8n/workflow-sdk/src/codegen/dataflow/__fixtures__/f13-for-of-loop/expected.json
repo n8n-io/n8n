@@ -1,0 +1,55 @@
+{
+	"name": "For Of Loop",
+	"nodes": [
+		{
+			"id": "node-0",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "node-1",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4,
+			"position": [200, 0],
+			"parameters": {
+				"url": "https://api.example.com/items"
+			}
+		},
+		{
+			"id": "node-2",
+			"name": "Split In Batches",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"parameters": {
+				"batchSize": 1
+			}
+		},
+		{
+			"id": "node-3",
+			"name": "Process Item",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [600, 0],
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]]
+		},
+		"HTTP Request": {
+			"main": [[{ "node": "Split In Batches", "type": "main", "index": 0 }]]
+		},
+		"Split In Batches": {
+			"main": [[], [{ "node": "Process Item", "type": "main", "index": 0 }]]
+		},
+		"Process Item": {
+			"main": [[{ "node": "Split In Batches", "type": "main", "index": 0 }]]
+		}
+	}
+}

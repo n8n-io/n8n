@@ -344,6 +344,86 @@ describe('parseDataFlowCode', () => {
 		});
 	});
 
+	describe('for...of loop parsing', () => {
+		it('should parse for...of as SplitInBatches with loop-back connection', () => {
+			const code = `workflow({ name: 'For Of Loop' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const data = executeNode({
+      type: 'n8n-nodes-base.httpRequest',
+      params: { url: 'https://api.example.com/items' },
+      version: 4,
+    });
+    for (const item of data) {
+      const process_Item = executeNode({
+        type: 'n8n-nodes-base.set',
+        name: 'Process Item',
+        params: {},
+        version: 3,
+      });
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Should have: Trigger, HTTP Request, SplitInBatches, Process Item
+			expect(result.nodes).toHaveLength(4);
+			const sibNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.splitInBatches');
+			expect(sibNode).toBeDefined();
+			expect(sibNode!.name).toBe('Split In Batches');
+
+			// HTTP Request → SplitInBatches
+			expect(result.connections['HTTP Request']?.main![0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: 'Split In Batches' })]),
+			);
+
+			// SplitInBatches output 1 (loop) → Process Item
+			const sibConns = result.connections['Split In Batches']?.main;
+			expect(sibConns).toBeDefined();
+			expect(sibConns![1]).toEqual([{ node: 'Process Item', type: 'main', index: 0 }]);
+
+			// Process Item → SplitInBatches (loop-back)
+			expect(result.connections['Process Item']?.main![0]).toEqual([
+				{ node: 'Split In Batches', type: 'main', index: 0 },
+			]);
+		});
+
+		it('should connect nodes after for...of to SplitInBatches done output', () => {
+			const code = `workflow({ name: 'For Then Continue' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const data = executeNode({
+      type: 'n8n-nodes-base.httpRequest',
+      params: { url: 'https://api.example.com' },
+      version: 4,
+    });
+    for (const item of data) {
+      const process = executeNode({
+        type: 'n8n-nodes-base.set',
+        name: 'Process',
+        params: {},
+        version: 3,
+      });
+    }
+    const summary = executeNode({
+      type: 'n8n-nodes-base.set',
+      name: 'Summary',
+      params: {},
+      version: 3,
+    });
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Should have: Trigger, HTTP Request, SplitInBatches, Process, Summary
+			expect(result.nodes).toHaveLength(5);
+
+			// SplitInBatches done output (0) → Summary
+			const sibConns = result.connections['Split In Batches']?.main;
+			expect(sibConns![0]).toEqual([{ node: 'Summary', type: 'main', index: 0 }]);
+		});
+	});
+
 	describe('filter parsing', () => {
 		it('should parse .filter() as IF node with true-only output', () => {
 			const code = `workflow({ name: 'Filter' }, () => {

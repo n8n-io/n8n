@@ -49,7 +49,7 @@ describe('dataflow integration', () => {
 
 			expect(code).toContain("workflow({ name: 'Simple Test' }, () => {");
 			expect(code).toContain('onTrigger(');
-			expect(code).toContain('node(');
+			expect(code).toContain('executeNode(');
 			expect(code).toContain("type: 'n8n-nodes-base.httpRequest'");
 		});
 
@@ -87,7 +87,7 @@ describe('dataflow integration', () => {
 			expect(code).toContain('@n8n/n8n-nodes-langchain.agent');
 			// Should have subnodes for the AI model
 			expect(code).toContain('subnodes:');
-			expect(code).toContain('ai_languageModel');
+			expect(code).toContain('model:');
 		});
 
 		it('generates code from tutorial/api_fundamentals template', () => {

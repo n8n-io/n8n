@@ -9,7 +9,7 @@
 import { getUniqueVarName } from '../variable-names';
 import type { VarNameContext } from '../variable-names';
 import { isTriggerType, isStickyNote, generateDefaultNodeName } from '../node-type-utils';
-import { escapeString } from '../string-utils';
+import { escapeString, formatKey } from '../string-utils';
 import { formatValue } from '../subnode-generator';
 import type { SemanticGraph, SemanticNode, AiConnectionType } from '../types';
 import type {
@@ -21,6 +21,7 @@ import type {
 	SwitchCaseCompositeNode,
 	MultiOutputNode,
 	FanOutCompositeNode,
+	SplitInBatchesCompositeNode,
 	VariableReference,
 } from '../composite-tree';
 import {
@@ -124,10 +125,54 @@ function buildSubnodesConfig(node: SemanticNode, ctx: DataFlowContext): string |
 }
 
 /**
+ * Convert a single n8n expression value to a JS variable reference.
+ * E.g., `={{ $json.name }}` with prevVar `fetch_Data` → `fetch_Data.json.name`
+ *
+ * For complex expressions (runtime globals, template strings), falls back to `expr()`.
+ */
+function exprToVarRef(value: string, prevVarName: string): string | undefined {
+	// Simple $json field reference: ={{ $json.field.path }}
+	const jsonMatch = value.match(
+		/^=\{\{\s*\$json((?:\.[a-zA-Z_$][a-zA-Z0-9_$]*|\["[^"]*"\]|\['[^']*'\])*)\s*\}\}$/,
+	);
+	if (jsonMatch) {
+		return `${prevVarName}.json${jsonMatch[1]}`;
+	}
+	return undefined;
+}
+
+/**
+ * Format a parameter value for data-flow output.
+ * Converts n8n expressions to JS variable references when possible.
+ * Falls back to `formatValue` for non-expression values.
+ */
+function formatDataFlowValue(value: unknown, prevVarName: string): string {
+	if (typeof value === 'string' && value.startsWith('=')) {
+		const varRef = exprToVarRef(value, prevVarName);
+		if (varRef) return varRef;
+		// Fall back to expr() for complex expressions
+		return formatValue(value);
+	}
+	if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+		const entries = Object.entries(value as Record<string, unknown>);
+		if (entries.length === 0) return '{}';
+		const formattedEntries = entries.map(
+			([k, v]) => `${formatKey(k)}: ${formatDataFlowValue(v, prevVarName)}`,
+		);
+		return `{ ${formattedEntries.join(', ')} }`;
+	}
+	if (Array.isArray(value)) {
+		const formattedElements = value.map((v) => formatDataFlowValue(v, prevVarName));
+		return `[${formattedElements.join(', ')}]`;
+	}
+	return formatValue(value);
+}
+
+/**
  * Build the config object string for a node (trigger or regular).
  * Includes: type, name (if non-default), params, credentials, version, subnodes.
  */
-function buildNodeConfig(node: SemanticNode, ctx: DataFlowContext): string {
+function buildNodeConfig(node: SemanticNode, ctx: DataFlowContext, prevVarName?: string): string {
 	const parts: string[] = [];
 
 	parts.push(`type: '${node.type}'`);
@@ -139,7 +184,8 @@ function buildNodeConfig(node: SemanticNode, ctx: DataFlowContext): string {
 
 	const params = node.json.parameters;
 	if (params && Object.keys(params).length > 0) {
-		parts.push(`params: ${formatValue(params)}`);
+		const paramStr = prevVarName ? formatDataFlowValue(params, prevVarName) : formatValue(params);
+		parts.push(`params: ${paramStr}`);
 	} else {
 		parts.push('params: {}');
 	}
@@ -227,6 +273,13 @@ function generateCompositeNode(
 			return generateMultiOutputNode(compositeNode, ctx, depth, inputVar);
 		case 'fanOut':
 			return generateFanOutNode(compositeNode as FanOutCompositeNode, ctx, depth, inputVar);
+		case 'splitInBatches':
+			return generateSplitInBatchesNode(
+				compositeNode as SplitInBatchesCompositeNode,
+				ctx,
+				depth,
+				inputVar,
+			);
 		case 'varRef':
 			return { code: '', varName: (compositeNode as VariableReference).varName };
 		default:
@@ -264,7 +317,7 @@ function generateLeafNode(
 	}
 
 	const varName = getUniqueVarName(node.name, ctx);
-	const config = buildNodeConfig(node, ctx);
+	const config = buildNodeConfig(node, ctx, inputVar);
 
 	// If the leaf has an error handler, wrap in try/catch
 	if (leaf.errorHandler) {
@@ -627,6 +680,46 @@ function generateSwitchCaseNode(
 	}
 
 	lines.push(`${indent}}`);
+
+	return { code: lines.join('\n'), varName: null };
+}
+
+/**
+ * Generate code for a SplitInBatches composite node as a `for...of` loop.
+ *
+ * Produces code like:
+ *   for (const item of sourceVar) {
+ *     const processItem = executeNode({ ... });
+ *   }
+ */
+function generateSplitInBatchesNode(
+	sib: SplitInBatchesCompositeNode,
+	ctx: DataFlowContext,
+	depth: number,
+	inputVar: string,
+): CompositeNodeResult {
+	const indent = getIndent(depth);
+	const lines: string[] = [];
+
+	const sourceVar = inputVar;
+
+	// Generate loop body
+	lines.push(`${indent}for (const item of ${sourceVar}) {`);
+
+	if (sib.loopChain !== null) {
+		const loopBody = generateBranchBody(sib.loopChain, ctx, depth + 1, 'item');
+		lines.push(loopBody);
+	}
+
+	lines.push(`${indent}}`);
+
+	// Generate done chain after the loop (if any)
+	if (sib.doneChain !== null) {
+		const doneCode = generateBranchBody(sib.doneChain, ctx, depth, inputVar);
+		if (doneCode) {
+			lines.push(doneCode);
+		}
+	}
 
 	return { code: lines.join('\n'), varName: null };
 }

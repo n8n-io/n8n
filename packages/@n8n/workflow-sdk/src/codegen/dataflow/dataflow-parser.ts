@@ -23,6 +23,7 @@ import type {
 	SwitchStatement,
 	SwitchCase,
 	TryStatement,
+	ForOfStatement,
 	ObjectExpression,
 	Property,
 	ArrayExpression,
@@ -1112,6 +1113,86 @@ function processTryStatement(
 }
 
 /**
+ * Process a for...of statement → SplitInBatches node with loop-back connection.
+ *
+ * Pattern: `for (const item of data) { ... }`
+ * - Creates a SplitInBatches node connected from `data` source
+ * - Loop body nodes connect from SplitInBatches output 1 (loop)
+ * - Last loop body node connects back to SplitInBatches (loop-back)
+ * - After the loop, lastNodeInScope = SplitInBatches output 0 (done)
+ */
+function processForOfStatement(
+	stmt: ForOfStatement,
+	state: ParserState,
+	_inputVarName: string | undefined,
+): void {
+	// Resolve the source variable from the right-hand side: `for (... of data)`
+	let sourceNodeName: string | undefined;
+	let sourceOutputIndex = 0;
+	if (isIdentifier(stmt.right)) {
+		const mapping = state.varToNode.get(stmt.right.name);
+		if (mapping) {
+			sourceNodeName = mapping.nodeName;
+			sourceOutputIndex = mapping.outputIndex;
+		}
+	}
+
+	// Create SplitInBatches node
+	const sibConfig: NodeConfig = {
+		type: 'n8n-nodes-base.splitInBatches',
+		params: { batchSize: 1 },
+		version: 3,
+	};
+	const sibNodeJSON = createNodeJSON(sibConfig, state);
+	state.nodes.push(sibNodeJSON);
+
+	// Connect source → SplitInBatches
+	if (sourceNodeName) {
+		addConnection(state, sourceNodeName, sibNodeJSON.name!, sourceOutputIndex);
+	} else if (state.lastNodeInScope) {
+		addConnection(
+			state,
+			state.lastNodeInScope.nodeName,
+			sibNodeJSON.name!,
+			state.lastNodeInScope.outputIndex,
+		);
+	}
+
+	// Process loop body: nodes connect from SplitInBatches output 1 (loop)
+	state.lastNodeInScope = { nodeName: sibNodeJSON.name!, outputIndex: 1 };
+
+	const nodesBeforeBody = state.nodes.length;
+	const bodyStatements =
+		stmt.body.type === 'BlockStatement' ? (stmt.body as BlockStatement).body : [stmt.body];
+	processStatements(bodyStatements, state, _inputVarName);
+
+	// Connect lastNodeInScope (success path) back to SplitInBatches
+	if (state.lastNodeInScope && state.lastNodeInScope.nodeName !== sibNodeJSON.name!) {
+		addConnection(
+			state,
+			state.lastNodeInScope.nodeName,
+			sibNodeJSON.name!,
+			state.lastNodeInScope.outputIndex,
+		);
+	}
+
+	// Also connect any terminal loop body nodes (e.g., error handler paths
+	// inside try/catch) that have no outgoing main connections.
+	for (let i = nodesBeforeBody; i < state.nodes.length; i++) {
+		const bodyNode = state.nodes[i];
+		const nodeConns = state.connections[bodyNode.name!]?.main;
+		const hasOutgoing =
+			nodeConns !== undefined && nodeConns.some((slot) => slot && slot.length > 0);
+		if (!hasOutgoing) {
+			addConnection(state, bodyNode.name!, sibNodeJSON.name!, 0);
+		}
+	}
+
+	// After loop: lastNodeInScope = SplitInBatches output 0 (done)
+	state.lastNodeInScope = { nodeName: sibNodeJSON.name!, outputIndex: 0 };
+}
+
+/**
  * Process a list of statements in a callback body.
  */
 function processStatements(
@@ -1208,6 +1289,11 @@ function processStatement(
 
 		case 'TryStatement': {
 			processTryStatement(stmt as TryStatement, state, inputVarName);
+			break;
+		}
+
+		case 'ForOfStatement': {
+			processForOfStatement(stmt as ForOfStatement, state, inputVarName);
 			break;
 		}
 
