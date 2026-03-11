@@ -17,6 +17,8 @@ export type CategoryClient =
 	| TicketingClient
 	| AccountingClient;
 
+export type MergeCredentials = { apiKey: string; accountToken: string };
+
 // SDK category client instance types
 type AtsClient = InstanceType<typeof Ats>;
 type CrmClient = InstanceType<typeof Crm>;
@@ -30,16 +32,6 @@ export interface ModelOperation {
 	availableOperations: string[];
 	requiredPostParameters: string[];
 	supportedFields: string[];
-}
-
-/**
- * Returns the category of the linked account by calling accountDetails.
- * The account-details endpoint returns the correct linked account regardless of
- * which category URL is used, so we bootstrap through `filestorage`.
- */
-export async function getLinkedAccountCategory(merge: MergeClient): Promise<string> {
-	const details = await merge.filestorage.accountDetails.retrieve();
-	return details.category ?? 'filestorage';
 }
 
 export function getCategoryClient(merge: MergeClient, category: string): CategoryClient {
