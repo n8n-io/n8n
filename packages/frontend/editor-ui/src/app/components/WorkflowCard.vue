@@ -670,8 +670,9 @@ const tags = computed(
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<DependencyPill
-					v-if="true || workflowHasDependencies"
+					v-if="workflowHasDependencies"
 					:dependencies="getDependencies(data.id) ?? []"
+					source="workflow_card"
 					data-test-id="workflow-card-dependencies"
 				/>
 				<ProjectCardBadge

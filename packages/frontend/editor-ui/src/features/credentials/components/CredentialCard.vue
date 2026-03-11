@@ -203,6 +203,7 @@ function moveResource() {
 				<DependencyPill
 					v-if="credentialHasDependents"
 					:dependencies="dependentDependencies"
+					source="credential_card"
 					data-test-id="credential-card-dependents"
 				/>
 				<ProjectCardBadge

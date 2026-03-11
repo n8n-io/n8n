@@ -131,6 +131,7 @@ const dependentDependencies = computed(
 						<DependencyPill
 							v-if="dataTableHasDependents"
 							:dependencies="dependentDependencies"
+							source="data_table_card"
 							data-test-id="data-table-card-dependents"
 						/>
 						<ProjectCardBadge

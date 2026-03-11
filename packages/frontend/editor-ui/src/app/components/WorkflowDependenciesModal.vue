@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import type { BaseTextKey } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 
 interface ResolvedDependency {
@@ -30,6 +30,11 @@ const props = defineProps<{
 const i18n = useI18n();
 const router = useRouter();
 const uiStore = useUIStore();
+const searchQuery = ref('');
+
+const MIN_ITEMS_FOR_SEARCH = 3;
+const showSearch = computed(() => props.data.dependencies.length >= MIN_ITEMS_FOR_SEARCH);
+
 const typeConfig = {
 	credentialId: {
 		icon: 'key-round' as const,
@@ -63,9 +68,10 @@ const groupedDependencies = computed(() => {
 		workflowCall: [],
 		workflowParent: [],
 	};
+	const query = searchQuery.value.toLowerCase().trim();
 	for (const dep of props.data.dependencies) {
 		const key = dep.type as DependencyType;
-		if (groups[key]) {
+		if (groups[key] && (!query || dep.name.toLowerCase().includes(query))) {
 			groups[key].push(dep);
 		}
 	}
@@ -109,6 +115,17 @@ function onClickDependency(dep: ResolvedDependency) {
 	>
 		<template #content>
 			<div :class="$style.content">
+				<N8nInput
+					v-if="showSearch"
+					v-model="searchQuery"
+					:placeholder="i18n.baseText('workflows.dependencies.modal.search' as BaseTextKey)"
+					clearable
+					data-test-id="workflow-dependencies-search"
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
 				<template v-for="typeKey in displayOrder" :key="typeKey">
 					<div v-if="groupedDependencies[typeKey].length > 0" :class="$style.group">
 						<div :class="$style.groupHeader">

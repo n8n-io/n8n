@@ -11,6 +11,7 @@ import {
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 
 interface ResolvedDependency {
@@ -22,14 +23,22 @@ interface ResolvedDependency {
 
 type DependencyType = 'credentialId' | 'dataTableId' | 'workflowCall' | 'workflowParent';
 
+const MIN_ITEMS_FOR_SEARCH = 6;
+
+type DependencyPillSource = 'workflow_card' | 'credential_card' | 'data_table_card';
+
 const props = defineProps<{
 	dependencies: ResolvedDependency[];
+	source: DependencyPillSource;
 	dataTestId?: string;
 }>();
 
 const i18n = useI18n();
 const router = useRouter();
 const uiStore = useUIStore();
+const telemetry = useTelemetry();
+
+const showSearch = computed(() => props.dependencies.length >= MIN_ITEMS_FOR_SEARCH);
 
 const searchTerm = ref('');
 
@@ -128,6 +137,15 @@ function onSelect(value: string) {
 function onSearch(term: string) {
 	searchTerm.value = term;
 }
+
+function onDropdownToggle(open: boolean) {
+	if (open) {
+		telemetry.track('User opened dependency pill', {
+			source: props.source,
+			dependency_count: props.dependencies.length,
+		});
+	}
+}
 </script>
 
 <template>
@@ -135,7 +153,7 @@ function onSearch(term: string) {
 		:items="menuItems"
 		trigger="hover"
 		placement="bottom"
-		searchable
+		:searchable="showSearch"
 		extra-popper-class="dependency-pill-dropdown"
 		:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder' as BaseTextKey)"
 		:empty-text="i18n.baseText('workflows.dependencies.search.empty' as BaseTextKey)"
@@ -143,6 +161,7 @@ function onSearch(term: string) {
 		:data-test-id="dataTestId"
 		@select="onSelect"
 		@search="onSearch"
+		@update:model-value="onDropdownToggle"
 	>
 		<template #trigger>
 			<N8nBadge theme="tertiary" :class="$style.badge">

@@ -1,10 +1,11 @@
 <script lang="ts" setup>
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
 import { VIEWS } from '@/app/constants';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 
 interface WorkflowDependent {
 	id: string;
@@ -12,7 +13,7 @@ interface WorkflowDependent {
 	projectId?: string;
 }
 
-defineProps<{
+const props = defineProps<{
 	modalName: string;
 	data: {
 		resourceName: string;
@@ -22,6 +23,17 @@ defineProps<{
 
 const router = useRouter();
 const i18n = useI18n();
+const searchQuery = ref('');
+
+const MIN_ITEMS_FOR_SEARCH = 3;
+const showSearch = computed(() => props.data.dependents.length >= MIN_ITEMS_FOR_SEARCH);
+
+const filteredDependents = computed(() => {
+	const query = searchQuery.value.toLowerCase().trim();
+	if (!query) return props.data.dependents;
+	return props.data.dependents.filter((dep) => dep.name.toLowerCase().includes(query));
+});
+
 function onClickWorkflow(dep: WorkflowDependent) {
 	const href = router.resolve({ name: VIEWS.WORKFLOW, params: { name: dep.id } }).href;
 	window.open(href, '_blank');
@@ -36,9 +48,20 @@ function onClickWorkflow(dep: WorkflowDependent) {
 	>
 		<template #content>
 			<div :class="$style.content">
+				<N8nInput
+					v-if="showSearch"
+					v-model="searchQuery"
+					:placeholder="i18n.baseText('resourceDependents.modal.search' as BaseTextKey)"
+					clearable
+					data-test-id="resource-dependents-search"
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
 				<ul :class="$style.depList">
 					<li
-						v-for="dep in data.dependents"
+						v-for="dep in filteredDependents"
 						:key="dep.id"
 						:class="[$style.depRow, $style.depRowClickable]"
 						data-test-id="resource-dependent-item"
