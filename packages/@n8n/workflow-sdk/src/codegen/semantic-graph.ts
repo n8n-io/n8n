@@ -10,7 +10,7 @@ import { deepCopy } from 'n8n-workflow';
 import { getOutputName, getInputName, getOutputIndex, getInputIndex } from './semantic-registry';
 import type { SemanticGraph, SemanticNode, SemanticConnection, AiConnectionType } from './types';
 import { AI_CONNECTION_TYPES } from './types';
-import type { WorkflowJSON, NodeJSON, IConnections } from '../types/base';
+import type { WorkflowJSON, NodeJSON, IConnections, IDataObject } from '../types/base';
 import { normalizeConnections, generateUniqueName } from '../types/base';
 import { isTriggerNodeType } from '../utils/trigger-detection';
 
@@ -478,5 +478,18 @@ export function semanticGraphToWorkflowJSON(graph: SemanticGraph, name: string):
 		}
 	}
 
-	return { name, nodes, connections };
+	const result: WorkflowJSON = { name, nodes, connections };
+
+	// Collect pinData from node.json.output fields
+	const pinData: Record<string, IDataObject[]> = {};
+	for (const [, node] of graph.nodes) {
+		if (node.json.output && node.json.output.length > 0) {
+			pinData[node.name] = node.json.output;
+		}
+	}
+	if (Object.keys(pinData).length > 0) {
+		result.pinData = pinData;
+	}
+
+	return result;
 }

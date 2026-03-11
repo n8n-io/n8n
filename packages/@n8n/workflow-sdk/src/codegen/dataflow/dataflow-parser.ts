@@ -88,7 +88,7 @@ interface NodeConfig {
 	credentials?: Record<string, unknown>;
 	version?: number;
 	subnodes?: Record<string, unknown[] | unknown>;
-	sampleData?: unknown[];
+	outputSampleData?: unknown[];
 }
 
 interface ConditionInfo {
@@ -406,8 +406,8 @@ function createSemanticNode(config: NodeConfig, state: ParserState): CreateNodeR
 		json.credentials = config.credentials as NodeJSON['credentials'];
 	}
 
-	if (config.sampleData && config.sampleData.length > 0) {
-		json.output = config.sampleData as IDataObject[];
+	if (config.outputSampleData && config.outputSampleData.length > 0) {
+		json.output = config.outputSampleData as IDataObject[];
 	}
 
 	const semanticNode: SemanticNode = {
@@ -475,7 +475,7 @@ function extractNodeConfig(objExpr: ObjectExpression): NodeConfig {
 		credentials: raw.credentials as Record<string, unknown> | undefined,
 		version: raw.version as number | undefined,
 		subnodes: raw.subnodes as Record<string, unknown[]> | undefined,
-		sampleData: raw.sampleData as unknown[] | undefined,
+		outputSampleData: (raw.outputSampleData ?? raw.output) as unknown[] | undefined,
 	};
 }
 
@@ -2120,18 +2120,5 @@ export function parseDataFlowCodeToGraph(code: string): SemanticGraph {
  */
 export function parseDataFlowCode(code: string): WorkflowJSON {
 	const { graph, name } = parseToGraph(code);
-	const result = semanticGraphToWorkflowJSON(graph, name);
-
-	// Collect pinData from node.json.output fields
-	const pinData: Record<string, IDataObject[]> = {};
-	for (const [, node] of graph.nodes) {
-		if (node.json.output && node.json.output.length > 0) {
-			pinData[node.name] = node.json.output;
-		}
-	}
-	if (Object.keys(pinData).length > 0) {
-		result.pinData = pinData;
-	}
-
-	return result;
+	return semanticGraphToWorkflowJSON(graph, name);
 }
