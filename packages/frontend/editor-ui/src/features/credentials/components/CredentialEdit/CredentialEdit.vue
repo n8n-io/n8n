@@ -906,9 +906,6 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		}
 
 		await externalHooks.run('credentialEdit.saveCredential', trackProperties);
-
-		// Refetch credential so form shows redacted data (e.g. Custom Auth JSON mask overlay)
-		await loadCurrentCredential(credentialId.value);
 	}
 
 	return credential;
