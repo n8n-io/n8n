@@ -35,7 +35,6 @@ import {
 	formatBaselineInfo,
 	getBaselinePath,
 } from './core/baseline.js';
-import { extractDiffs } from './core/extract-diffs.js';
 import {
 	ImpactAnalyzer,
 	formatImpactConsole,
@@ -67,7 +66,6 @@ import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core
 import { TestDiscoveryAnalyzer } from './core/test-discovery-analyzer.js';
 import { createDefaultRunner } from './index.js';
 import type { RunOptions } from './types.js';
-import { resolveInputPaths } from './utils/paths.js';
 
 async function loadConfig(configPath?: string): Promise<JanitorConfig> {
 	const cwd = process.cwd();
@@ -171,8 +169,6 @@ async function runImpact(options: CliOptions): Promise<void> {
 			scopeDir: config.rootDir,
 			extensions: ['.ts'],
 		});
-	} else {
-		changedFiles = resolveInputPaths(changedFiles);
 	}
 
 	if (changedFiles.length === 0) {
@@ -180,10 +176,10 @@ async function runImpact(options: CliOptions): Promise<void> {
 		return;
 	}
 
-	const baseRef = options.baseRef ?? 'HEAD';
-	const diffs = extractDiffs(changedFiles, baseRef);
+	// No diffs passed — all files use conservative property-level resolution.
+	// Method-level precision requires pre-computed AST diffs (used by TCR flow).
 	const analyzer = new ImpactAnalyzer(project);
-	const result = analyzer.analyze(changedFiles, { diffs });
+	const result = analyzer.analyze(changedFiles);
 
 	// Output
 	if (options.json) {
@@ -446,18 +442,14 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 				extensions: ['.ts'],
 				targetBranch: options.baseRef,
 			});
-		} else {
-			changedFiles = resolveInputPaths(changedFiles);
 		}
 
 		if (changedFiles.length === 0) {
 			console.error('Impact: No changed files detected. Returning empty orchestration.');
 			specs = [];
 		} else {
-			const baseRef = options.baseRef ?? 'HEAD';
-			const diffs = extractDiffs(changedFiles, baseRef);
 			const impactAnalyzer = new ImpactAnalyzer(project);
-			const impactResult = impactAnalyzer.analyze(changedFiles, { diffs });
+			const impactResult = impactAnalyzer.analyze(changedFiles);
 			const affectedSet = new Set(impactResult.affectedTests);
 			const totalBefore = specs.length;
 			specs = specs.filter((s) => affectedSet.has(s.path));

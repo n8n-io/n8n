@@ -1,15 +1,21 @@
 import { MergeClient } from '@mergeapi/merge-node-client';
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
-import type { MergeCredentials, ModelOperation } from '../utils';
-import { findResourceKey, getCategoryClient } from '../utils';
+import {
+	findResourceKey,
+	getCategoryClient,
+	getLinkedAccountCategory,
+	type ModelOperation,
+} from '../utils';
+
+type MergeCredentials = { apiKey: string; accountToken: string };
 
 export async function getCommonModels(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const { apiKey, accountToken } = await this.getCredentials<MergeCredentials>('mergeDevApi');
 	const merge = new MergeClient({ apiKey, accountToken });
-	const category = this.getNodeParameter('category') as string;
+	const category = await getLinkedAccountCategory(merge);
 	const client = getCategoryClient(merge, category);
 
 	const result = await client.availableActions.retrieve();
@@ -46,7 +52,7 @@ export async function getModelOperations(
 	const { apiKey, accountToken } = await this.getCredentials<MergeCredentials>('mergeDevApi');
 	const modelName = this.getNodeParameter('commonModels') as string;
 	const merge = new MergeClient({ apiKey, accountToken });
-	const category = this.getNodeParameter('category') as string;
+	const category = await getLinkedAccountCategory(merge);
 	const client = getCategoryClient(merge, category);
 
 	const result = await client.availableActions.retrieve();

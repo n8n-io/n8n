@@ -66,7 +66,6 @@ const shouldShowExpressionSelector = computed(
 	() =>
 		!isChatHubToolContext &&
 		!props.parameter.noDataExpression &&
-		!getParameterTypeOption(props.parameter, 'computeMethod') &&
 		props.showExpressionSelector &&
 		!props.isReadOnly,
 );

@@ -7,8 +7,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';
 import type { TriggerSetupState } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
-import { computed } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 const { mockExecute, mockComposableState } = vi.hoisted(() => ({
 	mockExecute: vi.fn(),
@@ -39,13 +37,7 @@ vi.mock('@/features/setupPanel/composables/useTriggerExecution', async () => {
 	};
 });
 
-const renderComponent = createComponentRenderer(TriggerSetupCard, {
-	global: {
-		provide: {
-			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
-		},
-	},
-});
+const renderComponent = createComponentRenderer(TriggerSetupCard);
 
 const createState = (overrides: Partial<TriggerSetupState> = {}): TriggerSetupState => {
 	const node = createTestNode({

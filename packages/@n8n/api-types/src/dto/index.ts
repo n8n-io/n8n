@@ -23,7 +23,6 @@ export { OptionsRequestDto } from './dynamic-node-parameters/options-request.dto
 export { ResourceLocatorRequestDto } from './dynamic-node-parameters/resource-locator-request.dto';
 export { ResourceMapperFieldsRequestDto } from './dynamic-node-parameters/resource-mapper-fields-request.dto';
 export { ActionResultRequestDto } from './dynamic-node-parameters/action-result-request.dto';
-export { ComputeValueRequestDto } from './dynamic-node-parameters/compute-value-request.dto';
 
 export { InviteUsersRequestDto } from './invitation/invite-users-request.dto';
 export { AcceptInvitationRequestDto } from './invitation/accept-invitation-request.dto';
@@ -164,7 +163,6 @@ export {
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
 
-export { UpdateExternalSecretsSettingsDto } from './secrets-provider/update-external-secrets-settings.dto';
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
 export { SetSecretsProviderConnectionIsEnabledDto } from './secrets-provider/set-secrets-provider-connection-is-enabled.dto';
 export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secrets-provider-connection.dto';

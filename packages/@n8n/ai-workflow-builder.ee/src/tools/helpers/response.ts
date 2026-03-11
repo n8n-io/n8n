@@ -36,11 +36,7 @@ export function createSuccessResponse<TState = typeof WorkflowState.State>(
 /**
  * Create an error response
  */
-export function createErrorResponse<TState = typeof WorkflowState.State>(
-	config: ToolRunnableConfig,
-	error: ToolError,
-	stateUpdates?: StateUpdater<TState>,
-): Command {
+export function createErrorResponse(config: ToolRunnableConfig, error: ToolError): Command {
 	const toolCallId = config.toolCall?.id as string;
 
 	const messages = [
@@ -51,11 +47,5 @@ export function createErrorResponse<TState = typeof WorkflowState.State>(
 		}),
 	];
 
-	const update = { messages };
-
-	if (stateUpdates) {
-		Object.assign(update, stateUpdates);
-	}
-
-	return new Command({ update });
+	return new Command({ update: { messages } });
 }

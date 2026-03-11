@@ -1,4 +1,6 @@
 export type BaserowCredentials = {
+	username: string;
+	password: string;
 	host: string;
 };
 
@@ -26,6 +28,10 @@ export type LoadedResource = {
 	type?: string;
 };
 
+export type Accumulator = {
+	[key: string]: string;
+};
+
 export type Row = Record<string, string>;
 
 export type FieldsUiValues = Array<{
@@ -33,12 +39,4 @@ export type FieldsUiValues = Array<{
 	fieldValue: string;
 }>;
 
-export type Operation =
-	| 'batchCreate'
-	| 'batchUpdate'
-	| 'batchDelete'
-	| 'create'
-	| 'delete'
-	| 'update'
-	| 'get'
-	| 'getAll';
+export type Operation = 'create' | 'delete' | 'update' | 'get' | 'getAll';

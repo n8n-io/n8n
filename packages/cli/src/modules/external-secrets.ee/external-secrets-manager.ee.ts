@@ -143,9 +143,8 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			where: { providerKey },
 		});
 
-		// Note: connection can be undefined if called after a delete operation.
-		// Skip disabled connections — they should not be loaded into the provider registry.
-		if (connection?.isEnabled) {
+		// Note: connection can be undefined if called after a delete operation
+		if (connection) {
 			const settings = this.decryptSettings(connection.encryptedSettings);
 			await this.setupProvider(
 				connection.type,
@@ -312,12 +311,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		const connections = await this.secretsProviderConnectionRepository.findAll();
 
 		for (const connection of connections) {
-			// Tear down all connections, including disabled ones that may
-			// still be in the registry from a previous load
 			await this.tearDownProviderConnection(connection.providerKey);
-
-			if (!connection.isEnabled) continue;
-
 			const settings: SecretsProviderSettings['settings'] = this.decryptSettings(
 				connection.encryptedSettings,
 			);

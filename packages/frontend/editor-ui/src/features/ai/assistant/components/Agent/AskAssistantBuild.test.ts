@@ -144,8 +144,6 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
-import { computed } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 import { faker } from '@faker-js/faker';
 
@@ -251,13 +249,7 @@ vi.mock('@/app/composables/useDocumentVisibility', () => ({
 const workflowPrompt = 'Create a workflow';
 describe('AskAssistantBuild', () => {
 	const sessionId = faker.string.uuid();
-	const renderComponent = createComponentRenderer(AskAssistantBuild, {
-		global: {
-			provide: {
-				[WorkflowIdKey as unknown as string]: computed(() => 'abc123'),
-			},
-		},
-	});
+	const renderComponent = createComponentRenderer(AskAssistantBuild);
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;

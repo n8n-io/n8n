@@ -3,7 +3,8 @@ import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '../../composables/useExecutionHelpers';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
@@ -43,7 +44,7 @@ const isAdvancedExecutionFilterEnabled = computed(
 );
 const isAnnotationEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
 
-const workflowId = useInjectWorkflowId();
+const workflowId = injectStrict(WorkflowIdKey);
 const retryExecutionActions = computed(() => [
 	{
 		id: 'current-workflow',

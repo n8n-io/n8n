@@ -3,7 +3,6 @@ import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
@@ -31,14 +30,13 @@ const emit = defineEmits<{
 
 const wrapperRef = useTemplateRef('wrapper');
 
-const workflowId = useInjectWorkflowId();
 const focusPanelStore = useFocusPanelStore();
 const workflowsStore = useWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const setupPanelStore = useSetupPanelStore();
 const telemetry = useTelemetry();
 const deviceSupport = useDeviceSupport();
-const vueFlow = useVueFlow(workflowId.value);
+const vueFlow = useVueFlow(workflowsStore.workflowId);
 const activeElement = useActiveElement();
 
 useTelemetryContext({ view_shown: 'focus_panel' });

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -96,7 +95,6 @@ const inputModes = [
 	{ value: 'debugging', label: i18n.baseText('ndv.input.fromAI') },
 ];
 
-const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
@@ -316,7 +314,7 @@ function onNodeExecute() {
 	if (activeNode.value) {
 		telemetry.track('User clicked ndv button', {
 			node_type: activeNode.value.type,
-			workflow_id: workflowId.value,
+			workflow_id: workflowsStore.workflowId,
 			push_ref: props.pushRef,
 			pane: 'input',
 			type: 'executePrevious',
@@ -362,7 +360,7 @@ function onConnectionHelpClick() {
 	if (activeNode.value) {
 		telemetry.track('User clicked ndv link', {
 			node_type: activeNode.value.type,
-			workflow_id: workflowId.value,
+			workflow_id: workflowsStore.workflowId,
 			push_ref: props.pushRef,
 			pane: 'input',
 			type: 'not-connected-help',

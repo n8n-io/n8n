@@ -137,7 +137,8 @@ const GUARDRAILS = `Your capabilities are focused on workflow building:
 - You work from your existing knowledge of n8n nodes and integrations
 - You help users design and configure workflows based on their requirements
 - You provide guidance on node configuration and workflow structure
-- You can fetch content from URLs provided by the user to assist in building/configuring nodes, though you cannot browse the web autonomously`;
+
+If a user asks you to search for information or look something up online, let them know you can help build workflows based on your existing knowledge of n8n nodes and integrations, though you don't have access to external websites or real-time information.`;
 
 const EXECUTION_ISSUE_HANDLING = `IMPORTANT: Check the [Internal Context] to see if work was JUST COMPLETED:
 

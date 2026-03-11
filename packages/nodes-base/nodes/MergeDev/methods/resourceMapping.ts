@@ -6,7 +6,7 @@ import type {
 	ResourceMapperFields,
 } from 'n8n-workflow';
 
-import { getCategoryClient, type ModelOperation } from '../utils';
+import { getCategoryClient, getLinkedAccountCategory, type ModelOperation } from '../utils';
 
 function snakeToCamel(s: string): string {
 	return s.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
@@ -257,7 +257,7 @@ export async function getModelFields(this: ILoadOptionsFunctions): Promise<Resou
 		accountToken: string;
 	}>('mergeDevApi');
 	const merge = new MergeClient({ apiKey, accountToken });
-	const category = this.getNodeParameter('category') as string;
+	const category = await getLinkedAccountCategory(merge);
 	const client = getCategoryClient(merge, category);
 	const result = await client.availableActions.retrieve();
 	const availableModelOperations = result.availableModelOperations as ModelOperation[] | undefined;
@@ -280,5 +280,6 @@ export async function getModelFields(this: ILoadOptionsFunctions): Promise<Resou
 	return { fields: [] };
 }
 
+// Aliases used by the two separate resourceMapper properties in the node description
 export { getModelFields as getQueryParamFields };
 export { getModelFields as getBodyFields };

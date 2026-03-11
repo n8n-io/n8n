@@ -17,7 +17,6 @@ import { useNodeDocsUrl } from '@/app/composables/useNodeDocsUrl';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useStyles } from '@/app/composables/useStyles';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
 	APP_MODALS_ELEMENT_ID,
@@ -75,7 +74,6 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
-const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
@@ -405,7 +403,7 @@ const onDragEnd = () => {
 		// end_position: mainPanelDimensions.value.relativeLeft,
 		node_type: activeNodeType.value ? activeNodeType.value.name : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowId.value,
+		workflow_id: workflowsStore.workflowId,
 	});
 };
 
@@ -491,7 +489,7 @@ const close = async () => {
 	telemetry.track('User closed node modal', {
 		node_type: activeNodeType.value ? activeNodeType.value?.name : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowId.value,
+		workflow_id: workflowsStore.workflowId,
 	});
 	triggerWaitingWarningEnabled.value = false;
 	ndvStore.unsetActiveNodeName();
@@ -534,7 +532,7 @@ const onInputNodeChange = (value: string, index: number) => {
 	telemetry.track('User changed ndv input dropdown', {
 		node_type: activeNode.value ? activeNode.value.type : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowId.value,
+		workflow_id: workflowsStore.workflowId,
 		selection_value: index,
 		input_node_type: inputNode.value ? inputNode.value.type : '',
 	});
@@ -613,7 +611,7 @@ watch(
 					telemetry.track('User opened node modal', {
 						node_id: activeNode.value?.id,
 						node_type: activeNodeType.value ? activeNodeType.value?.name : '',
-						workflow_id: workflowId.value,
+						workflow_id: workflowsStore.workflowId,
 						push_ref: pushRef.value,
 						is_editable: !hasForeignCredential.value,
 						parameters_pane_position: mainPanelPosition.value,

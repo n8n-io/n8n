@@ -11,7 +11,7 @@ import {
 import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
-import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
+import { getTracingConfig } from '@utils/tracing';
 
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
@@ -32,13 +32,7 @@ export async function planAndExecuteAgentExecute(
 
 	const options = this.getNodeParameter('options', 0, {}) as {
 		humanMessageTemplate?: string;
-		tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
 	};
-	const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
-	if (Object.keys(additionalMetadata).length > 0) {
-		this.logger.debug('Tracing metadata', { additionalMetadata });
-	}
-	const tracingConfig = getTracingConfig(this, { additionalMetadata });
 
 	const agentExecutor = await PlanAndExecuteAgentExecutor.fromLLMAndTools({
 		llm: model,
@@ -83,7 +77,7 @@ export async function planAndExecuteAgentExecute(
 			}
 
 			const response = await agentExecutor
-				.withConfig(tracingConfig)
+				.withConfig(getTracingConfig(this))
 				.invoke({ input, outputParser });
 
 			if (outputParser) {

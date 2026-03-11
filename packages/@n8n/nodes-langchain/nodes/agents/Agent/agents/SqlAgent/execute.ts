@@ -13,8 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import { getPromptInputByType, serializeChatHistory } from '@utils/helpers';
-import type { TracingMetadataEntry } from '@utils/tracing';
-import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
+import { getTracingConfig } from '@utils/tracing';
 
 import { getMysqlDataSource } from './other/handlers/mysql';
 import { getPostgresDataSource } from './other/handlers/postgres';
@@ -59,9 +58,7 @@ export async function sqlAgentAgentExecute(
 				throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
 			}
 
-			const options = this.getNodeParameter('options', i, {}) as IDataObject & {
-				tracingMetadata?: { values?: TracingMetadataEntry[] };
-			};
+			const options = this.getNodeParameter('options', i, {});
 			const selectedDataSource = this.getNodeParameter('dataSource', i, 'sqlite') as
 				| 'mysql'
 				| 'postgres'
@@ -129,13 +126,8 @@ export async function sqlAgentAgentExecute(
 			}
 
 			let response: IDataObject;
-			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
-			if (Object.keys(additionalMetadata).length > 0) {
-				this.logger.debug('Tracing metadata', { additionalMetadata });
-			}
-			const tracingConfig = getTracingConfig(this, { additionalMetadata });
 			try {
-				response = await agentExecutor.withConfig(tracingConfig).invoke({
+				response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
 					input,
 					signal: this.getExecutionCancelSignal(),
 					chatHistory,

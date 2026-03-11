@@ -10,7 +10,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import RunDataAi from '@/features/ndv/runData/components/ai/RunDataAi.vue';
 import { useNodeType } from '@/app/composables/useNodeType';
 import { usePinnedData } from '@/app/composables/usePinnedData';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
@@ -73,7 +72,6 @@ const emit = defineEmits<{
 
 // Stores
 
-const workflowId = useInjectWorkflowId();
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
@@ -239,7 +237,7 @@ const insertTestData = () => {
 	});
 
 	telemetry.track('User clicked ndv link', {
-		workflow_id: workflowId.value,
+		workflow_id: workflowsStore.workflowId,
 		push_ref: props.pushRef,
 		node_type: node.value?.type,
 		pane: 'output',
@@ -259,7 +257,7 @@ const openSettings = () => {
 	emit('openSettings');
 	telemetry.track('User clicked ndv link', {
 		node_type: node.value?.type,
-		workflow_id: workflowId.value,
+		workflow_id: workflowsStore.workflowId,
 		push_ref: props.pushRef,
 		pane: 'output',
 		type: 'settings',

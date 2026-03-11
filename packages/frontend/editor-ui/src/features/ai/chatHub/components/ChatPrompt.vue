@@ -443,6 +443,11 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+.prompt {
+	display: grid;
+	place-items: center;
+}
+
 .callout {
 	margin: -1px;
 	padding: var(--spacing--sm);

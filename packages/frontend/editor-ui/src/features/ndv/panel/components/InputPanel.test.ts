@@ -12,8 +12,6 @@ import {
 	type IRunData,
 } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { computed } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 
@@ -109,9 +107,6 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 			isMappingOnboarded: false,
 		},
 		global: {
-			provide: {
-				[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
-			},
 			stubs: {
 				InputPanelPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
 			},

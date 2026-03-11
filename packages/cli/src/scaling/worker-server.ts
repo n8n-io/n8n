@@ -48,8 +48,6 @@ export class WorkerServer {
 
 	private overwritesLoaded = false;
 
-	private fullyReady = false;
-
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
@@ -81,11 +79,6 @@ export class WorkerServer {
 				process.exit(1);
 			}
 		});
-	}
-
-	/** Call once after all initialization is complete. Unblocks the /healthz/readiness endpoint. */
-	markAsReady() {
-		this.fullyReady = true;
 	}
 
 	async init(endpointsConfig: WorkerServerEndpointsConfig) {
@@ -146,8 +139,7 @@ export class WorkerServer {
 		const isReady =
 			connectionState.connected &&
 			connectionState.migrated &&
-			this.redisClientService.isConnected() &&
-			this.fullyReady;
+			this.redisClientService.isConnected();
 
 		return isReady
 			? res.status(200).send({ status: 'ok' })

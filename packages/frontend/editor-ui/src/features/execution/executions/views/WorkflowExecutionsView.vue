@@ -11,7 +11,8 @@ import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useRoute, useRouter } from 'vue-router';
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -32,7 +33,7 @@ const loadingMore = ref(false);
 
 const workflow = ref<IWorkflowDb | undefined>();
 
-const workflowId = useInjectWorkflowId();
+const workflowId = injectStrict(WorkflowIdKey);
 
 const executionId = computed(() => {
 	const id = route.params.executionId;

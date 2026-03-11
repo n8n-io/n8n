@@ -65,8 +65,6 @@ export abstract class AbstractServer {
 
 	protected testWebhooksEnabled = false;
 
-	private fullyReady = false;
-
 	readonly uniqueInstanceId: string;
 
 	constructor() {
@@ -128,11 +126,6 @@ export abstract class AbstractServer {
 
 	protected setupPushServer() {}
 
-	/** Call once after all initialization is complete. Unblocks the /healthz/readiness endpoint. */
-	markAsReady() {
-		this.fullyReady = true;
-	}
-
 	private setupHealthCheck() {
 		const healthPath = this.endpointHealth;
 		const readinessPath = `${healthPath}/readiness`;
@@ -146,7 +139,7 @@ export abstract class AbstractServer {
 
 		this.app.get(readinessPath, (_req, res) => {
 			const { connected, migrated } = connectionState;
-			if (connected && migrated && this.fullyReady) {
+			if (connected && migrated) {
 				res.status(200).send({ status: 'ok' });
 			} else {
 				res.status(503).send({ status: 'error' });
