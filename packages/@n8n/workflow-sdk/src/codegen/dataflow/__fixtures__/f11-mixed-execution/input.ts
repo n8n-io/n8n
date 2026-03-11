@@ -11,9 +11,9 @@ workflow({ name: 'Mixed Execution' }, () => {
 				type: 'n8n-nodes-base.emailSend',
 				name: 'Send Email',
 				params: {
-					toEmail: expr('{{ $json.email }}'),
+					toEmail: item.json.email,
 					subject: 'Welcome',
-					text: expr('{{ $json.name }}'),
+					text: item.json.name,
 				},
 				version: 2,
 			}),

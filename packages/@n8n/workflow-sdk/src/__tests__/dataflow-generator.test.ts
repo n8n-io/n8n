@@ -97,13 +97,11 @@ describe('dataflow-generator', () => {
 
 			// Should have trigger wrapping the chain
 			expect(code).toContain("onTrigger({ type: 'n8n-nodes-base.manualTrigger'");
-			// Should have const assignments inside callback
-			expect(code).toContain('const hTTP_Request = executeNode(');
+			// Should have .map() wrapped const assignments inside callback (per-item default)
+			expect(code).toContain('const hTTP_Request = items.map((item) =>');
 			expect(code).toContain("type: 'n8n-nodes-base.httpRequest'");
-			expect(code).toContain('});');
-			expect(code).toContain('const set = executeNode(');
+			expect(code).toContain('const set = hTTP_Request.map((item) =>');
 			expect(code).toContain("type: 'n8n-nodes-base.set'");
-			expect(code).toContain('});');
 		});
 
 		it('includes name in config when it differs from default', () => {
@@ -1098,6 +1096,7 @@ describe('dataflow-generator', () => {
 				const code = generateFromWorkflow(json);
 				expect(code).toContain('try {');
 				expect(code).toContain('} catch');
+				// try block node and catch block handler both use plain executeNode()
 				expect(code).toContain('const hTTP_Request = executeNode(');
 				expect(code).toContain('const error_Handler = executeNode(');
 			});
@@ -1132,7 +1131,8 @@ describe('dataflow-generator', () => {
 				const code = generateFromWorkflow(json);
 				expect(code).not.toContain('try {');
 				expect(code).not.toContain('catch');
-				expect(code).toContain('const hTTP_Request = executeNode(');
+				// Per-item node (no executeOnce) wraps in .map()
+				expect(code).toContain('const hTTP_Request = items.map((item) =>');
 			});
 		});
 

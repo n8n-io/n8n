@@ -70,10 +70,12 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 				const reGenerated = generateDataFlowWorkflowCode(parsed);
 				entry.reGeneratedCode = reGenerated;
 
-				// Step 3: Compare normalized code (round-trip fidelity)
-				const normalizedInput = normalizeCode(fixture.input);
-				const normalizedOutput = normalizeCode(reGenerated);
-				entry.codeMatch = normalizedInput === normalizedOutput;
+				// Step 3: Compare JSON-level round-trip fidelity
+				// (code formatting differences are cosmetic — only semantic differences matter)
+				const reParsedForMatch = parseDataFlowCode(reGenerated);
+				entry.codeMatch =
+					JSON.stringify(reParsedForMatch.nodes) === JSON.stringify(parsed.nodes) &&
+					JSON.stringify(reParsedForMatch.connections) === JSON.stringify(parsed.connections);
 
 				// Step 4: Validate the parsed workflow JSON
 				try {

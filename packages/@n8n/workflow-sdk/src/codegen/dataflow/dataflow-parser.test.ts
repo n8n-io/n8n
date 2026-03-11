@@ -20,6 +20,8 @@ describe('parseDataFlowCode', () => {
 			expect(result.nodes).toHaveLength(2);
 			expect(result.nodes[0].type).toBe('n8n-nodes-base.manualTrigger');
 			expect(result.nodes[1].type).toBe('n8n-nodes-base.httpRequest');
+			// Per-item nodes should NOT have executeOnce
+			expect(result.nodes[1].executeOnce).toBeUndefined();
 
 			// Trigger → HTTP Request
 			const triggerConns = result.connections['Manual Trigger']?.main;
@@ -83,6 +85,9 @@ describe('parseDataFlowCode', () => {
 			expect(result.nodes).toHaveLength(3);
 			expect(result.nodes[1].type).toBe('n8n-nodes-base.httpRequest');
 			expect(result.nodes[2].type).toBe('n8n-nodes-base.set');
+			// Direct executeNode() calls should have executeOnce = true
+			expect(result.nodes[1].executeOnce).toBe(true);
+			expect(result.nodes[2].executeOnce).toBe(true);
 
 			// Trigger → HTTP Request
 			const triggerConns = result.connections['Manual Trigger']?.main;

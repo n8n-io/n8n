@@ -37,6 +37,8 @@ import type { IDataObject, WorkflowJSON } from '../../types/base';
  */
 interface DataFlowContext extends VarNameContext {
 	graph: SemanticGraph;
+	/** When true, suppress .map() wrapping for per-item nodes (e.g., inside branches) */
+	insideBranch?: boolean;
 }
 
 /**
@@ -317,11 +319,27 @@ function generateLeafNode(
 	}
 
 	const varName = getUniqueVarName(node.name, ctx);
-	const config = buildNodeConfig(node, ctx, inputVar);
 
-	// If the leaf has an error handler, wrap in try/catch
+	// Error handler nodes always use plain executeNode() in try/catch
 	if (leaf.errorHandler) {
+		const config = buildNodeConfig(node, ctx, inputVar);
 		return generateLeafWithErrorHandler(leaf, varName, config, ctx, depth, inputVar);
+	}
+
+	// Per-item wrapping is suppressed inside branches (if/else/switch) because
+	// the parser uses lastNodeInScope for connections, not .map() source vars.
+	const useMap = !node.json.executeOnce && !ctx.insideBranch;
+
+	// For per-item nodes with .map(), params reference `item` (the callback param)
+	// For execute-once or branch nodes, params reference the inputVar directly
+	const paramRefVar = useMap ? 'item' : inputVar;
+	const config = buildNodeConfig(node, ctx, paramRefVar);
+
+	if (useMap) {
+		return {
+			code: `${indent}const ${varName} = ${inputVar}.map((item) =>\n${indent}  executeNode(${config}),\n${indent});`,
+			varName,
+		};
 	}
 
 	return {
@@ -349,8 +367,11 @@ function generateLeafWithErrorHandler(
 	lines.push(`${innerIndent}const ${varName} = executeNode(${config});`);
 	lines.push(`${indent}} catch (e) {`);
 
-	// Generate the error handler body
+	// Generate the error handler body (inside branch context to suppress .map())
+	const prevInsideBranch = ctx.insideBranch;
+	ctx.insideBranch = true;
 	const errorResult = generateCompositeNode(leaf.errorHandler!, ctx, depth + 1, inputVar);
+	ctx.insideBranch = prevInsideBranch;
 	if (errorResult.code) {
 		lines.push(errorResult.code);
 	}
@@ -522,6 +543,7 @@ function extractIfCondition(params: IDataObject | undefined, inputVar: string): 
 /**
  * Generate code for branch body nodes (used by IF branches and Switch cases).
  * A branch can be null (empty), a single CompositeNode, or an array of CompositeNodes.
+ * Sets insideBranch flag so per-item nodes use plain executeNode() instead of .map().
  */
 function generateBranchBody(
 	branch: CompositeNode | CompositeNode[] | null,
@@ -533,19 +555,27 @@ function generateBranchBody(
 		return `${getIndent(depth)}// empty branch`;
 	}
 
+	const prevInsideBranch = ctx.insideBranch;
+	ctx.insideBranch = true;
+
+	let result: string;
+
 	if (Array.isArray(branch)) {
 		const lines: string[] = [];
 		for (const node of branch) {
-			const result = generateCompositeNode(node, ctx, depth, inputVar);
-			if (result.code) {
-				lines.push(result.code);
+			const nodeResult = generateCompositeNode(node, ctx, depth, inputVar);
+			if (nodeResult.code) {
+				lines.push(nodeResult.code);
 			}
 		}
-		return lines.length > 0 ? lines.join('\n') : `${getIndent(depth)}// empty branch`;
+		result = lines.length > 0 ? lines.join('\n') : `${getIndent(depth)}// empty branch`;
+	} else {
+		const nodeResult = generateCompositeNode(branch, ctx, depth, inputVar);
+		result = nodeResult.code || `${getIndent(depth)}// empty branch`;
 	}
 
-	const result = generateCompositeNode(branch, ctx, depth, inputVar);
-	return result.code || `${getIndent(depth)}// empty branch`;
+	ctx.insideBranch = prevInsideBranch;
+	return result;
 }
 
 /**

@@ -62,6 +62,8 @@ interface ParserState {
 	nodeCounter: number;
 	usedNames: Set<string>;
 	insideMap: boolean;
+	/** Depth counter for if/else/switch branches — nodes inside branches don't get executeOnce */
+	branchDepth: number;
 	lastNodeInScope: { nodeName: string; outputIndex: number } | undefined;
 }
 
@@ -788,10 +790,16 @@ function processNodeVarDeclaration(
 	}
 
 	// Pattern B: const x = executeNode({...}) or const [a, b] = executeNode({...})
+	// Direct executeNode() calls (not inside .map()) are "execute once" nodes,
+	// unless they're inside a branch (if/else/switch) where the branching node
+	// controls item flow and executeOnce is not semantically meaningful.
 	const execConfig = matchExecuteNodeCall(declarator.init);
 	if (execConfig) {
 		const config = extractNodeConfig(execConfig);
 		const nodeJSON = createNodeJSON(config, state);
+		if (state.branchDepth === 0) {
+			nodeJSON.executeOnce = true;
+		}
 		state.nodes.push(nodeJSON);
 		processSubnodes(config, nodeJSON.name!, state);
 
@@ -934,8 +942,10 @@ function processIfStatement(
 		state.varToNode.set(inputVarName, { nodeName: ifNodeJSON.name!, outputIndex: 0 });
 	}
 	state.lastNodeInScope = { nodeName: ifNodeJSON.name!, outputIndex: 0 };
+	state.branchDepth++;
 	const trueStatements = getBlockStatements(stmt.consequent);
 	processStatements(trueStatements, state, inputVarName);
+	state.branchDepth--;
 
 	// Process false branch (alternate) — remap to IF output 1
 	if (stmt.alternate) {
@@ -943,8 +953,10 @@ function processIfStatement(
 			state.varToNode.set(inputVarName, { nodeName: ifNodeJSON.name!, outputIndex: 1 });
 		}
 		state.lastNodeInScope = { nodeName: ifNodeJSON.name!, outputIndex: 1 };
+		state.branchDepth++;
 		const falseStatements = getBlockStatements(stmt.alternate);
 		processStatements(falseStatements, state, inputVarName);
+		state.branchDepth--;
 	}
 
 	// Restore original mapping so nodes after the if/else connect correctly
@@ -1029,7 +1041,9 @@ function processSwitchStatement(
 			state.varToNode.set(inputVarName, { nodeName: switchNodeJSON.name!, outputIndex: i });
 		}
 		state.lastNodeInScope = { nodeName: switchNodeJSON.name!, outputIndex: i };
+		state.branchDepth++;
 		processStatements(sc.consequent, state, inputVarName);
+		state.branchDepth--;
 	}
 
 	// Process default case — remap to Switch output after all cases
@@ -1041,7 +1055,9 @@ function processSwitchStatement(
 			});
 		}
 		state.lastNodeInScope = { nodeName: switchNodeJSON.name!, outputIndex: caseStatements.length };
+		state.branchDepth++;
 		processStatements(defaultCase.consequent, state, inputVarName);
+		state.branchDepth--;
 	}
 
 	// Restore original mapping
@@ -1089,7 +1105,9 @@ function processTryStatement(
 			state.lastNodeInScope = { nodeName: lastTryNode.name!, outputIndex: 1 };
 		}
 
+		state.branchDepth++;
 		processStatements(stmt.handler.body.body, state, inputVarName);
+		state.branchDepth--;
 
 		// Restore inputVarName mapping so nodes after try/catch don't
 		// accidentally connect from the error output.
@@ -1472,6 +1490,7 @@ export function parseDataFlowCode(code: string): WorkflowJSON {
 		nodeCounter: 0,
 		usedNames: new Set<string>(),
 		insideMap: false,
+		branchDepth: 0,
 		lastNodeInScope: undefined,
 	};
 

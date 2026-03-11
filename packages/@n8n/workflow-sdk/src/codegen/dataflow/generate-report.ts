@@ -4,73 +4,11 @@
  *
  * Generated files are gitignored.
  */
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { writeFileSync } from 'fs';
 import { join } from 'path';
 import type { CompilerTestEntry } from './compiler-types';
 
-const FIXTURES_DIR = join(__dirname, '__fixtures__');
-const REPORT_PATH = join(FIXTURES_DIR, 'report.html');
-const EXECUTION_DATA_PATH = join(FIXTURES_DIR, 'execution-data.json');
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface ExecutionEntry {
-	status: 'pass' | 'error' | 'skip';
-	error?: string;
-	reason?: string;
-	validation?: {
-		nodeCount: number;
-		connectionCount: number;
-		triggerCount: number;
-		errors: string[];
-		orphanedNodes: string[];
-	};
-	roundTripCodeMatch?: boolean;
-}
-
-interface ReportEntry {
-	title: string;
-	dirName: string;
-	skip?: string;
-	inputCode: string;
-	parsedJson?: string;
-	reGeneratedCode?: string;
-	roundTripStatus: 'pass' | 'error' | 'skip';
-	roundTripError?: string;
-	codeMatch?: boolean;
-	nodeCount?: number;
-	connectionCount?: number;
-	validationErrors?: string[];
-	execution?: ExecutionEntry;
-}
-
-// ---------------------------------------------------------------------------
-// Data collection
-// ---------------------------------------------------------------------------
-
-function loadExecutionData(): Record<string, ExecutionEntry> {
-	if (!existsSync(EXECUTION_DATA_PATH)) return {};
-	try {
-		return JSON.parse(readFileSync(EXECUTION_DATA_PATH, 'utf-8')) as Record<string, ExecutionEntry>;
-	} catch {
-		return {};
-	}
-}
-
-function processFixtures(testEntries?: CompilerTestEntry[]): ReportEntry[] {
-	const executionMap = loadExecutionData();
-
-	if (testEntries && testEntries.length > 0) {
-		return testEntries.map((entry) => ({
-			...entry,
-			execution: executionMap[entry.dirName],
-		}));
-	}
-
-	return [];
-}
+const REPORT_PATH = join(__dirname, '__fixtures__', 'report.html');
 
 // ---------------------------------------------------------------------------
 // HTML rendering
@@ -84,55 +22,14 @@ function escapeHtml(str: string): string {
 		.replace(/"/g, '&quot;');
 }
 
-function renderExecutionSection(execution: ExecutionEntry): string {
-	if (execution.status === 'skip') {
-		return `<details>
-        <summary>Execution Validation <span class="exec-badge exec-skip">SKIPPED</span></summary>
-        <div class="exec-skip-reason">${escapeHtml(execution.reason ?? 'Unknown reason')}</div>
-      </details>`;
-	}
-
-	const statusClass = execution.status === 'pass' ? 'exec-pass' : 'exec-error';
-	const statusLabel = execution.status === 'pass' ? 'PASS' : 'ERROR';
-
-	const v = execution.validation;
-	const statsHtml = v
-		? `<table class="stats-table">
-        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-        <tbody>
-          <tr><td>Nodes</td><td>${v.nodeCount}</td></tr>
-          <tr><td>Connections</td><td>${v.connectionCount}</td></tr>
-          <tr><td>Triggers</td><td>${v.triggerCount}</td></tr>
-          <tr><td>Errors</td><td>${v.errors.length}</td></tr>
-          <tr><td>Orphaned</td><td>${v.orphanedNodes.length}</td></tr>
-        </tbody>
-      </table>`
-		: '';
-
-	const roundTripBadge =
-		execution.roundTripCodeMatch === true
-			? '<span class="badge pass">CODE MATCH</span>'
-			: execution.roundTripCodeMatch === false
-				? '<span class="badge error">CODE MISMATCH</span>'
-				: '';
-
-	return `<details>
-        <summary>Execution Validation <span class="exec-badge ${statusClass}">${statusLabel}</span> ${roundTripBadge}</summary>
-        ${statsHtml}
-      </details>`;
-}
-
-function generateHtml(entries: ReportEntry[]): string {
+function generateHtml(entries: CompilerTestEntry[]): string {
 	const cards = entries
 		.map((entry) => {
-			const execStatus = entry.execution?.status;
 			const statusBadge = entry.skip
 				? '<span class="badge skip">SKIPPED</span>'
 				: entry.roundTripStatus === 'error'
 					? '<span class="badge error">ERROR</span>'
-					: execStatus === 'error'
-						? '<span class="badge error">EXEC ERROR</span>'
-						: '<span class="badge pass">PASS</span>';
+					: '<span class="badge pass">PASS</span>';
 
 			const skipNote = entry.skip ? `<div class="skip-reason">${escapeHtml(entry.skip)}</div>` : '';
 
@@ -157,8 +54,6 @@ function generateHtml(entries: ReportEntry[]): string {
 			]
 				.filter(Boolean)
 				.join(' ');
-
-			const executionSection = entry.execution ? renderExecutionSection(entry.execution) : '';
 
 			return `
     <div class="card">
@@ -198,7 +93,6 @@ function generateHtml(entries: ReportEntry[]): string {
         </details>`
 						: ''
 				}
-        ${executionSection}
         ${
 					entry.parsedJson
 						? `<details class="demo-details" open>
@@ -218,21 +112,12 @@ function generateHtml(entries: ReportEntry[]): string {
 	const compileSkip = entries.filter((e) => e.skip).length;
 	const compileError = entries.filter((e) => e.roundTripStatus === 'error').length;
 
-	const withExec = entries.filter((e) => e.execution);
-	const execPass = withExec.filter((e) => e.execution!.status === 'pass').length;
-	const execFail = withExec.filter((e) => e.execution!.status === 'error').length;
-	const execSkip = withExec.filter((e) => e.execution!.status === 'skip').length;
-
 	const summaryHtml = `<div class="summary">
     <div class="summary-row">
       <span class="summary-label">Round-trip</span>
       <span class="summary-stat pass">${compilePass} pass</span>
       ${compileError > 0 ? `<span class="summary-stat error">${compileError} error</span>` : ''}
       ${compileSkip > 0 ? `<span class="summary-stat skip">${compileSkip} skip</span>` : ''}
-    </div>
-    <div class="summary-row">
-      <span class="summary-label">Execution</span>
-      ${withExec.length > 0 ? `<span class="summary-stat pass">${execPass} pass</span>${execFail > 0 ? `<span class="summary-stat error">${execFail} fail</span>` : ''}${execSkip > 0 ? `<span class="summary-stat skip">${execSkip} skip</span>` : ''}` : `<span class="summary-stat none">no data</span>`}
     </div>
   </div>`;
 
@@ -268,15 +153,6 @@ function generateHtml(entries: ReportEntry[]): string {
     .code { background: #0d1117; color: #c9d1d9; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin-top: 8px; border: 1px solid #30363d; }
     .demo { margin-top: 12px; }
     n8n-demo { width: 100%; min-height: 300px; display: block; }
-
-    .exec-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; margin-left: 6px; vertical-align: middle; }
-    .exec-pass { background: #1b3a2d; color: #3fb950; }
-    .exec-error { background: #3d1a1a; color: #f85149; }
-    .exec-skip { background: #3d2e00; color: #d29922; }
-    .exec-skip-reason { font-size: 12px; color: #d29922; padding: 8px 12px; background: #2a2000; border-radius: 4px; margin-top: 8px; }
-    .stats-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
-    .stats-table th, .stats-table td { padding: 4px 12px; border: 1px solid #30363d; text-align: left; }
-    .stats-table th { background: #21262d; font-weight: 600; }
 
     .summary { margin-bottom: 20px; display: flex; flex-direction: column; gap: 6px; }
     .summary-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
@@ -351,10 +227,8 @@ ${cards}
 // ---------------------------------------------------------------------------
 
 /**
- * Generate the report HTML.
- * @param testEntries - If provided, uses pre-computed test results from compiler.test.ts
+ * Generate the report HTML from compiler test results.
  */
-export function generateReport(testEntries?: CompilerTestEntry[]): void {
-	const entries = processFixtures(testEntries);
-	writeFileSync(REPORT_PATH, generateHtml(entries));
+export function generateReport(testEntries: CompilerTestEntry[]): void {
+	writeFileSync(REPORT_PATH, generateHtml(testEntries));
 }
