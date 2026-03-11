@@ -38,5 +38,6 @@ services:
         condition: service_completed_successfully
     security_opt:
       - seccomp:unconfined
+      - label:disable
     cap_add:
       - SYS_ADMIN
