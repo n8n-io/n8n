@@ -797,7 +797,7 @@ export const useWorkflowSetupState = (
 	 */
 	const unsetCredential = (credentialType: string, sourceNodeName?: string): void => {
 		for (const nodeName of getAffectedNodeNames(credentialType, sourceNodeName)) {
-			const node = workflowsStore.getNodeByName(nodeName);
+			const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
 			if (!node) continue;
 
 			const updatedCredentials = { ...node.credentials };
