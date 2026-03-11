@@ -1707,7 +1707,7 @@ onUpdated(async () => {
 						<N8nButton
 							size="small"
 							secondary
-							icon="edit"
+							icon="pencil"
 							data-test-id="credential-json-edit-button"
 							@click="valueChanged('')"
 						>
