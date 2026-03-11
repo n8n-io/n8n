@@ -195,6 +195,7 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingEnabled: true,
+			indexingBatchSize: 100,
 			useWorkflowPublicationService: false,
 		},
 		endpoints: {
