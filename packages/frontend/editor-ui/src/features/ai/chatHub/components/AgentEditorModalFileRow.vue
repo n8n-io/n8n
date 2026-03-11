@@ -81,7 +81,13 @@ const warningTooltip = computed<string | undefined>(() => {
 				</N8nTooltip>
 			</template>
 		</div>
-		<N8nIconButton icon="trash-2" size="small" variant="subtle" @click.stop="emit('remove')" />
+		<N8nIconButton
+			v-if="item.status !== 'indexing'"
+			icon="trash-2"
+			size="small"
+			variant="subtle"
+			@click.stop="emit('remove')"
+		/>
 	</div>
 </template>
 
