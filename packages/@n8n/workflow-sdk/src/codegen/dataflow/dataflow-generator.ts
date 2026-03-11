@@ -27,6 +27,7 @@ import type {
 	VariableReference,
 } from '../composite-tree';
 import {
+	N8N_EXPRESSION_GLOBALS,
 	AI_ALWAYS_ARRAY_TYPES,
 	AI_CONNECTION_TO_CONFIG_KEY,
 	AI_CONNECTION_TO_BUILDER,
@@ -36,6 +37,7 @@ import type { IDataObject, WorkflowJSON } from '../../types/base';
 // Module-level context for resumeUrl expression replacement inside wait callbacks.
 let _genResumeUrlVar: string | undefined;
 let _genResumeUrlMode: 'webhook' | 'form' | undefined;
+let _genUsedGlobals: Set<string> | undefined;
 
 /**
  * Extended context for data-flow code generation.
@@ -52,6 +54,8 @@ interface DataFlowContext extends VarNameContext {
 	resumeUrlVar?: string;
 	/** Current wait mode for expression replacement */
 	resumeUrlMode?: 'webhook' | 'form';
+	/** n8n expression globals used as bare identifiers in the generated code */
+	usedGlobals: Set<string>;
 }
 
 /**
@@ -153,6 +157,57 @@ function exprToVarRef(value: string, prevVarName: string): string | undefined {
 	if (jsonMatch) {
 		return `${prevVarName}.json${jsonMatch[1]}`;
 	}
+
+	// Strict pattern for simple global expressions: identifier + optional .prop or .method() chains
+	// Does NOT match globals with arguments like DateTime.fromISO($json.x)
+	const SIMPLE_GLOBAL_CHAIN =
+		/^((?:\$(?!json\b)[a-zA-Z_]\w*|DateTime|Duration|Interval)(?:\.\w+(?:\(\))?)*)\s*$/;
+
+	// Pure n8n global expression: ={{ $now.toISO() }}, ={{ $today }}, ={{ $execution.id }}
+	const globalMatch = value.match(
+		/^=\{\{\s*((?:\$(?!json\b)[a-zA-Z_]\w*|DateTime|Duration|Interval)(?:\.\w+(?:\(\))?)*)\s*\}\}$/,
+	);
+	if (globalMatch && N8N_EXPRESSION_GLOBALS.has(globalMatch[1].match(/^[\w$]+/)![0])) {
+		_genUsedGlobals?.add(globalMatch[1].match(/^[\w$]+/)![0]);
+		return globalMatch[1];
+	}
+
+	// Mixed expression with $json refs, globals, and/or literal text:
+	// e.g. ={{ $json.base_url }}/api/menu → `${prevVar.json.base_url}/api/menu`
+	// e.g. ={{ $json.url }}?ts={{ $now.toISO() }} → `${prevVar.json.url}?ts=${$now.toISO()}`
+	// Uses dotAll flag (s) so multi-line {{ }} blocks are counted and rejected properly.
+	if (value.startsWith('=')) {
+		const exprBody = value.slice(1);
+		const allMustaches = [...exprBody.matchAll(/\{\{\s*(.*?)\s*\}\}/gs)];
+		if (allMustaches.length > 0) {
+			let templateStr = exprBody;
+			let allConverted = true;
+			for (const m of allMustaches) {
+				const inner = m[1];
+				// $json field reference
+				const jsonFieldMatch = inner.match(
+					/^\$json((?:\.[a-zA-Z_$][a-zA-Z0-9_$]*|\["[^"]*"\]|\['[^']*'\])*)$/,
+				);
+				if (jsonFieldMatch) {
+					templateStr = templateStr.replace(m[0], `\${${prevVarName}.json${jsonFieldMatch[1]}}`);
+					continue;
+				}
+				// Simple n8n global reference (no arguments in calls)
+				const simpleGlobal = inner.match(SIMPLE_GLOBAL_CHAIN);
+				if (simpleGlobal && N8N_EXPRESSION_GLOBALS.has(inner.match(/^[\w$]+/)![0])) {
+					_genUsedGlobals?.add(inner.match(/^[\w$]+/)![0]);
+					templateStr = templateStr.replace(m[0], `\${${simpleGlobal[1]}}`);
+					continue;
+				}
+				allConverted = false;
+				break;
+			}
+			if (allConverted) {
+				return '`' + templateStr + '`';
+			}
+		}
+	}
+
 	return undefined;
 }
 
@@ -1283,10 +1338,12 @@ export function generateDataFlowCode(
 	workflow: WorkflowJSON,
 	graph: SemanticGraph,
 ): string {
+	_genUsedGlobals = new Set();
 	const ctx: DataFlowContext = {
 		nodeNameToVarName: new Map(),
 		usedVarNames: new Set(),
 		graph,
+		usedGlobals: _genUsedGlobals,
 	};
 
 	// Populate node output from workflow pinData (supports JSON→code generation)
@@ -1332,5 +1389,13 @@ export function generateDataFlowCode(
 
 	lines.push('});');
 
-	return lines.join('\n');
+	const code = lines.join('\n');
+
+	// Prepend import for any n8n globals used in the generated code
+	if (_genUsedGlobals && _genUsedGlobals.size > 0) {
+		const sorted = [..._genUsedGlobals].sort();
+		return `import { ${sorted.join(', ')} } from 'n8n';\n\n${code}`;
+	}
+
+	return code;
 }

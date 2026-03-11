@@ -1,3 +1,5 @@
+import { $now } from 'n8n';
+
 workflow({ name: 'Complex Expressions' }, () => {
 	onTrigger(
 		{
@@ -10,10 +12,10 @@ workflow({ name: 'Complex Expressions' }, () => {
 			const fetch_Config = executeNode({
 				type: 'n8n-nodes-base.httpRequest',
 				params: {
-					url: expr('{{ $json.baseUrl + "/config" }}'),
+					url: `${items.json.baseUrl}/config`,
 					sendHeaders: true,
 					headerParameters: {
-						parameters: [{ name: 'X-Timestamp', value: expr('{{ $now.toISO() }}') }],
+						parameters: [{ name: 'X-Timestamp', value: $now.toISO() }],
 					},
 				},
 				version: 4,
@@ -23,13 +25,13 @@ workflow({ name: 'Complex Expressions' }, () => {
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Update Record',
 					params: {
-						url: expr('{{ "https://api.example.com" + "/records/" + $json.id }}'),
+						url: `https://api.example.com/records/${item.json.id}`,
 						method: 'PUT',
 						sendBody: true,
 						bodyParameters: {
 							parameters: [
 								{ name: 'name', value: item.json.name },
-								{ name: 'updatedAt', value: expr('{{ $now.toISO() }}') },
+								{ name: 'updatedAt', value: $now.toISO() },
 							],
 						},
 					},

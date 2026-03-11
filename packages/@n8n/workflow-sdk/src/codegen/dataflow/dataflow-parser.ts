@@ -42,7 +42,11 @@ import type { SemanticGraph, SemanticNode, AiConnectionType } from '../types';
 import { semanticGraphToWorkflowJSON } from '../semantic-graph';
 import { getOutputName, getInputName, getOutputIndex } from '../semantic-registry';
 import { isTriggerNodeType } from '../../utils/trigger-detection';
-import { AI_CONNECTION_TO_CONFIG_KEY, AI_CONNECTION_TO_BUILDER } from '../constants';
+import {
+	AI_CONNECTION_TO_CONFIG_KEY,
+	AI_CONNECTION_TO_BUILDER,
+	N8N_EXPRESSION_GLOBALS,
+} from '../constants';
 
 // Build reverse maps: builder name → connection type, config key → connection type
 const BUILDER_TO_CONNECTION: Record<string, string> = {};
@@ -163,6 +167,53 @@ function isExpression(node: EstreeNode): node is Expression {
 }
 
 // ---------------------------------------------------------------------------
+// n8n global expression reconstruction
+// ---------------------------------------------------------------------------
+
+/**
+ * Find the root identifier of a chained expression (member access / call).
+ */
+function findRootIdentifier(node: EstreeNode): Identifier | undefined {
+	if (isIdentifier(node)) return node as Identifier;
+	if (isMemberExpression(node) && (node as MemberExpression).object.type !== 'Super') {
+		return findRootIdentifier((node as MemberExpression).object);
+	}
+	if (isCallExpression(node)) {
+		return findRootIdentifier((node as CallExpression).callee);
+	}
+	return undefined;
+}
+
+/**
+ * Reconstruct an n8n global expression from an AST node.
+ * Returns the expression string (e.g. '$now.toISO()') or undefined.
+ * Only handles property access and no-arg method calls.
+ */
+function reconstructGlobalExpr(node: EstreeNode): string | undefined {
+	const root = findRootIdentifier(node);
+	if (!root || !N8N_EXPRESSION_GLOBALS.has(root.name)) return undefined;
+	return reconstructExprChain(node);
+}
+
+function reconstructExprChain(node: EstreeNode): string | undefined {
+	if (isIdentifier(node)) return node.name;
+	if (isMemberExpression(node)) {
+		const me = node as MemberExpression;
+		if (me.object.type === 'Super' || me.computed) return undefined;
+		const obj = reconstructExprChain(me.object);
+		if (obj === undefined || !isIdentifier(me.property)) return undefined;
+		return `${obj}.${(me.property as Identifier).name}`;
+	}
+	if (isCallExpression(node)) {
+		const call = node as CallExpression;
+		const callee = reconstructExprChain(call.callee);
+		if (callee === undefined) return undefined;
+		if (call.arguments.length === 0) return `${callee}()`;
+	}
+	return undefined;
+}
+
+// ---------------------------------------------------------------------------
 // Extract literal values from AST
 // ---------------------------------------------------------------------------
 
@@ -190,29 +241,73 @@ function extractLiteralValue(node: EstreeNode): unknown {
 				? '={{ $execution.resumeFormUrl }}'
 				: '={{ $execution.resumeUrl }}';
 		}
+		// n8n global: $now, $today, DateTime, etc.
+		if (N8N_EXPRESSION_GLOBALS.has(node.name)) {
+			return `={{ ${node.name} }}`;
+		}
 		return node.name;
 	}
 	if (isUnaryExpression(node) && node.operator === '-' && isLiteral(node.argument)) {
 		const val = node.argument.value;
 		if (typeof val === 'number') return -val;
 	}
-	// Member expression: var.json.field → ={{ $json.field }}
+	// Member expression: var.json.field → ={{ $json.field }}, $execution.id → ={{ $execution.id }}
 	if (isMemberExpression(node)) {
+		const globalExpr = reconstructGlobalExpr(node);
+		if (globalExpr !== undefined) {
+			return `={{ ${globalExpr} }}`;
+		}
 		const fieldPath = memberExprToFieldPath(node as Expression);
 		if (fieldPath !== undefined) {
 			return `={{ $json.${fieldPath} }}`;
 		}
 		return undefined;
 	}
-	// Template literals and other complex expressions - return as string
+	// Template literals - convert to n8n expressions when they contain item.json refs
 	if (node.type === 'TemplateLiteral') {
-		// Simple template literal extraction
 		const tmpl = node as unknown as {
 			quasis: Array<{ value: { raw: string } }>;
 			expressions: Expression[];
 		};
 		if (tmpl.expressions.length === 0 && tmpl.quasis.length === 1) {
 			return tmpl.quasis[0].value.raw;
+		}
+		// Template literal with expressions: `${item.json.field}/suffix`
+		// → ={{ $json.field }}/suffix
+		if (tmpl.expressions.length > 0) {
+			const parts: string[] = [];
+			let allResolved = true;
+			for (let i = 0; i < tmpl.quasis.length; i++) {
+				parts.push(tmpl.quasis[i].value.raw);
+				if (i < tmpl.expressions.length) {
+					const expr = tmpl.expressions[i];
+					if (isMemberExpression(expr)) {
+						const fieldPath = memberExprToFieldPath(expr);
+						if (fieldPath !== undefined) {
+							parts.push(`{{ $json.${fieldPath} }}`);
+							continue;
+						}
+					}
+					// n8n global in template literal: `${$now.toISO()}/suffix`
+					const globalStr = reconstructGlobalExpr(expr);
+					if (globalStr !== undefined) {
+						parts.push(`{{ ${globalStr} }}`);
+						continue;
+					}
+					allResolved = false;
+					break;
+				}
+			}
+			if (allResolved) {
+				return '=' + parts.join('');
+			}
+		}
+	}
+	// n8n global call expression: $now.toISO() → ={{ $now.toISO() }}
+	if (isCallExpression(node)) {
+		const globalExpr = reconstructGlobalExpr(node);
+		if (globalExpr !== undefined) {
+			return `={{ ${globalExpr} }}`;
 		}
 	}
 	// Handle expr('{{ $json.field }}') → '={{ $json.field }}'

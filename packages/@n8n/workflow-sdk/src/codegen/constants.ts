@@ -50,3 +50,25 @@ export const AI_OPTIONAL_ARRAY_TYPES = new Set<AiConnectionType>([
 	'ai_embedding',
 	'ai_reranker',
 ]);
+
+/**
+ * n8n expression globals that can be used as bare identifiers in data-flow code.
+ * E.g. `$now.toISO()` instead of `expr('{{ $now.toISO() }}')`.
+ */
+export const N8N_EXPRESSION_GLOBALS = new Set([
+	'$now',
+	'$today',
+	'$execution',
+	'$workflow',
+	'$vars',
+	'$env',
+	'$runIndex',
+	'$itemIndex',
+	'$mode',
+	'$input',
+	'$prevNode',
+	'$jmesPath',
+	'DateTime',
+	'Duration',
+	'Interval',
+]);

@@ -20,7 +20,9 @@ Data-flow is preferred because LLMs already know TypeScript control flow — no 
 - `onTrigger({ type, params, version }, (items) => ...)` — trigger entry point
 - `node({ type, name?, params, version, subnodes? })(input)` — create node, returns output variable
 - `items.map((item) => node({ ... })(items))` — per-item execution (`.map()` wrapping)
-- `expr('{{ $json.field }}')` — wrap n8n expressions
+- `import { $now, $today, ... } from 'n8n'` — import n8n expression globals for use as bare identifiers (stripped during parsing)
+- `$now.toISO()`, `$today`, `$execution.id` — n8n globals used directly (instead of `expr('{{ $now.toISO() }}')`)
+- `expr('{{ complex expression }}')` — wrap complex n8n expressions that can't be represented as simple identifiers
 - `item.json.field` — direct field access inside `.map()` callbacks
 - Native `if (items[0].json.field === value)` → IF node branching (array-level: `items[0].json`)
 - Native `switch (items[0].json.field)` → Switch node routing

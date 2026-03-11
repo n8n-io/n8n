@@ -158,6 +158,34 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 			expect(reGenerated).toContain('.json.name');
 		});
 
+		it('converts n8n globals like $now to bare identifiers and round-trips them', () => {
+			const code = `import { $now, $today } from 'n8n';
+
+workflow({ name: 'Globals Test' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const set_node = executeNode({ type: 'n8n-nodes-base.set', params: { ts: $now.toISO(), day: $today }, version: 3 });
+  });
+});`;
+			const graph = parseDataFlowCodeToGraph(code);
+			const json = semanticGraphToWorkflowJSON(graph, 'Globals Test');
+			// The params should be stored as n8n expressions
+			expect(json.nodes[1]!.parameters!.ts).toBe('={{ $now.toISO() }}');
+			expect(json.nodes[1]!.parameters!.day).toBe('={{ $today }}');
+
+			const reGenerated = generateDataFlowFromGraph(graph, 'Globals Test');
+			// The regenerated code should emit an import and use bare globals, not expr()
+			expect(reGenerated).toContain("import { $now, $today } from 'n8n';");
+			expect(reGenerated).not.toContain('expr(');
+			expect(reGenerated).toContain('$now.toISO()');
+			expect(reGenerated).toContain('$today');
+
+			// Full round-trip: re-parse the generated code
+			const reGraph = parseDataFlowCodeToGraph(reGenerated);
+			const reJson = semanticGraphToWorkflowJSON(reGraph, 'Globals Test');
+			expect(reJson.nodes[1]!.parameters!.ts).toBe('={{ $now.toISO() }}');
+			expect(reJson.nodes[1]!.parameters!.day).toBe('={{ $today }}');
+		});
+
 		it('preserves AI subnodes through code → graph → code', () => {
 			const code = `workflow({ name: 'AI Test' }, () => {
   onTrigger({ type: '@n8n/n8n-nodes-langchain.chatTrigger', params: {}, version: 1 }, (items) => {
