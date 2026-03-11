@@ -150,6 +150,7 @@ import { AddUnshareScopeToCustomRoles1771500000001 } from '../common/17715000000
 import { AddFilesColumnToChatHubAgents1771500000002 } from '../common/1771500000002-AddFilesColumnToChatHubAgents';
 import { AddSuggestedPromptsToAgentTable1772000000000 } from '../common/1772000000000-AddSuggestedPromptsToAgentTable';
 import { AddRoleColumnToProjectSecretsProviderAccess1772619247761 } from '../common/1772619247761-AddRoleColumnToProjectSecretsProviderAccess';
+import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../common/1772619247762-ChangeWorkflowPublishedVersionFKsToRestrict';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -305,4 +306,5 @@ export const postgresMigrations: Migration[] = [
 	AddFilesColumnToChatHubAgents1771500000002,
 	AddSuggestedPromptsToAgentTable1772000000000,
 	AddRoleColumnToProjectSecretsProviderAccess1772619247761,
+	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
 ];

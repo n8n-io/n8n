@@ -493,6 +493,7 @@ defineExpose({
 .header,
 .footer {
 	position: absolute;
+	left: 1px;
 	width: calc(100% - 2px);
 	z-index: 10;
 	background: var(--color--background--light-2);

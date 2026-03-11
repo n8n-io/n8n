@@ -34,6 +34,7 @@ import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowPublishHistory } from './workflow-publish-history';
+import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
@@ -66,6 +67,7 @@ export {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,
@@ -105,6 +107,7 @@ export const entities = {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,
