@@ -67,7 +67,7 @@ import {
 
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -1711,7 +1711,7 @@ onUpdated(async () => {
 							data-test-id="credential-json-edit-button"
 							@click="valueChanged('')"
 						>
-							{{ i18n.baseText('parameterInput.edit' as BaseTextKey) }}
+							{{ i18n.baseText('parameterInput.edit') }}
 						</N8nButton>
 					</div>
 				</div>
