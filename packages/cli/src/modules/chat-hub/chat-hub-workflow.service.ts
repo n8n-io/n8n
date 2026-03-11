@@ -741,7 +741,13 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 					...common,
 					parameters: {
 						model: { __rl: true, mode: 'id', value: model },
-						options: {},
+						options: {
+							textFormat: {
+								textOptions: {
+									type: 'text',
+								},
+							},
+						},
 					},
 				};
 			case 'anthropic':
