@@ -35,6 +35,7 @@ globalConfig.endpoints.metrics = {
 	includeApiMethodLabel: true,
 	includeApiStatusCodeLabel: true,
 	includeQueueMetrics: true,
+	includeWorkflowExecutionDuration: true,
 	queueMetricsInterval: 20,
 	activeWorkflowCountInterval: 60,
 	includeWorkflowStatistics: false,
