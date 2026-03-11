@@ -1,4 +1,3 @@
 {
-	"title": "F15: Do-while polling (loop with condition check)",
-	"skip": "Needs do...while parser support"
+	"title": "F15: Batch poll (SplitInBatches pattern)"
 }

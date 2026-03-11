@@ -5,7 +5,7 @@ workflow({ name: 'Loop Try Catch' }, () => {
 			params: { url: 'https://api.example.com/users' },
 			version: 4,
 		});
-		for (const user of users) {
+		batch(users, (user) => {
 			try {
 				const send_Email = executeNode({
 					type: 'n8n-nodes-base.emailSend',
@@ -21,7 +21,7 @@ workflow({ name: 'Loop Try Catch' }, () => {
 					version: 3,
 				});
 			}
-		}
+		});
 		const summary = executeNode({
 			type: 'n8n-nodes-base.set',
 			name: 'Summary',

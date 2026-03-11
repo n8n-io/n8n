@@ -1,4 +1,3 @@
 {
-	"title": "F16: Try-switch (try/catch wrapping switch routing)",
-	"skip": "Needs composite tree builder support for try/catch followed by switch"
+	"title": "F16: Try-switch (try/catch wrapping switch routing)"
 }

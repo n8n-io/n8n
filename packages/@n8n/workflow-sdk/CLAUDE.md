@@ -26,10 +26,12 @@ Data-flow is preferred because LLMs already know TypeScript control flow — no 
 - Native `switch (items[0].json.field)` → Switch node routing
 - Native `try { ... } catch (e) { ... }` → error handling (continueErrorOutput)
 - `items.filter((item) => condition)` → Filter node (item-level: `item.json`, not `items[0].json`)
+- `batch(source, config?, (item) => { ... })` — batch processing via SplitInBatches. Config: `{ params?: { batchSize }, version?, name? }`. Omitted when all defaults (batchSize 1, version 3, auto name).
 - `const [out0, out1, out2] = node({ ... })(input)` — multi-output destructuring
 - `subnodes: { ai_languageModel: { type, params, version } }` — AI sub-connections
+- **Note:** `for`, `while`, `do...while` loops are forbidden outside code nodes — use `batch()` instead
 
-See `src/codegen/dataflow/__fixtures__/f01-f21/` for full examples of each pattern.
+See `src/codegen/dataflow/__fixtures__/f01-f23/` for full examples of each pattern.
 
 ## Architecture
 

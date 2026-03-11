@@ -359,7 +359,7 @@ describe('dataflow-generator', () => {
 			expect(code).toContain("httpBasicAuth: { id: '1', name: 'My Auth' }");
 		});
 
-		it('generates for...of for SplitInBatches pattern', () => {
+		it('generates batch() for SplitInBatches pattern with defaults', () => {
 			const json: WorkflowJSON = {
 				name: 'Test Workflow',
 				nodes: [
@@ -389,7 +389,75 @@ describe('dataflow-generator', () => {
 
 			const code = generateFromWorkflow(json);
 
-			expect(code).toContain('for (const item of');
+			expect(code).toContain('batch(items, (item) => {');
+			expect(code).not.toContain('for (const');
+		});
+
+		it('generates batch() with config when non-default batchSize', () => {
+			const json: WorkflowJSON = {
+				name: 'Batch Config',
+				nodes: [
+					{
+						id: '1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'Split In Batches',
+						type: 'n8n-nodes-base.splitInBatches',
+						typeVersion: 3,
+						position: [200, 0],
+						parameters: { batchSize: 10 },
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Split In Batches', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const code = generateFromWorkflow(json);
+
+			expect(code).toContain('batch(items, { params: { batchSize: 10 }');
+			expect(code).toContain('(item) => {');
+		});
+
+		it('generates batch() with config when custom name', () => {
+			const json: WorkflowJSON = {
+				name: 'Custom Name',
+				nodes: [
+					{
+						id: '1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'Process Each',
+						type: 'n8n-nodes-base.splitInBatches',
+						typeVersion: 3,
+						position: [200, 0],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Process Each', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const code = generateFromWorkflow(json);
+
+			expect(code).toContain("batch(items, { name: 'Process Each' }");
 		});
 
 		describe('IF/Else handling', () => {

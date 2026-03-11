@@ -5,13 +5,13 @@ workflow({ name: 'For Of Loop' }, () => {
 			params: { url: 'https://api.example.com/items' },
 			version: 4,
 		});
-		for (const item of data) {
+		batch(data, (item) => {
 			const process_Item = executeNode({
 				type: 'n8n-nodes-base.set',
 				name: 'Process Item',
 				params: {},
 				version: 3,
 			});
-		}
+		});
 	});
 });

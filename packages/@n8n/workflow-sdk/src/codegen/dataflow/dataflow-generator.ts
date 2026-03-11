@@ -818,12 +818,17 @@ function generateSwitchCaseNode(
 }
 
 /**
- * Generate code for a SplitInBatches composite node as a `for...of` loop.
+ * Generate code for a SplitInBatches composite node as a `batch()` call.
  *
  * Produces code like:
- *   for (const item of sourceVar) {
+ *   batch(sourceVar, (item) => {
  *     const processItem = executeNode({ ... });
- *   }
+ *   });
+ *
+ * When non-default config:
+ *   batch(sourceVar, { params: { batchSize: 10 }, name: 'Process Each' }, (item) => {
+ *     ...
+ *   });
  */
 function generateSplitInBatchesNode(
 	sib: SplitInBatchesCompositeNode,
@@ -836,17 +841,23 @@ function generateSplitInBatchesNode(
 
 	const sourceVar = inputVar;
 
-	// Generate loop body
-	lines.push(`${indent}for (const item of ${sourceVar}) {`);
+	// Build config object if non-default settings exist
+	const configStr = buildBatchConfig(sib, ctx);
+
+	if (configStr) {
+		lines.push(`${indent}batch(${sourceVar}, ${configStr}, (item) => {`);
+	} else {
+		lines.push(`${indent}batch(${sourceVar}, (item) => {`);
+	}
 
 	if (sib.loopChain !== null) {
 		const loopBody = generateBranchBody(sib.loopChain, ctx, depth + 1, 'item');
 		lines.push(loopBody);
 	}
 
-	lines.push(`${indent}}`);
+	lines.push(`${indent}});`);
 
-	// Generate done chain after the loop (if any)
+	// Generate done chain after the batch() call (if any)
 	if (sib.doneChain !== null) {
 		const doneCode = generateBranchBody(sib.doneChain, ctx, depth, inputVar);
 		if (doneCode) {
@@ -855,6 +866,37 @@ function generateSplitInBatchesNode(
 	}
 
 	return { code: lines.join('\n'), varName: null };
+}
+
+/**
+ * Build the optional config object for a batch() call.
+ * Returns null when all defaults (batchSize <= 1, version 3, auto-generated name).
+ */
+function buildBatchConfig(sib: SplitInBatchesCompositeNode, _ctx: DataFlowContext): string | null {
+	const json = sib.sibNode.json;
+	const batchSize = (json.parameters?.batchSize as number) ?? 1;
+	const version = json.typeVersion ?? 3;
+	const defaultName = generateDefaultNodeName(sib.sibNode.type);
+	const hasCustomName = json.name !== undefined && json.name !== defaultName;
+
+	const isDefault = batchSize <= 1 && version === 3 && !hasCustomName;
+	if (isDefault) return null;
+
+	const parts: string[] = [];
+
+	if (batchSize > 1) {
+		parts.push(`params: { batchSize: ${batchSize} }`);
+	}
+
+	if (version !== 3) {
+		parts.push(`version: ${version}`);
+	}
+
+	if (hasCustomName) {
+		parts.push(`name: '${escapeString(json.name!)}'`);
+	}
+
+	return `{ ${parts.join(', ')} }`;
 }
 
 /**

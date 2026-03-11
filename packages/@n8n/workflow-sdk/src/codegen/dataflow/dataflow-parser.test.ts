@@ -349,8 +349,8 @@ describe('parseDataFlowCode', () => {
 		});
 	});
 
-	describe('for...of loop parsing', () => {
-		it('should parse for...of as SplitInBatches with loop-back connection', () => {
+	describe('batch() parsing', () => {
+		it('should parse batch() as SplitInBatches with loop-back connection', () => {
 			const code = `workflow({ name: 'For Of Loop' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
     const data = executeNode({
@@ -358,14 +358,14 @@ describe('parseDataFlowCode', () => {
       params: { url: 'https://api.example.com/items' },
       version: 4,
     });
-    for (const item of data) {
+    batch(data, (item) => {
       const process_Item = executeNode({
         type: 'n8n-nodes-base.set',
         name: 'Process Item',
         params: {},
         version: 3,
       });
-    }
+    });
   });
 });`;
 
@@ -393,7 +393,7 @@ describe('parseDataFlowCode', () => {
 			]);
 		});
 
-		it('should connect nodes after for...of to SplitInBatches done output', () => {
+		it('should connect nodes after batch() to SplitInBatches done output', () => {
 			const code = `workflow({ name: 'For Then Continue' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
     const data = executeNode({
@@ -401,14 +401,14 @@ describe('parseDataFlowCode', () => {
       params: { url: 'https://api.example.com' },
       version: 4,
     });
-    for (const item of data) {
+    batch(data, (item) => {
       const process = executeNode({
         type: 'n8n-nodes-base.set',
         name: 'Process',
         params: {},
         version: 3,
       });
-    }
+    });
     const summary = executeNode({
       type: 'n8n-nodes-base.set',
       name: 'Summary',
@@ -426,6 +426,70 @@ describe('parseDataFlowCode', () => {
 			// SplitInBatches done output (0) → Summary
 			const sibConns = result.connections['Split In Batches']?.main;
 			expect(sibConns![0]).toEqual([{ node: 'Summary', type: 'main', index: 0 }]);
+		});
+
+		it('should parse batch() with config object', () => {
+			const code = `workflow({ name: 'Batch Config' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const data = executeNode({
+      type: 'n8n-nodes-base.httpRequest',
+      params: { url: 'https://api.example.com/items' },
+      version: 4,
+    });
+    batch(data, { params: { batchSize: 10 }, version: 3, name: 'Process Each' }, (item) => {
+      const step = executeNode({
+        type: 'n8n-nodes-base.set',
+        name: 'Step',
+        params: {},
+        version: 3,
+      });
+    });
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			const sibNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.splitInBatches');
+			expect(sibNode).toBeDefined();
+			expect(sibNode!.name).toBe('Process Each');
+			expect(sibNode!.parameters).toEqual({ batchSize: 10 });
+			expect(sibNode!.typeVersion).toBe(3);
+		});
+
+		it('should throw error for imperative for...of loop', () => {
+			const code = `workflow({ name: 'Bad' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    for (const item of items) {
+      const step = executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			expect(() => parseDataFlowCode(code)).toThrow(/batch\(\)/);
+		});
+
+		it('should throw error for while loop', () => {
+			const code = `workflow({ name: 'Bad' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    while (true) {
+      const step = executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			expect(() => parseDataFlowCode(code)).toThrow(/batch\(\)/);
+		});
+
+		it('should throw error for do...while loop', () => {
+			const code = `workflow({ name: 'Bad' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    do {
+      const step = executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 });
+    } while (true);
+  });
+});`;
+
+			expect(() => parseDataFlowCode(code)).toThrow(/batch\(\)/);
 		});
 	});
 

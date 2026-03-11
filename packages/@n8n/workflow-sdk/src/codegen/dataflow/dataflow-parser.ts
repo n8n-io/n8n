@@ -23,7 +23,6 @@ import type {
 	SwitchStatement,
 	SwitchCase,
 	TryStatement,
-	ForOfStatement,
 	ObjectExpression,
 	Property,
 	ArrayExpression,
@@ -1337,35 +1336,66 @@ function processTryMultiNode(
 }
 
 /**
- * Process a for...of statement → SplitInBatches node with loop-back connection.
+ * Process a batch() call → SplitInBatches node with loop-back connection.
  *
- * Pattern: `for (const item of data) { ... }`
- * - Creates a SplitInBatches node connected from `data` source
+ * Patterns:
+ *   `batch(source, (item) => { ... })`
+ *   `batch(source, { params: { batchSize: 10 }, version: 3, name: 'My Batch' }, (item) => { ... })`
+ *
+ * - Creates a SplitInBatches node connected from source
  * - Loop body nodes connect from SplitInBatches output 1 (loop)
  * - Last loop body node connects back to SplitInBatches (loop-back)
- * - After the loop, lastNodeInScope = SplitInBatches output 0 (done)
+ * - After the call, lastNodeInScope = SplitInBatches output 0 (done)
  */
-function processForOfStatement(
-	stmt: ForOfStatement,
+function processBatchCall(
+	call: CallExpression,
 	state: ParserState,
-	_inputVarName: string | undefined,
+	inputVarName: string | undefined,
 ): void {
-	// Resolve the source variable from the right-hand side: `for (... of data)`
+	const args = call.arguments;
+	if (args.length < 2) return;
+
+	// First arg is the source variable
+	const sourceArg = args[0];
 	let sourceNodeName: string | undefined;
 	let sourceOutputIndex = 0;
-	if (isIdentifier(stmt.right)) {
-		const mapping = state.varToNode.get(stmt.right.name);
+	if (sourceArg.type !== 'SpreadElement' && isIdentifier(sourceArg)) {
+		const mapping = state.varToNode.get(sourceArg.name);
 		if (mapping) {
 			sourceNodeName = mapping.nodeName;
 			sourceOutputIndex = mapping.outputIndex;
 		}
 	}
 
-	// Create SplitInBatches node
+	// Determine if second arg is config (ObjectExpression) or callback (ArrowFunction)
+	let configObj: Record<string, unknown> | undefined;
+	let callbackArg: ArrowFunctionExpression | FunctionExpression | undefined;
+
+	const secondArg = args[1];
+	if (secondArg.type !== 'SpreadElement' && isObjectExpression(secondArg)) {
+		// batch(source, { config }, (item) => { ... })
+		configObj = extractObjectLiteral(secondArg);
+		if (args.length >= 3) {
+			const thirdArg = args[2];
+			if (thirdArg.type !== 'SpreadElement' && isArrowOrFunction(thirdArg)) {
+				callbackArg = thirdArg;
+			}
+		}
+	} else if (secondArg.type !== 'SpreadElement' && isArrowOrFunction(secondArg)) {
+		// batch(source, (item) => { ... })
+		callbackArg = secondArg;
+	}
+
+	// Build SplitInBatches config from parsed config object or defaults
+	const params = (configObj?.params as Record<string, unknown>) ?? { batchSize: 1 };
+	const version = (configObj?.version as number) ?? 3;
+	const name = configObj?.name as string | undefined;
+
 	const sibConfig: NodeConfig = {
 		type: 'n8n-nodes-base.splitInBatches',
-		params: { batchSize: 1 },
-		version: 3,
+		params,
+		version,
+		...(name ? { name } : {}),
 	};
 	const sibNodeJSON = createNodeJSON(sibConfig, state);
 	state.nodes.push(sibNodeJSON);
@@ -1386,9 +1416,11 @@ function processForOfStatement(
 	state.lastNodeInScope = { nodeName: sibNodeJSON.name!, outputIndex: 1 };
 
 	const nodesBeforeBody = state.nodes.length;
-	const bodyStatements =
-		stmt.body.type === 'BlockStatement' ? (stmt.body as BlockStatement).body : [stmt.body];
-	processStatements(bodyStatements, state, _inputVarName);
+	if (callbackArg) {
+		const body = callbackArg.body;
+		const bodyStatements = body.type === 'BlockStatement' ? (body as BlockStatement).body : [];
+		processStatements(bodyStatements, state, inputVarName);
+	}
 
 	// Connect lastNodeInScope (success path) back to SplitInBatches
 	if (state.lastNodeInScope && state.lastNodeInScope.nodeName !== sibNodeJSON.name!) {
@@ -1412,7 +1444,7 @@ function processForOfStatement(
 		}
 	}
 
-	// After loop: lastNodeInScope = SplitInBatches output 0 (done)
+	// After batch: lastNodeInScope = SplitInBatches output 0 (done)
 	state.lastNodeInScope = { nodeName: sibNodeJSON.name!, outputIndex: 0 };
 }
 
@@ -1449,6 +1481,13 @@ function processStatement(
 		case 'ExpressionStatement': {
 			const exprStmt = stmt as ExpressionStatement;
 			if (isCallExpression(exprStmt.expression)) {
+				// Check for batch() call
+				const callExpr = exprStmt.expression as CallExpression;
+				if (isIdentifier(callExpr.callee) && callExpr.callee.name === 'batch') {
+					processBatchCall(callExpr, state, inputVarName);
+					break;
+				}
+
 				// Check for .map() call without assignment (expression body only)
 				const mapMatch = isMapCall(exprStmt.expression);
 				if (mapMatch) {
@@ -1516,10 +1555,18 @@ function processStatement(
 			break;
 		}
 
-		case 'ForOfStatement': {
-			processForOfStatement(stmt as ForOfStatement, state, inputVarName);
-			break;
-		}
+		case 'ForOfStatement':
+		case 'ForInStatement':
+		case 'ForStatement':
+			throw new Error(
+				'Imperative loops (for, for...of, for...in) are not supported. Use batch() for iteration.',
+			);
+
+		case 'WhileStatement':
+		case 'DoWhileStatement':
+			throw new Error(
+				'Imperative loops (while, do...while) are not supported. Use batch() for iteration.',
+			);
 
 		case 'BreakStatement':
 			// Skip break statements in switch cases
