@@ -4,7 +4,7 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -18,10 +18,10 @@ interface Props {
 const props = defineProps<Props>();
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+	workflowId.value
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
 		: undefined,
 );
 

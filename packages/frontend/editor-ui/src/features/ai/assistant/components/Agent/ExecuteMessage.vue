@@ -8,6 +8,7 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle } from 'vue';
@@ -35,9 +36,10 @@ const emit = defineEmits<Emits>();
 // Initialize composables and stores
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+	workflowId.value
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
 		: undefined,
 );
 const nodeTypesStore = useNodeTypesStore();

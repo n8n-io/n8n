@@ -71,8 +71,8 @@ const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+	workflowId.value
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
 		: undefined,
 );
 const assistantStore = useAssistantStore();
