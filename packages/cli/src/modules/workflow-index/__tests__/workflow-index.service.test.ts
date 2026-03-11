@@ -23,7 +23,7 @@ describe('WorkflowIndexService', () => {
 	const mockTracing = mockInstance(Tracing);
 
 	const createWorkflowsConfig = (overrides: Partial<WorkflowsConfig> = {}) =>
-		mock<WorkflowsConfig>({ indexingBatchSize: 100, ...overrides });
+		mock<WorkflowsConfig>({ indexingBatchSize: 10, ...overrides });
 
 	beforeEach(() => {
 		jest.resetAllMocks();
