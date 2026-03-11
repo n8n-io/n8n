@@ -1,3 +1,5 @@
+/* eslint-disable n8n-nodes-base/node-param-description-missing-from-dynamic-options */
+/* eslint-disable n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
 import { MergeClient } from '@mergeapi/merge-node-client';
 
 import {
@@ -15,15 +17,9 @@ import {
 	findResourceKey,
 	getCategoryClient,
 	getLinkedAccountCategory,
+	omitEmpty,
 	type ModelOperation,
 } from './utils';
-
-/** Remove null/undefined/empty-string values so they don't override SDK defaults. */
-function omitEmpty(obj: IDataObject): IDataObject {
-	return Object.fromEntries(
-		Object.entries(obj).filter(([, v]) => v !== null && v !== undefined && v !== ''),
-	);
-}
 
 export class MergeDev implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,24 +36,20 @@ export class MergeDev implements INodeType {
 		credentials: [{ name: 'mergeDevApi', required: true }],
 		properties: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Model',
 				name: 'commonModels',
 				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				noDataExpression: true,
 				typeOptions: {
 					loadOptionsMethod: 'getCommonModels',
 				},
 				default: '',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Operation',
 				name: 'modelOperation',
 				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				noDataExpression: true,
 				typeOptions: {
 					loadOptionsDependsOn: ['commonModels'],
 					loadOptionsMethod: 'getModelOperations',
@@ -160,27 +152,25 @@ export class MergeDev implements INodeType {
 		}>('mergeDevApi');
 		const merge = new MergeClient({ apiKey, accountToken });
 
-		// Resolve category once per execution from the linked account
 		const category = await getLinkedAccountCategory(merge);
 		const categoryClient = getCategoryClient(merge, category);
 
-		// Fetch available actions once (same for all items)
 		const actionsResult = await categoryClient.availableActions.retrieve();
 		const availableModelOperations = actionsResult.availableModelOperations as
 			| ModelOperation[]
 			| undefined;
 
-		for (let i = 0; i < items.length; i++) {
-			const modelName = this.getNodeParameter('commonModels', i) as string;
-			const operation = this.getNodeParameter('modelOperation', i) as string;
+		const modelName = this.getNodeParameter('commonModels', 0) as string;
+		const operation = this.getNodeParameter('modelOperation', 0) as string;
 
-			// Read field values from the appropriate section based on operation
-			const fieldParamName =
-				operation === 'create'
-					? 'createFields.value'
-					: operation === 'update'
-						? 'updateFields.value'
-						: 'queryParams.value';
+		const fieldParamName =
+			operation === 'create'
+				? 'createFields.value'
+				: operation === 'update'
+					? 'updateFields.value'
+					: 'queryParams.value';
+
+		for (let i = 0; i < items.length; i++) {
 			const fieldValues = omitEmpty(
 				(this.getNodeParameter(fieldParamName, i, {}) as IDataObject) ?? {},
 			);
@@ -192,12 +182,10 @@ export class MergeDev implements INodeType {
 				resourceKey
 			] as Record<string, ((...args: unknown[]) => Promise<unknown>) | undefined>;
 
-			// Download File is handled separately since it produces binary output
 			if (operation === 'download') {
 				const { id, mimeType } = fieldValues;
 				if (!id) throw new NodeOperationError(this.getNode(), 'ID is required for Download File');
 
-				// Fetch metadata for filename and MIME type
 				const retrieveFn = resource.retrieve;
 				const fileMeta = retrieveFn
 					? ((await retrieveFn.call(resource, id)) as { name?: string; mimeType?: string })
@@ -206,7 +194,6 @@ export class MergeDev implements INodeType {
 					(mimeType as string) ?? fileMeta.mimeType ?? 'application/octet-stream';
 				const fileName = fileMeta.name ?? (id as string);
 
-				// Get authenticated download URL via Merge's download-request-meta endpoint
 				const downloadMetaFn = resource.downloadRequestMetaRetrieve;
 				if (!downloadMetaFn)
 					throw new NodeOperationError(
@@ -219,8 +206,6 @@ export class MergeDev implements INodeType {
 					mimeType ? { mimeType } : {},
 				)) as { url: string; method: string; headers: Record<string, string> };
 
-				// Download binary content using n8n's http helper (handles arraybuffer properly)
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const fileContent = await this.helpers.httpRequest({
 					url: downloadMeta.url,
 					method: 'GET',
@@ -247,13 +232,12 @@ export class MergeDev implements INodeType {
 				const listFn = resource.list;
 				if (!listFn)
 					throw new NodeOperationError(this.getNode(), `${modelName} does not support list`);
-				// All fields are query parameters
+
 				const result = (await listFn.call(resource, fieldValues)) as {
 					results?: IDataObject[];
 				};
 				responseData = result.results ?? [];
 			} else if (operation === 'get') {
-				// id is the path parameter; rest are query parameters
 				const { id, ...queryParams } = fieldValues;
 				if (!id)
 					throw new NodeOperationError(this.getNode(), 'ID is required for the Get operation');
@@ -262,7 +246,6 @@ export class MergeDev implements INodeType {
 					throw new NodeOperationError(this.getNode(), `${modelName} does not support retrieve`);
 				responseData = (await retrieveFn.call(resource, id, queryParams)) as IDataObject;
 			} else if (operation === 'create') {
-				// Split: supported model fields → request body (`model`), others → query params
 				const supportedSet = new Set(
 					modelOp?.supportedFields.map((f) =>
 						f.replace(/_([a-z])/g, (_: string, c: string) => c.toUpperCase()),

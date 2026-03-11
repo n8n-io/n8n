@@ -280,6 +280,5 @@ export async function getModelFields(this: ILoadOptionsFunctions): Promise<Resou
 	return { fields: [] };
 }
 
-// Aliases used by the two separate resourceMapper properties in the node description
 export { getModelFields as getQueryParamFields };
 export { getModelFields as getBodyFields };

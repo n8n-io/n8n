@@ -7,7 +7,7 @@ import type {
 	MergeClient,
 	Ticketing,
 } from '@mergeapi/merge-node-client';
-import { UserError } from 'n8n-workflow';
+import { type IDataObject, UserError } from 'n8n-workflow';
 
 export type CategoryClient =
 	| AtsClient
@@ -120,4 +120,11 @@ export function findResourceKey(categoryClient: CategoryClient, modelName: strin
 
 	if (bestKey) return bestKey;
 	throw new UserError(`No SDK resource found for model "${modelName}" in this category`);
+}
+
+/** Remove null/undefined/empty-string values so they don't override SDK defaults. */
+export function omitEmpty(obj: IDataObject): IDataObject {
+	return Object.fromEntries(
+		Object.entries(obj).filter(([, v]) => v !== null && v !== undefined && v !== ''),
+	);
 }
