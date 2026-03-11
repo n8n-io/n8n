@@ -465,7 +465,7 @@ describe('parseDataFlowCode', () => {
   });
 });`;
 
-			expect(() => parseDataFlowCode(code)).toThrow(/batch\(\)/);
+			expect(() => parseDataFlowCode(code)).toThrow(/\.map\(\)/);
 		});
 
 		it('should throw error for while loop', () => {
@@ -477,7 +477,7 @@ describe('parseDataFlowCode', () => {
   });
 });`;
 
-			expect(() => parseDataFlowCode(code)).toThrow(/batch\(\)/);
+			expect(() => parseDataFlowCode(code)).toThrow(/\.map\(\)/);
 		});
 
 		it('should throw error for do...while loop', () => {
@@ -489,7 +489,7 @@ describe('parseDataFlowCode', () => {
   });
 });`;
 
-			expect(() => parseDataFlowCode(code)).toThrow(/batch\(\)/);
+			expect(() => parseDataFlowCode(code)).toThrow(/\.map\(\)/);
 		});
 	});
 

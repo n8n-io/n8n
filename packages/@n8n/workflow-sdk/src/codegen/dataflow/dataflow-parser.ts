@@ -1558,14 +1558,10 @@ function processStatement(
 		case 'ForOfStatement':
 		case 'ForInStatement':
 		case 'ForStatement':
-			throw new Error(
-				'Imperative loops (for, for...of, for...in) are not supported. Use batch() for iteration.',
-			);
-
 		case 'WhileStatement':
 		case 'DoWhileStatement':
 			throw new Error(
-				'Imperative loops (while, do...while) are not supported. Use batch() for iteration.',
+				'Imperative loops are not supported. Use .map() for per-item processing, or batch() for large datasets that need batching.',
 			);
 
 		case 'BreakStatement':
