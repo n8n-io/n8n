@@ -3845,6 +3845,9 @@ importers:
       '@codspeed/vitest-plugin':
         specifier: ^4.0.0
         version: 4.0.1(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vitest@3.2.4(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
+      '@n8n/expression-runtime':
+        specifier: workspace:*
+        version: link:../../@n8n/expression-runtime
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
