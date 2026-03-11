@@ -44,7 +44,7 @@ workflow({ name: 'API fundamentals' }, () => {
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: '1. The Customer (GET Menu Item)',
-					params: { url: expr('{{ $json.base_url }}/tutorial/api/menu'), options: {} },
+					params: { url: `${item.json.base_url}/tutorial/api/menu`, options: {} },
 					version: 4.1,
 				}),
 			);
@@ -53,7 +53,7 @@ workflow({ name: 'API fundamentals' }, () => {
 					type: 'n8n-nodes-base.httpRequest',
 					name: '2. The Customer (GET with Query Params)',
 					params: {
-						url: expr('{{ $json.base_url }}/tutorial/api/order'),
+						url: `${item.json.base_url}/tutorial/api/order`,
 						options: {},
 						sendQuery: true,
 						queryParameters: { parameters: [{ name: 'extra_cheese', value: 'true' }] },
@@ -66,7 +66,7 @@ workflow({ name: 'API fundamentals' }, () => {
 					type: 'n8n-nodes-base.httpRequest',
 					name: '3. The Customer (POST with Body)',
 					params: {
-						url: expr('{{ $json.base_url }}/tutorial/api/review'),
+						url: `${item.json.base_url}/tutorial/api/review`,
 						method: 'POST',
 						options: {},
 						sendBody: true,
@@ -85,7 +85,7 @@ workflow({ name: 'API fundamentals' }, () => {
 					type: 'n8n-nodes-base.httpRequest',
 					name: '4. The Customer (GET with Headers/Auth)',
 					params: {
-						url: expr('{{ $json.base_url }}/tutorial/api/secret-dish'),
+						url: `${item.json.base_url}/tutorial/api/secret-dish`,
 						options: {},
 						sendHeaders: true,
 						headerParameters: { parameters: [{ name: 'x-api-key', value: 'super-secret-key' }] },
@@ -98,7 +98,7 @@ workflow({ name: 'API fundamentals' }, () => {
 					type: 'n8n-nodes-base.httpRequest',
 					name: '5. The Customer (Request with Timeout)',
 					params: {
-						url: expr('{{ $json.base_url }}/tutorial/api/slow-service'),
+						url: `${item.json.base_url}/tutorial/api/slow-service`,
 						options: { timeout: 2000 },
 					},
 					version: 4.1,
@@ -192,13 +192,13 @@ workflow({ name: 'API fundamentals' }, () => {
 								id: '67890',
 								name: 'your_comment',
 								type: 'string',
-								value: expr('{{ $json.body.comment }}'),
+								value: items.json.body.comment,
 							},
 							{
 								id: '91011',
 								name: 'your_rating',
 								type: 'number',
-								value: expr('{{ $json.body.rating }}'),
+								value: items.json.body.rating,
 							},
 						],
 					},
