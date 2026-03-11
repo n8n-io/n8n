@@ -62,6 +62,7 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
@@ -96,6 +97,7 @@ export class ActiveWorkflowManager {
 		private readonly push: Push,
 		private readonly eventService: EventService,
 		private readonly storageConfig: StorageConfig,
+		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -238,39 +240,33 @@ export class ActiveWorkflowManager {
 	 * deregister those webhooks from external services.
 	 */
 	async clearWebhooks(workflowId: WorkflowId) {
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			relations: { activeVersion: true },
-		});
+		const publishedData =
+			await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
 
-		if (workflowData === null) {
-			throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
-		}
-
-		if (!workflowData.activeVersion) {
-			throw new UnexpectedError('Active version not found for workflow', {
+		if (!publishedData) {
+			throw new UnexpectedError('Published version not found for workflow', {
 				extra: { workflowId },
 			});
 		}
 
-		const { nodes, connections } = workflowData.activeVersion;
+		const { nodes, connections } = publishedData;
 
 		const workflow = new Workflow({
 			id: workflowId,
-			name: workflowData.name,
+			name: publishedData.name,
 			nodes,
 			connections,
 			active: true,
 			nodeTypes: this.nodeTypes,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
+			staticData: publishedData.staticData,
+			settings: publishedData.settings,
 		});
 
 		const mode = 'internal';
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
-			workflowSettings: workflowData.settings,
+			workflowSettings: publishedData.settings,
 		});
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
@@ -302,13 +298,17 @@ export class ActiveWorkflowManager {
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
-				const executePromise = this.workflowExecutionService.runWorkflow(
-					workflowData,
-					node,
-					data,
-					additionalData,
-					mode,
-					responsePromise,
+
+				const executePromise = this.loadFreshWorkflowData(workflowData).then(
+					async (freshWorkflowData) =>
+						await this.workflowExecutionService.runWorkflow(
+							freshWorkflowData,
+							node,
+							data,
+							additionalData,
+							mode,
+							responsePromise,
+						),
 				);
 
 				if (donePromise) {
@@ -354,13 +354,16 @@ export class ActiveWorkflowManager {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				const executePromise = this.workflowExecutionService.runWorkflow(
-					workflowData,
-					node,
-					data,
-					additionalData,
-					mode,
-					responsePromise,
+				const executePromise = this.loadFreshWorkflowData(workflowData).then(
+					async (freshWorkflowData) =>
+						await this.workflowExecutionService.runWorkflow(
+							freshWorkflowData,
+							node,
+							data,
+							additionalData,
+							mode,
+							responsePromise,
+						),
 				);
 
 				void executePromise.then((executionId) => {
@@ -460,6 +463,31 @@ export class ActiveWorkflowManager {
 		executeErrorWorkflow(workflowData, fullRunData, mode);
 	}
 
+	/**
+	 * Load fresh workflow data for execution. Re-reads the published version
+	 * from the database so that trigger/poller executions pick up workflow
+	 * updates without needing to deactivate/reactivate.
+	 *
+	 * Falls back to the initial workflow data if the lookup fails, to avoid
+	 * breaking executions due to transient DB issues.
+	 */
+	private async loadFreshWorkflowData(initialWorkflowData: IWorkflowDb): Promise<IWorkflowBase> {
+		const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
+			initialWorkflowData.id,
+		);
+
+		if (!publishedData) {
+			return initialWorkflowData;
+		}
+
+		return {
+			...initialWorkflowData,
+			name: publishedData.name,
+			nodes: publishedData.nodes,
+			connections: publishedData.connections,
+		};
+	}
+
 	private isActivationInProgress = false;
 
 	/**
@@ -527,14 +555,20 @@ export class ActiveWorkflowManager {
 				},
 			);
 
-			if (!dbWorkflow.activeVersion) {
-				throw new UnexpectedError('Active version not found for workflow', {
+			const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
+				dbWorkflow.id,
+			);
+			if (!publishedData) {
+				throw new UnexpectedError('Published version not found for workflow', {
 					extra: { workflowId: dbWorkflow.id },
 				});
 			}
 
-			const { nodes, connections } = dbWorkflow.activeVersion;
-			const workflowForError = { ...dbWorkflow, nodes, connections };
+			const workflowForError = {
+				...dbWorkflow,
+				nodes: publishedData.nodes,
+				connections: publishedData.connections,
+			};
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			this.executeErrorWorkflow(error, workflowForError, 'internal');
@@ -622,7 +656,11 @@ export class ActiveWorkflowManager {
 		const shouldAddTriggersAndPollers = this.shouldAddTriggersAndPollers();
 
 		try {
-			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
+			const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
+				dbWorkflow.id,
+			);
+
+			if (['init', 'leadershipChange'].includes(activationMode) && !publishedData) {
 				this.logger.debug(
 					`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
 					{ workflowId: dbWorkflow.id },
@@ -631,14 +669,13 @@ export class ActiveWorkflowManager {
 				return added;
 			}
 
-			// Get workflow data from the active version
-			if (!dbWorkflow.activeVersion) {
-				throw new UnexpectedError('Active version not found for workflow', {
+			if (!publishedData) {
+				throw new UnexpectedError('Published version not found for workflow', {
 					extra: { workflowId: dbWorkflow.id },
 				});
 			}
 
-			const { nodes, connections } = dbWorkflow.activeVersion;
+			const { nodes, connections } = publishedData;
 			dbWorkflow.nodes = nodes;
 			dbWorkflow.connections = connections;
 
