@@ -2310,5 +2310,145 @@ describe('dataflow-generator', () => {
 				expect(dataBIndex).toBeLessThan(dataAIndex);
 			});
 		});
+
+		describe('try/catch followed by switch', () => {
+			it('generates try/catch followed by switch/case', () => {
+				const json: WorkflowJSON = {
+					name: 'Try Switch',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [200, 0],
+							parameters: { url: 'https://api.example.com/data' },
+							onError: 'continueErrorOutput',
+							executeOnce: true,
+						},
+						{
+							id: '3',
+							name: 'Error Handler',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [400, 200],
+							parameters: {},
+						},
+						{
+							id: '4',
+							name: 'Switch',
+							type: 'n8n-nodes-base.switch',
+							typeVersion: 3,
+							position: [400, 0],
+							parameters: {
+								rules: {
+									values: [
+										{
+											conditions: {
+												options: {
+													version: 2,
+													caseSensitive: true,
+													typeValidation: 'loose',
+												},
+												combinator: 'and',
+												conditions: [
+													{
+														operator: { type: 'string', operation: 'equals' },
+														leftValue: '={{ $json.type }}',
+														rightValue: 'email',
+													},
+												],
+											},
+										},
+										{
+											conditions: {
+												options: {
+													version: 2,
+													caseSensitive: true,
+													typeValidation: 'loose',
+												},
+												combinator: 'and',
+												conditions: [
+													{
+														operator: { type: 'string', operation: 'equals' },
+														leftValue: '={{ $json.type }}',
+														rightValue: 'sms',
+													},
+												],
+											},
+										},
+									],
+								},
+								options: { fallbackOutput: 'extra' },
+							},
+						},
+						{
+							id: '5',
+							name: 'Send Email',
+							type: 'n8n-nodes-base.emailSend',
+							typeVersion: 2,
+							position: [600, -200],
+							parameters: { toEmail: 'user@example.com' },
+						},
+						{
+							id: '6',
+							name: 'Send SMS',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [600, 0],
+							parameters: { url: 'https://sms.example.com/send', method: 'POST' },
+						},
+						{
+							id: '7',
+							name: 'Log Unknown',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [600, 200],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+						},
+						'HTTP Request': {
+							main: [
+								[{ node: 'Switch', type: 'main', index: 0 }],
+								[{ node: 'Error Handler', type: 'main', index: 0 }],
+							],
+						},
+						Switch: {
+							main: [
+								[{ node: 'Send Email', type: 'main', index: 0 }],
+								[{ node: 'Send SMS', type: 'main', index: 0 }],
+								[{ node: 'Log Unknown', type: 'main', index: 0 }],
+							],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain('try {');
+				expect(code).toContain('} catch');
+				expect(code).toContain('const hTTP_Request = executeNode(');
+				expect(code).toContain('const error_Handler = executeNode(');
+				expect(code).toContain('switch (hTTP_Request[0].json.type)');
+				expect(code).toContain("case 'email':");
+				expect(code).toContain("case 'sms':");
+				expect(code).toContain('default:');
+				expect(code).toContain('const send_Email = executeNode(');
+				expect(code).toContain('const send_SMS = executeNode(');
+				expect(code).toContain('const log_Unknown = executeNode(');
+			});
+		});
 	});
 });

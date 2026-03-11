@@ -751,5 +751,96 @@ describe('dataflow-parser', () => {
 			const preNode = result.nodes.find((n) => n.name === 'Pre');
 			expect(preNode).toBeDefined();
 		});
+
+		it('parses try/catch followed by switch statement', () => {
+			const code = `workflow({ name: 'Try Switch' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+					try {
+						const fetch_Data = executeNode({
+							type: 'n8n-nodes-base.httpRequest',
+							params: { url: 'https://api.example.com/data' },
+							version: 4,
+						});
+					} catch (e) {
+						const error_Handler = executeNode({
+							type: 'n8n-nodes-base.set',
+							name: 'Error Handler',
+							params: {},
+							version: 3,
+						});
+					}
+					switch (items[0].json.type) {
+						case 'email': {
+							const send_Email = executeNode({
+								type: 'n8n-nodes-base.emailSend',
+								name: 'Send Email',
+								params: { toEmail: 'user@example.com' },
+								version: 2,
+							});
+							break;
+						}
+						case 'sms': {
+							const send_SMS = executeNode({
+								type: 'n8n-nodes-base.httpRequest',
+								name: 'Send SMS',
+								params: { url: 'https://sms.example.com/send', method: 'POST' },
+								version: 4,
+							});
+							break;
+						}
+						default: {
+							const log_Unknown = executeNode({
+								type: 'n8n-nodes-base.set',
+								name: 'Log Unknown',
+								params: {},
+								version: 3,
+							});
+							break;
+						}
+					}
+				});
+			});`;
+			const result = parseDataFlowCode(code);
+
+			// 7 nodes: Trigger, Fetch Data, Error Handler, Switch, Send Email, Send SMS, Log Unknown
+			expect(result.nodes).toHaveLength(7);
+
+			// Fetch Data has onError and executeOnce
+			const fetchData = result.nodes.find(
+				(n) =>
+					n.type === 'n8n-nodes-base.httpRequest' &&
+					(n.parameters as Record<string, unknown>)?.url === 'https://api.example.com/data',
+			);
+			expect(fetchData).toBeDefined();
+			expect(fetchData!.onError).toBe('continueErrorOutput');
+			expect(fetchData!.executeOnce).toBe(true);
+
+			// Switch node with correct rules
+			const switchNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.switch');
+			expect(switchNode).toBeDefined();
+			const rules = (switchNode!.parameters as Record<string, unknown>)?.rules as {
+				values: Array<{
+					conditions: { conditions: Array<{ leftValue: string; rightValue: unknown }> };
+				}>;
+			};
+			expect(rules.values).toHaveLength(2);
+			expect(rules.values[0].conditions.conditions[0].leftValue).toBe('={{ $json.type }}');
+			expect(rules.values[0].conditions.conditions[0].rightValue).toBe('email');
+			expect(rules.values[1].conditions.conditions[0].rightValue).toBe('sms');
+
+			// Connections
+			const fetchDataName = fetchData!.name!;
+			expect(getConnection(result.connections, fetchDataName, 0).node).toBe(switchNode!.name);
+			expect(getConnection(result.connections, fetchDataName, 1).node).toBe('Error Handler');
+			expect(getConnection(result.connections, switchNode!.name!, 0).node).toBe('Send Email');
+			expect(getConnection(result.connections, switchNode!.name!, 1).node).toBe('Send SMS');
+			expect(getConnection(result.connections, switchNode!.name!, 2).node).toBe('Log Unknown');
+
+			// Case nodes should NOT have executeOnce (inside branches)
+			expect(result.nodes.find((n) => n.name === 'Error Handler')!.executeOnce).toBeUndefined();
+			expect(result.nodes.find((n) => n.name === 'Send Email')!.executeOnce).toBeUndefined();
+			expect(result.nodes.find((n) => n.name === 'Send SMS')!.executeOnce).toBeUndefined();
+			expect(result.nodes.find((n) => n.name === 'Log Unknown')!.executeOnce).toBeUndefined();
+		});
 	});
 });

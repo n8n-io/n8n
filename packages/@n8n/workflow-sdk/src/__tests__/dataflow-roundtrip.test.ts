@@ -912,4 +912,164 @@ describe('dataflow round-trip', () => {
 			expect(compareConns.filter((c) => c !== null && c.length > 0).length).toBe(3);
 		});
 	});
+
+	describe('try/catch followed by switch', () => {
+		it('round-trips Trigger → try/catch HTTP Request → Switch → 3 cases', () => {
+			const original: WorkflowJSON = {
+				name: 'Try Switch',
+				nodes: [
+					{
+						id: '1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4,
+						position: [200, 0],
+						parameters: { url: 'https://api.example.com/data' },
+						onError: 'continueErrorOutput',
+						executeOnce: true,
+					},
+					{
+						id: '3',
+						name: 'Error Handler',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [400, 200],
+						parameters: {},
+					},
+					{
+						id: '4',
+						name: 'Switch',
+						type: 'n8n-nodes-base.switch',
+						typeVersion: 3,
+						position: [400, 0],
+						parameters: {
+							rules: {
+								values: [
+									{
+										conditions: {
+											options: {
+												version: 2,
+												caseSensitive: true,
+												typeValidation: 'loose',
+											},
+											combinator: 'and',
+											conditions: [
+												{
+													operator: { type: 'string', operation: 'equals' },
+													leftValue: '={{ $json.type }}',
+													rightValue: 'email',
+												},
+											],
+										},
+									},
+									{
+										conditions: {
+											options: {
+												version: 2,
+												caseSensitive: true,
+												typeValidation: 'loose',
+											},
+											combinator: 'and',
+											conditions: [
+												{
+													operator: { type: 'string', operation: 'equals' },
+													leftValue: '={{ $json.type }}',
+													rightValue: 'sms',
+												},
+											],
+										},
+									},
+								],
+							},
+							options: { fallbackOutput: 'extra' },
+						},
+					},
+					{
+						id: '5',
+						name: 'Send Email',
+						type: 'n8n-nodes-base.emailSend',
+						typeVersion: 2,
+						position: [600, -200],
+						parameters: { toEmail: 'user@example.com' },
+					},
+					{
+						id: '6',
+						name: 'Send SMS',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4,
+						position: [600, 0],
+						parameters: { url: 'https://sms.example.com/send', method: 'POST' },
+					},
+					{
+						id: '7',
+						name: 'Log Unknown',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [600, 200],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+					},
+					'HTTP Request': {
+						main: [
+							[{ node: 'Switch', type: 'main', index: 0 }],
+							[{ node: 'Error Handler', type: 'main', index: 0 }],
+						],
+					},
+					Switch: {
+						main: [
+							[{ node: 'Send Email', type: 'main', index: 0 }],
+							[{ node: 'Send SMS', type: 'main', index: 0 }],
+							[{ node: 'Log Unknown', type: 'main', index: 0 }],
+						],
+					},
+				},
+			};
+
+			const code = generateDataFlowWorkflowCode(original);
+			const parsed = parseDataFlowCode(code);
+
+			// Same node count
+			expect(parsed.nodes).toHaveLength(7);
+
+			// Same node types
+			const normOriginal = normalizeForComparison(original);
+			const normParsed = normalizeForComparison(parsed);
+			expect(normParsed.nodes.map((n) => n.type).sort()).toEqual(
+				normOriginal.nodes.map((n) => n.type).sort(),
+			);
+
+			// onError preserved
+			const httpNode = parsed.nodes.find(
+				(n) => n.type === 'n8n-nodes-base.httpRequest' && n.onError === 'continueErrorOutput',
+			);
+			expect(httpNode).toBeDefined();
+
+			// Switch has rules
+			const switchNode = parsed.nodes.find((n) => n.type === 'n8n-nodes-base.switch');
+			expect(switchNode).toBeDefined();
+			expect((switchNode!.parameters as Record<string, unknown>)?.rules).toBeDefined();
+
+			// Switch connections: 3 outputs
+			const switchConns = parsed.connections[switchNode!.name!]?.main;
+			expect(switchConns).toBeDefined();
+			expect(switchConns.filter((c) => c !== null && c.length > 0).length).toBe(3);
+
+			// Error handler connection from HTTP Request error output
+			const httpConns = parsed.connections[httpNode!.name!]?.main;
+			expect(httpConns).toBeDefined();
+			expect(httpConns.length).toBeGreaterThanOrEqual(2);
+		});
+	});
 });

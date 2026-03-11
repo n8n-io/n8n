@@ -1,0 +1,174 @@
+{
+	"name": "Try Switch",
+	"nodes": [
+		{
+			"id": "node-0",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "node-1",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4,
+			"position": [200, 0],
+			"parameters": {
+				"url": "https://api.example.com/data"
+			},
+			"executeOnce": true,
+			"onError": "continueErrorOutput"
+		},
+		{
+			"id": "node-2",
+			"name": "Error Handler",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"parameters": {}
+		},
+		{
+			"id": "node-3",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3,
+			"position": [600, 0],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"version": 2,
+									"caseSensitive": true,
+									"typeValidation": "loose"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.type }}",
+										"rightValue": "email"
+									}
+								]
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"version": 2,
+									"caseSensitive": true,
+									"typeValidation": "loose"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.type }}",
+										"rightValue": "sms"
+									}
+								]
+							}
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra"
+				}
+			}
+		},
+		{
+			"id": "node-4",
+			"name": "Send Email",
+			"type": "n8n-nodes-base.emailSend",
+			"typeVersion": 2,
+			"position": [800, 0],
+			"parameters": {
+				"toEmail": "user@example.com"
+			}
+		},
+		{
+			"id": "node-5",
+			"name": "Send SMS",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4,
+			"position": [1000, 0],
+			"parameters": {
+				"url": "https://sms.example.com/send",
+				"method": "POST"
+			}
+		},
+		{
+			"id": "node-6",
+			"name": "Log Unknown",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [1200, 0],
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Request": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error Handler",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Send Email",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Send SMS",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Log Unknown",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
