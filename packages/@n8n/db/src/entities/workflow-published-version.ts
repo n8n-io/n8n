@@ -13,13 +13,13 @@ export class WorkflowPublishedVersion extends WithTimestamps {
 	publishedVersionId: string;
 
 	@ManyToOne('WorkflowEntity', {
-		onDelete: 'CASCADE',
+		onDelete: 'RESTRICT',
 	})
 	@JoinColumn({ name: 'workflowId' })
 	workflow: Relation<WorkflowEntity>;
 
 	@ManyToOne('WorkflowHistory', {
-		onDelete: 'CASCADE',
+		onDelete: 'RESTRICT',
 	})
 	@JoinColumn({ name: 'publishedVersionId', referencedColumnName: 'versionId' })
 	publishedVersion: Relation<WorkflowHistory>;

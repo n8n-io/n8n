@@ -18,7 +18,10 @@ export class WorkflowPublishedVersionRepository extends Repository<WorkflowPubli
 	}
 
 	async getPublishedVersionId(workflowId: string): Promise<string | null> {
-		const record = await this.findOne({ where: { workflowId } });
+		const record = await this.findOne({
+			where: { workflowId },
+			select: ['publishedVersionId'],
+		});
 		return record?.publishedVersionId ?? null;
 	}
 }
