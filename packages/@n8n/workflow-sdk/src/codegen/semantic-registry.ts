@@ -12,7 +12,7 @@ import type { NodeJSON, IDataObject } from '../types/base';
 /**
  * Composite types that the codegen can generate
  */
-export type CompositeType = 'ifElse' | 'switchCase' | 'merge' | 'splitInBatches';
+export type CompositeType = 'ifElse' | 'filter' | 'switchCase' | 'merge' | 'splitInBatches';
 
 /**
  * Semantic configuration for a node type
@@ -36,6 +36,12 @@ const NODE_SEMANTICS: Record<string, NodeSemantics> = {
 		outputs: ['trueBranch', 'falseBranch'],
 		inputs: ['input'],
 		composite: 'ifElse',
+	},
+
+	'n8n-nodes-base.filter': {
+		outputs: ['kept', 'discarded'],
+		inputs: ['input'],
+		composite: 'filter',
 	},
 
 	'n8n-nodes-base.switch': {

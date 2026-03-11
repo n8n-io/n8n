@@ -5,6 +5,7 @@ import type {
 	LeafNode,
 	ChainNode,
 	IfElseCompositeNode,
+	FilterCompositeNode,
 	SplitInBatchesCompositeNode,
 } from './composite-tree';
 import { annotateGraph } from './graph-annotator';
@@ -264,6 +265,115 @@ describe('composite-builder', () => {
 
 				expect(ifElse.trueBranch).not.toBeNull();
 				expect(ifElse.falseBranch).toBeNull();
+			});
+		});
+
+		describe('Filter branch', () => {
+			it('builds filter composite with kept and discarded branches', () => {
+				const json: WorkflowJSON = {
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Filter',
+							type: 'n8n-nodes-base.filter',
+							typeVersion: 2,
+							position: [100, 0],
+						},
+						{
+							id: '3',
+							name: 'KeptHandler',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, -50],
+						},
+						{
+							id: '4',
+							name: 'DiscardedHandler',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 50],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Filter', type: 'main', index: 0 }]] },
+						Filter: {
+							main: [
+								[{ node: 'KeptHandler', type: 'main', index: 0 }],
+								[{ node: 'DiscardedHandler', type: 'main', index: 0 }],
+							],
+						},
+					},
+				};
+
+				const graph = prepareGraph(json);
+				const tree = buildCompositeTree(graph);
+
+				expect(tree.roots).toHaveLength(1);
+				expect(tree.roots[0].kind).toBe('chain');
+				const chain = tree.roots[0] as ChainNode;
+
+				expect(chain.nodes).toHaveLength(2);
+				expect((chain.nodes[0] as LeafNode).node.name).toBe('Trigger');
+				expect(chain.nodes[1].kind).toBe('filter');
+
+				const filter = chain.nodes[1] as FilterCompositeNode;
+				expect(filter.filterNode.name).toBe('Filter');
+				expect(filter.keptBranch).not.toBeNull();
+				expect(filter.discardedBranch).not.toBeNull();
+				expect((filter.keptBranch as LeafNode).node.name).toBe('KeptHandler');
+				expect((filter.discardedBranch as LeafNode).node.name).toBe('DiscardedHandler');
+			});
+
+			it('handles Filter with only kept branch', () => {
+				const json: WorkflowJSON = {
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Filter',
+							type: 'n8n-nodes-base.filter',
+							typeVersion: 2,
+							position: [100, 0],
+						},
+						{
+							id: '3',
+							name: 'KeptHandler',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, -50],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Filter', type: 'main', index: 0 }]] },
+						Filter: {
+							main: [[{ node: 'KeptHandler', type: 'main', index: 0 }], []],
+						},
+					},
+				};
+
+				const graph = prepareGraph(json);
+				const tree = buildCompositeTree(graph);
+
+				const chain = tree.roots[0] as ChainNode;
+				const filter = chain.nodes[1] as FilterCompositeNode;
+
+				expect(filter.keptBranch).not.toBeNull();
+				expect(filter.discardedBranch).toBeNull();
 			});
 		});
 

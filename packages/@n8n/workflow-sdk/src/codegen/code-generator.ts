@@ -13,6 +13,7 @@ import type {
 	ChainNode,
 	VariableReference,
 	IfElseCompositeNode,
+	FilterCompositeNode,
 	SwitchCaseCompositeNode,
 	MergeCompositeNode,
 	SplitInBatchesCompositeNode,
@@ -752,6 +753,34 @@ function generateIfElse(ifElse: IfElseCompositeNode, ctx: GenerationContext): st
 }
 
 /**
+ * Generate code for a Filter node using fluent API syntax (same as IF: .onTrue/.onFalse)
+ */
+function generateFilterSDK(filter: FilterCompositeNode, ctx: GenerationContext): string {
+	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
+
+	const filterNodeRef = getVarRefOrInlineNode(filter.filterNode, ctx);
+
+	let code = filterNodeRef;
+
+	if (filter.keptBranch !== null) {
+		const keptBranchCode = generateBranchCode(filter.keptBranch, innerCtx);
+		code += `.onTrue(${keptBranchCode})`;
+	}
+
+	if (filter.discardedBranch !== null) {
+		const discardedBranchCode = generateBranchCode(filter.discardedBranch, innerCtx);
+		code += `.onFalse(${discardedBranchCode})`;
+	}
+
+	if (filter.errorHandler) {
+		const errorHandlerCode = generateComposite(filter.errorHandler, innerCtx);
+		code += `.onError(${errorHandlerCode})`;
+	}
+
+	return code;
+}
+
+/**
  * Generate code for a switch case using fluent API syntax
  * Generates: switchNode.onCase(0, caseA).onCase(1, caseB)
  */
@@ -969,6 +998,8 @@ function generateComposite(node: CompositeNode, ctx: GenerationContext): string 
 			return generateVarRef(node, ctx);
 		case 'ifElse':
 			return generateIfElse(node, ctx);
+		case 'filter':
+			return generateFilterSDK(node, ctx);
 		case 'switchCase':
 			return generateSwitchCase(node, ctx);
 		case 'merge':
@@ -1091,6 +1122,22 @@ export function collectNestedMultiOutputs(
 				for (const b of ifElse.falseBranch) collectNestedMultiOutputs(b, collected, visited);
 			} else {
 				collectNestedMultiOutputs(ifElse.falseBranch, collected, visited);
+			}
+		}
+	} else if (node.kind === 'filter') {
+		const filter = node;
+		if (filter.keptBranch) {
+			if (Array.isArray(filter.keptBranch)) {
+				for (const b of filter.keptBranch) collectNestedMultiOutputs(b, collected, visited);
+			} else {
+				collectNestedMultiOutputs(filter.keptBranch, collected, visited);
+			}
+		}
+		if (filter.discardedBranch) {
+			if (Array.isArray(filter.discardedBranch)) {
+				for (const b of filter.discardedBranch) collectNestedMultiOutputs(b, collected, visited);
+			} else {
+				collectNestedMultiOutputs(filter.discardedBranch, collected, visited);
 			}
 		}
 	} else if (node.kind === 'switchCase') {

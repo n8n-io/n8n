@@ -24,6 +24,7 @@ import type {
 	CompositeNode,
 	VariableReference,
 	IfElseCompositeNode,
+	FilterCompositeNode,
 	SwitchCaseCompositeNode,
 	SplitInBatchesCompositeNode,
 	FanOutCompositeNode,
@@ -382,6 +383,61 @@ function buildIfElse(node: SemanticNode, ctx: BuildContext): IfElseCompositeNode
 }
 
 /**
+ * Build composite for a Filter node
+ */
+function buildFilter(node: SemanticNode, ctx: BuildContext): FilterCompositeNode {
+	const keptBranchTargets = node.outputs.get('kept') ?? [];
+	const discardedBranchTargets = node.outputs.get('discarded') ?? [];
+
+	const branchCtx: BuildContext = {
+		...ctx,
+		isBranchContext: true,
+	};
+
+	const keptBranch = buildBranchTargets(keptBranchTargets, branchCtx, node.name, 0);
+	const discardedBranch = buildBranchTargets(discardedBranchTargets, branchCtx, node.name, 1);
+
+	let errorHandler: CompositeNode | undefined;
+	if (hasErrorOutput(node)) {
+		const errorTargets = getErrorOutputTargets(node);
+		if (errorTargets.length > 0) {
+			const firstErrorTarget = errorTargets[0];
+			const errorTargetNode = ctx.graph.nodes.get(firstErrorTarget);
+
+			if (errorTargetNode && isMergeType(errorTargetNode.type)) {
+				ctx.variables.set(node.name, node);
+				ctx.variables.set(firstErrorTarget, errorTargetNode);
+				const errorConns = node.outputs.get('error') ?? [];
+				const errorConn = errorConns.find((c) => c.target === firstErrorTarget);
+				const targetInputIndex = errorConn ? extractInputIndex(errorConn.targetInputSlot) : 0;
+				ctx.deferredConnections.push({
+					sourceNodeName: node.name,
+					sourceOutputIndex: 0,
+					targetNode: errorTargetNode,
+					targetInputIndex,
+					isErrorOutput: true,
+				});
+			} else if (ctx.visited.has(firstErrorTarget)) {
+				if (errorTargetNode) {
+					ctx.variables.set(firstErrorTarget, errorTargetNode);
+					errorHandler = createVarRef(firstErrorTarget);
+				}
+			} else {
+				errorHandler = buildFromNode(firstErrorTarget, ctx);
+			}
+		}
+	}
+
+	return {
+		kind: 'filter',
+		filterNode: node,
+		keptBranch,
+		discardedBranch,
+		errorHandler,
+	};
+}
+
+/**
  * Build composite for a Switch node
  */
 function buildSwitchCase(node: SemanticNode, ctx: BuildContext): SwitchCaseCompositeNode {
@@ -554,6 +610,9 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 	switch (compositeType) {
 		case 'ifElse':
 			compositeNode = buildIfElse(node, ctx);
+			break;
+		case 'filter':
+			compositeNode = buildFilter(node, ctx);
 			break;
 		case 'switchCase':
 			compositeNode = buildSwitchCase(node, ctx);
@@ -1170,6 +1229,8 @@ function getDownstreamTargetName(chain: CompositeNode | null): string {
 			return chain.nodes.length > 0 ? getDownstreamTargetName(chain.nodes[0]) : '';
 		case 'ifElse':
 			return chain.ifNode.name;
+		case 'filter':
+			return chain.filterNode.name;
 		case 'switchCase':
 			return chain.switchNode.name;
 		case 'merge':

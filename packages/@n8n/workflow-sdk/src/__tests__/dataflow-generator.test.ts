@@ -827,6 +827,188 @@ describe('dataflow-generator', () => {
 			});
 		});
 
+		describe('Filter handling', () => {
+			it('generates .filter() with item-level condition for simple equality', () => {
+				const json: WorkflowJSON = {
+					name: 'Filter Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'Filter',
+							type: 'n8n-nodes-base.filter',
+							typeVersion: 2,
+							position: [200, 0],
+							parameters: {
+								conditions: {
+									options: { version: 2, caseSensitive: true, typeValidation: 'loose' },
+									combinator: 'and',
+									conditions: [
+										{
+											id: 'cond1',
+											operator: { type: 'string', operation: 'equals' },
+											leftValue: '={{ $json.status }}',
+											rightValue: 'active',
+										},
+									],
+								},
+							},
+						},
+						{
+							id: '3',
+							name: 'Notify',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [400, 0],
+							parameters: { url: 'https://example.com/notify' },
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [[{ node: 'Filter', type: 'main', index: 0 }]],
+						},
+						Filter: {
+							main: [[{ node: 'Notify', type: 'main', index: 0 }], []],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should use .filter() with item-level expression (item.json.x, not items[0].json.x)
+				expect(code).toContain(".filter((item) => item.json.status === 'active')");
+				// Downstream node should use .map() (not insideBranch)
+				expect(code).toContain('.map((item) =>');
+				expect(code).toContain("type: 'n8n-nodes-base.httpRequest'");
+			});
+
+			it('generates .filter() with kept and discarded branches', () => {
+				const json: WorkflowJSON = {
+					name: 'Filter Both Branches',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'Filter',
+							type: 'n8n-nodes-base.filter',
+							typeVersion: 2,
+							position: [200, 0],
+							parameters: {
+								conditions: {
+									options: { version: 2, caseSensitive: true, typeValidation: 'loose' },
+									combinator: 'and',
+									conditions: [
+										{
+											id: 'cond1',
+											operator: { type: 'string', operation: 'equals' },
+											leftValue: '={{ $json.active }}',
+											rightValue: 'yes',
+										},
+									],
+								},
+							},
+						},
+						{
+							id: '3',
+							name: 'Kept Handler',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [400, -100],
+							parameters: {},
+						},
+						{
+							id: '4',
+							name: 'Discarded Handler',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [400, 100],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [[{ node: 'Filter', type: 'main', index: 0 }]],
+						},
+						Filter: {
+							main: [
+								[{ node: 'Kept Handler', type: 'main', index: 0 }],
+								[{ node: 'Discarded Handler', type: 'main', index: 0 }],
+							],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain(".filter((item) => item.json.active === 'yes')");
+				expect(code).toContain('// discarded items branch');
+			});
+
+			it('does not generate if/else for Filter nodes', () => {
+				const json: WorkflowJSON = {
+					name: 'Filter Not IfElse',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'Filter',
+							type: 'n8n-nodes-base.filter',
+							typeVersion: 2,
+							position: [200, 0],
+							parameters: {
+								conditions: {
+									options: { version: 2, caseSensitive: true, typeValidation: 'loose' },
+									combinator: 'and',
+									conditions: [
+										{
+											id: 'cond1',
+											operator: { type: 'string', operation: 'equals' },
+											leftValue: '={{ $json.status }}',
+											rightValue: 'active',
+										},
+									],
+								},
+							},
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [[{ node: 'Filter', type: 'main', index: 0 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Filter should NOT produce if/else blocks
+				expect(code).not.toContain('if (');
+				expect(code).not.toContain('} else {');
+				// Should produce .filter()
+				expect(code).toContain('.filter(');
+			});
+		});
+
 		describe('Switch/Case handling', () => {
 			it('generates switch/case block with 2 cases and default', () => {
 				const json: WorkflowJSON = {

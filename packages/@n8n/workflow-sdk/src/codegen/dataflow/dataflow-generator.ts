@@ -18,6 +18,7 @@ import type {
 	LeafNode,
 	ChainNode,
 	IfElseCompositeNode,
+	FilterCompositeNode,
 	SwitchCaseCompositeNode,
 	MultiOutputNode,
 	FanOutCompositeNode,
@@ -269,6 +270,8 @@ function generateCompositeNode(
 			return generateChainNodes(compositeNode, ctx, depth, inputVar);
 		case 'ifElse':
 			return generateIfElseNode(compositeNode, ctx, depth, inputVar);
+		case 'filter':
+			return generateFilterNode(compositeNode, ctx, depth, inputVar);
 		case 'switchCase':
 			return generateSwitchCaseNode(compositeNode, ctx, depth, inputVar);
 		case 'multiOutput':
@@ -431,13 +434,17 @@ function generateChainNodes(
 /**
  * Convert an n8n expression like `={{ $json.field }}` to JS code using the inputVar.
  * For example, `={{ $json.status }}` with inputVar `items` becomes `items[0].json.status`.
+ * When itemLevel is true, returns `inputVar.json.status` (no [0] indexing).
  */
-function n8nExprToJs(expr: string, inputVar: string): string {
+function n8nExprToJs(expr: string, inputVar: string, itemLevel = false): string {
 	if (typeof expr !== 'string') return String(expr);
 	const match = expr.match(
 		/^=\{\{\s*\$json((?:\.[a-zA-Z_$][a-zA-Z0-9_$]*|\["[^"]*"\]|\['[^']*'\])*)\s*\}\}$/,
 	);
 	if (match) {
+		if (itemLevel) {
+			return `${inputVar}.json${match[1]}`;
+		}
 		return `${inputVar}[0].json${match[1]}`;
 	}
 	return `/* ${expr} */`;
@@ -481,8 +488,12 @@ interface ConditionsBlock {
 /**
  * Build a JS condition expression string from an IF node's single condition.
  */
-function buildConditionExpr(condition: ConditionEntry, inputVar: string): string {
-	const left = n8nExprToJs(condition.leftValue, inputVar);
+function buildConditionExpr(
+	condition: ConditionEntry,
+	inputVar: string,
+	itemLevel = false,
+): string {
+	const left = n8nExprToJs(condition.leftValue, inputVar, itemLevel);
 	const op = condition.operator.operation;
 
 	switch (op) {
@@ -520,10 +531,15 @@ function buildConditionExpr(condition: ConditionEntry, inputVar: string): string
 }
 
 /**
- * Try to extract a simple condition string from the IF node parameters.
+ * Try to extract a simple condition string from the IF/Filter node parameters.
  * Returns null if the condition is too complex (multiple conditions or OR combinator).
+ * When itemLevel is true, generates item-level references (item.json.x) instead of array-level (items[0].json.x).
  */
-function extractIfCondition(params: IDataObject | undefined, inputVar: string): string | null {
+function extractIfCondition(
+	params: IDataObject | undefined,
+	inputVar: string,
+	itemLevel = false,
+): string | null {
 	if (!params) return null;
 
 	const conditionsBlock = params.conditions as ConditionsBlock | undefined;
@@ -537,7 +553,7 @@ function extractIfCondition(params: IDataObject | undefined, inputVar: string): 
 		return null;
 	}
 
-	return buildConditionExpr(conditions[0], inputVar);
+	return buildConditionExpr(conditions[0], inputVar, itemLevel);
 }
 
 /**
@@ -613,6 +629,58 @@ function generateIfElseNode(
 	lines.push(`${indent}}`);
 
 	return { code: lines.join('\n'), varName: null };
+}
+
+/**
+ * Generate code for a Filter composite node.
+ * Emits: const varName = inputVar.filter((item) => conditionExpr);
+ * Then generates the keptBranch using varName as input (not as a branch context,
+ * since filter is a pass-through — downstream nodes should use normal .map() wrapping).
+ */
+function generateFilterNode(
+	node: FilterCompositeNode,
+	ctx: DataFlowContext,
+	depth: number,
+	inputVar: string,
+): CompositeNodeResult {
+	const indent = getIndent(depth);
+	const lines: string[] = [];
+
+	const conditionExpr = extractIfCondition(node.filterNode.json.parameters, 'item', true);
+	const varName = getUniqueVarName(node.filterNode.name, ctx);
+
+	if (conditionExpr) {
+		lines.push(`${indent}const ${varName} = ${inputVar}.filter((item) => ${conditionExpr});`);
+	} else {
+		lines.push(`${indent}// Complex filter condition - see Filter node parameters`);
+		lines.push(`${indent}const ${varName} = ${inputVar}.filter((item) => /* complex */);`);
+	}
+
+	// Generate keptBranch at same depth using varName as input.
+	// Unlike if/else branches, filter kept output is a continuation (not a branch),
+	// so we don't set insideBranch — downstream nodes keep their normal .map() wrapping.
+	if (node.keptBranch !== null) {
+		const keptNodes = Array.isArray(node.keptBranch) ? node.keptBranch : [node.keptBranch];
+		let prevVar = varName;
+		for (const keptNode of keptNodes) {
+			const result = generateCompositeNode(keptNode, ctx, depth, prevVar);
+			if (result.code) {
+				lines.push(result.code);
+			}
+			if (result.varName) {
+				prevVar = result.varName;
+			}
+		}
+	}
+
+	// Generate discardedBranch if present (not typical for .filter() but supported)
+	if (node.discardedBranch !== null) {
+		lines.push(`${indent}// discarded items branch`);
+		const discardedCode = generateBranchBody(node.discardedBranch, ctx, depth, inputVar);
+		lines.push(discardedCode);
+	}
+
+	return { code: lines.join('\n'), varName };
 }
 
 /** A single rule value from Switch parameters */

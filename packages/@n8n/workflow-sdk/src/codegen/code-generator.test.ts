@@ -230,6 +230,100 @@ describe('code-generator', () => {
 			});
 		});
 
+		describe('Filter branch', () => {
+			it('generates filter composite with onTrue and onFalse', () => {
+				const json: WorkflowJSON = {
+					name: 'Filter Branch',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Filter',
+							type: 'n8n-nodes-base.filter',
+							typeVersion: 2,
+							position: [100, 0],
+						},
+						{
+							id: '3',
+							name: 'KeptHandler',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, -50],
+						},
+						{
+							id: '4',
+							name: 'DiscardedHandler',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 50],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Filter', type: 'main', index: 0 }]] },
+						Filter: {
+							main: [
+								[{ node: 'KeptHandler', type: 'main', index: 0 }],
+								[{ node: 'DiscardedHandler', type: 'main', index: 0 }],
+							],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain('const filter = node({');
+				expect(code).toContain('const keptHandler = node({');
+				expect(code).toContain('const discardedHandler = node({');
+				expect(code).toContain('filter.onTrue(keptHandler).onFalse(discardedHandler)');
+			});
+
+			it('handles Filter with only kept branch', () => {
+				const json: WorkflowJSON = {
+					name: 'Filter Single Branch',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Filter',
+							type: 'n8n-nodes-base.filter',
+							typeVersion: 2,
+							position: [100, 0],
+						},
+						{
+							id: '3',
+							name: 'KeptHandler',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, -50],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Filter', type: 'main', index: 0 }]] },
+						Filter: {
+							main: [[{ node: 'KeptHandler', type: 'main', index: 0 }], []],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain('filter.onTrue(keptHandler)');
+				expect(code).not.toContain('onFalse');
+			});
+		});
+
 		describe('Merge', () => {
 			it('generates merge composite', () => {
 				const json: WorkflowJSON = {

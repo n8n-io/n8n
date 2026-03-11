@@ -430,7 +430,7 @@ describe('parseDataFlowCode', () => {
 	});
 
 	describe('filter parsing', () => {
-		it('should parse .filter() as IF node with true-only output', () => {
+		it('should parse .filter() as Filter node with kept output', () => {
 			const code = `workflow({ name: 'Filter' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
     const data = items.map((item) =>
@@ -445,22 +445,22 @@ describe('parseDataFlowCode', () => {
 
 			const result = parseDataFlowCode(code);
 
-			// Should have: Trigger, HTTP Request, If (from filter), Notify
+			// Should have: Trigger, HTTP Request, Filter (from .filter()), Notify
 			const httpNode = result.nodes.find((n) => n.name === 'HTTP Request');
-			const ifNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.if');
+			const filterNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.filter');
 			const notifyNode = result.nodes.find((n) => n.name === 'Notify');
 
 			expect(httpNode).toBeDefined();
-			expect(ifNode).toBeDefined();
+			expect(filterNode).toBeDefined();
 			expect(notifyNode).toBeDefined();
 
-			// HTTP Request → If
+			// HTTP Request → Filter
 			expect(result.connections[httpNode!.name!]?.main![0]).toEqual(
-				expect.arrayContaining([expect.objectContaining({ node: ifNode!.name })]),
+				expect.arrayContaining([expect.objectContaining({ node: filterNode!.name })]),
 			);
 
-			// If true output → Notify
-			expect(result.connections[ifNode!.name!]?.main![0]).toEqual(
+			// Filter kept output (index 0) → Notify
+			expect(result.connections[filterNode!.name!]?.main![0]).toEqual(
 				expect.arrayContaining([expect.objectContaining({ node: 'Notify' })]),
 			);
 		});

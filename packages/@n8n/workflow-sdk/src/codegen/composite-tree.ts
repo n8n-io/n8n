@@ -56,6 +56,21 @@ export interface IfElseCompositeNode extends CompositeNodeBase {
 }
 
 /**
+ * Filter composite - items matching condition pass through
+ * keptBranch/discardedBranch can be:
+ * - null: no branch
+ * - single CompositeNode: one target
+ * - array of CompositeNode: fan-out to multiple parallel targets
+ */
+export interface FilterCompositeNode extends CompositeNodeBase {
+	kind: 'filter';
+	filterNode: SemanticNode;
+	keptBranch: CompositeNode | CompositeNode[] | null;
+	discardedBranch: CompositeNode | CompositeNode[] | null;
+	errorHandler?: CompositeNode;
+}
+
+/**
  * Switch case composite
  * Each case can be:
  * - null: no branch
@@ -155,6 +170,7 @@ export type CompositeNode =
 	| ChainNode
 	| VariableReference
 	| IfElseCompositeNode
+	| FilterCompositeNode
 	| SwitchCaseCompositeNode
 	| MergeCompositeNode
 	| SplitInBatchesCompositeNode

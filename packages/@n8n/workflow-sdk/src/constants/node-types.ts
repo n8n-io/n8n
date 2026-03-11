@@ -4,6 +4,7 @@
  */
 export const NODE_TYPES = {
 	IF: 'n8n-nodes-base.if',
+	FILTER: 'n8n-nodes-base.filter',
 	SWITCH: 'n8n-nodes-base.switch',
 	MERGE: 'n8n-nodes-base.merge',
 	STICKY_NOTE: 'n8n-nodes-base.stickyNote',
@@ -19,10 +20,13 @@ export const NODE_TYPES = {
 export type NodeTypeValue = (typeof NODE_TYPES)[keyof typeof NODE_TYPES];
 
 /**
- * Check if a type string is the IF node type
+ * Check if a type string is the IF or Filter node type.
+ * Both use the same branching API (.onTrue()/.onFalse()) in the SDK format.
  */
-export function isIfNodeType(type: string): type is typeof NODE_TYPES.IF {
-	return type === NODE_TYPES.IF;
+export function isIfNodeType(
+	type: string,
+): type is typeof NODE_TYPES.IF | typeof NODE_TYPES.FILTER {
+	return type === NODE_TYPES.IF || type === NODE_TYPES.FILTER;
 }
 
 /**

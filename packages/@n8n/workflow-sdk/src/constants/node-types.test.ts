@@ -44,6 +44,10 @@ describe('NODE_TYPES', () => {
 			expect(NODE_TYPES.DATA_TABLE).toBe('n8n-nodes-base.dataTable');
 		});
 
+		it('should have FILTER constant', () => {
+			expect(NODE_TYPES.FILTER).toBe('n8n-nodes-base.filter');
+		});
+
 		it('should be readonly (immutable)', () => {
 			// TypeScript compile-time check - at runtime we verify the shape
 			const types: Readonly<typeof NODE_TYPES> = NODE_TYPES;
@@ -57,7 +61,11 @@ describe('NODE_TYPES', () => {
 				expect(isIfNodeType('n8n-nodes-base.if')).toBe(true);
 			});
 
-			it('should return false for non-IF node type', () => {
+			it('should return true for Filter node type', () => {
+				expect(isIfNodeType('n8n-nodes-base.filter')).toBe(true);
+			});
+
+			it('should return false for non-IF/Filter node type', () => {
 				expect(isIfNodeType('n8n-nodes-base.switch')).toBe(false);
 				expect(isIfNodeType('n8n-nodes-base.httpRequest')).toBe(false);
 				expect(isIfNodeType('')).toBe(false);

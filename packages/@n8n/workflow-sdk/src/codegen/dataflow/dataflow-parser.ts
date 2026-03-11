@@ -754,7 +754,7 @@ function processNodeVarDeclaration(
 		}
 	}
 
-	// Pattern A2: const x = source.filter((item) => condition) — creates IF node
+	// Pattern A2: const x = source.filter((item) => condition) — creates Filter node
 	const filterMatch = isFilterCall(declarator.init);
 	if (filterMatch) {
 		const { callback } = filterMatch;
@@ -764,26 +764,29 @@ function processNodeVarDeclaration(
 		if (body.type !== 'BlockStatement') {
 			const condition = extractConditionFromExpression(body);
 			if (condition) {
-				const ifParams = buildIfParameters(condition);
-				const ifConfig: NodeConfig = {
-					type: 'n8n-nodes-base.if',
-					params: ifParams,
+				const filterParams = buildIfParameters(condition);
+				const filterConfig: NodeConfig = {
+					type: 'n8n-nodes-base.filter',
+					params: filterParams,
 					version: 2,
 				};
-				const ifNodeJSON = createNodeJSON(ifConfig, state);
-				state.nodes.push(ifNodeJSON);
+				const filterNodeJSON = createNodeJSON(filterConfig, state);
+				state.nodes.push(filterNodeJSON);
 
-				// Connect source → IF node
+				// Connect source → Filter node
 				const mapping = state.varToNode.get(filterMatch.sourceVar);
 				if (mapping) {
-					addConnection(state, mapping.nodeName, ifNodeJSON.name!, mapping.outputIndex);
+					addConnection(state, mapping.nodeName, filterNodeJSON.name!, mapping.outputIndex);
 				}
 
-				// Variable maps to IF node's true output (index 0)
+				// Variable maps to Filter node's kept output (index 0)
 				if (isIdentifier(declarator.id)) {
-					state.varToNode.set(declarator.id.name, { nodeName: ifNodeJSON.name!, outputIndex: 0 });
+					state.varToNode.set(declarator.id.name, {
+						nodeName: filterNodeJSON.name!,
+						outputIndex: 0,
+					});
 				}
-				state.lastNodeInScope = { nodeName: ifNodeJSON.name!, outputIndex: 0 };
+				state.lastNodeInScope = { nodeName: filterNodeJSON.name!, outputIndex: 0 };
 				return isIdentifier(declarator.id) ? declarator.id.name : undefined;
 			}
 		}

@@ -33,6 +33,16 @@ describe('semantic-registry', () => {
 			expect(getOutputName(node.type, 1, node)).toBe('falseBranch');
 		});
 
+		it('returns kept for Filter node output 0', () => {
+			const node = createNodeJSON({ type: 'n8n-nodes-base.filter' });
+			expect(getOutputName(node.type, 0, node)).toBe('kept');
+		});
+
+		it('returns discarded for Filter node output 1', () => {
+			const node = createNodeJSON({ type: 'n8n-nodes-base.filter' });
+			expect(getOutputName(node.type, 1, node)).toBe('discarded');
+		});
+
 		it('returns done for SplitInBatches output 0', () => {
 			const node = createNodeJSON({ type: 'n8n-nodes-base.splitInBatches' });
 			expect(getOutputName(node.type, 0, node)).toBe('done');
@@ -91,6 +101,11 @@ describe('semantic-registry', () => {
 			expect(getInputName(node.type, 0, node)).toBe('input');
 		});
 
+		it('returns input for Filter node', () => {
+			const node = createNodeJSON({ type: 'n8n-nodes-base.filter' });
+			expect(getInputName(node.type, 0, node)).toBe('input');
+		});
+
 		it('returns generic input name for unknown node types', () => {
 			const node = createNodeJSON({ type: 'n8n-nodes-base.unknown' });
 			expect(getInputName(node.type, 0, node)).toBe('input0');
@@ -109,6 +124,10 @@ describe('semantic-registry', () => {
 
 		it('returns merge for Merge node', () => {
 			expect(getCompositeType('n8n-nodes-base.merge')).toBe('merge');
+		});
+
+		it('returns filter for Filter node', () => {
+			expect(getCompositeType('n8n-nodes-base.filter')).toBe('filter');
 		});
 
 		it('returns splitInBatches for SplitInBatches node', () => {
@@ -142,6 +161,16 @@ describe('semantic-registry', () => {
 			expect(semantics?.composite).toBe('splitInBatches');
 		});
 
+		it('returns full semantics for Filter node', () => {
+			const node = createNodeJSON({ type: 'n8n-nodes-base.filter' });
+			const semantics = getNodeSemantics(node.type, node);
+
+			expect(semantics).toBeDefined();
+			expect(semantics?.outputs).toEqual(['kept', 'discarded']);
+			expect(semantics?.inputs).toEqual(['input']);
+			expect(semantics?.composite).toBe('filter');
+		});
+
 		it('returns undefined for unknown node types', () => {
 			const node = createNodeJSON({ type: 'n8n-nodes-base.unknown' });
 			expect(getNodeSemantics(node.type, node)).toBeUndefined();
@@ -160,6 +189,11 @@ describe('semantic-registry', () => {
 		it('returns false for IF node outputs', () => {
 			expect(isCycleOutput('n8n-nodes-base.if', 'trueBranch')).toBe(false);
 			expect(isCycleOutput('n8n-nodes-base.if', 'falseBranch')).toBe(false);
+		});
+
+		it('returns false for Filter node outputs', () => {
+			expect(isCycleOutput('n8n-nodes-base.filter', 'kept')).toBe(false);
+			expect(isCycleOutput('n8n-nodes-base.filter', 'discarded')).toBe(false);
 		});
 
 		it('returns false for unknown node types', () => {

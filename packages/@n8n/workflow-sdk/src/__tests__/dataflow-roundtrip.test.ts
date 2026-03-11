@@ -434,6 +434,171 @@ describe('dataflow round-trip', () => {
 		});
 	});
 
+	describe('Filter workflow', () => {
+		it('round-trips Trigger → Filter → kept handler', () => {
+			const original: WorkflowJSON = {
+				name: 'Filter Workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'Filter',
+						type: 'n8n-nodes-base.filter',
+						typeVersion: 2,
+						position: [200, 0],
+						parameters: {
+							conditions: {
+								options: {
+									version: 2,
+									caseSensitive: true,
+									typeValidation: 'loose',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										operator: {
+											type: 'string',
+											operation: 'equals',
+										},
+										leftValue: '={{ $json.status }}',
+										rightValue: 'active',
+									},
+								],
+							},
+						},
+					},
+					{
+						id: '3',
+						name: 'Notify',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4,
+						position: [400, 0],
+						parameters: { url: 'https://example.com/notify', method: 'POST' },
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Filter', type: 'main', index: 0 }]],
+					},
+					Filter: {
+						main: [[{ node: 'Notify', type: 'main', index: 0 }], []],
+					},
+				},
+			};
+
+			const code = generateDataFlowWorkflowCode(original);
+			const parsed = parseDataFlowCode(code);
+
+			// Should have Filter node (not IF)
+			const filterNode = parsed.nodes.find((n) => n.type === 'n8n-nodes-base.filter');
+			expect(filterNode).toBeDefined();
+			expect(parsed.nodes.find((n) => n.type === 'n8n-nodes-base.if')).toBeUndefined();
+
+			// Filter should have conditions
+			const conditions = (filterNode!.parameters as Record<string, unknown>)?.conditions as
+				| Record<string, unknown>
+				| undefined;
+			expect(conditions).toBeDefined();
+
+			// Filter kept output → Notify
+			expect(parsed.connections[filterNode!.name!]).toBeDefined();
+			const filterConns = parsed.connections[filterNode!.name!].main;
+			expect(filterConns[0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: 'Notify' })]),
+			);
+		});
+
+		it('round-trips Filter with both kept and discarded branches', () => {
+			const original: WorkflowJSON = {
+				name: 'Filter Both',
+				nodes: [
+					{
+						id: '1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'Filter',
+						type: 'n8n-nodes-base.filter',
+						typeVersion: 2,
+						position: [200, 0],
+						parameters: {
+							conditions: {
+								options: {
+									version: 2,
+									caseSensitive: true,
+									typeValidation: 'loose',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										operator: {
+											type: 'string',
+											operation: 'equals',
+										},
+										leftValue: '={{ $json.active }}',
+										rightValue: 'yes',
+									},
+								],
+							},
+						},
+					},
+					{
+						id: '3',
+						name: 'Kept Handler',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [400, -100],
+						parameters: {},
+					},
+					{
+						id: '4',
+						name: 'Discarded Handler',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [400, 100],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Filter', type: 'main', index: 0 }]],
+					},
+					Filter: {
+						main: [
+							[{ node: 'Kept Handler', type: 'main', index: 0 }],
+							[{ node: 'Discarded Handler', type: 'main', index: 0 }],
+						],
+					},
+				},
+			};
+
+			const code = generateDataFlowWorkflowCode(original);
+			const parsed = parseDataFlowCode(code);
+
+			const filterNode = parsed.nodes.find((n) => n.type === 'n8n-nodes-base.filter');
+			expect(filterNode).toBeDefined();
+
+			const normOriginal = normalizeForComparison(original);
+			const normParsed = normalizeForComparison(parsed);
+
+			const origTypes = normOriginal.nodes.map((n) => n.type).sort();
+			const parsedTypes = normParsed.nodes.map((n) => n.type).sort();
+			expect(parsedTypes).toEqual(origTypes);
+		});
+	});
+
 	describe('error handling', () => {
 		it('round-trips Trigger → HTTP with onError → error handler', () => {
 			const original: WorkflowJSON = {
