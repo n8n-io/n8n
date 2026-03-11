@@ -68,19 +68,16 @@ export class McpOAuthConsentService {
 		}
 
 		if (!approved) {
-			const redirectUrl = McpOAuthHelpers.buildErrorRedirectUrl(
-				sessionPayload.redirectUri,
-				'access_denied',
-				'User denied the authorization request',
-				sessionPayload.state,
-			);
-
 			this.logger.info('Consent denied', {
 				clientId: sessionPayload.clientId,
 				userId,
 			});
 
-			return { redirectUrl };
+			// Redirect to the n8n dashboard instead of the client-supplied redirect_uri to
+			// prevent open redirect attacks. Since /mcp-oauth/register is unauthenticated,
+			// any redirect_uri can be registered by an attacker; redirecting there on denial
+			// would send the user to an attacker-controlled URL.
+			return { redirectUrl: '/' };
 		}
 
 		await this.userConsentRepository.insert({

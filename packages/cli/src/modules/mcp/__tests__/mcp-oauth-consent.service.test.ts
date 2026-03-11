@@ -128,7 +128,7 @@ describe('McpOAuthConsentService', () => {
 	});
 
 	describe('handleConsentDecision', () => {
-		it('should handle user denial', async () => {
+		it('should handle user denial by redirecting to the n8n dashboard', async () => {
 			const sessionToken = 'valid-session-token';
 			const userId = 'user-123';
 			const sessionPayload = {
@@ -142,11 +142,9 @@ describe('McpOAuthConsentService', () => {
 
 			const result = await service.handleConsentDecision(sessionToken, userId, false);
 
-			expect(result.redirectUrl).toContain('error=access_denied');
-			expect(result.redirectUrl).toContain(
-				'error_description=User+denied+the+authorization+request',
-			);
-			expect(result.redirectUrl).toContain('state=state-xyz');
+			// Must redirect to the internal dashboard, never to the client-supplied redirect_uri,
+			// to prevent open redirect attacks via unvalidated attacker-registered redirect URIs.
+			expect(result.redirectUrl).toBe('/');
 			expect(logger.info).toHaveBeenCalledWith('Consent denied', {
 				clientId: 'client-123',
 				userId: 'user-123',
@@ -225,7 +223,7 @@ describe('McpOAuthConsentService', () => {
 			);
 		});
 
-		it('should handle denial without state parameter', async () => {
+		it('should handle denial without state parameter by redirecting to the n8n dashboard', async () => {
 			const sessionToken = 'valid-session-token';
 			const userId = 'user-123';
 			const sessionPayload = {
@@ -239,8 +237,12 @@ describe('McpOAuthConsentService', () => {
 
 			const result = await service.handleConsentDecision(sessionToken, userId, false);
 
-			expect(result.redirectUrl).toContain('error=access_denied');
-			expect(result.redirectUrl).not.toContain('state=');
+			expect(result.redirectUrl).toBe('/');
+			expect(logger.info).toHaveBeenCalledWith('Consent denied', {
+				clientId: 'client-123',
+				userId: 'user-123',
+			});
+			expect(userConsentRepository.insert).not.toHaveBeenCalled();
 		});
 	});
 });
