@@ -1,1 +1,14 @@
-{}
+{
+	"requests": {
+		"GET https://api.example.com/premium": {},
+		"POST https://api.example.com/notify": {}
+	},
+	"nodes": {
+		"Fetch Premium": {
+			"items": [{ "plan": "premium" }]
+		},
+		"Send Notification": {
+			"items": [{ "sent": true }]
+		}
+	}
+}

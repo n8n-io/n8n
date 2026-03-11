@@ -32,12 +32,12 @@ workflow({ name: 'Diamond Convergence' }, () => {
 		},
 		[fetch_Premium, fetch_Basic],
 	);
-	const send_Email = merge_node.map((item) =>
+	const send_Notification = merge_node.map((item) =>
 		executeNode({
-			type: 'n8n-nodes-base.emailSend',
-			name: 'Send Email',
-			params: { toEmail: 'user@example.com' },
-			version: 2,
+			type: 'n8n-nodes-base.httpRequest',
+			name: 'Send Notification',
+			params: { url: 'https://api.example.com/notify', method: 'POST' },
+			version: 4,
 		}),
 	);
 });

@@ -1,1 +1,10 @@
-{}
+{
+	"requests": {
+		"POST https://api.example.com/rush": {}
+	},
+	"nodes": {
+		"Rush Delivery": {
+			"items": [{ "delivered": true }]
+		}
+	}
+}

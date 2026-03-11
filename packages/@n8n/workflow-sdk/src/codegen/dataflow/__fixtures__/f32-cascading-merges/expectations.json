@@ -1,1 +1,27 @@
-{}
+{
+	"requests": {
+		"GET https://api.example.com/source-a": {},
+		"GET https://api.example.com/source-b": {},
+		"GET https://api.example.com/source-c": {}
+	},
+	"nodes": {
+		"Fetch A": {
+			"items": [{ "fromA": "alpha" }]
+		},
+		"Fetch B": {
+			"items": [{ "fromB": "beta" }]
+		},
+		"Fetch C": {
+			"items": [{ "fromC": "gamma" }]
+		},
+		"Merge": {
+			"items": [{ "fromA": "alpha", "fromB": "beta" }]
+		},
+		"Merge 1": {
+			"items": [{ "fromA": "alpha", "fromB": "beta", "fromC": "gamma" }]
+		},
+		"Final Process": {
+			"items": [{ "fromA": "alpha", "fromB": "beta", "fromC": "gamma" }]
+		}
+	}
+}

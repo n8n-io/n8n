@@ -1,1 +1,14 @@
-{}
+{
+	"requests": {
+		"GET https://api.example.com/config": {},
+		"PUT https://api.example.com/records/42": {}
+	},
+	"nodes": {
+		"HTTP Request": {
+			"items": [{ "id": "42", "name": "Test", "env": "production" }]
+		},
+		"Update Record": {
+			"items": [{ "updated": true }]
+		}
+	}
+}

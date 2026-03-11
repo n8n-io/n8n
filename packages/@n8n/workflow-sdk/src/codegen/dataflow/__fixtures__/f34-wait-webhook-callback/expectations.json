@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"POST https://api.example.com/start": {}
+	},
+	"nodes": {
+		"Notify Service": {
+			"items": [{ "requestId": "req-456" }]
+		}
+	}
+}

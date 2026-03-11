@@ -1,5 +1,8 @@
 workflow({ name: 'Cascading Merges' }, () => {
-	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {});
+	onTrigger(
+		{ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1, sampleData: [{ id: 1 }] },
+		(items) => {},
+	);
 	const fetch_A = items.map((item) =>
 		executeNode({
 			type: 'n8n-nodes-base.httpRequest',

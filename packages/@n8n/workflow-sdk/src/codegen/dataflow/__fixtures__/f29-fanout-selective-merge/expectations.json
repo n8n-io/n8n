@@ -1,1 +1,18 @@
-{}
+{
+	"requests": {
+		"GET https://api.example.com/users": {},
+		"GET https://api.example.com/orders": {},
+		"POST https://api.example.com/admin/notify": {}
+	},
+	"nodes": {
+		"Fetch Users": {
+			"items": [{ "userId": 1, "name": "Alice" }]
+		},
+		"Fetch Orders": {
+			"items": [{ "orderId": 101, "total": 50 }]
+		},
+		"Notify Admin": {
+			"items": [{ "notified": true }]
+		}
+	}
+}

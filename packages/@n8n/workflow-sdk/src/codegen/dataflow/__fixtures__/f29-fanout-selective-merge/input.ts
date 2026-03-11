@@ -1,5 +1,8 @@
 workflow({ name: 'Selective Merge' }, () => {
-	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {});
+	onTrigger(
+		{ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1, sampleData: [{ id: 1 }] },
+		(items) => {},
+	);
 	const fetch_Users = items.map((item) =>
 		executeNode({
 			type: 'n8n-nodes-base.httpRequest',

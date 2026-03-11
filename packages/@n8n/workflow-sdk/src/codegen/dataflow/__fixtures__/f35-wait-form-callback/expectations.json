@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"POST https://api.example.com/notify": {}
+	},
+	"nodes": {
+		"Notify Approver": {
+			"items": [{ "notified": true }]
+		}
+	}
+}
