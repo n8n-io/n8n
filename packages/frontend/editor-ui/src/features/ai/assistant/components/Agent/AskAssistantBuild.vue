@@ -576,7 +576,7 @@ defineExpose({
 					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
 				</N8nInfoTip>
 			</template>
-			<template #headerActions>
+			<template v-if="creditsQuota !== undefined && creditsRemaining !== undefined" #headerActions>
 				<CreditsSettingsDropdown
 					:credits-remaining="creditsRemaining"
 					:credits-quota="creditsQuota"

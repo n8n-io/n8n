@@ -126,7 +126,7 @@ function onGetMoreCredits() {
 	background: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius--lg);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	box-shadow: var(--shadow--light);
 }
 
 .creditsSection {
