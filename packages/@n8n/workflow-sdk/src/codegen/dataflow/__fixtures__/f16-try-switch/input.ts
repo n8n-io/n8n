@@ -21,6 +21,7 @@ workflow({ name: 'Try Switch' }, () => {
 					name: 'Send Email',
 					params: { toEmail: 'user@example.com' },
 					version: 2,
+					sampleData: [{}],
 				});
 				break;
 			}

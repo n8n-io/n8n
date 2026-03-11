@@ -889,4 +889,142 @@ describe('parseDataFlowCode', () => {
 			expect(reParsed.connections).toEqual(parsed.connections);
 		});
 	});
+
+	describe('sampleData parsing', () => {
+		it('should extract sampleData from onTrigger as output on the trigger node', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1, sampleData: [{ status: 'active' }] }, (items) => {
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			expect(result.nodes).toHaveLength(1);
+			expect(result.nodes[0].output).toEqual([{ status: 'active' }]);
+		});
+
+		it('should extract sampleData from executeNode as output on the node', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const set = executeNode({
+      type: 'n8n-nodes-base.set',
+      params: {},
+      version: 3,
+      sampleData: [{ greeting: 'hello' }],
+    });
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			const setNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect(setNode).toBeDefined();
+			expect(setNode!.output).toEqual([{ greeting: 'hello' }]);
+		});
+
+		it('should collect sampleData from all nodes into WorkflowJSON.pinData', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1, sampleData: [{ id: 1 }] }, (items) => {
+    const fetch = executeNode({
+      type: 'n8n-nodes-base.httpRequest',
+      name: 'Fetch',
+      params: { url: 'https://example.com' },
+      version: 4,
+      sampleData: [{ data: 'response' }],
+    });
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			expect(result.pinData).toBeDefined();
+			expect(result.pinData!['Manual Trigger']).toEqual([{ id: 1 }]);
+			expect(result.pinData!['Fetch']).toEqual([{ data: 'response' }]);
+		});
+
+		it('should not include pinData when no nodes have sampleData', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const set = executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 });
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			expect(result.pinData).toBeUndefined();
+			expect(result.nodes[0].output).toBeUndefined();
+			expect(result.nodes[1].output).toBeUndefined();
+		});
+
+		it('should handle sampleData with multiple items', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1, sampleData: [{ id: 1 }, { id: 2 }, { id: 3 }] }, (items) => {
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			expect(result.nodes[0].output).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
+			expect(result.pinData!['Manual Trigger']).toHaveLength(3);
+		});
+
+		it('should ignore empty sampleData array', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1, sampleData: [] }, (items) => {
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			expect(result.nodes[0].output).toBeUndefined();
+			expect(result.pinData).toBeUndefined();
+		});
+
+		it('should extract sampleData from executeNode inside .map()', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const result = items.map((item) =>
+      executeNode({
+        type: 'n8n-nodes-base.emailSend',
+        name: 'Send Email',
+        params: { toEmail: item.json.email },
+        version: 2,
+        sampleData: [{}],
+      }),
+    );
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			const emailNode = result.nodes.find((n) => n.name === 'Send Email');
+			expect(emailNode).toBeDefined();
+			expect(emailNode!.output).toEqual([{}]);
+			expect(result.pinData!['Send Email']).toEqual([{}]);
+		});
+
+		it('should round-trip sampleData through parse → generate → re-parse', () => {
+			const { generateDataFlowWorkflowCode } = require('./index');
+			const code = `workflow({ name: 'Round Trip' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1, sampleData: [{ status: 'active' }] }, (items) => {
+    const fetch = executeNode({
+      type: 'n8n-nodes-base.httpRequest',
+      name: 'Fetch',
+      params: { url: 'https://example.com' },
+      version: 4,
+      sampleData: [{ data: 'response' }],
+    });
+  });
+});`;
+
+			const parsed = parseDataFlowCode(code);
+			const reGenerated = generateDataFlowWorkflowCode(parsed);
+			const reParsed = parseDataFlowCode(reGenerated);
+
+			// output on nodes should survive round-trip
+			expect(reParsed.nodes).toEqual(parsed.nodes);
+			expect(reParsed.connections).toEqual(parsed.connections);
+			expect(reParsed.pinData).toEqual(parsed.pinData);
+		});
+	});
 });

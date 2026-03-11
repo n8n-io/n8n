@@ -186,8 +186,12 @@ describe('Fixture execution with pin data', () => {
 	const fixtures = loadFixtures();
 
 	for (const fixture of fixtures) {
-		// Only run execution tests for fixtures with pin data or nock
-		if (!fixture.hasPinData && !fixture.hasNock) {
+		// Parse early to check for sampleData-based pin data in code
+		const earlyParsed = parseDataFlowCode(fixture.input);
+		const hasPinDataInCode = Object.keys(earlyParsed.pinData ?? {}).length > 0;
+
+		// Only run execution tests for fixtures with pin data (file or code) or nock
+		if (!fixture.hasPinData && !fixture.hasNock && !hasPinDataInCode) {
 			continue;
 		}
 
@@ -199,10 +203,13 @@ describe('Fixture execution with pin data', () => {
 
 		it(`${fixture.title} [execution]`, async () => {
 			// Step 1: Parse data-flow code → WorkflowJSON
-			const parsed = parseDataFlowCode(fixture.input);
+			const parsed = earlyParsed;
 
-			// Step 2: Extract pin data from fixture's pin-data.json
-			let pinData = extractPinData({ pinData: fixture.pinData as Record<string, unknown> });
+			// Step 2: Build pin data — merge sampleData from code with pin-data.json
+			const codePinData = parsed.pinData ?? {};
+			const filePinData = (fixture.pinData as Record<string, unknown>) ?? {};
+			const mergedPinData = { ...filePinData, ...codePinData };
+			let pinData = extractPinData({ pinData: mergedPinData });
 
 			// Step 3: Patch filter conditions
 			patchFilterConditions(parsed.nodes as Array<{ parameters?: Record<string, unknown> }>);

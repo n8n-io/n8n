@@ -752,6 +752,31 @@ describe('dataflow-parser', () => {
 			expect(preNode).toBeDefined();
 		});
 
+		it('parses sampleData on trigger into output and pinData', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, sampleData: [{ key: 'value' }] }, (items) => {
+					const httpRequest = node({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://example.com' }, version: 4 })(items);
+				});
+			});`;
+			const result = parseDataFlowCode(code);
+			expect(result.nodes[0].output).toEqual([{ key: 'value' }]);
+			expect(result.pinData).toBeDefined();
+			expect(result.pinData![result.nodes[0].name!]).toEqual([{ key: 'value' }]);
+			// Node without sampleData should not have output
+			expect(result.nodes[1].output).toBeUndefined();
+		});
+
+		it('parses sampleData on executeNode into output and pinData', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
+					const httpRequest = node({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://example.com' }, version: 4, sampleData: [{ data: 'response' }] })(items);
+				});
+			});`;
+			const result = parseDataFlowCode(code);
+			expect(result.nodes[1].output).toEqual([{ data: 'response' }]);
+			expect(result.pinData!['HTTP Request']).toEqual([{ data: 'response' }]);
+		});
+
 		it('parses try/catch followed by switch statement', () => {
 			const code = `workflow({ name: 'Try Switch' }, () => {
 				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {

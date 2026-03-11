@@ -5,6 +5,7 @@ workflow({ name: 'Sub Workflow' }, () => {
 			name: 'Generate Report',
 			params: { workflowId: 'abc123' },
 			version: 1,
+			sampleData: [{ reportData: 'Monthly Summary' }],
 		});
 		const send_Report = executeNode({
 			type: 'n8n-nodes-base.httpRequest',

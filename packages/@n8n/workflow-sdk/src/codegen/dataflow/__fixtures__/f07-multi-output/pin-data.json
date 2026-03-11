@@ -1,4 +1,0 @@
-{
-	"Data A": [{ "id": 1, "name": "Alice" }, { "id": 2, "name": "Bob" }],
-	"Data B": [{ "id": 2, "name": "Robert" }, { "id": 3, "name": "Charlie" }]
-}

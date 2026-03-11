@@ -12,6 +12,7 @@ workflow({ name: 'Loop Try Catch' }, () => {
 					name: 'Send Email',
 					params: { toEmail: 'user@example.com' },
 					version: 2,
+					sampleData: [{}],
 				});
 			} catch (e) {
 				const log_Error = executeNode({

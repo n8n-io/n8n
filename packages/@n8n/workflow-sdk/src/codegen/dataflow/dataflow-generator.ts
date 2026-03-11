@@ -241,6 +241,10 @@ function buildNodeConfig(node: SemanticNode, ctx: DataFlowContext, prevVarName?:
 		parts.push(`subnodes: ${subnodesConfig}`);
 	}
 
+	if (node.json.output && node.json.output.length > 0) {
+		parts.push(`sampleData: ${formatValue(node.json.output)}`);
+	}
+
 	return `{ ${parts.join(', ')} }`;
 }
 
@@ -1105,6 +1109,16 @@ export function generateDataFlowCode(
 		usedVarNames: new Set(),
 		graph,
 	};
+
+	// Populate node output from workflow pinData (supports JSON→code generation)
+	if (workflow.pinData) {
+		for (const [nodeName, data] of Object.entries(workflow.pinData)) {
+			const node = graph.nodes.get(nodeName);
+			if (node && !node.json.output) {
+				node.json.output = data;
+			}
+		}
+	}
 
 	// Pre-register all node variable names to avoid collisions
 	for (const nodeName of graph.nodes.keys()) {

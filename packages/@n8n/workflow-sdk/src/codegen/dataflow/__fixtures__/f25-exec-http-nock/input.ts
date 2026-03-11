@@ -5,6 +5,7 @@ workflow({ name: 'HTTP Nock Test' }, () => {
 			name: 'Fetch Data',
 			params: { url: 'https://api.example.com/users', method: 'GET', options: {} },
 			version: 4.2,
+			sampleData: [{ users: [{ name: 'Alice' }] }],
 		});
 	});
 });

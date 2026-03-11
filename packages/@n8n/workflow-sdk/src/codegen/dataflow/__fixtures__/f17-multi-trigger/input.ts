@@ -5,6 +5,7 @@ workflow({ name: 'Multi Trigger' }, () => {
 			name: 'Orders Webhook',
 			params: { path: '/orders', options: {} },
 			version: 2,
+			sampleData: [{ orderId: 'ORD-1' }],
 		},
 		(items) => {
 			const process_Order = executeNode({
@@ -12,6 +13,7 @@ workflow({ name: 'Multi Trigger' }, () => {
 				name: 'Process Order',
 				params: {},
 				version: 3,
+				sampleData: [{ orderId: 'ORD-1', processed: true }],
 			});
 		},
 	);
@@ -21,6 +23,7 @@ workflow({ name: 'Multi Trigger' }, () => {
 			name: 'Returns Webhook',
 			params: { path: '/returns', options: {} },
 			version: 2,
+			sampleData: [{ returnId: 'RET-1' }],
 		},
 		(items) => {
 			const process_Return = executeNode({
@@ -28,6 +31,7 @@ workflow({ name: 'Multi Trigger' }, () => {
 				name: 'Process Return',
 				params: {},
 				version: 3,
+				sampleData: [{ returnId: 'RET-1', processed: true }],
 			});
 		},
 	);
@@ -37,6 +41,7 @@ workflow({ name: 'Multi Trigger' }, () => {
 			name: 'Daily Cleanup',
 			params: { rule: { interval: [{ field: 'days', betweenInterval: 1 }] } },
 			version: 1.2,
+			sampleData: [{}],
 		},
 		(items) => {
 			const run_Cleanup = executeNode({

@@ -16,6 +16,7 @@ workflow({ name: 'Mixed Execution' }, () => {
 					text: item.json.name,
 				},
 				version: 2,
+				sampleData: [{}],
 			}),
 		);
 	});

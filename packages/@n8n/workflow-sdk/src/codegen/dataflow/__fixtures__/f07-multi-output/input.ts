@@ -1,10 +1,28 @@
 workflow({ name: 'Multi Output' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {});
 	const data_B = items.map((item) =>
-		executeNode({ type: 'n8n-nodes-base.set', name: 'Data B', params: {}, version: 3 }),
+		executeNode({
+			type: 'n8n-nodes-base.set',
+			name: 'Data B',
+			params: {},
+			version: 3,
+			sampleData: [
+				{ id: 2, name: 'Robert' },
+				{ id: 3, name: 'Charlie' },
+			],
+		}),
 	);
 	const data_A = items.map((item) =>
-		executeNode({ type: 'n8n-nodes-base.set', name: 'Data A', params: {}, version: 3 }),
+		executeNode({
+			type: 'n8n-nodes-base.set',
+			name: 'Data A',
+			params: {},
+			version: 3,
+			sampleData: [
+				{ id: 1, name: 'Alice' },
+				{ id: 2, name: 'Bob' },
+			],
+		}),
 	);
 	const [compare_Datasets_0, compare_Datasets_1, compare_Datasets_2] = executeNode(
 		{

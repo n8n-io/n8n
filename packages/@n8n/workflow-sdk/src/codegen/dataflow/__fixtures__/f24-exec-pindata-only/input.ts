@@ -10,6 +10,7 @@ workflow({ name: 'Pin Data Test' }, () => {
 				options: {},
 			},
 			version: 3.4,
+			sampleData: [{ greeting: 'hello' }],
 		});
 		const format_Output = executeNode({
 			type: 'n8n-nodes-base.set',
@@ -23,6 +24,7 @@ workflow({ name: 'Pin Data Test' }, () => {
 				options: {},
 			},
 			version: 3.4,
+			sampleData: [{ message: 'hello' }],
 		});
 	});
 });

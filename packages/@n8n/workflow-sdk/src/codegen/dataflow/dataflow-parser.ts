@@ -36,7 +36,13 @@ import type {
 
 import { parseSDKCode } from '../../ast-interpreter/parser';
 import { generateDefaultNodeName } from '../node-type-utils';
-import type { WorkflowJSON, NodeJSON, IConnections, IConnection } from '../../types/base';
+import type {
+	WorkflowJSON,
+	NodeJSON,
+	IConnections,
+	IConnection,
+	IDataObject,
+} from '../../types/base';
 import { AI_CONNECTION_TO_CONFIG_KEY, AI_CONNECTION_TO_BUILDER } from '../constants';
 
 // Build reverse maps: builder name → connection type, config key → connection type
@@ -73,6 +79,7 @@ interface NodeConfig {
 	credentials?: Record<string, unknown>;
 	version?: number;
 	subnodes?: Record<string, unknown[] | unknown>;
+	sampleData?: unknown[];
 }
 
 interface ConditionInfo {
@@ -257,6 +264,10 @@ function createNodeJSON(config: NodeConfig, state: ParserState): NodeJSON {
 		node.credentials = config.credentials as NodeJSON['credentials'];
 	}
 
+	if (config.sampleData && config.sampleData.length > 0) {
+		node.output = config.sampleData as IDataObject[];
+	}
+
 	return node;
 }
 
@@ -305,6 +316,7 @@ function extractNodeConfig(objExpr: ObjectExpression): NodeConfig {
 		credentials: raw.credentials as Record<string, unknown> | undefined,
 		version: raw.version as number | undefined,
 		subnodes: raw.subnodes as Record<string, unknown[]> | undefined,
+		sampleData: raw.sampleData as unknown[] | undefined,
 	};
 }
 
@@ -1745,9 +1757,18 @@ export function parseDataFlowCode(code: string): WorkflowJSON {
 
 	processWorkflowBody(bodyFn, state);
 
+	// Collect sampleData from nodes into pinData
+	const pinData: Record<string, IDataObject[]> = {};
+	for (const node of state.nodes) {
+		if (node.output && node.output.length > 0 && node.name) {
+			pinData[node.name] = node.output;
+		}
+	}
+
 	return {
 		name: state.workflowName,
 		nodes: state.nodes,
 		connections: state.connections,
+		...(Object.keys(pinData).length > 0 ? { pinData } : {}),
 	};
 }

@@ -240,6 +240,7 @@ export interface NodeJSON {
 	retryOnFail?: boolean;
 	alwaysOutputData?: boolean;
 	onError?: OnError;
+	output?: IDataObject[];
 }
 
 /**
