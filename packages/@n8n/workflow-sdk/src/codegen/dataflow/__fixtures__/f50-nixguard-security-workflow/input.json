@@ -126,6 +126,17 @@
 					}
 				]
 			]
+		},
+		"Webhook Trigger\n(REAL-WORLD USE)1": {
+			"main": [
+				[
+					{
+						"node": "Set API Key & Initial Prompt1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	}
 }
