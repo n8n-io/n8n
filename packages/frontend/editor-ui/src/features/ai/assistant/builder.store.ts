@@ -86,7 +86,7 @@ export type WorkflowBuilderJourneyEventType =
 	| 'setup_wizard_step_skipped'
 	| 'setup_wizard_step_completed'
 	| 'setup_wizard_all_complete'
-	| 'setup_wizard_node_unpinned';
+	| 'setup_wizard_node_unpinned'
 	| 'web_fetch_approval_prompted'
 	| 'web_fetch_decision'
 	| 'web_fetch_completed';
