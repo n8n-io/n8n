@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { WorkflowsConfig } from '@n8n/config';
 import { WorkflowDependencyRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Span } from 'n8n-core';
@@ -21,6 +22,9 @@ describe('WorkflowIndexService', () => {
 	const mockEventService = mockInstance(EventService);
 	const mockTracing = mockInstance(Tracing);
 
+	const createWorkflowsConfig = (overrides: Partial<WorkflowsConfig> = {}) =>
+		mock<WorkflowsConfig>({ indexingBatchSize: 100, ...overrides });
+
 	beforeEach(() => {
 		jest.resetAllMocks();
 
@@ -33,6 +37,7 @@ describe('WorkflowIndexService', () => {
 			mockLogger,
 			mockErrorReporter,
 			mockTracing,
+			createWorkflowsConfig(),
 		);
 	});
 
@@ -612,7 +617,7 @@ describe('WorkflowIndexService', () => {
 				mockLogger,
 				mockErrorReporter,
 				mockTracing,
-				batchSize,
+				createWorkflowsConfig({ indexingBatchSize: batchSize }),
 			);
 
 			// Create 5 workflows to test multiple batches
