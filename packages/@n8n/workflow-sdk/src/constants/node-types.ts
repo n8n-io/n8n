@@ -11,6 +11,7 @@ export const NODE_TYPES = {
 	SPLIT_IN_BATCHES: 'n8n-nodes-base.splitInBatches',
 	HTTP_REQUEST: 'n8n-nodes-base.httpRequest',
 	WEBHOOK: 'n8n-nodes-base.webhook',
+	WAIT: 'n8n-nodes-base.wait',
 	DATA_TABLE: 'n8n-nodes-base.dataTable',
 } as const;
 
@@ -69,6 +70,29 @@ export function isHttpRequestType(type: string): type is typeof NODE_TYPES.HTTP_
  */
 export function isWebhookType(type: string): type is typeof NODE_TYPES.WEBHOOK {
 	return type === NODE_TYPES.WEBHOOK;
+}
+
+/**
+ * Check if a type string is the Wait node type
+ */
+export function isWaitNodeType(type: string): type is typeof NODE_TYPES.WAIT {
+	return type === NODE_TYPES.WAIT;
+}
+
+/**
+ * Check if a Wait node uses webhook or form resume mode (parameter-based detection).
+ * Only these modes become composite nodes; timeInterval/specificTime stay as leaves.
+ */
+export function isWaitWebhookOrForm(parameters: Record<string, unknown> | undefined): boolean {
+	const resume = parameters?.resume;
+	return resume === 'webhook' || resume === 'form';
+}
+
+/**
+ * Check if a Wait node uses form resume mode specifically
+ */
+export function isWaitFormMode(parameters: Record<string, unknown> | undefined): boolean {
+	return parameters?.resume === 'form';
 }
 
 /**

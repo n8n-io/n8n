@@ -23,6 +23,7 @@ import type {
 	MultiOutputNode,
 	FanOutCompositeNode,
 	SplitInBatchesCompositeNode,
+	WaitWebhookCompositeNode,
 	VariableReference,
 } from '../composite-tree';
 import {
@@ -32,6 +33,10 @@ import {
 } from '../constants';
 import type { IDataObject, WorkflowJSON } from '../../types/base';
 
+// Module-level context for resumeUrl expression replacement inside wait callbacks.
+let _genResumeUrlVar: string | undefined;
+let _genResumeUrlMode: 'webhook' | 'form' | undefined;
+
 /**
  * Extended context for data-flow code generation.
  * Includes the semantic graph for looking up subnodes.
@@ -40,6 +45,13 @@ interface DataFlowContext extends VarNameContext {
 	graph: SemanticGraph;
 	/** When true, suppress .map() wrapping for per-item nodes (e.g., inside branches) */
 	insideBranch?: boolean;
+	/** Set of node names emitted in the current trigger body. VarRefs to nodes NOT in this set
+	 *  are cross-trigger shared nodes and get re-emitted as full leaf nodes. */
+	currentTriggerNodes?: Set<string>;
+	/** When set, $execution.resumeUrl/$execution.resumeFormUrl expressions are replaced with this var */
+	resumeUrlVar?: string;
+	/** Current wait mode for expression replacement */
+	resumeUrlMode?: 'webhook' | 'form';
 }
 
 /**
@@ -151,6 +163,16 @@ function exprToVarRef(value: string, prevVarName: string): string | undefined {
  */
 function formatDataFlowValue(value: unknown, prevVarName: string): string {
 	if (typeof value === 'string' && value.startsWith('=')) {
+		// Inside wait callback: replace $execution.resumeUrl expressions with the callback variable
+		if (_genResumeUrlVar) {
+			const resumeExpr =
+				_genResumeUrlMode === 'form'
+					? '={{ $execution.resumeFormUrl }}'
+					: '={{ $execution.resumeUrl }}';
+			if (value === resumeExpr) {
+				return _genResumeUrlVar;
+			}
+		}
 		const varRef = exprToVarRef(value, prevVarName);
 		if (varRef) return varRef;
 		// Fall back to expr() for complex expressions
@@ -275,6 +297,9 @@ function generateTriggerBlock(
 
 	lines.push(`${indent}onTrigger(${config}, (items) => {`);
 
+	const prevTriggerNodes = ctx.currentTriggerNodes;
+	ctx.currentTriggerNodes = new Set<string>();
+
 	let prevVar = 'items';
 	for (const compositeNode of bodyNodes) {
 		const nodeCode = generateCompositeNode(compositeNode, ctx, depth + 1, prevVar);
@@ -283,6 +308,8 @@ function generateTriggerBlock(
 		}
 		lines.push(nodeCode.code);
 	}
+
+	ctx.currentTriggerNodes = prevTriggerNodes;
 
 	lines.push(`${indent}});`);
 	return lines.join('\n');
@@ -324,8 +351,26 @@ function generateCompositeNode(
 				depth,
 				inputVar,
 			);
-		case 'varRef':
-			return { code: '', varName: (compositeNode as VariableReference).varName };
+		case 'waitWebhook':
+			return generateWaitWebhookNode(
+				compositeNode as WaitWebhookCompositeNode,
+				ctx,
+				depth,
+				inputVar,
+			);
+		case 'varRef': {
+			const ref = compositeNode as VariableReference;
+			// Cross-trigger shared node: VarRef references a node NOT emitted in the
+			// current trigger body → re-emit as full leaf so both triggers have code.
+			if (ctx.currentTriggerNodes && !ctx.currentTriggerNodes.has(ref.nodeName)) {
+				const refNode = ctx.graph.nodes.get(ref.nodeName);
+				if (refNode) {
+					const leaf: LeafNode = { kind: 'leaf', node: refNode };
+					return generateLeafNode(leaf, ctx, depth, inputVar);
+				}
+			}
+			return { code: '', varName: ref.varName };
+		}
 		default:
 			return {
 				code: `${getIndent(depth)}// TODO: unsupported pattern (${compositeNode.kind})`,
@@ -361,6 +406,9 @@ function generateLeafNode(
 	}
 
 	const varName = getUniqueVarName(node.name, ctx);
+
+	// Track node as emitted in the current trigger body
+	ctx.currentTriggerNodes?.add(node.name);
 
 	// Error handler nodes always use plain executeNode() in try/catch
 	if (leaf.errorHandler) {
@@ -570,8 +618,8 @@ function buildConditionExpr(
 }
 
 /**
- * Try to extract a simple condition string from the IF/Filter node parameters.
- * Returns null if the condition is too complex (multiple conditions or OR combinator).
+ * Try to extract a condition string from the IF/Filter node parameters.
+ * Supports single conditions and multi-conditions with && (and) or || (or) combinators.
  * When itemLevel is true, generates item-level references (item.json.x) instead of array-level (items[0].json.x).
  */
 function extractIfCondition(
@@ -587,12 +635,14 @@ function extractIfCondition(
 	const conditions = conditionsBlock.conditions;
 	if (!Array.isArray(conditions) || conditions.length === 0) return null;
 
-	// Multiple conditions with OR combinator => complex
-	if (conditions.length > 1 || conditionsBlock.combinator === 'or') {
-		return null;
+	if (conditions.length === 1) {
+		return buildConditionExpr(conditions[0], inputVar, itemLevel);
 	}
 
-	return buildConditionExpr(conditions[0], inputVar, itemLevel);
+	// Multi-condition: join with && or ||
+	const jsOperator = conditionsBlock.combinator === 'or' ? ' || ' : ' && ';
+	const parts = conditions.map((c) => buildConditionExpr(c, inputVar, itemLevel));
+	return parts.join(jsOperator);
 }
 
 /**
@@ -645,6 +695,8 @@ function generateIfElseNode(
 	const indent = getIndent(depth);
 	const lines: string[] = [];
 
+	ctx.currentTriggerNodes?.add(node.ifNode.name);
+
 	const conditionExpr = extractIfCondition(node.ifNode.json.parameters, inputVar);
 
 	if (conditionExpr) {
@@ -672,9 +724,12 @@ function generateIfElseNode(
 
 /**
  * Generate code for a Filter composite node.
- * Emits: const varName = inputVar.filter((item) => conditionExpr);
- * Then generates the keptBranch using varName as input (not as a branch context,
- * since filter is a pass-through — downstream nodes should use normal .map() wrapping).
+ *
+ * Kept-only:     const varName = inputVar.filter((item) => conditionExpr);
+ * With discard:  const [keptVar, discardedVar] = inputVar.filter((item) => conditionExpr);
+ *
+ * Both branches are continuations (not branch contexts), so downstream nodes
+ * keep their normal .map() wrapping.
  */
 function generateFilterNode(
 	node: FilterCompositeNode,
@@ -685,22 +740,42 @@ function generateFilterNode(
 	const indent = getIndent(depth);
 	const lines: string[] = [];
 
-	const conditionExpr = extractIfCondition(node.filterNode.json.parameters, 'item', true);
-	const varName = getUniqueVarName(node.filterNode.name, ctx);
+	ctx.currentTriggerNodes?.add(node.filterNode.name);
 
-	if (conditionExpr) {
-		lines.push(`${indent}const ${varName} = ${inputVar}.filter((item) => ${conditionExpr});`);
-	} else {
-		lines.push(`${indent}// Complex filter condition - see Filter node parameters`);
-		lines.push(`${indent}const ${varName} = ${inputVar}.filter((item) => /* complex */);`);
+	const conditionExpr = extractIfCondition(node.filterNode.json.parameters, 'item', true);
+	const keptVar = getUniqueVarName(node.filterNode.name, ctx);
+	const hasDiscarded = node.discardedBranch !== null;
+
+	// Derive a discarded variable name from the first discarded branch node, or fallback
+	let discardedVar = `${keptVar}_discarded`;
+	if (hasDiscarded) {
+		const firstDiscarded = Array.isArray(node.discardedBranch)
+			? node.discardedBranch[0]
+			: node.discardedBranch;
+		if (firstDiscarded && firstDiscarded.kind === 'leaf') {
+			discardedVar = getUniqueVarName((firstDiscarded as LeafNode).node.name + '_filtered', ctx);
+		}
 	}
 
-	// Generate keptBranch at same depth using varName as input.
+	const filterExpr = conditionExpr
+		? `${inputVar}.filter((item) => ${conditionExpr})`
+		: `${inputVar}.filter((item) => /* complex */)`;
+
+	if (hasDiscarded) {
+		lines.push(`${indent}const [${keptVar}, ${discardedVar}] = ${filterExpr};`);
+	} else {
+		if (!conditionExpr) {
+			lines.push(`${indent}// Complex filter condition - see Filter node parameters`);
+		}
+		lines.push(`${indent}const ${keptVar} = ${filterExpr};`);
+	}
+
+	// Generate keptBranch at same depth using keptVar as input.
 	// Unlike if/else branches, filter kept output is a continuation (not a branch),
 	// so we don't set insideBranch — downstream nodes keep their normal .map() wrapping.
 	if (node.keptBranch !== null) {
 		const keptNodes = Array.isArray(node.keptBranch) ? node.keptBranch : [node.keptBranch];
-		let prevVar = varName;
+		let prevVar = keptVar;
 		for (const keptNode of keptNodes) {
 			const result = generateCompositeNode(keptNode, ctx, depth, prevVar);
 			if (result.code) {
@@ -712,14 +787,25 @@ function generateFilterNode(
 		}
 	}
 
-	// Generate discardedBranch if present (not typical for .filter() but supported)
+	// Generate discardedBranch as a continuation (same depth, using discardedVar as input).
+	// NOT via generateBranchBody() which sets insideBranch = true.
 	if (node.discardedBranch !== null) {
-		lines.push(`${indent}// discarded items branch`);
-		const discardedCode = generateBranchBody(node.discardedBranch, ctx, depth, inputVar);
-		lines.push(discardedCode);
+		const discardedNodes = Array.isArray(node.discardedBranch)
+			? node.discardedBranch
+			: [node.discardedBranch];
+		let prevDiscardedVar = discardedVar;
+		for (const discardedNode of discardedNodes) {
+			const result = generateCompositeNode(discardedNode, ctx, depth, prevDiscardedVar);
+			if (result.code) {
+				lines.push(result.code);
+			}
+			if (result.varName) {
+				prevDiscardedVar = result.varName;
+			}
+		}
 	}
 
-	return { code: lines.join('\n'), varName };
+	return { code: lines.join('\n'), varName: keptVar };
 }
 
 /** A single rule value from Switch parameters */
@@ -782,6 +868,8 @@ function generateSwitchCaseNode(
 	const indent = getIndent(depth);
 	const caseIndent = getIndent(depth + 1);
 	const bodyIndent = getIndent(depth + 2);
+
+	ctx.currentTriggerNodes?.add(node.switchNode.name);
 	const lines: string[] = [];
 
 	const switchInfo = extractSwitchInfo(node.switchNode.json.parameters, inputVar);
@@ -842,6 +930,9 @@ function generateSplitInBatchesNode(
 ): CompositeNodeResult {
 	const indent = getIndent(depth);
 	const lines: string[] = [];
+
+	// Track SIB node as emitted in the current trigger body
+	ctx.currentTriggerNodes?.add(sib.sibNode.name);
 
 	const sourceVar = inputVar;
 
@@ -904,6 +995,127 @@ function buildBatchConfig(sib: SplitInBatchesCompositeNode, _ctx: DataFlowContex
 }
 
 /**
+ * Check if any node parameters in a composite tree contain a resume URL expression.
+ */
+function hasResumeUrlExpression(
+	node: CompositeNode | null,
+	expr: string,
+	graph: SemanticGraph,
+): boolean {
+	if (!node) return false;
+	if (node.kind === 'leaf') {
+		return JSON.stringify(node.node.json.parameters ?? {}).includes(expr);
+	}
+	if (node.kind === 'chain') {
+		return node.nodes.some((n) => hasResumeUrlExpression(n, expr, graph));
+	}
+	return false;
+}
+
+/**
+ * Generate code for a wait webhook/form composite node.
+ *
+ * Produces code like:
+ *   waitOnWebhook((resumeUrl) => {
+ *     const notify = executeNode({ ..., body: { callback: resumeUrl } });
+ *   });
+ *   const afterResume = executeNode({ ... });
+ *
+ * For form mode with config:
+ *   waitOnForm({ formTitle: 'Approval' }, (resumeUrl) => {
+ *     ...
+ *   });
+ */
+function generateWaitWebhookNode(
+	wait: WaitWebhookCompositeNode,
+	ctx: DataFlowContext,
+	depth: number,
+	inputVar: string,
+): CompositeNodeResult {
+	const indent = getIndent(depth);
+	const lines: string[] = [];
+
+	ctx.currentTriggerNodes?.add(wait.waitNode.name);
+
+	const funcName = wait.mode === 'form' ? 'waitOnForm' : 'waitOnWebhook';
+
+	// Check if any setup node references the resume URL expression
+	const resumeExpr =
+		wait.mode === 'form' ? '={{ $execution.resumeFormUrl }}' : '={{ $execution.resumeUrl }}';
+	const needsResumeParam = hasResumeUrlExpression(wait.setupChain, resumeExpr, ctx.graph);
+	const callbackParam = needsResumeParam ? '(resumeUrl)' : '()';
+
+	// Build the function call opening
+	if (wait.mode === 'form') {
+		const formConfig = buildWaitFormConfig(wait.waitNode);
+		if (formConfig) {
+			lines.push(`${indent}${funcName}(${formConfig}, ${callbackParam} => {`);
+		} else {
+			lines.push(`${indent}${funcName}(${callbackParam} => {`);
+		}
+	} else {
+		lines.push(`${indent}${funcName}(${callbackParam} => {`);
+	}
+
+	// Generate setup chain body inside the callback
+	if (wait.setupChain) {
+		const prevInsideBranch = ctx.insideBranch;
+		ctx.insideBranch = true;
+
+		// Enable resumeUrl expression replacement
+		const prevResumeVar = _genResumeUrlVar;
+		const prevResumeMode = _genResumeUrlMode;
+		if (needsResumeParam) {
+			_genResumeUrlVar = 'resumeUrl';
+			_genResumeUrlMode = wait.mode;
+		}
+
+		const setupResult = generateCompositeNode(wait.setupChain, ctx, depth + 1, inputVar);
+		if (setupResult.code) {
+			lines.push(setupResult.code);
+		}
+
+		_genResumeUrlVar = prevResumeVar;
+		_genResumeUrlMode = prevResumeMode;
+		ctx.insideBranch = prevInsideBranch;
+	}
+
+	lines.push(`${indent}});`);
+
+	// Generate continuation after the wait
+	if (wait.continuationChain) {
+		const contResult = generateCompositeNode(wait.continuationChain, ctx, depth, inputVar);
+		if (contResult.code) {
+			lines.push(contResult.code);
+		}
+	}
+
+	return { code: lines.join('\n'), varName: null };
+}
+
+/**
+ * Build the config object string for a waitOnForm() call.
+ * Extracts form-specific params (formTitle, formDescription, formFields, etc.)
+ * from the Wait node's parameters. Returns null if no form-specific params.
+ */
+function buildWaitFormConfig(waitNode: SemanticNode): string | null {
+	const params = waitNode.json.parameters;
+	if (!params) return null;
+
+	const formKeys = ['formTitle', 'formDescription', 'formFields', 'formRespondMode'];
+	const entries: string[] = [];
+
+	for (const key of formKeys) {
+		if (params[key] !== undefined) {
+			entries.push(`${key}: ${formatValue(params[key])}`);
+		}
+	}
+
+	if (entries.length === 0) return null;
+	return `{ ${entries.join(', ')} }`;
+}
+
+/**
  * Generate code for a multi-output node using array destructuring.
  *
  * Produces code like:
@@ -921,6 +1133,7 @@ function generateMultiOutputNode(
 	const lines: string[] = [];
 
 	const sourceNode = multiOutput.sourceNode;
+	ctx.currentTriggerNodes?.add(sourceNode.name);
 	const config = buildNodeConfig(sourceNode, ctx);
 	const baseVarName = getUniqueVarName(sourceNode.name, ctx);
 

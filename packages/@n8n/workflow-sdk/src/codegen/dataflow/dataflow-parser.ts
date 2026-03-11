@@ -29,6 +29,7 @@ import type {
 	Literal,
 	BinaryExpression,
 	UnaryExpression,
+	LogicalExpression,
 	Expression,
 	Statement,
 	Node as EstreeNode,
@@ -66,10 +67,16 @@ interface ParserState {
 	workflowName: string;
 	nodeCounter: number;
 	usedNames: Set<string>;
+	/** Lookup by explicit name+type → existing node (for deduplication of cross-trigger shared nodes) */
+	nodesByName: Map<string, NodeJSON>;
 	insideMap: boolean;
 	/** Depth counter for if/else/switch branches — nodes inside branches don't get executeOnce */
 	branchDepth: number;
 	lastNodeInScope: { nodeName: string; outputIndex: number } | undefined;
+	/** Name of the resumeUrl callback parameter (for expression replacement inside waitOnWebhook/waitOnForm) */
+	resumeUrlParamName?: string;
+	/** Current wait mode for expression replacement */
+	resumeUrlMode?: 'webhook' | 'form';
 }
 
 interface NodeConfig {
@@ -88,6 +95,24 @@ interface ConditionInfo {
 	operation: string;
 	operatorType: string;
 }
+
+interface MultiConditionInfo {
+	conditions: ConditionInfo[];
+	combinator: 'and' | 'or';
+}
+
+type ConditionResult = ConditionInfo | MultiConditionInfo;
+
+function isMultiCondition(result: ConditionResult): result is MultiConditionInfo {
+	return 'conditions' in result && 'combinator' in result;
+}
+
+// ---------------------------------------------------------------------------
+// Module-level context for resumeUrl expression replacement inside wait callbacks.
+// Set before processing a waitOnWebhook/waitOnForm callback body, cleared after.
+// ---------------------------------------------------------------------------
+let _resumeUrlParam: string | undefined;
+let _resumeUrlMode: 'webhook' | 'form' | undefined;
 
 // ---------------------------------------------------------------------------
 // AST type guards
@@ -129,6 +154,10 @@ function isUnaryExpression(node: EstreeNode): node is UnaryExpression {
 	return node.type === 'UnaryExpression';
 }
 
+function isLogicalExpression(node: EstreeNode): node is LogicalExpression {
+	return node.type === 'LogicalExpression';
+}
+
 function isExpression(node: EstreeNode): node is Expression {
 	return (
 		node.type !== 'Super' && node.type !== 'PrivateIdentifier' && node.type !== 'SpreadElement'
@@ -157,6 +186,12 @@ function extractLiteralValue(node: EstreeNode): unknown {
 		if (node.name === 'undefined') return undefined;
 		if (node.name === 'true') return true;
 		if (node.name === 'false') return false;
+		// Inside waitOnWebhook/waitOnForm callback: replace resumeUrl identifier with expression
+		if (_resumeUrlParam && node.name === _resumeUrlParam) {
+			return _resumeUrlMode === 'form'
+				? '={{ $execution.resumeFormUrl }}'
+				: '={{ $execution.resumeUrl }}';
+		}
 		return node.name;
 	}
 	if (isUnaryExpression(node) && node.operator === '-' && isLiteral(node.argument)) {
@@ -234,7 +269,21 @@ function createNodeId(counter: number): string {
 	return `node-${counter}`;
 }
 
-function createNodeJSON(config: NodeConfig, state: ParserState): NodeJSON {
+interface CreateNodeResult {
+	node: NodeJSON;
+	isNew: boolean;
+}
+
+function createNodeJSON(config: NodeConfig, state: ParserState): CreateNodeResult {
+	// Deduplicate: if same explicit name + same type already exists, reuse it
+	// (happens with cross-trigger convergence where two triggers share a downstream node)
+	if (config.name) {
+		const existing = state.nodesByName.get(`${config.name}::${config.type}`);
+		if (existing) {
+			return { node: existing, isNew: false };
+		}
+	}
+
 	const id = createNodeId(state.nodeCounter);
 	let name = config.name ?? generateDefaultNodeName(config.type);
 
@@ -268,7 +317,10 @@ function createNodeJSON(config: NodeConfig, state: ParserState): NodeJSON {
 		node.output = config.sampleData as IDataObject[];
 	}
 
-	return node;
+	state.nodes.push(node);
+	state.nodesByName.set(`${name}::${config.type}`, node);
+
+	return { node, isNew: true };
 }
 
 function addConnection(
@@ -484,7 +536,26 @@ function extractConditionFromIncludes(expr: CallExpression): ConditionInfo | und
 	};
 }
 
-function extractConditionFromExpression(expr: Expression): ConditionInfo | undefined {
+/**
+ * Recursively collect conditions from a chain of same-combinator LogicalExpressions.
+ * `a && b && c` parses as `(a && b) && c` — this flattens them.
+ */
+function collectConditions(expr: Expression, operator: '&&' | '||'): ConditionInfo[] | undefined {
+	if (isLogicalExpression(expr) && expr.operator === operator) {
+		const left = collectConditions(expr.left, operator);
+		const right = collectConditions(expr.right, operator);
+		if (left && right) return [...left, ...right];
+		return undefined;
+	}
+	const single = extractSingleCondition(expr);
+	if (single) return [single];
+	return undefined;
+}
+
+/**
+ * Extract a single (non-logical) condition from an expression.
+ */
+function extractSingleCondition(expr: Expression): ConditionInfo | undefined {
 	// Binary expression: items[0].json.x === 'value'
 	if (isBinaryExpression(expr)) {
 		return extractConditionFromBinary(expr);
@@ -524,8 +595,25 @@ function extractConditionFromExpression(expr: Expression): ConditionInfo | undef
 	return undefined;
 }
 
-function buildIfParameters(condition: ConditionInfo): Record<string, unknown> {
-	const conditionEntry: Record<string, unknown> = {
+function extractConditionFromExpression(expr: Expression): ConditionResult | undefined {
+	// LogicalExpression: a && b, a || b
+	if (isLogicalExpression(expr)) {
+		const operator = expr.operator as '&&' | '||';
+		const conditions = collectConditions(expr, operator);
+		if (conditions && conditions.length >= 2) {
+			return {
+				conditions,
+				combinator: operator === '&&' ? 'and' : 'or',
+			};
+		}
+		return undefined;
+	}
+
+	return extractSingleCondition(expr);
+}
+
+function buildConditionEntry(condition: ConditionInfo): Record<string, unknown> {
+	const entry: Record<string, unknown> = {
 		operator: {
 			type: condition.operatorType,
 			operation: condition.operation,
@@ -539,7 +627,25 @@ function buildIfParameters(condition: ConditionInfo): Record<string, unknown> {
 		condition.operation !== 'exists' &&
 		condition.operation !== 'notExists'
 	) {
-		conditionEntry.rightValue = condition.rightValue;
+		entry.rightValue = condition.rightValue;
+	}
+
+	return entry;
+}
+
+function buildIfParameters(result: ConditionResult): Record<string, unknown> {
+	if (isMultiCondition(result)) {
+		return {
+			conditions: {
+				options: {
+					version: 2,
+					caseSensitive: true,
+					typeValidation: 'loose',
+				},
+				combinator: result.combinator,
+				conditions: result.conditions.map(buildConditionEntry),
+			},
+		};
 	}
 
 	return {
@@ -550,7 +656,7 @@ function buildIfParameters(condition: ConditionInfo): Record<string, unknown> {
 				typeValidation: 'loose',
 			},
 			combinator: 'and',
-			conditions: [conditionEntry],
+			conditions: [buildConditionEntry(result)],
 		},
 	};
 }
@@ -730,8 +836,7 @@ function processSubnodes(config: NodeConfig, parentNodeName: string, state: Pars
 				version: subnodeRaw.version as number | undefined,
 			};
 
-			const subnodeJSON = createNodeJSON(subnodeConfig, state);
-			state.nodes.push(subnodeJSON);
+			const { node: subnodeJSON } = createNodeJSON(subnodeConfig, state);
 
 			// Connect subnode to parent using the AI connection type
 			addConnection(state, subnodeJSON.name!, parentNodeName, 0, i, connectionType);
@@ -760,9 +865,8 @@ function processNodeVarDeclaration(
 		}
 		if (execConfig) {
 			const config = extractNodeConfig(execConfig);
-			const nodeJSON = createNodeJSON(config, state);
-			state.nodes.push(nodeJSON);
-			processSubnodes(config, nodeJSON.name!, state);
+			const { node: nodeJSON, isNew } = createNodeJSON(config, state);
+			if (isNew) processSubnodes(config, nodeJSON.name!, state);
 
 			const mapping = state.varToNode.get(mapMatch.sourceVar);
 			if (mapping) {
@@ -777,6 +881,7 @@ function processNodeVarDeclaration(
 	}
 
 	// Pattern A2: const x = source.filter((item) => condition) — creates Filter node
+	// Also supports: const [kept, discarded] = source.filter((item) => condition)
 	const filterMatch = isFilterCall(declarator.init);
 	if (filterMatch) {
 		const { callback } = filterMatch;
@@ -792,8 +897,7 @@ function processNodeVarDeclaration(
 					params: filterParams,
 					version: 2,
 				};
-				const filterNodeJSON = createNodeJSON(filterConfig, state);
-				state.nodes.push(filterNodeJSON);
+				const { node: filterNodeJSON } = createNodeJSON(filterConfig, state);
 
 				// Connect source → Filter node
 				const mapping = state.varToNode.get(filterMatch.sourceVar);
@@ -801,12 +905,22 @@ function processNodeVarDeclaration(
 					addConnection(state, mapping.nodeName, filterNodeJSON.name!, mapping.outputIndex);
 				}
 
-				// Variable maps to Filter node's kept output (index 0)
+				// Handle LHS: Identifier (kept only) or ArrayPattern (kept + discarded)
 				if (isIdentifier(declarator.id)) {
 					state.varToNode.set(declarator.id.name, {
 						nodeName: filterNodeJSON.name!,
 						outputIndex: 0,
 					});
+				} else if (declarator.id.type === 'ArrayPattern') {
+					for (let i = 0; i < declarator.id.elements.length; i++) {
+						const el = declarator.id.elements[i];
+						if (el && isIdentifier(el)) {
+							state.varToNode.set(el.name, {
+								nodeName: filterNodeJSON.name!,
+								outputIndex: i,
+							});
+						}
+					}
 				}
 				state.lastNodeInScope = { nodeName: filterNodeJSON.name!, outputIndex: 0 };
 				return isIdentifier(declarator.id) ? declarator.id.name : undefined;
@@ -822,12 +936,11 @@ function processNodeVarDeclaration(
 	const execMatch = matchExecuteNodeCall(declarator.init);
 	if (execMatch) {
 		const config = extractNodeConfig(execMatch.config);
-		const nodeJSON = createNodeJSON(config, state);
-		if (state.branchDepth === 0) {
+		const { node: nodeJSON, isNew } = createNodeJSON(config, state);
+		if (isNew && state.branchDepth === 0) {
 			nodeJSON.executeOnce = true;
 		}
-		state.nodes.push(nodeJSON);
-		processSubnodes(config, nodeJSON.name!, state);
+		if (isNew) processSubnodes(config, nodeJSON.name!, state);
 
 		if (execMatch.inputsArray) {
 			// Array input syntax: executeNode({...}, [inputA, inputB])
@@ -870,8 +983,7 @@ function processNodeVarDeclaration(
 	if (!match) return undefined;
 
 	const config = extractNodeConfig(match.configExpr);
-	const nodeJSON = createNodeJSON(config, state);
-	state.nodes.push(nodeJSON);
+	const { node: nodeJSON } = createNodeJSON(config, state);
 
 	// Process subnodes
 	processSubnodes(config, nodeJSON.name!, state);
@@ -945,8 +1057,7 @@ function processIfStatement(
 		params: ifParams,
 		version: 2,
 	};
-	const ifNodeJSON = createNodeJSON(ifConfig, state);
-	state.nodes.push(ifNodeJSON);
+	const { node: ifNodeJSON } = createNodeJSON(ifConfig, state);
 
 	// Connect input to IF node — prefer lastNodeInScope for implicit chaining
 	// over inputVarName (which always points to the trigger param).
@@ -1043,8 +1154,7 @@ function processSwitchStatement(
 		params: switchParams,
 		version: 3,
 	};
-	const switchNodeJSON = createNodeJSON(switchConfig, state);
-	state.nodes.push(switchNodeJSON);
+	const { node: switchNodeJSON } = createNodeJSON(switchConfig, state);
 
 	// Connect input to Switch node — prefer lastNodeInScope for implicit chaining
 	if (state.lastNodeInScope) {
@@ -1297,12 +1407,11 @@ function processTryMultiNode(
 		},
 		version: 1.3,
 	};
-	const execWfNode = createNodeJSON(execWfConfig, state);
+	const { node: execWfNode } = createNodeJSON(execWfConfig, state);
 	if (state.branchDepth === 0) {
 		execWfNode.executeOnce = true;
 	}
 	execWfNode.onError = 'continueErrorOutput';
-	state.nodes.push(execWfNode);
 
 	// Reconnect predecessor → executeWorkflow
 	if (predecessor) {
@@ -1409,8 +1518,7 @@ function processBatchCall(
 		version,
 		...(name ? { name } : {}),
 	};
-	const sibNodeJSON = createNodeJSON(sibConfig, state);
-	state.nodes.push(sibNodeJSON);
+	const { node: sibNodeJSON } = createNodeJSON(sibConfig, state);
 
 	// Connect source → SplitInBatches
 	if (sourceNodeName) {
@@ -1461,6 +1569,111 @@ function processBatchCall(
 }
 
 /**
+ * Process a waitOnWebhook() or waitOnForm() call.
+ *
+ * Patterns:
+ *   `waitOnWebhook((resumeUrl) => { ...setup nodes... })`
+ *   `waitOnWebhook(() => { ...setup nodes... })`
+ *   `waitOnForm({ formTitle: '...' }, (resumeUrl) => { ...setup nodes... })`
+ *
+ * - Setup nodes inside the callback execute BEFORE the wait
+ * - The `resumeUrl` identifier is replaced with `={{ $execution.resumeUrl }}` (webhook)
+ *   or `={{ $execution.resumeFormUrl }}` (form) in node params
+ * - Creates a Wait node connected after the last setup node
+ * - After the call, lastNodeInScope = Wait output 0 (for continuation)
+ */
+function processWaitCall(
+	call: CallExpression,
+	state: ParserState,
+	inputVarName: string | undefined,
+	mode: 'webhook' | 'form',
+): void {
+	const args = call.arguments;
+	if (args.length < 1) return;
+
+	let configObj: Record<string, unknown> | undefined;
+	let callbackArg: ArrowFunctionExpression | FunctionExpression | undefined;
+
+	if (mode === 'form') {
+		// waitOnForm(config, (resumeUrl) => { ... })
+		if (args.length >= 2) {
+			const firstArg = args[0];
+			if (firstArg.type !== 'SpreadElement' && isObjectExpression(firstArg)) {
+				configObj = extractObjectLiteral(firstArg);
+			}
+			const secondArg = args[1];
+			if (secondArg.type !== 'SpreadElement' && isArrowOrFunction(secondArg)) {
+				callbackArg = secondArg;
+			}
+		} else if (args.length === 1) {
+			// waitOnForm((resumeUrl) => { ... }) — no config
+			const firstArg = args[0];
+			if (firstArg.type !== 'SpreadElement' && isArrowOrFunction(firstArg)) {
+				callbackArg = firstArg;
+			}
+		}
+	} else {
+		// waitOnWebhook((resumeUrl) => { ... })
+		const firstArg = args[0];
+		if (firstArg.type !== 'SpreadElement' && isArrowOrFunction(firstArg)) {
+			callbackArg = firstArg;
+		}
+	}
+
+	// Extract callback parameter name (for resumeUrl replacement)
+	let resumeUrlParamName: string | undefined;
+	if (callbackArg && callbackArg.params.length > 0) {
+		const param = callbackArg.params[0];
+		if (isIdentifier(param)) {
+			resumeUrlParamName = param.name;
+		}
+	}
+
+	// Process callback body (setup nodes) with resumeUrl replacement enabled
+	if (callbackArg) {
+		const body = callbackArg.body;
+		const bodyStatements = body.type === 'BlockStatement' ? (body as BlockStatement).body : [];
+
+		// Enable resumeUrl → expression replacement
+		const prevParam = _resumeUrlParam;
+		const prevMode = _resumeUrlMode;
+		_resumeUrlParam = resumeUrlParamName;
+		_resumeUrlMode = mode;
+
+		processStatements(bodyStatements, state, inputVarName);
+
+		_resumeUrlParam = prevParam;
+		_resumeUrlMode = prevMode;
+	}
+
+	// Create Wait node with appropriate params
+	const waitParams: Record<string, unknown> = { resume: mode };
+	if (mode === 'form' && configObj) {
+		Object.assign(waitParams, configObj);
+	}
+
+	const waitConfig: NodeConfig = {
+		type: 'n8n-nodes-base.wait',
+		params: waitParams,
+		version: 1.1,
+	};
+	const { node: waitNodeJSON } = createNodeJSON(waitConfig, state);
+
+	// Connect last setup node → Wait
+	if (state.lastNodeInScope) {
+		addConnection(
+			state,
+			state.lastNodeInScope.nodeName,
+			waitNodeJSON.name!,
+			state.lastNodeInScope.outputIndex,
+		);
+	}
+
+	// After wait: continuation connects from Wait output 0
+	state.lastNodeInScope = { nodeName: waitNodeJSON.name!, outputIndex: 0 };
+}
+
+/**
  * Process a list of statements in a callback body.
  */
 function processStatements(
@@ -1493,11 +1706,21 @@ function processStatement(
 		case 'ExpressionStatement': {
 			const exprStmt = stmt as ExpressionStatement;
 			if (isCallExpression(exprStmt.expression)) {
-				// Check for batch() call
+				// Check for batch() / waitOnWebhook() / waitOnForm() calls
 				const callExpr = exprStmt.expression as CallExpression;
-				if (isIdentifier(callExpr.callee) && callExpr.callee.name === 'batch') {
-					processBatchCall(callExpr, state, inputVarName);
-					break;
+				if (isIdentifier(callExpr.callee)) {
+					if (callExpr.callee.name === 'batch') {
+						processBatchCall(callExpr, state, inputVarName);
+						break;
+					}
+					if (callExpr.callee.name === 'waitOnWebhook') {
+						processWaitCall(callExpr, state, inputVarName, 'webhook');
+						break;
+					}
+					if (callExpr.callee.name === 'waitOnForm') {
+						processWaitCall(callExpr, state, inputVarName, 'form');
+						break;
+					}
 				}
 
 				// Check for .map() call without assignment (expression body only)
@@ -1509,9 +1732,8 @@ function processStatement(
 						const execMatch = matchExecuteNodeCall(body);
 						if (execMatch) {
 							const config = extractNodeConfig(execMatch.config);
-							const nodeJSON = createNodeJSON(config, state);
-							state.nodes.push(nodeJSON);
-							processSubnodes(config, nodeJSON.name!, state);
+							const { node: nodeJSON, isNew } = createNodeJSON(config, state);
+							if (isNew) processSubnodes(config, nodeJSON.name!, state);
 
 							const mapping = state.varToNode.get(mapMatch.sourceVar);
 							if (mapping) {
@@ -1527,8 +1749,7 @@ function processStatement(
 				const match = matchNodeCall(exprStmt.expression);
 				if (match) {
 					const config = extractNodeConfig(match.configExpr);
-					const nodeJSON = createNodeJSON(config, state);
-					state.nodes.push(nodeJSON);
+					const { node: nodeJSON } = createNodeJSON(config, state);
 
 					processSubnodes(config, nodeJSON.name!, state);
 
@@ -1606,8 +1827,7 @@ function processOnTriggerCall(callExpr: CallExpression, state: ParserState): voi
 	if (configArg.type === 'SpreadElement' || !isObjectExpression(configArg)) return;
 
 	const config = extractNodeConfig(configArg);
-	const triggerJSON = createNodeJSON(config, state);
-	state.nodes.push(triggerJSON);
+	const { node: triggerJSON } = createNodeJSON(config, state);
 
 	// If there's a callback function, process its body
 	if (callExpr.arguments.length >= 2) {
@@ -1750,6 +1970,7 @@ export function parseDataFlowCode(code: string): WorkflowJSON {
 		workflowName: name,
 		nodeCounter: 0,
 		usedNames: new Set<string>(),
+		nodesByName: new Map(),
 		insideMap: false,
 		branchDepth: 0,
 		lastNodeInScope: undefined,

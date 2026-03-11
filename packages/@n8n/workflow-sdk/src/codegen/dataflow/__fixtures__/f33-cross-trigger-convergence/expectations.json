@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"POST https://api.example.com/process": {}
+	},
+	"nodes": {
+		"Process Data": {
+			"items": [{ "processed": true }]
+		}
+	}
+}

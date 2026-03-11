@@ -30,7 +30,9 @@ import type {
 	FanOutCompositeNode,
 	ExplicitConnectionsNode,
 	MultiOutputNode,
+	WaitWebhookCompositeNode,
 } from './composite-tree';
+import { isWaitNodeType, isWaitWebhookOrForm, isWaitFormMode } from '../constants/node-types';
 import { findDirectMergeInFanOut, detectMergePattern, findMergeInputIndex } from './merge-pattern';
 import {
 	getAllOutputTargets,
@@ -624,6 +626,33 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 			compositeNode = buildSplitInBatches(node, ctx);
 			break;
 		default: {
+			// Check for wait webhook/form mode — these become composite nodes
+			if (isWaitNodeType(node.type) && isWaitWebhookOrForm(node.json.parameters)) {
+				const mode = isWaitFormMode(node.json.parameters)
+					? ('form' as const)
+					: ('webhook' as const);
+
+				// Build continuation from Wait's output targets
+				const nextTargets = getAllFirstOutputTargets(node);
+				let continuationChain: CompositeNode | null = null;
+				if (nextTargets.length === 1 && !ctx.visited.has(nextTargets[0])) {
+					continuationChain = buildFromNode(nextTargets[0], ctx);
+					// Don't chain to deferred merge
+					if (nextTargets[0] && ctx.deferredMergeNodes.has(nextTargets[0])) {
+						continuationChain = null;
+					}
+				}
+
+				const waitComposite: WaitWebhookCompositeNode = {
+					kind: 'waitWebhook',
+					waitNode: node,
+					mode,
+					setupChain: null, // populated by post-processing absorption
+					continuationChain,
+				};
+				return waitComposite;
+			}
+
 			// Regular node - check for error output and chain continuation
 			let errorHandler: CompositeNode | undefined;
 
@@ -1243,9 +1272,83 @@ function getDownstreamTargetName(chain: CompositeNode | null): string {
 			return chain.nodes.length > 0 ? chain.nodes[0].name : '';
 		case 'multiOutput':
 			return chain.sourceNode.name;
+		case 'waitWebhook':
+			return chain.waitNode.name;
 		default:
 			return '';
 	}
+}
+
+/**
+ * Post-process a composite tree to absorb predecessor nodes into wait webhook/form composites.
+ *
+ * When a chain contains [A, B, waitWebhook(setup=null, cont=C)], transforms it to
+ * [waitWebhook(setup=chain([A, B]), cont=C)].
+ *
+ * Recursively processes all composite node children.
+ */
+function absorbWaitSetupInTree(node: CompositeNode): CompositeNode {
+	if (node.kind === 'chain') {
+		// First, recursively process all chain children
+		const processedNodes = node.nodes.map((n) => absorbWaitSetupInTree(n));
+
+		// Find the first waitWebhook in the chain
+		const waitIdx = processedNodes.findIndex((n) => n.kind === 'waitWebhook');
+		if (waitIdx >= 0) {
+			const waitNode = processedNodes[waitIdx] as WaitWebhookCompositeNode;
+
+			// Don't absorb trigger nodes — they stay as the onTrigger wrapper
+			const firstIsTrigger =
+				processedNodes[0]?.kind === 'leaf' && processedNodes[0].node.annotations.isTrigger;
+			const startIdx = firstIsTrigger ? 1 : 0;
+
+			// Absorb non-trigger preceding nodes into the wait's setupChain
+			if (waitIdx > startIdx) {
+				const predecessors = processedNodes.slice(startIdx, waitIdx);
+				waitNode.setupChain =
+					predecessors.length === 1 ? predecessors[0] : { kind: 'chain', nodes: predecessors };
+			}
+
+			// Remaining: preserved trigger (if any) + wait + nodes after wait
+			const remaining = [
+				...processedNodes.slice(0, startIdx),
+				waitNode,
+				...processedNodes.slice(waitIdx + 1),
+			];
+			if (remaining.length === 1) {
+				return remaining[0];
+			}
+			return { kind: 'chain', nodes: remaining };
+		}
+
+		return { kind: 'chain', nodes: processedNodes };
+	}
+
+	// Recursively process children of other composite types
+	if (node.kind === 'ifElse') {
+		if (node.trueBranch && !Array.isArray(node.trueBranch)) {
+			node.trueBranch = absorbWaitSetupInTree(node.trueBranch);
+		}
+		if (node.falseBranch && !Array.isArray(node.falseBranch)) {
+			node.falseBranch = absorbWaitSetupInTree(node.falseBranch);
+		}
+	} else if (node.kind === 'splitInBatches') {
+		if (node.loopChain && !Array.isArray(node.loopChain)) {
+			node.loopChain = absorbWaitSetupInTree(node.loopChain);
+		}
+		if (node.doneChain && !Array.isArray(node.doneChain)) {
+			node.doneChain = absorbWaitSetupInTree(node.doneChain);
+		}
+	} else if (node.kind === 'waitWebhook') {
+		if (node.continuationChain) {
+			node.continuationChain = absorbWaitSetupInTree(node.continuationChain);
+		}
+	} else if (node.kind === 'fanOut') {
+		node.sourceNode = absorbWaitSetupInTree(node.sourceNode);
+		node.targets = node.targets.map((t) => absorbWaitSetupInTree(t));
+	}
+
+	return node;
 }
 
 /**
@@ -1271,6 +1374,11 @@ export function buildCompositeTree(graph: SemanticGraph): CompositeTree {
 	for (const rootName of graph.roots) {
 		const composite = buildFromNode(rootName, ctx);
 		roots.push(composite);
+	}
+
+	// Post-process: absorb predecessor nodes into wait webhook/form composites
+	for (let i = 0; i < roots.length; i++) {
+		roots[i] = absorbWaitSetupInTree(roots[i]);
 	}
 
 	// Build downstream chains for deferred merge nodes

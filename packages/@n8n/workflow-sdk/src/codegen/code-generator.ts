@@ -20,6 +20,7 @@ import type {
 	FanOutCompositeNode,
 	ExplicitConnectionsNode,
 	MultiOutputNode,
+	WaitWebhookCompositeNode,
 } from './composite-tree';
 import {
 	AI_CONNECTION_TO_CONFIG_KEY,
@@ -986,6 +987,28 @@ function generateMultiOutput(multiOutput: MultiOutputNode, ctx: GenerationContex
 }
 
 /**
+ * Generate SDK code for a wait webhook/form composite.
+ * In SDK format, emits as a plain chain: setup nodes → .to(wait) → continuation nodes.
+ */
+function generateWaitWebhookSDK(node: WaitWebhookCompositeNode, ctx: GenerationContext): string {
+	// Flatten into a chain: setup → wait leaf → continuation, connected via .to()
+	const parts: string[] = [];
+	if (node.setupChain) {
+		parts.push(generateComposite(node.setupChain, ctx));
+	}
+	const waitLeafCode = generateLeaf({ kind: 'leaf', node: node.waitNode }, ctx);
+	if (parts.length === 0) {
+		parts.push(waitLeafCode);
+	} else {
+		parts.push(`.to(${waitLeafCode})`);
+	}
+	if (node.continuationChain) {
+		parts.push(`.to(${generateComposite(node.continuationChain, ctx)})`);
+	}
+	return parts.join('\n' + getIndent(ctx));
+}
+
+/**
  * Generate code for any composite node
  */
 function generateComposite(node: CompositeNode, ctx: GenerationContext): string {
@@ -1012,6 +1035,9 @@ function generateComposite(node: CompositeNode, ctx: GenerationContext): string 
 			return generateExplicitConnections(node, ctx);
 		case 'multiOutput':
 			return generateMultiOutput(node, ctx);
+		case 'waitWebhook':
+			// SDK format: emit as plain chain (wait node as leaf)
+			return generateWaitWebhookSDK(node, ctx);
 	}
 }
 
@@ -1162,6 +1188,10 @@ export function collectNestedMultiOutputs(
 		for (const b of merge.branches) {
 			collectNestedMultiOutputs(b, collected, visited);
 		}
+	} else if (node.kind === 'waitWebhook') {
+		if (node.setupChain) collectNestedMultiOutputs(node.setupChain, collected, visited);
+		if (node.continuationChain)
+			collectNestedMultiOutputs(node.continuationChain, collected, visited);
 	}
 	// leaf, varRef, explicitConnections don't need recursive checking
 }

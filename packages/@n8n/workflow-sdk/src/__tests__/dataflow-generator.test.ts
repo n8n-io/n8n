@@ -829,7 +829,7 @@ describe('dataflow-generator', () => {
 				expect(code).toContain('if (items[0].json.phone !== undefined)');
 			});
 
-			it('generates comment for complex conditions (multiple conditions)', () => {
+			it('generates || for OR combinator with multiple conditions', () => {
 				const json: WorkflowJSON = {
 					name: 'IF Complex',
 					nodes: [
@@ -889,8 +889,9 @@ describe('dataflow-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should have a comment indicating complex condition
-				expect(code).toContain('// Complex condition');
+				// Should generate proper || condition
+				expect(code).toContain("status === 'active' || ");
+				expect(code).toContain("role === 'admin'");
 				expect(code).toContain('if (');
 			});
 		});
@@ -1023,7 +1024,9 @@ describe('dataflow-generator', () => {
 				const code = generateFromWorkflow(json);
 
 				expect(code).toContain(".filter((item) => item.json.active === 'yes')");
-				expect(code).toContain('// discarded items branch');
+				// With discarded branch, uses array destructuring
+				expect(code).toContain('const [filter, ');
+				expect(code).toContain('discarded_Handler');
 			});
 
 			it('does not generate if/else for Filter nodes', () => {

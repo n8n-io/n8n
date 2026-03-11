@@ -163,6 +163,19 @@ export interface MultiOutputNode extends CompositeNodeBase {
 }
 
 /**
+ * Wait webhook/form composite — callback-style DSL primitive.
+ * setupChain: nodes inside the callback body (execute BEFORE the wait, may use resumeUrl)
+ * continuationChain: nodes after the waitOnWebhook()/waitOnForm() call (execute AFTER resume)
+ */
+export interface WaitWebhookCompositeNode extends CompositeNodeBase {
+	kind: 'waitWebhook';
+	waitNode: SemanticNode;
+	mode: 'webhook' | 'form';
+	setupChain: CompositeNode | null;
+	continuationChain: CompositeNode | null;
+}
+
+/**
  * Union of all composite node types
  */
 export type CompositeNode =
@@ -176,7 +189,8 @@ export type CompositeNode =
 	| SplitInBatchesCompositeNode
 	| FanOutCompositeNode
 	| ExplicitConnectionsNode
-	| MultiOutputNode;
+	| MultiOutputNode
+	| WaitWebhookCompositeNode;
 
 /**
  * Deferred input connection - represents a connection that should be expressed
