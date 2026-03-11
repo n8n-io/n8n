@@ -1,0 +1,339 @@
+{
+	"name": "Create LinkedIn Post from Telegram Voice or Text Message",
+	"nodes": [
+		{
+			"id": "7bc24f88-7f6f-4c3a-9796-b4527d9b77a3",
+			"name": "Telegram Trigger",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [-320, 144],
+			"webhookId": "d21d9434-593a-4bf7-8025-0b2889f83765",
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "d9b88c01-a62a-4333-bfa4-ecdc1d4d952f",
+			"name": "Set 'Text'",
+			"type": "n8n-nodes-base.set",
+			"position": [64, 160],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "fe7ecc99-e1e8-4a5e-bdd6-6fce9757b234",
+							"name": "text",
+							"type": "string",
+							"value": "={{ $json.message.text }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "04432fe7-ebcb-47f2-98d0-accd0d27347a",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"position": [-144, 144],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "Voice",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"operator": {
+											"type": "string",
+											"operation": "exists",
+											"singleValue": true
+										},
+										"leftValue": "={{ $json.message.voice.file_id }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Text",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "8c844924-b2ed-48b0-935c-c66a8fd0c778",
+										"operator": {
+											"type": "string",
+											"operation": "exists",
+											"singleValue": true
+										},
+										"leftValue": "={{ $json.message.text }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "2f14333e-4cc2-4f08-a98e-983d2df18b64",
+			"name": "Download File",
+			"type": "n8n-nodes-base.telegram",
+			"position": [0, 0],
+			"webhookId": "86160cc7-7b3d-4186-a2b6-8153cad15ed3",
+			"parameters": {
+				"fileId": "={{ $json.message.voice.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "355fe701-cb6b-48e9-a732-5c369c0d85f1",
+			"name": "Create a post",
+			"type": "n8n-nodes-base.linkedIn",
+			"position": [1024, 64],
+			"parameters": {
+				"text": "={{ $('LinkedIn Post Text').item.json.message.content }}",
+				"person": "z1_S-ihZxl",
+				"additionalFields": {},
+				"shareMediaCategory": "IMAGE"
+			},
+			"credentials": {
+				"linkedInOAuth2Api": {
+					"id": "credential-id",
+					"name": "linkedInOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f4d59ae7-33e3-4ffa-8575-b8dfc24bb527",
+			"name": "Transcribe Audio",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [144, 0],
+			"parameters": {
+				"options": {},
+				"resource": "audio",
+				"operation": "transcribe"
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.6
+		},
+		{
+			"id": "31ab2958-64ed-4bc6-ab4f-a6b858c474f7",
+			"name": "Create Image",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [848, 64],
+			"parameters": {
+				"model": "gpt-image-1",
+				"prompt": "={{ $json.message.content }}",
+				"options": {},
+				"resource": "image"
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "0dcd7167-f0df-43c7-9b5c-d21b454bafe4",
+			"name": "LinkedIn Post Text",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [320, 64],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini",
+					"cachedResultName": "GPT-4.1-MINI"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=You are a LinkedIn post formatter. You receive the user's Telegram message: {{ $json.text }}  and transform it into a polished LinkedIn post.\n\nSTRUCTURE:\n- Hook: Punchy opening line (max 9 words) on its own line.\n- Body: 14-18 short paragraphs (2-3 lines each).\n- Length: 1,242-2,500 characters total.\n- End: Specific question or call-to-action.\n\nFORMATTING:\n- Plain text only. No markdown or special symbols.\n- Use \\n for single line breaks.\n- Use \\n\\n between paragraphs.\n- Add maximum 2 emojis total in the entire post.\n- Use periods at the end of every sentence.\n- Keep sentences 10-19 words.\n- No em dashes or hyphens for breaks.\n\nTONE:\n- Write at grade 5-7 reading level (simple, clear words).\n- Conversational and authentic. Sound like a real person.\n- Use only the information provided in the user's Telegram message.\n- No added humor or jokes.\n- Avoid corporate buzzwords and fluffy language.\n- Be direct and actionable.\n\nLINKEDIN TONE REQUIREMENTS:\n- Start with a scroll-stopping hook that creates curiosity or surprise.\n- Write like you're talking to a colleague, not teaching a class.\n- Use \"I\" statements and personal experiences when possible.\n- Vary sentence length - mix short punchy lines with longer explanations.\n- Show personality - opinions, observations, or lessons learned.\n- Avoid generic statements like \"Many believe\" or \"Some say.\"\n- Make it conversational - how would you explain this over coffee?\n\nWHAT GOOD LINKEDIN POSTS SOUND LIKE:\n\"I spent $5,000 on AI tools last month and only use 3 of them.\"\n\"Everyone talks about AI search but nobody mentions this one thing.\"\n\"My client asked if AI will replace SEO and I said no here's why.\"\n\nAVOID:\n- Hashtags.\n- Generic motivational statements.\n- Walls of text without breaks.\n- External URLs.\n- AI-sounding phrases.\n- More than 2 emojis.\n- Em dashes or hyphens as separators.\n- Adding information not in the user's input.\n\nOUTPUT:\nReturn only the formatted LinkedIn post as plain text. No JSON. No extra commentary.\n"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "3cd3bf29-a49f-475c-873f-79b34effc17b",
+			"name": "Image Prompt",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [576, 64],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini",
+					"cachedResultName": "GPT-4.1-MINI"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=You are an AI image prompt generator for LinkedIn posts. You receive a LinkedIn post text and create a professional image prompt for AI image generation.\n\nYOUR TASK:\nAnalyze the LinkedIn post: {{ $json.message.content }} and generate a single, detailed image prompt that visually represents the main concept.\n\nIMAGE PROMPT REQUIREMENTS:\n\nSTYLE:\n- Professional and clean business aesthetic.\n- Suitable for LinkedIn professional audience.\n- Modern, minimalist design with clear focal point.\n- Avoid cluttered or overly complex compositions.\n\nCONTENT:\n- Focus on the main topic or concept from the post.\n- Use metaphors or visual representations, not literal text.\n- Include relevant business or tech elements when appropriate.\n- Avoid faces, specific people, or identifiable individuals.\n- No text overlays or words in the image.\n\nTECHNICAL SPECS:\n- Describe lighting, colors, and mood clearly.\n- Specify composition (centered, rule of thirds, etc.).\n- Mention perspective (front view, top down, close-up, etc.).\n- Keep aspect ratio suitable for LinkedIn (square or landscape).\n\nPROMPT STRUCTURE:\nWrite prompts in this format:\n\"[Main subject], [setting/background], [style], \n"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		}
+	],
+	"connections": {
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Download File",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Set 'Text'",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set 'Text'": {
+			"main": [
+				[
+					{
+						"node": "LinkedIn Post Text",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Image": {
+			"main": [
+				[
+					{
+						"node": "Create a post",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Image Prompt": {
+			"main": [
+				[
+					{
+						"node": "Create Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a post": {
+			"main": [[]]
+		},
+		"Download File": {
+			"main": [
+				[
+					{
+						"node": "Transcribe Audio",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Telegram Trigger": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Transcribe Audio": {
+			"main": [
+				[
+					{
+						"node": "LinkedIn Post Text",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"LinkedIn Post Text": {
+			"main": [
+				[
+					{
+						"node": "Image Prompt",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

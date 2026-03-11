@@ -1,0 +1,207 @@
+{
+	"name": "Clean My Mail",
+	"nodes": [
+		{
+			"id": "8a921410-15a0-4b0e-9104-19ffa1dd51d0",
+			"name": "Delete All Mails",
+			"type": "n8n-nodes-base.gmail",
+			"position": [320, 500],
+			"webhookId": "b1e6a886-f0ae-479a-a25c-37a6bd9b6c65",
+			"parameters": {
+				"messageId": "={{ $json.id }}",
+				"operation": "delete"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "cbbbaf18-29e4-4a97-8614-3dfeeced42a7",
+			"name": "Run Every 3 Days (Trigger)",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-960, 500],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"daysInterval": 3
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "ecc3647d-f81c-4605-8f66-2a47d20b7dde",
+			"name": "Fetch SPAM Emails",
+			"type": "n8n-nodes-base.gmail",
+			"position": [-540, 320],
+			"webhookId": "ab59faf5-0db2-4bd3-ac09-e59b5ef77a11",
+			"parameters": {
+				"filters": {
+					"labelIds": ["SPAM"]
+				},
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "4a288d12-0fb4-44aa-9c41-242cae4f5dd6",
+			"name": "Fetch Social Emails",
+			"type": "n8n-nodes-base.gmail",
+			"position": [-540, 500],
+			"webhookId": "1ad90798-b252-4856-af51-744b645e2725",
+			"parameters": {
+				"filters": {
+					"labelIds": ["CATEGORY_SOCIAL"]
+				},
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "f65f55af-3374-42fd-98fe-2cfd543077a5",
+			"name": "Fetch Promotion Emails",
+			"type": "n8n-nodes-base.gmail",
+			"position": [-540, 680],
+			"webhookId": "0f24dcf5-dc5e-4395-a9ec-d0c17dbfeac0",
+			"parameters": {
+				"filters": {
+					"labelIds": ["CATEGORY_PROMOTIONS"]
+				},
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "5b1f0245-960c-4c38-a3c9-8545f7838836",
+			"name": "Combine All Fetched Emails",
+			"type": "n8n-nodes-base.merge",
+			"position": [-160, 500],
+			"parameters": {
+				"numberInputs": 3
+			},
+			"typeVersion": 3.1
+		},
+		{
+			"id": "f97101f1-592e-4295-b3f1-a632a5a15551",
+			"name": "Split Email IDs (One per item)",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [40, 500],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "id"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Delete All Mails": {
+			"main": [[]]
+		},
+		"Fetch SPAM Emails": {
+			"main": [
+				[
+					{
+						"node": "Combine All Fetched Emails",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Social Emails": {
+			"main": [
+				[
+					{
+						"node": "Combine All Fetched Emails",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Fetch Promotion Emails": {
+			"main": [
+				[
+					{
+						"node": "Combine All Fetched Emails",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Combine All Fetched Emails": {
+			"main": [
+				[
+					{
+						"node": "Split Email IDs (One per item)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Run Every 3 Days (Trigger)": {
+			"main": [
+				[
+					{
+						"node": "Fetch SPAM Emails",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Fetch Social Emails",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Fetch Promotion Emails",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Email IDs (One per item)": {
+			"main": [
+				[
+					{
+						"node": "Delete All Mails",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

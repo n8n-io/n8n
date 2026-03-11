@@ -1,0 +1,243 @@
+{
+	"name": "SSL Expiry Alert",
+	"nodes": [
+		{
+			"id": "260b66a2-0841-4dc7-9666-acbc9317fd91",
+			"name": "URLs to Monitor",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1120, -120],
+			"parameters": {
+				"columns": {
+					"value": {
+						"URL": "={{ $json.result.host }}",
+						"KnownExpiryDate": "={{ $json.result.valid_till }}"
+					},
+					"schema": [
+						{
+							"id": "Website ",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Website ",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "URL",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "URL",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "KnownExpiryDate",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "KnownExpiryDate",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["URL"]
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.YOUR_AWS_SECRET_KEY_HERE--d1X7509c6__b6gPvA5VpI/edit#gid=0",
+					"cachedResultName": "URLs to Check"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "url",
+					"value": "https://docs.google.YOUR_AWS_SECRET_KEY_HERE--d1X7509c6__b6gPvA5VpI/edit?gid=0#gid=0"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "a2922f1b-9d29-4b66-9560-44207f3e14d2",
+			"name": "Weekly Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [160, 140],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "weeks",
+							"triggerAtDay": [1],
+							"triggerAtHour": 8
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "005564e9-5ecb-4ee9-aca0-69a660656b09",
+			"name": "Fetch URLs",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [420, 140],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "url",
+					"value": "https://docs.google.com/spreadsheets/d/1pnUfIkD90MUG99Fp0vRoAB-w-GPSAwRZw0-JsNl-h3s/edit?gid=0#gid=0"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "url",
+					"value": "https://docs.google.com/spreadsheets/d/1pnUfIkD90MUG99Fp0vRoAB-w-GPSAwRZw0-JsNl-h3s/edit?usp=sharing"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "943c561c-ca89-461c-a6fb-c3011baaf81a",
+			"name": "Check SSL",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [680, 140],
+			"parameters": {
+				"url": "=https://ssl-checker.io/api/v1/check/{{ $json[\"URL\"].replace(/^https?:\\/\\//, \"\").replace(/\\/$/, \"\") }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "911fa691-decf-4572-a46e-d8644d3b2a35",
+			"name": "Expiry Alert",
+			"type": "n8n-nodes-base.if",
+			"position": [1120, 220],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "ee6e2ce8-569a-4f1f-91b5-2c55f605a16b",
+							"operator": {
+								"type": "number",
+								"operation": "lte"
+							},
+							"leftValue": "={{ $json.result.days_left }}",
+							"rightValue": 7
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "8b59ebbb-0a87-40c2-be79-cc38431ebdbd",
+			"name": "Send Alert Email",
+			"type": "n8n-nodes-base.gmail",
+			"position": [1440, 240],
+			"webhookId": "cd6b6b20-e619-4526-aa69-64754e3d9035",
+			"parameters": {
+				"sendTo": "user@example.com",
+				"message": "=SSL Expiry - {{ $json.result.days_left }} Days Left - {{ $json.result.host }}",
+				"options": {
+					"appendAttribution": false
+				},
+				"subject": "=SSL Expiry - {{ $json.result.days_left }} Days Left - {{ $json.result.host }}",
+				"emailType": "text"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		}
+	],
+	"connections": {
+		"Check SSL": {
+			"main": [
+				[
+					{
+						"node": "URLs to Monitor",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Expiry Alert",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch URLs": {
+			"main": [
+				[
+					{
+						"node": "Check SSL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Expiry Alert": {
+			"main": [
+				[
+					{
+						"node": "Send Alert Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Weekly Trigger": {
+			"main": [
+				[
+					{
+						"node": "Fetch URLs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

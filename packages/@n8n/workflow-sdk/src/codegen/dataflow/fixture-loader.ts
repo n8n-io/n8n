@@ -10,6 +10,8 @@ export interface Fixture {
 	/** Original WorkflowJSON for reference comparison (optional) */
 	referenceJson?: string;
 	skip?: string;
+	/** n8n template ID for real-workflow fixtures */
+	templateId?: string;
 	/** Whether this fixture has a nock.ts file for HTTP mocking */
 	hasNock: boolean;
 	/** Whether this fixture has expectations.json */
@@ -25,6 +27,7 @@ export interface Fixture {
 interface FixtureMeta {
 	title: string;
 	skip?: string;
+	templateId?: string;
 }
 
 const FIXTURES_DIR = join(__dirname, '__fixtures__');
@@ -40,6 +43,7 @@ function loadFixtureFromDir(dirPath: string, dirName: string): Fixture {
 				title: meta.title,
 				input: '',
 				skip: meta.skip,
+				templateId: meta.templateId,
 				hasNock: false,
 				hasExpectations: false,
 				hasPinData: false,
@@ -74,6 +78,7 @@ function loadFixtureFromDir(dirPath: string, dirName: string): Fixture {
 		input,
 		referenceJson,
 		skip: meta.skip,
+		templateId: meta.templateId,
 		hasNock,
 		hasExpectations,
 		expectations,

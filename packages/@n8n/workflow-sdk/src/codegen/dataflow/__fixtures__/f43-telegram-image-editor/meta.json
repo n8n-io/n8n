@@ -1,0 +1,5 @@
+{
+	"title": "F43: Telegram Image Editor",
+	"templateId": "8998",
+	"skip": "Parser cannot handle n8n expressions with nested ternary operators in filter conditions"
+}

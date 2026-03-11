@@ -1,0 +1,207 @@
+{
+	"name": "📨 Send AI summaries of incoming emails from Gmail to Telegram",
+	"nodes": [
+		{
+			"id": "28581eaf-47f8-43ad-81cf-688d8f77a630",
+			"name": "Prepare fields for agent",
+			"type": "n8n-nodes-base.set",
+			"position": [-80, -160],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "ffff425d-cd86-498a-9984-d4c97c082a7b",
+							"name": "summary_language",
+							"type": "string",
+							"value": "={{ $json.summary_language }}"
+						},
+						{
+							"id": "a6dc9f16-faa1-4d82-be3c-b80937563605",
+							"name": "from",
+							"type": "string",
+							"value": "={{ $json.from?.text || $json.from?.value?.[0]?.address || 'Unknown sender' }}"
+						},
+						{
+							"id": "c4f8daff-77e0-453f-82c2-751a8d6b8061",
+							"name": "subject",
+							"type": "string",
+							"value": "={{ $json.subject }}"
+						},
+						{
+							"id": "43c37703-1f05-4f20-9d6f-0f7c08be6462",
+							"name": "message",
+							"type": "string",
+							"value": "={{ $json.html || $json.text || 'No message content available' }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "f72c5973-cc9d-4815-993c-ed7bd853fcc4",
+			"name": "When a new email arrives",
+			"type": "n8n-nodes-base.gmailTrigger",
+			"position": [-520, -160],
+			"parameters": {
+				"simple": false,
+				"filters": {},
+				"options": {},
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyMinute"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "95fb2d1e-efbb-4163-9e75-b85cf3fd50bf",
+			"name": "Set summary language",
+			"type": "n8n-nodes-base.set",
+			"position": [-300, -160],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "148dcae1-3b72-4c28-b143-18b4b9877295",
+							"name": "summary_language",
+							"type": "string",
+							"value": "english"
+						}
+					]
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "8db9747f-c0a6-4044-837a-04212c8dbe56",
+			"name": "OpenAI Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [228, 60],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "8823b3ab-4e9b-4be6-bf6c-9772f1fcd17e",
+			"name": "Send summary to Telegram",
+			"type": "n8n-nodes-base.telegram",
+			"position": [516, -160],
+			"webhookId": "b38c3ed8-da48-4c6c-b5a3-181889dd3dd3",
+			"parameters": {
+				"text": "={{ $json.output }}",
+				"chatId": "SAMPLE CHAT ID - CHANGE IT",
+				"additionalFields": {
+					"parse_mode": "Markdown",
+					"appendAttribution": false
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 1.2,
+			"waitBetweenTries": 3000
+		},
+		{
+			"id": "ad603819-26e0-41e8-b4bb-99d30cbc4902",
+			"name": "Summary generation agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [140, -160],
+			"parameters": {
+				"text": "=Summarize the following email in this language: {{ $json.summary_language }}\n\nFrom: {{ $json.from }}\nSubject: {{ $json.subject }}\n\n{{ $json.message }}",
+				"options": {
+					"systemMessage": "You summarize emails in a short, natural, and informal way. Use a casual tone, like you're talking to a friend. Always write in the language specified by the user. Include who sent the email, what it’s about, the most relevant details (like purchase info, prices, discounts, dates, or refund conditions), and ignore anything redundant or overly formal. Avoid robotic language, lists, or instructions like “keep this email.” Just say what matters."
+				},
+				"promptType": "define"
+			},
+			"retryOnFail": true,
+			"typeVersion": 1.9,
+			"waitBetweenTries": 3000
+		}
+	],
+	"connections": {
+		"OpenAI Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Summary generation agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set summary language": {
+			"main": [
+				[
+					{
+						"node": "Prepare fields for agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Prepare fields for agent": {
+			"main": [
+				[
+					{
+						"node": "Summary generation agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Summary generation agent": {
+			"main": [
+				[
+					{
+						"node": "Send summary to Telegram",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When a new email arrives": {
+			"main": [
+				[
+					{
+						"node": "Set summary language",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

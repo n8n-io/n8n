@@ -1,0 +1,215 @@
+{
+	"name": "Email New Leads",
+	"nodes": [
+		{
+			"id": "425810c5-874c-41db-8fdd-59450e7f280e",
+			"name": "Send a message",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"position": [-784, 9472],
+			"webhookId": "028da3bf-3bd3-4c4f-883a-4e0f18c67f81",
+			"parameters": {
+				"subject": "Build AI Agents & Automations with n8n",
+				"bodyContent": "Hi There,\n\nI help people learn how to build AI agents and create powerful AI automations using n8n. If you’re exploring ways to save time or scale your workflows, I’d love to share what’s possible.\n\nYou can check out my n8n Creator profile here with 70+ ready-to-use automations:\n👉 https://n8n.io/creators/rbreen\n\nIf you’d like help getting started or want to see what AI + n8n can do for your business, just reply to this email.\n\nBest,\nRobert Breen\n📞 +1234567890\n🔗 https://www.linkedin.com/in/robert-breen-29429625/",
+				"toRecipients": "={{ $json.Email }}",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "credential-id",
+					"name": "microsoftOutlookOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 2,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "e84f0281-eb13-4afa-b831-eae6f1a5cf54",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-2416, 9072],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"triggerAtHour": 9
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "1d3ef656-0288-45c2-8b82-a9aa7b57e2b0",
+			"name": "Get row(s) in sheet3",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-2080, 9232],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1sXXVbl2kKdYTzCmZDe7QyeMp1N9wZg9K63oGK2UIaeU/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1sXXVbl2kKdYTzCmZDe7QyeMp1N9wZg9K63oGK2UIaeU",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1sXXVbl2kKdYTzCmZDe7QyeMp1N9wZg9K63oGK2UIaeU/edit?usp=drivesdk",
+					"cachedResultName": "New Leads"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "7fa47640-1e65-491d-9457-ef32d0b7f600",
+			"name": "Filter1",
+			"type": "n8n-nodes-base.filter",
+			"position": [-1744, 9088],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "914418a9-8c96-4959-abb7-ad3bb52f420d",
+							"operator": {
+								"type": "string",
+								"operation": "empty",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.Contacted }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "3b4a33f6-c810-4dcb-9b19-3abc6b982e9f",
+			"name": "Append or update row in sheet1",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-1312, 8736],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Email": "={{ $json.Email }}",
+						"Contacted": "Yes"
+					},
+					"schema": [
+						{
+							"id": "Email",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Email",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Contacted",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Contacted",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Created",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Created",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Email"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/14T6rilaOl1LBTwNnu7ILE3T1equWOz0noI-OIUaI3zU/edit#gid=0",
+					"cachedResultName": "leads"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "14T6rilaOl1LBTwNnu7ILE3T1equWOz0noI-OIUaI3zU",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/14T6rilaOl1LBTwNnu7ILE3T1equWOz0noI-OIUaI3zU/edit?usp=drivesdk",
+					"cachedResultName": "New Leads - Real"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.7
+		}
+	],
+	"connections": {
+		"Filter1": {
+			"main": [
+				[
+					{
+						"node": "Append or update row in sheet1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send a message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Get row(s) in sheet3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get row(s) in sheet3": {
+			"main": [
+				[
+					{
+						"node": "Filter1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

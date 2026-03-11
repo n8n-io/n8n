@@ -1,0 +1,64 @@
+{
+	"name": "JSON String Validator via Webhook",
+	"nodes": [
+		{
+			"id": "72785a1d-32f6-4f0d-a412-5327c059ddd3",
+			"name": "Webhook: Receive JSON String",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-680, -140],
+			"webhookId": "2604aa77-b575-4c3f-b1df-feab9c775603",
+			"parameters": {
+				"path": "validate-json-string",
+				"options": {},
+				"httpMethod": "POST",
+				"responseMode": "responseNode"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "940b04da-3f16-434d-8181-9452dd3ba007",
+			"name": "Respond to Webhook with Result",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [100, -140],
+			"parameters": {
+				"options": {},
+				"respondWith": "allIncomingItems"
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "4546866f-9376-47cf-ac19-caf0eb197cca",
+			"name": "Code: Validate JSON String",
+			"type": "n8n-nodes-base.code",
+			"position": [-300, -140],
+			"parameters": {
+				"jsCode": "// This node validates if the 'jsonString' in the webhook body is valid JSON.\n// It returns 'valid: true' or 'valid: false' along with an error message if invalid.\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  try {\n    // Attempt to parse the jsonString from the webhook body\n    // Ensure 'jsonString' exists before attempting to parse\n    if (item.json.body && typeof item.json.body.jsonString === 'string') {\n      JSON.parse(item.json.body.jsonString);\n      results.push({ json: { valid: true } });\n    } else {\n      // Handle cases where jsonString is missing or not a string\n      results.push({ json: { valid: false, error: \"Input 'jsonString' is missing or not a string.\" } });\n    }\n  } catch (e) {\n    // If parsing fails, push the error message\n    results.push({ json: { valid: false, error: e.message } });\n  }\n}\n\nreturn results;"
+			},
+			"typeVersion": 2
+		}
+	],
+	"connections": {
+		"Code: Validate JSON String": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook with Result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook: Receive JSON String": {
+			"main": [
+				[
+					{
+						"node": "Code: Validate JSON String",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

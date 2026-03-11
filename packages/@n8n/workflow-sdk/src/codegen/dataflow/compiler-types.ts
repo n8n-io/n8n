@@ -27,6 +27,7 @@ export interface CompilerTestEntry {
 	title: string;
 	dirName: string;
 	skip?: string;
+	templateId?: string;
 	inputCode: string;
 	parsedJson?: string;
 	reGeneratedCode?: string;

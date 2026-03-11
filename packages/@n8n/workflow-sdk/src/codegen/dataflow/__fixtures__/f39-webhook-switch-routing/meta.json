@@ -1,0 +1,5 @@
+{
+	"title": "F39: Webhook Switch Routing",
+	"templateId": "5665",
+	"skip": "Parser cannot handle n8n expressions with ternary operators inside switch conditions"
+}

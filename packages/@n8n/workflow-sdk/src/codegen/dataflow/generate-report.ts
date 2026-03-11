@@ -450,7 +450,7 @@ function generateHtml(entries: CompilerTestEntry[]): string {
       <details class="card-details" data-id="${entry.dirName}">
         <summary class="card-summary">
           ${statusBadge} ${codeMatchBadge}
-          <span class="card-title">${escapeHtml(entry.title)}</span>
+          <span class="card-title">${escapeHtml(entry.title)}</span>${entry.templateId ? ` <a href="https://n8n.io/workflows/${entry.templateId}" target="_blank" class="template-link">#${escapeHtml(entry.templateId)}</a>` : ''}
           <span class="card-stats">${statsBadges}</span>
         </summary>
         ${skipNote}
@@ -556,6 +556,8 @@ function generateHtml(entries: CompilerTestEntry[]): string {
     .badge.pass { background: #1b3a2d; color: #3fb950; }
     .badge.skip { background: #3d2e00; color: #d29922; }
     .badge.error { background: #3d1a1a; color: #f85149; }
+    .template-link { font-size: 12px; color: #58a6ff; text-decoration: none; font-weight: 400; }
+    .template-link:hover { text-decoration: underline; }
     .skip-reason, .error-msg { font-size: 13px; color: #8b949e; margin-bottom: 12px; padding: 8px 12px; background: #1c2128; border-radius: 4px; }
     .error-msg { background: #2d1216; color: #f85149; }
     details { margin-bottom: 12px; }

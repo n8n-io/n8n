@@ -42,6 +42,7 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 				title: fixture.title,
 				dirName: fixture.dir,
 				skip: fixture.skip,
+				templateId: fixture.templateId,
 				inputCode: fixture.input,
 				roundTripStatus: 'skip',
 			});
@@ -53,6 +54,7 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 			const entry: CompilerTestEntry = {
 				title: fixture.title,
 				dirName: fixture.dir,
+				templateId: fixture.templateId,
 				inputCode: fixture.input,
 				roundTripStatus: 'pass',
 			};

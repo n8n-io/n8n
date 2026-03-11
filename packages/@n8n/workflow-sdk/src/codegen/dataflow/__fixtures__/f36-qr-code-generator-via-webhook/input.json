@@ -1,0 +1,66 @@
+{
+	"name": "QR Code Generator via Webhook",
+	"nodes": [
+		{
+			"id": "c9a692b7-62bd-40e2-8c92-0dbbc37f3e12",
+			"name": "Generate QR Code",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [580, 140],
+			"parameters": {
+				"url": "=https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $json.body.data }}",
+				"method": "=GET",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "cb065a0f-562a-432f-9ed4-c942fdd6a808",
+			"name": "Receive Data Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"position": [260, 140],
+			"webhookId": "6960391c-83cf-49b3-aa8d-761cd8263d76-unique-id",
+			"parameters": {
+				"path": "generate-qr",
+				"options": {},
+				"httpMethod": "POST",
+				"responseMode": "responseNode"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "acd3ea0f-7694-4875-994c-3b365c10fc28",
+			"name": "Respond with QR Code",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [920, 140],
+			"parameters": {
+				"options": {},
+				"respondWith": "allIncomingItems"
+			},
+			"typeVersion": 1.2
+		}
+	],
+	"connections": {
+		"Generate QR Code": {
+			"main": [
+				[
+					{
+						"node": "Respond with QR Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Receive Data Webhook": {
+			"main": [
+				[
+					{
+						"node": "Generate QR Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

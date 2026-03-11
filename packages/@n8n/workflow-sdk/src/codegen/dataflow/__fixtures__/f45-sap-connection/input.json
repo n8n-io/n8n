@@ -1,0 +1,157 @@
+{
+	"name": "Conexion SAP",
+	"nodes": [
+		{
+			"id": "34406311-d715-481c-a61c-b8c382536ddb",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [0, 0],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "72224168-7e1c-437f-816f-9181405d28bb",
+			"name": "Set Login Data",
+			"type": "n8n-nodes-base.set",
+			"position": [220, 0],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0d7bca14-f15c-4722-b10a-5c10fb763247",
+							"name": "sap_url",
+							"type": "string",
+							"value": ""
+						},
+						{
+							"id": "8edfe1d1-bbbe-487b-bc5d-591ed9faa97d",
+							"name": "sap_username",
+							"type": "string",
+							"value": ""
+						},
+						{
+							"id": "6ff2fb60-0c71-4fab-ae31-26bfcba03058",
+							"name": "sap_password",
+							"type": "string",
+							"value": ""
+						},
+						{
+							"id": "838523c8-1ebb-4bd1-a13b-3f0921f97576",
+							"name": "sap_companydb",
+							"type": "string",
+							"value": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "ef7da537-aaa8-4589-bcc9-80672d0b4096",
+			"name": "SAP Connection",
+			"type": "n8n-nodes-base.httpRequest",
+			"onError": "continueErrorOutput",
+			"position": [440, 0],
+			"parameters": {
+				"url": "={{ $json.sap_url }}Login",
+				"method": "POST",
+				"options": {
+					"allowUnauthorizedCerts": true
+				},
+				"jsonBody": "={\n       \"UserName\": \"{{ $json.sap_username }}\",\n       \"Password\": \"{{ $json.sap_password }}\",\n       \"CompanyDB\": \"{{ $json.sap_companydb }}\"\n}",
+				"sendBody": true,
+				"specifyBody": "json"
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "960fff2d-1135-4cac-a94a-e174af7b8c3b",
+			"name": "Failed",
+			"type": "n8n-nodes-base.set",
+			"position": [660, 100],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "7ed3ddd5-5334-4a53-8f2d-1c883129b6c3",
+							"name": "statusCode",
+							"type": "string",
+							"value": "={{ $json.error.status }}"
+						},
+						{
+							"id": "b5600ed6-ef4b-4b4a-9829-2afc290bd0b3",
+							"name": "errorMessage",
+							"type": "string",
+							"value": "={{ $json.error.message }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "4744fa72-6249-4565-ba17-c225d303c4eb",
+			"name": "Success",
+			"type": "n8n-nodes-base.set",
+			"position": [660, -100],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "a0be1383-9c5e-4246-b506-7a453c1859f6",
+							"name": "sessionID",
+							"type": "string",
+							"value": "={{ $json.SessionId }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		}
+	],
+	"connections": {
+		"SAP Connection": {
+			"main": [
+				[
+					{
+						"node": "Success",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Failed",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Login Data": {
+			"main": [
+				[
+					{
+						"node": "SAP Connection",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Set Login Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

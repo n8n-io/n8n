@@ -1,0 +1,131 @@
+{
+	"name": "NixGuard Security Workflow",
+	"nodes": [
+		{
+			"id": "4e688357-b526-4ec6-aa52-ba57bef8ceea",
+			"name": "Execute NixGuard & Wazuh Workflow",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"position": [-420, -1220],
+			"parameters": {
+				"options": {},
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "I0nUORqYTwDFZa51",
+					"cachedResultName": "Get Real-Time Security Insights with NixGuard RAG and Wazuh Integration"
+				},
+				"workflowInputs": {
+					"value": {},
+					"schema": [],
+					"mappingMode": "passThrough",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": true
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "c1ec5184-46b1-4893-a021-966b95e46c01",
+			"name": "Format NixGuard AI Summary & Wazuh Insights",
+			"type": "n8n-nodes-base.set",
+			"position": [-200, -1220],
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "ai_summary",
+							"value": "={{ $json.output }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "698377ac-1c77-45fe-b877-eff606701b82",
+			"name": "(Optional) Send Slack Alert for High-Risk Events",
+			"type": "n8n-nodes-base.slack",
+			"disabled": true,
+			"position": [40, -1220],
+			"webhookId": "754f208d-453b-4202-a61a-18a5dce12a9d",
+			"parameters": {
+				"text": "=🚨 *NixGuard IP Analysis* 🚨\n\n*AI Summary:*\n{{ $json.ai_summary }}",
+				"otherOptions": {},
+				"authentication": "oAuth2"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "cfef93de-f471-410a-b326-ae50f810172c",
+			"name": "Set API Key & Initial Prompt1",
+			"type": "n8n-nodes-base.set",
+			"position": [-640, -1220],
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "apiKey",
+							"value": ""
+						},
+						{
+							"name": "chatInput",
+							"value": "Scan this ip for me 0.0.0.0"
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "9f8c29b7-c2fc-4ac2-895c-2e3b1d68bde2",
+			"name": "Webhook Trigger\n(REAL-WORLD USE)1",
+			"type": "n8n-nodes-base.webhook",
+			"active": false,
+			"position": [-640, -980],
+			"webhookId": "79b37c02-e2d7-4648-9d54-b5f7786411cd",
+			"parameters": {
+				"path": "my-analysis-webhook",
+				"options": {}
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Set API Key & Initial Prompt1": {
+			"main": [
+				[
+					{
+						"node": "Execute NixGuard & Wazuh Workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Execute NixGuard & Wazuh Workflow": {
+			"main": [
+				[
+					{
+						"node": "Format NixGuard AI Summary & Wazuh Insights",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format NixGuard AI Summary & Wazuh Insights": {
+			"main": [
+				[
+					{
+						"node": "(Optional) Send Slack Alert for High-Risk Events",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

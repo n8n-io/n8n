@@ -1,0 +1,235 @@
+{
+	"name": "Error handling alerts with Google Sheets, Telegram and Gmail",
+	"nodes": [
+		{
+			"id": "ad41781c-30ed-4408-b3a4-7bfa592c3dd0",
+			"name": "Error Trigger",
+			"type": "n8n-nodes-base.errorTrigger",
+			"position": [-80, -100],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "98d27f8f-baec-404f-a960-9068e66a9586",
+			"name": "Log error",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [140, -200],
+			"parameters": {
+				"columns": {
+					"value": {
+						"URL": "={{ $json.execution.url }}",
+						"Node": "={{ $json.execution.error.node.name }}",
+						"STATUS": "NEW",
+						"Workflow": "={{ $json.workflow.name }}",
+						"Timestamp": "={{ $now.format('D hh:mm a') }}",
+						"Error Message": "={{ $json.execution.error.message }}"
+					},
+					"schema": [
+						{
+							"id": "Timestamp",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Timestamp",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Workflow",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Workflow",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "URL",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "URL",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Node",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Node",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Error Message",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Error Message",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "STATUS",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "STATUS",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Notes",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Notes",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KKolzBcFWGI_RtFUvT1bdufFpMdA0WfM9quvgg_cKlU/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1KKolzBcFWGI_RtFUvT1bdufFpMdA0WfM9quvgg_cKlU",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KKolzBcFWGI_RtFUvT1bdufFpMdA0WfM9quvgg_cKlU/edit?usp=drivesdk",
+					"cachedResultName": "Error Logs"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "c62ec787-76eb-400d-852f-6df07eba72b9",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [140, 0],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0e3ef75e-b4d9-489a-b45b-ca0b994756a7",
+							"name": "telegramChatID",
+							"type": "string",
+							"value": "chatID"
+						},
+						{
+							"id": "6e354af6-dd5e-4200-99ef-7856129d782e",
+							"name": "toEmail",
+							"type": "string",
+							"value": "toEmail"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "12396bb3-7143-466c-a9e0-b7a567425706",
+			"name": "Notify in channel",
+			"type": "n8n-nodes-base.telegram",
+			"position": [360, 0],
+			"webhookId": "41264c12-622c-45c1-badd-1e0834773b7f",
+			"parameters": {
+				"text": "=⚠️🐛 New bug in n8n\n\nWorkflow: {{ $('Error Trigger').item.json.workflow.name }}\nExecution URL: {{ $('Error Trigger').item.json.execution.url }}\nNode name: {{ $('Error Trigger').item.json.execution.error.node.name }}\nError message: {{ $('Error Trigger').item.json.execution.error.message }}",
+				"chatId": "={{ $json.telegramChatID }}",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "cf154995-a319-4c24-8244-3a1a6d75cc81",
+			"name": "Send email",
+			"type": "n8n-nodes-base.gmail",
+			"position": [580, 0],
+			"webhookId": "38f55ad5-84b6-4232-927f-fa0c24e23bd7",
+			"parameters": {
+				"sendTo": "={{ $('Edit Fields').item.json.toEmail }}",
+				"message": "={{ $json.result.text }}",
+				"options": {
+					"senderName": "n8n Error Tracker",
+					"appendAttribution": false
+				},
+				"subject": "=🐛New n8n bug in \"{{ $('Error Trigger').item.json.workflow.name }}\""
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		}
+	],
+	"connections": {
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Notify in channel",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Error Trigger": {
+			"main": [
+				[
+					{
+						"node": "Log error",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Notify in channel": {
+			"main": [
+				[
+					{
+						"node": "Send email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

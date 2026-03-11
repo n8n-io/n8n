@@ -1,0 +1,148 @@
+{
+	"name": "Form to Google Doc",
+	"nodes": [
+		{
+			"id": "56e70371-54a2-4421-9ce2-e626d9c6ef60",
+			"name": "Form",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [-440, -120],
+			"webhookId": "622256ee-9248-43a2-840e-b28436800aac",
+			"parameters": {
+				"options": {},
+				"formTitle": "Form",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "name",
+							"requiredField": true
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "e1c4d0a8-6e48-45d9-bec6-ee8bb3751b4f",
+			"name": "Copy template file",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [-220, -120],
+			"parameters": {
+				"name": "={{ $json.name }}",
+				"fileId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1KyR0UMIOpEkjwa6o1gTggNBP2A6EWwppV59Y6NQuDYw",
+					"cachedResultUrl": "https://docs.google.com/document/d/1KyR0UMIOpEkjwa6o1gTggNBP2A6EWwppV59Y6NQuDYw/edit?usp=drivesdk",
+					"cachedResultName": "Szablon: Dokument testowy"
+				},
+				"options": {},
+				"operation": "copy"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "52a27a15-ca68-4381-9a0d-faa1127d7de9",
+			"name": "Format form data",
+			"type": "n8n-nodes-base.code",
+			"position": [0, -120],
+			"parameters": {
+				"jsCode": "const data = [];\n\nObject.keys($('Form').all().map((item) => {\n  Object.keys(item.json).map((bodyProperty) => {\n    data.push({\n      key: bodyProperty,\n      value: item.json[bodyProperty],\n    });\n  })\n}));\n\nreturn {\n  webhook_data: data,\n  pairedItem: 0,\n};"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "08dbeb42-16f6-4771-bbf8-a358fda54097",
+			"name": "Format form data to Google Doc API",
+			"type": "n8n-nodes-base.code",
+			"position": [220, -120],
+			"parameters": {
+				"jsCode": "const result = [];\n\n$('Format form data').all().map((item) => {\n  item.json.webhook_data.map((data) => {\n    if (\"submittedAt\" !== data.key && \"formMode\" !== data.key) {\n      result.push({\n        \"replaceAllText\": {\n            \"containsText\": {\n              \"text\": `{{${data.key}}}`, \n              \"matchCase\": true\n            },\n            \"replaceText\": `${data.value}`\n        },\n      });\n    }\n  });\n})\n\nreturn {\n  data: result,\n  pairedItem: 0,\n};"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "99b03034-8c9b-4e23-8cc9-bf9960a4e06a",
+			"name": "Replace data in Google Doc",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [440, -120],
+			"parameters": {
+				"url": "=https://docs.googleapis.com/v1/documents/{{ $('Copy template file').first().json.id }}:batchUpdate",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"authentication": "predefinedCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "requests",
+							"value": "={{ $json.data }}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleDocsOAuth2Api"
+			},
+			"credentials": {
+				"googleDocsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDocsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		}
+	],
+	"connections": {
+		"Form": {
+			"main": [
+				[
+					{
+						"node": "Copy template file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format form data": {
+			"main": [
+				[
+					{
+						"node": "Format form data to Google Doc API",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Copy template file": {
+			"main": [
+				[
+					{
+						"node": "Format form data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Replace data in Google Doc": {
+			"main": [[]]
+		},
+		"Format form data to Google Doc API": {
+			"main": [
+				[
+					{
+						"node": "Replace data in Google Doc",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

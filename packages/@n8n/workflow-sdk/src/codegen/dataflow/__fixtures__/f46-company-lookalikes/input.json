@@ -1,0 +1,253 @@
+{
+	"name": "Find Similar Companies to your Best Customers with CompanyEnrich",
+	"nodes": [
+		{
+			"id": "1b41631b-802b-4165-80e6-0e6b63d1c8a1",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [224, 416],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "d377c0b5-0e05-49fd-ad9c-3bf0b6634e0d",
+			"name": "Read Source List",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [448, 416],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/148uMDDvJLyCKwgClg8tdaMDwxYPXPxsv6EWCyH11R4s/edit#gid=0",
+					"cachedResultName": "Source List"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "148uMDDvJLyCKwgClg8tdaMDwxYPXPxsv6EWCyH11R4s",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/148uMDDvJLyCKwgClg8tdaMDwxYPXPxsv6EWCyH11R4s/edit?usp=drivesdk",
+					"cachedResultName": "Find Company Lookalikes"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "Google Sheets account 2"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "e72e4a93-080d-4764-84cc-41843e8a2337",
+			"name": "Fetch Similar Companies",
+			"type": "n8n-nodes-base.httpRequest",
+			"onError": "continueRegularOutput",
+			"position": [688, 304],
+			"parameters": {
+				"url": "https://api.companyenrich.com/companies/similar",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"sendHeaders": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "domain",
+							"value": "={{ $json.Domain }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "fefc9918-e47c-486c-b32b-5e8521e82887",
+			"name": "Merge Source & API",
+			"type": "n8n-nodes-base.merge",
+			"position": [928, 416],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition"
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "5d30848c-8e23-4fda-9f4d-f772c6f3593a",
+			"name": "Split Out Items",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [1152, 416],
+			"parameters": {
+				"include": "allOtherFields",
+				"options": {},
+				"fieldToSplitOut": "items"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a2bcde30-9417-4cca-85c8-15b4e9427144",
+			"name": "Write Results",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1376, 416],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Added Date": "={{ $now }}",
+						"Source Domain": "={{ $json.Domain }}",
+						"Similar Domain": "={{ $json.items.domain }}",
+						"Similarity Score": "={{ $json.metadata.scores[$json.items.id] }}",
+						"Similar Company Name": "={{ $json.items.name }}"
+					},
+					"schema": [
+						{
+							"id": "Source Domain",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Source Domain",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Similar Company Name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Similar Company Name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Similar Domain",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Similar Domain",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Similarity Score",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Similarity Score",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Added Date",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Added Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 1540563700,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/148uMDDvJLyCKwgClg8tdaMDwxYPXPxsv6EWCyH11R4s/edit#gid=1540563700",
+					"cachedResultName": "Lookalike Results"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "148uMDDvJLyCKwgClg8tdaMDwxYPXPxsv6EWCyH11R4s",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/148uMDDvJLyCKwgClg8tdaMDwxYPXPxsv6EWCyH11R4s/edit?usp=drivesdk",
+					"cachedResultName": "Find Company Lookalikes"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "Google Sheets account 2"
+				}
+			},
+			"typeVersion": 4.7
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Read Source List",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out Items": {
+			"main": [
+				[
+					{
+						"node": "Write Results",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Source List": {
+			"main": [
+				[
+					{
+						"node": "Fetch Similar Companies",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge Source & API",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Merge Source & API": {
+			"main": [
+				[
+					{
+						"node": "Split Out Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Similar Companies": {
+			"main": [
+				[
+					{
+						"node": "Merge Source & API",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
