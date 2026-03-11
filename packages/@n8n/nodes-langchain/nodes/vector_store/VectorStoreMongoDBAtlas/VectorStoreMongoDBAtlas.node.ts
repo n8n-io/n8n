@@ -311,8 +311,8 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	insertFields,
 	sharedFields,
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
+		const client = await createMongoClient(context, context.getNode().typeVersion);
 		try {
-			const client = await createMongoClient(context, context.getNode().typeVersion);
 			const db = await getDatabase(context, client);
 			const collectionName = getCollectionName(context, itemIndex);
 			const mongoVectorIndexName = getVectorIndexName(context, itemIndex);
@@ -352,6 +352,7 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 				postFilterPipeline,
 			);
 		} catch (error) {
+			void client.close().catch(() => {});
 			if (error instanceof NodeOperationError) {
 				throw error;
 			}
