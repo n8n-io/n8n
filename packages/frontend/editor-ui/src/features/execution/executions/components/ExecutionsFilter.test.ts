@@ -12,7 +12,10 @@ import type { ExecutionFilterType } from '../executions.types';
 import { createComponentRenderer } from '@/__tests__/render';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
+import type { MockInstance } from 'vitest';
 import * as restApiClient from '@n8n/rest-api-client';
+
+vi.mock('@n8n/rest-api-client');
 
 vi.mock('vue-router', () => ({
 	useRoute: () =>
@@ -283,7 +286,7 @@ describe('ExecutionsFilter', () => {
 				name: i === 0 ? 'Named version' : null,
 			}));
 
-		let makeRestApiRequestSpy: ReturnType<typeof vi.spyOn>;
+		let makeRestApiRequestSpy: MockInstance;
 
 		beforeEach(() => {
 			makeRestApiRequestSpy = vi.spyOn(restApiClient, 'makeRestApiRequest');
