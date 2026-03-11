@@ -368,12 +368,12 @@ export class PrometheusMetricsService {
 		});
 
 		this.eventService.on('workflow-post-execute', ({ runData, workflow }) => {
-			if (!runData?.startedAt || !runData?.stoppedAt) return;
+			if (!runData?.stoppedAt) return;
 
 			const durationSeconds = (runData.stoppedAt.getTime() - runData.startedAt.getTime()) / 1000;
 			const labels: Record<string, string> = {
-				status: runData.finished ? 'success' : 'failed',
-				mode: runData.mode ?? 'unknown',
+				status: runData.status === 'success' ? 'success' : 'failed',
+				mode: runData.mode,
 			};
 
 			if (this.includes.labels.workflowId) {

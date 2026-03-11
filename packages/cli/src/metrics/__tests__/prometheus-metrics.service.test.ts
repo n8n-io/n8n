@@ -631,7 +631,7 @@ describe('PrometheusMetricsService', () => {
 				runData: {
 					startedAt: new Date('2026-01-01T00:00:00Z'),
 					stoppedAt: new Date('2026-01-01T00:00:05Z'),
-					finished: true,
+					status: 'success',
 					mode: 'trigger',
 				},
 				workflow: { id: 'wf_123', name: 'Test Workflow' },
@@ -653,7 +653,7 @@ describe('PrometheusMetricsService', () => {
 				runData: {
 					startedAt: new Date('2026-01-01T00:00:00Z'),
 					stoppedAt: new Date('2026-01-01T00:00:02.5Z'),
-					finished: false,
+					status: 'error',
 					mode: 'webhook',
 				},
 				workflow: { id: 'wf_456', name: 'Failed Workflow' },
@@ -662,6 +662,28 @@ describe('PrometheusMetricsService', () => {
 			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
 				{ status: 'failed', mode: 'webhook' },
 				2.5,
+			);
+		});
+
+		it('should map crashed status to failed', async () => {
+			prometheusMetricsService.enableMetric('workflowExecutionDuration');
+			promClient.Histogram.prototype.observe = jest.fn();
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventHandler();
+			handler({
+				runData: {
+					startedAt: new Date('2026-01-01T00:00:00Z'),
+					stoppedAt: new Date('2026-01-01T00:00:03Z'),
+					status: 'crashed',
+					mode: 'trigger',
+				},
+				workflow: { id: 'wf_789', name: 'Crashed Workflow' },
+			});
+
+			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
+				{ status: 'failed', mode: 'trigger' },
+				3,
 			);
 		});
 
@@ -676,7 +698,7 @@ describe('PrometheusMetricsService', () => {
 				runData: {
 					startedAt: new Date('2026-01-01T00:00:00Z'),
 					stoppedAt: new Date('2026-01-01T00:00:01Z'),
-					finished: true,
+					status: 'success',
 					mode: 'manual',
 				},
 				workflow: { id: 'wf_789', name: 'My Workflow' },
@@ -698,7 +720,7 @@ describe('PrometheusMetricsService', () => {
 				runData: {
 					startedAt: new Date('2026-01-01T00:00:00Z'),
 					stoppedAt: undefined,
-					finished: true,
+					status: 'success',
 					mode: 'manual',
 				},
 				workflow: { id: 'wf_123', name: 'Test' },
