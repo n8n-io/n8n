@@ -231,7 +231,7 @@ export type StreamChunk = ContentMetadata &
 export type ToolContext = Record<string, never>;
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
-	suspend: (payload: S) => Promise<void>;
+	suspend: (payload: S) => Promise<never>;
 	resumeData: R | undefined;
 }
 

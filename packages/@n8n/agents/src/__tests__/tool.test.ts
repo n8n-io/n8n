@@ -72,7 +72,7 @@ describe('Tool', () => {
 				.resume(resumeSchema)
 				.handler(async ({ query }, ctx) => {
 					if (!ctx.resumeData) {
-						await ctx.suspend({ reason: 'needs approval' });
+						return await ctx.suspend({ reason: 'needs approval' });
 					}
 					return { result: `found: ${query}` };
 				})

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nuxt dev",
+    "dev": "pnpm --filter @n8n/agents build && nuxt dev",
     "build": "nuxt build",
     "preview": "nuxt preview"
   },

@@ -80,9 +80,9 @@ export function createAgentWithInterruptibleTool(provider: 'anthropic' | 'openai
 		.resume(z.object({ approved: z.boolean() }))
 		.handler(async ({ path }, ctx) => {
 			if (!ctx.resumeData) {
-				await ctx.suspend({ message: `Delete "${path}"?`, severity: 'destructive' });
+				return await ctx.suspend({ message: `Delete "${path}"?`, severity: 'destructive' });
 			}
-			if (!ctx.resumeData!.approved) return { deleted: false, path };
+			if (!ctx.resumeData.approved) return { deleted: false, path };
 			return { deleted: true, path };
 		});
 
@@ -115,9 +115,9 @@ export function createAgentWithMixedTools(provider: 'anthropic' | 'openai'): Age
 		.resume(z.object({ approved: z.boolean() }))
 		.handler(async ({ path }, ctx) => {
 			if (!ctx.resumeData) {
-				await ctx.suspend({ message: `Delete "${path}"?`, severity: 'destructive' });
+				return await ctx.suspend({ message: `Delete "${path}"?`, severity: 'destructive' });
 			}
-			if (!ctx.resumeData!.approved) return { deleted: false, path };
+			if (!ctx.resumeData.approved) return { deleted: false, path };
 			return { deleted: true, path };
 		});
 

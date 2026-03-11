@@ -210,10 +210,13 @@ export class Tool<
 					// Mastra passes suspend/resumeData on ctx.agent
 					const agentCtx = (mastraCtx as Record<string, unknown>)?.agent ?? {};
 					const interruptCtx: InterruptibleToolContext = {
-						suspend: async (payload) => {
-							return await (agentCtx as { suspend: (p: unknown) => Promise<void> }).suspend(
-								payload,
-							);
+						suspend: async (payload): Promise<never> => {
+							await (agentCtx as { suspend: (p: unknown) => Promise<void> }).suspend(payload);
+							// Mastra's suspend() resolves normally but records the suspension.
+							// The return value from execute() is ignored when suspended.
+							// We type this as Promise<never> so `return await ctx.suspend()`
+							// satisfies any handler return type at compile time.
+							return undefined as never;
 						},
 						resumeData: (agentCtx as { resumeData?: unknown }).resumeData ?? undefined,
 					};

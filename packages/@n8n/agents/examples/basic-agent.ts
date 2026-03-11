@@ -53,7 +53,7 @@ const writeFileTool = new Tool('write-file')
 	.resume(z.object({ approved: z.boolean() }))
 	.handler(async ({ path, content }, ctx) => {
 		if (!ctx.resumeData) {
-			await ctx.suspend({ message: `Write to "${path}"?`, severity: 'warning' });
+			return await ctx.suspend({ message: `Write to "${path}"?`, severity: 'warning' });
 		}
 		if (!ctx.resumeData!.approved) return { written: false };
 		console.log(`  [Mock] Would write ${content.length} chars to ${path}`);
