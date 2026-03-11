@@ -1235,6 +1235,221 @@ describe('dataflow-generator', () => {
 			});
 		});
 
+		describe('executeOnce and .map() wrapping', () => {
+			it('emits .map() for per-item nodes (no executeOnce)', () => {
+				const json: WorkflowJSON = {
+					name: 'Per Item',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [200, 0],
+							parameters: { url: 'https://example.com' },
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+						},
+					},
+				};
+				const code = generateFromWorkflow(json);
+				expect(code).toContain('items.map((item) =>');
+				expect(code).not.toMatch(/const hTTP_Request = executeNode\(/);
+			});
+
+			it('emits plain executeNode() for execute-once nodes', () => {
+				const json: WorkflowJSON = {
+					name: 'Execute Once',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [200, 0],
+							parameters: { url: 'https://example.com' },
+							executeOnce: true,
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+						},
+					},
+				};
+				const code = generateFromWorkflow(json);
+				expect(code).toContain('const hTTP_Request = executeNode(');
+				expect(code).not.toContain('.map(');
+			});
+
+			it('emits plain executeNode() inside if/else branches', () => {
+				const json: WorkflowJSON = {
+					name: 'Branch Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'If',
+							type: 'n8n-nodes-base.if',
+							typeVersion: 2,
+							position: [200, 0],
+							parameters: {
+								conditions: {
+									options: { version: 2, caseSensitive: true, typeValidation: 'loose' },
+									combinator: 'and',
+									conditions: [
+										{
+											operator: { type: 'string', operation: 'equals' },
+											leftValue: '={{ $json.status }}',
+											rightValue: 'ok',
+										},
+									],
+								},
+							},
+						},
+						{
+							id: '3',
+							name: 'True Handler',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [400, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [[{ node: 'If', type: 'main', index: 0 }]],
+						},
+						If: {
+							main: [[{ node: 'True Handler', type: 'main', index: 0 }]],
+						},
+					},
+				};
+				const code = generateFromWorkflow(json);
+				// Branch body should use plain executeNode(), not .map()
+				expect(code).toContain('const true_Handler = executeNode(');
+				expect(code).not.toContain('true_Handler = items.map');
+			});
+
+			it('uses item as param ref inside .map() for variable references', () => {
+				const json: WorkflowJSON = {
+					name: 'Param Ref',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'Fetch',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [200, 0],
+							parameters: { url: 'https://example.com' },
+							executeOnce: true,
+						},
+						{
+							id: '3',
+							name: 'Send',
+							type: 'n8n-nodes-base.emailSend',
+							typeVersion: 2,
+							position: [400, 0],
+							parameters: { toEmail: '={{ $json.email }}' },
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [[{ node: 'Fetch', type: 'main', index: 0 }]],
+						},
+						Fetch: {
+							main: [[{ node: 'Send', type: 'main', index: 0 }]],
+						},
+					},
+				};
+				const code = generateFromWorkflow(json);
+				// Send is per-item, inside .map() — should use item.json.email
+				expect(code).toContain('.map((item) =>');
+				expect(code).toContain('item.json.email');
+				// Should NOT use fetch.json.email (that's for execute-once context)
+				expect(code).not.toContain('fetch.json.email');
+			});
+
+			it('chains .map() calls using previous variable as source', () => {
+				const json: WorkflowJSON = {
+					name: 'Chain Map',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [200, 0],
+							parameters: { url: 'https://example.com' },
+						},
+						{
+							id: '3',
+							name: 'Set',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [400, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+						},
+						'HTTP Request': {
+							main: [[{ node: 'Set', type: 'main', index: 0 }]],
+						},
+					},
+				};
+				const code = generateFromWorkflow(json);
+				// First node maps from items
+				expect(code).toContain('items.map((item) =>');
+				// Second node maps from first node's variable
+				expect(code).toContain('hTTP_Request.map((item) =>');
+			});
+		});
+
 		describe('Error handling (try/catch)', () => {
 			it('generates try/catch for nodes with errorHandler', () => {
 				const json: WorkflowJSON = {

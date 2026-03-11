@@ -429,6 +429,100 @@ describe('parseDataFlowCode', () => {
 		});
 	});
 
+	describe('executeOnce semantics', () => {
+		it('should not set executeOnce on nodes inside if/else branches', () => {
+			const code = `workflow({ name: 'Branch' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    if (items[0].json.status === 'active') {
+      const handler = executeNode({ type: 'n8n-nodes-base.set', name: 'Handler', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			const handler = result.nodes.find((n) => n.name === 'Handler');
+			expect(handler).toBeDefined();
+			expect(handler!.executeOnce).toBeUndefined();
+		});
+
+		it('should not set executeOnce on nodes inside else branch', () => {
+			const code = `workflow({ name: 'Else' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    if (items[0].json.ok === true) {
+      const a = executeNode({ type: 'n8n-nodes-base.set', name: 'A', params: {}, version: 3 });
+    } else {
+      const b = executeNode({ type: 'n8n-nodes-base.set', name: 'B', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			expect(result.nodes.find((n) => n.name === 'A')!.executeOnce).toBeUndefined();
+			expect(result.nodes.find((n) => n.name === 'B')!.executeOnce).toBeUndefined();
+		});
+
+		it('should not set executeOnce on nodes inside switch cases', () => {
+			const code = `workflow({ name: 'Switch' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    switch (items[0].json.type) {
+      case 'a': {
+        const handler_A = executeNode({ type: 'n8n-nodes-base.set', name: 'Handler A', params: {}, version: 3 });
+        break;
+      }
+      default: {
+        const fallback = executeNode({ type: 'n8n-nodes-base.set', name: 'Fallback', params: {}, version: 3 });
+        break;
+      }
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			expect(result.nodes.find((n) => n.name === 'Handler A')!.executeOnce).toBeUndefined();
+			expect(result.nodes.find((n) => n.name === 'Fallback')!.executeOnce).toBeUndefined();
+		});
+
+		it('should not set executeOnce on nodes inside catch blocks', () => {
+			const code = `workflow({ name: 'TryCatch' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    try {
+      const risky = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://example.com' }, version: 4 });
+    } catch (e) {
+      const fallback = executeNode({ type: 'n8n-nodes-base.set', name: 'Fallback', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Try block node gets executeOnce (direct executeNode at top level)
+			expect(result.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest')!.executeOnce).toBe(
+				true,
+			);
+			// Catch block node does NOT get executeOnce
+			expect(result.nodes.find((n) => n.name === 'Fallback')!.executeOnce).toBeUndefined();
+		});
+
+		it('should set executeOnce on nodes before a branch but not inside', () => {
+			const code = `workflow({ name: 'Mixed' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const fetch = executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch', params: { url: 'https://example.com' }, version: 4 });
+    if (items[0].json.ok === true) {
+      const handler = executeNode({ type: 'n8n-nodes-base.set', name: 'Handler', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			expect(result.nodes.find((n) => n.name === 'Fetch')!.executeOnce).toBe(true);
+			expect(result.nodes.find((n) => n.name === 'Handler')!.executeOnce).toBeUndefined();
+		});
+	});
+
 	describe('filter parsing', () => {
 		it('should parse .filter() as Filter node with kept output', () => {
 			const code = `workflow({ name: 'Filter' }, () => {
