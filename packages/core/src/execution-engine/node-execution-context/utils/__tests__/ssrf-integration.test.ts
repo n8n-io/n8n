@@ -113,7 +113,7 @@ describe('SSRF end-to-end integration', () => {
 
 		await expect(
 			helpers.httpRequest({ method: 'GET', url: 'http://public.example/redirect' }),
-		).rejects.toThrow('IP address is blocked');
+		).rejects.toThrow('The request was blocked because it resolves to a restricted IP address');
 	});
 
 	test('allows allowlisted hostname even when it resolves to private IP', async () => {
