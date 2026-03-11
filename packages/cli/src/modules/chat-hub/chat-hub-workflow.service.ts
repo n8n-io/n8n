@@ -8,6 +8,12 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
+	DEFAULT_CONTEXT_WINDOW_LENGTH,
+	EMBEDDINGS_NODE_TYPE_MAP,
+	parseMessage,
+	collectChatArtifacts,
+} from '@n8n/chat-hub';
+import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
 	User,
@@ -44,6 +50,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubMessage } from './chat-hub-message.entity';
@@ -70,11 +77,6 @@ import {
 } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
-
-import { EMBEDDINGS_NODE_TYPE_MAP, parseMessage, collectChatArtifacts } from '@n8n/chat-hub';
-import { ChatHubAgentRepository } from './chat-hub-agent.repository';
-
-const DEFAULT_CONTEXT_WINDOW_LENGTH = 20;
 
 @Service()
 export class ChatHubWorkflowService {
