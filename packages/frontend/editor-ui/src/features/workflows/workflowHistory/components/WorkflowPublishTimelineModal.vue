@@ -104,7 +104,7 @@ const getDurationMs = (period: TimelinePeriod) =>
 	(period.endedAt ?? new Date()).getTime() - period.startedAt.getTime();
 
 const shouldShowDurationBadge = (idx: number) =>
-	idx > 0 && getDurationMs(periods.value[idx - 1]) >= MIN_DURATION_FOR_BADGE_MS;
+	getDurationMs(periods.value[idx]) >= MIN_DURATION_FOR_BADGE_MS;
 
 const isModalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
@@ -173,20 +173,20 @@ watch(isModalOpen, async (open) => {
 									<N8nIcon icon="clock" size="small" />
 									<N8nText size="small" color="text-light">
 										{{
-											periods[idx - 1].status === 'published'
+											periods[idx].status === 'published'
 												? i18n.baseText('workflowHistory.publishTimeline.activeDuration', {
 														interpolate: {
 															duration: formatDuration(
-																periods[idx - 1].startedAt,
-																periods[idx - 1].endedAt,
+																periods[idx].startedAt,
+																periods[idx].endedAt,
 															),
 														},
 													})
 												: i18n.baseText('workflowHistory.publishTimeline.inactiveDuration', {
 														interpolate: {
 															duration: formatDuration(
-																periods[idx - 1].startedAt,
-																periods[idx - 1].endedAt,
+																periods[idx].startedAt,
+																periods[idx].endedAt,
 															),
 														},
 													})
@@ -222,8 +222,8 @@ watch(isModalOpen, async (open) => {
 											</template>
 											<template v-if="period.user">
 												<N8nText size="small" color="text-light">
-													&middot;
 													{{
+														' ' +
 														i18n.baseText('workflowHistory.publishTimeline.by', {
 															interpolate: { user: period.user },
 														})
