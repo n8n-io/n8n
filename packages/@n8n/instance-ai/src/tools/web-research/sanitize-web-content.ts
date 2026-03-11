@@ -35,5 +35,10 @@ export function sanitizeWebContent(content: string): string {
 
 /** Wrap content in boundary tags to reinforce the untrusted-content boundary for the LLM. */
 export function wrapInBoundaryTags(content: string, url: string): string {
-	return `<web_content source="external" url="${url}">\n${content}\n</web_content>`;
+	const safeUrl = url
+		.replace(/&/g, '&amp;')
+		.replace(/"/g, '&quot;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+	return `<web_content source="external" url="${safeUrl}">\n${content}\n</web_content>`;
 }

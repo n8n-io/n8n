@@ -20,7 +20,11 @@ async function copyCommand() {
 }
 
 onMounted(async () => {
-	await store.refreshModuleSettings();
+	try {
+		await store.refreshModuleSettings();
+	} catch {
+		// Continue initialization if settings refresh fails
+	}
 	store.startDaemonProbing();
 	store.startGatewayPushListener();
 	store.pollGatewayStatus();

@@ -4023,7 +4023,6 @@
 	"instanceAi.researchCard.complete": "Research complete",
 	"instanceAi.researchCard.failed": "Research failed",
 	"instanceAi.agent.stop": "Stop",
-	"instanceAi.input.amendPlaceholder": "Tell me what to do instead ({role} was stopped)...",
 	"instanceAi.backgroundTask.running": "Working in the background...",
 	"instanceAi.backgroundTask.completed": "Background task finished",
 	"instanceAi.backgroundTask.failed": "Background task failed",

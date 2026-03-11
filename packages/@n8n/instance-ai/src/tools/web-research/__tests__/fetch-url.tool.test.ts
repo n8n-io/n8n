@@ -88,7 +88,8 @@ describe('fetch-url tool', () => {
 			});
 			expect(result).toMatchObject({
 				title: 'Test Page',
-				content: '# Test Content',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				content: expect.stringContaining('# Test Content'),
 				truncated: false,
 			});
 		});

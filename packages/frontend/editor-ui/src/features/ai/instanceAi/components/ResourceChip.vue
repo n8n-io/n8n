@@ -25,7 +25,13 @@ const href = computed(() => urlMap[props.type]?.(props.resourceId) ?? '#');
 </script>
 
 <template>
-	<a :href="href" target="_blank" :class="$style.chip" :title="props.name">
+	<a
+		:href="href"
+		target="_blank"
+		rel="noopener noreferrer"
+		:class="$style.chip"
+		:title="props.name"
+	>
 		<N8nIcon :icon="icon" size="small" />
 		<span>{{ props.name }}</span>
 	</a>

@@ -1,6 +1,6 @@
 import { test as base, expect as baseExpect } from '../../../fixtures/base';
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'mock-anthropic-api-key';
+const ANTHROPIC_API_KEY = process.env.N8N_AI_ANTHROPIC_KEY ?? 'mock-anthropic-api-key';
 
 type InstanceAiSmokeFixtures = {
 	instanceAiProxySetup: undefined;

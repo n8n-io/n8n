@@ -283,7 +283,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext, post
 								observability: new Observability({
 									configs: {
 										langsmith: {
-											serviceName: 'my-service',
+											serviceName: 'instance-ai-builder',
 											exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
 										},
 									},
@@ -376,7 +376,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext, post
 							observability: new Observability({
 								configs: {
 									langsmith: {
-										serviceName: 'my-service',
+										serviceName: 'instance-ai-builder',
 										exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
 									},
 								},

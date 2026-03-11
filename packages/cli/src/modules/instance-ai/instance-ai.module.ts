@@ -11,7 +11,9 @@ export class InstanceAiModule implements ModuleInterface {
 
 		// Fire-and-forget: clean up expired conversation threads on startup
 		const { InstanceAiMemoryService } = await import('./instance-ai-memory.service');
-		void Container.get(InstanceAiMemoryService).cleanupExpiredThreads();
+		void Container.get(InstanceAiMemoryService)
+			.cleanupExpiredThreads()
+			.catch(() => undefined);
 	}
 
 	async settings() {

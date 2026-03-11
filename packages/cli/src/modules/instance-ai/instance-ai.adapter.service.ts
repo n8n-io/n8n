@@ -832,7 +832,7 @@ export class InstanceAiAdapterService {
 
 		if (apiKey) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = query + JSON.stringify(options ?? {});
+				const cacheKey = JSON.stringify([query, options ?? {}]);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -844,7 +844,7 @@ export class InstanceAiAdapterService {
 
 		if (searxngUrl) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = query + JSON.stringify(options ?? {});
+				const cacheKey = JSON.stringify([query, options ?? {}]);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -1119,7 +1119,7 @@ const MAX_NODE_OUTPUT_CHARS = 1_000;
  * Truncate execution result data to stay within context budget.
  * Keeps first item per node as a preview; replaces arrays with summary objects.
  */
-function truncateResultData(resultData: Record<string, unknown>): Record<string, unknown> {
+export function truncateResultData(resultData: Record<string, unknown>): Record<string, unknown> {
 	const serialized = JSON.stringify(resultData);
 	if (serialized.length <= MAX_RESULT_CHARS) return resultData;
 
@@ -1145,7 +1145,7 @@ function truncateResultData(resultData: Record<string, unknown>): Record<string,
 	return truncated;
 }
 
-async function extractExecutionResult(
+export async function extractExecutionResult(
 	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
@@ -1156,7 +1156,7 @@ async function extractExecutionResult(
 	});
 
 	if (!execution) {
-		return { executionId, status: 'success' };
+		return { executionId, status: 'unknown' };
 	}
 
 	const status =
@@ -1211,7 +1211,7 @@ async function extractExecutionResult(
  */
 const MAX_NODE_OUTPUT_BYTES = 10_000;
 
-function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
+export function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
 	const serialized = JSON.stringify(items);
 	if (serialized.length <= MAX_NODE_OUTPUT_BYTES) return items;
 
@@ -1345,7 +1345,7 @@ function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): 
 }
 
 /** Extract structured debug info from a completed execution. */
-async function extractExecutionDebugInfo(
+export async function extractExecutionDebugInfo(
 	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
@@ -1358,7 +1358,7 @@ async function extractExecutionDebugInfo(
 	if (!execution) {
 		return {
 			executionId,
-			status: 'success',
+			status: 'unknown',
 			nodeTrace: [],
 		};
 	}

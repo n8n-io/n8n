@@ -205,18 +205,21 @@ export class InstanceAiMemoryService {
 		const cutoff = new Date(Date.now() - ttlDays * 24 * 60 * 60 * 1000);
 		let deletedCount = 0;
 
-		// Page through all threads and delete expired ones
-		let page = 0;
+		// Page through all threads and delete expired ones.
+		// Always re-fetch page 0 after deletions to avoid skipping threads
+		// when items shift due to deletion during pagination.
 		const perPage = 100;
 		let hasMore = true;
 
 		while (hasMore) {
-			const result = await memory.listThreads({ perPage, page });
+			const result = await memory.listThreads({ perPage, page: 0 });
+			let deletedInPage = 0;
 			for (const thread of result.threads) {
 				if (thread.updatedAt < cutoff) {
 					try {
 						await memory.deleteThread(thread.id);
 						deletedCount++;
+						deletedInPage++;
 					} catch (error) {
 						this.logger.warn('Failed to delete expired thread', {
 							threadId: thread.id,
@@ -225,8 +228,8 @@ export class InstanceAiMemoryService {
 					}
 				}
 			}
-			hasMore = result.hasMore;
-			page++;
+			// If nothing was deleted on this page, we've passed the expired range
+			hasMore = deletedInPage > 0 && result.hasMore;
 		}
 
 		if (deletedCount > 0) {
@@ -250,7 +253,7 @@ export class InstanceAiMemoryService {
 	private buildPostgresUrl(): string {
 		if (this.dbType === 'postgresdb') {
 			const pg = this.postgresConfig;
-			return `postgresql://${pg.user}:${pg.password}@${pg.host}:${pg.port}/${pg.database}`;
+			return `postgresql://${encodeURIComponent(pg.user)}:${encodeURIComponent(pg.password)}@${pg.host}:${pg.port}/${encodeURIComponent(pg.database)}`;
 		}
 		return 'file:instance-ai-memory.db';
 	}

@@ -32,7 +32,14 @@ export function createSandbox(config: SandboxConfig): DaytonaSandbox | LocalSand
 		});
 	}
 
-	// Local fallback for development — no isolation, runs commands directly on host
+	// Local fallback for development — no isolation, runs commands directly on host.
+	// Block in production to prevent unrestricted host command execution.
+	if (process.env.NODE_ENV === 'production') {
+		throw new Error(
+			'LocalSandbox (provider: "local") is not allowed in production. Use "daytona" provider for isolated sandbox execution.',
+		);
+	}
+
 	return new LocalSandbox({
 		workingDirectory: './workspace',
 	});

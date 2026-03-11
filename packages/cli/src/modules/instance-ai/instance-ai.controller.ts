@@ -57,7 +57,8 @@ export class InstanceAiController {
 			throw new ConflictError('A run is already active for this thread');
 		}
 
-		const runId = this.instanceAiService.startRun(req.user, threadId, message, researchMode);
+		const safeResearchMode = typeof researchMode === 'boolean' ? researchMode : undefined;
+		const runId = this.instanceAiService.startRun(req.user, threadId, message, safeResearchMode);
 		return { runId };
 	}
 
@@ -290,12 +291,16 @@ export class InstanceAiController {
 		const cleanup = () => {
 			unsubscribe();
 			clearInterval(keepAlive);
-			this.instanceAiService.startDisconnectTimer(async () => {
-				await this.moduleRegistry.refreshModuleSettings('instance-ai');
-				this.push.broadcast({
-					type: 'instanceAiGatewayStateChanged',
-					data: { connected: false, directory: null },
-				});
+			this.instanceAiService.startDisconnectTimer(() => {
+				void this.moduleRegistry
+					.refreshModuleSettings('instance-ai')
+					.then(() => {
+						this.push.broadcast({
+							type: 'instanceAiGatewayStateChanged',
+							data: { connected: false, directory: null },
+						});
+					})
+					.catch(() => {});
 			});
 		};
 		req.once('close', cleanup);

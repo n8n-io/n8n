@@ -1253,7 +1253,7 @@ export class InstanceAiService {
 	private buildPostgresUrl(): string {
 		if (this.dbType === 'postgresdb') {
 			const pg = this.postgresConfig;
-			return `postgresql://${pg.user}:${pg.password}@${pg.host}:${pg.port}/${pg.database}`;
+			return `postgresql://${encodeURIComponent(pg.user)}:${encodeURIComponent(pg.password)}@${pg.host}:${pg.port}/${encodeURIComponent(pg.database)}`;
 		}
 		// Fallback for SQLite — use a local file-based store path
 		return 'file:instance-ai-memory.db';

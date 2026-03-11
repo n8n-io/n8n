@@ -43,7 +43,7 @@ export interface WorkflowNode {
 
 export interface ExecutionResult {
 	executionId: string;
-	status: 'running' | 'success' | 'error' | 'waiting';
+	status: 'running' | 'success' | 'error' | 'waiting' | 'unknown';
 	data?: Record<string, unknown>;
 	error?: string;
 	startedAt?: string;

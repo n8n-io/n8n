@@ -40,7 +40,7 @@ export function createWriteSandboxFileTool(workspace: Workspace) {
 
 				// Prevent path traversal outside workspace root
 				const normalized = path.posix.normalize(absPath);
-				if (!normalized.startsWith(root)) {
+				if (normalized !== root && !normalized.startsWith(root + '/')) {
 					return {
 						success: false,
 						path: filePath,
