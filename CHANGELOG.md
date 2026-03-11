@@ -1,3 +1,14 @@
+## [2.12.1](https://github.com/n8n-io/n8n/compare/n8n@2.12.0...n8n@2.12.1) (2026-03-11)
+
+
+### Bug Fixes
+
+* **core:** Fix entity import failing in Kubernetes due to ZIP self-inclusion and local header size placeholders (backport to release-candidate/2.12.x) ([#26821](https://github.com/n8n-io/n8n/issues/26821)) ([b972a5b](https://github.com/n8n-io/n8n/commit/b972a5b1f6f85631fb59baf5f2679db45cf5bb79))
+* **editor:** Show version name instead of current changes label for named versions (backport to release-candidate/2.12.x) ([#26813](https://github.com/n8n-io/n8n/issues/26813)) ([91b4f94](https://github.com/n8n-io/n8n/commit/91b4f9485aef1756916fd0415809de1d262fd302))
+* Fix segfault in arm64 image due to missing native addon (backport to release-candidate/2.12.x) ([#26868](https://github.com/n8n-io/n8n/issues/26868)) ([4894d1d](https://github.com/n8n-io/n8n/commit/4894d1d2a829fd5c2403f975e47b095e104b7b88))
+
+
+
 # [2.12.0](https://github.com/n8n-io/n8n/compare/n8n@2.11.0...n8n@2.12.0) (2026-03-09)
 
 
