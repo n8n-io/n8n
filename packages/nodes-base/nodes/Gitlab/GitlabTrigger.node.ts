@@ -179,7 +179,7 @@ export class GitlabTrigger implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						events: ['note'],
+						events: ['note', '*'],
 					},
 				},
 				options: [
