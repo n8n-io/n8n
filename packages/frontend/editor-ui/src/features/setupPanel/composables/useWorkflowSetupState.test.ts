@@ -1488,7 +1488,7 @@ describe('useWorkflowSetupState', () => {
 				parameters: { url: 'https://api.example.com' },
 			});
 
-			workflowsStore.allNodes = [node1];
+			mockWorkflowDocumentStore.allNodes = [node1];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
 			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
@@ -1519,7 +1519,7 @@ describe('useWorkflowSetupState', () => {
 				parameters: { url: 'https://api.example.com' },
 			});
 
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
 			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
@@ -1547,7 +1547,7 @@ describe('useWorkflowSetupState', () => {
 				parameters: { url: 'https://api.example.com' },
 			});
 
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
 			// Only node1 has parameter issues
 			mockGetNodeParametersIssues.mockImplementation((_, node) => {
@@ -1574,7 +1574,7 @@ describe('useWorkflowSetupState', () => {
 				parameters: { url: 'https://api.example.com' },
 			});
 
-			workflowsStore.allNodes = [node1];
+			mockWorkflowDocumentStore.allNodes = [node1];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
 			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
@@ -1605,7 +1605,7 @@ describe('useWorkflowSetupState', () => {
 				parameters: { url: 'https://api.example.com' },
 			});
 
-			workflowsStore.allNodes = [node1];
+			mockWorkflowDocumentStore.allNodes = [node1];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
 			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
@@ -1633,7 +1633,7 @@ describe('useWorkflowSetupState', () => {
 				parameters: { url: 'https://api.example.com' },
 			});
 
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
 			mockGetNodeParametersIssues.mockImplementation((_, node) => {
 				if (node.name === 'HTTP Request 1') return { url: ['URL is required'] };
@@ -1658,8 +1658,8 @@ describe('useWorkflowSetupState', () => {
 				parameters: { url: 'https://api.example.com' },
 			});
 
-			workflowsStore.allNodes = [node1];
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.allNodes = [node1];
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'HTTP Request 1') return node1;
 				return null;
 			});
@@ -1695,8 +1695,8 @@ describe('useWorkflowSetupState', () => {
 				parameters: { url: 'https://api.example.com' },
 			});
 
-			workflowsStore.allNodes = [node1];
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.allNodes = [node1];
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'HTTP Request 1') return node1;
 				return null;
 			});
@@ -1727,7 +1727,7 @@ describe('useWorkflowSetupState', () => {
 				parameters: { url: 'https://api.example.com' },
 			});
 
-			workflowsStore.allNodes = [node1];
+			mockWorkflowDocumentStore.allNodes = [node1];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
 			// Node has parameter issues, so card is created
 			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
@@ -1751,7 +1751,7 @@ describe('useWorkflowSetupState', () => {
 				parameters: { url: 'https://api.example.com' },
 			});
 
-			workflowsStore.allNodes = [node1];
+			mockWorkflowDocumentStore.allNodes = [node1];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
 			// Node has parameter issues, so card is created
 			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
@@ -1779,7 +1779,7 @@ describe('useWorkflowSetupState', () => {
 				type: 'n8n-nodes-base.webhook',
 			});
 
-			workflowsStore.allNodes = [node1, trigger];
+			mockWorkflowDocumentStore.allNodes = [node1, trigger];
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_, node) => {
 				mockGetNodeParametersIssues.mockImplementation((_, node) => {
 					if (node.type === 'n8n-nodes-base.httpRequest') return { url: ['URL is required'] };
