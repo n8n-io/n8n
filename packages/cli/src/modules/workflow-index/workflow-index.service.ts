@@ -3,7 +3,7 @@ import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
-import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
+import { DATA_TABLE_NODE_TYPES, ensureError, INode, IWorkflowBase } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 
@@ -181,6 +181,7 @@ export class WorkflowIndexService {
 				workflow.nodes.forEach((node) => {
 					this.addNodeTypeDependencies(node, dependencyUpdates);
 					this.addCredentialDependencies(node, dependencyUpdates);
+					this.addDataTableDependencies(node, dependencyUpdates);
 					this.addWorkflowCallDependencies(node, dependencyUpdates);
 					this.addWebhookPathDependencies(node, dependencyUpdates);
 				});
@@ -242,6 +243,28 @@ export class WorkflowIndexService {
 				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
 			});
 		}
+	}
+
+	private addDataTableDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
+		if (!DATA_TABLE_NODE_TYPES.includes(node.type)) {
+			return;
+		}
+		const dataTableId = node.parameters?.['dataTableId'] as
+			| { mode?: string; value?: string }
+			| undefined;
+		if (!dataTableId?.value || typeof dataTableId.value !== 'string') {
+			return;
+		}
+		// Skip expression-based IDs that can't be statically resolved
+		if (dataTableId.value.includes('{')) {
+			return;
+		}
+
+		dependencyUpdates.add({
+			dependencyType: 'dataTableId',
+			dependencyKey: dataTableId.value,
+			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion, mode: dataTableId.mode },
+		});
 	}
 
 	private addWorkflowCallDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {

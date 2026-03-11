@@ -40,6 +40,7 @@ compiled
 docker-build-manifest.json
 packages/cli/src/modules/my-feature
 .secrets
+act-event.json
 packages/testing/**/.cursor/rules/
 .venv
 .ruff_cache

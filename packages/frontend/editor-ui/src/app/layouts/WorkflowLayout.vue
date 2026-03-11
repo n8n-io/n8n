@@ -12,11 +12,8 @@ import AppHeader from '@/app/components/app/AppHeader.vue';
 import AppSidebar from '@/app/components/app/AppSidebar.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import LoadingView from '@/app/views/LoadingView.vue';
-import {
-	WorkflowIdKey,
-	WorkflowStateKey,
-	WorkflowDocumentStoreKey,
-} from '@/app/constants/injectionKeys';
+import { WorkflowStateKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useProvideWorkflowId } from '@/app/composables/useProvideWorkflowId';
 
 const { layoutProps } = useLayoutProps();
 const assistantStore = useAssistantStore();
@@ -36,7 +33,7 @@ const {
 	cleanup,
 } = useWorkflowInitialization(workflowState);
 
-provide(WorkflowIdKey, workflowId);
+useProvideWorkflowId();
 provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
 
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({

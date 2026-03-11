@@ -31,6 +31,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useMessage } from '@/app/composables/useMessage';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { usePinnedData } from '@/app/composables/usePinnedData';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
@@ -72,6 +73,7 @@ const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
+const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
@@ -382,7 +384,7 @@ const onFeatureRequestClick = () => {
 	if (activeNode.value) {
 		telemetry.track('User clicked ndv link', {
 			node_type: activeNode.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			push_ref: pushRef.value,
 			pane: NodeConnectionTypes.Main,
 			type: 'i-wish-this-node-would',
@@ -399,7 +401,7 @@ const onDragEnd = (e: { windowWidth: number; position: number }) => {
 		end_position: e.position,
 		node_type: activeNodeType.value ? activeNodeType.value.name : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 	});
 	mainPanelPosition.value = e.position;
 };
@@ -499,7 +501,7 @@ const close = async () => {
 	telemetry.track('User closed node modal', {
 		node_type: activeNodeType.value ? activeNodeType.value?.name : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 	});
 	triggerWaitingWarningEnabled.value = false;
 	ndvStore.unsetActiveNodeName();
@@ -540,7 +542,7 @@ const onInputNodeChange = (value: string, index: number) => {
 	telemetry.track('User changed ndv input dropdown', {
 		node_type: activeNode.value ? activeNode.value.type : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		selection_value: index,
 		input_node_type: inputNode.value ? inputNode.value.type : '',
 	});
@@ -619,7 +621,7 @@ watch(
 					telemetry.track('User opened node modal', {
 						node_id: activeNode.value?.id,
 						node_type: activeNodeType.value ? activeNodeType.value?.name : '',
-						workflow_id: workflowsStore.workflowId,
+						workflow_id: workflowId.value,
 						push_ref: pushRef.value,
 						is_editable: !hasForeignCredential.value,
 						parameters_pane_position: mainPanelPosition.value,
