@@ -52,7 +52,8 @@ export class WorkflowIndexService {
 				);
 				return;
 			}
-			await this.updateIndexForPublished(workflow, workflow.activeVersionId);
+			// At activation time, the draft nodes are the published nodes.
+			await this.updateIndexForPublished(workflow, workflow.activeVersionId, workflow.nodes);
 		});
 	}
 
@@ -99,9 +100,14 @@ export class WorkflowIndexService {
 				if (dependencyType === 'draft') {
 					await this.updateIndexForDraft(workflow);
 				} else {
-					// We know activeVersionId is not null here because the finder only returns workflows
-					// that have a published version.
-					await this.updateIndexForPublished(workflow, workflow.activeVersionId!);
+					const publishedNodes = workflow.activeVersion?.nodes;
+					if (!publishedNodes) {
+						this.logger.warn(
+							`Workflow ${workflow.id} has activeVersionId but no activeVersion nodes. Skipping published index.`,
+						);
+						continue;
+					}
+					await this.updateIndexForPublished(workflow, workflow.activeVersionId!, publishedNodes);
 				}
 			}
 
@@ -129,16 +135,20 @@ export class WorkflowIndexService {
 			workflow.versionCounter,
 			/*publishedVersionId=*/ null,
 		);
-		return await this.updateIndexInternal(workflow, dependencyUpdates);
+		return await this.updateIndexInternal(dependencyUpdates, workflow.nodes, workflow.name);
 	}
 
-	async updateIndexForPublished(workflow: IWorkflowBase, publishedVersionId: string) {
+	async updateIndexForPublished(
+		workflow: IWorkflowBase,
+		publishedVersionId: string,
+		publishedNodes: INode[],
+	) {
 		const dependencyUpdates = new WorkflowDependencies(
 			workflow.id,
 			workflow.versionCounter,
 			publishedVersionId,
 		);
-		return await this.updateIndexInternal(workflow, dependencyUpdates);
+		return await this.updateIndexInternal(dependencyUpdates, publishedNodes, workflow.name);
 	}
 
 	async removeDependenciesForWorkflow(workflowId: string) {
@@ -163,22 +173,24 @@ export class WorkflowIndexService {
 	 *
 	 */
 	private async updateIndexInternal(
-		workflow: IWorkflowBase,
 		dependencyUpdates: WorkflowDependencies,
+		nodes: INode[],
+		workflowName?: string,
 	) {
 		const indexType = dependencyUpdates.publishedVersionId ? 'published' : 'draft';
+		const workflowId = dependencyUpdates.workflowId;
 
 		return await this.tracing.startSpan(
 			{
 				name: 'WorkflowIndex update',
 				op: 'workflow-index.update',
 				attributes: {
-					...this.tracing.pickWorkflowAttributes(workflow),
+					...this.tracing.pickWorkflowAttributes({ id: workflowId, name: workflowName }),
 					'n8n.workflow-index.type': indexType,
 				},
 			},
 			async (span) => {
-				workflow.nodes.forEach((node) => {
+				nodes.forEach((node) => {
 					this.addNodeTypeDependencies(node, dependencyUpdates);
 					this.addCredentialDependencies(node, dependencyUpdates);
 					this.addDataTableDependencies(node, dependencyUpdates);
@@ -198,20 +210,20 @@ export class WorkflowIndexService {
 				let updated: boolean;
 				try {
 					updated = await this.dependencyRepository.updateDependenciesForWorkflow(
-						workflow.id,
+						workflowId,
 						dependencyUpdates,
 					);
 				} catch (e) {
 					const error = ensureError(e);
 					this.logger.error(
-						`Failed to update workflow ${indexType} dependency index for workflow ${workflow.id}: ${error.message}`,
+						`Failed to update workflow ${indexType} dependency index for workflow ${workflowId}: ${error.message}`,
 					);
 					this.errorReporter.error(error);
 					span.setStatus({ code: SpanStatus.error });
 					return;
 				}
 				this.logger.debug(
-					`Workflow ${indexType} dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
+					`Workflow ${indexType} dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflowId}`,
 				);
 				span.setStatus({ code: SpanStatus.ok });
 			},

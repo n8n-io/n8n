@@ -64,3 +64,11 @@ jobs:
       version: ${{ inputs.version }}
       experimental: ${{ inputs.release_type == 'rc' }}
     secrets: inherit
+
+  send-version-release-notification:
+    name: 'Send version release notifications'
+    uses: ./.github/workflows/release-version-release-notification.yml
+    with:
+      previous-version: ${{ inputs.previous_version }}
+      version: ${{ inputs.version }}
+    secrets: inherit
