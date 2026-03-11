@@ -45,12 +45,19 @@ export async function runSingleExample(
 	// Map toolCallId -> ToolCallDetail for merging running/completed/error chunks
 	const toolCallById = new Map<string, ToolCallDetail>();
 
+	// Timing metrics
+	let timeToFirstIterationMs = 0;
+	let timeToFirstValidWorkflowMs = 0;
+
 	const builder = new CodeWorkflowBuilder({
 		llm: config.llm,
 		nodeTypes: config.nodeTypes,
 		nodeDefinitionDirs: config.nodeDefinitionDirs,
 		useSimplifiedSyntax: config.useSimplifiedSyntax,
 		onTokenUsage: (usage: TokenUsage) => {
+			if (tokenSnapshots.length === 0) {
+				timeToFirstIterationMs = Date.now() - startTime;
+			}
 			tokenSnapshots.push(usage);
 			// Each token usage callback = end of one LLM iteration
 			// Capture accumulated tool calls for this iteration
@@ -113,6 +120,9 @@ export async function runSingleExample(
 				}
 
 				if (isWorkflowUpdateChunk(message)) {
+					if (!success) {
+						timeToFirstValidWorkflowMs = Date.now() - startTime;
+					}
 					workflowJson = message.codeSnippet ?? '';
 					sourceCode = message.sourceCode ?? '';
 					success = true;
@@ -190,6 +200,8 @@ export async function runSingleExample(
 		workflowJson,
 		success,
 		totalTimeMs,
+		timeToFirstIterationMs,
+		timeToFirstValidWorkflowMs,
 		iterations,
 		checklist,
 		checklistResults,

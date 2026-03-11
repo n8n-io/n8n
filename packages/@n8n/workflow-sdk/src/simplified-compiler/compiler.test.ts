@@ -560,6 +560,34 @@ onManual(async () => {
 			expect(result.code).toContain('$json.id');
 			expect(result.code).not.toContain("$('Split items').first().json.id");
 		});
+
+		it('should prefix all loop body variables including IF branch chain starts', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const invoices = await http.get('https://api.example.com/invoices');
+  for (const invoice of invoices) {
+    const isOverdue = invoice.daysUntilDue < 0;
+    if (isOverdue) {
+      await http.post('https://api.example.com/emails/send', { subject: 'Overdue' });
+      await http.patch('https://api.example.com/invoices/' + invoice.id, { status: 'reminded' });
+    } else {
+      await http.post('https://api.example.com/emails/send', { subject: 'Courtesy' });
+    }
+  }
+});`);
+			expect(result.errors).toHaveLength(0);
+			// All HTTP nodes in the loop body sub-workflow must have the loop prefix
+			const subWfSection = result.code.split('// --- Main workflow ---')[0];
+			// Every variable reference in .onTrue()/.onFalse() must be prefixed
+			const branchRefs = subWfSection.match(/\.on(?:True|False)\(([^)]+)\)/g) ?? [];
+			for (const ref of branchRefs) {
+				// Extract the first variable name in the branch chain
+				const firstVar = ref.match(/\((\w+)/)?.[1];
+				if (firstVar) {
+					expect(firstVar).toMatch(/^loop_invoice_/);
+				}
+			}
+		});
 	});
 
 	describe('Phase 9: switch/case', () => {

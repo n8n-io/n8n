@@ -36,6 +36,10 @@ export interface AgentResult {
 	workflowJson: string;
 	success: boolean;
 	totalTimeMs: number;
+	/** Time from start to first LLM iteration completing (first onTokenUsage callback) */
+	timeToFirstIterationMs: number;
+	/** Time from start to first valid workflow being produced (first WorkflowUpdateChunk) */
+	timeToFirstValidWorkflowMs: number;
 	iterations: Iteration[];
 	checklist: ChecklistItem[];
 	checklistResults: ChecklistResult[];

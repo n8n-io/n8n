@@ -197,8 +197,14 @@ async function runEval() {
 
 					const scoreStr = `${(result.checklistScore * 100).toFixed(0)}%`;
 					const successStr = result.success ? 'PASS' : 'FAIL';
+					const firstIterStr = result.timeToFirstIterationMs
+						? `${(result.timeToFirstIterationMs / 1000).toFixed(1)}s`
+						: '-';
+					const firstValidStr = result.timeToFirstValidWorkflowMs
+						? `${(result.timeToFirstValidWorkflowMs / 1000).toFixed(1)}s`
+						: '-';
 					console.log(
-						`    Done: ${label} — ${successStr}, Score: ${scoreStr}, Iters: ${result.iterations.length}`,
+						`    Done: ${label} — ${successStr}, Score: ${scoreStr}, Iters: ${result.iterations.length}, 1stIter: ${firstIterStr}, 1stValid: ${firstValidStr}`,
 					);
 
 					return result;
@@ -243,6 +249,20 @@ async function runEval() {
 
 		console.log(`Success Rate: ${(successRate * 100).toFixed(0)}%`);
 		console.log(`Avg Checklist Score: ${(avgScore * 100).toFixed(0)}%`);
+
+		const withFirstIter = run.results.filter((r) => r.timeToFirstIterationMs > 0);
+		const withFirstValid = run.results.filter((r) => r.timeToFirstValidWorkflowMs > 0);
+		if (withFirstIter.length > 0) {
+			const avgFirstIter =
+				withFirstIter.reduce((s, r) => s + r.timeToFirstIterationMs, 0) / withFirstIter.length;
+			console.log(`Avg Time to 1st Iteration: ${(avgFirstIter / 1000).toFixed(1)}s`);
+		}
+		if (withFirstValid.length > 0) {
+			const avgFirstValid =
+				withFirstValid.reduce((s, r) => s + r.timeToFirstValidWorkflowMs, 0) /
+				withFirstValid.length;
+			console.log(`Avg Time to 1st Valid Workflow: ${(avgFirstValid / 1000).toFixed(1)}s`);
+		}
 
 		// Per-complexity breakdown
 		const complexities = ['simple', 'medium', 'complex'] as const;

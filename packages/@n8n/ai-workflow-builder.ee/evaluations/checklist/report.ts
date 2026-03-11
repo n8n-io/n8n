@@ -131,12 +131,14 @@ function renderResultRow(result: AgentResult, index: number): string {
 			<td class="${scoreClass}">${passedCount}/${totalCount} (${formatScore(result.checklistScore)})</td>
 			<td>${result.iterations.length}</td>
 			<td>${formatDuration(result.totalTimeMs)}</td>
+			<td>${result.timeToFirstIterationMs ? formatDuration(result.timeToFirstIterationMs) : '-'}</td>
+			<td>${result.timeToFirstValidWorkflowMs ? formatDuration(result.timeToFirstValidWorkflowMs) : '-'}</td>
 			<td>${result.totalInputTokens.toLocaleString()}</td>
 			<td>${result.totalOutputTokens.toLocaleString()}</td>
 			<td>${result.linesOfCode}</td>
 		</tr>
 		<tr id="detail-${index}" class="detail-row" data-complexity="${result.complexity ?? 'medium'}" data-prompt-hash="${promptHash}" style="display:none">
-			<td colspan="10">
+			<td colspan="12">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -250,6 +252,8 @@ function renderRunSection(run: Run, runIndex: number): string {
 							<th>Score</th>
 							<th>Iterations</th>
 							<th>Time</th>
+							<th>1st Iter</th>
+							<th>1st Valid</th>
 							<th>In Tokens</th>
 							<th>Out Tokens</th>
 							<th>Lines of Code</th>
@@ -404,6 +408,24 @@ export function generateReport(runs: Run[]): string {
 						)
 				: 0,
 		)}</div>
+	</div>
+	<div class="summary-card">
+		<div class="label">Avg Time to 1st Iteration</div>
+		<div class="value">${(() => {
+			const all = runs.flatMap((r) => r.results).filter((r) => r.timeToFirstIterationMs > 0);
+			return all.length > 0
+				? formatDuration(all.reduce((s, r) => s + r.timeToFirstIterationMs, 0) / all.length)
+				: '-';
+		})()}</div>
+	</div>
+	<div class="summary-card">
+		<div class="label">Avg Time to 1st Valid Workflow</div>
+		<div class="value">${(() => {
+			const all = runs.flatMap((r) => r.results).filter((r) => r.timeToFirstValidWorkflowMs > 0);
+			return all.length > 0
+				? formatDuration(all.reduce((s, r) => s + r.timeToFirstValidWorkflowMs, 0) / all.length)
+				: '-';
+		})()}</div>
 	</div>
 </div>
 

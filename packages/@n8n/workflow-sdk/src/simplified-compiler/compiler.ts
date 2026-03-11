@@ -1303,7 +1303,9 @@ function compileFunctionToSDK(
 		if (node.varName === triggerVar) continue;
 		for (const [oldVar, newVar] of renames) {
 			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar})`, `(${newVar})`);
+			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar}.`, `(${newVar}.`);
 			node.sdkCode = node.sdkCode.replaceAll(`, ${oldVar})`, `, ${newVar})`);
+			node.sdkCode = node.sdkCode.replaceAll(`, ${oldVar}.`, `, ${newVar}.`);
 			node.sdkCode = node.sdkCode.replace(`const ${oldVar} `, `const ${newVar} `);
 		}
 		node.varName = renames.get(node.varName) ?? node.varName;
@@ -3118,7 +3120,9 @@ function compileLoopBodyAsSubWorkflow(
 		if (node.varName === triggerVar) continue;
 		for (const [oldVar, newVar] of renames) {
 			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar})`, `(${newVar})`);
+			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar}.`, `(${newVar}.`);
 			node.sdkCode = node.sdkCode.replaceAll(`, ${oldVar})`, `, ${newVar})`);
+			node.sdkCode = node.sdkCode.replaceAll(`, ${oldVar}.`, `, ${newVar}.`);
 			node.sdkCode = node.sdkCode.replace(`const ${oldVar} `, `const ${newVar} `);
 		}
 		node.varName = renames.get(node.varName) ?? node.varName;
@@ -3511,7 +3515,9 @@ function compileTryCatchBodyAsSubWorkflow(
 		if (node.varName === triggerVar) continue;
 		for (const [oldVar, newVar] of renames) {
 			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar})`, `(${newVar})`);
+			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar}.`, `(${newVar}.`);
 			node.sdkCode = node.sdkCode.replaceAll(`, ${oldVar})`, `, ${newVar})`);
+			node.sdkCode = node.sdkCode.replaceAll(`, ${oldVar}.`, `, ${newVar}.`);
 			node.sdkCode = node.sdkCode.replace(`const ${oldVar} `, `const ${newVar} `);
 		}
 		node.varName = renames.get(node.varName) ?? node.varName;
