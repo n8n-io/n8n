@@ -850,7 +850,6 @@ function onFilesDropped(files: File[]) {
 
 							<ChatPrompt
 								ref="inputRef"
-								:class="$style.prompt"
 								:selected-model="selectedModel"
 								:checked-tool-ids="canSelectTools ? checkedToolIds : []"
 								:session-id="isNewSession ? undefined : sessionId"
@@ -1005,19 +1004,18 @@ function onFilesDropped(files: File[]) {
 }
 
 .promptContainer {
-	position: absolute;
-	bottom: 0;
 	display: flex;
 	justify-content: center;
 	padding-block: var(--spacing--md);
 	background: var(--color--background--light-2);
-	left: 50%;
-	transform: translateX(-50%);
+	align-self: center;
 
 	.isMobileDevice &,
 	.isExistingSession & {
 		position: absolute;
 		bottom: 0;
+		left: 50%;
+		transform: translateX(-50%);
 	}
 }
 
