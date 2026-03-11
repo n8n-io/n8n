@@ -41,4 +41,5 @@ jobs:
         run: |
           gh pr merge "${{ inputs.pull-request-number }}" \
             --auto \
+            --squash \
             --repo "${{ github.repository }}"
