@@ -317,6 +317,19 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 		return template;
 	};
 
+	const retrieveFullTemplateById = computed(() => {
+		return async (id: string): Promise<null | ITemplatesWorkflowFull> => {
+			let template = workflows.value[id];
+
+			if (template === undefined) {
+				await fetchTemplateById(id);
+				template = workflows.value[id];
+			}
+
+			return template && 'full' in template && template.full ? template : null;
+		};
+	});
+
 	const fetchCollectionById = async (
 		collectionId: string,
 	): Promise<ITemplatesCollection | null> => {
@@ -455,6 +468,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 		allCategories,
 		getTemplatesById,
 		getFullTemplateById,
+		retrieveFullTemplateById,
 		getCollectionById,
 		getCategoryById,
 		getSearchedCollections,
