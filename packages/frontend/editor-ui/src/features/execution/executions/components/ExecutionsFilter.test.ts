@@ -50,6 +50,7 @@ const defaultFilterState: ExecutionFilterType = {
 	endDate: '',
 	metadata: [{ key: '', value: '', exactMatch: false }],
 	vote: 'all',
+	workflowVersionId: 'all',
 };
 
 const workflowDataFactory = (): IWorkflowShortResponse => ({
