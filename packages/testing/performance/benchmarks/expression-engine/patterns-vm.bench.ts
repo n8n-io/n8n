@@ -6,7 +6,6 @@
  *
  * Run: pnpm --filter=@n8n/performance bench
  */
-import { describe } from 'vitest';
 import { Expression } from 'n8n-workflow';
 
 import {
@@ -26,6 +25,11 @@ if (Expression.getActiveImplementation() !== 'vm') {
 
 const workflow = createWorkflow();
 
-describe('vm', () => {
-	definePatternBenchmarks(workflow, evaluate, makeSmallData(), makeMediumData(), makeLargeData());
-});
+definePatternBenchmarks(
+	'vm',
+	workflow,
+	evaluate,
+	makeSmallData(),
+	makeMediumData(),
+	makeLargeData(),
+);

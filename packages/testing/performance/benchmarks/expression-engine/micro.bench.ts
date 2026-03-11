@@ -10,7 +10,7 @@
  *
  * Run: pnpm --filter=@n8n/performance bench
  */
-import { bench, describe } from 'vitest';
+import { bench } from 'vitest';
 import { ExpressionEvaluator, IsolatedVmBridge } from '@n8n/expression-runtime';
 import {
 	DollarSignValidator,
@@ -35,49 +35,44 @@ const testData: Record<string, unknown> = {
 	$itemIndex: 0,
 };
 
-describe('Script Compilation', () => {
-	// Cache hit: same expression every iteration
-	bench('cache hit (repeated expression)', () => {
-		evaluator.evaluate('$json.id', testData);
-	});
-
-	// Cache miss: unique expression each iteration
-	let counter = 0;
-	bench('cache miss (unique expressions)', () => {
-		evaluator.evaluate(`$json.id + ${counter++}`, testData);
-	});
+// Script Compilation
+bench('vm micro: Script Compilation - cache hit (repeated expression)', () => {
+	evaluator.evaluate('$json.id', testData);
 });
 
-describe('Data Complexity', () => {
-	const shallowData: Record<string, unknown> = {
-		$json: { value: 42 },
-	};
-
-	const deepData: Record<string, unknown> = {
-		$json: { a: { b: { c: { d: { e: { value: 42 } } } } } },
-	};
-
-	bench('shallow access (depth 1)', () => {
-		evaluator.evaluate('$json.value', shallowData);
-	});
-
-	bench('deep access (depth 6)', () => {
-		evaluator.evaluate('$json.a.b.c.d.e.value', deepData);
-	});
+let counter = 0;
+bench('vm micro: Script Compilation - cache miss (unique expressions)', () => {
+	evaluator.evaluate(`$json.id + ${counter++}`, testData);
 });
 
-describe('Array Element Access', () => {
-	const arrayData: Record<string, unknown> = {
-		$json: {
-			items: Array.from({ length: 100 }, (_, i) => ({ id: i })),
-		},
-	};
+// Data Complexity
+const shallowData: Record<string, unknown> = {
+	$json: { value: 42 },
+};
 
-	bench('single element', () => {
-		evaluator.evaluate('$json.items[0].id', arrayData);
-	});
+const deepData: Record<string, unknown> = {
+	$json: { a: { b: { c: { d: { e: { value: 42 } } } } } },
+};
 
-	bench('map 100 elements', () => {
-		evaluator.evaluate('$json.items.map(i => i.id)', arrayData);
-	});
+bench('vm micro: Data Complexity - shallow access (depth 1)', () => {
+	evaluator.evaluate('$json.value', shallowData);
+});
+
+bench('vm micro: Data Complexity - deep access (depth 6)', () => {
+	evaluator.evaluate('$json.a.b.c.d.e.value', deepData);
+});
+
+// Array Element Access
+const arrayData: Record<string, unknown> = {
+	$json: {
+		items: Array.from({ length: 100 }, (_, i) => ({ id: i })),
+	},
+};
+
+bench('vm micro: Array Element Access - single element', () => {
+	evaluator.evaluate('$json.items[0].id', arrayData);
+});
+
+bench('vm micro: Array Element Access - map 100 elements', () => {
+	evaluator.evaluate('$json.items.map(i => i.id)', arrayData);
 });
