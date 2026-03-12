@@ -1,10 +1,12 @@
-import { BadRequestException, Body, Controller, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Logger, Post } from '@nestjs/common';
 
 import type { ExecuteCommandRequest, VolumeMount } from '../types';
 import { CommandsService } from './commands.service';
 
 @Controller('execute')
 export class CommandsController {
+	private readonly logger = new Logger(CommandsController.name);
+
 	constructor(private readonly commandsService: CommandsService) {}
 
 	@Post()
@@ -17,12 +19,36 @@ export class CommandsController {
 			this.validateVolumes(body.volumes);
 		}
 
-		return await this.commandsService.execute({
-			command: body.command,
-			volumes: body.volumes,
-			timeoutMs: body.timeoutMs,
-			env: body.env,
-		});
+		const volumeCount = body.volumes?.length ?? 0;
+		const envCount = Object.keys(body.env ?? {}).length;
+		const timeoutMs = body.timeoutMs ?? 'default';
+
+		this.logger.log(
+			`Executing command="${body.command}" volumes=${volumeCount} env=${envCount} timeoutMs=${timeoutMs}`,
+		);
+
+		const startTime = Date.now();
+
+		try {
+			const result = await this.commandsService.execute({
+				command: body.command,
+				volumes: body.volumes,
+				timeoutMs: body.timeoutMs,
+				env: body.env,
+			});
+
+			const duration = Date.now() - startTime;
+			this.logger.log(`Command completed exitCode=${result.exitCode} duration=${duration}ms`);
+
+			return result;
+		} catch (error) {
+			const duration = Date.now() - startTime;
+			this.logger.error(
+				`Command failed duration=${duration}ms error=${(error as Error).message}`,
+				(error as Error).stack,
+			);
+			throw error;
+		}
 	}
 
 	private validateVolumes(volumes: VolumeMount[]): void {
