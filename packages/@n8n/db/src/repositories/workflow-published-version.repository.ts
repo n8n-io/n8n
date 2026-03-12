@@ -30,7 +30,9 @@ export class WorkflowPublishedVersionRepository extends Repository<WorkflowPubli
 	 * (including shared/project relations) and the workflow history version
 	 * (which contains the published nodes/connections).
 	 */
-	async getPublishedVersionWithRelations(workflowId: string) {
+	async getPublishedVersionWithRelations(
+		workflowId: string,
+	): Promise<WorkflowPublishedVersion | null> {
 		return await this.findOne({
 			where: { workflowId },
 			relations: {

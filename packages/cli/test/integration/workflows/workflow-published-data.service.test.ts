@@ -79,7 +79,7 @@ describe('WorkflowPublishedDataService', () => {
 		);
 	});
 
-	test('should fall back to activeVersion when published_version table has no record', async () => {
+	test('should return null when published_version table has no record', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
@@ -87,41 +87,6 @@ describe('WorkflowPublishedDataService', () => {
 
 		const result = await workflowPublishedDataService.getPublishedWorkflowData(workflow.id);
 
-		// Should fall back to the activeVersion
-		expect(result).not.toBeNull();
-		expect(result!.nodes).toEqual(
-			expect.arrayContaining([expect.objectContaining({ type: 'n8n-nodes-base.scheduleTrigger' })]),
-		);
-	});
-
-	test('should pick up changes when published_version is updated without reactivation', async () => {
-		const owner = await createOwner();
-		const workflow = await createWorkflowWithHistory({}, owner);
-		await setActiveVersion(workflow.id, workflow.versionId);
-
-		// Initially point to the original version
-		await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
-
-		const firstResult = await workflowPublishedDataService.getPublishedWorkflowData(workflow.id);
-		expect(firstResult!.nodes).toEqual(
-			expect.arrayContaining([expect.objectContaining({ type: 'n8n-nodes-base.scheduleTrigger' })]),
-		);
-
-		// Create a new version and update the published version table directly
-		// (simulating what the outbox consumer will do in the future)
-		const newVersionId = uuid();
-		const newNodes = [makeNode('Updated Node')];
-		await createWorkflowHistoryItem(workflow.id, {
-			versionId: newVersionId,
-			nodes: newNodes,
-			connections: {},
-		});
-		await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, newVersionId);
-
-		// Without any reactivation, a fresh read should return the new nodes
-		const secondResult = await workflowPublishedDataService.getPublishedWorkflowData(workflow.id);
-		expect(secondResult!.nodes).toEqual(
-			expect.arrayContaining([expect.objectContaining({ name: 'Updated Node' })]),
-		);
+		expect(result).toBeNull();
 	});
 });

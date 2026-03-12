@@ -240,6 +240,7 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -296,6 +297,7 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -333,6 +335,7 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 

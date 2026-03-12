@@ -315,7 +315,7 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		resolveWorkflowData: () => Promise<IWorkflowBase> = async () => workflowData,
+		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
 			const __emit = (
@@ -371,7 +371,7 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		resolveWorkflowData: () => Promise<IWorkflowBase> = async () => workflowData,
+		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecuteTriggerFunctions {
 		return (workflow: Workflow, node: INode) => {
 			const emit = (
@@ -492,20 +492,23 @@ export class ActiveWorkflowManager {
 	}
 
 	/**
-	 * Load fresh workflow data for execution. Re-reads the published version
-	 * from the database so that trigger/poller executions pick up workflow
-	 * updates without needing to deactivate/reactivate.
+	 * Load the published workflow nodes/connections from the
+	 * `workflow_published_version` table. The passed-in workflow is used
+	 * for all other fields (staticData, settings, etc.).
 	 *
-	 * Falls back to the initial workflow data if the lookup fails, to avoid
-	 * breaking executions due to transient DB issues.
+	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */
-	private async loadFreshWorkflowData(initialWorkflowData: IWorkflowDb): Promise<IWorkflowBase> {
+	private async loadPublishedWorkflowData(
+		initialWorkflowData: IWorkflowDb,
+	): Promise<IWorkflowBase> {
 		const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
 			initialWorkflowData.id,
 		);
 
 		if (!publishedData) {
-			return initialWorkflowData;
+			throw new UnexpectedError('Published version not found for workflow', {
+				extra: { workflowId: initialWorkflowData.id },
+			});
 		}
 
 		return {
@@ -785,8 +788,8 @@ export class ActiveWorkflowManager {
 			// version from the DB so they pick up updates without deactivate/reactivate.
 			// When the flag is off, they use the in-memory workflowData (same as before).
 			const resolveWorkflowData = this.workflowsConfig.useWorkflowPublicationService
-				? async () => await this.loadFreshWorkflowData(dbWorkflow)
-				: undefined;
+				? async () => await this.loadPublishedWorkflowData(dbWorkflow)
+				: async () => dbWorkflow as IWorkflowBase;
 
 			if (shouldAddTriggersAndPollers) {
 				added.triggersAndPollers = await this.addTriggersAndPollers(dbWorkflow, workflow, {
@@ -1082,7 +1085,7 @@ export class ActiveWorkflowManager {
 			activationMode: WorkflowActivateMode;
 			executionMode: WorkflowExecuteMode;
 			additionalData: IWorkflowExecuteAdditionalData;
-			resolveWorkflowData?: () => Promise<IWorkflowBase>;
+			resolveWorkflowData: () => Promise<IWorkflowBase>;
 		},
 	) {
 		const getTriggerFunctions = this.getExecuteTriggerFunctions(
