@@ -88,7 +88,7 @@ describe('dataflow-parser', () => {
 			});
 		});
 
-		it('parses if/else block', () => {
+		it('throws on if/else block with hint to use .branch()', () => {
 			const code = `workflow({ name: 'Test' }, () => {
 				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
 					if (items[0].json.status === 'active') {
@@ -98,24 +98,21 @@ describe('dataflow-parser', () => {
 					}
 				});
 			});`;
-			const result = parseDataFlowCode(code);
-			// Should have: trigger, IF node, True Branch, False Branch
-			expect(result.nodes.length).toBeGreaterThanOrEqual(4);
-			const ifNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.if');
-			expect(ifNode).toBeDefined();
-			// IF node should have conditions
-			const conditions = (ifNode!.parameters as Record<string, unknown>)?.conditions;
-			expect(conditions).toBeDefined();
+			expect(() => parseDataFlowCode(code)).toThrow(/\.branch\(\)/);
 		});
 
-		it('parses if/else and generates correct condition parameters', () => {
+		it('parses .branch() and generates correct condition parameters', () => {
 			const code = `workflow({ name: 'Test' }, () => {
 				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
-					if (items[0].json.status === 'active') {
-						const trueBranch = node({ type: 'n8n-nodes-base.set', name: 'True Branch', params: {} })(items);
-					} else {
-						const falseBranch = node({ type: 'n8n-nodes-base.set', name: 'False Branch', params: {} })(items);
-					}
+					items.branch(
+						(item) => item.json.status === 'active',
+						(items) => {
+							const trueBranch = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'True Branch', params: {}, version: 3 }));
+						},
+						(items) => {
+							const falseBranch = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'False Branch', params: {}, version: 3 }));
+						},
+					);
 				});
 			});`;
 			const result = parseDataFlowCode(code);
@@ -136,14 +133,18 @@ describe('dataflow-parser', () => {
 			expect(operator.operation).toBe('equals');
 		});
 
-		it('parses if/else and connects branches correctly', () => {
+		it('parses .branch() and connects branches correctly', () => {
 			const code = `workflow({ name: 'Test' }, () => {
 				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
-					if (items[0].json.status === 'active') {
-						const trueBranch = node({ type: 'n8n-nodes-base.set', name: 'True Branch', params: {} })(items);
-					} else {
-						const falseBranch = node({ type: 'n8n-nodes-base.set', name: 'False Branch', params: {} })(items);
-					}
+					items.branch(
+						(item) => item.json.status === 'active',
+						(items) => {
+							const trueBranch = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'True Branch', params: {}, version: 3 }));
+						},
+						(items) => {
+							const falseBranch = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'False Branch', params: {}, version: 3 }));
+						},
+					);
 				});
 			});`;
 			const result = parseDataFlowCode(code);
@@ -165,16 +166,12 @@ describe('dataflow-parser', () => {
 			expect(getConnection(result.connections, triggerNode!.name!).node).toBe(ifNode!.name);
 		});
 
-		it('parses switch/case block', () => {
+		it('throws on switch/case block with hint to use .route()', () => {
 			const code = `workflow({ name: 'Test' }, () => {
 				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
 					switch (items[0].json.destination) {
 						case 'London': {
 							const london = node({ type: 'n8n-nodes-base.set', name: 'London Handler', params: {} })(items);
-							break;
-						}
-						case 'New York': {
-							const newYork = node({ type: 'n8n-nodes-base.set', name: 'New York Handler', params: {} })(items);
 							break;
 						}
 						default: {
@@ -184,31 +181,23 @@ describe('dataflow-parser', () => {
 					}
 				});
 			});`;
-			const result = parseDataFlowCode(code);
-			const switchNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.switch');
-			expect(switchNode).toBeDefined();
-			// Should have rules in parameters
-			const rules = (switchNode!.parameters as Record<string, unknown>)?.rules;
-			expect(rules).toBeDefined();
+			expect(() => parseDataFlowCode(code)).toThrow(/\.route\(\)/);
 		});
 
-		it('parses switch/case and connects cases correctly', () => {
+		it('parses .route() and connects cases correctly', () => {
 			const code = `workflow({ name: 'Test' }, () => {
 				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
-					switch (items[0].json.destination) {
-						case 'London': {
-							const london = node({ type: 'n8n-nodes-base.set', name: 'London Handler', params: {} })(items);
-							break;
-						}
-						case 'New York': {
-							const newYork = node({ type: 'n8n-nodes-base.set', name: 'New York Handler', params: {} })(items);
-							break;
-						}
-						default: {
-							const fallback = node({ type: 'n8n-nodes-base.set', name: 'Default Handler', params: {} })(items);
-							break;
-						}
-					}
+					items.route((item) => item.json.destination, {
+						London: (items) => {
+							const london = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'London Handler', params: {}, version: 3 }));
+						},
+						'New York': (items) => {
+							const newYork = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'New York Handler', params: {}, version: 3 }));
+						},
+						default: (items) => {
+							const fallback = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'Default Handler', params: {}, version: 3 }));
+						},
+					});
 				});
 			});`;
 			const result = parseDataFlowCode(code);
@@ -224,7 +213,7 @@ describe('dataflow-parser', () => {
 			expect(getConnection(result.connections, switchName, 2).node).toBe('Default Handler');
 		});
 
-		it('parses try/catch block as error handling', () => {
+		it('throws on try/catch block with hint to use .handleError()', () => {
 			const code = `workflow({ name: 'Test' }, () => {
 				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
 					try {
@@ -234,14 +223,7 @@ describe('dataflow-parser', () => {
 					}
 				});
 			});`;
-			const result = parseDataFlowCode(code);
-			// The HTTP request node should have onError set
-			const httpNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode).toBeDefined();
-			expect(httpNode!.onError).toBe('continueErrorOutput');
-			// Error handler should exist
-			const errorHandler = result.nodes.find((n) => n.name === 'Error Handler');
-			expect(errorHandler).toBeDefined();
+			expect(() => parseDataFlowCode(code)).toThrow(/\.handleError\(\)/);
 		});
 
 		it('parses node with subnodes config', () => {
@@ -459,20 +441,23 @@ describe('dataflow-parser', () => {
 
 		it('does not set executeOnce for array-input nodes inside branches', () => {
 			const code = `workflow({ name: 'Test' }, () => {
-				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
 					const dataA = items.map((item) =>
 						executeNode({ type: 'n8n-nodes-base.set', name: 'Data A', params: {}, version: 3 }),
 					);
 					const dataB = items.map((item) =>
 						executeNode({ type: 'n8n-nodes-base.set', name: 'Data B', params: {}, version: 3 }),
 					);
-					if (items[0].json.active === true) {
-						const merged = executeNode({
-							type: 'n8n-nodes-base.merge',
-							params: {},
-							version: 3,
-						}, [dataA, dataB]);
-					}
+					items.branch(
+						(item) => item.json.active === true,
+						(items) => {
+							const merged = executeNode({
+								type: 'n8n-nodes-base.merge',
+								params: {},
+								version: 3,
+							}, [dataA, dataB]);
+						},
+					);
 				});
 			});`;
 			const result = parseDataFlowCode(code);
@@ -546,14 +531,14 @@ describe('dataflow-parser', () => {
 			expect(result.nodes[0].parameters).toEqual({ path: '/test' });
 		});
 
-		it('parses !== operator as notEquals', () => {
+		it('parses !== operator as notEquals via .branch()', () => {
 			const code = `workflow({ name: 'Test' }, () => {
-				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
-					if (items[0].json.status !== 'inactive') {
-						const trueBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					} else {
-						const falseBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					}
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+					items.branch(
+						(item) => item.json.status !== 'inactive',
+						(items) => { const t = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+						(items) => { const f = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+					);
 				});
 			});`;
 			const result = parseDataFlowCode(code);
@@ -565,14 +550,14 @@ describe('dataflow-parser', () => {
 			expect(operator.operation).toBe('notEquals');
 		});
 
-		it('parses > operator as gt', () => {
+		it('parses > operator as gt via .branch()', () => {
 			const code = `workflow({ name: 'Test' }, () => {
-				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
-					if (items[0].json.count > 10) {
-						const trueBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					} else {
-						const falseBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					}
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+					items.branch(
+						(item) => item.json.count > 10,
+						(items) => { const t = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+						(items) => { const f = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+					);
 				});
 			});`;
 			const result = parseDataFlowCode(code);
@@ -585,14 +570,14 @@ describe('dataflow-parser', () => {
 			expect(conditionList[0].rightValue).toBe(10);
 		});
 
-		it('parses .includes() as contains', () => {
+		it('parses .includes() as contains via .branch()', () => {
 			const code = `workflow({ name: 'Test' }, () => {
-				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
-					if (items[0].json.tags.includes('important')) {
-						const trueBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					} else {
-						const falseBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					}
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+					items.branch(
+						(item) => item.json.tags.includes('important'),
+						(items) => { const t = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+						(items) => { const f = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+					);
 				});
 			});`;
 			const result = parseDataFlowCode(code);
@@ -605,14 +590,14 @@ describe('dataflow-parser', () => {
 			expect(conditionList[0].rightValue).toBe('important');
 		});
 
-		it('parses truthy check (no operator) as boolean true', () => {
+		it('parses truthy check (no operator) as boolean true via .branch()', () => {
 			const code = `workflow({ name: 'Test' }, () => {
-				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
-					if (items[0].json.isActive) {
-						const trueBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					} else {
-						const falseBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					}
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+					items.branch(
+						(item) => item.json.isActive,
+						(items) => { const t = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+						(items) => { const f = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+					);
 				});
 			});`;
 			const result = parseDataFlowCode(code);
@@ -624,14 +609,14 @@ describe('dataflow-parser', () => {
 			expect(operator.operation).toBe('true');
 		});
 
-		it('parses negated check as boolean false', () => {
+		it('parses negated check as boolean false via .branch()', () => {
 			const code = `workflow({ name: 'Test' }, () => {
-				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
-					if (!items[0].json.isActive) {
-						const trueBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					} else {
-						const falseBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					}
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+					items.branch(
+						(item) => !item.json.isActive,
+						(items) => { const t = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+						(items) => { const f = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+					);
 				});
 			});`;
 			const result = parseDataFlowCode(code);
@@ -643,14 +628,14 @@ describe('dataflow-parser', () => {
 			expect(operator.operation).toBe('false');
 		});
 
-		it('parses === undefined as notExists', () => {
+		it('parses === undefined as notExists via .branch()', () => {
 			const code = `workflow({ name: 'Test' }, () => {
-				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
-					if (items[0].json.email === undefined) {
-						const trueBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					} else {
-						const falseBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					}
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+					items.branch(
+						(item) => item.json.email === undefined,
+						(items) => { const t = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+						(items) => { const f = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+					);
 				});
 			});`;
 			const result = parseDataFlowCode(code);
@@ -662,14 +647,14 @@ describe('dataflow-parser', () => {
 			expect(operator.operation).toBe('notExists');
 		});
 
-		it('parses !== undefined as exists', () => {
+		it('parses !== undefined as exists via .branch()', () => {
 			const code = `workflow({ name: 'Test' }, () => {
-				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
-					if (items[0].json.email !== undefined) {
-						const trueBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					} else {
-						const falseBranch = node({ type: 'n8n-nodes-base.set', params: {} })(items);
-					}
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+					items.branch(
+						(item) => item.json.email !== undefined,
+						(items) => { const t = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+						(items) => { const f = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', params: {}, version: 3 })); },
+					);
 				});
 			});`;
 			const result = parseDataFlowCode(code);
@@ -719,12 +704,26 @@ describe('dataflow-parser', () => {
 			}
 		});
 
-		it('parses if without else block', () => {
+		it('throws on if without else block with hint to use .branch()', () => {
 			const code = `workflow({ name: 'Test' }, () => {
 				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
 					if (items[0].json.status === 'active') {
 						const trueBranch = node({ type: 'n8n-nodes-base.set', name: 'True Branch', params: {} })(items);
 					}
+				});
+			});`;
+			expect(() => parseDataFlowCode(code)).toThrow(/\.branch\(\)/);
+		});
+
+		it('parses .branch() with only true branch', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+					items.branch(
+						(item) => item.json.status === 'active',
+						(items) => {
+							const trueBranch = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'True Branch', params: {}, version: 3 }));
+						},
+					);
 				});
 			});`;
 			const result = parseDataFlowCode(code);
@@ -734,7 +733,7 @@ describe('dataflow-parser', () => {
 			expect(trueNode).toBeDefined();
 		});
 
-		it('parses nodes after if/else block', () => {
+		it('throws on nodes after if/else block with hint to use .branch()', () => {
 			const code = `workflow({ name: 'Test' }, () => {
 				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {} }, (items) => {
 					const pre = node({ type: 'n8n-nodes-base.set', name: 'Pre', params: {} })(items);
@@ -745,11 +744,7 @@ describe('dataflow-parser', () => {
 					}
 				});
 			});`;
-			const result = parseDataFlowCode(code);
-			// Should have: trigger, Pre, IF, True Branch, False Branch
-			expect(result.nodes).toHaveLength(5);
-			const preNode = result.nodes.find((n) => n.name === 'Pre');
-			expect(preNode).toBeDefined();
+			expect(() => parseDataFlowCode(code)).toThrow(/\.branch\(\)/);
 		});
 
 		it('parses outputSampleData on trigger into output and pinData', () => {
@@ -777,7 +772,7 @@ describe('dataflow-parser', () => {
 			expect(result.pinData!['HTTP Request']).toEqual([{ data: 'response' }]);
 		});
 
-		it('parses try/catch followed by switch statement', () => {
+		it('throws on try/catch followed by switch statement', () => {
 			const code = `workflow({ name: 'Try Switch' }, () => {
 				onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
 					try {
@@ -794,78 +789,9 @@ describe('dataflow-parser', () => {
 							version: 3,
 						});
 					}
-					switch (items[0].json.type) {
-						case 'email': {
-							const send_Email = executeNode({
-								type: 'n8n-nodes-base.emailSend',
-								name: 'Send Email',
-								params: { toEmail: 'user@example.com' },
-								version: 2,
-							});
-							break;
-						}
-						case 'sms': {
-							const send_SMS = executeNode({
-								type: 'n8n-nodes-base.httpRequest',
-								name: 'Send SMS',
-								params: { url: 'https://sms.example.com/send', method: 'POST' },
-								version: 4,
-							});
-							break;
-						}
-						default: {
-							const log_Unknown = executeNode({
-								type: 'n8n-nodes-base.set',
-								name: 'Log Unknown',
-								params: {},
-								version: 3,
-							});
-							break;
-						}
-					}
 				});
 			});`;
-			const result = parseDataFlowCode(code);
-
-			// 7 nodes: Trigger, Fetch Data, Error Handler, Switch, Send Email, Send SMS, Log Unknown
-			expect(result.nodes).toHaveLength(7);
-
-			// Fetch Data has onError and executeOnce
-			const fetchData = result.nodes.find(
-				(n) =>
-					n.type === 'n8n-nodes-base.httpRequest' &&
-					(n.parameters as Record<string, unknown>)?.url === 'https://api.example.com/data',
-			);
-			expect(fetchData).toBeDefined();
-			expect(fetchData!.onError).toBe('continueErrorOutput');
-			expect(fetchData!.executeOnce).toBe(true);
-
-			// Switch node with correct rules
-			const switchNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.switch');
-			expect(switchNode).toBeDefined();
-			const rules = (switchNode!.parameters as Record<string, unknown>)?.rules as {
-				values: Array<{
-					conditions: { conditions: Array<{ leftValue: string; rightValue: unknown }> };
-				}>;
-			};
-			expect(rules.values).toHaveLength(2);
-			expect(rules.values[0].conditions.conditions[0].leftValue).toBe('={{ $json.type }}');
-			expect(rules.values[0].conditions.conditions[0].rightValue).toBe('email');
-			expect(rules.values[1].conditions.conditions[0].rightValue).toBe('sms');
-
-			// Connections
-			const fetchDataName = fetchData!.name!;
-			expect(getConnection(result.connections, fetchDataName, 0).node).toBe(switchNode!.name);
-			expect(getConnection(result.connections, fetchDataName, 1).node).toBe('Error Handler');
-			expect(getConnection(result.connections, switchNode!.name!, 0).node).toBe('Send Email');
-			expect(getConnection(result.connections, switchNode!.name!, 1).node).toBe('Send SMS');
-			expect(getConnection(result.connections, switchNode!.name!, 2).node).toBe('Log Unknown');
-
-			// Case nodes should NOT have executeOnce (inside branches)
-			expect(result.nodes.find((n) => n.name === 'Error Handler')!.executeOnce).toBeUndefined();
-			expect(result.nodes.find((n) => n.name === 'Send Email')!.executeOnce).toBeUndefined();
-			expect(result.nodes.find((n) => n.name === 'Send SMS')!.executeOnce).toBeUndefined();
-			expect(result.nodes.find((n) => n.name === 'Log Unknown')!.executeOnce).toBeUndefined();
+			expect(() => parseDataFlowCode(code)).toThrow(/\.handleError\(\)/);
 		});
 	});
 });

@@ -19,10 +19,6 @@ import type {
 	ArrowFunctionExpression,
 	FunctionExpression,
 	BlockStatement,
-	IfStatement,
-	SwitchStatement,
-	SwitchCase,
-	TryStatement,
 	ObjectExpression,
 	Property,
 	ArrayExpression,
@@ -37,10 +33,10 @@ import type {
 
 import { parseSDKCode } from '../../ast-interpreter/parser';
 import { generateDefaultNodeName } from '../node-type-utils';
-import type { WorkflowJSON, NodeJSON, IConnections, IDataObject } from '../../types/base';
+import type { WorkflowJSON, NodeJSON, IDataObject } from '../../types/base';
 import type { SemanticGraph, SemanticNode, AiConnectionType } from '../types';
 import { semanticGraphToWorkflowJSON } from '../semantic-graph';
-import { getOutputName, getInputName, getOutputIndex } from '../semantic-registry';
+import { getOutputName, getInputName } from '../semantic-registry';
 import { isTriggerNodeType } from '../../utils/trigger-detection';
 import {
 	AI_CONNECTION_TO_CONFIG_KEY,
@@ -1750,450 +1746,6 @@ function processNodeVarDeclaration(
 }
 
 /**
- * Get statements from a block (BlockStatement) or wrap a single statement.
- */
-function getBlockStatements(node: Statement): Statement[] {
-	if (node.type === 'BlockStatement') {
-		return (node as BlockStatement).body;
-	}
-	return [node];
-}
-
-/**
- * Process an if/else statement and generate IF node + branches.
- */
-function processIfStatement(
-	stmt: IfStatement,
-	state: ParserState,
-	inputVarName: string | undefined,
-): void {
-	// Extract condition
-	const condition = extractConditionFromExpression(stmt.test);
-
-	// Create IF node
-	const ifParams = condition ? buildIfParameters(condition) : {};
-	const ifConfig: NodeConfig = {
-		type: 'n8n-nodes-base.if',
-		params: ifParams,
-		version: 2,
-	};
-	const { node: ifNode } = createSemanticNode(ifConfig, state);
-
-	// Connect input to IF node — prefer lastNodeInScope for implicit chaining
-	// over inputVarName (which always points to the trigger param).
-	if (state.lastNodeInScope) {
-		addSemanticEdge(
-			state,
-			state.lastNodeInScope.nodeName,
-			ifNode.name,
-			state.lastNodeInScope.outputIndex,
-		);
-	} else if (inputVarName) {
-		const sourceNodeName = resolveInputVar(
-			{ type: 'Identifier', name: inputVarName } as Identifier,
-			state,
-		);
-		if (sourceNodeName) {
-			const sourceOutputIndex = resolveOutputIndex(
-				{ type: 'Identifier', name: inputVarName } as Identifier,
-				state,
-			);
-			addSemanticEdge(state, sourceNodeName, ifNode.name, sourceOutputIndex);
-		}
-	}
-
-	// Remap inputVarName and lastNodeInScope so that branches resolve to the
-	// IF node output instead of the upstream trigger.
-	const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
-	const originalLastNode = state.lastNodeInScope;
-
-	// Process true branch (consequent) — remap to IF output 0
-	if (inputVarName) {
-		state.varToNode.set(inputVarName, { nodeName: ifNode.name, outputIndex: 0 });
-	}
-	state.lastNodeInScope = { nodeName: ifNode.name, outputIndex: 0 };
-	state.branchDepth++;
-	const trueStatements = getBlockStatements(stmt.consequent);
-	processStatements(trueStatements, state, inputVarName);
-	state.branchDepth--;
-
-	// Process false branch (alternate) — remap to IF output 1
-	if (stmt.alternate) {
-		if (inputVarName) {
-			state.varToNode.set(inputVarName, { nodeName: ifNode.name, outputIndex: 1 });
-		}
-		state.lastNodeInScope = { nodeName: ifNode.name, outputIndex: 1 };
-		state.branchDepth++;
-		const falseStatements = getBlockStatements(stmt.alternate);
-		processStatements(falseStatements, state, inputVarName);
-		state.branchDepth--;
-	}
-
-	// Restore original mapping so nodes after the if/else connect correctly
-	if (inputVarName) {
-		if (originalMapping) {
-			state.varToNode.set(inputVarName, originalMapping);
-		} else {
-			state.varToNode.delete(inputVarName);
-		}
-	}
-	state.lastNodeInScope = originalLastNode;
-}
-
-/**
- * Process a switch statement and generate Switch node + cases.
- */
-function processSwitchStatement(
-	stmt: SwitchStatement,
-	state: ParserState,
-	inputVarName: string | undefined,
-): void {
-	// Extract discriminant field path
-	const fieldPath = memberExprToFieldPath(stmt.discriminant);
-
-	// Extract case values
-	const caseValues: unknown[] = [];
-	const caseStatements: SwitchCase[] = [];
-	let defaultCase: SwitchCase | undefined;
-
-	for (const sc of stmt.cases) {
-		if (sc.test == null) {
-			defaultCase = sc;
-		} else {
-			caseValues.push(extractLiteralValue(sc.test));
-			caseStatements.push(sc);
-		}
-	}
-
-	// Create Switch node parameters
-	let switchParams: Record<string, unknown>;
-	if (fieldPath) {
-		switchParams = buildSwitchParameters(fieldPath, caseValues);
-	} else {
-		// Try complex expression fallback
-		const n8nExpr = jsExprToN8nExpr(stmt.discriminant);
-		if (n8nExpr) {
-			// Check if case values are booleans → use boolean operators
-			const allBooleans = caseValues.every((v) => typeof v === 'boolean');
-			if (allBooleans) {
-				switchParams = buildSwitchBooleanParameters(n8nExpr, caseValues);
-			} else {
-				// Non-boolean complex expression — not yet supported for round-trip
-				switchParams = { rules: { values: [] } };
-			}
-		} else {
-			switchParams = { rules: { values: [] } };
-		}
-	}
-	const switchConfig: NodeConfig = {
-		type: 'n8n-nodes-base.switch',
-		params: switchParams,
-		version: 3,
-	};
-	const { node: switchNode } = createSemanticNode(switchConfig, state);
-
-	// Connect input to Switch node — prefer lastNodeInScope for implicit chaining
-	if (state.lastNodeInScope) {
-		addSemanticEdge(
-			state,
-			state.lastNodeInScope.nodeName,
-			switchNode.name,
-			state.lastNodeInScope.outputIndex,
-		);
-	} else if (inputVarName) {
-		const sourceNodeName = resolveInputVar(
-			{ type: 'Identifier', name: inputVarName } as Identifier,
-			state,
-		);
-		if (sourceNodeName) {
-			const sourceOutputIndex = resolveOutputIndex(
-				{ type: 'Identifier', name: inputVarName } as Identifier,
-				state,
-			);
-			addSemanticEdge(state, sourceNodeName, switchNode.name, sourceOutputIndex);
-		}
-	}
-
-	// Remap inputVarName and lastNodeInScope so that cases resolve to the
-	// Switch node output instead of the upstream trigger.
-	const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
-	const originalLastNode = state.lastNodeInScope;
-
-	// Process each case — remap to Switch output i
-	for (let i = 0; i < caseStatements.length; i++) {
-		const sc = caseStatements[i];
-		if (inputVarName) {
-			state.varToNode.set(inputVarName, { nodeName: switchNode.name, outputIndex: i });
-		}
-		state.lastNodeInScope = { nodeName: switchNode.name, outputIndex: i };
-		state.branchDepth++;
-		processStatements(sc.consequent, state, inputVarName);
-		state.branchDepth--;
-	}
-
-	// Process default case — remap to Switch output after all cases
-	if (defaultCase) {
-		if (inputVarName) {
-			state.varToNode.set(inputVarName, {
-				nodeName: switchNode.name,
-				outputIndex: caseStatements.length,
-			});
-		}
-		state.lastNodeInScope = { nodeName: switchNode.name, outputIndex: caseStatements.length };
-		state.branchDepth++;
-		processStatements(defaultCase.consequent, state, inputVarName);
-		state.branchDepth--;
-	}
-
-	// Restore original mapping
-	if (inputVarName) {
-		if (originalMapping) {
-			state.varToNode.set(inputVarName, originalMapping);
-		} else {
-			state.varToNode.delete(inputVarName);
-		}
-	}
-	state.lastNodeInScope = originalLastNode;
-}
-
-/**
- * Build a sub-workflow JSON from extracted try-block nodes and their connections.
- */
-function buildSubWorkflowJSON(tryNodes: NodeJSON[], subConnections: IConnections): WorkflowJSON {
-	const triggerNode: NodeJSON = {
-		id: 'sub-trigger',
-		name: 'Execute Workflow Trigger',
-		type: 'n8n-nodes-base.executeWorkflowTrigger',
-		typeVersion: 1.1,
-		position: [0, 0] as [number, number],
-		parameters: {},
-	};
-
-	const subNodes = [triggerNode, ...tryNodes];
-	// Re-index positions
-	for (let i = 0; i < subNodes.length; i++) {
-		subNodes[i].position = [i * 200, 0];
-	}
-
-	// Add connection from trigger to first try node
-	const firstTryNodeName = tryNodes[0].name!;
-	const allSubConnections: IConnections = {
-		'Execute Workflow Trigger': {
-			main: [[{ node: firstTryNodeName, type: 'main', index: 0 }]],
-		},
-		...subConnections,
-	};
-
-	return {
-		name: 'Sub-workflow',
-		nodes: subNodes,
-		connections: allSubConnections,
-	};
-}
-
-/**
- * Find and remove the predecessor edge from a non-try node to the first try-block node.
- */
-function findAndRemovePredecessorEdge(
-	state: ParserState,
-	tryNodeNames: Set<string>,
-): { fromNode: string; outputIndex: number } | undefined {
-	const firstTryNodeName = [...tryNodeNames][0];
-	let predecessor: { fromNode: string; outputIndex: number } | undefined;
-
-	for (const [nodeName, node] of state.graphNodes) {
-		if (tryNodeNames.has(nodeName)) continue;
-		for (const [outputSlot, targets] of node.outputs) {
-			const targetIdx = targets.findIndex((t) => t.target === firstTryNodeName);
-			if (targetIdx >= 0) {
-				const outputIndex = getOutputIndex(node.type, outputSlot, node.json);
-				predecessor = { fromNode: nodeName, outputIndex };
-				targets.splice(targetIdx, 1);
-				if (targets.length === 0) {
-					node.outputs.delete(outputSlot);
-				}
-				break;
-			}
-		}
-		if (predecessor) break;
-	}
-
-	return predecessor;
-}
-
-/**
- * Process a try/catch statement for error handling.
- */
-function processTryStatement(
-	stmt: TryStatement,
-	state: ParserState,
-	inputVarName: string | undefined,
-): void {
-	// Track which nodes exist before processing try block
-	const nodeCountBefore = state.nodeInsertionOrder.length;
-
-	// Process try block
-	processStatements(stmt.block.body, state, inputVarName);
-
-	const tryBlockNodeCount = state.nodeInsertionOrder.length - nodeCountBefore;
-
-	if (tryBlockNodeCount >= 2) {
-		// Multi-node try block: wrap in executeWorkflow sub-workflow
-		processTryMultiNode(stmt, state, inputVarName, nodeCountBefore);
-	} else {
-		// Single-node try block: keep existing behavior
-		processTrySingleNode(stmt, state, inputVarName, nodeCountBefore);
-	}
-}
-
-/**
- * Handle single-node try/catch — existing behavior (set onError on the node).
- */
-function processTrySingleNode(
-	stmt: TryStatement,
-	state: ParserState,
-	inputVarName: string | undefined,
-	nodeCountBefore: number,
-): void {
-	// Mark nodes added in try block with onError: continueErrorOutput
-	for (let i = nodeCountBefore; i < state.nodeInsertionOrder.length; i++) {
-		const node = state.graphNodes.get(state.nodeInsertionOrder[i]);
-		if (node) node.json.onError = 'continueErrorOutput';
-	}
-
-	// Process catch block
-	if (stmt.handler && stmt.handler.body) {
-		const errorNodeCountBefore = state.nodeInsertionOrder.length;
-
-		const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
-		const originalLastNode = state.lastNodeInScope;
-		if (inputVarName && nodeCountBefore < errorNodeCountBefore) {
-			const lastTryNodeName = state.nodeInsertionOrder[errorNodeCountBefore - 1];
-			state.varToNode.set(inputVarName, { nodeName: lastTryNodeName, outputIndex: 1 });
-			state.lastNodeInScope = { nodeName: lastTryNodeName, outputIndex: 1 };
-		}
-
-		state.branchDepth++;
-		processStatements(stmt.handler.body.body, state, inputVarName);
-		state.branchDepth--;
-
-		if (inputVarName) {
-			if (originalMapping) {
-				state.varToNode.set(inputVarName, originalMapping);
-			} else {
-				state.varToNode.delete(inputVarName);
-			}
-		}
-
-		if (nodeCountBefore < errorNodeCountBefore) {
-			const lastTryNodeName = state.nodeInsertionOrder[errorNodeCountBefore - 1];
-			state.lastNodeInScope = { nodeName: lastTryNodeName, outputIndex: 0 };
-		} else {
-			state.lastNodeInScope = originalLastNode;
-		}
-	}
-}
-
-/**
- * Handle multi-node try/catch — wrap try-block nodes in an executeWorkflow sub-workflow.
- */
-function processTryMultiNode(
-	stmt: TryStatement,
-	state: ParserState,
-	inputVarName: string | undefined,
-	nodeCountBefore: number,
-): void {
-	// Extract try-block node names from insertion order and adjust counter
-	const tryNodeNames = state.nodeInsertionOrder.splice(nodeCountBefore);
-	state.nodeCounter -= tryNodeNames.length;
-	const tryNodeNameSet = new Set(tryNodeNames);
-
-	// Extract SemanticNodes from graph
-	const extractedNodes: SemanticNode[] = [];
-	for (const name of tryNodeNames) {
-		const node = state.graphNodes.get(name);
-		if (node) {
-			extractedNodes.push(node);
-			state.graphNodes.delete(name);
-		}
-	}
-
-	// Remove onError and executeOnce from sub-workflow nodes
-	for (const n of extractedNodes) {
-		delete n.json.onError;
-		delete n.json.executeOnce;
-	}
-
-	// Find and remove predecessor edge
-	const predecessor = findAndRemovePredecessorEdge(state, tryNodeNameSet);
-
-	// Build sub-workflow using semantic graph → JSON conversion
-	const subGraph: SemanticGraph = {
-		nodes: new Map(extractedNodes.map((n) => [n.name, n])),
-		roots: [tryNodeNames[0]],
-		cycleEdges: new Map(),
-	};
-	const subJSON = semanticGraphToWorkflowJSON(subGraph, 'Sub-workflow');
-	const subWorkflowJSON = buildSubWorkflowJSON(subJSON.nodes, subJSON.connections);
-
-	// Create the executeWorkflow wrapper node
-	const execWfConfig: NodeConfig = {
-		type: 'n8n-nodes-base.executeWorkflow',
-		name: 'Execute Workflow',
-		params: {
-			source: 'parameter',
-			workflowJson: JSON.stringify(subWorkflowJSON),
-			options: {},
-		},
-		version: 1.3,
-	};
-	const { node: execWfNode } = createSemanticNode(execWfConfig, state);
-	if (state.branchDepth === 0) {
-		execWfNode.json.executeOnce = true;
-	}
-	execWfNode.json.onError = 'continueErrorOutput';
-
-	// Reconnect predecessor → executeWorkflow
-	if (predecessor) {
-		addSemanticEdge(state, predecessor.fromNode, execWfNode.name, predecessor.outputIndex);
-	}
-
-	// Remap any varToNode entries that pointed to try-block nodes
-	for (const [varName, mapping] of state.varToNode.entries()) {
-		if (tryNodeNameSet.has(mapping.nodeName)) {
-			state.varToNode.set(varName, { nodeName: execWfNode.name, outputIndex: 0 });
-		}
-	}
-
-	// Process catch block
-	if (stmt.handler && stmt.handler.body) {
-		const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
-
-		// Catch block connects from executeWorkflow's error output (index 1)
-		if (inputVarName) {
-			state.varToNode.set(inputVarName, { nodeName: execWfNode.name, outputIndex: 1 });
-		}
-		state.lastNodeInScope = { nodeName: execWfNode.name, outputIndex: 1 };
-
-		state.branchDepth++;
-		processStatements(stmt.handler.body.body, state, inputVarName);
-		state.branchDepth--;
-
-		// Restore inputVarName mapping
-		if (inputVarName) {
-			if (originalMapping) {
-				state.varToNode.set(inputVarName, originalMapping);
-			} else {
-				state.varToNode.delete(inputVarName);
-			}
-		}
-
-		// After try/catch, lastNodeInScope → executeWorkflow success output (index 0)
-		state.lastNodeInScope = { nodeName: execWfNode.name, outputIndex: 0 };
-	}
-}
-
-/**
  * Process a batch() call → SplitInBatches node with loop-back connection.
  *
  * Patterns:
@@ -2554,20 +2106,33 @@ function processStatement(
 			break;
 		}
 
-		case 'IfStatement': {
-			processIfStatement(stmt as IfStatement, state, inputVarName);
-			break;
-		}
+		case 'IfStatement':
+			throw new Error(
+				'if/else statements are not supported. Use .branch() instead:\n' +
+					'  source.branch(\n' +
+					'    (item) => item.json.field === value,\n' +
+					'    (items) => { /* true branch */ },\n' +
+					'    (items) => { /* false branch */ },\n' +
+					'  );',
+			);
 
-		case 'SwitchStatement': {
-			processSwitchStatement(stmt as SwitchStatement, state, inputVarName);
-			break;
-		}
+		case 'SwitchStatement':
+			throw new Error(
+				'switch/case statements are not supported. Use .route() instead:\n' +
+					'  source.route((item) => item.json.field, {\n' +
+					'    value1: (items) => { /* ... */ },\n' +
+					'    value2: (items) => { /* ... */ },\n' +
+					'    default: (items) => { /* ... */ },\n' +
+					'  });',
+			);
 
-		case 'TryStatement': {
-			processTryStatement(stmt as TryStatement, state, inputVarName);
-			break;
-		}
+		case 'TryStatement':
+			throw new Error(
+				'try/catch statements are not supported. Use .handleError() instead:\n' +
+					'  const result = executeNode({...}).handleError((items) => {\n' +
+					'    /* error handling */\n' +
+					'  });',
+			);
 
 		case 'ForOfStatement':
 		case 'ForInStatement':
@@ -2575,12 +2140,11 @@ function processStatement(
 		case 'WhileStatement':
 		case 'DoWhileStatement':
 			throw new Error(
-				'Imperative loops are not supported. Use .map() for per-item processing, or batch() for large datasets that need batching.',
+				'Imperative loops (for, while, do-while) are not supported. Use .map() for per-item processing, or .batch() for large datasets:\n' +
+					'  source.batch((items) => {\n' +
+					'    /* process each batch */\n' +
+					'  });',
 			);
-
-		case 'BreakStatement':
-			// Skip break statements in switch cases
-			break;
 
 		case 'BlockStatement': {
 			// Process nested block

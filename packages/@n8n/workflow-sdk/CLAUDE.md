@@ -6,13 +6,13 @@ TypeScript SDK for programmatic n8n workflow creation. Used by the AI code build
 
 | | SDK | Data-flow (preferred for LLMs) |
 |---|---|---|
-| Style | Fluent builder chain: `.to()`, `.onTrue()`, `.onFalse()` | Native TypeScript: `if/else`, `switch/case`, `try/catch` |
+| Style | Fluent builder chain: `.to()`, `.onTrue()`, `.onFalse()` | Functional method-chaining: `.branch()`, `.route()`, `.handleError()` |
 | Generate | `generateWorkflowCode(json)` | `generateDataFlowWorkflowCode(json)` |
 | Parse | `parseWorkflowCode(code)` | `parseDataFlowCode(code)` |
 | Source | `src/codegen/code-generator.ts` | `src/codegen/dataflow/dataflow-generator.ts` |
 | Parser | `src/codegen/parse-workflow-code.ts` | `src/codegen/dataflow/dataflow-parser.ts` |
 
-Data-flow is preferred because LLMs already know TypeScript control flow — no custom DSL to learn.
+Data-flow is preferred because it uses functional method-chaining patterns that LLMs produce reliably.
 
 ## Data-Flow DSL Primitives
 
@@ -24,14 +24,14 @@ Data-flow is preferred because LLMs already know TypeScript control flow — no 
 - `$now.toISO()`, `$today`, `$execution.id` — n8n globals used directly (instead of `expr('{{ $now.toISO() }}')`)
 - `expr('{{ complex expression }}')` — wrap complex n8n expressions that can't be represented as simple identifiers
 - `item.json.field` — direct field access inside `.map()` callbacks
-- `items.map((item) => { if (item.json.field === value) { ... } else { ... } })` → IF node branching (per-item)
-- `items.map((item) => { switch (item.json.field) { ... } })` → Switch node routing (per-item)
-- Native `try { ... } catch (e) { ... }` → error handling (continueErrorOutput)
+- `items.branch(predicate, trueFn, falseFn)` → IF node branching
+- `items.route(selector, { case: fn, ... })` → Switch node routing
+- `executeNode({...}).handleError((items) => {...})` → error handling (continueErrorOutput)
 - `items.filter((item) => condition)` → Filter node (per-item: `item.json`)
-- `batch(source, config?, (item) => { ... })` — batch processing via SplitInBatches. Config: `{ params?: { batchSize }, version?, name? }`. Omitted when all defaults (batchSize 1, version 3, auto name).
+- `source.batch((items) => { ... })` — batch processing via SplitInBatches
 - `const [out0, out1, out2] = node({ ... })(input)` — multi-output destructuring
 - `subnodes: { ai_languageModel: { type, params, version } }` — AI sub-connections
-- **Note:** `for`, `while`, `do...while` loops are forbidden outside code nodes — use `batch()` instead
+- **Note:** `if/else`, `switch/case`, `try/catch`, `for`, `while` are **rejected** by the parser — use `.branch()`, `.route()`, `.handleError()`, `.batch()` instead
 
 See `src/codegen/dataflow/__fixtures__/f01-f23/` for full examples of each pattern.
 
@@ -60,7 +60,7 @@ The `executeOnce` flag on `NodeJSON` distinguishes per-item vs execute-once node
 - **Per-item** (default, `executeOnce` unset): node runs once per item. Code uses `.map()`: `items.map((item) => executeNode(...))`
 - **Execute-once** (`executeOnce: true`): node runs once for all items. Code uses direct call: `executeNode(...)`
 
-**Parser** (`dataflow-parser.ts`): tracks `branchDepth` counter in state. Only sets `executeOnce = true` when a direct `executeNode()` call is at top-level (`branchDepth === 0`). Inside `if/else`, `switch/case`, or `try/catch` blocks, `branchDepth > 0` so `executeOnce` is never set — branch nodes always use the parent's execution mode.
+**Parser** (`dataflow-parser.ts`): tracks `branchDepth` counter in state. Only sets `executeOnce = true` when a direct `executeNode()` call is at top-level (`branchDepth === 0`). Inside `.branch()`, `.route()`, or `.handleError()` callbacks, `branchDepth > 0` so `executeOnce` is never set — branch nodes always use the parent's execution mode.
 
 **Generator** (`dataflow-generator.ts`): uses `insideBranch` flag in context. Emits `.map()` wrapping only when `!node.json.executeOnce && !ctx.insideBranch`. Inside branches and error handlers, `insideBranch = true` suppresses `.map()` to avoid double-wrapping.
 
@@ -68,7 +68,7 @@ The `executeOnce` flag on `NodeJSON` distinguishes per-item vs execute-once node
 
 Both use the same V2 conditions parameter format, but serve different purposes:
 
-- **IF node** (`n8n-nodes-base.if`): branches workflow into two paths. Data-flow: `.map()` with `if/else` block. Outputs: `trueBranch`/`falseBranch`.
+- **IF node** (`n8n-nodes-base.if`): branches workflow into two paths. Data-flow: `.branch()` call. Outputs: `trueBranch`/`falseBranch`.
 - **Filter node** (`n8n-nodes-base.filter`): filters items matching a condition (pass-through). Data-flow: `.filter()` call. Outputs: `kept`/`discarded`.
 
 Key difference in code generation: Filter's kept branch is a **continuation** (downstream nodes keep `.map()` wrapping), not a **branch** (`insideBranch` stays false). This prevents round-trip issues where downstream nodes would incorrectly get `executeOnce: true`.
