@@ -7,6 +7,32 @@ import {
 	getSleepDetail,
 	SLEEP_NODE_COLOR,
 } from '../utils/sleep-node';
+import {
+	getBatchLabel as _getBatchLabel,
+	getBatchDetail as _getBatchDetail,
+	BATCH_NODE_COLOR,
+} from '../utils/batch-node';
+import {
+	getTriggerWorkflowLabel as _getTriggerWorkflowLabel,
+	TRIGGER_WORKFLOW_NODE_COLOR,
+} from '../utils/trigger-workflow-node';
+import {
+	NODE_WIDTH,
+	computeGraphLayout,
+	getDisplayConfig,
+	formatCondition,
+	edgePath,
+	edgeLabelPos,
+	truncateName,
+	type LayoutNode,
+	type GraphLayout,
+} from '../composables/useGraphLayout';
+
+interface CanvasLayoutNode extends LayoutNode {
+	isWebhook?: boolean;
+	webhookMethod?: string;
+	webhookPath?: string;
+}
 
 interface TriggerDef {
 	type: string;
@@ -23,115 +49,9 @@ const emit = defineEmits<{
 	'node-click': [nodeId: string];
 }>();
 
-// Layout configuration
-const NODE_WIDTH = 200;
-const NODE_HEIGHT = 58;
-const NODE_HEIGHT_WITH_DESC = 74;
-const LEVEL_GAP_Y = 80;
-const NODE_GAP_X = 40;
-const PADDING = 60;
-
-interface DisplayConfig {
-	icon?: string;
-	color?: string;
-	description?: string;
-}
-
-function getDisplayConfig(node: LayoutNode): DisplayConfig | undefined {
-	const cfg = node.config;
-	if (!cfg) return undefined;
-	// New format: icon/color/description at top level of config
-	if (cfg.icon || cfg.color || cfg.description) {
-		return {
-			icon: cfg.icon as string,
-			color: cfg.color as string,
-			description: cfg.description as string,
-		};
-	}
-	// Legacy format: nested under display
-	return cfg.display as DisplayConfig | undefined;
-}
-
-function hasAnyDescription(nodes: WorkflowGraphNode[]): boolean {
-	return nodes.some((n) => {
-		const cfg = n.config;
-		if (!cfg) return false;
-		// New format
-		if (cfg.description) return true;
-		// Legacy format
-		const display = cfg.display as DisplayConfig | undefined;
-		return display?.description;
-	});
-}
-
-function nodeHeight(hasDesc: boolean): number {
-	return hasDesc ? NODE_HEIGHT_WITH_DESC : NODE_HEIGHT;
-}
-
-interface LayoutNode {
-	id: string;
-	name: string;
-	type: string;
-	x: number;
-	y: number;
-	level: number;
-	isWebhook?: boolean;
-	webhookMethod?: string;
-	webhookPath?: string;
-	config?: Record<string, unknown>;
-}
-
-interface LayoutEdge {
-	from: LayoutNode;
-	to: LayoutNode;
-	label?: string;
-	condition?: string;
-}
-
-/**
- * Format a raw condition expression (e.g. `output.amount > 100`) into
- * a human-readable label for the canvas edge.
- */
-function formatCondition(raw: string): string {
-	let text = raw.trim();
-	// Strip leading `output.` prefix for brevity
-	text = text.replace(/\boutput\./g, '');
-
-	// Translate negated comparisons into their natural form
-	// e.g. `!(amount > 100)` → `amount <= 100`
-	const negatedMatch = text.match(/^!\s*\((.+)\)$/);
-	if (negatedMatch) {
-		const inner = negatedMatch[1].trim();
-		const opMap: Record<string, string> = {
-			'>': '\u2264', // ≤
-			'<': '\u2265', // ≥
-			'>=': '<',
-			'<=': '>',
-			'===': '\u2260', // ≠
-			'!==': '===',
-			'==': '\u2260',
-			'!=': '==',
-		};
-		for (const [op, replacement] of Object.entries(opMap)) {
-			if (inner.includes(` ${op} `)) {
-				return inner.replace(` ${op} `, ` ${replacement} `);
-			}
-		}
-		// Fallback — just show NOT prefix
-		return `NOT ${inner}`;
-	}
-
-	// Simple negation: `!foo` → `NOT foo`
-	if (text.startsWith('!')) {
-		return `NOT ${text.slice(1).trim()}`;
-	}
-
-	return text;
-}
-
-const layout = computed(() => {
+const layout = computed((): GraphLayout<CanvasLayoutNode> => {
 	if (!props.graph || !props.graph.nodes.length) {
-		return { nodes: [] as LayoutNode[], edges: [] as LayoutEdge[], width: 0, height: 0 };
+		return { nodes: [], edges: [], width: 0, height: 0, effectiveHeight: 0 };
 	}
 
 	const { nodes: allNodes, edges: allEdges } = props.graph;
@@ -139,7 +59,7 @@ const layout = computed(() => {
 	// Identify trigger node IDs so we can filter them out
 	const triggerNodeIds = new Set(allNodes.filter((n) => n.type === 'trigger').map((n) => n.id));
 
-	// Filter out trigger nodes — they are implicit
+	// Filter out trigger nodes -- they are implicit
 	const visibleNodes = allNodes.filter((n) => n.type !== 'trigger');
 
 	// Remap edges: drop edges between triggers, and for edges originating
@@ -151,7 +71,7 @@ const layout = computed(() => {
 	// Check if there are webhook triggers to display
 	const webhookTriggers = (props.triggers ?? []).filter((t) => t.type === 'webhook');
 
-	// Build the list of nodes to lay out — webhook triggers come first
+	// Build the list of nodes to lay out -- webhook triggers come first
 	const webhookNodes: WorkflowGraphNode[] = webhookTriggers.map((wh, idx) => ({
 		id: `__webhook_${idx}`,
 		name: `${(wh.config?.method ?? 'POST').toUpperCase()} ${wh.config?.path ?? '/'}`,
@@ -162,7 +82,7 @@ const layout = computed(() => {
 
 	const nodesToLayout = [...webhookNodes, ...visibleNodes];
 
-	// Build edges — webhook nodes connect to root visible nodes
+	// Build edges -- webhook nodes connect to root visible nodes
 	// (nodes that had no incoming edges from other visible nodes)
 	const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
 	const hasIncomingFromVisible = new Set(
@@ -181,128 +101,23 @@ const layout = computed(() => {
 
 	const edgesToLayout = [...webhookEdges, ...visibleEdges];
 
-	// Build adjacency map
-	const children = new Map<string, string[]>();
-	const parents = new Map<string, string[]>();
-	for (const node of nodesToLayout) {
-		children.set(node.id, []);
-		parents.set(node.id, []);
-	}
-	for (const edge of edgesToLayout) {
-		children.get(edge.from)?.push(edge.to);
-		parents.get(edge.to)?.push(edge.from);
-	}
-
-	// Assign levels via BFS from root nodes (no parents)
-	const levels = new Map<string, number>();
-	const roots = nodesToLayout.filter((n) => !parents.get(n.id)?.length);
-	if (roots.length === 0 && nodesToLayout.length > 0) {
-		roots.push(nodesToLayout[0]);
-	}
-
-	const queue: Array<{ id: string; level: number }> = roots.map((r) => ({
-		id: r.id,
-		level: 0,
-	}));
-	const visited = new Set<string>();
-
-	while (queue.length > 0) {
-		const item = queue.shift();
-		if (!item) break;
-		const { id, level } = item;
-
-		if (visited.has(id)) {
-			// Update level if deeper
-			const current = levels.get(id) ?? 0;
-			if (level > current) levels.set(id, level);
-			continue;
-		}
-
-		visited.add(id);
-		levels.set(id, level);
-
-		for (const childId of children.get(id) ?? []) {
-			queue.push({ id: childId, level: level + 1 });
-		}
-	}
-
-	// Handle unvisited nodes
-	for (const node of nodesToLayout) {
-		if (!levels.has(node.id)) {
-			levels.set(node.id, 0);
-		}
-	}
-
-	// Group nodes by level
-	const levelGroups = new Map<number, WorkflowGraphNode[]>();
-	for (const node of nodesToLayout) {
-		const level = levels.get(node.id) ?? 0;
-		if (!levelGroups.has(level)) levelGroups.set(level, []);
-		levelGroups.get(level)!.push(node);
-	}
-
-	const maxLevel = Math.max(...levels.values());
-	const maxNodesInLevel = Math.max(...Array.from(levelGroups.values()).map((g) => g.length));
-
-	// Position nodes
-	const layoutNodes = new Map<string, LayoutNode>();
+	// Augment layout nodes with webhook-specific fields
 	const webhookNodeIdSet = new Set(webhookNodes.map((n) => n.id));
-	const anyDesc = hasAnyDescription(nodesToLayout);
-	const effectiveHeight = nodeHeight(anyDesc);
 
-	for (let level = 0; level <= maxLevel; level++) {
-		const group = levelGroups.get(level) ?? [];
-		const totalWidth = group.length * NODE_WIDTH + (group.length - 1) * NODE_GAP_X;
-		const startX =
-			PADDING + (maxNodesInLevel * (NODE_WIDTH + NODE_GAP_X) - NODE_GAP_X - totalWidth) / 2;
+	return computeGraphLayout<CanvasLayoutNode>(nodesToLayout, edgesToLayout, (node, base) => {
+		const isWebhook = webhookNodeIdSet.has(node.id);
+		const whTrigger = isWebhook
+			? webhookTriggers[webhookNodes.findIndex((w) => w.id === node.id)]
+			: undefined;
 
-		for (let i = 0; i < group.length; i++) {
-			const node = group[i];
-			const isWebhook = webhookNodeIdSet.has(node.id);
-			const whTrigger = isWebhook
-				? webhookTriggers[webhookNodes.findIndex((w) => w.id === node.id)]
-				: undefined;
-
-			layoutNodes.set(node.id, {
-				id: node.id,
-				name: node.name,
-				type: isWebhook ? 'webhook' : node.type,
-				x: startX + i * (NODE_WIDTH + NODE_GAP_X),
-				y: PADDING + level * (effectiveHeight + LEVEL_GAP_Y),
-				level,
-				isWebhook,
-				webhookMethod: whTrigger?.config?.method?.toUpperCase(),
-				webhookPath: whTrigger?.config?.path,
-				config: node.config,
-			});
-		}
-	}
-
-	// Build layout edges — include condition text for conditional edges
-	const layoutEdges: LayoutEdge[] = [];
-	for (const edge of edgesToLayout) {
-		const fromNode = layoutNodes.get(edge.from);
-		const toNode = layoutNodes.get(edge.to);
-		if (fromNode && toNode) {
-			layoutEdges.push({
-				from: fromNode,
-				to: toNode,
-				label: edge.label,
-				condition: edge.condition,
-			});
-		}
-	}
-
-	const width = maxNodesInLevel * (NODE_WIDTH + NODE_GAP_X) - NODE_GAP_X + PADDING * 2;
-	const height = (maxLevel + 1) * (effectiveHeight + LEVEL_GAP_Y) - LEVEL_GAP_Y + PADDING * 2;
-
-	return {
-		nodes: Array.from(layoutNodes.values()),
-		edges: layoutEdges,
-		width: Math.max(width, 300),
-		height: Math.max(height, 200),
-		effectiveHeight,
-	};
+		return {
+			...base,
+			type: isWebhook ? 'webhook' : node.type,
+			isWebhook,
+			webhookMethod: whTrigger?.config?.method?.toUpperCase(),
+			webhookPath: whTrigger?.config?.path,
+		};
+	});
 });
 
 function typeColor(type: string): string {
@@ -313,41 +128,36 @@ function typeColor(type: string): string {
 		condition: '#f5a623',
 		approval: '#8b5cf6',
 		sleep: SLEEP_NODE_COLOR,
+		batch: BATCH_NODE_COLOR,
+		'trigger-workflow': TRIGGER_WORKFLOW_NODE_COLOR,
 		end: '#6b7280',
 	};
 	return colors[type] ?? '#6b7280';
 }
 
-function edgePath(from: LayoutNode, to: LayoutNode, h: number): string {
-	const x1 = from.x + NODE_WIDTH / 2;
-	const y1 = from.y + h;
-	const x2 = to.x + NODE_WIDTH / 2;
-	const y2 = to.y;
-	const midY = (y1 + y2) / 2;
-	return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
-}
-
-function edgeLabelPos(from: LayoutNode, to: LayoutNode, h: number): { x: number; y: number } {
-	const x = (from.x + NODE_WIDTH / 2 + to.x + NODE_WIDTH / 2) / 2;
-	const y = (from.y + h + to.y) / 2;
-	return { x, y };
-}
-
-function stripeColor(node: LayoutNode): string {
+function stripeColor(node: CanvasLayoutNode): string {
 	const display = getDisplayConfig(node);
 	return display?.color ?? typeColor(node.type);
 }
 
-function truncateName(name: string, maxLen: number = 18): string {
-	return name.length > maxLen ? name.slice(0, maxLen) + '...' : name;
-}
-
-function getSleepLabel(node: LayoutNode): string {
+function getSleepLabel(node: CanvasLayoutNode): string {
 	return _getSleepLabel(node.config);
 }
 
-function getSleepDetailText(node: LayoutNode): string | undefined {
+function getSleepDetailText(node: CanvasLayoutNode): string | undefined {
 	return getSleepDetail(node.config);
+}
+
+function getBatchLabel(node: CanvasLayoutNode): string {
+	return _getBatchLabel(node.config);
+}
+
+function getBatchDetailText(node: CanvasLayoutNode): string | undefined {
+	return _getBatchDetail(node.config);
+}
+
+function getTriggerWorkflowLabel(node: CanvasLayoutNode): string {
+	return _getTriggerWorkflowLabel(node.config);
 }
 </script>
 
@@ -445,10 +255,10 @@ function getSleepDetailText(node: LayoutNode): string | undefined {
 				:key="node.id"
 				:class="[
 					$style.node,
-					node.type !== 'webhook' ? $style.nodeClickable : '',
+					$style.nodeClickable,
 					props.selectedNodeId === node.id ? $style.nodeSelected : '',
 				]"
-				@click="node.type !== 'webhook' ? emit('node-click', node.id) : undefined"
+				@click="emit('node-click', node.isWebhook ? 'trigger' : node.id)"
 			>
 				<!-- Node background -->
 				<rect
@@ -462,7 +272,12 @@ function getSleepDetailText(node: LayoutNode): string | undefined {
 					:stroke="stripeColor(node)"
 					stroke-width="1.5"
 					:stroke-dasharray="node.type === 'sleep' ? '6 3' : 'none'"
-					:class="[$style.nodeRect, node.type === 'sleep' ? $style.sleepNodeRect : '']"
+					:class="[
+						$style.nodeRect,
+						node.type === 'sleep' ? $style.sleepNodeRect : '',
+						node.type === 'batch' ? $style.batchNodeRect : '',
+						node.type === 'trigger-workflow' ? $style.triggerWorkflowNodeRect : '',
+					]"
 				/>
 
 				<!-- Sleep node: clock icon, label on top, detail on bottom -->
@@ -506,6 +321,102 @@ function getSleepDetailText(node: LayoutNode): string | undefined {
 						:class="$style.nodeDescription"
 					>
 						{{ truncateName(getSleepDetailText(node)!, 26) }}
+					</text>
+				</template>
+
+				<!-- Batch node: layers icon, label, description on bottom -->
+				<template v-else-if="node.type === 'batch'">
+					<g
+						:transform="`translate(${node.x + 10}, ${getDisplayConfig(node)?.description ? node.y + 13 : node.y + layout.effectiveHeight / 2 - 9}) scale(0.75)`"
+					>
+						<path
+							v-for="(d, pi) in LUCIDE_PATHS['layers']"
+							:key="pi"
+							:d="d"
+							fill="none"
+							:stroke="BATCH_NODE_COLOR"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</g>
+					<text
+						:x="node.x + 32"
+						:y="
+							getDisplayConfig(node)?.description
+								? node.y + 24
+								: node.y + layout.effectiveHeight / 2
+						"
+						text-anchor="start"
+						dominant-baseline="central"
+						font-size="13"
+						font-weight="500"
+						font-family="var(--font-family)"
+						:class="$style.batchNodeText"
+					>
+						{{ truncateName(getBatchLabel(node)) }}
+					</text>
+					<!-- Description on second line -->
+					<text
+						v-if="getDisplayConfig(node)?.description"
+						:x="node.x + 14"
+						:y="node.y + layout.effectiveHeight - 16"
+						text-anchor="start"
+						dominant-baseline="central"
+						font-size="10"
+						font-weight="400"
+						font-family="var(--font-family)"
+						:class="$style.nodeDescription"
+					>
+						{{ truncateName(getDisplayConfig(node)!.description!, 26) }}
+					</text>
+				</template>
+
+				<!-- Trigger-workflow node: external-link icon, label, description -->
+				<template v-else-if="node.type === 'trigger-workflow'">
+					<g
+						:transform="`translate(${node.x + 10}, ${getDisplayConfig(node)?.description ? node.y + 13 : node.y + layout.effectiveHeight / 2 - 9}) scale(0.75)`"
+					>
+						<path
+							v-for="(d, pi) in LUCIDE_PATHS['external-link']"
+							:key="pi"
+							:d="d"
+							fill="none"
+							:stroke="TRIGGER_WORKFLOW_NODE_COLOR"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</g>
+					<text
+						:x="node.x + 32"
+						:y="
+							getDisplayConfig(node)?.description
+								? node.y + 24
+								: node.y + layout.effectiveHeight / 2
+						"
+						text-anchor="start"
+						dominant-baseline="central"
+						font-size="13"
+						font-weight="500"
+						font-family="var(--font-family)"
+						:class="$style.triggerWorkflowNodeText"
+					>
+						{{ truncateName(getTriggerWorkflowLabel(node), 18) }}
+					</text>
+					<!-- Description on second line -->
+					<text
+						v-if="getDisplayConfig(node)?.description"
+						:x="node.x + 14"
+						:y="node.y + layout.effectiveHeight - 16"
+						text-anchor="start"
+						dominant-baseline="central"
+						font-size="10"
+						font-weight="400"
+						font-family="var(--font-family)"
+						:class="$style.nodeDescription"
+					>
+						{{ truncateName(getDisplayConfig(node)!.description!, 26) }}
 					</text>
 				</template>
 
@@ -669,6 +580,26 @@ function getSleepDetailText(node: LayoutNode): string | undefined {
 	pointer-events: none;
 	user-select: none;
 	font-style: italic;
+}
+
+.batchNodeRect {
+	fill: var(--color-bg);
+}
+
+.batchNodeText {
+	fill: #f97316;
+	pointer-events: none;
+	user-select: none;
+}
+
+.triggerWorkflowNodeRect {
+	fill: var(--color-bg);
+}
+
+.triggerWorkflowNodeText {
+	fill: #6366f1;
+	pointer-events: none;
+	user-select: none;
 }
 
 .empty {

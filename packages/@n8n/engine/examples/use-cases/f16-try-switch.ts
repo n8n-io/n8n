@@ -1,9 +1,9 @@
 /**
  * F16: Try-Switch
  *
- * Demonstrates try/catch wrapping a switch statement. Fetches data
- * with error handling, then routes based on the data type field
- * (email, sms, or unknown).
+ * Demonstrates error handling inside a step combined with switch routing.
+ * Fetches data with try/catch inside the step, then routes based on the
+ * data type field (email, sms, or unknown).
  */
 import { defineWorkflow, webhook } from '@n8n/engine/sdk';
 
@@ -11,27 +11,36 @@ export default defineWorkflow({
 	name: 'F16 - Try Switch',
 	triggers: [webhook('/f16-try-switch', { method: 'POST' })],
 	async run(ctx) {
-		let data: { type: string };
+		const data = await ctx.step(
+			{
+				name: 'Fetch Data',
+				icon: 'globe',
+				color: '#3b82f6',
+				description: 'Fetches data with error handling',
+			},
+			async () => {
+				try {
+					const res = await fetch('https://dummyjson.com/products?limit=5');
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+					return (await res.json()) as { type?: string };
+				} catch (error) {
+					return {
+						error: true,
+						message: error instanceof Error ? error.message : 'Unknown error',
+					};
+				}
+			},
+		);
 
-		try {
-			data = await ctx.step({ name: 'HTTP Request' }, async () => {
-				const res = await fetch('https://dummyjson.com/products?limit=5');
-				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-				return (await res.json()) as { type: string };
-			});
-		} catch (error) {
-			const handled = await ctx.step({ name: 'Error Handler' }, async () => {
-				return {
-					error: true,
-					message: error instanceof Error ? error.message : 'Unknown error',
-				};
-			});
-			return handled;
+		if ('error' in data && data.error) {
+			return data;
 		}
 
-		switch (data.type) {
+		const type = (data as { type?: string }).type ?? 'unknown';
+
+		switch (type) {
 			case 'email': {
-				const result = await ctx.step({ name: 'Send Email' }, async () => {
+				return await ctx.step({ name: 'Send Email', icon: 'mail', color: '#f97316' }, async () => {
 					await fetch('https://dummyjson.com/posts/add', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
@@ -39,24 +48,27 @@ export default defineWorkflow({
 					});
 					return { channel: 'email', sent: true };
 				});
-				return result;
 			}
 			case 'sms': {
-				const result = await ctx.step({ name: 'Send SMS' }, async () => {
-					await fetch('https://dummyjson.com/posts/add', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ to: '+1234567890' }),
-					});
-					return { channel: 'sms', sent: true };
-				});
-				return result;
+				return await ctx.step(
+					{ name: 'Send SMS', icon: 'message-circle', color: '#f97316' },
+					async () => {
+						await fetch('https://dummyjson.com/posts/add', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ to: '+1234567890' }),
+						});
+						return { channel: 'sms', sent: true };
+					},
+				);
 			}
 			default: {
-				const result = await ctx.step({ name: 'Log Unknown' }, async () => {
-					return { channel: 'unknown', type: data.type };
-				});
-				return result;
+				return await ctx.step(
+					{ name: 'Log Unknown', icon: 'clipboard', color: '#6b7280' },
+					async () => {
+						return { channel: 'unknown', type };
+					},
+				);
 			}
 		}
 	},

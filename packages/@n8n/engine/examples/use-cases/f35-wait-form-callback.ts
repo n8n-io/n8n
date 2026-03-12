@@ -28,26 +28,32 @@ export default defineWorkflow({
 		//
 		// --- END UNSUPPORTED ---
 
-		const notifyResult = await ctx.step({ name: 'Notify Approver' }, async () => {
-			const res = await fetch('https://dummyjson.com/posts/add', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ formLink: 'placeholder-form-url' }),
-			});
-			return { notified: res.ok };
-		});
+		const notifyResult = await ctx.step(
+			{ name: 'Notify Approver', icon: 'send', color: '#f97316' },
+			async () => {
+				const res = await fetch('https://dummyjson.com/posts/add', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ formLink: 'placeholder-form-url' }),
+				});
+				return { notified: res.ok };
+			},
+		);
 
 		// Approval step to simulate form waiting
 		const approval = await ctx.step(
-			{ name: 'Wait for Approval', stepType: 'approval' },
+			{ name: 'Wait for Approval', icon: 'clock', color: '#eab308', stepType: 'approval' },
 			async () => {
 				return { context: 'Please approve this request' };
 			},
 		);
 
-		const result = await ctx.step({ name: 'Handle Response' }, async () => {
-			return { handled: true, notifyResult, approval };
-		});
+		const result = await ctx.step(
+			{ name: 'Handle Response', icon: 'zap', color: '#22c55e' },
+			async () => {
+				return { handled: true, notifyResult, approval };
+			},
+		);
 
 		return result;
 	},

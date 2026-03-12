@@ -13,17 +13,17 @@ export default defineWorkflow({
 	async run(ctx) {
 		// Fetch all three sources in parallel
 		const [sourceA, sourceB, sourceC] = await Promise.all([
-			ctx.step({ name: 'Fetch A' }, async () => {
+			ctx.step({ name: 'Fetch A', icon: 'globe', color: '#3b82f6' }, async () => {
 				const res = await fetch('https://dummyjson.com/products?limit=3');
 				const data = (await res.json()) as { products: Array<Record<string, unknown>> };
 				return data.products;
 			}),
-			ctx.step({ name: 'Fetch B' }, async () => {
+			ctx.step({ name: 'Fetch B', icon: 'globe', color: '#3b82f6' }, async () => {
 				const res = await fetch('https://dummyjson.com/users?limit=3');
 				const data = (await res.json()) as { users: Array<Record<string, unknown>> };
 				return data.users;
 			}),
-			ctx.step({ name: 'Fetch C' }, async () => {
+			ctx.step({ name: 'Fetch C', icon: 'globe', color: '#3b82f6' }, async () => {
 				const res = await fetch('https://dummyjson.com/posts?limit=3');
 				const data = (await res.json()) as { posts: Array<Record<string, unknown>> };
 				return data.posts;
@@ -31,25 +31,34 @@ export default defineWorkflow({
 		]);
 
 		// First merge: A + B
-		const mergedAB = await ctx.step({ name: 'Merge A+B' }, async () => {
-			return [...sourceA, ...sourceB];
-		});
+		const mergedAB = await ctx.step(
+			{ name: 'Merge A+B', icon: 'layers', color: '#8b5cf6' },
+			async () => {
+				return [...sourceA, ...sourceB];
+			},
+		);
 
 		// Second merge: AB + C
-		const mergedAll = await ctx.step({ name: 'Merge AB+C' }, async () => {
-			return [...mergedAB, ...sourceC];
-		});
+		const mergedAll = await ctx.step(
+			{ name: 'Merge AB+C', icon: 'layers', color: '#8b5cf6' },
+			async () => {
+				return [...mergedAB, ...sourceC];
+			},
+		);
 
 		// Final processing
-		const result = await ctx.step({ name: 'Final Process' }, async () => {
-			return {
-				totalItems: mergedAll.length,
-				fromA: sourceA.length,
-				fromB: sourceB.length,
-				fromC: sourceC.length,
-				data: mergedAll,
-			};
-		});
+		const result = await ctx.step(
+			{ name: 'Final Process', icon: 'file-text', color: '#22c55e' },
+			async () => {
+				return {
+					totalItems: mergedAll.length,
+					fromA: sourceA.length,
+					fromB: sourceB.length,
+					fromC: sourceC.length,
+					data: mergedAll,
+				};
+			},
+		);
 
 		return result;
 	},

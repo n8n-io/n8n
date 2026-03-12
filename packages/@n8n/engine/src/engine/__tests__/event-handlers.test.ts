@@ -229,13 +229,30 @@ describe('registerEventHandlers', () => {
 	describe('step:failed handler', () => {
 		it('fails parent step when parentStepExecutionId is present', async () => {
 			const { dataSource, mockRepo } = createMockDataSource();
+			const workflowData = createMockWorkflowData();
 
 			mockRepo.findOneByOrFail.mockResolvedValue({
 				id: 'parent-exec-id',
 				executionId: 'exec-1',
 				stepId: 'parent-step',
 				parentStepExecutionId: null,
+				workflowId: 'wf-1',
+				workflowVersion: 1,
 				startedAt: new Date(), // Also used by fail-fast path when re-emitted
+			});
+
+			// Mock workflow lookup (needed for cascading step:failed event on the parent)
+			const mockWorkflowQb = {
+				where: vi.fn().mockReturnThis(),
+				getOneOrFail: vi.fn().mockResolvedValue(workflowData),
+			};
+			dataSource.getRepository.mockImplementation((entity: unknown) => {
+				if (entity === 'WorkflowEntity') {
+					return {
+						createQueryBuilder: vi.fn().mockReturnValue(mockWorkflowQb),
+					};
+				}
+				return mockRepo;
 			});
 
 			registerEventHandlers(eventBus, dataSource as never, stepPlanner, completionService);
@@ -265,11 +282,28 @@ describe('registerEventHandlers', () => {
 
 		it('marks execution as failed (fail fast) for non-child step failure', async () => {
 			const { dataSource, mockRepo, mockQueryBuilder } = createMockDataSource();
+			const workflowData = createMockWorkflowData();
 
 			// findOneByOrFail needs to return an execution with startedAt
 			mockRepo.findOneByOrFail.mockResolvedValue({
 				id: 'exec-1',
+				workflowId: 'wf-1',
+				workflowVersion: 1,
 				startedAt: new Date(),
+			});
+
+			// Mock workflow lookup (needed to check for error handlers in graph)
+			const mockWorkflowQb = {
+				where: vi.fn().mockReturnThis(),
+				getOneOrFail: vi.fn().mockResolvedValue(workflowData),
+			};
+			dataSource.getRepository.mockImplementation((entity: unknown) => {
+				if (entity === 'WorkflowEntity') {
+					return {
+						createQueryBuilder: vi.fn().mockReturnValue(mockWorkflowQb),
+					};
+				}
+				return mockRepo;
 			});
 
 			registerEventHandlers(eventBus, dataSource as never, stepPlanner, completionService);

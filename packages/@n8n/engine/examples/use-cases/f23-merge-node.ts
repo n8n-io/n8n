@@ -13,12 +13,12 @@ export default defineWorkflow({
 	async run(ctx) {
 		// Fan-out: two parallel fetch steps
 		const [users, orders] = await Promise.all([
-			ctx.step({ name: 'Fetch Users' }, async () => {
+			ctx.step({ name: 'Fetch Users', icon: 'globe', color: '#3b82f6' }, async () => {
 				const res = await fetch('https://dummyjson.com/users?limit=5');
 				const data = (await res.json()) as { users: Array<Record<string, unknown>> };
 				return data.users;
 			}),
-			ctx.step({ name: 'Fetch Orders' }, async () => {
+			ctx.step({ name: 'Fetch Orders', icon: 'globe', color: '#3b82f6' }, async () => {
 				const res = await fetch('https://dummyjson.com/carts?limit=5');
 				const data = (await res.json()) as { carts: Array<Record<string, unknown>> };
 				return data.carts;
@@ -26,13 +26,16 @@ export default defineWorkflow({
 		]);
 
 		// Merge: combine results
-		const merged = await ctx.step({ name: 'Process Result' }, async () => {
-			return {
-				users,
-				orders,
-				combined: users.length + orders.length,
-			};
-		});
+		const merged = await ctx.step(
+			{ name: 'Process Result', icon: 'layers', color: '#8b5cf6' },
+			async () => {
+				return {
+					users,
+					orders,
+					combined: users.length + orders.length,
+				};
+			},
+		);
 
 		return merged;
 	},

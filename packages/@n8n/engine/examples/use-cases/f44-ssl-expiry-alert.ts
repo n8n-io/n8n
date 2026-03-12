@@ -17,53 +17,62 @@ export default defineWorkflow({
 	// --- END UNSUPPORTED ---
 	triggers: [webhook('/f44-ssl-expiry-alert', { method: 'POST' })],
 	async run(ctx) {
-		const urls = await ctx.step({ name: 'Fetch URLs' }, async () => {
-			// In production, this would fetch from a Google Sheet
-			return [{ url: 'https://dummyjson.com' }, { url: 'https://n8n.io' }];
-		});
+		const urls = await ctx.step(
+			{ name: 'Fetch URLs', icon: 'database', color: '#3b82f6' },
+			async () => {
+				// In production, this would fetch from a Google Sheet
+				return [{ url: 'https://dummyjson.com' }, { url: 'https://n8n.io' }];
+			},
+		);
 
-		const sslResults = await ctx.step({ name: 'Check SSL' }, async () => {
-			const results = [];
-			for (const entry of urls) {
-				const domain = entry.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-				const res = await fetch(`https://ssl-checker.io/api/v1/check/${domain}`);
-				const data = (await res.json()) as {
-					result: { host: string; valid_till: string; days_left: number };
+		const sslResults = await ctx.step(
+			{ name: 'Check SSL', icon: 'globe', color: '#3b82f6' },
+			async () => {
+				const results = [];
+				for (const entry of urls) {
+					const domain = entry.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+					const res = await fetch(`https://ssl-checker.io/api/v1/check/${domain}`);
+					const data = (await res.json()) as {
+						result: { host: string; valid_till: string; days_left: number };
+					};
+					results.push({
+						host: data.result.host,
+						validTill: data.result.valid_till,
+						daysLeft: data.result.days_left,
+					});
+				}
+				return results;
+			},
+		);
+
+		const alerts = await ctx.step(
+			{ name: 'Check Expiring Certs', icon: 'flag', color: '#eab308' },
+			async () => {
+				const expiring = sslResults.filter((cert) => cert.daysLeft <= 7);
+
+				for (const cert of expiring) {
+					const token = ctx.getSecret('GMAIL_ACCESS_TOKEN') ?? '';
+					await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+						method: 'POST',
+						headers: {
+							Authorization: `Bearer ${token}`,
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							raw: btoa(
+								`Subject: SSL Expiry - ${cert.daysLeft} Days Left - ${cert.host}\n\nSSL certificate for ${cert.host} expires in ${cert.daysLeft} days (${cert.validTill}).`,
+							),
+						}),
+					});
+				}
+
+				return {
+					checked: sslResults.length,
+					expiring: expiring.length,
+					details: expiring,
 				};
-				results.push({
-					host: data.result.host,
-					validTill: data.result.valid_till,
-					daysLeft: data.result.days_left,
-				});
-			}
-			return results;
-		});
-
-		const alerts = await ctx.step({ name: 'Check Expiring Certs' }, async () => {
-			const expiring = sslResults.filter((cert) => cert.daysLeft <= 7);
-
-			for (const cert of expiring) {
-				const token = ctx.getSecret('GMAIL_ACCESS_TOKEN') ?? '';
-				await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-					method: 'POST',
-					headers: {
-						Authorization: `Bearer ${token}`,
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({
-						raw: btoa(
-							`Subject: SSL Expiry - ${cert.daysLeft} Days Left - ${cert.host}\n\nSSL certificate for ${cert.host} expires in ${cert.daysLeft} days (${cert.validTill}).`,
-						),
-					}),
-				});
-			}
-
-			return {
-				checked: sslResults.length,
-				expiring: expiring.length,
-				details: expiring,
-			};
-		});
+			},
+		);
 
 		return alerts;
 	},

@@ -12,10 +12,13 @@ export default defineWorkflow({
 	name: 'F01 - Simple Chain',
 	triggers: [webhook('/f01-simple-chain', { method: 'POST' })],
 	async run(ctx) {
-		const result = await ctx.step({ name: 'HTTP Request' }, async () => {
-			const res = await fetch('https://dummyjson.com/products?limit=5');
-			return { status: res.status, ok: res.ok };
-		});
+		const result = await ctx.step(
+			{ name: 'HTTP Request', icon: 'globe', color: '#3b82f6' },
+			async () => {
+				const res = await fetch('https://dummyjson.com/products?limit=5');
+				return { status: res.status, ok: res.ok };
+			},
+		);
 
 		return result;
 	},

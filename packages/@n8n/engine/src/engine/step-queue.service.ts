@@ -6,35 +6,54 @@ import { WorkflowStepExecution } from '../database/entities/workflow-step-execut
 import { WorkflowExecution } from '../database/entities/workflow-execution.entity';
 import type { StepProcessorService } from './step-processor.service';
 
+/** Minimum polling interval (ms) — used immediately after wake() or finding work. */
+const MIN_POLL_INTERVAL = 10;
+/** Maximum polling interval (ms) — cap for exponential backoff on empty polls. */
+const MAX_POLL_INTERVAL = 1000;
+
 /**
  * Polls the database for queued step executions and dispatches them
  * to the StepProcessorService. Uses SELECT FOR UPDATE SKIP LOCKED
  * for safe concurrent claiming.
+ *
+ * Adaptive polling: starts at MIN_POLL_INTERVAL after wake(), doubles
+ * the interval on each empty poll (up to MAX_POLL_INTERVAL), and resets
+ * to MIN_POLL_INTERVAL when work is found.
  */
 export class StepQueueService {
 	private inFlight = 0;
-	private pollTimer: ReturnType<typeof setInterval> | null = null;
+	private pollTimer: ReturnType<typeof setTimeout> | null = null;
+	private currentInterval: number = MIN_POLL_INTERVAL;
 
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly stepProcessor: StepProcessorService,
 		private readonly maxConcurrency: number = 10,
-		private readonly pollIntervalMs: number = 50,
 	) {}
 
 	start(): void {
-		this.pollTimer = setInterval(() => {
-			this.poll().catch((err) => {
-				// Log polling errors but don't crash -- next poll will retry
-				console.error('StepQueueService poll error:', err);
-			});
-		}, this.pollIntervalMs);
+		this.currentInterval = MIN_POLL_INTERVAL;
+		this.schedulePoll();
 	}
 
 	stop(): void {
 		if (this.pollTimer) {
-			clearInterval(this.pollTimer);
+			clearTimeout(this.pollTimer);
 			this.pollTimer = null;
+		}
+	}
+
+	/**
+	 * Wake the poller: reset to minimum interval so new work is picked up
+	 * almost immediately. Call this when new steps are queued (from
+	 * StepPlanner or EngineService).
+	 */
+	wake(): void {
+		this.currentInterval = MIN_POLL_INTERVAL;
+		// If currently waiting with a long timeout, cancel and reschedule
+		if (this.pollTimer) {
+			clearTimeout(this.pollTimer);
+			this.schedulePoll();
 		}
 	}
 
@@ -95,7 +114,14 @@ export class StepQueueService {
 		});
 		// Transaction committed -- lock released -- steps are safe from double-pickup
 
-		if (claimed.length === 0) return;
+		if (claimed.length === 0) {
+			// Empty poll: exponential backoff (double interval, capped)
+			this.currentInterval = Math.min(this.currentInterval * 2, MAX_POLL_INTERVAL);
+			return;
+		}
+
+		// Work found: reset to minimum interval
+		this.currentInterval = MIN_POLL_INTERVAL;
 
 		// Dispatch concurrently, outside any transaction
 		this.inFlight += claimed.length;
@@ -126,7 +152,9 @@ export class StepQueueService {
 			.update(WorkflowStepExecution)
 			.set({ status: StepStatus.Queued })
 			.where('status = :status', { status: StepStatus.Running })
-			.andWhere(`"startedAt" <= NOW() - INTERVAL '${defaultStaleThresholdMs} milliseconds'`)
+			.andWhere(`"startedAt" <= NOW() - :thresholdMs * INTERVAL '1 millisecond'`, {
+				thresholdMs: defaultStaleThresholdMs,
+			})
 			.execute();
 	}
 
@@ -136,5 +164,26 @@ export class StepQueueService {
 
 	isRunning(): boolean {
 		return this.pollTimer !== null;
+	}
+
+	/** Exposed for testing: the current adaptive polling interval. */
+	getCurrentInterval(): number {
+		return this.currentInterval;
+	}
+
+	private schedulePoll(): void {
+		this.pollTimer = setTimeout(() => {
+			this.poll()
+				.catch((err) => {
+					// Log polling errors but don't crash -- next poll will retry
+					console.error('StepQueueService poll error:', err);
+				})
+				.finally(() => {
+					// Schedule the next poll (if still running)
+					if (this.pollTimer !== null) {
+						this.schedulePoll();
+					}
+				});
+		}, this.currentInterval);
 	}
 }

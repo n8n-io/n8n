@@ -29,49 +29,55 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const input = await ctx.step({ name: 'Parse & Validate' }, async () => {
-			const { body } = ctx.triggerData;
-			const hasRequiredFields =
-				body.attendee_name &&
-				body.start &&
-				body.attendee_phone &&
-				body.attendee_email &&
-				body.attendee_company &&
-				body.notes;
-			return { body, isValid: !!hasRequiredFields };
-		});
+		const input = await ctx.step(
+			{ name: 'Parse & Validate', icon: 'flag', color: '#eab308' },
+			async () => {
+				const { body } = ctx.triggerData;
+				const hasRequiredFields =
+					body.attendee_name &&
+					body.start &&
+					body.attendee_phone &&
+					body.attendee_email &&
+					body.attendee_company &&
+					body.notes;
+				return { body, isValid: !!hasRequiredFields };
+			},
+		);
 
 		if (input.isValid) {
-			const booking = await ctx.step({ name: 'Create Booking' }, async () => {
-				const body = input.body;
-				const res = await fetch('https://api.cal.com/v2/bookings', {
-					method: 'POST',
-					headers: {
-						Authorization: 'Bearer YOUR_TOKEN_HERE',
-						'Content-Type': 'application/json',
-						'cal-api-version': '2024-08-13',
-					},
-					body: JSON.stringify({
-						attendee: {
-							language: 'en',
-							name: body.attendee_name,
-							timeZone: body.attendee_timezone,
-							email: body.attendee_email,
-							phoneNumber: body.attendee_phone,
+			const booking = await ctx.step(
+				{ name: 'Create Booking', icon: 'globe', color: '#3b82f6' },
+				async () => {
+					const body = input.body;
+					const res = await fetch('https://api.cal.com/v2/bookings', {
+						method: 'POST',
+						headers: {
+							Authorization: 'Bearer YOUR_TOKEN_HERE',
+							'Content-Type': 'application/json',
+							'cal-api-version': '2024-08-13',
 						},
-						start: body.start,
-						eventTypeId: body.eventTypeId,
-						bookingFieldsResponses: {
-							phone: body.attendee_phone,
-							company: body.attendee_company,
-							notes: body.notes,
-						},
-					}),
-				});
-				return (await res.json()) as Record<string, unknown>;
-			});
+						body: JSON.stringify({
+							attendee: {
+								language: 'en',
+								name: body.attendee_name,
+								timeZone: body.attendee_timezone,
+								email: body.attendee_email,
+								phoneNumber: body.attendee_phone,
+							},
+							start: body.start,
+							eventTypeId: body.eventTypeId,
+							bookingFieldsResponses: {
+								phone: body.attendee_phone,
+								company: body.attendee_company,
+								notes: body.notes,
+							},
+						}),
+					});
+					return (await res.json()) as Record<string, unknown>;
+				},
+			);
 
-			await ctx.step({ name: 'Success Response' }, async () => {
+			await ctx.step({ name: 'Success Response', icon: 'send', color: '#22c55e' }, async () => {
 				await ctx.respondToWebhook({
 					statusCode: 200,
 					body: {
@@ -82,17 +88,20 @@ export default defineWorkflow({
 				return { responded: true };
 			});
 		} else {
-			await ctx.step({ name: 'Insufficient Data Response' }, async () => {
-				await ctx.respondToWebhook({
-					statusCode: 400,
-					headers: {
-						bad_request:
-							'User data provided is insufficient to book a meeting. Get complete data from user and try to book the meeting again.',
-					},
-					body: 'User data provided is insufficient to book a meeting.',
-				});
-				return { responded: true };
-			});
+			await ctx.step(
+				{ name: 'Insufficient Data Response', icon: 'bug', color: '#ef4444' },
+				async () => {
+					await ctx.respondToWebhook({
+						statusCode: 400,
+						headers: {
+							bad_request:
+								'User data provided is insufficient to book a meeting. Get complete data from user and try to book the meeting again.',
+						},
+						body: 'User data provided is insufficient to book a meeting.',
+					});
+					return { responded: true };
+				},
+			);
 		}
 	},
 });

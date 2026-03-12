@@ -24,9 +24,11 @@ export enum StepStatus {
 export enum StepType {
 	Trigger = 'trigger',
 	Step = 'step',
+	Batch = 'batch',
 	Approval = 'approval',
 	Condition = 'condition',
 	Sleep = 'sleep',
+	TriggerWorkflow = 'trigger_workflow',
 }
 
 export const TERMINAL_STATUSES: StepStatus[] = [

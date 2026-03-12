@@ -11,10 +11,13 @@ export default defineWorkflow({
 	name: 'F18 - Wait Webhook (Not supported yet)',
 	triggers: [webhook('/f18-wait-webhook', { method: 'POST' })],
 	async run(ctx) {
-		const startResult = await ctx.step({ name: 'Start Request' }, async () => {
-			const res = await fetch('https://dummyjson.com/posts/add', { method: 'POST' });
-			return { started: res.ok };
-		});
+		const startResult = await ctx.step(
+			{ name: 'Start Request', icon: 'play', color: '#3b82f6' },
+			async () => {
+				const res = await fetch('https://dummyjson.com/posts/add', { method: 'POST' });
+				return { started: res.ok };
+			},
+		);
 
 		// --- UNSUPPORTED: Wait for external webhook callback ---
 		// The v3 engine does not yet support pausing execution until an external
@@ -39,9 +42,12 @@ export default defineWorkflow({
 		// Simulating a wait with sleep
 		await ctx.sleep(5000);
 
-		const afterResume = await ctx.step({ name: 'After Resume' }, async () => {
-			return { resumed: true, startResult };
-		});
+		const afterResume = await ctx.step(
+			{ name: 'After Resume', icon: 'zap', color: '#22c55e' },
+			async () => {
+				return { resumed: true, startResult };
+			},
+		);
 
 		return afterResume;
 	},

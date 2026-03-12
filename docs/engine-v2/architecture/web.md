@@ -53,10 +53,10 @@ the naming conventions differ (e.g. `--color-primary` vs
 ```mermaid
 graph TD
     App["App.vue<br/>(RouterView, global CSS vars)"]
-    WS["WorkspaceView<br/>(2741 lines, unified workspace)"]
-    WL["WorkflowListView<br/>(969 lines, list + create modal)"]
-    WE["WorkflowEditorView<br/>(1060 lines, editor + graph + executions)"]
-    EI["ExecutionInspectorView<br/>(1038 lines, step timeline + sidebar)"]
+    WS["WorkspaceView<br/>(unified workspace)"]
+    WL["WorkflowListView<br/>(list + create modal)"]
+    WE["WorkflowEditorView<br/>(editor + graph + executions)"]
+    EI["ExecutionInspectorView<br/>(step timeline + sidebar)"]
     CE["CodeEditor<br/>(CodeMirror 6 wrapper)"]
     GC["GraphCanvas<br/>(static workflow DAG)"]
     EG["ExecutionGraph<br/>(DAG with step status overlay)"]
@@ -64,6 +64,17 @@ graph TD
     JV["JsonViewer<br/>(syntax-highlighted JSON)"]
     SC["StepCard<br/>(expandable step details)"]
     LP["lucide-paths.ts<br/>(SVG path data)"]
+
+    subgraph "Node Rendering Utils"
+        BN["batch-node.ts<br/>(batch label, detail, color)"]
+        SN["sleep-node.ts<br/>(sleep label, duration format)"]
+        TW["trigger-workflow-node.ts<br/>(trigger label, detail)"]
+        JF["json-schema-faker.ts<br/>(test data from JSON Schema)"]
+    end
+
+    subgraph "Composables"
+        GL["useGraphLayout.ts<br/>(Dagre-based positioning)"]
+    end
 
     App --> WS
     App --> WL
@@ -92,7 +103,16 @@ graph TD
     SC --> JV
 
     GC --> LP
+    GC --> BN
+    GC --> SN
+    GC --> TW
+    GC --> GL
     EG --> LP
+    EG --> BN
+    EG --> SN
+    EG --> TW
+    EG --> GL
+    WS --> JF
 ```
 
 **Note:** The router maps all 3 routes to `WorkspaceView`. The other three
@@ -222,17 +242,18 @@ node to scroll to step card.
 
 ### CodeEditor
 
-**File:** `src/components/CodeEditor.vue` (432 lines)
+**File:** `src/components/CodeEditor.vue`
 
 **Purpose:** Full-featured CodeMirror 6 editor wrapper with dual theme
-support, syntax highlighting, and TypeScript/JSON language modes.
+support, syntax highlighting, TypeScript/JSON language modes, and lint markers
+for compilation errors.
 
 **Props:**
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `modelValue` | `string` | required | v-model binding for editor content |
 | `readonly` | `boolean` | `false` | Disables editing |
-| `errors` | `Array<{line?, message}>` | `[]` | Compilation errors (currently accepted but not visually rendered as markers) |
+| `errors` | `Array<{line?, message}>` | `[]` | Compilation errors rendered as lint markers in the gutter |
 | `language` | `'typescript' \| 'json'` | `'typescript'` | Language mode |
 
 **Events:** `update:modelValue`
@@ -244,16 +265,18 @@ support, syntax highlighting, and TypeScript/JSON language modes.
 - Detects system theme via `matchMedia('(prefers-color-scheme: dark)')` and
   switches between Catppuccin-inspired dark and light themes
 - Recreates the entire EditorView when theme, readonly, or language changes
-- Uses Catppuccin Mocha color scheme for dark mode (lines 68-106)
-- Syncs external model changes into CodeMirror via `view.dispatch()` (line
-  284-295)
+- Lint markers: compilation errors with line numbers are rendered as inline
+  diagnostics via CodeMirror's lint extension
+- Code highlighting for all node types (step, batch, sleep, trigger-workflow,
+  trigger) when a graph node is selected
 
 ### GraphCanvas
 
-**File:** `src/components/GraphCanvas.vue` (614 lines)
+**File:** `src/components/GraphCanvas.vue`
 
 **Purpose:** Renders a static workflow DAG as an SVG. Used in the editor view
-to show the workflow structure after compilation.
+to show the workflow structure after compilation. Supports custom rendering
+for all node types.
 
 **Props:**
 | Prop | Type | Default | Description |
@@ -265,21 +288,29 @@ to show the workflow structure after compilation.
 **Events:** `node-click(nodeId)`
 
 **Key behavior:**
-- BFS-based level assignment for top-down layout
-- Filters out trigger nodes from the graph, renders webhook triggers as
-  special purple/orange nodes
+- Layout via `useGraphLayout` composable (Dagre-based positioning)
+- Custom node rendering for each node type:
+  - **sleep** nodes: blue color (`#4a9eff`), formatted duration via
+    `sleep-node.ts` utilities
+  - **batch** nodes: orange color (`#f97316`), failure strategy detail via
+    `batch-node.ts` utilities
+  - **trigger-workflow** nodes: indigo color (`#6366f1`), target workflow name
+    via `trigger-workflow-node.ts` utilities
+  - **trigger** nodes: special purple/orange rendering for webhooks
+  - **step** nodes: standard rendering with custom icon/color from step config
 - SVG cubic Bezier edges with arrowhead markers
-- Condition labels on edges with human-readable formatting (e.g. `!(x > 100)`
-  becomes `x <= 100`)
+- Condition labels on edges with human-readable formatting
+- Error edge styling (dashed red lines for `__error__` condition edges)
 - Lucide icons rendered inline via `LUCIDE_PATHS`
 
 ### ExecutionGraph
 
-**File:** `src/components/ExecutionGraph.vue` (715 lines)
+**File:** `src/components/ExecutionGraph.vue`
 
 **Purpose:** Renders the workflow DAG with real-time step execution status
 overlay. Used in execution inspection to show which steps have
-completed/failed/are running.
+completed/failed/are running. Supports the same custom node rendering as
+GraphCanvas.
 
 **Props:**
 | Prop | Type | Default | Description |
@@ -291,7 +322,9 @@ completed/failed/are running.
 **Events:** `select-step(stepId)`
 
 **Key behavior:**
-- Same BFS layout algorithm as `GraphCanvas` (significant code duplication)
+- Layout via `useGraphLayout` composable (shared with GraphCanvas)
+- Custom node rendering for sleep, batch, and trigger-workflow nodes
+  (same utilities as GraphCanvas)
 - Status-colored node borders (green=completed, red=failed, amber=running,
   gray=pending)
 - Status-colored edges (green when both ends completed, amber when target
@@ -363,11 +396,33 @@ input/output/error sections.
 
 ### lucide-paths.ts
 
-**File:** `src/components/lucide-paths.ts` (127 lines)
+**File:** `src/components/lucide-paths.ts`
 
 **Purpose:** Static map of Lucide icon names to SVG path `d` attributes.
-Contains 30 icons used by `GraphCanvas` and `ExecutionGraph` for step
-node icons.
+Contains icons used by `GraphCanvas` and `ExecutionGraph` for step node icons.
+
+---
+
+## Utilities
+
+### Node rendering helpers (`src/utils/`)
+
+Shared helpers used by both `GraphCanvas` and `ExecutionGraph` for
+consistent node rendering across the static workflow view and the execution
+overlay:
+
+| File | Purpose |
+|------|---------|
+| `sleep-node.ts` | `formatSleepDuration(ms)`, `getSleepLabel(config)`, `getSleepDetail(config)`, `SLEEP_NODE_COLOR` (`#4a9eff`) |
+| `batch-node.ts` | `getBatchLabel(config)`, `getBatchDetail(config)`, `BATCH_NODE_COLOR` (`#f97316`) |
+| `trigger-workflow-node.ts` | `getTriggerWorkflowLabel(config)`, `getTriggerWorkflowDetail(config)`, `TRIGGER_WORKFLOW_NODE_COLOR` (`#6366f1`) |
+| `json-schema-faker.ts` | Generates realistic fake test data from JSON Schema for webhook testing. Supports string (email, URL, UUID, date patterns), number (min/max/default), boolean, array, object, and enum types. |
+
+### Composables (`src/composables/`)
+
+| File | Purpose |
+|------|---------|
+| `useGraphLayout.ts` | Dagre-based graph layout composable. Computes node positions and edge paths for both `GraphCanvas` and `ExecutionGraph`, eliminating the previous layout code duplication between the two components. |
 
 ---
 

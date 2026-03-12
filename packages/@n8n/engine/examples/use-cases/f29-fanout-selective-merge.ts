@@ -17,26 +17,29 @@ export default defineWorkflow({
 			// Merged branch: Users + Orders
 			(async () => {
 				const [users, orders] = await Promise.all([
-					ctx.step({ name: 'Fetch Users' }, async () => {
+					ctx.step({ name: 'Fetch Users', icon: 'globe', color: '#3b82f6' }, async () => {
 						const res = await fetch('https://dummyjson.com/users?limit=5');
 						const data = (await res.json()) as { users: Array<Record<string, unknown>> };
 						return data.users;
 					}),
-					ctx.step({ name: 'Fetch Orders' }, async () => {
+					ctx.step({ name: 'Fetch Orders', icon: 'globe', color: '#3b82f6' }, async () => {
 						const res = await fetch('https://dummyjson.com/carts?limit=5');
 						const data = (await res.json()) as { carts: Array<Record<string, unknown>> };
 						return data.carts;
 					}),
 				]);
 
-				const combined = await ctx.step({ name: 'Process Combined' }, async () => {
-					return { users, orders, totalItems: users.length + orders.length };
-				});
+				const combined = await ctx.step(
+					{ name: 'Process Combined', icon: 'layers', color: '#8b5cf6' },
+					async () => {
+						return { users, orders, totalItems: users.length + orders.length };
+					},
+				);
 
 				return combined;
 			})(),
 			// Independent branch: Admin notification
-			ctx.step({ name: 'Notify Admin' }, async () => {
+			ctx.step({ name: 'Notify Admin', icon: 'send', color: '#f97316' }, async () => {
 				await fetch('https://dummyjson.com/posts/add', { method: 'POST' });
 				return { adminNotified: true };
 			}),

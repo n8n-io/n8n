@@ -12,13 +12,19 @@ export default defineWorkflow({
 	name: 'F24 - Exec Pindata Only',
 	triggers: [webhook('/f24-exec-pindata-only', { method: 'POST' })],
 	async run(ctx) {
-		const values = await ctx.step({ name: 'Set Values' }, async () => {
-			return { greeting: 'hello' };
-		});
+		const values = await ctx.step(
+			{ name: 'Set Values', icon: 'settings', color: '#6b7280' },
+			async () => {
+				return { greeting: 'hello' };
+			},
+		);
 
-		const formatted = await ctx.step({ name: 'Format Output' }, async () => {
-			return { message: values.greeting };
-		});
+		const formatted = await ctx.step(
+			{ name: 'Format Output', icon: 'file-text', color: '#22c55e' },
+			async () => {
+				return { message: values.greeting };
+			},
+		);
 
 		return formatted;
 	},

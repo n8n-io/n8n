@@ -11,19 +11,25 @@ export default defineWorkflow({
 	name: 'F54 - Sample Data',
 	triggers: [webhook('/f54-sample-data', { method: 'POST' })],
 	async run(ctx) {
-		const profile = await ctx.step({ name: 'Fetch Profile' }, async () => {
-			const res = await fetch('https://dummyjson.com/users/1');
-			const data = (await res.json()) as {
-				id: number;
-				firstName: string;
-				email: string;
-			};
-			return { userId: data.id, name: data.firstName, email: data.email };
-		});
+		const profile = await ctx.step(
+			{ name: 'Fetch Profile', icon: 'globe', color: '#3b82f6' },
+			async () => {
+				const res = await fetch('https://dummyjson.com/users/1');
+				const data = (await res.json()) as {
+					id: number;
+					firstName: string;
+					email: string;
+				};
+				return { userId: data.id, name: data.firstName, email: data.email };
+			},
+		);
 
-		const formatted = await ctx.step({ name: 'Format Result' }, async () => {
-			return { summary: profile.name };
-		});
+		const formatted = await ctx.step(
+			{ name: 'Format Result', icon: 'file-text', color: '#22c55e' },
+			async () => {
+				return { summary: profile.name };
+			},
+		);
 
 		return formatted;
 	},

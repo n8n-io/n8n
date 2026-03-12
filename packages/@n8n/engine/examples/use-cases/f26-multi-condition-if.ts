@@ -22,36 +22,45 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const input = await ctx.step({ name: 'Parse Request' }, async () => {
-			const { body } = ctx.triggerData;
-			return {
-				status: body.status ?? 'inactive',
-				priority: body.priority ?? 0,
-			};
-		});
+		const input = await ctx.step(
+			{ name: 'Parse Request', icon: 'settings', color: '#6b7280' },
+			async () => {
+				const { body } = ctx.triggerData;
+				return {
+					status: body.status ?? 'inactive',
+					priority: body.priority ?? 0,
+				};
+			},
+		);
 
 		if (input.status === 'active' && input.priority > 5) {
-			const result = await ctx.step({ name: 'Send Notification' }, async () => {
-				const res = await fetch('https://dummyjson.com/posts/add', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						status: input.status,
-						priority: input.priority,
-					}),
-				});
-				return { notified: res.ok };
-			});
+			const result = await ctx.step(
+				{ name: 'Send Notification', icon: 'send', color: '#f97316' },
+				async () => {
+					const res = await fetch('https://dummyjson.com/posts/add', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							status: input.status,
+							priority: input.priority,
+						}),
+					});
+					return { notified: res.ok };
+				},
+			);
 			return result;
 		} else {
-			const result = await ctx.step({ name: 'Skip Notification' }, async () => {
-				return {
-					skipped: true,
-					reason: 'Conditions not met',
-					status: input.status,
-					priority: input.priority,
-				};
-			});
+			const result = await ctx.step(
+				{ name: 'Skip Notification', icon: 'filter', color: '#6b7280' },
+				async () => {
+					return {
+						skipped: true,
+						reason: 'Conditions not met',
+						status: input.status,
+						priority: input.priority,
+					};
+				},
+			);
 			return result;
 		}
 	},

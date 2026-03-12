@@ -46,7 +46,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Approval', () => {
 
 		registerEventHandlers(eventBus, dataSource, stepPlanner, completionService);
 
-		queue = new StepQueueService(dataSource, stepProcessor, 20, 10);
+		queue = new StepQueueService(dataSource, stepProcessor, 20);
 		queue.start();
 
 		app = createApp({

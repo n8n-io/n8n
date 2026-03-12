@@ -2,41 +2,38 @@
  * F19: Sub-Workflow
  *
  * Demonstrates executing a child workflow. The original v4 fixture
- * calls executeWorkflow() to generate a report. In v3,
- * ctx.triggerWorkflow() is not yet supported.
+ * calls executeWorkflow() to generate a report. In v3, we use
+ * ctx.triggerWorkflow() to invoke the sub-workflow by name.
  */
 import { defineWorkflow, webhook } from '@n8n/engine/sdk';
 
 export default defineWorkflow({
-	name: 'F19 - Sub Workflow (Not supported yet)',
+	name: 'F19 - Sub Workflow',
 	triggers: [webhook('/f19-sub-workflow', { method: 'POST' })],
 	async run(ctx) {
-		// --- UNSUPPORTED: ctx.triggerWorkflow() ---
-		// The source workflow uses executeWorkflow() to run a child workflow
-		// and get back report data. The v3 engine does not yet support
-		// ctx.triggerWorkflow().
-		// Requires: ctx.triggerWorkflow({ workflowId, input }) primitive.
-		//
-		// const reportData = await ctx.triggerWorkflow({
-		//   workflowId: 'abc123',
-		//   input: { type: 'monthly' },
-		// });
-		//
-		// --- END UNSUPPORTED ---
+		const input = await ctx.step(
+			{ name: 'Prepare Report Input', icon: 'clipboard', color: '#6b7280' },
+			async () => {
+				return { type: 'monthly' };
+			},
+		);
 
-		// Simulating sub-workflow execution with a step
-		const reportData = await ctx.step({ name: 'Generate Report' }, async () => {
-			return { reportData: 'Monthly Summary' };
+		const reportData = await ctx.triggerWorkflow({
+			workflow: '01 - Hello World',
+			input: { type: input.type },
 		});
 
-		const sent = await ctx.step({ name: 'Send Report' }, async () => {
-			const res = await fetch('https://dummyjson.com/posts/add', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(reportData),
-			});
-			return { sent: res.ok };
-		});
+		const sent = await ctx.step(
+			{ name: 'Send Report', icon: 'send', color: '#f97316' },
+			async () => {
+				const res = await fetch('https://dummyjson.com/posts/add', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(reportData),
+				});
+				return { sent: res.ok };
+			},
+		);
 
 		return sent;
 	},

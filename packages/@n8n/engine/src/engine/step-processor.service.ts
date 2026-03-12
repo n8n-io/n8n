@@ -4,7 +4,7 @@ import type { DataSource } from '@n8n/typeorm';
 
 import { WorkflowGraph } from '../graph/workflow-graph';
 import type { WorkflowGraphData } from '../graph/graph.types';
-import type { ExecutionContext, StepDefinition, WebhookResponse } from '../sdk/types';
+import type { ExecutionContext, WebhookResponse, TriggerWorkflowConfig } from '../sdk/types';
 import { StepStatus } from '../database/enums';
 import type { WorkflowEntity } from '../database/entities/workflow.entity';
 import { WorkflowExecution } from '../database/entities/workflow-execution.entity';
@@ -14,6 +14,8 @@ import { StepFunctionNotFoundError } from './errors/infrastructure.error';
 import { buildErrorData, classifyError, calculateBackoff } from './errors/error-classifier';
 import type { ErrorData } from './errors/error-classifier';
 import type { EngineEventBus } from './event-bus.service';
+import type { WorkflowTriggerService } from './workflow-trigger.service';
+import type { BatchExecutorService } from './batch-executor.service';
 
 type StepFunction = (ctx: ExecutionContext) => Promise<unknown>;
 
@@ -36,13 +38,24 @@ interface StepUpdate {
  * - Error classification and retry logic
  * - Sleep/wait via first-class sleep graph nodes
  */
+/** Maximum number of compiled modules to keep in cache. */
+const MODULE_CACHE_MAX_SIZE = 100;
+
 export class StepProcessorService {
-	/** Cache compiled modules: key = 'workflowId:version' */
+	/**
+	 * LRU cache for compiled modules: key = 'workflowId:version'.
+	 * Uses a Map whose insertion order tracks recency -- on access,
+	 * entries are deleted and re-inserted to move them to the end.
+	 * When the cache exceeds MODULE_CACHE_MAX_SIZE, the oldest
+	 * (least-recently-used) entry is evicted.
+	 */
 	private moduleCache = new Map<string, Record<string, unknown>>();
 
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly eventBus: EngineEventBus,
+		private readonly workflowTrigger?: WorkflowTriggerService,
+		private readonly batchExecutor?: BatchExecutorService,
 	) {}
 
 	async processStep(stepJob: WorkflowStepExecution): Promise<void> {
@@ -78,7 +91,7 @@ export class StepProcessorService {
 			// 4. Build WorkflowGraph
 			const graph = new WorkflowGraph(workflow.graph as WorkflowGraphData);
 
-			// 5. Get step config from graph (handle fan-out child steps via metadata)
+			// 5. Get step config from graph (handle batch child steps via metadata)
 			const node = graph.getNode(stepJob.stepId);
 			const stepConfig = node?.config ?? {};
 
@@ -137,6 +150,33 @@ export class StepProcessorService {
 				return;
 			}
 
+			// 5c. Handle batch steps: execute the step function to get items, then process batch
+			if (node?.type === 'batch' && this.batchExecutor) {
+				this.eventBus.emit({
+					type: 'step:started',
+					executionId: execution.id,
+					stepId: stepJob.stepId,
+					attempt: stepJob.attempt,
+				});
+
+				// Load and execute the step function to get the items array
+				const stepFn = this.loadStepFunction(
+					execution.workflowId,
+					execution.workflowVersion,
+					workflow.compiledCode,
+					graph,
+					stepJob.stepId,
+					stepJob.metadata,
+				);
+				const ctx = this.buildStepContext(stepJob, execution);
+				const items = (await stepFn(ctx)) as unknown[];
+
+				// Fan out child steps -- the batch executor handles parent completion
+				const onItemFailure = stepConfig.onItemFailure ?? 'continue';
+				await this.batchExecutor.processBatch(stepJob, items, graph, onItemFailure);
+				return;
+			}
+
 			// 6. Load step function from compiled code
 			const stepFn = this.loadStepFunction(
 				execution.workflowId,
@@ -184,97 +224,28 @@ export class StepProcessorService {
 				const durationMs = Date.now() - startTime;
 				const errorData = buildErrorData(error, workflow.sourceMap ?? undefined);
 
-				// Compute original source line for the error.
-				// Strategy: extract the error line content from the compiled code,
-				// then search for that text in the original source. This handles
-				// comments, blank lines, and other source transformations correctly.
-				const stepNode = graph.getNode(stepJob.stepId);
-				if (stepNode && workflow.code) {
-					let originalLine: number | undefined;
-
-					// Try to find exact error line by matching compiled code content
-					if (error instanceof Error && error.stack && workflow.compiledCode) {
-						const stackMatch = error.stack.match(/workflow-[^)]+\.js:(\d+):\d+/);
-						if (stackMatch) {
-							const compiledLine = parseInt(stackMatch[1], 10);
-							const compiledLines = workflow.compiledCode.split('\n');
-							if (compiledLine > 0 && compiledLine <= compiledLines.length) {
-								const errorLineContent = compiledLines[compiledLine - 1].trim();
-								if (errorLineContent.length > 5) {
-									// Normalize: esbuild transforms (e.g., void 0 for undefined)
-									const normalize = (s: string) =>
-										s
-											.replace(/\(void 0\)/g, 'undefined')
-											.replace(/\bas\s+\w+/g, '') // strip TS type casts
-											.replace(/\s+/g, ' ')
-											.trim();
-
-									const normalizedCompiled = normalize(errorLineContent);
-
-									// Extract key tokens: variable names, property accesses, function calls
-									const tokens = normalizedCompiled
-										.replace(/[^a-zA-Z0-9_.]/g, ' ')
-										.split(/\s+/)
-										.filter((t) => t.length > 2);
-
-									const sourceLines = workflow.code.split('\n');
-
-									// Strategy 1: normalized full-line match
-									for (let i = 0; i < sourceLines.length; i++) {
-										const normalizedSrc = normalize(sourceLines[i]);
-										if (normalizedSrc.length > 3 && normalizedCompiled.includes(normalizedSrc)) {
-											originalLine = i + 1;
-											break;
-										}
-										if (normalizedSrc.length > 3 && normalizedSrc.includes(normalizedCompiled)) {
-											originalLine = i + 1;
-											break;
-										}
-									}
-
-									// Strategy 2: token matching — find the source line with most matching tokens
-									if (!originalLine && tokens.length > 0) {
-										let bestScore = 0;
-										let bestLine = -1;
-										// Only search within the step's range in the source
-										const stepName = stepNode.name;
-										const nameIdx =
-											workflow.code.indexOf(`'${stepName}'`) ??
-											workflow.code.indexOf(`"${stepName}"`);
-										const searchStart =
-											nameIdx >= 0 ? workflow.code.substring(0, nameIdx).split('\n').length - 1 : 0;
-
-										for (
-											let i = searchStart;
-											i < Math.min(searchStart + 30, sourceLines.length);
-											i++
-										) {
-											const srcNorm = normalize(sourceLines[i]);
-											if (srcNorm.length < 3) continue;
-											const score = tokens.filter((t) => srcNorm.includes(t)).length;
-											if (score > bestScore) {
-												bestScore = score;
-												bestLine = i + 1;
-											}
-										}
-										if (bestScore >= 2) {
-											originalLine = bestLine;
-										}
-									}
-								}
-							}
-						}
+				// Compute original source line for the error using the pre-computed
+				// line map stored in workflow.sourceMap. The transpiler builds a mapping
+				// from compiled code line numbers to original source line numbers.
+				if (error instanceof Error && error.stack && workflow.sourceMap) {
+					const originalLine = resolveOriginalLine(error.stack, workflow.sourceMap);
+					if (originalLine !== undefined) {
+						errorData.originalLine = originalLine;
 					}
+				}
 
-					// Fallback: point to the step definition line
-					if (!originalLine) {
+				// Fallback: if no line map or no match, point to the step definition
+				if (errorData.originalLine === undefined && workflow.code) {
+					const stepNode = graph.getNode(stepJob.stepId);
+					if (stepNode) {
 						const stepName = stepNode.name;
-						// Search for the step name in the new format (object literal) or legacy format
 						const patterns = [
 							`name: '${stepName}'`,
 							`name: "${stepName}"`,
 							`ctx.step('${stepName}'`,
 							`ctx.step("${stepName}"`,
+							`ctx.batch('${stepName}'`,
+							`ctx.batch("${stepName}"`,
 						];
 						let pos = -1;
 						for (const pattern of patterns) {
@@ -285,12 +256,8 @@ export class StepProcessorService {
 							}
 						}
 						if (pos >= 0) {
-							originalLine = workflow.code.substring(0, pos).split('\n').length;
+							errorData.originalLine = workflow.code.substring(0, pos).split('\n').length;
 						}
-					}
-
-					if (originalLine) {
-						errorData.originalLine = originalLine;
 					}
 				}
 
@@ -370,7 +337,11 @@ export class StepProcessorService {
 
 		// Check cache first -- compiled code is immutable per version
 		let moduleExports = this.moduleCache.get(cacheKey);
-		if (!moduleExports) {
+		if (moduleExports) {
+			// LRU: move to end of Map iteration order (most recently used)
+			this.moduleCache.delete(cacheKey);
+			this.moduleCache.set(cacheKey, moduleExports);
+		} else {
 			const m = new (Module as unknown as { new (id: string): NodeModule })(cacheKey);
 			// eslint-disable-next-line @typescript-eslint/no-require-imports
 			m.require = createRequire(__filename);
@@ -381,10 +352,19 @@ export class StepProcessorService {
 			);
 			moduleExports = m.exports as Record<string, unknown>;
 			this.moduleCache.set(cacheKey, moduleExports);
+
+			// Evict least-recently-used entries when cache exceeds size limit
+			while (this.moduleCache.size > MODULE_CACHE_MAX_SIZE) {
+				// Map.keys().next() returns the oldest (first-inserted) key
+				const oldestKey = this.moduleCache.keys().next().value;
+				if (oldestKey !== undefined) {
+					this.moduleCache.delete(oldestKey);
+				}
+			}
 		}
 
 		// For regular steps: look up function ref from graph node
-		// For fan-out child steps (not in graph): look up from step metadata
+		// For batch child steps (not in graph): look up from step metadata
 		const graphNode = graph.getNode(stepId);
 		const functionRef =
 			graphNode?.stepFunctionRef ?? (stepMetadata?.functionRef as string | undefined);
@@ -405,9 +385,24 @@ export class StepProcessorService {
 		const inputRecord = (stepJob.input as Record<string, unknown>) ?? {};
 		const eventBus = this.eventBus;
 
+		// For batch child steps, extract the batch item from input
+		const batchItem =
+			(stepJob.metadata as Record<string, unknown>)?.batchIndex !== undefined
+				? (inputRecord as Record<string, unknown>).item
+				: undefined;
+
+		// For catch handler steps, extract the error from input metadata
+		const errorData = (inputRecord as Record<string, unknown>).__error__ as unknown;
+
 		return {
 			// Data -- injected from predecessor outputs at queue time
 			input: inputRecord,
+
+			// Error -- set for catch handler steps (try/catch error edge)
+			error: errorData,
+
+			// Batch item -- set for batch child step invocations
+			batchItem,
 
 			// Convenience getter -- trigger data is available as the first input value.
 			// In the common case (linear workflow), the trigger step's output is
@@ -425,9 +420,15 @@ export class StepProcessorService {
 			stepId: stepJob.stepId,
 			attempt: stepJob.attempt,
 
-			// Sub-step execution (PoC: simple pass-through)
-			step: async <T>(_definition: StepDefinition, fn: () => Promise<T>): Promise<T> => {
+			// Sub-step execution (PoC: simple pass-through for single steps)
+			step: async (_definition, fn) => {
 				return await fn();
+			},
+
+			// Batch processing — handled at compile time by the transpiler.
+			// This stub exists only to satisfy the interface; it should never be called at runtime.
+			batch: async () => {
+				throw new Error('ctx.batch() is handled at compile time by the transpiler');
 			},
 
 			// Streaming -- sends chunk event via broadcaster
@@ -461,6 +462,14 @@ export class StepProcessorService {
 				throw new Error(
 					'ctx.waitUntil() should be handled by the transpiler, not called at runtime.',
 				);
+			},
+
+			// Cross-workflow trigger — starts a child workflow execution and waits for its result.
+			triggerWorkflow: async (config: TriggerWorkflowConfig) => {
+				if (!this.workflowTrigger) {
+					throw new Error('WorkflowTriggerService is not configured');
+				}
+				return await this.workflowTrigger.triggerAndAwait(stepJob, config);
 			},
 
 			// Secrets -- reads from environment variables (PoC)
@@ -579,5 +588,29 @@ function mapStatusToEvent(status: string): string {
 			return 'step:waiting';
 		default:
 			return `step:${status}`;
+	}
+}
+
+/**
+ * Resolves the original source line from an error stack trace using the
+ * pre-computed line map stored during compilation.
+ *
+ * The line map is a JSON object mapping compiled code line numbers (as string
+ * keys) to original source line numbers. The compiled line is extracted from
+ * the error stack trace by matching the workflow filename pattern.
+ */
+function resolveOriginalLine(stack: string, sourceMapJson: string): number | undefined {
+	// Extract the compiled line number from the stack trace
+	const stackMatch = stack.match(/workflow-[^)]+\.js:(\d+):\d+/);
+	if (!stackMatch) return undefined;
+
+	const compiledLine = stackMatch[1];
+
+	try {
+		const lineMap = JSON.parse(sourceMapJson) as Record<string, number>;
+		const originalLine = lineMap[compiledLine];
+		return typeof originalLine === 'number' ? originalLine : undefined;
+	} catch {
+		return undefined;
 	}
 }

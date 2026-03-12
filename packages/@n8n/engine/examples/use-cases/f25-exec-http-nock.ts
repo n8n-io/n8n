@@ -12,10 +12,13 @@ export default defineWorkflow({
 	name: 'F25 - Exec Http Nock',
 	triggers: [webhook('/f25-exec-http-nock', { method: 'POST' })],
 	async run(ctx) {
-		const data = await ctx.step({ name: 'Fetch Data' }, async () => {
-			const res = await fetch('https://dummyjson.com/users?limit=10');
-			return (await res.json()) as { users: Array<{ firstName: string }> };
-		});
+		const data = await ctx.step(
+			{ name: 'Fetch Data', icon: 'globe', color: '#3b82f6' },
+			async () => {
+				const res = await fetch('https://dummyjson.com/users?limit=10');
+				return (await res.json()) as { users: Array<{ firstName: string }> };
+			},
+		);
 
 		return data;
 	},

@@ -21,28 +21,40 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const input = await ctx.step({ name: 'Parse Request' }, async () => {
-			const { body } = ctx.triggerData;
-			return { destination: body.destination ?? 'unknown' };
-		});
+		const input = await ctx.step(
+			{ name: 'Parse Request', icon: 'settings', color: '#6b7280' },
+			async () => {
+				const { body } = ctx.triggerData;
+				return { destination: body.destination ?? 'unknown' };
+			},
+		);
 
 		switch (input.destination) {
 			case 'London': {
-				const result = await ctx.step({ name: 'London Handler' }, async () => {
-					return { handler: 'London', destination: input.destination };
-				});
+				const result = await ctx.step(
+					{ name: 'London Handler', icon: 'shuffle', color: '#6366f1' },
+					async () => {
+						return { handler: 'London', destination: input.destination };
+					},
+				);
 				return result;
 			}
 			case 'New York': {
-				const result = await ctx.step({ name: 'New York Handler' }, async () => {
-					return { handler: 'New York', destination: input.destination };
-				});
+				const result = await ctx.step(
+					{ name: 'New York Handler', icon: 'shuffle', color: '#6366f1' },
+					async () => {
+						return { handler: 'New York', destination: input.destination };
+					},
+				);
 				return result;
 			}
 			default: {
-				const result = await ctx.step({ name: 'Default Handler' }, async () => {
-					return { handler: 'default', destination: input.destination };
-				});
+				const result = await ctx.step(
+					{ name: 'Default Handler', icon: 'shuffle', color: '#6366f1' },
+					async () => {
+						return { handler: 'default', destination: input.destination };
+					},
+				);
 				return result;
 			}
 		}

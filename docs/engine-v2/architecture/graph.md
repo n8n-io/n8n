@@ -10,15 +10,16 @@ uses at runtime to:
 
 1. **Locate the entry point** of a workflow (the trigger node).
 2. **Resolve predecessors and successors** of any step, including conditional
-   edge evaluation.
+   edge evaluation and error edge exclusion.
 3. **Determine leaf nodes** so the completion service knows which steps'
    outputs to use as the execution result.
-4. **Generate deterministic IDs** for continuation and fan-out child steps
-   that do not exist in the static graph.
+4. **Resolve data-producing predecessors** through transparent sleep nodes.
+5. **Resolve error handlers** for try/catch support via `__error__` edges.
+6. **Generate deterministic IDs** for batch child steps.
+7. **Validate the graph is a DAG** (cycle detection via Kahn's algorithm).
 
 The module is intentionally small and stateless. It does not build the graph
-itself -- that responsibility belongs to the transpiler
-(`transpiler/transpiler.service.ts`, lines 714-786). The graph module only
+itself -- that responsibility belongs to the transpiler. The graph module only
 _reads_ a pre-built `WorkflowGraphData` object.
 
 ---
@@ -57,10 +58,10 @@ Its responsibilities, grouped by consumer:
 | Consumer | Methods Used | Purpose |
 |----------|-------------|---------|
 | `engine.service.ts` | `getTriggerNode()` | Find the trigger to create the initial step execution |
-| `step-planner.service.ts` | `getSuccessors()`, `getPredecessors()`, `getPredecessorIds()` | Plan which steps to queue after a step completes; gather predecessor outputs as input |
+| `step-planner.service.ts` | `getSuccessors()`, `getPredecessors()`, `getDataPredecessors()`, `getPredecessorIds()` | Plan which steps to queue after a step completes; gather predecessor outputs as input (resolving through sleep nodes) |
 | `completion.service.ts` | `getLeafNodes()` | Determine the execution result from the last leaf step's output |
-| `event-handlers.ts` | `getSuccessors()` | Check for successors before pausing; plan next steps on completion |
-| `step-processor.service.ts` | `getContinuationStepId()`, `getContinuationFunctionRef()`, `isContinuationStep()`, `getFanOutChildStepId()` | Handle durable execution patterns (sleep/wait continuations, fan-out) |
+| `event-handlers.ts` | `getSuccessors()`, `getErrorHandlers()` | Check for successors before pausing; route failures to catch handlers |
+| `batch-executor.service.ts` | `getBatchChildStepId()` | Generate deterministic IDs for batch child step executions |
 | Frontend (`GraphCanvas.vue`, `ExecutionGraph.vue`) | `getAllNodes()`, `getAllEdges()`, `toJSON()` | Render the workflow graph in the UI |
 
 ---
@@ -85,19 +86,19 @@ interface WorkflowGraphData {
 - `edges` -- ordered list of directed edges. Order reflects the declaration
   order of steps in the source script.
 
-### `GraphNodeData` (lines 8-14)
+### `GraphNodeData`
 
 Represents a single node in the graph.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | `string` | Stable, deterministic identifier. In the plan, this is `sha256(functionBody + options)`. In the current implementation the transpiler uses a simpler scheme based on the step name. |
+| `id` | `string` | Stable, deterministic identifier derived from the step name via `sha256(stepName)`. |
 | `name` | `string` | Human-readable display name shown on the canvas. |
-| `type` | `'trigger' \| 'step' \| 'condition' \| 'approval' \| 'end'` | Discriminator for node behavior. Currently the transpiler only emits `'trigger'` and `'step'`; the other types (`'condition'`, `'approval'`, `'end'`) are defined but not yet generated. |
+| `type` | `'trigger' \| 'step' \| 'batch' \| 'condition' \| 'approval' \| 'sleep' \| 'trigger-workflow' \| 'end'` | Discriminator for node behavior. The transpiler emits `'trigger'`, `'step'`, `'batch'`, `'sleep'`, and `'trigger-workflow'` nodes. `'condition'` and `'approval'` are set via the step definition's `stepType`. |
 | `stepFunctionRef` | `string` | Reference to the compiled step function in the transpiled module (e.g., `step_fetchData`). Used by `step-processor.service.ts` to load and invoke the function. |
-| `config` | `StepDefinition` | Step metadata imported from `sdk/types.ts`. Carries retry configuration, timeout, display hints, `continuationRef`, and more. |
+| `config` | `GraphStepConfig` | Step metadata including retry configuration, timeout, display hints (icon, color, description), sleep duration, batch failure strategy, and target workflow name. |
 
-### `GraphEdgeData` (lines 16-21)
+### `GraphEdgeData`
 
 Represents a directed edge from one node to another.
 
@@ -106,7 +107,29 @@ Represents a directed edge from one node to another.
 | `from` | `string` | Source node ID. |
 | `to` | `string` | Target node ID. |
 | `label` | `string \| undefined` | Optional display label (e.g., `'true'`/`'false'` for conditional branches). Not used by the engine at runtime. |
-| `condition` | `string \| undefined` | Optional JavaScript expression evaluated with the source step's output bound as `output`. If absent, the edge is unconditional (always taken). |
+| `condition` | `string \| undefined` | Optional JavaScript expression evaluated with the source step's output bound as `output`. If absent, the edge is unconditional. The special value `'__error__'` marks error edges for try/catch support -- these are excluded from normal successor resolution and only followed when a step fails. |
+
+### `GraphStepConfig`
+
+Runtime configuration stored in graph nodes. This is a subset of SDK
+`StepDefinition` properties relevant at runtime, plus fields for specialized
+node types.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Step display name. |
+| `description` | `string` | Step description (subtitle). |
+| `icon` | `string` | Lucide icon name. |
+| `color` | `string` | Hex color for canvas stripe. |
+| `stepType` | `'step' \| 'approval' \| 'condition' \| 'sleep' \| 'batch'` | Step type for special behavior. |
+| `retryConfig` | `RetryConfig` | Retry policy. |
+| `timeout` | `number` | Step timeout in milliseconds. |
+| `retriableErrors` | `string[]` | Error codes that trigger retry. |
+| `retryOnTimeout` | `boolean` | Whether to retry on timeout. |
+| `sleepMs` | `number` | Sleep duration for sleep nodes. |
+| `waitUntilExpr` | `string` | Raw expression for waitUntil nodes. |
+| `workflow` | `string` | Target workflow name for trigger-workflow nodes. |
+| `onItemFailure` | `'fail-fast' \| 'continue' \| 'abort-remaining'` | Batch failure strategy. |
 
 ### Type relationships
 
@@ -153,14 +176,15 @@ classDiagram
 
 ## WorkflowGraph Implementation
 
-File: `workflow-graph.ts` (92 lines)
+File: `workflow-graph.ts`
 
-### Construction
+### Construction and Validation
 
-The class takes a `WorkflowGraphData` object and stores it as a private field
-(line 10). No validation, transformation, or indexing is performed at
-construction time. All queries operate directly on the arrays via
-`Array.find()` and `Array.filter()`.
+The class takes a `WorkflowGraphData` object and stores it as a private field.
+On construction, it calls `validate()` which performs **cycle detection** using
+Kahn's algorithm (topological sort via in-degree reduction). If a cycle is
+detected, it throws an error describing the cycle path with node names and IDs.
+This is O(V + E) and prevents infinite loops in step planning.
 
 ### Node lookup
 
@@ -188,13 +212,13 @@ ancestors.
 
 ### Successor resolution
 
-- **`getSuccessors(stepId, stepOutput?)`** (lines 37-42): Filters edges
-  where `from === stepId`, then applies `evaluateCondition()` to each edge's
-  `condition` string using the provided `stepOutput`. Only edges whose
-  conditions evaluate to `true` (or have no condition) are included. Returns
-  full `GraphNodeData` objects.
-- **`getSuccessorEdges(stepId)`** (lines 44-46): Returns raw edge data
-  without condition evaluation. Used when the caller needs edge metadata
+- **`getSuccessors(stepId, stepOutput?)`**: Filters edges where
+  `from === stepId`, **excludes error edges** (condition `'__error__'`), then
+  applies `evaluateCondition()` to each edge's `condition` string using the
+  provided `stepOutput`. Only edges whose conditions evaluate to `true` (or
+  have no condition) are included. Returns full `GraphNodeData` objects.
+- **`getSuccessorEdges(stepId)`**: Returns raw edge data without condition
+  evaluation or error edge filtering. Used when the caller needs edge metadata
   (labels, conditions) without filtering.
 
 ### Leaf node detection
@@ -203,28 +227,28 @@ ancestors.
   appear as `from` in any edge, then returns nodes NOT in that set. These
   are nodes with no outgoing edges -- the terminal points of the workflow.
 
-### Continuation and fan-out support
+### Data-producing predecessor resolution
 
-These methods support durable execution patterns where synthetic step IDs
-are generated at runtime for steps that don't exist in the static graph:
+- **`getDataPredecessors(stepId)`**: Resolves predecessors through transparent
+  sleep nodes. Sleep nodes do not produce data, so this method traces back
+  recursively through sleep predecessors until it reaches data-producing nodes
+  (steps, triggers, etc.). Used by `StepPlannerService.gatherStepInput()` to
+  collect the correct predecessor outputs as step input.
 
-- **`getContinuationStepId(parentStepId, attempt)`** (lines 61-63):
-  Generates a deterministic 12-character hex ID by hashing
-  `{parentStepId}__continuation__{attempt}` with SHA-256. Used when a step
-  calls `ctx.sleep()` or `ctx.waitUntil()` -- the continuation of the step
-  after the wait period is modeled as a child step with this synthetic ID.
-- **`getContinuationFunctionRef(parentStepId)`** (lines 65-68): Reads the
-  `continuationRef` from the parent node's config. This reference points to
-  the transpiler-generated continuation function (the code that runs after
-  the sleep/wait resumes).
-- **`isContinuationStep(stepId)`** (lines 70-72): Returns `true` if the
-  given step ID does NOT exist in the graph's node list. This is the
-  heuristic for identifying dynamically generated continuation/fan-out steps
-  at runtime.
-- **`getFanOutChildStepId(parentStepId, itemIndex)`** (lines 74-76):
-  Generates a deterministic 12-character hex ID by hashing
-  `{parentStepId}__fanout__{itemIndex}`. Used for parallel item processing
-  where each item in a collection is processed as a separate child step.
+### Error handler resolution (try/catch)
+
+- **`getErrorHandlers(stepId)`**: Returns successor nodes connected via
+  `'__error__'` condition edges. These are catch handler steps that should run
+  when the given step fails. The event handler (`event-handlers.ts`) checks for
+  error handlers before failing the execution, routing the error to catch steps
+  instead.
+
+### Batch child step support
+
+- **`getBatchChildStepId(parentStepId, itemIndex)`**: Generates a deterministic
+  12-character hex ID by hashing `{parentStepId}__batch__{itemIndex}` with
+  SHA-256. Used by `BatchExecutorService` to create child step executions for
+  each item in a batch.
 
 ### Condition evaluation
 
@@ -378,22 +402,12 @@ implementation matches, where it deviates, and what is missing.
 
 ## Issues and Improvements
 
-### 1. No cycle detection
+### 1. ~~No cycle detection~~ (RESOLVED)
 
-**Severity: Medium**
-
-The graph module assumes the input is a valid DAG but never validates this
-invariant. If the transpiler (or a future manual graph builder) produces a
-cyclic graph, the engine would enter an infinite loop in `planNextSteps`:
-step A completes, queues step B, B completes, queues A, and so on. The
-`ON CONFLICT DO NOTHING` clause in `StepPlannerService` would prevent
-duplicate inserts of the _same_ step, but if cycles involve different
-_executions_ of the same logical step (e.g., via continuation IDs), the
-protection would not apply.
-
-**Recommendation:** Add a `validate()` method or a constructor-time check
-that performs a topological sort (Kahn's algorithm) and throws if a cycle is
-detected. This is O(V + E) and negligible for typical workflow sizes.
+Cycle detection is now implemented. The `validate()` method is called at
+construction time and uses Kahn's algorithm (topological sort via in-degree
+reduction). If a cycle is detected, it traces the cycle path and throws an
+error with descriptive node names and IDs.
 
 ### 2. O(n) linear scans for all lookups
 

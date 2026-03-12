@@ -1,4 +1,5 @@
 import type { GraphStepConfig } from '../../graph/graph.types';
+import { NonRetriableError } from '../../sdk/errors';
 import { EngineError, type ErrorCategory } from './engine-error';
 import { StepTimeoutError } from './step-timeout.error';
 
@@ -18,7 +19,8 @@ export interface ErrorData {
  * 1. EngineError subclasses -- use their code/category/retriable directly
  * 2. Native JS errors (TypeError, ReferenceError, SyntaxError) -- code bugs, never retriable
  * 3. Node.js system errors with an `errno` code -- retriable for network-related codes
- * 4. Unknown shape -- default to retriable (assume transient)
+ * 4. NonRetriableError from SDK -- workflow author explicitly marked as non-retriable
+ * 5. Unknown shape -- default to retriable (assume transient)
  */
 export function buildErrorData(error: unknown, sourceMap?: string): ErrorData {
 	// 1. If it's already an EngineError, use its properties directly
@@ -60,7 +62,18 @@ export function buildErrorData(error: unknown, sourceMap?: string): ErrorData {
 		};
 	}
 
-	// 4. Unknown error shape
+	// 4. NonRetriableError from SDK -- workflow author explicitly marked as non-retriable
+	if (error instanceof NonRetriableError) {
+		return {
+			message: error.message,
+			stack: sourceMap ? remapStack(error.stack, sourceMap) : error.stack,
+			code: 'NON_RETRIABLE',
+			category: 'step',
+			retriable: false,
+		};
+	}
+
+	// 5. Unknown error shape
 	return {
 		message: error instanceof Error ? error.message : String(error),
 		stack:

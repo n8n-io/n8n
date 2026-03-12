@@ -38,22 +38,28 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const input = await ctx.step({ name: 'Parse Request' }, async () => {
-			const { body } = ctx.triggerData;
-			return {
-				source: body.source ?? 'webhook',
-				data: body.data ?? 'default',
-			};
-		});
+		const input = await ctx.step(
+			{ name: 'Parse Request', icon: 'settings', color: '#6b7280' },
+			async () => {
+				const { body } = ctx.triggerData;
+				return {
+					source: body.source ?? 'webhook',
+					data: body.data ?? 'default',
+				};
+			},
+		);
 
-		const processed = await ctx.step({ name: 'Process Data' }, async () => {
-			const res = await fetch('https://dummyjson.com/products/search?q=phone', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ source: input.source, data: input.data }),
-			});
-			return (await res.json()) as Record<string, unknown>;
-		});
+		const processed = await ctx.step(
+			{ name: 'Process Data', icon: 'zap', color: '#8b5cf6' },
+			async () => {
+				const res = await fetch('https://dummyjson.com/products/search?q=phone', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ source: input.source, data: input.data }),
+				});
+				return (await res.json()) as Record<string, unknown>;
+			},
+		);
 
 		return processed;
 	},

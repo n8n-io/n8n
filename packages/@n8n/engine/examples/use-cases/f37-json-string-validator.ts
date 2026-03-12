@@ -21,22 +21,25 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const validation = await ctx.step({ name: 'Validate JSON String' }, async () => {
-			const { body } = ctx.triggerData;
+		const validation = await ctx.step(
+			{ name: 'Validate JSON String', icon: 'flag', color: '#eab308' },
+			async () => {
+				const { body } = ctx.triggerData;
 
-			if (!body.jsonString || typeof body.jsonString !== 'string') {
-				return { valid: false, error: "Input 'jsonString' is missing or not a string." };
-			}
+				if (!body.jsonString || typeof body.jsonString !== 'string') {
+					return { valid: false, error: "Input 'jsonString' is missing or not a string." };
+				}
 
-			try {
-				JSON.parse(body.jsonString);
-				return { valid: true };
-			} catch (e) {
-				return { valid: false, error: (e as Error).message };
-			}
-		});
+				try {
+					JSON.parse(body.jsonString);
+					return { valid: true };
+				} catch (e) {
+					return { valid: false, error: (e as Error).message };
+				}
+			},
+		);
 
-		await ctx.step({ name: 'Respond with Result' }, async () => {
+		await ctx.step({ name: 'Respond with Result', icon: 'send', color: '#22c55e' }, async () => {
 			await ctx.respondToWebhook({
 				statusCode: 200,
 				headers: { 'Content-Type': 'application/json' },

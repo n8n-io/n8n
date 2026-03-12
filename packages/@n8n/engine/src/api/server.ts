@@ -46,7 +46,11 @@ export function createApp(deps: AppDependencies): express.Application {
 	app.use(
 		(err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
 			console.error('Unhandled API error:', err);
-			res.status(500).json({ error: err.message, stack: err.stack });
+			const body: { error: string; stack?: string } = { error: err.message };
+			if (process.env.NODE_ENV === 'development') {
+				body.stack = err.stack;
+			}
+			res.status(500).json(body);
 		},
 	);
 

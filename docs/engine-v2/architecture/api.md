@@ -316,18 +316,21 @@ Approve or decline a step that is in `waiting_approval` status.
 
 ### Webhook Controller (`webhook.controller.ts`)
 
-#### `ALL /webhook/*path` (line 15)
+#### `ALL /webhook/*path`
 
 Catch-all route for incoming webhook requests (any HTTP method).
 
 - **Routing**: Extracts the webhook path from the wildcard parameter, strips
-  the leading slash, and looks up a `WebhookEntity` by `(method, path)` (lines
-  18-26).
+  the leading slash, and looks up a `WebhookEntity` by `(method, path)`.
 - **404** if no matching webhook registration is found.
+- **Schema validation**: If the webhook trigger has a JSON Schema (transpiled
+  from Zod schemas at save time), the request body/query/headers are validated
+  using Ajv via `validateWebhookRequest()` (`validate-webhook-schema.ts`).
+  Returns 400 with validation errors if the request does not match the schema.
 - **Trigger data**: Builds `{ body, headers, query, method, path }` from the
-  request (lines 37-43).
+  request.
 - **Execution**: Starts a new execution via `engineService.startExecution()`
-  with mode `"production"` (lines 46-50).
+  with mode `"production"`.
 
 ##### Response Modes
 

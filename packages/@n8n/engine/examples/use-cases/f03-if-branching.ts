@@ -21,20 +21,29 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const input = await ctx.step({ name: 'Parse Request' }, async () => {
-			const { body } = ctx.triggerData;
-			return { status: body.status ?? 'inactive' };
-		});
+		const input = await ctx.step(
+			{ name: 'Parse Request', icon: 'settings', color: '#6b7280' },
+			async () => {
+				const { body } = ctx.triggerData;
+				return { status: body.status ?? 'inactive' };
+			},
+		);
 
 		if (input.status === 'active') {
-			const result = await ctx.step({ name: 'True Branch' }, async () => {
-				return { branch: 'true', status: input.status };
-			});
+			const result = await ctx.step(
+				{ name: 'True Branch', icon: 'shuffle', color: '#6366f1' },
+				async () => {
+					return { branch: 'true', status: input.status };
+				},
+			);
 			return result;
 		} else {
-			const result = await ctx.step({ name: 'False Branch' }, async () => {
-				return { branch: 'false', status: input.status };
-			});
+			const result = await ctx.step(
+				{ name: 'False Branch', icon: 'shuffle', color: '#6366f1' },
+				async () => {
+					return { branch: 'false', status: input.status };
+				},
+			);
 			return result;
 		}
 	},

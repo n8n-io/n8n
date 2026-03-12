@@ -2,14 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { createDataSource } from '../../database/data-source';
-import { TranspilerService } from '../../transpiler/transpiler.service';
-import { EngineEventBus } from '../../engine/event-bus.service';
-import { EngineService } from '../../engine/engine.service';
-import { StepProcessorService } from '../../engine/step-processor.service';
-import { StepPlannerService } from '../../engine/step-planner.service';
-import { StepQueueService } from '../../engine/step-queue.service';
-import { CompletionService } from '../../engine/completion.service';
-import { registerEventHandlers } from '../../engine/event-handlers';
+import { createEngine } from '../../engine/create-engine';
 import { WorkflowEntity } from '../../database/entities/workflow.entity';
 import type { ExecutionCompletedEvent, ExecutionFailedEvent } from '../../engine/event-bus.types';
 
@@ -30,7 +23,13 @@ export async function benchCommand(args: string[]): Promise<void> {
 	// Read and compile
 	const absolutePath = resolve(filePath);
 	const source = readFileSync(absolutePath, 'utf-8');
-	const transpiler = new TranspilerService();
+
+	// Setup engine
+	const dataSource = createDataSource();
+	await dataSource.initialize();
+
+	const { eventBus, transpiler, engineService, queue } = createEngine(dataSource);
+
 	const result = transpiler.compile(source);
 
 	if (result.errors.length > 0) {
@@ -39,19 +38,6 @@ export async function benchCommand(args: string[]): Promise<void> {
 		process.exit(1);
 	}
 
-	// Setup engine
-	const dataSource = createDataSource();
-	await dataSource.initialize();
-
-	const eventBus = new EngineEventBus();
-	const stepPlanner = new StepPlannerService(dataSource);
-	const completionService = new CompletionService(dataSource, eventBus);
-	const stepProcessor = new StepProcessorService(dataSource, eventBus);
-	const engineService = new EngineService(dataSource, eventBus, stepPlanner);
-
-	registerEventHandlers(eventBus, dataSource, stepPlanner, completionService);
-
-	const queue = new StepQueueService(dataSource, stepProcessor);
 	queue.start();
 
 	// Save workflow

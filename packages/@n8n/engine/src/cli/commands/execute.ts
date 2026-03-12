@@ -1,11 +1,5 @@
 import { createDataSource } from '../../database/data-source';
-import { EngineEventBus } from '../../engine/event-bus.service';
-import { EngineService } from '../../engine/engine.service';
-import { StepPlannerService } from '../../engine/step-planner.service';
-import { StepProcessorService } from '../../engine/step-processor.service';
-import { StepQueueService } from '../../engine/step-queue.service';
-import { CompletionService } from '../../engine/completion.service';
-import { registerEventHandlers } from '../../engine/event-handlers';
+import { createEngine } from '../../engine/create-engine';
 
 export async function executeCommand(args: string[]): Promise<void> {
 	const workflowId = args[0];
@@ -32,15 +26,7 @@ export async function executeCommand(args: string[]): Promise<void> {
 	const dataSource = createDataSource();
 	await dataSource.initialize();
 
-	const eventBus = new EngineEventBus();
-	const stepPlanner = new StepPlannerService(dataSource);
-	const completionService = new CompletionService(dataSource, eventBus);
-	const stepProcessor = new StepProcessorService(dataSource, eventBus);
-	const engineService = new EngineService(dataSource, eventBus, stepPlanner);
-
-	registerEventHandlers(eventBus, dataSource, stepPlanner, completionService);
-
-	const queue = new StepQueueService(dataSource, stepProcessor);
+	const { eventBus, engineService, queue } = createEngine(dataSource);
 	queue.start();
 
 	if (watch) {

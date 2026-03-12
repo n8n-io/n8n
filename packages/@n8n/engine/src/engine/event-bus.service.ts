@@ -18,11 +18,32 @@ export class EngineEventBus {
 	}
 
 	emit(event: EngineEvent): void {
-		this.emitter.emit(event.type, event);
+		this.safeEmit(event.type, event);
 
 		// Wildcard: emit 'step:*' for all step events, 'execution:*' for all execution events
 		const prefix = event.type.split(':')[0];
-		this.emitter.emit(`${prefix}:*`, event);
+		this.safeEmit(`${prefix}:*`, event);
+	}
+
+	/**
+	 * Emit an event, catching errors from async handlers to prevent
+	 * unhandled promise rejections from crashing the process.
+	 */
+	private safeEmit(eventName: string, event: EngineEvent): void {
+		const listeners = this.emitter.listeners(eventName);
+		for (const listener of listeners) {
+			try {
+				const result = listener(event);
+				// If the handler returns a promise, catch any rejection
+				if (result instanceof Promise) {
+					result.catch((err: unknown) => {
+						console.error(`Async event handler error for ${event.type}:`, err);
+					});
+				}
+			} catch (err) {
+				console.error(`Event handler error for ${event.type}:`, err);
+			}
+		}
 	}
 
 	on<T extends EngineEvent>(eventType: T['type'], handler: EventHandler<T>): void {

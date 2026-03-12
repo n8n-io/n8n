@@ -22,41 +22,50 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const input = await ctx.step({ name: 'Parse Chat Input' }, async () => {
-			const { body } = ctx.triggerData;
-			return { chatInput: body.chatInput ?? 'Help me with my request' };
-		});
+		const input = await ctx.step(
+			{ name: 'Parse Chat Input', icon: 'settings', color: '#6b7280' },
+			async () => {
+				const { body } = ctx.triggerData;
+				return { chatInput: body.chatInput ?? 'Help me with my request' };
+			},
+		);
 
 		// Tool 1: API Request (simulates the HTTP tool)
-		const apiData = await ctx.step({ name: 'API Request Tool' }, async () => {
-			const res = await fetch('https://dummyjson.com/products?limit=5');
-			return (await res.json()) as Record<string, unknown>;
-		});
+		const apiData = await ctx.step(
+			{ name: 'API Request Tool', icon: 'globe', color: '#3b82f6' },
+			async () => {
+				const res = await fetch('https://dummyjson.com/products?limit=5');
+				return (await res.json()) as Record<string, unknown>;
+			},
+		);
 
 		// AI Agent call with tool results as context
-		const aiResponse = await ctx.step({ name: 'AI Agent' }, async () => {
-			const res = await fetch('https://dummyjson.com/posts/add', {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${ctx.getSecret('OPENAI_API_KEY')}`,
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					model: 'gpt-4o',
-					messages: [
-						{
-							role: 'system',
-							content: 'You are a helpful assistant.',
-						},
-						{
-							role: 'user',
-							content: `${input.chatInput}\n\nContext from API: ${JSON.stringify(apiData)}`,
-						},
-					],
-				}),
-			});
-			return (await res.json()) as Record<string, unknown>;
-		});
+		const aiResponse = await ctx.step(
+			{ name: 'AI Agent', icon: 'bot', color: '#ec4899' },
+			async () => {
+				const res = await fetch('https://dummyjson.com/posts/add', {
+					method: 'POST',
+					headers: {
+						Authorization: `Bearer ${ctx.getSecret('OPENAI_API_KEY')}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						model: 'gpt-4o',
+						messages: [
+							{
+								role: 'system',
+								content: 'You are a helpful assistant.',
+							},
+							{
+								role: 'user',
+								content: `${input.chatInput}\n\nContext from API: ${JSON.stringify(apiData)}`,
+							},
+						],
+					}),
+				});
+				return (await res.json()) as Record<string, unknown>;
+			},
+		);
 
 		return aiResponse;
 	},

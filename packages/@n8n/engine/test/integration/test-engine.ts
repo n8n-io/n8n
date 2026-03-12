@@ -45,7 +45,7 @@ export async function createTestEngine(): Promise<TestEngine> {
 	registerEventHandlers(eventBus, dataSource, stepPlanner, completionService);
 
 	// Use a shorter poll interval for tests (10ms interval, 20 max concurrency)
-	const queue = new StepQueueService(dataSource, stepProcessor, 20, 10);
+	const queue = new StepQueueService(dataSource, stepProcessor, 20);
 	queue.start();
 
 	return {

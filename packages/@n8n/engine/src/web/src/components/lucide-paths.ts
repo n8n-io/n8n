@@ -2,6 +2,11 @@
 export const LUCIDE_PATHS: Record<string, string[]> = {
 	// Each entry is an array of path `d` values for multi-path icons
 	'message-circle': ['M7.9 20A9 9 0 1 0 4 16.1L2 22Z'],
+	'external-link': [
+		'M15 3h6v6',
+		'M10 14 21 3',
+		'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6',
+	],
 	'file-text': [
 		'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z',
 		'M14 2v4a2 2 0 0 0 2 2h4',

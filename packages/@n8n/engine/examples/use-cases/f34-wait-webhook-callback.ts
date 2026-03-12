@@ -33,21 +33,27 @@ export default defineWorkflow({
 		//
 		// --- END UNSUPPORTED ---
 
-		const notifyResult = await ctx.step({ name: 'Notify Service' }, async () => {
-			const res = await fetch('https://dummyjson.com/posts/add', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ callback: 'placeholder-resume-url' }),
-			});
-			return { notified: res.ok };
-		});
+		const notifyResult = await ctx.step(
+			{ name: 'Notify Service', icon: 'send', color: '#f97316' },
+			async () => {
+				const res = await fetch('https://dummyjson.com/posts/add', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ callback: 'placeholder-resume-url' }),
+				});
+				return { notified: res.ok };
+			},
+		);
 
 		// Simulating wait with sleep
 		await ctx.sleep(5000);
 
-		const result = await ctx.step({ name: 'Process Result' }, async () => {
-			return { processed: true, notifyResult };
-		});
+		const result = await ctx.step(
+			{ name: 'Process Result', icon: 'zap', color: '#22c55e' },
+			async () => {
+				return { processed: true, notifyResult };
+			},
+		);
 
 		return result;
 	},

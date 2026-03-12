@@ -275,8 +275,11 @@ Classifies the type of step node.
 |-------|-------------|
 | `trigger` | Entry point (webhook, manual, etc.) |
 | `step` | Regular processing step |
+| `batch` | Batch processing step (fans out items as child steps) |
 | `approval` | Human-in-the-loop approval step |
 | `condition` | If/else branching step |
+| `sleep` | Durable sleep/wait node |
+| `trigger_workflow` | Cross-workflow trigger node |
 
 ### Terminal vs Non-Terminal Classification (`enums.ts`, lines 31-46)
 
@@ -494,7 +497,7 @@ Comparing the implementation against `docs/engine-v2-plan.md` (Database Schema s
 - **Workflow execution columns**: All columns match (id, workflow_id, workflow_version, status, mode, result, error, cancel_requested, pause_requested, resume_after, started_at, completed_at, duration_ms, compute_ms, wait_ms, created_at, updated_at).
 - **Step execution columns**: All columns match (id, execution_id, step_id, step_type, status, input, output, error, attempt, retry_after, wait_until, approval_token, parent_step_execution_id, started_at, completed_at, duration_ms, metadata, created_at, updated_at). UNIQUE on `(execution_id, step_id)`.
 - **Enum values**: Both `ExecutionStatus` and `StepStatus` have identical values.
-- **StepType enum**: All four values match (trigger, step, approval, condition).
+- **StepType enum**: Expanded beyond the plan. The plan had four values (trigger, step, approval, condition). The implementation adds three more: `batch`, `sleep`, and `trigger_workflow` for the new node types.
 - **Terminal/non-terminal classification**: Matches exactly.
 - **State machine transitions**: Implementation follows the documented state machines.
 - **Step execution indexes**: All six indexes from the plan are present (`idx_wse_execution`, `idx_wse_queue`, `idx_wse_waiting`, `idx_wse_step_lookup`, `idx_wse_stale`, `idx_wse_exec_status`).

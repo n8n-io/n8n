@@ -20,45 +20,49 @@
 
 ## Progress Summary
 
-> Updated 2026-03-12. Tracks incremental progress in `feat/explicit-wait-step` branch (PR #69 into main).
+> Updated 2026-03-12. Tracks incremental progress across PR #69 (sleep), PR #73 (examples/schemas/Docker), and this branch.
 
 ### What's been landed
 
-Sleep/wait infrastructure implemented across 6 stacked PRs (#60–#66), consolidated into PR #69. This is incremental progress toward the full plan — the sleep-related parts of Chunks 1, 2, and 3 are working end-to-end. The plan's target API signatures and remaining features (batch, triggerWorkflow, sequential-by-default, adaptive polling) still need to be implemented as described.
+**Sleep/wait (PR #69):**
+- Graph types, transpiler detection, step processor, step planner, WorkflowGraph — all working end-to-end
+- `SleepRequestedError` and `WaitUntilRequestedError` removed
+- Tests: unit + integration for sleep/waitUntil
 
-**Current state of sleep:**
-- **Graph types**: `sleep` added to `GraphNodeData.type` union; `StepType.Sleep` enum value; `continuationRef` removed from `GraphStepConfig`; `sleepMs` and `waitUntilExpr` added to graph node config
-- **Transpiler**: `ctx.sleep(ms)` and `ctx.waitUntil(date)` calls detected via ts-morph AST; sleep graph nodes generated with edges; implicit ordering edges through sleep nodes when adjacent steps have no data dependency; `buildPrecedingStepMap()` for source-order tracking
-- **Step processor**: Native sleep handling — first pass sets `waitUntil` + marks Waiting, second pass (after timer fires) marks Completed; `step:started` emitted before all code paths
-- **Step planner**: `gatherStepInput` scoped to data-producing predecessors only via `getDataPredecessors()`
-- **WorkflowGraph**: Added `getDataPredecessors()` (traces through sleep nodes to find data producers); removed `getContinuationStepId()`, `getContinuationFunctionRef()`, `isContinuationStep()`; kept `getFanOutChildStepId()`
-- **SDK**: Removed `SleepRequestedError` and `WaitUntilRequestedError`; `sleep` and `waitUntil` remain on `ExecutionContext` with runtime stubs that throw
-- **Tests**: Unit tests for `getDataPredecessors`, transpiler sleep node generation, implicit ordering edges, `waitUntilExpr`; integration tests for `ctx.sleep()`, `ctx.waitUntil()`, multiple sleeps, data flow through sleep, sleep lifecycle, sleep passthrough
+**Examples, schemas, validation, Docker (PR #73):**
+- AST-based trigger extraction replacing regex in transpiler
+- TypeScript typechecking of workflow source against SDK types at compile time
+- Zod webhook schemas: body/query/headers validated at runtime with ajv, auto-generate test data with @faker-js/faker
+- Type inference: `ctx.triggerData` automatically typed from Zod schema via generics
+- 61 use-case examples ported from SDK v4 fixtures with real DummyJSON APIs
+- Inline error markers in CodeEditor via @codemirror/lint
+- Sleep node styling in both GraphCanvas and ExecutionGraph (clock icon, dashed border, duration label, shared utils)
+- Docker: single Dockerfile with dev/web/build/prod targets, no monorepo root package.json needed
+- Seed improvements: per-name idempotency, code-change detection, name extraction from source
+- Webhook schema validation creates failed execution records for UI visibility
+- 239 unit tests passing (including 12 zod-to-json-schema, 9 webhook validation, trigger extraction, typechecking)
 
 ### Gaps between current state and plan
 
-The following items are working but don't yet match the plan's target design. They'll be aligned as subsequent chunks are implemented:
-
-1. **Sleep API signature**: Currently `ctx.sleep(ms)` / `ctx.waitUntil(date)`. Plan target is `ctx.sleep({ name, duration })` / `ctx.sleep({ name, until })` via `SleepConfig`. Needs updating when Task 1.1 Step 2 is done.
-2. **Sleep graph config**: Currently uses `GraphStepConfig.sleepMs` / `GraphStepConfig.waitUntilExpr`. Plan target is a proper `SleepConfig` interface mapped through the transpiler.
-3. **`getFanOutChildStepId` not yet renamed**: Plan target is `getBatchChildStepId`. Will be renamed when batch is implemented (Task 1.4 Step 2).
-4. **Sequential-by-default ordering**: Currently only implemented for implicit edges through sleep nodes. The full transpiler rewrite (Task 2.1) to replace regex variable scanning with positional ordering is still needed.
-5. **SDK type additions**: `SleepConfig`, `BatchConfig`, `TriggerWorkflowConfig`, `BatchResult` interfaces not yet added (Task 1.1).
+1. **Sleep API signature**: Currently `ctx.sleep(ms)` / `ctx.waitUntil(date)`. Plan target is `ctx.sleep({ name, duration })` via `SleepConfig`.
+2. **Sleep API signature**: Currently `ctx.sleep(ms)` / `ctx.waitUntil(date)`. Plan target is `ctx.sleep({ name, duration })` via `SleepConfig`. Keeping current API since it's working and examples use it.
 
 ### Chunk status
 
 | Chunk | Status | Notes |
 |-------|--------|-------|
-| 0 — Fix existing test failures | Not done as separate pass | Sleep-related failures fixed inline |
-| 1 — SDK Types & Graph Types | Partial | Sleep error removal done (1.2), graph types for sleep done (1.3 partial), continuation removal done (1.4 partial). SDK type additions (1.1) and batch graph types not started |
-| 2 — Transpiler | Partial | Sleep detection done (2.2 partial). Sequential-by-default rewrite (2.1) and batch/triggerWorkflow detection not started |
-| 3 — Engine Core | Partial | Sleep execution done (3.1). Batch executor (3.2), adaptive polling (3.3), cross-workflow trigger (3.4) not started |
-| 4 — Wiring & Cleanup | Not started | |
-| 5 — Examples | Not started | Sleep examples updated with comments only |
-| 6 — Infrastructure | Not started | |
-| 7 — UI Changes | Not started | |
+| 0 — Fix existing test failures | Done | Fixed inline across PRs |
+| 1 — SDK Types & Graph Types | Done | BatchConfig, BatchResult, TriggerWorkflowConfig, batch step overload, renamed getFanOutChildStepId→getBatchChildStepId |
+| 2 — Transpiler | Done | Sequential-by-default ordering, batch detection (3-arg ctx.step), triggerWorkflow detection, AST trigger extraction, typechecking, Zod schema extraction |
+| 3 — Engine Core | Done | Sleep (3.1), batch executor (3.2), adaptive polling (3.3), cross-workflow trigger (3.4) |
+| 4 — Wiring & Cleanup | Done | BatchExecutor and WorkflowTrigger wired in main.ts, wake() connected to step planner |
+| 5 — Examples | Done | 17 main examples + 61 use-cases with real APIs, Zod schemas, proper naming |
+| 6 — Infrastructure | Done | Single Dockerfile, simplified Docker compose, @codemirror/lint, @faker-js/faker |
+| 7 — UI Changes | Done | Sleep/trigger node styling (both canvases), trigger step visible in execution graph, CodeEditor lint markers, webhook tester faker. Batch node visuals TODO |
 | 8 — Documentation | Not started | |
-| 9 — Bug Fixes & Code Quality | Not started | |
+| 9 — Bug Fixes & Code Quality | Partial | NonRetriableError classification fixed, API stack trace leakage fixed, SQL interpolation fixed, event bus async error handling fixed, module cache LRU eviction added. Remaining: CLI factory extraction, graph cycle detection, processStep decomposition, WorkspaceView decomposition, graph layout dedup |
+| 10 — Agent Integration | Not started | Deferred to separate PR |
+| 10 — Agent Integration | Not started | Deferred to separate PR |
 
 ---
 

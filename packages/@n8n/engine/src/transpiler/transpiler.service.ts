@@ -70,12 +70,26 @@ interface StepDefinition {
 	/** Position in source for error reporting */
 	line: number;
 	column: number;
-	/** The CallExpression node for the ctx.step() call */
+	/** The CallExpression node for the ctx.step() or ctx.batch() call */
 	callNode: CallExpression;
 	/** Variables from ctx.triggerData referenced inside the step body */
 	triggerDataVars: Set<string>;
 	/** Whether this step is inside a conditional (if/else) */
 	conditionalParent?: ConditionalInfo;
+	/** Whether this step is inside a catch block (try/catch) */
+	catchParent?: CatchInfo;
+	/** Whether this is a batch step (ctx.batch call) */
+	isBatch?: boolean;
+	/** Batch config from the definition (onItemFailure strategy) */
+	batchConfig?: { onItemFailure?: string };
+	/** Parameter name for the per-item callback in batch steps (e.g., 'product' from `async (product) => ...`) */
+	batchItemParam?: string;
+	/** The items expression text for batch steps (e.g., 'products' — the 2nd arg to ctx.batch) */
+	batchItemsExpr?: string;
+	/** If inside a Promise.all, the group index (all steps with same groupId are parallel) */
+	promiseAllGroupId?: number;
+	/** Line in the original source where the function body content starts (after { and whitespace) */
+	bodyStartLine: number;
 }
 
 interface ConditionalInfo {
@@ -87,6 +101,15 @@ interface ConditionalInfo {
 	conditionSourceStepId?: string;
 	/** The variable name in the condition that references the step output */
 	conditionVariableName?: string;
+	/** Whether the condition variable is a triggerData variable (replaces with output.varName) */
+	isTriggerDataVar?: boolean;
+}
+
+interface CatchInfo {
+	/** Step IDs in the try block that can trigger this catch handler */
+	tryStepIds: string[];
+	/** The catch clause variable name (e.g., 'error') */
+	catchVarName?: string;
 }
 
 interface SleepDefinition {
@@ -104,10 +127,32 @@ interface SleepDefinition {
 	callNode: CallExpression;
 }
 
-/** Union of step and sleep calls for sequential ordering */
+interface TriggerWorkflowDefinition {
+	/** Deterministic ID derived from position */
+	id: string;
+	/** Display name for the trigger-workflow node */
+	name: string;
+	/** The target workflow ID */
+	workflow: string;
+	/** Position in source for ordering */
+	sourcePos: number;
+	/** The CallExpression node for the ctx.triggerWorkflow() call */
+	callNode: CallExpression;
+	/** The full text of the enclosing step function body that contains the call */
+	functionBodyText: string;
+	/** The variable name this call's output is assigned to (if any) */
+	assignedVariable: string | undefined;
+	/** Names of variables from other step outputs referenced inside the body */
+	dependencies: Map<string, string>;
+	/** Variables from ctx.triggerData referenced inside the step body */
+	triggerDataVars: Set<string>;
+}
+
+/** Union of step, sleep, and trigger-workflow calls for sequential ordering */
 type OrchestratorCall =
 	| { kind: 'step'; step: StepDefinition; sourcePos: number }
-	| { kind: 'sleep'; sleep: SleepDefinition; sourcePos: number };
+	| { kind: 'sleep'; sleep: SleepDefinition; sourcePos: number }
+	| { kind: 'trigger-workflow'; triggerWorkflow: TriggerWorkflowDefinition; sourcePos: number };
 
 interface HelperFunction {
 	name: string;
@@ -141,6 +186,16 @@ function toCamelCase(name: string): string {
 
 const SDK_TYPE_DECLARATIONS = `
 declare module '@n8n/engine/sdk' {
+	export interface BatchConfig {
+		onItemFailure?: 'fail-fast' | 'continue' | 'abort-remaining';
+	}
+
+	export interface BatchResult<T> {
+		status: 'fulfilled' | 'rejected';
+		value?: T;
+		reason?: Error;
+	}
+
 	export interface StepDefinition {
 		name: string;
 		description?: string;
@@ -151,6 +206,22 @@ declare module '@n8n/engine/sdk' {
 		timeout?: number;
 		retriableErrors?: string[];
 		retryOnTimeout?: boolean;
+	}
+
+	export interface BatchStepDefinition {
+		name: string;
+		description?: string;
+		icon?: string;
+		color?: string;
+		onItemFailure?: 'fail-fast' | 'continue' | 'abort-remaining';
+		retry?: { maxAttempts: number; baseDelay: number; maxDelay?: number; jitter?: boolean };
+		timeout?: number;
+	}
+
+	export interface TriggerWorkflowConfig {
+		workflow: string;
+		input?: Record<string, unknown>;
+		timeout?: number;
 	}
 
 	export interface WebhookResponse {
@@ -177,15 +248,18 @@ declare module '@n8n/engine/sdk' {
 
 	export interface ExecutionContext {
 		input: Record<string, unknown>;
-		triggerData: Record<string, unknown>;
+		triggerData: { body: any; query: any; headers: any; method: string; path: string; [key: string]: unknown };
+		error?: unknown;
 		executionId: string;
 		stepId: string;
 		attempt: number;
 		step: <T>(definition: StepDefinition, fn: () => Promise<T>) => Promise<T>;
+		batch: <T, I>(definition: BatchStepDefinition, items: I[], fn: (item: I, index: number) => Promise<T>) => Promise<BatchResult<T>[]>;
 		sendChunk: (data: unknown) => Promise<void>;
 		respondToWebhook: (response: WebhookResponse) => Promise<void>;
 		sleep: (ms: number) => Promise<void>;
 		waitUntil: (date: Date) => Promise<void>;
+		triggerWorkflow: (config: TriggerWorkflowConfig) => Promise<unknown>;
 		getSecret: (name: string) => string | undefined;
 	}
 
@@ -308,10 +382,10 @@ export class TranspilerService {
 				column = lineAndCol.column;
 			}
 			const category = diag.getCategory();
-			// 0 = Warning, 1 = Error, 2 = Suggestion, 3 = Message
-			if (category === 1) {
-				errors.push({ message, line, column, severity: 'error' });
-			} else if (category === 0) {
+			// Type diagnostics are reported as warnings, not blocking errors.
+			// This matches IDE behavior: code can still compile and run with
+			// type issues. The warnings show as inline markers in the editor.
+			if (category <= 1) {
 				warnings.push({ message, line, column, severity: 'warning' });
 			}
 		}
@@ -347,13 +421,16 @@ export class TranspilerService {
 		// Extract triggers from the workflow definition object
 		const triggers = this.findTriggers(workflowDef.objectLiteral);
 
-		// Step 1: Find all ctx.step() and ctx.sleep() calls
-		const steps = this.findStepCalls(workflowDef.runMethod);
+		// Step 1: Find all ctx.step(), ctx.batch(), ctx.sleep(), and ctx.triggerWorkflow() calls
+		const stepCalls = this.findStepCalls(workflowDef.runMethod);
+		const batchCalls = this.findBatchCalls(workflowDef.runMethod);
+		const steps = [...stepCalls, ...batchCalls];
 		const sleeps = this.findSleepCalls(workflowDef.runMethod);
+		const triggerWorkflows = this.findTriggerWorkflowCalls(workflowDef.runMethod);
 
 		if (steps.length === 0) {
 			errors.push({
-				message: 'No ctx.step() calls found in run() method',
+				message: 'No ctx.step() or ctx.batch() calls found in run() method',
 				severity: 'error',
 			});
 			return {
@@ -398,6 +475,11 @@ export class TranspilerService {
 				variableToStepId.set(step.assignedVariable, step.id);
 			}
 		}
+		for (const tw of triggerWorkflows) {
+			if (tw.assignedVariable) {
+				variableToStepId.set(tw.assignedVariable, tw.id);
+			}
+		}
 
 		// Detect variables destructured from ctx.triggerData
 		const triggerDataVars = this.findTriggerDataVariables(workflowDef.runMethod);
@@ -409,23 +491,35 @@ export class TranspilerService {
 			this.resolveTriggerDataDependencies(step, triggerDataVars);
 		}
 
+		// Resolve dependencies for trigger-workflow calls
+		for (const tw of triggerWorkflows) {
+			this.resolveTriggerWorkflowDependencies(tw, variableToStepId);
+		}
+
 		// Step 3: Detect conditionals
-		this.detectConditionals(workflowDef.runMethod, steps, variableToStepId);
+		this.detectConditionals(workflowDef.runMethod, steps, variableToStepId, triggerDataVars);
+
+		// Step 3b: Detect try/catch
+		this.detectTryCatch(workflowDef.runMethod, steps);
 
 		// Step 4: Find helper functions
 		const helpers = this.findHelperFunctions(sourceFile, steps);
 
-		// Step 5: Build ordered list of orchestrator calls (steps + sleeps)
-		const orchestratorCalls = this.buildOrchestratorCallOrder(steps, sleeps);
+		// Step 5: Build ordered list of orchestrator calls (steps + sleeps + trigger-workflows)
+		const orchestratorCalls = this.buildOrchestratorCallOrder(steps, sleeps, triggerWorkflows);
 
-		// Step 6: Build the graph (now includes sleep nodes)
-		const graph = this.buildGraph(steps, sleeps, orchestratorCalls, triggers);
+		// Step 6: Build the graph (now includes sleep and trigger-workflow nodes)
+		const graph = this.buildGraph(steps, sleeps, orchestratorCalls, triggers, triggerWorkflows);
 
-		// Step 7: Generate compiled code (only for step functions, not sleeps)
-		const rawCode = this.generateCode(steps, helpers);
+		// Step 7: Generate compiled code (for step functions and trigger-workflow functions)
+		const { code: rawCode, generatedToOriginalLineMap } = this.generateCode(
+			steps,
+			helpers,
+			triggerWorkflows,
+		);
 
 		// Step 8: Compile with esbuild
-		const { code, sourceMap } = this.compileWithEsbuild(rawCode);
+		const { code, sourceMap } = this.compileWithEsbuild(rawCode, generatedToOriginalLineMap);
 
 		return { code, graph, triggers, sourceMap, errors, warnings };
 	}
@@ -540,6 +634,16 @@ export class TranspilerService {
 		const steps: StepDefinition[] = [];
 		const callExpressions = runMethod.getDescendantsOfKind(SyntaxKind.CallExpression);
 
+		// Detect Promise.all groups: assign a group ID to each Promise.all call
+		let promiseAllGroupCounter = 0;
+		const promiseAllGroups = new Map<CallExpression, number>();
+		for (const call of callExpressions) {
+			const expr = call.getExpression();
+			if (expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getText() === 'Promise.all') {
+				promiseAllGroups.set(call, promiseAllGroupCounter++);
+			}
+		}
+
 		for (const call of callExpressions) {
 			if (!this.isCtxStepCall(call)) continue;
 
@@ -563,9 +667,10 @@ export class TranspilerService {
 				continue; // skip dynamic names
 			}
 
-			// Second arg: step function
+			// Normal 2-arg call: ctx.step(def, fn)
 			const fnArg = args[1];
 			const fnBodyText = this.extractFunctionBodyText(fnArg);
+
 			if (fnBodyText === undefined) continue;
 
 			// Extract display properties from the definition object
@@ -591,9 +696,20 @@ export class TranspilerService {
 			// Determine assigned variable
 			const assignedVariable = this.findAssignedVariable(call);
 
+			// Check if this step is inside a Promise.all array
+			let promiseAllGroupId: number | undefined;
+			const arrayParent = call.getParent();
+			if (arrayParent?.isKind(SyntaxKind.ArrayLiteralExpression)) {
+				const promiseAllCall = arrayParent.getParent();
+				if (promiseAllCall?.isKind(SyntaxKind.CallExpression)) {
+					promiseAllGroupId = promiseAllGroups.get(promiseAllCall);
+				}
+			}
+
 			const stepId = sha256(stepName);
 
 			const { line, column } = sourceFileLineAndColumn(call);
+			const bodyStartLine = this.extractFunctionBodyStartLine(fnArg);
 
 			steps.push({
 				name: stepName,
@@ -611,6 +727,110 @@ export class TranspilerService {
 				line,
 				column,
 				callNode: call,
+				promiseAllGroupId,
+				bodyStartLine,
+			});
+		}
+
+		return steps;
+	}
+
+	private findBatchCalls(runMethod: Node): StepDefinition[] {
+		const steps: StepDefinition[] = [];
+		const callExpressions = runMethod.getDescendantsOfKind(SyntaxKind.CallExpression);
+
+		for (const call of callExpressions) {
+			if (!this.isCtxBatchCall(call)) continue;
+
+			const args = call.getArguments();
+			if (args.length < 3) continue;
+
+			// First arg: BatchStepDefinition object literal
+			const defArg = args[0];
+			if (!defArg.isKind(SyntaxKind.ObjectLiteralExpression)) continue;
+
+			// Extract 'name' property (required)
+			const nameProp = defArg.getProperty('name');
+			if (!nameProp || !nameProp.isKind(SyntaxKind.PropertyAssignment)) continue;
+			const nameInit = nameProp.getInitializer();
+			let stepName: string;
+			if (nameInit?.isKind(SyntaxKind.StringLiteral)) {
+				stepName = nameInit.getLiteralText();
+			} else if (nameInit?.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) {
+				stepName = nameInit.getLiteralText();
+			} else {
+				continue; // skip dynamic names
+			}
+
+			// Second arg: items expression
+			const batchItemsExpr = args[1].getText();
+
+			// Third arg: per-item callback function
+			const fnArg = args[2];
+			const fnBodyText = this.extractFunctionBodyText(fnArg);
+			if (fnBodyText === undefined) continue;
+
+			// Extract the per-item callback parameter name (e.g., 'product' from `async (product) => ...`)
+			let batchItemParam: string | undefined;
+			if (fnArg.isKind(SyntaxKind.ArrowFunction) || fnArg.isKind(SyntaxKind.FunctionExpression)) {
+				const params = fnArg.getParameters();
+				if (params.length > 0) {
+					batchItemParam = params[0].getName();
+				}
+			}
+
+			// Extract onItemFailure from top-level definition
+			const onItemFailure = this.extractStringProperty(defArg, 'onItemFailure');
+			const batchConfig: { onItemFailure?: string } | undefined = onItemFailure
+				? { onItemFailure }
+				: undefined;
+
+			// Extract display properties from the definition object
+			const description = this.extractStringProperty(defArg, 'description');
+			const icon = this.extractStringProperty(defArg, 'icon');
+			const color = this.extractStringProperty(defArg, 'color');
+
+			// Extract retry config from the definition object
+			const retryProp = defArg.getProperty('retry');
+			const retryConfig = retryProp ? this.parseRetryConfig(retryProp.getText()) : undefined;
+
+			// Extract timeout from the definition object
+			const timeoutProp = defArg.getProperty('timeout');
+			let timeout: number | undefined;
+			if (timeoutProp?.isKind(SyntaxKind.PropertyAssignment)) {
+				const timeoutInit = timeoutProp.getInitializer();
+				if (timeoutInit?.isKind(SyntaxKind.NumericLiteral)) {
+					timeout = parseInt(timeoutInit.getText(), 10);
+				}
+			}
+
+			// Determine assigned variable
+			const assignedVariable = this.findAssignedVariable(call);
+
+			const stepId = sha256(stepName);
+			const { line, column } = sourceFileLineAndColumn(call);
+			const bodyStartLine = this.extractFunctionBodyStartLine(fnArg);
+
+			steps.push({
+				name: stepName,
+				id: stepId,
+				functionBodyText: fnBodyText,
+				retryConfig,
+				timeout,
+				icon,
+				color,
+				description,
+				dependencies: new Map(),
+				triggerDataVars: new Set(),
+				assignedVariable,
+				line,
+				column,
+				callNode: call,
+				isBatch: true,
+				batchConfig,
+				batchItemParam,
+				batchItemsExpr,
+				bodyStartLine,
 			});
 		}
 
@@ -673,6 +893,76 @@ export class TranspilerService {
 		return undefined;
 	}
 
+	private isCtxTriggerWorkflowCall(call: CallExpression): boolean {
+		const expr = call.getExpression();
+		if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+			const name = expr.getName();
+			if (name === 'triggerWorkflow' && expr.getExpression().getText() === 'ctx') {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private findTriggerWorkflowCalls(runMethod: Node): TriggerWorkflowDefinition[] {
+		const triggerWorkflows: TriggerWorkflowDefinition[] = [];
+		const callExpressions = runMethod.getDescendantsOfKind(SyntaxKind.CallExpression);
+
+		let twIndex = 0;
+		for (const call of callExpressions) {
+			if (!this.isCtxTriggerWorkflowCall(call)) continue;
+
+			const args = call.getArguments();
+			if (args.length < 1) continue;
+
+			const configArg = args[0];
+			if (!configArg.isKind(SyntaxKind.ObjectLiteralExpression)) continue;
+
+			// Extract workflow from the config object
+			const workflowValue = this.extractStringProperty(configArg, 'workflow');
+			if (!workflowValue) continue;
+
+			const name = `trigger-workflow-${twIndex}`;
+			const id = sha256(`__trigger_workflow__${twIndex}`);
+
+			// Determine assigned variable
+			const assignedVariable = this.findAssignedVariable(call);
+
+			// The function body is the full triggerWorkflow call text (for code gen, we wrap it)
+			const functionBodyText = `return await ctx.triggerWorkflow(${configArg.getText()});`;
+
+			triggerWorkflows.push({
+				id,
+				name,
+				workflow: workflowValue,
+				sourcePos: call.getStart(),
+				callNode: call,
+				functionBodyText,
+				assignedVariable,
+				dependencies: new Map(),
+				triggerDataVars: new Set(),
+			});
+
+			twIndex++;
+		}
+
+		return triggerWorkflows;
+	}
+
+	private resolveTriggerWorkflowDependencies(
+		tw: TriggerWorkflowDefinition,
+		variableToStepId: Map<string, string>,
+	): void {
+		// Check if the triggerWorkflow call body references variables from other steps
+		for (const [varName, stepId] of variableToStepId) {
+			if (stepId === tw.id) continue;
+			const regex = new RegExp(`\\b${escapeRegExp(varName)}\\b`);
+			if (regex.test(tw.functionBodyText)) {
+				tw.dependencies.set(varName, stepId);
+			}
+		}
+	}
+
 	private extractStringProperty(obj: Node, propName: string): string | undefined {
 		if (!obj.isKind(SyntaxKind.ObjectLiteralExpression)) return undefined;
 		const prop = obj.getProperty(propName);
@@ -697,6 +987,18 @@ export class TranspilerService {
 		return false;
 	}
 
+	private isCtxBatchCall(call: CallExpression): boolean {
+		const expr = call.getExpression();
+		if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+			const name = expr.getName();
+			if (name === 'batch') {
+				const objectExpr = expr.getExpression();
+				return objectExpr.getText() === 'ctx';
+			}
+		}
+		return false;
+	}
+
 	private extractFunctionBodyText(node: Node): string | undefined {
 		if (node.isKind(SyntaxKind.ArrowFunction)) {
 			const body = node.getBody();
@@ -714,6 +1016,36 @@ export class TranspilerService {
 			return fullText.slice(1, -1).trim();
 		}
 		return undefined;
+	}
+
+	/**
+	 * Returns the 1-based line number where the function body content starts
+	 * in the original source (i.e., the first non-whitespace line after the opening brace).
+	 */
+	private extractFunctionBodyStartLine(node: Node): number {
+		const sourceFile = node.getSourceFile();
+
+		const getBlockBodyStartLine = (body: Node): number => {
+			const fullText = body.getText();
+			const afterBrace = fullText.slice(1); // text after opening {
+			const firstContentOffset = afterBrace.length - afterBrace.trimStart().length;
+			const contentStart = body.getStart() + 1 + firstContentOffset;
+			return sourceFile.getLineAndColumnAtPos(contentStart).line;
+		};
+
+		if (node.isKind(SyntaxKind.ArrowFunction)) {
+			const body = node.getBody();
+			if (body.isKind(SyntaxKind.Block)) {
+				return getBlockBodyStartLine(body);
+			}
+			// Expression body: the expression itself
+			return sourceFile.getLineAndColumnAtPos(body.getStart()).line;
+		}
+		if (node.isKind(SyntaxKind.FunctionExpression)) {
+			return getBlockBodyStartLine(node.getBody());
+		}
+		// Fallback: use the node's own position
+		return sourceFile.getLineAndColumnAtPos(node.getStart()).line;
 	}
 
 	private findAssignedVariable(call: CallExpression): string | undefined {
@@ -782,6 +1114,10 @@ export class TranspilerService {
 			if (regex.test(step.functionBodyText)) {
 				step.dependencies.set(varName, stepId);
 			}
+			// For batch steps, also check the items expression (2nd arg of ctx.step)
+			if (step.batchItemsExpr && regex.test(step.batchItemsExpr)) {
+				step.dependencies.set(varName, stepId);
+			}
 		}
 	}
 
@@ -838,7 +1174,15 @@ export class TranspilerService {
 		runMethod: Node,
 		steps: StepDefinition[],
 		variableToStepId: Map<string, string>,
+		triggerDataVars: Map<string, string>,
 	): void {
+		// Build a map of derived variables: local variables whose initializer
+		// references a triggerData variable. This lets us trace expressions like
+		// `const category = query.category ?? 'all'` back to triggerData.
+		// derivedVarExpansions maps: varName -> expression with triggerData vars
+		// replaced by `output.X`
+		const derivedVarExpansions = this.buildDerivedVarExpansions(runMethod, triggerDataVars);
+
 		const ifStatements = runMethod.getDescendantsOfKind(SyntaxKind.IfStatement);
 
 		for (const ifStmt of ifStatements) {
@@ -846,38 +1190,39 @@ export class TranspilerService {
 
 			// Determine which step the condition references by looking for
 			// variable names that are step outputs in the condition expression
-			let conditionSourceStepId: string | undefined;
-			let conditionVariableName: string | undefined;
-			for (const [varName, stepId] of variableToStepId) {
-				const regex = new RegExp(`\\b${escapeRegExp(varName)}\\b`);
-				if (regex.test(conditionText)) {
-					conditionSourceStepId = stepId;
-					conditionVariableName = varName;
-					break;
-				}
-			}
+			const condMatch = this.matchConditionSource(
+				conditionText,
+				variableToStepId,
+				triggerDataVars,
+				derivedVarExpansions,
+			);
 
 			// Find step calls in the 'then' block
 			const thenBlock = ifStmt.getThenStatement();
 			const thenStepCalls = thenBlock.getDescendantsOfKind(SyntaxKind.CallExpression);
 
 			for (const call of thenStepCalls) {
-				if (!this.isCtxStepCall(call)) continue;
+				if (!this.isCtxStepCall(call) && !this.isCtxBatchCall(call)) continue;
 				const step = this.findStepForCall(call, steps);
 				if (step) {
 					step.conditionalParent = {
-						conditionText,
+						conditionText: condMatch.rewrittenCondition ?? conditionText,
 						branch: 'then',
-						conditionSourceStepId,
-						conditionVariableName,
+						conditionSourceStepId: condMatch.sourceStepId,
+						conditionVariableName: condMatch.variableName,
+						isTriggerDataVar: condMatch.isTriggerDataVar,
 					};
 
 					// Add the condition source as a dependency if the step body
 					// does not already reference it, so the edge connects properly
-					if (conditionSourceStepId && !step.dependencies.has(conditionText.split('.')[0])) {
+					if (
+						condMatch.sourceStepId &&
+						condMatch.sourceStepId !== 'trigger' &&
+						!step.dependencies.has(conditionText.split('.')[0])
+					) {
 						// Find the variable name for this step ID
 						for (const [varName, sid] of variableToStepId) {
-							if (sid === conditionSourceStepId) {
+							if (sid === condMatch.sourceStepId) {
 								step.dependencies.set(varName, sid);
 								break;
 							}
@@ -891,26 +1236,244 @@ export class TranspilerService {
 			if (elseStmt) {
 				const elseStepCalls = elseStmt.getDescendantsOfKind(SyntaxKind.CallExpression);
 				for (const call of elseStepCalls) {
-					if (!this.isCtxStepCall(call)) continue;
+					if (!this.isCtxStepCall(call) && !this.isCtxBatchCall(call)) continue;
 					const step = this.findStepForCall(call, steps);
 					if (step) {
 						step.conditionalParent = {
-							conditionText,
+							conditionText: condMatch.rewrittenCondition ?? conditionText,
 							branch: 'else',
-							conditionSourceStepId,
-							conditionVariableName,
+							conditionSourceStepId: condMatch.sourceStepId,
+							conditionVariableName: condMatch.variableName,
+							isTriggerDataVar: condMatch.isTriggerDataVar,
 						};
 
 						// Add the condition source as a dependency
-						if (conditionSourceStepId) {
+						if (condMatch.sourceStepId && condMatch.sourceStepId !== 'trigger') {
 							for (const [varName, sid] of variableToStepId) {
-								if (sid === conditionSourceStepId) {
+								if (sid === condMatch.sourceStepId) {
 									step.dependencies.set(varName, sid);
 									break;
 								}
 							}
 						}
 					}
+				}
+			}
+		}
+
+		// Detect switch/case statements — each case clause is a conditional branch
+		const switchStatements = runMethod.getDescendantsOfKind(SyntaxKind.SwitchStatement);
+
+		for (const switchStmt of switchStatements) {
+			const switchExprText = switchStmt.getExpression().getText();
+
+			// Find which step variable the switch expression references
+			const condMatch = this.matchConditionSource(
+				switchExprText,
+				variableToStepId,
+				triggerDataVars,
+				derivedVarExpansions,
+			);
+
+			// Walk each case clause
+			const caseBlock = switchStmt.getCaseBlock();
+			// Collect all non-default case expressions for the default clause negation
+			const allCaseExprs: string[] = [];
+			for (const clause of caseBlock.getClauses()) {
+				if (clause.isKind(SyntaxKind.CaseClause)) {
+					const caseExpr = clause.getExpression().getText();
+					const resolvedSwitch = condMatch.rewrittenCondition ?? switchExprText;
+					allCaseExprs.push(`${resolvedSwitch} === ${caseExpr}`);
+				}
+			}
+
+			for (const clause of caseBlock.getClauses()) {
+				let conditionText: string;
+				const resolvedSwitch = condMatch.rewrittenCondition ?? switchExprText;
+				if (clause.isKind(SyntaxKind.CaseClause)) {
+					const caseExpr = clause.getExpression().getText();
+					conditionText = `${resolvedSwitch} === ${caseExpr}`;
+				} else {
+					// DefaultClause — negate all case conditions
+					if (allCaseExprs.length > 0) {
+						conditionText = `!(${allCaseExprs.join(' || ')})`;
+					} else {
+						conditionText = `!(${resolvedSwitch})`;
+					}
+				}
+
+				const clauseStepCalls = clause.getDescendantsOfKind(SyntaxKind.CallExpression);
+				for (const call of clauseStepCalls) {
+					if (!this.isCtxStepCall(call) && !this.isCtxBatchCall(call)) continue;
+					const step = this.findStepForCall(call, steps);
+					if (step) {
+						step.conditionalParent = {
+							conditionText,
+							branch: 'then',
+							conditionSourceStepId: condMatch.sourceStepId,
+							conditionVariableName: condMatch.isTriggerDataVar
+								? undefined
+								: condMatch.variableName,
+							isTriggerDataVar: condMatch.isTriggerDataVar,
+						};
+
+						if (condMatch.sourceStepId && condMatch.sourceStepId !== 'trigger') {
+							for (const [varName, sid] of variableToStepId) {
+								if (sid === condMatch.sourceStepId) {
+									step.dependencies.set(varName, sid);
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Match a condition expression to its source — either a step output variable
+	 * or a triggerData variable (direct or derived).
+	 */
+	private matchConditionSource(
+		exprText: string,
+		variableToStepId: Map<string, string>,
+		triggerDataVars: Map<string, string>,
+		derivedVarExpansions: Map<string, string>,
+	): {
+		sourceStepId?: string;
+		variableName?: string;
+		isTriggerDataVar?: boolean;
+		rewrittenCondition?: string;
+	} {
+		// 1. Check step output variables first
+		for (const [varName, stepId] of variableToStepId) {
+			const regex = new RegExp(`\\b${escapeRegExp(varName)}\\b`);
+			if (regex.test(exprText)) {
+				return { sourceStepId: stepId, variableName: varName };
+			}
+		}
+
+		// 2. Check direct triggerData variables (e.g., `body` from `const { body } = ctx.triggerData`)
+		for (const [varName] of triggerDataVars) {
+			const regex = new RegExp(`\\b${escapeRegExp(varName)}\\b`);
+			if (regex.test(exprText)) {
+				// Replace the triggerData variable with `output.varName` in the condition
+				const globalRegex = new RegExp(`\\b${escapeRegExp(varName)}\\b`, 'g');
+				const rewritten = exprText.replace(globalRegex, `output.${varName}`);
+				return {
+					sourceStepId: 'trigger',
+					variableName: varName,
+					isTriggerDataVar: true,
+					rewrittenCondition: rewritten,
+				};
+			}
+		}
+
+		// 3. Check derived variables (e.g., `category` from `const category = query.category ?? 'all'`)
+		for (const [varName, expansion] of derivedVarExpansions) {
+			const regex = new RegExp(`\\b${escapeRegExp(varName)}\\b`);
+			if (regex.test(exprText)) {
+				// Replace the derived variable with its expanded expression
+				const globalRegex = new RegExp(`\\b${escapeRegExp(varName)}\\b`, 'g');
+				const rewritten = exprText.replace(globalRegex, `(${expansion})`);
+				return {
+					sourceStepId: 'trigger',
+					variableName: varName,
+					isTriggerDataVar: true,
+					rewrittenCondition: rewritten,
+				};
+			}
+		}
+
+		return {};
+	}
+
+	/**
+	 * Build a map of derived variable expansions.
+	 * For each variable declaration in the run method body that references
+	 * a triggerData variable, compute the expanded expression with triggerData
+	 * vars replaced by `output.X`.
+	 *
+	 * Example: `const category = query.category ?? 'all'` where `query` is from
+	 * ctx.triggerData produces: `category` -> `output.query.category ?? 'all'`
+	 */
+	private buildDerivedVarExpansions(
+		runMethod: Node,
+		triggerDataVars: Map<string, string>,
+	): Map<string, string> {
+		const expansions = new Map<string, string>();
+
+		const varDeclarations = runMethod.getDescendantsOfKind(SyntaxKind.VariableDeclaration);
+		for (const decl of varDeclarations) {
+			const init = decl.getInitializer();
+			if (!init) continue;
+
+			const nameNode = decl.getNameNode();
+			if (!nameNode.isKind(SyntaxKind.Identifier)) continue;
+
+			const varName = nameNode.getText();
+			const initText = init.getText();
+
+			// Skip triggerData vars themselves (they're handled directly)
+			if (triggerDataVars.has(varName)) continue;
+
+			// Check if the initializer references any triggerData variable
+			for (const [tdVar] of triggerDataVars) {
+				const regex = new RegExp(`\\b${escapeRegExp(tdVar)}\\b`);
+				if (regex.test(initText)) {
+					// Replace the triggerData var with output.tdVar
+					const expanded = initText.replace(
+						new RegExp(`\\b${escapeRegExp(tdVar)}\\b`, 'g'),
+						`output.${tdVar}`,
+					);
+					expansions.set(varName, expanded);
+					break;
+				}
+			}
+		}
+
+		return expansions;
+	}
+
+	private detectTryCatch(runMethod: Node, steps: StepDefinition[]): void {
+		const tryStatements = runMethod.getDescendantsOfKind(SyntaxKind.TryStatement);
+
+		for (const tryStmt of tryStatements) {
+			const tryBlock = tryStmt.getTryBlock();
+			const catchClause = tryStmt.getCatchClause();
+			if (!catchClause) continue;
+
+			// Find step calls in the try block
+			const tryStepCalls = tryBlock.getDescendantsOfKind(SyntaxKind.CallExpression);
+			const tryStepIds: string[] = [];
+
+			for (const call of tryStepCalls) {
+				if (!this.isCtxStepCall(call) && !this.isCtxBatchCall(call)) continue;
+				const step = this.findStepForCall(call, steps);
+				if (step) {
+					tryStepIds.push(step.id);
+				}
+			}
+
+			if (tryStepIds.length === 0) continue;
+
+			// Extract catch variable name
+			const catchVariableDecl = catchClause.getVariableDeclaration();
+			const catchVarName = catchVariableDecl?.getName();
+
+			// Find step calls in the catch block
+			const catchBlock = catchClause.getBlock();
+			const catchStepCalls = catchBlock.getDescendantsOfKind(SyntaxKind.CallExpression);
+
+			for (const call of catchStepCalls) {
+				if (!this.isCtxStepCall(call) && !this.isCtxBatchCall(call)) continue;
+				const step = this.findStepForCall(call, steps);
+				if (step) {
+					step.catchParent = {
+						tryStepIds,
+						catchVarName,
+					};
 				}
 			}
 		}
@@ -1055,6 +1618,7 @@ export class TranspilerService {
 	private buildOrchestratorCallOrder(
 		steps: StepDefinition[],
 		sleeps: SleepDefinition[],
+		triggerWorkflows: TriggerWorkflowDefinition[] = [],
 	): OrchestratorCall[] {
 		const calls: OrchestratorCall[] = [];
 
@@ -1064,20 +1628,24 @@ export class TranspilerService {
 		for (const sleep of sleeps) {
 			calls.push({ kind: 'sleep', sleep, sourcePos: sleep.sourcePos });
 		}
+		for (const tw of triggerWorkflows) {
+			calls.push({ kind: 'trigger-workflow', triggerWorkflow: tw, sourcePos: tw.sourcePos });
+		}
 
 		calls.sort((a, b) => a.sourcePos - b.sourcePos);
 		return calls;
 	}
 
 	// -----------------------------------------------------------------------
-	// Graph building
+	// Graph building — sequential-by-default with Promise.all parallel groups
 	// -----------------------------------------------------------------------
 
 	private buildGraph(
 		steps: StepDefinition[],
-		sleeps: SleepDefinition[],
+		_sleeps: SleepDefinition[],
 		orchestratorCalls: OrchestratorCall[],
 		triggers: TriggerConfig[],
+		triggerWorkflows: TriggerWorkflowDefinition[] = [],
 	): WorkflowGraphData {
 		const nodes: GraphNodeData[] = [];
 		const edges: GraphEdgeData[] = [];
@@ -1096,228 +1664,184 @@ export class TranspilerService {
 			},
 		});
 
-		// Add step nodes
+		// Create step/batch graph nodes
 		for (const step of steps) {
 			const config: GraphNodeData['config'] = { name: step.name };
-
-			if (step.retryConfig) {
-				config.retryConfig = step.retryConfig;
+			if (step.retryConfig) config.retryConfig = step.retryConfig;
+			if (step.timeout) config.timeout = step.timeout;
+			if (step.stepType) config.stepType = step.stepType as GraphStepConfig['stepType'];
+			if (step.icon) config.icon = step.icon;
+			if (step.color) config.color = step.color;
+			if (step.description) config.description = step.description;
+			if (step.isBatch) {
+				config.stepType = 'batch';
+				if (step.batchConfig?.onItemFailure) {
+					config.onItemFailure = step.batchConfig.onItemFailure as GraphStepConfig['onItemFailure'];
+				}
 			}
-
-			if (step.timeout) {
-				config.timeout = step.timeout;
-			}
-
-			if (step.stepType) {
-				config.stepType = step.stepType as GraphStepConfig['stepType'];
-			}
-
-			if (step.icon) {
-				config.icon = step.icon;
-			}
-
-			if (step.color) {
-				config.color = step.color;
-			}
-
-			if (step.description) {
-				config.description = step.description;
-			}
-
 			nodes.push({
 				id: step.id,
 				name: step.name,
-				type: 'step',
+				type: step.isBatch ? 'batch' : 'step',
 				stepFunctionRef: `step_${step.id}`,
 				config,
 			});
 		}
 
-		// Add sleep nodes
-		for (const sleep of sleeps) {
-			nodes.push({
-				id: sleep.id,
-				name: sleep.name,
-				type: 'sleep',
-				stepFunctionRef: '',
-				config: {
+		// Add sleep nodes from orchestrator calls
+		for (const call of orchestratorCalls) {
+			if (call.kind === 'sleep') {
+				const sleep = call.sleep;
+				nodes.push({
+					id: sleep.id,
 					name: sleep.name,
-					stepType: 'sleep',
-					...(sleep.sleepMs != null ? { sleepMs: sleep.sleepMs } : {}),
-					...(sleep.waitUntilExpr ? { waitUntilExpr: sleep.waitUntilExpr } : {}),
+					type: 'sleep',
+					stepFunctionRef: '',
+					config: {
+						name: sleep.name,
+						stepType: 'sleep',
+						...(sleep.sleepMs != null ? { sleepMs: sleep.sleepMs } : {}),
+						...(sleep.waitUntilExpr ? { waitUntilExpr: sleep.waitUntilExpr } : {}),
+					},
+				});
+			}
+		}
+
+		// Add trigger-workflow nodes
+		for (const tw of triggerWorkflows) {
+			nodes.push({
+				id: tw.id,
+				name: tw.name,
+				type: 'trigger-workflow',
+				stepFunctionRef: `step_${tw.id}`,
+				config: {
+					name: tw.name,
+					workflow: tw.workflow,
 				},
 			});
 		}
 
-		// Build edges from dependencies, inserting sleep nodes in between
-		// when a sleep appears between two steps in source order.
+		// --- Sequential-by-default edge building ---
+		// Steps chain sequentially by declaration order. Promise.all groups
+		// fan-out/fan-in. Conditionals branch. Sleeps insert inline.
 		//
-		// Strategy: build a map from each step/trigger ID to the sleep(s)
-		// that immediately follow it in source order. Then when creating
-		// an edge from A → B, if there's a sleep between them, route
-		// through it: A → sleep → B.
-		//
-		// Special case: if a step has no data dependencies but there's a
-		// sleep between it and the previous step in source order, create
-		// an ordering edge through the sleep chain. This ensures sleep
-		// nodes are never orphaned.
-		const sleepAfterNode = this.buildSleepAfterMap(orchestratorCalls);
-		const precedingStepInSource = this.buildPrecedingStepMap(orchestratorCalls);
-		// Track sleep chain edges already added to avoid duplicates when
-		// multiple steps depend on the same source with intervening sleeps.
-		const addedSleepEdges = new Set<string>();
+		// Walk orchestratorCalls in source order. Each node connects from
+		// the previous node (sequential-by-default). Exceptions:
+		// - Promise.all groups: fan-out from previous, fan-in to next
+		// - Conditionals: branch from the condition source step
+		// - Sleeps: insert inline in the sequential chain
+		let previousNodeIds: string[] = ['trigger'];
+		const addedEdgeKeys = new Set<string>();
 
-		for (const step of steps) {
-			if (step.dependencies.size === 0) {
-				// No data dependencies — connect from trigger (possibly via sleep)
+		const addEdge = (from: string, to: string, condition?: string) => {
+			const key = condition ? `${from}->${to}?${condition}` : `${from}->${to}`;
+			if (addedEdgeKeys.has(key)) return;
+			addedEdgeKeys.add(key);
+			edges.push({ from, to, ...(condition ? { condition } : {}) });
+		};
+
+		let idx = 0;
+		while (idx < orchestratorCalls.length) {
+			const call = orchestratorCalls[idx];
+
+			if (call.kind === 'sleep') {
+				const sleepId = call.sleep.id;
+				for (const prevId of previousNodeIds) {
+					addEdge(prevId, sleepId);
+				}
+				previousNodeIds = [sleepId];
+				idx++;
+				continue;
+			}
+
+			if (call.kind === 'trigger-workflow') {
+				const twId = call.triggerWorkflow.id;
+				for (const prevId of previousNodeIds) {
+					addEdge(prevId, twId);
+				}
+				previousNodeIds = [twId];
+				idx++;
+				continue;
+			}
+
+			// call.kind === 'step'
+			const step = call.step;
+
+			// Catch steps: connect from each try step with error edge
+			if (step.catchParent) {
+				for (const tryStepId of step.catchParent.tryStepIds) {
+					addEdge(tryStepId, step.id, '__error__');
+				}
+				// Catch branches don't update previousNodeIds
+				idx++;
+				continue;
+			}
+
+			// Conditional steps: connect from the condition source
+			if (step.conditionalParent) {
 				const conditionExpr = this.getConditionExpression(step);
-				const interveningSleeps = sleepAfterNode.get('trigger') ?? [];
-
-				// Check if there's a sleep between this step and its source-order
-				// predecessor. If so, create an ordering edge through it instead
-				// of connecting directly to the trigger.
-				const prevStepId = precedingStepInSource.get(step.id);
-				if (prevStepId) {
-					const prevSleeps = sleepAfterNode.get(prevStepId) ?? [];
-					if (prevSleeps.length > 0) {
-						this.addEdgesWithSleeps(
-							edges,
-							prevStepId,
-							step.id,
-							prevSleeps,
-							conditionExpr,
-							addedSleepEdges,
-						);
-						continue;
+				const condSourceId = step.conditionalParent.conditionSourceStepId;
+				if (condSourceId) {
+					addEdge(condSourceId, step.id, conditionExpr);
+				} else {
+					for (const prevId of previousNodeIds) {
+						addEdge(prevId, step.id, conditionExpr);
 					}
 				}
-
-				this.addEdgesWithSleeps(
-					edges,
-					'trigger',
-					step.id,
-					interveningSleeps,
-					conditionExpr,
-					addedSleepEdges,
-				);
-			} else {
-				for (const [, sourceStepId] of step.dependencies) {
-					const conditionExpr = this.getConditionExpression(step);
-					const interveningSleeps = sleepAfterNode.get(sourceStepId) ?? [];
-					this.addEdgesWithSleeps(
-						edges,
-						sourceStepId,
-						step.id,
-						interveningSleeps,
-						conditionExpr,
-						addedSleepEdges,
-					);
-				}
+				// Conditional branches don't update previousNodeIds
+				idx++;
+				continue;
 			}
+
+			// Promise.all group: collect all steps with same groupId
+			if (step.promiseAllGroupId !== undefined) {
+				const groupId = step.promiseAllGroupId;
+				const groupSteps: StepDefinition[] = [];
+				while (idx < orchestratorCalls.length) {
+					const c = orchestratorCalls[idx];
+					if (c.kind === 'step' && c.step.promiseAllGroupId === groupId) {
+						groupSteps.push(c.step);
+						idx++;
+					} else {
+						break;
+					}
+				}
+				// Fan-out: all group steps connect from previous
+				for (const gs of groupSteps) {
+					for (const prevId of previousNodeIds) {
+						addEdge(prevId, gs.id);
+					}
+				}
+				// Fan-in: next node connects from all group steps
+				previousNodeIds = groupSteps.map((gs) => gs.id);
+				continue;
+			}
+
+			// Normal sequential step
+			for (const prevId of previousNodeIds) {
+				addEdge(prevId, step.id);
+			}
+			previousNodeIds = [step.id];
+			idx++;
 		}
 
 		return { nodes, edges };
 	}
 
-	/**
-	 * Build a map: stepId → the immediately preceding step ID in source order.
-	 * For example, [step-A, sleep-0, step-B] → { step-B.id → step-A.id }.
-	 * This is used to create ordering edges through sleep nodes when there's
-	 * no data dependency between adjacent steps.
-	 */
-	private buildPrecedingStepMap(calls: OrchestratorCall[]): Map<string, string> {
-		const map = new Map<string, string>();
-		let lastStepId: string | undefined;
-
-		for (const call of calls) {
-			if (call.kind === 'step') {
-				if (lastStepId) {
-					map.set(call.step.id, lastStepId);
-				}
-				lastStepId = call.step.id;
-			}
-		}
-
-		return map;
-	}
-
-	/**
-	 * Build a map: nodeId → sleeps that immediately follow it in source order.
-	 * For example, if the orchestrator calls are [step-A, sleep-0, step-B],
-	 * then sleepAfterNode.get(step-A.id) = [sleep-0].
-	 */
-	private buildSleepAfterMap(calls: OrchestratorCall[]): Map<string, SleepDefinition[]> {
-		const map = new Map<string, SleepDefinition[]>();
-
-		// Walk through calls in source order. Track the last step/trigger seen.
-		let lastStepId = 'trigger';
-
-		for (const call of calls) {
-			if (call.kind === 'step') {
-				lastStepId = call.step.id;
-			} else {
-				const existing = map.get(lastStepId) ?? [];
-				existing.push(call.sleep);
-				map.set(lastStepId, existing);
-			}
-		}
-
-		return map;
-	}
-
-	/**
-	 * Add edges from `fromId` to `toId`, routing through any intervening
-	 * sleep nodes in order. E.g., if sleeps = [s1, s2]:
-	 *   fromId → s1 → s2 → toId
-	 */
-	private addEdgesWithSleeps(
-		edges: GraphEdgeData[],
-		fromId: string,
-		toId: string,
-		sleeps: SleepDefinition[],
-		conditionExpr: string | undefined,
-		addedSleepEdges?: Set<string>,
-	): void {
-		if (sleeps.length === 0) {
-			edges.push({
-				from: fromId,
-				to: toId,
-				...(conditionExpr ? { condition: conditionExpr } : {}),
-			});
-			return;
-		}
-
-		// Chain: from → sleep[0] → sleep[1] → ... → to
-		// The condition (if any) applies to the first edge only.
-		// Sleep chain edges (from→sleep, sleep→sleep) are deduplicated
-		// because multiple dependents of the same source share the chain.
-		let current = fromId;
-		for (let i = 0; i < sleeps.length; i++) {
-			const edgeKey = `${current}→${sleeps[i].id}`;
-			if (!addedSleepEdges || !addedSleepEdges.has(edgeKey)) {
-				addedSleepEdges?.add(edgeKey);
-				edges.push({
-					from: current,
-					to: sleeps[i].id,
-					...(i === 0 && conditionExpr ? { condition: conditionExpr } : {}),
-				});
-			}
-			current = sleeps[i].id;
-		}
-		// The final sleep→target edge is always unique per target step
-		edges.push({ from: current, to: toId });
-	}
-
 	private getConditionExpression(step: StepDefinition): string | undefined {
 		if (!step.conditionalParent) return undefined;
 
-		const { conditionText, branch, conditionVariableName } = step.conditionalParent;
+		const { conditionText, branch, conditionVariableName, isTriggerDataVar } =
+			step.conditionalParent;
 
-		// Replace the source variable name with 'output' so evaluateCondition
-		// can evaluate it with the step output as the 'output' parameter.
-		// e.g. "data.amount > 100" → "output.amount > 100"
 		let expr = conditionText;
-		if (conditionVariableName) {
+		if (isTriggerDataVar) {
+			// Condition text is already rewritten with `output.X` references
+			// by matchConditionSource — no further replacement needed.
+		} else if (conditionVariableName) {
+			// Replace the source variable name with 'output' so evaluateCondition
+			// can evaluate it with the step output as the 'output' parameter.
+			// e.g. "data.amount > 100" → "output.amount > 100"
 			const regex = new RegExp(`\\b${escapeRegExp(conditionVariableName)}\\b`, 'g');
 			expr = expr.replace(regex, 'output');
 		}
@@ -1332,21 +1856,46 @@ export class TranspilerService {
 	// Code generation
 	// -----------------------------------------------------------------------
 
-	private generateCode(steps: StepDefinition[], helpers: HelperFunction[]): string {
-		const parts: string[] = [];
+	private generateCode(
+		steps: StepDefinition[],
+		helpers: HelperFunction[],
+		triggerWorkflows: TriggerWorkflowDefinition[] = [],
+	): { code: string; generatedToOriginalLineMap: Record<number, number> } {
+		// Track the current line number in the generated code (1-based)
+		let currentLine = 1;
+		const outputLines: string[] = [];
+		// Maps generated-code line number -> original-source line number
+		const generatedToOriginalLineMap: Record<number, number> = {};
+
+		const appendLine = (text: string) => {
+			outputLines.push(text);
+			currentLine++;
+		};
+
+		const appendBodyWithMapping = (body: string, originalStartLine: number) => {
+			const bodyLines = body.split('\n');
+			for (let i = 0; i < bodyLines.length; i++) {
+				generatedToOriginalLineMap[currentLine] = originalStartLine + i;
+				outputLines.push(bodyLines[i]);
+				currentLine++;
+			}
+		};
 
 		// Emit helper functions at module level
 		if (helpers.length > 0) {
-			parts.push('// --- Helper functions ---');
+			appendLine('// --- Helper functions ---');
 			for (const helper of helpers) {
 				// Strip TypeScript annotations for JS output
-				parts.push(helper.text);
+				const helperLines = helper.text.split('\n');
+				for (const hl of helperLines) {
+					appendLine(hl);
+				}
 			}
-			parts.push('');
+			appendLine('');
 		}
 
 		// Emit each step as an exported function
-		parts.push('// --- Step functions ---');
+		appendLine('// --- Step functions ---');
 		for (const step of steps) {
 			const fnName = `step_${toCamelCase(step.name)}`;
 			const exportName = `step_${step.id}`;
@@ -1356,25 +1905,99 @@ export class TranspilerService {
 			for (const [varName, sourceStepId] of step.dependencies) {
 				injections.push(`const ${varName} = ctx.input['${sourceStepId}'];`);
 			}
-			// Inject trigger data variables
-			if (step.triggerDataVars.size > 0) {
+			// Inject trigger data variables — but only if the body doesn't already destructure them
+			const body = step.functionBodyText;
+			if (step.triggerDataVars.size > 0 && !body.includes('ctx.triggerData')) {
 				const varNames = [...step.triggerDataVars].join(', ');
 				injections.push(`const { ${varNames} } = ctx.triggerData;`);
 			}
+			// Inject catch variable — maps the catch clause variable to ctx.error
+			if (step.catchParent?.catchVarName) {
+				injections.push(`const ${step.catchParent.catchVarName} = ctx.error;`);
+			}
 
-			const body = step.functionBodyText;
-			const injectionBlock = injections.length > 0 ? injections.join('\n    ') + '\n    ' : '';
-
-			parts.push(
-				`exports.${exportName} = async function ${fnName}(ctx) {\n    ${injectionBlock}${body}\n};`,
-			);
-			parts.push('');
+			if (step.isBatch && step.batchItemParam) {
+				// Batch step: function signature line
+				appendLine(`exports.${exportName} = async function ${fnName}(ctx) {`);
+				// Injection lines
+				for (const inj of injections) {
+					appendLine(`    ${inj}`);
+				}
+				appendLine(`    if (ctx.batchItem !== undefined) {`);
+				appendLine(`        const ${step.batchItemParam} = ctx.batchItem;`);
+				// Body lines with mapping
+				const indentedBody = body
+					.split('\n')
+					.map((l) => `        ${l}`)
+					.join('\n');
+				appendBodyWithMapping(indentedBody, step.bodyStartLine);
+				const itemsExpr = step.batchItemsExpr ?? 'null';
+				appendLine(`    }`);
+				appendLine(`    return ${itemsExpr};`);
+				appendLine(`};`);
+			} else {
+				// Regular step: function signature line
+				appendLine(`exports.${exportName} = async function ${fnName}(ctx) {`);
+				// Injection lines
+				for (const inj of injections) {
+					appendLine(`    ${inj}`);
+				}
+				// Body lines with mapping
+				const indentedBody = body
+					.split('\n')
+					.map((l) => `    ${l}`)
+					.join('\n');
+				appendBodyWithMapping(indentedBody, step.bodyStartLine);
+				appendLine(`};`);
+			}
+			appendLine('');
 		}
 
-		return parts.join('\n');
+		// Emit trigger-workflow step functions
+		for (const tw of triggerWorkflows) {
+			const fnName = `step_${toCamelCase(tw.name)}`;
+			const exportName = `step_${tw.id}`;
+
+			const injections: string[] = [];
+			for (const [varName, sourceStepId] of tw.dependencies) {
+				injections.push(`const ${varName} = ctx.input['${sourceStepId}'];`);
+			}
+			const body = tw.functionBodyText;
+			if (tw.triggerDataVars.size > 0 && !body.includes('ctx.triggerData')) {
+				const varNames = [...tw.triggerDataVars].join(', ');
+				injections.push(`const { ${varNames} } = ctx.triggerData;`);
+			}
+
+			appendLine(`exports.${exportName} = async function ${fnName}(ctx) {`);
+			for (const inj of injections) {
+				appendLine(`    ${inj}`);
+			}
+			// Trigger workflow bodies are synthesized (not from original source),
+			// so we use the call position line as the mapping
+			const bodyLines = body.split('\n');
+			for (const bl of bodyLines) {
+				appendLine(`    ${bl}`);
+			}
+			appendLine(`};`);
+			appendLine('');
+		}
+
+		return { code: outputLines.join('\n'), generatedToOriginalLineMap };
 	}
 
-	private compileWithEsbuild(rawCode: string): { code: string; sourceMap: string | null } {
+	/**
+	 * Compiles intermediate generated code with esbuild and produces a line map
+	 * from compiled output lines to original source lines.
+	 *
+	 * The chain is: original source -> generated intermediate code -> compiled output.
+	 * The esbuild source map maps compiled lines -> generated lines, and the
+	 * generatedToOriginalLineMap maps generated lines -> original lines. This method
+	 * combines both to produce a direct compiled-line -> original-line mapping.
+	 */
+	private compileWithEsbuild(
+		rawCode: string,
+		generatedToOriginalLineMap: Record<number, number>,
+	): { code: string; sourceMap: string | null } {
 		try {
 			const result = transformSync(rawCode, {
 				loader: 'ts',
@@ -1384,13 +2007,30 @@ export class TranspilerService {
 				sourcefile: 'workflow.ts',
 			});
 
+			// Parse the esbuild source map and combine with our generated-to-original mapping
+			// to produce a direct compiled-line -> original-line map
+			const compiledToOriginalMap = buildCompiledToOriginalLineMap(
+				result.map || '',
+				generatedToOriginalLineMap,
+			);
+
 			return {
 				code: result.code,
-				sourceMap: result.map || null,
+				sourceMap:
+					Object.keys(compiledToOriginalMap).length > 0
+						? JSON.stringify(compiledToOriginalMap)
+						: null,
 			};
 		} catch (err) {
-			// If esbuild fails, return the raw code without source map
-			return { code: rawCode, sourceMap: null };
+			// If esbuild fails, return the raw code. The generatedToOriginalLineMap
+			// IS the line map since the raw code is used directly.
+			return {
+				code: rawCode,
+				sourceMap:
+					Object.keys(generatedToOriginalLineMap).length > 0
+						? JSON.stringify(generatedToOriginalLineMap)
+						: null,
+			};
 		}
 	}
 }
@@ -1408,4 +2048,126 @@ function sourceFileLineAndColumn(node: Node): { line: number; column: number } {
 	const pos = node.getStart();
 	const lineAndCol = sourceFile.getLineAndColumnAtPos(pos);
 	return { line: lineAndCol.line, column: lineAndCol.column };
+}
+
+// ---------------------------------------------------------------------------
+// Source map VLQ decoder
+// ---------------------------------------------------------------------------
+
+const VLQ_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const VLQ_LOOKUP = new Map<string, number>();
+for (let i = 0; i < VLQ_CHARS.length; i++) {
+	VLQ_LOOKUP.set(VLQ_CHARS[i], i);
+}
+
+/**
+ * Decodes a VLQ-encoded source map mappings string and returns an array
+ * where index i contains the 1-based source line for compiled output line (i+1).
+ * Only the source line (field index 2) is extracted.
+ */
+function decodeVlqMappings(mappings: string): number[] {
+	const outputLineToSourceLine: number[] = [];
+	const groups = mappings.split(';');
+	// State variables maintained across all lines (VLQ is relative)
+	let sourceLine = 0; // 0-based
+	let sourceCol = 0;
+	let sourceIdx = 0;
+	let nameIdx = 0;
+
+	for (const group of groups) {
+		if (group.length === 0) {
+			// Empty group = no mappings for this output line
+			outputLineToSourceLine.push(-1);
+			continue;
+		}
+
+		// Parse the first segment of this group (gives the mapping for the line start)
+		const segments = group.split(',');
+		let firstMapped = false;
+		let lineSourceLine = -1;
+
+		// We need the first segment that has >= 4 fields (source mapping)
+		for (const segment of segments) {
+			if (segment.length === 0) continue;
+
+			const values = decodeVlqSegment(segment);
+			if (values.length >= 4) {
+				sourceIdx += values[1];
+				sourceLine += values[2];
+				sourceCol += values[3];
+				if (values.length >= 5) {
+					nameIdx += values[4];
+				}
+				if (!firstMapped) {
+					lineSourceLine = sourceLine + 1; // Convert to 1-based
+					firstMapped = true;
+				}
+			}
+		}
+
+		outputLineToSourceLine.push(lineSourceLine);
+	}
+
+	return outputLineToSourceLine;
+}
+
+function decodeVlqSegment(segment: string): number[] {
+	const values: number[] = [];
+	let shift = 0;
+	let value = 0;
+
+	for (const char of segment) {
+		const digit = VLQ_LOOKUP.get(char);
+		if (digit === undefined) break;
+
+		const hasContinuation = (digit & 32) !== 0;
+		value += (digit & 31) << shift;
+		shift += 5;
+
+		if (!hasContinuation) {
+			// Sign is in the least significant bit
+			const isNegative = (value & 1) !== 0;
+			const absValue = value >> 1;
+			values.push(isNegative ? -absValue : absValue);
+			value = 0;
+			shift = 0;
+		}
+	}
+
+	return values;
+}
+
+/**
+ * Combines the esbuild source map (compiled -> generated) with our
+ * generated-to-original line map to produce a direct compiled-line -> original-line map.
+ */
+function buildCompiledToOriginalLineMap(
+	esbuildSourceMapJson: string,
+	generatedToOriginalLineMap: Record<number, number>,
+): Record<number, number> {
+	const result: Record<number, number> = {};
+
+	if (!esbuildSourceMapJson) {
+		return result;
+	}
+
+	try {
+		const sourceMap = JSON.parse(esbuildSourceMapJson) as { mappings: string };
+		const compiledToGeneratedLines = decodeVlqMappings(sourceMap.mappings);
+
+		for (let compiledLine = 0; compiledLine < compiledToGeneratedLines.length; compiledLine++) {
+			const generatedLine = compiledToGeneratedLines[compiledLine];
+			if (generatedLine < 0) continue;
+
+			const originalLine = generatedToOriginalLineMap[generatedLine];
+			if (originalLine !== undefined) {
+				// compiledLine is 0-indexed here, store as 1-based
+				result[compiledLine + 1] = originalLine;
+			}
+		}
+	} catch {
+		// If source map parsing fails, return empty map
+	}
+
+	return result;
 }

@@ -8,6 +8,7 @@ import {
 	WorkflowNotFoundError,
 	StepFunctionNotFoundError,
 } from '../infrastructure.error';
+import { NonRetriableError } from '../../../sdk/errors';
 import type { GraphStepConfig } from '../../../graph/graph.types';
 
 // ---------------------------------------------------------------------------
@@ -249,6 +250,17 @@ describe('buildErrorData', () => {
 		expect(data.code).toBe('TYPEERROR');
 		expect(data.stack).toBeDefined();
 	});
+
+	it('NonRetriableError produces code=NON_RETRIABLE, category=step, retriable=false', () => {
+		const error = new NonRetriableError('Payment already processed');
+		const data = buildErrorData(error);
+
+		expect(data.code).toBe('NON_RETRIABLE');
+		expect(data.category).toBe('step');
+		expect(data.retriable).toBe(false);
+		expect(data.message).toBe('Payment already processed');
+		expect(data.stack).toBeDefined();
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -307,6 +319,11 @@ describe('classifyError', () => {
 
 		// With retryOnTimeout=true -- retriable
 		expect(classifyError(error, { retryOnTimeout: true })).toBe(true);
+	});
+
+	it('NonRetriableError is never retriable', () => {
+		const error = new NonRetriableError('Cannot retry this');
+		expect(classifyError(error, defaultGraphStepConfig)).toBe(false);
 	});
 
 	it('unknown error is retriable by default', () => {

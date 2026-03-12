@@ -23,34 +23,43 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const input = await ctx.step({ name: 'Parse Request' }, async () => {
-			const { body } = ctx.triggerData;
-			return {
-				baseUrl: body.baseUrl ?? 'https://dummyjson.com',
-				id: body.id ?? '42',
-				name: body.name ?? 'Test',
-			};
-		});
+		const input = await ctx.step(
+			{ name: 'Parse Request', icon: 'settings', color: '#6b7280' },
+			async () => {
+				const { body } = ctx.triggerData;
+				return {
+					baseUrl: body.baseUrl ?? 'https://dummyjson.com',
+					id: body.id ?? '42',
+					name: body.name ?? 'Test',
+				};
+			},
+		);
 
-		const config = await ctx.step({ name: 'HTTP Request' }, async () => {
-			const res = await fetch(`${input.baseUrl}/products/categories`, {
-				headers: { 'X-Timestamp': new Date().toISOString() },
-			});
-			return (await res.json()) as Record<string, unknown>;
-		});
+		const config = await ctx.step(
+			{ name: 'HTTP Request', icon: 'globe', color: '#3b82f6' },
+			async () => {
+				const res = await fetch(`${input.baseUrl}/products/categories`, {
+					headers: { 'X-Timestamp': new Date().toISOString() },
+				});
+				return (await res.json()) as Record<string, unknown>;
+			},
+		);
 
-		const updated = await ctx.step({ name: 'Update Record' }, async () => {
-			const res = await fetch(`https://dummyjson.com/products/${input.id}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					name: input.name,
-					updatedAt: new Date().toISOString(),
-					config,
-				}),
-			});
-			return (await res.json()) as Record<string, unknown>;
-		});
+		const updated = await ctx.step(
+			{ name: 'Update Record', icon: 'upload', color: '#f97316' },
+			async () => {
+				const res = await fetch(`https://dummyjson.com/products/${input.id}`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						name: input.name,
+						updatedAt: new Date().toISOString(),
+						config,
+					}),
+				});
+				return (await res.json()) as Record<string, unknown>;
+			},
+		);
 
 		return updated;
 	},

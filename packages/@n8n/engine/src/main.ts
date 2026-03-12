@@ -4,15 +4,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { createDataSource } from './database/data-source';
-import { EngineEventBus } from './engine/event-bus.service';
-import { EngineService } from './engine/engine.service';
-import { StepProcessorService } from './engine/step-processor.service';
-import { StepPlannerService } from './engine/step-planner.service';
-import { StepQueueService } from './engine/step-queue.service';
-import { CompletionService } from './engine/completion.service';
-import { BroadcasterService } from './engine/broadcaster.service';
-import { registerEventHandlers } from './engine/event-handlers';
-import { TranspilerService } from './transpiler/transpiler.service';
+import { createEngine } from './engine/create-engine';
 import { createApp } from './api/server';
 import { seedExampleWorkflows } from './seed-examples';
 import express from 'express';
@@ -25,19 +17,8 @@ async function main() {
 	// Seed example workflows on first run
 	await seedExampleWorkflows(dataSource);
 
-	const eventBus = new EngineEventBus();
-	const transpiler = new TranspilerService();
-	const stepPlanner = new StepPlannerService(dataSource);
-	const completionService = new CompletionService(dataSource, eventBus);
-	const stepProcessor = new StepProcessorService(dataSource, eventBus);
-	const engineService = new EngineService(dataSource, eventBus, stepPlanner);
-	const broadcaster = new BroadcasterService(eventBus);
-
-	// Wire up event handlers
-	registerEventHandlers(eventBus, dataSource, stepPlanner, completionService);
-
-	// Start the queue poller
-	const queue = new StepQueueService(dataSource, stepProcessor);
+	const { eventBus, transpiler, engineService, stepProcessor, broadcaster, queue } =
+		createEngine(dataSource);
 	queue.start();
 
 	// Create and start Express app

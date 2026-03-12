@@ -2,7 +2,8 @@
 
 Standalone per-step execution engine for n8n v2. Implements durable workflow
 execution with PostgreSQL-backed queue, webhook handling, retry/backoff,
-sleep/wait, pause/resume, approval steps, and code-first workflow definitions.
+sleep/wait, pause/resume, approval steps, batch processing, cross-workflow
+triggering, try/catch error handling, and code-first workflow definitions.
 
 **Documentation:** `docs/engine-v2/`
 
@@ -29,11 +30,22 @@ pnpm dev:web    # Frontend on :3200 (Vite HMR)
 | `pnpm test:db` | Start test DB + run all tests (including integration) |
 | `pnpm typecheck` | TypeScript type checking |
 
-## Docker Compose
+## Docker
+
+Single multi-target `Dockerfile` with four stages:
+
+| Target | Purpose |
+|--------|---------|
+| `dev` | API with tsx watch, source mounted as volumes |
+| `web` | Frontend Vite dev server, source mounted as volumes |
+| `build` | Compiles TypeScript backend + Vite frontend |
+| `prod` | Production image serving API + frontend |
+
+### Docker Compose
 
 Three compose files for different environments:
 
-### Development (`docker-compose.yml`)
+#### Development (`docker-compose.yml`)
 
 Hot-reload for both backend and frontend. Source is mounted as volumes.
 
@@ -48,7 +60,7 @@ docker compose up -d postgres    # Just the database
 | `api` | 3100 | Backend with tsx watch (hot-reload) |
 | `web` | 3200 | Vite dev server (HMR) |
 
-### Testing (`docker-compose.test.yml`)
+#### Testing (`docker-compose.test.yml`)
 
 Ephemeral database on tmpfs for fast test runs.
 
@@ -58,13 +70,13 @@ DATABASE_URL=postgres://engine:engine@localhost:5434/engine_test pnpm test
 docker compose -f docker-compose.test.yml down
 ```
 
-### Production (`docker-compose.prod.yml`)
+#### Performance (`docker-compose.perf.yml`)
 
-Built assets. Single container serves API + frontend.
+k6 + Grafana stack for performance benchmarking.
 
 ```bash
-docker compose -f docker-compose.prod.yml up --build
-# App available at http://localhost:3100
+docker compose -f docker-compose.perf.yml up -d
+k6 run perf/webhook-throughput.js
 ```
 
 ## URLs
@@ -73,7 +85,7 @@ docker compose -f docker-compose.prod.yml up --build
 |-------------|----------|-----|----------|
 | Development | http://localhost:3200 | http://localhost:3100 | `localhost:5433` |
 | Production | http://localhost:3100 | http://localhost:3100 | `localhost:5433` |
-| Test DB | — | — | `localhost:5434` |
+| Test DB | -- | -- | `localhost:5434` |
 
 ## CLI
 
@@ -83,7 +95,7 @@ engine run <file.ts> [--input '{}']
 engine watch <execution-id>
 engine list [--workflow <id>] [--status <status>]
 engine inspect <execution-id>
-engine bench <file.ts> --iterations 100
+engine bench <file.ts> [--iterations 100]
 ```
 
 ## API Endpoints
@@ -129,47 +141,77 @@ ALL    /webhook/:path    Incoming webhook handler (4 response modes)
 packages/@n8n/engine/
 ├── src/
 │   ├── sdk/                    SDK types (defineWorkflow, ExecutionContext, errors)
+│   │   ├── types.ts                StepDefinition, BatchStepDefinition, BatchResult,
+│   │   │                           TriggerWorkflowConfig, ExecutionContext,
+│   │   │                           WebhookSchemaConfig, InferTriggerData, WorkflowSettings
+│   │   ├── errors.ts               NonRetriableError
+│   │   └── index.ts                defineWorkflow, webhook factory functions
 │   ├── engine/                 Core engine services
+│   │   ├── create-engine.ts        Factory that wires all services together
 │   │   ├── engine.service.ts       startExecution, cancel, pause, resume
 │   │   ├── step-processor.service  processStep, loadStepFunction, buildStepContext
 │   │   ├── step-planner.service    planNextSteps, gatherStepInput
-│   │   ├── step-queue.service      PostgreSQL poller (SELECT FOR UPDATE SKIP LOCKED)
+│   │   ├── step-queue.service      PostgreSQL poller with adaptive polling
+│   │   ├── batch-executor.service  Fan-out/aggregate batch steps (3 failure strategies)
+│   │   ├── workflow-trigger.service Cross-workflow triggering and await
 │   │   ├── completion.service      checkExecutionComplete, CAS guard, metrics
 │   │   ├── broadcaster.service     SSE event delivery to HTTP clients
-│   │   ├── event-bus.service       Typed in-process event emitter
-│   │   ├── event-handlers.ts       step:completed/failed/cancelled handlers
+│   │   ├── event-bus.service       Typed in-process event emitter with wildcards
+│   │   ├── event-bus.types.ts      Typed event interfaces (step/execution/webhook)
+│   │   ├── event-handlers.ts       step:completed/failed/cancelled + execution handlers
 │   │   └── errors/                 Error hierarchy and classifier
+│   │       ├── engine-error.ts         Base EngineError class
+│   │       ├── error-classifier.ts     buildErrorData, classifyError, calculateBackoff
+│   │       ├── http.error.ts           HTTP-related errors
+│   │       ├── infrastructure.error.ts StepFunctionNotFoundError
+│   │       └── step-timeout.error.ts   StepTimeoutError
 │   ├── graph/                  WorkflowGraph class (DAG traversal, conditions)
-│   ├── transpiler/             TypeScript → compiled step functions (ts-morph + esbuild)
+│   │   ├── graph.types.ts          GraphNodeData, GraphEdgeData, GraphStepConfig
+│   │   └── workflow-graph.ts       DAG validation, traversal, error handlers, batch IDs
+│   ├── transpiler/             TypeScript -> compiled step functions (ts-morph + esbuild)
+│   │   ├── transpiler.service.ts   Full pipeline: parse, extract, typecheck, codegen
+│   │   ├── zod-to-json-schema.ts   Converts Zod AST expressions to JSON Schema
+│   │   └── source-map.service.ts   Stack trace remapping placeholder
 │   ├── database/               TypeORM entities and repositories
-│   │   ├── entities/               5 entities (identity, workflow, webhook, execution, step)
-│   │   ├── repositories/           5 repositories
+│   │   ├── entities/               3 entities (workflow, webhook, execution + step execution)
+│   │   ├── repositories/           4 repositories
 │   │   ├── enums.ts                ExecutionStatus, StepStatus, StepType
 │   │   └── data-source.ts          PostgreSQL DataSource factory
 │   ├── api/                    Express REST API
-│   │   ├── server.ts               Express app factory
+│   │   ├── server.ts               Express app factory with CORS + error handling
 │   │   ├── workflow.controller     CRUD + versioning + activate/deactivate
 │   │   ├── execution.controller    Start, cancel, pause, resume, SSE
 │   │   ├── step-execution.controller  Approve/decline
-│   │   └── webhook.controller      4 response modes
+│   │   ├── webhook.controller      4 response modes + schema validation
+│   │   └── validate-webhook-schema Ajv-based webhook body/query/headers validation
 │   ├── web/                    Vue 3 frontend (Vite SPA)
-│   │   ├── src/views/              WorkflowList, WorkflowEditor, ExecutionInspector
+│   │   ├── src/views/              WorkflowList, WorkflowEditor, ExecutionInspector,
+│   │   │                           WorkspaceView (unified editor + execution)
 │   │   ├── src/stores/             workflow.store, execution.store (Pinia)
-│   │   └── src/components/         StatusBadge, JsonViewer, StepCard, GraphCanvas
+│   │   ├── src/components/         StatusBadge, JsonViewer, StepCard, GraphCanvas,
+│   │   │                           ExecutionGraph, CodeEditor (CodeMirror 6)
+│   │   ├── src/composables/        useGraphLayout (Dagre-based positioning)
+│   │   └── src/utils/              Node rendering helpers:
+│   │                               batch-node, sleep-node, trigger-workflow-node,
+│   │                               json-schema-faker (test data generation from schemas)
 │   ├── cli/                    CLI commands
 │   │   └── commands/               execute, run, watch, list, inspect, bench
 │   └── main.ts                 Application entry point (wires everything)
-├── examples/                   13 example workflow scripts
+├── examples/                   21 main example workflows + 61 use-case examples
+│   └── use-cases/                  61 ported workflow patterns (f01-f54)
 ├── perf/                       k6 performance test scripts
+│   ├── webhook-throughput.js       Webhook load testing
+│   ├── execution-latency.js        Execution latency measurement
+│   ├── run.sh                      Runner script
+│   └── grafana/                    Grafana dashboard configs
 ├── test/                       Test helpers and fixtures
 │   ├── helpers.ts                  createTestDataSource, cleanDatabase
 │   ├── fixtures.ts                 Predefined workflow source strings
-│   └── integration/                Full engine integration tests (need PostgreSQL)
+│   └── integration/                13 integration test suites (need PostgreSQL)
 ├── docker-compose.yml          Development (hot-reload)
 ├── docker-compose.test.yml     Testing (ephemeral DB)
-├── docker-compose.prod.yml     Production (built assets)
-├── Dockerfile                  Multi-stage: dev + prod targets
-└── Dockerfile.web              Frontend Vite dev server
+├── docker-compose.perf.yml     Performance (k6 + Grafana)
+└── Dockerfile                  Single multi-stage: dev/web/build/prod targets
 ```
 
 ## Testing
@@ -179,7 +221,7 @@ Unit tests run without a database:
 pnpm test
 ```
 
-Integration tests need PostgreSQL:
+Integration tests need PostgreSQL (13 test suites):
 ```bash
 pnpm test:db    # Starts test DB, runs all tests, stops DB
 ```
@@ -191,44 +233,107 @@ DATABASE_URL=postgres://engine:engine@localhost:5434/engine_test pnpm test
 docker compose -f docker-compose.test.yml down
 ```
 
+### Integration Test Suites
+
+| Test File | Coverage |
+|-----------|----------|
+| `execution-lifecycle.test.ts` | Full execution lifecycle |
+| `compilation.test.ts` | Transpiler integration |
+| `parallel.test.ts` | Parallel step execution |
+| `retry.test.ts` | Retry and backoff |
+| `sleep-wait.test.ts` | Sleep/waitUntil durable execution |
+| `webhook.test.ts` | Webhook routing and response modes |
+| `approval.test.ts` | Human-in-the-loop approval |
+| `pause-resume.test.ts` | Pause/resume execution |
+| `cancellation.test.ts` | Execution cancellation |
+| `streaming.test.ts` | SSE event streaming |
+| `concurrency.test.ts` | Concurrent step processing |
+| `versioning.test.ts` | Workflow versioning |
+
 ### Performance Testing
 
 Requires [k6](https://k6.io/) and a running engine:
 
 ```bash
-docker compose up -d
+docker compose -f docker-compose.perf.yml up -d
 k6 run perf/webhook-throughput.js
 WORKFLOW_ID=<id> k6 run perf/execution-latency.js
 ```
 
-Results are visualized in Grafana at http://localhost:3300/d/k6-perf
-
 ## Example Workflows
+
+### Main Examples (21 files)
 
 | File | Description |
 |------|-------------|
-| `hello-world.ts` | Minimal two-step workflow with manual trigger |
-| `webhook-echo.ts` | Webhook trigger with input validation and echo response |
-| `conditional-logic.ts` | If/else branching based on step output |
-| `retry-backoff.ts` | Retry with exponential backoff on flaky API calls |
-| `approval-flow.ts` | Human-in-the-loop approval step that pauses execution |
-| `streaming-output.ts` | Simulated streaming with `ctx.sendChunk()` |
-| `error-handling.ts` | Retriable vs non-retriable error behavior |
-| `data-pipeline.ts` | 10-step pipeline for benchmarking |
-| `parallel-steps.ts` | Parallel branches with `Promise.all` that merge |
-| `ai-chat-streaming.ts` | AI agent webhook with streaming response |
-| `sleep-and-resume.ts` | Sleep between steps with durable state |
-| `multi-wait-pipeline.ts` | Multiple sleeps and `waitUntil` with data passing |
-| `helper-functions.ts` | Steps using local helper functions and shared types |
+| `01-hello-world.ts` | Minimal two-step workflow with manual trigger |
+| `02-conditional-logic.ts` | If/else branching based on step output |
+| `03-helper-functions.ts` | Steps using local helper functions and shared types |
+| `04-parallel-steps.ts` | Parallel branches with `Promise.all` that merge |
+| `05-retry-backoff.ts` | Retry with exponential backoff on flaky API calls |
+| `06-error-handling.ts` | Retriable vs non-retriable error behavior |
+| `07-streaming-output.ts` | Simulated streaming with `ctx.sendChunk()` |
+| `08-webhook-echo.ts` | Webhook trigger with Zod schema validation and echo |
+| `09-data-pipeline.ts` | 10-step pipeline for benchmarking |
+| `10-approval-flow.ts` | Human-in-the-loop approval step that pauses execution |
+| `11-sleep-and-resume.ts` | Sleep between steps with durable state |
+| `12-multi-wait-pipeline.ts` | Multiple sleeps and `waitUntil` with data passing |
+| `13-ai-chat-streaming.ts` | AI agent webhook with streaming response |
+| `14-reference-error.ts` | Demonstrates reference error handling |
+| `15-retriable-error.ts` | Demonstrates retriable error classification |
+| `16-pausable-workflow.ts` | Workflow that can be paused and resumed |
+| `17-streaming-webhook.ts` | Webhook with streaming response mode |
+| `18-batch-processing.ts` | Batch processing with `ctx.batch()` and failure strategies |
+| `19-trigger-workflow.ts` | Cross-workflow triggering with `ctx.triggerWorkflow()` |
+| `20-order-routing.ts` | Switch/case routing pattern with icons/colors |
+| `21-product-catalog.ts` | Product catalog with Zod schemas and custom styling |
+
+### Use-Case Examples (61 files in `examples/use-cases/`)
+
+Ported workflow patterns covering: simple chains, if/else/switch branching,
+error handling, AI starters, multi-output, loops, try/catch, sub-workflows,
+merge nodes, filter patterns, webhook callbacks, form handling, and real-world
+integrations (Gmail, Telegram, SSL monitoring, SAP, etc.).
 
 ## Key Architecture
 
 - **Per-step execution**: Each step is an independent queue job, not a monolithic process
 - **PostgreSQL queue**: `SELECT FOR UPDATE SKIP LOCKED` for atomic step claiming
-- **Event-driven**: Event bus drives the engine forward (step:completed → planNextSteps → checkComplete)
-- **Fail-fast**: Step failure immediately marks execution as failed
+- **Adaptive polling**: Queue poller uses exponential backoff (10ms-1000ms) and wakes immediately on new work
+- **Event-driven**: Event bus drives the engine forward (step:completed -> planNextSteps -> checkComplete)
+- **Fail-fast with try/catch**: Step failure immediately fails execution unless an error handler (catch block) is defined via `__error__` edges in the graph
+- **Batch processing**: `ctx.batch()` fans out items as individual child step executions with three failure strategies (fail-fast, continue, abort-remaining)
+- **Cross-workflow triggering**: `ctx.triggerWorkflow()` starts a child workflow and awaits its result, linking parent step to child execution via metadata
 - **Crash-safe**: Step outputs persisted before/after execution; stale recovery for stuck steps
 - **Versioned workflows**: Each save creates immutable version; executions pin their version
+- **Zod schema validation**: Webhook triggers support Zod schemas (body/query/headers) transpiled to JSON Schema and validated with Ajv at request time
+- **Type inference**: `webhook()` with Zod schemas provides type-safe `ctx.triggerData` via `InferTriggerData`
+- **In-process typechecking**: Transpiler injects SDK type declarations into ts-morph and reports type errors before compilation
+
+## Module Dependencies
+
+```
+SDK (types + errors)
+  |
+Transpiler (ts-morph + esbuild + zod-to-json-schema)
+  |
+Graph (WorkflowGraph -- DAG validation + traversal)
+  |
+Engine Services:
+  EngineService (orchestration)
+  StepProcessorService (step execution + context building)
+  StepPlannerService (successor planning + input gathering)
+  StepQueueService (adaptive PostgreSQL poller)
+  BatchExecutorService (fan-out/aggregate batch items)
+  WorkflowTriggerService (cross-workflow execution + await)
+  CompletionService (execution finalization + metrics)
+  BroadcasterService (SSE delivery)
+  EngineEventBus (typed event system)
+  |
+API (Express controllers + webhook schema validation)
+  |
+Web (Vue 3 SPA + CodeMirror + custom SVG graph rendering)
+```
 
 ## Documentation
 
@@ -236,16 +341,16 @@ All engine documentation lives in `docs/engine-v2/`:
 
 | Doc | Description |
 |-----|-------------|
-| @docs/engine-v2/plan.md | Original engine v2 design plan |
 | @docs/engine-v2/decisions.md | Key design decisions with reasoning |
-| @docs/engine-v2/now.md | Issues to address in current phase |
-| @docs/engine-v2/later.md | Issues deferred to later phases |
+| @docs/engine-v2/plans/backlog.md | Backlog of planned work |
+| @docs/engine-v2/plans/sdk-redesign/ | SDK redesign specification and implementation plan |
+| @docs/engine-v2/architecture/overview.md | High-level architecture overview |
 | @docs/engine-v2/architecture/database.md | Entities, repositories, enums, state machines |
-| @docs/engine-v2/architecture/graph.md | DAG representation, traversal, conditions |
-| @docs/engine-v2/architecture/sdk.md | Public API for workflow authors |
-| @docs/engine-v2/architecture/transpiler.md | TS→JS compilation, step extraction, graph derivation |
-| @docs/engine-v2/architecture/engine.md | Core execution services, queue, events, error handling |
-| @docs/engine-v2/architecture/api.md | REST controllers, Express setup, webhook routing |
-| @docs/engine-v2/architecture/cli.md | CLI commands, entrypoint, service wiring |
-| @docs/engine-v2/architecture/web.md | Vue 3 frontend, stores, components, graph rendering |
+| @docs/engine-v2/architecture/graph.md | DAG representation, traversal, conditions, error edges |
+| @docs/engine-v2/architecture/sdk.md | Public API: defineWorkflow, ctx.step, ctx.batch, ctx.triggerWorkflow, Zod schemas |
+| @docs/engine-v2/architecture/transpiler.md | TS->JS compilation, step/batch/sleep/triggerWorkflow extraction, typechecking |
+| @docs/engine-v2/architecture/engine.md | Core services: queue, processor, planner, batch executor, workflow trigger, events |
+| @docs/engine-v2/architecture/api.md | REST controllers, Express setup, webhook routing, schema validation |
+| @docs/engine-v2/architecture/cli.md | CLI commands, createEngine factory, service wiring |
+| @docs/engine-v2/architecture/web.md | Vue 3 frontend, stores, components, custom node rendering |
 | @docs/engine-v2/architecture/testing.md | Integration tests, fixtures, perf benchmarks, coverage |

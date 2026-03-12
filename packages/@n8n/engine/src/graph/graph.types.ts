@@ -15,19 +15,31 @@ export interface GraphStepConfig {
 	description?: string;
 	icon?: string;
 	color?: string;
-	stepType?: 'step' | 'approval' | 'condition' | 'sleep';
+	stepType?: 'step' | 'approval' | 'condition' | 'sleep' | 'batch';
 	retryConfig?: RetryConfig;
 	timeout?: number;
 	retriableErrors?: string[];
 	retryOnTimeout?: boolean;
 	sleepMs?: number;
 	waitUntilExpr?: string;
+	/** Target workflow name for trigger-workflow nodes */
+	workflow?: string;
+	/** Batch failure strategy */
+	onItemFailure?: 'fail-fast' | 'continue' | 'abort-remaining';
 }
 
 export interface GraphNodeData {
 	id: string;
 	name: string;
-	type: 'trigger' | 'step' | 'condition' | 'approval' | 'sleep' | 'end';
+	type:
+		| 'trigger'
+		| 'step'
+		| 'batch'
+		| 'condition'
+		| 'approval'
+		| 'sleep'
+		| 'trigger-workflow'
+		| 'end';
 	stepFunctionRef: string;
 	config: GraphStepConfig;
 }

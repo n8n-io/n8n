@@ -23,13 +23,16 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const input = await ctx.step({ name: 'Parse Request' }, async () => {
-			const { body } = ctx.triggerData;
-			return { url: body.url ?? '' };
-		});
+		const input = await ctx.step(
+			{ name: 'Parse Request', icon: 'settings', color: '#6b7280' },
+			async () => {
+				const { body } = ctx.triggerData;
+				return { url: body.url ?? '' };
+			},
+		);
 
 		if (!input.url) {
-			await ctx.step({ name: 'Error Response' }, async () => {
+			await ctx.step({ name: 'Error Response', icon: 'bug', color: '#ef4444' }, async () => {
 				await ctx.respondToWebhook({
 					statusCode: 400,
 					body: { error: 'Missing TikTok URL' },
@@ -40,21 +43,24 @@ export default defineWorkflow({
 		}
 
 		try {
-			const videoData = await ctx.step({ name: 'Download TikTok Video' }, async () => {
-				const res = await fetch(`https://dummyjson.com/posts/add`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ url: input.url }),
-				});
-				if (!res.ok) throw new Error(`Download failed: HTTP ${res.status}`);
-				return (await res.json()) as {
-					downloadUrl: string;
-					title: string;
-					author: string;
-				};
-			});
+			const videoData = await ctx.step(
+				{ name: 'Download TikTok Video', icon: 'download', color: '#3b82f6' },
+				async () => {
+					const res = await fetch(`https://dummyjson.com/posts/add`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ url: input.url }),
+					});
+					if (!res.ok) throw new Error(`Download failed: HTTP ${res.status}`);
+					return (await res.json()) as {
+						downloadUrl: string;
+						title: string;
+						author: string;
+					};
+				},
+			);
 
-			await ctx.step({ name: 'Success Response' }, async () => {
+			await ctx.step({ name: 'Success Response', icon: 'send', color: '#22c55e' }, async () => {
 				await ctx.respondToWebhook({
 					statusCode: 200,
 					body: videoData,
@@ -62,7 +68,7 @@ export default defineWorkflow({
 				return { responded: true };
 			});
 		} catch (error) {
-			await ctx.step({ name: 'Error Handler' }, async () => {
+			await ctx.step({ name: 'Error Handler', icon: 'bug', color: '#ef4444' }, async () => {
 				await ctx.respondToWebhook({
 					statusCode: 500,
 					body: {

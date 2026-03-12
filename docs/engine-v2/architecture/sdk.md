@@ -5,9 +5,10 @@
 The SDK (`@n8n/engine/sdk`) is the public API surface for workflow script authors.
 It provides everything needed to define a workflow as TypeScript code: a
 `defineWorkflow` factory function, an `ExecutionContext` interface injected at
-runtime, trigger helpers (currently `webhook`), and three error classes that
-implement control-flow signalling (`SleepRequestedError`,
-`WaitUntilRequestedError`, `NonRetriableError`).
+runtime, trigger helpers (currently `webhook`), Zod-based webhook schema
+validation with type inference, batch processing via `ctx.batch()`,
+cross-workflow triggering via `ctx.triggerWorkflow()`, and a `NonRetriableError`
+class for explicit failure signalling.
 
 Workflow scripts are plain TypeScript files that `export default` a
 `WorkflowDefinition` produced by `defineWorkflow`. The engine transpiles these
@@ -20,10 +21,10 @@ engine will inject at runtime.
 
 | File | Purpose |
 |------|---------|
-| `types.ts` (lines 1-78) | All TypeScript interfaces and type aliases |
-| `errors.ts` (lines 1-27) | Three error classes used for control flow and failure signalling |
-| `index.ts` (lines 1-24) | Re-exports + `defineWorkflow` and `webhook` factory functions |
-| `__tests__/sdk.test.ts` (lines 1-145) | Unit tests for all exported symbols |
+| `types.ts` | All TypeScript interfaces: StepDefinition, BatchStepDefinition, BatchResult, TriggerWorkflowConfig, ExecutionContext, WebhookSchemaConfig, InferTriggerData, WorkflowDefinition, WorkflowSettings |
+| `errors.ts` | NonRetriableError class for explicit non-retriable failures |
+| `index.ts` | Re-exports + `defineWorkflow` and `webhook` factory functions (with generic Zod schema support) |
+| `__tests__/sdk.test.ts` | Unit tests for all exported symbols |
 
 ---
 
@@ -72,45 +73,54 @@ export default defineWorkflow({
 
 ### ExecutionContext
 
-**File:** `types.ts`, lines 54-66
+**File:** `types.ts`
 
 The `ExecutionContext` is injected as the `ctx` argument to the workflow's
 `run(ctx)` method. It provides data, metadata, and SDK methods for interacting
-with the engine.
+with the engine. The context is generic over `TTriggerData`, which defaults to
+`Record<string, unknown>` but is inferred from Zod schemas when using
+`webhook()` with a `schema` option.
 
 | Property / Method | Type | Description |
 |-------------------|------|-------------|
 | `input` | `Record<string, unknown>` | Predecessor step outputs keyed by step ID. The transpiler rewrites cross-step variable references to `ctx.input[stepId]` lookups. |
-| `triggerData` | `Record<string, unknown>` | Convenience accessor for HTTP request data (body, headers, query, method, path) when the workflow is triggered by a webhook. |
+| `triggerData` | `TTriggerData` | HTTP request data (body, headers, query, method, path) when triggered by a webhook. Type-safe when Zod schemas are provided. |
+| `error` | `unknown` | The error from a failed try-block step. Set by the engine for catch handler steps (try/catch support). |
+| `batchItem` | `unknown` | The current batch item. Set by the engine when executing a batch child step. |
 | `executionId` | `string` | UUID of the current workflow execution. |
 | `stepId` | `string` | Content-hash ID of the currently executing step. |
 | `attempt` | `number` | Current attempt number (1-based). Increments on retry. |
 | `step(def, fn)` | `<T>(StepDefinition, () => Promise<T>) => Promise<T>` | Declares and executes a named step. The transpiler extracts these calls to build the workflow graph. |
+| `batch(def, items, fn)` | `<T, I>(BatchStepDefinition, I[], (item: I, index: number) => Promise<T>) => Promise<BatchResult<T>[]>` | Declares a batch step that fans out items as individual child step executions. Supports three failure strategies. |
 | `sendChunk(data)` | `(data: unknown) => Promise<void>` | Streams incremental data to connected clients via SSE. Not persisted -- only the step's final return value is stored. |
 | `respondToWebhook(response)` | `(WebhookResponse) => Promise<void>` | Sends an HTTP response to the webhook caller. Used with `responseMode: 'respondWithNode'`. |
-| `sleep(ms)` | `(ms: number) => Promise<void>` | Durably pauses execution for `ms` milliseconds. The process is freed; a child step resumes execution after the delay. |
-| `waitUntil(date)` | `(date: Date) => Promise<void>` | Durably pauses execution until the given date. Same mechanism as `sleep`. |
+| `sleep(ms)` | `(ms: number) => Promise<void>` | Durably pauses execution for `ms` milliseconds. Handled at compile time -- the transpiler creates a sleep graph node. |
+| `waitUntil(date)` | `(date: Date) => Promise<void>` | Durably pauses execution until the given date. Same compile-time mechanism as `sleep`. |
+| `triggerWorkflow(config)` | `(TriggerWorkflowConfig) => Promise<unknown>` | Triggers another workflow by name and waits for its result. Creates a trigger-workflow graph node at compile time. |
 | `getSecret(name)` | `(name: string) => string \| undefined` | Reads a secret by name. PoC implementation reads from `process.env`. |
 
 ### Error Types (SDK-level)
 
-Three error classes exported from `errors.ts`:
+One error class exported from `errors.ts`:
 
 | Class | Purpose |
 |-------|---------|
-| `SleepRequestedError` | Control-flow signal thrown by `ctx.sleep()` |
-| `WaitUntilRequestedError` | Control-flow signal thrown by `ctx.waitUntil()` |
 | `NonRetriableError` | Explicit opt-out of retry for user code errors |
+
+Note: `ctx.sleep()` and `ctx.waitUntil()` are now handled at compile time by
+the transpiler (creating sleep graph nodes) rather than through error-based
+control flow signals. The `SleepRequestedError` and `WaitUntilRequestedError`
+classes have been removed.
 
 ### Trigger Types
 
-**File:** `types.ts`, lines 39-52
+**File:** `types.ts`
 
 The `TriggerConfig.type` discriminant supports three values:
 
 | Type | Description | Factory Function |
 |------|-------------|-----------------|
-| `'webhook'` | HTTP endpoint trigger. Extended by `WebhookTriggerConfig` with path, method, and responseMode. | `webhook()` |
+| `'webhook'` | HTTP endpoint trigger. Extended by `WebhookTriggerConfig` with path, method, responseMode, and optional Zod schema. | `webhook()` |
 | `'manual'` | Explicit manual trigger. Every workflow can be triggered manually even without declaring this. | None (use `{ type: 'manual', config: {} }`) |
 | `'poll'` | Polling trigger (declared in the type union but no factory function exists yet). | **Not implemented** |
 
@@ -120,7 +130,7 @@ The `TriggerConfig.type` discriminant supports three values:
 
 ### `StepDefinition`
 
-**File:** `types.ts`, lines 1-22
+**File:** `types.ts`
 
 Configures a single step's display, behavior, and retry policy. Passed as the
 first argument to `ctx.step()`.
@@ -136,9 +146,8 @@ first argument to `ctx.step()`.
 | `timeout` | `number` | No | Step timeout in milliseconds. Engine default is 300,000ms (5 minutes). |
 | `retriableErrors` | `string[]` | No | Error codes that should trigger retry regardless of the error classifier's default. |
 | `retryOnTimeout` | `boolean` | No | Whether to retry when the step times out. Default: `false`. |
-| `continuationRef` | `string` | No | Internal. Set by the transpiler to reference the continuation function after a `sleep`/`waitUntil` call. |
 
-**Example** (from `05-retry-backoff.ts`, lines 16-22):
+**Example** (from `05-retry-backoff.ts`):
 ```typescript
 await ctx.step(
   {
@@ -151,6 +160,69 @@ await ctx.step(
   },
   async () => { /* ... */ },
 );
+```
+
+### `BatchStepDefinition`
+
+**File:** `types.ts`
+
+Configures a batch step that processes an array of items. Passed as the first
+argument to `ctx.batch()`. Each item is executed as an independent child step
+execution.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | `string` | Yes | Display name shown on the canvas. |
+| `description` | `string` | No | Subtitle shown below the name. |
+| `icon` | `string` | No | Lucide icon name. |
+| `color` | `string` | No | Hex color for the canvas stripe. |
+| `onItemFailure` | `'fail-fast' \| 'continue' \| 'abort-remaining'` | No | Strategy when an individual item fails. Default: `'continue'`. |
+| `retry` | `RetryConfig` | No | Retry policy for individual item processing. |
+| `timeout` | `number` | No | Timeout per item in milliseconds. |
+
+**Example** (from `18-batch-processing.ts`):
+```typescript
+const results = await ctx.batch(
+  { name: 'Process Items', onItemFailure: 'continue' },
+  items,
+  async (item) => {
+    return { processed: item };
+  },
+);
+```
+
+### `BatchResult<T>`
+
+**File:** `types.ts`
+
+Result for a single batch item, following the `Promise.allSettled` pattern.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `status` | `'fulfilled' \| 'rejected'` | Whether the item succeeded or failed. |
+| `value` | `T` | The item's return value (only present when `status === 'fulfilled'`). |
+| `reason` | `Error` | The error (only present when `status === 'rejected'`). |
+
+### `TriggerWorkflowConfig`
+
+**File:** `types.ts`
+
+Configuration for `ctx.triggerWorkflow()` which starts a child workflow
+execution and awaits its result.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `workflow` | `string` | Yes | Target workflow name (resolved to ID at runtime). |
+| `input` | `Record<string, unknown>` | No | Input data passed to the child workflow. |
+| `timeout` | `number` | No | Timeout in milliseconds for the child execution. |
+
+**Example** (from `19-trigger-workflow.ts`):
+```typescript
+const result = await ctx.triggerWorkflow({
+  workflow: 'Data Processing Pipeline',
+  input: { data: rawData },
+  timeout: 30000,
+});
 ```
 
 ### `RetryConfig`
@@ -210,34 +282,75 @@ type WebhookResponseMode = 'lastNode' | 'respondImmediately' | 'respondWithNode'
 | `config` | `Record<string, unknown>` | Yes | Type-specific configuration. |
 | `code` | `string` | No | Custom trigger code (reserved for future use). |
 
+### `WebhookSchemaConfig`
+
+**File:** `types.ts`
+
+Defines Zod schemas for webhook request validation. When provided to the
+`webhook()` factory, the transpiler converts the Zod schemas to JSON Schema
+(via `zod-to-json-schema.ts`), which is stored in the trigger config and
+validated at request time using Ajv.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `body` | `ZodType` | No | Zod schema for the request body. |
+| `query` | `ZodType` | No | Zod schema for query parameters. |
+| `headers` | `ZodType` | No | Zod schema for request headers. |
+
+**Type inference:** `InferTriggerData<S>` extracts TypeScript types from Zod
+schemas, so `ctx.triggerData.body` is properly typed when schemas are provided.
+
+**Example:**
+```typescript
+import { z } from 'zod';
+
+webhook('/orders', {
+  method: 'POST',
+  schema: {
+    body: z.object({
+      orderId: z.string(),
+      amount: z.number().min(0),
+      priority: z.enum(['low', 'medium', 'high']).optional(),
+    }),
+  },
+});
+// ctx.triggerData.body is typed as { orderId: string; amount: number; priority?: 'low' | 'medium' | 'high' }
+```
+
 ### `WebhookTriggerConfig`
 
-**File:** `types.ts`, lines 45-52
+**File:** `types.ts`
 
-Extends `TriggerConfig` with `type: 'webhook'` and a typed `config` object:
+Extends `TriggerConfig` with `type: 'webhook'` and a typed `config` object.
+Generic over `WebhookSchemaConfig` for type-safe trigger data inference.
 
 | `config` Property | Type | Description |
 |-------------------|------|-------------|
 | `path` | `string` | URL path for the webhook endpoint. |
 | `method` | `string` | HTTP method (GET, POST, PUT, etc.). |
 | `responseMode` | `WebhookResponseMode` | How the engine responds to the webhook caller. Optional. |
+| `schema` | `{ body?, query?, headers? }` | JSON Schema objects (transpiled from Zod at save time). Optional. |
+
+The `_triggerData` phantom type field carries the inferred trigger data type
+for TypeScript inference without being present at runtime.
 
 ### `WorkflowDefinition`
 
-**File:** `types.ts`, lines 68-73
+**File:** `types.ts`
 
-The top-level definition object passed to `defineWorkflow`.
+The top-level definition object passed to `defineWorkflow`. Generic over the
+triggers array type `T` to enable type-safe trigger data inference.
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
 | `name` | `string` | Yes | Workflow display name. |
-| `triggers` | `TriggerConfig[]` | No | Trigger configurations. Manual trigger is always implicit. |
+| `triggers` | `T extends TriggerConfig[]` | No | Trigger configurations. Manual trigger is always implicit. |
 | `settings` | `WorkflowSettings` | No | Execution-level settings. |
-| `run` | `(ctx: ExecutionContext) => Promise<unknown>` | Yes | The workflow body. Contains `ctx.step()` calls that define the DAG. |
+| `run` | `(ctx: ExecutionContext<InferTriggerDataFromArray<T>>) => Promise<unknown>` | Yes | The workflow body. `ctx.triggerData` type is inferred from the triggers' Zod schemas. |
 
 ### `WorkflowSettings`
 
-**File:** `types.ts`, lines 75-78 (currently a stub)
+**File:** `types.ts`
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -247,56 +360,36 @@ The top-level definition object passed to `defineWorkflow`.
 
 ## Error Types
 
-### `SleepRequestedError`
-
-**File:** `errors.ts`, lines 1-9
-
-A control-flow error thrown internally by `ctx.sleep(ms)`. The engine's
-`processStep` catch block (in `step-processor.service.ts`, lines 131-168)
-intercepts this error and:
-
-1. Saves `intermediateState` as the parent step's output.
-2. Sets parent step status to `'waiting'`.
-3. Creates a child step execution with `wait_until = now() + sleepMs`.
-4. The child step is picked up by the queue poller after the delay.
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `sleepMs` | `number` (readonly) | Duration to sleep in milliseconds. |
-| `intermediateState` | `unknown` (readonly, optional) | State to preserve across the sleep boundary. Set by the transpiler. |
-
-### `WaitUntilRequestedError`
-
-**File:** `errors.ts`, lines 11-19
-
-Same mechanism as `SleepRequestedError` but with an absolute date instead of a
-relative duration.
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `date` | `Date` (readonly) | The date/time to wait until. |
-| `intermediateState` | `unknown` (readonly, optional) | State to preserve across the wait boundary. |
-
-**Example** (from `12-multi-wait-pipeline.ts`, line 58):
-```typescript
-await ctx.waitUntil(new Date(Date.now() + 5000));
-```
-
 ### `NonRetriableError`
 
-**File:** `errors.ts`, lines 21-27
+**File:** `errors.ts`
 
 Allows workflow script authors to explicitly mark an error as non-retriable,
-bypassing the engine's error classifier. When the error classifier (in
-`error-classifier.ts`) encounters a `NonRetriableError`, the error's base class
-`Error` is classified as unknown (not `EngineError`), so the classifier falls
-through to its default heuristics. However, because `NonRetriableError` does not
-extend `EngineError`, it reaches classification rule 4 (unknown shape) which
-defaults to `retriable: true` -- **this is a bug** (see Issues section).
+bypassing the engine's error classifier. The error classifier
+(`error-classifier.ts`) has explicit `instanceof NonRetriableError` handling
+(classification rule 4) that returns `retriable: false`.
 
 | Property | Type | Description |
 |----------|------|-------------|
 | `message` | `string` | Error message. |
+
+### Sleep/WaitUntil
+
+Sleep and waitUntil are no longer implemented via error-based control flow.
+Instead, `ctx.sleep(ms)` and `ctx.waitUntil(date)` are handled at compile time
+by the transpiler, which creates first-class `sleep` graph nodes. The engine's
+step queue poller picks up sleep steps when their `waitUntil` timestamp has
+passed. This approach eliminates the need for `SleepRequestedError` and
+`WaitUntilRequestedError` classes.
+
+**Example** (from `11-sleep-and-resume.ts`):
+```typescript
+await ctx.sleep(5000);  // Creates a sleep graph node -- process is freed
+```
+
+```typescript
+await ctx.waitUntil(new Date(Date.now() + 5000));  // Same mechanism with absolute date
+```
 
 ---
 
@@ -362,28 +455,27 @@ flowchart TD
 flowchart TD
     FN["Step function executes"]
     FN -->|success| COMPLETE["status = completed<br/>emit step:completed"]
-    FN -->|throws| CATCH{"Error type?"}
-
-    CATCH -->|SleepRequestedError| SLEEP["Parent status = waiting<br/>Create child step with wait_until<br/>Process freed"]
-    CATCH -->|WaitUntilRequestedError| WAIT["Parent status = waiting<br/>Create child step with wait_until<br/>Process freed"]
-    CATCH -->|other Error| CLASSIFY{"classifyError()"}
+    FN -->|throws| CLASSIFY{"classifyError()"}
 
     CLASSIFY -->|retriable AND<br/>attempts remaining| RETRY["status = retry_pending<br/>retry_after = now + backoff<br/>emit step:retrying"]
     CLASSIFY -->|non-retriable OR<br/>attempts exhausted| FAIL["status = failed<br/>emit step:failed"]
 
-    SLEEP -->|"wait_until passes"| CHILD["Child step picked up<br/>Continuation function executes"]
-    WAIT -->|"wait_until passes"| CHILD
-    CHILD -->|success| PARENT_DONE["Parent status = completed<br/>planNextSteps from parent"]
-    CHILD -->|failure| PARENT_FAIL["Parent status = failed"]
+    FAIL --> ERROR_CHECK{"Error handlers<br/>defined?"}
 
-    FAIL --> EXEC_FAIL["Execution status = failed<br/>(fail-fast)"]
+    ERROR_CHECK -->|yes| CATCH_HANDLER["Route to catch handler step<br/>via __error__ edge"]
+    ERROR_CHECK -->|no| EXEC_FAIL["Execution status = failed<br/>(fail-fast)"]
 
-    style SLEEP fill:#fef3c7
-    style WAIT fill:#fef3c7
+    CATCH_HANDLER --> CATCH_STEP["Catch handler executes<br/>ctx.error = original error"]
+
     style RETRY fill:#dbeafe
     style FAIL fill:#fee2e2
     style COMPLETE fill:#d1fae5
+    style CATCH_HANDLER fill:#fef3c7
 ```
+
+Note: Sleep and waitUntil are no longer handled through error-based control
+flow. They are first-class graph nodes created by the transpiler. The step
+queue poller picks up sleep nodes when their `waitUntil` timestamp has passed.
 
 ---
 
@@ -483,40 +575,42 @@ internal parameter.
 
 **Implementation:** The engine-level errors (`EngineError`, `StepTimeoutError`,
 `HttpError`, `StepFunctionNotFoundError`) are implemented in
-`src/engine/errors/`. However, the SDK's `NonRetriableError` (errors.ts
-line 21-26) extends plain `Error`, not `EngineError`. This creates a
-classification gap (see Issues section).
+`src/engine/errors/`. The SDK's `NonRetriableError` extends plain `Error`
+(not `EngineError`), but the error classifier has explicit handling for it.
 
 ### Missing features from the plan
 
 | Feature | Plan location | Status |
 |---------|---------------|--------|
-| Poll trigger | types.ts line 40 | Type declared, no factory or implementation |
-| Fan-out / fan-in | Plan line 2140 | Phase 1 stretch goal, no SDK-level API |
+| Poll trigger | types.ts | Type declared, no factory or implementation |
+| Fan-out / fan-in | Plan line 2140 | **Implemented** as `ctx.batch()` with `BatchExecutorService` |
 | Per-workflow dependency management | Plan line 3728 | Phase 2, not started |
-| `executionMode: 'in-process'` | types.ts line 76 | Type declared, no implementation |
-| Source map remapping | Plan line 3843 | `remapStack()` is a no-op placeholder (error-classifier.ts line 124) |
+| `executionMode: 'in-process'` | types.ts | Type declared, no implementation |
+| Source map remapping | Plan line 3843 | `remapStack()` is a no-op placeholder |
+
+### Features implemented beyond the plan
+
+| Feature | Description |
+|---------|-------------|
+| `ctx.batch()` | Batch processing with three failure strategies (fail-fast, continue, abort-remaining) |
+| `ctx.triggerWorkflow()` | Cross-workflow triggering with timeout support |
+| Zod webhook schemas | `WebhookSchemaConfig` with type inference via `InferTriggerData` |
+| `ctx.error` | Error context for try/catch handler steps |
+| `ctx.batchItem` | Current batch item context for batch child steps |
+| `BatchStepDefinition` | Dedicated definition type for batch steps |
+| `BatchResult<T>` | Typed result type following `Promise.allSettled` pattern |
+| `TriggerWorkflowConfig` | Configuration type for cross-workflow triggers |
 
 ---
 
 ## Issues and Improvements
 
-### 1. `NonRetriableError` does not extend `EngineError` -- classification bypass
+### 1. ~~`NonRetriableError` does not extend `EngineError`~~ (RESOLVED)
 
-**File:** `errors.ts`, lines 21-26
-**Severity:** Bug
-
-`NonRetriableError` extends `Error`, not `EngineError`. The error classifier
-(`error-classifier.ts`, line 25) checks `instanceof EngineError` first.
-`NonRetriableError` fails that check and falls through to rule 4 (unknown error
-shape, line 64-75), which defaults to `retriable: true`. This means a step that
-explicitly throws `new NonRetriableError('fatal')` will be **retried** -- the
-exact opposite of the author's intent.
-
-**Fix:** Either make `NonRetriableError` extend `EngineError` (with
-`code = 'NON_RETRIABLE'`, `retriable = false`, `category = 'step'` as the plan
-specifies at line 1646), or add explicit `instanceof NonRetriableError` handling
-in the classifier before the fallthrough.
+The error classifier now has explicit `instanceof NonRetriableError` handling
+(classification rule 4) that correctly returns `retriable: false` with code
+`'NON_RETRIABLE'` and category `'step'`. The `NonRetriableError` class still
+extends `Error` (not `EngineError`), but the classifier handles it correctly.
 
 ### 2. `ctx.step()` type signature accepts `StepDefinition` but engine receives `string`
 
@@ -656,15 +750,11 @@ Only `executionMode` is defined, and even that has no implementation for
 but should either be expanded with real settings (e.g., error behavior, global
 timeout, retention policy) or removed to avoid confusion.
 
-### 10. Sleep/waitUntil intermediate state is not type-safe
+### 10. ~~Sleep/waitUntil intermediate state is not type-safe~~ (RESOLVED)
 
-**File:** `errors.ts`, lines 4, 13
-
-Both `SleepRequestedError` and `WaitUntilRequestedError` carry
-`intermediateState?: unknown`. Since this is injected by the transpiler and not
-by user code, the `unknown` type is appropriate for the error class. However,
-the transpiler should ensure type consistency between the intermediate state it
-captures and the continuation function that consumes it.
+Sleep and waitUntil are now first-class graph nodes handled at compile time
+by the transpiler. The `SleepRequestedError` and `WaitUntilRequestedError`
+classes have been removed. There is no longer an intermediate state concern.
 
 ### 11. No `poll` trigger factory function
 
@@ -687,11 +777,8 @@ implementation uses a `StepDefinition` object. Any migration tooling or
 documentation referencing the plan's format will break. Since this is a PoC,
 the risk is low, but it should be noted for any future API stabilization effort.
 
-### 13. Test coverage gap: `NonRetriableError` classification
+### 13. ~~Test coverage gap: `NonRetriableError` classification~~ (RESOLVED)
 
-**File:** `__tests__/sdk.test.ts`, lines 136-144
-
-The test only verifies that `NonRetriableError` has the correct `name` and
-`message`. There is no integration test verifying that the error classifier
-actually treats it as non-retriable. Given issue #1 above, such a test would
-currently fail, exposing the bug.
+The error classifier now has explicit `instanceof NonRetriableError` handling,
+and the error classifier test file (`engine/errors/__tests__/error-classifier.test.ts`)
+covers this classification path.

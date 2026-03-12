@@ -721,27 +721,38 @@ Error handling is well-covered for the core paths:
 - No test for what happens when `sendChunk()` is called after the step
   has already returned (race condition).
 
-### 6. Integration vs Unit Test Balance
+### 6. ~~Integration vs Unit Test Balance~~ (IMPROVED)
 
-The current test suite is **heavily weighted toward integration tests**. The plan
-defines 5 areas for pure unit tests (SDK types, graph parser, source maps, error
-classification, broadcaster), but only the compilation unit tests exist in this
-directory. The others may exist in separate unit test files co-located with their
-source code.
+Unit tests now exist co-located with their source code in `__tests__/` directories:
 
-**Recommendation:** Verify that unit tests exist alongside their source files. If
-not, add them -- they are faster, more stable, and catch regressions earlier than
-integration tests.
+| Unit Test File | Module |
+|----------------|--------|
+| `sdk/__tests__/sdk.test.ts` | SDK types and factory functions |
+| `graph/__tests__/workflow-graph.test.ts` | Graph parser, traversal, cycle detection, error handlers |
+| `engine/__tests__/event-bus.test.ts` | Event bus with typed events and wildcards |
+| `engine/__tests__/broadcaster.test.ts` | SSE broadcaster |
+| `engine/__tests__/batch-executor.test.ts` | Batch executor fan-out and aggregation |
+| `engine/__tests__/workflow-trigger.test.ts` | Cross-workflow trigger service |
+| `engine/__tests__/event-handlers.test.ts` | Event handler routing (including error handlers) |
+| `engine/__tests__/step-queue-adaptive.test.ts` | Adaptive polling behavior |
+| `engine/errors/__tests__/error-classifier.test.ts` | Error classification and backoff |
+| `transpiler/__tests__/transpiler.test.ts` | Transpiler pipeline |
+| `transpiler/__tests__/zod-to-json-schema.test.ts` | Zod-to-JSON-Schema conversion |
+| `api/__tests__/workflow-api.test.ts` | Workflow REST API (requires DB) |
+| `api/__tests__/execution-api.test.ts` | Execution REST API (requires DB) |
+| `api/__tests__/validate-webhook-schema.test.ts` | Webhook schema validation |
+| `database/__tests__/entities.test.ts` | Entity metadata |
 
-### 7. Inconsistent Test Infrastructure
+### 7. ~~Inconsistent Test Infrastructure~~ (PARTIALLY RESOLVED)
 
-Two test files (`approval.test.ts` and `webhook.test.ts`) manually wire services
-and create Express apps, while the other 10 use the `TestEngine` abstraction. This
-creates maintenance burden: if a new service is added to the engine, it must be
-added in 3 places (TestEngine + approval + webhook).
+Service wiring is now centralized in `createEngine(dataSource)`, which reduces
+but does not eliminate the duplication. Test files that need an Express app
+(`approval.test.ts`, `webhook.test.ts`) still manually create it, but the
+underlying engine services are wired consistently through the factory.
 
-**Recommendation:** Extend `TestEngine` with an optional `app` property that
-creates the Express app, so all test files can use a single setup pattern.
+**Remaining recommendation:** Extend `TestEngine` with an optional `app`
+property that creates the Express app, so all test files can use a single
+setup pattern.
 
 ### 8. Module-Level Counter Anti-Pattern
 

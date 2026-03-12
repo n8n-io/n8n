@@ -27,44 +27,53 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const request = await ctx.step({ name: 'Parse Booking Request' }, async () => {
-			const { body } = ctx.triggerData;
-			return {
-				date: body.date ?? new Date().toISOString().split('T')[0],
-				time: body.time ?? '10:00',
-				name: body.name ?? 'Guest',
-				email: body.email ?? 'guest@example.com',
-				service: body.service ?? 'default',
-			};
-		});
+		const request = await ctx.step(
+			{ name: 'Parse Booking Request', icon: 'settings', color: '#6b7280' },
+			async () => {
+				const { body } = ctx.triggerData;
+				return {
+					date: body.date ?? new Date().toISOString().split('T')[0],
+					time: body.time ?? '10:00',
+					name: body.name ?? 'Guest',
+					email: body.email ?? 'guest@example.com',
+					service: body.service ?? 'default',
+				};
+			},
+		);
 
-		const availability = await ctx.step({ name: 'Check Availability' }, async () => {
-			const res = await fetch('https://dummyjson.com/posts/add', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ date: request.date, time: request.time }),
-			});
-			const data = (await res.json()) as { available: boolean; slots: string[] };
-			return data;
-		});
-
-		if (availability.available) {
-			const booking = await ctx.step({ name: 'Create Booking' }, async () => {
+		const availability = await ctx.step(
+			{ name: 'Check Availability', icon: 'clock', color: '#3b82f6' },
+			async () => {
 				const res = await fetch('https://dummyjson.com/posts/add', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						date: request.date,
-						time: request.time,
-						name: request.name,
-						email: request.email,
-						service: request.service,
-					}),
+					body: JSON.stringify({ date: request.date, time: request.time }),
 				});
-				return (await res.json()) as { bookingId: string; confirmed: boolean };
-			});
+				const data = (await res.json()) as { available: boolean; slots: string[] };
+				return data;
+			},
+		);
 
-			await ctx.step({ name: 'Send Confirmation' }, async () => {
+		if (availability.available) {
+			const booking = await ctx.step(
+				{ name: 'Create Booking', icon: 'globe', color: '#3b82f6' },
+				async () => {
+					const res = await fetch('https://dummyjson.com/posts/add', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							date: request.date,
+							time: request.time,
+							name: request.name,
+							email: request.email,
+							service: request.service,
+						}),
+					});
+					return (await res.json()) as { bookingId: string; confirmed: boolean };
+				},
+			);
+
+			await ctx.step({ name: 'Send Confirmation', icon: 'mail', color: '#22c55e' }, async () => {
 				await fetch('https://dummyjson.com/posts/add', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -83,7 +92,7 @@ export default defineWorkflow({
 				return { sent: true };
 			});
 		} else {
-			await ctx.step({ name: 'Reject Booking' }, async () => {
+			await ctx.step({ name: 'Reject Booking', icon: 'flag', color: '#ef4444' }, async () => {
 				await ctx.respondToWebhook({
 					statusCode: 409,
 					body: {

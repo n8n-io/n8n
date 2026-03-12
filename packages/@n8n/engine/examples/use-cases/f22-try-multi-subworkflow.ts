@@ -3,46 +3,38 @@
  *
  * Demonstrates try/catch wrapping a sub-workflow execution.
  * The original v4 fixture uses executeWorkflow with an inline
- * sub-workflow definition. In v3, ctx.triggerWorkflow() is not yet
- * supported, so we simulate the sub-workflow as sequential steps.
+ * sub-workflow definition. In v3, we use ctx.triggerWorkflow()
+ * with try/catch to handle sub-workflow failures gracefully.
  */
 import { defineWorkflow, webhook } from '@n8n/engine/sdk';
 
 export default defineWorkflow({
-	name: 'F22 - Try Multi Subworkflow (Not supported yet)',
+	name: 'F22 - Try Multi Subworkflow',
 	triggers: [webhook('/f22-try-multi-subworkflow', { method: 'POST' })],
 	async run(ctx) {
 		try {
-			// --- UNSUPPORTED: ctx.triggerWorkflow() ---
-			// The source workflow wraps executeWorkflow() in a try/catch.
-			// The v3 engine does not yet support ctx.triggerWorkflow().
-			// Simulating the sub-workflow inline as sequential steps.
-			//
-			// const result = await ctx.triggerWorkflow({
-			//   workflowId: 'sub-workflow',
-			//   input: {},
-			// });
-			//
-			// --- END UNSUPPORTED ---
-
-			const httpResult = await ctx.step({ name: 'HTTP Request' }, async () => {
-				const res = await fetch('https://dummyjson.com/products?limit=5');
-				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-				return (await res.json()) as Record<string, unknown>;
+			const result = await ctx.triggerWorkflow({
+				workflow: '01 - Hello World',
 			});
 
-			const transformed = await ctx.step({ name: 'Transform' }, async () => {
-				return { ...httpResult, transformed: true };
-			});
+			const transformed = await ctx.step(
+				{ name: 'Transform', icon: 'zap', color: '#8b5cf6' },
+				async () => {
+					return { result, transformed: true };
+				},
+			);
 
 			return transformed;
 		} catch (error) {
-			const handled = await ctx.step({ name: 'Error Handler' }, async () => {
-				return {
-					error: true,
-					message: error instanceof Error ? error.message : 'Unknown error',
-				};
-			});
+			const handled = await ctx.step(
+				{ name: 'Error Handler', icon: 'bug', color: '#ef4444' },
+				async () => {
+					return {
+						error: true,
+						message: error instanceof Error ? error.message : 'Unknown error',
+					};
+				},
+			);
 			return handled;
 		}
 	},

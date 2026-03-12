@@ -20,37 +20,56 @@ the database and reused on every execution of that workflow version.
 
 | File | Purpose |
 |------|---------|
-| `transpiler.service.ts` | Core transpilation logic (889 lines) |
-| `source-map.service.ts` | Stack trace remapping placeholder (13 lines) |
-| `index.ts` | Public barrel exports (4 lines) |
-| `__tests__/transpiler.test.ts` | Vitest test suite (541 lines, 9 describe blocks) |
+| `transpiler.service.ts` | Core transpilation logic: parsing, step/batch/sleep/triggerWorkflow extraction, typechecking, code generation |
+| `zod-to-json-schema.ts` | Converts Zod AST expressions to JSON Schema for webhook schema validation |
+| `source-map.service.ts` | Stack trace remapping placeholder |
+| `index.ts` | Public barrel exports |
+| `__tests__/transpiler.test.ts` | Vitest test suite |
 
 ## Architecture
 
 ### Pipeline: TS source to JS + source maps
 
-The transpiler implements a 7-step pipeline in `TranspilerService.compile()`
-(line 115):
+The transpiler implements a multi-step pipeline in `TranspilerService.compile()`:
 
-1. **Validate** (lines 119-132): Reject empty source or source missing
-   `defineWorkflow`.
-2. **Parse** (lines 134-144): Create an in-memory TypeScript project via
-   `ts-morph` and parse the source into an AST.
-3. **Find step calls** (lines 157-179): Walk the AST to locate all
-   `ctx.step()` invocations, extract step metadata (name, function body,
-   retry config, timeout, display properties, assigned variable).
-4. **Resolve dependencies** (lines 186-204): Build a variable-to-step-ID
-   mapping, then scan each step's function body for references to variables
-   assigned from other steps. Also detect `ctx.triggerData` destructuring.
-5. **Detect conditionals** (lines 203-204): Find `if/else` statements in
-   `run()` that contain `ctx.step()` calls, attach conditional metadata
+1. **Validate**: Reject empty source or source missing `defineWorkflow`.
+2. **Parse + Typecheck**: Create an in-memory TypeScript project via
+   `ts-morph`, inject SDK type declarations (including Zod types) for
+   in-process typechecking, parse the source, and collect diagnostics.
+   Type errors are returned as compilation errors before any further
+   processing.
+3. **Find step calls**: Walk the AST to locate all `ctx.step()` invocations,
+   extract step metadata (name, function body, retry config, timeout,
+   display properties, assigned variable, conditional/catch context).
+4. **Find batch calls**: Walk the AST to locate all `ctx.batch()` invocations,
+   extract batch metadata (name, items expression, per-item callback parameter,
+   onItemFailure strategy, display properties).
+5. **Find sleep calls**: Walk the AST to locate all `ctx.sleep()` and
+   `ctx.waitUntil()` invocations, extract sleep duration or waitUntil expression.
+6. **Find triggerWorkflow calls**: Walk the AST to locate all
+   `ctx.triggerWorkflow()` invocations, extract target workflow name and config.
+7. **Resolve dependencies**: Build a variable-to-step-ID mapping, then scan
+   each step's function body for references to variables assigned from other
+   steps. Also detect `ctx.triggerData` destructuring.
+8. **Detect conditionals**: Find `if/else` and `switch/case` statements in
+   `run()` that contain step calls, attach conditional metadata
    (`branch: 'then' | 'else'`, condition expression) to those steps.
-6. **Find helpers** (lines 207): Discover top-level functions and
-   `const`-assigned arrow functions, filter to only those referenced
-   (directly or transitively) by step bodies.
-7. **Build graph + generate code** (lines 210-218): Construct the
-   `WorkflowGraphData` DAG, generate raw JS, compile through esbuild
-   (TS-to-JS with source maps).
+9. **Detect try/catch**: Find `try/catch` blocks in `run()`, tag steps in
+   the try block with their `tryStepIds`, and tag steps in the catch block
+   with `catchParent` metadata. This generates `__error__` edges in the graph.
+10. **Find helpers**: Discover top-level functions and `const`-assigned arrow
+    functions, filter to only those referenced (directly or transitively) by
+    step bodies.
+11. **Extract triggers**: Parse `webhook()` calls from the workflow definition
+    object literal, including Zod schema extraction via `zodCallToJsonSchema()`.
+12. **Build graph**: Construct the `WorkflowGraphData` DAG with nodes for
+    steps, batch steps, sleep nodes, trigger-workflow nodes, and edges
+    including conditional and error edges. Steps are connected
+    **sequentially by default** (source order), with explicit data
+    dependencies overriding the default ordering.
+13. **Generate code**: Emit helper functions at module level, then each step
+    as an `exports.step_<id>` assignment. Compile through esbuild
+    (TS-to-JS with source maps).
 
 ### Step function extraction and isolation
 
@@ -78,14 +97,20 @@ of each function body as `const <varName> = ctx.input['<sourceStepId>']`
 
 The graph is derived entirely from static analysis:
 
-- **Nodes**: One node per `ctx.step()` call, plus an implicit `trigger` node
-  (lines 719-725).
-- **Edges**: If a step body references a variable assigned from another
-  step's output, an edge is created from that predecessor to this step
-  (lines 764-783). Steps with no dependencies connect from the trigger node.
-- **Conditions**: Steps inside `if/else` blocks get `condition` annotations
-  on their edges. The condition expression is rewritten to replace the
-  source variable name with `output` (lines 788-806).
+- **Nodes**: One node per `ctx.step()` call (type `'step'`), one per
+  `ctx.batch()` call (type `'batch'`), one per `ctx.sleep()`/`ctx.waitUntil()`
+  call (type `'sleep'`), one per `ctx.triggerWorkflow()` call (type
+  `'trigger-workflow'`), plus an implicit `trigger` node.
+- **Edges (sequential-by-default)**: Steps are connected in source order --
+  each orchestrator call (step, batch, sleep, triggerWorkflow) connects to
+  the previous one. Explicit data dependencies override the default ordering.
+  Steps with no predecessors connect from the trigger node.
+- **Conditions**: Steps inside `if/else` or `switch/case` blocks get
+  `condition` annotations on their edges. The condition expression is
+  rewritten to replace the source variable name with `output`.
+- **Error edges**: Steps inside `try` blocks generate `__error__` edges
+  connecting to their catch handler steps. These edges are excluded from
+  normal successor resolution and only followed when a step fails.
 
 ## TranspilerService
 
@@ -177,14 +202,15 @@ If esbuild fails, the raw code is returned without a source map (line
 
 ### Output format
 
-`TranspilerResult` (lines 20-26):
+`TranspilerResult`:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `code` | `string` | Executable CJS JavaScript with `exports.step_<id>` functions |
 | `graph` | `WorkflowGraphData` | DAG with nodes and edges (stored in `workflow.graph` JSONB) |
+| `triggers` | `TriggerConfig[]` | Extracted trigger configurations including webhook schemas (Zod -> JSON Schema) |
 | `sourceMap` | `string \| null` | External source map JSON string |
-| `errors` | `CompilationError[]` | Errors that prevent compilation |
+| `errors` | `CompilationError[]` | Errors that prevent compilation (including type errors) |
 | `warnings` | `CompilationError[]` | Non-blocking warnings |
 
 ### How step boundaries are identified
@@ -252,46 +278,55 @@ flowchart TD
         V2["Check contains defineWorkflow"]
     end
 
-    subgraph "Phase 2: AST Parsing"
+    subgraph "Phase 2: AST Parsing + Typechecking"
         P1["Create ts-morph Project<br/>(in-memory FS)"]
+        P1b["Inject SDK + Zod type declarations"]
         P2["Parse into SourceFile AST"]
+        P2b["Collect type diagnostics<br/>(errors and warnings)"]
         P3["Find run() method in<br/>defineWorkflow object"]
     end
 
-    subgraph "Phase 3: Step Extraction"
-        S1["Find all ctx.step() CallExpressions"]
-        S2["Extract: name, body, retry,<br/>timeout, display props"]
-        S3["Determine assigned variable<br/>(simple or Promise.all destructuring)"]
+    subgraph "Phase 3: Call Extraction"
+        S1["Find all ctx.step() calls"]
+        S1b["Find all ctx.batch() calls"]
+        S2["Find all ctx.sleep() / ctx.waitUntil() calls"]
+        S2b["Find all ctx.triggerWorkflow() calls"]
+        S3["Extract: name, body, retry,<br/>timeout, display props, batch config"]
         S4["Generate step ID: sha256(name)"]
     end
 
-    subgraph "Phase 4: Dependency Analysis"
+    subgraph "Phase 4: Dependency & Control Flow Analysis"
         D1["Build variableToStepId map"]
-        D2["Regex-scan each step body<br/>for predecessor variable refs"]
+        D2["Scan each step body<br/>for predecessor variable refs"]
         D3["Find ctx.triggerData<br/>destructuring patterns"]
-        D4["Detect if/else conditionals<br/>containing step calls"]
+        D4["Detect if/else + switch/case<br/>conditionals containing step calls"]
+        D5["Detect try/catch blocks<br/>containing step calls"]
     end
 
-    subgraph "Phase 5: Helper Discovery"
+    subgraph "Phase 5: Helper & Trigger Discovery"
         H1["Collect top-level functions<br/>and const arrows"]
         H2["Filter to helpers referenced<br/>by step bodies (transitive)"]
+        T1["Extract triggers from<br/>workflow definition object"]
+        T2["Convert Zod schemas to<br/>JSON Schema via zodCallToJsonSchema"]
     end
 
     subgraph "Phase 6: Output Generation"
-        G1["Build WorkflowGraphData<br/>(nodes + edges + conditions)"]
+        G1["Build WorkflowGraphData<br/>(nodes + edges + conditions +<br/>error edges, sequential ordering)"]
         C1["Generate raw JS:<br/>helpers + exported step fns"]
-        C2["esbuild transformSync<br/>(TS→JS, CJS, node18)"]
+        C2["esbuild transformSync<br/>(TS to JS, CJS, node18)"]
         C3["External source map"]
     end
 
-    OUTPUT["TranspilerResult<br/>{code, graph, sourceMap, errors, warnings}"]
+    OUTPUT["TranspilerResult<br/>{code, graph, triggers, sourceMap, errors, warnings}"]
 
-    INPUT --> V1 --> V2 --> P1 --> P2 --> P3
-    P3 --> S1 --> S2 --> S3 --> S4
-    S4 --> D1 --> D2 --> D3 --> D4
-    D4 --> H1 --> H2
+    INPUT --> V1 --> V2 --> P1 --> P1b --> P2 --> P2b --> P3
+    P3 --> S1 --> S1b --> S2 --> S2b --> S3 --> S4
+    S4 --> D1 --> D2 --> D3 --> D4 --> D5
+    D5 --> H1 --> H2
+    D5 --> T1 --> T2
     H2 --> G1
     H2 --> C1 --> C2 --> C3
+    T2 --> OUTPUT
     G1 --> OUTPUT
     C2 --> OUTPUT
     C3 --> OUTPUT
@@ -299,8 +334,8 @@ flowchart TD
 
 ### Step metadata extraction
 
-For each `ctx.step()` call, the transpiler produces a `StepDefinition`
-(internal type, lines 39-71) containing:
+For each `ctx.step()` or `ctx.batch()` call, the transpiler produces an
+internal `StepDefinition` containing:
 
 - `name`, `id` (sha256 of name)
 - `functionBodyText` (raw text of the function body)
@@ -308,20 +343,45 @@ For each `ctx.step()` call, the transpiler produces a `StepDefinition`
 - `dependencies` (Map: variable name to source step ID)
 - `triggerDataVars` (Set of referenced trigger data variable names)
 - `assignedVariable` (the variable this step's output is assigned to)
-- `conditionalParent` (if inside an if/else: condition text, branch, source)
-- `line`, `column` (source position for error reporting)
+- `conditionalParent` (if inside an if/else/switch: condition text, branch, source)
+- `catchParent` (if inside a catch block: tryStepIds, catchVarName)
+- `isBatch` (whether this is a `ctx.batch()` call)
+- `batchConfig` (onItemFailure strategy)
+- `batchItemParam` (the per-item callback parameter name)
+- `batchItemsExpr` (the items expression text)
+- `promiseAllGroupId` (if inside a `Promise.all`, the parallel group index)
+- `line`, `column`, `bodyStartLine` (source positions for error reporting)
 - `callNode` (the AST node reference)
+
+Additionally, `SleepDefinition` and `TriggerWorkflowDefinition` internal types
+capture `ctx.sleep()`/`ctx.waitUntil()` and `ctx.triggerWorkflow()` calls
+respectively, with their own metadata (sleepMs, waitUntilExpr, workflow name,
+dependencies, assigned variables).
+
+All call types are unified into an `OrchestratorCall` union for sequential
+ordering during graph construction.
 
 ### Graph structure derivation
 
-The graph (`WorkflowGraphData`) is built in `buildGraph()` (lines 714-786):
+The graph (`WorkflowGraphData`) is built in `buildGraph()`:
 
 - **Trigger node**: Always added with `id: 'trigger'`, `type: 'trigger'`
-- **Step nodes**: One per step, with `id: sha256(name)`,
-  `stepFunctionRef: 'step_<id>'`, config from step definition
-- **Edges**: Steps with no dependencies connect from `trigger`. Steps with
-  dependencies get one edge per dependency (from source step to this step).
-  Conditional steps have a `condition` property on their edges.
+- **Step nodes**: One per `ctx.step()` call, with `id: sha256(name)`,
+  `type: 'step'`, `stepFunctionRef: 'step_<id>'`, config from step definition
+- **Batch nodes**: One per `ctx.batch()` call, with `type: 'batch'` and
+  `onItemFailure` config
+- **Sleep nodes**: One per `ctx.sleep()`/`ctx.waitUntil()` call, with
+  `type: 'sleep'` and `sleepMs`/`waitUntilExpr` config
+- **Trigger-workflow nodes**: One per `ctx.triggerWorkflow()` call, with
+  `type: 'trigger-workflow'` and `workflow` config
+- **Sequential edges**: Steps are connected in source order by default
+  (each orchestrator call connects to the previous one)
+- **Data dependency edges**: Explicit variable references create edges that
+  override sequential ordering
+- **Conditional edges**: Steps inside `if/else` or `switch/case` blocks
+  have `condition` properties on their edges
+- **Error edges**: Steps inside `try` blocks generate edges with
+  `condition: '__error__'` to their catch handler steps
 
 ## Comparison with Plan
 
@@ -371,10 +431,12 @@ automatically at runtime.
 **Plan** (lines 1771-1775): Five categories -- syntax errors, type errors,
 structural errors, missing dependencies, variable resolution errors.
 
-**Implementation**: Only structural errors are checked (empty source,
-missing `defineWorkflow`, missing `run()`, no steps, duplicate names). No
-syntax error reporting, no type checking, no import resolution, no variable
-resolution validation.
+**Implementation**: Structural errors are checked (empty source, missing
+`defineWorkflow`, missing `run()`, no steps, duplicate names). Type checking
+is now implemented via ts-morph with injected SDK type declarations --
+type errors from the TypeScript compiler are collected and returned as
+compilation errors before code generation proceeds. Import resolution and
+variable resolution validation are not yet implemented.
 
 ### Helper function purity enforcement
 
@@ -418,19 +480,32 @@ A `const API_URL = 'https://...'` at file scope would be silently dropped.
 | Feature | Plan reference | Status |
 |---------|---------------|--------|
 | Import resolution and error reporting | Line 1774 | Not implemented |
-| Type checking | Line 1772 | Not implemented |
+| Type checking | Line 1772 | **Implemented** via ts-morph with injected SDK type declarations |
 | Syntax error reporting | Line 1771 | Delegated to esbuild silently |
 | Variable resolution errors | Line 1775 | Not implemented |
 | Constant inlining | Line 3503 | Not implemented |
-| Sleep/wait continuation splitting | Line 1981 | Not implemented (by design) |
+| Sleep/wait continuation splitting | Line 1981 | **Implemented differently**: sleep/waitUntil are now first-class graph nodes, not continuation splitting |
 | Dynamic import warnings | Line 4096 | Not implemented |
 | Top-level await rejection | Line 4097 | Not implemented |
 | Helper purity warnings | Line 3593 | Not implemented |
 | Class support | Line 4094 | Not tested |
-| Fan-out loop detection | Line 3502 | Not implemented |
+| Fan-out loop detection | Line 3502 | **Implemented** as `ctx.batch()` with fan-out child steps |
 | Derived variable tracking | Line 3498 | Not implemented |
 | Variable reassignment tracking | Line 3499 | Not implemented |
 | Format versioning | Line 4056 | Not implemented |
+
+### Features implemented beyond the plan
+
+| Feature | Description |
+|---------|-------------|
+| `ctx.batch()` support | Batch step detection, graph node generation, child step fan-out |
+| `ctx.triggerWorkflow()` support | Cross-workflow trigger detection, graph node generation |
+| Switch/case support | Switch statement detection with case-based conditional edges |
+| Try/catch support | Try/catch block detection, `__error__` edge generation for catch handlers |
+| Zod schema extraction | `zodCallToJsonSchema()` converts Zod expressions to JSON Schema for webhook validation |
+| Trigger extraction from AST | Parses `webhook()` calls from the workflow definition's `triggers` array |
+| In-process typechecking | Injects SDK + Zod type declarations and reports diagnostics |
+| Sequential-by-default ordering | Steps are connected in source order, not just by data dependencies |
 
 ## Issues and Improvements
 

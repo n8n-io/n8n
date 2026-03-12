@@ -3,7 +3,14 @@ import type { DataSource } from '@n8n/typeorm';
 import type { EngineEventBus } from './event-bus.service';
 import type { StepPlannerService } from './step-planner.service';
 import type { CompletionService } from './completion.service';
-import type { StepCompletedEvent, StepFailedEvent, StepCancelledEvent } from './event-bus.types';
+import type { BatchExecutorService } from './batch-executor.service';
+import type {
+	StepCompletedEvent,
+	StepFailedEvent,
+	StepCancelledEvent,
+	ExecutionCompletedEvent,
+	ExecutionFailedEvent,
+} from './event-bus.types';
 import { WorkflowGraph } from '../graph/workflow-graph';
 import type { WorkflowGraphData } from '../graph/graph.types';
 import { StepStatus, ExecutionStatus } from '../database/enums';
@@ -144,14 +151,35 @@ export function registerEventHandlers(
 	dataSource: DataSource,
 	stepPlanner: StepPlannerService,
 	completionService: CompletionService,
+	batchExecutor?: BatchExecutorService,
 ): void {
 	// step:completed handler
 	eventBus.on<StepCompletedEvent>('step:completed', async (event) => {
 		// If this is a child step (has parentStepExecutionId):
-		//   -> mark parent as completed with child's output
-		//   -> emit step:completed for parent (re-triggers this handler)
-		//   -> return
 		if (event.parentStepExecutionId) {
+			// Check if this is a batch child step by looking up step metadata
+			if (batchExecutor) {
+				const childStep = await dataSource
+					.getRepository(WorkflowStepExecution)
+					.createQueryBuilder('wse')
+					.where('wse.executionId = :executionId AND wse.stepId = :stepId', {
+						executionId: event.executionId,
+						stepId: event.stepId,
+					})
+					.getOne();
+
+				if (childStep?.metadata?.batchIndex !== undefined) {
+					// Batch child: delegate to batch executor for aggregation
+					await batchExecutor.handleChildCompletion(
+						event.parentStepExecutionId,
+						childStep.metadata.batchIndex as number,
+						{ status: 'fulfilled', value: event.output },
+					);
+					return;
+				}
+			}
+
+			// Regular (non-batch) child step: resolve parent directly
 			await resolveParentStep(dataSource, eventBus, event.parentStepExecutionId, event.output);
 			return;
 		}
@@ -185,9 +213,72 @@ export function registerEventHandlers(
 
 	// step:failed handler
 	eventBus.on<StepFailedEvent>('step:failed', async (event) => {
-		// If child step -> fail parent step
+		// If child step -> check if batch child or regular child
 		if (event.parentStepExecutionId) {
+			if (batchExecutor) {
+				const childStep = await dataSource
+					.getRepository(WorkflowStepExecution)
+					.createQueryBuilder('wse')
+					.where('wse.executionId = :executionId AND wse.stepId = :stepId', {
+						executionId: event.executionId,
+						stepId: event.stepId,
+					})
+					.getOne();
+
+				if (childStep?.metadata?.batchIndex !== undefined) {
+					// Batch child: delegate to batch executor for aggregation
+					await batchExecutor.handleChildCompletion(
+						event.parentStepExecutionId,
+						childStep.metadata.batchIndex as number,
+						{
+							status: 'rejected',
+							reason: {
+								message: event.error?.message ?? 'Batch item failed',
+								stack: event.error?.stack,
+							},
+						},
+					);
+					return;
+				}
+			}
+
+			// Regular (non-batch) child step: fail parent directly
 			await failParentStep(dataSource, eventBus, event.parentStepExecutionId);
+			return;
+		}
+
+		// Check for error handlers (catch blocks) before failing the execution
+		const { workflow } = await loadWorkflowForExecution(dataSource, event.executionId);
+		const graph = new WorkflowGraph(workflow.graph as WorkflowGraphData);
+		const errorHandlers = graph.getErrorHandlers(event.stepId);
+
+		if (errorHandlers.length > 0) {
+			// Route to catch handler steps instead of failing the execution.
+			// Pass the error as input so the catch handler can access it via ctx.error.
+			const errorPayload = event.error ?? { message: 'Unknown error' };
+
+			for (const handler of errorHandlers) {
+				// Gather normal input from data predecessors, then add the error
+				const input = await stepPlanner.gatherStepInput(event.executionId, handler.id, graph);
+				(input as Record<string, unknown>).__error__ = errorPayload;
+
+				await dataSource
+					.getRepository(WorkflowStepExecution)
+					.createQueryBuilder()
+					.insert()
+					.into(WorkflowStepExecution)
+					.values({
+						executionId: event.executionId,
+						stepId: handler.id,
+						stepType: handler.type,
+						status: StepStatus.Queued,
+						input,
+					})
+					.orIgnore()
+					.execute();
+
+				stepPlanner.onStepQueued?.();
+			}
 			return;
 		}
 
@@ -242,4 +333,107 @@ export function registerEventHandlers(
 		const graph = new WorkflowGraph(workflow.graph as WorkflowGraphData);
 		await completionService.checkExecutionComplete(event.executionId, graph);
 	});
+
+	// execution:completed handler — resolve parent steps waiting for child executions
+	eventBus.on<ExecutionCompletedEvent>('execution:completed', async (event) => {
+		await resolveWaitingParentSteps(dataSource, eventBus, event.executionId, event.result);
+	});
+
+	// execution:failed handler — fail parent steps waiting for child executions
+	eventBus.on<ExecutionFailedEvent>('execution:failed', async (event) => {
+		await failWaitingParentSteps(dataSource, eventBus, event.executionId);
+	});
+}
+
+/**
+ * When a child execution completes, find any parent step (in any execution)
+ * that is waiting for this child execution (via metadata.childExecutionId),
+ * and resolve it with the child's result.
+ */
+async function resolveWaitingParentSteps(
+	dataSource: DataSource,
+	eventBus: EngineEventBus,
+	childExecutionId: string,
+	result: unknown,
+): Promise<void> {
+	// Find all steps waiting for this child execution
+	const waitingSteps = await dataSource
+		.getRepository(WorkflowStepExecution)
+		.createQueryBuilder('wse')
+		.where("wse.status = :status AND wse.metadata->>'childExecutionId' = :childId", {
+			status: StepStatus.Waiting,
+			childId: childExecutionId,
+		})
+		.getMany();
+
+	for (const parentStep of waitingSteps) {
+		await dataSource
+			.getRepository(WorkflowStepExecution)
+			.createQueryBuilder()
+			.update(WorkflowStepExecution)
+			.set({
+				status: StepStatus.Completed,
+				output: result,
+				completedAt: new Date(),
+			} as Record<string, unknown>)
+			.where('id = :id', { id: parentStep.id })
+			.execute();
+
+		eventBus.emit({
+			type: 'step:completed',
+			executionId: parentStep.executionId,
+			stepId: parentStep.stepId,
+			output: result,
+			durationMs: 0,
+			parentStepExecutionId: parentStep.parentStepExecutionId ?? undefined,
+		});
+	}
+}
+
+/**
+ * When a child execution fails, find any parent step (in any execution)
+ * that is waiting for this child execution, and mark it as failed.
+ */
+async function failWaitingParentSteps(
+	dataSource: DataSource,
+	eventBus: EngineEventBus,
+	childExecutionId: string,
+): Promise<void> {
+	const waitingSteps = await dataSource
+		.getRepository(WorkflowStepExecution)
+		.createQueryBuilder('wse')
+		.where("wse.status = :status AND wse.metadata->>'childExecutionId' = :childId", {
+			status: StepStatus.Waiting,
+			childId: childExecutionId,
+		})
+		.getMany();
+
+	const errorData = {
+		message: 'Child workflow execution failed',
+		code: 'CHILD_WORKFLOW_FAILED',
+		category: 'step' as const,
+		retriable: false,
+	};
+
+	for (const parentStep of waitingSteps) {
+		await dataSource
+			.getRepository(WorkflowStepExecution)
+			.createQueryBuilder()
+			.update(WorkflowStepExecution)
+			.set({
+				status: StepStatus.Failed,
+				error: errorData,
+				completedAt: new Date(),
+			})
+			.where('id = :id', { id: parentStep.id })
+			.execute();
+
+		eventBus.emit({
+			type: 'step:failed',
+			executionId: parentStep.executionId,
+			stepId: parentStep.stepId,
+			error: errorData,
+			parentStepExecutionId: parentStep.parentStepExecutionId ?? undefined,
+		});
+	}
 }

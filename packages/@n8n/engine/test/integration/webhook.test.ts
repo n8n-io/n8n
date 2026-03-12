@@ -73,7 +73,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Webhook', () => {
 		registerEventHandlers(eventBus, dataSource, stepPlanner, completionService);
 
 		// Start queue poller for step execution
-		queue = new StepQueueService(dataSource, stepProcessor, 20, 10);
+		queue = new StepQueueService(dataSource, stepProcessor, 20);
 		queue.start();
 
 		app = createApp({

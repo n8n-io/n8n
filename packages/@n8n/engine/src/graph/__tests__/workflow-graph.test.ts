@@ -78,6 +78,48 @@ function createConditionalGraph(): WorkflowGraphData {
 	};
 }
 
+function createCyclicGraph(): WorkflowGraphData {
+	return {
+		nodes: [
+			{
+				id: 'trigger',
+				name: 'Trigger',
+				type: 'trigger',
+				stepFunctionRef: 'step_trigger',
+				config: {},
+			},
+			{ id: 'a', name: 'Step A', type: 'step', stepFunctionRef: 'step_a', config: {} },
+			{ id: 'b', name: 'Step B', type: 'step', stepFunctionRef: 'step_b', config: {} },
+			{ id: 'c', name: 'Step C', type: 'step', stepFunctionRef: 'step_c', config: {} },
+		],
+		edges: [
+			{ from: 'trigger', to: 'a' },
+			{ from: 'a', to: 'b' },
+			{ from: 'b', to: 'c' },
+			{ from: 'c', to: 'a' }, // creates cycle: a -> b -> c -> a
+		],
+	};
+}
+
+function createSelfLoopGraph(): WorkflowGraphData {
+	return {
+		nodes: [
+			{
+				id: 'trigger',
+				name: 'Trigger',
+				type: 'trigger',
+				stepFunctionRef: 'step_trigger',
+				config: {},
+			},
+			{ id: 'loop', name: 'Looper', type: 'step', stepFunctionRef: 'step_loop', config: {} },
+		],
+		edges: [
+			{ from: 'trigger', to: 'loop' },
+			{ from: 'loop', to: 'loop' }, // self-loop
+		],
+	};
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -280,31 +322,31 @@ describe('WorkflowGraph', () => {
 		});
 	});
 
-	describe('getFanOutChildStepId', () => {
+	describe('getBatchChildStepId', () => {
 		it('should produce a deterministic ID', () => {
 			const graph = new WorkflowGraph(createLinearGraph());
-			const id1 = graph.getFanOutChildStepId('step1', 0);
-			const id2 = graph.getFanOutChildStepId('step1', 0);
+			const id1 = graph.getBatchChildStepId('step1', 0);
+			const id2 = graph.getBatchChildStepId('step1', 0);
 			expect(id1).toBe(id2);
 		});
 
 		it('should produce different IDs for different item indices', () => {
 			const graph = new WorkflowGraph(createLinearGraph());
-			const id0 = graph.getFanOutChildStepId('step1', 0);
-			const id1 = graph.getFanOutChildStepId('step1', 1);
+			const id0 = graph.getBatchChildStepId('step1', 0);
+			const id1 = graph.getBatchChildStepId('step1', 1);
 			expect(id0).not.toBe(id1);
 		});
 
 		it('should return a 12-character hex string', () => {
 			const graph = new WorkflowGraph(createLinearGraph());
-			const id = graph.getFanOutChildStepId('step1', 3);
+			const id = graph.getBatchChildStepId('step1', 3);
 			expect(id).toMatch(/^[0-9a-f]{12}$/);
 		});
 
 		it('should produce different IDs for different parent steps', () => {
 			const graph = new WorkflowGraph(createLinearGraph());
-			const idA = graph.getFanOutChildStepId('step1', 0);
-			const idB = graph.getFanOutChildStepId('step2', 0);
+			const idA = graph.getBatchChildStepId('step1', 0);
+			const idB = graph.getBatchChildStepId('step2', 0);
 			expect(idA).not.toBe(idB);
 		});
 	});
@@ -453,6 +495,51 @@ describe('WorkflowGraph', () => {
 			const json = graph.toJSON();
 			expect(json.nodes).toHaveLength(4);
 			expect(json.edges).toHaveLength(4);
+		});
+	});
+
+	describe('validate (cycle detection)', () => {
+		it('should accept a linear acyclic graph', () => {
+			expect(() => new WorkflowGraph(createLinearGraph())).not.toThrow();
+		});
+
+		it('should accept a parallel (diamond) acyclic graph', () => {
+			expect(() => new WorkflowGraph(createParallelGraph())).not.toThrow();
+		});
+
+		it('should accept a conditional acyclic graph', () => {
+			expect(() => new WorkflowGraph(createConditionalGraph())).not.toThrow();
+		});
+
+		it('should throw for a cyclic graph with a descriptive error', () => {
+			expect(() => new WorkflowGraph(createCyclicGraph())).toThrow(
+				/Workflow graph contains a cycle/,
+			);
+
+			try {
+				new WorkflowGraph(createCyclicGraph());
+			} catch (error) {
+				const message = (error as Error).message;
+				// The cycle is a -> b -> c -> a, so all three should appear
+				expect(message).toContain('Step A (a)');
+				expect(message).toContain('Step B (b)');
+				expect(message).toContain('Step C (c)');
+				// The message should show the cycle closes back to the start
+				expect(message).toMatch(/-> Step A \(a\)$/);
+			}
+		});
+
+		it('should throw for a self-loop', () => {
+			expect(() => new WorkflowGraph(createSelfLoopGraph())).toThrow(
+				/Workflow graph contains a cycle/,
+			);
+
+			try {
+				new WorkflowGraph(createSelfLoopGraph());
+			} catch (error) {
+				const message = (error as Error).message;
+				expect(message).toContain('Looper (loop)');
+			}
 		});
 	});
 });

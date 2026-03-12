@@ -123,7 +123,12 @@ export function createExecutionRouter(deps: AppDependencies): Router {
 				status: 'running',
 			});
 		} catch (error) {
-			res.status(500).json({ error: (error as Error).message });
+			const message = (error as Error).message;
+			if (message.includes('not found')) {
+				res.status(404).json({ error: message });
+			} else {
+				res.status(500).json({ error: message });
+			}
 		}
 	});
 

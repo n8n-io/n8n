@@ -321,6 +321,10 @@ async function handleSave() {
 			originalCode.value = workflowStore.currentWorkflow.code;
 		}
 		compilationErrors.value = [];
+		// Regenerate webhook test data from the updated schema
+		if (leftTab.value === 'webhook') {
+			handleGenerateTestData();
+		}
 	} catch {
 		if (workflowStore.compilationErrors.length) {
 			compilationErrors.value = workflowStore.compilationErrors;
@@ -463,10 +467,12 @@ async function handleSendWebhookTest(trigger: { path?: string; method?: string }
 
 		// Try webhook endpoint first; if 404 (not activated), use execution API
 		const webhookUrl = `/webhook/${trigger.path.replace(/^\//, '')}${qs ? '?' + qs : ''}`;
+		const method = (trigger.method ?? 'POST').toUpperCase();
+		const canHaveBody = method !== 'GET' && method !== 'HEAD';
 		let res = await fetch(webhookUrl, {
-			method: trigger.method ?? 'POST',
-			headers: reqHeaders,
-			body: JSON.stringify(parsedBody),
+			method,
+			headers: canHaveBody ? reqHeaders : undefined,
+			body: canHaveBody ? JSON.stringify(parsedBody) : undefined,
 		});
 
 		if (res.status === 404) {
@@ -669,6 +675,54 @@ function statusIcon(status: string): string {
 const stepDetailHeight = ref(400);
 const showStepInput = ref(false);
 const showStepOutput = ref(false);
+const showBatchResults = ref(true);
+
+// ------------------------------------------------------------------
+// Batch step helpers
+// ------------------------------------------------------------------
+interface BatchItemResult {
+	status: 'fulfilled' | 'rejected';
+	value?: unknown;
+	reason?: { message: string; stack?: string };
+}
+
+const isBatchStep = computed(() => {
+	if (!selectedStep.value) return false;
+	return selectedStep.value.stepType === 'batch';
+});
+
+const batchChildSteps = computed(() => {
+	if (!selectedStep.value || !isBatchStep.value) return [];
+	return executionStore.steps
+		.filter((s) => s.parentStepExecutionId === selectedStep.value!.id)
+		.sort((a, b) => {
+			// Sort by batch index from input metadata
+			const aIdx = (a.input as { index?: number } | null)?.index ?? 0;
+			const bIdx = (b.input as { index?: number } | null)?.index ?? 0;
+			return aIdx - bIdx;
+		});
+});
+
+const batchResults = computed((): BatchItemResult[] => {
+	if (!selectedStep.value || !isBatchStep.value) return [];
+	const output = selectedStep.value.output;
+	if (Array.isArray(output)) {
+		return output as BatchItemResult[];
+	}
+	return [];
+});
+
+const batchSucceededCount = computed(() => {
+	return batchResults.value.filter((r) => r.status === 'fulfilled').length;
+});
+
+const batchFailedCount = computed(() => {
+	return batchResults.value.filter((r) => r.status === 'rejected').length;
+});
+
+const batchTotalCount = computed(() => {
+	return batchResults.value.length || batchChildSteps.value.length;
+});
 
 function startResize(e: MouseEvent) {
 	e.preventDefault();
@@ -706,8 +760,87 @@ function handleFormat() {
  * Find the range of a ctx.step() call in the source code by step name.
  * Returns { from, to } character offsets or null.
  */
-function findStepRange(stepName: string): { from: number; to: number } | null {
+function findStepRange(stepName: string, nodeType?: string): { from: number; to: number } | null {
 	const src = code.value;
+
+	// For webhook triggers, find the webhook() call
+	if (
+		nodeType === 'trigger' ||
+		stepName.startsWith('Webhook:') ||
+		stepName.startsWith('POST ') ||
+		stepName.startsWith('GET ')
+	) {
+		const webhookIdx = src.indexOf('webhook(');
+		if (webhookIdx >= 0) {
+			let depth = 0;
+			let to = webhookIdx;
+			for (let i = webhookIdx; i < src.length; i++) {
+				if (src[i] === '(') depth++;
+				if (src[i] === ')') {
+					depth--;
+					if (depth === 0) {
+						to = src[i + 1] === ',' || src[i + 1] === ']' ? i + 1 : i + 1;
+						break;
+					}
+				}
+			}
+			return { from: webhookIdx, to };
+		}
+		return null;
+	}
+
+	// For sleep nodes, find ctx.sleep( call
+	if (nodeType === 'sleep' || stepName.startsWith('Sleep') || stepName.startsWith('Wait')) {
+		const sleepIdx = src.indexOf('ctx.sleep(');
+		const waitIdx = src.indexOf('ctx.waitUntil(');
+		const idx = sleepIdx >= 0 ? sleepIdx : waitIdx;
+		if (idx >= 0) {
+			const awaitBefore = src.substring(Math.max(0, idx - 10), idx);
+			const from = awaitBefore.includes('await')
+				? idx - (awaitBefore.length - awaitBefore.lastIndexOf('await'))
+				: idx;
+			let depth = 0;
+			let to = idx;
+			for (let i = idx; i < src.length; i++) {
+				if (src[i] === '(') depth++;
+				if (src[i] === ')') {
+					depth--;
+					if (depth === 0) {
+						to = src[i + 1] === ';' ? i + 2 : i + 1;
+						break;
+					}
+				}
+			}
+			return { from, to };
+		}
+		return null;
+	}
+
+	// For trigger-workflow nodes, find ctx.triggerWorkflow( call
+	if (nodeType === 'trigger-workflow') {
+		const twIdx = src.indexOf('ctx.triggerWorkflow(');
+		if (twIdx >= 0) {
+			const awaitBefore = src.substring(Math.max(0, twIdx - 10), twIdx);
+			const from = awaitBefore.includes('await')
+				? twIdx - (awaitBefore.length - awaitBefore.lastIndexOf('await'))
+				: twIdx;
+			let depth = 0;
+			let to = twIdx;
+			for (let i = twIdx; i < src.length; i++) {
+				if (src[i] === '(') depth++;
+				if (src[i] === ')') {
+					depth--;
+					if (depth === 0) {
+						to = src[i + 1] === ';' ? i + 2 : i + 1;
+						break;
+					}
+				}
+			}
+			return { from, to };
+		}
+		return null;
+	}
+
 	const patterns = [`name: '${stepName}'`, `name: "${stepName}"`];
 	let nameIdx = -1;
 	for (const p of patterns) {
@@ -719,15 +852,26 @@ function findStepRange(stepName: string): { from: number; to: number } | null {
 	}
 	if (nameIdx < 0) return null;
 
-	// Walk backward to find `ctx.step(` or `await ctx.step(`
+	// Walk backward to find ctx.step(, ctx.batch(, ctx.triggerWorkflow(, or await variants
 	const before = src.substring(0, nameIdx);
-	const stepCallIdx = before.lastIndexOf('ctx.step(');
-	const awaitIdx = before.lastIndexOf('await ctx.step(');
+	const callPatterns = ['ctx.step(', 'ctx.batch(', 'ctx.triggerWorkflow('];
+	let bestCallIdx = -1;
+	for (const cp of callPatterns) {
+		const idx = before.lastIndexOf(cp);
+		if (idx >= 0 && idx > bestCallIdx) bestCallIdx = idx;
+	}
+	// Check for await prefix
+	const awaitPatterns = ['await ctx.step(', 'await ctx.batch(', 'await ctx.triggerWorkflow('];
+	let bestAwaitIdx = -1;
+	for (const ap of awaitPatterns) {
+		const idx = before.lastIndexOf(ap);
+		if (idx >= 0 && idx > bestAwaitIdx) bestAwaitIdx = idx;
+	}
 	const from =
-		awaitIdx >= 0 && awaitIdx > stepCallIdx - 10
-			? awaitIdx
-			: stepCallIdx >= 0
-				? stepCallIdx
+		bestAwaitIdx >= 0 && bestAwaitIdx > bestCallIdx - 10
+			? bestAwaitIdx
+			: bestCallIdx >= 0
+				? bestCallIdx
 				: nameIdx;
 
 	// Walk forward to find the matching closing `);` by counting braces/parens
@@ -748,8 +892,8 @@ function findStepRange(stepName: string): { from: number; to: number } | null {
 	return { from, to };
 }
 
-function navigateToStep(stepName: string) {
-	const range = findStepRange(stepName);
+function navigateToStep(stepName: string, nodeType?: string) {
+	const range = findStepRange(stepName, nodeType);
 	if (!range) return;
 	leftTab.value = 'code';
 	nextTick(() => {
@@ -763,9 +907,9 @@ function handleGraphNodeClick(nodeId: string) {
 	const nodes = workflowStore.currentWorkflow?.graph?.nodes;
 	if (!nodes) return;
 	const node = nodes.find((n) => n.id === nodeId);
-	if (!node || node.type === 'trigger') return;
+	if (!node) return;
 
-	navigateToStep(node.name);
+	navigateToStep(node.name, node.type);
 }
 
 // ------------------------------------------------------------------
@@ -1309,7 +1453,9 @@ function navigateToErrorLine() {
 								<JsonViewer v-if="showStepInput" :data="selectedStep.input" />
 							</div>
 							<div
-								v-if="selectedStep.output !== null && selectedStep.output !== undefined"
+								v-if="
+									selectedStep.output !== null && selectedStep.output !== undefined && !isBatchStep
+								"
 								:class="$style.stepSection"
 							>
 								<button :class="$style.stepSectionToggle" @click="showStepOutput = !showStepOutput">
@@ -1324,6 +1470,94 @@ function navigateToErrorLine() {
 								</button>
 								<JsonViewer v-if="showStepOutput" :data="selectedStep.output" />
 							</div>
+
+							<!-- Batch results section -->
+							<div v-if="isBatchStep" :class="$style.stepSection">
+								<button
+									:class="$style.stepSectionToggle"
+									@click="showBatchResults = !showBatchResults"
+								>
+									<span
+										:class="[
+											$style.stepSectionChevron,
+											showBatchResults ? $style.stepSectionChevronOpen : '',
+										]"
+										>&#9656;</span
+									>
+									Batch Results ({{ batchTotalCount }} items)
+								</button>
+								<div v-if="showBatchResults" :class="$style.batchResults">
+									<div :class="$style.batchSummary">
+										<span :class="$style.batchSummarySuccess"
+											>{{ batchSucceededCount }} succeeded</span
+										>
+										<span :class="$style.batchSummaryDivider">/</span>
+										<span :class="$style.batchSummaryFailed">{{ batchFailedCount }} failed</span>
+									</div>
+									<div
+										v-for="(child, idx) in batchChildSteps"
+										:key="child.id"
+										:class="[
+											$style.batchItem,
+											child.status === 'completed' ? $style.batchItemSuccess : '',
+											child.status === 'failed' ? $style.batchItemError : '',
+										]"
+									>
+										<div :class="$style.batchItemHeader">
+											<span :class="$style.batchIndex">#{{ idx }}</span>
+											<StatusBadge :status="child.status" size="sm" />
+											<span v-if="child.durationMs != null" :class="$style.batchItemDuration">
+												{{ formatMs(child.durationMs) }}
+											</span>
+										</div>
+										<div
+											v-if="child.output !== null && child.output !== undefined"
+											:class="$style.batchItemContent"
+										>
+											<JsonViewer :data="child.output" />
+										</div>
+										<div v-if="child.error" :class="$style.batchItemContent">
+											<div :class="$style.batchItemErrorBox">
+												<JsonViewer :data="child.error" />
+											</div>
+										</div>
+									</div>
+									<!-- Fallback: show results from parent output if no child steps found -->
+									<template v-if="batchChildSteps.length === 0 && batchResults.length > 0">
+										<div
+											v-for="(result, idx) in batchResults"
+											:key="idx"
+											:class="[
+												$style.batchItem,
+												result.status === 'fulfilled' ? $style.batchItemSuccess : '',
+												result.status === 'rejected' ? $style.batchItemError : '',
+											]"
+										>
+											<div :class="$style.batchItemHeader">
+												<span :class="$style.batchIndex">#{{ idx }}</span>
+												<span
+													:class="
+														result.status === 'fulfilled'
+															? $style.batchStatusFulfilled
+															: $style.batchStatusRejected
+													"
+												>
+													{{ result.status }}
+												</span>
+											</div>
+											<pre v-if="result.value !== undefined" :class="$style.batchItemPre">{{
+												JSON.stringify(result.value, null, 2)
+											}}</pre>
+											<pre
+												v-if="result.reason"
+												:class="[$style.batchItemPre, $style.batchItemPreError]"
+												>{{ result.reason.message }}</pre
+											>
+										</div>
+									</template>
+								</div>
+							</div>
+
 							<div v-if="selectedStep.error" :class="$style.stepSection">
 								<h4 :class="[$style.stepSectionTitle, $style.stepSectionTitleError]">
 									Error
@@ -2148,6 +2382,113 @@ function navigateToErrorLine() {
 .stepErrorBox {
 	border-left: 3px solid var(--color-danger);
 	border-radius: var(--radius-sm);
+}
+
+/* ----------------------------------------------------------------
+   BATCH RESULTS
+   ---------------------------------------------------------------- */
+.batchResults {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-xs);
+}
+
+.batchSummary {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	padding: var(--spacing-2xs) var(--spacing-sm);
+	background: var(--color-bg-medium);
+	border-radius: var(--radius-sm);
+}
+
+.batchSummarySuccess {
+	color: var(--color-success-shade, #0d9f3f);
+}
+
+.batchSummaryDivider {
+	color: var(--color-text-lighter);
+}
+
+.batchSummaryFailed {
+	color: var(--color-danger-shade, #c5280c);
+}
+
+.batchItem {
+	border: 1px solid var(--color-border-light);
+	border-radius: var(--radius);
+	overflow: hidden;
+}
+
+.batchItemSuccess {
+	border-left: 3px solid var(--color-success, #17bf63);
+}
+
+.batchItemError {
+	border-left: 3px solid var(--color-danger, #ff4949);
+}
+
+.batchItemHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
+	padding: var(--spacing-2xs) var(--spacing-sm);
+	background: var(--color-bg-light);
+	border-bottom: 1px solid var(--color-border-light);
+}
+
+.batchIndex {
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-text-lighter);
+	min-width: 28px;
+}
+
+.batchItemDuration {
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-lighter);
+	margin-left: auto;
+}
+
+.batchItemContent {
+	padding: var(--spacing-2xs) var(--spacing-sm);
+}
+
+.batchItemErrorBox {
+	border-left: 3px solid var(--color-danger);
+	border-radius: var(--radius-sm);
+}
+
+.batchStatusFulfilled {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-success-shade, #0d9f3f);
+}
+
+.batchStatusRejected {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-danger-shade, #c5280c);
+}
+
+.batchItemPre {
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-2xs);
+	white-space: pre-wrap;
+	word-break: break-all;
+	margin: 0;
+	padding: var(--spacing-2xs) var(--spacing-sm);
+	background: var(--color-bg-light);
+	border-radius: var(--radius-sm);
+}
+
+.batchItemPreError {
+	color: var(--color-danger-shade, #c5280c);
+	background: var(--color-danger-tint, #fff2f0);
 }
 
 .stepDetailEmpty {

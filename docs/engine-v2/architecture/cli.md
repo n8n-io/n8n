@@ -33,18 +33,17 @@ parsing, database connection, service wiring, and teardown.
 
 ### Shared Initialization Pattern
 
-Although there is no shared initialization function, five of the six commands
-(`execute`, `run`, `watch`, `bench`, and implicitly `list`/`inspect` for
-database only) follow a common pattern:
+The service wiring is centralized in `createEngine(dataSource)` (from
+`engine/create-engine.ts`), which returns all wired services as an `Engine`
+interface. Commands that need the full engine pipeline follow this pattern:
 
 1. Parse arguments manually via a `for` loop over `args`.
 2. Call `createDataSource()` and `await dataSource.initialize()`.
-3. Instantiate engine services: `EngineEventBus`, `StepPlannerService`,
-   `CompletionService`, `StepProcessorService`, `EngineService`.
-4. Call `registerEventHandlers(...)` to wire the event-driven engine loop.
-5. Create and start `StepQueueService`.
-6. Perform the command-specific work.
-7. Call `queue.stop()` and `await dataSource.destroy()` for cleanup.
+3. Call `createEngine(dataSource)` to get all wired services
+   (eventBus, transpiler, engineService, stepProcessor, queue, etc.).
+4. Call `queue.start()` to begin polling.
+5. Perform the command-specific work.
+6. Call `queue.stop()` and `await dataSource.destroy()` for cleanup.
 
 The `list` and `inspect` commands only need the database (no engine services).
 
@@ -385,40 +384,36 @@ is the entry point for `pnpm dev` (via `tsx watch src/main.ts`).
 
 ### Initialization Sequence
 
-1. **Database** (lines 21-23): Creates a `DataSource` via `createDataSource()`
-   and calls `initialize()`. The database URL defaults to
-   `postgres://engine:engine@localhost:5433/engine` (from `data-source.ts`
-   line 13). Uses `synchronize: true` for automatic schema creation.
+1. **Database**: Creates a `DataSource` via `createDataSource()` and calls
+   `initialize()`. The database URL defaults to
+   `postgres://engine:engine@localhost:5433/engine`. Uses `synchronize: true`
+   for automatic schema creation.
 
-2. **Seed data** (line 26): Calls `seedExampleWorkflows(dataSource)` to
-   populate example workflows on first run.
+2. **Seed data**: Calls `seedExampleWorkflows(dataSource)` to populate
+   example workflows on first run.
 
-3. **Service wiring** (lines 28-34): Manually instantiates all engine
-   services -- no dependency injection container is used:
+3. **Service wiring**: Calls `createEngine(dataSource)` which instantiates
+   and wires all engine services:
    - `EngineEventBus` -- typed in-process event emitter
    - `TranspilerService` -- TypeScript-to-graph compiler
    - `StepPlannerService` -- determines next steps after completion
    - `CompletionService` -- checks if execution is complete
    - `StepProcessorService` -- executes individual steps
    - `EngineService` -- orchestrates execution lifecycle
+   - `BatchExecutorService` -- fan-out/aggregate batch items
+   - `WorkflowTriggerService` -- cross-workflow execution + await
    - `BroadcasterService` -- SSE event delivery to HTTP clients
+   - Event handlers registered, adaptive poller connected
 
-4. **Event handlers** (line 37): Calls `registerEventHandlers()` to wire
-   the event-driven engine loop (step:completed -> plan next -> check
-   complete).
+4. **Step queue**: Calls `queue.start()` to begin adaptive polling.
 
-5. **Step queue** (lines 40-41): Creates and starts `StepQueueService`,
-   which polls PostgreSQL for pending steps using
-   `SELECT FOR UPDATE SKIP LOCKED`.
+5. **Express app**: Creates the Express application via `createApp()`,
+   passing relevant services as dependencies.
 
-6. **Express app** (lines 44-51): Creates the Express application via
-   `createApp()`, passing all services as dependencies.
+6. **Static files**: If `dist/web` exists, serves the frontend as static
+   files with SPA fallback (non-API routes serve `index.html`).
 
-7. **Static files** (lines 53-64): If `dist/web` exists, serves the frontend
-   as static files with SPA fallback (non-API routes serve `index.html`).
-
-8. **HTTP server** (lines 66-69): Listens on `PORT` environment variable
-   (default 3100).
+7. **HTTP server**: Listens on `PORT` environment variable (default 3100).
 
 ### Graceful Shutdown
 
@@ -519,33 +514,13 @@ layout exactly.
 
 ## Issues and Improvements
 
-### 1. Duplicated Service Wiring (High Priority)
+### 1. ~~Duplicated Service Wiring~~ (RESOLVED)
 
-**Problem:** The service initialization sequence (create DataSource,
-instantiate EventBus, StepPlanner, CompletionService, StepProcessor,
-EngineService, register event handlers, create and start queue) is duplicated
-across four commands (`execute.ts` lines 32-44, `run.ts` lines 49-62,
-`watch.ts` lines 42-49, `bench.ts` lines 43-55) and also in `main.ts`
-lines 21-41.
-
-**Impact:** Any change to the service wiring (e.g., adding a new service
-dependency) must be replicated in five places.
-
-**Recommendation:** Extract a shared `createEngine(dataSource)` factory
-function that returns all wired services:
-
-```typescript
-function createEngine(dataSource: DataSource) {
-  const eventBus = new EngineEventBus();
-  const stepPlanner = new StepPlannerService(dataSource);
-  const completionService = new CompletionService(dataSource, eventBus);
-  const stepProcessor = new StepProcessorService(dataSource, eventBus);
-  const engineService = new EngineService(dataSource, eventBus, stepPlanner);
-  registerEventHandlers(eventBus, dataSource, stepPlanner, completionService);
-  const queue = new StepQueueService(dataSource, stepProcessor);
-  return { eventBus, engineService, stepProcessor, stepPlanner, completionService, queue };
-}
-```
+The service initialization sequence has been centralized in
+`createEngine(dataSource)` (file: `engine/create-engine.ts`). All CLI commands
+and `main.ts` now use this factory function, which returns an `Engine` interface
+containing all wired services including the new `BatchExecutorService` and
+`WorkflowTriggerService`.
 
 ### 2. No Argument Parsing Library
 

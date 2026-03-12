@@ -1,3 +1,5 @@
+export { createEngine } from './create-engine';
+export type { Engine } from './create-engine';
 export { EngineService } from './engine.service';
 export { StepProcessorService } from './step-processor.service';
 export { StepPlannerService } from './step-planner.service';

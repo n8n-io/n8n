@@ -20,25 +20,37 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const input = await ctx.step({ name: 'Parse Request' }, async () => {
-			const { body } = ctx.triggerData;
-			return { score: body.score ?? 0 };
-		});
+		const input = await ctx.step(
+			{ name: 'Parse Request', icon: 'settings', color: '#6b7280' },
+			async () => {
+				const { body } = ctx.triggerData;
+				return { score: body.score ?? 0 };
+			},
+		);
 
 		if (input.score > 90) {
-			const result = await ctx.step({ name: 'Grade A' }, async () => {
-				return { grade: 'A', score: input.score };
-			});
+			const result = await ctx.step(
+				{ name: 'Grade A', icon: 'trophy', color: '#22c55e' },
+				async () => {
+					return { grade: 'A', score: input.score };
+				},
+			);
 			return result;
 		} else if (input.score > 70) {
-			const result = await ctx.step({ name: 'Grade B' }, async () => {
-				return { grade: 'B', score: input.score };
-			});
+			const result = await ctx.step(
+				{ name: 'Grade B', icon: 'award', color: '#eab308' },
+				async () => {
+					return { grade: 'B', score: input.score };
+				},
+			);
 			return result;
 		} else {
-			const result = await ctx.step({ name: 'Grade F' }, async () => {
-				return { grade: 'F', score: input.score };
-			});
+			const result = await ctx.step(
+				{ name: 'Grade F', icon: 'flag', color: '#ef4444' },
+				async () => {
+					return { grade: 'F', score: input.score };
+				},
+			);
 			return result;
 		}
 	},

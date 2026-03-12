@@ -10,6 +10,9 @@ import { WorkflowStepExecution } from '../database/entities/workflow-step-execut
  * Uses ON CONFLICT DO NOTHING for idempotent insertion.
  */
 export class StepPlannerService {
+	/** Callback invoked after a step is queued. Used to wake the adaptive poller. */
+	onStepQueued?: () => void;
+
 	constructor(private readonly dataSource: DataSource) {}
 
 	async planNextSteps(
@@ -65,31 +68,28 @@ export class StepPlannerService {
 				})
 				.orIgnore()
 				.execute();
+
+			// Wake the adaptive poller so the new step is picked up quickly
+			this.onStepQueued?.();
 		}
 	}
 
 	async gatherStepInput(
 		executionId: string,
-		stepId: string,
-		graph: WorkflowGraph,
+		_stepId: string,
+		_graph: WorkflowGraph,
 	): Promise<Record<string, unknown>> {
-		// Collect outputs from data-producing predecessors only.
-		// Sleep nodes are transparent — getDataPredecessors traces through
-		// them to find the actual data-producing nodes.
-		const dataPredecessors = graph.getDataPredecessors(stepId);
-
-		if (dataPredecessors.length === 0) {
-			return {};
-		}
-
+		// Include outputs from ALL completed steps in this execution.
+		// Compiled step code can reference any earlier step's output via
+		// ctx.input[stepId] — not just direct graph predecessors. For example,
+		// in a parallel fan-out/fan-in pattern (Prepare → [A, B] → Merge),
+		// the Merge step references Prepare's output even though Prepare is
+		// a grandparent, not a direct predecessor.
 		const completedSteps = await this.dataSource
 			.getRepository(WorkflowStepExecution)
 			.createQueryBuilder('wse')
 			.select(['wse.stepId', 'wse.output'])
 			.where('wse.executionId = :executionId', { executionId })
-			.andWhere('wse.stepId IN (:...stepIds)', {
-				stepIds: dataPredecessors.map((p) => p.id),
-			})
 			.andWhere('wse.status = :status', { status: StepStatus.Completed })
 			.getMany();
 

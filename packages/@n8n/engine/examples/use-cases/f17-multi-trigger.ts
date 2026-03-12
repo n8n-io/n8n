@@ -39,29 +39,41 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const input = await ctx.step({ name: 'Parse Request' }, async () => {
-			const { body } = ctx.triggerData;
-			return { type: body.type ?? 'order', id: body.id ?? 'unknown' };
-		});
+		const input = await ctx.step(
+			{ name: 'Parse Request', icon: 'settings', color: '#6b7280' },
+			async () => {
+				const { body } = ctx.triggerData;
+				return { type: body.type ?? 'order', id: body.id ?? 'unknown' };
+			},
+		);
 
 		switch (input.type) {
 			case 'order': {
-				const result = await ctx.step({ name: 'Process Order' }, async () => {
-					return { orderId: input.id, processed: true };
-				});
+				const result = await ctx.step(
+					{ name: 'Process Order', icon: 'zap', color: '#8b5cf6' },
+					async () => {
+						return { orderId: input.id, processed: true };
+					},
+				);
 				return result;
 			}
 			case 'return': {
-				const result = await ctx.step({ name: 'Process Return' }, async () => {
-					return { returnId: input.id, processed: true };
-				});
+				const result = await ctx.step(
+					{ name: 'Process Return', icon: 'zap', color: '#8b5cf6' },
+					async () => {
+						return { returnId: input.id, processed: true };
+					},
+				);
 				return result;
 			}
 			case 'cleanup': {
-				const result = await ctx.step({ name: 'Run Cleanup' }, async () => {
-					const res = await fetch('https://dummyjson.com/posts/add', { method: 'POST' });
-					return { cleanup: res.ok };
-				});
+				const result = await ctx.step(
+					{ name: 'Run Cleanup', icon: 'cog', color: '#6b7280' },
+					async () => {
+						const res = await fetch('https://dummyjson.com/posts/add', { method: 'POST' });
+						return { cleanup: res.ok };
+					},
+				);
 				return result;
 			}
 			default:

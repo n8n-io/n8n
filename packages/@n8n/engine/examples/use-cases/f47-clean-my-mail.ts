@@ -19,7 +19,7 @@ export default defineWorkflow({
 	async run(ctx) {
 		// Fetch all three email categories in parallel
 		const [spam, social, promotions] = await Promise.all([
-			ctx.step({ name: 'Fetch SPAM Emails' }, async () => {
+			ctx.step({ name: 'Fetch SPAM Emails', icon: 'mail', color: '#3b82f6' }, async () => {
 				const token = ctx.getSecret('GMAIL_ACCESS_TOKEN') ?? '';
 				const res = await fetch(
 					'https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=SPAM&maxResults=100',
@@ -30,7 +30,7 @@ export default defineWorkflow({
 				};
 				return data.messages ?? [];
 			}),
-			ctx.step({ name: 'Fetch Social Emails' }, async () => {
+			ctx.step({ name: 'Fetch Social Emails', icon: 'mail', color: '#3b82f6' }, async () => {
 				const token = ctx.getSecret('GMAIL_ACCESS_TOKEN') ?? '';
 				const res = await fetch(
 					'https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=CATEGORY_SOCIAL&maxResults=100',
@@ -41,7 +41,7 @@ export default defineWorkflow({
 				};
 				return data.messages ?? [];
 			}),
-			ctx.step({ name: 'Fetch Promotion Emails' }, async () => {
+			ctx.step({ name: 'Fetch Promotion Emails', icon: 'mail', color: '#3b82f6' }, async () => {
 				const token = ctx.getSecret('GMAIL_ACCESS_TOKEN') ?? '';
 				const res = await fetch(
 					'https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=CATEGORY_PROMOTIONS&maxResults=100',
@@ -55,28 +55,34 @@ export default defineWorkflow({
 		]);
 
 		// Combine all email IDs
-		const allEmails = await ctx.step({ name: 'Combine All Emails' }, async () => {
-			return [...spam, ...social, ...promotions];
-		});
+		const allEmails = await ctx.step(
+			{ name: 'Combine All Emails', icon: 'layers', color: '#8b5cf6' },
+			async () => {
+				return [...spam, ...social, ...promotions];
+			},
+		);
 
 		// Delete all emails
-		const deleted = await ctx.step({ name: 'Delete All Emails' }, async () => {
-			const token = ctx.getSecret('GMAIL_ACCESS_TOKEN') ?? '';
-			let deletedCount = 0;
-			for (const email of allEmails) {
-				await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${email.id}`, {
-					method: 'DELETE',
-					headers: { Authorization: `Bearer ${token}` },
-				});
-				deletedCount++;
-			}
-			return {
-				deleted: deletedCount,
-				spam: spam.length,
-				social: social.length,
-				promotions: promotions.length,
-			};
-		});
+		const deleted = await ctx.step(
+			{ name: 'Delete All Emails', icon: 'cog', color: '#ef4444' },
+			async () => {
+				const token = ctx.getSecret('GMAIL_ACCESS_TOKEN') ?? '';
+				let deletedCount = 0;
+				for (const email of allEmails) {
+					await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${email.id}`, {
+						method: 'DELETE',
+						headers: { Authorization: `Bearer ${token}` },
+					});
+					deletedCount++;
+				}
+				return {
+					deleted: deletedCount,
+					spam: spam.length,
+					social: social.length,
+					promotions: promotions.length,
+				};
+			},
+		);
 
 		return deleted;
 	},

@@ -1,11 +1,6 @@
 import { createDataSource } from '../../database/data-source';
 import { WorkflowExecution } from '../../database/entities/workflow-execution.entity';
-import { EngineEventBus } from '../../engine/event-bus.service';
-import { StepProcessorService } from '../../engine/step-processor.service';
-import { StepPlannerService } from '../../engine/step-planner.service';
-import { StepQueueService } from '../../engine/step-queue.service';
-import { CompletionService } from '../../engine/completion.service';
-import { registerEventHandlers } from '../../engine/event-handlers';
+import { createEngine } from '../../engine/create-engine';
 
 const TERMINAL_STATUSES = ['completed', 'failed', 'cancelled'];
 
@@ -39,14 +34,7 @@ export async function watchCommand(args: string[]): Promise<void> {
 	}
 
 	// Wire up engine to process steps and emit events
-	const eventBus = new EngineEventBus();
-	const stepPlanner = new StepPlannerService(dataSource);
-	const completionService = new CompletionService(dataSource, eventBus);
-	const stepProcessor = new StepProcessorService(dataSource, eventBus);
-
-	registerEventHandlers(eventBus, dataSource, stepPlanner, completionService);
-
-	const queue = new StepQueueService(dataSource, stepProcessor);
+	const { eventBus, queue } = createEngine(dataSource);
 	queue.start();
 
 	// Print events as they arrive

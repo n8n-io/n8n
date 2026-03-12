@@ -22,32 +22,38 @@ export default defineWorkflow({
 		}),
 	],
 	async run(ctx) {
-		const input = await ctx.step({ name: 'Parse Chat Input' }, async () => {
-			const { body } = ctx.triggerData;
-			return { chatInput: body.chatInput ?? 'Hello, how can you help me?' };
-		});
+		const input = await ctx.step(
+			{ name: 'Parse Chat Input', icon: 'settings', color: '#6b7280' },
+			async () => {
+				const { body } = ctx.triggerData;
+				return { chatInput: body.chatInput ?? 'Hello, how can you help me?' };
+			},
+		);
 
-		const aiResponse = await ctx.step({ name: 'AI Agent' }, async () => {
-			const res = await fetch('https://dummyjson.com/posts/add', {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${ctx.getSecret('OPENAI_API_KEY')}`,
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					model: 'gpt-4o',
-					messages: [
-						{
-							role: 'system',
-							content:
-								'You are a friendly Agent designed to guide users through setup steps. Respond concisely.',
-						},
-						{ role: 'user', content: input.chatInput },
-					],
-				}),
-			});
-			return (await res.json()) as Record<string, unknown>;
-		});
+		const aiResponse = await ctx.step(
+			{ name: 'AI Agent', icon: 'bot', color: '#ec4899' },
+			async () => {
+				const res = await fetch('https://dummyjson.com/posts/add', {
+					method: 'POST',
+					headers: {
+						Authorization: `Bearer ${ctx.getSecret('OPENAI_API_KEY')}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						model: 'gpt-4o',
+						messages: [
+							{
+								role: 'system',
+								content:
+									'You are a friendly Agent designed to guide users through setup steps. Respond concisely.',
+							},
+							{ role: 'user', content: input.chatInput },
+						],
+					}),
+				});
+				return (await res.json()) as Record<string, unknown>;
+			},
+		);
 
 		return aiResponse;
 	},

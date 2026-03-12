@@ -17,13 +17,17 @@ making the system extensible and testable.
 
 Key capabilities:
 - Atomic step claiming via `SELECT FOR UPDATE SKIP LOCKED`
+- Adaptive polling with exponential backoff (10ms-1000ms) and immediate wake on new work
 - Durable execution: step outputs survive process crashes
 - Exponential backoff retry with per-step configuration
-- Sleep/wait via child step executions (no process held alive)
+- Sleep/wait via first-class sleep graph nodes (no process held alive)
+- Batch processing via `BatchExecutorService` (fan-out/aggregate with 3 failure strategies)
+- Cross-workflow triggering via `WorkflowTriggerService` (start child execution, await result)
+- Try/catch error handling via `__error__` graph edges and catch handler routing
 - Pause/resume at execution level
 - Approval steps (human-in-the-loop)
 - Real-time streaming via SSE
-- Fail-fast: one step failure immediately fails the execution
+- Fail-fast with error handler support: step failure routes to catch handlers if present, otherwise immediately fails the execution
 
 ## Architecture
 
@@ -40,6 +44,8 @@ flowchart TB
         SPS["StepProcessorService"]
         SPL["StepPlannerService"]
         CS["CompletionService"]
+        BE["BatchExecutorService"]
+        WT["WorkflowTriggerService"]
         BS["BroadcasterService"]
         EB["EngineEventBus"]
         EH["Event Handlers<br/>(registerEventHandlers)"]
@@ -51,12 +57,20 @@ flowchart TB
     ES -->|"planNextSteps"| SPL
     ES -->|"emit events"| EB
 
-    SQS -->|"poll & claim"| DB
+    SQS -->|"poll & claim<br/>(adaptive polling)"| DB
     SQS -->|"processStep"| SPS
 
     SPS -->|"load/execute step fn"| SPS
     SPS -->|"read/write"| DB
     SPS -->|"emit events"| EB
+    SPS -->|"batch steps"| BE
+    SPS -->|"trigger-workflow steps"| WT
+
+    BE -->|"fan-out children,<br/>aggregate results"| DB
+    BE -->|"emit events"| EB
+
+    WT -->|"start child execution"| ES
+    WT -->|"await child completion"| EB
 
     SPL -->|"check predecessors,<br/>insert queued steps"| DB
 
@@ -67,6 +81,8 @@ flowchart TB
     EH -->|"planNextSteps"| SPL
     EH -->|"checkExecutionComplete"| CS
     EH -->|"resolveParentStep /<br/>failParentStep"| DB
+    EH -->|"batch child aggregation"| BE
+    EH -->|"error handler routing"| SPL
 
     EB -->|"all events"| BS
     BS -->|"SSE"| SSE_CLIENT
@@ -78,11 +94,27 @@ flowchart TB
 |---------|------------|
 | `EngineService` | `DataSource`, `EngineEventBus`, `StepPlannerService` |
 | `StepQueueService` | `DataSource`, `StepProcessorService` |
-| `StepProcessorService` | `DataSource`, `EngineEventBus` |
+| `StepProcessorService` | `DataSource`, `EngineEventBus`, `WorkflowTriggerService`, `BatchExecutorService` |
 | `StepPlannerService` | `DataSource` |
 | `CompletionService` | `DataSource`, `EngineEventBus` |
+| `BatchExecutorService` | `DataSource`, `EngineEventBus` |
+| `WorkflowTriggerService` | `DataSource`, `EngineService`, `EngineEventBus` |
 | `BroadcasterService` | `EngineEventBus` |
-| `registerEventHandlers` | `EngineEventBus`, `DataSource`, `StepPlannerService`, `CompletionService` |
+| `registerEventHandlers` | `EngineEventBus`, `DataSource`, `StepPlannerService`, `CompletionService`, `BatchExecutorService` |
+
+### Service Wiring (`createEngine`)
+
+**File:** `create-engine.ts`
+
+All services are wired together by the `createEngine(dataSource)` factory
+function, which returns an `Engine` interface containing all service instances.
+This eliminates the duplicated service wiring that previously existed across
+CLI commands and `main.ts`. Callers are responsible for calling
+`queue.start()` / `queue.stop()` to control the polling lifecycle.
+
+The factory also connects the adaptive poller: `stepPlanner.onStepQueued`
+is set to `queue.wake()`, so the queue immediately resets its polling interval
+to minimum when new steps are queued.
 
 ## Services
 
@@ -167,18 +199,24 @@ scheduling, and source map error tracing.
 3. **Execute step functions with timeout** -- `Promise.race` between the
    step function and a timeout timer.
 
-4. **Handle sleep/wait** -- catches `SleepRequestedError` /
-   `WaitUntilRequestedError`, marks the parent step as `waiting`,
-   creates a child step execution with `wait_until` timestamp and
-   continuation function reference.
+4. **Handle batch steps** -- delegates to `BatchExecutorService` for fan-out
+   of items as child step executions and result aggregation.
 
-5. **Classify errors and schedule retries** -- uses `classifyError()` to
+5. **Handle trigger-workflow steps** -- delegates to
+   `WorkflowTriggerService` to start a child workflow execution and await
+   its result.
+
+6. **Classify errors and schedule retries** -- uses `classifyError()` to
    determine retriability, `calculateBackoff()` for delay, and persists
    the retry state.
 
-6. **Map runtime errors to source lines** -- attempts to trace compiled
+7. **Map runtime errors to source lines** -- attempts to trace compiled
    code line numbers back to the original TypeScript source using token
    matching heuristics.
+
+Note: Sleep/wait is handled at the graph level via first-class sleep nodes.
+The step queue poller picks up sleep nodes when their `waitUntil` timestamp
+passes, so no error-based control flow is needed.
 
 #### Key Methods
 
@@ -268,14 +306,17 @@ both run `planNextSteps`, but only one INSERT succeeds.
 **File:** `step-queue.service.ts`
 
 PostgreSQL-based job queue using `SELECT FOR UPDATE SKIP LOCKED` for safe
-concurrent step claiming. Polls the database on a configurable interval
-(default 50ms) and dispatches claimed steps to `StepProcessorService`.
+concurrent step claiming. Uses **adaptive polling** with exponential backoff:
+starts at 10ms after `wake()` or finding work, doubles the interval on empty
+polls (capped at 1000ms), and resets to 10ms when work is found.
 
 #### Responsibilities
 
 1. **Poll for claimable steps** -- queries for steps in `queued`,
    `retry_pending` (with `retryAfter <= NOW()`), or `waiting` (with
-   `waitUntil <= NOW()`) status.
+   `waitUntil IS NOT NULL AND waitUntil <= NOW()`) status. Note: parent steps
+   in `waiting` status have `waitUntil=NULL` and are correctly excluded since
+   `NULL <= NOW()` evaluates to NULL (falsy).
 
 2. **Respect execution state** -- joins with `workflow_execution` to skip
    steps from paused, cancelled, failed, or completed executions.
@@ -292,6 +333,11 @@ concurrent step claiming. Polls the database on a configurable interval
 
 6. **Stale step recovery** -- `recoverStaleSteps()` re-queues steps stuck
    in `running` beyond 330 seconds (default timeout 300s + 30s buffer).
+
+7. **Adaptive polling** -- `wake()` method resets the polling interval to
+   minimum (10ms) and reschedules the poll timer. Called by
+   `StepPlannerService.onStepQueued` whenever new steps are queued, ensuring
+   near-instant pickup of new work.
 
 #### The `SELECT FOR UPDATE SKIP LOCKED` Pattern
 
