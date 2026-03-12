@@ -1808,6 +1808,7 @@ describe('POST /credentials/test', () => {
 		const response = await authOwnerAgent.post('/credentials/test').send({
 			credentials: {
 				id: savedCredential.id,
+				name: savedCredential.name,
 				type: savedCredential.type,
 				data: credential.data,
 			},
@@ -1837,6 +1838,7 @@ describe('POST /credentials/test', () => {
 		const response = await authOwnerAgent.post('/credentials/test').send({
 			credentials: {
 				id: savedCredential.id,
+				name: savedCredential.name,
 				type: savedCredential.type,
 				data: {
 					accessToken: CREDENTIAL_BLANKING_VALUE,

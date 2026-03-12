@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { Z } from '../../zod-class';
 
 export class UpdateCredentialDto extends Z.class({
