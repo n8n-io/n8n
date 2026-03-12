@@ -1317,6 +1317,7 @@ export interface INode {
 	executeOnce?: boolean;
 	onError?: OnError;
 	continueOnFail?: boolean;
+	iconUrl?: string;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;

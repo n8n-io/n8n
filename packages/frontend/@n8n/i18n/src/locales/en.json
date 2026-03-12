@@ -2001,6 +2001,8 @@
 	"nodeSettings.notes.displayName": "Notes",
 	"nodeSettings.notesInFlow.description": "If active, the note above will display in the flow as a subtitle",
 	"nodeSettings.notesInFlow.displayName": "Display Note in Flow?",
+	"nodeSettings.iconUrl.displayName": "Icon URL",
+	"nodeSettings.iconUrl.description": "URL of an image to use as the node icon, overriding the default icon",
 	"nodeSettings.parameters": "Parameters",
 	"nodeSettings.parametersShort": "Params",
 	"nodeSettings.settings": "Settings",
