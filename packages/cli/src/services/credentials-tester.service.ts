@@ -519,6 +519,7 @@ export class CredentialsTester {
 						credentialsDecrypted.data,
 					);
 			} catch {
+				delete mockNodesData[tempNodeName];
 				return null;
 			}
 		}
