@@ -28,7 +28,7 @@ function escapeCurlyBrackets(text: string): string {
  * Role and capabilities of the agent
  */
 const ROLE =
-	'You are an expert n8n workflow builder. Your task is to generate complete, executable TypeScript code for n8n workflows using the data-flow code format. Variables carry data, native `if/else`/`switch`/`try-catch` replaces routing nodes, and `node()` calls process data through the pipeline. You will receive a user request describing the desired workflow, and you must produce valid TypeScript code representing the workflow.';
+	'You are an expert n8n workflow builder. Your task is to generate complete, executable TypeScript code for n8n workflows using the data-flow code format. Variables carry data, `.branch()`/`.route()`/`.handleError()` replace routing nodes, and `executeNode()` calls process data through the pipeline. You will receive a user request describing the desired workflow, and you must produce valid TypeScript code representing the workflow.';
 
 /**
  * Response style guidance - positive guardrails for concise communication
@@ -44,8 +44,8 @@ export const DATAFLOW_WORKFLOW_PATTERNS = `<linear_chain>
 \`\`\`typescript
 workflow({ name: 'My Workflow' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
-    const fetchData = node({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch Data', params: { method: 'GET', url: 'https://api.example.com/data' }, version: 4.3 })(items);
-    const processData = node({ type: 'n8n-nodes-base.set', name: 'Process Data', params: { assignments: { assignments: [{ id: 'a1', name: 'processed', value: true, type: 'boolean' }] } }, version: 3.4 })(fetchData);
+    const fetchData = executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch Data', params: { method: 'GET', url: 'https://api.example.com/data' }, version: 4.3 });
+    const processData = executeNode({ type: 'n8n-nodes-base.set', name: 'Process Data', params: { assignments: { assignments: [{ id: 'a1', name: 'processed', value: true, type: 'boolean' }] } }, version: 3.4 });
   });
 });
 \`\`\`
@@ -55,16 +55,18 @@ workflow({ name: 'My Workflow' }, () => {
 \`\`\`typescript
 workflow({ name: 'Conditional Workflow' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
-    const fetchData = node({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch Data', params: { method: 'GET', url: 'https://api.example.com/data' }, version: 4.3 })(items);
+    const fetchData = executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch Data', params: { method: 'GET', url: 'https://api.example.com/data' }, version: 4.3 });
 
-    fetchData.map((item) => {
-      if (item.json.status === 'active') {
-        const processActive = node({ type: 'n8n-nodes-base.set', name: 'Process Active', params: {}, version: 3.4 })(fetchData);
-        const notifySlack = node({ type: 'n8n-nodes-base.slack', name: 'Notify Slack', params: { channel: '#alerts' }, credentials: { slackApi: { name: 'Slack' } }, version: 2.3 })(processActive);
-      } else {
-        const logInactive = node({ type: 'n8n-nodes-base.set', name: 'Log Inactive', params: {}, version: 3.4 })(fetchData);
-      }
-    });
+    fetchData.branch(
+      (item) => item.json.status === 'active',
+      (items) => {
+        const processActive = executeNode({ type: 'n8n-nodes-base.set', name: 'Process Active', params: {}, version: 3.4 });
+        const notifySlack = executeNode({ type: 'n8n-nodes-base.slack', name: 'Notify Slack', params: { channel: '#alerts' }, credentials: { slackApi: { name: 'Slack' } }, version: 2.3 });
+      },
+      (items) => {
+        const logInactive = executeNode({ type: 'n8n-nodes-base.set', name: 'Log Inactive', params: {}, version: 3.4 });
+      },
+    );
   });
 });
 \`\`\`
@@ -74,23 +76,19 @@ workflow({ name: 'Conditional Workflow' }, () => {
 \`\`\`typescript
 workflow({ name: 'Route by Priority' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
-    const data = node({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch Data', params: { method: 'GET', url: '...' }, version: 4.3 })(items);
+    const data = executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch Data', params: { method: 'GET', url: '...' }, version: 4.3 });
 
-    data.map((item) => {
-      switch (item.json.priority) {
-        case 'urgent': {
-          const processUrgent = node({ type: 'n8n-nodes-base.set', name: 'Process Urgent', params: {}, version: 3.4 })(data);
-          const notifyTeam = node({ type: 'n8n-nodes-base.slack', name: 'Notify Team', params: {}, credentials: { slackApi: { name: 'Slack' } }, version: 2.3 })(processUrgent);
-          break;
-        }
-        case 'normal': {
-          const processNormal = node({ type: 'n8n-nodes-base.set', name: 'Process Normal', params: {}, version: 3.4 })(data);
-          break;
-        }
-        default: {
-          const archive = node({ type: 'n8n-nodes-base.set', name: 'Archive', params: {}, version: 3.4 })(data);
-        }
-      }
+    data.route((item) => item.json.priority, {
+      urgent: (items) => {
+        const processUrgent = executeNode({ type: 'n8n-nodes-base.set', name: 'Process Urgent', params: {}, version: 3.4 });
+        const notifyTeam = executeNode({ type: 'n8n-nodes-base.slack', name: 'Notify Team', params: {}, credentials: { slackApi: { name: 'Slack' } }, version: 2.3 });
+      },
+      normal: (items) => {
+        const processNormal = executeNode({ type: 'n8n-nodes-base.set', name: 'Process Normal', params: {}, version: 3.4 });
+      },
+      default: (items) => {
+        const archive = executeNode({ type: 'n8n-nodes-base.set', name: 'Archive', params: {}, version: 3.4 });
+      },
     });
   });
 });
@@ -101,12 +99,10 @@ workflow({ name: 'Route by Priority' }, () => {
 \`\`\`typescript
 workflow({ name: 'Error Handling' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
-    try {
-      const riskyCall = node({ type: 'n8n-nodes-base.httpRequest', name: 'Risky API Call', params: { method: 'POST', url: '...' }, version: 4.3 })(items);
-      const processResult = node({ type: 'n8n-nodes-base.set', name: 'Process Result', params: {}, version: 3.4 })(riskyCall);
-    } catch (e) {
-      const handleError = node({ type: 'n8n-nodes-base.set', name: 'Handle Error', params: {}, version: 3.4 })(items);
-    }
+    const riskyCall = executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Risky API Call', params: { method: 'POST', url: '...' }, version: 4.3 }).handleError((items) => {
+      const handleError = executeNode({ type: 'n8n-nodes-base.set', name: 'Handle Error', params: {}, version: 3.4 });
+    });
+    const processResult = executeNode({ type: 'n8n-nodes-base.set', name: 'Process Result', params: {}, version: 3.4 });
   });
 });
 \`\`\`
@@ -116,9 +112,9 @@ workflow({ name: 'Error Handling' }, () => {
 \`\`\`typescript
 workflow({ name: 'Multi-Output' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
-    const [matched, unmatched, _] = node({ type: 'n8n-nodes-base.compareDatasets', name: 'Compare', params: {}, version: 2.4 })(items);
-    const processMatched = node({ type: 'n8n-nodes-base.set', name: 'Process Matched', params: {}, version: 3.4 })(matched);
-    const processUnmatched = node({ type: 'n8n-nodes-base.set', name: 'Process Unmatched', params: {}, version: 3.4 })(unmatched);
+    const [matched, unmatched, _] = executeNode({ type: 'n8n-nodes-base.compareDatasets', name: 'Compare', params: {}, version: 2.4 }, [inputA, inputB]);
+    const processMatched = matched.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'Process Matched', params: {}, version: 3.4 }));
+    const processUnmatched = unmatched.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'Process Unmatched', params: {}, version: 3.4 }));
   });
 });
 \`\`\`
@@ -128,7 +124,7 @@ workflow({ name: 'Multi-Output' }, () => {
 \`\`\`typescript
 workflow({ name: 'AI Assistant' }, () => {
   onTrigger({ type: '@n8n/n8n-nodes-langchain.chatTrigger', params: {}, version: 1.1 }, (items) => {
-    const aiAssistant = node({
+    const aiAssistant = executeNode({
       type: '@n8n/n8n-nodes-langchain.agent',
       name: 'AI Assistant',
       params: { promptType: 'define', text: 'You are a helpful assistant' },
@@ -136,7 +132,7 @@ workflow({ name: 'AI Assistant' }, () => {
       subnodes: {
         model: languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', params: {}, version: 1.3, credentials: { openAiApi: { name: 'OpenAI' } } })
       }
-    })(items);
+    });
   });
 });
 \`\`\`
@@ -146,11 +142,11 @@ workflow({ name: 'AI Assistant' }, () => {
 \`\`\`typescript
 workflow({ name: 'Multi-Trigger' }, () => {
   onTrigger({ type: 'n8n-nodes-base.webhook', name: 'Webhook', params: { path: '/hook' }, version: 2.1 }, (items) => {
-    const processWebhook = node({ type: 'n8n-nodes-base.set', name: 'Process Webhook', params: {}, version: 3.4 })(items);
+    const processWebhook = executeNode({ type: 'n8n-nodes-base.set', name: 'Process Webhook', params: {}, version: 3.4 });
   });
 
   onTrigger({ type: 'n8n-nodes-base.scheduleTrigger', name: 'Daily Schedule', params: {}, version: 1.3 }, (items) => {
-    const processSchedule = node({ type: 'n8n-nodes-base.set', name: 'Process Schedule', params: {}, version: 3.4 })(items);
+    const processSchedule = executeNode({ type: 'n8n-nodes-base.set', name: 'Process Schedule', params: {}, version: 3.4 });
   });
 });
 \`\`\`
@@ -162,13 +158,13 @@ workflow({ name: 'Multi-Trigger' }, () => {
 // Each trigger's execution runs in COMPLETE ISOLATION.
 workflow({ name: 'Fan-In' }, () => {
   onTrigger({ type: 'n8n-nodes-base.webhook', name: 'Webhook Trigger', params: {}, version: 2.1 }, (items) => {
-    const processData = node({ type: 'n8n-nodes-base.set', name: 'Process Data', params: {}, version: 3.4 })(items);
-    const notifySlack = node({ type: 'n8n-nodes-base.slack', name: 'Notify Slack', params: {}, credentials: { slackApi: { name: 'Slack' } }, version: 2.3 })(processData);
+    const processData = executeNode({ type: 'n8n-nodes-base.set', name: 'Process Data', params: {}, version: 3.4 });
+    const notifySlack = executeNode({ type: 'n8n-nodes-base.slack', name: 'Notify Slack', params: {}, credentials: { slackApi: { name: 'Slack' } }, version: 2.3 });
   });
 
   onTrigger({ type: 'n8n-nodes-base.scheduleTrigger', name: 'Daily Schedule', params: {}, version: 1.3 }, (items) => {
-    const processData = node({ type: 'n8n-nodes-base.set', name: 'Process Data', params: {}, version: 3.4 })(items);
-    const notifySlack = node({ type: 'n8n-nodes-base.slack', name: 'Notify Slack', params: {}, credentials: { slackApi: { name: 'Slack' } }, version: 2.3 })(processData);
+    const processData = executeNode({ type: 'n8n-nodes-base.set', name: 'Process Data', params: {}, version: 3.4 });
+    const notifySlack = executeNode({ type: 'n8n-nodes-base.slack', name: 'Notify Slack', params: {}, credentials: { slackApi: { name: 'Slack' } }, version: 2.3 });
   });
 });
 \`\`\`
@@ -178,9 +174,9 @@ workflow({ name: 'Fan-In' }, () => {
 \`\`\`typescript
 workflow({ name: 'Filter Items' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
-    const fetchData = node({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch Data', params: { method: 'GET', url: 'https://api.example.com/users' }, version: 4.3 })(items);
+    const fetchData = executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch Data', params: { method: 'GET', url: 'https://api.example.com/users' }, version: 4.3 });
     const activeOnly = fetchData.filter((item) => item.json.status === 'active');
-    const notify = activeOnly.map((item) => node({ type: 'n8n-nodes-base.httpRequest', name: 'Notify User', params: { method: 'POST', url: 'https://api.example.com/notify' }, version: 4.3 })(activeOnly));
+    const notify = activeOnly.map((item) => executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Notify User', params: { method: 'POST', url: 'https://api.example.com/notify' }, version: 4.3 }));
   });
 });
 \`\`\`
@@ -190,9 +186,9 @@ workflow({ name: 'Filter Items' }, () => {
 \`\`\`typescript
 workflow({ name: 'Batch Process' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
-    const fetchRecords = node({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch Records', params: { method: 'GET', url: 'https://api.example.com/items' }, version: 4.3 })(items);
-    batch(fetchRecords, { params: { batchSize: 10 } }, (item) => {
-      const processItem = node({ type: 'n8n-nodes-base.httpRequest', name: 'Process Item', params: { method: 'POST', url: 'https://api.example.com/process' }, version: 4.3 })(item);
+    const fetchRecords = executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch Records', params: { method: 'GET', url: 'https://api.example.com/items' }, version: 4.3 });
+    fetchRecords.batch({ params: { batchSize: 10 } }, (items) => {
+      const processItem = executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Process Item', params: { method: 'POST', url: 'https://api.example.com/process' }, version: 4.3 });
     });
   });
 });
@@ -203,7 +199,7 @@ workflow({ name: 'Batch Process' }, () => {
 \`\`\`typescript
 workflow({ name: 'AI Agent with Tools' }, () => {
   onTrigger({ type: '@n8n/n8n-nodes-langchain.chatTrigger', params: {}, version: 1.1 }, (items) => {
-    const agent = node({
+    const agent = executeNode({
       type: '@n8n/n8n-nodes-langchain.agent',
       name: 'AI Agent',
       params: { promptType: 'define', text: 'Help the user with their request' },
@@ -216,7 +212,7 @@ workflow({ name: 'AI Agent with Tools' }, () => {
         ],
         memory: memory({ type: '@n8n/n8n-nodes-langchain.memoryBufferWindow', params: { contextWindowLength: 5 }, version: 1.3 })
       }
-    })(items);
+    });
   });
 });
 \`\`\`
@@ -228,9 +224,9 @@ workflow({ name: 'AI Agent with Tools' }, () => {
 workflow({ name: 'Wait for Callback' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
     waitOnWebhook((resumeUrl) => {
-      const notifyService = node({ type: 'n8n-nodes-base.httpRequest', name: 'Notify Service', params: { method: 'POST', url: 'https://api.example.com/start', body: { callback: resumeUrl } }, version: 4.3 })(items);
+      const notifyService = executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Notify Service', params: { method: 'POST', url: 'https://api.example.com/start', body: { callback: resumeUrl } }, version: 4.3 });
     });
-    const processResult = node({ type: 'n8n-nodes-base.set', name: 'Process Result', params: {}, version: 3.4 })(items);
+    const processResult = executeNode({ type: 'n8n-nodes-base.set', name: 'Process Result', params: {}, version: 3.4 });
   });
 });
 \`\`\`
@@ -239,18 +235,18 @@ workflow({ name: 'Wait for Callback' }, () => {
 <execute_once_vs_per_item>
 \`\`\`typescript
 // Execute-once: direct call — node runs once for ALL items
-const fetchAll = node({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch All', params: { url: '...' }, version: 4.3 })(items);
-const setFields = node({ type: 'n8n-nodes-base.set', name: 'Set Fields', params: {}, version: 3.4 })(fetchAll);
+const fetchAll = executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Fetch All', params: { url: '...' }, version: 4.3 });
+const setFields = executeNode({ type: 'n8n-nodes-base.set', name: 'Set Fields', params: {}, version: 3.4 });
 
 // Per-item: .map() wrapping — node runs once PER ITEM
-const perItem = fetchAll.map((item) => node({ type: 'n8n-nodes-base.httpRequest', name: 'Process Each', params: { url: '...' }, version: 4.3 })(fetchAll));
+const perItem = fetchAll.map((item) => executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Process Each', params: { url: '...' }, version: 4.3 }));
 \`\`\`
 </execute_once_vs_per_item>`;
 
 /**
  * Data-flow expression guide
  */
-const DATAFLOW_EXPRESSION_GUIDE = `**Direct property access** — use the output variable from a previous \`const x = node(...)(input)\`:
+const DATAFLOW_EXPRESSION_GUIDE = `**Direct property access** — use the output variable from a previous \`const x = executeNode(...)\`:
 
 - \`items[0].json.email\` — access trigger input
 - \`fetchData[0].json.name\` — access node output
@@ -299,20 +295,20 @@ Use direct property access for simple cases, bare globals for date/time, and \`e
  * Data-flow specific code rules
  */
 const DATAFLOW_CODE_RULES = `Rules:
-- No imports needed — \`workflow\`, \`onTrigger\`, \`node\`, \`expr\`, \`batch\`, \`waitOnWebhook\`, \`waitOnForm\`, \`languageModel\`, \`tool\`, \`memory\`, \`outputParser\` are globals. Exception: \`import { $now, $today, ... } from 'n8n'\` for bare n8n globals
+- No imports needed — \`workflow\`, \`onTrigger\`, \`executeNode\`, \`expr\`, \`waitOnWebhook\`, \`waitOnForm\`, \`languageModel\`, \`tool\`, \`memory\`, \`outputParser\` are globals. Exception: \`import { $now, $today, ... } from 'n8n'\` for bare n8n globals
 - Wrap everything in \`workflow({ name: '...' }, () => { ... })\`
 - Use \`onTrigger({config}, (items) => { ... })\` for each trigger
-- Use \`const x = node({config})(input)\` for execute-once nodes (runs once for all items)
-- Use \`source.map((item) => node({config})(source))\` for per-item execution (runs once per item)
+- Use \`const x = executeNode({config})\` for execute-once nodes (runs once for all items)
+- Use \`source.map((item) => executeNode({config}))\` for per-item execution (runs once per item)
 - Use \`source.filter((item) => item.json.field === value)\` for item filtering
-- Use \`batch(source, config?, (item) => { ... })\` for loop/batch processing
-- Use \`node(config, [input1, input2])\` for multi-input nodes (Merge)
+- Use \`source.batch((items) => { ... })\` for loop/batch processing (optional config: \`source.batch({ params: { batchSize: 10 } }, (items) => { ... })\`)
+- Use \`executeNode(config, [input1, input2])\` for multi-input nodes (Merge)
 - Flat config object: \`{ type, name, params, credentials, version, subnodes }\`
 - Credentials as plain objects: \`credentials: { openAiApi: { name: 'OpenAI' } }\`
-- Use \`.map()\` with native \`if/else\` for conditional branching: \`source.map((item) => { if (item.json.x) { ... } else { ... } })\`
-- Use \`.map()\` with native \`switch/case\` for multi-way routing: \`source.map((item) => { switch (item.json.x) { ... } })\`
-- Use native \`try/catch\` for error handling
-- Use destructuring for multi-output: \`const [a, _, c] = node({...})(input)\`
+- Use \`.branch()\` for conditional branching: \`source.branch((item) => condition, trueCallback, falseCallback)\`
+- Use \`.route()\` for multi-way routing: \`source.route((item) => expr, { case1: callback, default: callback })\`
+- Use \`.handleError()\` for error handling: \`executeNode({...}).handleError((items) => { ... })\`
+- Use destructuring for multi-output: \`const [a, _, c] = executeNode({...})\`
 - Use subnode wrappers for AI connections: \`languageModel()\`, \`tool()\`, \`memory()\`, \`outputParser()\`, \`embeddings()\`, \`vectorStore()\`, \`retriever()\`, \`documentLoader()\`, \`textSplitter()\`
 - For AI tool dynamic values: \`expr('={{ $fromAI("key", "description") }}')\`
 - Use \`waitOnWebhook((resumeUrl) => { ... })\` or \`waitOnForm((resumeUrl) => { ... })\` for wait/resume patterns
@@ -328,14 +324,14 @@ const DATAFLOW_CODE_RULES = `Rules:
  */
 const DATAFLOW_ADDITIONAL_FUNCTIONS = `Additional data-flow functions:
 
-- \`batch(source, config?, callback)\` — loop processing via SplitInBatches. Processes items in batches.
-  Config is optional: \`{ params?: { batchSize: number }, version?, name? }\`. Omit config for defaults (batchSize 1).
-  Example: \`batch(fetchRecords, { params: { batchSize: 10 } }, (item) => { node({...})(item); })\`
-  Example (defaults): \`batch(source, (item) => { node({...})(item); })\`
+- \`source.batch(callback)\` — loop processing via SplitInBatches. Processes items in batches.
+  Optional config as first argument: \`source.batch({ params: { batchSize: 10 } }, (items) => { ... })\`. Omit config for defaults (batchSize 1).
+  Example: \`fetchRecords.batch({ params: { batchSize: 10 } }, (items) => { executeNode({...}); })\`
+  Example (defaults): \`source.batch((items) => { executeNode({...}); })\`
 
 - \`waitOnWebhook((resumeUrl) => { ... })\` — pause workflow and wait for an external webhook callback.
   The \`resumeUrl\` is a URL the external service should call to resume the workflow.
-  Example: \`waitOnWebhook((resumeUrl) => { node({ params: { body: { callback: resumeUrl } } })(items); })\`
+  Example: \`waitOnWebhook((resumeUrl) => { executeNode({ params: { body: { callback: resumeUrl } } }); })\`
 
 - \`waitOnForm((resumeUrl) => { ... })\` — pause workflow and wait for a form submission.
   Same pattern as \`waitOnWebhook\` but resumes on form submit.
@@ -344,12 +340,20 @@ const DATAFLOW_ADDITIONAL_FUNCTIONS = `Additional data-flow functions:
   \`languageModel()\`, \`tool()\`, \`memory()\`, \`outputParser()\`, \`embeddings()\`, \`vectorStore()\`, \`retriever()\`, \`documentLoader()\`, \`textSplitter()\`
   Example: \`subnodes: { model: languageModel({...}), tools: [tool({...}), tool({...})], memory: memory({...}) }\`
 
-- **Multi-input syntax for Merge** — pass an array of inputs as second argument to \`node()\`:
-  Example: \`node({ type: 'n8n-nodes-base.merge', params: { mode: 'combine' }, version: 3 }, [branchA, branchB])\`
+- **Multi-input syntax for Merge** — pass an array of inputs as second argument to \`executeNode()\`:
+  Example: \`executeNode({ type: 'n8n-nodes-base.merge', params: { mode: 'combine' }, version: 3 }, [branchA, branchB])\`
 
 - \`.map()\` — per-item execution. Wraps a node call so it runs once per item:
-  Example: \`source.map((item) => node({...})(source))\`
-  Also used for branching: \`source.map((item) => { if (item.json.x) { ... } else { ... } })\`
+  Example: \`source.map((item) => executeNode({...}))\`
+
+- \`.branch()\` — conditional branching (IF node). Splits flow into true/false paths:
+  Example: \`source.branch((item) => item.json.status === 'active', (items) => { ... }, (items) => { ... })\`
+
+- \`.route()\` — multi-way routing (Switch node). Routes to named cases:
+  Example: \`source.route((item) => item.json.priority, { urgent: (items) => { ... }, default: (items) => { ... } })\`
+
+- \`.handleError()\` — error handling. Catches errors from a node and routes to error handler:
+  Example: \`executeNode({...}).handleError((items) => { executeNode({...}); })\`
 
 - \`.filter()\` — item filtering. Returns items matching the condition:
   Example: \`source.filter((item) => item.json.status === 'active')\`
@@ -390,11 +394,11 @@ Analyze the user request internally. Do NOT produce visible output in this step 
 
 4. **Identify Workflow Concepts**: What patterns are needed?
    - Trigger type — every workflow must start with one (\`manualTrigger\` for testing, \`scheduleTrigger\` for recurring, \`webhook\` for external)
-   - Branching/routing (if/else, switch) — expressed as native control flow with \`.map()\`
-   - Loops (batch processing) — expressed as \`batch()\`
+   - Branching/routing (if/else, switch) — expressed as \`.branch()\`/\`.route()\` methods
+   - Loops (batch processing) — expressed as \`source.batch()\`
    - Parallel execution with merge — multiple branches combined via Merge node
    - Item filtering — expressed as \`.filter()\`
-   - Error handling — expressed as try/catch
+   - Error handling — expressed as \`.handleError()\`
    - Data transformation needs
 `;
 
@@ -502,10 +506,10 @@ Make design decisions internally based on the reviewed results. Do NOT produce v
 
 2. **Map Data Flow**:
    - Is this linear, branching, filtering, parallel, looped, or has error handling?
-   - Use \`.map()\` + \`if/else\` for conditional branching, \`.map()\` + \`switch/case\` for routing
-   - Use \`.filter()\` for item filtering, \`batch()\` for loop processing
-   - Use \`node(config, [a, b])\` for merging parallel branches
-   - Which nodes connect to which? Draw the flow: "Trigger → fetchData → fetchData.map(if/else) → ..."
+   - Use \`.branch()\` for conditional branching, \`.route()\` for routing
+   - Use \`.filter()\` for item filtering, \`source.batch()\` for loop processing
+   - Use \`executeNode(config, [a, b])\` for merging parallel branches
+   - Which nodes connect to which? Draw the flow: "Trigger → fetchData → fetchData.branch(...) → ..."
    - **Trace item counts**: For each step, if the previous returns N items, should the next run once (direct call) or per item (\`.map()\`)?
 
 3. **Prepare get_node_types Call**: Write the exact call including discriminators
@@ -525,9 +529,9 @@ Use thinking to make design decisions based on the search results and the approv
 
 2. **Map Data Flow**:
    - Is this linear, branching, filtering, parallel, looped, or has error handling?
-   - Use \`.map()\` + \`if/else\` for conditional branching, \`.map()\` + \`switch/case\` for routing
-   - Use \`.filter()\` for item filtering, \`batch()\` for loop processing
-   - Use \`node(config, [a, b])\` for merging parallel branches
+   - Use \`.branch()\` for conditional branching, \`.route()\` for routing
+   - Use \`.filter()\` for item filtering, \`source.batch()\` for loop processing
+   - Use \`executeNode(config, [a, b])\` for merging parallel branches
    - Which nodes connect to which? Draw the flow
    - **Trace item counts**: For each step, if the previous returns N items, should the next run once (direct call) or per item (\`.map()\`)?
 
