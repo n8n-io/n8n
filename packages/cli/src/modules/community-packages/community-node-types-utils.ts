@@ -64,7 +64,7 @@ export async function getCommunityNodesMetadata(
 		maxAiNodeSdkVersion,
 		pagination: {
 			page: 1,
-			pageSize: 500,
+			pageSize: 1000,
 		},
 	};
 	// we want to make sure this throws on error
