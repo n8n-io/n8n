@@ -7,8 +7,9 @@ workflow({ name: 'F12: Else-if chain (chained IF nodes)' }, () => {
 			outputSampleData: [{ score: 95 }],
 		},
 		(items) => {
-			items.map((item) => {
-				if (item.json.score > 90) {
+			items.branch(
+				(item) => item.json.score > 90,
+				(items) => {
 					const grade_A = executeNode({
 						type: 'n8n-nodes-base.set',
 						name: 'Grade A',
@@ -19,9 +20,11 @@ workflow({ name: 'F12: Else-if chain (chained IF nodes)' }, () => {
 						},
 						version: 3.4,
 					});
-				} else {
-					item.map((item) => {
-						if (item.json.score > 70) {
+				},
+				(items) => {
+					items.branch(
+						(item) => item.json.score > 70,
+						(items) => {
 							const grade_B = executeNode({
 								type: 'n8n-nodes-base.set',
 								name: 'Grade B',
@@ -32,7 +35,8 @@ workflow({ name: 'F12: Else-if chain (chained IF nodes)' }, () => {
 								},
 								version: 3.4,
 							});
-						} else {
+						},
+						(items) => {
 							const grade_F = executeNode({
 								type: 'n8n-nodes-base.set',
 								name: 'Grade F',
@@ -43,10 +47,10 @@ workflow({ name: 'F12: Else-if chain (chained IF nodes)' }, () => {
 								},
 								version: 3.4,
 							});
-						}
-					});
-				}
-			});
+						},
+					);
+				},
+			);
 		},
 	);
 });

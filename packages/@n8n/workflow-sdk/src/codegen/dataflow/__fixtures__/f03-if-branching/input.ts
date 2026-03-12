@@ -7,8 +7,9 @@ workflow({ name: 'F03: IF branching (Trigger → IF → true/false)' }, () => {
 			outputSampleData: [{ status: 'active' }],
 		},
 		(items) => {
-			items.map((item) => {
-				if (item.json.status === 'active') {
+			items.branch(
+				(item) => item.json.status === 'active',
+				(items) => {
 					const true_Branch = executeNode({
 						type: 'n8n-nodes-base.set',
 						name: 'True Branch',
@@ -19,7 +20,8 @@ workflow({ name: 'F03: IF branching (Trigger → IF → true/false)' }, () => {
 						},
 						version: 3.4,
 					});
-				} else {
+				},
+				(items) => {
 					const false_Branch = executeNode({
 						type: 'n8n-nodes-base.set',
 						name: 'False Branch',
@@ -30,8 +32,8 @@ workflow({ name: 'F03: IF branching (Trigger → IF → true/false)' }, () => {
 						},
 						version: 3.4,
 					});
-				}
-			});
+				},
+			);
 		},
 	);
 });

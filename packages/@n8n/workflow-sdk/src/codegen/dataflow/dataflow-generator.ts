@@ -495,7 +495,7 @@ function generateLeafNode(
 }
 
 /**
- * Generate a leaf node wrapped in try/catch for error handling.
+ * Generate a leaf node with .handleError() chained for error handling.
  */
 function generateLeafWithErrorHandler(
 	leaf: LeafNode,
@@ -503,26 +503,25 @@ function generateLeafWithErrorHandler(
 	config: string,
 	ctx: DataFlowContext,
 	depth: number,
-	inputVar: string,
+	_inputVar: string,
 ): CompositeNodeResult {
 	const indent = getIndent(depth);
 	const innerIndent = getIndent(depth + 1);
 	const lines: string[] = [];
 
-	lines.push(`${indent}try {`);
-	lines.push(`${innerIndent}const ${varName} = executeNode(${config});`);
-	lines.push(`${indent}} catch (e) {`);
+	lines.push(`${indent}const ${varName} = executeNode(${config})`);
+	lines.push(`${innerIndent}.handleError((items) => {`);
 
 	// Generate the error handler body (inside branch context to suppress .map())
 	const prevInsideBranch = ctx.insideBranch;
 	ctx.insideBranch = true;
-	const errorResult = generateCompositeNode(leaf.errorHandler!, ctx, depth + 1, inputVar);
+	const errorResult = generateCompositeNode(leaf.errorHandler!, ctx, depth + 2, 'items');
 	ctx.insideBranch = prevInsideBranch;
 	if (errorResult.code) {
 		lines.push(errorResult.code);
 	}
 
-	lines.push(`${indent}}`);
+	lines.push(`${innerIndent}});`);
 
 	return {
 		code: lines.join('\n'),
@@ -735,7 +734,7 @@ function generateBranchBody(
 }
 
 /**
- * Generate code for an IF/Else composite node.
+ * Generate code for an IF/Else composite node using .branch() syntax.
  */
 function generateIfElseNode(
 	node: IfElseCompositeNode,
@@ -751,28 +750,25 @@ function generateIfElseNode(
 
 	const conditionExpr = extractIfCondition(node.ifNode.json.parameters, 'item', true);
 
-	lines.push(`${indent}${inputVar}.map((item) => {`);
+	const condStr = conditionExpr ?? '/* complex */';
+	lines.push(`${indent}${inputVar}.branch(`);
+	lines.push(`${innerIndent}(item) => ${condStr},`);
 
-	if (conditionExpr) {
-		lines.push(`${innerIndent}if (${conditionExpr}) {`);
-	} else {
-		lines.push(`${innerIndent}// Complex condition - see IF node parameters`);
-		lines.push(`${innerIndent}if (/* complex */) {`);
-	}
-
-	// True branch body
-	const trueBranchCode = generateBranchBody(node.trueBranch, ctx, depth + 2, 'item');
+	// True branch callback
+	lines.push(`${innerIndent}(items) => {`);
+	const trueBranchCode = generateBranchBody(node.trueBranch, ctx, depth + 2, 'items');
 	lines.push(trueBranchCode);
+	lines.push(`${innerIndent}},`);
 
-	// False branch
+	// False branch callback
 	if (node.falseBranch !== null) {
-		lines.push(`${innerIndent}} else {`);
-		const falseBranchCode = generateBranchBody(node.falseBranch, ctx, depth + 2, 'item');
+		lines.push(`${innerIndent}(items) => {`);
+		const falseBranchCode = generateBranchBody(node.falseBranch, ctx, depth + 2, 'items');
 		lines.push(falseBranchCode);
+		lines.push(`${innerIndent}},`);
 	}
 
-	lines.push(`${innerIndent}}`);
-	lines.push(`${indent}});`);
+	lines.push(`${indent});`);
 
 	return { code: lines.join('\n'), varName: null };
 }
@@ -897,7 +893,7 @@ function extractSwitchInfo(
 }
 
 /**
- * Generate code for a Switch/Case composite node.
+ * Generate code for a Switch/Case composite node using .route() syntax.
  */
 function generateSwitchCaseNode(
 	node: SwitchCaseCompositeNode,
@@ -907,8 +903,6 @@ function generateSwitchCaseNode(
 ): CompositeNodeResult {
 	const indent = getIndent(depth);
 	const innerIndent = getIndent(depth + 1);
-	const caseIndent = getIndent(depth + 2);
-	const bodyIndent = getIndent(depth + 3);
 
 	ctx.currentTriggerNodes?.add(node.switchNode.name);
 	const lines: string[] = [];
@@ -917,14 +911,8 @@ function generateSwitchCaseNode(
 	const rules = (node.switchNode.json.parameters?.rules as SwitchRulesBlock | undefined)?.values;
 	const numRules = rules?.length ?? 0;
 
-	lines.push(`${indent}${inputVar}.map((item) => {`);
-
-	if (switchInfo) {
-		lines.push(`${innerIndent}switch (${switchInfo.field}) {`);
-	} else {
-		lines.push(`${innerIndent}// Complex switch - see Switch node parameters`);
-		lines.push(`${innerIndent}switch (/* unknown */) {`);
-	}
+	const fieldExpr = switchInfo?.field ?? '/* unknown */';
+	lines.push(`${indent}${inputVar}.route((item) => ${fieldExpr}, {`);
 
 	for (let i = 0; i < node.cases.length; i++) {
 		const caseIndex = node.caseIndices[i];
@@ -933,36 +921,61 @@ function generateSwitchCaseNode(
 		// Determine if this is the default (fallback) case
 		const isDefault = caseIndex >= numRules;
 
+		let key: string;
 		if (isDefault) {
-			lines.push(`${caseIndent}default: {`);
+			key = 'default';
 		} else if (switchInfo && i < switchInfo.caseValues.length) {
-			lines.push(`${caseIndent}case ${switchInfo.caseValues[i]}: {`);
+			// Use the case value as the key — strip quotes for simple identifiers
+			const rawValue = switchInfo.caseValues[i];
+			key = rawValue;
 		} else {
-			lines.push(`${caseIndent}case /* case ${caseIndex} */: {`);
+			key = `/* case ${caseIndex} */`;
 		}
 
-		const branchBody = generateBranchBody(branch, ctx, depth + 3, 'item');
+		// Format key: if it's a quoted string like 'London', use it directly as a property key
+		// For complex keys (spaces, special chars), wrap in quotes
+		const formattedKey = formatRouteKey(key);
+		lines.push(`${innerIndent}${formattedKey}: (items) => {`);
+		const branchBody = generateBranchBody(branch, ctx, depth + 2, 'items');
 		lines.push(branchBody);
-		lines.push(`${bodyIndent}break;`);
-		lines.push(`${caseIndent}}`);
+		lines.push(`${innerIndent}},`);
 	}
 
-	lines.push(`${innerIndent}}`);
 	lines.push(`${indent}});`);
 
 	return { code: lines.join('\n'), varName: null };
 }
 
 /**
- * Generate code for a SplitInBatches composite node as a `batch()` call.
+ * Format a route key for use as an object property.
+ * Simple identifiers: London → London
+ * Quoted strings: 'New York' → 'New York'
+ * Boolean values: true → true, false → false
+ */
+function formatRouteKey(key: string): string {
+	if (key === 'default' || key === 'true' || key === 'false') return key;
+	// If key is a quoted string like 'London', extract and check if valid identifier
+	const unquoted = key.replace(/^'(.*)'$/, '$1');
+	if (unquoted !== key) {
+		// Was a quoted string — check if it's a valid JS identifier
+		if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(unquoted)) {
+			return unquoted;
+		}
+		return key; // Keep quotes for non-identifier keys like 'New York'
+	}
+	return key;
+}
+
+/**
+ * Generate code for a SplitInBatches composite node as a `.batch()` method call.
  *
  * Produces code like:
- *   batch(sourceVar, (item) => {
- *     const processItem = executeNode({ ... });
+ *   sourceVar.batch((items) => {
+ *     const processItem = items.map((item) => executeNode({ ... }));
  *   });
  *
  * When non-default config:
- *   batch(sourceVar, { params: { batchSize: 10 }, name: 'Process Each' }, (item) => {
+ *   sourceVar.batch({ params: { batchSize: 10 }, name: 'Process Each' }, (items) => {
  *     ...
  *   });
  */
@@ -984,13 +997,13 @@ function generateSplitInBatchesNode(
 	const configStr = buildBatchConfig(sib, ctx);
 
 	if (configStr) {
-		lines.push(`${indent}batch(${sourceVar}, ${configStr}, (item) => {`);
+		lines.push(`${indent}${sourceVar}.batch(${configStr}, (items) => {`);
 	} else {
-		lines.push(`${indent}batch(${sourceVar}, (item) => {`);
+		lines.push(`${indent}${sourceVar}.batch((items) => {`);
 	}
 
 	if (sib.loopChain !== null) {
-		const loopBody = generateBranchBody(sib.loopChain, ctx, depth + 1, 'item');
+		const loopBody = generateBranchBody(sib.loopChain, ctx, depth + 1, 'items');
 		lines.push(loopBody);
 	}
 

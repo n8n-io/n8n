@@ -7,42 +7,41 @@ workflow({ name: 'F51: Telegram to LinkedIn' }, () => {
 			version: 1.1,
 		},
 		(items) => {
-			items.map((item) => {
-				switch (item.json.message.voice.file_id) {
-					case '': {
-						const download_File = executeNode({
-							type: 'n8n-nodes-base.telegram',
-							name: 'Download File',
-							params: {
-								fileId: item.json.message.voice.file_id,
-								resource: 'file',
-								additionalFields: {},
+			items.route((item) => item.json.message.voice.file_id, {
+				'': (items) => {
+					const download_File = executeNode({
+						type: 'n8n-nodes-base.telegram',
+						name: 'Download File',
+						params: {
+							fileId: item.json.message.voice.file_id,
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: { telegramApi: { id: 'credential-id', name: 'telegramApi Credential' } },
+						version: 1.2,
+					});
+					const transcribe_Audio = executeNode({
+						type: '@n8n/n8n-nodes-langchain.openAi',
+						name: 'Transcribe Audio',
+						params: { options: {}, resource: 'audio', operation: 'transcribe' },
+						credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
+						version: 2.1,
+					});
+					const linkedIn_Post_Text = executeNode({
+						type: '@n8n/n8n-nodes-langchain.openAi',
+						name: 'LinkedIn Post Text',
+						params: {
+							modelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'gpt-4.1-mini',
+								cachedResultName: 'GPT-4.1-MINI',
 							},
-							credentials: { telegramApi: { id: 'credential-id', name: 'telegramApi Credential' } },
-							version: 1.2,
-						});
-						const transcribe_Audio = executeNode({
-							type: '@n8n/n8n-nodes-langchain.openAi',
-							name: 'Transcribe Audio',
-							params: { options: {}, resource: 'audio', operation: 'transcribe' },
-							credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
-							version: 2.1,
-						});
-						const linkedIn_Post_Text = executeNode({
-							type: '@n8n/n8n-nodes-langchain.openAi',
-							name: 'LinkedIn Post Text',
-							params: {
-								modelId: {
-									__rl: true,
-									mode: 'list',
-									value: 'gpt-4.1-mini',
-									cachedResultName: 'GPT-4.1-MINI',
-								},
-								options: {},
-								messages: {
-									values: [
-										{
-											content: `You are a LinkedIn post formatter. You receive the user's Telegram message: ${transcribe_Audio.json.text}  and transform it into a polished LinkedIn post.
+							options: {},
+							messages: {
+								values: [
+									{
+										content: `You are a LinkedIn post formatter. You receive the user's Telegram message: ${transcribe_Audio.json.text}  and transform it into a polished LinkedIn post.
 
 STRUCTURE:
 - Hook: Punchy opening line (max 9 words) on its own line.
@@ -94,28 +93,28 @@ AVOID:
 OUTPUT:
 Return only the formatted LinkedIn post as plain text. No JSON. No extra commentary.
 `,
-										},
-									],
-								},
+									},
+								],
 							},
-							credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
-							version: 2.1,
-						});
-						const image_Prompt = executeNode({
-							type: '@n8n/n8n-nodes-langchain.openAi',
-							name: 'Image Prompt',
-							params: {
-								modelId: {
-									__rl: true,
-									mode: 'list',
-									value: 'gpt-4.1-mini',
-									cachedResultName: 'GPT-4.1-MINI',
-								},
-								options: {},
-								messages: {
-									values: [
-										{
-											content: `You are an AI image prompt generator for LinkedIn posts. You receive a LinkedIn post text and create a professional image prompt for AI image generation.
+						},
+						credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
+						version: 2.1,
+					});
+					const image_Prompt = executeNode({
+						type: '@n8n/n8n-nodes-langchain.openAi',
+						name: 'Image Prompt',
+						params: {
+							modelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'gpt-4.1-mini',
+								cachedResultName: 'GPT-4.1-MINI',
+							},
+							options: {},
+							messages: {
+								values: [
+									{
+										content: `You are an AI image prompt generator for LinkedIn posts. You receive a LinkedIn post text and create a professional image prompt for AI image generation.
 
 YOUR TASK:
 Analyze the LinkedIn post: ${linkedIn_Post_Text.json.message.content} and generate a single, detailed image prompt that visually represents the main concept.
@@ -143,65 +142,62 @@ TECHNICAL SPECS:
 
 PROMPT STRUCTURE:
 Write prompts in this format:
-"[Main subject], [setting/background], [style], 
+"[Main subject], [setting/background], [style],
 `,
-										},
-									],
-								},
+									},
+								],
 							},
-							credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
-							version: 2.1,
-						});
-						const create_Image = executeNode({
-							type: '@n8n/n8n-nodes-langchain.openAi',
-							name: 'Create Image',
-							params: {
-								model: 'gpt-image-1',
-								prompt: image_Prompt.json.message.content,
-								options: {},
-								resource: 'image',
+						},
+						credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
+						version: 2.1,
+					});
+					const create_Image = executeNode({
+						type: '@n8n/n8n-nodes-langchain.openAi',
+						name: 'Create Image',
+						params: {
+							model: 'gpt-image-1',
+							prompt: image_Prompt.json.message.content,
+							options: {},
+							resource: 'image',
+						},
+						credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
+						version: 2.1,
+					});
+					const create_a_post = executeNode({
+						type: 'n8n-nodes-base.linkedIn',
+						name: 'Create a post',
+						params: {
+							text: expr("{{ $('LinkedIn Post Text').item.json.message.content }}"),
+							person: 'z1_S-ihZxl',
+							additionalFields: {},
+							shareMediaCategory: 'IMAGE',
+						},
+						credentials: {
+							linkedInOAuth2Api: { id: 'credential-id', name: 'linkedInOAuth2Api Credential' },
+						},
+						version: 1,
+					});
+				},
+				' ': (items) => {
+					const set_Text = executeNode({
+						type: 'n8n-nodes-base.set',
+						name: "Set 'Text'",
+						params: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'fe7ecc99-e1e8-4a5e-bdd6-6fce9757b234',
+										name: 'text',
+										type: 'string',
+										value: item.json.message.text,
+									},
+								],
 							},
-							credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
-							version: 2.1,
-						});
-						const create_a_post = executeNode({
-							type: 'n8n-nodes-base.linkedIn',
-							name: 'Create a post',
-							params: {
-								text: expr("{{ $('LinkedIn Post Text').item.json.message.content }}"),
-								person: 'z1_S-ihZxl',
-								additionalFields: {},
-								shareMediaCategory: 'IMAGE',
-							},
-							credentials: {
-								linkedInOAuth2Api: { id: 'credential-id', name: 'linkedInOAuth2Api Credential' },
-							},
-							version: 1,
-						});
-						break;
-					}
-					case '': {
-						const set_Text = executeNode({
-							type: 'n8n-nodes-base.set',
-							name: "Set 'Text'",
-							params: {
-								options: {},
-								assignments: {
-									assignments: [
-										{
-											id: 'fe7ecc99-e1e8-4a5e-bdd6-6fce9757b234',
-											name: 'text',
-											type: 'string',
-											value: item.json.message.text,
-										},
-									],
-								},
-							},
-							version: 3.4,
-						});
-						break;
-					}
-				}
+						},
+						version: 3.4,
+					});
+				},
 			});
 		},
 	);

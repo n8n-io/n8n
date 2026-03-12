@@ -13,8 +13,8 @@ workflow({ name: 'F39: Webhook Switch Routing' }, () => {
 			version: 2,
 		},
 		(items) => {
-			items.map((item) => {
-				switch (
+			items.route(
+				(item) =>
 					item.json.body.attendee_name &&
 					item.json.body.start &&
 					item.json.body.attendee_phone &&
@@ -22,9 +22,9 @@ workflow({ name: 'F39: Webhook Switch Routing' }, () => {
 					item.json.body.attendee_company &&
 					item.json.body.notes
 						? true
-						: false
-				) {
-					case true: {
+						: false,
+				{
+					true: (items) => {
 						const create_booking = executeNode({
 							type: 'n8n-nodes-base.httpRequest',
 							name: 'Create booking',
@@ -71,9 +71,8 @@ workflow({ name: 'F39: Webhook Switch Routing' }, () => {
 							},
 							version: 1.1,
 						});
-						break;
-					}
-					case false: {
+					},
+					false: (items) => {
 						const insufficient_data_response = executeNode({
 							type: 'n8n-nodes-base.respondToWebhook',
 							name: 'Insufficient data response',
@@ -96,10 +95,9 @@ workflow({ name: 'F39: Webhook Switch Routing' }, () => {
 							},
 							version: 1.1,
 						});
-						break;
-					}
-				}
-			});
+					},
+				},
+			);
 		},
 	);
 });

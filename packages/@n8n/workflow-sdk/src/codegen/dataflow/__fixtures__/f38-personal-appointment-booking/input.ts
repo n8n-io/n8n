@@ -11,8 +11,9 @@ workflow({ name: 'F38: Personal Appointment Booking' }, () => {
 			version: 2,
 		},
 		(items) => {
-			items.map((item) => {
-				if (item.json.body.tool === 'checkAvailableSlot') {
+			items.branch(
+				(item) => item.json.body.tool === 'checkAvailableSlot',
+				(items) => {
 					const check_available_slot_in_Cal_com = executeNode({
 						type: 'n8n-nodes-base.httpRequest',
 						name: 'Check available slot in Cal.com',
@@ -45,7 +46,8 @@ workflow({ name: 'F38: Personal Appointment Booking' }, () => {
 						params: { options: {} },
 						version: 1.2,
 					});
-				} else {
+				},
+				(items) => {
 					const book_an_Appointment = executeNode({
 						type: 'n8n-nodes-base.httpRequest',
 						name: 'Book an Appointment',
@@ -64,8 +66,8 @@ workflow({ name: 'F38: Personal Appointment Booking' }, () => {
 						credentials: { calApi: { id: 'credential-id', name: 'calApi Credential' } },
 						version: 4.2,
 					});
-				}
-			});
+				},
+			);
 		},
 	);
 });

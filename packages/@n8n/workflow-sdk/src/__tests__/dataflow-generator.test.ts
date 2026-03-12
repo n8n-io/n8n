@@ -389,7 +389,7 @@ describe('dataflow-generator', () => {
 
 			const code = generateFromWorkflow(json);
 
-			expect(code).toContain('batch(items, (item) => {');
+			expect(code).toContain('items.batch((items) => {');
 			expect(code).not.toContain('for (const');
 		});
 
@@ -423,8 +423,7 @@ describe('dataflow-generator', () => {
 
 			const code = generateFromWorkflow(json);
 
-			expect(code).toContain('batch(items, { params: { batchSize: 10 }');
-			expect(code).toContain('(item) => {');
+			expect(code).toContain('items.batch({ params: { batchSize: 10 } }, (items) => {');
 		});
 
 		it('generates batch() with config when custom name', () => {
@@ -457,11 +456,11 @@ describe('dataflow-generator', () => {
 
 			const code = generateFromWorkflow(json);
 
-			expect(code).toContain("batch(items, { name: 'Process Each' }");
+			expect(code).toContain("items.batch({ name: 'Process Each' }, (items) => {");
 		});
 
 		describe('IF/Else handling', () => {
-			it('generates if/else block with simple equality condition', () => {
+			it('generates branch() with simple equality condition', () => {
 				const json: WorkflowJSON = {
 					name: 'IF Test',
 					nodes: [
@@ -526,13 +525,13 @@ describe('dataflow-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("if (items[0].json.status === 'active')");
-				expect(code).toContain('} else {');
+				expect(code).toContain("(item) => item.json.status === 'active'");
+				expect(code).toContain('items.branch(');
 				expect(code).toContain('const true_Branch = executeNode(');
 				expect(code).toContain('const false_Branch = executeNode(');
 			});
 
-			it('generates if block with true-only branch (no else)', () => {
+			it('generates branch() with true-only callback (no else)', () => {
 				const json: WorkflowJSON = {
 					name: 'IF True Only',
 					nodes: [
@@ -586,8 +585,9 @@ describe('dataflow-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("if (items[0].json.status === 'active')");
-				expect(code).not.toContain('} else {');
+				expect(code).toContain("(item) => item.json.status === 'active'");
+				expect(code).toContain('items.branch(');
+				expect(code).not.toContain('const false_Branch');
 				expect(code).toContain('const true_Branch = executeNode(');
 			});
 
@@ -655,8 +655,8 @@ describe('dataflow-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain('if (items[0].json.is_fragile)');
-				expect(code).toContain('} else {');
+				expect(code).toContain('(item) => item.json.is_fragile');
+				expect(code).toContain('items.branch(');
 			});
 
 			it('generates if block with notEquals operator', () => {
@@ -713,7 +713,8 @@ describe('dataflow-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("if (items[0].json.role !== 'admin')");
+				expect(code).toContain("(item) => item.json.role !== 'admin'");
+				expect(code).toContain('items.branch(');
 			});
 
 			it('generates if block with contains operator', () => {
@@ -770,7 +771,8 @@ describe('dataflow-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("if (items[0].json.email.includes('@example.com'))");
+				expect(code).toContain("(item) => item.json.email.includes('@example.com')");
+				expect(code).toContain('items.branch(');
 			});
 
 			it('generates if block with exists operator', () => {
@@ -826,7 +828,8 @@ describe('dataflow-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain('if (items[0].json.phone !== undefined)');
+				expect(code).toContain('(item) => item.json.phone !== undefined');
+				expect(code).toContain('items.branch(');
 			});
 
 			it('generates || for OR combinator with multiple conditions', () => {
@@ -889,10 +892,9 @@ describe('dataflow-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should generate proper || condition
-				expect(code).toContain("status === 'active' || ");
-				expect(code).toContain("role === 'admin'");
-				expect(code).toContain('if (');
+				// Should generate proper || condition inside .branch() predicate
+				expect(code).toContain("item.json.status === 'active' || item.json.role === 'admin'");
+				expect(code).toContain('items.branch(');
 			});
 		});
 
@@ -1024,9 +1026,9 @@ describe('dataflow-generator', () => {
 				const code = generateFromWorkflow(json);
 
 				expect(code).toContain(".filter((item) => item.json.active === 'yes')");
-				// With discarded branch, uses array destructuring
-				expect(code).toContain('const [filter, ');
-				expect(code).toContain('discarded_Handler');
+				// Kept branch uses filter variable with .map()
+				expect(code).toContain('const filter = items.filter(');
+				expect(code).toContain('const kept_Handler = filter.map(');
 			});
 
 			it('does not generate if/else for Filter nodes', () => {
@@ -1187,10 +1189,10 @@ describe('dataflow-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain('switch (items[0].json.destination)');
-				expect(code).toContain("case 'London':");
-				expect(code).toContain("case 'New York':");
-				expect(code).toContain('default:');
+				expect(code).toContain('items.route((item) => item.json.destination, {');
+				expect(code).toContain('London: (items) => {');
+				expect(code).toContain("'New York': (items) => {");
+				expect(code).toContain('default: (items) => {');
 			});
 
 			it('generates correct node calls inside switch case bodies', () => {
@@ -1302,7 +1304,7 @@ describe('dataflow-generator', () => {
 				expect(code).toContain('const handler_A = executeNode(');
 				expect(code).toContain('const handler_B = executeNode(');
 				expect(code).toContain('const fallback = executeNode(');
-				expect(code).toContain('break;');
+				expect(code).not.toContain('break;');
 			});
 		});
 
@@ -1562,9 +1564,9 @@ describe('dataflow-generator', () => {
 					},
 				};
 				const code = generateFromWorkflow(json);
-				expect(code).toContain('try {');
-				expect(code).toContain('} catch');
-				// try block node and catch block handler both use plain executeNode()
+				expect(code).toContain('.handleError((items) => {');
+				expect(code).not.toContain('try {');
+				expect(code).not.toContain('} catch');
 				expect(code).toContain('const hTTP_Request = executeNode(');
 				expect(code).toContain('const error_Handler = executeNode(');
 			});
@@ -1597,8 +1599,8 @@ describe('dataflow-generator', () => {
 					},
 				};
 				const code = generateFromWorkflow(json);
+				expect(code).not.toContain('.handleError(');
 				expect(code).not.toContain('try {');
-				expect(code).not.toContain('catch');
 				// Per-item node (no executeOnce) wraps in .map()
 				expect(code).toContain('const hTTP_Request = items.map((item) =>');
 			});
@@ -2440,14 +2442,15 @@ describe('dataflow-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain('try {');
-				expect(code).toContain('} catch');
+				expect(code).toContain('.handleError((items) => {');
+				expect(code).not.toContain('try {');
+				expect(code).not.toContain('} catch');
 				expect(code).toContain('const hTTP_Request = executeNode(');
 				expect(code).toContain('const error_Handler = executeNode(');
-				expect(code).toContain('switch (hTTP_Request[0].json.type)');
-				expect(code).toContain("case 'email':");
-				expect(code).toContain("case 'sms':");
-				expect(code).toContain('default:');
+				expect(code).toContain('hTTP_Request.route((item) => item.json.type, {');
+				expect(code).toContain('email: (items) => {');
+				expect(code).toContain('sms: (items) => {');
+				expect(code).toContain('default: (items) => {');
 				expect(code).toContain('const send_Email = executeNode(');
 				expect(code).toContain('const send_SMS = executeNode(');
 				expect(code).toContain('const log_Unknown = executeNode(');

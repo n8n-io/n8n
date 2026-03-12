@@ -45,25 +45,23 @@ workflow({ name: 'F45: SAP Connection' }, () => {
 					version: 3.4,
 				}),
 			);
-			try {
-				const sAP_Connection = executeNode({
-					type: 'n8n-nodes-base.httpRequest',
-					name: 'SAP Connection',
-					params: {
-						url: `${set_Login_Data.json.sap_url}Login`,
-						method: 'POST',
-						options: { allowUnauthorizedCerts: true },
-						jsonBody: `{
+			const sAP_Connection = executeNode({
+				type: 'n8n-nodes-base.httpRequest',
+				name: 'SAP Connection',
+				params: {
+					url: `${set_Login_Data.json.sap_url}Login`,
+					method: 'POST',
+					options: { allowUnauthorizedCerts: true },
+					jsonBody: `{
        "UserName": "${set_Login_Data.json.sap_username}",
        "Password": "${set_Login_Data.json.sap_password}",
        "CompanyDB": "${set_Login_Data.json.sap_companydb}"
 }`,
-						sendBody: true,
-						specifyBody: 'json',
-					},
-					version: 4.2,
-				});
-			} catch (e) {
+					sendBody: true,
+					specifyBody: 'json',
+				},
+				version: 4.2,
+			}).handleError((items) => {
 				const failed = executeNode({
 					type: 'n8n-nodes-base.set',
 					name: 'Failed',
@@ -88,7 +86,7 @@ workflow({ name: 'F45: SAP Connection' }, () => {
 					},
 					version: 3.4,
 				});
-			}
+			});
 			const success = sAP_Connection.map((item) =>
 				executeNode({
 					type: 'n8n-nodes-base.set',

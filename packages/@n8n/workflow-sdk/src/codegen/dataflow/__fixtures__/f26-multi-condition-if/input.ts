@@ -9,23 +9,25 @@ workflow(
 				outputSampleData: [{ status: 'active', priority: 8 }],
 			},
 			(items) => {
-				items.map((item) => {
-					if (item.json.status === 'active' && item.json.priority > 5) {
+				items.branch(
+					(item) => item.json.status === 'active' && item.json.priority > 5,
+					(items) => {
 						const send_Notification = executeNode({
 							type: 'n8n-nodes-base.httpRequest',
 							name: 'Send Notification',
 							params: { url: 'https://api.example.com/notify', method: 'POST' },
 							version: 4,
 						});
-					} else {
+					},
+					(items) => {
 						const skip_Notification = executeNode({
 							type: 'n8n-nodes-base.set',
 							name: 'Skip Notification',
 							params: {},
 							version: 3.4,
 						});
-					}
-				});
+					},
+				);
 			},
 		);
 	},

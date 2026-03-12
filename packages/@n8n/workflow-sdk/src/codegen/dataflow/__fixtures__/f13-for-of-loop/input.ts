@@ -5,7 +5,7 @@ workflow({ name: 'F13: For-of loop (SplitInBatches pattern)' }, () => {
 			params: { url: 'https://api.example.com/items' },
 			version: 4,
 		});
-		batch(hTTP_Request, (item) => {
+		hTTP_Request.batch((items) => {
 			const process_Item = executeNode({
 				type: 'n8n-nodes-base.set',
 				name: 'Process Item',

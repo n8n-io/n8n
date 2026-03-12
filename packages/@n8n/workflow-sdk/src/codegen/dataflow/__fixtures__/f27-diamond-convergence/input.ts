@@ -7,23 +7,25 @@ workflow({ name: 'F27: Diamond convergence (IF → branches → Merge → contin
 			outputSampleData: [{ tier: 'premium' }],
 		},
 		(items) => {
-			items.map((item) => {
-				if (item.json.tier === 'premium') {
+			items.branch(
+				(item) => item.json.tier === 'premium',
+				(items) => {
 					const fetch_Premium = executeNode({
 						type: 'n8n-nodes-base.httpRequest',
 						name: 'Fetch Premium',
 						params: { url: 'https://api.example.com/premium' },
 						version: 4,
 					});
-				} else {
+				},
+				(items) => {
 					const fetch_Basic = executeNode({
 						type: 'n8n-nodes-base.httpRequest',
 						name: 'Fetch Basic',
 						params: { url: 'https://api.example.com/basic' },
 						version: 4,
 					});
-				}
-			});
+				},
+			);
 		},
 	);
 	const merge_node = executeNode(

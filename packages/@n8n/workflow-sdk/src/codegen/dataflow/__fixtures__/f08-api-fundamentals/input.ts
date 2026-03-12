@@ -138,8 +138,9 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 			version: 2,
 		},
 		(items) => {
-			items.map((item) => {
-				if (item.json.query.extra_cheese) {
+			items.branch(
+				(item) => item.json.query.extra_cheese,
+				(items) => {
 					const prepare_Cheese_Pizza = executeNode({
 						type: 'n8n-nodes-base.set',
 						name: 'Prepare Cheese Pizza',
@@ -153,7 +154,8 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 						},
 						version: 3.4,
 					});
-				} else {
+				},
+				(items) => {
 					const prepare_Plain_Pizza = executeNode({
 						type: 'n8n-nodes-base.set',
 						name: 'Prepare Plain Pizza',
@@ -165,8 +167,8 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 						},
 						version: 3.4,
 					});
-				}
-			});
+				},
+			);
 		},
 	);
 	onTrigger(
@@ -217,8 +219,9 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 			version: 2,
 		},
 		(items) => {
-			items.map((item) => {
-				if (item.json.headers['x-api-key'] === 'super-secret-key') {
+			items.branch(
+				(item) => item.json.headers['x-api-key'] === 'super-secret-key',
+				(items) => {
 					const respond_with_Secret = executeNode({
 						type: 'n8n-nodes-base.respondToWebhook',
 						name: 'Respond with Secret',
@@ -229,7 +232,8 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 						},
 						version: 1.4,
 					});
-				} else {
+				},
+				(items) => {
 					const respond_Unauthorized_401 = executeNode({
 						type: 'n8n-nodes-base.respondToWebhook',
 						name: 'Respond: Unauthorized (401)',
@@ -240,8 +244,8 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 						},
 						version: 1.4,
 					});
-				}
-			});
+				},
+			);
 		},
 	);
 	onTrigger(

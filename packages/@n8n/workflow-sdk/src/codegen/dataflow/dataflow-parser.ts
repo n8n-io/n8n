@@ -958,6 +958,467 @@ function isFilterCall(
 }
 
 /**
+ * Check if a call expression is `source.branch(predicate, trueFn, falseFn)`.
+ */
+function isBranchCall(expr: CallExpression):
+	| {
+			sourceVar: string;
+			predicate: ArrowFunctionExpression | FunctionExpression;
+			trueBranch: ArrowFunctionExpression | FunctionExpression;
+			falseBranch?: ArrowFunctionExpression | FunctionExpression;
+	  }
+	| undefined {
+	if (!isMemberExpression(expr.callee)) return undefined;
+	const member = expr.callee;
+	if (!isIdentifier(member.property) || member.property.name !== 'branch') return undefined;
+	if (member.object.type === 'Super' || !isIdentifier(member.object)) return undefined;
+	const sourceVar = member.object.name;
+	if (expr.arguments.length < 2) return undefined;
+	const [predArg, trueArg, falseArg] = expr.arguments;
+	if (predArg.type === 'SpreadElement' || !isArrowOrFunction(predArg)) return undefined;
+	if (trueArg.type === 'SpreadElement' || !isArrowOrFunction(trueArg)) return undefined;
+	const falseBranch =
+		falseArg && falseArg.type !== 'SpreadElement' && isArrowOrFunction(falseArg)
+			? falseArg
+			: undefined;
+	return { sourceVar, predicate: predArg, trueBranch: trueArg, falseBranch };
+}
+
+/**
+ * Check if a call expression is `source.route(selector, { case: fn, ... })`.
+ */
+function isRouteCall(expr: CallExpression):
+	| {
+			sourceVar: string;
+			selector: ArrowFunctionExpression | FunctionExpression;
+			cases: ObjectExpression;
+	  }
+	| undefined {
+	if (!isMemberExpression(expr.callee)) return undefined;
+	const member = expr.callee;
+	if (!isIdentifier(member.property) || member.property.name !== 'route') return undefined;
+	if (member.object.type === 'Super' || !isIdentifier(member.object)) return undefined;
+	const sourceVar = member.object.name;
+	if (expr.arguments.length < 2) return undefined;
+	const [selectorArg, casesArg] = expr.arguments;
+	if (selectorArg.type === 'SpreadElement' || !isArrowOrFunction(selectorArg)) return undefined;
+	if (casesArg.type === 'SpreadElement' || !isObjectExpression(casesArg)) return undefined;
+	return { sourceVar, selector: selectorArg, cases: casesArg };
+}
+
+/**
+ * Check if a call expression is `source.handleError(callback)`.
+ * The source can be an executeNode() call or any other call expression.
+ */
+function isHandleErrorCall(expr: CallExpression):
+	| {
+			source: CallExpression;
+			callback: ArrowFunctionExpression | FunctionExpression;
+	  }
+	| undefined {
+	if (!isMemberExpression(expr.callee)) return undefined;
+	const member = expr.callee;
+	if (!isIdentifier(member.property) || member.property.name !== 'handleError') return undefined;
+	if (!isCallExpression(member.object as Expression)) return undefined;
+	if (expr.arguments.length === 0) return undefined;
+	const arg = expr.arguments[0];
+	if (arg.type === 'SpreadElement' || !isArrowOrFunction(arg)) return undefined;
+	return { source: member.object as CallExpression, callback: arg };
+}
+
+/**
+ * Check if a call expression is `source.batch(callback)` or `source.batch(config, callback)`.
+ */
+function isBatchMethodCall(expr: CallExpression):
+	| {
+			sourceVar: string;
+			config?: ObjectExpression;
+			callback: ArrowFunctionExpression | FunctionExpression;
+	  }
+	| undefined {
+	if (!isMemberExpression(expr.callee)) return undefined;
+	const member = expr.callee;
+	if (!isIdentifier(member.property) || member.property.name !== 'batch') return undefined;
+	if (member.object.type === 'Super' || !isIdentifier(member.object)) return undefined;
+	const sourceVar = member.object.name;
+	if (expr.arguments.length === 0) return undefined;
+
+	const firstArg = expr.arguments[0];
+	if (firstArg.type === 'SpreadElement') return undefined;
+
+	// source.batch((items) => { ... })
+	if (isArrowOrFunction(firstArg)) {
+		return { sourceVar, callback: firstArg };
+	}
+
+	// source.batch({ config }, (items) => { ... })
+	if (isObjectExpression(firstArg) && expr.arguments.length >= 2) {
+		const secondArg = expr.arguments[1];
+		if (secondArg.type !== 'SpreadElement' && isArrowOrFunction(secondArg)) {
+			return { sourceVar, config: firstArg, callback: secondArg };
+		}
+	}
+
+	return undefined;
+}
+
+/**
+ * Process a .branch() call → IF node + true/false branches.
+ */
+function processBranchCall(
+	call: CallExpression,
+	state: ParserState,
+	inputVarName: string | undefined,
+): void {
+	const match = isBranchCall(call);
+	if (!match) return;
+
+	// Extract condition from predicate body (the arrow function body expression)
+	const predicateBody = match.predicate.body;
+	const conditionExpr =
+		predicateBody.type === 'BlockStatement' ? undefined : (predicateBody as Expression);
+	const condition = conditionExpr ? extractConditionFromExpression(conditionExpr) : undefined;
+
+	// Create IF node
+	const ifParams = condition ? buildIfParameters(condition) : {};
+	const ifConfig: NodeConfig = {
+		type: 'n8n-nodes-base.if',
+		params: ifParams,
+		version: 2,
+	};
+	const { node: ifNode } = createSemanticNode(ifConfig, state);
+
+	// Connect input to IF node
+	const sourceMapping = state.varToNode.get(match.sourceVar);
+	if (sourceMapping) {
+		addSemanticEdge(state, sourceMapping.nodeName, ifNode.name, sourceMapping.outputIndex);
+	} else if (state.lastNodeInScope) {
+		addSemanticEdge(
+			state,
+			state.lastNodeInScope.nodeName,
+			ifNode.name,
+			state.lastNodeInScope.outputIndex,
+		);
+	}
+
+	// Save state
+	const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
+	const originalLastNode = state.lastNodeInScope;
+
+	// Process true branch — remap to IF output 0
+	const trueCallback = match.trueBranch;
+	const trueBranchParam = trueCallback.params[0];
+	const trueBranchParamName =
+		trueBranchParam && isIdentifier(trueBranchParam as Expression)
+			? (trueBranchParam as Identifier).name
+			: undefined;
+
+	if (trueBranchParamName) {
+		state.varToNode.set(trueBranchParamName, { nodeName: ifNode.name, outputIndex: 0 });
+	}
+	if (inputVarName) {
+		state.varToNode.set(inputVarName, { nodeName: ifNode.name, outputIndex: 0 });
+	}
+	state.lastNodeInScope = { nodeName: ifNode.name, outputIndex: 0 };
+	state.branchDepth++;
+	const trueBody = trueCallback.body;
+	if (trueBody.type === 'BlockStatement') {
+		processStatements(trueBody.body, state, trueBranchParamName ?? inputVarName);
+	}
+	state.branchDepth--;
+	if (trueBranchParamName) {
+		state.varToNode.delete(trueBranchParamName);
+	}
+
+	// Process false branch — remap to IF output 1
+	if (match.falseBranch) {
+		const falseCallback = match.falseBranch;
+		const falseBranchParam = falseCallback.params[0];
+		const falseBranchParamName =
+			falseBranchParam && isIdentifier(falseBranchParam as Expression)
+				? (falseBranchParam as Identifier).name
+				: undefined;
+
+		if (falseBranchParamName) {
+			state.varToNode.set(falseBranchParamName, { nodeName: ifNode.name, outputIndex: 1 });
+		}
+		if (inputVarName) {
+			state.varToNode.set(inputVarName, { nodeName: ifNode.name, outputIndex: 1 });
+		}
+		state.lastNodeInScope = { nodeName: ifNode.name, outputIndex: 1 };
+		state.branchDepth++;
+		const falseBody = falseCallback.body;
+		if (falseBody.type === 'BlockStatement') {
+			processStatements(falseBody.body, state, falseBranchParamName ?? inputVarName);
+		}
+		state.branchDepth--;
+		if (falseBranchParamName) {
+			state.varToNode.delete(falseBranchParamName);
+		}
+	}
+
+	// Restore state
+	if (inputVarName) {
+		if (originalMapping) {
+			state.varToNode.set(inputVarName, originalMapping);
+		} else {
+			state.varToNode.delete(inputVarName);
+		}
+	}
+	state.lastNodeInScope = originalLastNode;
+}
+
+/**
+ * Process a .route() call → Switch node + case branches.
+ */
+function processRouteCall(
+	call: CallExpression,
+	state: ParserState,
+	inputVarName: string | undefined,
+): void {
+	const match = isRouteCall(call);
+	if (!match) return;
+
+	// Extract field path from selector body
+	const selectorBody = match.selector.body;
+	const fieldPath =
+		selectorBody.type !== 'BlockStatement'
+			? memberExprToFieldPath(selectorBody as Expression)
+			: undefined;
+
+	// Extract case keys and callbacks from the cases object
+	const caseKeys: unknown[] = [];
+	const caseCallbacks: (ArrowFunctionExpression | FunctionExpression)[] = [];
+	let defaultCallback: (ArrowFunctionExpression | FunctionExpression) | undefined;
+
+	for (const prop of match.cases.properties) {
+		if (prop.type !== 'Property') continue;
+		const p = prop as Property;
+		let key: unknown = isIdentifier(p.key)
+			? p.key.name
+			: isLiteral(p.key)
+				? (p.key as Literal).value
+				: undefined;
+		// Convert identifier names 'true'/'false' to actual booleans for boolean switch params
+		if (key === 'true') key = true;
+		else if (key === 'false') key = false;
+		const value = p.value;
+		if (!isArrowOrFunction(value as Expression)) continue;
+		if (key === 'default') {
+			defaultCallback = value as ArrowFunctionExpression | FunctionExpression;
+		} else {
+			caseKeys.push(key);
+			caseCallbacks.push(value as ArrowFunctionExpression | FunctionExpression);
+		}
+	}
+
+	// Build Switch node
+	let switchParams: Record<string, unknown>;
+	if (fieldPath) {
+		switchParams = buildSwitchParameters(fieldPath, caseKeys);
+	} else if (selectorBody.type !== 'BlockStatement') {
+		// Try complex expression fallback (e.g. boolean ternary)
+		const n8nExpr = jsExprToN8nExpr(selectorBody as Expression);
+		if (n8nExpr) {
+			const allBooleans = caseKeys.every((v) => typeof v === 'boolean');
+			if (allBooleans) {
+				switchParams = buildSwitchBooleanParameters(n8nExpr, caseKeys);
+			} else {
+				switchParams = { rules: { values: [] } };
+			}
+		} else {
+			switchParams = { rules: { values: [] } };
+		}
+	} else {
+		switchParams = { rules: { values: [] } };
+	}
+	const switchConfig: NodeConfig = {
+		type: 'n8n-nodes-base.switch',
+		params: switchParams,
+		version: 3,
+	};
+	const { node: switchNode } = createSemanticNode(switchConfig, state);
+
+	// Connect input to Switch
+	const sourceMapping = state.varToNode.get(match.sourceVar);
+	if (sourceMapping) {
+		addSemanticEdge(state, sourceMapping.nodeName, switchNode.name, sourceMapping.outputIndex);
+	} else if (state.lastNodeInScope) {
+		addSemanticEdge(
+			state,
+			state.lastNodeInScope.nodeName,
+			switchNode.name,
+			state.lastNodeInScope.outputIndex,
+		);
+	}
+
+	// Save state
+	const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
+	const originalLastNode = state.lastNodeInScope;
+
+	// Process each case
+	for (let i = 0; i < caseCallbacks.length; i++) {
+		const cb = caseCallbacks[i];
+		const cbParam = cb.params[0];
+		const cbParamName =
+			cbParam && isIdentifier(cbParam as Expression) ? (cbParam as Identifier).name : undefined;
+
+		if (cbParamName) {
+			state.varToNode.set(cbParamName, { nodeName: switchNode.name, outputIndex: i });
+		}
+		if (inputVarName) {
+			state.varToNode.set(inputVarName, { nodeName: switchNode.name, outputIndex: i });
+		}
+		state.lastNodeInScope = { nodeName: switchNode.name, outputIndex: i };
+		state.branchDepth++;
+		if (cb.body.type === 'BlockStatement') {
+			processStatements(cb.body.body, state, cbParamName ?? inputVarName);
+		}
+		state.branchDepth--;
+		if (cbParamName) {
+			state.varToNode.delete(cbParamName);
+		}
+	}
+
+	// Process default case
+	if (defaultCallback) {
+		const defParam = defaultCallback.params[0];
+		const defParamName =
+			defParam && isIdentifier(defParam as Expression) ? (defParam as Identifier).name : undefined;
+		const defaultIndex = caseCallbacks.length;
+
+		if (defParamName) {
+			state.varToNode.set(defParamName, { nodeName: switchNode.name, outputIndex: defaultIndex });
+		}
+		if (inputVarName) {
+			state.varToNode.set(inputVarName, { nodeName: switchNode.name, outputIndex: defaultIndex });
+		}
+		state.lastNodeInScope = { nodeName: switchNode.name, outputIndex: defaultIndex };
+		state.branchDepth++;
+		if (defaultCallback.body.type === 'BlockStatement') {
+			processStatements(defaultCallback.body.body, state, defParamName ?? inputVarName);
+		}
+		state.branchDepth--;
+		if (defParamName) {
+			state.varToNode.delete(defParamName);
+		}
+	}
+
+	// Restore state
+	if (inputVarName) {
+		if (originalMapping) {
+			state.varToNode.set(inputVarName, originalMapping);
+		} else {
+			state.varToNode.delete(inputVarName);
+		}
+	}
+	state.lastNodeInScope = originalLastNode;
+}
+
+/**
+ * Process a .batch() method call → SplitInBatches node.
+ * Delegates to processBatchCall after converting to the equivalent standalone batch() format.
+ */
+function processBatchMethodCall(
+	call: CallExpression,
+	state: ParserState,
+	inputVarName: string | undefined,
+): void {
+	const match = isBatchMethodCall(call);
+	if (!match) return;
+
+	// Resolve source variable
+	const sourceMapping = state.varToNode.get(match.sourceVar);
+	let sourceNodeName: string | undefined;
+	let sourceOutputIndex = 0;
+	if (sourceMapping) {
+		sourceNodeName = sourceMapping.nodeName;
+		sourceOutputIndex = sourceMapping.outputIndex;
+	}
+
+	// Build SplitInBatches config
+	const configObj = match.config ? extractObjectLiteral(match.config) : undefined;
+	const params = (configObj?.params as Record<string, unknown>) ?? { batchSize: 1 };
+	const version = (configObj?.version as number) ?? 3;
+	const name = configObj?.name as string | undefined;
+
+	const sibConfig: NodeConfig = {
+		type: 'n8n-nodes-base.splitInBatches',
+		params,
+		version,
+		...(name ? { name } : {}),
+	};
+	const { node: sibNode } = createSemanticNode(sibConfig, state);
+
+	// Connect source → SplitInBatches
+	if (sourceNodeName) {
+		addSemanticEdge(state, sourceNodeName, sibNode.name, sourceOutputIndex);
+	} else if (state.lastNodeInScope) {
+		addSemanticEdge(
+			state,
+			state.lastNodeInScope.nodeName,
+			sibNode.name,
+			state.lastNodeInScope.outputIndex,
+		);
+	}
+
+	// Process loop body: nodes connect from SplitInBatches output 1 (loop)
+	state.lastNodeInScope = { nodeName: sibNode.name, outputIndex: 1 };
+
+	// Remap the callback parameter to the SIB loop output so that
+	// `items.map(...)` inside the callback resolves to the SIB node
+	const callbackParam = match.callback.params[0];
+	const callbackParamName =
+		callbackParam && isIdentifier(callbackParam as Expression)
+			? (callbackParam as Identifier).name
+			: undefined;
+	const originalParamMapping = callbackParamName
+		? state.varToNode.get(callbackParamName)
+		: undefined;
+	if (callbackParamName) {
+		state.varToNode.set(callbackParamName, { nodeName: sibNode.name, outputIndex: 1 });
+	}
+
+	const nodesBeforeBody = state.nodeInsertionOrder.length;
+	const body = match.callback.body;
+	const bodyStatements = body.type === 'BlockStatement' ? (body as BlockStatement).body : [];
+	processStatements(bodyStatements, state, callbackParamName ?? inputVarName);
+
+	// Restore callback param mapping
+	if (callbackParamName) {
+		if (originalParamMapping) {
+			state.varToNode.set(callbackParamName, originalParamMapping);
+		} else {
+			state.varToNode.delete(callbackParamName);
+		}
+	}
+
+	// Connect lastNodeInScope (success path) back to SplitInBatches
+	if (state.lastNodeInScope && state.lastNodeInScope.nodeName !== sibNode.name) {
+		addSemanticEdge(
+			state,
+			state.lastNodeInScope.nodeName,
+			sibNode.name,
+			state.lastNodeInScope.outputIndex,
+		);
+	}
+
+	// Also connect any terminal loop body nodes that have no outgoing connections
+	for (let i = nodesBeforeBody; i < state.nodeInsertionOrder.length; i++) {
+		const bodyNodeName = state.nodeInsertionOrder[i];
+		const bodyNode = state.graphNodes.get(bodyNodeName);
+		if (!bodyNode) continue;
+		const hasOutgoing = [...bodyNode.outputs.values()].some((targets) => targets.length > 0);
+		if (!hasOutgoing) {
+			addSemanticEdge(state, bodyNodeName, sibNode.name, 0);
+		}
+	}
+
+	// After batch: lastNodeInScope = SplitInBatches output 0 (done)
+	state.lastNodeInScope = { nodeName: sibNode.name, outputIndex: 0 };
+}
+
+/**
  * Check if a call expression is a `node({...})(input)` or `node({...})()` pattern.
  * Returns the config ObjectExpression and optional input argument if matched.
  */
@@ -1126,6 +1587,64 @@ function processNodeVarDeclaration(
 				state.lastNodeInScope = { nodeName: filterNode.name, outputIndex: 0 };
 				return isIdentifier(declarator.id) ? declarator.id.name : undefined;
 			}
+		}
+	}
+
+	// Pattern B0: const x = executeNode({...}).handleError((items) => { ... })
+	// Chained error handling on a node — creates node with onError: continueErrorOutput
+	const handleErrorMatch = isHandleErrorCall(declarator.init);
+	if (handleErrorMatch) {
+		const innerExecMatch = matchExecuteNodeCall(handleErrorMatch.source);
+		if (innerExecMatch) {
+			const config = extractNodeConfig(innerExecMatch.config);
+			const { node: sNode, isNew } = createSemanticNode(config, state);
+			if (isNew && state.branchDepth === 0) {
+				sNode.json.executeOnce = true;
+			}
+			if (isNew) processSubnodes(config, sNode.name, state);
+
+			// Set onError flag
+			sNode.json.onError = 'continueErrorOutput';
+
+			// Connect input
+			if (state.lastNodeInScope) {
+				addSemanticEdge(
+					state,
+					state.lastNodeInScope.nodeName,
+					sNode.name,
+					state.lastNodeInScope.outputIndex,
+				);
+			}
+
+			// Assign variable
+			if (isIdentifier(declarator.id)) {
+				state.varToNode.set(declarator.id.name, { nodeName: sNode.name, outputIndex: 0 });
+			}
+
+			// Process error handler callback (connects from error output index 1)
+			const errorCallback = handleErrorMatch.callback;
+			const errorParam = errorCallback.params[0];
+			const errorParamName =
+				errorParam && isIdentifier(errorParam as Expression)
+					? (errorParam as Identifier).name
+					: undefined;
+
+			if (errorParamName) {
+				state.varToNode.set(errorParamName, { nodeName: sNode.name, outputIndex: 1 });
+			}
+			state.lastNodeInScope = { nodeName: sNode.name, outputIndex: 1 };
+			state.branchDepth++;
+			if (errorCallback.body.type === 'BlockStatement') {
+				processStatements((errorCallback.body as BlockStatement).body, state, errorParamName);
+			}
+			state.branchDepth--;
+			if (errorParamName) {
+				state.varToNode.delete(errorParamName);
+			}
+
+			// After error handler, lastNodeInScope = main node success output (index 0)
+			state.lastNodeInScope = { nodeName: sNode.name, outputIndex: 0 };
+			return isIdentifier(declarator.id) ? declarator.id.name : undefined;
 		}
 	}
 
@@ -1937,6 +2456,25 @@ function processStatement(
 					}
 					if (callExpr.callee.name === 'waitOnForm') {
 						processWaitCall(callExpr, state, inputVarName, 'form');
+						break;
+					}
+				}
+
+				// Check for .branch() / .route() / .batch() method calls
+				if (isMemberExpression(callExpr.callee)) {
+					const methodName = isIdentifier((callExpr.callee as MemberExpression).property)
+						? ((callExpr.callee as MemberExpression).property as Identifier).name
+						: undefined;
+					if (methodName === 'branch') {
+						processBranchCall(callExpr, state, inputVarName);
+						break;
+					}
+					if (methodName === 'route') {
+						processRouteCall(callExpr, state, inputVarName);
+						break;
+					}
+					if (methodName === 'batch') {
+						processBatchMethodCall(callExpr, state, inputVarName);
 						break;
 					}
 				}

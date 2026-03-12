@@ -126,8 +126,9 @@ workflow({ name: 'F44: SSL Expiry Alert' }, () => {
 					version: 4.5,
 				}),
 			);
-			uRLs_to_Monitor.map((item) => {
-				if (item.json.result.days_left <= 7) {
+			uRLs_to_Monitor.branch(
+				(item) => item.json.result.days_left <= 7,
+				(items) => {
 					const send_Alert_Email = executeNode({
 						type: 'n8n-nodes-base.gmail',
 						name: 'Send Alert Email',
@@ -141,8 +142,8 @@ workflow({ name: 'F44: SSL Expiry Alert' }, () => {
 						credentials: { gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' } },
 						version: 2.1,
 					});
-				}
-			});
+				},
+			);
 		},
 	);
 });

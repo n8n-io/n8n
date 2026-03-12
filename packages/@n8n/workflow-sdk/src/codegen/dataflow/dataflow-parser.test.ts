@@ -620,6 +620,172 @@ describe('parseDataFlowCode', () => {
 		});
 	});
 
+	describe('.branch() functional syntax', () => {
+		it('should parse .branch() as IF node with true/false branches', () => {
+			const code = `workflow({ name: 'Branch Workflow' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    items.branch(
+      (item) => item.json.status === 'active',
+      (items) => {
+        const true_Branch = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'True Branch', params: {}, version: 3 }));
+      },
+      (items) => {
+        const false_Branch = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'False Branch', params: {}, version: 3 }));
+      },
+    );
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Manual Trigger → If node
+			const triggerConns = result.connections['Manual Trigger']?.main;
+			expect(triggerConns).toHaveLength(1);
+			expect(triggerConns![0]).toHaveLength(1);
+			expect(triggerConns![0]![0].node).toBe('If');
+
+			// If node should have two outputs: true → True Branch, false → False Branch
+			const ifConns = result.connections['If']?.main;
+			expect(ifConns).toHaveLength(2);
+			expect(ifConns![0]).toEqual([{ node: 'True Branch', type: 'main', index: 0 }]);
+			expect(ifConns![1]).toEqual([{ node: 'False Branch', type: 'main', index: 0 }]);
+		});
+
+		it('should parse nested .branch() as chained IF nodes (else-if)', () => {
+			const code = `workflow({ name: 'Nested Branch' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    items.branch(
+      (item) => item.json.score > 90,
+      (items) => {
+        const grade_A = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'Grade A', params: {}, version: 3 }));
+      },
+      (items) => {
+        items.branch(
+          (item) => item.json.score > 70,
+          (items) => {
+            const grade_B = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'Grade B', params: {}, version: 3 }));
+          },
+          (items) => {
+            const grade_F = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'Grade F', params: {}, version: 3 }));
+          },
+        );
+      },
+    );
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Trigger → first If
+			const triggerConns = result.connections['Manual Trigger']?.main;
+			expect(triggerConns![0]![0].node).toBe('If');
+
+			// First IF true → Grade A, false → second IF
+			const if1Conns = result.connections['If']?.main;
+			expect(if1Conns![0]).toEqual([{ node: 'Grade A', type: 'main', index: 0 }]);
+			expect(if1Conns![1]).toEqual([{ node: 'If 1', type: 'main', index: 0 }]);
+
+			// Second IF true → Grade B, false → Grade F
+			const if2Conns = result.connections['If 1']?.main;
+			expect(if2Conns![0]).toEqual([{ node: 'Grade B', type: 'main', index: 0 }]);
+			expect(if2Conns![1]).toEqual([{ node: 'Grade F', type: 'main', index: 0 }]);
+		});
+	});
+
+	describe('.route() functional syntax', () => {
+		it('should parse .route() as Switch node with case branches', () => {
+			const code = `workflow({ name: 'Route Workflow' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    items.route((item) => item.json.destination, {
+      London: (items) => {
+        const london_Handler = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'London Handler', params: {}, version: 3 }));
+      },
+      'New York': (items) => {
+        const new_York_Handler = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'New York Handler', params: {}, version: 3 }));
+      },
+      default: (items) => {
+        const default_Handler = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'Default Handler', params: {}, version: 3 }));
+      },
+    });
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Manual Trigger → Switch
+			const triggerConns = result.connections['Manual Trigger']?.main;
+			expect(triggerConns).toHaveLength(1);
+			expect(triggerConns![0]![0].node).toBe('Switch');
+
+			// Switch should have 3 outputs: London, New York, Default
+			const switchConns = result.connections['Switch']?.main;
+			expect(switchConns).toHaveLength(3);
+			expect(switchConns![0]).toEqual([{ node: 'London Handler', type: 'main', index: 0 }]);
+			expect(switchConns![1]).toEqual([{ node: 'New York Handler', type: 'main', index: 0 }]);
+			expect(switchConns![2]).toEqual([{ node: 'Default Handler', type: 'main', index: 0 }]);
+		});
+	});
+
+	describe('.handleError() functional syntax', () => {
+		it('should parse .handleError() as error handler on node', () => {
+			const code = `workflow({ name: 'Error Workflow' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const hTTP_Request = executeNode({
+      type: 'n8n-nodes-base.httpRequest',
+      params: { url: 'https://example.com' },
+      version: 4,
+    }).handleError((items) => {
+      const error_Handler = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'Error Handler', params: {}, version: 3 }));
+    });
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Trigger → HTTP Request
+			const triggerConns = result.connections['Manual Trigger']?.main;
+			expect(triggerConns![0]![0].node).toBe('HTTP Request');
+
+			// HTTP Request error output → Error Handler
+			const httpConns = result.connections['HTTP Request']?.main;
+			expect(httpConns).toHaveLength(2); // main output + error output
+			expect(httpConns![1]).toEqual([{ node: 'Error Handler', type: 'main', index: 0 }]);
+
+			// HTTP Request should have onError: continueErrorOutput
+			const httpNode = result.nodes.find((n) => n.name === 'HTTP Request');
+			expect(httpNode?.onError).toBe('continueErrorOutput');
+		});
+	});
+
+	describe('.batch() method syntax', () => {
+		it('should parse .batch() as SplitInBatches node', () => {
+			const code = `workflow({ name: 'Batch Workflow' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const source = items.map((item) => executeNode({
+      type: 'n8n-nodes-base.httpRequest',
+      params: { url: 'https://example.com' },
+      version: 4,
+    }));
+    source.batch((items) => {
+      const process_Item = items.map((item) => executeNode({ type: 'n8n-nodes-base.set', name: 'Process Item', params: {}, version: 3 }));
+    });
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Should have SplitInBatches node
+			const batchNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.splitInBatches');
+			expect(batchNode).toBeDefined();
+
+			// HTTP Request → SplitInBatches
+			const httpConns = result.connections['HTTP Request']?.main;
+			expect(httpConns![0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: batchNode!.name })]),
+			);
+		});
+	});
+
 	describe('filter parsing', () => {
 		it('should parse .filter() as Filter node with kept output', () => {
 			const code = `workflow({ name: 'Filter' }, () => {
