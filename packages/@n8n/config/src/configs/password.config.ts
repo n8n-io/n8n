@@ -2,7 +2,10 @@ import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 
-const minPasswordLengthSchema = z.number({ coerce: true }).int().min(8).max(64);
+const minPasswordLengthSchema = z
+	.number({ coerce: true })
+	.int()
+	.transform((v) => Math.min(Math.max(v, 8), 64));
 
 @Config
 export class PasswordConfig {

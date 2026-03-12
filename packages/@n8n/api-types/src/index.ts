@@ -101,11 +101,7 @@ export type { SendWorkerStatusMessage } from './push/worker';
 
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
-export {
-	passwordSchema,
-	passwordMinLength,
-	createPasswordSchema,
-} from './schemas/password.schema';
+export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export {
 	credentialResolverSchema,
 	credentialResolversSchema,
