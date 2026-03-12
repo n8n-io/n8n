@@ -5,10 +5,12 @@ import type { BuiltMemory, SemanticRecallConfig } from './types';
 
 type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface MemoryProvider {
 	// TODO: Define
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface VectorStoreProvider {
 	// TODO: Define
 }

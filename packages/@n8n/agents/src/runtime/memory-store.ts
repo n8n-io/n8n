@@ -13,10 +13,12 @@ export class InMemoryMemory implements BuiltMemory {
 
 	private messagesByThread = new Map<string, AgentMessage[]>();
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async getThread(threadId: string): Promise<Thread | null> {
 		return this.threads.get(threadId) ?? null;
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread> {
 		const existing = this.threads.get(thread.id);
 		const now = new Date();
@@ -29,17 +31,18 @@ export class InMemoryMemory implements BuiltMemory {
 		return saved;
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async deleteThread(threadId: string): Promise<void> {
 		this.threads.delete(threadId);
 		this.messagesByThread.delete(threadId);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async getMessages(
 		threadId: string,
 		opts?: { limit?: number; before?: Date },
 	): Promise<AgentMessage[]> {
 		const all = this.messagesByThread.get(threadId) ?? [];
-		// `before` cursor not meaningful for in-memory store (messages have no timestamps)
 		if (opts?.limit) return all.slice(-opts.limit);
 		return [...all];
 	}
@@ -48,12 +51,14 @@ export class InMemoryMemory implements BuiltMemory {
 	 * Save messages to the thread established by the most recent `saveThread` call.
 	 * Always call `saveThread` before `saveMessages` to set the thread context.
 	 */
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async saveMessages(threadId: string, messages: AgentMessage[]): Promise<void> {
 		const existing = this.messagesByThread.get(threadId) ?? [];
 		existing.push(...messages);
 		this.messagesByThread.set(threadId, existing);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async deleteMessages(threadId: string, messageIds: string[]): Promise<void> {
 		const idSet = new Set(messageIds);
 		const existing = this.messagesByThread.get(threadId) ?? [];

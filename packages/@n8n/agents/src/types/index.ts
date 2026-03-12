@@ -15,6 +15,7 @@ export type {
 	RunOptions,
 	GenerateResult,
 	StreamResult,
+	SubAgentUsage,
 	BuiltAgent,
 	AgentRunState,
 	AgentResumeData,

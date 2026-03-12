@@ -4,6 +4,7 @@ import type { Eval } from './eval';
 import type { AgentMessage } from './message';
 import { AgentRuntime } from './runtime/agent-runtime';
 import { AgentEventBus } from './runtime/event-bus';
+import { createAgentToolResult } from './runtime/tool-adapter';
 import { Tool } from './tool';
 import type {
 	AgentEvent,
@@ -21,6 +22,7 @@ import type {
 	RunOptions,
 	SerializableAgentState,
 	StreamResult,
+	SubAgentUsage,
 	ThinkingConfig,
 	ThinkingConfigFor,
 } from './types';
@@ -282,6 +284,7 @@ export class Agent<P extends Provider | undefined = undefined> implements BuiltA
 	asTool(description: string): BuiltTool {
 		// eslint-disable-next-line @typescript-eslint/no-this-alias
 		const agent = this;
+
 		const tool = new Tool(this.name)
 			.description(description)
 			.input(
@@ -297,14 +300,31 @@ export class Agent<P extends Provider | undefined = undefined> implements BuiltA
 			.handler(async (rawInput) => {
 				const { input } = rawInput as { input: string };
 				const result = await agent.generate(input);
+
 				const text = result.messages
 					.filter((m) => 'role' in m && m.role === 'assistant')
 					.flatMap((m) => ('content' in m ? m.content : []))
 					.filter((c) => c.type === 'text')
 					.map((c) => ('text' in c ? c.text : ''))
 					.join('');
+
+				// Collect sub-agent usage: this agent's own + any nested sub-agents
+				const subAgentUsage: SubAgentUsage[] = [];
+				if (result.usage) {
+					subAgentUsage.push({ agent: agent.name, model: result.model, usage: result.usage });
+				}
+				if (result.subAgentUsage) {
+					subAgentUsage.push(...result.subAgentUsage);
+				}
+
+				// Return branded result — the runtime unwraps it to extract sub-agent usage.
+				// createAgentToolResult returns `never`, same pattern as ctx.suspend().
+				if (subAgentUsage.length > 0) {
+					return createAgentToolResult({ result: text }, subAgentUsage);
+				}
 				return { result: text };
 			});
+
 		return tool.build();
 	}
 

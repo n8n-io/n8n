@@ -1,12 +1,15 @@
 import type { StreamResult } from '@n8n/agents';
 import type { SSEStream } from './sse';
 
-export async function handleAgentStream(sse: SSEStream, agentStream: StreamResult) {
+export async function handleAgentStream(
+	sse: SSEStream,
+	agentStream: StreamResult,
+	options?: { model?: string },
+) {
 	const reader = agentStream.getReader();
 
 	while (true) {
 		const { done, value } = await reader.read();
-		console.log('[Chunk received]', JSON.stringify(value, null, 2));
 		if (done) break;
 		if (!value) continue;
 
@@ -55,6 +58,17 @@ export async function handleAgentStream(sse: SSEStream, agentStream: StreamResul
 					suspendPayload: chunk.suspendPayload,
 				},
 			});
+		} else if (chunk.type === 'finish') {
+			if (chunk.usage) {
+				sse.send({
+					usage: {
+						...chunk.usage,
+						model: chunk.model ?? options?.model,
+						...(chunk.subAgentUsage && { subAgentUsage: chunk.subAgentUsage }),
+						...(chunk.totalCost != null && { totalCost: chunk.totalCost }),
+					},
+				});
+			}
 		} else if (chunk.type === 'error') {
 			const err = chunk.error;
 			sse.send({

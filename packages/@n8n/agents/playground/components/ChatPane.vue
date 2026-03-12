@@ -4,6 +4,7 @@
 		@dragover.prevent="dragOver = true"
 		@dragleave.prevent="dragOver = false"
 		@drop.prevent="onDrop"
+		@click="sendMenuOpen = false"
 	>
 		<div
 			v-if="dragOver"
@@ -27,21 +28,10 @@
 				:key="i"
 				:msg="msg"
 				:show-avatar="msg.role === 'user' || i === 0 || activeMessages[i - 1].role !== 'assistant'"
-				@approve="resumeToolCall(i, true)"
-				@deny="resumeToolCall(i, false)"
+				:loading="responding && i === activeMessages.length - 1 && msg.role === 'assistant'"
+				@approve="approveToolCall(i)"
+				@deny="denyToolCall(i)"
 			/>
-			<div v-if="loading" class="flex gap-3 px-4 py-3">
-				<div
-					class="w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center text-xs font-bold shrink-0"
-				>
-					A
-				</div>
-				<div class="flex items-center gap-1">
-					<span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
-					<span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.1s]" />
-					<span class="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-				</div>
-			</div>
 		</div>
 
 		<div v-if="pendingFiles.length" class="px-4 py-2 border-t border-gray-800 flex gap-2 flex-wrap">
@@ -73,7 +63,66 @@
 					@keydown.enter.exact.prevent="send"
 					@input="autoResize"
 				/>
+				<!-- Split send button: [chevron | Send] -->
+				<div v-if="mode === 'test'" class="relative flex shrink-0">
+					<button
+						class="px-2 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-l-lg border-r border-blue-700 disabled:border-gray-600 text-sm transition-colors"
+						:disabled="!canSend || loading || (!input.trim() && !pendingFiles.length)"
+						@click.stop="sendMenuOpen = !sendMenuOpen"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="w-4 h-4 transition-transform"
+							:class="{ 'rotate-180': sendMenuOpen }"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+					</button>
+					<button
+						:disabled="!canSend || loading || (!input.trim() && !pendingFiles.length)"
+						class="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-r-lg text-sm font-medium transition-colors"
+						@click="send"
+					>
+						Send
+					</button>
+					<!-- Drop-up menu -->
+					<div
+						v-if="sendMenuOpen"
+						class="absolute bottom-full mb-1 right-0 bg-gray-800 border border-gray-700 rounded-lg shadow-lg overflow-hidden min-w-[140px] z-20"
+					>
+						<button
+							class="w-full px-3 py-2 text-left text-xs hover:bg-gray-700 transition-colors flex items-center justify-between"
+							:class="streaming ? 'text-blue-400' : 'text-gray-300'"
+							@click.stop="
+								streaming = true;
+								sendMenuOpen = false;
+							"
+						>
+							Streaming
+							<span v-if="streaming" class="text-blue-400">&#10003;</span>
+						</button>
+						<button
+							class="w-full px-3 py-2 text-left text-xs hover:bg-gray-700 transition-colors flex items-center justify-between"
+							:class="!streaming ? 'text-blue-400' : 'text-gray-300'"
+							@click.stop="
+								streaming = false;
+								sendMenuOpen = false;
+							"
+						>
+							Non-streaming
+							<span v-if="!streaming" class="text-blue-400">&#10003;</span>
+						</button>
+					</div>
+				</div>
+				<!-- Simple send button for build mode -->
 				<button
+					v-else
 					:disabled="!canSend || loading || (!input.trim() && !pendingFiles.length)"
 					class="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-lg text-sm font-medium transition-colors"
 					@click="send"
@@ -91,9 +140,24 @@ import type { UploadedFile } from './FileUpload.vue';
 interface PendingApproval {
 	runId: string;
 	toolCallId: string;
-	toolName: string;
+	tool: string;
 	input: unknown;
-	suspendPayload: unknown;
+}
+
+interface SubAgentUsageInfo {
+	agent: string;
+	model?: string;
+	usage: { promptTokens: number; completionTokens: number; totalTokens: number; cost?: number };
+}
+
+interface UsageInfo {
+	model?: string;
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	cost?: number;
+	totalCost?: number;
+	subAgentUsage?: SubAgentUsageInfo[];
 }
 
 interface Message {
@@ -101,7 +165,7 @@ interface Message {
 	content: string;
 	thinking?: string;
 	files?: UploadedFile[];
-	tokens?: { input: number; output: number };
+	usage?: UsageInfo;
 	toolCalls?: Array<{ tool: string; input: unknown; output: unknown }>;
 	pendingApproval?: PendingApproval;
 	approvalStatus?: 'approved' | 'denied';
@@ -138,6 +202,9 @@ const input = ref('');
 const buildMessages = ref<Message[]>(loadMessages(STORAGE_KEYS.build));
 const testMessages = ref<Message[]>(loadMessages(STORAGE_KEYS.test));
 const loading = ref(false);
+const responding = ref(false);
+const streaming = ref(true);
+const sendMenuOpen = ref(false);
 const pendingFiles = ref<UploadedFile[]>([]);
 const messagesContainer = ref<HTMLElement | undefined>();
 const textareaRef = ref<HTMLTextAreaElement | undefined>();
@@ -201,26 +268,29 @@ function scrollToBottom() {
 	});
 }
 
-async function resumeToolCall(msgIndex: number, approved: boolean) {
+async function approveToolCall(msgIndex: number) {
 	const msg = activeMessages.value[msgIndex];
 	if (!msg?.pendingApproval) return;
 
 	const { runId, toolCallId } = msg.pendingApproval;
 	const messages = props.mode === 'build' ? buildMessages : testMessages;
 
+	// Mark this approval message as resolved
 	messages.value[msgIndex] = {
 		...messages.value[msgIndex],
 		pendingApproval: undefined,
-		approvalStatus: approved ? 'approved' : 'denied',
+		approvalStatus: 'approved',
 	};
 	loading.value = true;
+	responding.value = true;
 	scrollToBottom();
 
+	// The approve endpoint returns a new SSE stream — read it as a new response
 	try {
-		const response = await fetch('/api/agent/resume', {
+		const response = await fetch('/api/agent/approve', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ runId, toolCallId, data: { approved } }),
+			body: JSON.stringify({ runId, toolCallId }),
 		});
 
 		const reader = response.body?.getReader();
@@ -231,6 +301,43 @@ async function resumeToolCall(msgIndex: number, approved: boolean) {
 		// handled by handleTestResponse
 	} finally {
 		loading.value = false;
+		responding.value = false;
+		scrollToBottom();
+	}
+}
+
+async function denyToolCall(msgIndex: number) {
+	const msg = activeMessages.value[msgIndex];
+	if (!msg?.pendingApproval) return;
+
+	const { runId, toolCallId } = msg.pendingApproval;
+	const messages = props.mode === 'build' ? buildMessages : testMessages;
+
+	messages.value[msgIndex] = {
+		...messages.value[msgIndex],
+		pendingApproval: undefined,
+		approvalStatus: 'denied',
+	};
+	loading.value = true;
+	responding.value = true;
+	scrollToBottom();
+
+	try {
+		const response = await fetch('/api/agent/deny', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ runId, toolCallId }),
+		});
+
+		const reader = response.body?.getReader();
+		if (reader) {
+			await handleTestResponse(reader, messages);
+		}
+	} catch {
+		// handled by handleTestResponse
+	} finally {
+		loading.value = false;
+		responding.value = false;
 		scrollToBottom();
 	}
 }
@@ -286,15 +393,22 @@ async function send() {
 	input.value = '';
 	pendingFiles.value = [];
 	loading.value = true;
+	responding.value = true;
 	if (textareaRef.value) textareaRef.value.style.height = 'auto';
 	scrollToBottom();
 
 	try {
 		const url = props.mode === 'build' ? '/api/agent/build' : '/api/agent/chat';
+		const useStreaming = props.mode === 'build' || streaming.value;
 		const payload =
 			props.mode === 'build'
 				? { message: text, editorCode: props.editorCode, sessionId: 'builder' }
-				: { message: text, files };
+				: { message: text, files, stream: useStreaming };
+
+		// Push empty assistant placeholder before fetch so the spinner is visible immediately
+		const placeholderIdx = messages.value.length;
+		messages.value.push({ role: 'assistant', content: '' });
+		scrollToBottom();
 
 		const response = await fetch(url, {
 			method: 'POST',
@@ -303,9 +417,28 @@ async function send() {
 		});
 
 		if (!response.ok) {
-			messages.value.push({ role: 'assistant', content: `**Error:** ${response.statusText}` });
+			messages.value[placeholderIdx] = {
+				role: 'assistant',
+				content: `**Error:** ${response.statusText}`,
+			};
 			return;
 		}
+
+		if (!useStreaming) {
+			// Non-streaming: update placeholder when response arrives
+			const data = await response.json();
+			messages.value[placeholderIdx] = {
+				role: 'assistant',
+				content: data.text ?? '',
+				toolCalls: data.toolCalls,
+				usage: data.usage,
+			};
+			return;
+		}
+
+		// Streaming path: remove the placeholder — handleBuildResponse/handleTestResponse
+		// push their own placeholder message.
+		messages.value.splice(placeholderIdx, 1);
 
 		const reader = response.body?.getReader();
 		if (!reader) {
@@ -323,6 +456,7 @@ async function send() {
 		messages.value.push({ role: 'assistant', content: `**Error:** ${errorMessage}` });
 	} finally {
 		loading.value = false;
+		responding.value = false;
 		scrollToBottom();
 	}
 }
@@ -345,6 +479,7 @@ async function handleBuildResponse(
 	let buffer = '';
 	let accumulated = '';
 	let thinking = '';
+	let usage: UsageInfo | undefined;
 	const toolCalls: Array<{ tool: string; input: unknown; output: unknown }> = [];
 	let pendingToolCall: { tool: string; input: unknown } | undefined;
 	let hadToolSinceLastText = false;
@@ -387,6 +522,8 @@ async function handleBuildResponse(
 				});
 				pendingToolCall = undefined;
 				loading.value = false;
+			} else if (data.usage) {
+				usage = data.usage as UsageInfo;
 			}
 		}
 
@@ -394,6 +531,7 @@ async function handleBuildResponse(
 			...messages.value[assistantIndex],
 			content: accumulated,
 			thinking: thinking || undefined,
+			usage,
 			toolCalls: toolCalls.length > 0 ? [...toolCalls] : undefined,
 		};
 		scrollToBottom();
@@ -432,6 +570,7 @@ async function handleTestResponse(
 	let buffer = '';
 	let accumulated = '';
 	let thinking = '';
+	let usage: UsageInfo | undefined;
 	const toolCalls: Array<{ tool: string; input: unknown; output: unknown }> = [];
 	const serverFiles: Array<{ name: string; type: string; data: string }> = [];
 	let pendingToolCall: { tool: string; input: unknown } | undefined;
@@ -467,8 +606,10 @@ async function handleTestResponse(
 					output: tr.output,
 				});
 				pendingToolCall = undefined;
-			} else if (data.suspended) {
-				const approval = data.suspended as PendingApproval;
+			} else if (data.usage) {
+				usage = data.usage as UsageInfo;
+			} else if (data.approval) {
+				const approval = data.approval as PendingApproval;
 				loading.value = false;
 
 				if (accumulated.trim() || toolCalls.length > 0 || serverFiles.length > 0) {
@@ -477,6 +618,7 @@ async function handleTestResponse(
 						...messages.value[assistantIndex],
 						content: accumulated,
 						thinking: thinking || undefined,
+						usage,
 						toolCalls: toolCalls.length > 0 ? [...toolCalls] : undefined,
 						files: serverFiles.length > 0 ? [...serverFiles] : undefined,
 					};
@@ -513,6 +655,7 @@ async function handleTestResponse(
 			...messages.value[assistantIndex],
 			content: accumulated,
 			thinking: thinking || undefined,
+			usage,
 			toolCalls: toolCalls.length > 0 ? [...toolCalls] : undefined,
 			files: serverFiles.length > 0 ? [...serverFiles] : undefined,
 		};
@@ -529,6 +672,7 @@ async function handleTestResponse(
 			...messages.value[assistantIndex],
 			content: accumulated,
 			thinking: thinking || undefined,
+			usage,
 			toolCalls: toolCalls.length > 0 ? [...toolCalls] : undefined,
 			files: serverFiles.length > 0 ? [...serverFiles] : undefined,
 		};

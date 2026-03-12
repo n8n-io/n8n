@@ -17,6 +17,7 @@ export type {
 	InterruptibleToolContext,
 	CheckpointStore,
 	StreamChunk,
+	SubAgentUsage,
 	Provider,
 	ThinkingConfig,
 	ThinkingConfigFor,
@@ -64,4 +65,4 @@ export {
 	isLlmMessage,
 } from './message';
 export { fetchProviderCatalog } from './catalog';
-export type { ProviderCatalog, ProviderInfo, ModelInfo } from './catalog';
+export type { ProviderCatalog, ProviderInfo, ModelInfo, ModelCost, ModelLimits } from './catalog';

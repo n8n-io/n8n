@@ -25,7 +25,7 @@ export class Network {
 
 	private coordinatorAgent?: Agent<Provider | undefined>;
 
-	private agents: Agent<Provider | undefined>[] = [];
+	private agents: Array<Agent<Provider | undefined>> = [];
 
 	private built?: BuiltNetwork;
 
@@ -57,8 +57,8 @@ export class Network {
 	}
 
 	/** Run the network with a prompt. Lazy-builds on first call. */
-	run(prompt: string, options?: RunOptions): Promise<GenerateResult> {
-		return this.ensureBuilt().run(prompt, options);
+	async run(prompt: string, options?: RunOptions): Promise<GenerateResult> {
+		return await this.ensureBuilt().run(prompt, options);
 	}
 
 	/** @internal */
@@ -81,9 +81,9 @@ export class Network {
 		return {
 			name,
 
-			run(prompt: string, options?: RunOptions): Promise<GenerateResult> {
+			async run(prompt: string, options?: RunOptions): Promise<GenerateResult> {
 				const messages: Message[] = [{ role: 'user', content: [{ type: 'text', text: prompt }] }];
-				return coordinator.generate(messages, options);
+				return await coordinator.generate(messages, options);
 			},
 		};
 	}

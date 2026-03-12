@@ -42,8 +42,8 @@ export class RunStateManager {
 
 		// Best-effort delete — log on failure but don't block resumption
 		if (this.store) {
-			this.store.delete(runId).catch((err: unknown) => {
-				console.error(`[RunStateManager] Failed to delete checkpoint ${runId}:`, err);
+			this.store.delete(runId).catch((deleteError: unknown) => {
+				console.error(`[RunStateManager] Failed to delete checkpoint ${runId}:`, deleteError);
 			});
 		}
 

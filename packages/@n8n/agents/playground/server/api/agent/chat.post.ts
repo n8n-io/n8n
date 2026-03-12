@@ -116,6 +116,16 @@ export default defineEventHandler(async (event) => {
 			if ((result.toolCalls?.length ?? 0) > 0) {
 				sse.send({ toolCalls: result.toolCalls });
 			}
+			if (result.usage) {
+				sse.send({
+					usage: {
+						model: result.model,
+						...result.usage,
+						...(result.subAgentUsage && { subAgentUsage: result.subAgentUsage }),
+						...(result.totalCost != null && { totalCost: result.totalCost }),
+					},
+				});
+			}
 		}
 
 		sse.done();

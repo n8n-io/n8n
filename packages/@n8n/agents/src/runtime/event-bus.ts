@@ -63,12 +63,13 @@ export class AgentEventBus {
 
 	private makeControls(): AgentEventControls {
 		return {
-			abort: () => {
+			// eslint-disable-next-line @typescript-eslint/require-await
+			abort: async () => {
 				this.abort();
-				return Promise.resolve();
 			},
-			pause: () => {
-				return Promise.reject(new Error('pause() is not yet supported in AgentEventControls'));
+			// eslint-disable-next-line @typescript-eslint/require-await
+			pause: async () => {
+				throw new Error('pause() is not yet supported in AgentEventControls');
 			},
 		};
 	}

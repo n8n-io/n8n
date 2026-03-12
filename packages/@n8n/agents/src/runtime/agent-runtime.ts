@@ -2,6 +2,7 @@ import { generateText, streamText } from 'ai';
 import type { ModelMessage } from 'ai';
 import type { z } from 'zod';
 
+import { computeCost, getModelCost, type ModelCost } from '../catalog';
 import type { JSONObject, JSONValue } from '../json';
 import type { AgentDbMessage, AgentMessage, ContentToolResult } from '../message';
 import { toDbMessage } from '../message';
@@ -32,8 +33,14 @@ import { fromAiMessages } from './messages';
 import { createModel } from './model-factory';
 import { RunStateManager, generateRunId } from './run-state';
 import { convertChunk, toTokenUsage } from './stream';
-import { isSuspendedToolResult, buildToolMap, executeTool, toAiSdkTools } from './tool-adapter';
-import type { ToolResultEntry } from '../types/agent';
+import {
+	isAgentToolResult,
+	isSuspendedToolResult,
+	buildToolMap,
+	executeTool,
+	toAiSdkTools,
+} from './tool-adapter';
+import type { SubAgentUsage, ToolResultEntry } from '../types/agent';
 import { AgentEvent } from '../types/event';
 
 export interface AgentRuntimeConfig {
@@ -81,6 +88,8 @@ export class AgentRuntime {
 
 	private currentState: SerializableAgentState;
 
+	private modelCost: ModelCost | undefined;
+
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
 		this.runState = new RunStateManager(config.checkpointStorage);
@@ -126,7 +135,11 @@ export class AgentRuntime {
 		}
 
 		try {
-			const result = await this.runGenerateLoop(list, options);
+			await this.ensureModelCost();
+			let result = await this.runGenerateLoop(list, options);
+			result.usage = this.applyCost(result.usage);
+			result.model = this.modelIdString;
+			result = this.applySubAgentUsage(result);
 			this.updateState({ status: 'success', messageList: list.serialize() });
 			this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: result.messages });
 			return result;
@@ -149,6 +162,7 @@ export class AgentRuntime {
 			threadId: options?.threadId ?? '',
 		});
 		this.eventBus.emit({ type: AgentEvent.AgentStart });
+		await this.ensureModelCost();
 
 		const normalizedInput = this.normalizeInput(input);
 
@@ -202,6 +216,7 @@ export class AgentRuntime {
 			const list = AgentMessageList.deserialize(state.messageList);
 			const initialChunks: StreamChunk[] = [];
 			const resumeToolCallSummary: ToolResultEntry[] = [];
+			const resumeSubAgentUsage: SubAgentUsage[] = [];
 
 			const result = await this.executeAndRecordToolCall(
 				pending,
@@ -227,6 +242,9 @@ export class AgentRuntime {
 			if (result.toolEntry) {
 				resumeToolCallSummary.push(result.toolEntry);
 			}
+			if (result.subAgentUsage) {
+				resumeSubAgentUsage.push(...result.subAgentUsage);
+			}
 
 			// Remove the resolved tool call and process remaining pending ones
 			const remainingPending = { ...state.pendingToolCalls };
@@ -243,6 +261,7 @@ export class AgentRuntime {
 			for (const entry of remainingResult.toolEntries) {
 				resumeToolCallSummary.push(entry);
 			}
+			resumeSubAgentUsage.push(...remainingResult.subAgentUsage);
 
 			if (remainingResult.suspended) {
 				return await this.suspendRun(
@@ -258,14 +277,24 @@ export class AgentRuntime {
 			const resumeOptions: RunOptions = { resourceId: state.resourceId, threadId: state.threadId };
 
 			if (method === 'generate') {
+				await this.ensureModelCost();
 				const genResult = await this.runGenerateLoop(list, resumeOptions);
+				genResult.usage = this.applyCost(genResult.usage);
+				genResult.model = this.modelIdString;
+				// Merge sub-agent usage from resume + generate loop
+				const allSubAgentUsage = [...resumeSubAgentUsage, ...(genResult.subAgentUsage ?? [])];
+				if (allSubAgentUsage.length > 0) {
+					genResult.subAgentUsage = allSubAgentUsage;
+				}
+				let finalResult = this.applySubAgentUsage(genResult);
 				this.updateState({ status: 'success', messageList: list.serialize() });
-				this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: genResult.messages });
-				const allToolCalls = [...resumeToolCallSummary, ...(genResult.toolCalls ?? [])];
-				return {
-					...genResult,
+				this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: finalResult.messages });
+				const allToolCalls = [...resumeToolCallSummary, ...(finalResult.toolCalls ?? [])];
+				finalResult = {
+					...finalResult,
 					...(allToolCalls.length > 0 && { toolCalls: allToolCalls }),
 				};
+				return finalResult;
 			}
 
 			return this.startStreamLoop(list, resumeOptions, initialChunks);
@@ -298,6 +327,7 @@ export class AgentRuntime {
 		suspended: boolean;
 		suspendPayload?: unknown;
 		toolEntry?: ToolResultEntry;
+		subAgentUsage?: SubAgentUsage[];
 	}> {
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionStart,
@@ -324,15 +354,23 @@ export class AgentRuntime {
 			return { suspended: true, suspendPayload: toolResult.payload };
 		}
 
+		// Unwrap branded agent-tool results (from asTool)
+		let actualResult = toolResult;
+		let extractedSubAgentUsage: SubAgentUsage[] | undefined;
+		if (isAgentToolResult(toolResult)) {
+			actualResult = toolResult.output;
+			extractedSubAgentUsage = toolResult.subAgentUsage;
+		}
+
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId: pending.toolCallId,
 			toolName,
-			result: toolResult,
+			result: actualResult,
 			isError: false,
 		});
 
-		const toolResultMsg = this.makeToolResultMessage(pending.toolCallId, toolName, toolResult);
+		const toolResultMsg = this.makeToolResultMessage(pending.toolCallId, toolName, actualResult);
 		list.addResponse(fromAiMessages([toolResultMsg]));
 
 		initialChunks.push({
@@ -344,7 +382,7 @@ export class AgentRuntime {
 						type: 'tool-result',
 						toolCallId: pending.toolCallId,
 						toolName,
-						result: toolResult as JSONValue,
+						result: actualResult as JSONValue,
 						input: pending.input,
 					},
 				],
@@ -352,7 +390,7 @@ export class AgentRuntime {
 		});
 
 		const builtTool = toolMap.get(toolName);
-		const customToolMessage = builtTool?.toMessage?.(toolResult);
+		const customToolMessage = builtTool?.toMessage?.(actualResult);
 		if (customToolMessage) {
 			const dbCustomToolMessage = toDbMessage(customToolMessage);
 			list.addResponse([dbCustomToolMessage]);
@@ -361,7 +399,8 @@ export class AgentRuntime {
 
 		return {
 			suspended: false,
-			toolEntry: { tool: toolName, input: pending.input, output: toolResult },
+			toolEntry: { tool: toolName, input: pending.input, output: actualResult },
+			subAgentUsage: extractedSubAgentUsage,
 		};
 	}
 
@@ -381,9 +420,11 @@ export class AgentRuntime {
 		suspendPayload?: unknown;
 		remainingPending?: Record<string, PendingToolCall>;
 		toolEntries: ToolResultEntry[];
+		subAgentUsage: SubAgentUsage[];
 	}> {
 		const toolCallIds = Object.keys(pendingToolCalls);
 		const toolEntries: ToolResultEntry[] = [];
+		const subAgentUsage: SubAgentUsage[] = [];
 
 		for (let i = 0; i < toolCallIds.length; i++) {
 			const tcId = toolCallIds[i];
@@ -409,15 +450,19 @@ export class AgentRuntime {
 					suspendPayload: result.suspendPayload,
 					remainingPending: remaining,
 					toolEntries,
+					subAgentUsage,
 				};
 			}
 
 			if (result.toolEntry) {
 				toolEntries.push(result.toolEntry);
 			}
+			if (result.subAgentUsage) {
+				subAgentUsage.push(...result.subAgentUsage);
+			}
 		}
 
-		return { suspended: false, toolEntries };
+		return { suspended: false, toolEntries, subAgentUsage };
 	}
 
 	/**
@@ -528,6 +573,7 @@ export class AgentRuntime {
 		let totalUsage: TokenUsage | undefined;
 		let lastFinishReason: FinishReason = 'stop';
 		const toolCallSummary: ToolResultEntry[] = [];
+		const collectedSubAgentUsage: SubAgentUsage[] = [];
 
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		for (let i = 0; i < maxIterations; i++) {
@@ -621,21 +667,28 @@ export class AgentRuntime {
 					};
 				}
 
+				// Unwrap branded agent-tool results (from asTool) to extract sub-agent usage
+				let actualResult = toolResult;
+				if (isAgentToolResult(toolResult)) {
+					actualResult = toolResult.output;
+					collectedSubAgentUsage.push(...toolResult.subAgentUsage);
+				}
+
 				this.eventBus.emit({
 					type: AgentEvent.ToolExecutionEnd,
 					toolCallId: tc.toolCallId,
 					toolName: tc.toolName,
-					result: toolResult,
+					result: actualResult,
 					isError: false,
 				});
 
-				toolCallSummary.push({ tool: tc.toolName, input: toolInput, output: toolResult });
+				toolCallSummary.push({ tool: tc.toolName, input: toolInput, output: actualResult });
 
-				const toolResultMsg = this.makeToolResultMessage(tc.toolCallId, tc.toolName, toolResult);
+				const toolResultMsg = this.makeToolResultMessage(tc.toolCallId, tc.toolName, actualResult);
 				list.addResponse(fromAiMessages([toolResultMsg]));
 
 				const builtTool = toolMap.get(tc.toolName);
-				const customToolMessage = builtTool?.toMessage?.(toolResult);
+				const customToolMessage = builtTool?.toMessage?.(actualResult);
 				if (customToolMessage) {
 					list.addResponse([toDbMessage(customToolMessage)]);
 				}
@@ -658,6 +711,7 @@ export class AgentRuntime {
 			finishReason: lastFinishReason,
 			usage: totalUsage,
 			...(toolCallSummary.length > 0 && { toolCalls: toolCallSummary }),
+			...(collectedSubAgentUsage.length > 0 && { subAgentUsage: collectedSubAgentUsage }),
 		};
 	}
 
@@ -718,6 +772,7 @@ export class AgentRuntime {
 
 		let totalUsage: TokenUsage | undefined;
 		let lastFinishReason: FinishReason = 'stop';
+		const collectedSubAgentUsage: SubAgentUsage[] = [];
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
@@ -851,15 +906,22 @@ export class AgentRuntime {
 					return;
 				}
 
+				// Unwrap branded agent-tool results (from asTool)
+				let actualResult = toolResult;
+				if (isAgentToolResult(toolResult)) {
+					actualResult = toolResult.output;
+					collectedSubAgentUsage.push(...toolResult.subAgentUsage);
+				}
+
 				this.eventBus.emit({
 					type: AgentEvent.ToolExecutionEnd,
 					toolCallId: tc.toolCallId,
 					toolName: tc.toolName,
-					result: toolResult,
+					result: actualResult,
 					isError: false,
 				});
 
-				const toolResultMsg = this.makeToolResultMessage(tc.toolCallId, tc.toolName, toolResult);
+				const toolResultMsg = this.makeToolResultMessage(tc.toolCallId, tc.toolName, actualResult);
 				list.addResponse(fromAiMessages([toolResultMsg]));
 
 				await writer.write({
@@ -871,7 +933,7 @@ export class AgentRuntime {
 								type: 'tool-result',
 								toolCallId: tc.toolCallId,
 								toolName: tc.toolName,
-								result: toolResult as JSONValue,
+								result: actualResult as JSONValue,
 								input: toolInput,
 							},
 						],
@@ -879,7 +941,7 @@ export class AgentRuntime {
 				});
 
 				const builtTool = toolMap.get(tc.toolName);
-				const customToolMessage = builtTool?.toMessage?.(toolResult);
+				const customToolMessage = builtTool?.toMessage?.(actualResult);
 				if (customToolMessage) {
 					const dbCustomToolMessage = toDbMessage(customToolMessage);
 					list.addResponse([dbCustomToolMessage]);
@@ -891,10 +953,18 @@ export class AgentRuntime {
 			this.emitTurnEnd(newMessages, this.extractToolResults(list.responseDelta()));
 		}
 
+		const costUsage = this.applyCost(totalUsage);
+		const parentCost = costUsage?.cost ?? 0;
+		const subCost = collectedSubAgentUsage.reduce((sum, s) => sum + (s.usage.cost ?? 0), 0);
 		await writer.write({
 			type: 'finish',
 			finishReason: lastFinishReason,
-			...(totalUsage && { usage: totalUsage }),
+			...(costUsage && { usage: costUsage }),
+			model: this.modelIdString,
+			...(collectedSubAgentUsage.length > 0 && {
+				subAgentUsage: collectedSubAgentUsage,
+				totalCost: parentCost + subCost,
+			}),
 		});
 
 		try {
@@ -1113,5 +1183,37 @@ export class AgentRuntime {
 	/** Patch the current state with partial updates. */
 	private updateState(patch: Partial<SerializableAgentState>): void {
 		this.currentState = { ...this.currentState, ...patch };
+	}
+
+	/** Get the model ID string. */
+	private get modelIdString(): string {
+		return typeof this.config.model === 'string' ? this.config.model : this.config.model.id;
+	}
+
+	/** Fetch model cost from catalog. Retries on subsequent calls if the catalog was unavailable. */
+	private async ensureModelCost(): Promise<ModelCost | undefined> {
+		if (this.modelCost) return this.modelCost;
+		try {
+			this.modelCost = await getModelCost(this.modelIdString);
+		} catch {
+			// Catalog unavailable — proceed without cost data, will retry next call
+		}
+		return this.modelCost;
+	}
+
+	/** Apply cost to a TokenUsage object using catalog pricing. */
+	private applyCost(usage: TokenUsage | undefined): TokenUsage | undefined {
+		if (!usage || !this.modelCost) return usage;
+		return { ...usage, cost: computeCost(usage, this.modelCost) };
+	}
+
+	/** Compute totalCost from sub-agent usage already present on the result. */
+	private applySubAgentUsage(result: GenerateResult): GenerateResult {
+		if (!result.subAgentUsage || result.subAgentUsage.length === 0) return result;
+
+		const parentCost = result.usage?.cost ?? 0;
+		const subCost = result.subAgentUsage.reduce((sum, s) => sum + (s.usage.cost ?? 0), 0);
+
+		return { ...result, totalCost: parentCost + subCost };
 	}
 }
