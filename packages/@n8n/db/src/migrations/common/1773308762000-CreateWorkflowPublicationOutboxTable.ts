@@ -27,8 +27,13 @@ export class CreateWorkflowPublicationOutboxTable1773308762000 implements Revers
 			column('publishedVersionId').varchar(36).notNull,
 			column('status')
 				.varchar(20)
-				.notNull.default("'pending'")
-				.withEnumCheck(['pending', 'in_progress', 'completed', 'partial_success', 'failed']),
+				.notNull.withEnumCheck([
+					'pending',
+					'in_progress',
+					'completed',
+					'partial_success',
+					'failed',
+				]),
 			column('errorMessage').text,
 		).withTimestamps;
 	}

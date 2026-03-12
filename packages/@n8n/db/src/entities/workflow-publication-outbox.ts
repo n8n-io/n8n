@@ -20,7 +20,7 @@ export class WorkflowPublicationOutbox extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36 })
 	publishedVersionId: string;
 
-	@Column({ type: 'varchar', length: 20, default: 'pending' })
+	@Column({ type: 'varchar', length: 20 })
 	status: WorkflowPublicationOutboxStatus;
 
 	@Column({ type: 'text', nullable: true })
