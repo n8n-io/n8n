@@ -159,5 +159,66 @@ export function resetDataProxies(timezone?: string): void {
 	globalThis.__data.extend = extend;
 	globalThis.__data.extendOptional = extendOptional;
 
+	// Wire builtins so tournament's VariablePolyfill resolves them from __data
+	initializeBuiltins(globalThis.__data as Record<string, unknown>);
+
 	// TODO: Add other function properties as needed ($item, $vars, etc.)
+}
+
+/**
+ * Wire builtins onto __data so tournament's VariablePolyfill resolves them.
+ *
+ * Tournament transforms `Object` → `("Object" in this ? this : window).Object`.
+ * `this` = __data. Without these entries on __data, builtins fall through to
+ * `window` which doesn't exist in the isolate, causing a ReferenceError.
+ *
+ * Mirrors Expression.initializeGlobalContext() in packages/workflow/src/expression.ts.
+ */
+function initializeBuiltins(data: Record<string, unknown>): void {
+	// ── Denylist: dangerous globals → empty objects ──
+	// Matches initializeGlobalContext() lines 262-318
+	const denylisted = [
+		'document',
+		'global',
+		'window',
+		'Window',
+		'globalThis',
+		'self',
+		'alert',
+		'prompt',
+		'confirm',
+		'eval',
+		'uneval',
+		'setTimeout',
+		'setInterval',
+		'setImmediate',
+		'clearImmediate',
+		'queueMicrotask',
+		'Function',
+		'require',
+		'module',
+		'Buffer',
+		'__dirname',
+		'__filename',
+		'fetch',
+		'XMLHttpRequest',
+		'Promise',
+		'Generator',
+		'GeneratorFunction',
+		'AsyncFunction',
+		'AsyncGenerator',
+		'AsyncGeneratorFunction',
+		'WebAssembly',
+		'Reflect',
+		'Proxy',
+		'escape',
+		'unescape',
+	];
+	for (const key of denylisted) {
+		data[key] = {};
+	}
+	data.__lookupGetter__ = undefined;
+	data.__lookupSetter__ = undefined;
+	data.__defineGetter__ = undefined;
+	data.__defineSetter__ = undefined;
 }
