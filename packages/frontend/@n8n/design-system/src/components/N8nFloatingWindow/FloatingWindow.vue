@@ -279,6 +279,7 @@ onBeforeUnmount(() => {
 					icon="x"
 					variant="ghost"
 					size="medium"
+					aria-label="Close"
 					data-test-id="floating-window-close"
 					@click="emit('close')"
 				/>
