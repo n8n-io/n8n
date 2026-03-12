@@ -79,6 +79,7 @@ export class ActiveWorkflows {
 		const triggerNodes = workflow.getTriggerNodes();
 
 		const triggerResponses: ITriggerResponse[] = [];
+		const triggersByNode = new Map<string, ITriggerResponse[]>();
 
 		for (const triggerNode of triggerNodes) {
 			try {
@@ -92,6 +93,10 @@ export class ActiveWorkflows {
 				);
 				if (triggerResponse !== undefined) {
 					triggerResponses.push(triggerResponse);
+
+					const existing = triggersByNode.get(triggerNode.name) ?? [];
+					existing.push(triggerResponse);
+					triggersByNode.set(triggerNode.name, existing);
 				}
 			} catch (e) {
 				const error = e instanceof Error ? e : new Error(`${e}`);
@@ -103,7 +108,7 @@ export class ActiveWorkflows {
 			}
 		}
 
-		this.activeWorkflows[workflowId] = { triggerResponses };
+		this.activeWorkflows[workflowId] = { triggerResponses, triggersByNode };
 
 		const pollingNodes = workflow.getPollNodes();
 
@@ -195,6 +200,100 @@ export class ActiveWorkflows {
 		delete this.activeWorkflows[workflowId];
 
 		return true;
+	}
+
+	/**
+	 * Add specific trigger/poller nodes to an already-active workflow.
+	 * Used by the outbox consumer for granular node-level updates.
+	 */
+	async addNodes(
+		workflowId: string,
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		getTriggerFunctions: IGetExecuteTriggerFunctions,
+		getPollFunctions: IGetExecutePollFunctions,
+		triggerNodes: INode[],
+		pollNodes: INode[],
+	) {
+		if (!this.isActive(workflowId)) {
+			throw new WorkflowActivationError(`Cannot add nodes to inactive workflow "${workflowId}"`);
+		}
+
+		const workflowData = this.activeWorkflows[workflowId];
+
+		if (!workflowData.triggersByNode) {
+			workflowData.triggersByNode = new Map();
+		}
+
+		for (const triggerNode of triggerNodes) {
+			const triggerResponse = await this.triggersAndPollers.runTrigger(
+				workflow,
+				triggerNode,
+				getTriggerFunctions,
+				additionalData,
+				mode,
+				activation,
+			);
+
+			if (triggerResponse !== undefined) {
+				if (!workflowData.triggerResponses) {
+					workflowData.triggerResponses = [];
+				}
+				workflowData.triggerResponses.push(triggerResponse);
+
+				const existing = workflowData.triggersByNode.get(triggerNode.name) ?? [];
+				existing.push(triggerResponse);
+				workflowData.triggersByNode.set(triggerNode.name, existing);
+			}
+		}
+
+		for (const pollNode of pollNodes) {
+			await this.activatePolling(
+				pollNode,
+				workflow,
+				additionalData,
+				getPollFunctions,
+				mode,
+				activation,
+			);
+		}
+	}
+
+	/**
+	 * Remove specific trigger/poller nodes from an already-active workflow.
+	 * Used by the outbox consumer for granular node-level updates.
+	 *
+	 * @param nodeNames - human-readable node names (keys in triggersByNode)
+	 * @param nodeIds - node UUIDs for cron deregistration (CronContext uses node.id)
+	 */
+	async removeNodes(workflowId: string, nodeNames: string[], nodeIds: Set<string>) {
+		if (!this.isActive(workflowId)) return;
+
+		const workflowData = this.activeWorkflows[workflowId];
+
+		const { triggersByNode } = workflowData;
+
+		for (const nodeName of nodeNames) {
+			const responses = triggersByNode?.get(nodeName);
+			if (responses) {
+				for (const response of responses) {
+					await this.closeTrigger(response, workflowId);
+				}
+				triggersByNode?.delete(nodeName);
+			}
+		}
+
+		// Rebuild triggerResponses from the remaining triggersByNode entries
+		if (workflowData.triggersByNode) {
+			workflowData.triggerResponses = [];
+			for (const responses of workflowData.triggersByNode.values()) {
+				workflowData.triggerResponses.push(...responses);
+			}
+		}
+
+		this.scheduledTaskManager.deregisterCronsForNodes(workflowId, nodeIds);
 	}
 
 	async removeAllTriggerAndPollerBasedWorkflows() {

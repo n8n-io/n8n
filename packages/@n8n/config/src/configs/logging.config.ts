@@ -32,6 +32,7 @@ export const LOG_SCOPES = [
 	'source-control',
 	'dynamic-credentials',
 	'workflow-history-compaction',
+	'workflow-publication',
 	'ssrf-protection',
 ] as const;
 

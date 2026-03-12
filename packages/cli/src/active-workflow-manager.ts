@@ -1123,6 +1123,66 @@ export class ActiveWorkflowManager {
 		return true;
 	}
 
+	/**
+	 * Add specific trigger/poller nodes to an already-active workflow.
+	 * Used by the outbox consumer for granular node-level updates.
+	 */
+	async addNodes(
+		workflowId: WorkflowId,
+		dbWorkflow: WorkflowEntity,
+		workflow: Workflow,
+		triggerNodes: INode[],
+		pollNodes: INode[],
+	) {
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+			workflowSettings: dbWorkflow.settings,
+		});
+
+		const resolveWorkflowData = this.workflowsConfig.useWorkflowPublicationService
+			? async () => await this.loadPublishedWorkflowData(dbWorkflow)
+			: async () => dbWorkflow as IWorkflowBase;
+
+		const getTriggerFunctions = this.getExecuteTriggerFunctions(
+			dbWorkflow,
+			additionalData,
+			'trigger',
+			'update',
+			resolveWorkflowData,
+		);
+
+		const getPollFunctions = this.getExecutePollFunctions(
+			dbWorkflow,
+			additionalData,
+			'trigger',
+			'update',
+			resolveWorkflowData,
+		);
+
+		await this.activeWorkflows.addNodes(
+			workflowId,
+			workflow,
+			additionalData,
+			'trigger',
+			'update',
+			getTriggerFunctions,
+			getPollFunctions,
+			triggerNodes,
+			pollNodes,
+		);
+	}
+
+	/**
+	 * Remove specific trigger/poller nodes from an already-active workflow.
+	 * Used by the outbox consumer for granular node-level updates.
+	 */
+	async removeNodes(workflowId: WorkflowId, nodes: INode[]) {
+		const nodeNames = nodes.map((n) => n.name);
+		const nodeIds = new Set(nodes.map((n) => n.id));
+
+		await this.activeWorkflows.removeNodes(workflowId, nodeNames, nodeIds);
+	}
+
 	async removeActivationError(workflowId: WorkflowId) {
 		await this.activationErrorsService.deregister(workflowId);
 	}
