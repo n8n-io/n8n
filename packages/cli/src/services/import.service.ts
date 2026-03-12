@@ -12,7 +12,7 @@ import {
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource, EntityManager, In } from '@n8n/typeorm';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { readdir, readFile } from 'fs/promises';
@@ -22,7 +22,7 @@ import { validateDbTypeForImportEntities } from '@/utils/validate-database-type'
 import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 
@@ -55,9 +55,15 @@ export class ImportService {
 		private readonly tagRepository: TagRepository,
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowIndexService: WorkflowIndexService,
 	) {}
+
+	private get activeWorkflowManager(): ActiveWorkflowManager {
+		const { ActiveWorkflowManager } = require('@/active-workflow-manager') as {
+			ActiveWorkflowManager: new (...args: unknown[]) => ActiveWorkflowManager;
+		};
+		return Container.get(ActiveWorkflowManager);
+	}
 
 	async initRecords() {
 		this.dbCredentials = await this.credentialsRepository.find();

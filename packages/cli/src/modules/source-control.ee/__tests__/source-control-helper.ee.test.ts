@@ -1578,6 +1578,90 @@ describe('Source Control Helper', () => {
 		});
 	});
 
+	describe('known edge cases and limitations', () => {
+		// BUG: When remote has a field with empty string that local lacks entirely,
+		// the field is dropped (undefined) instead of being preserved as ''
+		it('should preserve empty string field when local does not have the key', () => {
+			const local = { port: 3000 };
+			const remote = { port: 3000, apiKey: '' };
+
+			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
+
+			expect('apiKey' in result).toBe(true);
+			expect(result.apiKey).toBe('');
+		});
+
+		// BUG: When remote array is longer than local, the entire remote array is used as-is,
+		// wiping all local secrets in existing entries.
+		// FIX: Always merge by index — existing entries preserve secrets, new entries appended from remote.
+		it('should preserve existing secrets when remote array adds a new entry', () => {
+			const local = {
+				headers: [
+					{ name: 'Authorization', value: 'Bearer my-secret-token' },
+					{ name: 'X-Api-Key', value: 'secret-api-key-123' },
+				],
+			};
+			const remote = {
+				headers: [
+					{ name: '', value: '' },
+					{ name: '', value: '' },
+					{ name: '', value: '={{ $vars.NEW_HEADER }}' },
+				],
+			};
+
+			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
+
+			const headers = result.headers as unknown as Array<{ name: string; value: string }>;
+			expect(headers).toHaveLength(3);
+			// Indices 0-1: merged by index, local secrets preserved
+			expect(headers[0].name).toBe('Authorization');
+			expect(headers[0].value).toBe('Bearer my-secret-token');
+			expect(headers[1].name).toBe('X-Api-Key');
+			expect(headers[1].value).toBe('secret-api-key-123');
+			// Index 2: new entry from remote, no local to merge
+			expect(headers[2].value).toBe('={{ $vars.NEW_HEADER }}');
+		});
+
+		// FIX: When remote array is shorter, truncate to remote length but still merge overlapping entries
+		it('should truncate to remote length when remote array removes an entry', () => {
+			const local = {
+				headers: [
+					{ name: 'Authorization', value: 'Bearer my-secret-token' },
+					{ name: 'X-Api-Key', value: 'secret-api-key-123' },
+					{ name: 'X-Extra', value: 'extra-secret' },
+				],
+			};
+			const remote = {
+				headers: [{ name: '', value: '={{ $vars.AUTH_TOKEN }}' }],
+			};
+
+			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
+
+			const headers = result.headers as unknown as Array<{ name: string; value: string }>;
+			expect(headers).toHaveLength(1);
+			// Index 0: merged — expression from remote, local name preserved
+			expect(headers[0].name).toBe('Authorization');
+			expect(headers[0].value).toBe('={{ $vars.AUTH_TOKEN }}');
+		});
+
+		// BUG: The editor (workflow package) treats any string starting with '=' as an expression,
+		// but containsExpression requires '={{ }}' pattern. A value like '=some value' is an
+		// expression in the editor but gets sanitized to '' by sanitizeCredentialData.
+		it('should treat editor-style expressions consistently with workflow package', () => {
+			const data = {
+				editorExpression: '=some value',
+				fullExpression: '={{ $json.key }}',
+				plainString: 'secret',
+			};
+
+			const result = sanitizeCredentialData(data);
+
+			expect(result.editorExpression).toBe('=some value');
+			expect(result.fullExpression).toBe('={{ $json.key }}');
+			expect(result.plainString).toBe('');
+		});
+	});
+
 	describe('sanitizeCredentialData + merge consistency', () => {
 		it('should round-trip numbers correctly', () => {
 			const original = {
