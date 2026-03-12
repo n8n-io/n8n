@@ -1,6 +1,4 @@
 <script setup lang="ts" generic="T = string, D = never">
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	DropdownMenuRoot,
@@ -9,6 +7,9 @@ import {
 	DropdownMenuContent,
 } from 'reka-ui';
 import { computed, provide, ref, watch, useCssModule, nextTick, toRef } from 'vue';
+
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
 import { isAlign, isSide } from './DropdownMenu.typeguards';

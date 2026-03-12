@@ -1,7 +1,4 @@
 <script setup lang="ts" generic="T = string, D = never">
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
-import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 import {
 	DropdownMenuItem,
 	DropdownMenuSeparator,
@@ -11,6 +8,10 @@ import {
 	DropdownMenuPortal,
 } from 'reka-ui';
 import { computed, inject, ref, useCssModule, watch, toRef } from 'vue';
+
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
+import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
 import {
