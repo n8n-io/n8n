@@ -48,8 +48,8 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 				ndvEventBus.emit('updateParameterValue', update);
 			});
 		} else {
-			const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			docStore.setNodeParameters(
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setNodeParameters(
 				{
 					name: nodeName,
 					value: parameters,
@@ -98,8 +98,8 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 			codeDiff.replacing = true;
 			const suggestionId = codeDiff.suggestionId;
 
-			const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			const activeNode = docStore.getNodeByName(nodeName);
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			const activeNode = workflowDocumentStore.getNodeByName(nodeName);
 			assert(activeNode);
 
 			const cached = suggestions.value[suggestionId];
@@ -146,8 +146,8 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 			const suggestion = suggestions.value[suggestionId];
 			assert(suggestion);
 
-			const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			const activeNode = docStore.getNodeByName(nodeName);
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			const activeNode = workflowDocumentStore.getNodeByName(nodeName);
 			assert(activeNode);
 
 			const suggested = suggestion.previous;
