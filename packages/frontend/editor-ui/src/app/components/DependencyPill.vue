@@ -34,25 +34,11 @@ const i18n = useI18n();
 const router = useRouter();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const { getDependencies, fetchDependencies, getDependents, fetchDependents } = useDependencies();
+const { getDependencies, fetchDependencies } = useDependencies();
 
 const isLoadingDetails = ref(false);
 
-/** Resolved dependencies from the appropriate composable cache. */
-const resolvedDeps = computed((): ResolvedDependency[] | undefined => {
-	if (props.resourceType === 'workflow') {
-		return getDependencies(props.resourceId);
-	}
-	// For credentials / data tables, map WorkflowDependent[] → ResolvedDependency[]
-	const dependents = getDependents(props.resourceId);
-	if (dependents === undefined) return undefined;
-	return dependents.map((d) => ({
-		type: 'workflowParent',
-		id: d.id,
-		name: d.name,
-		projectId: d.projectId,
-	}));
-});
+const resolvedDeps = computed(() => getDependencies(props.resourceId));
 
 const effectiveCount = computed(() => resolvedDeps.value?.length ?? props.totalCount ?? 0);
 
@@ -161,17 +147,14 @@ function onSearch(term: string) {
 	searchTerm.value = term;
 }
 
-const RESOURCE_TYPE_TO_DEPENDENCY_TYPE = {
+const RESOURCE_TYPE_TO_API_TYPE = {
+	workflow: 'workflow',
 	credential: 'credentialId',
 	dataTable: 'dataTableId',
 } as const;
 
 async function loadDetails() {
-	if (props.resourceType === 'workflow') {
-		await fetchDependencies([props.resourceId]);
-	} else {
-		await fetchDependents([props.resourceId], RESOURCE_TYPE_TO_DEPENDENCY_TYPE[props.resourceType]);
-	}
+	await fetchDependencies([props.resourceId], RESOURCE_TYPE_TO_API_TYPE[props.resourceType]);
 }
 
 async function onDropdownToggle(open: boolean) {
@@ -196,6 +179,7 @@ async function onDropdownToggle(open: boolean) {
 		trigger="hover"
 		placement="bottom"
 		:loading="isLoadingDetails"
+		:loading-item-count="1"
 		:searchable="showSearch"
 		extra-popper-class="dependency-pill-dropdown"
 		:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder' as BaseTextKey)"

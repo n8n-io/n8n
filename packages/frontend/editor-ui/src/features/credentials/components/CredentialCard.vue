@@ -54,7 +54,7 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
-const { hasDependents } = useDependencies();
+const { hasDependencies } = useDependencies();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() =>
@@ -94,7 +94,7 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
-const credentialHasDependents = computed(() => hasDependents(props.data.id));
+const credentialHasDependents = computed(() => hasDependencies(props.data.id));
 
 function onClick() {
 	emit('click', props.data.id);

@@ -1,5 +1,4 @@
 import type {
-	ResourceDependentsBatchResponse,
 	WorkflowDependenciesBatchResponse,
 	WorkflowDependencyCountsBatchResponse,
 } from '@n8n/api-types';
@@ -52,7 +51,9 @@ export class WorkflowDependencyQueryService {
 		return result;
 	}
 
-	async getResolvedDependencies(workflowIds: string[]): Promise<WorkflowDependenciesBatchResponse> {
+	private async getResolvedDependencies(
+		workflowIds: string[],
+	): Promise<WorkflowDependenciesBatchResponse> {
 		const [rawDeps, reverseDeps] = await Promise.all([
 			this.dependencyRepository.getDependenciesForWorkflows(workflowIds, DEPENDENCY_TYPES_TO_SHOW),
 			this.dependencyRepository.getReverseDependencies(workflowIds, 'workflowCall'),
@@ -202,13 +203,27 @@ export class WorkflowDependencyQueryService {
 	}
 
 	/**
-	 * Find which workflows depend on the given resources.
-	 * Used for credential cards and data table cards to show "used by N workflows".
+	 * Unified dependency resolver for any resource type.
+	 * - For workflows: returns forward deps (credentials, data tables, sub-workflows) + reverse deps (parent workflows).
+	 * - For credentials / data tables: returns which workflows use them (as workflowParent entries).
 	 */
-	async getResourceDependents(
+	async getResourceDependencies(
+		resourceIds: string[],
+		resourceType: 'workflow' | 'credentialId' | 'dataTableId',
+	): Promise<WorkflowDependenciesBatchResponse> {
+		if (resourceType === 'workflow') {
+			return await this.getResolvedDependencies(resourceIds);
+		}
+		return await this.getReverseDependenciesAsResolved(resourceIds, resourceType);
+	}
+
+	/**
+	 * Find which workflows depend on the given resources and return as ResolvedDependency[].
+	 */
+	private async getReverseDependenciesAsResolved(
 		resourceIds: string[],
 		resourceType: 'credentialId' | 'dataTableId',
-	): Promise<ResourceDependentsBatchResponse> {
+	): Promise<WorkflowDependenciesBatchResponse> {
 		const reverseDeps = await this.dependencyRepository.getReverseDependencies(
 			resourceIds,
 			resourceType,
@@ -245,15 +260,18 @@ export class WorkflowDependencyQueryService {
 		const wfProjectMap = new Map<string, string>();
 		for (const sw of wfShares) wfProjectMap.set(sw.workflowId, sw.projectId);
 
-		const result: ResourceDependentsBatchResponse = {};
+		const result: WorkflowDependenciesBatchResponse = {};
 		for (const dep of reverseDeps) {
 			const resourceId = dep.dependencyKey;
 			if (!result[resourceId]) result[resourceId] = [];
 
-			const existing = result[resourceId].find((d) => d.id === dep.workflowId);
+			const existing = result[resourceId].find(
+				(d) => d.type === 'workflowParent' && d.id === dep.workflowId,
+			);
 			if (existing) continue;
 
 			result[resourceId].push({
+				type: 'workflowParent',
 				id: dep.workflowId,
 				name: workflowNameMap.get(dep.workflowId) ?? dep.workflowId,
 				projectId: wfProjectMap.get(dep.workflowId),

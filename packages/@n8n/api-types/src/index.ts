@@ -121,11 +121,6 @@ export type {
 } from './schemas/workflow-dependency.schema';
 
 export type {
-	WorkflowDependent,
-	ResourceDependentsBatchResponse,
-} from './schemas/resource-dependents.schema';
-
-export type {
 	DependencyTypeCounts,
 	WorkflowDependencyCountsBatchResponse,
 } from './schemas/workflow-dependency-counts.schema';

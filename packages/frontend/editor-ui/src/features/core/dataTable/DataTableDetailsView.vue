@@ -44,11 +44,11 @@ const documentTitle = useDocumentTitle();
 
 const dataTableStore = useDataTableStore();
 const sourceControlStore = useSourceControlStore();
-const { fetchDependents, hasDependents } = useDependencies();
+const { fetchDependencies, hasDependencies } = useDependencies();
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
-const dataTableHasDependents = computed(() => hasDependents(props.id));
+const dataTableHasDependents = computed(() => hasDependencies(props.id));
 
 const loading = ref(false);
 const saving = ref(false);
@@ -80,7 +80,7 @@ const initialize = async () => {
 		await showErrorAndGoBackToList(error);
 	} finally {
 		loading.value = false;
-		void fetchDependents([props.id], 'dataTableId');
+		void fetchDependencies([props.id], 'dataTableId');
 	}
 };
 

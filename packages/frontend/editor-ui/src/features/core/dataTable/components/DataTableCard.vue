@@ -23,7 +23,7 @@ type Props = {
 const i18n = useI18n();
 const dataTableStore = useDataTableStore();
 const projectsStore = useProjectsStore();
-const { hasDependents } = useDependencies();
+const { hasDependencies } = useDependencies();
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
@@ -46,7 +46,7 @@ const getDataTableSize = computed(() => {
 	return size;
 });
 
-const dataTableHasDependents = computed(() => hasDependents(props.dataTable.id));
+const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id));
 </script>
 <template>
 	<div data-test-id="data-table-card">

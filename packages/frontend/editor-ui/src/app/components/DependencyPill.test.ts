@@ -23,14 +23,11 @@ vi.mock('vue-router', () => {
 });
 
 let mockDependencies: Array<{ type: string; id: string; name: string; projectId?: string }> = [];
-let mockDependents: Array<{ id: string; name: string; projectId?: string }> = [];
 
 vi.mock('@/app/composables/useDependencies', () => ({
 	useDependencies: () => ({
 		getDependencies: () => (mockDependencies.length > 0 ? mockDependencies : undefined),
 		fetchDependencies: vi.fn(),
-		getDependents: () => (mockDependents.length > 0 ? mockDependents : undefined),
-		fetchDependents: vi.fn(),
 	}),
 }));
 
@@ -97,7 +94,6 @@ describe('DependencyPill', () => {
 		capturedItems = [];
 		capturedSearchable = undefined;
 		mockDependencies = [];
-		mockDependents = [];
 	});
 
 	afterEach(() => {

@@ -3,8 +3,7 @@ import {
 	ArchiveWorkflowDto,
 	CreateWorkflowDto,
 	DeactivateWorkflowDto,
-	GetResourceDependentsDto,
-	GetWorkflowDependenciesDto,
+	GetResourceDependenciesDto,
 	GetWorkflowDependencyCountsDto,
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
@@ -685,22 +684,13 @@ export class WorkflowsController {
 		return await this.workflowDependencyQueryService.getDependencyCounts(body.workflowIds);
 	}
 
-	@Post('/dependencies')
-	async getWorkflowDependencies(
+	@Post('/resource-dependencies')
+	async getResourceDependencies(
 		_req: AuthenticatedRequest,
 		_res: unknown,
-		@Body body: GetWorkflowDependenciesDto,
+		@Body body: GetResourceDependenciesDto,
 	) {
-		return await this.workflowDependencyQueryService.getResolvedDependencies(body.workflowIds);
-	}
-
-	@Post('/dependents')
-	async getResourceDependents(
-		_req: AuthenticatedRequest,
-		_res: unknown,
-		@Body body: GetResourceDependentsDto,
-	) {
-		return await this.workflowDependencyQueryService.getResourceDependents(
+		return await this.workflowDependencyQueryService.getResourceDependencies(
 			body.resourceIds,
 			body.resourceType,
 		);
