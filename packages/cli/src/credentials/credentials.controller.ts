@@ -34,7 +34,7 @@ import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { deepCopy } from 'n8n-workflow';
-import type { ICredentialDataDecryptedObject, ICredentialsDecrypted } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
@@ -96,19 +96,11 @@ export class CredentialsController {
 		_res: unknown,
 		@Query query: CredentialsForWorkflowQueryDto,
 	) {
-		// Use type guards to narrow the union type safely
-		if (query.workflowId !== undefined) {
-			return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, {
-				workflowId: query.workflowId,
-			});
-		}
-		if (query.projectId !== undefined) {
-			return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, {
-				projectId: query.projectId,
-			});
-		}
-		// Should never reach here due to DTO validation
-		throw new BadRequestError('Either workflowId or projectId must be provided');
+		// The DTO's .refine() validation guarantees at least one of workflowId or projectId is present
+		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			req.user,
+			query as { workflowId: string } | { projectId: string },
+		);
 	}
 
 	@Get('/new')
@@ -171,8 +163,6 @@ export class CredentialsController {
 		}
 
 		const mergedCredentials = deepCopy(credentials);
-		// Ensure name is always set, falling back to stored credential's name
-		mergedCredentials.name = credentials.name ?? storedCredential.name;
 		const decryptedData = this.credentialsService.decrypt(storedCredential, true);
 
 		// When a sharee (or project viewer) opens a credential, the fields and the
@@ -183,7 +173,7 @@ export class CredentialsController {
 			req.user,
 			storedCredential,
 			decryptedData,
-			mergedCredentials as ICredentialsDecrypted,
+			mergedCredentials,
 		);
 
 		if (mergedCredentials.data) {
@@ -193,10 +183,7 @@ export class CredentialsController {
 			);
 		}
 
-		return await this.credentialsService.test(
-			req.user.id,
-			mergedCredentials as ICredentialsDecrypted,
-		);
+		return await this.credentialsService.test(req.user.id, mergedCredentials);
 	}
 
 	@Post('/')
