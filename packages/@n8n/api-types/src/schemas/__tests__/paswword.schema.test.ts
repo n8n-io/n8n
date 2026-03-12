@@ -1,4 +1,4 @@
-import { passwordSchema } from '../password.schema';
+import { passwordSchema, createPasswordSchema } from '../password.schema';
 
 describe('passwordSchema', () => {
 	test('should throw on empty password', () => {
@@ -53,6 +53,15 @@ describe('passwordSchema', () => {
 	});
 });
 
+describe('createPasswordSchema', () => {
+	test('should create a schema with custom min length', () => {
+		const schema = createPasswordSchema(12);
+
+		expect(() => schema.parse('Abcdefgh1')).toThrow('Password must be 12 to 64 characters long.');
+		expect(schema.parse('Abcdefghijk1')).toBe('Abcdefghijk1');
+	});
+});
+
 describe('passwordSchema with N8N_PASSWORD_MIN_LENGTH', () => {
 	const originalEnv = process.env;
 
@@ -91,11 +100,11 @@ describe('passwordSchema with N8N_PASSWORD_MIN_LENGTH', () => {
 		expect(passwordMinLength).toBe(8);
 	});
 
-	test('should fall back to 8 when env var exceeds max length', async () => {
+	test('should clamp to 64 when env var exceeds max length', async () => {
 		process.env = { ...originalEnv, N8N_PASSWORD_MIN_LENGTH: '100' };
 
 		const { passwordMinLength } = await importFreshSchema();
 
-		expect(passwordMinLength).toBe(8);
+		expect(passwordMinLength).toBe(64);
 	});
 });
