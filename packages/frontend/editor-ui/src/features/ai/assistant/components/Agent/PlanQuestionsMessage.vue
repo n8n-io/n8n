@@ -34,6 +34,7 @@ const currentIndex = ref(0);
 const isSubmitted = ref(false);
 const answers = ref<Map<string, PlanMode.QuestionResponse>>(new Map());
 const highlightedIndex = ref(-1);
+const selectedIndex = ref<number | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
 
 const currentQuestion = computed(() => props.questions[currentIndex.value]);
@@ -111,7 +112,8 @@ watch(
 				skipped: false,
 			});
 		}
-		// Highlight first option by default so Enter works immediately
+		// Reset selection state and highlight first option
+		selectedIndex.value = null;
 		highlightedIndex.value = currentQuestion.value?.type === 'text' ? -1 : 0;
 
 		// Auto-focus the container so keyboard navigation works right away
@@ -137,8 +139,15 @@ function onSingleSelectAndAdvance(
 	inputMethod: 'click' | 'keyboard_number' | 'keyboard_enter' = 'click',
 ) {
 	onSingleSelect(option);
+	const idx = filteredOptions.value.indexOf(option);
+	selectedIndex.value = idx >= 0 ? idx : null;
 	emitQuestionTelemetry('qa_question_answered', inputMethod);
-	goToNextInternal();
+
+	// Brief delay so the user sees the active selection before advancing
+	setTimeout(() => {
+		selectedIndex.value = null;
+		goToNextInternal();
+	}, 250);
 }
 
 function onMultiToggle(option: string, checked: boolean) {
@@ -377,112 +386,123 @@ function onOptionMouseEnter(idx: number) {
 			tabindex="0"
 			@keydown="onKeydown"
 		>
-			<div :class="$style.question">
-				<N8nText tag="p" :bold="true" :class="$style.questionText">
-					{{ currentQuestion.question }}
-				</N8nText>
+			<Transition :name="$style.questionFade" mode="out-in">
+				<div :key="currentQuestion.id" :class="$style.question">
+					<N8nText tag="p" :bold="true" :class="$style.questionText">
+						{{ currentQuestion.question }}
+					</N8nText>
 
-				<!-- Single choice (number badge rows) -->
-				<div v-if="currentQuestion.type === 'single'" :class="$style.options">
-					<button
-						v-for="(option, idx) in filteredOptions"
-						:key="option"
-						:class="[$style.optionRow, { [$style.highlighted]: highlightedIndex === idx }]"
-						:data-option-index="idx"
+					<!-- Single choice (number badge rows) -->
+					<div v-if="currentQuestion.type === 'single'" :class="$style.options">
+						<button
+							v-for="(option, idx) in filteredOptions"
+							:key="option"
+							:class="[
+								$style.optionRow,
+								{ [$style.highlighted]: highlightedIndex === idx },
+								{
+									[$style.activeSelected]:
+										selectedIndex === idx || currentAnswer.selectedOptions.includes(option),
+								},
+							]"
+							:data-option-index="idx"
+							:disabled="disabled"
+							type="button"
+							@click="onSingleSelectAndAdvance(option)"
+							@mouseenter="onOptionMouseEnter(idx)"
+						>
+							<span :class="$style.numberBadge">{{ idx + 1 }}</span>
+							<span :class="$style.optionLabel">{{ option }}</span>
+							<N8nIcon :class="$style.arrowIndicator" icon="arrow-right" size="small" />
+						</button>
+
+						<!-- "Something else" row for single-select -->
+						<div
+							:class="[
+								$style.somethingElseRow,
+								{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
+							]"
+							:data-option-index="filteredOptions.length"
+							@mouseenter="onOptionMouseEnter(filteredOptions.length)"
+						>
+							<N8nIcon :class="$style.pencilIcon" icon="pencil" size="small" />
+							<N8nInput
+								:model-value="currentAnswer.customText"
+								:disabled="disabled"
+								:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')"
+								size="small"
+								:class="$style.somethingElseInput"
+								data-test-id="plan-mode-something-else-input"
+								@update:model-value="onCustomTextChange"
+							/>
+						</div>
+					</div>
+
+					<!-- Multi choice (checkbox rows) -->
+					<div v-else-if="currentQuestion.type === 'multi'" :class="$style.options">
+						<label
+							v-for="(option, idx) in filteredOptions"
+							:key="option"
+							:class="[
+								$style.checkboxRow,
+								{ [$style.highlighted]: highlightedIndex === idx },
+								{ [$style.selected]: currentAnswer.selectedOptions.includes(option) },
+							]"
+							:data-option-index="idx"
+							@mouseenter="onOptionMouseEnter(idx)"
+						>
+							<N8nCheckbox
+								:model-value="currentAnswer.selectedOptions.includes(option)"
+								:disabled="disabled"
+								@update:model-value="(checked: boolean) => onMultiToggle(option, checked)"
+							/>
+							<span :class="$style.optionLabel">{{ option }}</span>
+						</label>
+
+						<!-- "Something else" row for multi-select -->
+						<div
+							:class="[
+								$style.somethingElseRow,
+								{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
+							]"
+							:data-option-index="filteredOptions.length"
+							@mouseenter="onOptionMouseEnter(filteredOptions.length)"
+						>
+							<N8nCheckbox
+								:model-value="!!currentAnswer.customText?.trim()"
+								:disabled="disabled"
+								@update:model-value="
+									(checked: boolean) => {
+										if (!checked) onCustomTextChange('');
+									}
+								"
+							/>
+							<N8nInput
+								:model-value="currentAnswer.customText"
+								:disabled="disabled"
+								:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')"
+								size="small"
+								:class="$style.somethingElseInput"
+								data-test-id="plan-mode-something-else-input"
+								@update:model-value="onCustomTextChange"
+							/>
+						</div>
+					</div>
+
+					<!-- Text input -->
+					<N8nInput
+						v-else-if="currentQuestion.type === 'text'"
+						:model-value="currentAnswer.customText"
+						type="textarea"
+						:rows="3"
 						:disabled="disabled"
-						type="button"
-						@click="onSingleSelectAndAdvance(option)"
-						@mouseenter="onOptionMouseEnter(idx)"
-					>
-						<span :class="$style.numberBadge">{{ idx + 1 }}</span>
-						<span :class="$style.optionLabel">{{ option }}</span>
-						<N8nIcon :class="$style.arrowIndicator" icon="arrow-right" size="small" />
-					</button>
-
-					<!-- "Something else" row for single-select -->
-					<div
-						:class="[
-							$style.somethingElseRow,
-							{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
-						]"
-						:data-option-index="filteredOptions.length"
-						@mouseenter="onOptionMouseEnter(filteredOptions.length)"
-					>
-						<N8nIcon :class="$style.pencilIcon" icon="pencil" size="small" />
-						<N8nInput
-							:model-value="currentAnswer.customText"
-							:disabled="disabled"
-							:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')"
-							size="small"
-							:class="$style.somethingElseInput"
-							data-test-id="plan-mode-something-else-input"
-							@update:model-value="onCustomTextChange"
-						/>
-					</div>
+						:placeholder="
+							i18n.baseText('aiAssistant.builder.planMode.questions.clarifyPlaceholder')
+						"
+						@update:model-value="onCustomTextChange"
+					/>
 				</div>
-
-				<!-- Multi choice (checkbox rows) -->
-				<div v-else-if="currentQuestion.type === 'multi'" :class="$style.options">
-					<label
-						v-for="(option, idx) in filteredOptions"
-						:key="option"
-						:class="[
-							$style.checkboxRow,
-							{ [$style.highlighted]: highlightedIndex === idx },
-							{ [$style.selected]: currentAnswer.selectedOptions.includes(option) },
-						]"
-						:data-option-index="idx"
-						@mouseenter="onOptionMouseEnter(idx)"
-					>
-						<N8nCheckbox
-							:model-value="currentAnswer.selectedOptions.includes(option)"
-							:disabled="disabled"
-							@update:model-value="(checked: boolean) => onMultiToggle(option, checked)"
-						/>
-						<span :class="$style.optionLabel">{{ option }}</span>
-					</label>
-
-					<!-- "Something else" row for multi-select -->
-					<div
-						:class="[
-							$style.somethingElseRow,
-							{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
-						]"
-						:data-option-index="filteredOptions.length"
-						@mouseenter="onOptionMouseEnter(filteredOptions.length)"
-					>
-						<N8nCheckbox
-							:model-value="!!currentAnswer.customText?.trim()"
-							:disabled="disabled"
-							@update:model-value="
-								(checked: boolean) => {
-									if (!checked) onCustomTextChange('');
-								}
-							"
-						/>
-						<N8nInput
-							:model-value="currentAnswer.customText"
-							:disabled="disabled"
-							:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')"
-							size="small"
-							:class="$style.somethingElseInput"
-							data-test-id="plan-mode-something-else-input"
-							@update:model-value="onCustomTextChange"
-						/>
-					</div>
-				</div>
-
-				<!-- Text input -->
-				<N8nInput
-					v-else-if="currentQuestion.type === 'text'"
-					:model-value="currentAnswer.customText"
-					type="textarea"
-					:rows="3"
-					:disabled="disabled"
-					:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.clarifyPlaceholder')"
-					@update:model-value="onCustomTextChange"
-				/>
-			</div>
+			</Transition>
 
 			<!-- Footer -->
 			<div :class="$style.footer">
@@ -592,6 +612,24 @@ function onOptionMouseEnter(idx: number) {
 	&:hover .arrowIndicator,
 	&.highlighted .arrowIndicator {
 		opacity: 1;
+	}
+
+	&.activeSelected {
+		background-color: var(--color--primary);
+
+		.numberBadge {
+			background-color: var(--color--primary--shade-1);
+			color: white;
+		}
+
+		.optionLabel {
+			color: white;
+		}
+
+		.arrowIndicator {
+			opacity: 1;
+			color: white;
+		}
 	}
 
 	&:disabled {
@@ -725,5 +763,16 @@ function onOptionMouseEnter(idx: number) {
 .navigation {
 	display: flex;
 	gap: var(--spacing--2xs);
+}
+
+/* Question fade transition */
+.questionFade-enter-active,
+.questionFade-leave-active {
+	transition: opacity 0.15s ease;
+}
+
+.questionFade-enter-from,
+.questionFade-leave-to {
+	opacity: 0;
 }
 </style>

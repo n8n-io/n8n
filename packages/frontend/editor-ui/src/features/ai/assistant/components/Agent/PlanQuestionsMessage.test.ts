@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 
 import { renderComponent } from '@/__tests__/render';
@@ -34,6 +34,14 @@ function render(props: {
 }
 
 describe('PlanQuestionsMessage', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	describe('Intro & question rendering', () => {
 		it('renders the intro message when provided', () => {
 			const { getByText } = render({
@@ -96,8 +104,9 @@ describe('PlanQuestionsMessage', () => {
 				questions: [singleQuestion, textQuestion],
 			});
 
-			// Click Gmail → should immediately show next question
+			// Click Gmail → shows active state, then advances after delay
 			await fireEvent.click(getByText('Gmail'));
+			await vi.advanceTimersByTimeAsync(300);
 
 			expect(getByText('Any other requirements?')).toBeTruthy();
 		});
@@ -108,6 +117,7 @@ describe('PlanQuestionsMessage', () => {
 			});
 
 			await fireEvent.click(getByText('Gmail'));
+			await vi.advanceTimersByTimeAsync(300);
 
 			expect(emitted().submit).toHaveLength(1);
 			expect(emitted().submit[0]).toEqual([
@@ -305,6 +315,7 @@ describe('PlanQuestionsMessage', () => {
 				'[tabindex="0"]',
 			) as HTMLElement;
 			await fireEvent.keyDown(container, { key: '1' });
+			await vi.advanceTimersByTimeAsync(300);
 
 			// Should auto-advance to next question
 			expect(getByText('Any other requirements?')).toBeTruthy();
@@ -339,6 +350,7 @@ describe('PlanQuestionsMessage', () => {
 			) as HTMLElement;
 			// First option (index 0) is highlighted by default, Enter to select
 			await fireEvent.keyDown(container, { key: 'Enter' });
+			await vi.advanceTimersByTimeAsync(300);
 
 			// Should auto-advance to next question
 			expect(getByText('Any other requirements?')).toBeTruthy();
