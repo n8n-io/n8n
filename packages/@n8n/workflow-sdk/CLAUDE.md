@@ -75,6 +75,14 @@ Key difference in code generation: Filter's kept branch is a **continuation** (d
 
 In the SDK format, both use `.onTrue()`/`.onFalse()` — the `isIfNodeType()` guard accepts both types.
 
+### Generator: Trigger and Composite Parent Variable Names
+
+**Pitfall: Two trigger generation paths.** Standalone/fan-out triggers go through `generateLeafNode`, while chain triggers go through `generateTriggerBlock`. Any module-level state changes for triggers (like `_genNodeNameToVar` remapping) must be applied in **both** places.
+
+**Triggers use `items` as their variable, not the pre-registered name.** The pre-registration loop creates entries like "Error Trigger" → `error_Trigger`, but in generated code the trigger's output is the `(items) =>` callback parameter. The generator remaps trigger entries to `items` so `$('TriggerName')` resolves to `items.json.field`.
+
+**Composite parents (Switch in `.route()`, IF in `.branch()`) have no standalone variable.** They return `varName: null` from generation. Their `$('NodeName')` references must stay as `expr()` — the `_genCompositeParentNames` set prevents conversion. Without this guard, the re-parser would see the variable reference inside the `.route()`/`.branch()` callback where the composite IS the predecessor, incorrectly emitting `$json.field` and breaking the round-trip.
+
 ### Adding a New Composite Node Type
 
 **CRITICAL: Always use TDD.** Write failing tests first (parser test, generator test, round-trip test), then implement. This applies both during planning (plan which tests to write) and implementation (write tests before production code).
