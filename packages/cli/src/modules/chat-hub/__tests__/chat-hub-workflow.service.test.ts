@@ -102,6 +102,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 					undefined,
 					{
@@ -132,6 +133,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 					undefined,
 					{
@@ -161,6 +163,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 					undefined,
 					{
@@ -191,6 +194,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 					undefined,
 					{
@@ -221,6 +225,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 				);
 
