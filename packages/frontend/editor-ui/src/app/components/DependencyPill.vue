@@ -34,13 +34,15 @@ const i18n = useI18n();
 const router = useRouter();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const { getDependencies, fetchDependencies } = useDependencies();
+const { getDependencies, fetchDependencies, getTotalCount } = useDependencies();
 
 const isLoadingDetails = ref(false);
 
 const resolvedDeps = computed(() => getDependencies(props.resourceId));
 
-const effectiveCount = computed(() => resolvedDeps.value?.length ?? props.totalCount ?? 0);
+const effectiveCount = computed(
+	() => resolvedDeps.value?.length ?? getTotalCount(props.resourceId) ?? 0,
+);
 
 const hasFullDeps = computed(
 	() => resolvedDeps.value !== undefined && resolvedDeps.value.length > 0,
@@ -114,7 +116,7 @@ const menuItems = computed(() => {
 		for (const dep of deps) {
 			items.push({
 				id: `${dep.type}:${dep.id}`,
-				label: dep.name,
+				label: dep.name ?? dep.id,
 			});
 		}
 	}
@@ -147,14 +149,8 @@ function onSearch(term: string) {
 	searchTerm.value = term;
 }
 
-const RESOURCE_TYPE_TO_API_TYPE = {
-	workflow: 'workflow',
-	credential: 'credentialId',
-	dataTable: 'dataTableId',
-} as const;
-
 async function loadDetails() {
-	await fetchDependencies([props.resourceId], RESOURCE_TYPE_TO_API_TYPE[props.resourceType]);
+	await fetchDependencies([props.resourceId]);
 }
 
 async function onDropdownToggle(open: boolean) {
@@ -182,8 +178,8 @@ async function onDropdownToggle(open: boolean) {
 		:loading-item-count="1"
 		:searchable="showSearch"
 		extra-popper-class="dependency-pill-dropdown"
-		:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder' as BaseTextKey)"
-		:empty-text="i18n.baseText('workflows.dependencies.search.empty' as BaseTextKey)"
+		:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder')"
+		:empty-text="i18n.baseText('workflows.dependencies.search.empty')"
 		:max-height="280"
 		:data-test-id="dataTestId"
 		@select="onSelect"

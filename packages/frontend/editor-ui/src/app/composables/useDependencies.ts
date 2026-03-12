@@ -6,8 +6,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 export type { DependencyTypeCounts, ResolvedDependency };
 
-type ResourceType = 'workflow' | 'credentialId' | 'dataTableId';
-
 const dependenciesMap = ref<Record<string, ResolvedDependency[]>>({});
 const countsMap = ref<Record<string, DependencyTypeCounts>>({});
 
@@ -15,17 +13,13 @@ export function useDependencies() {
 	const rootStore = useRootStore();
 
 	/** Fetch lightweight dependency counts for resource cards (no name resolution). */
-	async function fetchDependencyCounts(
-		resourceIds: string[],
-		resourceType: ResourceType,
-	): Promise<void> {
+	async function fetchDependencyCounts(resourceIds: string[]): Promise<void> {
 		if (resourceIds.length === 0) return;
 
 		try {
 			const result = await workflowsApi.getResourceDependencyCounts(
 				rootStore.restApiContext,
 				resourceIds,
-				resourceType,
 			);
 			for (const [id, counts] of Object.entries(result)) {
 				countsMap.value[id] = counts;
@@ -36,17 +30,13 @@ export function useDependencies() {
 	}
 
 	/** Fetch full resolved dependencies for any resource type. */
-	async function fetchDependencies(
-		resourceIds: string[],
-		resourceType: ResourceType,
-	): Promise<void> {
+	async function fetchDependencies(resourceIds: string[]): Promise<void> {
 		if (resourceIds.length === 0) return;
 
 		try {
 			const result = await workflowsApi.getResourceDependencies(
 				rootStore.restApiContext,
 				resourceIds,
-				resourceType,
 			);
 			for (const [id, deps] of Object.entries(result)) {
 				dependenciesMap.value[id] = deps;

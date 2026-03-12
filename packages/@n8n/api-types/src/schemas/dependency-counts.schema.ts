@@ -1,8 +1,8 @@
 export interface DependencyTypeCounts {
-	credentialId?: number;
-	dataTableId?: number;
-	workflowCall?: number;
-	workflowParent?: number;
+	credentialId: number;
+	dataTableId: number;
+	workflowCall: number;
+	workflowParent: number;
 }
 
 /**

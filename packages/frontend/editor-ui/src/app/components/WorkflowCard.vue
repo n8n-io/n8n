@@ -112,7 +112,7 @@ const route = useRoute();
 const telemetry = useTelemetry();
 const mcp = useMcp();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
-const { hasDependencies, getTotalCount } = useDependencies();
+const { hasDependencies } = useDependencies();
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -673,7 +673,6 @@ const tags = computed(
 					v-if="workflowHasDependencies"
 					resource-type="workflow"
 					:resource-id="data.id"
-					:total-count="getTotalCount(data.id)"
 					source="workflow_card"
 					data-test-id="workflow-card-dependencies"
 				/>

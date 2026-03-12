@@ -681,10 +681,7 @@ export class WorkflowsController {
 		_res: unknown,
 		@Body body: GetResourceDependencyCountsDto,
 	) {
-		return await this.workflowDependencyQueryService.getDependencyCounts(
-			body.resourceIds,
-			body.resourceType,
-		);
+		return await this.workflowDependencyQueryService.getDependencyCounts(body.resourceIds);
 	}
 
 	@Post('/resource-dependencies')
@@ -693,10 +690,7 @@ export class WorkflowsController {
 		_res: unknown,
 		@Body body: GetResourceDependenciesDto,
 	) {
-		return await this.workflowDependencyQueryService.getResourceDependencies(
-			body.resourceIds,
-			body.resourceType,
-		);
+		return await this.workflowDependencyQueryService.getResourceDependencies(body.resourceIds);
 	}
 
 	@Post('/with-node-types')

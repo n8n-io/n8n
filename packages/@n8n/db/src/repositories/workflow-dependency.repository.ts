@@ -157,25 +157,6 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	}
 
 	/**
-	 * Get dependencies for a batch of workflows, filtered to specific types.
-	 */
-	async getDependenciesForWorkflows(
-		workflowIds: string[],
-		dependencyTypes: DependencyType[],
-	): Promise<WorkflowDependency[]> {
-		if (workflowIds.length === 0) return [];
-
-		return await this.find({
-			where: {
-				workflowId: In(workflowIds),
-				dependencyType: In(dependencyTypes),
-				publishedVersionId: IsNull(),
-			},
-			select: ['workflowId', 'dependencyType', 'dependencyKey'],
-		});
-	}
-
-	/**
 	 * Get dependency counts per workflow, grouped by dependency type.
 	 * Also includes reverse workflowCall counts (parent workflows).
 	 */
@@ -248,26 +229,6 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			dependencyType: row.dependencyType,
 			count: Number(row.count),
 		}));
-	}
-
-	/**
-	 * Get dependencies that reference any of the given keys for a specific type.
-	 * Used for reverse lookups, e.g. finding which workflows call a given workflow.
-	 */
-	async getReverseDependencies(
-		dependencyKeys: string[],
-		dependencyType: DependencyType,
-	): Promise<WorkflowDependency[]> {
-		if (dependencyKeys.length === 0) return [];
-
-		return await this.find({
-			where: {
-				dependencyKey: In(dependencyKeys),
-				dependencyType,
-				publishedVersionId: IsNull(),
-			},
-			select: ['workflowId', 'dependencyType', 'dependencyKey'],
-		});
 	}
 
 	private getTableName(name: string): string {

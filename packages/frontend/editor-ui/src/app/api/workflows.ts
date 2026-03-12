@@ -53,29 +53,21 @@ export async function getWorkflows(
 	});
 }
 
-export async function getResourceDependencyCounts(
-	context: IRestApiContext,
-	resourceIds: string[],
-	resourceType: 'workflow' | 'credentialId' | 'dataTableId',
-) {
+export async function getResourceDependencyCounts(context: IRestApiContext, resourceIds: string[]) {
 	return await makeRestApiRequest<DependencyCountsBatchResponse>(
 		context,
 		'POST',
 		'/workflows/dependency-counts',
-		{ resourceIds, resourceType },
+		{ resourceIds },
 	);
 }
 
-export async function getResourceDependencies(
-	context: IRestApiContext,
-	resourceIds: string[],
-	resourceType: 'workflow' | 'credentialId' | 'dataTableId',
-) {
+export async function getResourceDependencies(context: IRestApiContext, resourceIds: string[]) {
 	return await makeRestApiRequest<DependenciesBatchResponse>(
 		context,
 		'POST',
 		'/workflows/resource-dependencies',
-		{ resourceIds, resourceType },
+		{ resourceIds },
 	);
 }
 
