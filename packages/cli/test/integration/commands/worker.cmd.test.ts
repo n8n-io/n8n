@@ -1,7 +1,7 @@
 process.argv[2] = 'worker';
 
 import { mockInstance } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, TaskRunnersConfig } from '@n8n/config';
+import { ExecutionsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
 
@@ -25,7 +25,6 @@ import { setupTestCommand } from '@test-integration/utils/test-command';
 
 Container.get(ExecutionsConfig).mode = 'queue';
 config.set('binaryDataManager.availableModes', 'filesystem');
-Container.get(TaskRunnersConfig).enabled = true;
 mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
 const communityPackagesService = mockInstance(CommunityPackagesService);
