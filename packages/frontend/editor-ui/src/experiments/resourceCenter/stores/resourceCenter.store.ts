@@ -1,4 +1,5 @@
-import { RESOURCE_CENTER_EXPERIMENT, VIEWS } from '@/app/constants';
+import { RESOURCE_CENTER_EXPERIMENT, RESOURCE_CENTER_V1_EXPERIMENT, VIEWS } from '@/app/constants';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -20,13 +21,23 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	const templatesStore = useTemplatesStore();
 	const workflowsStore = useWorkflowsStore();
 	const readyToRunStore = useReadyToRunStore();
+	const cloudPlanStore = useCloudPlanStore();
 	const telemetry = useTelemetry();
 	const router = useRouter();
 
 	const isLoadingTemplates = ref(false);
 	const hasTooltipBeenDismissed = ref(localStorage.getItem(TOOLTIP_STORAGE_KEY) === 'true');
 
+	const isV1FeatureEnabled = () => {
+		const variant = posthogStore.getVariant(RESOURCE_CENTER_V1_EXPERIMENT.name);
+		return variant === RESOURCE_CENTER_V1_EXPERIMENT.variant;
+	};
+
 	const isFeatureEnabled = () => {
+		// Trial-only gating: only show to trialing users
+		if (!cloudPlanStore.userIsTrialing) return false;
+
+		if (isV1FeatureEnabled()) return true;
 		const variant = posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name);
 		return (
 			variant === RESOURCE_CENTER_EXPERIMENT.variantResources ||
@@ -139,6 +150,17 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 		});
 	}
 
+	// Sidebar auto-expand
+	const SIDEBAR_AUTO_EXPANDED_KEY = 'n8n-resourceCenter-sidebarAutoExpanded';
+
+	const shouldAutoExpandSidebar = computed(() => {
+		return isV1FeatureEnabled() && localStorage.getItem(SIDEBAR_AUTO_EXPANDED_KEY) !== 'true';
+	});
+
+	function markSidebarAutoExpanded() {
+		localStorage.setItem(SIDEBAR_AUTO_EXPANDED_KEY, 'true');
+	}
+
 	// Track experiment participation
 	const trackExperimentParticipation = () => {
 		const variant = posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name);
@@ -156,7 +178,15 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 		(enabled) => {
 			if (enabled && !hasTrackedExperiment) {
 				hasTrackedExperiment = true;
-				trackExperimentParticipation();
+				// Track whichever experiment is active
+				if (isV1FeatureEnabled()) {
+					telemetry.track('User is part of experiment', {
+						name: RESOURCE_CENTER_V1_EXPERIMENT.name,
+						variant: posthogStore.getVariant(RESOURCE_CENTER_V1_EXPERIMENT.name),
+					});
+				} else {
+					trackExperimentParticipation();
+				}
 			}
 		},
 		{ immediate: true },
@@ -164,14 +194,17 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 
 	return {
 		isFeatureEnabled,
+		isV1FeatureEnabled,
 		getCurrentVariant,
 		isLoadingTemplates,
 		shouldShowResourceCenterTooltip,
+		shouldAutoExpandSidebar,
 		fetchTemplateById,
 		loadTemplates,
 		getTemplateRoute,
 		createAndOpenQuickStartWorkflow,
 		markResourceCenterTooltipDismissed,
+		markSidebarAutoExpanded,
 		trackResourceCenterView,
 		trackResourceCenterTooltipView,
 		trackResourceCenterTooltipDismiss,
