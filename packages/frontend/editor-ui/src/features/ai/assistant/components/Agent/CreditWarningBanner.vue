@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 
 const props = defineProps<{
 	creditsRemaining?: number;
@@ -47,13 +47,14 @@ const tooltipContent = computed(() => {
 				<N8nIcon icon="info" size="small" :class="$style.infoIcon" />
 			</N8nTooltip>
 		</div>
-		<button
-			:class="$style.getMore"
+		<N8nButton
+			variant="outline"
+			size="xsmall"
 			data-test-id="credit-banner-get-more"
 			@click="emit('upgrade-click')"
 		>
 			{{ i18n.baseText('aiAssistant.builder.creditBanner.getMore') }}
-		</button>
+		</N8nButton>
 		<N8nIcon
 			icon="x"
 			size="small"
@@ -98,23 +99,6 @@ const tooltipContent = computed(() => {
 	color: var(--color--text--tint-1);
 	cursor: pointer;
 	flex-shrink: 0;
-}
-
-.getMore {
-	background: var(--color--foreground--tint-2);
-	border: var(--border);
-	border-radius: var(--radius);
-	padding: var(--spacing--5xs) var(--spacing--2xs);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--shade-1);
-	cursor: pointer;
-	white-space: nowrap;
-	flex-shrink: 0;
-
-	&:hover {
-		background: var(--color--foreground--tint-1);
-	}
 }
 
 .closeIcon {

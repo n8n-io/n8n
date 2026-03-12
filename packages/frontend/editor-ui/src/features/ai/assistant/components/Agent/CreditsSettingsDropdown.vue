@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import { N8nIconButton, N8nIcon, N8nTooltip, N8nLink } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 
 const props = defineProps<{
 	creditsRemaining?: number;
@@ -70,10 +70,12 @@ function onGetMoreCredits() {
 
 <template>
 	<div ref="dropdownRef" :class="$style.wrapper">
-		<N8nIconButton
-			icon="sliders-horizontal"
+		<N8nButton
+			icon="settings2"
 			variant="ghost"
 			size="large"
+			icon-only
+			:class="{ [$style.active]: isOpen }"
 			data-test-id="credits-settings-button"
 			@click="toggleDropdown"
 		/>
@@ -95,15 +97,15 @@ function onGetMoreCredits() {
 							:style="{ width: `${progressPercentage}%` }"
 						/>
 					</div>
-					<N8nLink
-						:class="$style.getMoreLink"
+					<N8nButton
+						variant="outline"
 						size="small"
-						theme="text"
+						:class="$style.getMoreButton"
 						data-test-id="credits-get-more"
 						@click="onGetMoreCredits"
 					>
 						{{ i18n.baseText('aiAssistant.builder.settings.getMoreCredits') }}
-					</N8nLink>
+					</N8nButton>
 				</div>
 			</div>
 		</Transition>
@@ -155,6 +157,7 @@ function onGetMoreCredits() {
 }
 
 .infoIcon {
+	display: flex;
 	color: var(--color--text--tint-1);
 	cursor: pointer;
 }
@@ -185,30 +188,26 @@ function onGetMoreCredits() {
 	}
 }
 
-.getMoreLink {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	font-size: var(--font-size--2xs);
-	box-sizing: border-box;
-	cursor: pointer;
+.active {
+	background-color: light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+}
 
-	&:hover {
-		background: var(--color--foreground--tint-2);
-	}
+.getMoreButton {
+	width: 100%;
 }
 </style>
 
 <style lang="scss" scoped>
-.dropdown-enter-active,
-.dropdown-leave-active {
+.dropdown-enter-active {
 	transition:
 		opacity 0.15s ease,
 		transform 0.15s ease;
+}
+
+.dropdown-leave-active {
+	transition:
+		opacity 0.1s ease,
+		transform 0.1s ease;
 }
 
 .dropdown-enter-from,
