@@ -886,7 +886,7 @@ async function onRevertAddNode({ node }: { node: INodeUi }) {
 }
 
 function onSwitchActiveNode(nodeName: string) {
-	const node = workflowDocumentStore?.value?.getNodeByName(nodeName) ?? null;
+	const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
 	if (!node) return;
 
 	setNodeActiveByName(nodeName, 'other');
