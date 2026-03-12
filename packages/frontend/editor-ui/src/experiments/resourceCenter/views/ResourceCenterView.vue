@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
@@ -20,7 +19,6 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 const i18n = useI18n();
 const router = useRouter();
-const templatesStore = useTemplatesStore();
 const resourceCenterStore = useResourceCenterStore();
 
 const featuredTemplates = ref<ITemplatesWorkflowFull[]>([]);
@@ -167,7 +165,7 @@ const loadAllTemplates = async () => {
 const documentTitle = useDocumentTitle();
 
 onMounted(() => {
-	documentTitle.setDocumentTitle('Resource Center');
+	documentTitle.set('Resource Center');
 	resourceCenterStore.trackResourceCenterView();
 	void loadAllTemplates();
 });

@@ -14,23 +14,26 @@ defineEmits<{
 
 const i18n = useI18n();
 
-const badgeConfig = computed(() => ({
-	template: {
-		label: i18n.baseText('experiments.resourceCenter.badge.template'),
-		icon: undefined,
-		colorClass: 'badgeTemplate',
-	},
-	video: {
-		label: i18n.baseText('experiments.resourceCenter.badge.video'),
-		icon: 'play',
-		colorClass: 'badgeVideo',
-	},
-	'ready-to-run': {
-		label: i18n.baseText('experiments.resourceCenter.badge.readyToRun'),
-		icon: 'bolt',
-		colorClass: 'badgeReadyToRun',
-	},
-}));
+const badgeConfig = computed(
+	() =>
+		({
+			template: {
+				label: i18n.baseText('experiments.resourceCenter.badge.template'),
+				icon: undefined,
+				colorClass: 'badgeTemplate',
+			},
+			video: {
+				label: i18n.baseText('experiments.resourceCenter.badge.video'),
+				icon: 'play',
+				colorClass: 'badgeVideo',
+			},
+			'ready-to-run': {
+				label: i18n.baseText('experiments.resourceCenter.badge.readyToRun'),
+				icon: 'zap',
+				colorClass: 'badgeReadyToRun',
+			},
+		}) as const,
+);
 </script>
 
 <template>
@@ -73,7 +76,7 @@ const badgeConfig = computed(() => ({
 				<span v-if="item.level">{{ item.level }}</span>
 			</template>
 			<template v-else-if="item.type === 'ready-to-run'">
-				<N8nIcon icon="check-circle" size="xsmall" />
+				<N8nIcon icon="circle-check" size="xsmall" />
 				<span>No setup needed</span>
 				<span v-if="item.nodeCount" :class="$style.separator">·</span>
 				<span v-if="item.nodeCount">{{
