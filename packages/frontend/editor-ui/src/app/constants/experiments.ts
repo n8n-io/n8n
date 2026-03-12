@@ -81,6 +81,8 @@ export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_
 	variantInspiration: 'variant-inspiration',
 });
 
+export const RESOURCE_CENTER_V1_EXPERIMENT = createExperiment('063_resource_center_1');
+
 export const SIDEBAR_EXPANDED_EXPERIMENT = createExperiment('067_sidebar_expanded');
 export const EMPTY_STATE_EXPERIMENT = createExperiment('070_empty_screen_layout', {
 	control: 'control',
@@ -113,6 +115,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_BUILDER_PLAN_MODE_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
 	RESOURCE_CENTER_EXPERIMENT.name,
+	RESOURCE_CENTER_V1_EXPERIMENT.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	TAMPER_PROOF_INVITE_LINKS.name,
