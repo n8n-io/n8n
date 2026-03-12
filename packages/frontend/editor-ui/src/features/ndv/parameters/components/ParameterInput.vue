@@ -17,6 +17,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
+	CREDENTIAL_BLANKING_VALUE,
 	CREDENTIAL_EMPTY_VALUE,
 	IconOrEmojiSchema,
 	isResourceLocatorValue,
@@ -102,6 +103,7 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import {
+	N8nButton,
 	N8nIcon,
 	N8nIconPicker,
 	N8nInput,
@@ -267,6 +269,26 @@ const isSecretParameter = computed<boolean>(() => {
 
 const isJsonPasswordField = computed<boolean>(() => {
 	return props.parameter.type === 'json' && isSecretParameter.value;
+});
+
+// Custom Auth: only credential with top-level "json" field; mask after save (backend redacts by type, not secret flag)
+const isCustomAuthJsonField = computed<boolean>(() => {
+	return props.eventSource === 'credentials' && props.parameter.name === 'json';
+});
+const isCredentialJsonValueRedacted = computed<boolean>(() => {
+	return (
+		props.modelValue === CREDENTIAL_BLANKING_VALUE || props.modelValue === CREDENTIAL_EMPTY_VALUE
+	);
+});
+const showCredentialJsonOverlay = computed<boolean>(() => {
+	return isCustomAuthJsonField.value && isCredentialJsonValueRedacted.value;
+});
+// In dialog, when Custom Auth json is redacted show blank (never show placeholder)
+const credentialJsonEditorValue = computed<string>(() => {
+	if (isCustomAuthJsonField.value && isCredentialJsonValueRedacted.value) {
+		return '';
+	}
+	return modelValueString.value;
 });
 
 const hasRemoteMethod = computed<boolean>(() => {
@@ -1529,8 +1551,8 @@ onUpdated(async () => {
 						/>
 
 						<JsonEditor
-							v-else-if="parameter.type === 'json' && codeEditDialogVisible && !isSecretParameter"
-							:model-value="modelValueString"
+							v-else-if="parameter.type === 'json' && codeEditDialogVisible"
+							:model-value="isCustomAuthJsonField ? credentialJsonEditorValue : modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
 							fullscreen
@@ -1671,8 +1693,37 @@ onUpdated(async () => {
 					</template>
 				</JsEditor>
 
+				<div
+					v-else-if="showCredentialJsonOverlay"
+					:class="$style.credentialJsonOverlay"
+					data-test-id="credential-json-overlay"
+				>
+					<JsonEditor
+						:model-value="'************\n* REDACTED *\n************'"
+						:is-read-only="true"
+						:rows="editorRows"
+						:class="$style.credentialJsonEditor"
+					/>
+					<div :class="$style.credentialJsonOverlayButton">
+						<N8nButton
+							size="small"
+							secondary
+							icon="pencil"
+							data-test-id="credential-json-edit-button"
+							@click="valueChanged('')"
+						>
+							{{ i18n.baseText('parameterInput.edit') }}
+						</N8nButton>
+					</div>
+				</div>
+
 				<JsonEditor
-					v-else-if="parameter.type === 'json' && !codeEditDialogVisible && !isSecretParameter"
+					v-else-if="
+						parameter.type === 'json' &&
+						!codeEditDialogVisible &&
+						!showCredentialJsonOverlay &&
+						!isSecretParameter
+					"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly"
 					:rows="editorRows"
@@ -2236,5 +2287,31 @@ onUpdated(async () => {
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
 	}
+}
+
+.credentialJsonOverlay {
+	position: relative;
+}
+
+.credentialJsonTextarea {
+	pointer-events: none;
+}
+
+.credentialJsonTextarea :global(.input) {
+	color: var(--color--text--tint-2);
+	letter-spacing: 0.05em;
+}
+
+.credentialJsonOverlayButton {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+}
+
+.credentialJsonOverlayButton > * {
+	pointer-events: auto;
 }
 </style>
