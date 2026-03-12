@@ -313,16 +313,16 @@ export class CodeBuilderAgent {
 				});
 
 				// Stream workflow update
-				yield {
-					messages: [
-						{
-							role: 'assistant',
-							type: 'workflow-updated',
-							codeSnippet: JSON.stringify(workflow, null, 2),
-							iterationCount: iteration,
-						} as WorkflowUpdateChunk,
-					],
+				const updateChunk: WorkflowUpdateChunk = {
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: JSON.stringify(workflow, null, 2),
+					iterationCount: iteration,
 				};
+				if (loopResult.sourceCode) {
+					updateChunk.sourceCode = loopResult.sourceCode;
+				}
+				yield { messages: [updateChunk] };
 			} else {
 				this.logger?.info('Code builder agent generated EMPTY workflow', {
 					userId,
