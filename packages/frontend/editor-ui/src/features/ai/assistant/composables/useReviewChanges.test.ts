@@ -78,7 +78,7 @@ const mockChatPanelStateStore = reactive({
 	isOpen: true,
 });
 
-const mockDocumentStore = reactive({
+const mockWorkflowDocumentStore = reactive({
 	get allNodes() {
 		return mockWorkflowsStore.workflow.nodes;
 	},
@@ -93,7 +93,7 @@ vi.mock('@/app/stores/workflows.store', () => ({
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: () => mockDocumentStore,
+	useWorkflowDocumentStore: () => mockWorkflowDocumentStore,
 	createWorkflowDocumentId: () => 'test-id',
 }));
 
