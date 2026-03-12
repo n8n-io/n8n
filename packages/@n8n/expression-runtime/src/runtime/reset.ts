@@ -221,4 +221,9 @@ function initializeBuiltins(data: Record<string, unknown>): void {
 	data.__lookupSetter__ = undefined;
 	data.__defineGetter__ = undefined;
 	data.__defineSetter__ = undefined;
+
+	// ── Allowlist: safe versions of builtins ──
+
+	// Object — use SafeObject wrapper from the runtime bundle
+	data.Object = globalThis.SafeObject;
 }

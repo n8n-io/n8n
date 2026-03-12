@@ -34,6 +34,11 @@ export const SafeObject = new Proxy(Object, {
 			throw new Error('Object.getPrototypeOf is not allowed');
 		}
 
+		// Wrap Object.create to accept only one argument (blocks property descriptor injection)
+		if (prop === 'create') {
+			return (proto: object | null) => Object.create(proto);
+		}
+
 		// Allow other Object methods
 		const value = (target as any)[prop];
 		if (typeof value === 'function') {
