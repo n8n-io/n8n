@@ -28,7 +28,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import DependencyPill from '@/app/components/DependencyPill.vue';
-import { useResourceDependents } from '@/app/composables/useResourceDependents';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 type Props = {
 	id: string;
@@ -44,20 +44,11 @@ const documentTitle = useDocumentTitle();
 
 const dataTableStore = useDataTableStore();
 const sourceControlStore = useSourceControlStore();
-const { fetchDependents, getDependents, hasDependents } = useResourceDependents();
+const { fetchDependents, hasDependents } = useDependencies();
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
 const dataTableHasDependents = computed(() => hasDependents(props.id));
-const dependentDependencies = computed(
-	() =>
-		getDependents(props.id)?.map((d) => ({
-			type: 'workflowParent',
-			id: d.id,
-			name: d.name,
-			projectId: d.projectId,
-		})) ?? [],
-);
 
 const loading = ref(false);
 const saving = ref(false);
@@ -179,7 +170,9 @@ onBeforeUnmount(() => {
 				<div :class="$style.actions">
 					<DependencyPill
 						v-if="dataTableHasDependents"
-						:dependencies="dependentDependencies"
+						resource-type="dataTable"
+						:resource-id="id"
+						source="data_table_card"
 						data-test-id="data-table-details-dependents"
 					/>
 					<N8nInput

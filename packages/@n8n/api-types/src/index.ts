@@ -126,6 +126,11 @@ export type {
 } from './schemas/resource-dependents.schema';
 
 export type {
+	DependencyTypeCounts,
+	WorkflowDependencyCountsBatchResponse,
+} from './schemas/workflow-dependency-counts.schema';
+
+export type {
 	ProjectType,
 	ProjectIcon,
 	ProjectRelation,

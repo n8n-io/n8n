@@ -49,7 +49,7 @@ import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { useWorkflowDependencies } from '@/app/composables/useWorkflowDependencies';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -112,7 +112,7 @@ const route = useRoute();
 const telemetry = useTelemetry();
 const mcp = useMcp();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
-const { hasDependencies, getDependencies } = useWorkflowDependencies();
+const { hasDependencies, getTotalCount } = useDependencies();
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -671,7 +671,9 @@ const tags = computed(
 			<div :class="$style.cardActions" @click.stop>
 				<DependencyPill
 					v-if="workflowHasDependencies"
-					:dependencies="getDependencies(data.id) ?? []"
+					resource-type="workflow"
+					:resource-id="data.id"
+					:total-count="getTotalCount(data.id)"
 					source="workflow_card"
 					data-test-id="workflow-card-dependencies"
 				/>

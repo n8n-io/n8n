@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import dateformat from 'dateformat';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
-import { useResourceDependents } from '@/app/composables/useResourceDependents';
+import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -54,7 +54,7 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
-const { hasDependents, getDependents } = useResourceDependents();
+const { hasDependents } = useDependencies();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() =>
@@ -95,15 +95,6 @@ const formattedCreatedAtDate = computed(() => {
 });
 
 const credentialHasDependents = computed(() => hasDependents(props.data.id));
-const dependentDependencies = computed(
-	() =>
-		getDependents(props.data.id)?.map((d) => ({
-			type: 'workflowParent',
-			id: d.id,
-			name: d.name,
-			projectId: d.projectId,
-		})) ?? [],
-);
 
 function onClick() {
 	emit('click', props.data.id);
@@ -202,7 +193,8 @@ function moveResource() {
 			<div :class="$style.cardActions" @click.stop>
 				<DependencyPill
 					v-if="credentialHasDependents"
-					:dependencies="dependentDependencies"
+					resource-type="credential"
+					:resource-id="data.id"
 					source="credential_card"
 					data-test-id="credential-card-dependents"
 				/>

@@ -12,23 +12,20 @@ import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useDependencies, type ResolvedDependency } from '@/app/composables/useDependencies';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
-
-interface ResolvedDependency {
-	type: string;
-	id: string;
-	name: string;
-	projectId?: string;
-}
 
 type DependencyType = 'credentialId' | 'dataTableId' | 'workflowCall' | 'workflowParent';
 
 const MIN_ITEMS_FOR_SEARCH = 6;
 
 type DependencyPillSource = 'workflow_card' | 'credential_card' | 'data_table_card';
+type DependencyPillResourceType = 'workflow' | 'credential' | 'dataTable';
 
 const props = defineProps<{
-	dependencies: ResolvedDependency[];
+	resourceType: DependencyPillResourceType;
+	resourceId: string;
+	totalCount?: number;
 	source: DependencyPillSource;
 	dataTestId?: string;
 }>();
@@ -37,8 +34,33 @@ const i18n = useI18n();
 const router = useRouter();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
+const { getDependencies, fetchDependencies, getDependents, fetchDependents } = useDependencies();
 
-const showSearch = computed(() => props.dependencies.length >= MIN_ITEMS_FOR_SEARCH);
+const isLoadingDetails = ref(false);
+
+/** Resolved dependencies from the appropriate composable cache. */
+const resolvedDeps = computed((): ResolvedDependency[] | undefined => {
+	if (props.resourceType === 'workflow') {
+		return getDependencies(props.resourceId);
+	}
+	// For credentials / data tables, map WorkflowDependent[] → ResolvedDependency[]
+	const dependents = getDependents(props.resourceId);
+	if (dependents === undefined) return undefined;
+	return dependents.map((d) => ({
+		type: 'workflowParent',
+		id: d.id,
+		name: d.name,
+		projectId: d.projectId,
+	}));
+});
+
+const effectiveCount = computed(() => resolvedDeps.value?.length ?? props.totalCount ?? 0);
+
+const hasFullDeps = computed(
+	() => resolvedDeps.value !== undefined && resolvedDeps.value.length > 0,
+);
+
+const showSearch = computed(() => (resolvedDeps.value?.length ?? 0) >= MIN_ITEMS_FOR_SEARCH);
 
 const searchTerm = ref('');
 
@@ -69,10 +91,11 @@ const displayOrder: DependencyType[] = [
 ];
 
 const menuItems = computed(() => {
+	const deps = resolvedDeps.value ?? [];
+	if (deps.length === 0) return [];
+
 	const query = searchTerm.value.toLowerCase().trim();
-	const filtered = query
-		? props.dependencies.filter((dep) => dep.name.toLowerCase().includes(query))
-		: props.dependencies;
+	const filtered = query ? deps.filter((dep) => dep.name.toLowerCase().includes(query)) : deps;
 
 	const groups: Record<DependencyType, ResolvedDependency[]> = {
 		credentialId: [],
@@ -117,7 +140,7 @@ function onSelect(value: string) {
 	const [type, id] = value.split(':') as [string, string];
 	if (!type || !id) return;
 
-	const dep = props.dependencies.find((d) => d.type === type && d.id === id);
+	const dep = (resolvedDeps.value ?? []).find((d) => d.type === type && d.id === id);
 	if (!dep) return;
 
 	if (dep.type === 'credentialId') {
@@ -138,12 +161,31 @@ function onSearch(term: string) {
 	searchTerm.value = term;
 }
 
-function onDropdownToggle(open: boolean) {
+const RESOURCE_TYPE_TO_DEPENDENCY_TYPE = {
+	credential: 'credentialId',
+	dataTable: 'dataTableId',
+} as const;
+
+async function loadDetails() {
+	if (props.resourceType === 'workflow') {
+		await fetchDependencies([props.resourceId]);
+	} else {
+		await fetchDependents([props.resourceId], RESOURCE_TYPE_TO_DEPENDENCY_TYPE[props.resourceType]);
+	}
+}
+
+async function onDropdownToggle(open: boolean) {
 	if (open) {
 		telemetry.track('User opened dependency pill', {
 			source: props.source,
-			dependency_count: props.dependencies.length,
+			dependency_count: effectiveCount.value,
 		});
+
+		if (!hasFullDeps.value && !isLoadingDetails.value) {
+			isLoadingDetails.value = true;
+			await loadDetails();
+			isLoadingDetails.value = false;
+		}
 	}
 }
 </script>
@@ -153,6 +195,7 @@ function onDropdownToggle(open: boolean) {
 		:items="menuItems"
 		trigger="hover"
 		placement="bottom"
+		:loading="isLoadingDetails"
 		:searchable="showSearch"
 		extra-popper-class="dependency-pill-dropdown"
 		:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder' as BaseTextKey)"
@@ -167,7 +210,7 @@ function onDropdownToggle(open: boolean) {
 			<N8nBadge theme="tertiary" :class="$style.badge">
 				<span :class="$style.badgeText">
 					<N8nIcon icon="link" size="medium" />
-					{{ dependencies.length }}
+					{{ effectiveCount }}
 				</span>
 			</N8nBadge>
 		</template>

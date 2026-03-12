@@ -5,6 +5,7 @@ import {
 	DeactivateWorkflowDto,
 	GetResourceDependentsDto,
 	GetWorkflowDependenciesDto,
+	GetWorkflowDependencyCountsDto,
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
 	ROLE,
@@ -673,6 +674,15 @@ export class WorkflowsController {
 		);
 
 		return lastExecution ?? null;
+	}
+
+	@Post('/dependency-counts')
+	async getWorkflowDependencyCounts(
+		_req: AuthenticatedRequest,
+		_res: unknown,
+		@Body body: GetWorkflowDependencyCountsDto,
+	) {
+		return await this.workflowDependencyQueryService.getDependencyCounts(body.workflowIds);
 	}
 
 	@Post('/dependencies')

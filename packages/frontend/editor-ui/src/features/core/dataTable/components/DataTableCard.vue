@@ -12,7 +12,7 @@ import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system
 import type { DataTableResource } from '../types';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useResourceDependents } from '@/app/composables/useResourceDependents';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 type Props = {
 	dataTable: DataTableResource;
@@ -23,7 +23,7 @@ type Props = {
 const i18n = useI18n();
 const dataTableStore = useDataTableStore();
 const projectsStore = useProjectsStore();
-const { hasDependents, getDependents } = useResourceDependents();
+const { hasDependents } = useDependencies();
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
@@ -47,15 +47,6 @@ const getDataTableSize = computed(() => {
 });
 
 const dataTableHasDependents = computed(() => hasDependents(props.dataTable.id));
-const dependentDependencies = computed(
-	() =>
-		getDependents(props.dataTable.id)?.map((d) => ({
-			type: 'workflowParent',
-			id: d.id,
-			name: d.name,
-			projectId: d.projectId,
-		})) ?? [],
-);
 </script>
 <template>
 	<div data-test-id="data-table-card">
@@ -130,7 +121,8 @@ const dependentDependencies = computed(
 					<div :class="$style['card-actions']" @click.stop>
 						<DependencyPill
 							v-if="dataTableHasDependents"
-							:dependencies="dependentDependencies"
+							resource-type="dataTable"
+							:resource-id="props.dataTable.id"
 							source="data_table_card"
 							data-test-id="data-table-card-dependents"
 						/>

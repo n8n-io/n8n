@@ -157,7 +157,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	}
 
 	/**
-	 * Get draft dependencies for a batch of workflows, filtered to specific types.
+	 * Get dependencies for a batch of workflows, filtered to specific types.
 	 */
 	async getDependenciesForWorkflows(
 		workflowIds: string[],
@@ -176,7 +176,54 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	}
 
 	/**
-	 * Get draft dependencies that reference any of the given keys for a specific type.
+	 * Get dependency counts per workflow, grouped by dependency type.
+	 * Also includes reverse workflowCall counts (parent workflows).
+	 * Returns raw rows: { workflowId, dependencyType, count }.
+	 */
+	async getDependencyCountsForWorkflows(
+		workflowIds: string[],
+		dependencyTypes: DependencyType[],
+	): Promise<Array<{ workflowId: string; dependencyType: string; count: number }>> {
+		if (workflowIds.length === 0) return [];
+
+		const [forwardRows, reverseRows] = await Promise.all([
+			// Forward counts: how many of each type does each workflow use?
+			this.createQueryBuilder('dep')
+				.select('dep.workflowId', 'workflowId')
+				.addSelect('dep.dependencyType', 'dependencyType')
+				.addSelect('COUNT(DISTINCT dep.dependencyKey)', 'count')
+				.where({
+					workflowId: In(workflowIds),
+					dependencyType: In(dependencyTypes),
+					publishedVersionId: IsNull(),
+				})
+				.groupBy('dep.workflowId')
+				.addGroupBy('dep.dependencyType')
+				.getRawMany<{ workflowId: string; dependencyType: string; count: string }>(),
+
+			// Reverse counts: how many parent workflows call each of these workflows?
+			this.createQueryBuilder('dep')
+				.select('dep.dependencyKey', 'workflowId')
+				.addSelect("'workflowParent'", 'dependencyType')
+				.addSelect('COUNT(DISTINCT dep.workflowId)', 'count')
+				.where({
+					dependencyKey: In(workflowIds),
+					dependencyType: 'workflowCall' as DependencyType,
+					publishedVersionId: IsNull(),
+				})
+				.groupBy('dep.dependencyKey')
+				.getRawMany<{ workflowId: string; dependencyType: string; count: string }>(),
+		]);
+
+		return [...forwardRows, ...reverseRows].map((row) => ({
+			workflowId: row.workflowId,
+			dependencyType: row.dependencyType,
+			count: Number(row.count),
+		}));
+	}
+
+	/**
+	 * Get dependencies that reference any of the given keys for a specific type.
 	 * Used for reverse lookups, e.g. finding which workflows call a given workflow.
 	 */
 	async getReverseDependencies(

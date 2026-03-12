@@ -1,6 +1,7 @@
 import type {
 	ResourceDependentsBatchResponse,
 	WorkflowDependenciesBatchResponse,
+	WorkflowDependencyCountsBatchResponse,
 } from '@n8n/api-types';
 import {
 	CredentialsRepository,
@@ -31,6 +32,25 @@ export class WorkflowDependencyQueryService {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
+
+	/**
+	 * Lightweight counts-only query for workflow cards.
+	 * Returns { [workflowId]: { credentialId: N, dataTableId: N, ... } }
+	 */
+	async getDependencyCounts(workflowIds: string[]): Promise<WorkflowDependencyCountsBatchResponse> {
+		const rows = await this.dependencyRepository.getDependencyCountsForWorkflows(
+			workflowIds,
+			DEPENDENCY_TYPES_TO_SHOW,
+		);
+
+		const result: Record<string, Record<string, number>> = {};
+		for (const { workflowId, dependencyType, count } of rows) {
+			const entry = result[workflowId] ?? {};
+			entry[dependencyType] = count;
+			result[workflowId] = entry;
+		}
+		return result;
+	}
 
 	async getResolvedDependencies(workflowIds: string[]): Promise<WorkflowDependenciesBatchResponse> {
 		const [rawDeps, reverseDeps] = await Promise.all([

@@ -271,6 +271,7 @@ export class WorkflowIndexService {
 		if (dataTableId.value.includes('{')) {
 			return;
 		}
+
 		dependencyUpdates.add({
 			dependencyType: 'dataTableId',
 			dependencyKey: dataTableId.value,

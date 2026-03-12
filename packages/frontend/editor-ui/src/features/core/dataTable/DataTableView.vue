@@ -27,7 +27,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { N8nActionBox } from '@n8n/design-system';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
-import { useResourceDependents } from '@/app/composables/useResourceDependents';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -42,7 +42,7 @@ const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const uiStore = useUIStore();
-const { fetchDependents } = useResourceDependents();
+const { fetchDependents } = useDependencies();
 
 const loading = ref(true);
 

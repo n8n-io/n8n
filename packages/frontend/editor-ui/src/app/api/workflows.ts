@@ -9,6 +9,7 @@ import type {
 	IExecutionsCurrentSummaryExtended,
 } from '@/features/execution/executions/executions.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
+import type { WorkflowDependencyCountsBatchResponse } from '@n8n/api-types';
 import type {
 	ExecutionFilters,
 	ExecutionOptions,
@@ -50,6 +51,15 @@ export async function getWorkflows(
 		...(options ? options : {}),
 		...(select ? { select: JSON.stringify(select) } : {}),
 	});
+}
+
+export async function getWorkflowDependencyCounts(context: IRestApiContext, workflowIds: string[]) {
+	return await makeRestApiRequest<WorkflowDependencyCountsBatchResponse>(
+		context,
+		'POST',
+		'/workflows/dependency-counts',
+		{ workflowIds },
+	);
 }
 
 export async function getWorkflowDependencies(context: IRestApiContext, workflowIds: string[]) {
