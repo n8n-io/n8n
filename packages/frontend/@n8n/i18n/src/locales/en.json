@@ -544,6 +544,7 @@
 	"chatHub.chat.prompt.placeholder.selectModel": "Select a model",
 	"chatHub.chat.prompt.placeholder.sendPreview": "Send preview message...",
 	"chatHub.canvas.previewBadge": "Preview",
+	"chatHub.canvas.floatingTitle": "Chat preview",
 	"chatHub.canvas.session.newChat": "New Chat",
 	"chatHub.canvas.session.noSessions": "No previous sessions for this workflow",
 	"chatHub.canvas.session.tooltip.sessionId": "Session: {sessionId}",

@@ -119,11 +119,8 @@ defineExpose({ focusInput, canvasChatHubRef });
 		</template>
 		<template #header>
 			<N8nText size="medium" :bold="true" :class="$style.headerTitle">
-				{{ agentDisplayName }}
+				{{ i18n.baseText('chatHub.canvas.floatingTitle') }}
 			</N8nText>
-			<span :class="$style.previewBadge">
-				{{ i18n.baseText('chatHub.canvas.previewBadge') }}
-			</span>
 		</template>
 		<template #header-actions>
 			<CanvasChatFloatingMenu
@@ -151,17 +148,6 @@ defineExpose({ focusInput, canvasChatHubRef });
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.previewBadge {
-	flex-shrink: 0;
-	display: inline-block;
-	color: var(--color--secondary);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	background-color: var(--color--secondary--tint-2);
-	padding: var(--spacing--5xs) var(--spacing--4xs);
-	border-radius: 16px;
 }
 
 // When popped out, override N8nFloatingWindow's position:fixed + inline styles
