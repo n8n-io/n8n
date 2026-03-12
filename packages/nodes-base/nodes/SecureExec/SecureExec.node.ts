@@ -24,6 +24,18 @@ export class SecureExec implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		credentials: [
+			{
+				name: 'secureExecEnvironmentVariables',
+				required: false,
+				displayOptions: {
+					show: {
+						resource: ['command'],
+						operation: ['execute'],
+					},
+				},
+			},
+		],
 		properties: [
 			// ── Resource selector ──
 			{
@@ -353,6 +365,25 @@ async function executeCommand(
 			};
 
 			const env: Record<string, string> = {};
+
+			// Merge env vars from credential (stored securely) first, so inline vars can override
+			try {
+				const credentialData = await context.getCredentials(
+					'secureExecEnvironmentVariables',
+					itemIndex,
+				);
+				const credVars = (
+					credentialData.variables as {
+						values?: Array<{ name: string; value: string }>;
+					}
+				)?.values;
+				for (const { name, value } of credVars ?? []) {
+					if (name) env[name] = value;
+				}
+			} catch {
+				// credential not configured — skip
+			}
+
 			for (const { name, value } of options.envVars?.variable ?? []) {
 				if (name) env[name] = value;
 			}

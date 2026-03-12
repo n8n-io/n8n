@@ -102,6 +102,7 @@
       "dist/credentials/DropboxOAuth2Api.credentials.js",
       "dist/credentials/DropcontactApi.credentials.js",
       "dist/credentials/DynatraceApi.credentials.js",
+      "dist/credentials/SecureExecEnvironmentVariables.credentials.js",
       "dist/credentials/EgoiApi.credentials.js",
       "dist/credentials/ElasticsearchApi.credentials.js",
       "dist/credentials/ElasticSecurityApi.credentials.js",
