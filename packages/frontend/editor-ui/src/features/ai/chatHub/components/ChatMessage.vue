@@ -114,29 +114,44 @@ const activeCodeBlockTeleport = computed<{
 });
 
 const messageChunks = computed(() =>
-	message.content.flatMap<ChatMessageContentChunk>((chunk, index, arr) => {
-		if (chunk.type === 'hidden') {
-			return [];
-		}
+	message.content
+		.filter((chunk) => !(chunk.type === 'text' && !chunk.content.trim()))
+		.flatMap<ChatMessageContentChunk>((chunk, index, arr) => {
+			if (chunk.type === 'hidden') {
+				return [];
+			}
 
-		if (chunk.type === 'with-buttons') {
-			return [chunk];
-		}
+			if (chunk.type === 'with-buttons') {
+				return [chunk];
+			}
 
-		if (chunk.type === 'artifact-create' || chunk.type === 'artifact-edit') {
-			const prev = arr[index - 1];
-			return prev?.type === chunk.type && prev.command.title === chunk.command.title ? [] : [chunk]; // dedupe command
-		}
+			if (chunk.type === 'artifact-create' || chunk.type === 'artifact-edit') {
+				if (!chunk.command.title) {
+					return [];
+				}
 
-		// Handle error case with no content
-		if (message.status === 'error' && !chunk.content) {
-			return [{ type: 'text', content: i18n.baseText('chatHub.message.error.unknown') }];
-		}
+				const next = arr[index + 1];
+				// dedupe command
+				return next?.type === chunk.type && next.command.title === chunk.command.title
+					? []
+					: [
+							{
+								...chunk,
+								// Regard as completed if the model has run out of tokens while generating the document...
+								isIncomplete: chunk.isIncomplete && message.status === 'running',
+							},
+						];
+			}
 
-		return splitMarkdownIntoChunks(chunk.content).flatMap((content) =>
-			content.trim() === '' ? [] : [{ type: 'text', content }],
-		);
-	}),
+			// Handle error case with no content
+			if (message.status === 'error' && !chunk.content) {
+				return [{ type: 'text', content: i18n.baseText('chatHub.message.error.unknown') }];
+			}
+
+			return splitMarkdownIntoChunks(chunk.content).flatMap((content) =>
+				content.trim() === '' ? [] : [{ type: 'text', content }],
+			);
+		}),
 );
 const text = computed(() =>
 	messageChunks.value.flatMap((chunk) => (chunk.type === 'text' ? [chunk.content] : [])).join(''),
@@ -183,11 +198,23 @@ const hideMessage = computed(() => {
 	return (
 		message.status === 'success' &&
 		text.value === '' &&
-		!message.content.some((c) => c.type === 'with-buttons')
+		!message.content.some(
+			(c) =>
+				c.type === 'with-buttons' || c.type === 'artifact-create' || c.type === 'artifact-edit',
+		)
 	);
 });
 
-const shouldShowTypingIndicator = computed(() => message.status === 'running');
+const hasIncompleteCommand = computed(() =>
+	messageChunks.value.some(
+		(chunk) =>
+			(chunk.type === 'artifact-create' || chunk.type === 'artifact-edit') && chunk.isIncomplete,
+	),
+);
+
+const shouldShowTypingIndicator = computed(
+	() => message.status === 'running' && !hasIncompleteCommand.value,
+);
 
 function handleEdit() {
 	emit('startEdit');

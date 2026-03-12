@@ -3,6 +3,8 @@ import VueMarkdown from 'vue-markdown-render';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
 import { ref, useCssModule } from 'vue';
 import type { ChatMessageContentChunk } from '@n8n/api-types';
+import { N8nIcon, N8nSpinner } from '@n8n/design-system';
+import { I18nT } from 'vue-i18n';
 import ChatButtons from './ChatButtons.vue';
 
 const {
@@ -70,18 +72,44 @@ defineExpose({
 	</div>
 	<div v-else-if="source.type === 'hidden'" />
 	<button
-		v-else-if="source.type === 'artifact-edit' && !source.isIncomplete"
+		v-else-if="source.type === 'artifact-edit'"
 		:class="$style.command"
 		@click="emit('openArtifact', source.command.title)"
 	>
-		Updated <b>{{ source.command.title }}</b>
+		<N8nSpinner v-if="source.isIncomplete" size="large" :class="$style.commandIcon" />
+		<N8nIcon v-else icon="check" size="large" :class="$style.commandIcon" />
+		<I18nT
+			:keypath="
+				source.isIncomplete
+					? 'chatHub.message.artifact.updating'
+					: 'chatHub.message.artifact.updated'
+			"
+			scope="global"
+		>
+			<template #title
+				><b>{{ source.command.title }}</b></template
+			>
+		</I18nT>
 	</button>
 	<button
-		v-else-if="source.type === 'artifact-create' && !source.isIncomplete"
+		v-else-if="source.type === 'artifact-create'"
 		:class="$style.command"
 		@click="emit('openArtifact', source.command.title)"
 	>
-		Created <b>{{ source.command.title }}</b>
+		<N8nSpinner v-if="source.isIncomplete" size="large" :class="$style.commandIcon" />
+		<N8nIcon v-else icon="check" size="large" :class="$style.commandIcon" />
+		<I18nT
+			:keypath="
+				source.isIncomplete
+					? 'chatHub.message.artifact.creating'
+					: 'chatHub.message.artifact.created'
+			"
+			scope="global"
+		>
+			<template #title
+				><b>{{ source.command.title }}</b></template
+			>
+		</I18nT>
 	</button>
 </template>
 
@@ -446,14 +474,23 @@ defineExpose({
 
 .command {
 	border: var(--border);
+	border-color: var(--color--foreground);
 	border-radius: var(--radius--lg);
 	padding: var(--spacing--sm);
 	margin-bottom: var(--spacing--sm);
 	background-color: transparent;
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	width: 100%;
 	text-align: left;
 	font-weight: var(--font-weight--regular);
 	cursor: pointer;
+}
+
+.commandIcon {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
 }
 </style>
