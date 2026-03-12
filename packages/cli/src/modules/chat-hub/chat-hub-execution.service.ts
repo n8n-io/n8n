@@ -5,6 +5,7 @@ import {
 	chatHubMessageWithButtonsSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, IExecutionResponse, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
@@ -22,6 +23,7 @@ import {
 	INodeExecutionData,
 	jsonStringify,
 	IRun,
+	type IDataObject,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -49,6 +51,7 @@ import { createStructuredChunkAggregator } from './stream-capturer';
 export class ChatHubExecutionService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly globalConfig: GlobalConfig,
 		private readonly executionService: ExecutionService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly executionRepository: ExecutionRepository,
@@ -320,6 +323,7 @@ export class ChatHubExecutionService {
 			}
 
 			await this.waitForExecutionCompletion(executionId);
+			await this.logConsumedTokens(previousMessageId, executionId);
 
 			// Wait for all pending aggregator operations to complete (message status updates, etc.)
 			await waitForPendingOperations();
@@ -652,6 +656,48 @@ export class ChatHubExecutionService {
 		};
 
 		return { adapter: adapter as unknown as Response, waitForPendingOperations };
+	}
+
+	private async logConsumedTokens(messageId: string, executionId: string): Promise<void> {
+		if (this.globalConfig.logging.level !== 'debug') return;
+
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		if (!execution?.data) return;
+
+		const runData = execution.data.resultData.runData;
+		let completionTokens = 0;
+		let promptTokens = 0;
+		let totalTokens = 0;
+		let llmCalls = 0;
+
+		for (const nodeRuns of Object.values(runData)) {
+			for (const taskData of nodeRuns) {
+				for (const outputItems of Object.values(taskData.data ?? {})) {
+					for (const items of outputItems) {
+						if (!items) continue;
+						for (const item of items) {
+							const usage = item?.json?.tokenUsage ?? item?.json?.tokenUsageEstimate;
+							if (usage && typeof usage === 'object') {
+								completionTokens += ((usage as IDataObject).completionTokens as number) ?? 0;
+								promptTokens += ((usage as IDataObject).promptTokens as number) ?? 0;
+								totalTokens += ((usage as IDataObject).totalTokens as number) ?? 0;
+								llmCalls++;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		const toolCalls = Math.max(0, llmCalls - 1);
+
+		this.logger.debug(
+			`Message ${messageId} consumed tokens: prompt=${promptTokens}, completion=${completionTokens}, total=${totalTokens}, toolCalls=${toolCalls}`,
+		);
 	}
 
 	async ensureWasSuccessfulOrThrow(executionId: string, errorMessage: string) {
