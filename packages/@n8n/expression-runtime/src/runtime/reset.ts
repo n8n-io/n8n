@@ -3,8 +3,16 @@ import { DateTime, IANAZone, Settings } from 'luxon';
 import { extend, extendOptional } from '../extensions/extend';
 import { extendedFunctions } from '../extensions/function-extensions';
 
-import { __sanitize } from './safe-globals';
+import { __sanitize, createSafeErrorSubclass } from './safe-globals';
 import { createDeepLazyProxy } from './lazy-proxy';
+
+// Pre-create safe error subclass wrappers (reused across evaluations)
+const SafeTypeError = createSafeErrorSubclass(TypeError);
+const SafeSyntaxError = createSafeErrorSubclass(SyntaxError);
+const SafeEvalError = createSafeErrorSubclass(EvalError);
+const SafeRangeError = createSafeErrorSubclass(RangeError);
+const SafeReferenceError = createSafeErrorSubclass(ReferenceError);
+const SafeURIError = createSafeErrorSubclass(URIError);
 
 // ============================================================================
 // Reset Function for Data Proxies
@@ -226,4 +234,13 @@ function initializeBuiltins(data: Record<string, unknown>): void {
 
 	// Object — use SafeObject wrapper from the runtime bundle
 	data.Object = globalThis.SafeObject;
+
+	// Error types — use SafeError and safe subclass wrappers
+	data.Error = globalThis.SafeError;
+	data.TypeError = SafeTypeError;
+	data.SyntaxError = SafeSyntaxError;
+	data.EvalError = SafeEvalError;
+	data.RangeError = SafeRangeError;
+	data.ReferenceError = SafeReferenceError;
+	data.URIError = SafeURIError;
 }
