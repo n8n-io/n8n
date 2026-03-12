@@ -1,5 +1,0 @@
-node_modules
-src/web/node_modules
-dist
-*.log
-.turbo

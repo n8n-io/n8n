@@ -9,7 +9,7 @@
 import { defineWorkflow } from '@n8n/engine/sdk';
 
 export default defineWorkflow({
-	name: 'Sleep and Resume',
+	name: '11 - Sleep And Resume',
 	triggers: [], // Manual trigger is implicit — every workflow can be triggered manually
 	async run(ctx) {
 		const before = await ctx.step(

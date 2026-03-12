@@ -7,12 +7,23 @@
  * webhook caller with the full assembled text.
  */
 import { defineWorkflow, webhook } from '@n8n/engine/sdk';
+import { z } from 'zod';
 
 export default defineWorkflow({
-	name: 'AI Chat',
-	triggers: [webhook('/chat', { method: 'POST', responseMode: 'respondWithNode' })],
+	name: '13 - AI Chat Streaming (Requires credentials)',
+	triggers: [
+		webhook('/chat', {
+			method: 'POST',
+			responseMode: 'respondWithNode',
+			schema: {
+				body: z.object({
+					message: z.string().optional(),
+				}),
+			},
+		}),
+	],
 	async run(ctx) {
-		const response = await ctx.step(
+		await ctx.step(
 			{
 				name: 'Run AI Chat Agent',
 				icon: 'bot',
@@ -20,7 +31,8 @@ export default defineWorkflow({
 				description: 'Streams AI response',
 			},
 			async () => {
-				const message = ctx.triggerData?.body?.message ?? 'hello';
+				const { body } = ctx.triggerData;
+				const message = body.message ?? 'hello';
 				await new Promise((r) => setTimeout(r, 300)); // Simulate model loading
 				// Simulate AI streaming response
 				const words = `I'll help you with: ${message}`.split(' ');

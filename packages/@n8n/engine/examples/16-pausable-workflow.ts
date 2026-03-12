@@ -36,7 +36,7 @@ export default defineWorkflow({
 			},
 		);
 
-		const step3 = await ctx.step(
+		await ctx.step(
 			{
 				name: 'Phase 3: Validate',
 				icon: 'check-circle',

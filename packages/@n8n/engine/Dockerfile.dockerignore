@@ -1,35 +1,20 @@
-# Engine API Dockerfile ignore — whitelist approach
-# Must explicitly un-ignore directories AND their contents
-
+# Whitelist approach — monorepo root is the build context
 *
 
-# Workspace root files (needed for pnpm)
-!package.json
+# Workspace root
 !pnpm-lock.yaml
 !pnpm-workspace.yaml
 
-# Patches (referenced by lockfile) and scripts (preinstall hook)
-!patches
-!patches/**
-!scripts
-!scripts/**
-
 # Engine package
-!packages
-!packages/@n8n
 !packages/@n8n/engine
 !packages/@n8n/engine/**
+packages/@n8n/engine/node_modules
+packages/@n8n/engine/src/web/node_modules
+packages/@n8n/engine/dist
+packages/@n8n/engine/test
+packages/@n8n/engine/perf
+packages/@n8n/engine/.turbo
 
 # Workspace dependencies
 !packages/@n8n/typescript-config
 !packages/@n8n/typescript-config/**
-
-# Exclude tests from engine
-packages/@n8n/engine/src/**/__tests__
-packages/@n8n/engine/src/**/__tests__/**
-packages/@n8n/engine/test
-packages/@n8n/engine/test/**
-packages/@n8n/engine/perf
-packages/@n8n/engine/perf/**
-packages/@n8n/engine/node_modules
-packages/@n8n/engine/node_modules/**

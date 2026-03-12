@@ -2,64 +2,76 @@
  * Data Pipeline Workflow (10 Steps)
  *
  * Demonstrates a multi-step data processing pipeline for benchmarking.
- * Generates 100 random items, then filters, maps, sorts, slices, enriches,
- * formats, joins, validates, and finalizes them through 10 sequential steps.
+ * Fetches products from DummyJSON, then filters, maps, sorts, slices,
+ * enriches, formats, joins, validates, and finalizes them through
+ * 10 sequential steps.
  */
 import { defineWorkflow } from '@n8n/engine/sdk';
 
+interface RawProduct {
+	id: number;
+	title: string;
+	price: number;
+	rating: number;
+	category: string;
+}
+
 export default defineWorkflow({
-	name: 'Data Pipeline (10 steps)',
+	name: '09 - Data Pipeline',
 	triggers: [], // Manual trigger is implicit — every workflow can be triggered manually
 	async run(ctx) {
 		const raw = await ctx.step(
 			{
-				name: 'Generate 100 Records',
+				name: 'Fetch 100 Products',
 				icon: 'database',
 				color: '#3b82f6',
-				description: 'Creates random dataset',
+				description: 'Fetches products from DummyJSON',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 200)); // Simulate data generation
-				return Array.from({ length: 100 }, (_, i) => ({ id: i, value: Math.random() }));
+				const res = await fetch(
+					'https://dummyjson.com/products?limit=100&select=title,price,rating,category',
+				);
+				const data = (await res.json()) as { products: RawProduct[] };
+				return data.products;
 			},
 		);
 
 		const filtered = await ctx.step(
 			{
-				name: 'Filter Values > 0.5',
+				name: 'Filter Rating > 4.0',
 				icon: 'filter',
 				color: '#8b5cf6',
-				description: 'Removes below threshold',
+				description: 'Keeps highly-rated products',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 150)); // Simulate filtering
-				return raw.filter((item) => item.value > 0.5);
+				return raw.filter((item) => item.rating > 4.0);
 			},
 		);
 
 		const mapped = await ctx.step(
 			{
-				name: 'Double Each Value',
+				name: 'Compute Score',
 				icon: 'zap',
 				color: '#8b5cf6',
-				description: 'Multiplies by 2',
+				description: 'Calculates price-to-rating score',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 100)); // Simulate mapping
-				return filtered.map((item) => ({ ...item, doubled: item.value * 2 }));
+				return filtered.map((item) => ({
+					...item,
+					score: Math.round(item.price * item.rating * 100) / 100,
+				}));
 			},
 		);
 
 		const sorted = await ctx.step(
 			{
-				name: 'Sort by Value DESC',
+				name: 'Sort by Score DESC',
 				icon: 'arrow-up-down',
 				color: '#8b5cf6',
 				description: 'Sorts highest to lowest',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 120)); // Simulate sorting
-				return [...mapped].sort((a, b) => b.doubled - a.doubled);
+				return [...mapped].sort((a, b) => b.score - a.score);
 			},
 		);
 
@@ -71,7 +83,6 @@ export default defineWorkflow({
 				description: 'Selects top entries',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 100)); // Simulate slicing
 				return sorted.slice(0, 10);
 			},
 		);
@@ -84,8 +95,7 @@ export default defineWorkflow({
 				description: 'Assigns rank numbers',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 250)); // Simulate enrichment (external lookup)
-				return top10.map((item) => ({ ...item, rank: top10.indexOf(item) + 1 }));
+				return top10.map((item, index) => ({ ...item, rank: index + 1 }));
 			},
 		);
 
@@ -97,9 +107,9 @@ export default defineWorkflow({
 				description: 'Converts to readable format',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 100)); // Simulate formatting
 				return enriched.map(
-					(item) => `#${item.rank}: id=${item.id} value=${item.doubled.toFixed(3)}`,
+					(item) =>
+						`#${item.rank}: ${item.title} — $${item.price} (rating: ${item.rating}, score: ${item.score})`,
 				);
 			},
 		);
@@ -112,7 +122,6 @@ export default defineWorkflow({
 				description: 'Combines into report',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 100)); // Simulate joining
 				return { report: formatted.join('\n'), count: formatted.length };
 			},
 		);
@@ -125,7 +134,6 @@ export default defineWorkflow({
 				description: 'Checks not empty',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 150)); // Simulate validation
 				if (joined.count === 0) throw new Error('Empty report');
 				return { valid: true, ...joined };
 			},
@@ -139,7 +147,6 @@ export default defineWorkflow({
 				description: 'Adds completion timestamp',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 200)); // Simulate finalization
 				return { ...validated, completedAt: Date.now() };
 			},
 		);

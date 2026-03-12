@@ -13,7 +13,7 @@
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "perf": "./perf/run.sh",
-    "dev:up": "docker compose up -d",
+    "dev:up": "docker compose up -d --build",
     "dev:down": "docker compose down",
     "test:up": "docker compose -f docker-compose.test.yml up -d",
     "test:down": "docker compose -f docker-compose.test.yml down",
@@ -25,8 +25,26 @@
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk/index.d.ts",
+      "default": "./dist/sdk/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "sdk": [
+        "dist/sdk/index.d.ts"
+      ]
+    }
+  },
   "dependencies": {
     "@n8n/typeorm": "catalog:",
+    "ajv": "^8.18.0",
     "esbuild": "^0.24.0",
     "express": "5.1.0",
     "nanoid": "catalog:",
@@ -34,7 +52,8 @@
     "reflect-metadata": "catalog:",
     "source-map-support": "^0.5.21",
     "ts-morph": "catalog:",
-    "uuid": "catalog:"
+    "uuid": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
@@ -42,9 +61,9 @@
     "@types/source-map-support": "^0.5.10",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "catalog:",
+    "rimraf": "catalog:",
     "supertest": "^7.0.0",
     "tsx": "catalog:",
-    "vitest": "catalog:",
-    "rimraf": "catalog:"
+    "vitest": "catalog:"
   }
 }

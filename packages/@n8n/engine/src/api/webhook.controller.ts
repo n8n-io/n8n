@@ -3,9 +3,13 @@ import type { Request, Response } from 'express';
 
 import { WebhookEntity } from '../database/entities/webhook.entity';
 import { WorkflowEntity } from '../database/entities/workflow.entity';
+import { WorkflowExecution } from '../database/entities/workflow-execution.entity';
+import { WorkflowStepExecution } from '../database/entities/workflow-step-execution.entity';
+import { ExecutionStatus, StepStatus, StepType } from '../database/enums';
 import type { WebhookTriggerConfig, WebhookResponseMode } from '../sdk/types';
 import type { EngineEvent } from '../engine/event-bus.types';
 import type { AppDependencies } from './server';
+import { validateWebhookRequest } from './validate-webhook-schema';
 
 export function createWebhookRouter(deps: AppDependencies): Router {
 	const router = Router();
@@ -30,8 +34,23 @@ export function createWebhookRouter(deps: AppDependencies): Router {
 				return;
 			}
 
-			// Determine response mode from the workflow's trigger config
-			const responseMode = await getResponseMode(dataSource, webhook.workflowId, webhookPath);
+			// Fetch workflow once -- used for both response mode and schema validation
+			const workflow = await dataSource
+				.getRepository(WorkflowEntity)
+				.createQueryBuilder('w')
+				.where('w.id = :id', { id: webhook.workflowId })
+				.orderBy('w.version', 'DESC')
+				.limit(1)
+				.getOne();
+
+			// Extract matching trigger config
+			const triggers = (workflow?.triggers ?? []) as WebhookTriggerConfig[];
+			const matchingTrigger = triggers.find(
+				(t) => t.type === 'webhook' && t.config.path.replace(/^\//, '') === webhookPath,
+			);
+
+			// Determine response mode
+			const responseMode: WebhookResponseMode = matchingTrigger?.config.responseMode ?? 'lastNode';
 
 			// Build trigger data from the request
 			const triggerData = {
@@ -41,6 +60,84 @@ export function createWebhookRouter(deps: AppDependencies): Router {
 				method: req.method,
 				path: webhookPath,
 			};
+
+			// Validate request against schema if defined
+			if (matchingTrigger) {
+				const validation = validateWebhookRequest(matchingTrigger, triggerData);
+				if (!validation.valid) {
+					// Create a failed execution so the validation error is visible in the UI
+					const now = new Date();
+					const executionResult = await dataSource
+						.getRepository(WorkflowExecution)
+						.createQueryBuilder()
+						.insert()
+						.into(WorkflowExecution)
+						.values({
+							workflowId: webhook.workflowId,
+							workflowVersion: workflow?.version ?? 1,
+							status: ExecutionStatus.Failed,
+							mode: 'production',
+							startedAt: now,
+							completedAt: now,
+							error: {
+								message: `Webhook schema validation failed: ${validation.errors!.map((e) => `${e.path} ${e.message}`).join('; ')}`,
+								code: 'VALIDATION_ERROR',
+								category: 'validation',
+								retriable: false,
+							},
+						} as Record<string, unknown>)
+						.returning('id')
+						.execute();
+
+					const executionId = executionResult.raw[0].id as string;
+
+					const errorMessage = `Webhook schema validation failed: ${validation.errors!.map((e) => `${e.path} ${e.message}`).join('; ')}`;
+
+					// Create a failed trigger step with the validation errors
+					await dataSource
+						.getRepository(WorkflowStepExecution)
+						.createQueryBuilder()
+						.insert()
+						.into(WorkflowStepExecution)
+						.values({
+							executionId,
+							stepId: 'trigger',
+							stepType: StepType.Trigger,
+							status: StepStatus.Failed,
+							input: triggerData,
+							error: {
+								message: errorMessage,
+								code: 'VALIDATION_ERROR',
+								category: 'validation',
+								retriable: false,
+							},
+							startedAt: now,
+							completedAt: now,
+							durationMs: 0,
+						} as Record<string, unknown>)
+						.execute();
+
+					// Emit events so the UI picks up the failed execution
+					eventBus.emit({ type: 'execution:started', executionId });
+					eventBus.emit({
+						type: 'execution:failed',
+						executionId,
+						error: {
+							message: errorMessage,
+							code: 'VALIDATION_ERROR',
+							category: 'validation' as const,
+							retriable: false,
+						},
+					});
+
+					res.status(422).json({
+						executionId,
+						error: 'Webhook schema validation failed',
+						details: validation.errors,
+					});
+					return;
+				}
+			}
 
 			// Start the execution
 			const executionId = await engineService.startExecution(
@@ -80,32 +177,6 @@ export function createWebhookRouter(deps: AppDependencies): Router {
 	});
 
 	return router;
-}
-
-/**
- * Determines the response mode for a webhook from the workflow's trigger config.
- */
-async function getResponseMode(
-	dataSource: AppDependencies['dataSource'],
-	workflowId: string,
-	webhookPath: string,
-): Promise<WebhookResponseMode> {
-	const workflow = await dataSource
-		.getRepository(WorkflowEntity)
-		.createQueryBuilder('w')
-		.where('w.id = :id', { id: workflowId })
-		.orderBy('w.version', 'DESC')
-		.limit(1)
-		.getOne();
-
-	if (!workflow) return 'lastNode';
-
-	const triggers = (workflow.triggers ?? []) as WebhookTriggerConfig[];
-	const matchingTrigger = triggers.find(
-		(t) => t.type === 'webhook' && t.config.path.replace(/^\//, '') === webhookPath,
-	);
-
-	return matchingTrigger?.config.responseMode ?? 'lastNode';
 }
 
 /**

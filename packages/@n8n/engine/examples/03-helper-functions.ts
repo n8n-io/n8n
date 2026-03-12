@@ -40,7 +40,7 @@ function categorize(products: Product[]): Record<string, Product[]> {
 }
 
 export default defineWorkflow({
-	name: 'Helper Functions Demo',
+	name: '03 - Helper Functions',
 	triggers: [],
 	async run(ctx) {
 		const products = await ctx.step(
@@ -51,10 +51,17 @@ export default defineWorkflow({
 				description: 'Fetches products from API',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 400)); // Simulate API call
-				const url = buildUrl('https://api.example.com', 'products', { limit: '100' });
+				const url = buildUrl('https://dummyjson.com', 'products', { limit: '6' });
 				const res = await fetch(url);
-				return res.json() as Promise<Product[]>;
+				const data = (await res.json()) as {
+					products: Array<{ title: string; price: number; category: string }>;
+				};
+				// Map to our Product interface
+				return data.products.map((p) => ({
+					name: p.title,
+					price: p.price,
+					category: p.category,
+				}));
 			},
 		);
 
@@ -66,7 +73,6 @@ export default defineWorkflow({
 				description: 'Groups by category',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 200)); // Simulate categorization
 				return categorize(products);
 			},
 		);
@@ -79,7 +85,6 @@ export default defineWorkflow({
 				description: 'Generates category summary',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 300)); // Simulate report generation
 				return Object.entries(organized).map(([category, items]) => ({
 					category,
 					slug: slugify(category),

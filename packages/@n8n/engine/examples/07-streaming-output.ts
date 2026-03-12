@@ -8,7 +8,7 @@
 import { defineWorkflow } from '@n8n/engine/sdk';
 
 export default defineWorkflow({
-	name: 'Streaming Output',
+	name: '07 - Streaming Output',
 	triggers: [], // Manual trigger is implicit — every workflow can be triggered manually
 	async run(ctx) {
 		const result = await ctx.step(

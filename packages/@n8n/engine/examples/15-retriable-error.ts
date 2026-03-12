@@ -22,7 +22,7 @@ export default defineWorkflow({
 				// ctx.attempt is 1 on first try, 2 on second, etc.
 				if (ctx.attempt <= 2) {
 					const err = new Error(`connect ECONNREFUSED 127.0.0.1:9999 (attempt ${ctx.attempt})`);
-					(err as NodeJS.ErrnoException).code = 'ECONNREFUSED';
+					(err as unknown as Record<string, string>).code = 'ECONNREFUSED';
 					throw err;
 				}
 				return { success: true, totalAttempts: ctx.attempt };

@@ -1,8 +1,9 @@
 /**
  * Seeds the database with example workflows from the examples/ directory.
  * Called on server startup — skips workflows that already exist (idempotent).
+ * Scans both examples/ (numbered examples) and examples/use-cases/ (ported fixtures).
  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import type { DataSource } from '@n8n/typeorm';
 
@@ -10,92 +11,148 @@ import { TranspilerService } from './transpiler/transpiler.service';
 import { WorkflowEntity } from './database/entities/workflow.entity';
 
 const EXAMPLES_DIR = join(__dirname, '../examples');
+const USE_CASES_DIR = join(__dirname, '../examples/use-cases');
 
-// After transpilation, extract trigger configs from the source code
-function extractTriggers(source: string): Array<Record<string, unknown>> {
-	const triggers: Array<Record<string, unknown>> = [];
-	// Match webhook('/path', { method: 'POST', responseMode: '...' })
-	const webhookRegex = /webhook\(\s*['"]([^'"]+)['"]\s*(?:,\s*\{([^}]*)\})?\s*\)/g;
-	let match;
-	while ((match = webhookRegex.exec(source)) !== null) {
-		const path = match[1];
-		const configStr = match[2] ?? '';
-		const method = configStr.match(/method\s*:\s*['"]([^'"]+)['"]/)?.[1] ?? 'POST';
-		const responseMode = configStr.match(/responseMode\s*:\s*['"]([^'"]+)['"]/)?.[1] ?? 'lastNode';
-		triggers.push({
-			type: 'webhook',
-			config: { path, method, responseMode },
-		});
+/**
+ * Scans a directory for .ts files and returns their full paths sorted alphabetically.
+ */
+function scanTsFiles(dir: string): string[] {
+	if (!existsSync(dir)) {
+		return [];
 	}
-	return triggers;
+	try {
+		return readdirSync(dir)
+			.filter((f) => f.endsWith('.ts'))
+			.sort()
+			.map((f) => join(dir, f));
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Extracts the workflow name from defineWorkflow({ name: '...' }) in the source.
+ * Falls back to a filename-derived name if extraction fails.
+ */
+function extractWorkflowName(source: string, filePath: string): string {
+	// Match the name property in the defineWorkflow() object literal.
+	// Uses [\s\S]*? to cross any characters (including braces in preceding code).
+	const match = source.match(/defineWorkflow\s*\(\s*\{[\s\S]*?name\s*:\s*['"]([^'"]+)['"]/);
+	if (match) {
+		return match[1];
+	}
+	return fileNameToDisplayName(filePath);
+}
+
+/**
+ * Converts a filename to a human-readable workflow name.
+ * - "01-hello-world" → "01 - Hello World"
+ * - "f01-simple-chain" → "F01 - Simple Chain"
+ * - "f31a-filter-string-contains" → "F31a - Filter String Contains"
+ */
+function fileNameToDisplayName(filePath: string): string {
+	const raw = basename(filePath, '.ts');
+	// Match numbered prefix (e.g., "01-...", "f01-...", "f31a-...")
+	const match = raw.match(/^([a-zA-Z]?\d+[a-z]?)-(.+)$/);
+	if (match) {
+		const prefix = match[1].charAt(0).toUpperCase() + match[1].slice(1);
+		const rest = match[2]
+			.split('-')
+			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+			.join(' ');
+		return `${prefix} - ${rest}`;
+	}
+	return raw
+		.split('-')
+		.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+		.join(' ');
 }
 
 export async function seedExampleWorkflows(dataSource: DataSource): Promise<void> {
 	const transpiler = new TranspilerService();
 
-	let files: string[];
-	try {
-		files = readdirSync(EXAMPLES_DIR)
-			.filter((f) => f.endsWith('.ts'))
-			.sort();
-	} catch {
-		console.log('No examples directory found, skipping seed');
+	// Scan both directories
+	const exampleFiles = scanTsFiles(EXAMPLES_DIR);
+	const useCaseFiles = scanTsFiles(USE_CASES_DIR);
+	const allFiles = [...exampleFiles, ...useCaseFiles];
+
+	if (allFiles.length === 0) {
+		console.log('No example files found, skipping seed');
 		return;
 	}
 
 	const workflowRepo = dataSource.getRepository(WorkflowEntity);
 
-	// Check if we already have workflows — if so, skip seeding
-	const existingCount = await workflowRepo.count();
-	if (existingCount > 0) {
-		return;
-	}
+	// Build a map of existing workflows by name for idempotency + update detection
+	const existingWorkflows = await workflowRepo.find({ select: ['id', 'version', 'name', 'code'] });
+	const existingByName = new Map(existingWorkflows.map((w) => [w.name, w]));
 
-	console.log(`Seeding ${files.length} example workflows...`);
+	let seeded = 0;
+	let updated = 0;
 
-	for (const file of files) {
-		const filePath = join(EXAMPLES_DIR, file);
+	for (const filePath of allFiles) {
 		const source = readFileSync(filePath, 'utf-8');
-		const raw = basename(file, '.ts');
-		// "01-hello-world" → "01 - Hello World"
-		const match = raw.match(/^(\d+)-(.+)$/);
-		const name = match
-			? `${match[1]} - ${match[2]
-					.split('-')
-					.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-					.join(' ')}`
-			: raw
-					.split('-')
-					.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-					.join(' ');
+		const name = extractWorkflowName(source, filePath);
+
+		// Check both the source-derived name and the filename-derived name
+		// to handle renames (e.g., adding "(Not supported yet)" suffix)
+		const fileBasedName = fileNameToDisplayName(filePath);
+		const existing = existingByName.get(name) ?? existingByName.get(fileBasedName);
+
+		// Skip if already seeded with identical code
+		if (existing && existing.code === source) {
+			continue;
+		}
 
 		try {
 			const compiled = transpiler.compile(source);
 
 			if (compiled.errors.length > 0) {
-				console.warn(`  Skipping ${file}: ${compiled.errors[0].message}`);
+				console.warn(`  Skipping ${basename(filePath)}: ${compiled.errors[0].message}`);
 				continue;
 			}
 
-			const id = crypto.randomUUID();
-
-			const workflow = workflowRepo.create({
-				id,
-				version: 1,
-				name,
-				code: source,
-				compiledCode: compiled.code,
-				triggers: extractTriggers(source),
-				settings: {},
-				graph: compiled.graph,
-				sourceMap: compiled.sourceMap,
-				active: false,
-			});
-			await workflowRepo.save(workflow);
-
-			console.log(`  ✓ ${name}`);
+			if (existing) {
+				// Update existing workflow with new version
+				const workflow = workflowRepo.create({
+					id: existing.id,
+					version: existing.version + 1,
+					name,
+					code: source,
+					compiledCode: compiled.code,
+					triggers: compiled.triggers,
+					settings: {},
+					graph: compiled.graph,
+					sourceMap: compiled.sourceMap,
+					active: false,
+				});
+				await workflowRepo.save(workflow);
+				updated++;
+				console.log(`  ↻ ${name} (updated)`);
+			} else {
+				const id = crypto.randomUUID();
+				const workflow = workflowRepo.create({
+					id,
+					version: 1,
+					name,
+					code: source,
+					compiledCode: compiled.code,
+					triggers: compiled.triggers,
+					settings: {},
+					graph: compiled.graph,
+					sourceMap: compiled.sourceMap,
+					active: false,
+				});
+				await workflowRepo.save(workflow);
+				seeded++;
+				console.log(`  ✓ ${name}`);
+			}
 		} catch (err) {
-			console.warn(`  ✗ ${file}: ${(err as Error).message}`);
+			console.warn(`  ✗ ${basename(filePath)}: ${(err as Error).message}`);
 		}
+	}
+
+	if (seeded > 0 || updated > 0) {
+		console.log(`Seeding complete: ${seeded} new, ${updated} updated`);
 	}
 }

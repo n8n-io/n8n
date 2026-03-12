@@ -10,7 +10,7 @@ import { defineWorkflow } from '@n8n/engine/sdk';
 export default defineWorkflow({
 	name: '14 - Reference Error',
 	async run(ctx) {
-		const setup = await ctx.step(
+		await ctx.step(
 			{
 				name: 'Setup Data',
 				icon: 'settings',
@@ -31,7 +31,8 @@ export default defineWorkflow({
 			},
 			async () => {
 				// This will throw a ReferenceError — non-retriable
-				return (undefinedVariable as any).property;
+				// @ts-expect-error intentional reference to undefined variable
+				return (undefinedVariable as unknown as Record<string, unknown>).property;
 			},
 		);
 

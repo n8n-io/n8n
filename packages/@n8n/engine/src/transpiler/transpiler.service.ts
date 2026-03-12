@@ -17,6 +17,8 @@ import type {
 	GraphEdgeData,
 	GraphStepConfig,
 } from '../graph/graph.types';
+import type { TriggerConfig } from '../sdk/types';
+import { zodCallToJsonSchema } from './zod-to-json-schema';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -25,6 +27,7 @@ import type {
 export interface TranspilerResult {
 	code: string;
 	graph: WorkflowGraphData;
+	triggers: TriggerConfig[];
 	sourceMap: string | null;
 	errors: CompilationError[];
 	warnings: CompilationError[];
@@ -133,6 +136,112 @@ function toCamelCase(name: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// SDK type declarations for in-memory type checking
+// ---------------------------------------------------------------------------
+
+const SDK_TYPE_DECLARATIONS = `
+declare module '@n8n/engine/sdk' {
+	export interface StepDefinition {
+		name: string;
+		description?: string;
+		icon?: string;
+		color?: string;
+		stepType?: 'step' | 'approval' | 'condition';
+		retry?: { maxAttempts: number; baseDelay: number; maxDelay?: number; jitter?: boolean };
+		timeout?: number;
+		retriableErrors?: string[];
+		retryOnTimeout?: boolean;
+	}
+
+	export interface WebhookResponse {
+		statusCode?: number;
+		body?: unknown;
+		headers?: Record<string, string>;
+	}
+
+	export type WebhookResponseMode = 'lastNode' | 'respondImmediately' | 'respondWithNode' | 'allData';
+
+	export interface TriggerConfig {
+		type: 'webhook' | 'manual' | 'poll';
+		config: Record<string, unknown>;
+	}
+
+	export interface WebhookTriggerConfig extends TriggerConfig {
+		type: 'webhook';
+		config: {
+			path: string;
+			method: string;
+			responseMode?: WebhookResponseMode;
+		};
+	}
+
+	export interface ExecutionContext {
+		input: Record<string, unknown>;
+		triggerData: Record<string, unknown>;
+		executionId: string;
+		stepId: string;
+		attempt: number;
+		step: <T>(definition: StepDefinition, fn: () => Promise<T>) => Promise<T>;
+		sendChunk: (data: unknown) => Promise<void>;
+		respondToWebhook: (response: WebhookResponse) => Promise<void>;
+		sleep: (ms: number) => Promise<void>;
+		waitUntil: (date: Date) => Promise<void>;
+		getSecret: (name: string) => string | undefined;
+	}
+
+	export interface WorkflowDefinition {
+		name: string;
+		triggers?: TriggerConfig[];
+		settings?: { executionMode?: 'queued' | 'in-process' };
+		run: (ctx: ExecutionContext) => Promise<unknown>;
+	}
+
+	export function defineWorkflow(def: WorkflowDefinition): WorkflowDefinition;
+
+	export function webhook(
+		path: string,
+		config?: {
+			method?: string;
+			responseMode?: WebhookResponseMode;
+			schema?: {
+				body?: import('zod').ZodType;
+				query?: import('zod').ZodType;
+				headers?: import('zod').ZodType;
+			};
+		},
+	): WebhookTriggerConfig;
+}
+
+declare module 'zod' {
+	interface ZodType<T = unknown> {
+		optional(): ZodType<T | undefined>;
+		default(value: T): ZodType<T>;
+	}
+	interface ZodString extends ZodType<string> {
+		min(n: number): ZodString;
+		max(n: number): ZodString;
+	}
+	interface ZodNumber extends ZodType<number> {
+		min(n: number): ZodNumber;
+		max(n: number): ZodNumber;
+	}
+	interface ZodBoolean extends ZodType<boolean> {}
+	interface ZodEnum<T extends string> extends ZodType<T> {}
+	interface ZodArray<T> extends ZodType<T[]> {}
+	interface ZodObject<T> extends ZodType<T> {}
+	const z: {
+		string(): ZodString;
+		number(): ZodNumber;
+		boolean(): ZodBoolean;
+		enum<T extends string>(values: readonly T[]): ZodEnum<T>;
+		array<T>(schema: ZodType<T>): ZodArray<T>;
+		object<T extends Record<string, ZodType>>(shape: T): ZodObject<{ [K in keyof T]: T[K] extends ZodType<infer U> ? U : never }>;
+	};
+	export { z };
+}
+`;
+
+// ---------------------------------------------------------------------------
 // TranspilerService
 // ---------------------------------------------------------------------------
 
@@ -144,7 +253,14 @@ export class TranspilerService {
 		// Validate basic structure
 		if (!source.trim()) {
 			errors.push({ message: 'Empty source file', severity: 'error' });
-			return { code: '', graph: { nodes: [], edges: [] }, sourceMap: null, errors, warnings };
+			return {
+				code: '',
+				graph: { nodes: [], edges: [] },
+				triggers: [],
+				sourceMap: null,
+				errors,
+				warnings,
+			};
 		}
 
 		if (!source.includes('defineWorkflow')) {
@@ -152,7 +268,14 @@ export class TranspilerService {
 				message: 'Source must use defineWorkflow() to define a workflow',
 				severity: 'error',
 			});
-			return { code: '', graph: { nodes: [], edges: [] }, sourceMap: null, errors, warnings };
+			return {
+				code: '',
+				graph: { nodes: [], edges: [] },
+				triggers: [],
+				sourceMap: null,
+				errors,
+				warnings,
+			};
 		}
 
 		// Parse with ts-morph
@@ -161,33 +284,86 @@ export class TranspilerService {
 			compilerOptions: {
 				target: 99, // ESNext
 				module: 99, // ESNext
-				strict: false,
+				strict: true,
 				noEmit: true,
 			},
 		});
 
+		// Inject SDK type declarations for type checking
+		project.createSourceFile('node_modules/@n8n/engine/sdk.d.ts', SDK_TYPE_DECLARATIONS);
+
 		const sourceFile = project.createSourceFile('workflow.ts', source);
 
-		// Find the run method
-		const runMethod = this.findRunMethod(sourceFile);
-		if (!runMethod) {
+		// Collect type diagnostics
+		const diagnostics = sourceFile.getPreEmitDiagnostics();
+		for (const diag of diagnostics) {
+			const messageText = diag.getMessageText();
+			const message = typeof messageText === 'string' ? messageText : messageText.getMessageText();
+			const start = diag.getStart();
+			let line: number | undefined;
+			let column: number | undefined;
+			if (start !== undefined) {
+				const lineAndCol = sourceFile.getLineAndColumnAtPos(start);
+				line = lineAndCol.line;
+				column = lineAndCol.column;
+			}
+			const category = diag.getCategory();
+			// 0 = Warning, 1 = Error, 2 = Suggestion, 3 = Message
+			if (category === 1) {
+				errors.push({ message, line, column, severity: 'error' });
+			} else if (category === 0) {
+				warnings.push({ message, line, column, severity: 'warning' });
+			}
+		}
+
+		if (errors.length > 0) {
+			return {
+				code: '',
+				graph: { nodes: [], edges: [] },
+				triggers: [],
+				sourceMap: null,
+				errors,
+				warnings,
+			};
+		}
+
+		// Find the run method and workflow definition object
+		const workflowDef = this.findWorkflowDefinition(sourceFile);
+		if (!workflowDef) {
 			errors.push({
 				message: 'Could not find run() method in defineWorkflow()',
 				severity: 'error',
 			});
-			return { code: '', graph: { nodes: [], edges: [] }, sourceMap: null, errors, warnings };
+			return {
+				code: '',
+				graph: { nodes: [], edges: [] },
+				triggers: [],
+				sourceMap: null,
+				errors,
+				warnings,
+			};
 		}
 
+		// Extract triggers from the workflow definition object
+		const triggers = this.findTriggers(workflowDef.objectLiteral);
+
 		// Step 1: Find all ctx.step() and ctx.sleep() calls
-		const steps = this.findStepCalls(runMethod);
-		const sleeps = this.findSleepCalls(runMethod);
+		const steps = this.findStepCalls(workflowDef.runMethod);
+		const sleeps = this.findSleepCalls(workflowDef.runMethod);
 
 		if (steps.length === 0) {
 			errors.push({
 				message: 'No ctx.step() calls found in run() method',
 				severity: 'error',
 			});
-			return { code: '', graph: { nodes: [], edges: [] }, sourceMap: null, errors, warnings };
+			return {
+				code: '',
+				graph: { nodes: [], edges: [] },
+				triggers: [],
+				sourceMap: null,
+				errors,
+				warnings,
+			};
 		}
 
 		// Check for duplicate step names
@@ -205,7 +381,14 @@ export class TranspilerService {
 		}
 
 		if (errors.length > 0) {
-			return { code: '', graph: { nodes: [], edges: [] }, sourceMap: null, errors, warnings };
+			return {
+				code: '',
+				graph: { nodes: [], edges: [] },
+				triggers: [],
+				sourceMap: null,
+				errors,
+				warnings,
+			};
 		}
 
 		// Step 2: Build variable-to-step mapping and analyze dependencies
@@ -217,7 +400,7 @@ export class TranspilerService {
 		}
 
 		// Detect variables destructured from ctx.triggerData
-		const triggerDataVars = this.findTriggerDataVariables(runMethod);
+		const triggerDataVars = this.findTriggerDataVariables(workflowDef.runMethod);
 
 		// Resolve dependencies for each step
 		for (const step of steps) {
@@ -227,7 +410,7 @@ export class TranspilerService {
 		}
 
 		// Step 3: Detect conditionals
-		this.detectConditionals(runMethod, steps, variableToStepId);
+		this.detectConditionals(workflowDef.runMethod, steps, variableToStepId);
 
 		// Step 4: Find helper functions
 		const helpers = this.findHelperFunctions(sourceFile, steps);
@@ -236,7 +419,7 @@ export class TranspilerService {
 		const orchestratorCalls = this.buildOrchestratorCallOrder(steps, sleeps);
 
 		// Step 6: Build the graph (now includes sleep nodes)
-		const graph = this.buildGraph(steps, sleeps, orchestratorCalls);
+		const graph = this.buildGraph(steps, sleeps, orchestratorCalls, triggers);
 
 		// Step 7: Generate compiled code (only for step functions, not sleeps)
 		const rawCode = this.generateCode(steps, helpers);
@@ -244,17 +427,16 @@ export class TranspilerService {
 		// Step 8: Compile with esbuild
 		const { code, sourceMap } = this.compileWithEsbuild(rawCode);
 
-		return { code, graph, sourceMap, errors, warnings };
+		return { code, graph, triggers, sourceMap, errors, warnings };
 	}
 
 	// -----------------------------------------------------------------------
 	// AST analysis methods
 	// -----------------------------------------------------------------------
 
-	private findRunMethod(sourceFile: SourceFile): Node | undefined {
-		// Look for defineWorkflow({ ... run(ctx) { } })
-		// The run method is a property assignment or method inside the object literal
-		// passed to defineWorkflow()
+	private findWorkflowDefinition(
+		sourceFile: SourceFile,
+	): { runMethod: Node; objectLiteral: Node } | undefined {
 		const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
 
 		for (const call of callExpressions) {
@@ -264,13 +446,12 @@ export class TranspilerService {
 				if (args.length > 0) {
 					const objLiteral = args[0];
 					if (objLiteral.isKind(SyntaxKind.ObjectLiteralExpression)) {
-						// Find the 'run' property
 						for (const prop of objLiteral.getProperties()) {
 							if (prop.isKind(SyntaxKind.MethodDeclaration) && prop.getName() === 'run') {
-								return prop;
+								return { runMethod: prop, objectLiteral: objLiteral };
 							}
 							if (prop.isKind(SyntaxKind.PropertyAssignment) && prop.getName() === 'run') {
-								return prop.getInitializerOrThrow();
+								return { runMethod: prop.getInitializerOrThrow(), objectLiteral: objLiteral };
 							}
 						}
 					}
@@ -279,6 +460,80 @@ export class TranspilerService {
 		}
 
 		return undefined;
+	}
+
+	private findTriggers(objectLiteral: Node): TriggerConfig[] {
+		if (!objectLiteral.isKind(SyntaxKind.ObjectLiteralExpression)) return [];
+
+		const triggersProp = objectLiteral.getProperty('triggers');
+		if (!triggersProp?.isKind(SyntaxKind.PropertyAssignment)) return [];
+
+		const init = triggersProp.getInitializer();
+		if (!init?.isKind(SyntaxKind.ArrayLiteralExpression)) return [];
+
+		const triggers: TriggerConfig[] = [];
+
+		for (const element of init.getElements()) {
+			if (!element.isKind(SyntaxKind.CallExpression)) continue;
+
+			const fnName = element.getExpression().getText();
+			if (fnName !== 'webhook') continue;
+
+			const args = element.getArguments();
+			if (args.length === 0) continue;
+
+			// First arg: path string
+			const pathArg = args[0];
+			let path: string | undefined;
+			if (pathArg.isKind(SyntaxKind.StringLiteral)) {
+				path = pathArg.getLiteralText();
+			}
+			if (!path) continue;
+
+			// Second arg: optional config object
+			let method = 'POST';
+			let responseMode = 'lastNode';
+
+			if (args.length >= 2 && args[1].isKind(SyntaxKind.ObjectLiteralExpression)) {
+				const configObj = args[1];
+				method = this.extractStringProperty(configObj, 'method') ?? 'POST';
+				responseMode = this.extractStringProperty(configObj, 'responseMode') ?? 'lastNode';
+			}
+
+			// Extract schema if present
+			let schema: Record<string, unknown> | undefined;
+			if (args.length >= 2 && args[1].isKind(SyntaxKind.ObjectLiteralExpression)) {
+				const configObj = args[1];
+				const schemaProp = configObj.getProperty('schema');
+				if (schemaProp?.isKind(SyntaxKind.PropertyAssignment)) {
+					const schemaInit = schemaProp.getInitializer();
+					if (schemaInit?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+						schema = {};
+						for (const field of schemaInit.getProperties()) {
+							if (!field.isKind(SyntaxKind.PropertyAssignment)) continue;
+							const fieldName = field.getName();
+							if (['body', 'query', 'headers'].includes(fieldName)) {
+								const fieldInit = field.getInitializer();
+								if (fieldInit) {
+									const jsonSchema = zodCallToJsonSchema(fieldInit);
+									if (jsonSchema) {
+										schema[fieldName] = jsonSchema;
+									}
+								}
+							}
+						}
+						if (Object.keys(schema).length === 0) schema = undefined;
+					}
+				}
+			}
+
+			triggers.push({
+				type: 'webhook',
+				config: { path, method, responseMode, ...(schema ? { schema } : {}) },
+			});
+		}
+
+		return triggers;
 	}
 
 	private findStepCalls(runMethod: Node): StepDefinition[] {
@@ -822,17 +1077,23 @@ export class TranspilerService {
 		steps: StepDefinition[],
 		sleeps: SleepDefinition[],
 		orchestratorCalls: OrchestratorCall[],
+		triggers: TriggerConfig[],
 	): WorkflowGraphData {
 		const nodes: GraphNodeData[] = [];
 		const edges: GraphEdgeData[] = [];
 
-		// Every workflow has an implicit manual trigger node
+		// Create trigger node — use webhook name if a webhook trigger exists
+		const hasWebhook = triggers.some((t) => t.type === 'webhook');
+		const webhookPath = triggers.find((t) => t.type === 'webhook')?.config?.path;
+
 		nodes.push({
 			id: 'trigger',
-			name: 'Manual Trigger',
+			name: hasWebhook ? `Webhook: ${webhookPath}` : 'Manual Trigger',
 			type: 'trigger',
 			stepFunctionRef: 'step_trigger',
-			config: { name: 'Manual Trigger' },
+			config: {
+				name: hasWebhook ? `Webhook: ${webhookPath}` : 'Manual Trigger',
+			},
 		});
 
 		// Add step nodes

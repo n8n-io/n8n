@@ -146,7 +146,8 @@ export default defineWorkflow({
 		const result = transpiler.compile(source);
 
 		expect(result.errors.length).toBeGreaterThan(0);
-		expect(result.errors[0].message).toContain('run()');
+		// Type checker catches this as a type error (missing required 'run' property)
+		expect(result.errors[0].message).toContain('WorkflowDefinition');
 	});
 
 	// -----------------------------------------------------------------------

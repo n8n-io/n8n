@@ -11,7 +11,7 @@
 import { defineWorkflow } from '@n8n/engine/sdk';
 
 export default defineWorkflow({
-	name: 'Multi-Wait Pipeline',
+	name: '12 - Multi Wait Pipeline',
 	triggers: [], // Manual trigger is implicit — every workflow can be triggered manually
 	async run(ctx) {
 		const batch = await ctx.step(
@@ -19,11 +19,14 @@ export default defineWorkflow({
 				name: 'Fetch Data Batch',
 				icon: 'download',
 				color: '#3b82f6',
-				description: 'Retrieves batch items',
+				description: 'Fetches a batch of recipes from DummyJSON',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 300)); // Simulate batch fetch
-				return { items: [1, 2, 3], fetchedAt: Date.now() };
+				const res = await fetch('https://dummyjson.com/recipes?limit=3&select=name,rating');
+				const data = (await res.json()) as {
+					recipes: Array<{ id: number; name: string; rating: number }>;
+				};
+				return { items: data.recipes, fetchedAt: Date.now() };
 			},
 		);
 
@@ -35,8 +38,10 @@ export default defineWorkflow({
 				description: 'Transforms batch data',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 250)); // Simulate batch processing
-				return { result: batch.items.map((i) => i * 10), processedAt: Date.now() };
+				return {
+					result: batch.items.map((r) => ({ name: r.name, score: r.rating * 20 })),
+					processedAt: Date.now(),
+				};
 			},
 		);
 
@@ -51,7 +56,6 @@ export default defineWorkflow({
 				description: 'Sends results',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 200)); // Simulate sending results
 				return { sent: true, sentAt: Date.now(), data: processed.result };
 			},
 		);
@@ -67,7 +71,6 @@ export default defineWorkflow({
 				description: 'Confirms delivery',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 350)); // Simulate delivery verification
 				return {
 					verified: true,
 					verifiedAt: Date.now(),

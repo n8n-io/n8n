@@ -8,6 +8,7 @@ import GraphCanvas from '../components/GraphCanvas.vue';
 import ExecutionGraph from '../components/ExecutionGraph.vue';
 import StatusBadge from '../components/StatusBadge.vue';
 import JsonViewer from '../components/JsonViewer.vue';
+import { generateWebhookTestData } from '../utils/json-schema-faker';
 
 const route = useRoute();
 const router = useRouter();
@@ -142,6 +143,24 @@ const webhookTriggers = computed(() => {
 			method: (t.config?.method ?? 'POST').toUpperCase(),
 			responseMode: t.config?.responseMode ?? 'lastNode',
 		}));
+});
+
+const currentTriggerSchema = computed(() => {
+	if (webhookTriggers.value.length === 0) return null;
+	const triggers = workflowStore.currentWorkflow?.triggers ?? [];
+	const webhookTrigger = (
+		triggers as Array<{
+			type?: string;
+			config?: {
+				schema?: {
+					body?: Record<string, unknown>;
+					query?: Record<string, unknown>;
+					headers?: Record<string, unknown>;
+				};
+			};
+		}>
+	).find((t) => t.type === 'webhook');
+	return webhookTrigger?.config?.schema ?? null;
 });
 
 const isTerminal = computed(() => {
@@ -516,6 +535,42 @@ async function handleSendWebhookTest(trigger: { path?: string; method?: string }
 		webhookTestLoading.value = false;
 	}
 }
+
+// ------------------------------------------------------------------
+// Schema-based test data generation
+// ------------------------------------------------------------------
+function handleGenerateTestData() {
+	const schema = currentTriggerSchema.value;
+	if (!schema) return;
+
+	const testData = generateWebhookTestData(schema);
+
+	if (Object.keys(testData.body).length > 0) {
+		webhookTestBody.value = JSON.stringify(testData.body, null, 2);
+	}
+
+	if (Object.keys(testData.query).length > 0) {
+		webhookQueryParams.value = Object.entries(testData.query).map(([key, value]) => ({
+			key,
+			value: String(value),
+		}));
+	}
+
+	if (Object.keys(testData.headers).length > 0) {
+		// Merge with existing headers (keep Content-Type)
+		const newHeaders = Object.entries(testData.headers).map(([key, value]) => ({
+			key,
+			value: String(value),
+		}));
+		webhookHeaders.value = [{ key: 'Content-Type', value: 'application/json' }, ...newHeaders];
+	}
+}
+
+watch(leftTab, (tab) => {
+	if (tab === 'webhook' && currentTriggerSchema.value) {
+		handleGenerateTestData();
+	}
+});
 
 // ------------------------------------------------------------------
 // Navigation
@@ -925,6 +980,13 @@ function navigateToErrorLine() {
 									readonly
 									@click="($event.target as HTMLInputElement).select()"
 								/>
+								<button
+									v-if="currentTriggerSchema"
+									:class="$style.webhookGenerateBtn"
+									@click="handleGenerateTestData"
+								>
+									Generate
+								</button>
 								<button
 									:class="$style.webhookSendBtn"
 									:disabled="webhookTestLoading"
@@ -2598,6 +2660,24 @@ function navigateToErrorLine() {
 .webhookSendBtn:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
+}
+
+.webhookGenerateBtn {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-primary);
+	background: var(--color-bg);
+	border: 1px solid var(--color-primary);
+	border-right: none;
+	padding: 6px 16px;
+	cursor: pointer;
+	transition: background var(--transition-fast);
+	white-space: nowrap;
+}
+
+.webhookGenerateBtn:hover {
+	background: var(--color-primary);
+	color: white;
 }
 
 .webhookTabs {

@@ -349,7 +349,8 @@ export default defineWorkflow({
 `;
 			const result = transpiler.compile(source);
 			expect(result.errors.length).toBeGreaterThan(0);
-			expect(result.errors[0].message).toContain('run()');
+			// Type checker catches this as a type error (missing required 'run' property)
+			expect(result.errors[0].message).toContain('WorkflowDefinition');
 		});
 
 		it('error results have empty code', () => {
@@ -845,6 +846,257 @@ export default defineWorkflow({
 		it('total edge count is exactly 4 (trigger→fetch, fetch→sleep, sleep→A, sleep→B)', () => {
 			const result = transpiler.compile(source);
 			expect(result.graph.edges).toHaveLength(4);
+		});
+	});
+
+	// 10. Trigger extraction — AST-based webhook parsing
+	// -----------------------------------------------------------------------
+
+	describe('Trigger extraction', () => {
+		const transpiler = new TranspilerService();
+
+		it('extracts a single webhook trigger', () => {
+			const source = `
+import { defineWorkflow, webhook } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'Webhook',
+	triggers: [webhook('/echo', { method: 'POST', responseMode: 'respondWithNode' })],
+	async run(ctx) {
+		const result = await ctx.step({ name: 'echo' }, async () => {
+			return { ok: true };
+		});
+		return result;
+	},
+});
+`;
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
+			expect(result.triggers).toHaveLength(1);
+			expect(result.triggers[0]).toEqual({
+				type: 'webhook',
+				config: { path: '/echo', method: 'POST', responseMode: 'respondWithNode' },
+			});
+		});
+
+		it('extracts webhook with default config', () => {
+			const source = `
+import { defineWorkflow, webhook } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'DefaultWebhook',
+	triggers: [webhook('/hook')],
+	async run(ctx) {
+		const result = await ctx.step({ name: 'handle' }, async () => {
+			return { ok: true };
+		});
+		return result;
+	},
+});
+`;
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
+			expect(result.triggers).toHaveLength(1);
+			expect(result.triggers[0]).toEqual({
+				type: 'webhook',
+				config: { path: '/hook', method: 'POST', responseMode: 'lastNode' },
+			});
+		});
+
+		it('extracts multiple webhook triggers', () => {
+			const source = `
+import { defineWorkflow, webhook } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'Multi',
+	triggers: [
+		webhook('/first', { method: 'POST' }),
+		webhook('/second', { method: 'GET', responseMode: 'respondImmediately' }),
+	],
+	async run(ctx) {
+		const result = await ctx.step({ name: 'handle' }, async () => {
+			return { ok: true };
+		});
+		return result;
+	},
+});
+`;
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
+			expect(result.triggers).toHaveLength(2);
+			expect(result.triggers[0].config).toMatchObject({ path: '/first', method: 'POST' });
+			expect(result.triggers[1].config).toMatchObject({ path: '/second', method: 'GET' });
+		});
+
+		it('returns empty triggers when no triggers array', () => {
+			const source = `
+import { defineWorkflow } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'NoTriggers',
+	async run(ctx) {
+		const result = await ctx.step({ name: 'work' }, async () => {
+			return { ok: true };
+		});
+		return result;
+	},
+});
+`;
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
+			expect(result.triggers).toEqual([]);
+		});
+
+		it('returns empty triggers for empty triggers array', () => {
+			const source = `
+import { defineWorkflow } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'EmptyTriggers',
+	triggers: [],
+	async run(ctx) {
+		const result = await ctx.step({ name: 'work' }, async () => {
+			return { ok: true };
+		});
+		return result;
+	},
+});
+`;
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
+			expect(result.triggers).toEqual([]);
+		});
+
+		it('extracts webhook schema as JSON Schema', () => {
+			const source = `
+import { defineWorkflow, webhook } from '@n8n/engine/sdk';
+import { z } from 'zod';
+
+export default defineWorkflow({
+	name: 'WithSchema',
+	triggers: [webhook('/test', {
+		method: 'POST',
+		schema: {
+			body: z.object({
+				message: z.string(),
+				count: z.number().min(1).max(100).optional(),
+			}),
+			query: z.object({
+				format: z.enum(['json', 'xml']),
+			}),
+		},
+	})],
+	async run(ctx) {
+		const result = await ctx.step({ name: 'echo' }, async () => {
+			return { ok: true };
+		});
+		return result;
+	},
+});
+`;
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
+			expect(result.triggers).toHaveLength(1);
+			const schema = (result.triggers[0].config as Record<string, unknown>).schema as Record<
+				string,
+				unknown
+			>;
+			expect(schema).toBeDefined();
+			expect(schema.body).toEqual({
+				type: 'object',
+				properties: {
+					message: { type: 'string' },
+					count: { type: 'number', minimum: 1, maximum: 100 },
+				},
+				required: ['message'],
+			});
+			expect(schema.query).toEqual({
+				type: 'object',
+				properties: {
+					format: { type: 'string', enum: ['json', 'xml'] },
+				},
+				required: ['format'],
+			});
+		});
+
+		it('labels trigger node as webhook when webhook trigger is present', () => {
+			const source = `
+import { defineWorkflow, webhook } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'WebhookGraph',
+	triggers: [webhook('/test')],
+	async run(ctx) {
+		const result = await ctx.step({ name: 'handle' }, async () => {
+			return { ok: true };
+		});
+		return result;
+	},
+});
+`;
+			const result = transpiler.compile(source);
+			const triggerNode = result.graph.nodes.find((n) => n.type === 'trigger');
+			expect(triggerNode).toBeDefined();
+			expect(triggerNode?.name).toContain('Webhook');
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// 11. Type checking — validates workflow source against SDK types
+	// -----------------------------------------------------------------------
+
+	describe('Type checking', () => {
+		const transpiler = new TranspilerService();
+
+		it('reports error for webhook with non-string path', () => {
+			const source = `
+import { defineWorkflow, webhook } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'BadWebhook',
+	triggers: [webhook(123)],
+	async run(ctx) {
+		const result = await ctx.step({ name: 'work' }, async () => {
+			return { ok: true };
+		});
+		return result;
+	},
+});
+`;
+			const result = transpiler.compile(source);
+			expect(result.errors.length).toBeGreaterThan(0);
+			expect(result.errors.some((e) => e.line !== undefined)).toBe(true);
+		});
+
+		it('reports error for missing run method type mismatch', () => {
+			const source = `
+import { defineWorkflow } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'BadRun',
+	run: 'not a function',
+});
+`;
+			const result = transpiler.compile(source);
+			expect(result.errors.length).toBeGreaterThan(0);
+		});
+
+		it('valid workflow produces no type errors', () => {
+			const source = `
+import { defineWorkflow } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'Valid',
+	async run(ctx) {
+		const result = await ctx.step({ name: 'work' }, async () => {
+			return { ok: true };
+		});
+		return result;
+	},
+});
+`;
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
 		});
 	});
 });

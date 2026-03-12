@@ -27,6 +27,7 @@ import {
 } from '@codemirror/language';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import { tags } from '@lezer/highlight';
 
 const props = withDefaults(
@@ -101,6 +102,22 @@ const darkTheme = EditorView.theme(
 		'.cm-selectionMatch': { backgroundColor: '#45475a40' },
 		'.cm-lineNumbers .cm-gutterElement': { padding: '0 8px 0 12px' },
 		'.cm-foldGutter .cm-gutterElement': { padding: '0 4px', color: '#585b70' },
+		'.cm-lint-marker-error': {
+			content: '"●"',
+			color: '#f38ba8',
+			fontSize: '12px',
+		},
+		'.cm-diagnostic-error': {
+			borderLeft: '3px solid #f38ba8',
+			backgroundColor: '#f38ba810',
+			padding: '4px 8px',
+			marginLeft: '0',
+		},
+		'.cm-lintRange-error': {
+			backgroundImage: 'none',
+			textDecoration: 'wavy underline #f38ba8',
+			textUnderlineOffset: '3px',
+		},
 	},
 	{ dark: true },
 );
@@ -137,6 +154,22 @@ const lightTheme = EditorView.theme(
 		'.cm-selectionMatch': { backgroundColor: '#d0e8ff40' },
 		'.cm-lineNumbers .cm-gutterElement': { padding: '0 8px 0 12px' },
 		'.cm-foldGutter .cm-gutterElement': { padding: '0 4px', color: '#ccc' },
+		'.cm-lint-marker-error': {
+			content: '"●"',
+			color: '#c2185b',
+			fontSize: '12px',
+		},
+		'.cm-diagnostic-error': {
+			borderLeft: '3px solid #c2185b',
+			backgroundColor: '#c2185b10',
+			padding: '4px 8px',
+			marginLeft: '0',
+		},
+		'.cm-lintRange-error': {
+			backgroundImage: 'none',
+			textDecoration: 'wavy underline #c2185b',
+			textUnderlineOffset: '3px',
+		},
 	},
 	{ dark: false },
 );
@@ -224,6 +257,7 @@ function createExtensions(): Extension[] {
 		bracketMatching(),
 		closeBrackets(),
 		highlightSelectionMatches(),
+		lintGutter(),
 		props.language === 'json' ? json() : javascript({ typescript: true }),
 		syntaxHighlighting(isDark.value ? darkHighlightStyle : lightHighlightStyle),
 		isDark.value ? darkTheme : lightTheme,
@@ -292,6 +326,26 @@ watch(
 			});
 		}
 	},
+);
+
+// Watch errors prop and set lint diagnostics
+watch(
+	() => props.errors,
+	(newErrors) => {
+		if (!view) return;
+		const diagnostics: Diagnostic[] = (newErrors ?? []).map((err) => {
+			const line = Math.max(1, Math.min(err.line ?? 1, view!.state.doc.lines));
+			const lineInfo = view!.state.doc.line(line);
+			return {
+				from: lineInfo.from,
+				to: lineInfo.to,
+				severity: 'error' as const,
+				message: err.message,
+			};
+		});
+		view!.dispatch(setDiagnostics(view!.state, diagnostics));
+	},
+	{ deep: true },
 );
 
 // Recreate editor when readonly changes

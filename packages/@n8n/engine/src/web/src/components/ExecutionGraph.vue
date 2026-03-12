@@ -3,6 +3,11 @@ import { computed } from 'vue';
 import type { WorkflowGraph, WorkflowGraphNode } from '../stores/workflow.store';
 import type { StepExecution } from '../stores/execution.store';
 import { LUCIDE_PATHS } from './lucide-paths';
+import {
+	getSleepLabel as _getSleepLabel,
+	getSleepDetail as _getSleepDetail,
+	SLEEP_NODE_COLOR,
+} from '../utils/sleep-node';
 
 const props = defineProps<{
 	graph: WorkflowGraph;
@@ -368,6 +373,14 @@ function truncateName(name: string, maxLen: number = 20): string {
 function handleNodeClick(nodeId: string) {
 	emit('select-step', nodeId);
 }
+
+function getSleepLabel(node: LayoutNode): string {
+	return _getSleepLabel(node.config);
+}
+
+function getSleepDetailText(node: LayoutNode): string | undefined {
+	return _getSleepDetail(node.config);
+}
 </script>
 
 <template>
@@ -525,89 +538,173 @@ function handleNodeClick(nodeId: string) {
 					fill="var(--color-bg)"
 					:stroke="statusColor(node.id)"
 					:stroke-width="isSelected(node.id) ? 3 : 1.5"
+					:stroke-dasharray="node.type === 'sleep' ? '6 3' : 'none'"
 					:filter="isSelected(node.id) ? 'url(#execNodeShadowSelected)' : 'url(#execNodeShadow)'"
-					:class="$style.nodeRect"
+					:class="[$style.nodeRect, node.type === 'sleep' ? $style.sleepNodeRect : '']"
 				/>
-				<!-- Icon -->
-				<g
-					v-if="getDisplayConfig(node)?.icon && LUCIDE_PATHS[getDisplayConfig(node)!.icon!]"
-					:transform="`translate(${node.x + 10}, ${node.y + 10}) scale(0.75)`"
-				>
-					<path
-						v-for="(d, pi) in LUCIDE_PATHS[getDisplayConfig(node)!.icon!]"
-						:key="pi"
-						:d="d"
-						fill="none"
-						:stroke="getDisplayConfig(node)?.color ?? 'var(--color-text-lighter)'"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					/>
-				</g>
-				<!-- Node name -->
-				<text
-					:x="
-						node.x +
-						(getDisplayConfig(node)?.icon && LUCIDE_PATHS[getDisplayConfig(node)!.icon!] ? 32 : 14)
-					"
-					:y="node.y + 21"
-					text-anchor="start"
-					dominant-baseline="central"
-					font-size="13"
-					font-weight="600"
-					fill="var(--color-text)"
-					font-family="var(--font-family)"
-					:class="$style.nodeText"
-				>
-					{{ truncateName(node.name) }}
-				</text>
-				<!-- Description (if present) -->
-				<text
-					v-if="getDisplayConfig(node)?.description"
-					:x="node.x + 14"
-					:y="node.y + 38"
-					text-anchor="start"
-					dominant-baseline="central"
-					font-size="10"
-					font-weight="400"
-					font-family="var(--font-family)"
-					:class="$style.nodeDescription"
-				>
-					{{ truncateName(getDisplayConfig(node)!.description!, 30) }}
-				</text>
-				<!-- Status label -->
-				<text
-					:x="node.x + 14"
-					:y="
-						getDisplayConfig(node)?.description ? node.y + layout.effectiveHeight - 12 : node.y + 40
-					"
-					text-anchor="start"
-					dominant-baseline="central"
-					font-size="10"
-					font-weight="500"
-					:fill="statusColor(node.id)"
-					font-family="var(--font-family)"
-					:class="$style.nodeText"
-				>
-					{{ statusLabel(node.id) }}
-				</text>
-				<!-- Duration on right -->
-				<text
-					v-if="stepDuration(node.id)"
-					:x="node.x + NODE_WIDTH - 10"
-					:y="
-						getDisplayConfig(node)?.description ? node.y + layout.effectiveHeight - 12 : node.y + 40
-					"
-					text-anchor="end"
-					dominant-baseline="central"
-					font-size="10"
-					font-weight="400"
-					fill="var(--color-text-lighter)"
-					font-family="var(--font-family-mono, monospace)"
-					:class="$style.nodeText"
-				>
-					{{ stepDuration(node.id) }}
-				</text>
+
+				<!-- Sleep node — same layout as regular nodes: icon+name top, description middle, status+duration bottom -->
+				<template v-if="node.type === 'sleep'">
+					<!-- Clock icon -->
+					<g :transform="`translate(${node.x + 10}, ${node.y + 10}) scale(0.75)`">
+						<path
+							v-for="(d, pi) in LUCIDE_PATHS['clock']"
+							:key="pi"
+							:d="d"
+							fill="none"
+							:stroke="SLEEP_NODE_COLOR"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</g>
+					<!-- Sleep label -->
+					<text
+						:x="node.x + 32"
+						:y="node.y + 21"
+						text-anchor="start"
+						dominant-baseline="central"
+						font-size="13"
+						font-weight="600"
+						font-family="var(--font-family)"
+						:class="$style.sleepNodeText"
+					>
+						{{ getSleepLabel(node) }}
+					</text>
+					<!-- waitUntil expression as description -->
+					<text
+						v-if="getSleepDetailText(node)"
+						:x="node.x + 14"
+						:y="node.y + 38"
+						text-anchor="start"
+						dominant-baseline="central"
+						font-size="10"
+						font-weight="400"
+						font-family="var(--font-family-mono, monospace)"
+						:class="$style.nodeDescription"
+					>
+						{{ truncateName(getSleepDetailText(node)!, 26) }}
+					</text>
+					<!-- Status — always at the bottom of the card -->
+					<text
+						:x="node.x + 14"
+						:y="node.y + layout.effectiveHeight - 12"
+						text-anchor="start"
+						dominant-baseline="central"
+						font-size="10"
+						font-weight="500"
+						:fill="statusColor(node.id)"
+						font-family="var(--font-family)"
+						:class="$style.nodeText"
+					>
+						{{ statusLabel(node.id) }}
+					</text>
+					<!-- Duration — always at the bottom of the card -->
+					<text
+						v-if="stepDuration(node.id)"
+						:x="node.x + NODE_WIDTH - 10"
+						:y="node.y + layout.effectiveHeight - 12"
+						text-anchor="end"
+						dominant-baseline="central"
+						font-size="10"
+						font-weight="400"
+						fill="var(--color-text-lighter)"
+						font-family="var(--font-family-mono, monospace)"
+						:class="$style.nodeText"
+					>
+						{{ stepDuration(node.id) }}
+					</text>
+				</template>
+
+				<!-- Regular node -->
+				<template v-else>
+					<!-- Icon -->
+					<g
+						v-if="getDisplayConfig(node)?.icon && LUCIDE_PATHS[getDisplayConfig(node)!.icon!]"
+						:transform="`translate(${node.x + 10}, ${node.y + 10}) scale(0.75)`"
+					>
+						<path
+							v-for="(d, pi) in LUCIDE_PATHS[getDisplayConfig(node)!.icon!]"
+							:key="pi"
+							:d="d"
+							fill="none"
+							:stroke="getDisplayConfig(node)?.color ?? 'var(--color-text-lighter)'"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</g>
+					<!-- Node name -->
+					<text
+						:x="
+							node.x +
+							(getDisplayConfig(node)?.icon && LUCIDE_PATHS[getDisplayConfig(node)!.icon!]
+								? 32
+								: 14)
+						"
+						:y="node.y + 21"
+						text-anchor="start"
+						dominant-baseline="central"
+						font-size="13"
+						font-weight="600"
+						fill="var(--color-text)"
+						font-family="var(--font-family)"
+						:class="$style.nodeText"
+					>
+						{{ truncateName(node.name) }}
+					</text>
+					<!-- Description (if present) -->
+					<text
+						v-if="getDisplayConfig(node)?.description"
+						:x="node.x + 14"
+						:y="node.y + 38"
+						text-anchor="start"
+						dominant-baseline="central"
+						font-size="10"
+						font-weight="400"
+						font-family="var(--font-family)"
+						:class="$style.nodeDescription"
+					>
+						{{ truncateName(getDisplayConfig(node)!.description!, 30) }}
+					</text>
+					<!-- Status label -->
+					<text
+						:x="node.x + 14"
+						:y="
+							getDisplayConfig(node)?.description
+								? node.y + layout.effectiveHeight - 12
+								: node.y + 40
+						"
+						text-anchor="start"
+						dominant-baseline="central"
+						font-size="10"
+						font-weight="500"
+						:fill="statusColor(node.id)"
+						font-family="var(--font-family)"
+						:class="$style.nodeText"
+					>
+						{{ statusLabel(node.id) }}
+					</text>
+					<!-- Duration on right -->
+					<text
+						v-if="stepDuration(node.id)"
+						:x="node.x + NODE_WIDTH - 10"
+						:y="
+							getDisplayConfig(node)?.description
+								? node.y + layout.effectiveHeight - 12
+								: node.y + 40
+						"
+						text-anchor="end"
+						dominant-baseline="central"
+						font-size="10"
+						font-weight="400"
+						fill="var(--color-text-lighter)"
+						font-family="var(--font-family-mono, monospace)"
+						:class="$style.nodeText"
+					>
+						{{ stepDuration(node.id) }}
+					</text>
+				</template>
 			</g>
 		</svg>
 	</div>
@@ -671,6 +768,17 @@ function handleNodeClick(nodeId: string) {
 	fill: var(--color-text-lighter);
 	pointer-events: none;
 	user-select: none;
+}
+
+.sleepNodeRect {
+	opacity: 0.9;
+}
+
+.sleepNodeText {
+	fill: #4a9eff;
+	pointer-events: none;
+	user-select: none;
+	font-style: italic;
 }
 
 @keyframes pulseNode {

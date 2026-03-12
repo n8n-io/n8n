@@ -90,6 +90,12 @@ the compiled module's scope. Needs sandboxed execution context.
 Engine-level `rateLimit: { maxPerSecond: 10 }` on batch steps to prevent
 overwhelming external APIs. Currently handled by per-item retry backoff.
 
+### Pause/resume execution during waiting steps
+When a step is in `waiting` status (e.g., sleeping or waiting until a date),
+there is no way to pause the execution and resume it later. The pause/resume
+API only works on running executions, not waiting ones. This requires the
+engine to support transitioning `waiting` steps to `paused` and back.
+
 ### Redis pub/sub for multi-instance event delivery
 In-process event bus doesn't reach SSE clients on other instances. Required
 for horizontal scaling.

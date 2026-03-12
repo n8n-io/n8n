@@ -6,13 +6,22 @@
  * Each word is sent as a separate chunk with a small delay.
  */
 import { defineWorkflow, webhook } from '@n8n/engine/sdk';
+import { z } from 'zod';
 
 export default defineWorkflow({
 	name: '17 - Streaming Webhook',
-	triggers: [webhook('/stream', { method: 'POST', responseMode: 'respondWithNode' })],
+	triggers: [
+		webhook('/stream', {
+			method: 'POST',
+			responseMode: 'respondWithNode',
+			schema: {
+				body: z.object({
+					text: z.string().optional(),
+				}),
+			},
+		}),
+	],
 	async run(ctx) {
-		const { body } = ctx.triggerData;
-
 		const result = await ctx.step(
 			{
 				name: 'Stream Response',
@@ -21,7 +30,8 @@ export default defineWorkflow({
 				description: 'Streams text word by word',
 			},
 			async () => {
-				const text = body?.text ?? 'Hello, this is a streaming response from n8n Engine v2!';
+				const { body } = ctx.triggerData;
+				const text = body.text ?? 'Hello, this is a streaming response from n8n Engine v2!';
 				const words = text.split(' ');
 				let accumulated = '';
 

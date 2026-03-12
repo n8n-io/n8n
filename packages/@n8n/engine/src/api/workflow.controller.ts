@@ -6,25 +6,6 @@ import { WebhookEntity } from '../database/entities/webhook.entity';
 import type { WebhookTriggerConfig } from '../sdk/types';
 import type { AppDependencies } from './server';
 
-// After transpilation, extract trigger configs from the source code
-function extractTriggers(source: string): Array<Record<string, unknown>> {
-	const triggers: Array<Record<string, unknown>> = [];
-	// Match webhook('/path', { method: 'POST', responseMode: '...' })
-	const webhookRegex = /webhook\(\s*['"]([^'"]+)['"]\s*(?:,\s*\{([^}]*)\})?\s*\)/g;
-	let match;
-	while ((match = webhookRegex.exec(source)) !== null) {
-		const path = match[1];
-		const configStr = match[2] ?? '';
-		const method = configStr.match(/method\s*:\s*['"]([^'"]+)['"]/)?.[1] ?? 'POST';
-		const responseMode = configStr.match(/responseMode\s*:\s*['"]([^'"]+)['"]/)?.[1] ?? 'lastNode';
-		triggers.push({
-			type: 'webhook',
-			config: { path, method, responseMode },
-		});
-	}
-	return triggers;
-}
-
 export function createWorkflowRouter(deps: AppDependencies): Router {
 	const router = Router();
 	const { dataSource, transpiler } = deps;
@@ -52,10 +33,9 @@ export function createWorkflowRouter(deps: AppDependencies): Router {
 	// POST /api/workflows - Create workflow
 	router.post('/', async (req: Request, res: Response) => {
 		try {
-			const { name, code, triggers, settings } = req.body as {
+			const { name, code, settings } = req.body as {
 				name: string;
 				code: string;
-				triggers?: unknown[];
 				settings?: Record<string, unknown>;
 			};
 
@@ -82,7 +62,7 @@ export function createWorkflowRouter(deps: AppDependencies): Router {
 			workflow.name = name;
 			workflow.code = code;
 			workflow.compiledCode = compiled.code;
-			workflow.triggers = triggers ?? extractTriggers(code);
+			workflow.triggers = compiled.triggers;
 			workflow.settings = settings ?? {};
 			workflow.graph = compiled.graph;
 			workflow.sourceMap = compiled.sourceMap;
@@ -107,10 +87,9 @@ export function createWorkflowRouter(deps: AppDependencies): Router {
 	router.put('/:id', async (req: Request, res: Response) => {
 		try {
 			const { id } = req.params;
-			const { name, code, triggers, settings } = req.body as {
+			const { name, code, settings } = req.body as {
 				name: string;
 				code: string;
-				triggers?: unknown[];
 				settings?: Record<string, unknown>;
 			};
 
@@ -150,7 +129,7 @@ export function createWorkflowRouter(deps: AppDependencies): Router {
 			workflow.name = name ?? latest.name ?? 'Untitled';
 			workflow.code = code;
 			workflow.compiledCode = compiled.code;
-			workflow.triggers = triggers ?? extractTriggers(code);
+			workflow.triggers = compiled.triggers;
 			workflow.settings = settings ?? latest.settings ?? {};
 			workflow.graph = compiled.graph;
 			workflow.sourceMap = compiled.sourceMap;

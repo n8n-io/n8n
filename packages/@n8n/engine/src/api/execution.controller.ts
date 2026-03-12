@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 
+import { WorkflowEntity } from '../database/entities/workflow.entity';
 import { WorkflowExecution } from '../database/entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../database/entities/workflow-step-execution.entity';
-import { ExecutionStatus } from '../database/enums';
+import { ExecutionStatus, StepStatus, StepType } from '../database/enums';
+import type { WebhookTriggerConfig } from '../sdk/types';
 import type { AppDependencies } from './server';
+import { validateWebhookRequest } from './validate-webhook-schema';
 
 export function createExecutionRouter(deps: AppDependencies): Router {
 	const router = Router();
@@ -23,6 +26,89 @@ export function createExecutionRouter(deps: AppDependencies): Router {
 			if (!workflowId) {
 				res.status(400).json({ error: 'workflowId is required' });
 				return;
+			}
+
+			// Validate triggerData against webhook schema if present
+			if (triggerData) {
+				const workflow = await dataSource
+					.getRepository(WorkflowEntity)
+					.createQueryBuilder('w')
+					.where('w.id = :id', { id: workflowId })
+					.orderBy('w.version', 'DESC')
+					.limit(1)
+					.getOne();
+
+				if (workflow) {
+					const triggers = (workflow.triggers ?? []) as WebhookTriggerConfig[];
+					const webhookTrigger = triggers.find((t) => t.type === 'webhook');
+					if (webhookTrigger) {
+						const td = triggerData as { body?: unknown; headers?: unknown; query?: unknown };
+						const validation = validateWebhookRequest(webhookTrigger, {
+							body: td.body ?? {},
+							headers: td.headers ?? {},
+							query: td.query ?? {},
+						});
+						if (!validation.valid) {
+							// Create a failed execution with the validation errors
+							const now = new Date();
+							const errorMessage = `Webhook schema validation failed: ${validation.errors!.map((e) => `${e.path} ${e.message}`).join('; ')}`;
+
+							const executionResult = await dataSource
+								.getRepository(WorkflowExecution)
+								.createQueryBuilder()
+								.insert()
+								.into(WorkflowExecution)
+								.values({
+									workflowId,
+									workflowVersion: workflow.version,
+									status: ExecutionStatus.Failed,
+									mode: mode ?? 'manual',
+									startedAt: now,
+									completedAt: now,
+									error: {
+										message: errorMessage,
+										code: 'VALIDATION_ERROR',
+										category: 'validation',
+										retriable: false,
+									},
+								} as Record<string, unknown>)
+								.returning('id')
+								.execute();
+
+							const failedExecutionId = executionResult.raw[0].id as string;
+
+							await dataSource
+								.getRepository(WorkflowStepExecution)
+								.createQueryBuilder()
+								.insert()
+								.into(WorkflowStepExecution)
+								.values({
+									executionId: failedExecutionId,
+									stepId: 'trigger',
+									stepType: StepType.Trigger,
+									status: StepStatus.Failed,
+									input: triggerData,
+									error: {
+										message: errorMessage,
+										code: 'VALIDATION_ERROR',
+										category: 'validation',
+										retriable: false,
+									},
+									startedAt: now,
+									completedAt: now,
+									durationMs: 0,
+								} as Record<string, unknown>)
+								.execute();
+
+							res.status(422).json({
+								executionId: failedExecutionId,
+								error: 'Webhook schema validation failed',
+								details: validation.errors,
+							});
+							return;
+						}
+					}
+				}
 			}
 
 			const executionId = await engineService.startExecution(

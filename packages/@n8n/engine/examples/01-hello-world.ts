@@ -2,25 +2,26 @@
  * Hello World Workflow
  *
  * Demonstrates the simplest possible workflow: two sequential steps
- * that greet and format a message. Tests basic step chaining and
- * data passing between steps.
+ * that fetch a random quote and format it with attribution. Tests
+ * basic step chaining and data passing between steps.
  */
 import { defineWorkflow } from '@n8n/engine/sdk';
 
 export default defineWorkflow({
-	name: 'Hello World',
+	name: '01 - Hello World',
 	triggers: [], // Manual trigger is implicit — every workflow can be triggered manually
 	async run(ctx) {
 		const greeting = await ctx.step(
 			{
-				name: 'Generate Greeting',
+				name: 'Fetch Random Quote',
 				icon: 'message-circle',
 				color: '#22c55e',
-				description: 'Creates a greeting message',
+				description: 'Fetches a random quote from DummyJSON',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 200)); // Simulate work
-				return { message: 'Hello from Engine v2!', timestamp: Date.now() };
+				const res = await fetch('https://dummyjson.com/quotes/random');
+				const data = (await res.json()) as { id: number; quote: string; author: string };
+				return { message: data.quote, author: data.author, timestamp: Date.now() };
 			},
 		);
 
@@ -29,12 +30,11 @@ export default defineWorkflow({
 				name: 'Format Message',
 				icon: 'file-text',
 				color: '#8b5cf6',
-				description: 'Formats with timestamp',
+				description: 'Formats with attribution',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 150)); // Simulate formatting
 				return {
-					formatted: `${greeting.message} (at ${new Date(greeting.timestamp).toISOString()})`,
+					formatted: `"${greeting.message}" — ${greeting.author} (at ${new Date(greeting.timestamp).toISOString()})`,
 				};
 			},
 		);

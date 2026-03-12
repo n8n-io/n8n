@@ -7,17 +7,30 @@
  * access HTTP request data (body, headers, query params).
  */
 import { defineWorkflow, webhook } from '@n8n/engine/sdk';
+import { z } from 'zod';
 
 // Test each response mode by changing the second argument:
 // 'lastNode' | 'respondImmediately' | 'respondWithNode' | 'allData'
 export default defineWorkflow({
-	name: 'Webhook Echo',
-	triggers: [webhook('/echo', { method: 'POST', responseMode: 'respondWithNode' })],
+	name: '08 - Webhook Echo',
+	triggers: [
+		webhook('/echo', {
+			method: 'POST',
+			responseMode: 'respondWithNode',
+			schema: {
+				body: z.object({
+					message: z.string(),
+				}),
+				headers: z.object({
+					'x-sender': z.string().optional(),
+				}),
+				query: z.object({
+					urgent: z.enum(['true', 'false']).optional(),
+				}),
+			},
+		}),
+	],
 	async run(ctx) {
-		// ctx.triggerData contains the full HTTP request:
-		// { body, headers, query, method, path }
-		const { body, headers, query } = ctx.triggerData;
-
 		const validated = await ctx.step(
 			{
 				name: 'Validate Request Body',
@@ -26,6 +39,7 @@ export default defineWorkflow({
 				description: 'Validates required fields',
 			},
 			async () => {
+				const { body, headers, query } = ctx.triggerData;
 				if (!body.message) {
 					throw new Error('Missing required field: message');
 				}
@@ -37,7 +51,7 @@ export default defineWorkflow({
 			},
 		);
 
-		const processed = await ctx.step(
+		await ctx.step(
 			{
 				name: 'Process & Echo Response',
 				icon: 'send',

@@ -2,13 +2,13 @@
  * Parallel Steps Workflow
  *
  * Demonstrates parallel execution branches using `Promise.all`. Two
- * independent steps (API call and database query) run simultaneously,
+ * independent API calls (products and users) run simultaneously,
  * then a merge step combines the results after both complete.
  */
 import { defineWorkflow } from '@n8n/engine/sdk';
 
 export default defineWorkflow({
-	name: 'Parallel Steps',
+	name: '04 - Parallel Steps',
 	triggers: [], // Manual trigger is implicit — every workflow can be triggered manually
 	async run(ctx) {
 		const input = await ctx.step(
@@ -19,35 +19,46 @@ export default defineWorkflow({
 				description: 'Prepares search input',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 150)); // Simulate preparation
-				return { query: 'n8n automation', timestamp: Date.now() };
+				return { query: 'phone', timestamp: Date.now() };
 			},
 		);
 
 		// These two steps have no dependency on each other — engine runs them in parallel
-		const [apiResult, dbResult] = await Promise.all([
+		const [productsResult, usersResult] = await Promise.all([
 			ctx.step(
 				{
-					name: 'Call External API',
+					name: 'Search Products',
 					icon: 'globe',
 					color: '#3b82f6',
-					description: 'Queries external API',
+					description: 'Searches products via DummyJSON',
 				},
 				async () => {
-					await new Promise((r) => setTimeout(r, 400)); // Simulate API call latency
-					return { source: 'api', results: ['result-1', 'result-2'] };
+					const res = await fetch(`https://dummyjson.com/products/search?q=${input.query}&limit=3`);
+					const data = (await res.json()) as {
+						products: Array<{ title: string; price: number }>;
+					};
+					return {
+						source: 'products' as const,
+						results: data.products.map((p) => `${p.title} ($${p.price})`),
+					};
 				},
 			),
 			ctx.step(
 				{
-					name: 'Query Database',
+					name: 'Search Users',
 					icon: 'database',
 					color: '#8b5cf6',
-					description: 'Queries local database',
+					description: 'Searches users via DummyJSON',
 				},
 				async () => {
-					await new Promise((r) => setTimeout(r, 300)); // Simulate database query
-					return { source: 'db', results: ['record-a', 'record-b', 'record-c'] };
+					const res = await fetch(`https://dummyjson.com/users/search?q=${input.query}&limit=3`);
+					const data = (await res.json()) as {
+						users: Array<{ firstName: string; lastName: string }>;
+					};
+					return {
+						source: 'users' as const,
+						results: data.users.map((u) => `${u.firstName} ${u.lastName}`),
+					};
 				},
 			),
 		]);
@@ -61,11 +72,11 @@ export default defineWorkflow({
 				description: 'Combines all results',
 			},
 			async () => {
-				await new Promise((r) => setTimeout(r, 200)); // Simulate merge processing
 				return {
 					query: input.query,
-					totalResults: apiResult.results.length + dbResult.results.length,
-					combined: [...apiResult.results, ...dbResult.results],
+					totalResults: productsResult.results.length + usersResult.results.length,
+					products: productsResult.results,
+					users: usersResult.results,
 				};
 			},
 		);

@@ -55,8 +55,9 @@ services:
   web:
     networks: [dev]
     build:
-      context: .
-      dockerfile: Dockerfile.web
+      context: ../../../
+      dockerfile: packages/@n8n/engine/Dockerfile
+      target: web
     ports:
       - '3200:3200'
     environment:

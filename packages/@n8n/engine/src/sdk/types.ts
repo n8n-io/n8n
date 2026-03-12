@@ -1,3 +1,5 @@
+import type { ZodType } from 'zod';
+
 export interface StepDefinition {
 	/** Step display name (shown on canvas) */
 	name: string;
@@ -40,18 +42,51 @@ export interface TriggerConfig {
 	code?: string;
 }
 
-export interface WebhookTriggerConfig extends TriggerConfig {
+export interface WebhookSchemaConfig {
+	body?: ZodType;
+	query?: ZodType;
+	headers?: ZodType;
+}
+
+/** Infers the triggerData shape from a webhook schema config */
+export type InferTriggerData<S extends WebhookSchemaConfig | undefined> =
+	S extends WebhookSchemaConfig
+		? {
+				body: S['body'] extends ZodType<infer T> ? T : unknown;
+				query: S['query'] extends ZodType<infer T> ? T : unknown;
+				headers: S['headers'] extends ZodType<infer T> ? T : unknown;
+				method: string;
+				path: string;
+			}
+		: { body: unknown; query: unknown; headers: unknown; method: string; path: string };
+
+export interface WebhookTriggerConfig<S extends WebhookSchemaConfig | undefined = undefined>
+	extends TriggerConfig {
 	type: 'webhook';
 	config: {
 		path: string;
 		method: string;
 		responseMode?: WebhookResponseMode;
+		schema?: {
+			body?: Record<string, unknown>;
+			query?: Record<string, unknown>;
+			headers?: Record<string, unknown>;
+		};
 	};
+	/** Phantom type — carries the schema type for inference, not present at runtime */
+	_triggerData?: InferTriggerData<S>;
 }
 
-export interface ExecutionContext {
+/** Extracts the inferred triggerData type from a triggers array */
+type InferTriggerDataFromArray<T> = T extends readonly [WebhookTriggerConfig<infer S>, ...unknown[]]
+	? InferTriggerData<S>
+	: T extends readonly WebhookTriggerConfig<infer S>[]
+		? InferTriggerData<S>
+		: Record<string, unknown>;
+
+export interface ExecutionContext<TTriggerData = Record<string, unknown>> {
 	input: Record<string, unknown>;
-	triggerData: Record<string, unknown>;
+	triggerData: TTriggerData;
 	executionId: string;
 	stepId: string;
 	attempt: number;
@@ -65,11 +100,11 @@ export interface ExecutionContext {
 	getSecret: (name: string) => string | undefined;
 }
 
-export interface WorkflowDefinition {
+export interface WorkflowDefinition<T extends readonly TriggerConfig[] = TriggerConfig[]> {
 	name: string;
-	triggers?: TriggerConfig[];
+	triggers?: T;
 	settings?: WorkflowSettings;
-	run: (ctx: ExecutionContext) => Promise<unknown>;
+	run: (ctx: ExecutionContext<InferTriggerDataFromArray<T>>) => Promise<unknown>;
 }
 
 export interface WorkflowSettings {

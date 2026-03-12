@@ -9,7 +9,7 @@
 import { defineWorkflow } from '@n8n/engine/sdk';
 
 export default defineWorkflow({
-	name: 'Approval Flow',
+	name: '10 - Approval Flow',
 	triggers: [], // Manual trigger is implicit — every workflow can be triggered manually
 	async run(ctx) {
 		const request = await ctx.step(
@@ -25,7 +25,7 @@ export default defineWorkflow({
 			},
 		);
 
-		const approval = await ctx.step(
+		const approval = (await ctx.step(
 			{
 				name: 'Await Manager Approval',
 				icon: 'user-check',
@@ -38,7 +38,7 @@ export default defineWorkflow({
 				// Engine detects this as an approval step and pauses
 				return { requiresApproval: true, message: `Approve expense: $${request.amount}?` };
 			},
-		);
+		)) as { requiresApproval: boolean; message: string; approved: boolean };
 
 		if (approval.approved) {
 			await ctx.step(

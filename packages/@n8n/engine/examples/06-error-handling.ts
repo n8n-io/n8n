@@ -13,7 +13,7 @@ export default defineWorkflow({
 	triggers: [],
 	async run(ctx) {
 		// This step throws a retriable error — engine retries automatically
-		const apiResult = await ctx.step(
+		await ctx.step(
 			{
 				name: 'Fetch With Retry',
 				icon: 'refresh-cw',
@@ -28,7 +28,7 @@ export default defineWorkflow({
 				// Simulate retriable ECONNREFUSED on first attempt
 				if (ctx.attempt < 2) {
 					const err = new Error('connect ECONNREFUSED 127.0.0.1:9999');
-					(err as NodeJS.ErrnoException).code = 'ECONNREFUSED';
+					(err as unknown as Record<string, string>).code = 'ECONNREFUSED';
 					throw err;
 				}
 

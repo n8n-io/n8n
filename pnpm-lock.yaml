@@ -1204,6 +1204,9 @@ importers:
       '@n8n/typeorm':
         specifier: 'catalog:'
         version: 0.3.20-16(@sentry/node@10.36.0)(mysql2@3.17.0)(pg@8.17.0)(sqlite3@5.1.7)
+      ajv:
+        specifier: 8.18.0
+        version: 8.18.0
       esbuild:
         specifier: ^0.25.0
         version: 0.25.10
@@ -1228,6 +1231,9 @@ importers:
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
