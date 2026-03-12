@@ -127,13 +127,17 @@ export const prepareFormFields = (fields: FormFieldsParameter) => {
 export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	if (!css) return undefined;
 
-	// Use sanitize-html with custom settings for CSS
-	return sanitize(css, {
-		allowedTags: [], // No HTML tags allowed
-		allowedAttributes: {}, // No attributes allowed
-		// This ensures we're only keeping the text content
-		// which should be the CSS, while removing any HTML/script tags
+	const sanitized = sanitize(css, {
+		allowedTags: [],
+		allowedAttributes: {},
 	});
+
+	// Restore only the entities needed for valid CSS after tag stripping.
+	// &gt; → > is needed for CSS child combinator selectors (div > p).
+	// &amp; → & is needed for CSS values, but NOT when followed by lt;/gt;/amp;
+	// to prevent cascading decode of double-encoded entities.
+	// &lt; is never decoded — < is not valid in CSS and would enable tag injection.
+	return sanitized.replace(/&gt;/g, '>').replace(/&amp;(?!(?:lt|gt|amp);)/g, '&');
 }
 
 /**
