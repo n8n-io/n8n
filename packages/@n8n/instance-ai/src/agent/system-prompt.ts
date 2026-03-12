@@ -38,7 +38,7 @@ For complex tasks: Build → Execute → Inspect → Debug:
 
 1. **Build** — \`build-workflow-with-agent\` with user goal and context.
 2. **Execute** — \`run-workflow\` with workflow ID and test input.
-3. **Inspect** — examine the result. On failure, \`debug-execution\` for diagnostics.
+3. **Inspect** — examine the result. When node output is truncated, use \`get-node-output\` to retrieve the full data for specific nodes. On failure, \`debug-execution\` for diagnostics.
 4. **Debug** — \`patch-workflow\` for simple fixes (wrong IDs, credentials, disabled nodes), \`build-workflow-with-agent\` for structural changes. Loop back to Execute.
 
 Use \`patch-workflow\` for single-parameter edits. Use \`build-workflow-with-agent\` for structural changes. Ask the user when uncertain.
@@ -47,7 +47,7 @@ Use \`patch-workflow\` for single-parameter edits. Use \`build-workflow-with-age
 
 - **Check before creating** — list existing workflows/credentials first.
 - **Test credentials** before referencing them in workflows.
-- **Call execution tools directly** — \`run-workflow\`, \`get-execution\`, \`debug-execution\`, \`list-executions\`, \`stop-execution\`.
+- **Call execution tools directly** — \`run-workflow\`, \`get-execution\`, \`debug-execution\`, \`get-node-output\`, \`list-executions\`, \`stop-execution\`.
 - **Prefer tool calls over advice** — if you can do it, do it.
 - **Data tables**: read directly (\`list-data-tables\`, \`get-data-table-schema\`, \`query-data-table-rows\`); write via \`manage-data-tables-with-agent\`. When building workflows that need tables, describe table requirements in the builder task — the builder creates them.
 

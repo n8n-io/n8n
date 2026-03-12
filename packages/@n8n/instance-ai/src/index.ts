@@ -43,6 +43,7 @@ export type {
 	WorkflowNode,
 	ExecutionResult,
 	ExecutionDebugInfo,
+	NodeOutputResult,
 	ExecutionSummary,
 	CredentialSummary,
 	CredentialDetail,

@@ -17,6 +17,7 @@ import type {
 	WorkflowNode,
 	ExecutionResult,
 	ExecutionDebugInfo,
+	NodeOutputResult,
 	ExecutionSummary as InstanceAiExecutionSummary,
 	CredentialSummary,
 	CredentialDetail,
@@ -513,6 +514,21 @@ export class InstanceAiAdapterService {
 					executionId,
 					allowSendingParameterValues,
 				);
+			},
+
+			async getNodeOutput(executionId, nodeName, options) {
+				await assertExecutionAccess(executionId);
+
+				if (!allowSendingParameterValues) {
+					return {
+						nodeName,
+						items: [],
+						totalItems: 0,
+						returned: { from: 0, to: 0 },
+					} satisfies NodeOutputResult;
+				}
+
+				return await extractNodeOutput(executionRepository, executionId, nodeName, options);
 			},
 		};
 	}
@@ -1110,7 +1126,7 @@ export class InstanceAiAdapterService {
 }
 
 /** Maximum total size (in characters) for execution result data across all nodes. */
-const MAX_RESULT_CHARS = 50_000;
+const MAX_RESULT_CHARS = 20_000;
 
 /** Maximum characters for a single node's output preview when truncating. */
 const MAX_NODE_OUTPUT_CHARS = 1_000;
@@ -1209,7 +1225,7 @@ export async function extractExecutionResult(
  * replaces the rest with a truncation marker so the agent knows to request
  * specific data if needed.
  */
-const MAX_NODE_OUTPUT_BYTES = 10_000;
+const MAX_NODE_OUTPUT_BYTES = 5_000;
 
 export function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
 	const serialized = JSON.stringify(items);
@@ -1231,7 +1247,76 @@ export function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
 		truncated: true,
 		totalItems: items.length,
 		shownItems: truncated.length,
-		message: `Output truncated: showing ${truncated.length} of ${items.length} items. Use debug-execution for full details.`,
+		message: `Output truncated: showing ${truncated.length} of ${items.length} items. Use get-node-output to retrieve full data for this node.`,
+	};
+}
+
+/** Maximum characters for a single item returned by get-node-output. */
+const MAX_ITEM_CHARS = 50_000;
+
+/**
+ * Extract paginated raw output for a specific node from an execution.
+ * Each item is capped at MAX_ITEM_CHARS to prevent a single giant JSON blob from flooding context.
+ */
+export async function extractNodeOutput(
+	executionRepository: ExecutionRepository,
+	executionId: string,
+	nodeName: string,
+	options?: { startIndex?: number; maxItems?: number },
+): Promise<NodeOutputResult> {
+	const execution = await executionRepository.findSingleExecution(executionId, {
+		includeData: true,
+		unflattenData: true,
+	});
+
+	if (!execution) {
+		throw new Error(`Execution ${executionId} not found`);
+	}
+
+	const runData = execution.data?.resultData?.runData;
+	if (!runData?.[nodeName]) {
+		throw new Error(`Node "${nodeName}" not found in execution ${executionId}`);
+	}
+
+	const nodeRuns = runData[nodeName];
+	const lastRun = nodeRuns[nodeRuns.length - 1];
+
+	const startIndex = options?.startIndex ?? 0;
+	const maxItems = Math.min(options?.maxItems ?? 10, 50);
+
+	// Walk the nested output arrays without materializing all items into memory.
+	// Only collect the slice we need — avoids OOM on nodes with huge result sets.
+	let index = 0;
+	let totalItems = 0;
+	const collected: unknown[] = [];
+	for (const output of lastRun?.data?.main ?? []) {
+		for (const item of output ?? []) {
+			totalItems++;
+			if (index >= startIndex && collected.length < maxItems) {
+				collected.push(item.json);
+			}
+			index++;
+		}
+	}
+
+	// Per-item char cap
+	const capped = collected.map((item) => {
+		const str = JSON.stringify(item);
+		if (str.length > MAX_ITEM_CHARS) {
+			return {
+				_truncatedItem: true,
+				preview: str.slice(0, MAX_ITEM_CHARS),
+				originalLength: str.length,
+			};
+		}
+		return item;
+	});
+
+	return {
+		nodeName,
+		items: capped,
+		totalItems,
+		returned: { from: startIndex, to: startIndex + capped.length },
 	};
 }
 

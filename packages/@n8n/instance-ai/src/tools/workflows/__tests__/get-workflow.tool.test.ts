@@ -25,6 +25,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			getResult: jest.fn(),
 			stop: jest.fn(),
 			getDebugInfo: jest.fn(),
+			getNodeOutput: jest.fn(),
 		},
 		credentialService: {
 			list: jest.fn(),

@@ -51,6 +51,13 @@ export interface ExecutionResult {
 	finishedAt?: string;
 }
 
+export interface NodeOutputResult {
+	nodeName: string;
+	items: unknown[];
+	totalItems: number;
+	returned: { from: number; to: number };
+}
+
 export interface ExecutionDebugInfo extends ExecutionResult {
 	failedNode?: {
 		name: string;
@@ -154,6 +161,11 @@ export interface InstanceAiExecutionService {
 	getResult(executionId: string): Promise<ExecutionResult>;
 	stop(executionId: string): Promise<{ success: boolean; message: string }>;
 	getDebugInfo(executionId: string): Promise<ExecutionDebugInfo>;
+	getNodeOutput(
+		executionId: string,
+		nodeName: string,
+		options?: { startIndex?: number; maxItems?: number },
+	): Promise<NodeOutputResult>;
 }
 
 export interface InstanceAiCredentialService {

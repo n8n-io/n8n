@@ -293,7 +293,7 @@ export class Logger implements LoggerType {
 			logging: {
 				level,
 				format,
-				outputs: ['console'] as ('console' | 'file')[],
+				outputs: ['console'] as Array<'console' | 'file'>,
 				scopes: [] as LogScope[],
 				file: { fileSizeMax: 16, fileCountMax: 100, location: 'logs/n8n.log' },
 				cron: { activeInterval: 0 },

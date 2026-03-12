@@ -16,6 +16,7 @@ function createMockContext(): InstanceAiContext {
 			getResult: jest.fn(),
 			stop: jest.fn(),
 			getDebugInfo: jest.fn(),
+			getNodeOutput: jest.fn(),
 		},
 		credentialService: {} as InstanceAiContext['credentialService'],
 		nodeService: {} as InstanceAiContext['nodeService'],

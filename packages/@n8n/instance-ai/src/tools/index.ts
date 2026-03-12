@@ -18,6 +18,7 @@ import { createRenameDataTableColumnTool } from './data-tables/rename-data-table
 import { createUpdateDataTableRowsTool } from './data-tables/update-data-table-rows.tool';
 import { createDebugExecutionTool } from './executions/debug-execution.tool';
 import { createGetExecutionTool } from './executions/get-execution.tool';
+import { createGetNodeOutputTool } from './executions/get-node-output.tool';
 import { createListExecutionsTool } from './executions/list-executions.tool';
 import { createRunWorkflowTool } from './executions/run-workflow.tool';
 import { createStopExecutionTool } from './executions/stop-execution.tool';
@@ -69,6 +70,7 @@ export function createAllTools(context: InstanceAiContext) {
 		'run-workflow': createRunWorkflowTool(context),
 		'get-execution': createGetExecutionTool(context),
 		'debug-execution': createDebugExecutionTool(context),
+		'get-node-output': createGetNodeOutputTool(context),
 		'stop-execution': createStopExecutionTool(context),
 		'list-credentials': createListCredentialsTool(context),
 		'get-credential': createGetCredentialTool(context),

@@ -4,6 +4,7 @@ import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
 import {
 	extractExecutionResult,
 	extractExecutionDebugInfo,
+	extractNodeOutput,
 	truncateNodeOutput,
 	truncateResultData,
 } from '../instance-ai.adapter.service';
@@ -226,7 +227,7 @@ describe('truncateNodeOutput', () => {
 	});
 
 	it('truncates large data and returns a summary object', () => {
-		// Each item ~110 chars of JSON → 100 items ≈ 11,000 chars (over 10,000 limit)
+		// Each item ~110 chars of JSON → 100 items ≈ 11,000 chars (over 5,000 limit)
 		const items = Array.from({ length: 100 }, (_, i) => ({
 			id: i,
 			payload: 'x'.repeat(80),
@@ -238,7 +239,7 @@ describe('truncateNodeOutput', () => {
 			expect.objectContaining({
 				truncated: true,
 				totalItems: 100,
-				message: expect.stringContaining('truncated'),
+				message: expect.stringContaining('get-node-output'),
 			}),
 		);
 		// shownItems should be less than totalItems
@@ -303,7 +304,7 @@ describe('truncateResultData', () => {
 	});
 
 	it('truncates large result data and adds per-node summaries', () => {
-		// Create result data that exceeds 50,000 chars total
+		// Create result data that exceeds 20,000 chars total
 		const largeItems = Array.from({ length: 200 }, (_, i) => ({
 			id: i,
 			data: 'x'.repeat(300),
@@ -522,5 +523,142 @@ describe('search cache key via JSON.stringify', () => {
 		const key2 = JSON.stringify(['search', { excludeDomains: [] }]);
 
 		expect(key1).not.toBe(key2);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// extractNodeOutput
+// ---------------------------------------------------------------------------
+
+describe('extractNodeOutput', () => {
+	it('returns paginated items from a node', async () => {
+		const items = Array.from({ length: 25 }, (_, i) => ({ json: { id: i } }));
+		const repo = createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { 'Set Node': [makeTaskData(items.map((item) => item.json))] },
+			}),
+		);
+
+		const result = await extractNodeOutput(
+			repo as unknown as ExecutionRepository,
+			'exec-1',
+			'Set Node',
+		);
+
+		expect(result.nodeName).toBe('Set Node');
+		expect(result.totalItems).toBe(25);
+		expect(result.items).toHaveLength(10); // default maxItems
+		expect(result.returned).toEqual({ from: 0, to: 10 });
+	});
+
+	it('supports startIndex pagination', async () => {
+		const items = Array.from({ length: 25 }, (_, i) => ({ json: { id: i } }));
+		const repo = createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { 'Set Node': [makeTaskData(items.map((item) => item.json))] },
+			}),
+		);
+
+		const result = await extractNodeOutput(
+			repo as unknown as ExecutionRepository,
+			'exec-1',
+			'Set Node',
+			{ startIndex: 10, maxItems: 5 },
+		);
+
+		expect(result.totalItems).toBe(25);
+		expect(result.items).toHaveLength(5);
+		expect(result.returned).toEqual({ from: 10, to: 15 });
+		expect(result.items[0]).toEqual({ id: 10 });
+	});
+
+	it('caps maxItems at 50', async () => {
+		const items = Array.from({ length: 100 }, (_, i) => ({ json: { id: i } }));
+		const repo = createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { 'Set Node': [makeTaskData(items.map((item) => item.json))] },
+			}),
+		);
+
+		const result = await extractNodeOutput(
+			repo as unknown as ExecutionRepository,
+			'exec-1',
+			'Set Node',
+			{ maxItems: 100 },
+		);
+
+		expect(result.items).toHaveLength(50);
+		expect(result.returned).toEqual({ from: 0, to: 50 });
+	});
+
+	it('truncates individual items exceeding 50K chars', async () => {
+		const bigItem = { data: 'x'.repeat(60_000) };
+		const repo = createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { 'Big Node': [makeTaskData([bigItem])] },
+			}),
+		);
+
+		const result = await extractNodeOutput(
+			repo as unknown as ExecutionRepository,
+			'exec-1',
+			'Big Node',
+		);
+
+		expect(result.totalItems).toBe(1);
+		expect(result.items).toHaveLength(1);
+		const item = result.items[0] as {
+			_truncatedItem: boolean;
+			preview: string;
+			originalLength: number;
+		};
+		expect(item._truncatedItem).toBe(true);
+		expect(item.preview.length).toBe(50_000);
+		expect(item.originalLength).toBeGreaterThan(50_000);
+	});
+
+	it('throws when execution is not found', async () => {
+		const repo = createMockExecutionRepository(undefined);
+
+		await expect(
+			extractNodeOutput(repo as unknown as ExecutionRepository, 'missing', 'Node'),
+		).rejects.toThrow('Execution missing not found');
+	});
+
+	it('throws when node is not in execution data', async () => {
+		const repo = createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { 'Other Node': [makeTaskData([{ ok: true }])] },
+			}),
+		);
+
+		await expect(
+			extractNodeOutput(repo as unknown as ExecutionRepository, 'exec-1', 'Missing Node'),
+		).rejects.toThrow('Node "Missing Node" not found in execution exec-1');
+	});
+
+	it('returns empty slice when startIndex is beyond total items', async () => {
+		const repo = createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { Node: [makeTaskData([{ id: 1 }])] },
+			}),
+		);
+
+		const result = await extractNodeOutput(
+			repo as unknown as ExecutionRepository,
+			'exec-1',
+			'Node',
+			{ startIndex: 100 },
+		);
+
+		expect(result.totalItems).toBe(1);
+		expect(result.items).toHaveLength(0);
+		expect(result.returned).toEqual({ from: 100, to: 100 });
 	});
 });
