@@ -1,16 +1,18 @@
 {
-	"permissions": {
-		"allow": [
-			"Bash(git log:*)",
-			"Bash(git show:*)",
-			"Bash(grep:*)",
-			"Bash(ls:*)",
-			"Bash(pnpm build)",
-			"Bash(pnpm lint:*)",
-			"Bash(pnpm test:*)",
-			"Bash(pnpm typecheck:*)",
-			"Bash(popd)",
-			"Bash(pushd:*)"
-		]
-	}
+  "permissions": {
+    "allow": [
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(pnpm build)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(popd)",
+      "Bash(pushd:*)",
+      "Read(//tmp/**)",
+      "Bash(__NEW_LINE_cf18cab4c861a0f9__ python3 -c \":*)"
+    ]
+  }
 }

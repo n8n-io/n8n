@@ -42,7 +42,7 @@ const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const uiStore = useUIStore();
-const { fetchDependencies } = useDependencies();
+const { fetchDependencyCounts } = useDependencies();
 
 const loading = ref(true);
 
@@ -118,7 +118,7 @@ const fetchDataTables = async () => {
 		loading.value = false;
 
 		const dataTableIds = dataTableStore.dataTables.map((dt) => dt.id);
-		void fetchDependencies(dataTableIds, 'dataTableId');
+		void fetchDependencyCounts(dataTableIds, 'dataTableId');
 	}
 };
 

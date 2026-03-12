@@ -9,10 +9,7 @@ import type {
 	IExecutionsCurrentSummaryExtended,
 } from '@/features/execution/executions/executions.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type {
-	WorkflowDependenciesBatchResponse,
-	WorkflowDependencyCountsBatchResponse,
-} from '@n8n/api-types';
+import type { DependenciesBatchResponse, DependencyCountsBatchResponse } from '@n8n/api-types';
 import type {
 	ExecutionFilters,
 	ExecutionOptions,
@@ -56,12 +53,16 @@ export async function getWorkflows(
 	});
 }
 
-export async function getWorkflowDependencyCounts(context: IRestApiContext, workflowIds: string[]) {
-	return await makeRestApiRequest<WorkflowDependencyCountsBatchResponse>(
+export async function getResourceDependencyCounts(
+	context: IRestApiContext,
+	resourceIds: string[],
+	resourceType: 'workflow' | 'credentialId' | 'dataTableId',
+) {
+	return await makeRestApiRequest<DependencyCountsBatchResponse>(
 		context,
 		'POST',
 		'/workflows/dependency-counts',
-		{ workflowIds },
+		{ resourceIds, resourceType },
 	);
 }
 
@@ -70,7 +71,7 @@ export async function getResourceDependencies(
 	resourceIds: string[],
 	resourceType: 'workflow' | 'credentialId' | 'dataTableId',
 ) {
-	return await makeRestApiRequest<WorkflowDependenciesBatchResponse>(
+	return await makeRestApiRequest<DependenciesBatchResponse>(
 		context,
 		'POST',
 		'/workflows/resource-dependencies',

@@ -44,7 +44,7 @@ const documentTitle = useDocumentTitle();
 
 const dataTableStore = useDataTableStore();
 const sourceControlStore = useSourceControlStore();
-const { fetchDependencies, hasDependencies } = useDependencies();
+const { fetchDependencyCounts, hasDependencies } = useDependencies();
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
@@ -80,7 +80,7 @@ const initialize = async () => {
 		await showErrorAndGoBackToList(error);
 	} finally {
 		loading.value = false;
-		void fetchDependencies([props.id], 'dataTableId');
+		void fetchDependencyCounts([props.id], 'dataTableId');
 	}
 };
 

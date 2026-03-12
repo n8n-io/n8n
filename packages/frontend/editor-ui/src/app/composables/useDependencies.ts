@@ -14,14 +14,18 @@ const countsMap = ref<Record<string, DependencyTypeCounts>>({});
 export function useDependencies() {
 	const rootStore = useRootStore();
 
-	/** Fetch lightweight counts for workflow cards (no name resolution). */
-	async function fetchDependencyCounts(workflowIds: string[]): Promise<void> {
-		if (workflowIds.length === 0) return;
+	/** Fetch lightweight dependency counts for resource cards (no name resolution). */
+	async function fetchDependencyCounts(
+		resourceIds: string[],
+		resourceType: ResourceType,
+	): Promise<void> {
+		if (resourceIds.length === 0) return;
 
 		try {
-			const result = await workflowsApi.getWorkflowDependencyCounts(
+			const result = await workflowsApi.getResourceDependencyCounts(
 				rootStore.restApiContext,
-				workflowIds,
+				resourceIds,
+				resourceType,
 			);
 			for (const [id, counts] of Object.entries(result)) {
 				countsMap.value[id] = counts;
@@ -56,12 +60,12 @@ export function useDependencies() {
 		return dependenciesMap.value[resourceId];
 	}
 
-	function getDependencyCounts(workflowId: string): DependencyTypeCounts | undefined {
-		return countsMap.value[workflowId];
+	function getDependencyCounts(resourceId: string): DependencyTypeCounts | undefined {
+		return countsMap.value[resourceId];
 	}
 
-	function getTotalCount(workflowId: string): number {
-		const counts = countsMap.value[workflowId];
+	function getTotalCount(resourceId: string): number {
+		const counts = countsMap.value[resourceId];
 		if (!counts) return 0;
 		return Object.values(counts).reduce((sum, n) => sum + n, 0);
 	}

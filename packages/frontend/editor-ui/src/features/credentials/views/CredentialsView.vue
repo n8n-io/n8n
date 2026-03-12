@@ -45,7 +45,7 @@ const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const insightsStore = useInsightsStore();
-const { fetchDependencies } = useDependencies();
+const { fetchDependencyCounts } = useDependencies();
 
 const documentTitle = useDocumentTitle();
 const route = useRoute();
@@ -234,7 +234,7 @@ const initialize = async () => {
 
 	// Fire-and-forget: fetch which workflows use these credentials
 	const credentialIds = credentialsStore.allCredentials.map((c) => c.id);
-	void fetchDependencies(credentialIds, 'credentialId');
+	void fetchDependencyCounts(credentialIds, 'credentialId');
 };
 
 credentialsStore.$onAction(({ name, after }) => {

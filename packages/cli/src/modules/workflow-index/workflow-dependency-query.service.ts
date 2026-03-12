@@ -1,7 +1,4 @@
-import type {
-	WorkflowDependenciesBatchResponse,
-	WorkflowDependencyCountsBatchResponse,
-} from '@n8n/api-types';
+import type { DependenciesBatchResponse, DependencyCountsBatchResponse } from '@n8n/api-types';
 import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
@@ -33,27 +30,32 @@ export class WorkflowDependencyQueryService {
 	) {}
 
 	/**
-	 * Lightweight counts-only query for workflow cards.
-	 * Returns { [workflowId]: { credentialId: N, dataTableId: N, ... } }
+	 * Lightweight counts-only query for resource cards.
+	 * - For workflows: returns { credentialId: N, dataTableId: N, workflowCall: N, workflowParent: N }
+	 * - For credentials / data tables: returns { workflowParent: N }
 	 */
-	async getDependencyCounts(workflowIds: string[]): Promise<WorkflowDependencyCountsBatchResponse> {
-		const rows = await this.dependencyRepository.getDependencyCountsForWorkflows(
-			workflowIds,
-			DEPENDENCY_TYPES_TO_SHOW,
-		);
+	async getDependencyCounts(
+		resourceIds: string[],
+		resourceType: 'workflow' | 'credentialId' | 'dataTableId',
+	): Promise<DependencyCountsBatchResponse> {
+		const rows =
+			resourceType === 'workflow'
+				? await this.dependencyRepository.getDependencyCountsForWorkflows(
+						resourceIds,
+						DEPENDENCY_TYPES_TO_SHOW,
+					)
+				: await this.dependencyRepository.getReverseDependencyCounts(resourceIds, resourceType);
 
 		const result: Record<string, Record<string, number>> = {};
-		for (const { workflowId, dependencyType, count } of rows) {
-			const entry = result[workflowId] ?? {};
+		for (const { resourceId, dependencyType, count } of rows) {
+			const entry = result[resourceId] ?? {};
 			entry[dependencyType] = count;
-			result[workflowId] = entry;
+			result[resourceId] = entry;
 		}
 		return result;
 	}
 
-	private async getResolvedDependencies(
-		workflowIds: string[],
-	): Promise<WorkflowDependenciesBatchResponse> {
+	private async getResolvedDependencies(workflowIds: string[]): Promise<DependenciesBatchResponse> {
 		const [rawDeps, reverseDeps] = await Promise.all([
 			this.dependencyRepository.getDependenciesForWorkflows(workflowIds, DEPENDENCY_TYPES_TO_SHOW),
 			this.dependencyRepository.getReverseDependencies(workflowIds, 'workflowCall'),
@@ -145,7 +147,7 @@ export class WorkflowDependencyQueryService {
 		for (const dt of dataTables)
 			dataTableMap.set(dt.id, { name: dt.name, projectId: dt.projectId });
 
-		const result: WorkflowDependenciesBatchResponse = {};
+		const result: DependenciesBatchResponse = {};
 
 		// Forward dependencies (what each workflow depends on)
 		for (const dep of rawDeps) {
@@ -210,7 +212,7 @@ export class WorkflowDependencyQueryService {
 	async getResourceDependencies(
 		resourceIds: string[],
 		resourceType: 'workflow' | 'credentialId' | 'dataTableId',
-	): Promise<WorkflowDependenciesBatchResponse> {
+	): Promise<DependenciesBatchResponse> {
 		if (resourceType === 'workflow') {
 			return await this.getResolvedDependencies(resourceIds);
 		}
@@ -223,7 +225,7 @@ export class WorkflowDependencyQueryService {
 	private async getReverseDependenciesAsResolved(
 		resourceIds: string[],
 		resourceType: 'credentialId' | 'dataTableId',
-	): Promise<WorkflowDependenciesBatchResponse> {
+	): Promise<DependenciesBatchResponse> {
 		const reverseDeps = await this.dependencyRepository.getReverseDependencies(
 			resourceIds,
 			resourceType,
@@ -260,7 +262,7 @@ export class WorkflowDependencyQueryService {
 		const wfProjectMap = new Map<string, string>();
 		for (const sw of wfShares) wfProjectMap.set(sw.workflowId, sw.projectId);
 
-		const result: WorkflowDependenciesBatchResponse = {};
+		const result: DependenciesBatchResponse = {};
 		for (const dep of reverseDeps) {
 			const resourceId = dep.dependencyKey;
 			if (!result[resourceId]) result[resourceId] = [];

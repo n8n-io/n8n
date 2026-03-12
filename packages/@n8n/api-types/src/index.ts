@@ -115,15 +115,15 @@ export {
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
 } from './schemas/workflow-version.schema';
 export type {
-	WorkflowDependencyType,
+	DependencyType,
 	ResolvedDependency,
-	WorkflowDependenciesBatchResponse,
-} from './schemas/workflow-dependency.schema';
+	DependenciesBatchResponse,
+} from './schemas/dependency.schema';
 
 export type {
 	DependencyTypeCounts,
-	WorkflowDependencyCountsBatchResponse,
-} from './schemas/workflow-dependency-counts.schema';
+	DependencyCountsBatchResponse,
+} from './schemas/dependency-counts.schema';
 
 export type {
 	ProjectType,
