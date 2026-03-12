@@ -93,9 +93,10 @@ export function useChatSession(options: UseChatSessionOptions) {
 	 * Throws on failure so callers can handle errors differently.
 	 */
 	async function loadSession(targetSessionId: ChatSessionId) {
-		if (chatStore.getConversation(targetSessionId)) return;
+		if (!chatStore.getConversation(targetSessionId)) {
+			await chatStore.fetchMessages(targetSessionId);
+		}
 
-		await chatStore.fetchMessages(targetSessionId);
 		const result = await chatStore.reconnectToStream(targetSessionId, 0);
 		if (result?.hasActiveStream && result.currentMessageId) {
 			chatPushHandler.initializeStreamState(
