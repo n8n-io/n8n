@@ -1,8 +1,12 @@
 import { tool, type Tool as AiSdkTool } from 'ai';
+import { z } from 'zod';
 
-import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../types';
+import type { BuiltProviderTool, BuiltTool, InterruptibleToolContext, ToolContext } from '../types';
 import type { SubAgentUsage } from '../types/agent';
 
+type AiSdkProviderTool = AiSdkTool & {
+	type: 'provider';
+};
 /**
  * Branded symbol used to tag the return value of `ctx.suspend(payload)`.
  * The agent runtime checks for this brand on the tool's return value
@@ -51,6 +55,31 @@ export function isAgentToolResult(value: unknown): value is AgentToolResult {
 export function createAgentToolResult(output: unknown, subAgentUsage: SubAgentUsage[]): never {
 	const base = typeof output === 'object' && output !== null ? output : {};
 	return { ...base, [AGENT_TOOL_BRAND]: true, output, subAgentUsage } as never;
+}
+
+/**
+ * Convert an array of BuiltProviderTools into a Record of AI SDK provider-defined tool objects.
+ * Provider tools are executed on the provider's infrastructure (e.g. Anthropic web search,
+ * OpenAI code interpreter) — they are never executed locally by the agent loop.
+ *
+ * The cast to AiSdkTool is required because the AI SDK's ToolSet type demands `inputSchema`
+ * on every entry, but provider-defined tools have no input schema (the provider handles it).
+ * At runtime the AI SDK correctly recognises the `type: 'provider'` discriminant.
+ */
+export function toAiSdkProviderTools(tools?: BuiltProviderTool[]): Record<string, AiSdkTool> {
+	if (!tools || tools.length === 0) return {};
+
+	const result: Record<string, AiSdkTool> = {};
+	for (const t of tools) {
+		const providerTool: AiSdkProviderTool = {
+			type: 'provider',
+			id: t.name,
+			args: t.args,
+			inputSchema: t.inputSchema ?? z.any(),
+		};
+		result[t.name] = providerTool;
+	}
+	return result;
 }
 
 /**

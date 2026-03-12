@@ -99,6 +99,8 @@ export type ContentToolCall = ContentMetadata & {
 	 * parameters schema of the tool.
 	 */
 	input: JSONValue;
+
+	providerExecuted?: boolean;
 };
 
 export type ContentToolResult = ContentMetadata & {

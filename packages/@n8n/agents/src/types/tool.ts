@@ -29,8 +29,16 @@ export interface BuiltTool {
 	readonly outputSchema?: z.ZodType;
 }
 
-/** A provider-defined tool (e.g. Anthropic web search, OpenAI code interpreter). */
+/**
+ * A provider-defined tool (e.g. Anthropic web search, OpenAI code interpreter).
+ *
+ * `name` follows the AI SDK format `<provider-name>.<tool-name>`,
+ * e.g. `'anthropic.web_search_20250305'` or `'openai.image_generation'`.
+ * It is used as both the unique identifier and the key in the tools record
+ * passed to `generateText` / `streamText`.
+ */
 export interface BuiltProviderTool {
-	readonly name: string;
+	readonly name: `${string}.${string}`;
 	readonly args: Record<string, unknown>;
+	inputSchema?: z.ZodType;
 }

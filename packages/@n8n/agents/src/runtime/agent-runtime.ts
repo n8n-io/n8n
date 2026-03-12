@@ -25,11 +25,12 @@ import type {
 	ThinkingConfig,
 	TokenUsage,
 	XaiThinkingConfig,
+	SubAgentUsage,
 } from '../types';
 import { AgentEventBus } from './event-bus';
 import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
-import { fromAiMessages } from './messages';
+import { fromAiFinishReason, fromAiMessages } from './messages';
 import { createModel } from './model-factory';
 import { RunStateManager, generateRunId } from './run-state';
 import { convertChunk, toTokenUsage } from './stream';
@@ -39,8 +40,9 @@ import {
 	buildToolMap,
 	executeTool,
 	toAiSdkTools,
+	toAiSdkProviderTools,
 } from './tool-adapter';
-import type { SubAgentUsage, ToolResultEntry } from '../types/agent';
+import type { ToolResultEntry } from '../types/agent';
 import { AgentEvent } from '../types/event';
 
 export interface AgentRuntimeConfig {
@@ -594,7 +596,8 @@ export class AgentRuntime {
 					: {}),
 			});
 
-			const finishReason = result.finishReason as FinishReason;
+			const aiFinishReason = result.finishReason;
+			const finishReason = fromAiFinishReason(aiFinishReason);
 			lastFinishReason = finishReason;
 
 			totalUsage = this.accumulateUsage(
@@ -606,7 +609,7 @@ export class AgentRuntime {
 			const newMessages = fromAiMessages(responseMessages);
 			list.addResponse(newMessages);
 
-			if (finishReason !== 'tool-calls') {
+			if (aiFinishReason !== 'tool-calls') {
 				this.emitTurnEnd(newMessages, this.extractToolResults(newMessages));
 				break;
 			}
@@ -614,8 +617,12 @@ export class AgentRuntime {
 			// Process tool calls sequentially. Interruptible tools (with suspend/resume)
 			// return a branded SuspendedToolResult from their handler.
 			// When that happens, execution halts and the run is suspended.
+			// Provider-executed tool calls are skipped — they run on the provider's
+			// infrastructure and cannot be interrupted (no HITL).
 			for (let tcIdx = 0; tcIdx < result.toolCalls.length; tcIdx++) {
 				const tc = result.toolCalls[tcIdx];
+				if (tc.providerExecuted) continue;
+
 				const toolInput = tc.input as JSONValue;
 
 				if (this.eventBus.isAborted) {
@@ -826,11 +833,11 @@ export class AgentRuntime {
 
 			if (await handleAbort()) return;
 
-			const finishReason = await result.finishReason;
+			const aiFinishReason = await result.finishReason;
 			const usage = await result.usage;
 			const response = await result.response;
 
-			lastFinishReason = finishReason;
+			lastFinishReason = fromAiFinishReason(aiFinishReason);
 
 			totalUsage = this.accumulateUsage(
 				totalUsage,
@@ -841,7 +848,7 @@ export class AgentRuntime {
 			const newMessages = fromAiMessages(responseMessages);
 			list.addResponse(newMessages);
 
-			if (finishReason !== 'tool-calls') {
+			if (aiFinishReason !== 'tool-calls') {
 				this.emitTurnEnd(newMessages, this.extractToolResults(newMessages));
 				break;
 			}
@@ -850,6 +857,10 @@ export class AgentRuntime {
 
 			for (let tcIdx = 0; tcIdx < toolCalls.length; tcIdx++) {
 				const tc = toolCalls[tcIdx];
+				// Provider-executed tool calls are skipped — they run on the provider's
+				// infrastructure and cannot be interrupted (no HITL).
+				if (tc.providerExecuted) continue;
+
 				const toolInput = tc.input as JSONValue;
 
 				if (await handleAbort()) return;
@@ -1110,12 +1121,14 @@ export class AgentRuntime {
 	/** Build common LLM call dependencies shared by both the generate and stream loops. */
 	private buildLoopContext() {
 		const aiTools = toAiSdkTools(this.config.tools);
+		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
+		const allTools = { ...aiTools, ...aiProviderTools };
 		return {
 			model: createModel(this.config.model),
 			toolMap: buildToolMap(this.config.tools),
-			aiTools,
+			aiTools: allTools,
 			providerOptions: this.buildProviderOptions(),
-			hasTools: Object.keys(aiTools).length > 0,
+			hasTools: Object.keys(allTools).length > 0,
 		};
 	}
 
@@ -1123,9 +1136,11 @@ export class AgentRuntime {
 	 * Build a pending-tool-calls map from the remaining entries in `toolCalls`
 	 * (starting at `fromIndex`), persist the suspended run, and update the
 	 * current state snapshot. Returns the new runId and pendingToolCalls map.
+	 * Provider-executed tool calls are excluded — they run on the provider's
+	 * infrastructure and cannot be resumed.
 	 */
 	private async suspendRunFromToolCalls(
-		toolCalls: Array<{ toolCallId: string; input: unknown }>,
+		toolCalls: Array<{ toolCallId: string; input: unknown; providerExecuted?: boolean }>,
 		fromIndex: number,
 		options: RunOptions | undefined,
 		list: AgentMessageList,
@@ -1135,6 +1150,7 @@ export class AgentRuntime {
 		const pendingToolCalls: Record<string, PendingToolCall> = {};
 		for (let j = fromIndex; j < toolCalls.length; j++) {
 			const tc = toolCalls[j];
+			if (tc.providerExecuted) continue;
 			pendingToolCalls[tc.toolCallId] = {
 				toolCallId: tc.toolCallId,
 				input: tc.input as JSONValue,

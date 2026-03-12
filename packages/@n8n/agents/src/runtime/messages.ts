@@ -1,4 +1,14 @@
-import type { FilePart, ModelMessage, TextPart, ToolCallPart, ToolResultPart } from 'ai';
+import type {
+	FilePart,
+	ModelMessage,
+	TextPart,
+	ToolCallPart,
+	ToolResultPart,
+	ImagePart,
+	ToolApprovalRequest,
+	ToolApprovalResponse,
+	FinishReason as AiFinishReason,
+} from 'ai';
 
 import type { JSONValue } from '../json';
 import type {
@@ -13,11 +23,20 @@ import type {
 	MessageContent,
 } from '../message';
 import { toDbMessage } from '../message';
+import type { FinishReason } from '../types';
 
 /** Reasoning content part — mirrors @ai-sdk/provider-utils ReasoningPart (not re-exported by 'ai'). */
 type ReasoningPart = { type: 'reasoning'; text: string };
 
-type AiContentPart = TextPart | FilePart | ReasoningPart | ToolCallPart | ToolResultPart;
+type AiContentPart =
+	| TextPart
+	| FilePart
+	| ImagePart
+	| ReasoningPart
+	| ToolCallPart
+	| ToolResultPart
+	| ToolApprovalRequest
+	| ToolApprovalResponse;
 
 // --- Type guards for MessageContent blocks ---
 
@@ -74,6 +93,7 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 			toolCallId: block.toolCallId ?? '',
 			toolName: block.toolName,
 			input: parseJsonValue(block.input),
+			providerExecuted: block.providerExecuted,
 		};
 	}
 	if (isToolResult(block)) {
@@ -100,6 +120,11 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 				part.data instanceof URL ? part.data.toString() : (part.data as ContentFile['data']);
 			return { type: 'file', data, mediaType: part.mediaType };
 		}
+		case 'image': {
+			const data =
+				part.image instanceof URL ? part.image.toString() : (part.image as ContentFile['data']);
+			return { type: 'file', data, mediaType: part.mediaType };
+		}
 		case 'reasoning':
 			return { type: 'reasoning', text: part.text };
 		case 'tool-call':
@@ -108,6 +133,7 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 				toolCallId: part.toolCallId,
 				toolName: part.toolName,
 				input: part.input as JSONValue,
+				providerExecuted: part.providerExecuted,
 			};
 		case 'tool-result': {
 			const { output } = part;
@@ -130,6 +156,9 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 				isError,
 			};
 		}
+		// Ignore these types, because HITL is handled by our runtime
+		case 'tool-approval-request':
+		case 'tool-approval-response':
 		default:
 			return undefined;
 	}
@@ -157,8 +186,12 @@ export function toAiMessage(msg: Message): ModelMessage {
 			const parts = msg.content
 				.map(toAiContent)
 				.filter(
-					(p): p is TextPart | ReasoningPart | ToolCallPart =>
-						p?.type === 'text' || p?.type === 'reasoning' || p?.type === 'tool-call',
+					(p): p is TextPart | ReasoningPart | ToolCallPart | ToolResultPart | FilePart =>
+						p?.type === 'text' ||
+						p?.type === 'reasoning' ||
+						p?.type === 'tool-call' ||
+						p?.type === 'file' ||
+						p?.type === 'tool-result',
 				);
 			return { role: 'assistant', content: parts };
 		}
@@ -179,56 +212,33 @@ export function toAiMessages(messages: Message[]): ModelMessage[] {
 
 /** Convert a single AI SDK ModelMessage to an n8n AgentDbMessage (with a generated id). */
 export function fromAiMessage(msg: ModelMessage): AgentDbMessage {
-	let message: AgentMessage;
-	switch (msg.role) {
-		case 'system':
-			message = { role: 'system', content: [{ type: 'text', text: msg.content }] };
-			break;
-
-		case 'user': {
-			const rawContent = msg.content;
-			if (typeof rawContent === 'string') {
-				message = { role: 'user', content: [{ type: 'text', text: rawContent }] };
-				break;
-			}
-			const content = rawContent
-				.filter((p): p is TextPart | FilePart => p.type === 'text' || p.type === 'file')
-				.map(fromAiContent)
-				.filter((p): p is MessageContent => p !== undefined);
-			message = { role: 'user', content };
-			break;
-		}
-
-		case 'assistant': {
-			const rawContent = msg.content;
-			if (typeof rawContent === 'string') {
-				message = { role: 'assistant', content: [{ type: 'text', text: rawContent }] };
-				break;
-			}
-			const content = rawContent
-				.filter(
-					(p): p is TextPart | ReasoningPart | ToolCallPart =>
-						p.type === 'text' || p.type === 'reasoning' || p.type === 'tool-call',
-				)
-				.map(fromAiContent)
-				.filter((p): p is MessageContent => p !== undefined);
-			message = { role: 'assistant', content };
-			break;
-		}
-
-		case 'tool': {
-			const content = msg.content
-				.filter((p): p is ToolResultPart => p.type === 'tool-result')
-				.map(fromAiContent)
-				.filter((p): p is MessageContent => p !== undefined);
-			message = { role: 'tool', content };
-			break;
-		}
-	}
+	const rawContent = msg.content;
+	const content: MessageContent[] =
+		typeof rawContent === 'string'
+			? [{ type: 'text', text: rawContent }]
+			: rawContent.map(fromAiContent).filter((p): p is MessageContent => p !== undefined);
+	const message: AgentMessage = { role: msg.role, content };
 	return toDbMessage(message);
 }
 
 /** Convert AI SDK ModelMessages to n8n AgentDbMessages (each with a generated id). */
 export function fromAiMessages(messages: ModelMessage[]): AgentDbMessage[] {
 	return messages.map(fromAiMessage);
+}
+
+export function fromAiFinishReason(reason: AiFinishReason): FinishReason {
+	switch (reason) {
+		case 'stop':
+			return 'stop';
+		case 'length':
+			return 'length';
+		case 'content-filter':
+			return 'content-filter';
+		case 'tool-calls':
+			return 'tool-calls';
+		case 'error':
+			return 'error';
+		case 'other':
+			return 'other';
+	}
 }

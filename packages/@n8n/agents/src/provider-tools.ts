@@ -53,14 +53,14 @@ export const providerTools = {
 		}
 
 		return {
-			name: 'web_search_20250305',
+			name: 'anthropic.web_search_20250305',
 			args,
 		};
 	},
 
 	openaiImageGeneration(): BuiltProviderTool {
 		return {
-			name: 'image_generation',
+			name: 'openai.image_generation',
 			args: {},
 		};
 	},
