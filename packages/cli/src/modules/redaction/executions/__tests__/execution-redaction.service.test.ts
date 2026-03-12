@@ -386,14 +386,31 @@ describe('ExecutionRedactionService', () => {
 			});
 		});
 
-		it('does not emit execution-data-revealed when user is forbidden', async () => {
+		it('emits execution-data-reveal-failure when user is forbidden', async () => {
 			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
 
 			await expect(
-				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+				service.processExecution(execution, {
+					user: mockUser,
+					redactExecutionData: false,
+					ipAddress: '1.2.3.4',
+					userAgent: 'TestAgent/1.0',
+				}),
 			).rejects.toThrow(ForbiddenError);
 
-			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('execution-data-reveal-failure', {
+				user: mockUser,
+				executionId: execution.id,
+				workflowId: execution.workflowId,
+				ipAddress: '1.2.3.4',
+				userAgent: 'TestAgent/1.0',
+				redactionPolicy: 'all',
+				rejectionReason: 'User lacks execution:reveal scope for this workflow',
+			});
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'execution-data-revealed',
+				expect.anything(),
+			);
 		});
 
 		it('does not call DB and does not throw when all executions pass policyAllowsReveal', async () => {
@@ -407,17 +424,32 @@ describe('ExecutionRedactionService', () => {
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
 		});
 
-		it('throws ForbiddenError if any execution in batch is not allowed', async () => {
+		it('throws ForbiddenError if any execution in batch is not allowed and emits reveal-failure event', async () => {
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
 
 			const executions = [
 				makeExecution({ policy: 'all', mode: 'trigger', workflowId: 'wf-1' }),
 				makeExecution({ policy: 'all', mode: 'trigger', workflowId: 'wf-2' }),
 			];
-			const options: ExecutionRedactionOptions = { user: mockUser, redactExecutionData: false };
+			const options: ExecutionRedactionOptions = {
+				user: mockUser,
+				redactExecutionData: false,
+				ipAddress: '1.2.3.4',
+				userAgent: 'TestAgent/1.0',
+			};
 
 			await expect(service.processExecutions(executions, options)).rejects.toThrow(ForbiddenError);
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledTimes(1);
+
+			expect(eventService.emit).toHaveBeenCalledWith('execution-data-reveal-failure', {
+				user: mockUser,
+				executionId: executions[1].id,
+				workflowId: 'wf-2',
+				ipAddress: '1.2.3.4',
+				userAgent: 'TestAgent/1.0',
+				redactionPolicy: 'all',
+				rejectionReason: 'User lacks execution:reveal scope for this workflow',
+			});
 		});
 	});
 

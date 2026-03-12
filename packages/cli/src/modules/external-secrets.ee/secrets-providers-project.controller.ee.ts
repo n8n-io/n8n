@@ -1,7 +1,6 @@
 import {
 	CreateSecretsProviderConnectionDto,
 	UpdateSecretsProviderConnectionDto,
-	type ReloadSecretProviderConnectionResponse,
 	type SecretProviderConnection,
 	type SecretProviderConnectionListItem,
 	type TestSecretProviderConnectionResponse,
@@ -193,20 +192,5 @@ export class SecretProvidersProjectController {
 		});
 
 		return await this.connectionsService.testConnection(providerKey, req.user.id);
-	}
-
-	/**
-	 * @deprecated There should not be an operation to reload all vault for a given project.
-	 * That operation would be too heavy and could cause performance issues.
-	 */
-	@Post('/:projectId/reload')
-	@ProjectScope('externalSecretsProvider:sync')
-	async reloadConnectionSecrets(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('projectId') projectId: string,
-	): Promise<ReloadSecretProviderConnectionResponse> {
-		this.logger.debug('Reloading all secrets for project', { projectId });
-		return await this.connectionsService.reloadProjectConnectionSecrets(projectId, req.user.id);
 	}
 }

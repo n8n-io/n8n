@@ -437,7 +437,7 @@ function removeOverride(clearField = false) {
 					{ [$style.overrideButtonIssueOffset]: parameterInputWrapper?.displaysIssues },
 				]"
 			>
-				<FromAiOverrideButton @click="applyOverride" />
+				<FromAiOverrideButton position="standalone" @click="applyOverride" />
 			</div>
 		</template>
 

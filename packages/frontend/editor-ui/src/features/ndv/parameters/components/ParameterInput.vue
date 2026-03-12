@@ -1384,6 +1384,7 @@ onUpdated(async () => {
 				'ignore-key-press-canvas',
 				{
 					[$style.noRightCornersInput]: canBeOverridden,
+					'no-right-corners': canBeOverridden,
 				},
 			]"
 			:style="parameterInputWrapperStyle"
@@ -2169,6 +2170,11 @@ onUpdated(async () => {
 	.code-node-editor {
 		height: 100%;
 	}
+}
+
+.no-right-corners .n8n-input__wrapper {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
 }
 </style>
 
