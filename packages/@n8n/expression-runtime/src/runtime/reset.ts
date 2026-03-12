@@ -90,6 +90,7 @@ export function resetDataProxies(): void {
 	(globalThis as any).$data = globalThis.__data.$data;
 	(globalThis as any).$env = globalThis.__data.$env;
 
+	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
 	Object.assign(globalThis.__data, extendedFunctions);
 
 	// -------------------------------------------------------------------------
