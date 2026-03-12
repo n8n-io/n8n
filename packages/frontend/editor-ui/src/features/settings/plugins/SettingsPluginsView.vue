@@ -6,6 +6,7 @@ import { N8nButton, N8nHeading, N8nInput, N8nInputLabel, N8nText } from '@n8n/de
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
+import type { Plugin } from '@n8n/rest-api-client/api/plugins-settings';
 import * as pluginsSettingsApi from '@n8n/rest-api-client/api/plugins-settings';
 
 const $style = useCssModule();
@@ -13,70 +14,100 @@ const rootStore = useRootStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 
-const mergeDevEnabled = ref(false);
-const apiKeyDraft = ref('');
-const isSaving = ref(false);
-const apiKeyError = ref('');
+const plugins = ref<Plugin[]>([]);
+const fieldDrafts = ref<Record<string, Record<string, string>>>({});
+const fieldErrors = ref<Record<string, Record<string, string>>>({});
+const savingPlugins = ref(new Set<string>());
 
 const { isLoading } = useAsyncState(async () => {
 	const settings = await pluginsSettingsApi.getPluginsSettings(rootStore.restApiContext);
-	mergeDevEnabled.value = settings.mergeDevEnabled;
-	apiKeyDraft.value = settings.mergeDevApiKey;
+	plugins.value = settings.plugins;
+	for (const plugin of settings.plugins) {
+		fieldDrafts.value[plugin.id] = Object.fromEntries(plugin.fields.map((f) => [f.key, f.value]));
+		fieldErrors.value[plugin.id] = {};
+	}
 	return settings;
 }, undefined);
 
-async function onMergeDevEnabledChange(value: string | number | boolean) {
-	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
-	if (!boolValue) {
+function hasAllFields(pluginId: string): boolean {
+	return (
+		plugins.value
+			.find((p) => p.id === pluginId)
+			?.fields.every((f) => fieldDrafts.value[pluginId]?.[f.key]?.trim()) ?? false
+	);
+}
+
+async function onPluginEnabledChange(plugin: Plugin, value: string | number | boolean) {
+	const enabled = typeof value === 'boolean' ? value : Boolean(value);
+
+	if (!enabled) {
 		try {
-			await pluginsSettingsApi.updatePluginsSettings(rootStore.restApiContext, {
-				mergeDevEnabled: false,
+			const updated = await pluginsSettingsApi.updatePluginSettings(rootStore.restApiContext, {
+				id: plugin.id,
+				enabled: false,
 			});
-			mergeDevEnabled.value = false;
+			plugins.value = updated.plugins;
 			showToast({
 				type: 'success',
 				message: '',
-				title: i18n.baseText('settings.plugins.mergeDev.success.disabled'),
+				title: i18n.baseText('settings.plugins.success.disabled', {
+					interpolate: { name: plugin.displayName },
+				}),
 			});
 		} catch (error) {
-			mergeDevEnabled.value = true;
-			showError(error, i18n.baseText('settings.plugins.mergeDev.title'));
+			plugins.value = plugins.value.map((p) => (p.id === plugin.id ? { ...p, enabled: true } : p));
+			showError(error, plugin.displayName);
 		}
-	} else if (apiKeyDraft.value.trim()) {
+	} else if (hasAllFields(plugin.id)) {
 		try {
-			await pluginsSettingsApi.updatePluginsSettings(rootStore.restApiContext, {
-				mergeDevEnabled: true,
+			const updated = await pluginsSettingsApi.updatePluginSettings(rootStore.restApiContext, {
+				id: plugin.id,
+				enabled: true,
 			});
-			mergeDevEnabled.value = true;
+			plugins.value = updated.plugins;
 		} catch (error) {
-			showError(error, i18n.baseText('settings.plugins.mergeDev.title'));
+			plugins.value = plugins.value.map((p) => (p.id === plugin.id ? { ...p, enabled: false } : p));
+			showError(error, plugin.displayName);
 		}
 	} else {
-		mergeDevEnabled.value = true;
+		plugins.value = plugins.value.map((p) => (p.id === plugin.id ? { ...p, enabled: true } : p));
 	}
 }
 
-async function saveMergeDevSettings() {
-	if (!apiKeyDraft.value.trim()) {
-		apiKeyError.value = i18n.baseText('settings.plugins.mergeDev.apiKey.required');
-		return;
+async function savePlugin(plugin: Plugin) {
+	const drafts = fieldDrafts.value[plugin.id] ?? {};
+	const errors: Record<string, string> = {};
+
+	for (const field of plugin.fields) {
+		if (!drafts[field.key]?.trim()) {
+			errors[field.key] = i18n.baseText('settings.plugins.field.required', {
+				interpolate: { label: field.label },
+			});
+		}
 	}
-	apiKeyError.value = '';
-	isSaving.value = true;
+
+	fieldErrors.value[plugin.id] = errors;
+	if (Object.keys(errors).length > 0) return;
+
+	savingPlugins.value = new Set([...savingPlugins.value, plugin.id]);
 	try {
-		await pluginsSettingsApi.updatePluginsSettings(rootStore.restApiContext, {
-			mergeDevEnabled: true,
-			mergeDevApiKey: apiKeyDraft.value,
+		const updated = await pluginsSettingsApi.updatePluginSettings(rootStore.restApiContext, {
+			id: plugin.id,
+			enabled: true,
+			fields: drafts,
 		});
+		plugins.value = updated.plugins;
 		showToast({
 			type: 'success',
 			message: '',
-			title: i18n.baseText('settings.plugins.mergeDev.success.saved'),
+			title: i18n.baseText('settings.plugins.success.saved', {
+				interpolate: { name: plugin.displayName },
+			}),
 		});
 	} catch (error) {
-		showError(error, i18n.baseText('settings.plugins.mergeDev.title'));
+		showError(error, plugin.displayName);
 	} finally {
-		isSaving.value = false;
+		savingPlugins.value = new Set([...savingPlugins.value].filter((id) => id !== plugin.id));
 	}
 }
 </script>
@@ -92,55 +123,59 @@ async function saveMergeDevSettings() {
 			</N8nText>
 		</div>
 
-		<div :class="$style.settingsSection">
+		<div v-for="plugin in plugins" :key="plugin.id" :class="$style.settingsSection">
 			<div :class="$style.settingsContainer">
 				<div :class="$style.settingsContainerInfo">
-					<N8nText :bold="true">
-						{{ i18n.baseText('settings.plugins.mergeDev.toggle') }}
-					</N8nText>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('settings.plugins.mergeDev.description') }}
-					</N8nText>
+					<N8nText :bold="true">{{ plugin.displayName }}</N8nText>
+					<N8nText size="small" color="text-light">{{ plugin.description }}</N8nText>
 				</div>
 				<div :class="$style.settingsContainerAction">
 					<ElSwitch
-						:model-value="mergeDevEnabled"
+						:model-value="plugin.enabled"
 						:loading="isLoading"
 						size="large"
-						data-test-id="enable-merge-dev-toggle"
-						@update:model-value="onMergeDevEnabledChange"
+						:data-test-id="`enable-${plugin.id}-toggle`"
+						@update:model-value="(val) => onPluginEnabledChange(plugin, val)"
 					/>
 				</div>
 			</div>
 
-			<div v-if="mergeDevEnabled" :class="$style.apiKeySection">
+			<div v-if="plugin.enabled" :class="$style.fieldsSection">
 				<N8nInputLabel
-					:label="i18n.baseText('settings.plugins.mergeDev.apiKey.label')"
+					v-for="field in plugin.fields"
+					:key="field.key"
+					:label="field.label"
 					color="text-dark"
 				>
-					<div :class="$style.apiKeyRow">
-						<N8nInput
-							v-model="apiKeyDraft"
-							type="password"
-							size="large"
-							:placeholder="i18n.baseText('settings.plugins.mergeDev.apiKey.placeholder')"
-							data-test-id="merge-dev-api-key-input"
-							@input="apiKeyError = ''"
-						/>
-						<N8nButton
-							type="primary"
-							size="large"
-							:loading="isSaving"
-							data-test-id="merge-dev-save-btn"
-							@click="saveMergeDevSettings"
-						>
-							{{ i18n.baseText('generic.save') }}
-						</N8nButton>
-					</div>
-					<N8nText v-if="apiKeyError" size="small" color="danger" class="mt-4xs">
-						{{ apiKeyError }}
+					<N8nInput
+						v-model="fieldDrafts[plugin.id][field.key]"
+						type="password"
+						size="large"
+						:placeholder="field.placeholder"
+						:data-test-id="`${plugin.id}-${field.key}-input`"
+						@input="fieldErrors[plugin.id][field.key] = ''"
+					/>
+					<N8nText
+						v-if="fieldErrors[plugin.id]?.[field.key]"
+						size="small"
+						color="danger"
+						class="mt-4xs"
+					>
+						{{ fieldErrors[plugin.id][field.key] }}
 					</N8nText>
 				</N8nInputLabel>
+
+				<div :class="$style.saveRow">
+					<N8nButton
+						type="primary"
+						size="large"
+						:loading="savingPlugins.has(plugin.id)"
+						:data-test-id="`${plugin.id}-save-btn`"
+						@click="savePlugin(plugin)"
+					>
+						{{ i18n.baseText('generic.save') }}
+					</N8nButton>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -186,14 +221,16 @@ async function saveMergeDevSettings() {
 	flex-shrink: 0;
 }
 
-.apiKeySection {
+.fieldsSection {
 	border-top: var(--border-width) var(--border-style) var(--color--foreground);
 	padding: var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 
-.apiKeyRow {
+.saveRow {
 	display: flex;
-	gap: var(--spacing--2xs);
-	align-items: center;
+	justify-content: flex-end;
 }
 </style>

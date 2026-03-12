@@ -1,4 +1,4 @@
-import { UpdatePluginsSettingsDto } from '@n8n/api-types';
+import { UpdatePluginSettingsDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -17,11 +17,11 @@ export class PluginsSettingsController {
 
 	@GlobalScope('pluginsSettings:manage')
 	@Post('/')
-	async updatePluginsSettings(
+	async updatePluginSettings(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Body dto: UpdatePluginsSettingsDto,
+		@Body dto: UpdatePluginSettingsDto,
 	) {
-		return await this.pluginsSettingsService.updatePluginsSettings(dto);
+		return await this.pluginsSettingsService.updatePluginSettings(dto);
 	}
 }

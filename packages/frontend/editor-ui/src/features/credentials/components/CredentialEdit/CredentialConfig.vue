@@ -274,25 +274,30 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	}
 });
 
-const isMergeDevManagedKey = computed(
-	() =>
-		credentialTypeName.value === 'mergeDevApi' && props.credentialData.useManagedApiKey === true,
-);
-
-const mergeDevPluginDisabled = ref(false);
+const managingPlugin = ref<{
+	displayName: string;
+	enabled: boolean;
+	managedToggleField: string;
+} | null>(null);
 
 watch(
-	isMergeDevManagedKey,
-	async (val) => {
-		if (!val) {
-			mergeDevPluginDisabled.value = false;
+	credentialTypeName,
+	async (type) => {
+		if (!type) {
+			managingPlugin.value = null;
 			return;
 		}
 		const settings = await pluginsSettingsApi.getPluginsSettings(rootStore.restApiContext);
-		mergeDevPluginDisabled.value = !settings.mergeDevEnabled;
+		managingPlugin.value = settings.plugins.find((p) => p.credentialType === type) ?? null;
 	},
 	{ immediate: true },
 );
+
+const showPluginDisabledWarning = computed(() => {
+	if (!managingPlugin.value) return false;
+	const toggleField = managingPlugin.value.managedToggleField;
+	return props.credentialData[toggleField] === true && !managingPlugin.value.enabled;
+});
 </script>
 
 <template>
@@ -352,9 +357,13 @@ watch(
 				/>
 
 				<Banner
-					v-if="mergeDevPluginDisabled"
+					v-if="showPluginDisabledWarning"
 					theme="warning"
-					:message="i18n.baseText('credentialEdit.mergeDevPluginDisabled')"
+					:message="
+						i18n.baseText('credentialEdit.pluginDisabled', {
+							interpolate: { pluginName: managingPlugin?.displayName ?? '' },
+						})
+					"
 				/>
 
 				<Banner

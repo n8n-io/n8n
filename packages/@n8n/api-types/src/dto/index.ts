@@ -163,7 +163,9 @@ export {
 
 export {
 	PluginsSettingsDto,
-	UpdatePluginsSettingsDto,
+	UpdatePluginSettingsDto,
+	type PluginDto,
+	type PluginFieldDto,
 } from './plugins-settings/plugins-settings.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';

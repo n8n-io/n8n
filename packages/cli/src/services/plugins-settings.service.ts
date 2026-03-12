@@ -1,12 +1,15 @@
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { PluginsSettingsDto } from '@n8n/api-types';
+import type { PluginsSettingsDto, UpdatePluginSettingsDto } from '@n8n/api-types';
 import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-const MERGE_DEV_ENABLED_KEY = 'plugins.mergeDev.enabled';
-const MERGE_DEV_API_KEY = 'plugins.mergeDev.apiKey';
+import {
+	PLUGIN_REGISTRY,
+	getPluginById,
+	getPluginByCredentialType,
+} from '@/plugins/plugin-registry';
 
 @Service()
 export class PluginsSettingsService {
@@ -15,83 +18,118 @@ export class PluginsSettingsService {
 		private readonly cipher: Cipher,
 	) {}
 
+	// ─── REST API layer ───────────────────────────────────────────────────────
+
 	async getPluginsSettings(): Promise<PluginsSettingsDto> {
-		const rows = await this.settingsRepository.findByKeys([
-			MERGE_DEV_ENABLED_KEY,
-			MERGE_DEV_API_KEY,
-		]);
-
-		const enabledRow = rows.find((r) => r.key === MERGE_DEV_ENABLED_KEY);
-		const apiKeyRow = rows.find((r) => r.key === MERGE_DEV_API_KEY);
-
-		const mergeDevEnabled = enabledRow?.value === 'true';
-		const mergeDevApiKey = apiKeyRow ? this.decryptApiKey(apiKeyRow.value) : '';
-
-		return { mergeDevEnabled, mergeDevApiKey };
+		const plugins = await Promise.all(
+			PLUGIN_REGISTRY.map(async (plugin) => ({
+				id: plugin.id,
+				credentialType: plugin.credentialType,
+				displayName: plugin.displayName,
+				description: plugin.description,
+				managedToggleField: plugin.managedToggleField,
+				enabled: await this.getPluginEnabled(plugin.id),
+				fields: await Promise.all(
+					plugin.managedFields.map(async (field) => ({
+						key: field.storageKey,
+						label: field.label,
+						placeholder: field.placeholder,
+						value: await this.getPluginField(plugin.id, field.storageKey),
+					})),
+				),
+			})),
+		);
+		return { plugins };
 	}
 
-	async updatePluginsSettings(dto: {
-		mergeDevEnabled?: boolean;
-		mergeDevApiKey?: string;
-	}): Promise<PluginsSettingsDto> {
-		if (dto.mergeDevEnabled !== undefined) {
-			await this.settingsRepository.upsert(
-				{
-					key: MERGE_DEV_ENABLED_KEY,
-					value: dto.mergeDevEnabled.toString(),
-					loadOnStartup: false,
-				},
-				['key'],
-			);
+	async updatePluginSettings(dto: UpdatePluginSettingsDto): Promise<PluginsSettingsDto> {
+		const plugin = getPluginById(dto.id);
+		if (!plugin) {
+			throw new UserError(`Unknown plugin: '${dto.id}'`);
 		}
 
-		if (dto.mergeDevApiKey !== undefined) {
-			await this.settingsRepository.upsert(
-				{
-					key: MERGE_DEV_API_KEY,
-					value: this.cipher.encrypt(dto.mergeDevApiKey),
-					loadOnStartup: false,
-				},
-				['key'],
-			);
+		if (dto.enabled !== undefined) {
+			await this.setPluginEnabled(plugin.id, dto.enabled);
+		}
+
+		if (dto.fields) {
+			for (const [key, value] of Object.entries(dto.fields)) {
+				await this.setPluginField(plugin.id, key, value);
+			}
 		}
 
 		return await this.getPluginsSettings();
 	}
 
-	private decryptApiKey(encryptedValue: string): string {
-		try {
-			return this.cipher.decrypt(encryptedValue);
-		} catch {
-			throw new UnexpectedError(
-				'Plugins settings API key could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
-			);
-		}
-	}
-
-	async getMergeDevApiKey(): Promise<string | null> {
-		const row = await this.settingsRepository.findByKey(MERGE_DEV_API_KEY);
-		if (!row) return null;
-		return this.decryptApiKey(row.value);
-	}
+	// ─── Credential injection ─────────────────────────────────────────────────
 
 	async injectPluginManagedCredentials(
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<ICredentialDataDecryptedObject> {
-		switch (type) {
-			case 'mergeDevApi': {
-				if (!data.useManagedApiKey) return data;
-				const settings = await this.getPluginsSettings();
-				if (!settings.mergeDevEnabled) {
-					throw new UserError(
-						'This credential requires the Merge.dev integration to be enabled. Ask your instance owner to turn it on in Settings → Plugins.',
-					);
-				}
-				return { ...data, apiKey: settings.mergeDevApiKey };
-			}
-			default:
-				return data;
+		const plugin = getPluginByCredentialType(type);
+		if (!plugin || !data[plugin.managedToggleField]) return data;
+
+		const enabled = await this.getPluginEnabled(plugin.id);
+		if (!enabled) {
+			throw new UserError(
+				`This credential requires the ${plugin.displayName} integration to be enabled. Ask your instance owner to turn it on in Settings → Plugins.`,
+			);
+		}
+
+		let result = { ...data };
+		for (const field of plugin.managedFields) {
+			const value = await this.getPluginField(plugin.id, field.storageKey);
+			result = { ...result, [field.credentialField]: value };
+		}
+		return result;
+	}
+
+	// ─── Generic plugin storage ───────────────────────────────────────────────
+
+	private async getPluginEnabled(pluginId: string): Promise<boolean> {
+		const row = await this.settingsRepository.findByKey(this.enabledStorageKey(pluginId));
+		return row?.value === 'true';
+	}
+
+	private async setPluginEnabled(pluginId: string, enabled: boolean): Promise<void> {
+		await this.settingsRepository.upsert(
+			{ key: this.enabledStorageKey(pluginId), value: String(enabled), loadOnStartup: false },
+			['key'],
+		);
+	}
+
+	private async getPluginField(pluginId: string, storageKey: string): Promise<string> {
+		const row = await this.settingsRepository.findByKey(this.fieldStorageKey(pluginId, storageKey));
+		return row ? this.decrypt(row.value) : '';
+	}
+
+	private async setPluginField(pluginId: string, storageKey: string, value: string): Promise<void> {
+		await this.settingsRepository.upsert(
+			{
+				key: this.fieldStorageKey(pluginId, storageKey),
+				value: this.cipher.encrypt(value),
+				loadOnStartup: false,
+			},
+			['key'],
+		);
+	}
+
+	private enabledStorageKey(pluginId: string): string {
+		return `plugins.${pluginId}.enabled`;
+	}
+
+	private fieldStorageKey(pluginId: string, storageKey: string): string {
+		return `plugins.${pluginId}.${storageKey}`;
+	}
+
+	private decrypt(encryptedValue: string): string {
+		try {
+			return this.cipher.decrypt(encryptedValue);
+		} catch {
+			throw new UnexpectedError(
+				'Plugin credential field could not be decrypted. The encryption key may have changed.',
+			);
 		}
 	}
 }
