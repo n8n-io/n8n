@@ -121,6 +121,7 @@ export class ChatHubService {
 		const { workflow, previousMessage, message, sessionId, user, messageId, model } = opts;
 
 		if (
+			model.provider !== 'n8n' ||
 			workflow.responseMode !== 'responseNodes' ||
 			previousMessage?.status !== 'waiting' ||
 			!previousMessage?.executionId
