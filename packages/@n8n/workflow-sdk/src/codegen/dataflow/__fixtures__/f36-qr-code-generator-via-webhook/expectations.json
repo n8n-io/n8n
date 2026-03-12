@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"GET https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://example.com": {}
+	},
+	"nodes": {
+		"Generate QR Code": {
+			"items": [{ "qr_code": "base64data" }]
+		}
+	}
+}

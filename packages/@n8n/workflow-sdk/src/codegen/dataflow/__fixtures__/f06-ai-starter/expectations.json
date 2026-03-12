@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"Agent": {
+			"items": [{ "output": "Welcome to n8n. Let's start with the first step..." }]
+		}
+	}
+}

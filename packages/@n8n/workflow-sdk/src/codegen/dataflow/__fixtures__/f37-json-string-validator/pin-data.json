@@ -1,0 +1,5 @@
+{
+	"Webhook: Receive JSON String": [
+		{ "body": { "jsonString": "{\"name\": \"test\"}" }, "headers": {}, "query": {} }
+	]
+}

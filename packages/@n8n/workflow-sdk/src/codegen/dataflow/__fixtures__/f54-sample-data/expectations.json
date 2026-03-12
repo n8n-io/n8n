@@ -1,0 +1,13 @@
+{
+	"requests": {
+		"GET https://api.example.com/profile": {}
+	},
+	"nodes": {
+		"Fetch Profile": {
+			"items": [{ "userId": 42, "name": "Alice", "email": "alice@example.com" }]
+		},
+		"Format Result": {
+			"items": [{ "summary": "Alice" }]
+		}
+	}
+}

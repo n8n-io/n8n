@@ -1,0 +1,24 @@
+{
+	"requests": {
+		"GET https://test.example.com/webhook/tutorial/api/menu": {},
+		"GET https://test.example.com/webhook/tutorial/api/order": {},
+		"POST https://test.example.com/webhook/tutorial/api/review": {
+			"requestBody": { "comment": "The pizza was amazing!", "rating": 5 }
+		},
+		"GET https://test.example.com/webhook/tutorial/api/secret-dish": {
+			"requestHeaders": { "x-api-key": "super-secret-key" }
+		},
+		"GET https://test.example.com/webhook/tutorial/api/slow-service": {}
+	},
+	"nodes": {
+		"1. The Customer (GET Menu Item)": {
+			"items": [{ "item": "Pizza", "price": 12 }]
+		},
+		"3. The Customer (POST with Body)": {
+			"items": [{ "status": "review_received" }]
+		},
+		"4. The Customer (GET with Headers/Auth)": {
+			"items": [{ "dish": "The Chef's Special Truffle Pasta" }]
+		}
+	}
+}

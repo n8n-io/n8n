@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"Code: Validate JSON String": {
+			"items": [{ "valid": true }]
+		}
+	}
+}

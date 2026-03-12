@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"POST https://docs.googleapis.com/v1/documents/doc-abc-123:batchUpdate": {}
+	},
+	"nodes": {
+		"Replace data in Google Doc": {
+			"items": [{ "documentId": "doc-abc-123" }]
+		}
+	}
+}

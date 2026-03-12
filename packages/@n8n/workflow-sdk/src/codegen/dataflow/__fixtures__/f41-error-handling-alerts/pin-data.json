@@ -1,0 +1,14 @@
+{
+	"Error Trigger": [
+		{
+			"execution": {
+				"url": "https://n8n.example.com/execution/123",
+				"error": { "message": "Test error", "node": { "name": "HTTP Request" } }
+			},
+			"workflow": { "name": "Test Workflow" }
+		}
+	],
+	"Log error": [{ "status": "appended" }],
+	"Notify in channel": [{ "result": { "text": "Error notification sent" } }],
+	"Send email": [{ "id": "msg-123" }]
+}

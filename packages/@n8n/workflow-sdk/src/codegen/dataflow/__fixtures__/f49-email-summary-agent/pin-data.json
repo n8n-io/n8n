@@ -1,0 +1,28 @@
+{
+	"Daily 7AM Trigger": [{ "triggered": true }],
+	"Fetch Emails - Past 24 Hours": [
+		{
+			"id": "email-1",
+			"From": "alice@example.com",
+			"To": "user@example.com",
+			"snippet": "Meeting at 3pm"
+		},
+		{
+			"id": "email-2",
+			"From": "bob@example.com",
+			"To": "user@example.com",
+			"snippet": "Invoice attached"
+		}
+	],
+	"Summarize Emails with OpenAI - Morning": [
+		{
+			"message": {
+				"content": {
+					"summary_of_emails": ["Meeting at 3pm with Alice", "Invoice from Bob"],
+					"actions": [{ "name": "Alice", "action": "Confirm meeting" }]
+				}
+			}
+		}
+	],
+	"Send Summary - Morning": [{ "id": "sent-summary-123" }]
+}

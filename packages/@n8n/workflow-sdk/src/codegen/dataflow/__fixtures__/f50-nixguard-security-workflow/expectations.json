@@ -1,0 +1,10 @@
+{
+	"nodes": {
+		"Set API Key & Initial Prompt1": {
+			"items": [{ "apiKey": "", "chatInput": "Scan this ip for me 0.0.0.0" }]
+		},
+		"Format NixGuard AI Summary & Wazuh Insights": {
+			"items": [{ "ai_summary": "IP 0.0.0.0 analysis: No threats detected." }]
+		}
+	}
+}

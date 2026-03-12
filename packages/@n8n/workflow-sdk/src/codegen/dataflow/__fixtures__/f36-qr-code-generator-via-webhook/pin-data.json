@@ -1,0 +1,5 @@
+{
+	"Receive Data Webhook": [
+		{ "body": { "data": "https://example.com" }, "headers": {}, "query": {} }
+	]
+}

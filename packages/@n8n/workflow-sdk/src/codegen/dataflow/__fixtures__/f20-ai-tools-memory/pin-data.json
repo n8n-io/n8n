@@ -1,0 +1,4 @@
+{
+	"When chat message received": [{ "chatInput": "Help me", "sessionId": "test-session" }],
+	"Agent": [{ "output": "I can help you with that." }]
+}

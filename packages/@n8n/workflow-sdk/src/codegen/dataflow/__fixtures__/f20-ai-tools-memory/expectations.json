@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"Agent": {
+			"items": [{ "output": "I can help you with that." }]
+		}
+	}
+}

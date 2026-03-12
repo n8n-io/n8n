@@ -1,0 +1,11 @@
+{
+	"requests": {
+		"GET https://jsonplaceholder.typicode.com/users": {},
+		"POST https://jsonplaceholder.typicode.com/posts": {}
+	},
+	"nodes": {
+		"Notify User": {
+			"items": [{ "notified": true }]
+		}
+	}
+}

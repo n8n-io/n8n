@@ -1,0 +1,10 @@
+{
+	"Schedule Trigger": [{ "triggered": true }],
+	"Get row(s) in sheet3": [
+		{ "Email": "alice@example.com", "Contacted": true },
+		{ "Email": "bob@example.com", "Contacted": false },
+		{ "Email": "charlie@example.com", "Contacted": true }
+	],
+	"Append or update row in sheet1": [{ "Email": "alice@example.com", "Contacted": "Yes" }],
+	"Send a message": [{ "id": "msg-456" }]
+}

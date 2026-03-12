@@ -1,0 +1,7 @@
+{
+	"Run Every 3 Days (Trigger)": [{ "triggered": true }],
+	"Fetch SPAM Emails": [{ "id": "spam-1" }, { "id": "spam-2" }],
+	"Fetch Social Emails": [{ "id": "social-1" }],
+	"Fetch Promotion Emails": [{ "id": "promo-1" }, { "id": "promo-2" }],
+	"Delete All Mails": [{ "deleted": true }]
+}

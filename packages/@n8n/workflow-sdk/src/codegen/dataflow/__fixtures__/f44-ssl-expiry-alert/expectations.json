@@ -1,0 +1,14 @@
+{
+	"requests": {
+		"GET https://ssl-checker.io/api/v1/check/example.com": {},
+		"GET https://ssl-checker.io/api/v1/check/expiring-soon.com": {}
+	},
+	"nodes": {
+		"Check SSL": {
+			"items": [
+				{ "result": { "host": "example.com", "days_left": 90 } },
+				{ "result": { "host": "expiring-soon.com", "days_left": 5 } }
+			]
+		}
+	}
+}

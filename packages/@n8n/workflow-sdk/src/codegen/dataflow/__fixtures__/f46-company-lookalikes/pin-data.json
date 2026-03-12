@@ -1,0 +1,12 @@
+{
+	"Manual Trigger": [{ "triggered": true }],
+	"Read Source List": [{ "Domain": "stripe.com" }, { "Domain": "square.com" }],
+	"Merge Source & API": [
+		{
+			"Domain": "stripe.com",
+			"items": [{ "name": "Adyen", "domain": "adyen.com", "id": "1" }],
+			"metadata": { "scores": { "1": 0.85 } }
+		}
+	],
+	"Write Results": [{ "status": "appended" }]
+}

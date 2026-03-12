@@ -1,0 +1,7 @@
+{
+	"Webhook Trigger\n(REAL-WORLD USE)1": [
+		{ "body": { "ip": "0.0.0.0" }, "headers": {}, "query": {} }
+	],
+	"Execute NixGuard & Wazuh Workflow": [{ "output": "IP 0.0.0.0 analysis: No threats detected." }],
+	"(Optional) Send Slack Alert for High-Risk Events": [{ "ok": true, "ts": "1234567890.123456" }]
+}

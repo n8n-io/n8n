@@ -1,0 +1,6 @@
+{
+	"Weekly Trigger": [{ "triggered": true }],
+	"Fetch URLs": [{ "URL": "https://example.com" }, { "URL": "https://expiring-soon.com" }],
+	"URLs to Monitor": [{ "URL": "example.com", "KnownExpiryDate": "2025-06-15" }],
+	"Send Alert Email": [{ "id": "alert-123" }]
+}

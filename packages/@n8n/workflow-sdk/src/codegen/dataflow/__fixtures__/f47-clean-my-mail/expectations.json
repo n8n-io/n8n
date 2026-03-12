@@ -1,0 +1,13 @@
+{
+	"nodes": {
+		"Fetch SPAM Emails": {
+			"items": [{ "id": "spam-1" }, { "id": "spam-2" }]
+		},
+		"Fetch Social Emails": {
+			"items": [{ "id": "social-1" }]
+		},
+		"Fetch Promotion Emails": {
+			"items": [{ "id": "promo-1" }, { "id": "promo-2" }]
+		}
+	}
+}

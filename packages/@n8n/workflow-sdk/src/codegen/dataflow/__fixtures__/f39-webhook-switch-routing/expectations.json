@@ -1,0 +1,15 @@
+{
+	"requests": {
+		"POST https://api.cal.com/v2/bookings": {
+			"requestHeaders": {
+				"authorization": "Bearer YOUR_TOKEN_HERE",
+				"cal-api-version": "2024-08-13"
+			}
+		}
+	},
+	"nodes": {
+		"Create booking": {
+			"items": [{ "id": 456, "status": "ACCEPTED" }]
+		}
+	}
+}

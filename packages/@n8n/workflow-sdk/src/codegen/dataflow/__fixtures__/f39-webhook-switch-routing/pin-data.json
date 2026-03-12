@@ -1,0 +1,18 @@
+{
+	"Webhook": [
+		{
+			"body": {
+				"attendee_name": "John Doe",
+				"start": "2024-01-15T10:00:00Z",
+				"attendee_phone": "+1234567890",
+				"attendee_email": "john@example.com",
+				"attendee_company": "Acme Corp",
+				"attendee_timezone": "America/New_York",
+				"notes": "Test booking",
+				"eventTypeId": 123
+			},
+			"headers": { "x-auth-token": "test-token" },
+			"query": {}
+		}
+	]
+}

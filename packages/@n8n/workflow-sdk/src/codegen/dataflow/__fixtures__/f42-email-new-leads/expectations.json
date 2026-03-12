@@ -1,0 +1,11 @@
+{
+	"nodes": {
+		"Get row(s) in sheet3": {
+			"items": [
+				{ "Email": "alice@example.com", "Contacted": true },
+				{ "Email": "bob@example.com", "Contacted": false },
+				{ "Email": "charlie@example.com", "Contacted": true }
+			]
+		}
+	}
+}

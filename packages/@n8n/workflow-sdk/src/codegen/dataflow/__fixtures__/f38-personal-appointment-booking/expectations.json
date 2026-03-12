@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"GET https://api.cal.com/v1/slots": {}
+	},
+	"nodes": {
+		"Check available slot in Cal.com": {
+			"items": [{ "slots": { "2024-01-15": [{ "time": "10:00" }] } }]
+		}
+	}
+}

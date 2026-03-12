@@ -1,0 +1,10 @@
+{
+	"Set Login Data": [
+		{
+			"sap_url": "https://sap.example.com/b1s/v1/",
+			"sap_username": "manager",
+			"sap_password": "secret",
+			"sap_companydb": "SBODEMOUS"
+		}
+	]
+}

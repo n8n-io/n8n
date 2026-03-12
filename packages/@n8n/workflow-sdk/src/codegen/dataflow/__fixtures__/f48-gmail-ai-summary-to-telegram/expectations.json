@@ -1,0 +1,14 @@
+{
+	"nodes": {
+		"Set summary language": {
+			"items": [{ "summary_language": "english" }]
+		},
+		"Summary generation agent": {
+			"items": [
+				{
+					"output": "Email from sender@example.com about project update. Project is on track, deadline next Friday."
+				}
+			]
+		}
+	}
+}

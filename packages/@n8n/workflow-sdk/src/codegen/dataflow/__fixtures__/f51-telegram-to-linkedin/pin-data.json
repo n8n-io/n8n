@@ -1,0 +1,28 @@
+{
+	"Telegram Trigger": [
+		{
+			"message": {
+				"voice": { "file_id": "" },
+				"text": "I just learned something amazing about AI agents today."
+			}
+		}
+	],
+	"Download File": [{ "data": "audio-binary-data" }],
+	"Transcribe Audio": [{ "text": "I just learned something amazing about AI agents today." }],
+	"LinkedIn Post Text": [
+		{
+			"message": {
+				"content": "I just learned something amazing about AI agents today.\n\nHere's why it matters..."
+			}
+		}
+	],
+	"Image Prompt": [
+		{
+			"message": {
+				"content": "Professional desk with laptop showing AI dashboard, soft lighting, modern office, minimalist"
+			}
+		}
+	],
+	"Create Image": [{ "url": "https://openai.com/generated-image.png" }],
+	"Create a post": [{ "id": "urn:li:share:123456" }]
+}

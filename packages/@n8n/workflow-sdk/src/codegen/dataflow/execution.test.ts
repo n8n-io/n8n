@@ -186,18 +186,18 @@ describe('Fixture execution with pin data', () => {
 	const fixtures = loadFixtures();
 
 	for (const fixture of fixtures) {
+		if (fixture.skip) {
+			executionData[fixture.dir] = { status: 'skip', reason: fixture.skip };
+			it.skip(`${fixture.title} [execution]`, () => {});
+			continue;
+		}
+
 		// Parse early to check for outputSampleData-based pin data in code
 		const earlyParsed = parseDataFlowCode(fixture.input);
 		const hasPinDataInCode = Object.keys(earlyParsed.pinData ?? {}).length > 0;
 
 		// Only run execution tests for fixtures with pin data (file or code) or nock
 		if (!fixture.hasPinData && !fixture.hasNock && !hasPinDataInCode) {
-			continue;
-		}
-
-		if (fixture.skip) {
-			executionData[fixture.dir] = { status: 'skip', reason: fixture.skip };
-			it.skip(`${fixture.title} [execution]`, () => {});
 			continue;
 		}
 

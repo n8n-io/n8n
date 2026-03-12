@@ -1,0 +1,16 @@
+{
+	"When a new email arrives": [
+		{
+			"from": { "text": "sender@example.com" },
+			"subject": "Project Update",
+			"html": "<p>The project is on track. Deadline is next Friday.</p>",
+			"text": "The project is on track. Deadline is next Friday."
+		}
+	],
+	"Summary generation agent": [
+		{
+			"output": "Email from sender@example.com about project update. Project is on track, deadline next Friday."
+		}
+	],
+	"Send summary to Telegram": [{ "message_id": 12345, "ok": true }]
+}

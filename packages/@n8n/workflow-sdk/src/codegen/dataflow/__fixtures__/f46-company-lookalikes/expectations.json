@@ -1,0 +1,15 @@
+{
+	"requests": {
+		"POST https://api.companyenrich.com/companies/similar": {
+			"requestHeaders": { "authorization": "Bearer YOUR_TOKEN_HERE" }
+		},
+		"POST https://api.companyenrich.com/companies/similar#2": {
+			"requestHeaders": { "authorization": "Bearer YOUR_TOKEN_HERE" }
+		}
+	},
+	"nodes": {
+		"Fetch Similar Companies": {
+			"items": [{ "items": [{ "name": "Adyen" }] }]
+		}
+	}
+}

@@ -1,0 +1,6 @@
+{
+	"Form": [{ "name": "John Doe", "submittedAt": "2024-01-15T10:00:00Z", "formMode": "production" }],
+	"Copy template file": [
+		{ "id": "doc-abc-123", "name": "John Doe", "mimeType": "application/vnd.google-apps.document" }
+	]
+}

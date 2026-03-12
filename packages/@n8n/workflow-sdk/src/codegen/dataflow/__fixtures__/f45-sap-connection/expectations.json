@@ -1,0 +1,16 @@
+{
+	"requests": {
+		"POST https://sap.example.com/b1s/v1/Login": {
+			"requestBody": {
+				"UserName": "manager",
+				"Password": "secret",
+				"CompanyDB": "SBODEMOUS"
+			}
+		}
+	},
+	"nodes": {
+		"SAP Connection": {
+			"items": [{ "SessionId": "abc-123-session" }]
+		}
+	}
+}

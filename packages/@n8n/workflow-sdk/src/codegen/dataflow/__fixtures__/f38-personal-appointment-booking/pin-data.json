@@ -1,0 +1,9 @@
+{
+	"Webhook": [
+		{
+			"body": { "tool": "checkAvailableSlot", "startTime": "2024-01-15T10:00:00+05:30" },
+			"headers": {},
+			"query": {}
+		}
+	]
+}
