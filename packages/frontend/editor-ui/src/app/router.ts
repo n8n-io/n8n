@@ -102,8 +102,7 @@ const EvaluationRootView = async () =>
 const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
 const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
-const ResourceCenterSectionView = async () =>
-	await import('@/experiments/resourceCenter/views/ResourceCenterSectionView.vue');
+
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
 
@@ -248,14 +247,7 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
-	{
-		path: '/resource-center/section/:sectionId',
-		name: VIEWS.RESOURCE_CENTER_SECTION,
-		component: ResourceCenterSectionView,
-		meta: {
-			middleware: ['authenticated'],
-		},
-	},
+
 	{
 		path: '/workflow/:name/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,
