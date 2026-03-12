@@ -54,10 +54,10 @@ const hasNoSessions = computed(() => workflowSessions.value.length === 0 && !isL
 async function handleOpenChange(open: boolean) {
 	isOpen.value = open;
 	if (open && !hasFetchedForWorkflow.value) {
-		hasFetchedForWorkflow.value = true;
 		isLoading.value = true;
 		try {
 			await chatStore.fetchSessions(true, { type: 'manual' });
+			hasFetchedForWorkflow.value = true;
 		} finally {
 			isLoading.value = false;
 		}
