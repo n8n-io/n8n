@@ -1,22 +1,14 @@
 {
 	"Start Tutorial": [{ "triggered": true }],
-	"⚙️CONFIGURATION⚙️": [{ "your_n8n_webhook_url": "https://test.example.com/webhook/tutorial" }],
-	"Base URL": [{ "base_url": "https://test.example.com/webhook" }],
 	"1. The Kitchen (GET /menu)": [{ "body": {}, "headers": {}, "query": {} }],
-	"Prepare Menu Data": [{ "item": "Pizza", "price": 12 }],
 	"2. The Kitchen (GET /order)": [
 		{ "body": {}, "headers": {}, "query": { "extra_cheese": "true" } }
 	],
-	"Prepare Cheese Pizza": [{ "order": "Pizza with extra cheese" }],
 	"3. The Kitchen (POST /review)": [
 		{ "body": { "comment": "The pizza was amazing!", "rating": 5 }, "headers": {} }
-	],
-	"Process Review Data": [
-		{ "status": "review_received", "your_comment": "The pizza was amazing!", "your_rating": 5 }
 	],
 	"4. The Kitchen (GET /secret-dish)": [
 		{ "body": {}, "headers": { "x-api-key": "super-secret-key" } }
 	],
-	"5. The Kitchen (GET /slow-service)": [{ "body": {}, "headers": {}, "query": {} }],
-	"Prepare Slow Response": [{ "status": "Finally, your food is here!" }]
+	"5. The Kitchen (GET /slow-service)": [{ "body": {}, "headers": {}, "query": {} }]
 }

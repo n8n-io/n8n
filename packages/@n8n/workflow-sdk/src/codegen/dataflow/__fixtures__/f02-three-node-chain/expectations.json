@@ -3,8 +3,11 @@
 		"POST https://example.com/": {}
 	},
 	"nodes": {
-		"Set": {
+		"HTTP Request": {
 			"items": [{ "result": "ok" }]
+		},
+		"Set": {
+			"items": [{ "key": "val" }]
 		}
 	}
 }
