@@ -133,6 +133,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useClipboard } from '@vueuse/core';
 import {
@@ -188,6 +190,7 @@ export function useCanvasOperations() {
 	const experimentalNdvStore = useExperimentalNdvStore();
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
+	const setupPanelStore = useSetupPanelStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -2966,7 +2969,11 @@ export function useCanvasOperations() {
 		name?: string;
 		workflow: IWorkflowTemplate['workflow'] | WorkflowDataWithTemplateId;
 	}) {
-		const convertedNodes = workflow.nodes?.map(workflowsStore.convertTemplateNodeToNodeUi);
+		let convertedNodes = workflow.nodes?.map(workflowsStore.convertTemplateNodeToNodeUi);
+
+		if (setupPanelStore.isFeatureEnabled && convertedNodes) {
+			convertedNodes = clearAllNodeResourceLocatorValues(convertedNodes);
+		}
 
 		if (workflow.connections) {
 			workflowsStore.setConnections(workflow.connections);
@@ -3100,6 +3107,13 @@ export function useCanvasOperations() {
 		});
 	}
 
+	function openSetupPanelIfEnabled() {
+		if (setupPanelStore.isFeatureEnabled) {
+			focusPanelStore.openFocusPanel();
+			focusPanelStore.setSelectedTab('setup');
+		}
+	}
+
 	async function openWorkflowTemplate(templateId: string) {
 		resetWorkspace();
 
@@ -3143,6 +3157,8 @@ export function useCanvasOperations() {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.addToMeta({ templateId: `${templateId}` });
+
+		openSetupPanelIfEnabled();
 
 		canvasStore.stopLoading();
 
@@ -3192,6 +3208,8 @@ export function useCanvasOperations() {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.addToMeta({ templateId: `${templateId}` });
+
+		openSetupPanelIfEnabled();
 
 		canvasStore.stopLoading();
 
