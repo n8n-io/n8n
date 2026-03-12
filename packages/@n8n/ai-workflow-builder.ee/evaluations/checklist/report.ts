@@ -363,7 +363,7 @@ export function generateReport(runs: Run[]): string {
 	.tool-calls-cell { max-width: 250px; line-height: 1.6; }
 	.badge-tool { background: #1f6feb33; color: #58a6ff; font-size: 11px; padding: 1px 6px; margin: 1px; display: inline-block; font-family: monospace; }
 	.result-row.sibling-highlight { border-left: 3px solid; }
-	n8n-demo { display: block; margin: 8px 0; min-height: 200px; }
+	n8n-demo { display: block; margin: 8px 0; min-height: 200px; max-width: 200vh; }
 	.iteration-detail { margin-bottom: 4px; border: 1px solid #30363d; border-radius: 6px; }
 	.iteration-detail > summary { padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 13px; }
 	.iteration-detail > summary:hover { background: #1c2129; }

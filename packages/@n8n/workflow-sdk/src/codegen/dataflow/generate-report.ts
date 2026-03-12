@@ -566,7 +566,7 @@ function generateHtml(entries: CompilerTestEntry[]): string {
     .code code { background: transparent; padding: 0; }
     .code code.hljs { background: transparent; padding: 0; }
     .demo { margin-top: 12px; }
-    n8n-demo { width: 100%; min-height: 300px; display: block; }
+    n8n-demo { width: 100%; min-height: 300px; max-width: 200vh; display: block; }
 
     .summary { margin-bottom: 20px; display: flex; flex-direction: column; gap: 6px; }
     .summary-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
