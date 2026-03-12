@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
@@ -37,7 +37,7 @@
     "axios": "catalog:",
     "dotenv": "17.2.3",
     "nanoid": "catalog:",
-    "zx": "^8.1.4"
+    "zx": "^8.8.5"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

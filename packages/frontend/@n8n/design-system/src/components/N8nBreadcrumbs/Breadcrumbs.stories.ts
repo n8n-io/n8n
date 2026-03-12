@@ -9,7 +9,7 @@ import ActionToggle from '../N8nActionToggle/ActionToggle.vue';
 import Tags from '../N8nTags/Tags.vue';
 
 export default {
-	title: 'Atoms/Breadcrumbs',
+	title: 'Core/Breadcrumbs',
 	component: Breadcrumbs,
 	argTypes: {
 		items: { control: 'object' },

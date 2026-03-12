@@ -197,6 +197,7 @@ describe('DynamicCredentialsController', () => {
 				cid: '1',
 				origin: 'dynamic-credential',
 				authorizationHeader: 'Bearer token123',
+				authMetadata: {},
 				credentialResolverId: 'resolver-123',
 			});
 		});
@@ -232,6 +233,7 @@ describe('DynamicCredentialsController', () => {
 				cid: '1',
 				origin: 'dynamic-credential',
 				authorizationHeader: 'Bearer token123',
+				authMetadata: {},
 				credentialResolverId: 'resolver-123',
 			});
 		});

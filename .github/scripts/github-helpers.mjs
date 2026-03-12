@@ -1,5 +1,7 @@
+import { getOctokit } from '@actions/github';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import path from 'node:path';
 import semver from 'semver';
 
 export const RELEASE_TRACKS = /** @type { const } */ ([
@@ -66,7 +68,7 @@ export function ensureReleaseTrack(track) {
  *
  * @param { typeof RELEASE_TRACKS[number] } track
  *
- * @returns { TagVersionInfo }
+ * @returns { TagVersionInfo | null }
  * */
 export function resolveReleaseTagForTrack(track) {
 	const commit = getCommitForRef(track);
@@ -89,9 +91,13 @@ export function resolveReleaseTagForTrack(track) {
  *
  * Returns null if the track tag or release tag is missing.
  *
- * @param { typeof RELEASE_TRACKS[number] } track
+ * @param { ReleaseTrack } track
  * */
 export function resolveRcBranchForTrack(track) {
+	if (track === 'v1') {
+		return '1.x';
+	}
+
 	const commit = getCommitForRef(track);
 	if (!commit) return null;
 
@@ -117,15 +123,26 @@ export function stripReleasePrefixes(tag) {
 	);
 }
 
-/**
- * @returns { string[] }
- * */
-export function readPrLabels() {
-	const eventPath = ensureEnvVar('GITHUB_EVENT_PATH');
+export function getEventFromGithubEventPath() {
+	let eventPath = ensureEnvVar('GITHUB_EVENT_PATH');
+	if (!path.isAbsolute(eventPath)) {
+		eventPath = import.meta.dirname + '/' + eventPath;
+	}
+	return JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+}
 
-	const event = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+/**
+ * @param {any} [pullRequest] Optional pull request object. If not provided, reads from GITHUB_EVENT_PATH
+ *
+ * @returns {string[]}
+ */
+export function readPrLabels(pullRequest) {
+	if (!pullRequest) {
+		const event = getEventFromGithubEventPath();
+		pullRequest = event.pull_request;
+	}
 	/** @type { string[] | { name: string }[] } */
-	const labels = event?.pull_request?.labels ?? [];
+	const labels = pullRequest?.labels ?? [];
 
 	return labels.map((l) => (typeof l === 'string' ? l : l?.name)).filter(Boolean);
 }
@@ -188,7 +205,7 @@ export function trySh(cmd, args, opts = {}) {
 /**
  * Append outputs to GITHUB_OUTPUT if available.
  *
- * @param {Record<string, string>} obj
+ * @param {Record<string, string | boolean>} obj
  */
 export function writeGithubOutput(obj) {
 	const path = process.env.GITHUB_OUTPUT;
@@ -226,4 +243,74 @@ export function listTagsPointingAt(commit) {
 		.split('\n')
 		.map((s) => s.trim())
 		.filter(Boolean);
+}
+
+/**
+ * @param {string} from
+ * @param {string} to
+ */
+export function listCommitsBetweenRefs(from, to) {
+	return sh('git', ['--no-pager', 'log', '--format="- %s (%h)', `${to}..origin/${from}`]);
+}
+
+/**
+ * @param {string} from
+ * @param {string} to
+ */
+export function countCommitsBetweenRefs(from, to) {
+	const output = sh('git', ['rev-list', '--count', `${to}..origin/${from}`]);
+	const count = parseInt(output);
+
+	return isNaN(count) ? 0 : count;
+}
+
+/**
+ * @param {string} branch
+ */
+export function remoteBranchExists(branch) {
+	const res = trySh('git', ['ls-remote', '--heads', 'origin', branch]);
+	return res.ok && res.out.length > 0;
+}
+
+/**
+ * @param {string} ref
+ */
+export function localRefExists(ref) {
+	const res = trySh('git', ['show-ref', '--verify', '--quiet', ref]);
+	return res.ok;
+}
+
+/**
+ * Initializes octokit with GITHUB_TOKEN from env vars.
+ *
+ * Also ensures the existence of useful environment variables.
+ * */
+export function initGithub() {
+	const token = ensureEnvVar('GITHUB_TOKEN');
+	const repoFullName = ensureEnvVar('GITHUB_REPOSITORY');
+
+	const [owner, repo] = repoFullName.split('/');
+
+	const octokit = getOctokit(token);
+
+	return {
+		octokit,
+		owner,
+		repo,
+	};
+}
+
+/**
+ * @param {number} pullRequestId
+ */
+export async function getPullRequestById(pullRequestId) {
+	const { octokit, owner, repo } = initGithub();
+
+	const pullRequest = await octokit.rest.pulls.get({
+		owner,
+		repo,
+		pull_number: pullRequestId,
+	});
+
+	return pullRequest.data;
 }

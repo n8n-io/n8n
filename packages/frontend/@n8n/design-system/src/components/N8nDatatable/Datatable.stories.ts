@@ -4,7 +4,7 @@ import { rows, columns } from './__tests__/data';
 import N8nDatatable from './Datatable.vue';
 
 export default {
-	title: 'Atoms/Datatable',
+	title: 'Core/Datatable',
 	component: N8nDatatable,
 };
 

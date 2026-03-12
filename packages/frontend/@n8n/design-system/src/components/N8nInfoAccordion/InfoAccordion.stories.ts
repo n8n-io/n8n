@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nInfoAccordion from './InfoAccordion.vue';
 
 export default {
-	title: 'Atoms/Info Accordion',
+	title: 'Core/Info Accordion',
 	component: N8nInfoAccordion,
 	argTypes: {},
 	parameters: {

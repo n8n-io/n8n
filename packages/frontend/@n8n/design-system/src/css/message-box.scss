@@ -17,6 +17,10 @@
 	overflow: hidden;
 	backface-visibility: hidden;
 
+	&.wide {
+		width: calc(var.$msgbox-width * 1.25);
+	}
+
 	@include mixins.e(wrapper) {
 		position: fixed;
 		top: 0;
@@ -77,6 +81,12 @@
 		font-size: var.$messagebox-content-font-size;
 	}
 
+	&.with-confirmation-checkbox {
+		@include mixins.e(content) {
+			padding-bottom: 0;
+		}
+	}
+
 	@include mixins.e(container) {
 		position: relative;
 	}
@@ -131,6 +141,10 @@
 		& p {
 			margin: 0;
 			line-height: var(--line-height--lg);
+		}
+
+		& .el-message-box__message__structured p {
+			margin-bottom: var(--spacing--sm);
 		}
 	}
 

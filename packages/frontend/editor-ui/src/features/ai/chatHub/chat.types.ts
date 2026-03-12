@@ -46,6 +46,7 @@ export type MessagingState =
 	| 'waitingFirstChunk'
 	| 'receiving'
 	| 'missingCredentials'
+	| 'missingDynamicCredentials'
 	| 'missingAgent'
 	| 'waitingForApproval';
 
@@ -120,4 +121,12 @@ export type ChatHubConversationModelWithCachedDisplayName = z.infer<
 
 export interface FetchOptions {
 	minLoadingTime?: number;
+}
+
+export type SemanticSearchCredentialIssue = 'unspecified' | 'notFound' | 'notShared';
+
+export interface SemanticSearchReadiness {
+	isReadyForCurrentUser: boolean;
+	vectorStoreIssue?: SemanticSearchCredentialIssue;
+	embeddingIssue?: SemanticSearchCredentialIssue;
 }

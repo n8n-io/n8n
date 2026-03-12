@@ -1,10 +1,10 @@
 import type { User } from '@n8n/db';
-import { hasGlobalScope } from '@n8n/permissions';
 import get from 'lodash/get';
 import { type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { getAllKeyPaths } from '@/utils';
 
 // #region External Secrets
@@ -101,17 +101,24 @@ export function isChangingExternalSecretExpression(
 }
 
 /**
- * Validates if a user has permission to use external secrets in credentials
+ * Validates if a user has permission to use external secrets in credentials.
+ * Accepts either global scope or project-level scope for `externalSecret:list`.
  *
  * @param dataToSave - only optional in case it's not provided in the payload of the request
  * @param decryptedExistingData - Optional existing credential data (optional as it can only be provided when updating an existing credential)
  * @throws {BadRequestError} If user lacks permission when attempting to use external secrets
  */
-export function validateExternalSecretsPermissions(
-	user: User,
-	dataToSave?: ICredentialDataDecryptedObject,
-	decryptedExistingData?: ICredentialDataDecryptedObject,
-): void {
+export async function validateExternalSecretsPermissions({
+	user,
+	projectId,
+	dataToSave,
+	decryptedExistingData,
+}: {
+	user: User;
+	projectId: string;
+	dataToSave?: ICredentialDataDecryptedObject;
+	decryptedExistingData?: ICredentialDataDecryptedObject;
+}): Promise<void> {
 	if (!dataToSave) {
 		return;
 	}
@@ -120,7 +127,8 @@ export function validateExternalSecretsPermissions(
 		? isChangingExternalSecretExpression(dataToSave, decryptedExistingData)
 		: containsExternalSecrets(dataToSave);
 	if (needsCheck) {
-		if (!hasGlobalScope(user, 'externalSecret:list')) {
+		const hasAccess = await userHasScopes(user, ['externalSecret:list'], false, { projectId });
+		if (!hasAccess) {
 			throw new BadRequestError('Lacking permissions to reference external secrets in credentials');
 		}
 	}

@@ -1,4 +1,5 @@
 import { extend, extendOptional } from '../extensions/extend';
+import { extendedFunctions } from '../extensions/function-extensions';
 
 import { __sanitize } from './safe-globals';
 import { createDeepLazyProxy } from './lazy-proxy';
@@ -88,6 +89,9 @@ export function resetDataProxies(): void {
 	(globalThis as any).$itemIndex = globalThis.__data.$itemIndex;
 	(globalThis as any).$data = globalThis.__data.$data;
 	(globalThis as any).$env = globalThis.__data.$env;
+
+	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
+	Object.assign(globalThis.__data, extendedFunctions);
 
 	// -------------------------------------------------------------------------
 	// Handle function properties (check if value is function metadata)

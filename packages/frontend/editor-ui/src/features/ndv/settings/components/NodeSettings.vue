@@ -68,6 +68,10 @@ import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 
 const props = withDefaults(
@@ -126,6 +130,11 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowState = injectWorkflowState();
+const workflowDocumentStore = computed(() =>
+	workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined,
+);
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
 
@@ -280,7 +289,7 @@ const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(no
 const packageName = computed(() => node.value?.type.split('.')[0] ?? '');
 
 const usedCredentials = computed(() =>
-	Object.values(workflowsStore.usedCredentials).filter((credential) =>
+	Object.values(workflowDocumentStore.value?.usedCredentials ?? {}).filter((credential) =>
 		Object.values(node.value?.credentials || []).find(
 			(nodeCredential) => nodeCredential.id === credential.id,
 		),

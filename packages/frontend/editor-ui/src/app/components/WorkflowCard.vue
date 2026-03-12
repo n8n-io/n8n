@@ -234,7 +234,7 @@ const actions = computed(() => {
 
 	if (
 		isWorkflowPublished.value &&
-		workflowPermissions.value.update &&
+		workflowPermissions.value.unpublish &&
 		!props.readOnly &&
 		!props.data.isArchived
 	) {
@@ -254,13 +254,11 @@ const actions = computed(() => {
 			items.push({
 				label: locale.baseText('workflows.item.disableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
-				disabled: !props.data.active,
 			});
 		} else {
 			items.push({
 				label: locale.baseText('workflows.item.enableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS,
-				disabled: !props.data.active,
 			});
 		}
 	}

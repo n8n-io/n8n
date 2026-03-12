@@ -176,6 +176,7 @@ import IconLucidePaperclip from '~icons/lucide/paperclip';
 import IconLucidePause from '~icons/lucide/pause';
 import IconLucidePen from '~icons/lucide/pen';
 import IconLucidePencil from '~icons/lucide/pencil';
+import IconLucidePencilOff from '~icons/lucide/pencil-off';
 import IconLucidePin from '~icons/lucide/pin';
 import IconLucidePlay from '~icons/lucide/play';
 import IconLucidePlug from '~icons/lucide/plug';
@@ -199,6 +200,7 @@ import IconLucideSettings2 from '~icons/lucide/settings-2';
 import IconLucideShare from '~icons/lucide/share';
 import IconLucideShield from '~icons/lucide/shield';
 import IconLucideShieldHalf from '~icons/lucide/shield-half';
+import IconLucideShieldUser from '~icons/lucide/shield-user';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
@@ -635,6 +637,7 @@ export const updatedIconSet = {
 	pause: IconLucidePause,
 	pen: IconLucidePen,
 	pencil: IconLucidePencil,
+	'pencil-off': IconLucidePencilOff,
 	pin: IconLucidePin,
 	play: IconLucidePlay,
 	plug: IconLucidePlug,
@@ -660,6 +663,7 @@ export const updatedIconSet = {
 	shield: IconLucideShield,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
 	'shield-half': IconLucideShieldHalf,
+	'shield-user': IconLucideShieldUser,
 	smile: IconLucideSmile,
 	sparkles: IconLucideSparkles,
 	split: IconLucideSplit,

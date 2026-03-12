@@ -330,7 +330,7 @@ jobs:
     secrets:
       registry-password: ${{ secrets.GITHUB_TOKEN }}
 
-  # VEX Attestation - Documents which CVEs affect us (vex.openvex.json)
+  # VEX Attestation - Documents which CVEs affect us (security/vex.openvex.json)
   vex-attestation:
     name: VEX Attestation
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest, provenance-n8n, provenance-runners, provenance-runners-distroless]
@@ -349,7 +349,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
 
       - name: Login to GHCR
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
@@ -363,7 +363,7 @@ jobs:
         run: |
           cosign attest --yes \
             --type openvex \
-            --predicate vex.openvex.json \
+            --predicate security/vex.openvex.json \
             ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
 
       - name: Attest VEX to runners image
@@ -371,7 +371,7 @@ jobs:
         run: |
           cosign attest --yes \
             --type openvex \
-            --predicate vex.openvex.json \
+            --predicate security/vex.openvex.json \
             ${{ needs.create_multi_arch_manifest.outputs.runners_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
 
       - name: Attest VEX to runners-distroless image
@@ -379,7 +379,7 @@ jobs:
         run: |
           cosign attest --yes \
             --type openvex \
-            --predicate vex.openvex.json \
+            --predicate security/vex.openvex.json \
             ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
 
   security-scan:

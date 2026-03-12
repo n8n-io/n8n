@@ -49,8 +49,12 @@ import { useBrowserNotifications } from '@/app/composables/useBrowserNotificatio
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
 import type { PlanMode } from '@/features/ai/assistant/assistant.types';
 import {
+	type ChatRequest,
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
+	isWebFetchApprovalCustomMessage,
+	isWebFetchApprovalMessage,
+	isToolMessage as isApiToolMessage,
 } from '@/features/ai/assistant/assistant.types';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
@@ -74,7 +78,12 @@ export type WorkflowBuilderJourneyEventType =
 	| 'user_switched_builder_mode'
 	| 'user_clicked_implement_plan'
 	| 'user_opened_review_changes'
-	| 'user_closed_review_changes';
+	| 'user_closed_review_changes'
+	| 'user_expanded_review_changes'
+	| 'user_collapsed_review_changes'
+	| 'web_fetch_approval_prompted'
+	| 'web_fetch_decision'
+	| 'web_fetch_completed';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -86,6 +95,10 @@ interface WorkflowBuilderJourneyEventProperties {
 	no_versions_reverted?: number;
 	completion_type?: 'workflow-ready' | 'input-needed';
 	mode?: 'plan' | 'build';
+	domain?: string;
+	url?: string;
+	decision?: 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
+	status?: string;
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -275,7 +288,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const pendingInterruptMessage = computed(() => {
 		for (let i = chatMessages.value.length - 1; i >= 0; i--) {
 			const msg = chatMessages.value[i];
-			if (isPlanModeQuestionsMessage(msg) || isPlanModePlanMessage(msg)) {
+			if (
+				isPlanModeQuestionsMessage(msg) ||
+				isPlanModePlanMessage(msg) ||
+				isWebFetchApprovalCustomMessage(msg)
+			) {
 				return msg;
 			}
 			// Stop searching if we hit a user message — any interrupt before that is already resolved
@@ -302,7 +319,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	const shouldDisableChatInput = computed(() => {
 		const msg = pendingInterruptMessage.value;
-		return msg ? isPlanModeQuestionsMessage(msg) : false;
+		if (!msg) return false;
+		return isPlanModeQuestionsMessage(msg) || isWebFetchApprovalCustomMessage(msg);
 	});
 
 	// Chat management functions
@@ -553,11 +571,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		messageId: string,
 		focusedNodeNames?: string[],
 		planAnswers?: PlanMode.QuestionResponse[],
+		skipUserMessage?: boolean,
 	) {
-		const userMsg = planAnswers
-			? createUserAnswersMessage(planAnswers, messageId)
-			: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
-		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
+		if (!skipUserMessage) {
+			const userMsg = planAnswers
+				? createUserAnswersMessage(planAnswers, messageId)
+				: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
+			chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
+		}
 		const thinkingKey =
 			userMessage.trim() === '/compact'
 				? 'aiAssistant.thinkingSteps.compacting'
@@ -686,7 +707,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Use workflow updatedAt as version timestamp
 		// might not be the same as "version.createdAt" but close enough
-		const updatedAt = workflowsStore.workflow.updatedAt;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		const updatedAt = workflowDocumentStore.updatedAt;
 		return {
 			id: versionId,
 			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
@@ -716,6 +740,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		planAnswers?: PlanMode.QuestionResponse[];
 		/** Whether this is a help question (e.g. credential or error help) that should not lock the canvas */
 		helpMessage?: boolean;
+		/** When true, skip adding the user message bubble to chat (e.g. web_fetch_approval decisions handled via buttons) */
+		skipUserMessage?: boolean;
 	}) {
 		isHelpStreaming.value = Boolean(options.helpMessage);
 		if (streaming.value) {
@@ -788,7 +814,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		resetManualExecutionStats();
 
-		prepareForStreaming(text, userMessageId, focusedNodeNames, options.planAnswers);
+		prepareForStreaming(
+			text,
+			userMessageId,
+			focusedNodeNames,
+			options.planAnswers,
+			options.skipUserMessage,
+		);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
 		const modeForPayload =
@@ -841,6 +873,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 						retry,
 					);
 					chatMessages.value = result.messages;
+
+					trackWebFetchEvents(response.messages);
 
 					if (result.shouldClearThinking) {
 						builderThinkingMessage.value = undefined;
@@ -1136,6 +1170,26 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		telemetry.track('Workflow builder journey', payload);
 	}
 
+	function trackWebFetchEvents(messages: ChatRequest.MessageResponse[]) {
+		for (const msg of messages) {
+			if (isWebFetchApprovalMessage(msg)) {
+				trackWorkflowBuilderJourney('web_fetch_approval_prompted', {
+					domain: msg.domain,
+					url: msg.url,
+				});
+			}
+			if (
+				isApiToolMessage(msg) &&
+				msg.toolName === 'web_fetch' &&
+				(msg.status === 'completed' || msg.status === 'error')
+			) {
+				trackWorkflowBuilderJourney('web_fetch_completed', {
+					status: msg.status,
+				});
+			}
+		}
+	}
+
 	// Version management for workflow history
 	const workflowHistoryStore = useWorkflowHistoryStore();
 
@@ -1168,7 +1222,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// version id is important to update, because otherwise the next time user saves,
 		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
 		workflowState.setWorkflowProperty('versionId', updatedWorkflow.versionId);
-		workflowState.setWorkflowProperty('updatedAt', updatedWorkflow.updatedAt);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		workflowDocumentStore.setUpdatedAt(updatedWorkflow.updatedAt);
 
 		// 2. Truncate messages in backend session (removes message with messageId and all after)
 		await truncateBuilderMessages(
