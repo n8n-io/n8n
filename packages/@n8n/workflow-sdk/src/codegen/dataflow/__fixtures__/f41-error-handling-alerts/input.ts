@@ -144,9 +144,7 @@ workflow({ name: 'F41: Error Handling Alerts' }, () => {
 			type: 'n8n-nodes-base.telegram',
 			name: 'Notify in channel',
 			params: {
-				text: expr(
-					"⚠️🐛 New bug in n8n\n\nWorkflow: {{ $('Error Trigger').item.json.workflow.name }}\nExecution URL: {{ $('Error Trigger').item.json.execution.url }}\nNode name: {{ $('Error Trigger').item.json.execution.error.node.name }}\nError message: {{ $('Error Trigger').item.json.execution.error.message }}",
-				),
+				text: `⚠️🐛 New bug in n8n\n\nWorkflow: ${items.json.workflow.name}\nExecution URL: ${items.json.execution.url}\nNode name: ${items.json.execution.error.node.name}\nError message: ${items.json.execution.error.message}`,
 				chatId: item.json.telegramChatID,
 				additionalFields: { appendAttribution: false },
 			},
@@ -159,10 +157,10 @@ workflow({ name: 'F41: Error Handling Alerts' }, () => {
 			type: 'n8n-nodes-base.gmail',
 			name: 'Send email',
 			params: {
-				sendTo: expr("{{ $('Edit Fields').item.json.toEmail }}"),
+				sendTo: edit_Fields.json.toEmail,
 				message: item.json.result.text,
 				options: { senderName: 'n8n Error Tracker', appendAttribution: false },
-				subject: expr('🐛New n8n bug in "{{ $(\'Error Trigger\').item.json.workflow.name }}"'),
+				subject: `🐛New n8n bug in "${items.json.workflow.name}"`,
 			},
 			credentials: { gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' } },
 			version: 2.1,

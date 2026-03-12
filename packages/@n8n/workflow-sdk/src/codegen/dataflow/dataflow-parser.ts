@@ -113,6 +113,17 @@ let _resumeUrlParam: string | undefined;
 let _resumeUrlMode: 'webhook' | 'form' | undefined;
 
 // ---------------------------------------------------------------------------
+// Module-level context for non-predecessor variable reference detection.
+// When extractLiteralValue encounters `varName.json.field`, it checks whether
+// varName maps to the source node of the current node being parsed. If not,
+// it emits $('NodeName').item.json.field instead of $json.field.
+// Set to the parser state during parse; _currentSourceNodeName is the node
+// whose output feeds into the node whose params are being extracted.
+// ---------------------------------------------------------------------------
+let _parserState: ParserState | undefined;
+let _currentSourceNodeName: string | undefined;
+
+// ---------------------------------------------------------------------------
 // AST type guards
 // ---------------------------------------------------------------------------
 
@@ -178,6 +189,29 @@ function findRootIdentifier(node: EstreeNode): Identifier | undefined {
 		return findRootIdentifier((node as CallExpression).callee);
 	}
 	return undefined;
+}
+
+/**
+ * Check if a member expression references a variable that maps to a node
+ * other than the source node of the current node being parsed (i.e., non-predecessor).
+ * Returns the node name if so, undefined otherwise.
+ */
+function resolveNonPredecessorRef(expr: Expression): string | undefined {
+	if (!_parserState) return undefined;
+	const root = findRootIdentifier(expr);
+	if (!root) return undefined;
+	const mapping = _parserState.varToNode.get(root.name);
+	if (!mapping) return undefined;
+	// If the variable maps to the same node as the current source, it's a predecessor → use $json
+	if (_currentSourceNodeName && mapping.nodeName === _currentSourceNodeName) return undefined;
+	// If there's no tracked source, fall back to lastNodeInScope comparison
+	if (
+		!_currentSourceNodeName &&
+		_parserState.lastNodeInScope &&
+		mapping.nodeName === _parserState.lastNodeInScope.nodeName
+	)
+		return undefined;
+	return mapping.nodeName;
 }
 
 /**
@@ -255,6 +289,10 @@ function extractLiteralValue(node: EstreeNode): unknown {
 		}
 		const fieldPath = memberExprToFieldPath(node as Expression);
 		if (fieldPath !== undefined) {
+			const nodeRef = resolveNonPredecessorRef(node as Expression);
+			if (nodeRef) {
+				return `={{ $('${nodeRef}').item.json.${fieldPath} }}`;
+			}
 			return `={{ $json.${fieldPath} }}`;
 		}
 		return undefined;
@@ -280,7 +318,12 @@ function extractLiteralValue(node: EstreeNode): unknown {
 					if (isMemberExpression(expr)) {
 						const fieldPath = memberExprToFieldPath(expr);
 						if (fieldPath !== undefined) {
-							parts.push(`{{ $json.${fieldPath} }}`);
+							const nodeRef = resolveNonPredecessorRef(expr);
+							if (nodeRef) {
+								parts.push(`{{ $('${nodeRef}').item.json.${fieldPath} }}`);
+							} else {
+								parts.push(`{{ $json.${fieldPath} }}`);
+							}
 							continue;
 						}
 					}
@@ -1532,13 +1575,15 @@ function processNodeVarDeclaration(
 			execConfig = match?.config;
 		}
 		if (execConfig) {
+			const sourceMapping = state.varToNode.get(mapMatch.sourceVar);
+			_currentSourceNodeName = sourceMapping?.nodeName;
 			const config = extractNodeConfig(execConfig);
+			_currentSourceNodeName = undefined;
 			const { node: sNode, isNew } = createSemanticNode(config, state);
 			if (isNew) processSubnodes(config, sNode.name, state);
 
-			const mapping = state.varToNode.get(mapMatch.sourceVar);
-			if (mapping) {
-				addSemanticEdge(state, mapping.nodeName, sNode.name, mapping.outputIndex);
+			if (sourceMapping) {
+				addSemanticEdge(state, sourceMapping.nodeName, sNode.name, sourceMapping.outputIndex);
 			}
 			if (isIdentifier(declarator.id)) {
 				state.varToNode.set(declarator.id.name, { nodeName: sNode.name, outputIndex: 0 });
@@ -1592,7 +1637,9 @@ function processNodeVarDeclaration(
 	if (handleErrorMatch) {
 		const innerExecMatch = matchExecuteNodeCall(handleErrorMatch.source);
 		if (innerExecMatch) {
+			_currentSourceNodeName = state.lastNodeInScope?.nodeName;
 			const config = extractNodeConfig(innerExecMatch.config);
+			_currentSourceNodeName = undefined;
 			const { node: sNode, isNew } = createSemanticNode(config, state);
 			if (isNew && state.branchDepth === 0) {
 				sNode.json.executeOnce = true;
@@ -1651,7 +1698,9 @@ function processNodeVarDeclaration(
 	// controls item flow and executeOnce is not semantically meaningful.
 	const execMatch = matchExecuteNodeCall(declarator.init);
 	if (execMatch) {
+		_currentSourceNodeName = state.lastNodeInScope?.nodeName;
 		const config = extractNodeConfig(execMatch.config);
+		_currentSourceNodeName = undefined;
 		const { node: sNode, isNew } = createSemanticNode(config, state);
 		if (isNew && state.branchDepth === 0) {
 			sNode.json.executeOnce = true;
@@ -1698,7 +1747,14 @@ function processNodeVarDeclaration(
 	const match = matchNodeCall(declarator.init);
 	if (!match) return undefined;
 
+	if (match.inputArg) {
+		const sourceNodeName = resolveInputVar(match.inputArg, state);
+		_currentSourceNodeName = sourceNodeName;
+	} else {
+		_currentSourceNodeName = state.lastNodeInScope?.nodeName;
+	}
 	const config = extractNodeConfig(match.configExpr);
+	_currentSourceNodeName = undefined;
 	const { node: sNode } = createSemanticNode(config, state);
 
 	// Process subnodes
@@ -2064,13 +2120,15 @@ function processStatement(
 					if (isCallExpression(body)) {
 						const execMatch = matchExecuteNodeCall(body);
 						if (execMatch) {
+							const srcMapping = state.varToNode.get(sourceVar);
+							_currentSourceNodeName = srcMapping?.nodeName;
 							const config = extractNodeConfig(execMatch.config);
+							_currentSourceNodeName = undefined;
 							const { node: sNode, isNew } = createSemanticNode(config, state);
 							if (isNew) processSubnodes(config, sNode.name, state);
 
-							const mapping = state.varToNode.get(sourceVar);
-							if (mapping) {
-								addSemanticEdge(state, mapping.nodeName, sNode.name, mapping.outputIndex);
+							if (srcMapping) {
+								addSemanticEdge(state, srcMapping.nodeName, sNode.name, srcMapping.outputIndex);
 							}
 							state.lastNodeInScope = { nodeName: sNode.name, outputIndex: 0 };
 						}
@@ -2081,7 +2139,13 @@ function processStatement(
 				// Check for standalone node() call without assignment
 				const match = matchNodeCall(exprStmt.expression);
 				if (match) {
+					if (match.inputArg) {
+						_currentSourceNodeName = resolveInputVar(match.inputArg, state);
+					} else {
+						_currentSourceNodeName = state.lastNodeInScope?.nodeName;
+					}
 					const config = extractNodeConfig(match.configExpr);
+					_currentSourceNodeName = undefined;
 					const { node: sNode } = createSemanticNode(config, state);
 
 					processSubnodes(config, sNode.name, state);
@@ -2317,7 +2381,12 @@ function parseToGraph(code: string): { graph: SemanticGraph; name: string } {
 		lastNodeInScope: undefined,
 	};
 
-	processWorkflowBody(bodyFn, state);
+	_parserState = state;
+	try {
+		processWorkflowBody(bodyFn, state);
+	} finally {
+		_parserState = undefined;
+	}
 
 	// Identify roots: triggers + nodes with no inputSources (excluding subnodes)
 	const subnodeNames = new Set<string>();

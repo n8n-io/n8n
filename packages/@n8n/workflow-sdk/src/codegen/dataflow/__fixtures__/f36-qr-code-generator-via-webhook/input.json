@@ -8,7 +8,7 @@
 			"position": [580, 140],
 			"parameters": {
 				"url": "=https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $json.body.data }}",
-				"method": "=GET",
+				"method": "GET",
 				"options": {}
 			},
 			"typeVersion": 4.2

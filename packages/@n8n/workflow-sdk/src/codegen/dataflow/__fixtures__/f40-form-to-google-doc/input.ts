@@ -61,9 +61,7 @@ workflow({ name: 'F40: Form to Google Doc' }, () => {
 					type: 'n8n-nodes-base.httpRequest',
 					name: 'Replace data in Google Doc',
 					params: {
-						url: expr(
-							"https://docs.googleapis.com/v1/documents/{{ $('Copy template file').first().json.id }}:batchUpdate",
-						),
+						url: `https://docs.googleapis.com/v1/documents/${copy_template_file.json.id}:batchUpdate`,
 						method: 'POST',
 						options: {},
 						sendBody: true,

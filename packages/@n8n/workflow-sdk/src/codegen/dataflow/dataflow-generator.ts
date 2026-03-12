@@ -38,6 +38,10 @@ import type { IDataObject, WorkflowJSON } from '../../types/base';
 let _genResumeUrlVar: string | undefined;
 let _genResumeUrlMode: 'webhook' | 'form' | undefined;
 let _genUsedGlobals: Set<string> | undefined;
+// Module-level map from node name → variable name for resolving $('NodeName') references.
+let _genNodeNameToVar: Map<string, string> | undefined;
+// Node names consumed by composite patterns (.route(), .branch()) — these don't get standalone variables.
+let _genCompositeParentNames: Set<string> | undefined;
 
 /**
  * Extended context for data-flow code generation.
@@ -158,6 +162,19 @@ function exprToVarRef(value: string, prevVarName: string): string | undefined {
 		return `${prevVarName}.json${jsonMatch[1]}`;
 	}
 
+	// $('NodeName').item.json.field or $('NodeName').first().json.field
+	if (_genNodeNameToVar) {
+		const nodeRefMatch = value.match(
+			/^=\{\{\s*\$\('([^']+)'\)\.(?:item|first\(\))\.json((?:\.[a-zA-Z_$][a-zA-Z0-9_$]*|\["[^"]*"\]|\['[^']*'\])*)\s*\}\}$/,
+		);
+		if (nodeRefMatch && !_genCompositeParentNames?.has(nodeRefMatch[1])) {
+			const varName = _genNodeNameToVar.get(nodeRefMatch[1]);
+			if (varName) {
+				return `${varName}.json${nodeRefMatch[2]}`;
+			}
+		}
+	}
+
 	// Strict pattern for simple global expressions: identifier + optional .prop or .method() chains
 	// Does NOT match globals with arguments like DateTime.fromISO($json.x)
 	const SIMPLE_GLOBAL_CHAIN =
@@ -192,6 +209,19 @@ function exprToVarRef(value: string, prevVarName: string): string | undefined {
 					templateStr = templateStr.replace(m[0], `\${${prevVarName}.json${jsonFieldMatch[1]}}`);
 					continue;
 				}
+				// $('NodeName').item.json.field or $('NodeName').first().json.field
+				if (_genNodeNameToVar) {
+					const nodeRefInner = inner.match(
+						/^\$\('([^']+)'\)\.(?:item|first\(\))\.json((?:\.[a-zA-Z_$][a-zA-Z0-9_$]*|\["[^"]*"\]|\['[^']*'\])*)$/,
+					);
+					if (nodeRefInner && !_genCompositeParentNames?.has(nodeRefInner[1])) {
+						const varName = _genNodeNameToVar.get(nodeRefInner[1]);
+						if (varName) {
+							templateStr = templateStr.replace(m[0], `\${${varName}.json${nodeRefInner[2]}}`);
+							continue;
+						}
+					}
+				}
 				// Simple n8n global reference (no arguments in calls)
 				const simpleGlobal = inner.match(SIMPLE_GLOBAL_CHAIN);
 				if (simpleGlobal && N8N_EXPRESSION_GLOBALS.has(inner.match(/^[\w$]+/)![0])) {
@@ -209,6 +239,82 @@ function exprToVarRef(value: string, prevVarName: string): string | undefined {
 	}
 
 	return undefined;
+}
+
+/**
+ * Convert $('NodeName') references to variable refs when no prevVarName is available.
+ * Used when a node doesn't have a clear predecessor (e.g., fan-out topology).
+ * Unlike formatDataFlowValue, this does NOT convert $json references.
+ */
+function nodeRefToVarRef(value: string): string | undefined {
+	if (!_genNodeNameToVar) return undefined;
+
+	// Pure $('NodeName').item.json.field
+	const nodeRefMatch = value.match(
+		/^=\{\{\s*\$\('([^']+)'\)\.(?:item|first\(\))\.json((?:\.[a-zA-Z_$][a-zA-Z0-9_$]*|\["[^"]*"\]|\['[^']*'\])*)\s*\}\}$/,
+	);
+	if (nodeRefMatch) {
+		// Skip composite parent nodes (Switch in .route(), IF in .branch()) — they have no standalone variable
+		if (_genCompositeParentNames?.has(nodeRefMatch[1])) return undefined;
+		const varName = _genNodeNameToVar.get(nodeRefMatch[1]);
+		if (varName) return `${varName}.json${nodeRefMatch[2]}`;
+	}
+
+	// Mixed template with $('NodeName') refs
+	if (value.startsWith('=')) {
+		const exprBody = value.slice(1);
+		const allMustaches = [...exprBody.matchAll(/\{\{\s*(.*?)\s*\}\}/gs)];
+		if (allMustaches.length > 0 && allMustaches.some((m) => m[1].includes('$('))) {
+			let templateStr = exprBody;
+			let allConverted = true;
+			for (const m of allMustaches) {
+				const inner = m[1];
+				const nodeRefInner = inner.match(
+					/^\$\('([^']+)'\)\.(?:item|first\(\))\.json((?:\.[a-zA-Z_$][a-zA-Z0-9_$]*|\["[^"]*"\]|\['[^']*'\])*)$/,
+				);
+				if (nodeRefInner) {
+					// Skip composite parent nodes (Switch in .route(), IF in .branch())
+					if (_genCompositeParentNames?.has(nodeRefInner[1])) {
+						allConverted = false;
+						break;
+					}
+					const varName = _genNodeNameToVar.get(nodeRefInner[1]);
+					if (varName) {
+						templateStr = templateStr.replace(m[0], `\${${varName}.json${nodeRefInner[2]}}`);
+						continue;
+					}
+				}
+				allConverted = false;
+				break;
+			}
+			if (allConverted) return '`' + templateStr + '`';
+		}
+	}
+
+	return undefined;
+}
+
+/**
+ * Format a parameter value resolving only $('NodeName') refs (no $json conversion).
+ * Falls back to formatValue for everything else.
+ */
+function formatNodeRefValue(value: unknown): string {
+	if (typeof value === 'string' && value.startsWith('=')) {
+		const varRef = nodeRefToVarRef(value);
+		if (varRef) return varRef;
+		return formatValue(value);
+	}
+	if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+		const entries = Object.entries(value as Record<string, unknown>);
+		if (entries.length === 0) return '{}';
+		const formattedEntries = entries.map(([k, v]) => `${formatKey(k)}: ${formatNodeRefValue(v)}`);
+		return `{ ${formattedEntries.join(', ')} }`;
+	}
+	if (Array.isArray(value)) {
+		const formattedElements = value.map((v) => formatNodeRefValue(v));
+		return `[${formattedElements.join(', ')}]`;
+	}
+	return formatValue(value);
 }
 
 /**
@@ -299,7 +405,9 @@ function buildNodeConfig(node: SemanticNode, ctx: DataFlowContext, prevVarName?:
 
 	const params = node.json.parameters;
 	if (params && Object.keys(params).length > 0) {
-		const paramStr = prevVarName ? formatDataFlowValue(params, prevVarName) : formatValue(params);
+		const paramStr = prevVarName
+			? formatDataFlowValue(params, prevVarName)
+			: formatNodeRefValue(params);
 		parts.push(`params: ${paramStr}`);
 	} else {
 		parts.push('params: {}');
@@ -355,6 +463,9 @@ function generateTriggerBlock(
 
 	const prevTriggerNodes = ctx.currentTriggerNodes;
 	ctx.currentTriggerNodes = new Set<string>();
+
+	// Remap trigger node to callback parameter so $('TriggerName') → items.json.field
+	_genNodeNameToVar?.set(triggerNode.name, 'items');
 
 	let prevVar = 'items';
 	for (const compositeNode of bodyNodes) {
@@ -455,6 +566,8 @@ function generateLeafNode(
 	if (isTriggerType(node.type)) {
 		// A trigger as a leaf (standalone, no chain after it)
 		const config = buildNodeConfig(node, ctx);
+		// Remap trigger node to callback parameter so $('TriggerName') → items.json.field
+		_genNodeNameToVar?.set(node.name, 'items');
 		return {
 			code: `${indent}onTrigger(${config}, (items) => {\n${indent}});`,
 			varName: null,
@@ -747,6 +860,7 @@ function generateIfElseNode(
 	const lines: string[] = [];
 
 	ctx.currentTriggerNodes?.add(node.ifNode.name);
+	_genCompositeParentNames?.add(node.ifNode.name);
 
 	const conditionExpr = extractIfCondition(node.ifNode.json.parameters, 'item', true);
 
@@ -905,6 +1019,7 @@ function generateSwitchCaseNode(
 	const innerIndent = getIndent(depth + 1);
 
 	ctx.currentTriggerNodes?.add(node.switchNode.name);
+	_genCompositeParentNames?.add(node.switchNode.name);
 	const lines: string[] = [];
 
 	const switchInfo = extractSwitchInfo(node.switchNode.json.parameters, 'item', true);
@@ -1375,6 +1490,7 @@ export function generateDataFlowCode(
 	graph: SemanticGraph,
 ): string {
 	_genUsedGlobals = new Set();
+	_genCompositeParentNames = new Set();
 	const ctx: DataFlowContext = {
 		nodeNameToVarName: new Map(),
 		usedVarNames: new Set(),
@@ -1396,6 +1512,7 @@ export function generateDataFlowCode(
 	for (const nodeName of graph.nodes.keys()) {
 		getUniqueVarName(nodeName, ctx);
 	}
+	_genNodeNameToVar = ctx.nodeNameToVarName;
 
 	const workflowName = escapeString(workflow.name ?? '');
 	const lines: string[] = [];
@@ -1426,6 +1543,8 @@ export function generateDataFlowCode(
 	lines.push('});');
 
 	const code = lines.join('\n');
+	_genNodeNameToVar = undefined;
+	_genCompositeParentNames = undefined;
 
 	// Prepend import for any n8n globals used in the generated code
 	if (_genUsedGlobals && _genUsedGlobals.size > 0) {

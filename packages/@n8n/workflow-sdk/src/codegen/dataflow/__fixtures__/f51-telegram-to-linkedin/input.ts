@@ -167,7 +167,7 @@ Write prompts in this format:
 						type: 'n8n-nodes-base.linkedIn',
 						name: 'Create a post',
 						params: {
-							text: expr("{{ $('LinkedIn Post Text').item.json.message.content }}"),
+							text: linkedIn_Post_Text.json.message.content,
 							person: 'z1_S-ihZxl',
 							additionalFields: {},
 							shareMediaCategory: 'IMAGE',

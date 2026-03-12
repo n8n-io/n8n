@@ -150,6 +150,105 @@ describe('parseDataFlowCode', () => {
 		});
 	});
 
+	describe('non-predecessor variable references', () => {
+		it('should emit $("NodeName").item.json.field when var references a non-predecessor node', () => {
+			const code = `workflow({ name: 'NonPred' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const edit_Fields = items.map((item) =>
+      executeNode({
+        type: 'n8n-nodes-base.set',
+        name: 'Edit Fields',
+        params: { options: {} },
+        version: 3,
+      }),
+    );
+    const notify = items.map((item) =>
+      executeNode({
+        type: 'n8n-nodes-base.telegram',
+        name: 'Notify',
+        params: { chatId: edit_Fields.json.telegramChatID },
+        version: 1,
+      }),
+    );
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// 'edit_Fields' is NOT the direct predecessor of 'Notify' (trigger is),
+			// so it should produce $('Edit Fields').item.json.telegramChatID
+			const notifyNode = result.nodes.find((n) => n.name === 'Notify');
+			expect(notifyNode!.parameters!.chatId).toBe(
+				"={{ $('Edit Fields').item.json.telegramChatID }}",
+			);
+		});
+
+		it('should emit $json.field when var references the direct predecessor', () => {
+			const code = `workflow({ name: 'Pred' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const fetch_Data = items.map((item) =>
+      executeNode({
+        type: 'n8n-nodes-base.httpRequest',
+        params: { url: 'https://example.com' },
+        version: 4,
+      }),
+    );
+    const transform = fetch_Data.map((item) =>
+      executeNode({
+        type: 'n8n-nodes-base.set',
+        params: { value: item.json.name },
+        version: 3,
+      }),
+    );
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// 'item' inside .map() on fetch_Data IS the predecessor, so it stays as $json
+			const transformNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect(transformNode!.parameters!.value).toBe('={{ $json.name }}');
+		});
+
+		it('should emit $("NodeName") in template literals for non-predecessor refs', () => {
+			const code = `workflow({ name: 'Template' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const copy_file = items.map((item) =>
+      executeNode({
+        type: 'n8n-nodes-base.httpRequest',
+        name: 'Copy file',
+        params: { url: 'https://example.com' },
+        version: 4,
+      }),
+    );
+    const other = items.map((item) =>
+      executeNode({
+        type: 'n8n-nodes-base.httpRequest',
+        name: 'Other',
+        params: {},
+        version: 4,
+      }),
+    );
+    const use_file = other.map((item) =>
+      executeNode({
+        type: 'n8n-nodes-base.httpRequest',
+        name: 'Use file',
+        params: { url: \`https://example.com/\${copy_file.json.id}/edit\` },
+        version: 4,
+      }),
+    );
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			const useFileNode = result.nodes.find((n) => n.name === 'Use file');
+			expect(useFileNode!.parameters!.url).toBe(
+				"=https://example.com/{{ $('Copy file').item.json.id }}/edit",
+			);
+		});
+	});
+
 	describe('subnode builder parsing', () => {
 		it('should parse languageModel() builder to ai_languageModel subnode', () => {
 			const code = `workflow({ name: 'AI' }, () => {
@@ -1030,6 +1129,50 @@ describe('parseDataFlowCode', () => {
 
 			expect(graphJson.nodes).toEqual(directJson.nodes);
 			expect(graphJson.connections).toEqual(directJson.connections);
+		});
+	});
+
+	describe('$("NodeName") round-trip via generator', () => {
+		it('should round-trip non-predecessor $("NodeName") references', () => {
+			const { generateDataFlowWorkflowCode } = require('./index');
+
+			// Code with non-predecessor var ref: edit_Fields is NOT the source of notify
+			const code = `workflow({ name: 'NonPred Round Trip' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const edit_Fields = items.map((item) =>
+      executeNode({
+        type: 'n8n-nodes-base.set',
+        name: 'Edit Fields',
+        params: { options: {} },
+        version: 3,
+      }),
+    );
+    const notify = items.map((item) =>
+      executeNode({
+        type: 'n8n-nodes-base.telegram',
+        name: 'Notify',
+        params: { chatId: edit_Fields.json.telegramChatID },
+        version: 1,
+      }),
+    );
+  });
+});`;
+
+			const parsed = parseDataFlowCode(code);
+			// Parser should emit $('Edit Fields') reference
+			expect(parsed.nodes.find((n) => n.name === 'Notify')!.parameters!.chatId).toBe(
+				"={{ $('Edit Fields').item.json.telegramChatID }}",
+			);
+
+			// Generator should convert back to variable reference
+			const regenerated = generateDataFlowWorkflowCode(parsed);
+			expect(regenerated).toContain('edit_Fields.json.telegramChatID');
+			expect(regenerated).not.toContain("$('Edit Fields')");
+
+			// Re-parse should produce same JSON
+			const reParsed = parseDataFlowCode(regenerated);
+			expect(reParsed.nodes).toEqual(parsed.nodes);
+			expect(reParsed.connections).toEqual(parsed.connections);
 		});
 	});
 });

@@ -18,7 +18,7 @@ workflow({ name: 'F36: QR Code Generator via Webhook' }, () => {
 					name: 'Generate QR Code',
 					params: {
 						url: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${item.json.body.data}`,
-						method: expr('GET'),
+						method: 'GET',
 						options: {},
 					},
 					version: 4.2,
