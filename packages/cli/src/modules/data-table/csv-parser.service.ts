@@ -25,19 +25,16 @@ export class CsvParserService {
 		this.uploadDir = this.globalConfig.dataTable.uploadDir;
 	}
 
-	private processRowWithoutHeaders(
-		row: string[],
-		columnNames: string[],
-	): { rowObject: Record<string, string>; columnNames: string[] } {
-		let updatedColumnNames = columnNames;
-		if (updatedColumnNames.length === 0) {
-			updatedColumnNames = row.map((_, index) => `${this.DEFAULT_COLUMN_PREFIX}${index + 1}`);
-		}
+	private generateColumnNames(columnCount: number): string[] {
+		return Array.from({ length: columnCount }, (_, i) => `${this.DEFAULT_COLUMN_PREFIX}${i + 1}`);
+	}
+
+	private mapValuesToColumns(row: string[], columnNames: string[]): Record<string, string> {
 		const rowObject: Record<string, string> = {};
 		row.forEach((value, index) => {
-			rowObject[updatedColumnNames[index]] = value;
+			rowObject[columnNames[index]] = value;
 		});
-		return { rowObject, columnNames: updatedColumnNames };
+		return rowObject;
 	}
 
 	private readonly TYPE_INFERENCE_SAMPLE_SIZE = 100;
@@ -60,11 +57,11 @@ export class CsvParserService {
 		row: Record<string, string> | string[],
 		hasHeaders: boolean,
 		columnNames: string[],
-	): { rowObject: Record<string, string>; columnNames: string[] } | null {
+	): Record<string, string> | null {
 		if (!hasHeaders && Array.isArray(row)) {
-			return this.processRowWithoutHeaders(row, columnNames);
+			return this.mapValuesToColumns(row, columnNames);
 		} else if (!Array.isArray(row)) {
-			return { rowObject: row, columnNames };
+			return row;
 		}
 		return null;
 	}
@@ -113,12 +110,15 @@ export class CsvParserService {
 			)
 				.on('data', (row: Record<string, string> | string[]) => {
 					rowCount++;
-					const normalized = this.normalizeRow(row, hasHeaders, columnNames);
-					if (!normalized) return;
-					columnNames = normalized.columnNames;
+					// When there are no headers, generate column names from the first row
+					if (!hasHeaders && Array.isArray(row) && columnNames.length === 0) {
+						columnNames = this.generateColumnNames(row.length);
+					}
+					const rowObject = this.normalizeRow(row, hasHeaders, columnNames);
+					if (!rowObject) return;
 
 					if (rowCount <= this.TYPE_INFERENCE_SAMPLE_SIZE) {
-						this.collectTypeSamples(normalized.rowObject, columnNames, firstNonEmptyValues);
+						this.collectTypeSamples(rowObject, columnNames, firstNonEmptyValues);
 					}
 				})
 				.on('end', () => {
@@ -149,10 +149,13 @@ export class CsvParserService {
 				}),
 			)
 				.on('data', (row: Record<string, string> | string[]) => {
-					const normalized = this.normalizeRow(row, hasHeaders, columnNames);
-					if (!normalized) return;
-					columnNames = normalized.columnNames;
-					rows.push(normalized.rowObject);
+					// When there are no headers, generate column names from the first row
+					if (!hasHeaders && Array.isArray(row) && columnNames.length === 0) {
+						columnNames = this.generateColumnNames(row.length);
+					}
+					const rowObject = this.normalizeRow(row, hasHeaders, columnNames);
+					if (!rowObject) return;
+					rows.push(rowObject);
 				})
 				.on('end', () => {
 					resolve(rows);
@@ -182,10 +185,13 @@ export class CsvParserService {
 				}),
 			)
 				.on('data', (row: Record<string, string> | string[]) => {
-					const normalized = this.normalizeRow(row, hasHeaders, columnNames);
-					if (!normalized) return;
-					columnNames = normalized.columnNames;
-					rows.push(normalized.rowObject);
+					// When there are no headers, generate column names from the first row
+					if (!hasHeaders && Array.isArray(row) && columnNames.length === 0) {
+						columnNames = this.generateColumnNames(row.length);
+					}
+					const rowObject = this.normalizeRow(row, hasHeaders, columnNames);
+					if (!rowObject) return;
+					rows.push(rowObject);
 				})
 				.on('end', () => {
 					const columns = columnNames.map((name) => ({ name, type: 'string' as const }));

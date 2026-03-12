@@ -56,7 +56,7 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 		{
 			label: i18n.baseText('dataTable.importCsv'),
 			value: DATA_TABLE_CARD_ACTIONS.IMPORT_CSV,
-			disabled: !dataTableStore.projectPermissions.dataTable.update || props.isReadOnly,
+			disabled: !dataTableStore.projectPermissions.dataTable.writeRow || props.isReadOnly,
 		},
 		{
 			label: i18n.baseText('dataTable.download.csv'),

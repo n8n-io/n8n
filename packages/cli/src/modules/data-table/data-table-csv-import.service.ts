@@ -145,8 +145,8 @@ export class DataTableCsvImportService {
 		const columnMapping = new Map<string, string>();
 
 		const hasCsvColumnNames = dtoColumns?.some((c) => c.csvColumnName);
-		if (hasCsvColumnNames && dtoColumns) {
-			for (const dtoCol of dtoColumns) {
+		if (hasCsvColumnNames) {
+			for (const dtoCol of dtoColumns!) {
 				if (dtoCol.csvColumnName) {
 					const tableCol = tableColumns.find((tc) => tc.name === dtoCol.name);
 					if (tableCol) {
