@@ -52,3 +52,50 @@ describe('passwordSchema', () => {
 		expect(check).toThrowError('Password must be 8 to 64 characters long.');
 	});
 });
+
+describe('passwordSchema with N8N_PASSWORD_MIN_LENGTH', () => {
+	const originalEnv = process.env;
+
+	afterEach(() => {
+		process.env = originalEnv;
+	});
+
+	const importFreshSchema = async () => {
+		jest.resetModules();
+		return await import('../password.schema');
+	};
+
+	test('should use custom min length from env var', async () => {
+		process.env = { ...originalEnv, N8N_PASSWORD_MIN_LENGTH: '12' };
+
+		const { passwordSchema: schema, passwordMinLength } = await importFreshSchema();
+
+		expect(passwordMinLength).toBe(12);
+		expect(() => schema.parse('Abcdefgh1')).toThrow('Password must be 12 to 64 characters long.');
+		expect(schema.parse('Abcdefghijk1')).toBe('Abcdefghijk1');
+	});
+
+	test('should floor at 8 when env var is below minimum', async () => {
+		process.env = { ...originalEnv, N8N_PASSWORD_MIN_LENGTH: '3' };
+
+		const { passwordMinLength } = await importFreshSchema();
+
+		expect(passwordMinLength).toBe(8);
+	});
+
+	test('should fall back to 8 when env var is non-numeric', async () => {
+		process.env = { ...originalEnv, N8N_PASSWORD_MIN_LENGTH: 'abc' };
+
+		const { passwordMinLength } = await importFreshSchema();
+
+		expect(passwordMinLength).toBe(8);
+	});
+
+	test('should fall back to 8 when env var exceeds max length', async () => {
+		process.env = { ...originalEnv, N8N_PASSWORD_MIN_LENGTH: '100' };
+
+		const { passwordMinLength } = await importFreshSchema();
+
+		expect(passwordMinLength).toBe(8);
+	});
+});
