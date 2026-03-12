@@ -226,22 +226,27 @@ onMounted(() => {
 }
 
 .usageStats {
-	display: grid;
-	grid-template-columns: repeat(4, 1fr);
-	gap: var(--spacing--xs);
+	display: flex;
+	align-items: stretch;
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius--lg);
+	overflow: hidden;
 }
 
 .statCard {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
-	padding: var(--spacing--sm);
-	background: var(--color--foreground--tint-2);
-	border-radius: var(--radius--lg);
+	padding: var(--spacing--sm) var(--spacing--md);
+	flex: 1;
+	border-left: var(--border-width) var(--border-style) var(--color--foreground);
+
+	&:first-child {
+		border-left: 0;
+	}
 }
 
 .statValue {
-	border: var(--border);
 	font-size: var(--font-size--2xl);
 	font-weight: var(--font-weight--bold);
 	line-height: var(--line-height--sm);
