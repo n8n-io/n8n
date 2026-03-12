@@ -88,9 +88,15 @@ export async function runAgent(
 				metadata: buildResponseMetadata(response, itemIndex),
 			};
 		}
-		// Save conversation to memory including any tool call context
+		// Save conversation to memory including any tool call context.
+		// When saveAnnouncements is on (and streaming is on), pass undefined so all steps are included in memory.
+		// When off or omitted, use previousCount to only save the latest tool batch.
 		if (memory && input && result?.output) {
-			await saveToMemory(input, result.output, memory, steps, undefined, options);
+			const useSaveAnnouncements = options.enableStreaming && options.saveAnnouncements === true;
+			const previousCount = useSaveAnnouncements
+				? undefined
+				: response?.metadata?.previousRequests?.length;
+			await saveToMemory(input, result.output, memory, steps, previousCount, options);
 		}
 
 		if (options.returnIntermediateSteps && steps.length > 0) {
@@ -108,14 +114,19 @@ export async function runAgent(
 		});
 
 		if ('returnValues' in modelResponse) {
-			// Save conversation to memory including any tool call context
+			// Save conversation to memory including any tool call context.
+			// saveAnnouncements is only relevant when streaming is on; when streaming is off, always use previousCount.
 			if (memory && input && modelResponse.returnValues.output) {
+				const useSaveAnnouncements = options.enableStreaming && options.saveAnnouncements === true;
+				const previousCount = useSaveAnnouncements
+					? undefined
+					: response?.metadata?.previousRequests?.length;
 				await saveToMemory(
 					input,
 					modelResponse.returnValues.output,
 					memory,
 					steps,
-					undefined,
+					previousCount,
 					options,
 				);
 			}

@@ -25,6 +25,9 @@ export type ToolCallRequest = {
 
 /**
  * Represents an announcement step during agent execution.
+ * The step itself is scratchpad/UI only and is never written to memory directly.
+ * The announcement text is preserved in memory by being embedded as the content
+ * of the tool call AIMessage (see buildSteps → buildMessagesFromSteps).
  */
 export type AnnouncementStepData = {
 	action: {
@@ -32,8 +35,6 @@ export type AnnouncementStepData = {
 		log: string | number | true | object;
 		/** Clean announcement text streamed by the LLM before a tool call */
 		announcement?: string;
-		/** When true, this step is for display only and should not be saved to memory */
-		skipInMemory?: boolean;
 	};
 };
 
@@ -172,7 +173,7 @@ export type RequestResponseMetadata = {
 	hitl?: HitlMetadata;
 	/** Clean announcement text streamed by the LLM before a tool call */
 	announcement?: string;
-	/** Agent options like saveAnnouncements and clearToolCallInputInformation */
+	/** Agent options (saveAnnouncements, clearToolCallInputInformation, etc.) */
 	options?: Record<string, unknown> & { clearToolCallInputInformation?: boolean };
 };
 

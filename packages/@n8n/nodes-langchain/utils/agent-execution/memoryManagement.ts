@@ -4,7 +4,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, ToolMessage, trimMessages } from '@langchain/core/messages';
 import type { IDataObject, GenericValue } from 'n8n-workflow';
 
-import type { ToolCallData, ActionStepData, AnnouncementStepData } from './types';
+import type { ToolCallData, ActionStepData } from './types';
 
 /**
  * Extracts a string tool_call_id from various possible formats.
@@ -84,18 +84,9 @@ export function buildMessagesFromSteps(
 	for (let i = 0; i < steps.length; i++) {
 		const step = steps[i];
 
-		// Announcement steps → either skip or store as AIMessage in memory
+		// Announcement steps are scratchpad/UI only — their text is already in memory
+		// as the content of the tool call AIMessage, so skip here to avoid duplication.
 		if (step.action.type === 'announcement') {
-			const announcementStep = step as AnnouncementStepData;
-			// Skip display-only announcements (merged into tool call AIMessage)
-			if (announcementStep.action.skipInMemory) {
-				continue;
-			}
-			const logContent =
-				typeof announcementStep.action.log === 'string' ? announcementStep.action.log : '';
-			if (logContent) {
-				messages.push(new AIMessage({ content: logContent }));
-			}
 			continue;
 		}
 
