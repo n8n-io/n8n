@@ -627,23 +627,7 @@ const aiGatewayCategoryOptions = computed(() => [
 	...aiGatewayStore.categories.map((cat) => ({ key: cat.id, value: cat.label })),
 ]);
 
-const isAiGatewayOverrideActive = computed(
-	() =>
-		workflowSettings.value.aiGatewayCategory &&
-		workflowSettings.value.aiGatewayCategory !== 'DEFAULT',
-);
-
-const aiGatewayModelOptions = computed(() => {
-	if (workflowSettings.value.aiGatewayCategory === 'manual') {
-		return aiGatewayStore.availableModels;
-	}
-	const cat = aiGatewayStore.categories.find(
-		(c) => c.id === workflowSettings.value.aiGatewayCategory,
-	);
-	if (!cat?.defaultModelId) return aiGatewayStore.availableModels;
-	const defaultModel = aiGatewayStore.availableModels.find((m) => m.id === cat.defaultModelId);
-	return defaultModel ? [defaultModel] : [];
-});
+const aiGatewayModelOptions = computed(() => aiGatewayStore.availableModels);
 
 const onAiGatewayCategoryChange = (categoryId: string) => {
 	workflowSettings.value.aiGatewayCategory = categoryId;
@@ -1311,7 +1295,10 @@ onBeforeUnmount(() => {
 						</N8nSelect>
 					</ElCol>
 				</ElRow>
-				<ElRow v-if="isAiGatewayOverrideActive" data-test-id="workflow-settings-ai-gateway-model">
+				<ElRow
+					v-if="workflowSettings.aiGatewayCategory === 'manual'"
+					data-test-id="workflow-settings-ai-gateway-model"
+				>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.aiGatewayModel') }}
 						<N8nTooltip placement="top">

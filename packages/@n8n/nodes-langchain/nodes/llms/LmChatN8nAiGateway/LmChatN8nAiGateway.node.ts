@@ -132,6 +132,10 @@ export class LmChatN8nAiGateway implements INodeType {
 		},
 
 		inputs: [],
+		requestDefaults: {
+			ignoreHttpStatusErrors: true,
+			baseURL: '={{ $credentials?.url }}',
+		},
 
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
@@ -143,6 +147,96 @@ export class LmChatN8nAiGateway implements INodeType {
 		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
+			{
+				displayName: 'Category',
+				name: 'category',
+				type: 'options',
+				default: 'default',
+				description:
+					'Choose a model category or pick a specific model manually. Default inherits from workflow or global settings.',
+				options: [
+					{
+						name: 'Balanced',
+						value: 'balanced',
+						description: 'Good quality at reasonable cost',
+					},
+					{
+						name: 'Best Quality',
+						value: 'best-quality',
+						description: 'Maximum capability',
+					},
+					{
+						name: 'Cheapest',
+						value: 'cheapest',
+						description: 'Minimize token spend',
+					},
+					{
+						name: 'Default (Inherit)',
+						value: 'default',
+						description: 'Use the category from workflow or global settings',
+					},
+					{
+						name: 'Fastest',
+						value: 'fastest',
+						description: 'Lowest latency',
+					},
+					{
+						name: 'Manual',
+						value: 'manual',
+						description: 'Choose a specific model',
+					},
+					{
+						name: 'Reasoning',
+						value: 'reasoning',
+						description: 'Complex multi-step tasks',
+					},
+				],
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'options',
+				default: '',
+				description: 'The model to use for completion',
+				typeOptions: {
+					loadOptions: {
+						routing: {
+							request: {
+								method: 'GET',
+								url: '/models',
+							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										properties: {
+											property: 'data',
+										},
+									},
+									{
+										type: 'setKeyValue',
+										properties: {
+											name: '={{$responseItem.id}}',
+											value: '={{$responseItem.id}}',
+										},
+									},
+									{
+										type: 'sort',
+										properties: {
+											key: 'name',
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				displayOptions: {
+					show: {
+						category: ['manual'],
+					},
+				},
+			},
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -245,18 +339,34 @@ export class LmChatN8nAiGateway implements INodeType {
 			categoryMap?: string | Record<string, string>;
 		}>('n8nAiGatewayApi');
 
+		const nodeCategory = this.getNodeParameter('category', itemIndex, 'default') as string;
+		const nodeModel = this.getNodeParameter('model', itemIndex, '') as string;
+
 		const workflowSettings = this.getWorkflowSettings();
 		const workflowCategory = workflowSettings?.aiGatewayCategory;
-		const category =
-			workflowCategory && workflowCategory !== 'DEFAULT'
-				? workflowCategory
-				: (credentials.defaultCategory ?? 'balanced');
+
+		// 3-tier override: node param > workflow settings > global settings (credentials)
+		let category: string;
+		if (nodeCategory !== 'default') {
+			category = nodeCategory;
+		} else if (workflowCategory && workflowCategory !== 'DEFAULT') {
+			category = workflowCategory;
+		} else {
+			category = credentials.defaultCategory ?? 'balanced';
+		}
 
 		const categoryMap = parseCategoryMap(credentials.categoryMap);
-		const modelName =
-			category === 'manual'
-				? (workflowSettings?.aiGatewayModel ?? credentials.defaultModel ?? FALLBACK_MODEL)
-				: (categoryMap[category] ?? credentials.defaultModel ?? FALLBACK_MODEL);
+		let modelName: string;
+		if (category === 'manual') {
+			// For manual: node model > workflow model > credential default > fallback
+			modelName =
+				(nodeCategory === 'manual' && nodeModel ? nodeModel : undefined) ??
+				workflowSettings?.aiGatewayModel ??
+				credentials.defaultModel ??
+				FALLBACK_MODEL;
+		} else {
+			modelName = categoryMap[category] ?? credentials.defaultModel ?? FALLBACK_MODEL;
+		}
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			frequencyPenalty?: number;
