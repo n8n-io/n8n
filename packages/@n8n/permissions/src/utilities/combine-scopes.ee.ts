@@ -14,18 +14,21 @@ import type { Scope, ScopeLevels, MaskLevels } from '../types.ee';
  * }, { sharing: ['workflow:read'] });
  */
 export function combineScopes(userScopes: ScopeLevels, masks?: MaskLevels): Set<Scope> {
-	const maskedScopes: ScopeLevels = Object.fromEntries(
-		Object.entries(userScopes).map((e) => [e[0], [...e[1]]]),
-	) as ScopeLevels;
+	const result = new Set<Scope>();
+	const sharingMask = masks?.sharing;
 
-	if (masks?.sharing) {
-		if (maskedScopes.project) {
-			maskedScopes.project = maskedScopes.project.filter((v) => masks.sharing.includes(v));
-		}
-		if (maskedScopes.resource) {
-			maskedScopes.resource = maskedScopes.resource.filter((v) => masks.sharing.includes(v));
+	for (const key in userScopes) {
+		const scopes = userScopes[key as keyof ScopeLevels];
+		if (!scopes) continue;
+
+		const shouldMask = sharingMask && (key === 'project' || key === 'resource');
+
+		for (const scope of scopes) {
+			if (!shouldMask || sharingMask.includes(scope)) {
+				result.add(scope);
+			}
 		}
 	}
 
-	return new Set(Object.values(maskedScopes).flat());
+	return result;
 }
