@@ -1413,6 +1413,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const maxVersionIdAlias = 'maxVersionId';
 		const depAlias = 'dep';
 
+		// Only select columns needed for indexing to avoid loading large unused
+		// JSON columns (connections, staticData, pinData) that can cause OOM.
+		qb.select([
+			'workflow.id',
+			'workflow.versionCounter',
+			'workflow.activeVersionId',
+			'workflow.nodes',
+		]);
+
 		qb.leftJoin(
 			(subQuery) => {
 				return (
@@ -1457,6 +1466,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const depAlias = 'dep';
 		const publishedVersionIdAlias = 'publishedVersionId';
 
+		// Only select columns needed for indexing to avoid loading large unused
+		// JSON columns (connections, staticData, pinData) that can cause OOM.
+		// For published version indexing we need the published version's nodes
+		// (from activeVersion), not the draft nodes.
+		qb.select(['workflow.id', 'workflow.versionCounter', 'workflow.activeVersionId']);
+
 		// Left join to find matching published version dependencies
 		qb.leftJoin(
 			(subQuery) => {
@@ -1477,8 +1492,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			`${qb.escape(depAlias)}.${qb.escape(publishedVersionIdAlias)} IS NULL`,
 		);
 
-		// Include activeVersion relation for efficiency
-		qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
+		// Include the published version's nodes for indexing (skip connections to save memory).
+		// The primary key (versionId) must be selected for TypeORM to hydrate the relation.
+		qb.leftJoin('workflow.activeVersion', 'activeVersion');
+		qb.addSelect(['activeVersion.versionId', 'activeVersion.nodes']);
 
 		if (batchSize) {
 			qb.limit(batchSize);

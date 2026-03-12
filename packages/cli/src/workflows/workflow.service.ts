@@ -15,6 +15,7 @@ import {
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -87,6 +88,7 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
@@ -542,6 +544,17 @@ export class WorkflowService {
 		} finally {
 			if (didPublish) {
 				assert(workflow.activeVersionId !== null);
+
+				// Temporary: In the future, the workflow publication service will
+				// manage this mapping. We set it here for now to support incremental
+				// development and testing.
+				if (this.globalConfig.workflows.useWorkflowPublicationService) {
+					await this.workflowPublishedVersionRepository.setPublishedVersion(
+						workflowId,
+						workflow.activeVersionId,
+					);
+				}
+
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId,
 					versionId: workflow.activeVersionId,
@@ -782,6 +795,11 @@ export class WorkflowService {
 
 		const deactivatedVersionId = workflow.activeVersionId;
 
+		// Temporary: will be removed when the workflow publication service manages this.
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
+		}
+
 		await this.workflowPublishHistoryRepository.addRecord({
 			workflowId,
 			versionId: deactivatedVersionId,
@@ -877,6 +895,12 @@ export class WorkflowService {
 
 		if (workflow.activeVersionId !== null) {
 			await this.activeWorkflowManager.remove(workflowId);
+
+			// Temporary: will be removed when the workflow publication service manages this.
+			if (this.globalConfig.workflows.useWorkflowPublicationService) {
+				await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
+			}
+
 			await this.workflowPublishHistoryRepository.addRecord({
 				workflowId,
 				versionId: workflow.activeVersionId,
