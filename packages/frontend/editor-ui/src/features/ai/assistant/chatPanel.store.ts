@@ -123,7 +123,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 			// Reset assistant only if session has ended
 			if (assistantStore.isSessionEnded) {
-				assistantStore.resetAssistantChat();
+				const workflowsStore = useWorkflowsStore();
+				assistantStore.resetAssistantChat(workflowsStore.workflowId);
 			}
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}

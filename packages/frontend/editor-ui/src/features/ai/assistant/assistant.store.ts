@@ -110,7 +110,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		() => settings.settings.ai.allowSendingParameterValues,
 	);
 
-	function resetAssistantChat(workflowId?: string) {
+	function resetAssistantChat(workflowId: string) {
 		clearMessages();
 		currentSessionId.value = undefined;
 		chatSessionError.value = undefined;
@@ -120,7 +120,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		nodeExecutionStatus.value = 'not_executed';
 		chatSessionCredType.value = undefined;
 		chatSessionTask.value = undefined;
-		currentSessionWorkflowId.value = workflowId ?? workflowsStore.workflowId;
+		currentSessionWorkflowId.value = workflowId;
 	}
 
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
@@ -722,7 +722,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		) {
 			return;
 		}
-		resetAssistantChat();
+		resetAssistantChat(activeWorkflowId);
 	});
 
 	watch(

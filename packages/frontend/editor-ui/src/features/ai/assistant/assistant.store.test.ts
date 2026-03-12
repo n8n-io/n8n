@@ -278,7 +278,7 @@ describe('AI Assistant store', () => {
 		assistantStore.addAssistantMessages([message], '1');
 		expect(assistantStore.chatMessages.length).toBe(1);
 
-		assistantStore.resetAssistantChat();
+		assistantStore.resetAssistantChat('test-workflow-id');
 		expect(assistantStore.chatMessages).toEqual([]);
 		expect(assistantStore.currentSessionId).toBeUndefined();
 	});
