@@ -44,6 +44,7 @@ import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { PluginsSettingsService } from '@/services/plugins-settings.service';
 
 const mockNode = {
 	name: '',
@@ -89,6 +90,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly secretsProviderConnectionRepository: SecretsProviderConnectionRepository,
 		private readonly licenseState: LicenseState,
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
+		private readonly pluginsSettingsService: PluginsSettingsService,
 	) {
 		super();
 	}
@@ -402,7 +404,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			);
 		}
 
-		return await this.applyDefaultsAndOverwrites(
+		const processedData = await this.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedDataOriginal,
 			type,
@@ -410,6 +412,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			executeData,
 			expressionResolveValues,
 		);
+		return await this.pluginsSettingsService.injectPluginManagedCredentials(type, processedData);
 	}
 
 	/**

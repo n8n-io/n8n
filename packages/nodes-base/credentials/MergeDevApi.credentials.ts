@@ -19,12 +19,25 @@ export class MergeDevApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Use Managed API Key',
+			name: 'useManagedApiKey',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to use the Merge.dev API key configured in the Plugins settings instead of providing one here.',
+		},
+		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
 			description: 'Your Merge.dev organization API key. Find it in your Merge.dev dashboard.',
+			displayOptions: {
+				show: {
+					useManagedApiKey: [false],
+				},
+			},
 		},
 		{
 			displayName: 'Account Token (Linked Account)',

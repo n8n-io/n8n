@@ -26,6 +26,7 @@ export const enum VIEWS {
 	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	SECURITY_SETTINGS = 'SecuritySettings',
+	PLUGINS_SETTINGS = 'PluginsSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
 	COMMUNITY_NODES = 'CommunityNodes',
