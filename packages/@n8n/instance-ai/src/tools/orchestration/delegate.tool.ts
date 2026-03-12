@@ -31,6 +31,10 @@ export function createDelegateTool(context: OrchestrationContext) {
 		inputSchema: delegateInputSchema,
 		outputSchema: delegateOutputSchema,
 		execute: async (input) => {
+			if (input.tools.length === 0) {
+				return { result: 'Delegation failed: "tools" must contain at least one tool name' };
+			}
+
 			// 1. Validate tools — check both domain tools and MCP tools
 			const errors: string[] = [];
 			const validTools: ToolsInput = {};

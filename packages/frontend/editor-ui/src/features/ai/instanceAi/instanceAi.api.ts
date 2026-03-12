@@ -78,18 +78,6 @@ export async function createGatewayLink(
 }
 
 /**
- * POST /instance-ai/filesystem/toggle -> { disabled }
- * Toggle filesystem access on/off.
- */
-export async function toggleFilesystem(context: IRestApiContext): Promise<{ disabled: boolean }> {
-	return await makeRestApiRequest<{ disabled: boolean }>(
-		context,
-		'POST',
-		'/instance-ai/filesystem/toggle',
-	);
-}
-
-/**
  * GET /instance-ai/gateway/status -> { connected, connectedAt, directory }
  * Check whether the gateway daemon is currently connected.
  */

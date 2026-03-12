@@ -50,7 +50,8 @@
     "watch": "turbo run watch --concurrency=32",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
-    "dev:fs-proxy": "pnpm --filter @n8n/fs-proxy build && node packages/@n8n/fs-proxy/dist/cli.js serve"
+    "dev:fs-proxy": "pnpm --filter @n8n/fs-proxy build && node packages/@n8n/fs-proxy/dist/cli.js serve",
+    "stop:fs-proxy": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'fs-proxy stopped'"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",

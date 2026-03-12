@@ -14,9 +14,8 @@ import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
 import InstanceAiMemoryPanel from './components/InstanceAiMemoryPanel.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
-import InstanceAiSettingsPanel from './components/InstanceAiSettingsPanel.vue';
+import InstanceAiSettingsPanel from './components/settings/InstanceAiSettingsPanel.vue';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
-import InstanceAiDirectoryShare from './components/InstanceAiDirectoryShare.vue';
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
@@ -306,7 +305,6 @@ function handleStop() {
 			<!-- Floating input -->
 			<div ref="inputContainer" :class="$style.inputContainer">
 				<InstanceAiStatusBar />
-				<InstanceAiDirectoryShare />
 				<InstanceAiInput
 					:is-streaming="store.isStreaming"
 					@submit="handleSubmit"

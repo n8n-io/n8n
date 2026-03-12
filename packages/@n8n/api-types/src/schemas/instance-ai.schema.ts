@@ -157,7 +157,7 @@ export type McpToolCallResult = z.infer<typeof mcpToolCallResultSchema>;
 // Sent by the daemon on connect — replaces the old file-tree upload
 export const instanceAiGatewayCapabilitiesSchema = z.object({
 	rootPath: z.string(),
-	tools: z.array(mcpToolSchema),
+	tools: z.array(mcpToolSchema).default([]),
 });
 export type InstanceAiGatewayCapabilities = z.infer<typeof instanceAiGatewayCapabilitiesSchema>;
 
@@ -465,6 +465,7 @@ export interface InstanceAiSettingsResponse {
 	sandboxTimeout: number;
 	hasBraveSearchApiKey: boolean;
 	searxngUrl: string;
+	filesystemDisabled: boolean;
 	permissions: InstanceAiPermissions;
 }
 
@@ -486,6 +487,7 @@ export interface InstanceAiSettingsUpdateRequest {
 	sandboxTimeout?: number;
 	braveSearchApiKey?: string;
 	searxngUrl?: string;
+	filesystemDisabled?: boolean;
 	permissions?: Partial<InstanceAiPermissions>;
 }
 

@@ -18,13 +18,15 @@ export class InstanceAiModule implements ModuleInterface {
 
 	async settings() {
 		const { InstanceAiService } = await import('./instance-ai.service');
+		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
 		const service = Container.get(InstanceAiService);
+		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = service.isEnabled();
 		const filesystem = service.isLocalFilesystemAvailable();
 		const gatewayStatus = service.getGatewayStatus();
 		const gatewayConnected = gatewayStatus.connected;
 		const gatewayDirectory = gatewayStatus.directory;
-		const filesystemDisabled = service.isFilesystemDisabled();
+		const filesystemDisabled = settingsService.isFilesystemDisabled();
 		const filesystemDirectory = service.getLocalFilesystemDirectory();
 		return {
 			enabled,

@@ -9,6 +9,7 @@ import { nanoid } from 'nanoid';
 
 import { createMemory } from '../memory/memory-config';
 import { createAllTools, createOrchestrationTools } from '../tools';
+import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import type { CreateInstanceAgentOptions, McpServerConfig } from '../types';
 import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { getSystemPrompt } from './system-prompt';
@@ -210,15 +211,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			...orchestratorDomainTools,
 			...orchestrationTools,
 			...orchestratorMcpTools,
-			...(context.localMcpServer
-				? context.localMcpServer.getAvailableTools().reduce(
-						(result, tool) => ({
-							...result,
-							[tool.name]: tool,
-						}),
-						{},
-					)
-				: {}),
+			...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 		},
 		defaultOptions: {
 			tracingOptions: buildTracingOptions(

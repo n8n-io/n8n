@@ -149,9 +149,6 @@ export class InstanceAiService {
 	/** Singleton local gateway — proxies MCP tool calls to the connected local client (e.g. fs-proxy). */
 	private readonly localGateway = new LocalGateway();
 
-	/** When true, filesystem tools are suppressed regardless of gateway/local availability. */
-	private filesystemDisabled = false;
-
 	/** Timer for graceful gateway disconnect (allows brief SSE reconnects). */
 	private disconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -463,7 +460,6 @@ export class InstanceAiService {
 	/** Initialize gateway from a daemon's MCP capabilities upload. */
 	initGateway(data: InstanceAiGatewayCapabilities): void {
 		this.clearDisconnectTimer();
-		this.filesystemDisabled = false; // Re-enable on new connection
 		this.localGateway.init(data);
 	}
 
@@ -477,19 +473,8 @@ export class InstanceAiService {
 		this.localGateway.disconnect();
 	}
 
-	/** Disable all filesystem access (gateway + local).
-	 *  Keeps gateway alive so toggling back on restores proxy access immediately. */
-	disableFilesystem(): void {
-		this.filesystemDisabled = true;
-	}
-
-	/** Re-enable filesystem access. */
-	enableFilesystem(): void {
-		this.filesystemDisabled = false;
-	}
-
 	isFilesystemDisabled(): boolean {
-		return this.filesystemDisabled;
+		return this.settingsService.isFilesystemDisabled();
 	}
 
 	/** Return gateway connection status for the frontend. */
@@ -577,14 +562,13 @@ export class InstanceAiService {
 				return;
 			}
 
+			const filesystemDisabled = this.settingsService.isFilesystemDisabled();
 			const localFilesystemService =
-				!this.filesystemDisabled &&
-				!this.localGateway.isConnected &&
-				this.isLocalFilesystemAvailable()
+				!filesystemDisabled && !this.localGateway.isConnected && this.isLocalFilesystemAvailable()
 					? this.getLocalFsProvider()
 					: undefined;
 			const context = this.adapterService.createContext(user, localFilesystemService);
-			if (!this.filesystemDisabled && this.localGateway.isConnected) {
+			if (!filesystemDisabled && this.localGateway.isConnected) {
 				context.localMcpServer = this.localGateway;
 			}
 			context.permissions = this.settingsService.getPermissions();

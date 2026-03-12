@@ -182,7 +182,11 @@ export class InstanceAiController {
 	@Put('/settings')
 	async updateSettings(req: AuthenticatedRequest) {
 		const body = req.body as InstanceAiSettingsUpdateRequest;
-		return await this.settingsService.updateSettings(req.user, body);
+		const result = await this.settingsService.updateSettings(req.user, body);
+		if (body.filesystemDisabled !== undefined) {
+			await this.moduleRegistry.refreshModuleSettings('instance-ai');
+		}
+		return result;
 	}
 
 	@Get('/settings/credentials')
@@ -369,17 +373,6 @@ export class InstanceAiController {
 	@Get('/gateway/status')
 	async gatewayStatus(_req: AuthenticatedRequest) {
 		return this.instanceAiService.getGatewayStatus();
-	}
-
-	@Post('/filesystem/toggle')
-	async filesystemToggle(_req: AuthenticatedRequest) {
-		if (this.instanceAiService.isFilesystemDisabled()) {
-			this.instanceAiService.enableFilesystem();
-		} else {
-			this.instanceAiService.disableFilesystem();
-		}
-		await this.moduleRegistry.refreshModuleSettings('instance-ai');
-		return { disabled: this.instanceAiService.isFilesystemDisabled() };
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────────

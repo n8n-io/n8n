@@ -11,7 +11,7 @@ export const delegateInputSchema = z.object({
 		),
 	tools: z
 		.array(z.string())
-		.min(1)
+		.default([])
 		.describe('Subset of registered native domain tool names the sub-agent needs'),
 	briefing: z.string().describe('The specific task to accomplish, including all relevant context'),
 	artifacts: z

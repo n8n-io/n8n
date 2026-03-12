@@ -3,19 +3,10 @@ import { ref, computed } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useToast } from '@/app/composables/useToast';
 import { ResponseError } from '@n8n/rest-api-client';
 import { instanceAiEventSchema } from '@n8n/api-types';
-import {
-	postMessage,
-	postCancel,
-	postCancelTask,
-	postConfirmation,
-	createGatewayLink,
-	getGatewayStatus,
-	toggleFilesystem as toggleFilesystemApi,
-} from './instanceAi.api';
+import { postMessage, postCancel, postCancelTask, postConfirmation } from './instanceAi.api';
 import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadMessages as fetchThreadMessagesApi,
@@ -51,9 +42,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
-	const isGatewayPolling = ref(false);
-	const isDaemonConnecting = ref(false);
-	const setupCommand = ref<string | null>(null);
 	const MAX_DEBUG_EVENTS = 1000;
 
 	// --- Computed ---
@@ -443,153 +431,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	// ── Gateway polling ───────────────────────────────────────────────────
-
-	let gatewayPollTimer: ReturnType<typeof setInterval> | null = null;
-
-	function pollGatewayStatus(): void {
-		if (isGatewayPolling.value) return;
-		isGatewayPolling.value = true;
-
-		gatewayPollTimer = setInterval(async () => {
-			try {
-				const status = await getGatewayStatus(rootStore.restApiContext);
-				const wasConnected = isGatewayConnected.value;
-				if (status.connected !== wasConnected) {
-					await settingsStore.getModuleSettings();
-				}
-				if (!status.connected && wasConnected) {
-					daemonConnectAttempted = false;
-					startDaemonProbing();
-				}
-			} catch {
-				// Silently retry
-			}
-		}, 3000);
-	}
-
-	function stopGatewayPolling(): void {
-		if (gatewayPollTimer) {
-			clearInterval(gatewayPollTimer);
-			gatewayPollTimer = null;
-		}
-		isGatewayPolling.value = false;
-	}
-
-	// ── Auto-connect daemon ──────────────────────────────────────────────
-
-	const DAEMON_BASE = 'http://127.0.0.1:7655';
-	let daemonEventSource: EventSource | null = null;
-
-	let daemonConnectAttempted = false;
-
-	async function connectDaemon(): Promise<void> {
-		if (isGatewayConnected.value || isDaemonConnecting.value || daemonConnectAttempted) return;
-		daemonConnectAttempted = true;
-		isDaemonConnecting.value = true;
-		stopDaemonProbing();
-		try {
-			// 1. Get a gateway token from the n8n backend
-			const result = await createGatewayLink(rootStore.restApiContext);
-
-			// 2. Tell the daemon to connect using the token
-			let baseUrl = rootStore.restApiContext.baseUrl.replace(/\/rest$/, '');
-			if (!['http://', 'https://'].every((protocol) => baseUrl.startsWith(protocol))) {
-				baseUrl = `${window.location.protocol}//${window.location.host}${baseUrl}`;
-			}
-			const res = await fetch(`${DAEMON_BASE}/connect`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					url: baseUrl,
-					token: result.token,
-				}),
-			});
-
-			if (!res.ok) {
-				const body = (await res.json()) as { error?: string };
-				throw new Error(body.error ?? 'Daemon connection failed');
-			}
-
-			// 3. Poll until the backend confirms the gateway is connected
-			pollGatewayStatus();
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to connect daemon';
-			toast.showError(new Error(message), 'Daemon connection failed');
-		} finally {
-			isDaemonConnecting.value = false;
-		}
-	}
-
-	/** Listen for daemon startup via SSE. Auto-connects once when daemon sends "ready". */
-	function startDaemonProbing(): void {
-		if (daemonEventSource || daemonConnectAttempted || isGatewayConnected.value) return;
-
-		daemonEventSource = new EventSource(`${DAEMON_BASE}/events`);
-		daemonEventSource.addEventListener('ready', () => {
-			void connectDaemon();
-		});
-	}
-
-	/** Close the daemon SSE connection. */
-	function stopDaemonProbing(): void {
-		if (daemonEventSource) {
-			daemonEventSource.close();
-			daemonEventSource = null;
-		}
-	}
-
-	// ── Gateway push listener ──────────────────────────────────────────
-
-	let removeGatewayPushListener: (() => void) | null = null;
-
-	function startGatewayPushListener(): void {
-		if (removeGatewayPushListener) return;
-		const pushStore = usePushConnectionStore();
-		removeGatewayPushListener = pushStore.addEventListener((message) => {
-			if (message.type !== 'instanceAiGatewayStateChanged') return;
-			void settingsStore.getModuleSettings();
-			if (!message.data.connected) {
-				daemonConnectAttempted = false;
-				startDaemonProbing();
-			}
-		});
-	}
-
-	function stopGatewayPushListener(): void {
-		if (removeGatewayPushListener) {
-			removeGatewayPushListener();
-			removeGatewayPushListener = null;
-		}
-	}
-
-	/** Fetch the full setup command (with URL + token) from the backend. */
-	async function fetchSetupCommand(): Promise<void> {
-		try {
-			const result = await createGatewayLink(rootStore.restApiContext);
-			setupCommand.value = result.command;
-		} catch {
-			// Fallback handled in the component
-		}
-	}
-
-	const isFilesystemDisabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.filesystemDisabled === true,
-	);
-
-	async function refreshModuleSettings(): Promise<void> {
-		await settingsStore.getModuleSettings();
-	}
-
-	async function toggleFilesystem(): Promise<void> {
-		try {
-			await toggleFilesystemApi(rootStore.restApiContext);
-			await settingsStore.getModuleSettings();
-		} catch {
-			toast.showError(new Error('Failed to toggle filesystem access.'), 'Toggle failed');
-		}
-	}
-
 	function toggleResearchMode(): void {
 		researchMode.value = !researchMode.value;
 		localStorage.setItem('instanceAi.researchMode', String(researchMode.value));
@@ -708,9 +549,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		gatewayDirectory,
 		filesystemDirectory,
 		activeDirectory,
-		isGatewayPolling,
-		isDaemonConnecting,
-		setupCommand,
 		contextualSuggestion,
 		currentTasks,
 		resourceRegistry,
@@ -726,16 +564,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		cancelRun,
 		cancelBackgroundTask,
 		amendAgent,
-		pollGatewayStatus,
-		stopGatewayPolling,
-		startDaemonProbing,
-		stopDaemonProbing,
-		startGatewayPushListener,
-		stopGatewayPushListener,
-		isFilesystemDisabled,
-		refreshModuleSettings,
-		fetchSetupCommand,
-		toggleFilesystem,
 		toggleResearchMode,
 		confirmAction,
 		copyFullTrace,
