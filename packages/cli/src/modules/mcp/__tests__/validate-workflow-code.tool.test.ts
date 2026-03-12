@@ -84,8 +84,12 @@ describe('validate-workflow-code MCP tool', () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: { nodes: [{ id: '1' }] },
 				warnings: [
-					{ code: 'deprecated', message: 'Node X is deprecated' },
-					{ code: 'no-target', message: 'Connection Y has no target' },
+					{ code: 'deprecated', message: 'Node X is deprecated', nodeName: 'HTTP Request' },
+					{
+						code: 'no-target',
+						message: 'Connection Y has no target',
+						parameterPath: 'options.retry',
+					},
 				],
 			});
 
@@ -94,7 +98,18 @@ describe('validate-workflow-code MCP tool', () => {
 
 			const response = parseResult(result);
 			expect(response.valid).toBe(true);
-			expect(response.warnings).toEqual(['Node X is deprecated', 'Connection Y has no target']);
+			expect(response.warnings).toEqual([
+				{
+					message: 'Node X is deprecated',
+					nodeName: 'HTTP Request',
+					parameterPath: undefined,
+				},
+				{
+					message: 'Connection Y has no target',
+					nodeName: undefined,
+					parameterPath: 'options.retry',
+				},
+			]);
 		});
 
 		test('omits warnings key when no warnings', async () => {
