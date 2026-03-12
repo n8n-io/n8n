@@ -188,28 +188,6 @@ n8n-cli user list
 n8n-cli user get <id>
 ```
 
-## AI Agent (Instance AI)
-
-```bash
-# Single-shot question
-n8n-cli ai chat "list my workflows with errors"
-
-# Continue a thread
-n8n-cli ai chat --thread=<threadId> "now fix the broken one"
-
-# Attach file context
-n8n-cli ai chat --file=context.md "summarize this"
-
-# Interactive mode (omit message)
-n8n-cli ai chat
-
-# List threads
-n8n-cli ai threads
-
-# JSON mode streams newline-delimited events
-n8n-cli ai chat "do something" --json
-```
-
 ## Other
 
 ```bash

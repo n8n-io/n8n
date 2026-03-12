@@ -51,28 +51,6 @@ n8n-cli execution list --status=error --format=id-only | xargs -I{} n8n-cli exec
 n8n-cli execution list --workflow=1234 --status=error --limit=5 --format=json
 ```
 
-## AI chat (instance AI agent)
-
-For complex, multi-step tasks or exploratory questions, use `ai chat` to interact with the n8n instance AI agent directly from the terminal:
-
-```bash
-# Ask the AI agent a question
-n8n-cli ai chat "why is my email workflow failing?"
-
-# Interactive session
-n8n-cli ai chat
-
-# Attach context
-n8n-cli ai chat "explain this workflow" --file=workflow.json
-
-# List past conversations
-n8n-cli ai threads
-```
-
-The AI agent has access to your instance's workflows, executions, and credentials. Use it when you need analysis or multi-step reasoning rather than simple CRUD.
-
-See [AI commands reference](../commands/ai.md) for full details.
-
 ## Exit codes
 
 | Code | Meaning |
