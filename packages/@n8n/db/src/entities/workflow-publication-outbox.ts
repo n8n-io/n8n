@@ -1,15 +1,6 @@
-import {
-	Column,
-	Entity,
-	JoinColumn,
-	ManyToOne,
-	PrimaryGeneratedColumn,
-	Relation,
-} from '@n8n/typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 import { WithTimestamps } from './abstract-entity';
-import type { WorkflowEntity } from './workflow-entity';
-import type { WorkflowHistory } from './workflow-history';
 
 export type WorkflowPublicationOutboxStatus =
 	| 'pending'
@@ -34,16 +25,4 @@ export class WorkflowPublicationOutbox extends WithTimestamps {
 
 	@Column({ type: 'text', nullable: true })
 	errorMessage: string | null;
-
-	@ManyToOne('WorkflowEntity', {
-		onDelete: 'CASCADE',
-	})
-	@JoinColumn({ name: 'workflowId' })
-	workflow: Relation<WorkflowEntity>;
-
-	@ManyToOne('WorkflowHistory', {
-		onDelete: 'CASCADE',
-	})
-	@JoinColumn({ name: 'publishedVersionId', referencedColumnName: 'versionId' })
-	publishedVersion: Relation<WorkflowHistory>;
 }
