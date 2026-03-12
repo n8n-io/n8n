@@ -25,6 +25,13 @@ const emit = defineEmits<{
 	move: [{ x: number; y: number }];
 }>();
 
+defineSlots<{
+	'header-icon': {};
+	header: {};
+	'header-actions': {};
+	default: {};
+}>();
+
 const x = ref(0);
 const y = ref(0);
 const currentWidth = ref(0);
