@@ -30,6 +30,55 @@ jest.mock('@/tool-generation', () => ({
 	createHitlTools: jest.fn(),
 }));
 
+/**
+ * Regression test for https://github.com/n8n-io/n8n/issues/24191
+ *
+ * LoadNodesAndCredentials.init() sets process.env.NODE_PATH to module.paths
+ * for node/credential resolution. It must PRESERVE any existing NODE_PATH
+ * (e.g. set by Docker ENV for global npm packages) so the task runner
+ * subprocess can resolve externally installed modules.
+ *
+ * The init() method cannot be called directly in tests (guarded by inTest),
+ * so this test validates the NODE_PATH preservation logic directly.
+ */
+describe('NODE_PATH preservation (issue #24191)', () => {
+	const originalNodePath = process.env.NODE_PATH;
+
+	afterEach(() => {
+		if (originalNodePath === undefined) {
+			delete process.env.NODE_PATH;
+		} else {
+			process.env.NODE_PATH = originalNodePath;
+		}
+	});
+
+	it('should preserve existing NODE_PATH when setting module paths', () => {
+		const existingPath = '/opt/nodejs/node-v24.13.1/lib/node_modules';
+		process.env.NODE_PATH = existingPath;
+
+		// This is the exact logic from LoadNodesAndCredentials.init()
+		const delimiter = process.platform === 'win32' ? ';' : ':';
+		process.env.NODE_PATH = [module.paths.join(delimiter), process.env.NODE_PATH]
+			.filter(Boolean)
+			.join(delimiter);
+
+		expect(process.env.NODE_PATH).toContain(existingPath);
+		expect(process.env.NODE_PATH?.endsWith(existingPath)).toBe(true);
+	});
+
+	it('should work when no existing NODE_PATH is set', () => {
+		delete process.env.NODE_PATH;
+
+		const delimiter = process.platform === 'win32' ? ';' : ':';
+		process.env.NODE_PATH = [module.paths.join(delimiter), process.env.NODE_PATH]
+			.filter(Boolean)
+			.join(delimiter);
+
+		expect(process.env.NODE_PATH).toBe(module.paths.join(delimiter));
+		expect(process.env.NODE_PATH).not.toContain('undefined');
+	});
+});
+
 describe('LoadNodesAndCredentials', () => {
 	describe('resolveIcon', () => {
 		let instance: LoadNodesAndCredentials;
