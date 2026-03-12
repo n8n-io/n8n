@@ -178,7 +178,12 @@ describe('AI Builder store', () => {
 		workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 		workflowsStore.workflow.nodes = [];
 		workflowsStore.workflow.connections = {};
-		workflowsStore.allNodes = [];
+		// mockedStore converts allNodes from a computed to a writable ref,
+		// breaking the link to workflow.nodes. Re-establish it as a getter.
+		Object.defineProperty(workflowsStore, 'allNodes', {
+			get: () => workflowsStore.workflow.nodes,
+			configurable: true,
+		});
 		workflowsStore.nodesByName = {};
 		workflowsStore.workflowExecutionData = null;
 
@@ -1549,7 +1554,6 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toContainEqual(
@@ -1573,7 +1577,6 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos.length).toBeGreaterThanOrEqual(2);
@@ -1599,7 +1602,6 @@ describe('AI Builder store', () => {
 					parameters: {},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1616,7 +1618,6 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 				} as Parameters<typeof workflowsStore.workflow.nodes.push>[0],
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1640,7 +1641,6 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1668,7 +1668,6 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1694,7 +1693,6 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1725,7 +1723,6 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1750,7 +1747,6 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1780,7 +1776,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
+
 			workflowsStore.workflowValidationIssues = [];
 
 			const builderStore = useBuilderStore();
@@ -1807,7 +1803,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
+
 			workflowsStore.workflowValidationIssues = [];
 
 			const builderStore = useBuilderStore();
@@ -1832,7 +1828,6 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1855,7 +1850,6 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1876,7 +1870,6 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
-			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -3017,7 +3010,7 @@ describe('AI Builder store', () => {
 			// Add focused nodes
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3026,7 +3019,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			];
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3050,7 +3043,7 @@ describe('AI Builder store', () => {
 
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3059,7 +3052,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			];
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3095,7 +3088,7 @@ describe('AI Builder store', () => {
 
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3104,7 +3097,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			];
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3127,7 +3120,7 @@ describe('AI Builder store', () => {
 
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3136,7 +3129,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			];
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 
 			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
