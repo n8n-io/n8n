@@ -2387,7 +2387,7 @@
 	"projectRoles.workflow:delete": "Delete",
 	"projectRoles.workflow:delete.tooltip": "Delete workflows",
 	"projectRoles.workflow:publish": "Publish",
-	"projectRoles.workflow:publish.tooltip": "Publish workflows",
+	"projectRoles.workflow:publish.tooltip": "Publish and unpublish workflows",
 	"projectRoles.workflow:unpublish": "Unpublish",
 	"projectRoles.workflow:unpublish.tooltip": "Unpublish workflows",
 	"projectRoles.workflow:updateRedactionSetting": "Manage data redaction",
