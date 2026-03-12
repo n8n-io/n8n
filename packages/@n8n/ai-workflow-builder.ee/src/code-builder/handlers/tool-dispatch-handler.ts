@@ -189,6 +189,7 @@ export class ToolDispatchHandler {
 			}
 			if (result.workflowReady) {
 				workflowReady = true;
+				sourceCode = textEditorHandler?.getWorkflowCode() ?? undefined;
 				break;
 			}
 			if (result.validatePassed) {
