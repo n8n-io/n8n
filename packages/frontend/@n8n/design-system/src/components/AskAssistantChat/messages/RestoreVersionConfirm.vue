@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { useI18n } from '../../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import N8nButton from '../../N8nButton';
 import N8nIcon from '../../N8nIcon';
 
@@ -37,13 +37,13 @@ const formattedPruneTime = computed(() => {
 			days === 1
 				? 'aiAssistant.versionCard.restoreModal.day'
 				: 'aiAssistant.versionCard.restoreModal.days';
-		return t(key, { count: String(days) });
+		return t(key, { interpolate: { count: String(days) } });
 	}
 	const key =
 		hours === 1
 			? 'aiAssistant.versionCard.restoreModal.hour'
 			: 'aiAssistant.versionCard.restoreModal.hours';
-	return t(key, { count: String(hours) });
+	return t(key, { interpolate: { count: String(hours) } });
 });
 
 const description = computed(() => {
@@ -51,7 +51,9 @@ const description = computed(() => {
 		return t('aiAssistant.versionCard.restoreModal.descriptionNoLimit');
 	}
 	return t('aiAssistant.versionCard.restoreModal.description', {
-		pruneTime: formattedPruneTime.value,
+		interpolate: {
+			pruneTime: formattedPruneTime.value,
+		},
 	});
 });
 

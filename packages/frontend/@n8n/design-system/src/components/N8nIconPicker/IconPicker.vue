@@ -7,7 +7,7 @@ import { ref, computed, nextTick } from 'vue';
 
 import { ALL_ICON_PICKER_ICONS } from './constants';
 import type { IconOrEmoji } from './types';
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';

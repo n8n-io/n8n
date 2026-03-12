@@ -4,7 +4,7 @@ import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue';
 import MessageRating from './messages/MessageRating.vue';
 import MessageWrapper from './messages/MessageWrapper.vue';
 import ThinkingMessage from './messages/ThinkingMessage.vue';
-import { useI18n } from '../../composables/useI18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
 import { isTaskAbortedMessage, isToolMessage, isThinkingGroupMessage } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
@@ -137,7 +137,7 @@ function groupToolMessagesIntoThinking(
 		loadingMessage?: string;
 		thinkingCompletionMessage?: string;
 		toolIdsWithWorkflowUpdate?: Set<string | undefined>;
-		t: (key: string) => string;
+		t: (key: BaseTextKey) => string;
 	},
 ): ChatUI.AssistantMessage[] {
 	const result: ChatUI.AssistantMessage[] = [];
@@ -238,16 +238,17 @@ function groupToolMessagesIntoThinking(
 					.split('_')
 					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 					.join(' ') ||
-				options.t('assistantChat.thinking.processing');
+				options.t('aiAssistant.thinkingSteps.processing');
 		} else if (!allToolsCompleted) {
-			latestStatus = options.t('assistantChat.thinking.thinking');
+			latestStatus = options.t('aiAssistant.thinkingSteps.thinking');
 		} else if (isActiveGroup && options.streaming) {
-			latestStatus = options.loadingMessage ?? options.t('assistantChat.thinking.processing');
+			latestStatus = options.loadingMessage ?? options.t('aiAssistant.thinkingSteps.processing');
 		} else if (groupGeneratedWorkflow) {
 			latestStatus =
-				options.thinkingCompletionMessage ?? options.t('assistantChat.thinking.workflowGenerated');
+				options.thinkingCompletionMessage ??
+				options.t('aiAssistant.builder.thinking.workflowGenerated');
 		} else {
-			latestStatus = options.t('assistantChat.thinking.thinking');
+			latestStatus = options.t('aiAssistant.thinkingSteps.thinking');
 		}
 
 		// Create a ThinkingGroup message with deduplicated items
@@ -463,7 +464,7 @@ defineExpose({
 				<div :class="$style.headerText">
 					<div :class="$style.assistantTitle">
 						<AssistantIcon size="large" />
-						<AssistantText size="large" :text="t('assistantChat.aiAssistantLabel')" />
+						<AssistantText size="large" :text="t('aiAssistant.name')" />
 					</div>
 				</div>
 				<slot name="header" />
@@ -472,7 +473,7 @@ defineExpose({
 				icon="x"
 				variant="ghost"
 				size="large"
-				:aria-label="t('askAssistantChat.close')"
+				:aria-label="t('generic.close')"
 				data-test-id="close-chat-button"
 				@click="onClose"
 			/>
@@ -540,7 +541,7 @@ defineExpose({
 									:class="$style.quickReplies"
 								>
 									<div :class="$style.quickRepliesTitle">
-										{{ t('assistantChat.quickRepliesTitle') }}
+										{{ t('aiAssistant.quickRepliesTitle') }}
 									</div>
 									<div
 										v-for="opt in lastMessageQuickReplies"
@@ -592,7 +593,7 @@ defineExpose({
 								name="suggestions-input"
 								:model-value="textInputValue"
 								:on-update-model-value="(val: string) => (textInputValue = val)"
-								:placeholder="t('assistantChat.blankStateInputPlaceholder')"
+								:placeholder="t('aiAssistant.builder.canvasPrompt.title')"
 								:disabled="disabled"
 								:disabled-tooltip="disabledTooltip"
 								:streaming="streaming"
@@ -609,7 +610,7 @@ defineExpose({
 								v-else
 								ref="promptInputRef"
 								v-model="textInputValue"
-								:placeholder="t('assistantChat.blankStateInputPlaceholder')"
+								:placeholder="t('aiAssistant.builder.canvasPrompt.title')"
 								:disabled="disabled"
 								:disabled-tooltip="disabledTooltip"
 								:streaming="streaming"
@@ -638,15 +639,15 @@ defineExpose({
 					<div :class="$style.greeting">Hi {{ user?.firstName }} 👋</div>
 					<div :class="$style.info">
 						<p>
-							{{ t('assistantChat.placeholder.1') }}
+							{{ t('aiAssistant.placeholder.1') }}
 						</p>
 						<p>
-							{{ t('assistantChat.placeholder.2') }}
+							{{ t('aiAssistant.placeholder.2') }}
 							<InlineAskAssistantButton size="small" :static="true" />
-							{{ t('assistantChat.placeholder.3') }}
+							{{ t('aiAssistant.placeholder.3') }}
 						</p>
 						<p>
-							{{ t('assistantChat.placeholder.4') }}
+							{{ t('aiAssistant.placeholder.4') }}
 						</p>
 					</div>
 				</template>
@@ -678,7 +679,7 @@ defineExpose({
 				v-else
 				ref="promptInputRef"
 				v-model="textInputValue"
-				:placeholder="inputPlaceholder || t('assistantChat.inputPlaceholder')"
+				:placeholder="inputPlaceholder || t('aiAssistant.inputPlaceholder')"
 				:disabled="sessionEnded || disabled"
 				:disabled-tooltip="disabledTooltip"
 				:streaming="streaming"

@@ -1,7 +1,7 @@
 <script lang="ts" setup generic="UserType extends IUser = IUser">
 import { computed } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { IUser, UserAction } from '../../types';
 import N8nActionToggle from '../N8nActionToggle';
 import N8nBadge from '../N8nBadge';

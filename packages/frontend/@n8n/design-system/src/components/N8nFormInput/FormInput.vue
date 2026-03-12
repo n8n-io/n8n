@@ -3,7 +3,7 @@ import { ElSwitch } from 'element-plus';
 import { computed, reactive, onMounted, ref, watch } from 'vue';
 
 import { getValidationError, VALIDATORS } from './validators';
-import { t } from '../../locale';
+import { useI18n } from '@n8n/i18n';
 import type {
 	Rule,
 	RuleGroup,
@@ -52,6 +52,8 @@ export interface Props {
 	tagSize?: 'small' | 'medium' | 'large';
 	autosize?: boolean | { minRows: number; maxRows: number };
 }
+
+const { t } = useI18n();
 
 const props = withDefaults(defineProps<Props>(), {
 	documentationText: 'Open docs',

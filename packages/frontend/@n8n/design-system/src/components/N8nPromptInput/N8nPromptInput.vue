@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue';
 
 import { useCharacterLimit } from '../../composables/useCharacterLimit';
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import N8nCallout from '../N8nCallout/Callout.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nLink from '../N8nLink';
@@ -107,8 +107,10 @@ const showCredits = computed(() => {
 const creditsInfo = computed(() => {
 	if (!showCredits.value || props.creditsRemaining === undefined) return '';
 	return t('promptInput.creditsInfo', {
-		remaining: props.creditsRemaining,
-		total: props.creditsQuota,
+		interpolate: {
+			remaining: props.creditsRemaining,
+			total: props.creditsQuota ?? 0,
+		},
 	});
 });
 
@@ -126,13 +128,17 @@ const creditsTooltipContent = computed(() => {
 
 	const lines = [
 		t('promptInput.remainingCredits', {
-			count: props.creditsRemaining ?? 0,
+			interpolate: {
+				count: props.creditsRemaining ?? 0,
+			},
 		}),
 		t('promptInput.monthlyCredits', {
-			count: props.creditsQuota ?? 0,
+			interpolate: {
+				count: props.creditsQuota ?? 0,
+			},
 		}),
-		t('promptInput.creditsRenew', { date: nextMonthDate }),
-		t('promptInput.creditsExpire', { date: nextMonthDate }),
+		t('promptInput.creditsRenew', { interpolate: { date: nextMonthDate } }),
+		t('promptInput.creditsExpire', { interpolate: { date: nextMonthDate } }),
 	];
 
 	return lines.join('<br />');
@@ -352,7 +358,11 @@ defineExpose({
 					theme="warning"
 					:class="$style.warningCallout"
 				>
-					{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
+					{{
+						t('aiAssistant.builder.characterLimit', {
+							interpolate: { limit: maxLength.toString() },
+						})
+					}}
 				</N8nCallout>
 
 				<!-- Use ScrollArea when content exceeds max height -->

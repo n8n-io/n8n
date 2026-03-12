@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="Value, Item extends { name: string; initialValue: Value }">
 import { computed } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import N8nIcon from '../N8nIcon';
 
 const { t } = useI18n();

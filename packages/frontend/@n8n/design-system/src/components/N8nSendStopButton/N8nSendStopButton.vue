@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import N8nButton from '../N8nButton';
 
 const { t } = useI18n();
@@ -37,7 +37,7 @@ function handleStop() {
 		v-if="streaming"
 		variant="solid"
 		icon-only
-		:aria-label="t('sendStopButton.stop')"
+		:aria-label="t('generic.stop')"
 		:class="$style.stopButton"
 		:size="size"
 		icon="filled-square"
@@ -52,7 +52,7 @@ function handleStop() {
 		icon-size="large"
 		:icon-only="!label"
 		:icon="label ? undefined : 'arrow-up'"
-		:aria-label="label ? undefined : t('sendStopButton.send')"
+		:aria-label="label ? undefined : t('generic.send')"
 		:disabled="disabled"
 		@click="handleSend"
 	>

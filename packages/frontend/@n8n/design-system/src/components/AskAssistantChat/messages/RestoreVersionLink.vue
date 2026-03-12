@@ -3,7 +3,7 @@ import { onClickOutside, useElementBounding } from '@vueuse/core';
 import { computed, ref, type Ref } from 'vue';
 
 import RestoreVersionConfirm from './RestoreVersionConfirm.vue';
-import { useI18n } from '../../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import IconTextButton from '../../IconTextButton';
 
 interface Props {
