@@ -7,7 +7,7 @@ describe(collectChatArtifacts, () => {
 		const items: ChatMessageContentChunk[] = [
 			{
 				type: 'artifact-create',
-				content: '<command>...</command>',
+				content: '@@artifact-create ...',
 				command: {
 					title: 'My Document',
 					type: 'md',
@@ -31,7 +31,7 @@ describe(collectChatArtifacts, () => {
 		const items: ChatMessageContentChunk[] = [
 			{
 				type: 'artifact-create',
-				content: '<command>...</command>',
+				content: '@@artifact-create ...',
 				command: {
 					title: 'Document 1',
 					type: 'md',
@@ -41,7 +41,7 @@ describe(collectChatArtifacts, () => {
 			},
 			{
 				type: 'artifact-create',
-				content: '<command>...</command>',
+				content: '@@artifact-create ...',
 				command: {
 					title: 'Document 2',
 					type: 'html',
@@ -70,7 +70,7 @@ describe(collectChatArtifacts, () => {
 		const items: ChatMessageContentChunk[] = [
 			{
 				type: 'artifact-create',
-				content: '<command>...</command>',
+				content: '@@artifact-create ...',
 				command: {
 					title: '',
 					type: 'md',
@@ -80,7 +80,7 @@ describe(collectChatArtifacts, () => {
 			},
 			{
 				type: 'artifact-create',
-				content: '<command>...</command>',
+				content: '@@artifact-create ...',
 				command: {
 					title: 'Valid Document',
 					type: 'md',
@@ -104,7 +104,7 @@ describe(collectChatArtifacts, () => {
 		const items: ChatMessageContentChunk[] = [
 			{
 				type: 'artifact-create',
-				content: '<command>...</command>',
+				content: '@@artifact-create ...',
 				command: {
 					title: 'My Document',
 					type: 'md',
@@ -114,7 +114,7 @@ describe(collectChatArtifacts, () => {
 			},
 			{
 				type: 'artifact-edit',
-				content: '<command>...</command>',
+				content: '@@artifact-edit ...',
 				command: {
 					title: 'My Document',
 					oldString: 'hello',
@@ -139,7 +139,7 @@ describe(collectChatArtifacts, () => {
 		const items: ChatMessageContentChunk[] = [
 			{
 				type: 'artifact-create',
-				content: '<command>...</command>',
+				content: '@@artifact-create ...',
 				command: {
 					title: 'My Document',
 					type: 'md',
@@ -149,7 +149,7 @@ describe(collectChatArtifacts, () => {
 			},
 			{
 				type: 'artifact-edit',
-				content: '<command>...</command>',
+				content: '@@artifact-edit ...',
 				command: {
 					title: 'My Document',
 					oldString: 'hello',
@@ -174,7 +174,7 @@ describe(collectChatArtifacts, () => {
 		const items: ChatMessageContentChunk[] = [
 			{
 				type: 'artifact-create',
-				content: '<command>...</command>',
+				content: '@@artifact-create ...',
 				command: {
 					title: 'My Document',
 					type: 'md',
@@ -184,7 +184,7 @@ describe(collectChatArtifacts, () => {
 			},
 			{
 				type: 'artifact-edit',
-				content: '<command>...</command>',
+				content: '@@artifact-edit ...',
 				command: {
 					title: 'My Document',
 					oldString: 'Step 1',
@@ -195,7 +195,7 @@ describe(collectChatArtifacts, () => {
 			},
 			{
 				type: 'artifact-edit',
-				content: '<command>...</command>',
+				content: '@@artifact-edit ...',
 				command: {
 					title: 'My Document',
 					oldString: 'Step 2',
@@ -220,7 +220,7 @@ describe(collectChatArtifacts, () => {
 		const items: ChatMessageContentChunk[] = [
 			{
 				type: 'artifact-create',
-				content: '<command>...</command>',
+				content: '@@artifact-create ...',
 				command: {
 					title: 'Document A',
 					type: 'md',
@@ -230,7 +230,7 @@ describe(collectChatArtifacts, () => {
 			},
 			{
 				type: 'artifact-edit',
-				content: '<command>...</command>',
+				content: '@@artifact-edit ...',
 				command: {
 					title: 'Document B',
 					oldString: 'old',
@@ -256,7 +256,7 @@ describe(collectChatArtifacts, () => {
 			{ type: 'text', content: 'Some text before' },
 			{
 				type: 'artifact-create',
-				content: '<command>...</command>',
+				content: '@@artifact-create ...',
 				command: {
 					title: 'My Document',
 					type: 'md',
@@ -265,7 +265,7 @@ describe(collectChatArtifacts, () => {
 				isIncomplete: false,
 			},
 			{ type: 'text', content: 'Some text after' },
-			{ type: 'hidden', content: '<com' },
+			{ type: 'hidden', content: '@@artifact-cr' },
 		];
 
 		const result = collectChatArtifacts(items);
@@ -282,7 +282,7 @@ describe(collectChatArtifacts, () => {
 		const items: ChatMessageContentChunk[] = [
 			{
 				type: 'artifact-create',
-				content: '<command:artifact-create>\n<title>Test',
+				content: '@@artifact-create title="Test" type="md" end="END_T"\nPartial content',
 				command: {
 					title: 'Test',
 					type: 'md',

@@ -13,9 +13,8 @@ describe(parseMessage, () => {
 	});
 
 	it('should parse non-ai message as text', () => {
-		expect(parseMessage({ type: 'human', content: '<command:artifact-create>' })).toEqual([
-			{ type: 'text', content: '<command:artifact-create>' },
-		]);
+		const cmd = '@@artifact-create title="X" type="md" end="END_T"';
+		expect(parseMessage({ type: 'human', content: cmd })).toEqual([{ type: 'text', content: cmd }]);
 	});
 
 	it('should parse AI message containing with-buttons JSON', () => {
@@ -58,16 +57,13 @@ describe(parseMessage, () => {
 	});
 
 	it('should parse artifact-create command', () => {
-		const content = `Here is a document:
+		const content = `\
+Here is a document:
 
-<command:artifact-create>
-<title>My Document</title>
-<type>md</type>
-<content>
+@@artifact-create title="My Document" type="md" end="END_A7X"
 # Hello World
 This is a test.
-</content>
-</command:artifact-create>
+@@end:END_A7X
 
 Done!`;
 
@@ -76,32 +72,32 @@ Done!`;
 			{ type: 'text', content: 'Here is a document:\n\n' },
 			{
 				type: 'artifact-create',
-				content: `<command:artifact-create>
-<title>My Document</title>
-<type>md</type>
-<content>
+				content: `\
+@@artifact-create title="My Document" type="md" end="END_A7X"
 # Hello World
 This is a test.
-</content>
-</command:artifact-create>`,
+@@end:END_A7X
+`,
 				command: {
 					title: 'My Document',
 					type: 'md',
-					content: '\n# Hello World\nThis is a test.\n',
+					content: `\
+# Hello World
+This is a test.`,
 				},
 				isIncomplete: false,
 			},
-			{ type: 'text', content: '\n\nDone!' },
+			{ type: 'text', content: '\nDone!' },
 		]);
 	});
 
 	it('should parse artifact-edit command', () => {
-		const content = `<command:artifact-edit>
-<title>My Document</title>
-<oldString>old text</oldString>
-<newString>new text</newString>
-<replaceAll>true</replaceAll>
-</command:artifact-edit>`;
+		const content = `\
+@@artifact-edit title="My Document" replaceAll="true" end="END_A7X"
+old text
+@@sep:END_A7X
+new text
+@@end:END_A7X`;
 
 		const result = parseMessage({ type: 'ai', content });
 		expect(result).toEqual([
@@ -266,47 +262,86 @@ describe(appendChunkToParsedMessageItems, () => {
 		});
 	});
 
-	it('should ignore potential prefix of command', () => {
-		const result = appendChunkToParsedMessageItems([], 'here: <com');
+	it('should buffer potential command prefix at line boundary', () => {
+		// '@@artifact-cr' is a valid prefix of '@@artifact-create ' at line start
+		const result = appendChunkToParsedMessageItems([], 'here:\n@@artifact-cr');
 		expect(result).toEqual([
-			{ type: 'text', content: 'here: ' },
-			{ type: 'hidden', content: '<com' },
+			{ type: 'text', content: 'here:\n' },
+			{ type: 'hidden', content: '@@artifact-cr' },
 		]);
 	});
 
-	it('should handle artifact-create command divided into multiple chunks', () => {
-		const result1 = appendChunkToParsedMessageItems([], '<comman');
-		const result2 = appendChunkToParsedMessageItems(result1, 'd:artifact-create>\n<title>Test');
+	it('should not buffer command prefix that is not at a line boundary', () => {
+		// '@@artifact-cr' is NOT at a line start (preceded by space)
+		const result = appendChunkToParsedMessageItems([], 'here: @@artifact-cr');
+		expect(result).toEqual([{ type: 'text', content: 'here: @@artifact-cr' }]);
+	});
 
+	it('should handle artifact-create command divided into multiple chunks', () => {
+		// '@@artifact-cr' is a valid prefix buffered as hidden
+		const result1 = appendChunkToParsedMessageItems([], '@@artifact-cr');
+		expect(result1).toEqual([{ type: 'hidden', content: '@@artifact-cr' }]);
+
+		// Completing the tag in the next chunk triggers parsing
+		const result2 = appendChunkToParsedMessageItems(
+			result1,
+			`eate title="Test" type="md" end="END_T"
+Some content`,
+		);
 		expect(result2).toEqual([
 			{
 				type: 'artifact-create',
-				content: '<command:artifact-create>\n<title>Test',
-				command: { title: 'Test', type: '', content: '' },
+				content: `\
+@@artifact-create title="Test" type="md" end="END_T"
+Some content`,
+				command: { title: 'Test', type: 'md', content: 'Some content' },
 				isIncomplete: true,
 			},
 		]);
 	});
 
 	it('should handle incomplete artifact-create command', () => {
-		const result = appendChunkToParsedMessageItems([], '<command:artifact-create>\n<title>Test');
+		const result = appendChunkToParsedMessageItems(
+			[],
+			`\
+@@artifact-create title="Test" type="md" end="END_T"
+Some content`,
+		);
 		expect(result).toEqual([
 			{
 				type: 'artifact-create',
-				content: '<command:artifact-create>\n<title>Test',
-				command: { title: 'Test', type: '', content: '' },
+				content: `\
+@@artifact-create title="Test" type="md" end="END_T"
+Some content`,
+				command: { title: 'Test', type: 'md', content: 'Some content' },
 				isIncomplete: true,
 			},
 		]);
 	});
 
-	it('should handle incomplete artifact-create command with incomplete closing tag', () => {
-		const result = appendChunkToParsedMessageItems([], '<command:artifact-create>\n<title>Test</t');
+	it('should handle incomplete artifact-create command with partial end marker', () => {
+		// '@@end:EN' is not the full end marker '@@end:END_T', so command stays incomplete
+		const result = appendChunkToParsedMessageItems(
+			[],
+			`\
+@@artifact-create title="Test" type="md" end="END_T"
+Some content
+@@end:EN`,
+		);
 		expect(result).toEqual([
 			{
 				type: 'artifact-create',
-				content: '<command:artifact-create>\n<title>Test</t',
-				command: { title: 'Test', type: '', content: '' },
+				content: `\
+@@artifact-create title="Test" type="md" end="END_T"
+Some content
+@@end:EN`,
+				command: {
+					title: 'Test',
+					type: 'md',
+					content: `\
+Some content
+@@end:EN`,
+				},
 				isIncomplete: true,
 			},
 		]);
@@ -315,14 +350,19 @@ describe(appendChunkToParsedMessageItems, () => {
 	it('should handle incomplete artifact-create command starting in the middle of chunk', () => {
 		const result = appendChunkToParsedMessageItems(
 			[],
-			'here: <command:artifact-create>\n<title>Test',
+			`\
+here:
+@@artifact-create title="Test" type="md" end="END_T"
+some body`,
 		);
 		expect(result).toEqual([
-			{ type: 'text', content: 'here: ' },
+			{ type: 'text', content: 'here:\n' },
 			{
 				type: 'artifact-create',
-				content: '<command:artifact-create>\n<title>Test',
-				command: { title: 'Test', type: '', content: '' },
+				content: `\
+@@artifact-create title="Test" type="md" end="END_T"
+some body`,
+				command: { title: 'Test', type: 'md', content: 'some body' },
 				isIncomplete: true,
 			},
 		]);
@@ -332,28 +372,26 @@ describe(appendChunkToParsedMessageItems, () => {
 		const items: ChatMessageContentChunk[] = [
 			{
 				type: 'artifact-create',
-				content: '<command:artifact-create>\n<title>Test',
-				command: { title: 'Test', type: '', content: '' },
+				content: `\
+@@artifact-create title="Test" type="md" end="END_T"
+Some content`,
+				command: { title: 'Test', type: 'md', content: 'Some content' },
 				isIncomplete: true,
 			},
 		];
 
-		const result = appendChunkToParsedMessageItems(
-			items,
-			'</title>\n<type>md</type>\n<content>Content here</content>\n</command:artifact-create>',
-		);
+		const result = appendChunkToParsedMessageItems(items, '\n@@end:END_T');
 		expect(result).toEqual([
 			{
 				type: 'artifact-create',
-				content: `<command:artifact-create>
-<title>Test</title>
-<type>md</type>
-<content>Content here</content>
-</command:artifact-create>`,
+				content: `\
+@@artifact-create title="Test" type="md" end="END_T"
+Some content
+@@end:END_T`,
 				command: {
 					title: 'Test',
 					type: 'md',
-					content: 'Content here',
+					content: 'Some content',
 				},
 				isIncomplete: false,
 			},
@@ -363,13 +401,17 @@ describe(appendChunkToParsedMessageItems, () => {
 	it('should handle incomplete artifact-edit command', () => {
 		const result = appendChunkToParsedMessageItems(
 			[],
-			'<command:artifact-edit>\n<title>My Doc</title>\n<oldString>',
+			`\
+@@artifact-edit title="My Doc" replaceAll="false" end="END_T"
+old`,
 		);
 		expect(result).toEqual([
 			{
 				type: 'artifact-edit',
-				content: '<command:artifact-edit>\n<title>My Doc</title>\n<oldString>',
-				command: { title: 'My Doc', oldString: '', newString: '', replaceAll: false },
+				content: `\
+@@artifact-edit title="My Doc" replaceAll="false" end="END_T"
+old`,
+				command: { title: 'My Doc', oldString: 'old', newString: '', replaceAll: false },
 				isIncomplete: true,
 			},
 		]);
@@ -379,25 +421,24 @@ describe(appendChunkToParsedMessageItems, () => {
 		const items: ChatMessageContentChunk[] = [
 			{
 				type: 'artifact-edit',
-				content: '<command:artifact-edit>\n<title>Doc</title>\n<oldString>old',
+				content: `\
+@@artifact-edit title="Doc" replaceAll="false" end="END_T"
+old`,
 				command: { title: 'Doc', oldString: 'old', newString: '', replaceAll: false },
 				isIncomplete: true,
 			},
 		];
 
-		const result = appendChunkToParsedMessageItems(
-			items,
-			'</oldString>\n<newString>new</newString>\n<replaceAll>false</replaceAll>\n</command:artifact-edit>',
-		);
+		const result = appendChunkToParsedMessageItems(items, '\n@@sep:END_T\nnew\n@@end:END_T');
 		expect(result).toEqual([
 			{
 				type: 'artifact-edit',
-				content: `<command:artifact-edit>
-<title>Doc</title>
-<oldString>old</oldString>
-<newString>new</newString>
-<replaceAll>false</replaceAll>
-</command:artifact-edit>`,
+				content: `\
+@@artifact-edit title="Doc" replaceAll="false" end="END_T"
+old
+@@sep:END_T
+new
+@@end:END_T`,
 				command: {
 					title: 'Doc',
 					oldString: 'old',
@@ -409,24 +450,52 @@ describe(appendChunkToParsedMessageItems, () => {
 		]);
 	});
 
+	it('should tolerate trailing characters after sep and end markers', () => {
+		// LLMs commonly append a stray `"` after the token (pattern-matching from end="TOKEN")
+		const result = appendChunkToParsedMessageItems(
+			[],
+			`\
+@@artifact-edit title="Doc" replaceAll="false" end="END_T"
+old text
+@@sep:END_T"
+new text
+@@end:END_T"`,
+		);
+		expect(result).toEqual([
+			{
+				type: 'artifact-edit',
+				content: `\
+@@artifact-edit title="Doc" replaceAll="false" end="END_T"
+old text
+@@sep:END_T"
+new text
+@@end:END_T"`,
+				command: {
+					title: 'Doc',
+					oldString: 'old text',
+					newString: 'new text',
+					replaceAll: false,
+				},
+				isIncomplete: false,
+			},
+		]);
+	});
+
 	it('should handle multiple commands in sequence', () => {
-		const content = `<command:artifact-create>
-<title>Doc1</title>
-<type>md</type>
-<content>Content 1</content>
-</command:artifact-create>
-<command:artifact-edit>
-<title>Doc1</title>
-<oldString>Content 1</oldString>
-<newString>Updated Content</newString>
-<replaceAll>false</replaceAll>
-</command:artifact-edit>`;
+		const content = `\
+@@artifact-create title="Doc1" type="md" end="END_C"
+Content 1
+@@end:END_C
+@@artifact-edit title="Doc1" replaceAll="false" end="END_E"
+Content 1
+@@sep:END_E
+Updated Content
+@@end:END_E`;
 
 		const result = appendChunkToParsedMessageItems([], content);
-		expect(result).toHaveLength(3);
+		expect(result).toHaveLength(2);
 		expect(result[0].type).toBe('artifact-create');
-		expect(result[1]).toEqual({ type: 'text', content: '\n' });
-		expect(result[2].type).toBe('artifact-edit');
+		expect(result[1].type).toBe('artifact-edit');
 	});
 
 	it('should handle streaming scenario with text before command', () => {
@@ -436,18 +505,18 @@ describe(appendChunkToParsedMessageItems, () => {
 		items = appendChunkToParsedMessageItems(items, 'Here is a document:\n\n');
 		expect(items).toEqual([{ type: 'text', content: 'Here is a document:\n\n' }]);
 
-		// Chunk 2: Start of command
-		items = appendChunkToParsedMessageItems(items, '<command:artifact-create>\n<title>');
+		// Chunk 2: Opening line of command (incomplete — no body yet)
+		items = appendChunkToParsedMessageItems(
+			items,
+			'@@artifact-create title="Test" type="md" end="END_T"\n',
+		);
 		expect(items).toHaveLength(2);
 		expect(items[1].type).toBe('artifact-create');
 		assert(items[1].type === 'artifact-create');
 		expect(items[1].isIncomplete).toBe(true);
 
-		// Chunk 3: Complete the command
-		items = appendChunkToParsedMessageItems(
-			items,
-			'Test</title>\n<type>md</type>\n<content>Hello</content>\n</command:artifact-create>',
-		);
+		// Chunk 3: Body + end marker completes the command
+		items = appendChunkToParsedMessageItems(items, 'Hello world\n@@end:END_T');
 		expect(items).toHaveLength(2);
 		expect(items[1].type).toBe('artifact-create');
 		assert(items[1].type === 'artifact-create');
@@ -459,8 +528,10 @@ describe(appendChunkToParsedMessageItems, () => {
 			const originalItems: ChatMessageContentChunk[] = [
 				{
 					type: 'artifact-create',
-					content: '<command:artifact-create>\n<title>Test',
-					command: { title: 'Test', type: '', content: '' },
+					content: `\
+@@artifact-create title="Test" type="md" end="END_T"
+Some content`,
+					command: { title: 'Test', type: 'md', content: 'Some content' },
 					isIncomplete: true,
 				},
 			];
@@ -468,10 +539,7 @@ describe(appendChunkToParsedMessageItems, () => {
 			// Deep clone to compare later
 			const clonedOriginal = JSON.parse(JSON.stringify(originalItems));
 
-			const result = appendChunkToParsedMessageItems(
-				originalItems,
-				'</title>\n<type>md</type>\n<content>Content</content>\n</command:artifact-create>',
-			);
+			const result = appendChunkToParsedMessageItems(originalItems, '\n@@end:END_T');
 
 			// Original should remain unchanged
 			expect(originalItems).toEqual(clonedOriginal);
@@ -480,18 +548,21 @@ describe(appendChunkToParsedMessageItems, () => {
 			expect(result).toHaveLength(1);
 			assert(result[0].type === 'artifact-create');
 			expect(result[0].isIncomplete).toBe(false);
-			expect(result[0].command.type).toBe('md');
+			expect(result[0].command.content).toBe('Some content');
 		});
 
 		it('should not mutate hidden items', () => {
 			const originalItems: ChatMessageContentChunk[] = [
 				{ type: 'text', content: 'hello' },
-				{ type: 'hidden', content: '<com' },
+				{ type: 'hidden', content: '@@artifact-cr' },
 			];
 
 			const clonedOriginal = JSON.parse(JSON.stringify(originalItems));
 
-			const result = appendChunkToParsedMessageItems(originalItems, 'mand:artifact-create>');
+			const result = appendChunkToParsedMessageItems(
+				originalItems,
+				'eate title="Test" type="md" end="END_T"\n',
+			);
 
 			// Original should remain unchanged
 			expect(originalItems).toEqual(clonedOriginal);
@@ -517,6 +588,136 @@ describe(appendChunkToParsedMessageItems, () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].type).toBe('text');
 			expect(result[0].content).toBe('hello world');
+		});
+	});
+
+	describe('legacy XML syntax', () => {
+		it('should parse artifact-create command', () => {
+			const content = `Here is a document:
+
+<command:artifact-create>
+<title>My Document</title>
+<type>md</type>
+<content>
+# Hello World
+This is a test.
+</content>
+</command:artifact-create>
+
+Done!`;
+
+			const result = parseMessage({ type: 'ai', content });
+			expect(result).toEqual([
+				{ type: 'text', content: 'Here is a document:\n\n' },
+				{
+					type: 'artifact-create',
+					content: `<command:artifact-create>
+<title>My Document</title>
+<type>md</type>
+<content>
+# Hello World
+This is a test.
+</content>
+</command:artifact-create>`,
+					command: {
+						title: 'My Document',
+						type: 'md',
+						content: '\n# Hello World\nThis is a test.\n',
+					},
+					isIncomplete: false,
+				},
+				{ type: 'text', content: '\n\nDone!' },
+			]);
+		});
+
+		it('should parse artifact-edit command', () => {
+			const content = `I'll update it.
+
+<command:artifact-edit>
+<title>My Document</title>
+<oldString>old text</oldString>
+<newString>new text</newString>
+<replaceAll>false</replaceAll>
+</command:artifact-edit>
+
+Done!`;
+
+			const result = parseMessage({ type: 'ai', content });
+			expect(result).toEqual([
+				{ type: 'text', content: "I'll update it.\n\n" },
+				{
+					type: 'artifact-edit',
+					content: `<command:artifact-edit>
+<title>My Document</title>
+<oldString>old text</oldString>
+<newString>new text</newString>
+<replaceAll>false</replaceAll>
+</command:artifact-edit>`,
+					command: {
+						title: 'My Document',
+						oldString: 'old text',
+						newString: 'new text',
+						replaceAll: false,
+					},
+					isIncomplete: false,
+				},
+				{ type: 'text', content: '\n\nDone!' },
+			]);
+		});
+
+		it('should parse artifact-edit with replaceAll=true', () => {
+			const content = `<command:artifact-edit>
+<title>Doc</title>
+<oldString>foo</oldString>
+<newString>bar</newString>
+<replaceAll>true</replaceAll>
+</command:artifact-edit>`;
+
+			const result = parseMessage({ type: 'ai', content });
+			expect(result).toHaveLength(1);
+			expect(result[0].type).toBe('artifact-edit');
+			if (result[0].type === 'artifact-edit') {
+				expect(result[0].command.replaceAll).toBe(true);
+			}
+		});
+
+		it('should handle incomplete artifact-create (no closing tag)', () => {
+			const content = `<command:artifact-create>
+<title>Doc</title>
+<type>md</type>
+<content>
+partial content`;
+
+			const result = parseMessage({ type: 'ai', content });
+			expect(result).toHaveLength(1);
+			expect(result[0].type).toBe('artifact-create');
+			if (result[0].type === 'artifact-create') {
+				expect(result[0].isIncomplete).toBe(true);
+				expect(result[0].command.title).toBe('Doc');
+			}
+		});
+
+		it('should parse multiple commands in one message', () => {
+			const content = `First doc:
+<command:artifact-create>
+<title>Doc A</title>
+<type>md</type>
+<content>Content A</content>
+</command:artifact-create>
+Now editing:
+<command:artifact-edit>
+<title>Doc A</title>
+<oldString>Content A</oldString>
+<newString>Content B</newString>
+<replaceAll>false</replaceAll>
+</command:artifact-edit>`;
+
+			const result = parseMessage({ type: 'ai', content });
+			expect(result).toHaveLength(4);
+			expect(result[0].type).toBe('text');
+			expect(result[1].type).toBe('artifact-create');
+			expect(result[2].type).toBe('text');
+			expect(result[3].type).toBe('artifact-edit');
 		});
 	});
 });

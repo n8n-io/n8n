@@ -9,6 +9,11 @@ export interface MessageWithContent {
 	content: string;
 }
 
+const CREATE_TAG = '@@artifact-create ';
+const EDIT_TAG = '@@artifact-edit ';
+const END_MARKER_PREFIX = '@@end:';
+const SEP_MARKER_PREFIX = '@@sep:';
+
 export function appendChunkToParsedMessageItems(
 	items: ChatMessageContentChunk[],
 	chunk: string,
@@ -16,21 +21,18 @@ export function appendChunkToParsedMessageItems(
 	const result = [...items];
 	let remaining = chunk;
 
-	// If the last item is incomplete, append to it and re-parse
+	// If the last item is incomplete, prepend its raw content and re-parse
 	if (result.length > 0) {
 		const lastItem = result[result.length - 1];
 		if (lastItem.type === 'hidden') {
-			// Hidden item might be a command prefix, combine with new chunk and re-parse
 			remaining = lastItem.content + chunk;
-			result.pop(); // Remove it so we can re-parse
+			result.pop();
 		} else if (
 			(lastItem.type === 'artifact-create' || lastItem.type === 'artifact-edit') &&
 			lastItem.isIncomplete
 		) {
-			// Incomplete command - append chunk and re-parse
-			// Don't mutate the original item, create new content string
 			remaining = lastItem.content + chunk;
-			result.pop(); // Remove it so we can re-parse
+			result.pop();
 		}
 	}
 
@@ -41,44 +43,35 @@ export function appendChunkToParsedMessageItems(
 		return result;
 	}
 
-	// Parse the remaining content
 	let currentPos = 0;
-	const createCommandRegex = /<command:artifact-create>/g;
-	const editCommandRegex = /<command:artifact-edit>/g;
 
 	while (currentPos < remaining.length) {
-		// Find the next command
-		createCommandRegex.lastIndex = currentPos;
-		editCommandRegex.lastIndex = currentPos;
+		const createIdx = findLineStartCommand(remaining, currentPos, CREATE_TAG);
+		const editIdx = findLineStartCommand(remaining, currentPos, EDIT_TAG);
 
-		const createMatch = createCommandRegex.exec(remaining);
-		const editMatch = editCommandRegex.exec(remaining);
-
-		let nextMatch: RegExpExecArray | null = null;
+		let nextIdx = -1;
 		let commandType: 'create' | 'edit' | null = null;
 
-		if (createMatch && editMatch) {
-			// Both found, use the earlier one
-			if (createMatch.index < editMatch.index) {
-				nextMatch = createMatch;
+		if (createIdx !== -1 && editIdx !== -1) {
+			if (createIdx <= editIdx) {
+				nextIdx = createIdx;
 				commandType = 'create';
 			} else {
-				nextMatch = editMatch;
+				nextIdx = editIdx;
 				commandType = 'edit';
 			}
-		} else if (createMatch) {
-			nextMatch = createMatch;
+		} else if (createIdx !== -1) {
+			nextIdx = createIdx;
 			commandType = 'create';
-		} else if (editMatch) {
-			nextMatch = editMatch;
+		} else if (editIdx !== -1) {
+			nextIdx = editIdx;
 			commandType = 'edit';
 		}
 
-		if (!nextMatch || !commandType) {
-			// No more commands, rest is text
+		if (nextIdx === -1 || commandType === null) {
+			// No more commands — emit remaining as text, buffering any potential command prefix
 			const textContent = remaining.slice(currentPos);
 			if (textContent) {
-				// Split text and potential command prefix
 				const { text, hiddenPrefix } = splitPotentialCommandPrefix(textContent);
 				if (text) {
 					addTextToResult(result, text);
@@ -90,24 +83,21 @@ export function appendChunkToParsedMessageItems(
 			break;
 		}
 
-		// Add text before the command
-		if (nextMatch.index > currentPos) {
-			const textContent = remaining.slice(currentPos, nextMatch.index);
-			addTextToResult(result, textContent);
+		// Emit text before the command
+		if (nextIdx > currentPos) {
+			addTextToResult(result, remaining.slice(currentPos, nextIdx));
 		}
 
-		// Parse the command
-		const commandStart = nextMatch.index;
-		const commandContent = remaining.slice(commandStart);
+		const commandContent = remaining.slice(nextIdx);
 
 		if (commandType === 'create') {
 			const parsed = parseArtifactCreateCommand(commandContent);
 			result.push(parsed.item);
-			currentPos = commandStart + parsed.consumed;
+			currentPos = nextIdx + parsed.consumed;
 		} else {
 			const parsed = parseArtifactEditCommand(commandContent);
 			result.push(parsed.item);
-			currentPos = commandStart + parsed.consumed;
+			currentPos = nextIdx + parsed.consumed;
 		}
 	}
 
@@ -115,15 +105,12 @@ export function appendChunkToParsedMessageItems(
 }
 
 function addTextToResult(result: ChatMessageContentChunk[], textContent: string): void {
-	// Skip empty text (but preserve whitespace like newlines, which are meaningful in markdown)
 	if (textContent === '') {
 		return;
 	}
-
 	if (result.length > 0) {
 		const lastItem = result[result.length - 1];
 		if (lastItem.type === 'text') {
-			// Don't mutate the original item, create a new one
 			result[result.length - 1] = { type: 'text', content: lastItem.content + textContent };
 			return;
 		}
@@ -131,56 +118,97 @@ function addTextToResult(result: ChatMessageContentChunk[], textContent: string)
 	result.push({ type: 'text', content: textContent });
 }
 
-function splitPotentialCommandPrefix(text: string): {
-	text: string;
-	hiddenPrefix: string;
-} {
-	const commandTags = ['<command:artifact-create>', '<command:artifact-edit>'];
-
-	// Check if the end of text matches any prefix of a command tag
-	for (let len = 1; len <= Math.min(text.length, 30); len++) {
-		const suffix = text.slice(-len);
-
-		// Check if this suffix is a prefix of any command tag
-		for (const tag of commandTags) {
-			if (tag.startsWith(suffix)) {
-				// Found a potential command prefix, split it
-				return {
-					text: text.slice(0, -len),
-					hiddenPrefix: suffix,
-				};
-			}
-		}
+/**
+ * Find the first occurrence of `tag` that starts at a line boundary
+ * (position 0 or immediately after a newline), starting search from `startPos`.
+ */
+function findLineStartCommand(text: string, startPos: number, tag: string): number {
+	let pos = startPos;
+	while (pos < text.length) {
+		const idx = text.indexOf(tag, pos);
+		if (idx === -1) return -1;
+		if (idx === 0 || text[idx - 1] === '\n') return idx;
+		pos = idx + 1;
 	}
+	return -1;
+}
 
-	return { text, hiddenPrefix: '' };
+/**
+ * Skip from `pos` past any trailing characters on the current line to the start
+ * of the next line. Returns `text.length` if there is no following newline.
+ */
+function skipToNextLine(text: string, pos: number): number {
+	const nextNewline = text.indexOf('\n', pos);
+	return nextNewline === -1 ? text.length : nextNewline + 1;
+}
+
+/**
+ * Find the first occurrence of `marker` that starts at a line boundary
+ * (at `startPos` exactly, or after a `\n`).
+ * Any trailing characters after the marker on the same line are ignored, to
+ * tolerate LLMs that append stray characters (e.g. `@@sep:TOKEN"`) after the token.
+ * Returns the index where the marker starts, or -1.
+ */
+function findFirstLineMarker(text: string, startPos: number, marker: string): number {
+	// Check if marker appears right at startPos (it's at a line boundary because
+	// startPos is either 0 or right after a \n from the caller's perspective)
+	if (text.startsWith(marker, startPos)) {
+		return startPos;
+	}
+	// Search for \n + marker
+	const idx = text.indexOf('\n' + marker, startPos);
+	return idx === -1 ? -1 : idx + 1;
+}
+
+function parseOpeningLineAttributes(line: string): Record<string, string> {
+	const result: Record<string, string> = {};
+	const attrRegex = /(\w+)="([^"]*)"/g;
+	let match = attrRegex.exec(line);
+	while (match !== null) {
+		result[match[1]] = match[2];
+		match = attrRegex.exec(line);
+	}
+	return result;
 }
 
 function parseArtifactCreateCommand(content: string): {
 	item: ChatMessageContentChunk;
 	consumed: number;
 } {
-	const closingTag = '</command:artifact-create>';
-	const closingIndex = content.indexOf(closingTag);
+	const firstNewline = content.indexOf('\n');
+	const openingLine = firstNewline === -1 ? content : content.slice(0, firstNewline);
+	const attrs = parseOpeningLineAttributes(openingLine);
+	const title = attrs.title ?? '';
+	const type = attrs.type ?? '';
+	const endToken = attrs.end ?? '';
+	const endMarker = END_MARKER_PREFIX + endToken;
 
-	const isIncomplete = closingIndex === -1;
-	const commandContent = isIncomplete
-		? content
-		: content.slice(0, closingIndex + closingTag.length);
+	const endIdx = findFirstLineMarker(content, 0, endMarker);
+	const isIncomplete = endIdx === -1;
 
-	// Extract fields even if incomplete
-	const title = extractTagContent(commandContent, 'title') ?? '';
-	const type = extractTagContent(commandContent, 'type') ?? '';
-	const contentField = extractTagContent(commandContent, 'content') ?? '';
+	let documentContent = '';
+	let consumed: number;
+
+	if (firstNewline === -1) {
+		// Only the opening line received so far
+		consumed = content.length;
+	} else if (isIncomplete) {
+		documentContent = content.slice(firstNewline + 1);
+		consumed = content.length;
+	} else {
+		// Content is between the opening line's \n and the \n preceding @@end:TOKEN
+		documentContent = content.slice(firstNewline + 1, endIdx - 1);
+		consumed = skipToNextLine(content, endIdx + endMarker.length);
+	}
 
 	return {
 		item: {
 			type: 'artifact-create',
-			content: commandContent,
-			command: { title, type, content: contentField },
+			content: content.slice(0, consumed),
+			command: { title, type, content: documentContent },
 			isIncomplete,
 		},
-		consumed: commandContent.length,
+		consumed,
 	};
 }
 
@@ -188,63 +216,83 @@ function parseArtifactEditCommand(content: string): {
 	item: ChatMessageContentChunk;
 	consumed: number;
 } {
-	const closingTag = '</command:artifact-edit>';
-	const closingIndex = content.indexOf(closingTag);
-
-	const isIncomplete = closingIndex === -1;
-	const commandContent = isIncomplete
-		? content
-		: content.slice(0, closingIndex + closingTag.length);
-
-	// Extract fields even if incomplete
-	const title = extractTagContent(commandContent, 'title') ?? '';
-	const oldString = extractTagContent(commandContent, 'oldString') ?? '';
-	const newString = extractTagContent(commandContent, 'newString') ?? '';
-	const replaceAllStr = extractTagContent(commandContent, 'replaceAll') ?? 'false';
+	const firstNewline = content.indexOf('\n');
+	const openingLine = firstNewline === -1 ? content : content.slice(0, firstNewline);
+	const attrs = parseOpeningLineAttributes(openingLine);
+	const title = attrs.title ?? '';
+	const replaceAllStr = attrs.replaceAll ?? 'false';
 	const replaceAll = replaceAllStr.toLowerCase() === 'true';
+	const endToken = attrs.end ?? '';
+	const endMarker = END_MARKER_PREFIX + endToken;
+	const sepMarker = SEP_MARKER_PREFIX + endToken;
+
+	const bodyStart = firstNewline === -1 ? content.length : firstNewline + 1;
+	const endIdx = findFirstLineMarker(content, bodyStart, endMarker);
+	const sepIdx = findFirstLineMarker(content, bodyStart, sepMarker);
+	const isIncomplete = endIdx === -1;
+
+	let oldString = '';
+	let newString = '';
+	let consumed: number;
+
+	if (firstNewline === -1) {
+		// Only the opening line received so far
+		consumed = content.length;
+	} else if (isIncomplete) {
+		if (sepIdx === -1) {
+			oldString = content.slice(bodyStart);
+		} else {
+			oldString = content.slice(bodyStart, sepIdx - 1);
+			newString = content.slice(skipToNextLine(content, sepIdx + sepMarker.length));
+		}
+		consumed = content.length;
+	} else {
+		if (sepIdx !== -1 && sepIdx < endIdx) {
+			oldString = content.slice(bodyStart, sepIdx - 1);
+			newString = content.slice(skipToNextLine(content, sepIdx + sepMarker.length), endIdx - 1);
+		} else {
+			// No separator — treat all body content as oldString
+			oldString = content.slice(bodyStart, endIdx - 1);
+		}
+		consumed = skipToNextLine(content, endIdx + endMarker.length);
+	}
 
 	return {
 		item: {
 			type: 'artifact-edit',
-			content: commandContent,
+			content: content.slice(0, consumed),
 			command: { title, oldString, newString, replaceAll },
 			isIncomplete,
 		},
-		consumed: commandContent.length,
+		consumed,
 	};
 }
 
-function extractTagContent(xml: string, tagName: string): string | null {
-	const openTag = `<${tagName}>`;
-	const closeTag = `</${tagName}>`;
+/**
+ * If the end of `text` looks like the start of a command tag at a line boundary,
+ * split it off as a hidden prefix to be re-evaluated with the next chunk.
+ */
+function splitPotentialCommandPrefix(text: string): {
+	text: string;
+	hiddenPrefix: string;
+} {
+	const commandTags = [CREATE_TAG, EDIT_TAG];
 
-	const startIndex = xml.indexOf(openTag);
-	if (startIndex === -1) {
-		return null;
-	}
+	for (let len = 1; len <= Math.min(text.length, 18); len++) {
+		const suffix = text.slice(-len);
+		const splitPos = text.length - len;
 
-	const contentStart = startIndex + openTag.length;
-	const endIndex = xml.indexOf(closeTag, contentStart);
-
-	// If closing tag not found, return content from open tag to end of string
-	if (endIndex === -1) {
-		let content = xml.slice(contentStart);
-
-		// Check if content ends with a partial closing tag and exclude it
-		// A partial closing tag looks like: </, </t, </ti, </tit, etc.
-		for (let len = 1; len < closeTag.length; len++) {
-			const partialCloseTag = closeTag.slice(0, len);
-			if (content.endsWith(partialCloseTag)) {
-				content = content.slice(0, -len);
-				break;
+		for (const tag of commandTags) {
+			if (tag.startsWith(suffix) && (splitPos === 0 || text[splitPos - 1] === '\n')) {
+				return {
+					text: text.slice(0, splitPos),
+					hiddenPrefix: suffix,
+				};
 			}
 		}
-
-		// Only return if there's actual content after the opening tag
-		return content.length > 0 ? content : null;
 	}
 
-	return xml.slice(contentStart, endIndex);
+	return { text, hiddenPrefix: '' };
 }
 
 function tryParseButtonsJson(content: string): ChatMessageContentChunk | null {
@@ -268,14 +316,150 @@ function tryParseButtonsJson(content: string): ChatMessageContentChunk | null {
 }
 
 /**
- * Parse a message and extract all content (text and commands)
- * Returns an array of parsed items in order, including text segments
- * Incomplete commands (without closing tags) are marked as isComplete: false
+ * Parse a complete message into content chunks.
+ * Non-AI messages are returned as plain text.
  */
 export function parseMessage(message: MessageWithContent): ChatMessageContentChunk[] {
 	if (message.type !== 'ai') {
 		return [{ type: 'text' as const, content: message.content }];
 	}
 
+	if (message.content.includes('<command:artifact-')) {
+		return parseLegacyMessage(message.content);
+	}
+
 	return appendChunkToParsedMessageItems([], message.content);
+}
+
+// ── Legacy XML parser (for messages stored with the old <command:artifact-*> syntax) ──
+
+function extractTagContent(xml: string, tagName: string): string | null {
+	const openTag = `<${tagName}>`;
+	const closeTag = `</${tagName}>`;
+	const startIndex = xml.indexOf(openTag);
+	if (startIndex === -1) {
+		return null;
+	}
+	const contentStart = startIndex + openTag.length;
+	const endIndex = xml.indexOf(closeTag, contentStart);
+	if (endIndex === -1) {
+		let content = xml.slice(contentStart);
+		for (let len = 1; len < closeTag.length; len++) {
+			const partialCloseTag = closeTag.slice(0, len);
+			if (content.endsWith(partialCloseTag)) {
+				content = content.slice(0, -len);
+				break;
+			}
+		}
+		return content.length > 0 ? content : null;
+	}
+	return xml.slice(contentStart, endIndex);
+}
+
+function parseLegacyCreateCommand(content: string): {
+	item: ChatMessageContentChunk;
+	consumed: number;
+} {
+	const closingTag = '</command:artifact-create>';
+	const closingIndex = content.indexOf(closingTag);
+	const isIncomplete = closingIndex === -1;
+	const commandContent = isIncomplete
+		? content
+		: content.slice(0, closingIndex + closingTag.length);
+	const title = extractTagContent(commandContent, 'title') ?? '';
+	const type = extractTagContent(commandContent, 'type') ?? '';
+	const contentField = extractTagContent(commandContent, 'content') ?? '';
+	return {
+		item: {
+			type: 'artifact-create',
+			content: commandContent,
+			command: { title, type, content: contentField },
+			isIncomplete,
+		},
+		consumed: commandContent.length,
+	};
+}
+
+function parseLegacyEditCommand(content: string): {
+	item: ChatMessageContentChunk;
+	consumed: number;
+} {
+	const closingTag = '</command:artifact-edit>';
+	const closingIndex = content.indexOf(closingTag);
+	const isIncomplete = closingIndex === -1;
+	const commandContent = isIncomplete
+		? content
+		: content.slice(0, closingIndex + closingTag.length);
+	const title = extractTagContent(commandContent, 'title') ?? '';
+	const oldString = extractTagContent(commandContent, 'oldString') ?? '';
+	const newString = extractTagContent(commandContent, 'newString') ?? '';
+	const replaceAllStr = extractTagContent(commandContent, 'replaceAll') ?? 'false';
+	const replaceAll = replaceAllStr.toLowerCase() === 'true';
+	return {
+		item: {
+			type: 'artifact-edit',
+			content: commandContent,
+			command: { title, oldString, newString, replaceAll },
+			isIncomplete,
+		},
+		consumed: commandContent.length,
+	};
+}
+
+function parseLegacyMessage(content: string): ChatMessageContentChunk[] {
+	const result: ChatMessageContentChunk[] = [];
+	let currentPos = 0;
+	const createCommandRegex = /<command:artifact-create>/g;
+	const editCommandRegex = /<command:artifact-edit>/g;
+
+	while (currentPos < content.length) {
+		createCommandRegex.lastIndex = currentPos;
+		editCommandRegex.lastIndex = currentPos;
+		const createMatch = createCommandRegex.exec(content);
+		const editMatch = editCommandRegex.exec(content);
+
+		let nextMatch: RegExpExecArray | null = null;
+		let commandType: 'create' | 'edit' | null = null;
+
+		if (createMatch && editMatch) {
+			if (createMatch.index <= editMatch.index) {
+				nextMatch = createMatch;
+				commandType = 'create';
+			} else {
+				nextMatch = editMatch;
+				commandType = 'edit';
+			}
+		} else if (createMatch) {
+			nextMatch = createMatch;
+			commandType = 'create';
+		} else if (editMatch) {
+			nextMatch = editMatch;
+			commandType = 'edit';
+		}
+
+		if (!nextMatch || !commandType) {
+			const text = content.slice(currentPos);
+			if (text) {
+				addTextToResult(result, text);
+			}
+			break;
+		}
+
+		if (nextMatch.index > currentPos) {
+			addTextToResult(result, content.slice(currentPos, nextMatch.index));
+		}
+
+		const commandContent = content.slice(nextMatch.index);
+		if (commandType === 'create') {
+			const parsed = parseLegacyCreateCommand(commandContent);
+			result.push(parsed.item);
+			currentPos = nextMatch.index + parsed.consumed;
+		} else {
+			const parsed = parseLegacyEditCommand(commandContent);
+			result.push(parsed.item);
+			currentPos = nextMatch.index + parsed.consumed;
+		}
+	}
+
+	return result;
 }

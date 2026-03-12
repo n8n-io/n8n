@@ -625,21 +625,20 @@ If the user asks you to generate or edit an image (or other media), explain that
 
 ## Document Generation
 
-You can create and edit documents for the user using special XML-like commands. When you use these commands, documents appear in a side panel next to this chat where users can view them in real-time. You can create multiple documents in a conversation, and users can switch between them using a dropdown selector.
+You can create and edit documents for the user using special heredoc-style commands.
+When you use these commands, documents appear in a side panel next to this chat where users can view them in real-time.
+You can create multiple documents in a conversation, and users can switch between them using a dropdown selector.
 
-Write these commands DIRECTLY in your response - do NOT wrap them in code fences or backticks.
+Write these commands DIRECTLY in your response at the start of a new line - do NOT wrap them in code fences or backticks.
 
 ### Creating a Document
 
-To create a new document, include this command directly in your response:
+To create a new document, write the opening command at the start of a new line, then the content, then the end marker on its own line.
+Choose a short unique token for end= that you are confident will not appear verbatim as its own line in the content (e.g. END_A7X, END_K9M — a few random uppercase letters after END_ works well).
 
-<command:artifact-create>
-<title>Document Title</title>
-<type>md</type>
-<content>
+@@artifact-create title="Document Title" type="md" end="END_XYZ"
 Document content here...
-</content>
-</command:artifact-create>
+@@end:END_XYZ
 
 The type can be:
 - html for HTML documents
@@ -649,37 +648,52 @@ The type can be:
 Example response:
 "I'll create an RFC document for you.
 
-<command:artifact-create>
-<title>RFC: New Feature</title>
-<type>md</type>
-<content>
+@@artifact-create title="RFC: New Feature" type="md" end="END_A7X"
 # RFC: New Feature
 
 ## Summary
 This feature will...
-</content>
-</command:artifact-create>
+@@end:END_A7X
 
 I've created the RFC above. Let me know if you'd like any changes!"
 
 ### Editing a Document
 
-To make targeted edits to a document, you must specify the exact title of the document you want to edit:
+To make targeted edits to a document, write the old text, then the separator on its own line, then the replacement text, then the end marker on its own line.
+Use the same end= token strategy as for creating documents.
 
-<command:artifact-edit>
-<title>Document Title</title>
-<oldString>text to find</oldString>
-<newString>replacement text</newString>
-<replaceAll>false</replaceAll>
-</command:artifact-edit>
+@@artifact-edit title="Document Title" replaceAll="false" end="END_XYZ"
+text to find
+@@sep:END_XYZ
+replacement text
+@@end:END_XYZ
 
-- <title> is required and must match the exact title of an existing document.
+- title must match the exact title of an existing document.
 - Set replaceAll to true to replace all occurrences, or false to replace only the first occurrence.
 - If the document title doesn't exist, the edit command will be ignored.
+- Both old and new text can span multiple lines.
+
+For the old text, use the shortest unique substring that pinpoints the location — avoid copying large blocks from memory. The shorter and more distinctive the string, the less chance of a mismatch.
+If you are not confident you can reproduce the exact text, use the "Get Document" tool to retrieve the current content first, then rewrite the whole document using @@artifact-create with the same title.
+
+Each new document must have a title that is unique within the conversation — do not reuse a title unless you intentionally want to replace that document entirely.
+
+Example edit:
+"I'll update the summary section.
+
+@@artifact-edit title="RFC: New Feature" replaceAll="false" end="END_K9M"
+This feature will...
+@@sep:END_K9M
+This updated feature will...
+@@end:END_K9M
+
+Done!"
 
 IMPORTANT:
-- Write these commands directly in your response text, NOT inside code blocks or fences.
+- Write these commands at the start of a new line in your response, NOT inside code blocks or fences.
 - ALWAYS include conversational text before and/or after document commands. Never send a message with only commands and no explanation.
+- Answer user's questions in chat by default. Create a document only when the user asked for a report, write-up or other documents that they might want to iterate on.
+- When creating an HTML, start with the markup and add styles at the end. JavaScript is not allowed.
 `;
 	}
 
