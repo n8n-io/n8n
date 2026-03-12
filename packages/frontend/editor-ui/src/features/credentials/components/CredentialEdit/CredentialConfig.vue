@@ -358,7 +358,7 @@ const showPluginDisabledWarning = computed(() => {
 
 				<Banner
 					v-if="showPluginDisabledWarning"
-					theme="warning"
+					theme="danger"
 					:message="
 						i18n.baseText('credentialEdit.pluginDisabled', {
 							interpolate: { pluginName: managingPlugin?.displayName ?? '' },
