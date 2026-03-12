@@ -3,215 +3,231 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/app/constants';
-import HorizontalGallery from '../components/HorizontalGallery.vue';
-import ResourceCenterHeader from '../components/ResourceCenterHeader.vue';
-import TemplateCard from '../components/TemplateCard.vue';
-import VideoThumbCard from '../components/VideoThumbCard.vue';
-import SandboxCard from '../components/SandboxCard.vue';
+import ResourceCard from '../components/ResourceCard.vue';
 import {
 	featuredTemplateIds,
 	inspirationVideos,
 	learningVideos,
-	learnTemplateIds,
 	masterclassVideos,
+	learnTemplateIds,
 } from '../data/resourceCenterData';
+import type { ResourceItem } from '../data/resourceCenterData';
 import { quickStartWorkflows } from '../data/quickStartWorkflows';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 const i18n = useI18n();
 const router = useRouter();
 const templatesStore = useTemplatesStore();
 const resourceCenterStore = useResourceCenterStore();
 
-const templates = ref<ITemplatesWorkflowFull[]>([]);
+const featuredTemplates = ref<ITemplatesWorkflowFull[]>([]);
 const learnTemplates = ref<ITemplatesWorkflowFull[]>([]);
-const isLoadingTemplates = ref(false);
-const isLoadingLearnTemplates = ref(false);
+const isLoading = ref(false);
 
-const handleQuickStartImport = async (quickStartId: string) => {
-	resourceCenterStore.trackTileClick('quick-start', 'ready-to-run', quickStartId);
-	await resourceCenterStore.createAndOpenQuickStartWorkflow(quickStartId);
-};
+// Build section items
 
-const handleSeeMore = async (sectionKey: string) => {
-	await router.push({ name: VIEWS.RESOURCE_CENTER_SECTION, params: { sectionId: sectionKey } });
-};
+const getStartedItems = computed<ResourceItem[]>(() =>
+	quickStartWorkflows.map((w) => ({
+		id: w.id,
+		type: 'ready-to-run' as const,
+		title: w.name,
+		description: w.description,
+		quickStartId: w.id,
+		nodeTypes: w.nodeTypes,
+		nodeCount: w.nodeCount,
+	})),
+);
 
-const handleViewAllTemplates = () => {
-	resourceCenterStore.trackTemplateRepoVisit();
-	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank', 'noopener,noreferrer');
-};
+const getInspiredItems = computed<ResourceItem[]>(() => {
+	const videos: ResourceItem[] = inspirationVideos.map((v) => ({
+		id: v.videoId,
+		type: 'video' as const,
+		title: v.title,
+		description: v.description,
+		videoId: v.videoId,
+		duration: v.duration,
+	}));
 
-const loadTemplates = async () => {
-	if (featuredTemplateIds.length === 0) return;
+	const templates: ResourceItem[] = featuredTemplates.value.map((t) => ({
+		id: t.id,
+		type: 'template' as const,
+		title: t.name,
+		description: t.description ?? '',
+		templateId: t.id,
+		nodeTypes: [...new Set((t.nodes ?? []).map((n) => n.name))].slice(0, 4),
+		nodeCount: t.nodes?.length,
+		setupTime: t.nodes ? `${Math.max(5, Math.ceil((t.nodes.length / 3) * 5))} min` : undefined,
+	}));
 
-	isLoadingTemplates.value = true;
-	try {
-		templates.value = await resourceCenterStore.loadTemplates(featuredTemplateIds);
-	} finally {
-		isLoadingTemplates.value = false;
+	// Interleave: template, video, template, video... (by rank order from spec)
+	const result: ResourceItem[] = [];
+	let ti = 0;
+	let vi = 0;
+	while (ti < templates.length || vi < videos.length) {
+		if (ti < templates.length) result.push(templates[ti++]);
+		if (vi < videos.length) result.push(videos[vi++]);
+	}
+	return result;
+});
+
+const learnItems = computed<ResourceItem[]>(() => {
+	const tutorials: ResourceItem[] = learningVideos.map((v) => ({
+		id: v.videoId,
+		type: 'video' as const,
+		title: v.title,
+		description: v.description,
+		videoId: v.videoId,
+		duration: v.duration,
+		level: v.level,
+	}));
+
+	const masterclasses: ResourceItem[] = masterclassVideos.map((v) => ({
+		id: v.videoId,
+		type: 'video' as const,
+		title: v.title,
+		description: v.description,
+		videoId: v.videoId,
+		duration: v.duration,
+		level: v.level,
+	}));
+
+	const templates: ResourceItem[] = learnTemplates.value.map((t) => ({
+		id: t.id,
+		type: 'template' as const,
+		title: t.name,
+		description: t.description ?? '',
+		templateId: t.id,
+		nodeTypes: [...new Set((t.nodes ?? []).map((n) => n.name))].slice(0, 4),
+		nodeCount: t.nodes?.length,
+		setupTime: t.nodes ? `${Math.max(5, Math.ceil((t.nodes.length / 3) * 5))} min` : undefined,
+	}));
+
+	const courses: ResourceItem[] = [
+		{
+			id: 'beginner-course',
+			type: 'video' as const,
+			title: 'n8n Beginner Course',
+			description:
+				'Official video course covering workflows, APIs, webhooks, nodes, error handling, and debugging.',
+			url: 'https://docs.n8n.io/video-courses/',
+			duration: '3 hours',
+			level: 'Masterclass',
+		},
+		{
+			id: 'advanced-course',
+			type: 'video' as const,
+			title: 'n8n Advanced Course',
+			description:
+				'Master complex data flows, advanced nodes, sub-workflows, error workflows, and enterprise features.',
+			url: 'https://docs.n8n.io/video-courses/',
+			duration: '4 hours',
+			level: 'Masterclass',
+		},
+	];
+
+	return [...templates, ...tutorials, ...masterclasses, ...courses];
+});
+
+// Click handlers
+const handleCardClick = (item: ResourceItem) => {
+	if (item.type === 'ready-to-run' && item.quickStartId) {
+		resourceCenterStore.trackTileClick('quick-start', 'ready-to-run', item.quickStartId);
+		void resourceCenterStore.createAndOpenQuickStartWorkflow(item.quickStartId);
+	} else if (item.type === 'video') {
+		const section = getInspiredItems.value.includes(item) ? 'inspiration' : 'learn';
+		resourceCenterStore.trackTileClick(section, 'video', item.id);
+		const url = item.url ?? `https://www.youtube.com/watch?v=${item.videoId}`;
+		window.open(url, '_blank', 'noopener,noreferrer');
+	} else if (item.type === 'template' && item.templateId) {
+		const section = getInspiredItems.value.includes(item) ? 'inspiration' : 'learn';
+		resourceCenterStore.trackTileClick(section, 'template', item.templateId);
+		void router.push(resourceCenterStore.getTemplateRoute(item.templateId));
 	}
 };
 
-const loadLearnTemplates = async () => {
-	if (learnTemplateIds.length === 0) return;
-
-	isLoadingLearnTemplates.value = true;
+// Load data
+const loadAllTemplates = async () => {
+	isLoading.value = true;
 	try {
-		learnTemplates.value = await resourceCenterStore.loadTemplates(learnTemplateIds);
+		const [featured, learn] = await Promise.all([
+			resourceCenterStore.loadTemplates(featuredTemplateIds),
+			resourceCenterStore.loadTemplates(learnTemplateIds),
+		]);
+		featuredTemplates.value = featured;
+		learnTemplates.value = learn;
 	} finally {
-		isLoadingLearnTemplates.value = false;
+		isLoading.value = false;
 	}
 };
+
+// GRO-246 fix: set browser tab title
+const documentTitle = useDocumentTitle();
 
 onMounted(() => {
-	// Reset scroll
-	setTimeout(() => {
-		const content = document.getElementById('content');
-		const contentWrapper = content?.querySelector(':scope > div');
-		contentWrapper?.scrollTo({ top: 0, behavior: 'auto' });
-	}, 50);
-
+	documentTitle.setDocumentTitle('Resource Center');
 	resourceCenterStore.trackResourceCenterView();
-	void loadTemplates();
-	void loadLearnTemplates();
+	void loadAllTemplates();
 });
 </script>
 
 <template>
 	<div :class="$style.container">
 		<div :class="$style.content">
-			<!-- Header -->
-			<ResourceCenterHeader>
-				<N8nHeading tag="h1" :bold="true" :class="$style.title">
-					{{ i18n.baseText('experiments.resourceCenter.title') }}
-				</N8nHeading>
-			</ResourceCenterHeader>
+			<N8nHeading tag="h1" :bold="true" :class="$style.pageTitle">
+				{{ i18n.baseText('experiments.resourceCenter.title') }}
+			</N8nHeading>
 
-			<!-- Get Started Section -->
-			<section :class="$style.mainSection">
+			<!-- Get Started -->
+			<section :class="$style.section">
 				<h2 :class="$style.sectionTitle">
 					{{ i18n.baseText('experiments.resourceCenter.getStarted.title') }}
 				</h2>
-				<div :class="$style.sectionContent">
-					<!-- Sandbox Cards Row -->
-					<div :class="$style.cardsRow">
-						<SandboxCard
-							v-for="workflow in quickStartWorkflows"
-							:key="workflow.id"
-							:workflow="workflow"
-							@click="handleQuickStartImport(workflow.id)"
-						/>
-					</div>
+				<div :class="$style.grid">
+					<ResourceCard
+						v-for="item in getStartedItems"
+						:key="item.id"
+						:item="item"
+						@click="handleCardClick(item)"
+					/>
 				</div>
 			</section>
 
-			<!-- Get Inspired Section -->
-			<section :class="$style.mainSection">
+			<!-- Get Inspired -->
+			<section :class="$style.section">
 				<h2 :class="$style.sectionTitle">
 					{{ i18n.baseText('experiments.resourceCenter.getInspired.title') }}
 				</h2>
-				<div :class="$style.sectionContent">
-					<!-- Popular Templates -->
-					<HorizontalGallery
-						v-if="templates.length > 0 || isLoadingTemplates"
-						:title="i18n.baseText('experiments.resourceCenter.popularTemplates.title')"
-						:on-title-click="() => handleSeeMore('templates')"
-					>
-						<template v-if="isLoadingTemplates">
-							<div :class="$style.loading">
-								<N8nSpinner size="small" />
-							</div>
-						</template>
-						<template v-else>
-							<TemplateCard
-								v-for="template in templates.slice(0, 3)"
-								:key="template.id"
-								:template="template"
-								section="inspiration"
-							/>
-						</template>
-					</HorizontalGallery>
-
-					<!-- Automation Ideas -->
-					<HorizontalGallery
-						:title="i18n.baseText('experiments.resourceCenter.automationIdeas.title')"
-						:on-title-click="
-							inspirationVideos.length > 3 ? () => handleSeeMore('inspiration-videos') : undefined
-						"
-					>
-						<VideoThumbCard
-							v-for="video in inspirationVideos.slice(0, 3)"
-							:key="video.videoId"
-							:video="video"
-							icon-type="youtube"
-							section="inspiration"
-						/>
-					</HorizontalGallery>
+				<div v-if="isLoading" :class="$style.loading">
+					<N8nSpinner size="small" />
+				</div>
+				<div v-else :class="$style.grid">
+					<ResourceCard
+						v-for="item in getInspiredItems"
+						:key="item.id"
+						:item="item"
+						@click="handleCardClick(item)"
+					/>
 				</div>
 			</section>
 
-			<!-- Learn to use n8n Section -->
-			<section :class="$style.mainSection">
+			<!-- Learn to use n8n -->
+			<section :class="$style.section">
 				<h2 :class="$style.sectionTitle">
 					{{ i18n.baseText('experiments.resourceCenter.learnN8n.title') }}
 				</h2>
-				<div :class="$style.sectionContent">
-					<!-- Featured Video Tutorials -->
-					<HorizontalGallery
-						:title="i18n.baseText('experiments.resourceCenter.featuredVideos.title')"
-						:on-title-click="
-							learningVideos.length > 3 ? () => handleSeeMore('learning-videos') : undefined
-						"
-					>
-						<VideoThumbCard
-							v-for="video in learningVideos.slice(0, 3)"
-							:key="video.videoId"
-							:video="video"
-							icon-type="youtube"
-							section="learn"
-						/>
-					</HorizontalGallery>
-
-					<!-- Masterclass Videos -->
-					<HorizontalGallery
-						:title="i18n.baseText('experiments.resourceCenter.masterclass.title')"
-						:on-title-click="
-							masterclassVideos.length > 3 ? () => handleSeeMore('masterclass-videos') : undefined
-						"
-					>
-						<VideoThumbCard
-							v-for="video in masterclassVideos.slice(0, 3)"
-							:key="video.videoId"
-							:video="video"
-							icon-type="youtube"
-							section="learn"
-						/>
-					</HorizontalGallery>
-
-					<!-- Learn Templates -->
-					<HorizontalGallery
-						v-if="learnTemplates.length > 0 || isLoadingLearnTemplates"
-						:title="i18n.baseText('experiments.resourceCenter.learnTemplates.title')"
-						:on-title-click="() => handleViewAllTemplates()"
-					>
-						<template v-if="isLoadingLearnTemplates">
-							<div :class="$style.loading">
-								<N8nSpinner size="small" />
-							</div>
-						</template>
-						<template v-else>
-							<TemplateCard
-								v-for="template in learnTemplates.slice(0, 3)"
-								:key="template.id"
-								:template="template"
-								section="learn"
-							/>
-						</template>
-					</HorizontalGallery>
+				<div v-if="isLoading" :class="$style.loading">
+					<N8nSpinner size="small" />
+				</div>
+				<div v-else :class="$style.grid">
+					<ResourceCard
+						v-for="item in learnItems"
+						:key="item.id"
+						:item="item"
+						@click="handleCardClick(item)"
+					/>
 				</div>
 			</section>
 		</div>
@@ -230,18 +246,14 @@ onMounted(() => {
 	padding: 0 var(--spacing--2xl) var(--spacing--lg) var(--spacing--2xl);
 }
 
-.title {
-	font-family: 'DM Sans', var(--font-family);
+.pageTitle {
 	font-size: var(--font-size--sm);
-	letter-spacing: -0.02em;
 	color: var(--color--text--shade-1);
-	margin: 0;
+	margin: 0 0 var(--spacing--xl) 0;
 }
 
-.mainSection {
+.section {
 	margin-bottom: var(--spacing--3xl);
-	min-width: 0;
-	width: 100%;
 
 	&:last-child {
 		margin-bottom: 0;
@@ -251,23 +263,22 @@ onMounted(() => {
 .sectionTitle {
 	font-size: var(--font-size--2xl);
 	font-weight: var(--font-weight--bold);
-	letter-spacing: -0.01em;
 	color: var(--color--text--shade-1);
 	margin: 0 0 var(--spacing--lg) 0;
 }
 
-.sectionContent {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xl);
-	min-width: 0;
-	width: 100%;
-}
-
-.cardsRow {
-	display: flex;
-	flex-direction: row;
+.grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
 	gap: var(--spacing--sm);
+
+	@media (max-width: 900px) {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
+	@media (max-width: 600px) {
+		grid-template-columns: 1fr;
+	}
 }
 
 .loading {
