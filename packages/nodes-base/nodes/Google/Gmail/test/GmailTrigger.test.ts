@@ -1,12 +1,12 @@
-import * as mailparser from 'mailparser';
 import nock from 'nock';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { GmailTrigger } from '../GmailTrigger.node';
 import type { Message, ListMessage, MessageListResponse } from '../types';
+import PostalMime from 'postal-mime';
 
-jest.mock('mailparser');
+jest.mock('postal-mime');
 
 describe('GmailTrigger', () => {
 	const baseUrl = 'https://www.googleapis.com';
@@ -42,23 +42,20 @@ describe('GmailTrigger', () => {
 	}
 
 	beforeAll(() => {
-		jest.spyOn(mailparser, 'simpleParser').mockResolvedValue({
-			headers: new Map([['headerKey', 'headerValue']]),
-			attachments: [],
+		jest.mocked(PostalMime.parse).mockResolvedValue({
+			headers: [{ key: 'headerKey', originalKey: 'HeaderKey', value: 'headerValue' }],
 			headerLines: [{ key: 'headerKey', line: 'headerValue' }],
+			from: { name: 'From', address: 'from@example.com' },
+			to: [{ name: 'To', address: 'to@example.com' }],
+			date: '2024-08-31T00:00:00.000Z',
 			html: '<p>test</p>',
-			date: new Date('2024-08-31'),
-			from: {
-				text: 'from@example.com',
-				value: [{ name: 'From', address: 'from@example.com' }],
-				html: 'from@example.com',
-			},
-			to: {
-				text: 'to@example.com',
-				value: [{ name: 'To', address: 'to@example.com' }],
-				html: 'to@example.com',
-			},
-		});
+			text: 'test',
+			attachments: [],
+		} as unknown as Awaited<ReturnType<typeof PostalMime.parse>>);
+	});
+
+	afterEach(() => {
+		nock.cleanAll();
 	});
 
 	it('should return incoming emails', async () => {
@@ -94,6 +91,7 @@ describe('GmailTrigger', () => {
 						id: '1',
 						labelIds: ['testLabelId'],
 						sizeEstimate: 4,
+						text: 'test',
 						threadId: 'testThreadId',
 						to: {
 							html: 'to@example.com',
@@ -115,6 +113,7 @@ describe('GmailTrigger', () => {
 						id: '2',
 						labelIds: ['testLabelId'],
 						sizeEstimate: 4,
+						text: 'test',
 						threadId: 'testThreadId',
 						to: {
 							html: 'to@example.com',
@@ -300,21 +299,19 @@ describe('GmailTrigger', () => {
 		expect(response).toEqual([
 			[
 				{
-					binary: undefined,
 					json: {
-						attachements: undefined,
 						date: '2024-08-31T00:00:00.000Z',
 						from: {
 							html: 'from@example.com',
 							text: 'from@example.com',
 							value: [{ address: 'from@example.com', name: 'From' }],
 						},
-						headerlines: undefined,
 						headers: { headerKey: 'headerValue' },
 						html: '<p>test</p>',
 						id: '2',
 						labelIds: ['INBOX'],
 						sizeEstimate: 4,
+						text: 'test',
 						threadId: 'testThreadId',
 						to: {
 							html: 'to@example.com',
@@ -353,21 +350,19 @@ describe('GmailTrigger', () => {
 		expect(response).toEqual([
 			[
 				{
-					binary: undefined,
 					json: {
-						attachements: undefined,
 						date: '2024-08-31T00:00:00.000Z',
 						from: {
 							html: 'from@example.com',
 							text: 'from@example.com',
 							value: [{ address: 'from@example.com', name: 'From' }],
 						},
-						headerlines: undefined,
 						headers: { headerKey: 'headerValue' },
 						html: '<p>test</p>',
 						id: '1',
 						labelIds: ['INBOX'],
 						sizeEstimate: 4,
+						text: 'test',
 						threadId: 'testThreadId',
 						to: {
 							html: 'to@example.com',
@@ -405,21 +400,19 @@ describe('GmailTrigger', () => {
 		expect(response).toEqual([
 			[
 				{
-					binary: undefined,
 					json: {
-						attachements: undefined,
 						date: '2024-08-31T00:00:00.000Z',
 						from: {
 							html: 'from@example.com',
 							text: 'from@example.com',
 							value: [{ address: 'from@example.com', name: 'From' }],
 						},
-						headerlines: undefined,
 						headers: { headerKey: 'headerValue' },
 						html: '<p>test</p>',
 						id: '1',
 						labelIds: ['INBOX', 'SENT'],
 						sizeEstimate: 4,
+						text: 'test',
 						threadId: 'testThreadId',
 						to: {
 							html: 'to@example.com',
@@ -467,6 +460,90 @@ describe('GmailTrigger', () => {
 		});
 
 		expect(response).toEqual([[{ json: expect.objectContaining({ id: '3' }) }]]);
+	});
+
+	it('should update lastTimeChecked and possibleDuplicates in static data after poll', async () => {
+		const initialTimestamp = 1727777957;
+		// Newest message is id '3' at 1727777960 (seconds)
+		const ts1 = String((initialTimestamp + 1) * 1000);
+		const ts2 = String((initialTimestamp + 2) * 1000);
+		const ts3 = String((initialTimestamp + 3) * 1000);
+		const messageListResponse: MessageListResponse = {
+			messages: [
+				createListMessage({ id: '1' }),
+				createListMessage({ id: '2' }),
+				createListMessage({ id: '3' }),
+			],
+			resultSizeEstimate: 3,
+		};
+		const workflowStaticData: Record<
+			string,
+			{ lastTimeChecked?: number; possibleDuplicates?: string[] }
+		> = {
+			'Gmail Trigger': { lastTimeChecked: initialTimestamp },
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', internalDate: ts1 }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
+			.reply(200, createMessage({ id: '2', internalDate: ts2 }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/3?.*'))
+			.reply(200, createMessage({ id: '3', internalDate: ts3 }));
+
+		await testPollingTriggerNode(GmailTrigger, {
+			node: { parameters: { simple: true } },
+			workflowStaticData,
+		});
+
+		// lastTimeChecked should be the newest message's date (id 3 = initialTimestamp + 3 seconds)
+		expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp + 3);
+		// possibleDuplicates should contain all fetched message ids (for dedupe on next poll)
+		expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(
+			expect.arrayContaining(['1', '2', '3']),
+		);
+		expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toHaveLength(3);
+	});
+
+	it('should set lastTimeChecked to max message date when messages have different timestamps', async () => {
+		const olderTimestamp = 1727777957; // seconds
+		const newerTimestamp = 1727777970; // seconds
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: 'old' }), createListMessage({ id: 'new' })],
+			resultSizeEstimate: 2,
+		};
+		const workflowStaticData: Record<
+			string,
+			{ lastTimeChecked?: number; possibleDuplicates?: string[] }
+		> = {
+			'Gmail Trigger': { lastTimeChecked: olderTimestamp - 10 },
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/old?.*'))
+			.reply(200, createMessage({ id: 'old', internalDate: String(olderTimestamp * 1000) }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/new?.*'))
+			.reply(200, createMessage({ id: 'new', internalDate: String(newerTimestamp * 1000) }));
+
+		await testPollingTriggerNode(GmailTrigger, {
+			node: { parameters: { simple: true } },
+			workflowStaticData,
+		});
+
+		expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(newerTimestamp);
+		expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(
+			expect.arrayContaining(['old', 'new']),
+		);
+		expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toHaveLength(2);
 	});
 
 	it('should not skip emails when no messages are found', async () => {

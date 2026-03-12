@@ -116,9 +116,11 @@ describe('Google Gmail v2, prepareTimestamp', () => {
 });
 
 describe('parseRawEmail', () => {
+	const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+
 	it('should return a date string', async () => {
 		// ARRANGE
-		const executionFunctions = mock<IExecuteFunctions>();
+		const executionFunctions = mock<IExecuteFunctions>({ logger });
 		const rawEmail = 'Date: Wed, 28 Aug 2024 00:36:37 -0700'.replace(/\n/g, '\r\n');
 
 		// ACT
@@ -131,6 +133,51 @@ describe('parseRawEmail', () => {
 		// ASSERT
 		expect(typeof json.date).toBe('string');
 	});
+
+	it('should include binary data when downloadAttachments is true and message has attachments', async () => {
+		const prepareBinaryData = jest.fn().mockResolvedValue({
+			data: 'eA==',
+			mimeType: 'application/octet-stream',
+			fileName: 'file.bin',
+		});
+		const executionFunctions = mock<IExecuteFunctions>({
+			logger,
+			getNodeParameter: jest.fn((parameterName: string): string | boolean | undefined => {
+				if (parameterName === 'options.downloadAttachments') return true;
+				return undefined;
+			}) as unknown as IExecuteFunctions['getNodeParameter'],
+			helpers: {
+				prepareBinaryData,
+			},
+		});
+		// Minimal MIME with one attachment (content "x")
+		const rawEmail = [
+			'Date: Wed, 28 Aug 2024 00:36:37 -0700',
+			'Content-Type: multipart/mixed; boundary=bound',
+			'',
+			'--bound',
+			'Content-Type: text/plain',
+			'',
+			'hello',
+			'--bound',
+			'Content-Disposition: attachment; filename=file.bin',
+			'Content-Type: application/octet-stream',
+			'',
+			'x',
+			'--bound--',
+		].join('\r\n');
+
+		const result = await parseRawEmail.call(
+			executionFunctions as IExecuteFunctions,
+			{ id: '1', raw: Buffer.from(rawEmail, 'utf8').toString('base64') },
+			'attachment_',
+		);
+
+		expect(result.binary).toBeDefined();
+		expect(result.binary?.attachment_0).toBeDefined();
+		expect(result.binary?.attachment_0?.fileName).toBe('file.bin');
+		expect(prepareBinaryData).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe('prepareQuery', () => {
@@ -139,7 +186,11 @@ describe('prepareQuery', () => {
 	});
 
 	it('should convert sender filter to q parameter', () => {
-		const result = prepareQuery.call(executionFunctions, { sender: 'alice@example.com' }, 0);
+		const result = prepareQuery.call(
+			executionFunctions as IExecuteFunctions,
+			{ sender: 'alice@example.com' },
+			0,
+		);
 
 		expect(result.q).toBe('from:alice@example.com');
 		expect(result).not.toHaveProperty('sender');
