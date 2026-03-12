@@ -135,7 +135,6 @@ import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.ut
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useClipboard } from '@vueuse/core';
 import {
-	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
@@ -188,7 +187,11 @@ export function useCanvasOperations() {
 	const experimentalNdvStore = useExperimentalNdvStore();
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	const i18n = useI18n();
 	const toast = useToast();

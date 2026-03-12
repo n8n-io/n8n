@@ -52,7 +52,7 @@ import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
-import { nextTick, reactive, ref, shallowRef } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -63,7 +63,6 @@ import {
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
 import {
-	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
@@ -148,11 +147,6 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 	};
 });
 
-vi.mock('@/app/stores/workflowDocument.store', async () => {
-	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
-	return { ...actual, injectWorkflowDocumentStore: vi.fn() };
-});
-
 const canPinNodeMock = vi.fn();
 const setDataMock = vi.fn();
 const unsetDataMock = vi.fn();
@@ -213,11 +207,9 @@ describe('useCanvasOperations', () => {
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		const workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.id = workflowId;
 		workflowDocumentStoreInstance = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-			shallowRef(workflowDocumentStoreInstance),
 		);
 	});
 
@@ -5695,9 +5687,6 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			);
-			vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-				shallowRef(workflowDocumentStoreInstance),
-			);
 
 			const { getNodesToShift } = useCanvasOperations();
 
@@ -5758,9 +5747,6 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
-			);
-			vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-				shallowRef(workflowDocumentStoreInstance),
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
@@ -5826,9 +5812,6 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
-			);
-			vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-				shallowRef(workflowDocumentStoreInstance),
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
@@ -5899,9 +5882,6 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			);
-			vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-				shallowRef(workflowDocumentStoreInstance),
-			);
 
 			const { getNodesToShift } = useCanvasOperations();
 			const insertPosition: [number, number] = [250, 100];
@@ -5966,9 +5946,6 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
-			);
-			vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-				shallowRef(workflowDocumentStoreInstance),
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
@@ -6051,9 +6028,6 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			);
-			vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-				shallowRef(workflowDocumentStoreInstance),
-			);
 
 			const { getNodesToShift } = useCanvasOperations();
 			const insertPosition: [number, number] = [250, 100];
@@ -6124,9 +6098,6 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
-			);
-			vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-				shallowRef(workflowDocumentStoreInstance),
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
@@ -6211,9 +6182,6 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
-			);
-			vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-				shallowRef(workflowDocumentStoreInstance),
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
