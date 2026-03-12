@@ -66,6 +66,40 @@ describe(collectChatArtifacts, () => {
 		]);
 	});
 
+	it('should replace artifact with the same title', () => {
+		const items: ChatMessageContentChunk[] = [
+			{
+				type: 'artifact-create',
+				content: '@@artifact-create ...',
+				command: {
+					title: 'Document 1',
+					type: 'md',
+					content: 'Content 1',
+				},
+				isIncomplete: false,
+			},
+			{
+				type: 'artifact-create',
+				content: '@@artifact-create ...',
+				command: {
+					title: 'Document 1',
+					type: 'html',
+					content: '<h1>Content 2</h1>',
+				},
+				isIncomplete: false,
+			},
+		];
+
+		const result = collectChatArtifacts(items);
+		expect(result).toEqual([
+			{
+				title: 'Document 1',
+				type: 'html',
+				content: '<h1>Content 2</h1>',
+			},
+		]);
+	});
+
 	it('should skip artifact-create without title', () => {
 		const items: ChatMessageContentChunk[] = [
 			{

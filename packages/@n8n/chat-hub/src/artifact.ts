@@ -9,11 +9,18 @@ export function collectChatArtifacts(items: ChatMessageContentChunk[]): ChatArti
 				continue;
 			}
 
-			artifacts.push({
-				title: item.command.title,
-				type: item.command.type,
-				content: item.command.content,
-			});
+			const existing = artifacts.find((doc) => doc.title === item.command.title);
+
+			if (existing) {
+				existing.type = item.command.type;
+				existing.content = item.command.content;
+			} else {
+				artifacts.push({
+					title: item.command.title,
+					type: item.command.type,
+					content: item.command.content,
+				});
+			}
 		} else if (item.type === 'artifact-edit') {
 			// Find document by title
 			const targetDoc = artifacts.find((doc) => doc.title === item.command.title);
