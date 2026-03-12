@@ -8,11 +8,13 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import type { Plugin } from '@n8n/rest-api-client/api/plugins-settings';
 import * as pluginsSettingsApi from '@n8n/rest-api-client/api/plugins-settings';
+import { useMergeDevIntegrations } from '@/features/shared/nodeCreator/composables/useMergeDevIntegrations';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
+const { clearCache: clearMergeDevCache } = useMergeDevIntegrations();
 
 const plugins = ref<Plugin[]>([]);
 const fieldDrafts = ref<Record<string, Record<string, string>>>({});
@@ -47,6 +49,7 @@ async function onPluginEnabledChange(plugin: Plugin, value: string | number | bo
 				enabled: false,
 			});
 			plugins.value = updated.plugins;
+			clearMergeDevCache();
 			showToast({
 				type: 'success',
 				message: '',
@@ -65,6 +68,7 @@ async function onPluginEnabledChange(plugin: Plugin, value: string | number | bo
 				enabled: true,
 			});
 			plugins.value = updated.plugins;
+			clearMergeDevCache();
 		} catch (error) {
 			plugins.value = plugins.value.map((p) => (p.id === plugin.id ? { ...p, enabled: false } : p));
 			showError(error, plugin.displayName);
@@ -97,6 +101,7 @@ async function savePlugin(plugin: Plugin) {
 			fields: drafts,
 		});
 		plugins.value = updated.plugins;
+		clearMergeDevCache();
 		showToast({
 			type: 'success',
 			message: '',

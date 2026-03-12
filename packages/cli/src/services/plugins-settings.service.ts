@@ -1,6 +1,10 @@
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { PluginsSettingsDto, UpdatePluginSettingsDto } from '@n8n/api-types';
+import type {
+	PluginsSettingsDto,
+	UpdatePluginSettingsDto,
+	MergeDevIntegrationDto,
+} from '@n8n/api-types';
 import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UnexpectedError, UserError } from 'n8n-workflow';
@@ -11,8 +15,21 @@ import {
 	getPluginByCredentialType,
 } from '@/plugins/plugin-registry';
 
+const MERGE_DEV_INTEGRATIONS_URL = 'https://api.merge.dev/api/integrations';
+const MERGE_DEV_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+interface MergeDevApiIntegration {
+	name: string;
+	slug: string;
+	categories: string[];
+	square_image: string;
+	color: string;
+}
+
 @Service()
 export class PluginsSettingsService {
+	private mergeDevCache: { data: MergeDevIntegrationDto[]; fetchedAt: number } | null = null;
+
 	constructor(
 		private readonly settingsRepository: SettingsRepository,
 		private readonly cipher: Cipher,
@@ -83,6 +100,36 @@ export class PluginsSettingsService {
 			result = { ...result, [field.credentialField]: value };
 		}
 		return result;
+	}
+
+	// ─── Merge.dev integrations ──────────────────────────────────────────────
+
+	async getMergeDevIntegrations(): Promise<MergeDevIntegrationDto[]> {
+		const enabled = await this.getPluginEnabled('mergeDev');
+		if (!enabled) return [];
+
+		if (this.mergeDevCache && Date.now() - this.mergeDevCache.fetchedAt < MERGE_DEV_CACHE_TTL_MS) {
+			return this.mergeDevCache.data;
+		}
+
+		const response = await fetch(MERGE_DEV_INTEGRATIONS_URL);
+		if (!response.ok) {
+			throw new UnexpectedError(
+				`Failed to fetch Merge.dev integrations: ${String(response.status)}`,
+			);
+		}
+
+		const raw = (await response.json()) as MergeDevApiIntegration[];
+		const integrations: MergeDevIntegrationDto[] = raw.map((item) => ({
+			name: item.name,
+			slug: item.slug,
+			categories: item.categories,
+			squareImage: item.square_image,
+			color: item.color,
+		}));
+
+		this.mergeDevCache = { data: integrations, fetchedAt: Date.now() };
+		return integrations;
 	}
 
 	// ─── Generic plugin storage ───────────────────────────────────────────────

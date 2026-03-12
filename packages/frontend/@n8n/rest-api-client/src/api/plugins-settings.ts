@@ -1,3 +1,5 @@
+import type { MergeDevIntegrationsResponseDto } from '@n8n/api-types';
+
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
@@ -37,4 +39,10 @@ export async function updatePluginSettings(
 	data: UpdatePluginSettingsPayload,
 ): Promise<PluginsSettings> {
 	return await makeRestApiRequest(context, 'POST', '/settings/plugins', data);
+}
+
+export async function getMergeDevIntegrations(
+	context: IRestApiContext,
+): Promise<MergeDevIntegrationsResponseDto> {
+	return await makeRestApiRequest(context, 'GET', '/settings/plugins/merge-dev/integrations');
 }

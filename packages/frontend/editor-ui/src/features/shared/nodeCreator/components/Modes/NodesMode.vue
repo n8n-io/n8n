@@ -41,6 +41,7 @@ import { useI18n } from '@n8n/i18n';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 
 import { useActions } from '../../composables/useActions';
+import { useMergeDevIntegrations } from '../../composables/useMergeDevIntegrations';
 import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -78,12 +79,36 @@ const moreFromCommunity = computed(() => {
 	);
 });
 
+const { isMergeDevVirtualNode, parseMergeDevNodeKey, MERGE_DEV_NODE_TYPE } =
+	useMergeDevIntegrations();
+
+const isMergeDev = (item: INodeCreateElement) =>
+	item.type === 'node' && isMergeDevVirtualNode(item.key);
+
+const mainItems = computed(() =>
+	(activeViewStack.value.items ?? []).filter((item) => !isMergeDev(item)),
+);
+
+const mainGlobalSearchDiff = computed(() =>
+	globalSearchItemsDiff.value.filter((item) => !isMergeDev(item)),
+);
+
+const mergeDevSearchResults = computed<INodeCreateElement[]>(() => {
+	if (!activeViewStack.value.search) return [];
+	const fromItems = (activeViewStack.value.items ?? []).filter(isMergeDev);
+	const fromGlobal = globalSearchItemsDiff.value.filter(isMergeDev);
+	// Deduplicate by key
+	const seen = new Set(fromItems.map((i) => i.key));
+	return [...fromItems, ...fromGlobal.filter((i) => !seen.has(i.key))];
+});
+
 const isSearchResultEmpty = computed(() => {
 	return (
-		(activeViewStack.value.items || []).length === 0 &&
+		mainItems.value.length === 0 &&
 		globalCallouts.value.length +
-			globalSearchItemsDiff.value.length +
-			moreFromCommunity.value.length ===
+			mainGlobalSearchDiff.value.length +
+			moreFromCommunity.value.length +
+			mergeDevSearchResults.value.length ===
 			0
 	);
 });
@@ -138,6 +163,19 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'node') {
+		if (isMergeDevVirtualNode(item.key)) {
+			const parsed = parseMergeDevNodeKey(item.key);
+			if (parsed) {
+				emit('nodeTypeSelected', [{ type: MERGE_DEV_NODE_TYPE }]);
+				setAddedNodeActionParameters({
+					name: item.properties.displayName,
+					key: MERGE_DEV_NODE_TYPE,
+					value: { category: parsed.category } as INodeParameters,
+				});
+				return;
+			}
+		}
+
 		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
 		let nodeActions = getFilteredActions(item, actions);
 		const notInstalledCommunityNode =
@@ -287,8 +325,9 @@ function arrowLeft() {
 function onKeySelect(activeItemId: string) {
 	const mergedItems = flattenCreateElements([
 		...(globalCallouts.value ?? []),
-		...(activeViewStack.value.items ?? []),
-		...(globalSearchItemsDiff.value ?? []),
+		...(mainItems.value ?? []),
+		...(mainGlobalSearchDiff.value ?? []),
+		...(mergeDevSearchResults.value ?? []),
 		...(moreFromCommunity.value ?? []),
 	]);
 
@@ -319,7 +358,7 @@ registerKeyHook('MainViewArrowLeft', {
 		<!-- Main Node Items -->
 		<ItemsRenderer
 			v-memo="[activeViewStack.search]"
-			:elements="activeViewStack.items"
+			:elements="mainItems"
 			:class="$style.items"
 			@selected="onSelected"
 		>
@@ -336,9 +375,19 @@ registerKeyHook('MainViewArrowLeft', {
 
 		<!-- Results in other categories -->
 		<CategorizedItemsRenderer
-			v-if="globalSearchItemsDiff.length > 0"
-			:elements="globalSearchItemsDiff"
+			v-if="mainGlobalSearchDiff.length > 0"
+			:elements="mainGlobalSearchDiff"
 			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
+			:expanded="true"
+			@selected="onSelected"
+		>
+		</CategorizedItemsRenderer>
+
+		<!-- Merge.dev integration results -->
+		<CategorizedItemsRenderer
+			v-if="mergeDevSearchResults.length > 0"
+			:elements="mergeDevSearchResults"
+			category="Merge.dev"
 			:expanded="true"
 			@selected="onSelected"
 		>

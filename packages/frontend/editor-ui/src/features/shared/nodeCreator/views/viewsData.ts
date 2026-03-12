@@ -44,6 +44,8 @@ import {
 	LIMIT_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	MARKDOWN_NODE_TYPE,
+	MERGE_DEV_CATEGORY,
+	MERGE_DEV_SUBCATEGORY,
 	MERGE_NODE_TYPE,
 	OTHER_TRIGGER_NODES_SUBCATEGORY,
 	REGULAR_NODE_CREATOR_VIEW,
@@ -617,6 +619,21 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 			},
 		],
 	};
+
+	const hasMergeDevNodes = (nodes ?? []).some((node) =>
+		node.codex?.categories?.includes(MERGE_DEV_CATEGORY),
+	);
+	if (hasMergeDevNodes) {
+		view.items.push({
+			type: 'subcategory',
+			key: MERGE_DEV_SUBCATEGORY,
+			category: MERGE_DEV_CATEGORY,
+			properties: {
+				title: 'Merge.dev',
+				icon: 'plug',
+			},
+		});
+	}
 
 	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
 	if (hasAINodes)
