@@ -19,7 +19,7 @@ export class MergeDev implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Merge.dev',
 		name: 'mergeDev',
-		icon: 'file:merge-dev.svg',
+		icon: { light: 'file:merge-dev.svg', dark: 'file:merge-dev.dark.svg' },
 		group: ['output'],
 		version: 1,
 		description:
