@@ -23,11 +23,13 @@ export function useClipboard({
 	// pop-out window opens after the composable was created.
 	async function copy(value: string) {
 		const nav = popOutWindow?.value?.navigator;
-		if (nav) {
-			await nav.clipboard.writeText(value);
-		} else {
-			await coreCopy(value);
+		if (nav?.clipboard) {
+			try {
+				await nav.clipboard.writeText(value);
+				return;
+			} catch {}
 		}
+		await coreCopy(value);
 	}
 
 	const ignoreClasses = ['el-messsage-box', 'ignore-key-press-canvas'];
