@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ChatArtifact } from '@n8n/api-types';
-import { N8nIconButton, N8nSelect2 } from '@n8n/design-system';
-import { computed } from 'vue';
+import { refThrottled } from '@vueuse/core';
 import ChatMarkdownChunk from './ChatMarkdownChunk.vue';
 
 const props = defineProps<{
@@ -25,6 +24,8 @@ const options = computed(() =>
 );
 
 const isHtml = computed(() => selectedArtifact.value?.type === 'html');
+const htmlContent = computed(() => (isHtml.value ? selectedArtifact.value?.content : undefined));
+const throttledHtmlContent = refThrottled(htmlContent, 2000);
 const isMarkdown = computed(() => selectedArtifact.value?.type === 'md');
 const markdownContent = computed(() => ({
 	type: 'text' as const,
@@ -56,7 +57,7 @@ const markdownContent = computed(() => ({
 			<div :class="$style.content">
 				<iframe
 					v-if="isHtml"
-					:srcdoc="selectedArtifact?.content"
+					:srcdoc="throttledHtmlContent"
 					:class="$style.iframe"
 					sandbox=""
 					:title="selectedArtifact?.title"
