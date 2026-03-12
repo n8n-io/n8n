@@ -14,8 +14,9 @@ import type { LocalMcpServer } from '../../types';
  * to a Zod schema so the LLM receives accurate parameter information. Falls back
  * to `z.record(z.unknown())` if conversion fails for a particular tool.
  *
- * The execute function forwards the call via `server.callTool()` and returns the
- * first text content item from the MCP result.
+ * The execute function forwards the call via `server.callTool()` and returns
+ * the full MCP result. A `toModelOutput` callback converts MCP content blocks
+ * (text and image) into the AI SDK's multimodal format so the LLM receives images.
  */
 export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInput {
 	const tools: ToolsInput = {};
@@ -45,7 +46,10 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInpu
 					name: toolName,
 					arguments: args as Record<string, unknown>,
 				});
-				return result.content[0]?.text ?? '';
+				return result.content;
+			},
+			toModelOutput: (value: unknown) => {
+				return { type: 'content', value };
 			},
 		});
 	}

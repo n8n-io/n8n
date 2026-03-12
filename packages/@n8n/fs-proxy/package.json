@@ -1,12 +1,13 @@
 {
   "name": "@n8n/fs-proxy",
   "version": "0.1.0",
-  "description": "CLI daemon that tunnels filesystem requests from a remote n8n instance to local project files",
+  "description": "Local AI gateway for n8n Instance AI — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
   "bin": {
     "n8n-fs-proxy": "dist/cli.js"
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
+    "start": "node dist/cli.js serve",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
@@ -27,10 +28,21 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "eventsource": "^3.0.6"
+    "@jitsi/robotjs": "^0.6.21",
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "@n8n/backend-common": "workspace:*",
+    "@n8n/mcp-browser": "workspace:*",
+    "eventsource": "^3.0.6",
+    "picocolors": "catalog:",
+    "node-screenshots": "^0.2.8",
+    "sharp": "^0.34.5",
+    "yargs-parser": "21.1.1",
+    "zod": "catalog:",
+    "zod-to-json-schema": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "@types/yargs-parser": "21.0.0"
   }
 }

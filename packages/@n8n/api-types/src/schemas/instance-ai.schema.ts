@@ -148,8 +148,15 @@ export const mcpToolCallRequestSchema = z.object({
 });
 export type McpToolCallRequest = z.infer<typeof mcpToolCallRequestSchema>;
 
+const mcpTextContentSchema = z.object({ type: z.literal('text'), text: z.string() });
+
+const mcpImageContentSchema = z.object({
+	type: z.literal('media'),
+	data: z.string(),
+	mediaType: z.string(),
+});
 export const mcpToolCallResultSchema = z.object({
-	content: z.array(z.object({ type: z.literal('text'), text: z.string() })),
+	content: z.array(z.union([mcpTextContentSchema, mcpImageContentSchema])),
 	isError: z.boolean().optional(),
 });
 export type McpToolCallResult = z.infer<typeof mcpToolCallResultSchema>;

@@ -94,7 +94,14 @@ export class LocalGateway {
 		if (error) {
 			pending.reject(new Error(error));
 		} else if (result?.isError === true) {
-			pending.reject(new Error(result.content.map((c) => c.text).join('\n')));
+			pending.reject(
+				new Error(
+					result.content
+						.filter((c): c is { type: 'text'; text: string } => c.type === 'text')
+						.map((c) => c.text)
+						.join('\n'),
+				),
+			);
 		} else {
 			pending.resolve(result ?? { content: [] });
 		}

@@ -1,13 +1,21 @@
 import { EventSource } from 'eventsource';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { getFileTree, listFiles, readFile, searchFiles } from './local-reader';
+import type { ResolvedGatewayConfig } from './config';
+import { logger, printToolCall, printToolResult } from './logger';
+import type { BrowserModule } from './tools/browser';
+import { filesystemTools } from './tools/filesystem';
+import { MouseKeyboardModule } from './tools/mouse-keyboard';
+import { ScreenshotModule } from './tools/screenshot';
+import { ShellModule } from './tools/shell';
+import type { CallToolResult, McpTool, ToolDefinition } from './tools/types';
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
 
-interface GatewayClientOptions {
+export interface GatewayClientOptions {
 	url: string;
 	apiKey: string;
-	dir: string;
+	config: ResolvedGatewayConfig;
 }
 
 interface FilesystemRequestEvent {
@@ -18,90 +26,9 @@ interface FilesystemRequestEvent {
 	};
 }
 
-interface McpToolCallResult {
-	content: Array<{ type: 'text'; text: string }>;
-	isError?: boolean;
-}
-
-interface McpTool {
-	name: string;
-	description?: string;
-	inputSchema: {
-		type: 'object';
-		properties: Record<string, unknown>;
-		required?: string[];
-	};
-}
-
-const FILESYSTEM_MCP_TOOLS: McpTool[] = [
-	{
-		name: 'get_file_tree',
-		description: 'Get an indented directory tree',
-		inputSchema: {
-			type: 'object',
-			properties: {
-				dirPath: {
-					type: 'string',
-					description: 'Directory path relative to root (use "." for root)',
-				},
-				maxDepth: { type: 'integer', description: 'Maximum depth to traverse (default: 2)' },
-			},
-			required: ['dirPath'],
-		},
-	},
-	{
-		name: 'list_files',
-		description: 'List immediate children of a directory',
-		inputSchema: {
-			type: 'object',
-			properties: {
-				dirPath: { type: 'string', description: 'Directory path relative to root' },
-				type: {
-					type: 'string',
-					enum: ['file', 'directory', 'all'],
-					description: 'Filter by entry type (default: all)',
-				},
-				maxResults: { type: 'integer', description: 'Maximum number of results (default: 200)' },
-			},
-			required: ['dirPath'],
-		},
-	},
-	{
-		name: 'read_file',
-		description: 'Read the contents of a file',
-		inputSchema: {
-			type: 'object',
-			properties: {
-				filePath: { type: 'string', description: 'File path relative to root' },
-				startLine: { type: 'integer', description: 'Starting line number (1-based, default: 1)' },
-				maxLines: { type: 'integer', description: 'Maximum number of lines (default: 200)' },
-			},
-			required: ['filePath'],
-		},
-	},
-	{
-		name: 'search_files',
-		description: 'Search for text patterns across files using a regex query',
-		inputSchema: {
-			type: 'object',
-			properties: {
-				dirPath: { type: 'string', description: 'Directory to search in' },
-				query: { type: 'string', description: 'Regular expression pattern to search for' },
-				filePattern: {
-					type: 'string',
-					description: 'Glob pattern to filter files (e.g. "**/*.ts")',
-				},
-				ignoreCase: { type: 'boolean', description: 'Case-insensitive search (default: false)' },
-				maxResults: { type: 'integer', description: 'Maximum number of results (default: 50)' },
-			},
-			required: ['dirPath', 'query'],
-		},
-	},
-];
-
 /**
- * Client that connects to the n8n filesystem gateway via SSE and
- * handles filesystem requests by executing MCP tool calls locally.
+ * Client that connects to the n8n gateway via SSE and
+ * handles tool requests by executing MCP tool calls locally.
  */
 export class GatewayClient {
 	private eventSource: EventSource | null = null;
@@ -113,11 +40,28 @@ export class GatewayClient {
 	/** Session key issued by the server after pairing token is consumed. */
 	private sessionKey: string | null = null;
 
+	private allDefinitions: ToolDefinition[] | null = null;
+
+	private definitionMap: Map<string, ToolDefinition> = new Map();
+
+	private browserModule: BrowserModule | null = null;
+
+	/** Get all registered tool definitions (populated after start). */
+	get tools(): ToolDefinition[] {
+		return this.allDefinitions ?? [];
+	}
+
 	constructor(private readonly options: GatewayClientOptions) {}
 
 	/** Return the active API key — session key if available, otherwise the original key. */
 	private get apiKey(): string {
 		return this.sessionKey ?? this.options.apiKey;
+	}
+
+	/** Resolved filesystem directory, or '.' as fallback. */
+	private get dir(): string {
+		const fs = this.options.config.filesystem;
+		return fs !== false ? fs.dir : '.';
 	}
 
 	/** Start the client: upload capabilities, connect SSE, handle requests. */
@@ -127,12 +71,13 @@ export class GatewayClient {
 	}
 
 	/** Stop the client and close the SSE connection. */
-	stop(): void {
+	async stop(): Promise<void> {
 		this.shouldReconnect = false;
 		if (this.eventSource) {
 			this.eventSource.close();
 			this.eventSource = null;
 		}
+		if (this.browserModule) await this.browserModule.shutdown();
 	}
 
 	/** Notify the server we're disconnecting, then close the SSE connection. */
@@ -153,32 +98,98 @@ export class GatewayClient {
 				signal: AbortSignal.timeout(3000),
 			});
 			if (response.ok) {
-				console.log('Disconnected from gateway');
+				logger.info('Disconnected from gateway');
 			} else {
-				console.error(`Gateway disconnect failed: ${response.status}`);
+				logger.error('Gateway disconnect failed', { status: response.status });
 			}
 		} catch (error) {
-			console.error(
-				'Gateway disconnect error:',
-				error instanceof Error ? error.message : String(error),
-			);
+			logger.error('Gateway disconnect error', {
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 		if (this.eventSource) {
 			this.eventSource.close();
 			this.eventSource = null;
 		}
+		if (this.browserModule) await this.browserModule.shutdown();
 	}
 
-	/**
-	 * Returns the MCP tools this client exposes. Override in a subclass to
-	 * provide tools from a locally running MCP server instead.
-	 */
-	protected getTools(): McpTool[] {
-		return FILESYSTEM_MCP_TOOLS;
+	private async getAllDefinitions(): Promise<ToolDefinition[]> {
+		if (this.allDefinitions) return this.allDefinitions;
+
+		const { config } = this.options;
+		const defs: ToolDefinition[] = [];
+
+		// Filesystem
+		if (config.filesystem !== false) {
+			defs.push(...filesystemTools);
+		}
+
+		// Computer use modules — check both config and platform support
+		const computerModules: Array<{
+			name: string;
+			enabled: boolean;
+			module: { isSupported(): boolean | Promise<boolean>; definitions: ToolDefinition[] };
+		}> = [
+			{
+				name: 'Shell',
+				enabled: config.computer.shell !== false,
+				module: ShellModule,
+			},
+			{
+				name: 'Screenshot',
+				enabled: config.computer.screenshot !== false,
+				module: ScreenshotModule,
+			},
+			{
+				name: 'MouseKeyboard',
+				enabled: config.computer.mouseKeyboard !== false,
+				module: MouseKeyboardModule,
+			},
+		];
+
+		for (const { name, enabled, module } of computerModules) {
+			if (!enabled) {
+				logger.debug('Module disabled by config, skipping', { module: name });
+				continue;
+			}
+			if (await module.isSupported()) {
+				defs.push(...module.definitions);
+			} else {
+				logger.debug('Module not supported on this platform, skipping', { module: name });
+			}
+		}
+
+		// Browser
+		if (config.browser !== false) {
+			const { BrowserModule: BrowserModuleClass } = await import('./tools/browser');
+			this.browserModule = await BrowserModuleClass.create(config.browser);
+			if (this.browserModule) {
+				defs.push(...this.browserModule.definitions);
+			} else {
+				logger.debug('Module not supported on this platform, skipping', {
+					module: 'Browser',
+				});
+			}
+		} else {
+			logger.debug('Module disabled by config, skipping', { module: 'Browser' });
+		}
+
+		for (const def of defs) {
+			logger.debug('Registered tool', { name: def.name, description: def.description });
+		}
+		this.allDefinitions = defs;
+		this.definitionMap = new Map(defs.map((d) => [d.name, d]));
+		return defs;
 	}
 
 	private async uploadCapabilities(): Promise<void> {
-		const tools = this.getTools();
+		const defs = await this.getAllDefinitions();
+		const tools: McpTool[] = defs.map((d) => ({
+			name: d.name,
+			description: d.description,
+			inputSchema: zodToJsonSchema(d.inputSchema) as McpTool['inputSchema'],
+		}));
 		const url = `${this.options.url}/rest/instance-ai/gateway/init`;
 		const headers = new Headers();
 		headers.set('Content-Type', 'application/json');
@@ -186,7 +197,7 @@ export class GatewayClient {
 		const response = await fetch(url, {
 			method: 'POST',
 			headers,
-			body: JSON.stringify({ rootPath: this.options.dir, tools }),
+			body: JSON.stringify({ rootPath: this.dir, tools }),
 		});
 
 		if (!response.ok) {
@@ -199,25 +210,25 @@ export class GatewayClient {
 		const body = (await response.json()) as { data: { ok: boolean; sessionKey?: string } };
 		if (body.data.sessionKey) {
 			this.sessionKey = body.data.sessionKey;
-			console.log('Pairing token consumed — switched to session key');
+			logger.debug('Pairing token consumed, switched to session key');
 		}
 
-		console.log(`Capabilities uploaded (${tools.length} tools)`);
+		logger.debug('Capabilities uploaded', { toolCount: tools.length });
 	}
 
 	private connectSSE(): void {
 		const url = `${this.options.url}/rest/instance-ai/gateway/events?apiKey=${encodeURIComponent(this.apiKey)}`;
 
-		console.log(`Connecting to gateway... (key: ${this.apiKey.slice(0, 8)}...)`);
+		logger.debug('Connecting to gateway', { keyPrefix: this.apiKey.slice(0, 8) });
 		this.eventSource = new EventSource(url);
 
 		this.eventSource.onopen = () => {
-			console.log('Connected to gateway SSE');
+			logger.debug('Connected to gateway SSE');
 			this.reconnectDelay = 1000;
 		};
 
 		this.eventSource.onmessage = (event: MessageEvent) => {
-			console.log('got message', event, event.data);
+			logger.debug('SSE message received', { data: String(event.data) });
 			void this.handleMessage(event);
 		};
 
@@ -227,10 +238,12 @@ export class GatewayClient {
 			// The eventsource package exposes status/message on the error event
 			const eventObj = event as Record<string, string | undefined> | null;
 			const statusCode = eventObj?.status ?? eventObj?.code ?? '';
-			const message = eventObj?.message ?? '';
-			console.log(
-				`Connection lost${statusCode ? ` (${statusCode})` : ''}${message ? `: ${message}` : ''}. Reconnecting in ${this.reconnectDelay / 1000}s...`,
-			);
+			const errorMessage = eventObj?.message ?? '';
+			logger.warn('Connection lost, reconnecting', {
+				statusCode,
+				message: errorMessage,
+				delayMs: this.reconnectDelay,
+			});
 
 			if (this.eventSource) {
 				this.eventSource.close();
@@ -254,14 +267,16 @@ export class GatewayClient {
 			if (!isFilesystemRequestEvent(parsed)) return;
 
 			const { requestId, toolCall } = parsed.payload;
-			console.log(`Request ${requestId}: ${toolCall.name}`);
+			printToolCall(toolCall.name, toolCall.arguments);
+			const start = Date.now();
 
 			try {
 				const result = await this.dispatchToolCall(toolCall.name, toolCall.arguments);
+				printToolResult(toolCall.name, Date.now() - start);
 				await this.postResponse(requestId, result);
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
-				console.error(`Request ${requestId} failed: ${message}`);
+				printToolResult(toolCall.name, Date.now() - start, message);
 				await this.postResponse(requestId, {
 					content: [{ type: 'text', text: message }],
 					isError: true,
@@ -275,53 +290,16 @@ export class GatewayClient {
 	private async dispatchToolCall(
 		name: string,
 		args: Record<string, unknown>,
-	): Promise<McpToolCallResult> {
-		const dir = this.options.dir;
-
-		console.log('call tool', name, args);
-
-		if (name === 'get_file_tree') {
-			const dirPath = requireString(args, 'dirPath');
-			const maxDepth = optionalInteger(args, 'maxDepth');
-			const text = await getFileTree(dir, dirPath, { maxDepth });
-			return { content: [{ type: 'text', text }] };
-		}
-
-		if (name === 'list_files') {
-			const dirPath = requireString(args, 'dirPath');
-			const type = optionalEnum(args, 'type', ['file', 'directory', 'all'] as const);
-			const maxResults = optionalInteger(args, 'maxResults');
-			const entries = await listFiles(dir, dirPath, { type, maxResults });
-			return { content: [{ type: 'text', text: JSON.stringify(entries) }] };
-		}
-
-		if (name === 'read_file') {
-			const filePath = requireString(args, 'filePath');
-			const startLine = optionalInteger(args, 'startLine');
-			const maxLines = optionalInteger(args, 'maxLines');
-			const content = await readFile(dir, filePath, { startLine, maxLines });
-			return { content: [{ type: 'text', text: JSON.stringify(content) }] };
-		}
-
-		if (name === 'search_files') {
-			const dirPath = requireString(args, 'dirPath');
-			const query = requireString(args, 'query');
-			const filePattern = optionalString(args, 'filePattern');
-			const ignoreCase = optionalBoolean(args, 'ignoreCase');
-			const maxResults = optionalInteger(args, 'maxResults');
-			const result = await searchFiles(dir, dirPath, {
-				query,
-				filePattern,
-				ignoreCase,
-				maxResults,
-			});
-			return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-		}
-
-		throw new Error(`Unknown tool: ${name}`);
+	): Promise<CallToolResult> {
+		// Ensure definitions are initialized (getAllDefinitions is idempotent)
+		await this.getAllDefinitions();
+		const def = this.definitionMap.get(name);
+		if (!def) throw new Error(`Unknown tool: ${name}`);
+		const typedArgs = def.inputSchema.parse(args);
+		return await def.execute(typedArgs, { dir: this.dir });
 	}
 
-	private async postResponse(requestId: string, result: McpToolCallResult): Promise<void> {
+	private async postResponse(requestId: string, result: CallToolResult): Promise<void> {
 		const url = `${this.options.url}/rest/instance-ai/gateway/response/${requestId}`;
 		try {
 			const headers = new Headers();
@@ -334,13 +312,13 @@ export class GatewayClient {
 			});
 
 			if (!response.ok) {
-				console.error(`Failed to post response for ${requestId}: ${response.status}`);
+				logger.error('Failed to post response', { requestId, status: response.status });
 			}
 		} catch (fetchError) {
-			console.error(
-				`Failed to post response for ${requestId}:`,
-				fetchError instanceof Error ? fetchError.message : String(fetchError),
-			);
+			logger.error('Failed to post response', {
+				requestId,
+				error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+			});
 		}
 	}
 }
@@ -357,47 +335,4 @@ function isFilesystemRequestEvent(data: unknown): data is FilesystemRequestEvent
 	if (typeof p.toolCall !== 'object' || p.toolCall === null) return false;
 	const tc = p.toolCall as Record<string, unknown>;
 	return typeof tc.name === 'string' && typeof tc.arguments === 'object' && tc.arguments !== null;
-}
-
-// ── Argument extraction helpers ─────────────────────────────────────────────
-
-function requireString(args: Record<string, unknown>, key: string): string {
-	const val = args[key];
-	if (typeof val !== 'string') throw new Error(`Missing required string argument: ${key}`);
-	return val;
-}
-
-function optionalString(args: Record<string, unknown>, key: string): string | undefined {
-	const val = args[key];
-	if (val === undefined || val === null) return undefined;
-	if (typeof val !== 'string') throw new Error(`Argument ${key} must be a string`);
-	return val;
-}
-
-function optionalInteger(args: Record<string, unknown>, key: string): number | undefined {
-	const val = args[key];
-	if (val === undefined || val === null) return undefined;
-	if (typeof val !== 'number') throw new Error(`Argument ${key} must be a number`);
-	return Math.floor(val);
-}
-
-function optionalBoolean(args: Record<string, unknown>, key: string): boolean | undefined {
-	const val = args[key];
-	if (val === undefined || val === null) return undefined;
-	if (typeof val !== 'boolean') throw new Error(`Argument ${key} must be a boolean`);
-	return val;
-}
-
-function optionalEnum<T extends string>(
-	args: Record<string, unknown>,
-	key: string,
-	allowed: readonly T[],
-): T | undefined {
-	const val = args[key];
-	if (val === undefined || val === null) return undefined;
-	if (typeof val !== 'string') throw new Error(`Argument ${key} must be a string`);
-	if (!(allowed as readonly string[]).includes(val)) {
-		throw new Error(`Argument ${key} must be one of: ${allowed.join(', ')}`);
-	}
-	return val as T;
 }

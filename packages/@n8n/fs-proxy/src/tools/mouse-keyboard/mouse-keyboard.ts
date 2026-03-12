@@ -1,0 +1,222 @@
+import robot from '@jitsi/robotjs';
+import { z } from 'zod';
+
+import type { ToolDefinition } from '../types';
+
+const IS_MACOS = process.platform === 'darwin';
+const IS_WINDOWS = process.platform === 'win32';
+
+// ── Key normalization ─────────────────────────────────────────────────────────
+
+/**
+ * Map common human-facing aliases to the exact key names robotjs accepts.
+ * robotjs key names: https://github.com/jitsi/robotjs/blob/master/src/keypress.c
+ * robotjs is strict: unrecognised names throw "Invalid key flag specified".
+ */
+function normalizeKey(key: string): string {
+	const k = key.toLowerCase();
+	const aliases: Record<string, string> = {
+		// Modifier aliases
+		cmd: 'command',
+		meta: 'command',
+		super: 'command',
+		win: 'command',
+		windows: 'command',
+		ctrl: 'control',
+		option: 'alt', // macOS ⌥
+		// Action key aliases
+		return: 'enter', // robotjs uses "enter", not "return"
+		esc: 'escape',
+		del: 'delete',
+		pgup: 'pageup',
+		pgdn: 'pagedown',
+		ins: 'insert',
+		caps: 'capslock',
+	};
+	return aliases[k] ?? k;
+}
+
+// ── OS-aware description strings ──────────────────────────────────────────────
+
+const MODIFIER_KEY_NAMES = IS_MACOS
+	? '"command" (⌘, aliases: "cmd", "meta", "super"), "shift", "alt" (⌥, alias: "option"), "control" (alias: "ctrl")'
+	: IS_WINDOWS
+		? '"control" (alias: "ctrl"), "shift", "alt", "command" (Win key, aliases: "win", "windows", "super")'
+		: '"control" (alias: "ctrl"), "shift", "alt", "command"';
+
+const SHORTCUT_EXAMPLE = IS_MACOS
+	? '["command","t"] for ⌘T, ["command","shift","z"] for ⌘⇧Z'
+	: '["control","t"] for Ctrl+T, ["control","shift","z"] for Ctrl+Shift+Z';
+
+// ── Mouse tools ──────────────────────────────────────────────────────────────
+
+const mouseMoveSchema = z.object({
+	x: z.number().int().describe('Target X coordinate in pixels'),
+	y: z.number().int().describe('Target Y coordinate in pixels'),
+});
+
+export const mouseMoveTool: ToolDefinition<typeof mouseMoveSchema> = {
+	name: 'mouse_move',
+	description: 'Move the mouse cursor to the specified screen coordinates',
+	inputSchema: mouseMoveSchema,
+	annotations: { defaultPermission: 'confirm' },
+	execute({ x, y }) {
+		robot.moveMouse(x, y);
+		return { content: [{ type: 'text', text: 'ok' }] };
+	},
+};
+
+const mouseClickSchema = z.object({
+	x: z.number().int().describe('X coordinate to click'),
+	y: z.number().int().describe('Y coordinate to click'),
+	button: z.enum(['left', 'right', 'middle']).optional().describe('Mouse button (default: left)'),
+});
+
+export const mouseClickTool: ToolDefinition<typeof mouseClickSchema> = {
+	name: 'mouse_click',
+	description: 'Move the mouse to the specified coordinates and click',
+	inputSchema: mouseClickSchema,
+	annotations: { defaultPermission: 'confirm' },
+	execute({ x, y, button = 'left' }) {
+		robot.moveMouse(x, y);
+		robot.mouseClick(button);
+		return { content: [{ type: 'text', text: 'ok' }] };
+	},
+};
+
+const mouseDoubleClickSchema = z.object({
+	x: z.number().int().describe('X coordinate to double-click'),
+	y: z.number().int().describe('Y coordinate to double-click'),
+});
+
+export const mouseDoubleClickTool: ToolDefinition<typeof mouseDoubleClickSchema> = {
+	name: 'mouse_double_click',
+	description: 'Move the mouse to the specified coordinates and double-click',
+	inputSchema: mouseDoubleClickSchema,
+	annotations: { defaultPermission: 'confirm' },
+	execute({ x, y }) {
+		robot.moveMouse(x, y);
+		robot.mouseClick('left', true);
+		return { content: [{ type: 'text', text: 'ok' }] };
+	},
+};
+
+const mouseDragSchema = z.object({
+	fromX: z.number().int().describe('Starting X coordinate'),
+	fromY: z.number().int().describe('Starting Y coordinate'),
+	toX: z.number().int().describe('Target X coordinate'),
+	toY: z.number().int().describe('Target Y coordinate'),
+});
+
+export const mouseDragTool: ToolDefinition<typeof mouseDragSchema> = {
+	name: 'mouse_drag',
+	description: 'Click-drag from one coordinate to another',
+	inputSchema: mouseDragSchema,
+	annotations: { defaultPermission: 'confirm' },
+	execute({ fromX, fromY, toX, toY }) {
+		robot.moveMouse(fromX, fromY);
+		robot.mouseToggle('down');
+		robot.dragMouse(toX, toY);
+		robot.mouseToggle('up');
+		return { content: [{ type: 'text', text: 'ok' }] };
+	},
+};
+
+const mouseScrollSchema = z.object({
+	x: z.number().int().describe('X coordinate to scroll at'),
+	y: z.number().int().describe('Y coordinate to scroll at'),
+	direction: z.enum(['up', 'down', 'left', 'right']).describe('Scroll direction'),
+	amount: z.number().int().describe('Number of scroll ticks'),
+});
+
+export const mouseScrollTool: ToolDefinition<typeof mouseScrollSchema> = {
+	name: 'mouse_scroll',
+	description: 'Scroll at the specified screen coordinates',
+	inputSchema: mouseScrollSchema,
+	annotations: { defaultPermission: 'confirm' },
+	execute({ x, y, direction, amount }) {
+		robot.moveMouse(x, y);
+		// robotjs scrollMouse(x, y): positive x = right, positive y = down
+		const dx = direction === 'right' ? amount : direction === 'left' ? -amount : 0;
+		const dy = direction === 'down' ? amount : direction === 'up' ? -amount : 0;
+		robot.scrollMouse(dx, dy);
+		return { content: [{ type: 'text', text: 'ok' }] };
+	},
+};
+
+// ── Keyboard tools ───────────────────────────────────────────────────────────
+
+const keyboardTypeSchema = z.object({
+	text: z.string().describe('Text to type'),
+	delayMs: z
+		.number()
+		.int()
+		.optional()
+		.describe(
+			'Milliseconds to wait before typing. Use this when the target input field needs time to ' +
+				'gain focus after a prior action (e.g. opening a new tab). Default: 0 (type immediately).',
+		),
+});
+
+export const keyboardTypeTool: ToolDefinition<typeof keyboardTypeSchema> = {
+	name: 'keyboard_type',
+	description: 'Type a string of text using the keyboard',
+	inputSchema: keyboardTypeSchema,
+	annotations: { defaultPermission: 'confirm' },
+	async execute({ text, delayMs }) {
+		if (delayMs) {
+			await new Promise((resolve) => setTimeout(resolve, delayMs));
+		}
+		robot.typeStringDelayed(text, 60 * 4);
+		return { content: [{ type: 'text', text: 'ok' }] };
+	},
+};
+
+const keyboardKeyTapSchema = z.object({
+	key: z
+		.string()
+		.describe(
+			'Key to press. Special keys: "enter", "escape", "tab", "backspace", "delete", "space", ' +
+				'"up", "down", "left", "right", "home", "end", "pageup", "pagedown", "insert", ' +
+				'"capslock", "printscreen", "menu", "f1"–"f24". ' +
+				'Numpad: "numpad_0"–"numpad_9", "numpad_+", "numpad_-", "numpad_*", "numpad_/", "numpad_.", "numpad_lock". ' +
+				'Media: "audio_mute", "audio_vol_up", "audio_vol_down", "audio_play", "audio_stop", "audio_pause", "audio_prev", "audio_next". ' +
+				'Aliases: "esc"→"escape", "del"→"delete", "pgup"→"pageup", "pgdn"→"pagedown", "ins"→"insert", "return"→"enter", "caps"→"capslock". ' +
+				'For single characters just pass the character directly (e.g. "a", "1", ".").',
+		),
+});
+
+export const keyboardKeyTapTool: ToolDefinition<typeof keyboardKeyTapSchema> = {
+	name: 'keyboard_key_tap',
+	description: 'Press and release a single key. Use keyboard_shortcut for key combinations.',
+	inputSchema: keyboardKeyTapSchema,
+	annotations: { defaultPermission: 'confirm' },
+	execute({ key }) {
+		robot.keyTap(normalizeKey(key));
+		return { content: [{ type: 'text', text: 'ok' }] };
+	},
+};
+
+const keyboardShortcutSchema = z.object({
+	keys: z
+		.array(z.string())
+		.min(1)
+		.describe(
+			'Keys in the shortcut. Last element is tapped; all preceding are held as modifiers. ' +
+				`Modifier names: ${MODIFIER_KEY_NAMES}. ` +
+				`Examples: ${SHORTCUT_EXAMPLE}.`,
+		),
+});
+
+export const keyboardShortcutTool: ToolDefinition<typeof keyboardShortcutSchema> = {
+	name: 'keyboard_shortcut',
+	description: `Press a keyboard shortcut (e.g. ${IS_MACOS ? '⌘C, ⌘⇧Z' : 'Ctrl+C, Ctrl+Shift+Z'})`,
+	inputSchema: keyboardShortcutSchema,
+	annotations: { defaultPermission: 'confirm' },
+	execute({ keys }) {
+		const modifiers = keys.slice(0, -1).map(normalizeKey);
+		const key = normalizeKey(keys.at(-1)!);
+		robot.keyTap(key, modifiers);
+		return { content: [{ type: 'text', text: 'ok' }] };
+	},
+};

@@ -4,19 +4,7 @@ import * as path from 'node:path';
 const MAX_ENTRIES = 10_000;
 const DEFAULT_MAX_DEPTH = 8;
 
-export interface TreeEntry {
-	path: string;
-	type: 'file' | 'directory';
-	sizeBytes?: number;
-}
-
-export interface ScanResult {
-	rootPath: string;
-	tree: TreeEntry[];
-	truncated: boolean;
-}
-
-const EXCLUDED_DIRS = new Set([
+export const EXCLUDED_DIRS = new Set([
 	'node_modules',
 	'.git',
 	'dist',
@@ -34,6 +22,18 @@ const EXCLUDED_DIRS = new Set([
 	'.output',
 	'.svelte-kit',
 ]);
+
+export interface TreeEntry {
+	path: string;
+	type: 'file' | 'directory';
+	sizeBytes?: number;
+}
+
+export interface ScanResult {
+	rootPath: string;
+	tree: TreeEntry[];
+	truncated: boolean;
+}
 
 /**
  * Scan a directory using breadth-first traversal with a depth limit.
@@ -126,4 +126,13 @@ function isAllowedDotFile(name: string): boolean {
 		'.browserslistrc',
 	]);
 	return allowed.has(name);
+}
+
+/** Resolve a file path safely within the base directory. */
+export function resolveSafePath(basePath: string, relativePath: string): string {
+	const resolved = path.resolve(basePath, relativePath);
+	if (!resolved.startsWith(basePath + path.sep) && resolved !== basePath) {
+		throw new Error(`Path "${relativePath}" escapes the base directory`);
+	}
+	return resolved;
 }

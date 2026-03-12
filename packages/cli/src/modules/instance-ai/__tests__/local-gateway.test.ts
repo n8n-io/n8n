@@ -88,7 +88,7 @@ describe('LocalGateway', () => {
 			expect(resolved).toBe(true);
 
 			const result = await callPromise;
-			expect(result.content[0].text).toContain('console.log');
+			expect((result.content[0] as { type: 'text'; text: string }).text).toContain('console.log');
 		});
 
 		it('should reject on error string response', async () => {
@@ -166,7 +166,7 @@ describe('LocalGateway', () => {
 			});
 
 			const result = await callPromise;
-			expect(result.content[0].text).toBe(treeText);
+			expect((result.content[0] as { type: 'text'; text: string }).text).toBe(treeText);
 		});
 	});
 

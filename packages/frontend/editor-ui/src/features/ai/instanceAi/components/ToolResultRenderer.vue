@@ -1,15 +1,18 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import type { McpToolCallResult } from '@n8n/api-types';
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultTable from './ToolResultTable.vue';
 import ToolResultCode from './ToolResultCode.vue';
+import ToolResultMedia from './ToolResultMedia.vue';
+import ToolResultText from './ToolResultText.vue';
 
 const props = defineProps<{
 	result: unknown;
 	toolName: string;
 }>();
 
-type ResultType = 'code' | 'table' | 'json';
+type ResultType = 'content' | 'code' | 'table' | 'json';
 
 const CODE_TOOLS = new Set(['get-workflow-as-code', 'get-node-type-definition']);
 const TABLE_TOOLS = new Set([
@@ -22,7 +25,12 @@ const TABLE_TOOLS = new Set([
 	'list-data-tables',
 ]);
 
+function isMcpResult(result: unknown): result is McpToolCallResult['content'] {
+	return result !== null && Array.isArray(result);
+}
+
 function detectType(result: unknown, toolName: string): ResultType {
+	if (isMcpResult(result)) return 'content';
 	if (CODE_TOOLS.has(toolName)) return 'code';
 	if (TABLE_TOOLS.has(toolName) && result && typeof result === 'object') return 'table';
 	return 'json';
@@ -49,7 +57,6 @@ function extractTableRows(result: unknown): Array<Record<string, unknown>> | nul
 	if (!result || typeof result !== 'object') return null;
 	const obj = result as Record<string, unknown>;
 
-	// Try common array property names
 	for (const key of [
 		'data',
 		'workflows',
@@ -67,13 +74,31 @@ function extractTableRows(result: unknown): Array<Record<string, unknown>> | nul
 }
 
 const resultType = computed(() => detectType(props.result, props.toolName));
-
+const contentItems = computed(() => (isMcpResult(props.result) ? props.result : null));
 const codeContent = computed(() => extractCode(props.result, props.toolName));
 const tableRows = computed(() => extractTableRows(props.result));
 </script>
 
 <template>
-	<ToolResultCode v-if="resultType === 'code' && codeContent" :code="codeContent" />
+	<div v-if="resultType === 'content' && contentItems" :class="$style.contentList">
+		<template v-for="(item, idx) in contentItems" :key="idx">
+			<ToolResultMedia
+				v-if="item.type === 'media'"
+				:data="item.data"
+				:media-type="item.mediaType"
+			/>
+			<ToolResultText v-else-if="item.type === 'text'" :text="item.text" />
+		</template>
+	</div>
+	<ToolResultCode v-else-if="resultType === 'code' && codeContent" :code="codeContent" />
 	<ToolResultTable v-else-if="resultType === 'table' && tableRows" :rows="tableRows" />
 	<ToolResultJson v-else :value="props.result" />
 </template>
+
+<style module>
+.contentList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+</style>

@@ -1,18 +1,27 @@
 import * as http from 'node:http';
 
+import type { ResolvedGatewayConfig } from './config';
 import { GatewayClient } from './gateway-client';
-
-const DEFAULT_PORT = 7655;
+import {
+	logger,
+	printBanner,
+	printConnected,
+	printDisconnected,
+	printListening,
+	printModuleStatus,
+	printToolList,
+	printWaiting,
+} from './logger';
 
 interface DaemonState {
-	dir: string;
+	config: ResolvedGatewayConfig;
 	client: GatewayClient | null;
 	connectedAt: string | null;
 	connectedUrl: string | null;
 }
 
 const state: DaemonState = {
-	dir: '',
+	config: undefined as unknown as ResolvedGatewayConfig,
 	client: null,
 	connectedAt: null,
 	connectedUrl: null,
@@ -38,6 +47,11 @@ function jsonResponse(
 	res.end(JSON.stringify(body));
 }
 
+function getDir(): string {
+	const fs = state.config.filesystem;
+	return fs !== false ? fs.dir : '.';
+}
+
 async function readBody(req: http.IncomingMessage): Promise<string> {
 	return await new Promise((resolve, reject) => {
 		const chunks: Buffer[] = [];
@@ -50,7 +64,7 @@ async function readBody(req: http.IncomingMessage): Promise<string> {
 function handleHealth(res: http.ServerResponse): void {
 	jsonResponse(res, 200, {
 		status: 'ok',
-		dir: state.dir,
+		dir: getDir(),
 		connected: state.client !== null,
 	});
 }
@@ -76,7 +90,7 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 
 	// Stop existing client if any
 	if (state.client) {
-		state.client.stop();
+		await state.client.stop();
 		state.client = null;
 		state.connectedAt = null;
 		state.connectedUrl = null;
@@ -86,7 +100,7 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		const client = new GatewayClient({
 			url: url.replace(/\/$/, ''),
 			apiKey: token,
-			dir: state.dir,
+			config: state.config,
 		});
 
 		await client.start();
@@ -95,11 +109,14 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		state.connectedAt = new Date().toISOString();
 		state.connectedUrl = url;
 
-		console.log(`Connected to n8n at ${url}. Sharing: ${state.dir}`);
-		jsonResponse(res, 200, { status: 'connected', dir: state.dir });
+		const dir = getDir();
+		logger.debug('Connected to n8n', { url, dir });
+		printConnected(url);
+		printToolList(client.tools);
+		jsonResponse(res, 200, { status: 'connected', dir });
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		console.error(`Connection failed: ${message}`);
+		logger.error('Connection failed', { error: message });
 		jsonResponse(res, 500, { error: message });
 	}
 }
@@ -110,7 +127,8 @@ async function handleDisconnect(res: http.ServerResponse): Promise<void> {
 		state.client = null;
 		state.connectedAt = null;
 		state.connectedUrl = null;
-		console.log('Disconnected');
+		logger.debug('Disconnected');
+		printDisconnected();
 	}
 	jsonResponse(res, 200, { status: 'disconnected' });
 }
@@ -118,7 +136,7 @@ async function handleDisconnect(res: http.ServerResponse): Promise<void> {
 function handleStatus(res: http.ServerResponse): void {
 	jsonResponse(res, 200, {
 		connected: state.client !== null,
-		dir: state.dir,
+		dir: getDir(),
 		connectedAt: state.connectedAt,
 		url: state.connectedUrl,
 	});
@@ -143,8 +161,9 @@ function handleCors(res: http.ServerResponse): void {
 	res.end();
 }
 
-export function startDaemon(dir: string, port: number = DEFAULT_PORT): void {
-	state.dir = dir;
+export function startDaemon(config: ResolvedGatewayConfig): void {
+	state.config = config;
+	const port = config.port;
 
 	const server = http.createServer((req, res) => {
 		const { method, url: reqUrl } = req;
@@ -172,22 +191,22 @@ export function startDaemon(dir: string, port: number = DEFAULT_PORT): void {
 
 	server.on('error', (error: NodeJS.ErrnoException) => {
 		if (error.code === 'EADDRINUSE') {
-			console.error(
-				`Error: Port ${String(port)} is already in use. Is another n8n-fs-proxy daemon running?`,
-			);
+			logger.error('Port already in use', { port });
 			process.exit(1);
 		}
 		throw error;
 	});
 
 	server.listen(port, '127.0.0.1', () => {
-		console.log(`n8n-fs-proxy serving ${dir} on http://127.0.0.1:${String(port)}`);
-		console.log('n8n will auto-connect when you open the AI assistant.');
+		printBanner();
+		printModuleStatus(config);
+		printListening(port);
+		printWaiting();
 	});
 
 	// Graceful shutdown
 	const shutdown = () => {
-		console.log('\nShutting down...');
+		logger.info('Shutting down');
 		const done = () => server.close(() => process.exit(0));
 		if (state.client) {
 			void state.client.disconnect().finally(done);
