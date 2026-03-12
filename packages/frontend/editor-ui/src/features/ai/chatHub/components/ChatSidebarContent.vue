@@ -136,9 +136,7 @@ function handleNewChatClick() {
 }
 
 onMounted(() => {
-	if (!chatStore.sessionsReady) {
-		void chatStore.fetchSessions(true, { minLoadingTime: 250, type: 'production' });
-	}
+	void chatStore.fetchSessions(true, { minLoadingTime: 250, type: 'production' });
 });
 </script>
 

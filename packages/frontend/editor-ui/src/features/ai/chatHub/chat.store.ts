@@ -68,6 +68,7 @@ import {
 	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubN8nModel,
+	type ChatHubSessionType,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -114,7 +115,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		ids: string[] | null;
 		hasMore: boolean;
 		nextCursor: string | null;
-	}>({ byId: {}, ids: null, hasMore: false, nextCursor: null });
+		lastFetchedType: ChatHubSessionType | undefined;
+	}>({ byId: {}, ids: null, hasMore: false, nextCursor: null, lastFetchedType: undefined });
 	const sessionsLoadingMore = ref(false);
 
 	const streaming = ref<ChatStreamingState>();
@@ -375,6 +377,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			return;
 		}
 
+		// Force reset when switching between session types (e.g. manual vs production)
+		const typeChanged =
+			options.type !== undefined && options.type !== sessions.value.lastFetchedType;
+		if (typeChanged) {
+			reset = true;
+		}
+
 		if (
 			!reset &&
 			sessions.value &&
@@ -401,6 +410,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 			sessions.value.hasMore = response.hasMore;
 			sessions.value.nextCursor = response.nextCursor;
+			sessions.value.lastFetchedType = options.type;
 
 			for (const session of response.data) {
 				sessions.value.ids.push(session.id);
