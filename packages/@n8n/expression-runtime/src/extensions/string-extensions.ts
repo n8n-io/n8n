@@ -367,6 +367,14 @@ function extractUrl(value: string) {
 	return matched[0];
 }
 
+function isLetter(ch: number): boolean {
+	return (ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122);
+}
+
+function isDigit(ch: number): boolean {
+	return ch >= 48 && ch <= 57;
+}
+
 // DIVERGENCE from packages/workflow/src/extensions/string-extensions.ts:
 // The original uses the URL constructor which is a Web API unavailable inside
 // the V8 isolate. A simple imperative parser extracts the pathname instead.
@@ -376,10 +384,14 @@ function extractUrlPath(value: string) {
 	const protoEnd = value.indexOf('://');
 	if (protoEnd < 1) return undefined;
 
-	// Validate scheme: first char must be a letter, rest alphanumeric/+/-/.
-	const firstChar = value.charCodeAt(0);
-	if (!((firstChar >= 65 && firstChar <= 90) || (firstChar >= 97 && firstChar <= 122))) {
-		return undefined;
+	// Validate scheme per RFC 3986: ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+	if (!isLetter(value.charCodeAt(0))) return undefined;
+	for (let i = 1; i < protoEnd; i++) {
+		const ch = value.charCodeAt(i);
+		if (!isLetter(ch) && !isDigit(ch) && ch !== 43 && ch !== 45 && ch !== 46) {
+			// 43 = '+', 45 = '-', 46 = '.'
+			return undefined;
+		}
 	}
 
 	const hostStart = protoEnd + 3;

@@ -21,10 +21,15 @@ describe('extractUrlPath (imperative parser, no URL constructor)', () => {
 		expect(extractUrlPath(input)).toBe(expected);
 	});
 
-	it.each([['not-a-url'], ['https://'], [''], [':://no-scheme'], ['http:/malformed']])(
-		'should return undefined for malformed input: %s',
-		(input) => {
-			expect(extractUrlPath(input)).toBeUndefined();
-		},
-	);
+	it.each([
+		['not-a-url'],
+		['https://'],
+		[''],
+		[':://no-scheme'],
+		['http:/malformed'],
+		['h$tp://example.com/path'],
+		['ht tp://example.com/path'],
+	])('should return undefined for malformed input: %s', (input) => {
+		expect(extractUrlPath(input)).toBeUndefined();
+	});
 });
