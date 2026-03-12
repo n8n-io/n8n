@@ -1,9 +1,4 @@
-import type {
-	AppliedThemeOption,
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	NodeAuthenticationOption,
-} from '@/Interface';
+import type { AppliedThemeOption, INodeUi, NodeAuthenticationOption } from '@/Interface';
 import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
@@ -15,6 +10,10 @@ import {
 import { i18n as locale } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { isJsonKeyObject } from '@/app/utils/typesUtils';
 import {
 	isResourceLocatorValue,
@@ -364,14 +363,11 @@ export const getCredentialsRelatedFields = (
 };
 
 export const updateNodeAuthType = (
-	workflowDocumentStore:
-		| { updateNodeProperties: (info: INodeUpdatePropertiesInformation) => void }
-		| null
-		| undefined,
+	workflowId: string | undefined | null,
 	node: INodeUi | null,
 	type: string,
 ) => {
-	if (!node || !workflowDocumentStore) {
+	if (!node || !workflowId) {
 		return;
 	}
 	const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
@@ -387,7 +383,8 @@ export const updateNodeAuthType = (
 					},
 				},
 			};
-			workflowDocumentStore.updateNodeProperties(updateInformation);
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			store.updateNodeProperties(updateInformation);
 		}
 	}
 };
