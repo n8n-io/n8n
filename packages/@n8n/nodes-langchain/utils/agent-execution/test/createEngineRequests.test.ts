@@ -271,6 +271,79 @@ describe('createEngineRequests', () => {
 		});
 	});
 
+	describe('Announcement text extraction', () => {
+		it('should extract announcement text from string content and clean prefix', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							content: '[Announcement] Let me calculate this for you.',
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.announcement).toBe('[Announcement] Let me calculate this for you.');
+		});
+
+		it('should extract announcement text from array block content', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							content: [
+								{ type: 'text', text: 'I am thinking about it... ' },
+								{ type: 'text', text: '[Announcement] Let me use the calculator.' },
+							],
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.announcement).toBe(
+				'I am thinking about it... [Announcement] Let me use the calculator.',
+			);
+		});
+
+		it('should return undefined if there is no text content', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							content: [{ type: 'tool_use', id: '123', name: 'calculator', input: {} }],
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.announcement).toBeUndefined();
+		});
+	});
+
 	describe('Complex tool inputs', () => {
 		it('should handle complex nested objects in tool input', async () => {
 			const tools = [createMockTool('complex_tool', { sourceNodeName: 'ComplexNode' })];

@@ -8,6 +8,7 @@ import type {
 	ThinkingContentBlock,
 	RedactedThinkingContentBlock,
 	ToolUseContentBlock,
+	ActionStepData,
 } from './types';
 
 /**
@@ -149,7 +150,7 @@ function buildMessageContent(
 		);
 	}
 
-	// Default: simple string content
+	// Default: tool-calling content only (announcements are separate AIMessages)
 	return `Calling ${toolName} with input: ${JSON.stringify(toolInput)}`;
 }
 
@@ -212,6 +213,7 @@ function buildIndividualAIMessage(
 	toolName: string,
 	toolInput: IDataObject,
 	providerMetadata: ProviderMetadata,
+	contentOverride?: string,
 ): AIMessage {
 	const toolCall = {
 		id: toolId,
@@ -220,7 +222,8 @@ function buildIndividualAIMessage(
 		type: 'tool_call' as const,
 	};
 
-	const content = buildMessageContent(providerMetadata, toolInput, toolId, toolName);
+	const content =
+		contentOverride ?? buildMessageContent(providerMetadata, toolInput, toolId, toolName);
 
 	return new AIMessage({
 		content,
@@ -232,6 +235,37 @@ function buildIndividualAIMessage(
 				providerMetadata.thoughtSignature,
 			),
 		}),
+	});
+}
+
+/**
+ * Builds a shared AIMessage for parallel tool calls.
+ *
+ * For parallel function calls, LangChain expects ALL function calls in a single AIMessage
+ * ("model" turn), followed by one ToolMessage per tool call. Splitting parallel tool calls
+ * into separate AIMessages breaks memory serialization and LangChain's message validation.
+ *
+ * @param processedTools - Array of processed tool responses to include
+ * @returns AIMessage with all tool calls combined
+ */
+function buildSharedAIMessage(
+	processedTools: ProcessedToolResponse[],
+	contentOverride?: string,
+): AIMessage {
+	const allToolCalls = processedTools.map((pt) => ({
+		id: pt.toolId,
+		name: pt.toolName,
+		args: pt.toolInput,
+		type: 'tool_call' as const,
+	}));
+
+	const toolNames = processedTools.map((pt) => pt.nodeName).join(', ');
+
+	const content = contentOverride ?? `Calling tools: ${toolNames}`;
+
+	return new AIMessage({
+		content,
+		tool_calls: allToolCalls,
 	});
 }
 
@@ -253,6 +287,7 @@ function buildIndividualAIMessage(
 function buildSharedGeminiAIMessage(
 	processedTools: ProcessedToolResponse[],
 	thoughtSignature: string,
+	contentOverride?: string,
 ): AIMessage {
 	const allToolCalls = processedTools.map((pt) => ({
 		id: pt.toolId,
@@ -263,8 +298,10 @@ function buildSharedGeminiAIMessage(
 
 	const toolNames = processedTools.map((pt) => pt.nodeName).join(', ');
 
+	const content = contentOverride ?? `Calling tools: ${toolNames}`;
+
 	return new AIMessage({
-		content: `Calling tools: ${toolNames}`,
+		content,
 		tool_calls: allToolCalls,
 		additional_kwargs: buildGeminiAdditionalKwargs(allToolCalls, thoughtSignature),
 	});
@@ -331,7 +368,11 @@ export function buildSteps(
 		};
 		if (!tool.data) continue;
 
-		const existingStep = steps.find((s) => s.action.toolCallId === toolInput.id);
+		const existingStep = steps.find(
+			(s) =>
+				s.action.type !== 'announcement' &&
+				(s as ActionStepData).action.toolCallId === toolInput.id,
+		);
 		if (existingStep) continue;
 
 		const providerMetadata = extractProviderMetadata(tool.action.metadata);
@@ -356,12 +397,27 @@ export function buildSteps(
 	const sharedThoughtSignature = batchTools.find((bt) => bt.providerMetadata.thoughtSignature)
 		?.providerMetadata.thoughtSignature;
 
-	const sharedAIMessage =
-		sharedThoughtSignature && batchTools.length > 1
-			? buildSharedGeminiAIMessage(batchTools, sharedThoughtSignature)
-			: undefined;
+	// Extract cleanToolCallContent setting from first tool's options for the batch
+	const firstToolOptions = batchTools[0]?.tool.action.metadata?.options as
+		| Record<string, unknown>
+		| undefined;
+	const cleanToolCallContent = firstToolOptions?.cleanToolCallContent === true;
+
+	// When cleanToolCallContent is on and announcement exists, use announcement
+	// as the AIMessage content (replacing "Calling toolname...")
+	const batchAnnouncement = batchTools[0]?.tool.action.metadata?.announcement || '';
+	const sharedContentOverride =
+		cleanToolCallContent && batchAnnouncement ? String(batchAnnouncement) : undefined;
+
+	let sharedAIMessage: AIMessage | undefined;
+	if (batchTools.length > 1) {
+		sharedAIMessage = sharedThoughtSignature
+			? buildSharedGeminiAIMessage(batchTools, sharedThoughtSignature, sharedContentOverride)
+			: buildSharedAIMessage(batchTools, sharedContentOverride);
+	}
 
 	// Second pass: build steps
+
 	for (let i = 0; i < batchTools.length; i++) {
 		const { tool, toolInput, toolId, toolName, nodeName, providerMetadata } = batchTools[i];
 
@@ -370,14 +426,53 @@ export function buildSteps(
 		// Exclude metadata fields (id, log, type) from the tool input forwarded to the result
 		const { id, log, type, ...toolInputForResult } = toolInput;
 
-		// Parallel Gemini tool calls: first step gets the shared AIMessage,
-		// subsequent steps get empty messageLog. LangChain's formatToToolMessages
-		// will produce: [SharedAIMessage, ToolMsg_1, ToolMsg_2, ...]
-		const messageLog = sharedAIMessage
+		// Extract clean announcement text from metadata (falling back to empty string so it surfaces in intermediate steps)
+		const announcement = tool.action.metadata?.announcement || '';
+
+		// Determine if we should merge announcement into the tool call AIMessage
+		// When cleanToolCallContent is on AND announcement exists, we skip the
+		// separate announcement step and use the announcement as the AIMessage content
+		const shouldMergeAnnouncement = cleanToolCallContent && !!announcement;
+
+		// Push a separate announcement step (only for the first tool in the batch
+		// to avoid duplicating the same streamed text across parallel calls)
+		const announcementMessages: AIMessage[] = [];
+		if (i === 0 && announcement) {
+			const toolOptions = tool.action.metadata?.options as Record<string, unknown> | undefined;
+			const isStreaming = toolOptions?.enableStreaming === true;
+			const saveAnnouncements = isStreaming ? toolOptions?.saveAnnouncements !== false : true;
+			if (saveAnnouncements) {
+				steps.push({
+					action: {
+						type: 'announcement',
+						log: announcement,
+						// When merged into the tool call AIMessage, skip in memory
+						// but still show in intermediate steps
+						...(shouldMergeAnnouncement && { skipInMemory: true }),
+					},
+				});
+			}
+		}
+
+		// Build the tool call AIMessage(s)
+		// When merging announcement, use announcement text as AIMessage content
+		const announcementContent = shouldMergeAnnouncement ? announcement : undefined;
+
+		const toolCallMessages = sharedAIMessage
 			? i === 0
 				? [sharedAIMessage]
 				: []
-			: [buildIndividualAIMessage(toolId, toolName, toolInput, providerMetadata)];
+			: [
+					buildIndividualAIMessage(
+						toolId,
+						toolName,
+						toolInput,
+						providerMetadata,
+						announcementContent,
+					),
+				];
+
+		const messageLog = [...announcementMessages, ...toolCallMessages];
 
 		steps.push({
 			action: {

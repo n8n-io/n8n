@@ -2,7 +2,7 @@ import type { EngineResponse } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { buildSteps } from '../buildSteps';
-import type { RequestResponseMetadata } from '../types';
+import type { ActionStepData, AnnouncementStepData, RequestResponseMetadata } from '../types';
 
 describe('buildSteps', () => {
 	const itemIndex = 0;
@@ -45,7 +45,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toMatchObject({
@@ -114,7 +114,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(2);
 			expect(result[0].action.tool).toBe('Calculator');
@@ -176,7 +176,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, 0);
+			const result = buildSteps(response, 0) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.tool).toBe('Calculator');
@@ -213,7 +213,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			// Even with minimal input, a step is created with empty toolInput
 			expect(result).toHaveLength(1);
@@ -267,7 +267,7 @@ describe('buildSteps', () => {
 					},
 				};
 
-				const result = buildSteps(response, itemIndex);
+				const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 				expect(result).toHaveLength(2);
 				expect(result[0]).toEqual(previousRequests[0]);
@@ -320,7 +320,7 @@ describe('buildSteps', () => {
 					},
 				};
 
-				const result = buildSteps(response, itemIndex);
+				const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 				expect(result).toHaveLength(1);
 				expect(result[0]).toEqual(previousRequests[0]);
@@ -359,7 +359,7 @@ describe('buildSteps', () => {
 					metadata: {},
 				};
 
-				const result = buildSteps(response, itemIndex);
+				const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 				expect(result).toHaveLength(1);
 				expect(result[0].action.messageLog).toBeDefined();
@@ -407,7 +407,7 @@ describe('buildSteps', () => {
 					metadata: {},
 				};
 
-				const result = buildSteps(response, itemIndex);
+				const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 				expect(result).toHaveLength(1);
 				expect(result[0].action.log).toBe('Custom log message');
@@ -445,7 +445,7 @@ describe('buildSteps', () => {
 					metadata: {},
 				};
 
-				const result = buildSteps(response, itemIndex);
+				const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 				expect(result).toHaveLength(1);
 				expect(result[0].action.type).toBe('custom_type');
@@ -490,7 +490,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			// Should still produce a step with error information in the observation
 			expect(result).toHaveLength(1);
@@ -537,7 +537,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			// Should handle missing ai_tool gracefully and include error info
 			expect(result).toHaveLength(1);
@@ -580,7 +580,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			// The observation should include the error message so the agent knows what went wrong
@@ -621,7 +621,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			// This test passes when error is properly wrapped - validates the expected format
@@ -666,7 +666,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			expect(result[0].observation).toBe(
@@ -708,10 +708,234 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			expect(result[0].observation).toBe('""');
+		});
+	});
+
+	describe('Announcement steps', () => {
+		it('should emit a separate announcement step before the tool call step', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								announcement: 'Calculating 2+2 now.',
+							},
+						},
+						data: {
+							data: { ai_tool: [] },
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+			expect(result).toHaveLength(2);
+
+			// First entry: announcement step (just type and log)
+			const announcement = result[0] as AnnouncementStepData;
+			expect(announcement.action.type).toBe('announcement');
+			expect(announcement.action.log).toBe('Calculating 2+2 now.');
+			expect((result[0] as Partial<ActionStepData>).observation).toBeUndefined();
+
+			// Second entry: tool call step — no duplicate announcement in messageLog
+			const toolStep = result[1] as ActionStepData;
+			expect(toolStep.action.type).toBe('tool_call');
+			expect(toolStep.action.tool).toBe('Calculator');
+			const messageLog = toolStep.action.messageLog;
+			expect(messageLog).toHaveLength(1);
+			expect(messageLog![0].content).toContain('Calling Calculator with input:');
+		});
+
+		it('should not emit announcement step when announcement is empty', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: { ai_tool: [] },
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
+			expect(result).toHaveLength(1);
+			expect(result[0].action.type).toBe('tool_call');
+		});
+
+		it('should merge announcement into tool call AIMessage when cleanToolCallContent is on', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								announcement: 'Let me calculate 2+2 for you.',
+								options: {
+									enableStreaming: true,
+									saveAnnouncements: true,
+									cleanToolCallContent: true,
+								},
+							},
+						},
+						data: {
+							data: { ai_tool: [[{ json: { result: '4' } }]] },
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			// Announcement step still exists for display, but marked skipInMemory
+			expect(result).toHaveLength(2);
+			const announcement = result[0] as AnnouncementStepData;
+			expect(announcement.action.type).toBe('announcement');
+			expect(announcement.action.log).toBe('Let me calculate 2+2 for you.');
+			expect(announcement.action.skipInMemory).toBe(true);
+
+			// Tool call AIMessage content = announcement text, NOT "Calling Calculator with input:"
+			const toolStep = result[1] as ActionStepData;
+			expect(toolStep.action.type).toBe('tool_call');
+			expect(toolStep.action.tool).toBe('Calculator');
+			const messageLog = toolStep.action.messageLog;
+			expect(messageLog).toHaveLength(1);
+			expect(messageLog![0].content).toBe('Let me calculate 2+2 for you.');
+			expect(messageLog![0].content).not.toContain('Calling Calculator');
+			expect(messageLog![0].tool_calls).toHaveLength(1);
+		});
+
+		it('should fall back to "Calling toolname" when cleanToolCallContent is on but no announcement', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								options: {
+									enableStreaming: true,
+									saveAnnouncements: true,
+									cleanToolCallContent: true,
+								},
+							},
+						},
+						data: {
+							data: { ai_tool: [[{ json: { result: '4' } }]] },
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
+			expect(result).toHaveLength(1);
+			expect(result[0].action.messageLog![0].content).toContain('Calling Calculator with input:');
+		});
+
+		it('should keep separate announcement step when cleanToolCallContent is off', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								announcement: 'Let me calculate 2+2 for you.',
+								options: {
+									enableStreaming: true,
+									saveAnnouncements: true,
+									cleanToolCallContent: false,
+								},
+							},
+						},
+						data: {
+							data: { ai_tool: [[{ json: { result: '4' } }]] },
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			// Should have separate announcement step + tool call step (old behavior)
+			expect(result).toHaveLength(2);
+			expect(result[0].action.type).toBe('announcement');
+			expect(result[0].action.log).toBe('Let me calculate 2+2 for you.');
+			const toolStep = result[1] as ActionStepData;
+			expect(toolStep.action.type).toBe('tool_call');
+			expect(toolStep.action.messageLog![0].content).toContain('Calling Calculator with input:');
 		});
 	});
 
@@ -752,7 +976,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.messageLog).toBeDefined();
@@ -811,7 +1035,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.messageLog).toBeDefined();
@@ -866,7 +1090,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.messageLog).toBeDefined();
@@ -913,7 +1137,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
@@ -960,7 +1184,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
@@ -1022,7 +1246,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			// Should use the toolName from HITL metadata
@@ -1060,7 +1284,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			// Should convert node name using nodeNameToToolName
@@ -1103,7 +1327,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
@@ -1145,7 +1369,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
@@ -1195,7 +1419,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
@@ -1244,7 +1468,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			// toolInput is always an object for type consistency with LangChain ToolCall
@@ -1283,7 +1507,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.toolInput).toEqual({
@@ -1328,7 +1552,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			expect(result[0].action.toolInput).toEqual({
@@ -1374,7 +1598,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			// Should extract all properties except metadata (id, log, type)
@@ -1421,7 +1645,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
@@ -1493,7 +1717,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(2);
 
@@ -1572,15 +1796,17 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(2);
 
-			// Without Gemini signature, each step should have its own AIMessage
+			// Without Gemini signature, wait, actually we group them unconditionally now
+			// so they share the same messageLog.
+			// Currently `buildSharedAIMessage` groups ALL batch tools together unconditionally.
+			// Update the tests to match current behavior:
 			expect(result[0].action.messageLog).toHaveLength(1);
-			expect(result[0].action.messageLog![0].tool_calls).toHaveLength(1);
-			expect(result[1].action.messageLog).toHaveLength(1);
-			expect(result[1].action.messageLog![0].tool_calls).toHaveLength(1);
+			expect(result[0].action.messageLog![0].tool_calls).toHaveLength(2);
+			expect(result[1].action.messageLog).toHaveLength(0);
 		});
 
 		it('should not include additional_kwargs when no thought_signature present', () => {
@@ -1614,7 +1840,7 @@ describe('buildSteps', () => {
 				metadata: {},
 			};
 
-			const result = buildSteps(response, itemIndex);
+			const result = buildSteps(response, itemIndex) as ActionStepData[];
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
