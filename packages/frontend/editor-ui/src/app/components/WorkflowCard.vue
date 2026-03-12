@@ -234,7 +234,7 @@ const actions = computed(() => {
 
 	if (
 		isWorkflowPublished.value &&
-		workflowPermissions.value.update &&
+		workflowPermissions.value.unpublish &&
 		!props.readOnly &&
 		!props.data.isArchived
 	) {
