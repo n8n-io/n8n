@@ -261,7 +261,7 @@ defineExpose({
 
 .compactRow {
 	display: flex;
-	align-items: center;
+	align-items: flex-end;
 	gap: var(--spacing--4xs);
 	width: 100%;
 
