@@ -1,3 +1,4 @@
+import type { AiGatewayUsageResponse } from '@n8n/api-types';
 import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Logger } from '@n8n/backend-common';
@@ -13,13 +14,26 @@ import {
 	type ModelCategory,
 } from './ai-gateway.constants';
 
+interface OpenRouterActivityItem {
+	date: string;
+	model: string;
+	usage: number;
+	requests: number;
+	prompt_tokens: number;
+	completion_tokens: number;
+}
+
 const CREDENTIAL_NAME = 'n8n AI Gateway';
 
 @Service()
 export class AiGatewayService {
 	private modelListCache: { data: unknown; expiresAt: number } | null = null;
 
+	private activityCache: { data: AiGatewayUsageResponse; expiresAt: number } | null = null;
+
 	private readonly MODEL_CACHE_TTL_MS = 5 * 60 * 1000;
+
+	private readonly ACTIVITY_CACHE_TTL_MS = 60 * 1000;
 
 	constructor(
 		private readonly config: AiGatewayConfig,
@@ -128,5 +142,60 @@ export class AiGatewayService {
 
 	invalidateModelCache() {
 		this.modelListCache = null;
+	}
+
+	async getActivity(): Promise<AiGatewayUsageResponse> {
+		if (this.activityCache && Date.now() < this.activityCache.expiresAt) {
+			return this.activityCache.data;
+		}
+
+		const baseUrl = this.config.openRouterBaseUrl;
+		const response = await fetch(`${baseUrl}/activity`, {
+			headers: { Authorization: `Bearer ${this.config.openRouterApiKey}` },
+		});
+
+		if (!response.ok) {
+			this.logger.warn('Failed to fetch OpenRouter activity', {
+				status: response.status,
+			});
+			return {
+				totalRequests: 0,
+				totalInputTokens: 0,
+				totalOutputTokens: 0,
+				totalCost: 0,
+				byModel: {},
+			};
+		}
+
+		const json = (await response.json()) as { data: OpenRouterActivityItem[] };
+		const usage = this.aggregateActivity(json.data);
+
+		this.activityCache = { data: usage, expiresAt: Date.now() + this.ACTIVITY_CACHE_TTL_MS };
+		return usage;
+	}
+
+	private aggregateActivity(items: OpenRouterActivityItem[]): AiGatewayUsageResponse {
+		let totalRequests = 0;
+		let totalInputTokens = 0;
+		let totalOutputTokens = 0;
+		let totalCost = 0;
+		const byModel: AiGatewayUsageResponse['byModel'] = {};
+
+		for (const item of items) {
+			totalRequests += item.requests;
+			totalInputTokens += item.prompt_tokens;
+			totalOutputTokens += item.completion_tokens;
+			totalCost += item.usage;
+
+			const model = item.model;
+			const entry = byModel[model] ?? { requests: 0, inputTokens: 0, outputTokens: 0, cost: 0 };
+			entry.requests += item.requests;
+			entry.inputTokens += item.prompt_tokens;
+			entry.outputTokens += item.completion_tokens;
+			entry.cost += item.usage;
+			byModel[model] = entry;
+		}
+
+		return { totalRequests, totalInputTokens, totalOutputTokens, totalCost, byModel };
 	}
 }

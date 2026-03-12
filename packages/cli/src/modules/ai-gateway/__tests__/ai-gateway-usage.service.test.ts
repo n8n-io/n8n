@@ -13,28 +13,26 @@ describe('AiGatewayUsageService', () => {
 			expect(usage.totalRequests).toBe(0);
 			expect(usage.totalInputTokens).toBe(0);
 			expect(usage.totalOutputTokens).toBe(0);
-			expect(usage.byCategory).toEqual({});
+			expect(usage.totalCost).toBe(0);
+			expect(usage.byModel).toEqual({});
 		});
 
-		it('should aggregate usage by category', () => {
+		it('should aggregate usage by model', () => {
 			service.track({
 				timestamp: new Date(),
-				category: 'balanced',
-				resolvedModel: 'openai/gpt-4.1-nano',
+				model: 'openai/gpt-4.1-mini',
 				inputTokens: 100,
 				outputTokens: 50,
 			});
 			service.track({
 				timestamp: new Date(),
-				category: 'balanced',
-				resolvedModel: 'openai/gpt-4.1-nano',
+				model: 'openai/gpt-4.1-mini',
 				inputTokens: 200,
 				outputTokens: 80,
 			});
 			service.track({
 				timestamp: new Date(),
-				category: 'reasoning',
-				resolvedModel: 'openai/o4-mini',
+				model: 'openai/o4-mini',
 				inputTokens: 500,
 				outputTokens: 300,
 			});
@@ -43,30 +41,18 @@ describe('AiGatewayUsageService', () => {
 			expect(usage.totalRequests).toBe(3);
 			expect(usage.totalInputTokens).toBe(800);
 			expect(usage.totalOutputTokens).toBe(430);
-			expect(usage.byCategory.balanced).toEqual({
+			expect(usage.byModel['openai/gpt-4.1-mini']).toEqual({
 				requests: 2,
 				inputTokens: 300,
 				outputTokens: 130,
+				cost: 0,
 			});
-			expect(usage.byCategory.reasoning).toEqual({
+			expect(usage.byModel['openai/o4-mini']).toEqual({
 				requests: 1,
 				inputTokens: 500,
 				outputTokens: 300,
+				cost: 0,
 			});
-		});
-	});
-
-	describe('extractUsageFromResponseBody', () => {
-		it('should extract tokens from standard response', () => {
-			const result = service.extractUsageFromResponseBody({
-				usage: { prompt_tokens: 42, completion_tokens: 18 },
-			});
-			expect(result).toEqual({ inputTokens: 42, outputTokens: 18 });
-		});
-
-		it('should return zeros when usage is missing', () => {
-			const result = service.extractUsageFromResponseBody({});
-			expect(result).toEqual({ inputTokens: 0, outputTokens: 0 });
 		});
 	});
 
@@ -74,8 +60,7 @@ describe('AiGatewayUsageService', () => {
 		it('should reset all records', () => {
 			service.track({
 				timestamp: new Date(),
-				category: 'balanced',
-				resolvedModel: 'openai/gpt-4.1-nano',
+				model: 'openai/gpt-4.1-mini',
 				inputTokens: 100,
 				outputTokens: 50,
 			});

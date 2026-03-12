@@ -80,12 +80,14 @@ export interface AiGatewayUsageResponse {
 	totalRequests: number;
 	totalInputTokens: number;
 	totalOutputTokens: number;
-	byCategory: Record<
+	totalCost: number;
+	byModel: Record<
 		string,
 		{
 			requests: number;
 			inputTokens: number;
 			outputTokens: number;
+			cost: number;
 		}
 	>;
 }

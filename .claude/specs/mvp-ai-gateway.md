@@ -399,8 +399,8 @@ Detailed frontend checklist is in [mvp-ai-gateway-frontend.md](./mvp-ai-gateway-
 - [x]  Admin endpoints — `GET/PUT /rest/ai-gateway/settings`, `GET /rest/ai-gateway/model-categories`
 - [x]  `n8nAiGatewayApi` credential type (auto-provisioned at startup with OpenRouter key+URL)
 - [x]  ~~Internal auth token~~ → Not needed (no proxy; nodes call OpenRouter directly)
-- [x]  In-memory usage tracking — `GET /rest/ai-gateway/usage`
-- [x]  Unit tests (21 passing: model service, gateway service, usage service)
+- [x]  In-memory usage tracking — `GET /rest/ai-gateway/usage` (wired via `ai-llm-generated-output` events)
+- [x]  Unit tests (22 passing: model service, gateway service, usage service)
 
 ```json
 "credentials": {
