@@ -304,15 +304,15 @@ export const useAIAssistantHelpers = () => {
 	 * @returns schemas and list of node names whose schema was derived from pin data
 	 */
 	function getNodesSchemas(workflowId: string, nodeNames: string[], excludeValues?: boolean) {
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		const schemas: ChatRequest.NodeExecutionSchema[] = [];
 		const pinnedNodeNames: string[] = [];
 		for (const name of nodeNames) {
-			const node = docStore.getNodeByName(name);
+			const node = workflowDocumentStore.getNodeByName(name);
 			if (!node) {
 				continue;
 			}
-			if (docStore.pinData?.[node.name]) {
+			if (workflowDocumentStore.pinData?.[node.name]) {
 				pinnedNodeNames.push(node.name);
 			}
 			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
