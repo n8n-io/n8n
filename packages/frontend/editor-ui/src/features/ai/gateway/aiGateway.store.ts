@@ -48,7 +48,7 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 	let initPromise: Promise<void> | null = null;
 	const enabled = ref(false);
 	const selectedCategory = ref<AIGatewayCategory>('balanced');
-	const selectedModel = ref<string>('openai/gpt-4.1-mini');
+	const selectedModel = ref<string>('openai/gpt-4.1-nano');
 	const availableModels = ref<AIGatewayModel[]>([]);
 	const categories = ref<CategoryDefinition[]>([]);
 	const usage = ref<AiGatewayUsageResponse | null>(null);
@@ -89,9 +89,6 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 			if (settings.defaultCategory) {
 				selectedCategory.value = settings.defaultCategory as AIGatewayCategory;
 			}
-			if (settings.defaultModel) {
-				selectedModel.value = settings.defaultModel;
-			}
 
 			const backendCategories = await makeRestApiRequest<AiGatewayModelCategoryResponse[]>(
 				ctx,
@@ -131,13 +128,13 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 		} catch {
 			// Fallback: backend might not be running or gateway disabled
 			categories.value = [
-				{ id: 'balanced', label: 'Balanced', defaultModelId: 'openai/gpt-4.1-mini' },
+				{ id: 'balanced', label: 'Balanced', defaultModelId: 'openai/gpt-4.1-nano' },
 				{ id: 'cheapest', label: 'Cheapest', defaultModelId: 'openai/gpt-4.1-nano' },
-				{ id: 'fastest', label: 'Fastest', defaultModelId: 'google/gemini-2.0-flash' },
+				{ id: 'fastest', label: 'Fastest', defaultModelId: 'google/gemini-2.0-flash-001' },
 				{
 					id: 'best-quality',
 					label: 'Best Quality',
-					defaultModelId: 'anthropic/claude-4-sonnet',
+					defaultModelId: 'anthropic/claude-sonnet-4',
 				},
 				{ id: 'reasoning', label: 'Reasoning', defaultModelId: 'openai/o4-mini' },
 				{ id: 'manual', label: 'Manual', defaultModelId: '' },
@@ -188,7 +185,7 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 				rootStore.restApiContext,
 				'PUT',
 				'/ai-gateway/settings',
-				{ defaultCategory: category, defaultModel: selectedModel.value },
+				{ defaultCategory: category },
 			);
 		} catch {
 			// Gateway might not be running

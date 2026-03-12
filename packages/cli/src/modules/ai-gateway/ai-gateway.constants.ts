@@ -13,10 +13,10 @@ export const MODEL_CATEGORIES = [
 export type ModelCategory = (typeof MODEL_CATEGORIES)[number];
 
 export const MODEL_CATEGORY_MAP: Record<ModelCategory, string> = {
-	balanced: 'openai/gpt-4.1-mini',
+	balanced: 'openai/gpt-4.1-nano',
 	cheapest: 'openai/gpt-4.1-nano',
-	fastest: 'google/gemini-2.0-flash',
-	'best-quality': 'anthropic/claude-4-sonnet',
+	fastest: 'google/gemini-2.0-flash-001',
+	'best-quality': 'anthropic/claude-sonnet-4',
 	reasoning: 'openai/o4-mini',
 };
 

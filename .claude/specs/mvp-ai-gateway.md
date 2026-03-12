@@ -75,7 +75,7 @@ Rather than asking users to pick specific models (which requires knowledge of th
 
 | Category | Intent | Example Mapping (MVP) |
 | --- | --- | --- |
-| **Balanced** (default) | Good quality at reasonable cost | GPT-4.1-mini or Claude 3.5 Haiku |
+| **Balanced** (default) | Good quality at reasonable cost | GPT-4.1-nano or Claude 3.5 Haiku |
 | **Cheapest** | Minimize token spend | GPT-4.1-nano or Gemini 2.0 Flash-Lite |
 | **Fastest** | Lowest latency | Gemini 2.0 Flash |
 | **Best Quality** | Maximum capability | Claude 4 Sonnet or GPT-4.1 |
@@ -152,7 +152,7 @@ The AI Agent node gets a gateway model automatically:
 3. No credential setup needed — the gateway node uses the auto-provisioned
    `n8nAiGatewayApi` credential
 4. At execution, the node resolves the model from the workflow category
-   override or global default (e.g., "Balanced" → `openai/gpt-4.1-mini`)
+   override or global default (e.g., "Balanced" → `openai/gpt-4.1-nano`)
 5. Changing the global default category affects all future executions without
    modifying existing workflows
 

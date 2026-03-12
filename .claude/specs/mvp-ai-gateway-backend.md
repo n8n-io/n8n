@@ -88,7 +88,7 @@ select "n8n AI Gateway" from the credential dropdown. No manual configuration.
 The category-to-model mapping and `resolveAiGatewayModel()` function live in
 `@n8n/api-types` so both the backend module and LLM nodes can import them.
 Nodes send a category name (e.g., `balanced`) as the model parameter and resolve
-it to a concrete OpenRouter model ID (e.g., `openai/gpt-4.1-mini`) before
+it to a concrete OpenRouter model ID (e.g., `openai/gpt-4.1-nano`) before
 calling `ChatOpenAI`.
 
 ### 5. OpenRouter SDK for admin features
@@ -134,7 +134,7 @@ Lists all model categories with their current model mappings.
     "id": "balanced",
     "label": "Balanced",
     "description": "Good quality at reasonable cost",
-    "model": "openai/gpt-4.1-mini"
+    "model": "openai/gpt-4.1-nano"
   }
 ]
 ```
@@ -200,10 +200,10 @@ Hardcoded for MVP, later configurable via remote config. Defined in both
 
 | Category | OpenRouter Model ID | Intent |
 |---|---|---|
-| `balanced` | `openai/gpt-4.1-mini` | Good quality at reasonable cost |
+| `balanced` | `openai/gpt-4.1-nano` | Good quality at reasonable cost |
 | `cheapest` | `openai/gpt-4.1-nano` | Minimize token spend |
-| `fastest` | `google/gemini-2.0-flash` | Lowest latency |
-| `best-quality` | `anthropic/claude-4-sonnet` | Maximum capability |
+| `fastest` | `google/gemini-2.0-flash-001` | Lowest latency |
+| `best-quality` | `anthropic/claude-sonnet-4` | Maximum capability |
 | `reasoning` | `openai/o4-mini` | Complex multi-step tasks |
 
 If the `model` field does not match a category name, it is passed through as a

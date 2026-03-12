@@ -18,7 +18,7 @@ describe('AiGatewayModelService', () => {
 
 		it('should pass through concrete model IDs unchanged', () => {
 			expect(service.resolveModel('openai/gpt-4.1')).toBe('openai/gpt-4.1');
-			expect(service.resolveModel('anthropic/claude-4-sonnet')).toBe('anthropic/claude-4-sonnet');
+			expect(service.resolveModel('anthropic/claude-sonnet-4')).toBe('anthropic/claude-sonnet-4');
 			expect(service.resolveModel('meta-llama/llama-3-70b')).toBe('meta-llama/llama-3-70b');
 		});
 

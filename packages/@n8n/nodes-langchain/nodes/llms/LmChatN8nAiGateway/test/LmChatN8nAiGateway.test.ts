@@ -44,14 +44,14 @@ describe('LmChatN8nAiGateway', () => {
 			apiKey: 'test-key',
 			url: 'https://openrouter.ai/api/v1',
 			defaultCategory: 'balanced',
-			defaultModel: 'openai/gpt-4.1-mini',
-			categoryMap: {
-				balanced: 'openai/gpt-4.1-mini',
+			defaultModel: 'openai/gpt-4.1-nano',
+			categoryMap: JSON.stringify({
+				balanced: 'openai/gpt-4.1-nano',
 				cheapest: 'openai/gpt-4.1-nano',
-				fastest: 'google/gemini-2.0-flash',
-				'best-quality': 'anthropic/claude-4-sonnet',
+				fastest: 'google/gemini-2.0-flash-001',
+				'best-quality': 'anthropic/claude-sonnet-4',
 				reasoning: 'openai/o4-mini',
-			},
+			}),
 			...credentialOverrides,
 		});
 		ctx.getNode = jest.fn().mockReturnValue(nodeDef);
@@ -98,7 +98,7 @@ describe('LmChatN8nAiGateway', () => {
 	});
 
 	describe('supplyData', () => {
-		it('should resolve balanced category to openai/gpt-4.1-mini by default', async () => {
+		it('should resolve balanced category to openai/gpt-4.1-nano by default', async () => {
 			const ctx = setupMockContext();
 
 			await node.supplyData.call(ctx, 0);
@@ -107,7 +107,7 @@ describe('LmChatN8nAiGateway', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					apiKey: 'test-key',
-					model: 'openai/gpt-4.1-mini',
+					model: 'openai/gpt-4.1-nano',
 				}),
 			);
 		});
@@ -119,7 +119,7 @@ describe('LmChatN8nAiGateway', () => {
 
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
-					model: 'google/gemini-2.0-flash',
+					model: 'google/gemini-2.0-flash-001',
 				}),
 			);
 		});
@@ -163,7 +163,7 @@ describe('LmChatN8nAiGateway', () => {
 
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
-					model: 'openai/gpt-4.1-mini',
+					model: 'openai/gpt-4.1-nano',
 				}),
 			);
 		});
@@ -171,14 +171,14 @@ describe('LmChatN8nAiGateway', () => {
 		it('should fall back to defaultModel for unknown categories', async () => {
 			const ctx = setupMockContext(
 				{},
-				{ defaultCategory: 'unknown-category', defaultModel: 'anthropic/claude-4-sonnet' },
+				{ defaultCategory: 'unknown-category', defaultModel: 'anthropic/claude-sonnet-4' },
 			);
 
 			await node.supplyData.call(ctx, 0);
 
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
-					model: 'anthropic/claude-4-sonnet',
+					model: 'anthropic/claude-sonnet-4',
 				}),
 			);
 		});
@@ -186,26 +186,26 @@ describe('LmChatN8nAiGateway', () => {
 		it('should use defaultModel from credential when category is manual', async () => {
 			const ctx = setupMockContext(
 				{},
-				{ defaultCategory: 'manual', defaultModel: 'anthropic/claude-4-sonnet' },
+				{ defaultCategory: 'manual', defaultModel: 'anthropic/claude-sonnet-4' },
 			);
 
 			await node.supplyData.call(ctx, 0);
 
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
-					model: 'anthropic/claude-4-sonnet',
+					model: 'anthropic/claude-sonnet-4',
 				}),
 			);
 		});
 
-		it('should fall back to gpt-4.1-mini when manual category has no defaultModel', async () => {
+		it('should fall back to gpt-4.1-nano when manual category has no defaultModel', async () => {
 			const ctx = setupMockContext({}, { defaultCategory: 'manual', defaultModel: undefined });
 
 			await node.supplyData.call(ctx, 0);
 
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
-					model: 'openai/gpt-4.1-mini',
+					model: 'openai/gpt-4.1-nano',
 				}),
 			);
 		});
@@ -213,15 +213,15 @@ describe('LmChatN8nAiGateway', () => {
 		it('should use workflow-level aiGatewayModel when category is manual', async () => {
 			const ctx = setupMockContext(
 				{},
-				{ defaultCategory: 'manual', defaultModel: 'openai/gpt-4.1-mini' },
-				{ aiGatewayCategory: 'manual', aiGatewayModel: 'anthropic/claude-4-sonnet' },
+				{ defaultCategory: 'manual', defaultModel: 'openai/gpt-4.1-nano' },
+				{ aiGatewayCategory: 'manual', aiGatewayModel: 'anthropic/claude-sonnet-4' },
 			);
 
 			await node.supplyData.call(ctx, 0);
 
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
-					model: 'anthropic/claude-4-sonnet',
+					model: 'anthropic/claude-sonnet-4',
 				}),
 			);
 		});

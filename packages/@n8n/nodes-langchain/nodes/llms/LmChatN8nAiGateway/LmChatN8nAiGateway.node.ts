@@ -5,7 +5,6 @@ import {
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -22,6 +21,33 @@ interface OpenAIToolCall {
 
 interface OpenAIChoice {
 	message?: { tool_calls?: OpenAIToolCall[] };
+}
+
+function parseCategoryMap(value: unknown): Record<string, string> {
+	if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+		return Object.fromEntries(
+			Object.entries(value).filter(
+				([key, entry]) => typeof key === 'string' && typeof entry === 'string',
+			),
+		);
+	}
+
+	if (typeof value === 'string' && value.trim() !== '') {
+		try {
+			const parsed = JSON.parse(value) as unknown;
+			if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+				return Object.fromEntries(
+					Object.entries(parsed).filter(
+						([key, entry]) => typeof key === 'string' && typeof entry === 'string',
+					),
+				);
+			}
+		} catch {
+			return {};
+		}
+	}
+
+	return {};
 }
 
 function isOpenAIResponseWithChoices(json: unknown): json is { choices: OpenAIChoice[] } {
@@ -77,7 +103,7 @@ function createOpenRouterFetch(baseFetch: typeof globalThis.fetch): typeof globa
 	};
 }
 
-const FALLBACK_MODEL = 'openai/gpt-4.1-mini';
+const FALLBACK_MODEL = 'openai/gpt-4.1-nano';
 
 export class LmChatN8nAiGateway implements INodeType {
 	description: INodeTypeDescription = {
@@ -216,7 +242,7 @@ export class LmChatN8nAiGateway implements INodeType {
 			url: string;
 			defaultCategory?: string;
 			defaultModel?: string;
-			categoryMap?: Record<string, string>;
+			categoryMap?: string | Record<string, string>;
 		}>('n8nAiGatewayApi');
 
 		const workflowSettings = this.getWorkflowSettings();
@@ -226,7 +252,7 @@ export class LmChatN8nAiGateway implements INodeType {
 				? workflowCategory
 				: (credentials.defaultCategory ?? 'balanced');
 
-		const categoryMap = credentials.categoryMap ?? {};
+		const categoryMap = parseCategoryMap(credentials.categoryMap);
 		const modelName =
 			category === 'manual'
 				? (workflowSettings?.aiGatewayModel ?? credentials.defaultModel ?? FALLBACK_MODEL)

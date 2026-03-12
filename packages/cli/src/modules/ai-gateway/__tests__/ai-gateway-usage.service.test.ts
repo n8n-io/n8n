@@ -20,14 +20,14 @@ describe('AiGatewayUsageService', () => {
 			service.track({
 				timestamp: new Date(),
 				category: 'balanced',
-				resolvedModel: 'openai/gpt-4.1-mini',
+				resolvedModel: 'openai/gpt-4.1-nano',
 				inputTokens: 100,
 				outputTokens: 50,
 			});
 			service.track({
 				timestamp: new Date(),
 				category: 'balanced',
-				resolvedModel: 'openai/gpt-4.1-mini',
+				resolvedModel: 'openai/gpt-4.1-nano',
 				inputTokens: 200,
 				outputTokens: 80,
 			});
@@ -75,7 +75,7 @@ describe('AiGatewayUsageService', () => {
 			service.track({
 				timestamp: new Date(),
 				category: 'balanced',
-				resolvedModel: 'openai/gpt-4.1-mini',
+				resolvedModel: 'openai/gpt-4.1-nano',
 				inputTokens: 100,
 				outputTokens: 50,
 			});
