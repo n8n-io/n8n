@@ -352,11 +352,9 @@ defineExpose({
 				ref="scrollable"
 				:class="{ [$style.scrollable]: true, [$style.isNewSession]: isNewSession }"
 			>
-				<ChatGreetings
-					v-if="isNewSession"
-					:selected-agent="workflowAgent"
-					@select-prompt="handleSelectPrompt"
-				/>
+				<div v-if="isNewSession" :class="$style.greetingsWrapper">
+					<ChatGreetings :selected-agent="workflowAgent" @select-prompt="handleSelectPrompt" />
+				</div>
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
 					<ChatMessage
@@ -487,8 +485,23 @@ defineExpose({
 	gap: var(--spacing--xl);
 
 	&.isNewSession {
-		justify-content: center;
+		gap: 0;
+
+		.promptContainer {
+			position: relative;
+		}
+
+		.prompt {
+			padding-inline: 0;
+		}
 	}
+}
+
+.greetingsWrapper {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .messageList {
