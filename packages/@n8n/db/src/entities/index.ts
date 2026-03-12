@@ -33,6 +33,8 @@ import { WebhookEntity } from './webhook-entity';
 import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
+import { WorkflowPublicationOutbox } from './workflow-publication-outbox';
+import type { WorkflowPublicationOutboxStatus } from './workflow-publication-outbox';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowStatistics } from './workflow-statistics';
@@ -67,6 +69,8 @@ export {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublicationOutbox,
+	type WorkflowPublicationOutboxStatus,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
@@ -107,6 +111,7 @@ export const entities = {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublicationOutbox,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
