@@ -37,6 +37,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const route = useRoute();
 	const chatPanelStateStore = useChatPanelStateStore();
 	const settingsStore = useSettingsStore();
+	const workflowsStore = useWorkflowsStore();
 	const posthogStore = usePostHog();
 	const locale = useI18n();
 
@@ -123,7 +124,6 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 			// Reset assistant only if session has ended
 			if (assistantStore.isSessionEnded) {
-				const workflowsStore = useWorkflowsStore();
 				assistantStore.resetAssistantChat(workflowsStore.workflowId);
 			}
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
@@ -180,7 +180,6 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			return;
 		}
 		const assistantStore = useAssistantStore();
-		const workflowsStore = useWorkflowsStore();
 		await assistantStore.initCredHelp(workflowsStore.workflowId, credentialType);
 		await open({ mode: 'assistant' });
 	}
@@ -199,7 +198,6 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			return;
 		}
 		const assistantStore = useAssistantStore();
-		const workflowsStore = useWorkflowsStore();
 		await assistantStore.initErrorHelper(workflowsStore.workflowId, context);
 		await open({ mode: 'assistant' });
 	}
