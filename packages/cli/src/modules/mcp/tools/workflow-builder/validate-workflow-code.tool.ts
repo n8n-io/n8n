@@ -75,7 +75,7 @@ export const createValidateWorkflowCodeTool = (
 			};
 
 			if (result.warnings.length > 0) {
-				response.warnings = result.warnings;
+				response.warnings = result.warnings.map((w) => w.message);
 			}
 
 			return {

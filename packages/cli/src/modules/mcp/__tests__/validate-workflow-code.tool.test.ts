@@ -83,7 +83,10 @@ describe('validate-workflow-code MCP tool', () => {
 		test('includes warnings array when warnings exist', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: { nodes: [{ id: '1' }] },
-				warnings: ['Node X is deprecated', 'Connection Y has no target'],
+				warnings: [
+					{ code: 'deprecated', message: 'Node X is deprecated' },
+					{ code: 'no-target', message: 'Connection Y has no target' },
+				],
 			});
 
 			const tool = createTool();
@@ -123,7 +126,7 @@ describe('validate-workflow-code MCP tool', () => {
 		test('tracks telemetry on success with nodeCount and warningCount', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: { nodes: [{ id: '1' }, { id: '2' }] },
-				warnings: ['some warning'],
+				warnings: [{ code: 'warn', message: 'some warning' }],
 			});
 
 			const tool = createTool();
