@@ -22,7 +22,7 @@ export class VolumesService {
 		};
 
 		// Write the manifest (acts as the prefix marker + metadata store)
-		await this.s3.putObject(`${prefix}.manifest.json`, JSON.stringify(metadata));
+		await this.s3.putObject(`${prefix}.n8n-volume.manifest.json`, JSON.stringify(metadata));
 
 		return metadata;
 	}
@@ -33,7 +33,7 @@ export class VolumesService {
 
 		for (const prefix of prefixes) {
 			try {
-				const manifestData = await this.s3.getObject(`${prefix}.manifest.json`);
+				const manifestData = await this.s3.getObject(`${prefix}.n8n-volume.manifest.json`);
 				const metadata = JSON.parse(manifestData.toString('utf-8')) as VolumeMetadata;
 				volumes.push(metadata);
 			} catch {
@@ -52,7 +52,7 @@ export class VolumesService {
 	async exists(id: string): Promise<boolean> {
 		const prefix = `${VOLUMES_PREFIX}${id}/`;
 		try {
-			await this.s3.getObject(`${prefix}.manifest.json`);
+			await this.s3.getObject(`${prefix}.n8n-volume.manifest.json`);
 			return true;
 		} catch {
 			return false;

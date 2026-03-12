@@ -152,20 +152,20 @@ export class S3StorageService {
 	 * S3 doesn't have real directories, but this ensures the prefix is discoverable.
 	 */
 	async createPrefix(prefix: string): Promise<void> {
-		await this.putObject(`${prefix}.manifest.json`, '');
+		await this.putObject(`${prefix}.n8n-volume.manifest.json`, '');
 	}
 
 	/**
 	 * List distinct volume prefixes under the given root prefix.
-	 * Looks for `.manifest.json` marker files.
+	 * Looks for `.n8n-volume.manifest.json` marker files.
 	 */
 	async listPrefixes(rootPrefix: string): Promise<string[]> {
 		const objects = await this.listObjects(rootPrefix);
 		const prefixes: string[] = [];
 
 		for (const obj of objects) {
-			if (obj.key.endsWith('.manifest.json')) {
-				const prefix = obj.key.slice(0, -'.manifest.json'.length);
+			if (obj.key.endsWith('.n8n-volume.manifest.json')) {
+				const prefix = obj.key.slice(0, -'.n8n-volume.manifest.json'.length);
 				prefixes.push(prefix);
 			}
 		}
