@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeMount, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import type {
@@ -33,6 +33,7 @@ import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import * as pluginsSettingsApi from '@n8n/rest-api-client/api/plugins-settings';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
 import {
@@ -272,6 +273,26 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 		emit('scrollToTop');
 	}
 });
+
+const isMergeDevManagedKey = computed(
+	() =>
+		credentialTypeName.value === 'mergeDevApi' && props.credentialData.useManagedApiKey === true,
+);
+
+const mergeDevPluginDisabled = ref(false);
+
+watch(
+	isMergeDevManagedKey,
+	async (val) => {
+		if (!val) {
+			mergeDevPluginDisabled.value = false;
+			return;
+		}
+		const settings = await pluginsSettingsApi.getPluginsSettings(rootStore.restApiContext);
+		mergeDevPluginDisabled.value = !settings.mergeDevEnabled;
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -328,6 +349,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							{ interpolate: { owner: credentialOwnerName } },
 						)
 					"
+				/>
+
+				<Banner
+					v-if="mergeDevPluginDisabled"
+					theme="warning"
+					:message="i18n.baseText('credentialEdit.mergeDevPluginDisabled')"
 				/>
 
 				<Banner

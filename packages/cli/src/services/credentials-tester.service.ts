@@ -40,6 +40,7 @@ import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsHelper } from '../credentials-helper';
 
 import { CredentialTypes } from '@/credential-types';
+import { PluginsSettingsService } from '@/services/plugins-settings.service';
 import { NodeTypes } from '@/node-types';
 import { getAllKeyPaths } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -80,6 +81,7 @@ export class CredentialsTester {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsHelper: CredentialsHelper,
+		private readonly pluginsSettingsService: PluginsSettingsService,
 	) {}
 
 	private static hasAccessToken(credentialsDecrypted: ICredentialsDecrypted) {
@@ -224,6 +226,11 @@ export class CredentialsTester {
 					undefined,
 					undefined,
 				);
+				credentialsDecrypted.data =
+					await this.pluginsSettingsService.injectPluginManagedCredentials(
+						credentialType,
+						credentialsDecrypted.data,
+					);
 			} catch (error) {
 				this.logger.debug('Credential test failed', error);
 				return {
@@ -504,6 +511,18 @@ export class CredentialsTester {
 			executeData,
 			[],
 		);
+		if (credentialsDecrypted.data) {
+			try {
+				credentialsDecrypted.data =
+					await this.pluginsSettingsService.injectPluginManagedCredentials(
+						credentialType,
+						credentialsDecrypted.data,
+					);
+			} catch {
+				return null;
+			}
+		}
+
 		const routingNode = new RoutingNode(executeFunctions, nodeTypeCopy, credentialsDecrypted);
 
 		try {

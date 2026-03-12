@@ -106,6 +106,8 @@ const ResourceCenterSectionView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterSectionView.vue');
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
+const PluginsSettingsView = async () =>
+	await import('@/features/settings/plugins/SettingsPluginsView.vue');
 
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
@@ -625,6 +627,27 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'security',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'plugins',
+				name: VIEWS.PLUGINS_SETTINGS,
+				component: PluginsSettingsView,
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['pluginsSettings:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'plugins',
 							};
 						},
 					},
