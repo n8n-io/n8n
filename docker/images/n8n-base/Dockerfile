@@ -23,6 +23,9 @@ RUN apk add --no-cache busybox-binsh && \
         tini \
         tzdata \
         ca-certificates \
+        bubblewrap \
+        ripgrep \
+        socat \
         libc6-compat && \
     # Cleanup
     rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
