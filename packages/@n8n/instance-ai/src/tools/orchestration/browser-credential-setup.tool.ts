@@ -1,19 +1,14 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
-import { Mastra } from '@mastra/core/mastra';
 import { createTool } from '@mastra/core/tools';
-import { LangSmithExporter } from '@mastra/langsmith';
-import { Observability } from '@mastra/observability';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { registerWithMastra } from '../../agent/register-with-mastra';
 import { mapMastraChunkToEvent } from '../../stream/map-chunk';
 import type { OrchestrationContext } from '../../types';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+import { parseSuspension, asResumable } from '../../utils/stream-helpers';
 
 const BROWSER_AGENT_MAX_STEPS = 300;
 
@@ -195,19 +190,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					tools: browserTools,
 				});
 
-				// Register with Mastra for suspend/resume snapshot storage
-				new Mastra({
-					agents: { [subAgentId]: subAgent },
-					storage: context.storage,
-					observability: new Observability({
-						configs: {
-							langsmith: {
-								serviceName: 'my-service',
-								exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
-							},
-						},
-					}),
-				});
+				registerWithMastra(subAgentId, subAgent, context.storage);
 
 				// Build the briefing
 				const docsInfo = input.docsUrl
@@ -262,18 +245,10 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					let suspendedToolName = '';
 
 					for await (const chunk of subAgentStream) {
-						if (isRecord(chunk) && chunk.type === 'tool-call-suspended') {
-							const sp = isRecord(chunk.payload) ? chunk.payload : {};
-							const suspPayload = isRecord(sp.suspendPayload) ? sp.suspendPayload : {};
-							const tcId = typeof sp.toolCallId === 'string' ? sp.toolCallId : '';
-							const reqId =
-								typeof suspPayload.requestId === 'string' && suspPayload.requestId
-									? suspPayload.requestId
-									: tcId;
-							suspendedToolName = typeof sp.toolName === 'string' ? sp.toolName : '';
-							if (reqId && tcId) {
-								suspended = { toolCallId: tcId, requestId: reqId };
-							}
+						const suspension = parseSuspension(chunk);
+						if (suspension) {
+							suspended = suspension;
+							suspendedToolName = suspension.toolName ?? '';
 						}
 						const event = mapMastraChunkToEvent(context.runId, subAgentId, chunk);
 						if (event) {
@@ -289,13 +264,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 						}
 						lastSuspendedToolName = suspendedToolName;
 						const confirmResult = await context.waitForConfirmation(suspended.requestId);
-						const resumable = subAgent as unknown as {
-							resumeStream: (
-								data: Record<string, unknown>,
-								options: Record<string, unknown>,
-							) => Promise<{ runId?: string; fullStream: AsyncIterable<unknown> }>;
-						};
-						const resumed = await resumable.resumeStream(confirmResult, {
+						const resumed = await asResumable(subAgent).resumeStream(confirmResult, {
 							runId: subMastraRunId,
 							toolCallId: suspended.toolCallId,
 						});

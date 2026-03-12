@@ -722,28 +722,9 @@ credentials: {
 
 The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`list-credentials\`.
 
-## Credential & Execution Tools
+## Data Tables
 
-- **\`list-credentials\`** — Returns all credentials with their \`id\`, \`name\`, and \`type\`. Call early, use \`id\` and \`name\` directly in your code.
-- **\`test-credential\`** — Verify a credential is valid and can connect to its service. Use after discovering credentials to confirm they work before wiring into a workflow.
-- **\`run-workflow\`** — Execute a saved workflow and get structured results (status, output data, errors). Use after \`submit-workflow\` to verify the workflow actually works.
-- **\`debug-execution\`** — Get per-node execution trace for a failed execution. Shows which node failed, the error, and input data that caused it.
-- **\`get-execution\`** — Poll a running execution's status (non-blocking).
-- **\`activate-workflow\`** — Activate a workflow so it can be called by \`executeWorkflow\` nodes. Sub-workflows MUST be activated before the main workflow can reference them.
-- **\`explore-node-resources\`** — Query real resources for a node's RLC/dropdown parameters (e.g., list Google Sheets spreadsheets, OpenAI models, Slack channels). Pass \`methodType: "listSearch"\` for \`@searchListMethod\` annotations, \`"loadOptions"\` for \`@loadOptionsMethod\`. Supports chained lookups — e.g., first call \`spreadSheetsSearch\` to get a spreadsheet ID, then call \`sheetsSearch\` with \`currentNodeParameters: { documentId: { __rl: true, mode: "id", value: "<spreadsheetId>" } }\` to list sheets within it.
-
-## Data Table Tools
-
-You have direct access to n8n data table management — use these instead of building temporary setup workflows or HTTP requests to the data table API.
-
-- **\`list-data-tables\`** — List all existing data tables with their columns and types.
-- **\`create-data-table\`** — Create a new data table with specified columns. Note: n8n normalizes column names to snake_case (e.g., \`dayName\` becomes \`day_name\`).
-- **\`get-data-table-schema\`** — Get the exact column names and types for a table. **Always call this before using a data table in workflow code** to get the real column names.
-- **\`add-data-table-column\`** — Add a column to an existing table.
-- **\`query-data-table-rows\`** — Query rows from a table (useful for verifying data during testing).
-- **\`insert-data-table-rows\`** — Insert rows into a table (useful for seeding test data).
-
-**Workflow that needs a data table**: Call \`list-data-tables\` to check if it exists. If not, create it with \`create-data-table\`. Then call \`get-data-table-schema\` to get the exact column names (after snake_case normalization) and use those names in your workflow code.
+n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). Always call \`get-data-table-schema\` before using a data table in workflow code to get the real column names.
 
 ## CRITICAL RULES
 

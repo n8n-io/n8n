@@ -22,7 +22,8 @@ Read these docs before starting any implementation:
 - `docs/architecture.md` — system diagram, deep agent pillars, package responsibilities
 - `docs/streaming-protocol.md` — canonical event schema, SSE transport, replay rules
 - `docs/FRONTEND_PLAN.md` — TypeScript types, store structure, reducer, rendering rules
-- `docs/tools.md` — tool reference, orchestration tools (plan, delegate), domain tools
+- `docs/tools.md` — tool reference, orchestration tools (update-tasks, delegate), domain tools
+- `docs/simplify-agent-loop-plan.md` — rationale for the simplified agent loop design
 - `docs/memory.md` — memory tiers, scoping model
 - `docs/filesystem-access.md` — filesystem architecture, gateway protocol, security model
 - `docs/decisions.md` — ADR-001 through ADR-027

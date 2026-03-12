@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import WorkflowMiniCanvas from './WorkflowMiniCanvas.vue';
-import type { PlanStep } from '@n8n/api-types';
+import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
 
@@ -14,22 +14,20 @@ const i18n = useI18n();
 const store = useInstanceAiStore();
 const workflowsListStore = useWorkflowsListStore();
 
-const plan = computed(() => store.currentPlan);
+const tasks = computed(() => store.currentTasks);
 
-const completedCount = computed(() => {
-	if (!plan.value) return 0;
-	return plan.value.steps.filter((s) => s.status === 'completed').length;
+const doneCount = computed(() => {
+	if (!tasks.value) return 0;
+	return tasks.value.tasks.filter((t) => t.status === 'done').length;
 });
 
 const statusIconMap: Record<
-	PlanStep['status'],
+	TaskItem['status'],
 	{ icon: string; spin: boolean; className: string }
 > = {
-	pending: { icon: 'circle', spin: false, className: 'pendingIcon' },
+	todo: { icon: 'circle', spin: false, className: 'todoIcon' },
 	in_progress: { icon: 'spinner', spin: true, className: 'inProgressIcon' },
-	completed: { icon: 'check', spin: false, className: 'completedIcon' },
-	failed: { icon: 'x', spin: false, className: 'failedIcon' },
-	skipped: { icon: 'minus', spin: false, className: 'skippedIcon' },
+	done: { icon: 'check', spin: false, className: 'doneIcon' },
 };
 
 const workflowArtifacts = computed(() => {
@@ -42,7 +40,7 @@ const workflowArtifacts = computed(() => {
 	return result;
 });
 
-const hasArtifacts = computed(() => plan.value !== null || workflowArtifacts.value.length > 0);
+const hasArtifacts = computed(() => tasks.value !== null || workflowArtifacts.value.length > 0);
 
 const expandedCards = ref<Set<string>>(new Set());
 
@@ -54,10 +52,10 @@ function toggleCard(key: string) {
 	}
 }
 
-// Auto-expand plan card when it first appears
-watch(plan, (newPlan, oldPlan) => {
-	if (newPlan && !oldPlan) {
-		expandedCards.value.add('plan');
+// Auto-expand tasks card when it first appears
+watch(tasks, (newTasks, oldTasks) => {
+	if (newTasks && !oldTasks) {
+		expandedCards.value.add('tasks');
 	}
 });
 
@@ -91,50 +89,34 @@ watch(
 		</div>
 
 		<div v-if="hasArtifacts" :class="$style.cardList">
-			<!-- Plan card -->
-			<div v-if="plan" :class="$style.artifactCard" @click="toggleCard('plan')">
+			<!-- Tasks card -->
+			<div v-if="tasks" :class="$style.artifactCard" @click="toggleCard('tasks')">
 				<div :class="$style.cardHeader">
 					<N8nIcon
-						:icon="expandedCards.has('plan') ? 'chevron-down' : 'chevron-right'"
+						:icon="expandedCards.has('tasks') ? 'chevron-down' : 'chevron-right'"
 						:class="$style.chevron"
 						size="small"
 					/>
 					<N8nIcon icon="list-checks" size="small" />
-					<span :class="$style.artifactName">{{ plan.goal }}</span>
-					<span :class="$style.typeBadge">{{
-						i18n.baseText('instanceAi.artifactsPanel.plan')
+					<span :class="$style.artifactName">{{
+						i18n.baseText('instanceAi.artifactsPanel.tasks')
 					}}</span>
+					<span :class="$style.progress"> {{ doneCount }}/{{ tasks.tasks.length }} </span>
 				</div>
-				<div v-if="expandedCards.has('plan')" :class="$style.expandedContent">
-					<div :class="$style.metaRow">
-						<span :class="$style.phaseBadge">{{ plan.currentPhase }}</span>
-						<span :class="$style.iteration">
-							{{ i18n.baseText('instanceAi.planCard.iteration') }}: {{ plan.iteration }}
-						</span>
-						<span :class="$style.progress">
-							{{ completedCount }}/{{ plan.steps.length }} steps done
-						</span>
-					</div>
-					<div :class="$style.stepList">
+				<div v-if="expandedCards.has('tasks')" :class="$style.expandedContent">
+					<div :class="$style.taskList">
 						<div
-							v-for="(step, idx) in plan.steps"
-							:key="idx"
-							:class="[$style.step, step.status === 'skipped' ? $style.skippedStep : '']"
+							v-for="task in tasks.tasks"
+							:key="task.id"
+							:class="[$style.task, task.status === 'done' ? $style.doneTask : '']"
 						>
 							<N8nIcon
-								:icon="statusIconMap[step.status].icon as IconName"
-								:class="$style[statusIconMap[step.status].className]"
-								:spin="statusIconMap[step.status].spin"
+								:icon="statusIconMap[task.status].icon as IconName"
+								:class="$style[statusIconMap[task.status].className]"
+								:spin="statusIconMap[task.status].spin"
 								size="small"
 							/>
-							<div :class="$style.stepContent">
-								<div :class="$style.stepHeader">
-									<span :class="$style.stepPhase">{{ step.phase }}</span>
-									<span v-if="step.toolCallId" :class="$style.linkedBadge">linked</span>
-								</div>
-								<span :class="$style.stepDescription">{{ step.description }}</span>
-								<span v-if="step.result" :class="$style.stepResult">{{ step.result }}</span>
-							</div>
+							<span :class="$style.taskDescription">{{ task.description }}</span>
 						</div>
 					</div>
 				</div>
@@ -261,6 +243,13 @@ watch(
 	flex-shrink: 0;
 }
 
+.progress {
+	margin-left: auto;
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	flex-shrink: 0;
+}
+
 .openLink {
 	font-size: var(--font-size--3xs);
 	color: var(--color--primary);
@@ -280,44 +269,14 @@ watch(
 	margin-top: var(--spacing--4xs);
 }
 
-/* Plan detail styles */
-.metaRow {
+/* Task list styles */
+.taskList {
+	padding: var(--spacing--2xs) 0;
+}
+
+.task {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) 0;
-}
-
-.phaseBadge {
-	display: inline-block;
-	padding: 1px var(--spacing--3xs);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	background: color-mix(in srgb, var(--color--primary) 15%, transparent);
-	color: var(--color--primary);
-	border-radius: var(--radius--sm);
-}
-
-.iteration {
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-}
-
-.progress {
-	margin-left: auto;
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-}
-
-.stepList {
-	padding: var(--spacing--2xs) 0;
-}
-
-.step {
-	display: flex;
-	align-items: flex-start;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--3xs) 0;
 	font-size: var(--font-size--2xs);
@@ -328,52 +287,17 @@ watch(
 	}
 }
 
-.skippedStep {
-	text-decoration: line-through;
+.doneTask {
 	opacity: 0.6;
 }
 
-.stepContent {
-	display: flex;
-	flex-direction: column;
-	gap: 1px;
-	min-width: 0;
+.taskDescription {
+	color: var(--color--text);
 	flex: 1;
+	min-width: 0;
 }
 
-.stepHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.stepPhase {
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--3xs);
-	text-transform: uppercase;
-}
-
-.linkedBadge {
-	padding: 0 var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	font-family: monospace;
-	background: var(--color--foreground);
-	border-radius: var(--radius--sm);
-	color: var(--color--text);
-}
-
-.stepDescription {
-	color: var(--color--text);
-}
-
-.stepResult {
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-	font-style: italic;
-}
-
-.pendingIcon {
+.todoIcon {
 	color: var(--color--text--tint-1);
 }
 
@@ -381,16 +305,8 @@ watch(
 	color: var(--color--primary);
 }
 
-.completedIcon {
+.doneIcon {
 	color: var(--color--success);
-}
-
-.failedIcon {
-	color: var(--color--danger);
-}
-
-.skippedIcon {
-	color: var(--color--text--tint-1);
 }
 
 .emptyState {

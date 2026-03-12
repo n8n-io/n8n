@@ -1,4 +1,4 @@
-import type { OrchestrationContext, PlanStorage } from '../../../types';
+import type { OrchestrationContext, TaskStorage } from '../../../types';
 import { createCorrectBackgroundTaskTool } from '../correct-background-task.tool';
 
 function createMockContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
@@ -19,10 +19,10 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		},
 		domainTools: {} as OrchestrationContext['domainTools'],
 		abortSignal: new AbortController().signal,
-		planStorage: {
+		taskStorage: {
 			get: jest.fn(),
 			save: jest.fn(),
-		} as PlanStorage,
+		} as TaskStorage,
 		...overrides,
 	};
 }

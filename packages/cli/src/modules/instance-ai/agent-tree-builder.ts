@@ -156,10 +156,10 @@ export function buildAgentTreeFromEvents(events: InstanceAiEvent[]): InstanceAiA
 				break;
 			}
 
-			case 'plan-update': {
+			case 'tasks-update': {
 				const node = findAgentNodeInTree(tree, event.agentId);
 				if (node) {
-					node.plan = event.payload.plan;
+					node.tasks = event.payload.tasks;
 				}
 				break;
 			}

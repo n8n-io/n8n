@@ -14,7 +14,6 @@ import {
 	createWorkspace,
 	McpClientManager,
 	mapMastraChunkToEvent,
-	PlanAutoTracker,
 	BuilderSandboxFactory,
 	SnapshotManager,
 } from '@n8n/instance-ai';
@@ -43,7 +42,7 @@ import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { MastraIterationLogStorage } from './iteration-log-storage';
-import { MastraPlanStorage } from './plan-storage';
+import { MastraTaskStorage } from './task-storage';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
 
 interface ActiveRun {
@@ -556,7 +555,6 @@ export class InstanceAiService {
 		researchMode?: boolean,
 	): Promise<void> {
 		const signal = abortController.signal;
-		let planTracker: PlanAutoTracker | null = null;
 
 		try {
 			// Publish run-start (includes userId for audit trail attribution)
@@ -603,33 +601,22 @@ export class InstanceAiService {
 				titleModel,
 			};
 
-			// Create memory instance and share it between agent, plan storage, iteration log, and snapshot storage
+			// Create memory instance and share it between agent, task storage, iteration log, and snapshot storage
 			const memory = createMemory(memoryConfig);
-			const planStorage = new MastraPlanStorage(memory);
+			const taskStorage = new MastraTaskStorage(memory);
 			const iterationLog = new MastraIterationLogStorage(memory);
 			const snapshotStorage = new AgentTreeSnapshotStorage(memory);
 
-			// Replay existing plan to the new run's agentTree so the frontend shows it immediately
-			const existingPlan = await planStorage.get(threadId);
-			if (existingPlan) {
+			// Replay existing tasks to the new run's agentTree so the frontend shows them immediately
+			const existingTasks = await taskStorage.get(threadId);
+			if (existingTasks) {
 				this.eventBus.publish(threadId, {
-					type: 'plan-update',
+					type: 'tasks-update',
 					runId,
 					agentId: ORCHESTRATOR_AGENT_ID,
-					payload: { plan: existingPlan },
+					payload: { tasks: existingTasks },
 				});
 			}
-
-			// Auto-track plan progress based on tool events (deterministic, no LLM dependency)
-			planTracker = new PlanAutoTracker(
-				threadId,
-				runId,
-				ORCHESTRATOR_AGENT_ID,
-				this.eventBus,
-				planStorage,
-				iterationLog,
-			);
-			planTracker.start();
 
 			// Configure workflow-sdk schema validation dirs for build-workflow tool
 			const nodeDefDirs = this.adapterService.getNodeDefinitionDirs();
@@ -654,7 +641,7 @@ export class InstanceAiService {
 				eventBus: this.eventBus,
 				domainTools,
 				abortSignal: signal,
-				planStorage,
+				taskStorage,
 				researchMode,
 				browserMcpConfig: this.instanceAiConfig.browserMcp
 					? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
@@ -737,7 +724,6 @@ export class InstanceAiService {
 
 			// Stream ended due to tool suspension — save state and exit without run-finish
 			if (lastSuspension && !signal.aborted) {
-				planTracker?.stop();
 				this.activeRuns.delete(threadId);
 				this.suspendedRuns.set(threadId, {
 					runId,
@@ -751,8 +737,6 @@ export class InstanceAiService {
 				});
 				return;
 			}
-
-			planTracker?.stop();
 
 			if (signal.aborted) {
 				this.eventBus.publish(threadId, {
@@ -774,8 +758,6 @@ export class InstanceAiService {
 			// Save agent tree snapshot for session restore
 			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 		} catch (error) {
-			planTracker?.stop();
-
 			// Mastra throws AbortError when the signal is aborted — treat as cancellation
 			if (signal.aborted) {
 				this.eventBus.publish(threadId, {

@@ -3,7 +3,7 @@ import type { MastraCompositeStore } from '@mastra/core/storage';
 import type { Workspace } from '@mastra/core/workspace';
 import type { Memory } from '@mastra/memory';
 import type {
-	PlanObject,
+	TaskList,
 	InstanceAiPermissions,
 	McpTool,
 	McpToolCallRequest,
@@ -431,11 +431,11 @@ export interface InstanceAiContext {
 	permissions?: InstanceAiPermissions;
 }
 
-// ── Plan storage ─────────────────────────────────────────────────────────────
+// ── Task storage ─────────────────────────────────────────────────────────────
 
-export interface PlanStorage {
-	get(threadId: string): Promise<PlanObject | null>;
-	save(threadId: string, plan: PlanObject): Promise<void>;
+export interface TaskStorage {
+	get(threadId: string): Promise<TaskList | null>;
+	save(threadId: string, tasks: TaskList): Promise<void>;
 }
 
 // ── MCP ──────────────────────────────────────────────────────────────────────
@@ -489,7 +489,7 @@ export interface OrchestrationContext {
 	eventBus: InstanceAiEventBus;
 	domainTools: ToolsInput;
 	abortSignal: AbortSignal;
-	planStorage: PlanStorage;
+	taskStorage: TaskStorage;
 	waitForConfirmation?: (requestId: string) => Promise<{
 		approved: boolean;
 		credentialId?: string;

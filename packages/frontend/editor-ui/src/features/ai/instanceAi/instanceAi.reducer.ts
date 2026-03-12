@@ -205,10 +205,10 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return state.activeRunId;
 		}
 
-		case 'plan-update': {
+		case 'tasks-update': {
 			const msg = findMessageByRunId(state, event.runId);
 			const node = findAgentNode(msg, event.agentId);
-			if (node) node.plan = event.payload.plan;
+			if (node) node.tasks = event.payload.tasks;
 			return state.activeRunId;
 		}
 

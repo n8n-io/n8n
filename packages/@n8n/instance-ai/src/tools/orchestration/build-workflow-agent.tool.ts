@@ -11,16 +11,14 @@
 
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
-import { Mastra } from '@mastra/core/mastra';
 import { createTool } from '@mastra/core/tools';
-import { LangSmithExporter } from '@mastra/langsmith';
-import { Observability } from '@mastra/observability';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { BUILDER_AGENT_PROMPT, SANDBOX_BUILDER_AGENT_PROMPT } from './build-workflow-agent.prompt';
+import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
@@ -266,19 +264,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 								memory: builderMemory,
 							});
 
-							// Register with Mastra for state persistence
-							new Mastra({
-								agents: { [subAgentId]: subAgent },
-								storage: context.storage,
-								observability: new Observability({
-									configs: {
-										langsmith: {
-											serviceName: 'instance-ai-builder',
-											exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
-										},
-									},
-								}),
-							});
+							registerWithMastra(subAgentId, subAgent, context.storage);
 
 							const builderMemoryOpts = builderMemory
 								? {
@@ -352,18 +338,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 							memory: builderMemory,
 						});
 
-						new Mastra({
-							agents: { [subAgentId]: subAgent },
-							storage: context.storage,
-							observability: new Observability({
-								configs: {
-									langsmith: {
-										serviceName: 'instance-ai-builder',
-										exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
-									},
-								},
-							}),
-						});
+						registerWithMastra(subAgentId, subAgent, context.storage);
 
 						const toolMemoryOpts = builderMemory
 							? {

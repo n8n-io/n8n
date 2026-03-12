@@ -2,12 +2,9 @@ import type { Agent } from '@mastra/core/agent';
 
 import { mapMastraChunkToEvent } from './map-chunk';
 import type { InstanceAiEventBus } from '../event-bus/event-bus.interface';
+import { parseSuspension, asResumable } from '../utils/stream-helpers';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-interface ConsumeWithHitlOptions {
+export interface ConsumeWithHitlOptions {
 	agent: Agent;
 	stream: { runId?: string; fullStream: AsyncIterable<unknown>; text: Promise<string> };
 	runId: string;
@@ -20,7 +17,7 @@ interface ConsumeWithHitlOptions {
 	drainCorrections?: () => string[];
 }
 
-interface ConsumeWithHitlResult {
+export interface ConsumeWithHitlResult {
 	/** Promise that resolves to the agent's full text output (including post-resume text). */
 	text: Promise<string>;
 }
@@ -59,19 +56,11 @@ export async function consumeStreamWithHitl(
 		for await (const chunk of subAgentStream) {
 			if (abortSignal.aborted) break;
 
-			if (isRecord(chunk) && chunk.type === 'tool-call-suspended') {
-				const sp = isRecord(chunk.payload) ? chunk.payload : {};
-				const suspPayload = isRecord(sp.suspendPayload) ? sp.suspendPayload : {};
-				const tcId = typeof sp.toolCallId === 'string' ? sp.toolCallId : '';
-				const reqId =
-					typeof suspPayload.requestId === 'string' && suspPayload.requestId
-						? suspPayload.requestId
-						: tcId;
-				if (reqId && tcId) {
-					suspended = { toolCallId: tcId, requestId: reqId };
-					if (waitForConfirmation) {
-						confirmPromise = waitForConfirmation(reqId);
-					}
+			const suspension = parseSuspension(chunk);
+			if (suspension) {
+				suspended = suspension;
+				if (waitForConfirmation) {
+					confirmPromise = waitForConfirmation(suspension.requestId);
 				}
 			}
 
@@ -113,17 +102,7 @@ export async function consumeStreamWithHitl(
 					abortSignal.addEventListener('abort', abortHandler, { once: true });
 				}),
 			]);
-			const resumable = agent as unknown as {
-				resumeStream: (
-					data: Record<string, unknown>,
-					options: Record<string, unknown>,
-				) => Promise<{
-					runId?: string;
-					fullStream: AsyncIterable<unknown>;
-					text: Promise<string>;
-				}>;
-			};
-			const resumedStream = await resumable.resumeStream(confirmResult, {
+			const resumedStream = await asResumable(agent).resumeStream(confirmResult, {
 				runId: subMastraRunId,
 				toolCallId: suspended.toolCallId,
 			});

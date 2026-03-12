@@ -7,14 +7,12 @@
 
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
-import { Mastra } from '@mastra/core/mastra';
 import { createTool } from '@mastra/core/tools';
-import { LangSmithExporter } from '@mastra/langsmith';
-import { Observability } from '@mastra/observability';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { RESEARCH_AGENT_PROMPT } from './research-agent-prompt';
+import { registerWithMastra } from '../../agent/register-with-mastra';
 import { mapMastraChunkToEvent } from '../../stream/map-chunk';
 import type { OrchestrationContext } from '../../types';
 
@@ -103,19 +101,7 @@ export function createResearchWithAgentTool(context: OrchestrationContext) {
 						tools: researchTools,
 					});
 
-					// Register with Mastra for state persistence
-					new Mastra({
-						agents: { [subAgentId]: subAgent },
-						storage: context.storage,
-						observability: new Observability({
-							configs: {
-								langsmith: {
-									serviceName: 'my-service',
-									exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
-								},
-							},
-						}),
-					});
+					registerWithMastra(subAgentId, subAgent, context.storage);
 
 					const stream = await subAgent.stream(briefing, {
 						maxSteps: RESEARCH_MAX_STEPS,

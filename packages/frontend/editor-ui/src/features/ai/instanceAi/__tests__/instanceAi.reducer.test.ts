@@ -285,13 +285,13 @@ describe('instanceAi.reducer', () => {
 	describe('tool execution', () => {
 		test('tool-call adds entry with isLoading=true and correct renderHint', () => {
 			const state = stateWithRun('run-1', 'agent-root');
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'plan'));
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'update-tasks'));
 
 			const tc = state.messages[0].agentTree!.toolCalls[0];
 			expect(tc.toolCallId).toBe('tc-1');
-			expect(tc.toolName).toBe('plan');
+			expect(tc.toolName).toBe('update-tasks');
 			expect(tc.isLoading).toBe(true);
-			expect(tc.renderHint).toBe('plan');
+			expect(tc.renderHint).toBe('tasks');
 		});
 
 		test('tool-result resolves matching toolCallId with isLoading=false and result set', () => {
@@ -481,8 +481,8 @@ describe('instanceAi.reducer', () => {
 	});
 
 	describe('getRenderHint', () => {
-		test('returns plan for "plan"', () => {
-			expect(getRenderHint('plan')).toBe('plan');
+		test('returns tasks for "update-tasks"', () => {
+			expect(getRenderHint('update-tasks')).toBe('tasks');
 		});
 
 		test('returns delegate for "delegate"', () => {

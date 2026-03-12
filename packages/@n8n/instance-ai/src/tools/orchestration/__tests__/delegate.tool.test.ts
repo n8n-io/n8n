@@ -1,4 +1,4 @@
-import type { OrchestrationContext, PlanStorage } from '../../../types';
+import type { OrchestrationContext, TaskStorage } from '../../../types';
 import { delegateInputSchema } from '../delegate.schemas';
 
 // Mock heavy Mastra dependencies to avoid ESM issues in Jest
@@ -38,10 +38,10 @@ function createMockContext(domainTools: Record<string, unknown> = {}): Orchestra
 		},
 		domainTools: domainTools as OrchestrationContext['domainTools'],
 		abortSignal: new AbortController().signal,
-		planStorage: {
+		taskStorage: {
 			get: jest.fn(),
 			save: jest.fn(),
-		} as PlanStorage,
+		} as TaskStorage,
 	};
 }
 

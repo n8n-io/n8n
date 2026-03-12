@@ -36,9 +36,9 @@ const showMemoryPanel = ref(false);
 const showDebugPanel = ref(false);
 const showSettingsPanel = ref(false);
 
-// Auto-open artifacts panel when a plan or resource first appears
+// Auto-open artifacts panel when a task list or resource first appears
 watch(
-	() => store.currentPlan !== null || store.resourceRegistry.size > 0,
+	() => store.currentTasks !== null || store.resourceRegistry.size > 0,
 	(hasArtifacts, hadArtifacts) => {
 		if (hasArtifacts && !hadArtifacts) showArtifactsPanel.value = true;
 	},

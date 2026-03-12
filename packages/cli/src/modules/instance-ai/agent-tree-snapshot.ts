@@ -26,7 +26,7 @@ const snapshotsArraySchema = z.array(agentTreeSnapshotSchema);
 /**
  * Parse snapshots from thread metadata with Zod runtime validation.
  * The schema validates the envelope shape; the narrowing to AgentTreeSnapshot[]
- * is safe because we wrote the tree data ourselves (same pattern as plan-storage.ts).
+ * is safe because we wrote the tree data ourselves (same pattern as task-storage.ts).
  */
 function parseSnapshots(raw: unknown): AgentTreeSnapshot[] {
 	const result = snapshotsArraySchema.safeParse(raw);
@@ -41,7 +41,7 @@ function parseSnapshots(raw: unknown): AgentTreeSnapshot[] {
  * Snapshots are stored as an ordered array (appended chronologically)
  * and matched to assistant messages by position during session restore.
  *
- * Same storage pattern as MastraPlanStorage (plan-storage.ts).
+ * Same storage pattern as MastraTaskStorage (task-storage.ts).
  */
 export class AgentTreeSnapshotStorage {
 	constructor(private readonly memory: Memory) {}

@@ -59,7 +59,7 @@ function findChild(agentId: string): InstanceAiAgentNode | undefined {
 			<template v-else-if="entry.type === 'tool-call'">
 				<template v-for="(tc, tcIdx) in [findToolCall(entry.toolCallId)]" :key="tcIdx">
 					<template v-if="tc">
-						<template v-if="tc.renderHint === 'plan'" />
+						<template v-if="tc.renderHint === 'tasks'" />
 						<DelegateCard
 							v-else-if="tc.renderHint === 'delegate'"
 							:args="tc.args"

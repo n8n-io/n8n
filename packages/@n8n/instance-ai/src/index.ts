@@ -1,7 +1,6 @@
 export { createInstanceAgent } from './agent/instance-agent';
 export { createAllTools, createOrchestrationTools } from './tools';
 export { createMemory } from './memory/memory-config';
-export { PlanAutoTracker } from './tools/orchestration/plan-auto-tracker';
 export { iterationEntrySchema, formatPreviousAttempts } from './storage/iteration-log';
 export type { IterationEntry, IterationLog } from './storage/iteration-log';
 export { WORKING_MEMORY_TEMPLATE } from './memory/working-memory-template';
@@ -12,6 +11,9 @@ export {
 } from './memory/sub-agent-memory-templates';
 export { McpClientManager } from './mcp/mcp-client-manager';
 export { mapMastraChunkToEvent } from './stream/map-chunk';
+export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';
+export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
+export { registerWithMastra } from './agent/register-with-mastra';
 export { createSandbox, createWorkspace } from './workspace/create-workspace';
 export type { SandboxConfig } from './workspace/create-workspace';
 export { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
@@ -33,7 +35,7 @@ export type {
 	ModelConfig,
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,
-	PlanStorage,
+	TaskStorage,
 	OrchestrationContext,
 	SpawnBackgroundTaskOptions,
 	WorkflowSummary,
@@ -59,9 +61,3 @@ export type {
 	FileSearchMatch,
 	FileSearchResult,
 } from './types';
-export type {
-	PlanObject,
-	PlanStep,
-	PlanInput,
-	PlanOutput,
-} from './tools/orchestration/plan.schemas';

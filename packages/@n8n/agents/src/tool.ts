@@ -147,7 +147,10 @@ export class Tool<
 			suspendSchema: this.suspendSchemaValue,
 			resumeSchema: this.resumeSchemaValue,
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
-			handler: this.handlerFn as (input: unknown, ctx: ToolContext | InterruptibleToolContext) => Promise<unknown>,
+			handler: this.handlerFn as (
+				input: unknown,
+				ctx: ToolContext | InterruptibleToolContext,
+			) => Promise<unknown>,
 			inputSchema: this.inputSchema,
 			outputSchema: this.outputSchema,
 		};

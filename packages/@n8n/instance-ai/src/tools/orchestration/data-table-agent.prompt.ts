@@ -24,34 +24,7 @@ Do NOT produce visible output until the final summary. All reasoning happens int
 
 ## Column Rules
 
-- Column names: alphanumeric and underscores only, no leading numbers. Max length is reasonable.
-- Column types: \`string\`, \`number\`, \`boolean\`, \`date\`.
 - System columns (\`id\`, \`createdAt\`, \`updatedAt\`) are automatic — never create them manually.
-
-## Filter Syntax
-
-Filters use \`type\` (and/or) and an array of condition objects:
-
-\`\`\`json
-{
-  "type": "and",
-  "filters": [
-    { "columnName": "score", "condition": "gte", "value": 70 },
-    { "columnName": "status", "condition": "eq", "value": "active" }
-  ]
-}
-\`\`\`
-
-Available conditions: \`eq\`, \`neq\`, \`like\`, \`gt\`, \`gte\`, \`lt\`, \`lte\`.
-- \`like\` wraps the value in \`%\` wildcards automatically.
-- Use \`null\` as value for null checks.
-
-## Row Operations
-
-- **Insert**: Max 100 rows per call. For larger datasets, batch into multiple calls.
-- **Update**: Requires a filter (no bulk update-all). Data object specifies the new values.
-- **Delete**: Requires a filter — cannot delete all rows without conditions. This is a safety constraint.
-- **Query**: Default limit is 50 rows. Use offset for pagination.
 
 ## Destructive Operations
 

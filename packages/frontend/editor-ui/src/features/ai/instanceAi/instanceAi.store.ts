@@ -76,11 +76,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// Resource registry — maps known resource names to their types & IDs
 	const { registry: resourceRegistry } = useResourceRegistry(() => messages.value);
 
-	/** The latest plan — scans all messages backwards since the plan persists across runs. */
-	const currentPlan = computed(() => {
+	/** The latest task list — scans all messages backwards since tasks persist across runs. */
+	const currentTasks = computed(() => {
 		for (let i = messages.value.length - 1; i >= 0; i--) {
-			const plan = messages.value[i].agentTree?.plan;
-			if (plan) return plan;
+			const tasks = messages.value[i].agentTree?.tasks;
+			if (tasks) return tasks;
 		}
 		return null;
 	});
@@ -712,7 +712,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		isDaemonConnecting,
 		setupCommand,
 		contextualSuggestion,
-		currentPlan,
+		currentTasks,
 		resourceRegistry,
 		// Actions
 		newThread,

@@ -35,13 +35,26 @@ export function createQueryDataTableRowsTool(context: InstanceAiContext) {
 		outputSchema: z.object({
 			count: z.number(),
 			data: z.array(z.record(z.unknown())),
+			hint: z.string().optional(),
 		}),
 		execute: async (input) => {
-			return await context.dataTableService.queryRows(input.dataTableId, {
+			const result = await context.dataTableService.queryRows(input.dataTableId, {
 				filter: input.filter,
 				limit: input.limit,
 				offset: input.offset,
 			});
+
+			const returnedRows = result.data.length;
+			const remaining = result.count - (input.offset ?? 0) - returnedRows;
+
+			if (remaining > 0) {
+				return {
+					...result,
+					hint: `${remaining} more rows available. Use manage-data-tables-with-agent for bulk operations.`,
+				};
+			}
+
+			return result;
 		},
 	});
 }

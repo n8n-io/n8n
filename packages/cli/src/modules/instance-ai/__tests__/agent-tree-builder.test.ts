@@ -110,7 +110,7 @@ describe('buildAgentTreeFromEvents', () => {
 				type: 'tool-call',
 				runId: 'run-1',
 				agentId: 'agent-001',
-				payload: { toolCallId: 'tc-1', toolName: 'plan', args: {} },
+				payload: { toolCallId: 'tc-1', toolName: 'update-tasks', args: {} },
 			},
 			{
 				type: 'tool-error',
@@ -130,7 +130,7 @@ describe('buildAgentTreeFromEvents', () => {
 
 		expect(tree.toolCalls[0].error).toBe('Something went wrong');
 		expect(tree.toolCalls[0].isLoading).toBe(false);
-		expect(tree.toolCalls[0].renderHint).toBe('plan');
+		expect(tree.toolCalls[0].renderHint).toBe('tasks');
 	});
 
 	it('should build a tree with sub-agents', () => {

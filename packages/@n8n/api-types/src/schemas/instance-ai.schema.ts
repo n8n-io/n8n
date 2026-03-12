@@ -24,7 +24,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-result',
 	'tool-error',
 	'confirmation-request',
-	'plan-update',
+	'tasks-update',
 	'filesystem-request',
 	'error',
 ]);
@@ -176,34 +176,25 @@ export const instanceAiFilesystemResponseSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Plan schemas (shared between backend plan tool and frontend PlanCard)
+// Task list schemas (lightweight checklist for multi-step work)
 // ---------------------------------------------------------------------------
 
-export const planStepSchema = z.object({
-	phase: z.string().describe('Phase name (e.g., "build", "execute", "debug")'),
-	description: z.string().describe('What this step accomplishes'),
-	status: z
-		.enum(['pending', 'in_progress', 'completed', 'failed', 'skipped'])
-		.describe('Current status of this step'),
-	result: z.string().optional().describe('Outcome after completion or failure'),
-	toolCallId: z.string().optional().describe('Links this step to the tool call implementing it'),
+export const taskItemSchema = z.object({
+	id: z.string().describe('Unique task identifier'),
+	description: z.string().describe('What this task accomplishes'),
+	status: z.enum(['todo', 'in_progress', 'done']).describe('Current status'),
 });
 
-export type PlanStep = z.infer<typeof planStepSchema>;
+export type TaskItem = z.infer<typeof taskItemSchema>;
 
-export const planObjectSchema = z.object({
-	goal: z.string().describe('What the user wants accomplished'),
-	currentPhase: z
-		.enum(['build', 'execute', 'inspect', 'evaluate', 'debug'])
-		.describe('Current phase of the autonomous loop'),
-	iteration: z.number().int().min(0).describe('Loop iteration count (0 = first pass)'),
-	steps: z.array(planStepSchema).describe('Ordered list of plan steps'),
+export const taskListSchema = z.object({
+	tasks: z.array(taskItemSchema).describe('Ordered list of tasks'),
 });
 
-export type PlanObject = z.infer<typeof planObjectSchema>;
+export type TaskList = z.infer<typeof taskListSchema>;
 
-export const planUpdatePayloadSchema = z.object({
-	plan: planObjectSchema,
+export const tasksUpdatePayloadSchema = z.object({
+	tasks: taskListSchema,
 });
 
 // ---------------------------------------------------------------------------
@@ -235,7 +226,7 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: confirmationRequestPayloadSchema,
 	}),
-	z.object({ type: z.literal('plan-update'), ...eventBase, payload: planUpdatePayloadSchema }),
+	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
 		type: z.literal('filesystem-request'),
@@ -264,7 +255,7 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'confirmation-request' }
 >;
-export type InstanceAiPlanUpdateEvent = Extract<InstanceAiEvent, { type: 'plan-update' }>;
+export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
 	InstanceAiEvent,
@@ -305,7 +296,7 @@ export interface InstanceAiToolCallState {
 	result?: unknown;
 	error?: string;
 	isLoading: boolean;
-	renderHint?: 'plan' | 'delegate' | 'builder' | 'data-table' | 'researcher' | 'default';
+	renderHint?: 'tasks' | 'delegate' | 'builder' | 'data-table' | 'researcher' | 'default';
 	confirmation?: {
 		requestId: string;
 		severity: InstanceAiConfirmationSeverity;
@@ -336,8 +327,8 @@ export interface InstanceAiAgentNode {
 	children: InstanceAiAgentNode[];
 	/** Chronological ordering of text segments, tool calls, and sub-agents. */
 	timeline: InstanceAiTimelineEntry[];
-	/** Latest plan state — updated by plan-update events. */
-	plan?: PlanObject;
+	/** Latest task list — updated by tasks-update events. */
+	tasks?: TaskList;
 	result?: string;
 	error?: string;
 }
@@ -506,7 +497,7 @@ export interface InstanceAiModelCredential {
 }
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
-	if (toolName === 'plan') return 'plan';
+	if (toolName === 'update-tasks') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
 	if (toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'manage-data-tables-with-agent') return 'data-table';

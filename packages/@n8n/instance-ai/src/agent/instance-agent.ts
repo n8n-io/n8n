@@ -123,42 +123,25 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		'get-workflow-as-code',
 	]);
 
-	// Tools whose output is too large for the orchestrator's context window.
-	// Sub-agents (via delegate) can still use them — they return concise summaries.
-	const DELEGATE_ONLY_TOOLS = new Set([
-		'run-workflow',
-		'get-execution',
-		'debug-execution',
-		'stop-execution',
-		'list-executions',
-		'get-suggested-nodes',
-		'explore-node-resources',
-	]);
-
-	// Tools that only the data table sub-agent should use (not the orchestrator).
-	// The orchestrator should call manage-data-tables-with-agent instead.
-	const DATA_TABLE_ONLY_TOOLS = new Set([
-		'list-data-tables',
+	// Write/mutate data-table tools stay behind manage-data-tables-with-agent.
+	// Read tools (list, schema, query) are available directly to the orchestrator.
+	const DATA_TABLE_WRITE_TOOLS = new Set([
 		'create-data-table',
 		'delete-data-table',
-		'get-data-table-schema',
 		'add-data-table-column',
 		'delete-data-table-column',
 		'rename-data-table-column',
-		'query-data-table-rows',
 		'insert-data-table-rows',
 		'update-data-table-rows',
 		'delete-data-table-rows',
 	]);
 
-	// Orchestrator sees domain tools minus builder-only, delegate-only, and data-table-only tools
+	// Orchestrator sees domain tools minus builder-only and data-table-write tools.
+	// Execution tools (run-workflow, get-execution, etc.) are now directly available
+	// with output truncation to prevent context bloat.
 	const orchestratorDomainTools: ToolsInput = {};
 	for (const [name, tool] of Object.entries(domainTools)) {
-		if (
-			!BUILDER_ONLY_TOOLS.has(name) &&
-			!DELEGATE_ONLY_TOOLS.has(name) &&
-			!DATA_TABLE_ONLY_TOOLS.has(name)
-		) {
+		if (!BUILDER_ONLY_TOOLS.has(name) && !DATA_TABLE_WRITE_TOOLS.has(name)) {
 			orchestratorDomainTools[name] = tool;
 		}
 	}

@@ -1,9 +1,9 @@
 import type { ToolsInput } from '@mastra/core/agent';
-import { Mastra } from '@mastra/core/mastra';
 import { createTool } from '@mastra/core/tools';
 import { nanoid } from 'nanoid';
 
 import { delegateInputSchema, delegateOutputSchema } from './delegate.schemas';
+import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { MEMORY_ENABLED_ROLES } from '../../memory/sub-agent-memory-templates';
@@ -82,10 +82,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					memory,
 				});
 
-				// Register sub-agent with Mastra for HITL suspend/resume snapshot storage.
-				// Without this, tools that use suspend() will fail on resumeStream() because
-				// Mastra has no storage to persist/retrieve the execution snapshot.
-				new Mastra({ agents: { [subAgentId]: subAgent }, storage: context.storage });
+				registerWithMastra(subAgentId, subAgent, context.storage);
 
 				// 4. Build briefing message — protocol reminder at the end (strongest position)
 				const artifacts = input.artifacts

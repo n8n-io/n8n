@@ -1,7 +1,7 @@
 import type { ToolsInput } from '@mastra/core/agent';
 
 import type { InstanceAiEventBus } from '../../../event-bus/event-bus.interface';
-import type { OrchestrationContext, PlanStorage } from '../../../types';
+import type { OrchestrationContext, TaskStorage } from '../../../types';
 
 // Mock all heavy Mastra dependencies to avoid ESM issues in Jest
 jest.mock('@mastra/core/agent', () => ({
@@ -56,7 +56,7 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 		eventBus: createMockEventBus(),
 		domainTools,
 		abortSignal: new AbortController().signal,
-		planStorage: {} as PlanStorage,
+		taskStorage: {} as TaskStorage,
 		spawnBackgroundTask: jest.fn(),
 		cancelBackgroundTask: jest.fn(),
 		...overrides,

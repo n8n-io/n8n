@@ -155,8 +155,8 @@ describe('parseStoredMessages', () => {
 							{
 								state: 'call',
 								toolCallId: 'tc-2',
-								toolName: 'plan',
-								args: { goal: 'test' },
+								toolName: 'update-tasks',
+								args: { tasks: [] },
 							},
 						],
 					},
@@ -169,7 +169,7 @@ describe('parseStoredMessages', () => {
 			const tc = result[1].agentTree?.toolCalls[0];
 			expect(tc?.isLoading).toBe(true);
 			expect(tc?.result).toBeUndefined();
-			expect(tc?.renderHint).toBe('plan');
+			expect(tc?.renderHint).toBe('tasks');
 		});
 
 		it('should parse assistant message with reasoning', () => {
