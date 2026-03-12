@@ -90,7 +90,7 @@ const formatDuration = (start: Date, end: Date | null) => {
 
 	if (days > 0) {
 		const remainingHours = hours % 24;
-		return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+		return `${days}d ${remainingHours}h`;
 	}
 	if (hours > 0) {
 		const remainingMinutes = minutes % 60;
@@ -232,6 +232,7 @@ watch(isModalOpen, async (open) => {
 											</template>
 										</N8nText>
 										<N8nTooltip
+											placement="left"
 											:content="
 												period.status === 'published'
 													? i18n.baseText('workflowHistory.publishTimeline.activeDuration', {
@@ -293,7 +294,7 @@ watch(isModalOpen, async (open) => {
 }
 
 .dotUnpublished {
-	background-color: var(--color--danger);
+	border: var(--border-width) var(--border-style) var(--color--danger);
 }
 
 .timeline {
