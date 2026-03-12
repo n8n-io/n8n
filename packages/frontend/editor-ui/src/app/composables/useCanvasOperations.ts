@@ -2763,9 +2763,7 @@ export function useCanvasOperations() {
 			return accu;
 		}, []);
 
-		const workflowDocumentId = createWorkflowDocumentId(workflowsStore.workflowId);
-		const inlineDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
-		inlineDocumentStore.addTags(tagIds);
+		workflowDocumentStore?.value?.addTags(tagIds);
 	}
 
 	async function fetchWorkflowDataFromUrl(url: string): Promise<WorkflowDataUpdate | undefined> {
@@ -2802,11 +2800,8 @@ export function useCanvasOperations() {
 
 		for (const node of nodes) {
 			const nodeSaveData = workflowHelpers.getNodeDataToSave(node);
-			const inlineDocumentStore = workflowsStore.workflowId
-				? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-				: null;
-			const pinDataForNode = inlineDocumentStore
-				? pinDataToExecutionData(inlineDocumentStore.pinData)[node.name]
+			const pinDataForNode = workflowDocumentStore?.value
+				? pinDataToExecutionData(workflowDocumentStore.value.pinData)[node.name]
 				: undefined;
 
 			if (pinDataForNode) {
@@ -2819,7 +2814,7 @@ export function useCanvasOperations() {
 			) {
 				nodeSaveData.credentials = filterAllowedCredentials(
 					nodeSaveData.credentials,
-					inlineDocumentStore?.usedCredentials ?? {},
+					workflowDocumentStore?.value?.usedCredentials ?? {},
 				);
 			}
 
@@ -2903,11 +2898,9 @@ export function useCanvasOperations() {
 			getNodesToSave(workflowDocumentStore?.value?.getNodesByIds(ids) ?? []),
 		);
 
-		const workflowDocumentId = createWorkflowDocumentId(workflowsStore.workflowId);
-		const inlineDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 		workflowData.meta = {
 			...workflowData.meta,
-			...inlineDocumentStore.meta,
+			...workflowDocumentStore?.value?.meta,
 			instanceId: rootStore.instanceId,
 		};
 
@@ -2950,12 +2943,7 @@ export function useCanvasOperations() {
 		workflowState.setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
-			if (workflowsStore.workflowId) {
-				const inlineDocumentStore = useWorkflowDocumentStore(
-					createWorkflowDocumentId(workflowsStore.workflowId),
-				);
-				inlineDocumentStore.setPinData({});
-			}
+			workflowDocumentStore?.value?.setPinData({});
 		}
 
 		if (nodeId) {
@@ -3177,10 +3165,7 @@ export function useCanvasOperations() {
 			workflowState.setWorkflowId(route.params.name);
 		}
 
-		const inlineDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-		inlineDocumentStore.addToMeta({ templateId: `${templateId}` });
+		workflowDocumentStore?.value?.addToMeta({ templateId: `${templateId}` });
 
 		canvasStore.stopLoading();
 
@@ -3226,10 +3211,7 @@ export function useCanvasOperations() {
 			workflow,
 		});
 
-		const inlineDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-		inlineDocumentStore.addToMeta({ templateId: `${templateId}` });
+		workflowDocumentStore?.value?.addToMeta({ templateId: `${templateId}` });
 
 		canvasStore.stopLoading();
 
