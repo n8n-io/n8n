@@ -3,97 +3,63 @@ import type { INodeParameters, IWorkflowSettings } from 'n8n-workflow';
 // eslint-disable-next-line import-x/extensions
 import { useAIGatewayStore } from './aiGateway.store';
 
-const LLM_CHAT_NODE_PREFIX = '@n8n/n8n-nodes-langchain.lmChat';
+const GATEWAY_CREDENTIAL_TYPE = 'n8nAiGatewayApi';
+const GATEWAY_CREDENTIAL_NAME = 'n8n AI Gateway';
+const GATEWAY_NODE_TYPE = '@n8n/n8n-nodes-langchain.lmChatN8nAiGateway';
 
 /**
  * Returns true if the node type is one of the LLM chat model nodes
  * that should be prepopulated with AI Gateway defaults.
  */
 export function isLlmChatNode(nodeType: string): boolean {
-	return nodeType.startsWith(LLM_CHAT_NODE_PREFIX);
+	return nodeType.startsWith('@n8n/n8n-nodes-langchain.lmChat');
 }
 
 /**
- * Resolve the effective model ID and provider mapping by checking
- * workflow-level category override first, then falling back to global.
- */
-function resolveEffectiveModel(
-	store: ReturnType<typeof useAIGatewayStore>,
-	workflowSettings?: IWorkflowSettings,
-) {
-	const workflowCategory = workflowSettings?.aiGatewayCategory;
-	if (workflowCategory && workflowCategory !== 'DEFAULT') {
-		const workflowModel = workflowSettings?.aiGatewayModel;
-		const modelId = workflowModel || store.resolveModelForCategory(workflowCategory);
-		return {
-			modelId,
-			mapping: store.getProviderNodeMappingForModel(modelId),
-		};
-	}
-	return {
-		modelId: store.selectedModel,
-		mapping: store.getProviderNodeMapping(),
-	};
-}
-
-/**
- * Apply AI Gateway default model and credential to a newly-created LLM node.
- * Only mutates when the node's model parameter is empty / at default.
+ * Apply AI Gateway credential to a newly-created gateway LLM node.
+ * Only mutates when the node is a gateway node and credential is not already set.
  */
 export function applyAIGatewayDefaultsToLlmNode(
 	node: INodeUi,
-	workflowSettings?: IWorkflowSettings,
+	_workflowSettings?: IWorkflowSettings,
 ): void {
+	if (node.type !== GATEWAY_NODE_TYPE) return;
+
 	const store = useAIGatewayStore();
 	store.initialize();
 
-	const { modelId, mapping } = resolveEffectiveModel(store, workflowSettings);
-
-	if (!modelId) return;
-	if (node.type !== mapping.nodeType) return;
-
-	const currentModel = node.parameters?.model as string | undefined;
-	if (currentModel && currentModel !== '') return;
-
-	node.parameters = {
-		...node.parameters,
-		model: modelId,
-	};
+	if (node.credentials?.[GATEWAY_CREDENTIAL_TYPE]) return;
 
 	node.credentials = {
 		...node.credentials,
-		[mapping.credentialType]: {
-			id: 'n8nAiGateway',
-			name: 'N8n AI Gateway',
+		[GATEWAY_CREDENTIAL_TYPE]: {
+			id: null,
+			name: GATEWAY_CREDENTIAL_NAME,
 		},
 	};
 }
 
 /**
- * Returns the node type + parameters for creating an LLM node
- * that matches the current AI Gateway selection.
+ * Returns the node type + parameters for creating the gateway LLM node.
+ * Always returns the dedicated lmChatN8nAiGateway node — no provider mapping needed.
  */
-export function getGatewayLlmNodeData(workflowSettings?: IWorkflowSettings): {
+export async function getGatewayLlmNodeData(_workflowSettings?: IWorkflowSettings): Promise<{
 	type: string;
 	parameters: INodeParameters;
 	credentials: Record<string, { id: string | null; name: string }>;
-} | null {
+} | null> {
 	const store = useAIGatewayStore();
-	store.initialize();
+	await store.initialize();
 
-	const { modelId, mapping } = resolveEffectiveModel(store, workflowSettings);
-
-	if (!modelId) return null;
+	if (!store.enabled) return null;
 
 	return {
-		type: mapping.nodeType,
-		parameters: {
-			model: modelId,
-		},
+		type: GATEWAY_NODE_TYPE,
+		parameters: {},
 		credentials: {
-			[mapping.credentialType]: {
-				id: 'n8nAiGateway',
-				name: 'N8n AI Gateway',
+			[GATEWAY_CREDENTIAL_TYPE]: {
+				id: null,
+				name: GATEWAY_CREDENTIAL_NAME,
 			},
 		},
 	};

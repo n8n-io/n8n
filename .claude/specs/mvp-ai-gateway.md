@@ -49,14 +49,21 @@ This friction kills adoption — especially for users who just want to try AI wo
               └────────────────┘
 ```
 
-### Why Not a Dedicated Node?
+### Dedicated Gateway Node (decided)
 
-We considered a dedicated "n8n AI Gateway" node but rejected it because:
+The gateway uses a **dedicated `lmChatN8nAiGateway` sub-node** that acts as a
+LangChain chat model. When the gateway is enabled and a user creates an AI
+Agent, the canvas auto-creates and connects this node — no manual wiring.
 
-1. **Doesn't work out of the box.** Users would still need to drag the node into workflows and wire it up manually. The goal is zero-config AI — existing AI nodes should just work.
-2. **Misses the credit unification opportunity.** AI Builder already has its own free credit system for generating workflows. By operating at the settings/credentials level, the AI Gateway can share a unified credit pool with AI Builder — one balance for all AI usage in n8n, whether it's building workflows or running them.
+The node has **no user-facing model selection**. It resolves the model at
+execution time from the workflow-level category override (if set) or the
+global default category. This means changing the global/workflow setting
+affects all future executions without modifying the workflow.
 
-Instead, the gateway operates at the **settings and credentials level** — it's a model source that any compatible AI node can consume transparently.
+Provider-specific nodes (OpenAI, Anthropic, Gemini) also accept the
+`n8nAiGatewayApi` credential via a hidden `useAiGateway` parameter, allowing
+power users to route specific provider nodes through the gateway. This is a
+secondary path — the dedicated node is the primary integration point.
 
 ---
 
@@ -137,16 +144,21 @@ This means even when using an "OpenAI" node, users can choose to route through n
 
 ### Scenario 1: AI Agent Node (Primary Path)
 
-The AI Agent node gets a model automatically based on settings resolution:
+The AI Agent node gets a gateway model automatically:
 
 1. User creates a workflow with an AI Agent node
-2. No credential setup needed — the node detects the global/workflow model source
-3. Model is auto-assigned based on the active category (e.g., "Balanced" → GPT-4.1-mini)
-4. User can override the model in the node's settings if needed
+2. The canvas auto-creates an **n8n AI Gateway Model** (`lmChatN8nAiGateway`)
+   sub-node and connects it to the AI Agent's `ai_languageModel` input
+3. No credential setup needed — the gateway node uses the auto-provisioned
+   `n8nAiGatewayApi` credential
+4. At execution, the node resolves the model from the workflow category
+   override or global default (e.g., "Balanced" → `openai/gpt-4.1-mini`)
+5. Changing the global default category affects all future executions without
+   modifying existing workflows
 
 ### Scenario 2: Provider-Specific Nodes (OpenAI, Gemini, etc.)
 
-When using provider-specific nodes:
+Provider-specific nodes also support the gateway credential (secondary path):
 
 1. The "Credential to connect with" dropdown shows a new option: **n8n AI Gateway**
 2. Selecting it routes requests through the gateway
@@ -221,9 +233,11 @@ The backend is implemented as an `ai-gateway` backend module at
 - **Direct execution (no proxy in MVP)**: LLM nodes call OpenRouter directly via the
   auto-provisioned credential. No local HTTP proxy sits in the execution path. A proxy
   layer can be added later when a cloud gateway materializes.
-- **Credential-based integration (no new sub-node)**: Existing LLM nodes add
-  `n8nAiGatewayApi` as an alternative credential. The credential is auto-provisioned
-  at startup with the OpenRouter API key and base URL.
+- **Dedicated gateway sub-node + credential support**: A new `lmChatN8nAiGateway`
+  sub-node is the primary integration point. It uses the auto-provisioned
+  `n8nAiGatewayApi` credential and resolves the model from settings at execution
+  time. Existing LLM nodes also accept `n8nAiGatewayApi` as an alternative
+  credential for power-user BYOK+gateway scenarios.
 - **Shared model resolution**: The category-to-model mapping and `resolveAiGatewayModel()`
   function live in `@n8n/api-types` so both the backend module and LLM nodes can import
   them. Categories are resolved at the node level before calling `ChatOpenAI`.
@@ -341,27 +355,39 @@ This MVP is built in a **separate feature branch** for exploration and validatio
 
 ## Implementation TODO
 
+Detailed frontend checklist is in [mvp-ai-gateway-frontend.md](./mvp-ai-gateway-frontend.md).
+
+### Dedicated Gateway Node
+
+- [x]  `LmChatN8nAiGateway` node at `packages/@n8n/nodes-langchain/nodes/llms/LmChatN8nAiGateway/`
+- [x]  Node registered in `packages/@n8n/nodes-langchain/package.json`
+- [x]  Node uses `n8nAiGatewayApi` credential, resolves model from category at execution time
+- [x]  Node supports workflow-level category override via workflow settings, falls back to global default
+
 ### Frontend: Settings
 
 - [x]  AI Gateway settings page at `/settings/ai-gateway` — model source selection
 - [x]  AI Gateway settings page at `/settings/ai-gateway` — category selection
 - [ ]  AI Gateway settings page at `/settings/ai-gateway` — usage overview (credits remaining, credits used, trend)
-- [x]  Global Pinia store (`aiGateway.store.ts`) with category/model state and mock OpenRouter model list
+- [x]  Global Pinia store (`aiGateway.store.ts`) with category/model state fetched from backend API
 - [x]  i18n labels for all settings page text
 - [x]  Settings sidebar entry and route registration
 - [ ]  Workflow settings override for model source / category
 
 ### Frontend: Canvas
 
-- [x]  Auto-create and connect default LLM node (matching provider) when AI Agent is created
-- [x]  Prepopulate LLM node model parameter from AI Gateway store on new node creation
-- [ ]  Prepopulate credential from AI Gateway store on new node creation (currently sets a placeholder `id: 'n8nAiGateway'` — needs to use a real credential ID once backend creates/manages the gateway credential?)
+- [x]  ~~Auto-create and connect provider-specific LLM node when AI Agent is created~~ → Replaced: auto-creates `lmChatN8nAiGateway` instead
+- [x]  Auto-create and connect `lmChatN8nAiGateway` node when AI Agent is created
+- [x]  ~~Prepopulate LLM node model parameter from AI Gateway store~~ → No longer needed: gateway node has no model param
+- [x]  Prepopulate credential from AI Gateway store on new node creation (uses backend-provisioned `n8nAiGatewayApi` credential)
 - [x]  `applyAIGatewayDefaultsToLlmNode` helper wired into `useCanvasOperations.addNode`
+- [x]  Simplify `useAIGatewayDefaults.ts`: `getGatewayLlmNodeData()` returns `lmChatN8nAiGateway` type directly
+- [x]  Simplify `aiGateway.store.ts`: remove `PROVIDER_NODE_MAP` and provider-to-node mapping logic
 
 ### Frontend: Credentials / Provider Contracts
 
 - [x]  `N8nAiGatewayApi.credentials.ts` registered in `@n8n/nodes-langchain`
-- [ ]  AI nodes (OpenAI, Anthropic, Gemini, etc.) accept `n8nAiGatewayApi` as an alternative credential in their credential definitions, so users see "n8n AI Gateway" in the "Credential to connect with" dropdown alongside native credentials and is preselected if no native credential found
+- [x]  OpenAI Chat Model, OpenAI v1/v2 nodes accept `n8nAiGatewayApi` credential via hidden `useAiGateway` parameter, transport layer routes accordingly (kept for BYOK+gateway)
 
 ### Backend
 
@@ -387,7 +413,3 @@ This MVP is built in a **separate feature branch** for exploration and validatio
 
 - [ ]  Usage metering and credit tracking (?)
 - [ ]  Unified credit pool with AI Builder (?)
-
-> **Note:** The frontend store currently uses hardcoded mock data for the
-> OpenRouter model catalog and usage credits. These will be replaced by
-> backend API calls once the proxy layer is implemented.

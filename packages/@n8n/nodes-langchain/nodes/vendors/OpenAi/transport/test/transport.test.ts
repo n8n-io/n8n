@@ -4,6 +4,7 @@ import { apiRequest } from '../index';
 
 const mockedExecutionContext = {
 	getCredentials: jest.fn(),
+	getNode: jest.fn().mockReturnValue({ credentials: {} }),
 	helpers: {
 		requestWithAuthentication: jest.fn(),
 	},
@@ -12,6 +13,7 @@ const mockedExecutionContext = {
 describe('apiRequest', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
+		mockedExecutionContext.getNode.mockReturnValue({ credentials: {} });
 	});
 
 	it('should call requestWithAuthentication with credentials URL if one is provided', async () => {

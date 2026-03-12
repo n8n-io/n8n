@@ -74,6 +74,12 @@ describe('LmChatAnthropic', () => {
 				{
 					name: 'anthropicApi',
 					required: true,
+					displayOptions: { hide: { useAiGateway: [true] } },
+				},
+				{
+					name: 'n8nAiGatewayApi',
+					required: true,
+					displayOptions: { show: { useAiGateway: [true] } },
 				},
 			]);
 		});

@@ -16,12 +16,14 @@ const selectedModel = computed(() => aiGatewayStore.selectedModel);
 const modelsForCategory = computed(() => aiGatewayStore.modelsForCurrentCategory);
 const isManualMode = computed(() => aiGatewayStore.selectedCategory === 'manual');
 const allModels = computed(() => aiGatewayStore.availableModels);
-function onCategoryChange(value: string) {
+async function onCategoryChange(value: string) {
 	aiGatewayStore.setCategory(value);
+	await aiGatewayStore.updateDefaultCategory(value);
 }
 
-function onModelChange(value: string) {
+async function onModelChange(value: string) {
 	aiGatewayStore.setModel(value);
+	await aiGatewayStore.updateDefaultCategory(aiGatewayStore.selectedCategory);
 }
 
 onMounted(() => {

@@ -43,7 +43,8 @@ Execution Engine (LLM nodes)              Frontend
                                     (@openrouter/sdk)
 ```
 
-**Execution path**: LLM nodes get the OpenRouter API key and base URL from the
+**Execution path**: The `lmChatN8nAiGateway` node (or existing LLM nodes with
+gateway credential) gets the OpenRouter API key and base URL from the
 auto-provisioned credential. LangChain's `ChatOpenAI` calls OpenRouter directly.
 Model category resolution happens at the node level using the shared
 `resolveAiGatewayModel()` function from `@n8n/api-types`. No local HTTP hop,
@@ -64,12 +65,17 @@ eliminates SSE streaming passthrough, internal auth tokens, and an entire
 controller. A proxy layer can be introduced later when a cloud gateway
 materializes — by then we'll know the actual contract it needs.
 
-### 2. Credential-based integration (no new sub-node)
+### 2. Dedicated gateway sub-node + credential support
 
-Existing LLM nodes (LmChatOpenAi, LmChatAnthropic, etc.) add `n8nAiGatewayApi`
-as an alternative credential type. When selected, the node configures `ChatOpenAI`
-with the OpenRouter base URL and API key. Same LangChain interface, different
-target.
+A new `lmChatN8nAiGateway` sub-node is the primary integration. It uses the
+auto-provisioned `n8nAiGatewayApi` credential and resolves the model category
+to a concrete OpenRouter model ID at execution time (via `resolveAiGatewayModel()`
+from `@n8n/api-types`). The node has no user-facing model selection — it reads
+the category from workflow settings or the global default.
+
+Existing LLM nodes (LmChatOpenAi, LmChatAnthropic, etc.) also accept
+`n8nAiGatewayApi` as an alternative credential type for power-user scenarios
+where a specific provider node + gateway routing is desired.
 
 ### 3. Auto-provisioned credential
 
@@ -226,14 +232,19 @@ On module init, `AiGatewayService.provisionCredential()`:
 
 ### Node Integration
 
-Existing LLM nodes add `n8nAiGatewayApi` to their `credentials` array. When the
-user selects it, the node:
+**Primary path — dedicated gateway node (`lmChatN8nAiGateway`):**
 
 1. Calls `this.getCredentials('n8nAiGatewayApi')` → receives `{ apiKey, url }`
-2. Resolves the model category using `resolveAiGatewayModel()` from `@n8n/api-types`
-3. Creates `ChatOpenAI({ openAIApiKey: apiKey, configuration: { baseURL: url }, modelName: resolvedModel })`
+2. Reads the model category from execution context (workflow settings override
+   or global default, passed as `defaultCategory` in the credential data)
+3. Resolves category using `resolveAiGatewayModel()` from `@n8n/api-types`
+4. Creates `ChatOpenAI({ apiKey, model: resolvedModel, configuration: { baseURL: url } })`
 
-This is identical to configuring ChatOpenAI for any OpenAI-compatible provider.
+**Secondary path — existing provider nodes with gateway credential:**
+
+Existing LLM nodes also accept `n8nAiGatewayApi` in their `credentials` array.
+When selected, the node configures `ChatOpenAI` with the OpenRouter base URL
+and API key. The model is set explicitly by the user in the node UI.
 
 ---
 

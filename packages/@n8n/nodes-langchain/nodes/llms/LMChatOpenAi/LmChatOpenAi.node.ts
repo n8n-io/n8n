@@ -126,7 +126,6 @@ export class LmChatOpenAi implements INodeType {
 				type: 'boolean',
 				default: false,
 				noDataExpression: true,
-				typeOptions: { hidden: true },
 			},
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{

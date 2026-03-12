@@ -1,12 +1,19 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import type {
+	AiGatewayModelCategoryResponse,
+	AiGatewaySettingsResponse,
+	AiGatewayUsageResponse,
+} from '@n8n/api-types';
 import { AI_GATEWAY_STORE } from './aiGateway.constants';
 
 export type AIGatewayCategory =
 	| 'balanced'
 	| 'cheapest'
 	| 'fastest'
-	| 'bestQuality'
+	| 'best-quality'
 	| 'reasoning'
 	| 'manual';
 
@@ -22,47 +29,9 @@ export interface CategoryDefinition {
 	defaultModelId: string;
 }
 
-/**
- * Maps model-id prefixes to the n8n LLM node type and credential name
- * used for auto-creating nodes on the canvas.
- */
-export interface ProviderNodeMapping {
-	nodeType: string;
-	credentialType: string;
-}
-
-const PROVIDER_NODE_MAP: Record<string, ProviderNodeMapping> = {
-	openai: {
-		nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-		credentialType: 'openAiApi',
-	},
-	anthropic: {
-		nodeType: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-		credentialType: 'anthropicApi',
-	},
-	google: {
-		nodeType: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-		credentialType: 'googlePalmApi',
-	},
-	deepseek: {
-		nodeType: '@n8n/n8n-nodes-langchain.lmChatDeepSeek',
-		credentialType: 'deepSeekApi',
-	},
-	mistral: {
-		nodeType: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
-		credentialType: 'mistralCloudApi',
-	},
-	xai: {
-		nodeType: '@n8n/n8n-nodes-langchain.lmChatXAiGrok',
-		credentialType: 'xAiApi',
-	},
-};
-
-/**
- * Resolve which provider a model belongs to based on its id prefix.
- * Falls back to OpenRouter for unknown providers.
- */
 function resolveProviderKey(modelId: string): string {
+	const slash = modelId.indexOf('/');
+	if (slash > 0) return modelId.slice(0, slash);
 	const id = modelId.toLowerCase();
 	if (id.startsWith('gpt-') || id.startsWith('o1-') || id.startsWith('o3-') || id.startsWith('o4-'))
 		return 'openai';
@@ -71,48 +40,21 @@ function resolveProviderKey(modelId: string): string {
 	if (id.startsWith('deepseek-')) return 'deepseek';
 	if (id.startsWith('mistral-')) return 'mistral';
 	if (id.startsWith('grok-')) return 'xai';
-	return 'openrouter';
+	return 'openai';
 }
-
-// ──────────────────────────────────────────────
-// Mock data — will be replaced by OpenRouter API
-// ──────────────────────────────────────────────
-
-const MOCK_MODELS: AIGatewayModel[] = [
-	{ id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', provider: 'openai' },
-	{ id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano', provider: 'openai' },
-	{ id: 'gpt-4.1', name: 'GPT-4.1', provider: 'openai' },
-	{ id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
-	{ id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai' },
-	{ id: 'o4-mini', name: 'o4-mini', provider: 'openai' },
-	{ id: 'claude-4-sonnet', name: 'Claude 4 Sonnet', provider: 'anthropic' },
-	{ id: 'claude-3.5-haiku', name: 'Claude 3.5 Haiku', provider: 'anthropic' },
-	{ id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
-	{ id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'google' },
-	{ id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash-Lite', provider: 'google' },
-	{ id: 'deepseek-r1', name: 'DeepSeek R1', provider: 'deepseek' },
-	{ id: 'deepseek-v3', name: 'DeepSeek V3', provider: 'deepseek' },
-];
-
-const MOCK_CATEGORIES: CategoryDefinition[] = [
-	{ id: 'balanced', label: 'Balanced', defaultModelId: 'gpt-4.1-mini' },
-	{ id: 'cheapest', label: 'Cheapest', defaultModelId: 'gpt-4.1-nano' },
-	{ id: 'fastest', label: 'Fastest', defaultModelId: 'gemini-2.0-flash' },
-	{ id: 'bestQuality', label: 'Best Quality', defaultModelId: 'claude-4-sonnet' },
-	{ id: 'reasoning', label: 'Reasoning', defaultModelId: 'o4-mini' },
-	{ id: 'manual', label: 'Manual', defaultModelId: '' },
-];
 
 export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 	const initialized = ref(false);
+	let initPromise: Promise<void> | null = null;
+	const enabled = ref(false);
 	const selectedCategory = ref<AIGatewayCategory>('balanced');
-	const selectedModel = ref<string>('gpt-4.1-mini');
+	const selectedModel = ref<string>('openai/gpt-4.1-mini');
 	const availableModels = ref<AIGatewayModel[]>([]);
 	const categories = ref<CategoryDefinition[]>([]);
+	const usage = ref<AiGatewayUsageResponse | null>(null);
 
 	const selectedProvider = computed(() => {
-		const model = availableModels.value.find((m) => m.id === selectedModel.value);
-		return model?.provider ?? resolveProviderKey(selectedModel.value);
+		return resolveProviderKey(selectedModel.value);
 	});
 
 	const modelsForCurrentCategory = computed(() => {
@@ -125,10 +67,83 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 		return defaultModel ? [defaultModel] : [];
 	});
 
-	function initialize() {
+	async function initialize() {
 		if (initialized.value) return;
-		availableModels.value = MOCK_MODELS;
-		categories.value = MOCK_CATEGORIES;
+		if (initPromise) return await initPromise;
+
+		initPromise = doInitialize();
+		return await initPromise;
+	}
+
+	async function doInitialize() {
+		try {
+			const rootStore = useRootStore();
+			const ctx = rootStore.restApiContext;
+
+			const settings = await makeRestApiRequest<AiGatewaySettingsResponse>(
+				ctx,
+				'GET',
+				'/ai-gateway/settings',
+			);
+			enabled.value = settings.enabled;
+			if (settings.defaultCategory) {
+				selectedCategory.value = settings.defaultCategory as AIGatewayCategory;
+			}
+			if (settings.defaultModel) {
+				selectedModel.value = settings.defaultModel;
+			}
+
+			const backendCategories = await makeRestApiRequest<AiGatewayModelCategoryResponse[]>(
+				ctx,
+				'GET',
+				'/ai-gateway/model-categories',
+			);
+			categories.value = [
+				...backendCategories.map((c) => ({
+					id: c.id as AIGatewayCategory,
+					label: c.label,
+					defaultModelId: c.model,
+				})),
+				{ id: 'manual' as AIGatewayCategory, label: 'Manual', defaultModelId: '' },
+			];
+
+			const cat = categories.value.find((c) => c.id === selectedCategory.value);
+			if (cat?.defaultModelId) {
+				selectedModel.value = cat.defaultModelId;
+			}
+
+			try {
+				const modelsResponse = await makeRestApiRequest<{
+					data: Array<{ id: string; name: string }>;
+				}>(ctx, 'GET', '/ai-gateway/models');
+				availableModels.value = modelsResponse.data.map((m) => ({
+					id: m.id,
+					name: m.name,
+					provider: resolveProviderKey(m.id),
+				}));
+			} catch {
+				availableModels.value = backendCategories.map((c) => ({
+					id: c.model,
+					name: `${c.label} — ${c.model}`,
+					provider: resolveProviderKey(c.model),
+				}));
+			}
+		} catch {
+			// Fallback: backend might not be running or gateway disabled
+			categories.value = [
+				{ id: 'balanced', label: 'Balanced', defaultModelId: 'openai/gpt-4.1-mini' },
+				{ id: 'cheapest', label: 'Cheapest', defaultModelId: 'openai/gpt-4.1-nano' },
+				{ id: 'fastest', label: 'Fastest', defaultModelId: 'google/gemini-2.0-flash' },
+				{
+					id: 'best-quality',
+					label: 'Best Quality',
+					defaultModelId: 'anthropic/claude-4-sonnet',
+				},
+				{ id: 'reasoning', label: 'Reasoning', defaultModelId: 'openai/o4-mini' },
+				{ id: 'manual', label: 'Manual', defaultModelId: '' },
+			];
+		}
+
 		initialized.value = true;
 	}
 
@@ -145,11 +160,6 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 		selectedModel.value = modelId;
 	}
 
-	/**
-	 * Resolve the model ID for an arbitrary category without mutating global state.
-	 * For non-manual categories returns the category's default model.
-	 * For 'manual' or unknown categories falls back to the global selectedModel.
-	 */
 	function resolveModelForCategory(categoryId: string): string {
 		const cat = categories.value.find((c) => c.id === categoryId);
 		if (cat && cat.id !== 'manual' && cat.defaultModelId) {
@@ -158,38 +168,48 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 		return selectedModel.value;
 	}
 
-	function getProviderNodeMappingForModel(modelId: string): ProviderNodeMapping {
-		const key = resolveProviderKey(modelId);
-		return (
-			PROVIDER_NODE_MAP[key] ?? {
-				nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-				credentialType: 'openRouterApi',
-			}
-		);
+	async function fetchUsage() {
+		try {
+			const rootStore = useRootStore();
+			usage.value = await makeRestApiRequest<AiGatewayUsageResponse>(
+				rootStore.restApiContext,
+				'GET',
+				'/ai-gateway/usage',
+			);
+		} catch {
+			// Gateway might not be running
+		}
 	}
 
-	/**
-	 * Returns the n8n node type and credential type to use for the
-	 * currently selected model. Used by canvas operations to auto-create
-	 * LLM nodes with the correct provider.
-	 */
-	function getProviderNodeMapping(): ProviderNodeMapping {
-		return getProviderNodeMappingForModel(selectedModel.value);
+	async function updateDefaultCategory(category: string) {
+		try {
+			const rootStore = useRootStore();
+			await makeRestApiRequest<AiGatewaySettingsResponse>(
+				rootStore.restApiContext,
+				'PUT',
+				'/ai-gateway/settings',
+				{ defaultCategory: category, defaultModel: selectedModel.value },
+			);
+		} catch {
+			// Gateway might not be running
+		}
 	}
 
 	return {
 		initialized,
+		enabled,
 		selectedCategory,
 		selectedModel,
 		selectedProvider,
 		availableModels,
 		categories,
 		modelsForCurrentCategory,
+		usage,
 		initialize,
 		setCategory,
 		setModel,
-		getProviderNodeMapping,
-		getProviderNodeMappingForModel,
 		resolveModelForCategory,
+		fetchUsage,
+		updateDefaultCategory,
 	};
 });

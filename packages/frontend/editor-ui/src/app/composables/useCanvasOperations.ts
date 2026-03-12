@@ -874,14 +874,14 @@ export function useCanvasOperations() {
 		return false;
 	}
 
-	function autoCreateGatewayLlmNode(
+	async function autoCreateGatewayLlmNode(
 		node: INodeUi,
 		nodeTypeDescription: INodeTypeDescription,
 		options: AddNodeOptions,
 	) {
 		if (!hasAiLanguageModelInput(nodeTypeDescription)) return;
 
-		const llmData = getGatewayLlmNodeData(getCurrentWorkflowSettings());
+		const llmData = await getGatewayLlmNodeData(getCurrentWorkflowSettings());
 		if (!llmData) return;
 
 		const llmTypeDescription = requireNodeTypeDescription(llmData.type);
@@ -944,7 +944,7 @@ export function useCanvasOperations() {
 		}
 
 		if (!options.isAutoAdd) {
-			autoCreateGatewayLlmNode(nodeData, nodeTypeDescription, options);
+			void autoCreateGatewayLlmNode(nodeData, nodeTypeDescription, options);
 		}
 
 		void nextTick(() => {

@@ -4074,7 +4074,7 @@
 	"settings.aiGateway.category.balanced": "Balanced",
 	"settings.aiGateway.category.cheapest": "Cheapest",
 	"settings.aiGateway.category.fastest": "Fastest",
-	"settings.aiGateway.category.bestQuality": "Best Quality",
+	"settings.aiGateway.category.best-quality": "Best Quality",
 	"settings.aiGateway.category.reasoning": "Reasoning",
 	"settings.aiGateway.category.manual": "Manual",
 	"settings.ai.description.both": "Control what n8n sends when using the AI Assistant and AI Builder",
