@@ -81,6 +81,8 @@ const filter = reactive(getDefaultFilter());
 
 type ExecutionVersion = { versionId: string; name: string | null; createdAt: string };
 const workflowVersions = ref<ExecutionVersion[]>([]);
+const isLoadingVersions = ref(false);
+const hasFetchedVersions = ref(false);
 
 const versionFilterOptions = computed(() => {
 	const options: Array<{ id: string; name: string }> = [
@@ -99,26 +101,26 @@ const versionFilterOptions = computed(() => {
 	return options;
 });
 
-watch(
-	() => props.workflowId,
-	(workflowId) => {
-		workflowVersions.value = [];
-		filter.workflowVersionId = 'all';
-		if (!workflowId) return;
-		void makeRestApiRequest<ExecutionVersion[]>(
-			rootStore.restApiContext,
-			'GET',
-			`/executions/versions/${workflowId}`,
-		)
-			.then((versions) => {
-				workflowVersions.value = versions;
-			})
-			.catch(() => {
-				// silently ignore — versions may not be available
-			});
-	},
-	{ immediate: true },
-);
+function fetchVersions() {
+	const workflowId = props.workflowId;
+	if (!workflowId || hasFetchedVersions.value || isLoadingVersions.value) return;
+	isLoadingVersions.value = true;
+	void makeRestApiRequest<ExecutionVersion[]>(
+		rootStore.restApiContext,
+		'GET',
+		`/executions/versions/${workflowId}`,
+	)
+		.then((versions) => {
+			workflowVersions.value = versions;
+		})
+		.catch(() => {
+			// silently ignore — versions may not be available
+		})
+		.finally(() => {
+			isLoadingVersions.value = false;
+			hasFetchedVersions.value = true;
+		});
+}
 
 // Deep watcher to emit filterChanged events with debouncing for date fields only
 watch(
@@ -226,6 +228,7 @@ onBeforeMount(() => {
 		width="440px"
 		:content-class="$style['popover-content']"
 		show-arrow
+		@update:open="$event && fetchVersions()"
 	>
 		<template #trigger>
 			<N8nButton
@@ -342,7 +345,7 @@ onBeforeMount(() => {
 						@update:model-value="onAnnotationTagsChange"
 					/>
 				</div>
-				<div v-if="props.workflowId && versionFilterOptions.length > 1" :class="$style.group">
+				<div v-if="props.workflowId" :class="$style.group">
 					<N8nTooltip placement="right">
 						<template #content>
 							{{ locale.baseText('executionsFilter.version.hint') }}
@@ -352,21 +355,33 @@ onBeforeMount(() => {
 							<N8nIcon :class="$style.tooltipIcon" icon="circle-help" size="medium" />
 						</span>
 					</N8nTooltip>
-					<N8nSelect
-						id="execution-filter-version"
-						v-model="filter.workflowVersionId"
-						:placeholder="locale.baseText('executionsFilter.version.select')"
-						filterable
-						data-test-id="executions-filter-version-select"
-						:teleported="teleported"
+					<N8nTooltip
+						:disabled="isLoadingVersions || versionFilterOptions.length > 1"
+						placement="top"
 					>
-						<N8nOption
-							v-for="(item, idx) in versionFilterOptions"
-							:key="idx"
-							:label="item.name"
-							:value="item.id"
-						/>
-					</N8nSelect>
+						<template #content>
+							{{ locale.baseText('executionsFilter.version.noVersions') }}
+						</template>
+						<N8nSelect
+							id="execution-filter-version"
+							v-model="filter.workflowVersionId"
+							:placeholder="locale.baseText('executionsFilter.version.select')"
+							filterable
+							:disabled="isLoadingVersions || versionFilterOptions.length <= 1"
+							data-test-id="executions-filter-version-select"
+							:teleported="teleported"
+						>
+							<template v-if="isLoadingVersions" #prefix>
+								<N8nIcon icon="spinner" spin />
+							</template>
+							<N8nOption
+								v-for="(item, idx) in versionFilterOptions"
+								:key="idx"
+								:label="item.name"
+								:value="item.id"
+							/>
+						</N8nSelect>
+					</N8nTooltip>
 				</div>
 				<div v-if="isAnnotationFiltersEnabled" :class="$style.group">
 					<label for="execution-filter-annotation-vote">{{

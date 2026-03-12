@@ -1403,6 +1403,7 @@
 	"executionsFilter.version.all": "Any version",
 	"executionsFilter.version.select": "Select Version",
 	"executionsFilter.version.hint": "Filter executions by the workflow version they ran on.",
+	"executionsFilter.version.noVersions": "No version data available for this workflow's executions.",
 	"executionsFilter.selectStatus": "Select Status",
 	"executionsFilter.selectWorkflow": "Select Workflow",
 	"executionsFilter.start": "Execution start",
