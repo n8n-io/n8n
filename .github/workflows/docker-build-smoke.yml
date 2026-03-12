@@ -9,6 +9,8 @@ name: 'Docker Build Smoke Test'
 #             build n8n + runners images (no Docker cache)
 
 on:
+  schedule:
+    - cron: '0 3 * * *' # 3:00 AM UTC, after the nightly Docker build at midnight
   pull_request:
     paths:
       - 'docker/images/n8n/**'
@@ -46,3 +48,17 @@ jobs:
           sleep 5
           docker logs n8n-smoke-test 2>&1 | tail -20
           docker stop n8n-smoke-test
+
+  notify-on-failure:
+    name: Notify on nightly smoke test failure
+    runs-on: ubuntu-slim
+    needs: [docker-smoke-test]
+    if: needs.docker-smoke-test.result == 'failure' && github.event_name == 'schedule'
+    steps:
+      - uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.QBOT_SLACK_TOKEN }}
+          payload: |
+            channel: C0A9RLY8Y20
+            text: "🚨 Nightly Docker smoke test failed (no-cache build) - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -31,7 +31,6 @@ import {
 	NodeApiError,
 	NodeOperationError,
 	NodeSslError,
-	UserError,
 	isObjectEmpty,
 	ExecutionBaseError,
 	jsonParse,
@@ -915,8 +914,8 @@ async function validateUrlSsrf(url: string | undefined, ssrfBridge?: SsrfBridge)
 	if (!parsed) return;
 
 	const result = await ssrfBridge.validateUrl(parsed);
-	if (!result.allowed) {
-		throw new UserError(`SSRF protection blocked request to ${url}: ${result.reason}`);
+	if (!result.ok) {
+		throw result.error;
 	}
 }
 

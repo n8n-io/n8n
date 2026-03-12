@@ -40,6 +40,7 @@ import BinaryDataDisplay from './BinaryDataDisplay.vue';
 import NodeErrorView from './error/NodeErrorView.vue';
 import JsonEditor from '@/features/shared/editors/components/JsonEditor/JsonEditor.vue';
 
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import RunDataPinButton from './RunDataPinButton.vue';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -224,6 +225,7 @@ const search = ref('');
 
 const dataContainerRef = ref<HTMLDivElement>();
 
+const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
@@ -890,7 +892,7 @@ function onItemHover(itemIndex: number | null) {
 
 function onClickDataPinningDocsLink() {
 	telemetry.track('User clicked ndv link', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		push_ref: props.pushRef,
 		node_type: activeNode.value?.type,
 		pane: 'output',
@@ -966,7 +968,7 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		is_output_present: hasNodeRun.value || pinnedData.hasData.value,
 		view: !hasNodeRun.value && !pinnedData.hasData.value ? 'undefined' : props.displayMode,
 		is_data_pinned: pinnedData.hasData.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		node_id: activeNode.value?.id,
 	});
 }
@@ -1043,7 +1045,7 @@ async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSo
 			push_ref: props.pushRef,
 			run_index: props.runIndex,
 			view: !hasNodeRun.value && !pinnedData.hasData.value ? 'none' : props.displayMode,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			node_id: activeNode.value?.id,
 		};
 
@@ -1103,7 +1105,7 @@ function showTooMuchData() {
 	userEnabledShowData.value = true;
 	telemetry.track('User clicked ndv button', {
 		node_type: activeNode.value?.type,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		push_ref: props.pushRef,
 		pane: props.paneType,
 		type: 'showTooMuchData',
@@ -1130,7 +1132,7 @@ function onCurrentPageChange(value: number) {
 	currentPage.value = value;
 	telemetry.track('User changed ndv page', {
 		node_type: activeNode.value?.type,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		push_ref: props.pushRef,
 		pane: props.paneType,
 		page_selected: currentPage.value,
@@ -1153,7 +1155,7 @@ function onPageSizeChange(newPageSize: number) {
 
 	telemetry.track('User changed ndv page size', {
 		node_type: activeNode.value?.type,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		push_ref: props.pushRef,
 		pane: props.paneType,
 		page_selected: currentPage.value,
@@ -1186,7 +1188,7 @@ function onDisplayModeChange(newDisplayMode: IRunDataDisplayMode) {
 			previous_view: previous,
 			new_view: newDisplayMode,
 			node_type: activeNode.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			push_ref: props.pushRef,
 			pane: props.paneType,
 		});

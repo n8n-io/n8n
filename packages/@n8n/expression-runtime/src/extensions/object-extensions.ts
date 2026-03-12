@@ -84,8 +84,19 @@ export function compact(value: object): object {
 	return newObj;
 }
 
+// DIVERGENCE from packages/workflow/src/extensions/object-extensions.ts:
+// The original uses URLSearchParams which is a Web API unavailable inside the
+// V8 isolate. encodeURIComponent is an ECMAScript built-in available in all
+// V8 contexts and produces the same output for the supported input type.
 export function urlEncode(value: object) {
-	return new URLSearchParams(value as Record<string, string>).toString();
+	return Object.entries(value)
+		.map(
+			([k, v]) =>
+				encodeURIComponent(k).replace(/%20/g, '+') +
+				'=' +
+				encodeURIComponent(String(v)).replace(/%20/g, '+'),
+		)
+		.join('&');
 }
 
 export function toJsonString(value: object) {

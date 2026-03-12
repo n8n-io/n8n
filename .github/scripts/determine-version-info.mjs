@@ -56,7 +56,10 @@ export function determineTrack(packageVersion) {
 		tag: /** @type {import('./github-helpers.mjs').ReleaseVersion} */ (`n8n@${packageVersion}`),
 	});
 
+	const previousVersion = trackToReleaseMap[track]?.version;
+
 	const output = {
+		previous_version: previousVersion,
 		version: packageVersion,
 		track,
 		bump,
@@ -67,7 +70,7 @@ export function determineTrack(packageVersion) {
 
 	writeGithubOutput(output);
 	console.log(
-		`Determined track info: track=${track}, version=${packageVersion}, new_stable_version=${newStable}, release_type=${releaseType}, rc_branch=${rc_branch}`,
+		`Determined track info: track=${track}, version=${packageVersion}, previous_version=${previousVersion}, new_stable_version=${newStable}, release_type=${releaseType}, rc_branch=${rc_branch}`,
 	);
 
 	return output;
