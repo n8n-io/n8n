@@ -1,3 +1,5 @@
+import { IANAZone, Settings } from 'luxon';
+
 import { extend, extendOptional } from '../extensions/extend';
 import { extendedFunctions } from '../extensions/function-extensions';
 
@@ -22,7 +24,12 @@ import { createDeepLazyProxy } from './lazy-proxy';
  *
  * Called from bridge: context.evalSync('resetDataProxies()')
  */
-export function resetDataProxies(): void {
+export function resetDataProxies(timezone?: string): void {
+	if (timezone && !IANAZone.isValidZone(timezone)) {
+		throw new Error(`Invalid timezone: "${timezone}"`);
+	}
+	Settings.defaultZone = timezone ?? 'system';
+
 	// Clear existing __data object
 	globalThis.__data = {};
 
