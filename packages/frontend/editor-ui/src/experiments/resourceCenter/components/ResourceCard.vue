@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { ResourceItem } from '../data/resourceCenterData';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -13,11 +14,23 @@ defineEmits<{
 
 const i18n = useI18n();
 
-const badgeConfig = {
-	template: { label: 'Template', icon: undefined, colorClass: 'badgeTemplate' },
-	video: { label: 'Video', icon: 'play', colorClass: 'badgeVideo' },
-	'ready-to-run': { label: 'Ready to Run', icon: 'bolt', colorClass: 'badgeReadyToRun' },
-} as const;
+const badgeConfig = computed(() => ({
+	template: {
+		label: i18n.baseText('experiments.resourceCenter.badge.template'),
+		icon: undefined,
+		colorClass: 'badgeTemplate',
+	},
+	video: {
+		label: i18n.baseText('experiments.resourceCenter.badge.video'),
+		icon: 'play',
+		colorClass: 'badgeVideo',
+	},
+	'ready-to-run': {
+		label: i18n.baseText('experiments.resourceCenter.badge.readyToRun'),
+		icon: 'bolt',
+		colorClass: 'badgeReadyToRun',
+	},
+}));
 </script>
 
 <template>
