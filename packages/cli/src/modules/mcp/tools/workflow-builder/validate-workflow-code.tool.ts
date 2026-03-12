@@ -22,6 +22,7 @@ const outputSchema = {
 	warnings: z
 		.array(
 			z.object({
+				code: z.string().describe('The warning code identifying the type of warning'),
 				message: z.string().describe('The warning message'),
 				nodeName: z.string().optional().describe('The node that triggered the warning'),
 				parameterPath: z
@@ -87,11 +88,7 @@ export const createValidateWorkflowCodeTool = (
 			};
 
 			if (result.warnings.length > 0) {
-				response.warnings = result.warnings.map((w) => ({
-					message: w.message,
-					nodeName: w.nodeName,
-					parameterPath: w.parameterPath,
-				}));
+				response.warnings = result.warnings;
 			}
 
 			return {

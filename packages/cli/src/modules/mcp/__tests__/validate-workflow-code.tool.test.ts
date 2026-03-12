@@ -100,13 +100,13 @@ describe('validate-workflow-code MCP tool', () => {
 			expect(response.valid).toBe(true);
 			expect(response.warnings).toEqual([
 				{
+					code: 'deprecated',
 					message: 'Node X is deprecated',
 					nodeName: 'HTTP Request',
-					parameterPath: undefined,
 				},
 				{
+					code: 'no-target',
 					message: 'Connection Y has no target',
-					nodeName: undefined,
 					parameterPath: 'options.retry',
 				},
 			]);
