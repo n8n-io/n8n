@@ -58,17 +58,33 @@ export class WorkflowGraph {
 		return [...this.data.edges];
 	}
 
-	getContinuationStepId(parentStepId: string, attempt: number): string {
-		return sha256(`${parentStepId}__continuation__${attempt}`);
-	}
+	/**
+	 * Get data-producing predecessors for a step, resolving through sleep nodes.
+	 * Sleep nodes don't produce data — they're transparent. If a predecessor is
+	 * a sleep node, trace back to its predecessors recursively until we reach
+	 * data-producing nodes (steps, triggers, etc.).
+	 */
+	getDataPredecessors(stepId: string): GraphNodeData[] {
+		const result: GraphNodeData[] = [];
+		const visited = new Set<string>();
 
-	getContinuationFunctionRef(parentStepId: string): string | undefined {
-		const parentNode = this.getNode(parentStepId);
-		return parentNode?.config?.continuationRef;
-	}
+		const resolve = (ids: string[]) => {
+			for (const id of ids) {
+				if (visited.has(id)) continue;
+				visited.add(id);
+				const node = this.getNode(id);
+				if (!node) continue;
+				if (node.type === 'sleep') {
+					// Trace back through the sleep node
+					resolve(this.getPredecessorIds(id));
+				} else {
+					result.push(node);
+				}
+			}
+		};
 
-	isContinuationStep(stepId: string): boolean {
-		return !this.data.nodes.some((n) => n.id === stepId);
+		resolve(this.getPredecessorIds(stepId));
+		return result;
 	}
 
 	getFanOutChildStepId(parentStepId: string, itemIndex: number): string {

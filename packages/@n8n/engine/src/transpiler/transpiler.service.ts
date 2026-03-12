@@ -86,6 +86,26 @@ interface ConditionalInfo {
 	conditionVariableName?: string;
 }
 
+interface SleepDefinition {
+	/** Deterministic ID derived from position */
+	id: string;
+	/** Display name for the sleep node */
+	name: string;
+	/** Sleep duration in milliseconds (for ctx.sleep) */
+	sleepMs?: number;
+	/** Raw expression text for waitUntil (for ctx.waitUntil) */
+	waitUntilExpr?: string;
+	/** Position in source for ordering */
+	sourcePos: number;
+	/** The CallExpression node for the ctx.sleep() call */
+	callNode: CallExpression;
+}
+
+/** Union of step and sleep calls for sequential ordering */
+type OrchestratorCall =
+	| { kind: 'step'; step: StepDefinition; sourcePos: number }
+	| { kind: 'sleep'; sleep: SleepDefinition; sourcePos: number };
+
 interface HelperFunction {
 	name: string;
 	text: string;
@@ -158,8 +178,9 @@ export class TranspilerService {
 			return { code: '', graph: { nodes: [], edges: [] }, sourceMap: null, errors, warnings };
 		}
 
-		// Step 1: Find all ctx.step() calls
+		// Step 1: Find all ctx.step() and ctx.sleep() calls
 		const steps = this.findStepCalls(runMethod);
+		const sleeps = this.findSleepCalls(runMethod);
 
 		if (steps.length === 0) {
 			errors.push({
@@ -211,13 +232,16 @@ export class TranspilerService {
 		// Step 4: Find helper functions
 		const helpers = this.findHelperFunctions(sourceFile, steps);
 
-		// Step 5: Build the graph
-		const graph = this.buildGraph(steps);
+		// Step 5: Build ordered list of orchestrator calls (steps + sleeps)
+		const orchestratorCalls = this.buildOrchestratorCallOrder(steps, sleeps);
 
-		// Step 6: Generate compiled code
+		// Step 6: Build the graph (now includes sleep nodes)
+		const graph = this.buildGraph(steps, sleeps, orchestratorCalls);
+
+		// Step 7: Generate compiled code (only for step functions, not sleeps)
 		const rawCode = this.generateCode(steps, helpers);
 
-		// Step 7: Compile with esbuild
+		// Step 8: Compile with esbuild
 		const { code, sourceMap } = this.compileWithEsbuild(rawCode);
 
 		return { code, graph, sourceMap, errors, warnings };
@@ -336,6 +360,62 @@ export class TranspilerService {
 		}
 
 		return steps;
+	}
+
+	private findSleepCalls(runMethod: Node): SleepDefinition[] {
+		const sleeps: SleepDefinition[] = [];
+		const callExpressions = runMethod.getDescendantsOfKind(SyntaxKind.CallExpression);
+
+		let sleepIndex = 0;
+		for (const call of callExpressions) {
+			const sleepType = this.getCtxSleepType(call);
+			if (!sleepType) continue;
+
+			const args = call.getArguments();
+			if (args.length < 1) continue;
+
+			const name = `sleep-${sleepIndex}`;
+			const id = sha256(`__sleep__${sleepIndex}`);
+
+			if (sleepType === 'sleep') {
+				const durationArg = args[0];
+				if (!durationArg.isKind(SyntaxKind.NumericLiteral)) continue;
+				const sleepMs = parseInt(durationArg.getText(), 10);
+
+				sleeps.push({
+					id,
+					name,
+					sleepMs,
+					sourcePos: call.getStart(),
+					callNode: call,
+				});
+			} else {
+				// waitUntil — store the expression text for runtime evaluation
+				sleeps.push({
+					id,
+					name,
+					waitUntilExpr: args[0].getText(),
+					sourcePos: call.getStart(),
+					callNode: call,
+				});
+			}
+
+			sleepIndex++;
+		}
+
+		return sleeps;
+	}
+
+	/** Returns 'sleep' | 'waitUntil' | undefined */
+	private getCtxSleepType(call: CallExpression): 'sleep' | 'waitUntil' | undefined {
+		const expr = call.getExpression();
+		if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+			const name = expr.getName();
+			if ((name === 'sleep' || name === 'waitUntil') && expr.getExpression().getText() === 'ctx') {
+				return name;
+			}
+		}
+		return undefined;
 	}
 
 	private extractStringProperty(obj: Node, propName: string): string | undefined {
@@ -714,10 +794,35 @@ export class TranspilerService {
 	}
 
 	// -----------------------------------------------------------------------
+	// Orchestrator call ordering
+	// -----------------------------------------------------------------------
+
+	private buildOrchestratorCallOrder(
+		steps: StepDefinition[],
+		sleeps: SleepDefinition[],
+	): OrchestratorCall[] {
+		const calls: OrchestratorCall[] = [];
+
+		for (const step of steps) {
+			calls.push({ kind: 'step', step, sourcePos: step.callNode.getStart() });
+		}
+		for (const sleep of sleeps) {
+			calls.push({ kind: 'sleep', sleep, sourcePos: sleep.sourcePos });
+		}
+
+		calls.sort((a, b) => a.sourcePos - b.sourcePos);
+		return calls;
+	}
+
+	// -----------------------------------------------------------------------
 	// Graph building
 	// -----------------------------------------------------------------------
 
-	private buildGraph(steps: StepDefinition[]): WorkflowGraphData {
+	private buildGraph(
+		steps: StepDefinition[],
+		sleeps: SleepDefinition[],
+		orchestratorCalls: OrchestratorCall[],
+	): WorkflowGraphData {
 		const nodes: GraphNodeData[] = [];
 		const edges: GraphEdgeData[] = [];
 
@@ -730,6 +835,7 @@ export class TranspilerService {
 			config: { name: 'Manual Trigger' },
 		});
 
+		// Add step nodes
 		for (const step of steps) {
 			const config: GraphNodeData['config'] = { name: step.name };
 
@@ -766,29 +872,179 @@ export class TranspilerService {
 			});
 		}
 
-		// Build edges from dependencies
+		// Add sleep nodes
+		for (const sleep of sleeps) {
+			nodes.push({
+				id: sleep.id,
+				name: sleep.name,
+				type: 'sleep',
+				stepFunctionRef: '',
+				config: {
+					name: sleep.name,
+					stepType: 'sleep',
+					...(sleep.sleepMs != null ? { sleepMs: sleep.sleepMs } : {}),
+					...(sleep.waitUntilExpr ? { waitUntilExpr: sleep.waitUntilExpr } : {}),
+				},
+			});
+		}
+
+		// Build edges from dependencies, inserting sleep nodes in between
+		// when a sleep appears between two steps in source order.
+		//
+		// Strategy: build a map from each step/trigger ID to the sleep(s)
+		// that immediately follow it in source order. Then when creating
+		// an edge from A → B, if there's a sleep between them, route
+		// through it: A → sleep → B.
+		//
+		// Special case: if a step has no data dependencies but there's a
+		// sleep between it and the previous step in source order, create
+		// an ordering edge through the sleep chain. This ensures sleep
+		// nodes are never orphaned.
+		const sleepAfterNode = this.buildSleepAfterMap(orchestratorCalls);
+		const precedingStepInSource = this.buildPrecedingStepMap(orchestratorCalls);
+		// Track sleep chain edges already added to avoid duplicates when
+		// multiple steps depend on the same source with intervening sleeps.
+		const addedSleepEdges = new Set<string>();
+
 		for (const step of steps) {
 			if (step.dependencies.size === 0) {
-				// No dependencies - connect from trigger
+				// No data dependencies — connect from trigger (possibly via sleep)
 				const conditionExpr = this.getConditionExpression(step);
-				edges.push({
-					from: 'trigger',
-					to: step.id,
-					...(conditionExpr ? { condition: conditionExpr } : {}),
-				});
+				const interveningSleeps = sleepAfterNode.get('trigger') ?? [];
+
+				// Check if there's a sleep between this step and its source-order
+				// predecessor. If so, create an ordering edge through it instead
+				// of connecting directly to the trigger.
+				const prevStepId = precedingStepInSource.get(step.id);
+				if (prevStepId) {
+					const prevSleeps = sleepAfterNode.get(prevStepId) ?? [];
+					if (prevSleeps.length > 0) {
+						this.addEdgesWithSleeps(
+							edges,
+							prevStepId,
+							step.id,
+							prevSleeps,
+							conditionExpr,
+							addedSleepEdges,
+						);
+						continue;
+					}
+				}
+
+				this.addEdgesWithSleeps(
+					edges,
+					'trigger',
+					step.id,
+					interveningSleeps,
+					conditionExpr,
+					addedSleepEdges,
+				);
 			} else {
 				for (const [, sourceStepId] of step.dependencies) {
 					const conditionExpr = this.getConditionExpression(step);
-					edges.push({
-						from: sourceStepId,
-						to: step.id,
-						...(conditionExpr ? { condition: conditionExpr } : {}),
-					});
+					const interveningSleeps = sleepAfterNode.get(sourceStepId) ?? [];
+					this.addEdgesWithSleeps(
+						edges,
+						sourceStepId,
+						step.id,
+						interveningSleeps,
+						conditionExpr,
+						addedSleepEdges,
+					);
 				}
 			}
 		}
 
 		return { nodes, edges };
+	}
+
+	/**
+	 * Build a map: stepId → the immediately preceding step ID in source order.
+	 * For example, [step-A, sleep-0, step-B] → { step-B.id → step-A.id }.
+	 * This is used to create ordering edges through sleep nodes when there's
+	 * no data dependency between adjacent steps.
+	 */
+	private buildPrecedingStepMap(calls: OrchestratorCall[]): Map<string, string> {
+		const map = new Map<string, string>();
+		let lastStepId: string | undefined;
+
+		for (const call of calls) {
+			if (call.kind === 'step') {
+				if (lastStepId) {
+					map.set(call.step.id, lastStepId);
+				}
+				lastStepId = call.step.id;
+			}
+		}
+
+		return map;
+	}
+
+	/**
+	 * Build a map: nodeId → sleeps that immediately follow it in source order.
+	 * For example, if the orchestrator calls are [step-A, sleep-0, step-B],
+	 * then sleepAfterNode.get(step-A.id) = [sleep-0].
+	 */
+	private buildSleepAfterMap(calls: OrchestratorCall[]): Map<string, SleepDefinition[]> {
+		const map = new Map<string, SleepDefinition[]>();
+
+		// Walk through calls in source order. Track the last step/trigger seen.
+		let lastStepId = 'trigger';
+
+		for (const call of calls) {
+			if (call.kind === 'step') {
+				lastStepId = call.step.id;
+			} else {
+				const existing = map.get(lastStepId) ?? [];
+				existing.push(call.sleep);
+				map.set(lastStepId, existing);
+			}
+		}
+
+		return map;
+	}
+
+	/**
+	 * Add edges from `fromId` to `toId`, routing through any intervening
+	 * sleep nodes in order. E.g., if sleeps = [s1, s2]:
+	 *   fromId → s1 → s2 → toId
+	 */
+	private addEdgesWithSleeps(
+		edges: GraphEdgeData[],
+		fromId: string,
+		toId: string,
+		sleeps: SleepDefinition[],
+		conditionExpr: string | undefined,
+		addedSleepEdges?: Set<string>,
+	): void {
+		if (sleeps.length === 0) {
+			edges.push({
+				from: fromId,
+				to: toId,
+				...(conditionExpr ? { condition: conditionExpr } : {}),
+			});
+			return;
+		}
+
+		// Chain: from → sleep[0] → sleep[1] → ... → to
+		// The condition (if any) applies to the first edge only.
+		// Sleep chain edges (from→sleep, sleep→sleep) are deduplicated
+		// because multiple dependents of the same source share the chain.
+		let current = fromId;
+		for (let i = 0; i < sleeps.length; i++) {
+			const edgeKey = `${current}→${sleeps[i].id}`;
+			if (!addedSleepEdges || !addedSleepEdges.has(edgeKey)) {
+				addedSleepEdges?.add(edgeKey);
+				edges.push({
+					from: current,
+					to: sleeps[i].id,
+					...(i === 0 && conditionExpr ? { condition: conditionExpr } : {}),
+				});
+			}
+			current = sleeps[i].id;
+		}
+		// The final sleep→target edge is always unique per target step
+		edges.push({ from: current, to: toId });
 	}
 
 	private getConditionExpression(step: StepDefinition): string | undefined {

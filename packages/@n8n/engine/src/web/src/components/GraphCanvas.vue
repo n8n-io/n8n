@@ -307,6 +307,7 @@ function typeColor(type: string): string {
 		step: '#3b82f6',
 		condition: '#f5a623',
 		approval: '#8b5cf6',
+		sleep: '#4a9eff',
 		end: '#6b7280',
 	};
 	return colors[type] ?? '#6b7280';

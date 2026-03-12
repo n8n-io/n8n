@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-	defineWorkflow,
-	webhook,
-	SleepRequestedError,
-	WaitUntilRequestedError,
-	NonRetriableError,
-} from '../index';
+import { defineWorkflow, webhook, NonRetriableError } from '../index';
 import type { WorkflowDefinition, ExecutionContext } from '../types';
 
 describe('defineWorkflow', () => {
@@ -77,59 +71,6 @@ describe('webhook', () => {
 				responseMode: 'allData',
 			},
 		});
-	});
-});
-
-describe('SleepRequestedError', () => {
-	it('should carry sleepMs', () => {
-		const error = new SleepRequestedError(5000);
-
-		expect(error).toBeInstanceOf(Error);
-		expect(error.name).toBe('SleepRequestedError');
-		expect(error.sleepMs).toBe(5000);
-		expect(error.message).toBe('Sleep requested: 5000ms');
-	});
-
-	it('should carry intermediateState', () => {
-		const state = { progress: 50, data: [1, 2, 3] };
-		const error = new SleepRequestedError(1000, state);
-
-		expect(error.sleepMs).toBe(1000);
-		expect(error.intermediateState).toEqual(state);
-	});
-
-	it('should have undefined intermediateState when not provided', () => {
-		const error = new SleepRequestedError(1000);
-
-		expect(error.intermediateState).toBeUndefined();
-	});
-});
-
-describe('WaitUntilRequestedError', () => {
-	it('should carry date', () => {
-		const date = new Date('2026-01-01T00:00:00.000Z');
-		const error = new WaitUntilRequestedError(date);
-
-		expect(error).toBeInstanceOf(Error);
-		expect(error.name).toBe('WaitUntilRequestedError');
-		expect(error.date).toBe(date);
-		expect(error.message).toBe('WaitUntil requested: 2026-01-01T00:00:00.000Z');
-	});
-
-	it('should carry intermediateState', () => {
-		const date = new Date('2026-06-15T12:00:00.000Z');
-		const state = { step: 3, partial: 'result' };
-		const error = new WaitUntilRequestedError(date, state);
-
-		expect(error.date).toBe(date);
-		expect(error.intermediateState).toEqual(state);
-	});
-
-	it('should have undefined intermediateState when not provided', () => {
-		const date = new Date();
-		const error = new WaitUntilRequestedError(date);
-
-		expect(error.intermediateState).toBeUndefined();
 	});
 });
 

@@ -73,26 +73,29 @@ export class StepPlannerService {
 		stepId: string,
 		graph: WorkflowGraph,
 	): Promise<Record<string, unknown>> {
-		const predecessorIds = graph.getPredecessorIds(stepId);
+		// Collect outputs from data-producing predecessors only.
+		// Sleep nodes are transparent — getDataPredecessors traces through
+		// them to find the actual data-producing nodes.
+		const dataPredecessors = graph.getDataPredecessors(stepId);
 
-		if (predecessorIds.length === 0) {
+		if (dataPredecessors.length === 0) {
 			return {};
 		}
 
-		// Query predecessor outputs from workflow_step_execution
-		const predecessorSteps = await this.dataSource
+		const completedSteps = await this.dataSource
 			.getRepository(WorkflowStepExecution)
 			.createQueryBuilder('wse')
 			.select(['wse.stepId', 'wse.output'])
 			.where('wse.executionId = :executionId', { executionId })
-			.andWhere('wse.stepId IN (:...stepIds)', { stepIds: predecessorIds })
+			.andWhere('wse.stepId IN (:...stepIds)', {
+				stepIds: dataPredecessors.map((p) => p.id),
+			})
 			.andWhere('wse.status = :status', { status: StepStatus.Completed })
 			.getMany();
 
-		// Return { predecessorStepId: predecessorOutput, ... }
 		const input: Record<string, unknown> = {};
-		for (const predStep of predecessorSteps) {
-			input[predStep.stepId] = predStep.output;
+		for (const step of completedSteps) {
+			input[step.stepId] = step.output;
 		}
 		return input;
 	}

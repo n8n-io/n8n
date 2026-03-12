@@ -538,4 +538,313 @@ export default defineWorkflow({
 			expect(node?.config.description).toBe('A styled step');
 		});
 	});
+
+	// -----------------------------------------------------------------------
+	// 10. Sleep — ctx.sleep() between steps
+	// -----------------------------------------------------------------------
+
+	describe('Sleep — ctx.sleep() between steps', () => {
+		const source = `
+import { defineWorkflow } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'SleepBetweenSteps',
+	async run(ctx) {
+		const data = await ctx.step({ name: 'fetch' }, async () => {
+			return { value: 42 };
+		});
+
+		await ctx.sleep(5000);
+
+		const result = await ctx.step({ name: 'process' }, async () => {
+			return { doubled: data.value * 2 };
+		});
+		return result;
+	},
+});
+`;
+
+		it('compiles without errors', () => {
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
+		});
+
+		it('graph has a sleep node', () => {
+			const result = transpiler.compile(source);
+			const sleepNodes = result.graph.nodes.filter((n) => n.type === 'sleep');
+			expect(sleepNodes).toHaveLength(1);
+		});
+
+		it('sleep node has correct sleepMs config', () => {
+			const result = transpiler.compile(source);
+			const sleepNode = result.graph.nodes.find((n) => n.type === 'sleep');
+			expect(sleepNode?.config.sleepMs).toBe(5000);
+			expect(sleepNode?.config.stepType).toBe('sleep');
+		});
+
+		it('sleep node has no step function ref', () => {
+			const result = transpiler.compile(source);
+			const sleepNode = result.graph.nodes.find((n) => n.type === 'sleep');
+			expect(sleepNode?.stepFunctionRef).toBe('');
+		});
+
+		it('edges route through sleep: fetch → sleep → process', () => {
+			const result = transpiler.compile(source);
+			const fetchId = sha256('fetch');
+			const processId = sha256('process');
+			const sleepNode = result.graph.nodes.find((n) => n.type === 'sleep');
+			expect(sleepNode).toBeDefined();
+
+			// fetch → sleep
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: fetchId, to: sleepNode!.id }),
+			);
+			// sleep → process
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: sleepNode!.id, to: processId }),
+			);
+			// No direct fetch → process edge
+			const directEdge = result.graph.edges.find((e) => e.from === fetchId && e.to === processId);
+			expect(directEdge).toBeUndefined();
+		});
+
+		it('compiled code does NOT contain a sleep step function', () => {
+			const result = transpiler.compile(source);
+			const sleepNode = result.graph.nodes.find((n) => n.type === 'sleep');
+			expect(result.code).not.toContain(`exports.step_${sleepNode!.id}`);
+		});
+
+		it('still has trigger → fetch edge', () => {
+			const result = transpiler.compile(source);
+			const fetchId = sha256('fetch');
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: 'trigger', to: fetchId }),
+			);
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// 11. Sleep at start — ctx.sleep() before any steps
+	// -----------------------------------------------------------------------
+
+	describe('Sleep at start — before first step', () => {
+		const source = `
+import { defineWorkflow } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'SleepAtStart',
+	async run(ctx) {
+		await ctx.sleep(1000);
+		const result = await ctx.step({ name: 'process' }, async () => {
+			return { ok: true };
+		});
+		return result;
+	},
+});
+`;
+
+		it('compiles without errors', () => {
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
+		});
+
+		it('edges route: trigger → sleep → process', () => {
+			const result = transpiler.compile(source);
+			const processId = sha256('process');
+			const sleepNode = result.graph.nodes.find((n) => n.type === 'sleep');
+			expect(sleepNode).toBeDefined();
+
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: 'trigger', to: sleepNode!.id }),
+			);
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: sleepNode!.id, to: processId }),
+			);
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// 12. Multiple sleeps in sequence
+	// -----------------------------------------------------------------------
+
+	describe('Multiple sleeps in sequence', () => {
+		const source = `
+import { defineWorkflow } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'MultiSleep',
+	async run(ctx) {
+		const data = await ctx.step({ name: 'fetch' }, async () => {
+			return { value: 1 };
+		});
+
+		await ctx.sleep(1000);
+		await ctx.sleep(2000);
+
+		const result = await ctx.step({ name: 'process' }, async () => {
+			return { doubled: data.value * 2 };
+		});
+		return result;
+	},
+});
+`;
+
+		it('compiles without errors', () => {
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
+		});
+
+		it('graph has 2 sleep nodes', () => {
+			const result = transpiler.compile(source);
+			const sleepNodes = result.graph.nodes.filter((n) => n.type === 'sleep');
+			expect(sleepNodes).toHaveLength(2);
+		});
+
+		it('edges chain through both sleeps: fetch → sleep-0 → sleep-1 → process', () => {
+			const result = transpiler.compile(source);
+			const fetchId = sha256('fetch');
+			const processId = sha256('process');
+			const sleepNodes = result.graph.nodes.filter((n) => n.type === 'sleep');
+			expect(sleepNodes).toHaveLength(2);
+
+			// fetch → sleep-0
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: fetchId, to: sleepNodes[0].id }),
+			);
+			// sleep-0 → sleep-1
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: sleepNodes[0].id, to: sleepNodes[1].id }),
+			);
+			// sleep-1 → process
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: sleepNodes[1].id, to: processId }),
+			);
+		});
+
+		it('sleep nodes have correct durations', () => {
+			const result = transpiler.compile(source);
+			const sleepNodes = result.graph.nodes.filter((n) => n.type === 'sleep');
+			expect(sleepNodes[0].config.sleepMs).toBe(1000);
+			expect(sleepNodes[1].config.sleepMs).toBe(2000);
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// 13. waitUntil — ctx.waitUntil() between steps
+	// -----------------------------------------------------------------------
+
+	describe('waitUntil — ctx.waitUntil() between steps', () => {
+		const source = `
+import { defineWorkflow } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'WaitUntil',
+	async run(ctx) {
+		const data = await ctx.step({ name: 'fetch' }, async () => {
+			return { value: 42 };
+		});
+
+		await ctx.waitUntil(new Date(Date.now() + 5000));
+
+		const result = await ctx.step({ name: 'process' }, async () => {
+			return { doubled: data.value * 2 };
+		});
+		return result;
+	},
+});
+`;
+
+		it('compiles without errors', () => {
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
+		});
+
+		it('graph has a sleep node for waitUntil', () => {
+			const result = transpiler.compile(source);
+			const sleepNodes = result.graph.nodes.filter((n) => n.type === 'sleep');
+			expect(sleepNodes).toHaveLength(1);
+		});
+
+		it('sleep node has waitUntilExpr instead of sleepMs', () => {
+			const result = transpiler.compile(source);
+			const sleepNode = result.graph.nodes.find((n) => n.type === 'sleep');
+			expect(sleepNode?.config.sleepMs).toBeUndefined();
+			expect(sleepNode?.config.waitUntilExpr).toBe('new Date(Date.now() + 5000)');
+		});
+
+		it('edges route through sleep: fetch → sleep → process', () => {
+			const result = transpiler.compile(source);
+			const fetchId = sha256('fetch');
+			const processId = sha256('process');
+			const sleepNode = result.graph.nodes.find((n) => n.type === 'sleep');
+			expect(sleepNode).toBeDefined();
+
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: fetchId, to: sleepNode!.id }),
+			);
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: sleepNode!.id, to: processId }),
+			);
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// 14. Sleep with multiple dependents — no duplicate edges
+	// -----------------------------------------------------------------------
+
+	describe('Sleep with multiple dependents — no duplicate source→sleep edges', () => {
+		const source = `
+import { defineWorkflow } from '@n8n/engine/sdk';
+
+export default defineWorkflow({
+	name: 'SleepFanOut',
+	async run(ctx) {
+		const data = await ctx.step({ name: 'fetch' }, async () => {
+			return { value: 1 };
+		});
+		await ctx.sleep(3000);
+		const a = await ctx.step({ name: 'processA' }, async () => {
+			return { result: data.value + 1 };
+		});
+		const b = await ctx.step({ name: 'processB' }, async () => {
+			return { result: data.value + 2 };
+		});
+		return { a, b };
+	},
+});
+`;
+
+		it('does not create duplicate source→sleep edges', () => {
+			const result = transpiler.compile(source);
+			const sleepNode = result.graph.nodes.find((n) => n.type === 'sleep');
+			expect(sleepNode).toBeDefined();
+
+			const fetchId = sha256('fetch');
+			const edgesToSleep = result.graph.edges.filter(
+				(e) => e.from === fetchId && e.to === sleepNode!.id,
+			);
+			expect(edgesToSleep).toHaveLength(1);
+		});
+
+		it('sleep fans out to both dependents', () => {
+			const result = transpiler.compile(source);
+			const sleepNode = result.graph.nodes.find((n) => n.type === 'sleep');
+			expect(sleepNode).toBeDefined();
+
+			const processAId = sha256('processA');
+			const processBId = sha256('processB');
+
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: sleepNode!.id, to: processAId }),
+			);
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: sleepNode!.id, to: processBId }),
+			);
+		});
+
+		it('total edge count is exactly 4 (trigger→fetch, fetch→sleep, sleep→A, sleep→B)', () => {
+			const result = transpiler.compile(source);
+			expect(result.graph.edges).toHaveLength(4);
+		});
+	});
 });

@@ -280,68 +280,6 @@ describe('WorkflowGraph', () => {
 		});
 	});
 
-	describe('getContinuationStepId', () => {
-		it('should produce a deterministic ID', () => {
-			const graph = new WorkflowGraph(createLinearGraph());
-			const id1 = graph.getContinuationStepId('step1', 0);
-			const id2 = graph.getContinuationStepId('step1', 0);
-			expect(id1).toBe(id2);
-		});
-
-		it('should produce different IDs for different attempt numbers', () => {
-			const graph = new WorkflowGraph(createLinearGraph());
-			const id0 = graph.getContinuationStepId('step1', 0);
-			const id1 = graph.getContinuationStepId('step1', 1);
-			expect(id0).not.toBe(id1);
-		});
-
-		it('should produce different IDs for different parent steps', () => {
-			const graph = new WorkflowGraph(createLinearGraph());
-			const idA = graph.getContinuationStepId('step1', 0);
-			const idB = graph.getContinuationStepId('step2', 0);
-			expect(idA).not.toBe(idB);
-		});
-
-		it('should return a 12-character hex string', () => {
-			const graph = new WorkflowGraph(createLinearGraph());
-			const id = graph.getContinuationStepId('step1', 0);
-			expect(id).toMatch(/^[0-9a-f]{12}$/);
-		});
-	});
-
-	describe('getContinuationFunctionRef', () => {
-		it('should return the continuation ref from the node config', () => {
-			const data = createLinearGraph();
-			data.nodes[1].config.continuationRef = 'step_1_cont_0';
-			const graph = new WorkflowGraph(data);
-			expect(graph.getContinuationFunctionRef('step1')).toBe('step_1_cont_0');
-		});
-
-		it('should return undefined when there is no continuation ref', () => {
-			const graph = new WorkflowGraph(createLinearGraph());
-			expect(graph.getContinuationFunctionRef('step1')).toBeUndefined();
-		});
-
-		it('should return undefined for a non-existent node', () => {
-			const graph = new WorkflowGraph(createLinearGraph());
-			expect(graph.getContinuationFunctionRef('nonexistent')).toBeUndefined();
-		});
-	});
-
-	describe('isContinuationStep', () => {
-		it('should return false for nodes that exist in the graph', () => {
-			const graph = new WorkflowGraph(createLinearGraph());
-			expect(graph.isContinuationStep('trigger')).toBe(false);
-			expect(graph.isContinuationStep('step1')).toBe(false);
-			expect(graph.isContinuationStep('step2')).toBe(false);
-		});
-
-		it('should return true for IDs that are not graph nodes', () => {
-			const graph = new WorkflowGraph(createLinearGraph());
-			expect(graph.isContinuationStep('some_continuation_id')).toBe(true);
-		});
-	});
-
 	describe('getFanOutChildStepId', () => {
 		it('should produce a deterministic ID', () => {
 			const graph = new WorkflowGraph(createLinearGraph());
@@ -363,11 +301,86 @@ describe('WorkflowGraph', () => {
 			expect(id).toMatch(/^[0-9a-f]{12}$/);
 		});
 
-		it('should produce different IDs from continuation IDs for the same parent', () => {
+		it('should produce different IDs for different parent steps', () => {
 			const graph = new WorkflowGraph(createLinearGraph());
-			const fanOutId = graph.getFanOutChildStepId('step1', 0);
-			const contId = graph.getContinuationStepId('step1', 0);
-			expect(fanOutId).not.toBe(contId);
+			const idA = graph.getFanOutChildStepId('step1', 0);
+			const idB = graph.getFanOutChildStepId('step2', 0);
+			expect(idA).not.toBe(idB);
+		});
+	});
+
+	describe('getDataPredecessors', () => {
+		it('should return direct predecessors for non-sleep nodes', () => {
+			const graph = new WorkflowGraph(createLinearGraph());
+			const preds = graph.getDataPredecessors('step2');
+			expect(preds).toHaveLength(1);
+			expect(preds[0].id).toBe('step1');
+		});
+
+		it('should trace through sleep nodes to find data producers', () => {
+			const data: WorkflowGraphData = {
+				nodes: [
+					{
+						id: 'trigger',
+						name: 'Trigger',
+						type: 'trigger',
+						stepFunctionRef: 'step_trigger',
+						config: {},
+					},
+					{ id: 'a', name: 'A', type: 'step', stepFunctionRef: 'step_a', config: {} },
+					{
+						id: 'sleep1',
+						name: 'Sleep',
+						type: 'sleep',
+						stepFunctionRef: '',
+						config: { stepType: 'sleep', sleepMs: 1000 },
+					},
+					{ id: 'b', name: 'B', type: 'step', stepFunctionRef: 'step_b', config: {} },
+				],
+				edges: [
+					{ from: 'trigger', to: 'a' },
+					{ from: 'a', to: 'sleep1' },
+					{ from: 'sleep1', to: 'b' },
+				],
+			};
+			const graph = new WorkflowGraph(data);
+			const preds = graph.getDataPredecessors('b');
+			expect(preds).toHaveLength(1);
+			expect(preds[0].id).toBe('a');
+		});
+
+		it('should trace through multiple chained sleep nodes', () => {
+			const data: WorkflowGraphData = {
+				nodes: [
+					{
+						id: 'trigger',
+						name: 'Trigger',
+						type: 'trigger',
+						stepFunctionRef: 'step_trigger',
+						config: {},
+					},
+					{ id: 'a', name: 'A', type: 'step', stepFunctionRef: 'step_a', config: {} },
+					{ id: 's1', name: 'Sleep 1', type: 'sleep', stepFunctionRef: '', config: {} },
+					{ id: 's2', name: 'Sleep 2', type: 'sleep', stepFunctionRef: '', config: {} },
+					{ id: 'b', name: 'B', type: 'step', stepFunctionRef: 'step_b', config: {} },
+				],
+				edges: [
+					{ from: 'trigger', to: 'a' },
+					{ from: 'a', to: 's1' },
+					{ from: 's1', to: 's2' },
+					{ from: 's2', to: 'b' },
+				],
+			};
+			const graph = new WorkflowGraph(data);
+			const preds = graph.getDataPredecessors('b');
+			expect(preds).toHaveLength(1);
+			expect(preds[0].id).toBe('a');
+		});
+
+		it('should return empty array for nodes with no predecessors', () => {
+			const graph = new WorkflowGraph(createLinearGraph());
+			const preds = graph.getDataPredecessors('trigger');
+			expect(preds).toHaveLength(0);
 		});
 	});
 

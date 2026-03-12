@@ -15,18 +15,19 @@ export interface GraphStepConfig {
 	description?: string;
 	icon?: string;
 	color?: string;
-	stepType?: 'step' | 'approval' | 'condition';
+	stepType?: 'step' | 'approval' | 'condition' | 'sleep';
 	retryConfig?: RetryConfig;
 	timeout?: number;
 	retriableErrors?: string[];
 	retryOnTimeout?: boolean;
-	continuationRef?: string;
+	sleepMs?: number;
+	waitUntilExpr?: string;
 }
 
 export interface GraphNodeData {
 	id: string;
 	name: string;
-	type: 'trigger' | 'step' | 'condition' | 'approval' | 'end';
+	type: 'trigger' | 'step' | 'condition' | 'approval' | 'sleep' | 'end';
 	stepFunctionRef: string;
 	config: GraphStepConfig;
 }

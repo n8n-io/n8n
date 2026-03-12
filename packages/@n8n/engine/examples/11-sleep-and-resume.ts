@@ -2,9 +2,9 @@
  * Sleep and Resume Workflow
  *
  * Demonstrates durable sleep between steps using `ctx.sleep()`. The
- * process is freed during the sleep period, and a child step is created
- * to wake the workflow after the specified duration. Tests that state
- * is preserved across the sleep boundary.
+ * transpiler converts `ctx.sleep()` into a first-class sleep graph node.
+ * The process is freed during the sleep period, and state from prior
+ * steps is preserved across the sleep boundary.
  */
 import { defineWorkflow } from '@n8n/engine/sdk';
 
@@ -25,7 +25,7 @@ export default defineWorkflow({
 			},
 		);
 
-		// Sleep for 5 seconds — process is freed, child step created
+		// Sleep for 5 seconds — transpiler creates a sleep graph node
 		await ctx.sleep(5000);
 
 		const after = await ctx.step(

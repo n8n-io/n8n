@@ -17,8 +17,6 @@ export interface StepDefinition {
 	retriableErrors?: string[];
 	/** Whether to retry on timeout */
 	retryOnTimeout?: boolean;
-	/** Internal: continuation function reference (set by transpiler) */
-	continuationRef?: string;
 }
 
 export interface RetryConfig {
@@ -60,7 +58,9 @@ export interface ExecutionContext {
 	step: <T>(definition: StepDefinition, fn: () => Promise<T>) => Promise<T>;
 	sendChunk: (data: unknown) => Promise<void>;
 	respondToWebhook: (response: WebhookResponse) => Promise<void>;
+	/** Pause execution for the given duration. Handled at compile time by the transpiler — creates a sleep graph node. */
 	sleep: (ms: number) => Promise<void>;
+	/** Pause execution until the given date. Handled at compile time by the transpiler — creates a sleep graph node. */
 	waitUntil: (date: Date) => Promise<void>;
 	getSecret: (name: string) => string | undefined;
 }

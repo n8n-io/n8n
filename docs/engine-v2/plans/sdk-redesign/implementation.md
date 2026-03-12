@@ -18,6 +18,50 @@
 
 ---
 
+## Progress Summary
+
+> Updated 2026-03-12. Tracks incremental progress in `feat/explicit-wait-step` branch (PR #69 into main).
+
+### What's been landed
+
+Sleep/wait infrastructure implemented across 6 stacked PRs (#60–#66), consolidated into PR #69. This is incremental progress toward the full plan — the sleep-related parts of Chunks 1, 2, and 3 are working end-to-end. The plan's target API signatures and remaining features (batch, triggerWorkflow, sequential-by-default, adaptive polling) still need to be implemented as described.
+
+**Current state of sleep:**
+- **Graph types**: `sleep` added to `GraphNodeData.type` union; `StepType.Sleep` enum value; `continuationRef` removed from `GraphStepConfig`; `sleepMs` and `waitUntilExpr` added to graph node config
+- **Transpiler**: `ctx.sleep(ms)` and `ctx.waitUntil(date)` calls detected via ts-morph AST; sleep graph nodes generated with edges; implicit ordering edges through sleep nodes when adjacent steps have no data dependency; `buildPrecedingStepMap()` for source-order tracking
+- **Step processor**: Native sleep handling — first pass sets `waitUntil` + marks Waiting, second pass (after timer fires) marks Completed; `step:started` emitted before all code paths
+- **Step planner**: `gatherStepInput` scoped to data-producing predecessors only via `getDataPredecessors()`
+- **WorkflowGraph**: Added `getDataPredecessors()` (traces through sleep nodes to find data producers); removed `getContinuationStepId()`, `getContinuationFunctionRef()`, `isContinuationStep()`; kept `getFanOutChildStepId()`
+- **SDK**: Removed `SleepRequestedError` and `WaitUntilRequestedError`; `sleep` and `waitUntil` remain on `ExecutionContext` with runtime stubs that throw
+- **Tests**: Unit tests for `getDataPredecessors`, transpiler sleep node generation, implicit ordering edges, `waitUntilExpr`; integration tests for `ctx.sleep()`, `ctx.waitUntil()`, multiple sleeps, data flow through sleep, sleep lifecycle, sleep passthrough
+
+### Gaps between current state and plan
+
+The following items are working but don't yet match the plan's target design. They'll be aligned as subsequent chunks are implemented:
+
+1. **Sleep API signature**: Currently `ctx.sleep(ms)` / `ctx.waitUntil(date)`. Plan target is `ctx.sleep({ name, duration })` / `ctx.sleep({ name, until })` via `SleepConfig`. Needs updating when Task 1.1 Step 2 is done.
+2. **Sleep graph config**: Currently uses `GraphStepConfig.sleepMs` / `GraphStepConfig.waitUntilExpr`. Plan target is a proper `SleepConfig` interface mapped through the transpiler.
+3. **`getFanOutChildStepId` not yet renamed**: Plan target is `getBatchChildStepId`. Will be renamed when batch is implemented (Task 1.4 Step 2).
+4. **Sequential-by-default ordering**: Currently only implemented for implicit edges through sleep nodes. The full transpiler rewrite (Task 2.1) to replace regex variable scanning with positional ordering is still needed.
+5. **SDK type additions**: `SleepConfig`, `BatchConfig`, `TriggerWorkflowConfig`, `BatchResult` interfaces not yet added (Task 1.1).
+
+### Chunk status
+
+| Chunk | Status | Notes |
+|-------|--------|-------|
+| 0 — Fix existing test failures | Not done as separate pass | Sleep-related failures fixed inline |
+| 1 — SDK Types & Graph Types | Partial | Sleep error removal done (1.2), graph types for sleep done (1.3 partial), continuation removal done (1.4 partial). SDK type additions (1.1) and batch graph types not started |
+| 2 — Transpiler | Partial | Sleep detection done (2.2 partial). Sequential-by-default rewrite (2.1) and batch/triggerWorkflow detection not started |
+| 3 — Engine Core | Partial | Sleep execution done (3.1). Batch executor (3.2), adaptive polling (3.3), cross-workflow trigger (3.4) not started |
+| 4 — Wiring & Cleanup | Not started | |
+| 5 — Examples | Not started | Sleep examples updated with comments only |
+| 6 — Infrastructure | Not started | |
+| 7 — UI Changes | Not started | |
+| 8 — Documentation | Not started | |
+| 9 — Bug Fixes & Code Quality | Not started | |
+
+---
+
 ## Chunk 0: Fix Existing Test Failures
 
 Before making any SDK changes, the existing test suite must be green. Current state (with test DB running):
@@ -332,31 +376,21 @@ pushd packages/@n8n/engine && pnpm test -- src/sdk/__tests__/sdk.test.ts && popd
 
 - [ ] **Step 7: Logical checkpoint** — SDK types updated (do not commit, leave for user review)
 
-### Task 1.2: Remove Sleep/Wait Error Classes
+### Task 1.2: Remove Sleep/Wait Error Classes — DONE (PR #63)
 
 **Files:**
 - Modify: `src/sdk/errors.ts`
 - Modify: `src/sdk/index.ts`
 
-- [ ] **Step 1: Remove `SleepRequestedError` and `WaitUntilRequestedError` from `errors.ts`**
+- [x] **Step 1: Remove `SleepRequestedError` and `WaitUntilRequestedError` from `errors.ts`** — Done. Only `NonRetriableError` remains.
 
-Delete lines 1-19. Keep only `NonRetriableError` (lines 21-27).
+- [x] **Step 2: Update `index.ts` exports** — No change needed, `export * from './errors'` still works.
 
-- [ ] **Step 2: Update `index.ts` exports**
+- [x] **Step 3: Verify no import errors** — Clean.
 
-The `export * from './errors'` on line 2 still works. No change needed unless we want to be explicit.
+- [x] **Step 4: Logical checkpoint** — sleep/wait errors removed
 
-- [ ] **Step 3: Verify no import errors**
-
-```bash
-pushd packages/@n8n/engine && pnpm typecheck 2>&1 | head -30 && popd
-```
-
-Expected: Errors in `step-processor.service.ts` and other files that import these errors. That's correct — we'll fix those in Chunk 3.
-
-- [ ] **Step 4: Logical checkpoint** — sleep/wait errors removed (do not commit)
-
-### Task 1.3: Update Graph Types
+### Task 1.3: Update Graph Types — PARTIALLY DONE (PR #60)
 
 **Files:**
 - Modify: `src/graph/graph.types.ts`
@@ -364,80 +398,29 @@ Expected: Errors in `step-processor.service.ts` and other files that import thes
 
 **Note:** The remote introduced `GraphStepConfig` (separate from SDK `StepDefinition`) with `retryConfig` naming. We keep this convention — the graph config uses `retryConfig`, the SDK uses `retry`. The transpiler maps between them.
 
-- [ ] **Step 1: Update `GraphNodeData.type` union**
+- [x] **Step 1: Update `GraphNodeData.type` union** — `'sleep'` added. Still need `'batch'` and `'trigger-workflow'`.
 
-In `src/graph/graph.types.ts` (line 29), change:
+- [ ] **Step 1b: Update `GraphStepConfig` — remove `continuationRef`, add `batch`** — `continuationRef` removed. `sleepMs` and `waitUntilExpr` added as interim sleep config fields (will be replaced by proper `SleepConfig` mapping when Task 1.1 lands). `batch` not yet added.
 
-```typescript
-type: 'trigger' | 'step' | 'batch' | 'sleep' | 'trigger-workflow';
-```
+- [ ] **Step 2: Update `StepType` enum** — `Sleep = 'sleep'` added. Still need `Batch`, `TriggerWorkflow`, `Approval`.
 
-Old values `'condition'`, `'approval'`, `'end'` are removed. `'approval'` is now a `stepType` on `GraphStepConfig`, not a graph node type.
+- [ ] **Logical checkpoint** — partially done. Sleep types in place; batch and trigger-workflow types still needed per plan.
 
-- [ ] **Step 1b: Update `GraphStepConfig` — remove `continuationRef`, add `batch`**
-
-In `GraphStepConfig` (lines 13-24):
-- Remove `continuationRef?: string` (line 23)
-- Add `batch?: BatchConfig` (import from SDK types)
-
-- [ ] **Step 2: Update `StepType` enum**
-
-In `src/database/enums.ts`, replace `StepType` (lines 24-29):
-
-```typescript
-export enum StepType {
-	Trigger = 'trigger',
-	Step = 'step',
-	Batch = 'batch',
-	Sleep = 'sleep',
-	TriggerWorkflow = 'trigger-workflow',
-	Approval = 'approval',
-}
-```
-
-- [ ] **Logical checkpoint** — update graph node types and StepType enum for new primitives (do not commit)
-
-### Task 1.4: Update WorkflowGraph Class
+### Task 1.4: Update WorkflowGraph Class — PARTIALLY DONE (PRs #62, #63)
 
 **Files:**
 - Modify: `src/graph/workflow-graph.ts`
 - Modify: `src/graph/__tests__/workflow-graph.test.ts`
 
-- [ ] **Step 1: Remove continuation methods from `workflow-graph.ts`**
+- [x] **Step 1: Remove continuation methods from `workflow-graph.ts`** — Removed `getContinuationStepId()`, `getContinuationFunctionRef()`, `isContinuationStep()`. Kept `getFanOutChildStepId()`.
 
-Remove these methods:
-- `getContinuationStepId()` (lines 61-63)
-- `getContinuationFunctionRef()` (lines 65-68)
-- `isContinuationStep()` (lines 70-72)
+- [ ] **Step 2: Add `getBatchChildStepId()` as an alias** — Not yet done. `getFanOutChildStepId` still uses the old name; rename when batch is implemented per plan.
 
-Keep `getFanOutChildStepId()` (lines 74-76) — reused for batch child step IDs.
+- [x] **Step 3: Update tests** — Removed continuation tests. Added `getDataPredecessors` tests (direct predecessors, trace through sleep, trace through chained sleeps, empty predecessors). Still need to rename `getFanOutChildStepId` tests to `getBatchChildStepId` when Step 2 is done.
 
-- [ ] **Step 2: Add `getBatchChildStepId()` as an alias**
+- [x] **Step 4: Run tests** — All passing.
 
-Rename `getFanOutChildStepId` to `getBatchChildStepId` for clarity (same implementation):
-
-```typescript
-getBatchChildStepId(parentStepId: string, itemIndex: number): string {
-	return sha256(`${parentStepId}__batch__${itemIndex}`);
-}
-```
-
-- [ ] **Step 3: Update tests**
-
-In `src/graph/__tests__/workflow-graph.test.ts`:
-- Remove `getContinuationStepId` tests (lines 283-310)
-- Remove `getContinuationFunctionRef` tests (lines 312-329)
-- Remove `isContinuationStep` tests (lines 331-343)
-- Rename `getFanOutChildStepId` tests (lines 345-372) to `getBatchChildStepId`
-- Update test graph fixtures to use new node type values (`'step'` instead of `'condition'`)
-
-- [ ] **Step 4: Run tests**
-
-```bash
-pushd packages/@n8n/engine && pnpm test -- src/graph/__tests__/workflow-graph.test.ts && popd
-```
-
-- [ ] **Logical checkpoint** — remove continuation methods from WorkflowGraph, add getBatchChildStepId (do not commit)
+> **Added in implementation (not in original plan):** `getDataPredecessors()` method on `WorkflowGraph` — traces through sleep nodes to find actual data-producing predecessors. Used by `gatherStepInput` in the step planner. Emerged from PR review feedback on scoping input gathering.
 
 ### Chunk 1 Verification Gate
 
@@ -448,6 +431,8 @@ pushd packages/@n8n/engine && pnpm test -- src/graph/__tests__/workflow-graph.te
 ## Chunk 2: Transpiler — Sequential-by-Default
 
 The transpiler is the most complex change. The dependency resolution model shifts from regex variable scanning to positional ordering.
+
+> **Status:** Sleep primitive detection (Task 2.2 partial) is DONE (PR #61). Sequential-by-default (Task 2.1) and batch/triggerWorkflow detection are NOT started.
 
 ### Task 2.1: Refactor Dependency Resolution to Sequential-by-Default
 
@@ -525,13 +510,17 @@ Fix any existing tests that assumed the old behavior (e.g., parallel tests that 
 
 - [ ] **Logical checkpoint** — sequential-by-default dependency resolution in transpiler (do not commit)
 
-### Task 2.2: Detect New Primitives in AST
+### Task 2.2: Detect New Primitives in AST — SLEEP PARTIALLY DONE (PR #61), batch/triggerWorkflow TODO
 
 **Files:**
 - Modify: `src/transpiler/transpiler.service.ts`
 - Test: `src/transpiler/__tests__/transpiler.test.ts`
 
-- [ ] **Step 1: Write failing test for `ctx.sleep()` detection**
+> **Sleep detection is working end-to-end.** The transpiler detects `ctx.sleep(ms)` and `ctx.waitUntil(date)` calls via ts-morph AST, creates sleep graph nodes with `sleepMs` or `waitUntilExpr` config, and generates edges through sleep nodes. Implicit ordering edges are created via `buildPrecedingStepMap()` when adjacent steps have no data dependency. Tests cover: sleep node generation, `waitUntilExpr`, multiple sleeps, implicit ordering edges.
+>
+> **Note:** Current sleep API uses `ctx.sleep(ms)` / `ctx.waitUntil(date)` (simple arguments). The plan targets `ctx.sleep({ name, duration })` via `SleepConfig` — the transpiler detection will need updating when Task 1.1 Step 2 changes the SDK signature.
+
+- [x] **Step 1: Write failing test for `ctx.sleep()` detection** — Done with interim `ctx.sleep(ms)` signature. Will need updating to match `SleepConfig` API when Task 1.1 lands:
 
 ```typescript
 describe('sleep primitive', () => {
@@ -647,14 +636,16 @@ pushd packages/@n8n/engine && pnpm test -- src/transpiler/__tests__/transpiler.t
 
 ## Chunk 3: Engine Core — Sleep, Batch, Dynamic Polling
 
-### Task 3.1: Simplified Sleep Execution
+> **Status:** Task 3.1 (sleep execution) is DONE (PRs #62, #63, #66). Tasks 3.2–3.4 not started.
+
+### Task 3.1: Simplified Sleep Execution — DONE (PRs #62, #63, #66)
 
 **Files:**
 - Modify: `src/engine/step-processor.service.ts`
 - Modify: `src/engine/event-handlers.ts`
 - Test: `test/integration/sleep-wait.test.ts`
 
-- [ ] **Step 1: Remove sleep/wait catch block from `processStep()`**
+- [x] **Step 1: Remove sleep/wait catch block from `processStep()`**
 
 In `step-processor.service.ts`, delete the entire sleep/wait handling block (lines 131-168):
 
@@ -664,20 +655,9 @@ In `step-processor.service.ts`, delete the entire sleep/wait handling block (lin
 
 Also remove the `SleepRequestedError` and `WaitUntilRequestedError` imports (line 8).
 
-- [ ] **Step 2: Remove sleep/waitUntil from `buildStepContext()`**
+- [x] **Step 2: Remove sleep/waitUntil from `buildStepContext()`** — Done. Runtime stubs throw errors explaining they're transpiler-handled. Will be updated to accept `SleepConfig` when Task 1.1 changes the SDK signature.
 
-In `buildStepContext()` (lines 391-457), replace the `sleep` and `waitUntil` methods (lines 445-451) with the new `sleep` that delegates to the engine:
-
-```typescript
-sleep: async (config: SleepConfig) => {
-	// Sleep is handled by the engine as a separate step execution.
-	// This method should never be called at runtime — the transpiler
-	// extracts ctx.sleep() calls into standalone graph nodes.
-	throw new Error('ctx.sleep() should not be called at runtime. It is a graph-level primitive.');
-},
-```
-
-- [ ] **Step 3: Add sleep step processing in `processStep()`**
+- [x] **Step 3: Add sleep step processing in `processStep()`**
 
 Add a new code path at the top of `processStep()`, after the cancel check:
 
@@ -696,46 +676,15 @@ if (stepJob.stepType === StepType.Sleep) {
 
 The sleep step is already picked up by the queue poller only after `waitUntil <= NOW()`, so by the time `processStep` runs, the sleep duration has elapsed. We just mark it completed.
 
-- [ ] **Step 4: Update `startExecution()` in `engine.service.ts`**
+- [x] **Step 4: Update `startExecution()` in `engine.service.ts`** — Sleep steps are queued normally by the step planner. The step processor handles the two-pass logic: first pass computes `waitUntil` and marks Waiting; second pass (after timer fires) marks Completed.
 
-When creating step executions from the graph, sleep nodes should be created with `status: 'waiting'` and `waitUntil` set based on their config:
+- [x] **Step 5: Remove `resolveParentStep` for sleep from event-handlers.ts** — Sleep no longer uses parent/child relationships. The old continuation catch block and `resolveParentStep` for sleep are removed. Parent/child is preserved only for fan-out (will be reused for batch).
 
-In `engine.service.ts`, update the step creation logic in `startExecution()` to handle sleep nodes differently from regular steps.
+- [x] **Step 6: Rewrite sleep-wait integration tests** — 6 integration tests cover: `ctx.sleep()`, `ctx.waitUntil()`, multiple sleeps, data flow through sleep, sleep lifecycle, sleep passthrough. Test signatures will need updating when `SleepConfig` API lands.
 
-- [ ] **Step 5: Remove `resolveParentStep` for sleep from event-handlers.ts**
+- [x] **Step 7: Run integration tests** — All passing.
 
-In `event-handlers.ts`, the `step:completed` handler (lines 149-184) checks for `parentStepExecutionId` and calls `resolveParentStep()`. This was for sleep continuations. Remove this logic — parent/child is now only for batch.
-
-Update the handler:
-
-```typescript
-eventBus.on('step:completed', async (event: StepCompletedEvent) => {
-	if (event.parentStepExecutionId) {
-		// Batch child completed — handled by BatchExecutor
-		return;
-	}
-	// Regular step or sleep completed — plan next steps
-	// ... existing logic (load workflow, check pause, plan successors)
-});
-```
-
-- [ ] **Step 6: Rewrite sleep-wait integration tests**
-
-Rewrite `test/integration/sleep-wait.test.ts` to test the new model:
-- `ctx.sleep({ name: 'Wait', duration: 300 })` between two steps
-- Sleep node appears in step executions with `stepType: 'sleep'`
-- Sleep node has `status: 'waiting'` then `status: 'completed'`
-- Steps after sleep execute after the duration
-- No child steps created for sleep
-- No parent-child relationship for sleep
-
-- [ ] **Step 7: Run integration tests**
-
-```bash
-pushd packages/@n8n/engine && pnpm test:db -- test/integration/sleep-wait.test.ts && popd
-```
-
-- [ ] **Logical checkpoint** — implement simplified sleep as standalone waiting step (do not commit)
+- [x] **Logical checkpoint** — sleep execution working end-to-end as standalone waiting step
 
 ### Task 3.2: Batch Executor Service
 

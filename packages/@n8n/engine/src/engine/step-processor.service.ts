@@ -5,8 +5,7 @@ import type { DataSource } from '@n8n/typeorm';
 import { WorkflowGraph } from '../graph/workflow-graph';
 import type { WorkflowGraphData } from '../graph/graph.types';
 import type { ExecutionContext, StepDefinition, WebhookResponse } from '../sdk/types';
-import { SleepRequestedError, WaitUntilRequestedError } from '../sdk/errors';
-import { StepStatus, StepType } from '../database/enums';
+import { StepStatus } from '../database/enums';
 import type { WorkflowEntity } from '../database/entities/workflow.entity';
 import { WorkflowExecution } from '../database/entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../database/entities/workflow-step-execution.entity';
@@ -35,7 +34,7 @@ interface StepUpdate {
  * - Building execution contexts for step functions
  * - Running step functions with timeout enforcement
  * - Error classification and retry logic
- * - Sleep/wait control flow via child step creation
+ * - Sleep/wait via first-class sleep graph nodes
  */
 export class StepProcessorService {
 	/** Cache compiled modules: key = 'workflowId:version' */
@@ -79,10 +78,64 @@ export class StepProcessorService {
 			// 4. Build WorkflowGraph
 			const graph = new WorkflowGraph(workflow.graph as WorkflowGraphData);
 
-			// 5. Get step config from graph (handle continuation steps via metadata)
-			const isContinuation = graph.isContinuationStep(stepJob.stepId);
-			const node = isContinuation ? undefined : graph.getNode(stepJob.stepId);
+			// 5. Get step config from graph (handle fan-out child steps via metadata)
+			const node = graph.getNode(stepJob.stepId);
 			const stepConfig = node?.config ?? {};
+
+			// 5b. Handle sleep steps: no function to execute
+			if (node?.type === 'sleep') {
+				this.eventBus.emit({
+					type: 'step:started',
+					executionId: execution.id,
+					stepId: stepJob.stepId,
+					attempt: stepJob.attempt,
+				});
+
+				// If waitUntil is set and has passed, the timer has fired — complete the step.
+				// Otherwise, this is the first time we're processing it — set the timer.
+				if (stepJob.waitUntil && stepJob.waitUntil <= new Date()) {
+					await this.updateStepAndEmit(stepJob, execution, {
+						status: StepStatus.Completed,
+						output: stepJob.input,
+						completedAt: new Date(),
+						durationMs: stepConfig.sleepMs ?? null,
+					});
+				} else {
+					// Compute the wake-up time from either sleepMs or waitUntilExpr
+					let waitUntil: Date;
+					if (stepConfig.sleepMs != null) {
+						waitUntil = new Date(Date.now() + stepConfig.sleepMs);
+					} else if (stepConfig.waitUntilExpr) {
+						// eslint-disable-next-line @typescript-eslint/no-implied-eval
+						const evalResult = new Function(`return (${stepConfig.waitUntilExpr})`)();
+						waitUntil = evalResult instanceof Date ? evalResult : new Date(evalResult);
+					} else {
+						// No duration or expression — complete immediately
+						await this.updateStepAndEmit(stepJob, execution, {
+							status: StepStatus.Completed,
+							output: stepJob.input,
+							completedAt: new Date(),
+							durationMs: 0,
+						});
+						return;
+					}
+
+					await this.dataSource
+						.getRepository(WorkflowStepExecution)
+						.createQueryBuilder()
+						.update(WorkflowStepExecution)
+						.set({ status: StepStatus.Waiting, waitUntil })
+						.where('id = :id', { id: stepJob.id })
+						.execute();
+
+					this.eventBus.emit({
+						type: 'step:waiting',
+						executionId: execution.id,
+						stepId: stepJob.stepId,
+					});
+				}
+				return;
+			}
 
 			// 6. Load step function from compiled code
 			const stepFn = this.loadStepFunction(
@@ -127,48 +180,7 @@ export class StepProcessorService {
 					durationMs,
 				});
 			} catch (error) {
-				// 11-12. Handle sleep/wait FIRST -- these are not errors, they're control flow
-				if (error instanceof SleepRequestedError || error instanceof WaitUntilRequestedError) {
-					const waitUntil =
-						error instanceof SleepRequestedError
-							? new Date(Date.now() + error.sleepMs)
-							: error.date;
-
-					// Save intermediate state as parent step output
-					await this.updateStepAndEmit(stepJob, execution, {
-						status: StepStatus.Waiting,
-						output: error.intermediateState ?? null,
-					});
-
-					// Create child step with intermediate state and the continuation function ref
-					const continuationStepId = graph.getContinuationStepId(stepJob.stepId, stepJob.attempt);
-					const continuationRef = stepConfig.continuationRef;
-
-					await this.dataSource
-						.getRepository(WorkflowStepExecution)
-						.createQueryBuilder()
-						.insert()
-						.into(WorkflowStepExecution)
-						.values({
-							executionId: execution.id,
-							stepId: continuationStepId,
-							stepType: StepType.Step,
-							status: StepStatus.Waiting,
-							waitUntil,
-							parentStepExecutionId: stepJob.id,
-							input: {
-								__intermediate: error.intermediateState,
-								__predecessors: stepJob.input,
-							},
-							// Store the function ref in metadata so loadStepFunction can find it
-							// without needing a graph node for this child step
-							metadata: { functionRef: continuationRef },
-						})
-						.execute();
-					return;
-				}
-
-				// 13-14. Handle step errors (retriable or not)
+				// 11. Handle step errors (retriable or not)
 				const durationMs = Date.now() - startTime;
 				const errorData = buildErrorData(error, workflow.sourceMap ?? undefined);
 
@@ -372,9 +384,10 @@ export class StepProcessorService {
 		}
 
 		// For regular steps: look up function ref from graph node
-		// For continuation steps (sleep/fan-out children): look up from step metadata
-		const node = graph.isContinuationStep(stepId) ? undefined : graph.getNode(stepId);
-		const functionRef = node?.stepFunctionRef ?? (stepMetadata?.functionRef as string | undefined);
+		// For fan-out child steps (not in graph): look up from step metadata
+		const graphNode = graph.getNode(stepId);
+		const functionRef =
+			graphNode?.stepFunctionRef ?? (stepMetadata?.functionRef as string | undefined);
 
 		if (!functionRef) {
 			throw new StepFunctionNotFoundError(stepId);
@@ -439,16 +452,15 @@ export class StepProcessorService {
 				});
 			},
 
-			// Sleep -- throws a special error carrying intermediate state.
-			// The transpiler rewrites ctx.sleep() calls so the before-sleep code
-			// returns its intermediate results, which are passed to this function.
-			sleep: async (ms: number, intermediateState?: unknown) => {
-				throw new SleepRequestedError(ms, intermediateState);
+			// Sleep/waitUntil — transpiler converts these to graph nodes at compile time.
+			// These stubs exist only to satisfy the interface; they should never be called.
+			sleep: async () => {
+				throw new Error('ctx.sleep() should be handled by the transpiler, not called at runtime.');
 			},
-
-			// Wait until -- same pattern with intermediate state
-			waitUntil: async (date: Date, intermediateState?: unknown) => {
-				throw new WaitUntilRequestedError(date, intermediateState);
+			waitUntil: async () => {
+				throw new Error(
+					'ctx.waitUntil() should be handled by the transpiler, not called at runtime.',
+				);
 			},
 
 			// Secrets -- reads from environment variables (PoC)

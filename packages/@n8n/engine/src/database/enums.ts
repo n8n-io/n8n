@@ -26,6 +26,7 @@ export enum StepType {
 	Step = 'step',
 	Approval = 'approval',
 	Condition = 'condition',
+	Sleep = 'sleep',
 }
 
 export const TERMINAL_STATUSES: StepStatus[] = [

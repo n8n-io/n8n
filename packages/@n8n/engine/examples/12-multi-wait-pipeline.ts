@@ -2,9 +2,11 @@
  * Multi-Wait Pipeline Workflow
  *
  * Demonstrates multiple sleeps and `waitUntil` calls within a single
- * workflow. Fetches a batch, processes it, waits for a rate limit
- * cooldown, sends results, waits until a specific time, then verifies
- * delivery. Tests durable state passing across multiple wait boundaries.
+ * workflow. The transpiler converts each `ctx.sleep()` and `ctx.waitUntil()`
+ * into first-class sleep graph nodes. Fetches a batch, processes it,
+ * waits for a rate limit cooldown, sends results, waits until a specific
+ * time, then verifies delivery. All prior step outputs are available
+ * across sleep boundaries.
  */
 import { defineWorkflow } from '@n8n/engine/sdk';
 
