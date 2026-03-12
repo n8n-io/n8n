@@ -7,7 +7,7 @@ import type { ExecuteCommandResponse } from '../types';
  * Read-only host paths to expose inside the sandbox so common
  * tools (bash, coreutils, git, ripgrep, etc.) are available.
  */
-const RO_BIND_PATHS = ['/usr', '/lib', '/lib64', '/bin', '/sbin', '/etc/alternatives'];
+const RO_BIND_PATHS = ['/usr', '/lib', '/lib64', '/bin', '/sbin', '/etc'];
 
 /**
  * Stateless sandbox service that directly constructs bwrap (bubblewrap)
