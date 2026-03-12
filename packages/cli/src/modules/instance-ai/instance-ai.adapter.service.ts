@@ -26,6 +26,9 @@ import type {
 	SearchableNodeDescription,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	InstanceAiWorkspaceService,
+	ProjectSummary,
+	FolderSummary,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
@@ -51,6 +54,8 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { LessThan } from '@n8n/typeorm';
 import {
 	type ICredentialsDecrypted,
 	type INode,
@@ -77,6 +82,9 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { FolderService } from '@/services/folder.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { TagService } from '@/services/tag.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -107,6 +115,9 @@ export class InstanceAiAdapterService {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly dataTableService: DataTableService,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+		private readonly folderService: FolderService,
+		private readonly projectService: ProjectService,
+		private readonly tagService: TagService,
 	) {
 		this.braveSearchApiKey = globalConfig.instanceAi.braveSearchApiKey;
 		this.searxngUrl = globalConfig.instanceAi.searxngUrl;
@@ -122,6 +133,7 @@ export class InstanceAiAdapterService {
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user),
 			webResearchService: this.createWebResearchAdapter(),
+			workspaceService: this.createWorkspaceAdapter(user),
 			...(filesystemService ? { filesystemService } : {}),
 		};
 	}
@@ -1122,6 +1134,150 @@ export class InstanceAiAdapterService {
 				}
 			},
 		};
+	}
+
+	private createWorkspaceAdapter(user: User): InstanceAiWorkspaceService {
+		const {
+			projectService,
+			folderService,
+			tagService,
+			workflowFinderService,
+			workflowService,
+			executionRepository,
+		} = this;
+
+		const adapter: InstanceAiWorkspaceService = {
+			async listProjects(): Promise<ProjectSummary[]> {
+				const projects = await projectService.getAccessibleProjects(user);
+				return projects.map((p) => ({
+					id: p.id,
+					name: p.name,
+					type: p.type,
+				}));
+			},
+
+			async listFolders(projectId: string): Promise<FolderSummary[]> {
+				const [folders] = await folderService.getManyAndCount(projectId, { take: 100 });
+				return (folders as Array<{ id: string; name: string; parentFolderId: string | null }>).map(
+					(f) => ({
+						id: f.id,
+						name: f.name,
+						parentFolderId: f.parentFolderId,
+					}),
+				);
+			},
+
+			async createFolder(
+				name: string,
+				projectId: string,
+				parentFolderId?: string,
+			): Promise<FolderSummary> {
+				const folder = await folderService.createFolder(
+					{ name, parentFolderId: parentFolderId ?? undefined },
+					projectId,
+				);
+				return {
+					id: folder.id,
+					name: folder.name,
+					parentFolderId: folder.parentFolderId ?? null,
+				};
+			},
+
+			async deleteFolder(
+				folderId: string,
+				projectId: string,
+				transferToFolderId?: string,
+			): Promise<void> {
+				await folderService.deleteFolder(user, folderId, projectId, {
+					transferToFolderId: transferToFolderId ?? undefined,
+				});
+			},
+
+			async moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void> {
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:update',
+				]);
+				if (!workflow) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
+				await workflowService.update(user, workflow, workflowId, {
+					parentFolderId: folderId,
+				});
+			},
+
+			async tagWorkflow(workflowId: string, tagNames: string[]): Promise<string[]> {
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:update',
+				]);
+				if (!workflow) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
+
+				// Resolve tag names to IDs, creating missing tags
+				const existingTags = await tagService.getAll();
+				const tagMap = new Map(existingTags.map((t) => [t.name.toLowerCase(), t]));
+				const tagIds: string[] = [];
+
+				for (const tagName of tagNames) {
+					const existing = tagMap.get(tagName.toLowerCase());
+					if (existing) {
+						tagIds.push(existing.id);
+					} else {
+						const entity = tagService.toEntity({ name: tagName });
+						const saved = await tagService.save(entity, 'create');
+						tagIds.push(saved.id);
+					}
+				}
+
+				await workflowService.update(user, workflow, workflowId, { tagIds });
+				return tagNames;
+			},
+
+			async listTags(): Promise<Array<{ id: string; name: string }>> {
+				const tags = await tagService.getAll();
+				return tags.map((t) => ({ id: t.id, name: t.name }));
+			},
+
+			async createTag(name: string): Promise<{ id: string; name: string }> {
+				const entity = tagService.toEntity({ name });
+				const saved = await tagService.save(entity, 'create');
+				return { id: saved.id, name: saved.name };
+			},
+
+			async cleanupTestExecutions(
+				workflowId: string,
+				options?: { olderThanHours?: number },
+			): Promise<{ deletedCount: number }> {
+				// Access-check the workflow first
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				if (!workflow) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
+
+				const olderThanHours = options?.olderThanHours ?? 1;
+				const cutoff = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
+
+				const executions = await executionRepository.find({
+					select: ['id'],
+					where: {
+						workflowId,
+						mode: 'manual' as WorkflowExecuteMode,
+						startedAt: LessThan(cutoff),
+					},
+				});
+
+				if (executions.length === 0) {
+					return { deletedCount: 0 };
+				}
+
+				const ids = executions.map((e) => e.id);
+				await executionRepository.deleteByIds(ids);
+				return { deletedCount: ids.length };
+			},
+		};
+		return adapter;
 	}
 }
 

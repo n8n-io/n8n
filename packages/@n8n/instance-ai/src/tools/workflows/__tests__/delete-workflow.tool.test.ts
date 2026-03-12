@@ -152,6 +152,8 @@ describe('createDeleteWorkflowTool', () => {
 					runWorkflow: 'require_approval',
 					activateWorkflow: 'require_approval',
 					deleteCredential: 'require_approval',
+					deleteFolder: 'require_approval',
+					cleanupTestExecutions: 'require_approval',
 				},
 			});
 		});

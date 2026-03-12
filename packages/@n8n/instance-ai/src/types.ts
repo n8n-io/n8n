@@ -424,6 +424,46 @@ export interface LocalMcpServer {
 	callTool(req: McpToolCallRequest): Promise<McpToolCallResult>;
 }
 
+// ── Workspace shapes ────────────────────────────────────────────────────────
+
+export interface ProjectSummary {
+	id: string;
+	name: string;
+	type: 'personal' | 'team';
+}
+
+export interface FolderSummary {
+	id: string;
+	name: string;
+	parentFolderId: string | null;
+}
+
+// ── Workspace service ───────────────────────────────────────────────────────
+
+export interface InstanceAiWorkspaceService {
+	// Projects
+	listProjects(): Promise<ProjectSummary[]>;
+
+	// Folders
+	listFolders(projectId: string): Promise<FolderSummary[]>;
+	createFolder(name: string, projectId: string, parentFolderId?: string): Promise<FolderSummary>;
+	deleteFolder(folderId: string, projectId: string, transferToFolderId?: string): Promise<void>;
+
+	// Workflow organization
+	moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void>;
+	tagWorkflow(workflowId: string, tagNames: string[]): Promise<string[]>;
+
+	// Tags
+	listTags(): Promise<Array<{ id: string; name: string }>>;
+	createTag(name: string): Promise<{ id: string; name: string }>;
+
+	// Execution cleanup
+	cleanupTestExecutions(
+		workflowId: string,
+		options?: { olderThanHours?: number },
+	): Promise<{ deletedCount: number }>;
+}
+
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 export interface InstanceAiContext {
@@ -435,6 +475,7 @@ export interface InstanceAiContext {
 	dataTableService: InstanceAiDataTableService;
 	webResearchService?: InstanceAiWebResearchService;
 	filesystemService?: InstanceAiFilesystemService;
+	workspaceService?: InstanceAiWorkspaceService;
 	/**
 	 * Connected remote MCP server (e.g. fs-proxy daemon). When set, dynamic tools are created from its advertised capabilities. Takes precedence over `filesystemService`.
 	 */

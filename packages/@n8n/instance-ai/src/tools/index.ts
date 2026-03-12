@@ -53,6 +53,14 @@ import { createGetWorkflowAsCodeTool } from './workflows/get-workflow-as-code.to
 import { createGetWorkflowTool } from './workflows/get-workflow.tool';
 import { createListWorkflowsTool } from './workflows/list-workflows.tool';
 import { createPatchWorkflowTool } from './workflows/patch-workflow.tool';
+import { createCleanupTestExecutionsTool } from './workspace/cleanup-test-executions.tool';
+import { createCreateFolderTool } from './workspace/create-folder.tool';
+import { createDeleteFolderTool } from './workspace/delete-folder.tool';
+import { createListFoldersTool } from './workspace/list-folders.tool';
+import { createListProjectsTool } from './workspace/list-projects.tool';
+import { createListTagsTool } from './workspace/list-tags.tool';
+import { createMoveWorkflowToFolderTool } from './workspace/move-workflow-to-folder.tool';
+import { createTagWorkflowTool } from './workspace/tag-workflow.tool';
 
 /**
  * Creates all native n8n tools for the instance agent.
@@ -102,6 +110,18 @@ export function createAllTools(context: InstanceAiContext) {
 		...(context.webResearchService?.search ? { 'web-search': createWebSearchTool(context) } : {}),
 		...(context.workflowService.patchNode
 			? { 'patch-workflow': createPatchWorkflowTool(context) }
+			: {}),
+		...(context.workspaceService
+			? {
+					'list-projects': createListProjectsTool(context),
+					'list-folders': createListFoldersTool(context),
+					'create-folder': createCreateFolderTool(context),
+					'delete-folder': createDeleteFolderTool(context),
+					'move-workflow-to-folder': createMoveWorkflowToFolderTool(context),
+					'tag-workflow': createTagWorkflowTool(context),
+					'list-tags': createListTagsTool(context),
+					'cleanup-test-executions': createCleanupTestExecutionsTool(context),
+				}
 			: {}),
 		...(context.localMcpServer
 			? createToolsFromLocalMcpServer(context.localMcpServer)

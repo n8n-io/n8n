@@ -114,6 +114,8 @@ describe('delete-credential tool', () => {
 				runWorkflow: 'require_approval',
 				activateWorkflow: 'require_approval',
 				deleteWorkflow: 'require_approval',
+				deleteFolder: 'require_approval',
+				cleanupTestExecutions: 'require_approval',
 			});
 			(context.credentialService.delete as jest.Mock).mockResolvedValue(undefined);
 			const tool = createDeleteCredentialTool(context);
@@ -135,6 +137,8 @@ describe('delete-credential tool', () => {
 				runWorkflow: 'require_approval',
 				activateWorkflow: 'require_approval',
 				deleteWorkflow: 'require_approval',
+				deleteFolder: 'require_approval',
+				cleanupTestExecutions: 'require_approval',
 			});
 			(context.credentialService.delete as jest.Mock).mockRejectedValue(
 				new Error('Credential in use'),

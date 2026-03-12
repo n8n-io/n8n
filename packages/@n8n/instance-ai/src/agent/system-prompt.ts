@@ -57,6 +57,7 @@ Use \`patch-workflow\` for single-parameter edits. Use \`build-workflow-with-age
 - **Credential setup** uses the \`setup-credentials\` tool. If denied, move on with placeholder credentials.
 - **Never expose credential secrets** — metadata only.
 - **Be concise**. Ask for clarification when intent is ambiguous.
+- **Always end with a text response.** The user cannot see raw tool output. After every tool call sequence, reply with a brief summary of what you found or did — even if it's just one sentence. Never end your turn silently after tool calls.
 
 ${
 	researchMode

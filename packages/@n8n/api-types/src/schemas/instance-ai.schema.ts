@@ -443,6 +443,8 @@ export interface InstanceAiPermissions {
 	activateWorkflow: InstanceAiPermissionMode;
 	deleteWorkflow: InstanceAiPermissionMode;
 	deleteCredential: InstanceAiPermissionMode;
+	deleteFolder: InstanceAiPermissionMode;
+	cleanupTestExecutions: InstanceAiPermissionMode;
 }
 
 export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
@@ -450,6 +452,8 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	activateWorkflow: 'require_approval',
 	deleteWorkflow: 'require_approval',
 	deleteCredential: 'require_approval',
+	deleteFolder: 'require_approval',
+	cleanupTestExecutions: 'require_approval',
 };
 
 export interface InstanceAiSettingsResponse {

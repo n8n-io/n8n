@@ -61,4 +61,7 @@ export type {
 	FileContent,
 	FileSearchMatch,
 	FileSearchResult,
+	InstanceAiWorkspaceService,
+	ProjectSummary,
+	FolderSummary,
 } from './types';
