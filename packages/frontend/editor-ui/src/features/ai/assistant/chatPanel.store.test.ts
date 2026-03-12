@@ -113,6 +113,7 @@ describe('chatPanel.store', () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 
 			await chatPanelStore.open({ mode: 'builder' });
+			vi.runAllTimers();
 
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('builder');
@@ -450,6 +451,7 @@ describe('chatPanel.store', () => {
 			// Open in builder mode to set grid width
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 			await chatPanelStore.open({ mode: 'builder' });
+			vi.runAllTimers();
 
 			// Simulate streaming and closing the panel (which resets grid width after timeout)
 			builderStore.streaming = true;
@@ -465,6 +467,7 @@ describe('chatPanel.store', () => {
 
 			// Auto-reopen should restore the grid width offset for the chat
 			expect(chatPanelStateStore.isOpen).toBe(true);
+			vi.runAllTimers();
 			expect(uiStore.appGridDimensions.width).toBe(window.innerWidth - DEFAULT_CHAT_WIDTH);
 		});
 
