@@ -89,6 +89,64 @@ describe('ChatHubWorkflowService', () => {
 
 	describe('createChatWorkflow', () => {
 		describe('message history handling', () => {
+			it('should strip artifact commands from all AI messages except the most recent', async () => {
+				const makeMessage = (id: string, type: 'human' | 'ai', content: string): ChatHubMessage => {
+					const msg = new ChatHubMessage();
+					msg.id = id;
+					msg.content = content;
+					msg.type = type;
+					msg.attachments = [];
+					msg.sessionId = 'session-456';
+					msg.session = new ChatHubSession();
+					msg.status = 'running';
+					return msg;
+				};
+
+				const artifactContent = [
+					'Sure, here is the document.',
+					'@@artifact-create title="My Doc" type="md" end="END_A"',
+					'# Hello',
+					'@@end:END_A',
+					'Let me know if you need changes.',
+				].join('\n');
+
+				const mockHistory: ChatHubMessage[] = [
+					makeMessage('msg-1', 'human', 'Write me a doc'),
+					makeMessage('msg-2', 'ai', artifactContent), // older AI message — commands should be stripped
+					makeMessage('msg-3', 'human', 'Looks good'),
+					makeMessage('msg-4', 'ai', artifactContent), // most recent AI message — must stay intact
+				];
+
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					mockHistory,
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+				);
+
+				const messageValues = (
+					result.workflowData.nodes.find((n) => n.name === 'Restore Chat Memory')?.parameters
+						?.messages as any
+				)?.messageValues;
+
+				expect(messageValues).toHaveLength(4);
+				// Older AI message: commands stripped, only prose remains
+				expect(messageValues[1].message).toBe(
+					'Sure, here is the document.\nLet me know if you need changes.',
+				);
+				// Most recent AI message: full content preserved
+				expect(messageValues[3].message).toBe(artifactContent);
+			});
+
 			it('should handle empty history', async () => {
 				const mockHistory: ChatHubMessage[] = [];
 

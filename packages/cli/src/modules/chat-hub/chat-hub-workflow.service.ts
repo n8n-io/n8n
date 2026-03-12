@@ -69,7 +69,12 @@ import {
 } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
-import { EMBEDDINGS_NODE_TYPE_MAP, parseMessage, collectChatArtifacts } from '@n8n/chat-hub';
+import {
+	EMBEDDINGS_NODE_TYPE_MAP,
+	parseMessage,
+	collectChatArtifacts,
+	appendChunkToParsedMessageItems,
+} from '@n8n/chat-hub';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 
 @Service()
@@ -937,6 +942,13 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 
 		const messages = history.slice().reverse(); // Traversing messages from last to prioritize newer attachments
 
+		// Track whether we've seen a command in AI messages yet (messages are in reverse order).
+		// The most recent command keeps its full @@command content to help LLMs understand the context.
+		// All prior commands in AI messages stripped – the current document
+		// state is already injected into the system prompt, so re-sending the full command
+		// history wastes tokens.
+		let isCommandSeen = false;
+
 		for (const message of messages) {
 			// Empty messages can't be restored by the memory manager
 			if (message.content.length === 0) {
@@ -948,19 +960,32 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 
 			// TODO: Tool messages etc?
 
-			const textSize = message.content.length;
+			let content = message.content;
+			if (message.type === 'ai') {
+				const stripped = this.stripArtifactCommands(message.content);
+
+				if (stripped) {
+					if (isCommandSeen) {
+						content = stripped;
+					} else {
+						isCommandSeen = true;
+					}
+				}
+			}
+
+			const textSize = content.length;
 			currentTotalSize += textSize;
 
 			if (attachments.length === 0) {
 				messageValues.push({
 					type,
-					message: message.content,
+					message: content,
 					hideFromUI: false,
 				});
 				continue;
 			}
 
-			const blocks: ContentBlock[] = [{ type: 'text', text: message.content }];
+			const blocks: ContentBlock[] = [{ type: 'text', text: content }];
 
 			// Add attachments if within size limit
 			for (const attachment of attachments) {
@@ -1483,6 +1508,30 @@ ${fileList}
 
 Use the vector store tool to search the content of these files when answering questions that may be related to them.
 Do not proactively mention these files to the user.`;
+	}
+
+	private stripArtifactCommands(content: string): string | undefined {
+		const chunks = appendChunkToParsedMessageItems([], content);
+
+		const newChunks = [];
+		let isStripped = false;
+
+		for (const chunk of chunks) {
+			if (chunk.type === 'artifact-create' || chunk.type === 'artifact-edit') {
+				isStripped = true;
+			} else {
+				newChunks.push(chunk);
+			}
+		}
+
+		if (!isStripped) {
+			return undefined;
+		}
+
+		return newChunks
+			.map((chunk) => chunk.content)
+			.join('')
+			.trim();
 	}
 
 	private buildArtifactContext(history: ChatHubMessage[]): string {
