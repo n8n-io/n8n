@@ -39,7 +39,10 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
@@ -53,7 +56,12 @@ import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 
 export const useActions = () => {
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const i18n = useI18n();
