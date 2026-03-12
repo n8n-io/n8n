@@ -3,9 +3,9 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nFloatingWindow, N8nText } from '@n8n/design-system';
-import { CHAT_TRIGGER_NODE_TYPE, LOCAL_STORAGE_FLOATING_CHAT_WINDOW } from '@/app/constants';
+import { LOCAL_STORAGE_FLOATING_CHAT_WINDOW } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import CanvasChatHubPanel from './CanvasChatHubPanel.vue';
 import CanvasChatFloatingMenu from './CanvasChatFloatingMenu.vue';
@@ -20,23 +20,11 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const isPoppedOut = computed(() => chatHubPanelStore.isPoppedOut);
 
 const canvasChatHubRef = ref<InstanceType<typeof CanvasChatHubPanel>>();
 const canPopOut = computed(() => window.parent === window);
-
-const allNodes = computed(() => workflowDocumentStore?.value?.allNodes ?? []);
-const chatTriggerNode = computed(() =>
-	allNodes.value.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE),
-);
-
-const agentDisplayName = computed(() => {
-	const triggerName = chatTriggerNode.value?.parameters?.agentName;
-	if (typeof triggerName === 'string' && triggerName.trim()) return triggerName.trim();
-	return workflowsStore.workflowName || 'Workflow';
-});
 
 const floatingWindowState = useStorage<{
 	x?: number;
