@@ -23,10 +23,6 @@ vi.mock('@/features/workflows/readyToRun/stores/readyToRun.store', () => ({
 	useReadyToRunStore: () => ({ userCanClaimOpenAiCredits: false, claimFreeAiCredits: vi.fn() }),
 }));
 
-vi.mock('@/app/stores/cloudPlan.store', () => ({
-	useCloudPlanStore: () => ({ userIsTrialing: true }),
-}));
-
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: vi.fn() }),
 }));

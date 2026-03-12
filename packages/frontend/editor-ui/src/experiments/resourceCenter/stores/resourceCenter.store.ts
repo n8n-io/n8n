@@ -1,5 +1,5 @@
 import { RESOURCE_CENTER_EXPERIMENT, RESOURCE_CENTER_V1_EXPERIMENT, VIEWS } from '@/app/constants';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -21,7 +21,6 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	const templatesStore = useTemplatesStore();
 	const workflowsStore = useWorkflowsStore();
 	const readyToRunStore = useReadyToRunStore();
-	const cloudPlanStore = useCloudPlanStore();
 	const telemetry = useTelemetry();
 	const router = useRouter();
 
@@ -34,9 +33,6 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	};
 
 	const isFeatureEnabled = () => {
-		// Trial-only gating: only show to trialing users
-		if (!cloudPlanStore.userIsTrialing) return false;
-
 		if (isV1FeatureEnabled()) return true;
 		const variant = posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name);
 		return (
