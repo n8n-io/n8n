@@ -139,7 +139,7 @@ const getIconFromNodeTypeString = (nodeTypeName: string): NodeIconSource | undef
 	return iconUrl ? { type: 'file', src: iconUrl } : undefined;
 };
 
-export function getNodeIconSource(
+function getDefaultNodeIconSource(
 	nodeType: IconNodeType | string | null | undefined,
 	node?: INode | null,
 ): NodeIconSource | undefined {
@@ -186,4 +186,14 @@ export function getNodeIconSource(
 	}
 
 	return undefined;
+}
+
+export function getNodeIconSource(
+	nodeType: IconNodeType | string | null | undefined,
+	node?: INode | null,
+): NodeIconSource | undefined {
+	if (node?.iconUrl) {
+		return { type: 'file', src: node.iconUrl };
+	}
+	return getDefaultNodeIconSource(nodeType, node);
 }

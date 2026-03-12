@@ -44,6 +44,7 @@ export function getNodeSettingsInitialValues(): INodeParameters {
 		maxTries: 3,
 		waitBetweenTries: 1000,
 		notes: '',
+		iconUrl: '',
 		parameters: {},
 	};
 }
@@ -562,6 +563,15 @@ export function createCommonNodeSettings(isToolNode: boolean, t: (key: BaseTextK
 			description: t('nodeSettings.notesInFlow.description'),
 			isNodeSetting: true,
 		},
+		{
+			displayName: t('nodeSettings.iconUrl.displayName'),
+			name: 'iconUrl',
+			type: 'string',
+			default: '',
+			noDataExpression: true,
+			description: t('nodeSettings.iconUrl.description'),
+			isNodeSetting: true,
+		},
 	);
 
 	return ret;
@@ -585,6 +595,14 @@ export function collectSettings(node: INodeUi, nodeSettings: INodeProperties[]):
 		ret = {
 			...ret,
 			notes: node.notes,
+		};
+	}
+
+	if (node.iconUrl) {
+		foundNodeSettings.push('iconUrl');
+		ret = {
+			...ret,
+			iconUrl: node.iconUrl,
 		};
 	}
 

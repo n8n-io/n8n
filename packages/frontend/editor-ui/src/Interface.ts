@@ -154,6 +154,7 @@ export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
 	notes?: string;
+	iconUrl?: string;
 	issues?: INodeIssues;
 	name: string;
 	pinData?: IDataObject;
