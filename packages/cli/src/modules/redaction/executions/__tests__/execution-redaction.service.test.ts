@@ -544,16 +544,7 @@ describe('ExecutionRedactionService', () => {
 			expect(context.userCanReveal).toBe(false);
 		});
 
-		it('overrides redactionInfo reason to dynamic_credentials', async () => {
-			// Simulate FullItemRedactionStrategy setting redactionInfo
-			fullItemRedactionStrategy.apply.mockImplementation(async (exec) => {
-				exec.data.redactionInfo = {
-					isRedacted: true,
-					reason: 'user_requested',
-					canReveal: false,
-				};
-			});
-
+		it('passes hasDynamicCredentials: true in context so strategy sets correct reason', async () => {
 			const execution = makeExecution({
 				policy: 'none',
 				mode: 'manual',
@@ -561,11 +552,8 @@ describe('ExecutionRedactionService', () => {
 			});
 			await service.processExecution(execution, { user: mockUser });
 
-			expect(execution.data.redactionInfo).toEqual({
-				isRedacted: true,
-				reason: 'dynamic_credentials',
-				canReveal: false,
-			});
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.hasDynamicCredentials).toBe(true);
 		});
 
 		it('throws ForbiddenError on reveal path', async () => {

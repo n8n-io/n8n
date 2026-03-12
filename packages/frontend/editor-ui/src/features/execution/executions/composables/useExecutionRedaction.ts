@@ -1,9 +1,10 @@
-import { computed } from 'vue';
+import { computed, h } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
+import RevealDataWarning from '../components/RevealDataWarning.vue';
 
 export function useExecutionRedaction() {
 	const workflowsStore = useWorkflowsStore();
@@ -22,17 +23,15 @@ export function useExecutionRedaction() {
 	);
 
 	async function revealData() {
-		const warningHtml = [
-			`<p>${i18n.baseText('ndv.redacted.revealModal.warning')}</p>`,
-			'<ul style="text-align: left; margin-top: var(--spacing--2xs);">',
-			`<li>${i18n.baseText('ndv.redacted.revealModal.logged')}</li>`,
-			`<li>${i18n.baseText('ndv.redacted.revealModal.legitimate')}</li>`,
-			`<li>${i18n.baseText('ndv.redacted.revealModal.policy')}</li>`,
-			'</ul>',
-		].join('');
+		const warningContent = h(RevealDataWarning, {
+			warning: i18n.baseText('ndv.redacted.revealModal.warning'),
+			logged: i18n.baseText('ndv.redacted.revealModal.logged'),
+			legitimate: i18n.baseText('ndv.redacted.revealModal.legitimate'),
+			policy: i18n.baseText('ndv.redacted.revealModal.policy'),
+		});
 
 		const confirmed = await message.confirm(
-			warningHtml,
+			warningContent,
 			i18n.baseText('ndv.redacted.revealModal.title'),
 			{
 				type: 'warning',

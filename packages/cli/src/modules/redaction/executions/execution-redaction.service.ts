@@ -124,22 +124,17 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				user: options.user,
 				redactExecutionData: options.redactExecutionData,
 				userCanReveal,
+				hasDynamicCredentials: hasDynCreds,
 			};
 			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal, hasDynCreds);
 			for (const strategy of pipeline) {
 				await strategy.apply(execution, context);
 			}
 
-			// Override reason and scrub credential context for dynamic credential executions
-			if (hasDynCreds) {
-				if (execution.data.redactionInfo) {
-					execution.data.redactionInfo.reason = 'dynamic_credentials';
-				}
-				// runtimeData.credentials contains encrypted credential context that
-				// must never be exposed in API responses
-				if (execution.data.executionData?.runtimeData) {
-					delete execution.data.executionData.runtimeData.credentials;
-				}
+			// runtimeData.credentials contains encrypted credential context that
+			// must never be exposed in API responses
+			if (hasDynCreds && execution.data.executionData?.runtimeData) {
+				delete execution.data.executionData.runtimeData.credentials;
 			}
 		}
 
