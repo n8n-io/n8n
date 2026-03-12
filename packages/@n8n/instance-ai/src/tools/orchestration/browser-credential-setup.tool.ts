@@ -3,9 +3,7 @@ import type { ToolsInput } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { createTool } from '@mastra/core/tools';
 import { LangSmithExporter } from '@mastra/langsmith';
-import { LibSQLStore } from '@mastra/libsql';
 import { Observability } from '@mastra/observability';
-import { PostgresStore } from '@mastra/pg';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -118,10 +116,7 @@ function createPauseForUserTool() {
 	});
 }
 
-export function createBrowserCredentialSetupTool(
-	context: OrchestrationContext,
-	postgresUrl: string,
-) {
+export function createBrowserCredentialSetupTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'browser-credential-setup',
 		description:
@@ -201,14 +196,9 @@ export function createBrowserCredentialSetupTool(
 				});
 
 				// Register with Mastra for suspend/resume snapshot storage
-				const isPostgres = postgresUrl.startsWith('postgresql://');
-				const storage = isPostgres
-					? new PostgresStore({ id: 'browser-agent-storage', connectionString: postgresUrl })
-					: new LibSQLStore({ id: 'browser-agent-storage', url: postgresUrl });
-
 				new Mastra({
 					agents: { [subAgentId]: subAgent },
-					storage,
+					storage: context.storage,
 					observability: new Observability({
 						configs: {
 							langsmith: {

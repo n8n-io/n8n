@@ -13,9 +13,7 @@ import type { ToolsInput } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { createTool } from '@mastra/core/tools';
 import { LangSmithExporter } from '@mastra/langsmith';
-import { LibSQLStore } from '@mastra/libsql';
 import { Observability } from '@mastra/observability';
-import { PostgresStore } from '@mastra/pg';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -44,7 +42,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-export function createDataTableAgentTool(context: OrchestrationContext, postgresUrl: string) {
+export function createDataTableAgentTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'manage-data-tables-with-agent',
 		description:
@@ -104,7 +102,7 @@ export function createDataTableAgentTool(context: OrchestrationContext, postgres
 				agentId: subAgentId,
 				role: 'data-table-manager',
 				run: async (signal, _drainCorrections) => {
-					const dataTableMemory = createSubAgentMemory(postgresUrl, 'data-table-manager');
+					const dataTableMemory = createSubAgentMemory(context.storage, 'data-table-manager');
 
 					const subAgent = new Agent({
 						id: subAgentId,
@@ -122,17 +120,9 @@ export function createDataTableAgentTool(context: OrchestrationContext, postgres
 					});
 
 					// Register with Mastra for HITL suspend/resume state persistence
-					const isPostgres = postgresUrl.startsWith('postgresql://');
-					const storage = isPostgres
-						? new PostgresStore({
-								id: 'datatable-agent-storage',
-								connectionString: postgresUrl,
-							})
-						: new LibSQLStore({ id: 'datatable-agent-storage', url: postgresUrl });
-
 					new Mastra({
 						agents: { [subAgentId]: subAgent },
-						storage,
+						storage: context.storage,
 						observability: new Observability({
 							configs: {
 								langsmith: {

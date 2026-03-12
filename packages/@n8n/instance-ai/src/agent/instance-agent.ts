@@ -1,11 +1,10 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
+import type { MastraCompositeStore } from '@mastra/core/storage';
 import { withLangsmithMetadata, LangSmithExporter } from '@mastra/langsmith';
-import { LibSQLStore } from '@mastra/libsql';
 import { MCPClient } from '@mastra/mcp';
 import { buildTracingOptions, Observability } from '@mastra/observability';
-import { PostgresStore } from '@mastra/pg';
 import { nanoid } from 'nanoid';
 
 import { createMemory } from '../memory/memory-config';
@@ -79,20 +78,13 @@ async function getBrowserMcpTools(config: McpServerConfig | undefined): Promise<
 	return cachedBrowserMcpTools;
 }
 
-function ensureMastraRegistered(agent: Agent, postgresUrl: string): void {
-	// Only recreate Mastra if the storage config changed
-	if (cachedMastra && cachedMastraStorageKey === postgresUrl) {
+function ensureMastraRegistered(agent: Agent, storage: MastraCompositeStore): void {
+	// Only recreate Mastra if the storage instance changed
+	const key = storage.id ?? 'default';
+	if (cachedMastra && cachedMastraStorageKey === key) {
 		// Re-register the new agent instance with the existing Mastra
 		// Mastra constructor is the only way to register — but we can reuse storage
 	}
-
-	const isPostgres = postgresUrl.startsWith('postgresql://');
-	const storage = isPostgres
-		? new PostgresStore({
-				id: 'instance-ai-workflow-storage',
-				connectionString: postgresUrl,
-			})
-		: new LibSQLStore({ id: 'instance-ai-workflow-storage', url: postgresUrl });
 
 	cachedMastra = new Mastra({
 		agents: { 'n8n-instance-agent': agent },
@@ -106,7 +98,7 @@ function ensureMastraRegistered(agent: Agent, postgresUrl: string): void {
 			},
 		}),
 	});
-	cachedMastraStorageKey = postgresUrl;
+	cachedMastraStorageKey = key;
 }
 
 // ── Agent factory ───────────────────────────────────────────────────────────
@@ -259,7 +251,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	});
 
 	// Register agent with Mastra for HITL suspend/resume snapshot storage
-	ensureMastraRegistered(agent, memoryConfig.postgresUrl);
+	ensureMastraRegistered(agent, memoryConfig.storage);
 
 	return agent;
 }

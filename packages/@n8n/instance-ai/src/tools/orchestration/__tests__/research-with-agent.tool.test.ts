@@ -13,14 +13,8 @@ jest.mock('@mastra/core/mastra', () => ({
 jest.mock('@mastra/langsmith', () => ({
 	LangSmithExporter: jest.fn(),
 }));
-jest.mock('@mastra/libsql', () => ({
-	LibSQLStore: jest.fn(),
-}));
 jest.mock('@mastra/observability', () => ({
 	Observability: jest.fn(),
-}));
-jest.mock('@mastra/pg', () => ({
-	PostgresStore: jest.fn(),
 }));
 jest.mock('../../../stream/map-chunk', () => ({
 	mapMastraChunkToEvent: jest.fn(),
@@ -57,7 +51,7 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 		userId: 'test-user',
 		orchestratorAgentId: 'agent-001',
 		modelId: 'anthropic/claude-sonnet-4-5',
-		postgresUrl: 'file:test.db',
+		storage: { id: 'test-storage' } as OrchestrationContext['storage'],
 		subAgentMaxSteps: 10,
 		eventBus: createMockEventBus(),
 		domainTools,
@@ -77,7 +71,7 @@ describe('research-with-agent tool', () => {
 	describe('schema validation', () => {
 		it('accepts a valid goal', () => {
 			const context = createMockContext();
-			const tool = createResearchWithAgentTool(context, 'file:test.db');
+			const tool = createResearchWithAgentTool(context);
 			const result = tool.inputSchema!.safeParse({
 				goal: 'How does Shopify webhook authentication work?',
 			});
@@ -86,7 +80,7 @@ describe('research-with-agent tool', () => {
 
 		it('accepts goal with optional constraints', () => {
 			const context = createMockContext();
-			const tool = createResearchWithAgentTool(context, 'file:test.db');
+			const tool = createResearchWithAgentTool(context);
 			const result = tool.inputSchema!.safeParse({
 				goal: 'Shopify API auth',
 				constraints: 'Focus on REST API, not GraphQL',
@@ -96,7 +90,7 @@ describe('research-with-agent tool', () => {
 
 		it('rejects missing goal', () => {
 			const context = createMockContext();
-			const tool = createResearchWithAgentTool(context, 'file:test.db');
+			const tool = createResearchWithAgentTool(context);
 			const result = tool.inputSchema!.safeParse({});
 			expect(result.success).toBe(false);
 		});
@@ -105,7 +99,7 @@ describe('research-with-agent tool', () => {
 	describe('execute', () => {
 		it('spawns a background task and returns task ID', async () => {
 			const context = createMockContext();
-			const tool = createResearchWithAgentTool(context, 'file:test.db');
+			const tool = createResearchWithAgentTool(context);
 
 			const result = (await tool.execute!(
 				{ goal: 'How does Stripe webhook verification work?' },
@@ -119,7 +113,7 @@ describe('research-with-agent tool', () => {
 
 		it('publishes agent-spawned event', async () => {
 			const context = createMockContext();
-			const tool = createResearchWithAgentTool(context, 'file:test.db');
+			const tool = createResearchWithAgentTool(context);
 
 			await tool.execute!({ goal: 'test research' }, {} as never);
 
@@ -143,7 +137,7 @@ describe('research-with-agent tool', () => {
 					'fetch-url': { id: 'fetch-url' } as never,
 				},
 			});
-			const tool = createResearchWithAgentTool(context, 'file:test.db');
+			const tool = createResearchWithAgentTool(context);
 
 			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as { result: string };
 
@@ -155,7 +149,7 @@ describe('research-with-agent tool', () => {
 			const context = createMockContext({
 				spawnBackgroundTask: undefined,
 			});
-			const tool = createResearchWithAgentTool(context, 'file:test.db');
+			const tool = createResearchWithAgentTool(context);
 
 			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as { result: string };
 

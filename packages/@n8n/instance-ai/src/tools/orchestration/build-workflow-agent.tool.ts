@@ -14,9 +14,7 @@ import type { ToolsInput } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { createTool } from '@mastra/core/tools';
 import { LangSmithExporter } from '@mastra/langsmith';
-import { LibSQLStore } from '@mastra/libsql';
 import { Observability } from '@mastra/observability';
-import { PostgresStore } from '@mastra/pg';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
@@ -45,7 +43,7 @@ function hashContent(content: string | null): string {
 		.digest('hex');
 }
 
-export function createBuildWorkflowAgentTool(context: OrchestrationContext, postgresUrl: string) {
+export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'build-workflow-with-agent',
 		description:
@@ -160,7 +158,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext, post
 				prompt = BUILDER_AGENT_PROMPT;
 			}
 
-			const builderMemory = createSubAgentMemory(postgresUrl, 'workflow-builder');
+			const builderMemory = createSubAgentMemory(context.storage, 'workflow-builder');
 
 			const subAgentId = `agent-builder-${nanoid(6)}`;
 			const taskId = `build-${nanoid(8)}`;
@@ -269,17 +267,9 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext, post
 							});
 
 							// Register with Mastra for state persistence
-							const isPostgres = postgresUrl.startsWith('postgresql://');
-							const storage = isPostgres
-								? new PostgresStore({
-										id: 'builder-agent-storage',
-										connectionString: postgresUrl,
-									})
-								: new LibSQLStore({ id: 'builder-agent-storage', url: postgresUrl });
-
 							new Mastra({
 								agents: { [subAgentId]: subAgent },
-								storage,
+								storage: context.storage,
 								observability: new Observability({
 									configs: {
 										langsmith: {
@@ -362,17 +352,9 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext, post
 							memory: builderMemory,
 						});
 
-						const isPostgres = postgresUrl.startsWith('postgresql://');
-						const storage = isPostgres
-							? new PostgresStore({
-									id: 'builder-agent-storage',
-									connectionString: postgresUrl,
-								})
-							: new LibSQLStore({ id: 'builder-agent-storage', url: postgresUrl });
-
 						new Mastra({
 							agents: { [subAgentId]: subAgent },
-							storage,
+							storage: context.storage,
 							observability: new Observability({
 								configs: {
 									langsmith: {

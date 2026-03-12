@@ -44,6 +44,7 @@ import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { MastraIterationLogStorage } from './iteration-log-storage';
 import { MastraPlanStorage } from './plan-storage';
+import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
 
 interface ActiveRun {
 	runId: string;
@@ -125,16 +126,6 @@ export class InstanceAiService {
 
 	private readonly instanceAiConfig: InstanceAiConfig;
 
-	private readonly dbType: string;
-
-	private readonly postgresConfig: {
-		user: string;
-		password: string;
-		host: string;
-		port: number;
-		database: string;
-	};
-
 	private readonly oauth2CallbackUrl: string;
 
 	private readonly webhookBaseUrl: string;
@@ -194,10 +185,9 @@ export class InstanceAiService {
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly compositeStore: TypeORMCompositeStore,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
-		this.dbType = globalConfig.database.type;
-		this.postgresConfig = globalConfig.database.postgresdb;
 		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
@@ -601,13 +591,12 @@ export class InstanceAiService {
 			}
 			context.permissions = this.settingsService.getPermissions();
 			const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
-			const postgresUrl = this.buildPostgresUrl();
 
 			const modelId = await this.resolveModel(user);
 			const titleModel = typeof modelId === 'string' ? modelId : modelId.id;
 
 			const memoryConfig = {
-				postgresUrl,
+				storage: this.compositeStore,
 				embedderModel: this.instanceAiConfig.embedderModel || undefined,
 				lastMessages: this.instanceAiConfig.lastMessages,
 				semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
@@ -660,7 +649,7 @@ export class InstanceAiService {
 				userId: user.id,
 				orchestratorAgentId: ORCHESTRATOR_AGENT_ID,
 				modelId,
-				postgresUrl,
+				storage: this.compositeStore,
 				subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
 				eventBus: this.eventBus,
 				domainTools,
@@ -860,7 +849,7 @@ export class InstanceAiService {
 
 		// Create snapshot storage for saving agent tree after resumed run completes
 		const memory = createMemory({
-			postgresUrl: this.buildPostgresUrl(),
+			storage: this.compositeStore,
 			embedderModel: this.instanceAiConfig.embedderModel || undefined,
 			lastMessages: this.instanceAiConfig.lastMessages,
 			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
@@ -1248,14 +1237,5 @@ export class InstanceAiService {
 			const [name, url] = entry.trim().split('=');
 			return { name: name.trim(), url: url?.trim() };
 		});
-	}
-
-	private buildPostgresUrl(): string {
-		if (this.dbType === 'postgresdb') {
-			const pg = this.postgresConfig;
-			return `postgresql://${encodeURIComponent(pg.user)}:${encodeURIComponent(pg.password)}@${pg.host}:${pg.port}/${encodeURIComponent(pg.database)}`;
-		}
-		// Fallback for SQLite — use a local file-based store path
-		return 'file:instance-ai-memory.db';
 	}
 }

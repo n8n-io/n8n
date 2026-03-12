@@ -122,11 +122,11 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 	return {
 		plan: createPlanTool(context),
 		delegate: createDelegateTool(context),
-		'build-workflow-with-agent': createBuildWorkflowAgentTool(context, context.postgresUrl),
-		'manage-data-tables-with-agent': createDataTableAgentTool(context, context.postgresUrl),
+		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),
+		'manage-data-tables-with-agent': createDataTableAgentTool(context),
 		...('web-search' in context.domainTools && context.researchMode
 			? {
-					'research-with-agent': createResearchWithAgentTool(context, context.postgresUrl),
+					'research-with-agent': createResearchWithAgentTool(context),
 				}
 			: {}),
 		...(context.cancelBackgroundTask
@@ -137,10 +137,7 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 			: {}),
 		...(context.browserMcpConfig
 			? {
-					'browser-credential-setup': createBrowserCredentialSetupTool(
-						context,
-						context.postgresUrl,
-					),
+					'browser-credential-setup': createBrowserCredentialSetupTool(context),
 				}
 			: {}),
 	};

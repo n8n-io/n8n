@@ -52,7 +52,6 @@ type MockDaytonaSandboxCtor = new (
 ) => MockWithOpts<Record<string, unknown>>;
 type MockDaytonaFilesystemCtor = new (sandbox: unknown) => { sandbox: unknown };
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const {
 	LocalSandbox,
 	LocalFilesystem,
@@ -63,11 +62,9 @@ const {
 	Workspace: MockWorkspaceCtor;
 } = jest.requireMock('@mastra/core/workspace');
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const { DaytonaSandbox }: { DaytonaSandbox: MockDaytonaSandboxCtor } =
 	jest.requireMock('@mastra/daytona');
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const { DaytonaFilesystem }: { DaytonaFilesystem: MockDaytonaFilesystemCtor } =
 	jest.requireMock('../daytona-filesystem');
 

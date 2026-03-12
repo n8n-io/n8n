@@ -13,28 +13,18 @@ import type {
 import { AgentTreeSnapshotStorage } from './agent-tree-snapshot';
 import { parseStoredMessages } from './message-parser';
 import type { MastraDBMessage } from './message-parser';
+import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
 
 @Service()
 export class InstanceAiMemoryService {
 	private readonly instanceAiConfig: InstanceAiConfig;
 
-	private readonly dbType: string;
-
-	private readonly postgresConfig: {
-		user: string;
-		password: string;
-		host: string;
-		port: number;
-		database: string;
-	};
-
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
+		private readonly compositeStore: TypeORMCompositeStore,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
-		this.dbType = globalConfig.database.type;
-		this.postgresConfig = globalConfig.database.postgresdb;
 	}
 
 	async getWorkingMemory(
@@ -243,18 +233,10 @@ export class InstanceAiMemoryService {
 
 	private createMemoryInstance() {
 		return createMemory({
-			postgresUrl: this.buildPostgresUrl(),
+			storage: this.compositeStore,
 			embedderModel: this.instanceAiConfig.embedderModel || undefined,
 			lastMessages: this.instanceAiConfig.lastMessages,
 			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
 		});
-	}
-
-	private buildPostgresUrl(): string {
-		if (this.dbType === 'postgresdb') {
-			const pg = this.postgresConfig;
-			return `postgresql://${encodeURIComponent(pg.user)}:${encodeURIComponent(pg.password)}@${pg.host}:${pg.port}/${encodeURIComponent(pg.database)}`;
-		}
-		return 'file:instance-ai-memory.db';
 	}
 }

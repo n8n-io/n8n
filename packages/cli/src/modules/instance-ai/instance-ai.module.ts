@@ -36,6 +36,26 @@ export class InstanceAiModule implements ModuleInterface {
 		};
 	}
 
+	async entities() {
+		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity');
+		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity');
+		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity');
+		const { InstanceAiObservationalMemory } = await import(
+			'./entities/instance-ai-observational-memory.entity'
+		);
+		const { InstanceAiWorkflowSnapshot } = await import(
+			'./entities/instance-ai-workflow-snapshot.entity'
+		);
+
+		return [
+			InstanceAiThread,
+			InstanceAiMessage,
+			InstanceAiResource,
+			InstanceAiObservationalMemory,
+			InstanceAiWorkflowSnapshot,
+		];
+	}
+
 	@OnShutdown()
 	async shutdown() {
 		const { InstanceAiService } = await import('./instance-ai.service');

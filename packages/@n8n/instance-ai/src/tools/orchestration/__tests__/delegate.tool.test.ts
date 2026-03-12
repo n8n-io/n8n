@@ -8,8 +8,6 @@ jest.mock('@mastra/core/tools', () => ({
 }));
 jest.mock('@mastra/core/mastra', () => ({ Mastra: jest.fn() }));
 jest.mock('@mastra/memory', () => ({ Memory: jest.fn() }));
-jest.mock('@mastra/pg', () => ({ PostgresStore: jest.fn() }));
-jest.mock('@mastra/libsql', () => ({ LibSQLStore: jest.fn() }));
 jest.mock('../../../stream/consume-with-hitl', () => ({ consumeStreamWithHitl: jest.fn() }));
 jest.mock('../../../stream/map-chunk', () => ({ mapMastraChunkToEvent: jest.fn() }));
 jest.mock('../../../storage/iteration-log', () => ({ formatPreviousAttempts: jest.fn() }));
@@ -29,7 +27,7 @@ function createMockContext(domainTools: Record<string, unknown> = {}): Orchestra
 		userId: 'test-user',
 		orchestratorAgentId: 'test-agent',
 		modelId: 'test-model',
-		postgresUrl: 'postgresql://test:test@localhost:5432/test',
+		storage: { id: 'test-storage' } as OrchestrationContext['storage'],
 		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: jest.fn(),

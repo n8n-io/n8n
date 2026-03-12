@@ -10,9 +10,7 @@ import type { ToolsInput } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { createTool } from '@mastra/core/tools';
 import { LangSmithExporter } from '@mastra/langsmith';
-import { LibSQLStore } from '@mastra/libsql';
 import { Observability } from '@mastra/observability';
-import { PostgresStore } from '@mastra/pg';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -22,7 +20,7 @@ import type { OrchestrationContext } from '../../types';
 
 const RESEARCH_MAX_STEPS = 25;
 
-export function createResearchWithAgentTool(context: OrchestrationContext, postgresUrl: string) {
+export function createResearchWithAgentTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'research-with-agent',
 		description:
@@ -106,17 +104,9 @@ export function createResearchWithAgentTool(context: OrchestrationContext, postg
 					});
 
 					// Register with Mastra for state persistence
-					const isPostgres = postgresUrl.startsWith('postgresql://');
-					const storage = isPostgres
-						? new PostgresStore({
-								id: 'research-agent-storage',
-								connectionString: postgresUrl,
-							})
-						: new LibSQLStore({ id: 'research-agent-storage', url: postgresUrl });
-
 					new Mastra({
 						agents: { [subAgentId]: subAgent },
-						storage,
+						storage: context.storage,
 						observability: new Observability({
 							configs: {
 								langsmith: {

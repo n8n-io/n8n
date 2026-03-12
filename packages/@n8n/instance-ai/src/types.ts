@@ -1,4 +1,5 @@
 import type { ToolsInput } from '@mastra/core/agent';
+import type { MastraCompositeStore } from '@mastra/core/storage';
 import type { Workspace } from '@mastra/core/workspace';
 import type { Memory } from '@mastra/memory';
 import type {
@@ -450,7 +451,7 @@ export interface McpServerConfig {
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
-	postgresUrl: string;
+	storage: MastraCompositeStore;
 	embedderModel?: string;
 	lastMessages?: number;
 	semanticRecallTopK?: number;
@@ -483,7 +484,7 @@ export interface OrchestrationContext {
 	userId: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
-	postgresUrl: string;
+	storage: MastraCompositeStore;
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
 	domainTools: ToolsInput;

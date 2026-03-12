@@ -16,9 +16,8 @@
  *   This separates each role's memory from the orchestrator's (which uses plain userId).
  */
 
-import { LibSQLStore } from '@mastra/libsql';
+import type { MastraCompositeStore } from '@mastra/core/storage';
 import { Memory } from '@mastra/memory';
-import { PostgresStore } from '@mastra/pg';
 
 import { getSubAgentMemoryTemplate } from './sub-agent-memory-templates';
 
@@ -39,20 +38,12 @@ export function subAgentResourceId(userId: string, role: string): string {
  * The Memory instance is lightweight — it wraps the storage backend and config.
  * Creating one per sub-agent invocation is fine.
  */
-export function createSubAgentMemory(postgresUrl: string, role: string): Memory | undefined {
+export function createSubAgentMemory(
+	storage: MastraCompositeStore,
+	role: string,
+): Memory | undefined {
 	const template = getSubAgentMemoryTemplate(role);
 	if (!template) return undefined;
-
-	const isPostgres = postgresUrl.startsWith('postgresql://');
-	const storage = isPostgres
-		? new PostgresStore({
-				id: `sub-agent-memory-${role}`,
-				connectionString: postgresUrl,
-			})
-		: new LibSQLStore({
-				id: `sub-agent-memory-${role}`,
-				url: postgresUrl,
-			});
 
 	return new Memory({
 		storage,

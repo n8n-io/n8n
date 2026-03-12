@@ -1,8 +1,6 @@
 import type { ToolsInput } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { createTool } from '@mastra/core/tools';
-import { LibSQLStore } from '@mastra/libsql';
-import { PostgresStore } from '@mastra/pg';
 import { nanoid } from 'nanoid';
 
 import { delegateInputSchema, delegateOutputSchema } from './delegate.schemas';
@@ -71,7 +69,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 			try {
 				// 3. Create Mastra Memory for this role (if memory-enabled)
 				const memory = MEMORY_ENABLED_ROLES.has(input.role)
-					? createSubAgentMemory(context.postgresUrl, input.role)
+					? createSubAgentMemory(context.storage, input.role)
 					: undefined;
 
 				// 4. Create sub-agent
@@ -87,17 +85,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 				// Register sub-agent with Mastra for HITL suspend/resume snapshot storage.
 				// Without this, tools that use suspend() will fail on resumeStream() because
 				// Mastra has no storage to persist/retrieve the execution snapshot.
-				const isPostgres = context.postgresUrl.startsWith('postgresql://');
-				const storage = isPostgres
-					? new PostgresStore({
-							id: `delegate-agent-storage-${subAgentId}`,
-							connectionString: context.postgresUrl,
-						})
-					: new LibSQLStore({
-							id: `delegate-agent-storage-${subAgentId}`,
-							url: context.postgresUrl,
-						});
-				new Mastra({ agents: { [subAgentId]: subAgent }, storage });
+				new Mastra({ agents: { [subAgentId]: subAgent }, storage: context.storage });
 
 				// 4. Build briefing message — protocol reminder at the end (strongest position)
 				const artifacts = input.artifacts
