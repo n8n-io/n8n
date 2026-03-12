@@ -36,11 +36,7 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 		};
 	}>({});
 
-	function updateParameters(
-		nodeName: string,
-		parameters: INodeParameters,
-		docStore: ReturnType<typeof useWorkflowDocumentStore> | undefined,
-	) {
+	function updateParameters(workflowId: string, nodeName: string, parameters: INodeParameters) {
 		if (ndvStore.activeNodeName === nodeName) {
 			Object.keys(parameters).forEach((key) => {
 				const update: IUpdateInformation = {
@@ -52,7 +48,8 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 				ndvEventBus.emit('updateParameterValue', update);
 			});
 		} else {
-			docStore?.setNodeParameters(
+			const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			docStore.setNodeParameters(
 				{
 					name: nodeName,
 					value: parameters,
@@ -107,7 +104,7 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 
 			const cached = suggestions.value[suggestionId];
 			if (cached) {
-				updateParameters(activeNode.name, cached.suggested, docStore);
+				updateParameters(workflowId, activeNode.name, cached.suggested);
 			} else {
 				const { parameters: suggested } = await replaceCode(rootStore.restApiContext, {
 					suggestionId: codeDiff.suggestionId,
@@ -118,7 +115,7 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 					previous: getRelevantParameters(activeNode.parameters, Object.keys(suggested)),
 					suggested,
 				};
-				updateParameters(activeNode.name, suggested, docStore);
+				updateParameters(workflowId, activeNode.name, suggested);
 			}
 
 			codeDiff.replaced = true;
@@ -154,7 +151,7 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 			assert(activeNode);
 
 			const suggested = suggestion.previous;
-			updateParameters(activeNode.name, suggested, docStore);
+			updateParameters(workflowId, activeNode.name, suggested);
 
 			codeDiff.replaced = false;
 			codeNodeEditorEventBus.emit('codeDiffApplied');
