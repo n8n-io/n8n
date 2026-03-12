@@ -2658,6 +2658,9 @@ importers:
       '@n8n/composables':
         specifier: workspace:*
         version: link:../composables
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
