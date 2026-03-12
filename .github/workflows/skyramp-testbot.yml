@@ -35,5 +35,9 @@ jobs:
           skyramp_license_file: ${{ secrets.SKYRAMP_LICENSE_FILE }}
           anthropic_api_key: ${{ secrets.SKYRAMP_TESTBOT_API_KEY }}
           github_token: ${{ steps.app-token.outputs.token }}
-          auth_token_command: 'echo ${{ secrets.SKYRAMP_TEST_TOKEN }}'
-          target_setup_command: '/deployment-testbot/setup.sh'
+          # auth_token_command: 'echo ${{ secrets.SKYRAMP_TEST_TOKEN }}'
+          target_setup_command: "./deployment-testbot/setup.sh"
+          service_startup_command: "./deployment-testbot/setup.sh"
+          health_check_command: "curl -f http://localhost:5678/healthz"
+          health_check_timeout: 60
+          auth_token_command: "./deployment-testbot/get-token.sh"
