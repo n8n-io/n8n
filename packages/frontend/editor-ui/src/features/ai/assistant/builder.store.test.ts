@@ -178,12 +178,6 @@ describe('AI Builder store', () => {
 		workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 		workflowsStore.workflow.nodes = [];
 		workflowsStore.workflow.connections = {};
-		// mockedStore converts allNodes from a computed to a writable ref,
-		// breaking the link to workflow.nodes. Re-establish it as a getter.
-		Object.defineProperty(workflowsStore, 'allNodes', {
-			get: () => workflowsStore.workflow.nodes,
-			configurable: true,
-		});
 		workflowsStore.nodesByName = {};
 		workflowsStore.workflowExecutionData = null;
 
