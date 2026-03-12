@@ -44,39 +44,7 @@ type TimelinePeriod = {
 	versionName: string | null;
 	user: string | null;
 	isCurrent: boolean;
-};
-
-const periods = computed<TimelinePeriod[]>(() => {
-	if (events.value.length === 0) return [];
-
-	const result: TimelinePeriod[] = [];
-
-	for (let idx = 0; idx < events.value.length; idx++) {
-		const event = events.value[idx];
-		const nextEvent = events.value[idx + 1];
-		const isActivated = event.event === 'activated';
-
-		result.push({
-			status: isActivated ? 'published' : 'unpublished',
-			startedAt: new Date(event.createdAt),
-			endedAt: nextEvent ? new Date(nextEvent.createdAt) : null,
-			versionId: isActivated ? event.versionId : null,
-			versionName: isActivated ? (versionNames.value.get(event.versionId) ?? null) : null,
-			user: event.user ? `${event.user.firstName} ${event.user.lastName}` : null,
-			isCurrent: !nextEvent,
-		});
-	}
-
-	// Filter out brief unpublished periods — these are not actual unpublishes
-	// but version changes where the workflow was deactivated and immediately reactivated
-	return result.toReversed().filter((period) => {
-		if (period.status !== 'unpublished' || period.endedAt === null) return true;
-		return period.endedAt.getTime() - period.startedAt.getTime() >= MIN_UNPUBLISHED_DURATION_MS;
-	});
-});
-
-const formatDate = (date: Date) => {
-	return dateformat(date, 'mmm d, yyyy HH:MM:ss');
+	durationText: string;
 };
 
 const formatDuration = (start: Date, end: Date | null) => {
@@ -98,6 +66,54 @@ const formatDuration = (start: Date, end: Date | null) => {
 	}
 	if (minutes > 0) return `${minutes}m`;
 	return `${seconds}s`;
+};
+
+const periods = computed<TimelinePeriod[]>(() => {
+	if (events.value.length === 0) return [];
+
+	const result: TimelinePeriod[] = [];
+
+	for (let idx = 0; idx < events.value.length; idx++) {
+		const event = events.value[idx];
+		const nextEvent = events.value[idx + 1];
+		const isActivated = event.event === 'activated';
+
+		const startedAt = new Date(event.createdAt);
+		const endedAt = nextEvent ? new Date(nextEvent.createdAt) : null;
+
+		const durationText = i18n.baseText(
+			isActivated
+				? 'workflowHistory.publishTimeline.activeDuration'
+				: 'workflowHistory.publishTimeline.inactiveDuration',
+			{
+				interpolate: {
+					duration: formatDuration(startedAt, endedAt),
+				},
+			},
+		);
+
+		result.push({
+			status: isActivated ? 'published' : 'unpublished',
+			startedAt,
+			endedAt,
+			durationText,
+			versionId: isActivated ? event.versionId : null,
+			versionName: isActivated ? (versionNames.value.get(event.versionId) ?? null) : null,
+			user: event.user ? `${event.user.firstName} ${event.user.lastName}` : null,
+			isCurrent: !nextEvent,
+		});
+	}
+
+	// Filter out brief unpublished periods — these are not actual unpublishes
+	// but version changes where the workflow was deactivated and immediately reactivated
+	return result.toReversed().filter((period) => {
+		if (period.status !== 'unpublished' || period.endedAt === null) return true;
+		return period.endedAt.getTime() - period.startedAt.getTime() >= MIN_UNPUBLISHED_DURATION_MS;
+	});
+});
+
+const formatDate = (date: Date) => {
+	return dateformat(date, 'mmm d, yyyy HH:MM:ss');
 };
 
 const getDurationMs = (period: TimelinePeriod) =>
@@ -172,25 +188,7 @@ watch(isModalOpen, async (open) => {
 								<div :class="$style.durationBadge">
 									<N8nIcon icon="clock" size="small" />
 									<N8nText size="small" color="text-light">
-										{{
-											periods[idx].status === 'published'
-												? i18n.baseText('workflowHistory.publishTimeline.activeDuration', {
-														interpolate: {
-															duration: formatDuration(
-																periods[idx].startedAt,
-																periods[idx].endedAt,
-															),
-														},
-													})
-												: i18n.baseText('workflowHistory.publishTimeline.inactiveDuration', {
-														interpolate: {
-															duration: formatDuration(
-																periods[idx].startedAt,
-																periods[idx].endedAt,
-															),
-														},
-													})
-										}}
+										{{ period.durationText }}
 									</N8nText>
 								</div>
 							</div>
@@ -231,22 +229,7 @@ watch(isModalOpen, async (open) => {
 												</N8nText>
 											</template>
 										</N8nText>
-										<N8nTooltip
-											placement="left"
-											:content="
-												period.status === 'published'
-													? i18n.baseText('workflowHistory.publishTimeline.activeDuration', {
-															interpolate: {
-																duration: formatDuration(period.startedAt, period.endedAt),
-															},
-														})
-													: i18n.baseText('workflowHistory.publishTimeline.inactiveDuration', {
-															interpolate: {
-																duration: formatDuration(period.startedAt, period.endedAt),
-															},
-														})
-											"
-										>
+										<N8nTooltip placement="left" :content="period.durationText">
 											<N8nText size="small" color="text-light" :class="$style.dateText">
 												{{ formatDate(period.startedAt) }}
 											</N8nText>
