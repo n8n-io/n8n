@@ -5,6 +5,12 @@ import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import type { PostHog } from 'posthog-node';
 
+/**
+ * PostHog group type for instance-level properties.
+ * Note: Aliased as "instance" on PostHog dashboard
+ */
+const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
+
 @Service()
 export class PostHogClient {
 	private postHog?: PostHog;
@@ -37,6 +43,37 @@ export class PostHogClient {
 			distinctId: payload.userId,
 			sendFeatureFlags: true,
 			...payload,
+		});
+	}
+
+	groupIdentify({
+		instanceId,
+		distinctId,
+		properties,
+	}: {
+		instanceId: string;
+		distinctId?: string;
+		properties: Record<string, string | number> | undefined;
+	}): void {
+		if (!instanceId) return;
+
+		this.postHog?.groupIdentify({
+			groupType: POSTHOG_GROUP_TYPE_INSTANCE,
+			groupKey: instanceId,
+			properties,
+			...(distinctId && { distinctId }),
+		});
+	}
+
+	identify({
+		distinctId,
+		properties,
+	}: { distinctId: string; properties: Record<string | number, unknown> | undefined }): void {
+		if (!distinctId) return;
+
+		this.postHog?.identify({
+			distinctId,
+			properties: properties ?? undefined,
 		});
 	}
 

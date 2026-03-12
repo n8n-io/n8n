@@ -15,9 +15,9 @@ import {
 import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useClipboard } from '@vueuse/core';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 import { useChatState } from '@/features/execution/logs/composables/useChatState';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 interface Props {
 	sessionId: string;
@@ -42,8 +42,8 @@ const emit = defineEmits<{
 
 const locale = useI18n();
 const clipboard = useClipboard();
+const workflowId = useInjectWorkflowId();
 const toast = useToast();
-const workflowsStore = useWorkflowsStore();
 const chatContainer = useTemplateRef<HTMLElement>('chatContainer');
 
 // Use the chat state composable
@@ -142,16 +142,13 @@ watch(
 );
 
 // Watch for workflow ID changes (important for webhook URL)
-watch(
-	() => workflowsStore.workflowId,
-	async (newWorkflowId, oldWorkflowId) => {
-		if (props.isOpen && isWorkflowReadyForChat.value && newWorkflowId !== oldWorkflowId) {
-			// Workflow ID changed and workflow is ready - reinitialize chat with new webhook URL
-			destroyChat();
-			initializeChat();
-		}
-	},
-);
+watch(workflowId, async (newWorkflowId, oldWorkflowId) => {
+	if (props.isOpen && isWorkflowReadyForChat.value && newWorkflowId !== oldWorkflowId) {
+		// Workflow ID changed and workflow is ready - reinitialize chat with new webhook URL
+		destroyChat();
+		initializeChat();
+	}
+});
 
 // Watch for streaming configuration changes
 watch(

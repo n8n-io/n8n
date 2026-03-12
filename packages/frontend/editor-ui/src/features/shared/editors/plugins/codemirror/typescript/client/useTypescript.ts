@@ -62,7 +62,7 @@ export function useTypescript(
 				binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,
 			},
 			Comlink.proxy(async (nodeName) => {
-				const node = workflowsStore.getNodeByName(nodeName);
+				const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
 
 				if (node) {
 					const inputData: INodeExecutionData[] = getInputDataWithPinned(node);

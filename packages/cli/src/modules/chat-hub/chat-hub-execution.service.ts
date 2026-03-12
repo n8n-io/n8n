@@ -29,6 +29,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
@@ -564,7 +565,7 @@ export class ChatHubExecutionService {
 					workflowId,
 				]);
 				if (execution && EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
-					errorText = this.extractErrorMessage(execution);
+					errorText = this.extractErrorMessage(execution.data);
 					break;
 				}
 			} catch (error) {
@@ -653,13 +654,40 @@ export class ChatHubExecutionService {
 		return { adapter: adapter as unknown as Response, waitForPendingOperations };
 	}
 
+	async ensureWasSuccessfulOrThrow(executionId: string, errorMessage: string) {
+		const executionEntity = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		if (!executionEntity) {
+			throw new InternalServerError(`${errorMessage}: Execution not found`);
+		}
+
+		if (executionEntity.status !== 'success') {
+			const cause = this.extractErrorMessage(executionEntity.data) ?? 'Unknown error';
+			throw new InternalServerError(`${errorMessage}: ${cause}`);
+		}
+	}
+
 	/**
 	 * Extract error message from run data
 	 */
-	extractErrorMessage(runData: IRun): string | undefined {
-		if (runData.data.resultData.error) {
-			return runData.data.resultData.error.description ?? runData.data.resultData.error.message;
+	extractErrorMessage(runData: IRunExecutionData): string | undefined {
+		const { error, runData: nodeRunData } = runData.resultData;
+
+		if (error) {
+			return error.description ?? error.message;
 		}
+
+		for (const nodeRuns of Object.values(nodeRunData ?? {})) {
+			for (const nodeRun of nodeRuns) {
+				if (nodeRun.error) {
+					return nodeRun.error.description ?? nodeRun.error.message;
+				}
+			}
+		}
+
 		return undefined;
 	}
 

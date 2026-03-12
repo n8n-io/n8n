@@ -228,65 +228,13 @@ export class WorkflowBuilderAgent {
 		const useCodeWorkflowBuilder = payload.featureFlags?.codeBuilder ?? false;
 
 		if (useCodeWorkflowBuilder) {
-			const usePlanMode = payload.featureFlags?.planMode === true;
-
-			// Check if this is a plan decision resume (approval/modify/reject)
-			if (payload.resumeData && payload.resumeInterrupt?.type === 'plan') {
-				const decision = parsePlanDecision(payload.resumeData);
-
-				if (decision.action === 'approve') {
-					// Plan approved: extract plan, route to CodeWorkflowBuilder with plan context
-					this.logger?.debug('Plan approved, routing to CodeWorkflowBuilder with plan', {
-						userId,
-					});
-					const codePayload: ChatPayload = {
-						...payload,
-						planOutput: payload.resumeInterrupt.plan,
-						resumeData: undefined,
-						resumeInterrupt: undefined,
-					};
-					yield* this.runCodeWorkflowBuilder(codePayload, userId, abortSignal);
-					return;
-				}
-
-				// Plan modify or reject: resume multi-agent system
-				this.logger?.debug('Plan modify/reject, resuming multi-agent system', {
-					userId,
-					action: decision.action,
-				});
-				yield* this.runMultiAgentSystem(
-					payload,
-					userId,
-					abortSignal,
-					externalCallbacks,
-					historicalMessages,
-				);
-				return;
-			}
-
-			// Initial plan request: route to multi-agent for discovery + planning
-			if (usePlanMode && payload.mode === 'plan') {
-				this.logger?.debug('Plan mode with code builder, routing to multi-agent for planning', {
-					userId,
-				});
-				yield* this.runMultiAgentSystem(
-					payload,
-					userId,
-					abortSignal,
-					externalCallbacks,
-					historicalMessages,
-				);
-				return;
-			}
-
-			const isMergeAskBuildEnabled = payload.featureFlags?.mergeAskBuild === true;
-			if (isMergeAskBuildEnabled && this.assistantHandler) {
-				this.logger?.debug('Routing through triage agent', { userId });
-				yield* this.runTriageAgent(payload, userId, abortSignal);
-			} else {
-				this.logger?.debug('Routing to code workflow builder', { userId });
-				yield* this.runCodeWorkflowBuilder(payload, userId, abortSignal);
-			}
+			yield* this.routeCodeBuilder(
+				payload,
+				userId,
+				abortSignal,
+				externalCallbacks,
+				historicalMessages,
+			);
 			return;
 		}
 
@@ -299,6 +247,92 @@ export class WorkflowBuilderAgent {
 			externalCallbacks,
 			historicalMessages,
 		);
+	}
+
+	/**
+	 * Route code-builder requests: handle resume flows, plan mode, and triage.
+	 */
+	private async *routeCodeBuilder(
+		payload: ChatPayload,
+		userId: string | undefined,
+		abortSignal: AbortSignal | undefined,
+		externalCallbacks: Callbacks | undefined,
+		historicalMessages: BaseMessage[] | undefined,
+	) {
+		const usePlanMode = payload.featureFlags?.planMode === true;
+
+		// web_fetch_approval resumes always go through multi-agent (where the interrupt lives)
+		if (payload.resumeData && payload.resumeInterrupt?.type === 'web_fetch_approval') {
+			this.logger?.debug('web_fetch_approval resume, routing to multi-agent system', {
+				userId,
+			});
+			yield* this.runMultiAgentSystem(
+				payload,
+				userId,
+				abortSignal,
+				externalCallbacks,
+				historicalMessages,
+			);
+			return;
+		}
+
+		// Check if this is a plan decision resume (approval/modify/reject)
+		if (payload.resumeData && payload.resumeInterrupt?.type === 'plan') {
+			const decision = parsePlanDecision(payload.resumeData);
+
+			if (decision.action === 'approve') {
+				// Plan approved: extract plan, route to CodeWorkflowBuilder with plan context
+				this.logger?.debug('Plan approved, routing to CodeWorkflowBuilder with plan', {
+					userId,
+				});
+				const codePayload: ChatPayload = {
+					...payload,
+					planOutput: payload.resumeInterrupt.plan,
+					resumeData: undefined,
+					resumeInterrupt: undefined,
+				};
+				yield* this.runCodeWorkflowBuilder(codePayload, userId, abortSignal);
+				return;
+			}
+
+			// Plan modify or reject: resume multi-agent system
+			this.logger?.debug('Plan modify/reject, resuming multi-agent system', {
+				userId,
+				action: decision.action,
+			});
+			yield* this.runMultiAgentSystem(
+				payload,
+				userId,
+				abortSignal,
+				externalCallbacks,
+				historicalMessages,
+			);
+			return;
+		}
+
+		// Initial plan request: route to multi-agent for discovery + planning
+		if (usePlanMode && payload.mode === 'plan') {
+			this.logger?.debug('Plan mode with code builder, routing to multi-agent for planning', {
+				userId,
+			});
+			yield* this.runMultiAgentSystem(
+				payload,
+				userId,
+				abortSignal,
+				externalCallbacks,
+				historicalMessages,
+			);
+			return;
+		}
+
+		const isMergeAskBuildEnabled = payload.featureFlags?.mergeAskBuild === true;
+		if (isMergeAskBuildEnabled && this.assistantHandler) {
+			this.logger?.debug('Routing through triage agent', { userId });
+			yield* this.runTriageAgent(payload, userId, abortSignal);
+		} else {
+			this.logger?.debug('Routing to code workflow builder', { userId });
+			yield* this.runCodeWorkflowBuilder(payload, userId, abortSignal);
+		}
 	}
 
 	private async *runCodeWorkflowBuilder(
@@ -522,22 +556,28 @@ export class WorkflowBuilderAgent {
 		// The messagesStateReducer will properly merge these with any existing checkpoint state.
 		const messages = [...(historicalMessages ?? []), humanMessage];
 
+		// web_fetch_approval resumes are handled internally by the tool via interrupt()/Command.resume.
+		// Injecting AIMessage (with raw interrupt JSON) and HumanMessage causes the LLM to echo them.
+		const isWebFetchResume = payload.resumeInterrupt?.type === 'web_fetch_approval';
+
 		const stream = payload.resumeData
 			? await agent.stream(
 					new Command({
 						resume: payload.resumeData,
 						update: {
-							messages: [
-								...(payload.resumeInterrupt
-									? [
-											new AIMessage({
-												content: JSON.stringify(payload.resumeInterrupt),
-												additional_kwargs: { messageType: payload.resumeInterrupt.type },
-											}),
-										]
-									: []),
-								humanMessage,
-							],
+							messages: isWebFetchResume
+								? []
+								: [
+										...(payload.resumeInterrupt
+											? [
+													new AIMessage({
+														content: JSON.stringify(payload.resumeInterrupt),
+														additional_kwargs: { messageType: payload.resumeInterrupt.type },
+													}),
+												]
+											: []),
+										humanMessage,
+									],
 							workflowJSON,
 							workflowContext,
 							...(payload.mode ? { mode: payload.mode } : {}),

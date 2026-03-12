@@ -3,7 +3,11 @@ import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute } from 'vue-router';
-import { ASK_AI_SLIDE_OUT_DURATION_MS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
+import {
+	ASK_AI_SLIDE_IN_DURATION_MS,
+	ASK_AI_SLIDE_OUT_DURATION_MS,
+	EDITABLE_CANVAS_VIEWS,
+} from '@/app/constants';
 import type { VIEWS } from '@/app/constants';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.store';
@@ -39,6 +43,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const posthogStore = usePostHog();
 	const locale = useI18n();
 
+	let openTimerId: ReturnType<typeof setTimeout> | null = null;
+
 	const isMergeAskBuildEnabled = computed(
 		() =>
 			posthogStore.isFeatureEnabled(MERGE_ASK_BUILD_EXPERIMENT.name) &&
@@ -63,6 +69,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 	// Actions
 	async function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
+		if (!settingsStore.isAiAssistantOrBuilderEnabled) return;
+
 		const mode = options?.mode ? resolveMode(options.mode) : undefined;
 		const showCoachmark = options?.showCoachmark ?? true;
 
@@ -99,14 +107,22 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				read: true,
 			}));
 		}
-		// Update UI grid dimensions when opening
-		uiStore.appGridDimensions = {
-			...uiStore.appGridDimensions,
-			width: window.innerWidth - chatPanelStateStore.width,
-		};
+		// Wait for slide animation to finish before updating grid width
+		if (openTimerId) clearTimeout(openTimerId);
+		openTimerId = setTimeout(() => {
+			openTimerId = null;
+			uiStore.appGridDimensions = {
+				...uiStore.appGridDimensions,
+				width: window.innerWidth - chatPanelStateStore.width,
+			};
+		}, ASK_AI_SLIDE_IN_DURATION_MS);
 	}
 
 	function close() {
+		if (openTimerId) {
+			clearTimeout(openTimerId);
+			openTimerId = null;
+		}
 		chatPanelStateStore.isOpen = false;
 		chatPanelStateStore.showCoachmark = false;
 		// Wait for slide animation to finish before updating grid width and resetting
