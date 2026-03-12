@@ -259,9 +259,11 @@ function buildSharedAIMessage(
 		type: 'tool_call' as const,
 	}));
 
-	const toolNames = processedTools.map((pt) => pt.nodeName).join(', ');
-
-	const content = contentOverride ?? `Calling tools: ${toolNames}`;
+	const content =
+		contentOverride ??
+		processedTools
+			.map((pt) => `Calling ${pt.toolName} with input: ${JSON.stringify(pt.toolInput)}`)
+			.join('\n');
 
 	return new AIMessage({
 		content,
@@ -296,9 +298,11 @@ function buildSharedGeminiAIMessage(
 		type: 'tool_call' as const,
 	}));
 
-	const toolNames = processedTools.map((pt) => pt.nodeName).join(', ');
-
-	const content = contentOverride ?? `Calling tools: ${toolNames}`;
+	const content =
+		contentOverride ??
+		processedTools
+			.map((pt) => `Calling ${pt.toolName} with input: ${JSON.stringify(pt.toolInput)}`)
+			.join('\n');
 
 	return new AIMessage({
 		content,
@@ -397,23 +401,28 @@ export function buildSteps(
 	const sharedThoughtSignature = batchTools.find((bt) => bt.providerMetadata.thoughtSignature)
 		?.providerMetadata.thoughtSignature;
 
-	// Extract cleanToolCallContent setting from first tool's options for the batch
+	// When saveAnnouncements is on and an announcement exists, use announcement
+	// as the AIMessage content (replacing the generic "Calling toolname..." text)
+	const batchAnnouncement = batchTools[0]?.tool.action.metadata?.announcement || '';
 	const firstToolOptions = batchTools[0]?.tool.action.metadata?.options as
 		| Record<string, unknown>
 		| undefined;
-	const cleanToolCallContent = firstToolOptions?.cleanToolCallContent === true;
-
-	// When cleanToolCallContent is on and announcement exists, use announcement
-	// as the AIMessage content (replacing "Calling toolname...")
-	const batchAnnouncement = batchTools[0]?.tool.action.metadata?.announcement || '';
+	const isStreaming = firstToolOptions?.enableStreaming === true;
+	const saveAnnouncements = isStreaming ? firstToolOptions?.saveAnnouncements !== false : true;
 	const sharedContentOverride =
-		cleanToolCallContent && batchAnnouncement ? String(batchAnnouncement) : undefined;
+		saveAnnouncements && batchAnnouncement ? String(batchAnnouncement) : undefined;
 
 	let sharedAIMessage: AIMessage | undefined;
 	if (batchTools.length > 1) {
-		sharedAIMessage = sharedThoughtSignature
-			? buildSharedGeminiAIMessage(batchTools, sharedThoughtSignature, sharedContentOverride)
-			: buildSharedAIMessage(batchTools, sharedContentOverride);
+		if (sharedThoughtSignature) {
+			sharedAIMessage = buildSharedGeminiAIMessage(
+				batchTools,
+				sharedThoughtSignature,
+				sharedContentOverride,
+			);
+		} else if (saveAnnouncements) {
+			sharedAIMessage = buildSharedAIMessage(batchTools, sharedContentOverride);
+		}
 	}
 
 	// Second pass: build steps
@@ -426,39 +435,26 @@ export function buildSteps(
 		// Exclude metadata fields (id, log, type) from the tool input forwarded to the result
 		const { id, log, type, ...toolInputForResult } = toolInput;
 
-		// Extract clean announcement text from metadata (falling back to empty string so it surfaces in intermediate steps)
+		// Extract clean announcement text from metadata
 		const announcement = tool.action.metadata?.announcement || '';
 
-		// Determine if we should merge announcement into the tool call AIMessage
-		// When cleanToolCallContent is on AND announcement exists, we skip the
-		// separate announcement step and use the announcement as the AIMessage content
-		const shouldMergeAnnouncement = cleanToolCallContent && !!announcement;
-
-		// Push a separate announcement step (only for the first tool in the batch
-		// to avoid duplicating the same streamed text across parallel calls)
-		const announcementMessages: AIMessage[] = [];
-		if (i === 0 && announcement) {
-			const toolOptions = tool.action.metadata?.options as Record<string, unknown> | undefined;
-			const isStreaming = toolOptions?.enableStreaming === true;
-			const saveAnnouncements = isStreaming ? toolOptions?.saveAnnouncements !== false : true;
-			if (saveAnnouncements) {
-				steps.push({
-					action: {
-						type: 'announcement',
-						log: announcement,
-						// When merged into the tool call AIMessage, skip in memory
-						// but still show in intermediate steps
-						...(shouldMergeAnnouncement && { skipInMemory: true }),
-					},
-				});
-			}
+		// Push a scratchpad-only announcement step for the first tool in the batch.
+		// The text is already embedded as the tool call AIMessage's content (see messageLog
+		// below), so this step is never written to memory.
+		if (i === 0 && announcement && saveAnnouncements) {
+			steps.push({
+				action: {
+					type: 'announcement',
+					log: announcement,
+				},
+			});
 		}
 
-		// Build the tool call AIMessage(s)
-		// When merging announcement, use announcement text as AIMessage content
-		const announcementContent = shouldMergeAnnouncement ? announcement : undefined;
+		// When saveAnnouncements is on and announcement exists, use it as the
+		// AIMessage content (replacing the generic "Calling tool..." text)
+		const announcementContent = saveAnnouncements && announcement ? announcement : undefined;
 
-		const toolCallMessages = sharedAIMessage
+		const messageLog = sharedAIMessage
 			? i === 0
 				? [sharedAIMessage]
 				: []
@@ -471,8 +467,6 @@ export function buildSteps(
 						announcementContent,
 					),
 				];
-
-		const messageLog = [...announcementMessages, ...toolCallMessages];
 
 		steps.push({
 			action: {

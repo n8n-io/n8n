@@ -41,24 +41,10 @@ export const commonOptions: INodeProperties[] = [
 		type: 'boolean',
 		default: true,
 		description:
-			'Whether or not to save AI streamed text as a separate message in the agent context before tool calls',
+			'Whether to preserve AI streamed text before tool calls. When enabled, the announcement text replaces the generic "Calling tool with input" content in both memory and the agent scratchpad.',
 		displayOptions: {
 			show: {
 				enableStreaming: [true],
-			},
-		},
-	},
-	{
-		displayName: 'Clean Tool Call Content',
-		name: 'cleanToolCallContent',
-		type: 'boolean',
-		default: true,
-		description:
-			'Whether to remove redundant "Calling tool with input" text by merging the AI announcement into the tool call message',
-		displayOptions: {
-			show: {
-				enableStreaming: [true],
-				saveAnnouncements: [true],
 			},
 		},
 	},
