@@ -147,7 +147,7 @@ export function useBuilderTodos() {
 		}
 		visited.add(nodeName);
 
-		const node = workflowDocumentStore.value?.getNodeByName(nodeName) ?? null;
+		const node = workflowDocumentStore.value?.getNodeByName(nodeName);
 
 		// Check if node itself is disabled
 		if (node?.disabled === true) {
