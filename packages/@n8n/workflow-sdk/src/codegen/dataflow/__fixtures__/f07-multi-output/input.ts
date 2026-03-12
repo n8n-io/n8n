@@ -33,12 +33,39 @@ workflow({ name: 'F07: Multi-input/output (Compare Datasets with 2 inputs → 3 
 		[data_A, data_B],
 	);
 	const only_In_A = compare_Datasets_0.map((item) =>
-		executeNode({ type: 'n8n-nodes-base.set', name: 'Only In A', params: {}, version: 3.4 }),
+		executeNode({
+			type: 'n8n-nodes-base.set',
+			name: 'Only In A',
+			params: {
+				assignments: {
+					assignments: [{ id: 'a1', name: 'source', type: 'string', value: 'only-in-a' }],
+				},
+			},
+			version: 3.4,
+		}),
 	);
 	const only_In_B = compare_Datasets_1.map((item) =>
-		executeNode({ type: 'n8n-nodes-base.set', name: 'Only In B', params: {}, version: 3.4 }),
+		executeNode({
+			type: 'n8n-nodes-base.set',
+			name: 'Only In B',
+			params: {
+				assignments: {
+					assignments: [{ id: 'b1', name: 'source', type: 'string', value: 'only-in-b' }],
+				},
+			},
+			version: 3.4,
+		}),
 	);
 	const in_Both = compare_Datasets_2.map((item) =>
-		executeNode({ type: 'n8n-nodes-base.set', name: 'In Both', params: {}, version: 3.4 }),
+		executeNode({
+			type: 'n8n-nodes-base.set',
+			name: 'In Both',
+			params: {
+				assignments: {
+					assignments: [{ id: 'c1', name: 'source', type: 'string', value: 'in-both' }],
+				},
+			},
+			version: 3.4,
+		}),
 	);
 });

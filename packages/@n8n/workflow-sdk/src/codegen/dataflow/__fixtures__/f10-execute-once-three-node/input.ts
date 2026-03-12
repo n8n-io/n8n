@@ -11,7 +11,9 @@ workflow({ name: 'F10: Execute-once three-node chain (Fetch → Transform → Se
 			name: 'Transform',
 			params: {
 				assignments: {
-					assignments: [{ id: '1', name: 'username', type: 'string', value: fetch_Data.json.name }],
+					assignments: [
+						{ id: '1', name: 'username', type: 'string', value: fetch_Data[0].json.name },
+					],
 				},
 			},
 			version: 3.4,
@@ -23,7 +25,7 @@ workflow({ name: 'F10: Execute-once three-node chain (Fetch → Transform → Se
 				url: 'https://hooks.example.com/notify',
 				method: 'POST',
 				sendBody: true,
-				bodyParameters: { parameters: [{ name: 'user', value: transform.json.username }] },
+				bodyParameters: { parameters: [{ name: 'user', value: transform[0].json.username }] },
 			},
 			version: 4,
 		});

@@ -1,7 +1,7 @@
 {
 	"nodes": {
 		"Grade A": {
-			"items": [{ "score": 95 }]
+			"items": [{ "grade": "A" }]
 		}
 	}
 }

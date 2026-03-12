@@ -12,7 +12,11 @@ workflow({ name: 'F12: Else-if chain (chained IF nodes)' }, () => {
 					const grade_A = executeNode({
 						type: 'n8n-nodes-base.set',
 						name: 'Grade A',
-						params: {},
+						params: {
+							assignments: {
+								assignments: [{ id: 'a1', name: 'grade', type: 'string', value: 'A' }],
+							},
+						},
 						version: 3.4,
 					});
 				} else {
@@ -21,14 +25,22 @@ workflow({ name: 'F12: Else-if chain (chained IF nodes)' }, () => {
 							const grade_B = executeNode({
 								type: 'n8n-nodes-base.set',
 								name: 'Grade B',
-								params: {},
+								params: {
+									assignments: {
+										assignments: [{ id: 'b1', name: 'grade', type: 'string', value: 'B' }],
+									},
+								},
 								version: 3.4,
 							});
 						} else {
 							const grade_F = executeNode({
 								type: 'n8n-nodes-base.set',
 								name: 'Grade F',
-								params: {},
+								params: {
+									assignments: {
+										assignments: [{ id: 'f1', name: 'grade', type: 'string', value: 'F' }],
+									},
+								},
 								version: 3.4,
 							});
 						}

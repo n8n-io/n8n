@@ -1,7 +1,7 @@
 {
 	"nodes": {
 		"True Branch": {
-			"items": [{ "status": "active" }]
+			"items": [{ "result": "active-path" }]
 		}
 	}
 }

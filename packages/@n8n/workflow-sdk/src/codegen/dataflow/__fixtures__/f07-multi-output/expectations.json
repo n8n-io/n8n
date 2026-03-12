@@ -1,7 +1,7 @@
 {
 	"nodes": {
 		"Only In A": {
-			"items": [{ "id": 1, "name": "Alice" }]
+			"items": [{ "source": "only-in-a" }]
 		}
 	}
 }

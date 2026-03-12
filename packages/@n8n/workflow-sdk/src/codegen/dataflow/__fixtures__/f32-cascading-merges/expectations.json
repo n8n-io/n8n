@@ -21,7 +21,7 @@
 			"items": [{ "fromA": "alpha", "fromB": "beta", "fromC": "gamma" }]
 		},
 		"Final Process": {
-			"items": [{ "fromA": "alpha", "fromB": "beta", "fromC": "gamma" }]
+			"items": [{ "merged": true }]
 		}
 	}
 }

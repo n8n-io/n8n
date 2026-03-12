@@ -1,10 +1,10 @@
 workflow({ name: 'F20: AI agent with tools and memory (subnode builders)' }, () => {
 	onTrigger(
 		{
-			type: '@n8n/n8n-nodes-langchain.chatTrigger',
-			name: 'When chat message received',
-			params: { options: {} },
-			version: 1.4,
+			type: 'n8n-nodes-base.webhook',
+			name: 'Webhook',
+			params: { path: 'chat', options: {}, httpMethod: 'POST' },
+			version: 2,
 		},
 		(items) => {
 			const agent = executeNode({

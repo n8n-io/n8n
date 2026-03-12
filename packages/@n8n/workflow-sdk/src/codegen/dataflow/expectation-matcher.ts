@@ -193,10 +193,19 @@ export function matchRequests(
 	for (const [key, expected] of Object.entries(expectations)) {
 		const { method, url, occurrence } = parseRequestKey(key);
 		// Match URLs with or without scheme (nock may strip https://)
-		const urlWithoutScheme = url.replace(/^https?:\/\//, '');
-		const matching = requests.filter(
-			(r) => r.method === method && (r.url === url || r.url === urlWithoutScheme),
-		);
+		// Strip query params for comparison since nock with .query(true) includes them in actual URL
+		const urlBase = url.split('?')[0];
+		const urlBaseWithoutScheme = urlBase.replace(/^https?:\/\//, '');
+		const matching = requests.filter((r) => {
+			const actualBase = r.url.split('?')[0];
+			return (
+				r.method === method &&
+				(actualBase === urlBase ||
+					actualBase === urlBaseWithoutScheme ||
+					actualBase === url ||
+					actualBase === url.replace(/^https?:\/\//, ''))
+			);
+		});
 
 		if (matching.length < occurrence) {
 			mismatches.push({

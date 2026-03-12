@@ -45,6 +45,13 @@ workflow({ name: 'F32: Cascading merges (3 sources → merge A+B → merge with 
 		[merge_node, fetch_C],
 	);
 	const final_Process = merge_1.map((item) =>
-		executeNode({ type: 'n8n-nodes-base.set', name: 'Final Process', params: {}, version: 3.4 }),
+		executeNode({
+			type: 'n8n-nodes-base.set',
+			name: 'Final Process',
+			params: {
+				assignments: { assignments: [{ id: 'a1', name: 'merged', type: 'boolean', value: true }] },
+			},
+			version: 3.4,
+		}),
 	);
 });

@@ -43,7 +43,11 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3,
 			"position": [600, -100],
-			"parameters": {}
+			"parameters": {
+				"assignments": {
+					"assignments": [{ "id": "a1", "name": "source", "type": "string", "value": "only-in-a" }]
+				}
+			}
 		},
 		{
 			"id": "6",
@@ -51,7 +55,11 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3,
 			"position": [600, 0],
-			"parameters": {}
+			"parameters": {
+				"assignments": {
+					"assignments": [{ "id": "b1", "name": "source", "type": "string", "value": "only-in-b" }]
+				}
+			}
 		},
 		{
 			"id": "7",
@@ -59,7 +67,11 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3,
 			"position": [600, 100],
-			"parameters": {}
+			"parameters": {
+				"assignments": {
+					"assignments": [{ "id": "c1", "name": "source", "type": "string", "value": "in-both" }]
+				}
+			}
 		}
 	],
 	"connections": {

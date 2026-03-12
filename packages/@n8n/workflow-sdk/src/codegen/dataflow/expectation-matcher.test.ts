@@ -227,6 +227,14 @@ describe('matchRequests', () => {
 		expect(result).toEqual([]);
 	});
 
+	it('matches when actual URL contains query params but expectation does not', () => {
+		const requests = [
+			makeRequest('GET', '/v1/slots?startTime=2024-01-15&endTime=2024-01-16&timeZone=UTC'),
+		];
+		const result = matchRequests({ 'GET /v1/slots': {} }, requests);
+		expect(result).toEqual([]);
+	});
+
 	it('matches requestHeaders via deep partial match', () => {
 		const requests = [
 			makeRequest(

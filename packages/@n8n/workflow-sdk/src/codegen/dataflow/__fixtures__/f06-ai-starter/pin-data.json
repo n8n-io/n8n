@@ -1,4 +1,4 @@
 {
-	"When chat message received": [{ "chatInput": "Hello", "sessionId": "test-session" }],
+	"Webhook": [{ "chatInput": "Hello", "sessionId": "test-session" }],
 	"Agent": [{ "output": "Welcome to n8n. Let's start with the first step..." }]
 }

@@ -13,7 +13,7 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 								id: '7edededc-2f40-4b8e-b8db-ab4816f1a28e',
 								name: 'your_n8n_webhook_url',
 								type: 'string',
-								value: 'PASTE_YOUR_WEBHOOK_URL_HERE',
+								value: 'https://test.example.com/webhook/tutorial',
 							},
 						],
 					},
@@ -44,7 +44,7 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 				executeNode({
 					type: 'n8n-nodes-base.httpRequest',
 					name: '1. The Customer (GET Menu Item)',
-					params: { url: expr('{{ $json.base_url }}/tutorial/api/menu'), options: {} },
+					params: { url: `${item.json.base_url}/tutorial/api/menu`, options: {} },
 					version: 4.1,
 				}),
 			);
@@ -53,7 +53,7 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 					type: 'n8n-nodes-base.httpRequest',
 					name: '2. The Customer (GET with Query Params)',
 					params: {
-						url: expr('{{ $json.base_url }}/tutorial/api/order'),
+						url: `${item.json.base_url}/tutorial/api/order`,
 						options: {},
 						sendQuery: true,
 						queryParameters: { parameters: [{ name: 'extra_cheese', value: 'true' }] },
@@ -66,7 +66,7 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 					type: 'n8n-nodes-base.httpRequest',
 					name: '3. The Customer (POST with Body)',
 					params: {
-						url: expr('{{ $json.base_url }}/tutorial/api/review'),
+						url: `${item.json.base_url}/tutorial/api/review`,
 						method: 'POST',
 						options: {},
 						sendBody: true,
@@ -85,7 +85,7 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 					type: 'n8n-nodes-base.httpRequest',
 					name: '4. The Customer (GET with Headers/Auth)',
 					params: {
-						url: expr('{{ $json.base_url }}/tutorial/api/secret-dish'),
+						url: `${item.json.base_url}/tutorial/api/secret-dish`,
 						options: {},
 						sendHeaders: true,
 						headerParameters: { parameters: [{ name: 'x-api-key', value: 'super-secret-key' }] },
@@ -98,7 +98,7 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 					type: 'n8n-nodes-base.httpRequest',
 					name: '5. The Customer (Request with Timeout)',
 					params: {
-						url: expr('{{ $json.base_url }}/tutorial/api/slow-service'),
+						url: `${item.json.base_url}/tutorial/api/slow-service`,
 						options: { timeout: 2000 },
 					},
 					version: 4.1,
@@ -190,8 +190,18 @@ workflow({ name: 'F08: API fundamentals tutorial (webhooks + IF branching)' }, (
 					assignments: {
 						assignments: [
 							{ id: '12345', name: 'status', type: 'string', value: 'review_received' },
-							{ id: '67890', name: 'your_comment', type: 'string', value: items.json.body.comment },
-							{ id: '91011', name: 'your_rating', type: 'number', value: items.json.body.rating },
+							{
+								id: '67890',
+								name: 'your_comment',
+								type: 'string',
+								value: items[0].json.body.comment,
+							},
+							{
+								id: '91011',
+								name: 'your_rating',
+								type: 'number',
+								value: items[0].json.body.rating,
+							},
 						],
 					},
 				},

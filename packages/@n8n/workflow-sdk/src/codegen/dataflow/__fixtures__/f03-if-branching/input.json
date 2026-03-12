@@ -42,7 +42,13 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3,
 			"position": [400, -100],
-			"parameters": {}
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{ "id": "a1", "name": "result", "type": "string", "value": "active-path" }
+					]
+				}
+			}
 		},
 		{
 			"id": "4",
@@ -50,7 +56,13 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3,
 			"position": [400, 100],
-			"parameters": {}
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{ "id": "a2", "name": "result", "type": "string", "value": "inactive-path" }
+					]
+				}
+			}
 		}
 	],
 	"connections": {

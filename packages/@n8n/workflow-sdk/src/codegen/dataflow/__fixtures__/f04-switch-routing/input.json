@@ -55,7 +55,11 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3,
 			"position": [400, -100],
-			"parameters": {}
+			"parameters": {
+				"assignments": {
+					"assignments": [{ "id": "a1", "name": "city", "type": "string", "value": "London" }]
+				}
+			}
 		},
 		{
 			"id": "4",
@@ -63,7 +67,11 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3,
 			"position": [400, 0],
-			"parameters": {}
+			"parameters": {
+				"assignments": {
+					"assignments": [{ "id": "a2", "name": "city", "type": "string", "value": "New York" }]
+				}
+			}
 		},
 		{
 			"id": "5",
@@ -71,7 +79,11 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3,
 			"position": [400, 100],
-			"parameters": {}
+			"parameters": {
+				"assignments": {
+					"assignments": [{ "id": "a3", "name": "city", "type": "string", "value": "unknown" }]
+				}
+			}
 		}
 	],
 	"connections": {

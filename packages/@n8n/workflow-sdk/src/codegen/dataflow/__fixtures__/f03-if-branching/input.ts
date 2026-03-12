@@ -12,14 +12,22 @@ workflow({ name: 'F03: IF branching (Trigger → IF → true/false)' }, () => {
 					const true_Branch = executeNode({
 						type: 'n8n-nodes-base.set',
 						name: 'True Branch',
-						params: {},
+						params: {
+							assignments: {
+								assignments: [{ id: 'a1', name: 'result', type: 'string', value: 'active-path' }],
+							},
+						},
 						version: 3.4,
 					});
 				} else {
 					const false_Branch = executeNode({
 						type: 'n8n-nodes-base.set',
 						name: 'False Branch',
-						params: {},
+						params: {
+							assignments: {
+								assignments: [{ id: 'a2', name: 'result', type: 'string', value: 'inactive-path' }],
+							},
+						},
 						version: 3.4,
 					});
 				}

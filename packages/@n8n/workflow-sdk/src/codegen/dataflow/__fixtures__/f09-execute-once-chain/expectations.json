@@ -3,8 +3,11 @@
 		"GET https://api.example.com/config": {}
 	},
 	"nodes": {
-		"Set": {
+		"HTTP Request": {
 			"items": [{ "setting": "enabled" }]
+		},
+		"Set": {
+			"items": [{ "processed": "true" }]
 		}
 	}
 }

@@ -12,7 +12,7 @@ workflow({ name: 'F30: Complex expressions ($now, variable refs in params)' }, (
 			const hTTP_Request = executeNode({
 				type: 'n8n-nodes-base.httpRequest',
 				params: {
-					url: `${items.json.baseUrl}/config`,
+					url: `${items[0].json.baseUrl}/config`,
 					sendHeaders: true,
 					headerParameters: { parameters: [{ name: 'X-Timestamp', value: $now.toISO() }] },
 				},

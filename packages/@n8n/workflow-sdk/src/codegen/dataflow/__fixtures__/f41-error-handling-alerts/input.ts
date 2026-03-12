@@ -1,3 +1,5 @@
+import { $now } from 'n8n';
+
 workflow({ name: 'F41: Error Handling Alerts' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.errorTrigger', params: {}, version: 1 }, (items) => {});
 	const log_error = items.map((item) =>
@@ -7,12 +9,12 @@ workflow({ name: 'F41: Error Handling Alerts' }, () => {
 			params: {
 				columns: {
 					value: {
-						URL: expr('{{ $json.execution.url }}'),
-						Node: expr('{{ $json.execution.error.node.name }}'),
+						URL: item.json.execution.url,
+						Node: item.json.execution.error.node.name,
 						STATUS: 'NEW',
-						Workflow: expr('{{ $json.workflow.name }}'),
-						Timestamp: expr("{{ $now.format('D hh:mm a') }}"),
-						'Error Message': expr('{{ $json.execution.error.message }}'),
+						Workflow: item.json.workflow.name,
+						Timestamp: $now.format('D hh:mm a'),
+						'Error Message': item.json.execution.error.message,
 					},
 					schema: [
 						{
