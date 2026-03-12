@@ -5,9 +5,7 @@ import type {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
-
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import { CREDENTIAL_BLANKING_VALUE, type IDataObject, type INodeProperties } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
 import type { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
