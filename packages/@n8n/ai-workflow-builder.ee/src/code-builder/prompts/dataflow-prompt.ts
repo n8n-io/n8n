@@ -252,6 +252,7 @@ const DATAFLOW_EXPRESSION_GUIDE = `**Direct property access** — use the output
 - \`fetchData[0].json.name\` — access node output
 - \`fetchData.length\` — number of items
 - \`item.json.field\` — access current item inside \`.map()\` or \`.filter()\` callbacks
+- \`otherNode.json.field\` — reference any previous node's output by variable name (not just the direct predecessor)
 
 **Bare n8n globals via import** — common n8n globals can be used directly by importing from \`'n8n'\`:
 \`\`\`typescript
@@ -261,41 +262,13 @@ const timestamp = $now.toISO();
 \`\`\`
 Available globals: \`$now\`, \`$today\`, \`$execution\`, \`$workflow\`, \`$vars\`, \`$env\`, \`$runIndex\`, \`$itemIndex\`, \`$mode\`, \`$input\`, \`$prevNode\`, \`$jmesPath\`, \`DateTime\`, \`Duration\`, \`Interval\`
 
-**\`expr()\` for complex expressions** — use when you need n8n template syntax:
-
-Available variables inside \`expr('{{ ... }}')\`:
-- \`$json\` — current item's JSON data from the immediate predecessor node
-- \`$('NodeName').item.json\` — access any node's output by name
-- \`$input.first()\` — first item from immediate predecessor
-- \`$input.all()\` — all items from immediate predecessor
-- \`$input.item\` — current item being processed
-- \`$binary\` — binary data of current item
-- \`$now\` — current date/time (Luxon DateTime). Example: \`$now.toISO()\`
-- \`$today\` — start of today (Luxon DateTime). Example: \`$today.plus(1, 'days')\`
-- \`$itemIndex\` — index of current item being processed
-- \`$runIndex\` — current run index
-- \`$execution.id\` — unique execution ID
-- \`$execution.mode\` — 'test' or 'production'
-- \`$workflow.id\` — workflow ID
-- \`$workflow.name\` — workflow name
-
-String composition — variables MUST always be inside \`{{ }}\`, never outside as JS variables:
-- \`expr('Hello {{ $json.name }}, welcome!')\` — variable embedded in text
-- \`expr('Report for {{ $now.toFormat("MMMM d, yyyy") }} - {{ $json.title }}')\` — multiple variables
-- \`expr('{{ $json.firstName }} {{ $json.lastName }}')\` — combining fields
-- \`expr('Status: {{ $json.count > 0 ? "active" : "empty" }}')\` — inline ternary
-
-Dynamic data from other nodes — \`$()\` MUST always be inside \`{{ }}\`, never used as plain JavaScript:
-- WRONG: \`expr('{{ ' + JSON.stringify($('Source').all().map(i => i.json.name)) + ' }}')\` — $() outside {{ }}
-- CORRECT: \`expr('{{ $("Source").all().map(i => ({ option: i.json.name })) }}')\` — $() inside {{ }}
-
-Use direct property access for simple cases, bare globals for date/time, and \`expr()\` only when needed.`;
+Use direct property access for simple cases and bare globals for date/time.`;
 
 /**
  * Data-flow specific code rules
  */
 const DATAFLOW_CODE_RULES = `Rules:
-- No imports needed — \`workflow\`, \`onTrigger\`, \`executeNode\`, \`expr\`, \`waitOnWebhook\`, \`waitOnForm\`, \`languageModel\`, \`tool\`, \`memory\`, \`outputParser\` are globals. Exception: \`import { $now, $today, ... } from 'n8n'\` for bare n8n globals
+- No imports needed — \`workflow\`, \`onTrigger\`, \`executeNode\`, \`waitOnWebhook\`, \`waitOnForm\`, \`languageModel\`, \`tool\`, \`memory\`, \`outputParser\` are globals. Exception: \`import { $now, $today, ... } from 'n8n'\` for bare n8n globals
 - Wrap everything in \`workflow({ name: '...' }, () => { ... })\`
 - Use \`onTrigger({config}, (items) => { ... })\` for each trigger
 - Use \`const x = executeNode({config})\` for execute-once nodes (runs once for all items)
@@ -310,11 +283,10 @@ const DATAFLOW_CODE_RULES = `Rules:
 - Use \`.handleError()\` for error handling: \`executeNode({...}).handleError((items) => { ... })\`
 - Use destructuring for multi-output: \`const [a, _, c] = executeNode({...})\`
 - Use subnode wrappers for AI connections: \`languageModel()\`, \`tool()\`, \`memory()\`, \`outputParser()\`, \`embeddings()\`, \`vectorStore()\`, \`retriever()\`, \`documentLoader()\`, \`textSplitter()\`
-- For AI tool dynamic values: \`expr('={{ $fromAI("key", "description") }}')\`
 - Use \`waitOnWebhook((resumeUrl) => { ... })\` or \`waitOnForm((resumeUrl) => { ... })\` for wait/resume patterns
 - Use unique variable names for each \`const\` assignment
 - Use descriptive node \`name\` in config (Good: "Fetch Weather Data"; Bad: "HTTP Request")
-- Use \`expr()\` only for dynamic n8n expressions — always use single or double quotes, NOT backtick template literals
+- Do NOT use \`if/else\`, \`switch/case\`, or \`try/catch\` — the parser rejects these. Use \`.branch()\`, \`.route()\`, \`.handleError()\` instead
 - Do NOT use: \`output: [...]\`, \`placeholder()\`, \`newCredential()\`, \`fromAi()\`
 - Do NOT add or edit comments. Comments are ignored and not shared with user.
 - When making multiple edits, prefer \`batch_str_replace\` to apply all changes atomically in one call.`;
@@ -359,7 +331,7 @@ const DATAFLOW_ADDITIONAL_FUNCTIONS = `Additional data-flow functions:
   Example: \`source.filter((item) => item.json.status === 'active')\`
   Example: \`source.filter((item) => item.json.email.includes('.com'))\`
 
-- \`expr('={{ $fromAI("key", "description") }}')\` — for AI agent tool parameters that should be dynamically filled by the AI model`;
+- \`$fromAI("key", "description")\` — for AI agent tool parameters that should be dynamically filled by the AI model`;
 
 // ── Mandatory workflow steps (dataflow variant) ──────────────────────────────
 // Reuse the same step structure as SDK prompt, but adapted for data-flow format.
