@@ -1549,6 +1549,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toContainEqual(
@@ -1572,6 +1573,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos.length).toBeGreaterThanOrEqual(2);
@@ -1597,6 +1599,7 @@ describe('AI Builder store', () => {
 					parameters: {},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1613,6 +1616,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 				} as Parameters<typeof workflowsStore.workflow.nodes.push>[0],
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1636,6 +1640,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1663,6 +1668,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1688,6 +1694,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1718,6 +1725,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1742,6 +1750,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1771,6 +1780,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 			workflowsStore.workflowValidationIssues = [];
 
 			const builderStore = useBuilderStore();
@@ -1797,6 +1807,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 			workflowsStore.workflowValidationIssues = [];
 
 			const builderStore = useBuilderStore();
@@ -1821,6 +1832,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1843,6 +1855,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1863,6 +1876,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			workflowsStore.allNodes = workflowsStore.workflow.nodes;
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
