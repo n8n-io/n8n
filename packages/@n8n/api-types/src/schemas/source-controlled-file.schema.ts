@@ -10,7 +10,7 @@ const FileTypeSchema = z.enum([
 	'project',
 	'datatable',
 ]);
-export const SOURCE_CONTROL_FILE_TYPE = FileTypeSchema.Values;
+export const SOURCE_CONTROL_FILE_TYPE = FileTypeSchema.enum;
 
 const FileStatusSchema = z.enum([
 	'new',
@@ -23,7 +23,7 @@ const FileStatusSchema = z.enum([
 	'staged',
 	'unknown',
 ]);
-export const SOURCE_CONTROL_FILE_STATUS = FileStatusSchema.Values;
+export const SOURCE_CONTROL_FILE_STATUS = FileStatusSchema.enum;
 
 export type SourceControlledFileStatus = z.infer<typeof FileStatusSchema>;
 
@@ -32,7 +32,7 @@ export function isSourceControlledFileStatus(value: unknown): value is SourceCon
 }
 
 const FileLocationSchema = z.enum(['local', 'remote']);
-export const SOURCE_CONTROL_FILE_LOCATION = FileLocationSchema.Values;
+export const SOURCE_CONTROL_FILE_LOCATION = FileLocationSchema.enum;
 
 const ResourceOwnerSchema = z.object({
 	type: z.enum(['personal', 'team']),

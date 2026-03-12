@@ -82,7 +82,7 @@ describe('parse', () => {
 		});
 
 		// @ts-expect-error zod was monkey-patched to support aliases
-		flagsSchema.shape.name._def._alias = 'n';
+		flagsSchema.shape.name._zod.def._alias = 'n';
 
 		const result = cliParser.parse({
 			argv: ['node', 'script.js', '-n', 'test', 'arg1'],
@@ -102,7 +102,7 @@ describe('parse', () => {
 		});
 
 		// @ts-expect-error zod was monkey-patched to support aliases
-		flagsSchema.shape.name._def.innerType._def._alias = 'n';
+		flagsSchema.shape.name._zod.def.innerType._zod.def._alias = 'n';
 
 		const result = cliParser.parse({
 			argv: ['node', 'script.js', '-n', 'test', 'arg1'],

@@ -4,6 +4,7 @@ import type { OpenAIClient } from '@langchain/openai';
 import type { BufferWindowMemory } from '@langchain/classic/memory';
 import { isObjectEmpty } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import z from 'zod';
 
 // Copied from langchain(`langchain/src/tools/convert_to_openai.ts`)
 // since these functions are not exported

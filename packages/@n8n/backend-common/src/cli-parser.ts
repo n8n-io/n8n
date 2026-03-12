@@ -30,14 +30,14 @@ export class CliParser {
 		if (input.flagsSchema) {
 			for (const key in input.flagsSchema.shape) {
 				const flagSchema = input.flagsSchema.shape[key];
-				let schemaDef = flagSchema._def as z.ZodTypeDef & {
-					typeName: string;
+				let schemaDef = flagSchema._zod.def as {
+					type: string;
 					innerType?: z.ZodType;
 					_alias?: string;
 				};
 
-				if (schemaDef.typeName === 'ZodOptional' && schemaDef.innerType) {
-					schemaDef = schemaDef.innerType._def as typeof schemaDef;
+				if (schemaDef.type === 'optional' && schemaDef.innerType) {
+					schemaDef = schemaDef.innerType._zod.def as typeof schemaDef;
 				}
 
 				const alias = schemaDef._alias;

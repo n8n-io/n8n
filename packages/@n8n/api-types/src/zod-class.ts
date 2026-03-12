@@ -29,9 +29,9 @@ export interface ZodClass<T = unknown, Shape extends z.ZodRawShape = z.ZodRawSha
  * ```
  */
 export const Z = {
-	class: <T extends z.ZodRawShape>(shape: T): ZodClass<z.objectOutputType<T, z.ZodType>, T> => {
+	class: <T extends z.ZodRawShape>(shape: T): ZodClass<z.infer<z.ZodObject<T>>, T> => {
 		const schema = z.object(shape);
-		type Output = z.objectOutputType<T, z.ZodType>;
+		type Output = z.infer<z.ZodObject<T>>;
 
 		const DtoClass = class {
 			static schema = schema;

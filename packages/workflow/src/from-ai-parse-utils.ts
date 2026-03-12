@@ -74,7 +74,7 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodType {
 			>;
 
 			// Attach the updated `jsonSchema` metadata to the internal definition.
-			typedSchema._zod.def.jsonSchema = {
+			typedSchema._zod.toJSONSchema = () => ({
 				anyOf: [
 					{
 						type: 'object',
@@ -86,7 +86,7 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodType {
 						minItems: 1,
 					},
 				],
-			};
+			});
 
 			schema = typedSchema;
 			break;

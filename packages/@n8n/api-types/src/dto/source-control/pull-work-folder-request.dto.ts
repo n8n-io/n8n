@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Z } from '../../zod-class';
 
 const AutoPublishModeSchema = z.enum(['none', 'all', 'published']);
-export const AUTO_PUBLISH_MODE = AutoPublishModeSchema.Values;
+export const AUTO_PUBLISH_MODE = AutoPublishModeSchema.enum;
 
 export class PullWorkFolderRequestDto extends Z.class({
 	force: z.boolean().optional(),

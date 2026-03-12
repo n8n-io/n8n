@@ -54,7 +54,7 @@ const sortByValidator = z
 			column = dataTableColumnNameSchema.parse(column);
 		} catch (e) {
 			const errorMessage =
-				e instanceof z.ZodError ? e.errors[0]?.message : 'Invalid sort columnName';
+				e instanceof z.ZodError ? e.issues[0]?.message : 'Invalid sort columnName';
 			ctx.addIssue({
 				code: 'custom',
 				message: errorMessage,
