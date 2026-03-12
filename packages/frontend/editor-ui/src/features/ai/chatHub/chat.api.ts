@@ -67,7 +67,7 @@ export async function sendMessageManualApi(
 	return await makeRestApiRequest<ChatSendMessageResponse>(
 		ctx,
 		'POST',
-		`/chat/conversations/send/manual/${workflowId}`,
+		`/chat/conversations/manual/${workflowId}/send`,
 		payload,
 	);
 }
@@ -108,7 +108,7 @@ export async function editMessageManualApi(
 	return await makeRestApiRequest<ChatSendMessageResponse>(
 		ctx,
 		'POST',
-		`/chat/conversations/${request.sessionId}/messages/${request.editId}/edit/manual/${request.workflowId}`,
+		`/chat/conversations/manual/${request.workflowId}/${request.sessionId}/messages/${request.editId}/edit`,
 		request.payload,
 	);
 }
@@ -149,7 +149,7 @@ export async function regenerateMessageManualApi(
 	return await makeRestApiRequest<ChatSendMessageResponse>(
 		ctx,
 		'POST',
-		`/chat/conversations/${request.sessionId}/messages/${request.retryId}/regenerate/manual/${request.workflowId}`,
+		`/chat/conversations/manual/${request.workflowId}/${request.sessionId}/messages/${request.retryId}/regenerate`,
 		request.payload,
 	);
 }

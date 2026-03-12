@@ -173,7 +173,7 @@ export class ChatHubController {
 	 * Passes pushRef header so the execution sends canvas events.
 	 */
 	@ProjectScope('workflow:execute')
-	@Post('/conversations/send/manual/:workflowId')
+	@Post('/conversations/manual/:workflowId/send')
 	async sendMessageManual(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -228,7 +228,7 @@ export class ChatHubController {
 	}
 
 	@ProjectScope('workflow:execute')
-	@Post('/conversations/:sessionId/messages/:messageId/edit/manual/:workflowId')
+	@Post('/conversations/manual/:workflowId/:sessionId/messages/:messageId/edit')
 	async editMessageManual(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -287,7 +287,7 @@ export class ChatHubController {
 	}
 
 	@ProjectScope('workflow:execute')
-	@Post('/conversations/:sessionId/messages/:messageId/regenerate/manual/:workflowId')
+	@Post('/conversations/manual/:workflowId/:sessionId/messages/:messageId/regenerate')
 	async regenerateMessageManual(
 		req: AuthenticatedRequest,
 		_res: Response,
