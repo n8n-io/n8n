@@ -54,8 +54,8 @@ export default defineEventHandler(async (event) => {
 
 		clearLastSetCode();
 
-		const streamResult = await builder.streamText(fullPrompt);
-		const reader = streamResult.fullStream.getReader();
+		const streamResult = await builder.stream(fullPrompt);
+		const reader = streamResult.getReader();
 
 		let explanationText = '';
 
@@ -70,20 +70,22 @@ export default defineEventHandler(async (event) => {
 				sse.send({ text: chunk.delta });
 			} else if (chunk.type === 'reasoning-delta' && 'delta' in chunk && chunk.delta) {
 				sse.send({ thinking: chunk.delta });
-			} else if (chunk.type === 'content') {
-				const content = chunk.content;
-				if (content.type === 'text') {
-					explanationText += content.text;
-					sse.send({ text: content.text });
-				} else if (content.type === 'tool-call') {
-					sse.send({ toolCall: { tool: content.toolName, input: content.input } });
-				} else if (content.type === 'tool-result') {
-					sse.send({ toolResult: { tool: content.toolName, output: content.result } });
-					if (content.toolName === 'set_code') {
-						const code = getLastSetCode();
-						if (code) {
-							sse.send({ code });
-							clearLastSetCode();
+			} else if (chunk.type === 'message' && 'content' in chunk.message) {
+				const content = chunk.message.content;
+				for (const contentPart of content) {
+					if (contentPart.type === 'text') {
+						explanationText += contentPart.text;
+						sse.send({ text: contentPart.text });
+					} else if (contentPart.type === 'tool-call') {
+						sse.send({ toolCall: { tool: contentPart.toolName, input: contentPart.input } });
+					} else if (contentPart.type === 'tool-result') {
+						sse.send({ toolResult: { tool: contentPart.toolName, output: contentPart.result } });
+						if (contentPart.toolName === 'set_code') {
+							const code = getLastSetCode();
+							if (code) {
+								sse.send({ code });
+								clearLastSetCode();
+							}
 						}
 					}
 				}

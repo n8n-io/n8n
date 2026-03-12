@@ -1,5 +1,11 @@
-import { AgentRun } from './run';
-import type { BuiltAgent, BuiltNetwork, Run, RunOptions } from './types';
+import type { Agent } from './agent';
+import type { Message } from './message';
+import type { GenerateResult, Provider, RunOptions } from './types';
+
+interface BuiltNetwork {
+	readonly name: string;
+	run(prompt: string, options?: RunOptions): Promise<GenerateResult>;
+}
 
 /**
  * Builder for creating multi-agent networks with a coordinator.
@@ -11,39 +17,38 @@ import type { BuiltAgent, BuiltNetwork, Run, RunOptions } from './types';
  *   .agent(researcher)
  *   .agent(writer);
  *
- * const run = network.run('Research and write about RAG');
- * const result = await run.result;
+ * const result = await network.run('Research and write about RAG');
  * ```
  */
 export class Network {
 	private networkName: string;
 
-	private coordinatorAgent?: BuiltAgent;
+	private coordinatorAgent?: Agent<Provider | undefined>;
 
-	private agents: BuiltAgent[] = [];
+	private agents: Agent<Provider | undefined>[] = [];
 
-	private _built?: BuiltNetwork;
+	private built?: BuiltNetwork;
 
 	constructor(name: string) {
 		this.networkName = name;
 	}
 
-	/** Set the coordinator agent that routes tasks to specialists. Accepts a built agent or an Agent builder. */
-	coordinator(a: BuiltAgent | { build(): BuiltAgent }): this {
-		this.coordinatorAgent = 'resume' in a ? a : a.build();
+	/** Set the coordinator agent that routes tasks to specialists. */
+	coordinator(a: Agent<Provider | undefined>): this {
+		this.coordinatorAgent = a;
 		return this;
 	}
 
-	/** Add a specialist agent to the network. Accepts a built agent or an Agent builder. */
-	agent(a: BuiltAgent | { build(): BuiltAgent }): this {
-		this.agents.push('resume' in a ? a : a.build());
+	/** Add a specialist agent to the network. */
+	agent(a: Agent<Provider | undefined>): this {
+		this.agents.push(a);
 		return this;
 	}
 
 	/** @internal Lazy-build the network on first use. */
 	private ensureBuilt(): BuiltNetwork {
-		this._built ??= this.build();
-		return this._built;
+		this.built ??= this.build();
+		return this.built;
 	}
 
 	/** The network name. */
@@ -52,7 +57,7 @@ export class Network {
 	}
 
 	/** Run the network with a prompt. Lazy-builds on first call. */
-	run(prompt: string, options?: RunOptions): Run {
+	run(prompt: string, options?: RunOptions): Promise<GenerateResult> {
 		return this.ensureBuilt().run(prompt, options);
 	}
 
@@ -76,16 +81,9 @@ export class Network {
 		return {
 			name,
 
-			run(prompt: string, options?: RunOptions) {
-				const resultPromise = (async () => {
-					const coordinatorRun = coordinator.run(
-						[{ role: 'user', content: [{ type: 'text', text: prompt }] }],
-						options,
-					);
-					return await coordinatorRun.result;
-				})();
-
-				return new AgentRun(resultPromise);
+			run(prompt: string, options?: RunOptions): Promise<GenerateResult> {
+				const messages: Message[] = [{ role: 'user', content: [{ type: 'text', text: prompt }] }];
+				return coordinator.generate(messages, options);
 			},
 		};
 	}

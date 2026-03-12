@@ -19,7 +19,7 @@ export interface CompileResult {
  * needs to call `.checkpoint()` or handle API keys manually.
  */
 class EngineAgent extends agents.Agent<any> {
-	build() {
+	override build() {
 		this.checkpoint(playgroundCheckpointStore);
 
 		const credName = this.declaredCredential;
@@ -105,7 +105,7 @@ export async function compileSource(source: string): Promise<CompileResult> {
 
 		const exported = mod.exports.default ?? mod.exports;
 
-		if (!exported || typeof exported !== 'object' || !('run' in exported)) {
+		if (!exported || typeof exported !== 'object' || !('generate' in exported)) {
 			return {
 				ok: false,
 				error: 'No agent found. Export a built agent as default: export default agent;',

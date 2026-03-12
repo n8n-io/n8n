@@ -1,10 +1,11 @@
-import type { Message } from './message';
-import { MastraAdapter } from './runtime/mastra-adapter';
+import type { AgentMessage } from './message';
+import { filterLlmMessages } from './message';
+import { AgentRuntime } from './runtime/agent-runtime';
 import type { BuiltEval, CheckFn, EvalInput, EvalScore, JudgeFn, JudgeHandlerFn } from './types';
 
-/** Extract text content from messages. */
-function extractText(messages: Message[]): string {
-	return messages
+/** Extract text content from LLM messages (custom messages are skipped). */
+function extractText(messages: AgentMessage[]): string {
+	return filterLlmMessages(messages)
 		.flatMap((m) => m.content)
 		.filter((c) => c.type === 'text')
 		.map((c) => (c as { text: string }).text)
@@ -146,15 +147,14 @@ export class Eval {
 			? { id: this.modelId! as `${string}/${string}`, apiKey: this._resolvedApiKey }
 			: this.modelId!;
 
-		// Create a lightweight adapter for the judge model
-		const adapter = new MastraAdapter({
+		const runtime = new AgentRuntime({
 			name: `${name}-judge`,
 			model: modelConfig,
 			instructions: 'You are an evaluation judge. Respond precisely as instructed.',
 		});
 
 		const llm: JudgeFn = async (prompt: string) => {
-			const result = await adapter.generate([
+			const result = await runtime.generate([
 				{ role: 'user', content: [{ type: 'text', text: prompt }] },
 			]);
 			return { text: extractText(result.messages) };

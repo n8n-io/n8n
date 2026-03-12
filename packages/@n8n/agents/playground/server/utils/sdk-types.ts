@@ -22,17 +22,20 @@ export function getSdkTypeDeclarations(): string {
 	const distDir = join(process.cwd(), '..', 'dist');
 
 	const fileNames = [
-		'types.d.ts',
-		'tool.d.ts',
+		'types/agent.d.ts',
+		'types/tool.d.ts',
+		'types/eval.d.ts',
+		'types/event.d.ts',
+		'types/guardrail.d.ts',
+		'types/memory.d.ts',
+		'types/provider.d.ts',
+		'types/stream.d.ts',
+		'types/tool.d.ts',
 		'agent.d.ts',
-		'memory.d.ts',
-		'guardrail.d.ts',
-		'network.d.ts',
-		'run.d.ts',
-		'configure.d.ts',
-		'provider-tools.d.ts',
-		'eval.d.ts',
 		'evaluate.d.ts',
+		'network.d.ts',
+		'tool.d.ts',
+		'message.d.ts',
 	];
 
 	const sections = fileNames.map((name) => {

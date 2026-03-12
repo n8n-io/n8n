@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { describeIf, collectStreamChunks, getModel } from './helpers';
+import { describeIf, collectStreamChunks, getModel, chunksOfType } from './helpers';
 import { Agent } from '../../index';
 
 const describe = describeIf('anthropic');
@@ -11,10 +11,10 @@ describe('provider metadata integration', () => {
 			.model(getModel('anthropic'))
 			.instructions('Reply with exactly: "OK". Nothing else.');
 
-		const { fullStream } = await agent.streamText('Acknowledge');
+		const fullStream = await agent.stream('Acknowledge');
 
 		const chunks = await collectStreamChunks(fullStream);
-		const finishChunks = chunks.filter((c) => c.type === 'finish');
+		const finishChunks = chunksOfType(chunks, 'finish');
 
 		expect(finishChunks.length).toBeGreaterThan(0);
 
@@ -33,10 +33,10 @@ describe('provider metadata integration', () => {
 			.model(getModel('anthropic'))
 			.instructions('Reply with exactly: "Done". Nothing else.');
 
-		const { fullStream } = await agent.streamText('Say done');
+		const fullStream = await agent.stream('Say done');
 
 		const chunks = await collectStreamChunks(fullStream);
-		const finishChunks = chunks.filter((c) => c.type === 'finish');
+		const finishChunks = chunksOfType(chunks, 'finish');
 
 		// The last finish chunk should be 'stop'
 		const lastFinish = finishChunks[finishChunks.length - 1];
@@ -51,27 +51,15 @@ describe('provider metadata integration', () => {
 			.model(getModel('anthropic'))
 			.instructions('You are a helpful assistant. Be concise.');
 
-		const { fullStream, getResult } = await agent.streamText('What is 1+1?');
-		await collectStreamChunks(fullStream);
-		const result = await getResult();
+		const fullStream = await agent.stream('What is 1+1?');
+		const chunks = await collectStreamChunks(fullStream);
+		const finishChunks = chunksOfType(chunks, 'finish');
+		const usage = finishChunks[0].usage;
 
-		expect(result.usage).toBeDefined();
-		expect(typeof result.usage!.promptTokens).toBe('number');
-		expect(typeof result.usage!.completionTokens).toBe('number');
-		expect(typeof result.usage!.totalTokens).toBe('number');
-		expect(result.usage!.totalTokens).toBeGreaterThan(0);
-	});
-
-	it('result reports steps count after tool use', async () => {
-		const { createAgentWithAddTool } = await import('./helpers');
-		const agent = createAgentWithAddTool('anthropic');
-
-		const { fullStream, getResult } = await agent.streamText('What is 2 + 3?');
-		await collectStreamChunks(fullStream);
-		const result = await getResult();
-
-		// With a tool call, should have at least 1 step
-		expect(result.steps).toBeDefined();
-		expect(result.steps).toBeGreaterThanOrEqual(1);
+		expect(usage).toBeDefined();
+		expect(typeof usage!.promptTokens).toBe('number');
+		expect(typeof usage!.completionTokens).toBe('number');
+		expect(typeof usage!.totalTokens).toBe('number');
+		expect(usage!.totalTokens).toBeGreaterThan(0);
 	});
 });

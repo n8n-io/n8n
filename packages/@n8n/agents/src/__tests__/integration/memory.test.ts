@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { describeIf, findTextContent, getModel } from './helpers';
+import { describeIf, findLastTextContent, findLastToolCallContent, getModel } from './helpers';
 import { Agent, Memory, Tool } from '../../index';
 
 const describe = describeIf('anthropic');
@@ -18,14 +18,15 @@ describe('memory integration', () => {
 		const threadId = `test-thread-${Date.now()}`;
 		const options = { threadId, resourceId: 'test-user' };
 
-		const run1 = agent.run('My favorite color is purple. Just acknowledge this.', options);
-		const result1 = await run1.result;
-		expect(findTextContent(result1.messages)).toBeTruthy();
+		const result1 = await agent.generate(
+			'My favorite color is purple. Just acknowledge this.',
+			options,
+		);
+		expect(findLastTextContent(result1.messages)).toBeTruthy();
 
-		const run2 = agent.run('What is my favorite color?', options);
-		const result2 = await run2.result;
+		const result2 = await agent.generate('What is my favorite color?', options);
 
-		expect(findTextContent(result2.messages)?.toLowerCase()).toContain('purple');
+		expect(findLastTextContent(result2.messages)?.toLowerCase()).toContain('purple');
 	});
 
 	it('isolates separate threads', async () => {
@@ -41,22 +42,20 @@ describe('memory integration', () => {
 		const thread1 = `test-thread-1-${Date.now()}`;
 		const thread2 = `test-thread-2-${Date.now()}`;
 
-		const run1 = agent.run('Remember this secret code: ALPHA-7. Just acknowledge.', {
+		await agent.generate('Remember this secret code: ALPHA-7. Just acknowledge.', {
 			threadId: thread1,
 			resourceId: 'test-user',
 		});
-		await run1.result;
 
-		const run2 = agent.run('What is the secret code I told you?', {
+		const result2 = await agent.generate('What is the secret code I told you?', {
 			threadId: thread2,
 			resourceId: 'test-user',
 		});
-		const result2 = await run2.result;
 
-		expect(findTextContent(result2.messages)?.toLowerCase()).not.toContain('alpha-7');
+		expect(findLastTextContent(result2.messages)?.toLowerCase()).not.toContain('alpha-7');
 	});
 
-	it('recalls tool results when .storeResults() is enabled (via run)', async () => {
+	it('recalls tool results with generate()', async () => {
 		const memory = new Memory().storage('memory').lastMessages(20);
 
 		const lookupTool = new Tool('lookup_inventory')
@@ -70,8 +69,7 @@ describe('memory integration', () => {
 				product,
 				count: 42,
 				warehouse: 'Building-7',
-			}))
-			.storeResults();
+			}));
 
 		const agent = new Agent('store-results-run-test')
 			.model(getModel('anthropic'))
@@ -84,24 +82,22 @@ describe('memory integration', () => {
 		const threadId = `test-store-results-run-${Date.now()}`;
 		const options = { threadId, resourceId: 'test-user' };
 
-		// Turn 1: trigger the tool via run()
-		const run1 = agent.run('How many widgets do we have in stock?', options);
-		const result1 = await run1.result;
-		expect(findTextContent(result1.messages)).toBeTruthy();
-		expect(result1.toolCalls?.length).toBeGreaterThan(0);
+		// Turn 1: trigger the tool via generate()
+		const result1 = await agent.generate('How many widgets do we have in stock?', options);
+		expect(findLastTextContent(result1.messages)).toBeTruthy();
+		expect(findLastToolCallContent(result1.messages)).toBeTruthy();
 
 		// Turn 2: ask about the tool result without re-triggering the tool
-		const run2 = agent.run(
+		const result2 = await agent.generate(
 			'Which warehouse are the widgets stored in? Do NOT call any tools — answer from what you already know.',
 			options,
 		);
-		const result2 = await run2.result;
 
-		expect(findTextContent(result2.messages)?.toLowerCase()).toContain('building-7');
-		expect(result2.toolCalls?.length).toBe(0);
+		expect(findLastTextContent(result2.messages)?.toLowerCase()).toContain('building-7');
+		expect(findLastToolCallContent(result2.messages)).toBeUndefined();
 	});
 
-	it('recalls tool results when .storeResults() is enabled (via streamText)', async () => {
+	it('recalls tool results with stream()', async () => {
 		const memory = new Memory().storage('memory').lastMessages(20);
 
 		const lookupTool = new Tool('lookup_inventory')
@@ -115,8 +111,7 @@ describe('memory integration', () => {
 				product,
 				count: 42,
 				warehouse: 'Building-7',
-			}))
-			.storeResults();
+			}));
 
 		const agent = new Agent('store-results-stream-test')
 			.model(getModel('anthropic'))
@@ -129,25 +124,24 @@ describe('memory integration', () => {
 		const threadId = `test-store-results-stream-${Date.now()}`;
 		const options = { threadId, resourceId: 'test-user' };
 
-		// Turn 1: trigger the tool via streamText() — same path as the playground
-		const stream1 = await agent.streamText('How many widgets do we have in stock?', options);
+		// Turn 1: trigger the tool via stream() — same path as the playground
+		const stream1 = await agent.stream('How many widgets do we have in stock?', options);
 		// Must consume the stream AND call getResult() to trigger saveToolResultsToMemory
-		const reader = stream1.fullStream.getReader();
+		const reader = stream1.getReader();
 		while (true) {
 			const { done } = await reader.read();
 			if (done) break;
 		}
-		const result1 = await stream1.getResult();
-		expect(result1.toolCalls?.length).toBeGreaterThan(0);
+		const result1 = await agent.generate('How many widgets do we have in stock?', options);
+		expect(findLastToolCallContent(result1.messages)).toBeTruthy();
 
 		// Turn 2: ask about the tool result
-		const run2 = agent.run(
+		const result2 = await agent.generate(
 			'Which warehouse are the widgets stored in? Do NOT call any tools — answer from what you already know.',
 			options,
 		);
-		const result2 = await run2.result;
 
-		expect(findTextContent(result2.messages)?.toLowerCase()).toContain('building-7');
-		expect(result2.toolCalls?.length).toBe(0);
+		expect(findLastTextContent(result2.messages)?.toLowerCase()).toContain('building-7');
+		expect(findLastToolCallContent(result2.messages)).toBeUndefined();
 	});
 });

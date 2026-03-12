@@ -24,7 +24,7 @@ Conventions for the `@n8n/agents` package.
 ```
 src/
   index.ts              # Public API barrel export
-  types.ts              # All public TypeScript types
+  types/                # All public TypeScript types (split by domain)
   agent.ts              # Agent builder
   tool.ts               # Tool builder
   memory.ts             # Memory builder
@@ -35,7 +35,8 @@ src/
   provider-tools.ts     # Provider-defined tool factories
   configure.ts          # Engine-level configuration
   runtime/              # Internal — never exported
-    mastra-adapter.ts   # n8n types → Mastra calls
+    agent-runtime.ts    # Core agent execution engine (AI SDK)
+    tool-adapter.ts     # Tool execution, branded suspend detection
 ```
 
 ## Credential Pattern
@@ -96,14 +97,20 @@ Without this, all messages are silently lost — no error is thrown.
 `config.memory` OR `config.checkpointStorage` is configured, not just for
 checkpoint storage.
 
-### 2. Tool suspend/resume uses Mastra's native mechanism
+### 2. Tool suspend/resume uses branded return types
 
-Tools that declare `.suspend()` and `.resume()` schemas use Mastra's
-`suspendSchema`/`resumeSchema` on `createTool`. The handler accesses
-`ctx.agent.suspend(payload)` (returns branded void) and `ctx.agent.resumeData`.
-On the agent side, `agent.resumeStream(data, { runId, toolCallId })` resumes
-a suspended run. The adapter maps `tool-call-suspended` chunks to the SDK's
-`StreamChunk` type and provides a single `resume()` method.
+Tools that declare `.suspend()` and `.resume()` schemas get an
+`InterruptibleToolContext` with `ctx.suspend(payload)` and `ctx.resumeData`.
+When the handler calls `return await ctx.suspend(payload)`, it returns a branded
+`SuspendedToolResult` (tagged with a private symbol in `tool-adapter.ts`).
+The agent runtime checks the tool's return value with `isSuspendedToolResult()`
+instead of catching a thrown error — this keeps suspend on the normal return
+path rather than the error path. The runtime then saves the run state and
+emits a `tool-call-suspended` stream chunk. On the agent side,
+`agent.resume(method, data, { runId, toolCallId })` re-invokes the tool handler
+with `ctx.resumeData` populated from the resume data. The `method` parameter
+determines the return type: `'generate'` returns a `GenerateResult`,
+`'stream'` returns a `StreamResult` (`ReadableStream<StreamChunk>`).
 
 ### 3. `tool-call-delta` chunks are buffered (not truly incremental)
 

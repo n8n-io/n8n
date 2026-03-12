@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { describeIf, getModel } from './helpers';
+import { createAgentWithInterruptibleTool, describeIf, getModel } from './helpers';
 import { parseJudgeResponse } from '../../evals/parse-judge-response';
 import { Agent, Tool, Eval, evaluate, evals } from '../../index';
 
@@ -251,5 +251,128 @@ describe('evaluate() integration', () => {
 		expect(results.runs).toHaveLength(1);
 		expect(results.runs[0].scores['tool-types'].pass).toBe(true);
 		expect(results.runs[0].scores['tool-types'].reasoning).toContain('JSON objects');
+	});
+
+	it('resume("generate") result includes the resumed tool call in toolCalls', async () => {
+		const agent = createAgentWithInterruptibleTool('anthropic');
+
+		// First generate: agent suspends on delete_file
+		const first = await agent.generate('Delete the file /tmp/test.txt');
+
+		expect(first.pendingSuspend).toBeDefined();
+		const { runId, toolCallId } = first.pendingSuspend!;
+
+		// Resume with approval
+		const resumed = await agent.resume('generate', { approved: true }, { runId, toolCallId });
+
+		// The resumed tool call must appear in toolCalls.
+		// Bug: toolCalls is undefined or empty because runGenerateLoop() starts
+		// with a fresh toolCallSummary and the resume-phase tool execution is
+		// never captured.
+		expect(resumed.toolCalls).toBeDefined();
+		expect(resumed.toolCalls!.length).toBeGreaterThan(0);
+
+		const deletedCall = resumed.toolCalls!.find((tc) => tc.tool === 'delete_file');
+		expect(deletedCall).toBeDefined();
+		expect(deletedCall!.output).toMatchObject({ deleted: true, path: '/tmp/test.txt' });
+	});
+
+	it('resume("generate") result includes the resumed tool call when denied', async () => {
+		const agent = createAgentWithInterruptibleTool('anthropic');
+
+		const first = await agent.generate('Delete the file /tmp/secret.txt');
+		expect(first.pendingSuspend).toBeDefined();
+		const { runId, toolCallId } = first.pendingSuspend!;
+
+		const resumed = await agent.resume('generate', { approved: false }, { runId, toolCallId });
+
+		expect(resumed.toolCalls).toBeDefined();
+		const deletedCall = resumed.toolCalls!.find((tc) => tc.tool === 'delete_file');
+		expect(deletedCall).toBeDefined();
+		// denied: deleted should be false
+		expect(deletedCall!.output).toMatchObject({ deleted: false });
+	});
+
+	it('evaluate() includes HITL tool calls in toolCalls passed to eval scorers', async () => {
+		const agent = createAgentWithInterruptibleTool('anthropic');
+
+		const sawDeleteCall = new Eval('saw-delete-call')
+			.description('Check that delete_file tool call appears in toolCalls after auto-resume')
+			.check(({ toolCalls }) => {
+				const found = (toolCalls ?? []).some((tc) => tc.tool === 'delete_file');
+				return {
+					pass: found,
+					reasoning: found
+						? 'delete_file present in toolCalls'
+						: `delete_file missing — toolCalls: ${JSON.stringify(toolCalls ?? [])}`,
+				};
+			});
+
+		const results = await evaluate(agent, {
+			dataset: [
+				{
+					input: 'Delete the file /tmp/test.txt',
+					// auto-resume with approved: true (default) so the tool completes
+				},
+			],
+			evals: [sawDeleteCall],
+		});
+
+		expect(results.runs).toHaveLength(1);
+		// Bug: this fails because result.toolCalls is empty after resume,
+		// so the eval scorer receives toolCalls=[] and pass=false.
+		expect(results.runs[0].scores['saw-delete-call'].pass).toBe(true);
+		expect(results.runs[0].scores['saw-delete-call'].reasoning).toContain('present');
+	});
+
+	it('evaluate() output is non-empty when agent only uses an interruptible tool (no text response)', async () => {
+		// If the agent produces no text and only tool output, evaluate() uses
+		// toolCalls to build the composite output string. With the bug, toolCalls
+		// is empty after resume and output becomes "".
+		const silentAgent = new Agent('silent-tool-agent')
+			.model(getModel('anthropic'))
+			.instructions(
+				'When asked to delete a file, call delete_file and return ONLY the raw JSON tool result. Do not add any explanatory text — your entire response must be the tool result only.',
+			)
+			.tool(
+				new Tool('delete_file')
+					.description('Delete a file')
+					.input(z.object({ path: z.string() }))
+					.output(z.object({ deleted: z.boolean(), path: z.string() }))
+					.suspend(z.object({ message: z.string(), severity: z.string() }))
+					.resume(z.object({ approved: z.boolean() }))
+					.handler(async ({ path }, ctx) => {
+						if (!ctx.resumeData) {
+							return await ctx.suspend({
+								message: `Delete "${path}"?`,
+								severity: 'destructive',
+							});
+						}
+						return { deleted: ctx.resumeData.approved, path };
+					}),
+			)
+			.checkpoint('memory');
+
+		const hasOutput = new Eval('has-output')
+			.description('Composite output must be non-empty after HITL auto-resume')
+			.check(({ output, toolCalls }) => {
+				const pass = output.length > 0;
+				return {
+					pass,
+					reasoning: pass
+						? `output="${output}"`
+						: `output is empty; toolCalls=${JSON.stringify(toolCalls ?? [])}`,
+				};
+			});
+
+		const results = await evaluate(silentAgent, {
+			dataset: [{ input: 'Delete /tmp/test.txt' }],
+			evals: [hasOutput],
+		});
+
+		expect(results.runs).toHaveLength(1);
+		// Bug: output is "" because toolCalls is empty, so the fallback path in
+		// evaluate() that builds output from tool outputs is never triggered.
+		expect(results.runs[0].scores['has-output'].pass).toBe(true);
 	});
 });

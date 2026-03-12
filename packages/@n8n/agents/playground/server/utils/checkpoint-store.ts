@@ -1,4 +1,4 @@
-import type { CheckpointStore, RunSnapshot } from '@n8n/agents';
+import type { CheckpointStore, SerializableAgentState } from '@n8n/agents';
 
 /**
  * In-memory CheckpointStore for the playground.
@@ -8,13 +8,13 @@ import type { CheckpointStore, RunSnapshot } from '@n8n/agents';
  * here we use a simple Map.
  */
 class PlaygroundCheckpointStore implements CheckpointStore {
-	private snapshots = new Map<string, RunSnapshot>();
+	private snapshots = new Map<string, SerializableAgentState>();
 
-	async save(key: string, snapshot: RunSnapshot): Promise<void> {
+	async save(key: string, snapshot: SerializableAgentState): Promise<void> {
 		this.snapshots.set(key, snapshot);
 	}
 
-	async load(key: string): Promise<RunSnapshot | undefined> {
+	async load(key: string): Promise<SerializableAgentState | undefined> {
 		return this.snapshots.get(key);
 	}
 

@@ -20,7 +20,7 @@ describeAnthropic('thinking stream (Anthropic)', () => {
 			.thinking({ budgetTokens: 5000 })
 			.instructions('You are a helpful assistant. Think carefully before answering.');
 
-		const { fullStream } = await agent.streamText('What is 17 * 23?');
+		const fullStream = await agent.stream('What is 17 * 23?');
 
 		const chunks = await collectStreamChunks(fullStream);
 		const reasoningChunks = chunksOfType(chunks, 'reasoning-delta');
@@ -49,7 +49,7 @@ describeOpenAI('thinking stream (OpenAI)', () => {
 			.thinking({ reasoningEffort: 'medium' })
 			.instructions('You are a helpful assistant.');
 
-		const { fullStream } = await agent.streamText('What is 17 * 23?');
+		const fullStream = await agent.stream('What is 17 * 23?');
 
 		const chunks = await collectStreamChunks(fullStream);
 

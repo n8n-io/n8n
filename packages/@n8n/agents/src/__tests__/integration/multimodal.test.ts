@@ -5,10 +5,10 @@ import {
 	collectStreamChunks,
 	chunksOfType,
 	getModel,
-	findTextContent,
+	findLastTextContent,
 } from './helpers';
 import { Agent } from '../../index';
-import type { Message } from '../../index';
+import type { Message, StreamChunk } from '../../index';
 
 const describe = describeIf('anthropic');
 
@@ -47,16 +47,17 @@ describe('multimodal integration', () => {
 			.model(getModel('anthropic'))
 			.instructions('You are a vision assistant. Describe images concisely.');
 
-		const { fullStream, getResult } = await agent.streamText(messages);
+		const fullStream = await agent.stream(messages);
 
 		const chunks = await collectStreamChunks(fullStream);
-		const textChunks = chunksOfType(chunks, 'text-delta');
+		const textChunks = chunksOfType(chunks, 'text-delta') as Array<
+			StreamChunk & { type: 'text-delta' }
+		>;
 		expect(textChunks.length).toBeGreaterThan(0);
 
-		const result = await getResult();
-		const text = findTextContent(result.messages)?.toLowerCase();
+		const text = textChunks.map((c) => c.delta).join('');
 		expect(text).toBeTruthy();
-		expect(text).toContain('red');
+		expect(text).toMatch(/red/i);
 	});
 
 	it('accepts multiple content blocks (text + image) in a single message', async () => {
@@ -82,17 +83,17 @@ describe('multimodal integration', () => {
 			.model(getModel('anthropic'))
 			.instructions('You are a helpful assistant with vision capabilities. Be concise.');
 
-		const { getResult, fullStream } = await agent.streamText(messages);
-		await collectStreamChunks(fullStream);
-		const result = await getResult();
-		const text = findTextContent(result.messages)?.toLowerCase();
+		const fullStream = await agent.stream(messages);
+		const chunks = await collectStreamChunks(fullStream);
+		const textChunks = chunksOfType(chunks, 'text-delta') as Array<
+			StreamChunk & { type: 'text-delta' }
+		>;
+		expect(textChunks.length).toBeGreaterThan(0);
 
+		const text = textChunks.map((c) => c.delta).join('');
 		expect(text).toBeTruthy();
-		// Should answer the math question
 		expect(text).toMatch(/4/);
-		// Should reference the image — accept blue or any color description
-		// (a 1px image may be described as blue, dark blue, etc.)
-		expect(text).toMatch(/blue|dark|color/);
+		expect(text).toMatch(/(blue|magenta|purple)/i);
 	});
 
 	it('passes image content through the run() path (non-streaming)', async () => {
@@ -117,11 +118,9 @@ describe('multimodal integration', () => {
 			.model(getModel('anthropic'))
 			.instructions('You are a vision assistant. Be concise.');
 
-		const run = agent.run(messages);
-		const result = await run.result;
-		const text = findTextContent(result.messages)?.toLowerCase();
-
+		const result = await agent.generate(messages);
+		const text = findLastTextContent(result.messages);
 		expect(text).toBeTruthy();
-		expect(text).toContain('red');
+		expect(text).toMatch(/red/i);
 	});
 });

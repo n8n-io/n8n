@@ -1,16 +1,16 @@
-import { InMemoryStore } from '@mastra/core/storage';
-import type { MastraCompositeStore } from '@mastra/core/storage';
-import type { MastraVector } from '@mastra/core/vector';
-import { Memory as MastraMemory } from '@mastra/memory';
 import type { z } from 'zod';
 
+import { InMemoryMemory } from './runtime/memory-store';
 import type { BuiltMemory, SemanticRecallConfig } from './types';
 
 type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
 
-interface VectorStoreConfig {
-	store: MastraVector;
-	embedder: string;
+interface MemoryProvider {
+	// TODO: Define
+}
+
+interface VectorStoreProvider {
+	// TODO: Define
 }
 
 const DEFAULT_LAST_MESSAGES = 10;
@@ -23,49 +23,42 @@ const DEFAULT_LAST_MESSAGES = 10;
  * // In-memory storage (default, lost on restart)
  * const memory = new Memory()
  *   .storage('memory')
- *   .lastMessages(20)
- *   .build();
+ *   .lastMessages(20);
  *
- * // Custom storage provider (e.g. @mastra/libsql, @mastra/pg)
- * const memory = new Memory()
- *   .storage(myLibSqlStore)
- *   .lastMessages(20)
- *   .semanticRecall({ topK: 4 })
- *   .vectorStore(myVector, 'openai/text-embedding-3-small')
- *   .build();
+ * // Pass to agent — build() is called internally
+ * agent.memory(memory);
  * ```
  */
 export class Memory {
-	private lastMessageCount: number = DEFAULT_LAST_MESSAGES;
+	private lastMessagesValue: number = DEFAULT_LAST_MESSAGES;
 
 	private semanticRecallConfig?: SemanticRecallConfig;
 
 	private workingMemorySchema?: ZodObjectSchema;
 
-	private vectorStoreConfig?: VectorStoreConfig;
+	private memoryProvider?: 'memory' | MemoryProvider;
 
-	private storageProvider?: MastraCompositeStore;
+	private vectorStoreConfig?: { provider: VectorStoreProvider; embedder: string };
+
+	/** The configured number of recent messages to include. */
+	get lastMessageCount(): number {
+		return this.lastMessagesValue;
+	}
 
 	/**
 	 * Set the storage provider for conversation history.
 	 *
 	 * - `'memory'` — in-process memory (default, lost on restart)
-	 * - A `MastraCompositeStore` instance — for persistent storage
-	 *   (e.g. `new LibSQLStore(...)` from `@mastra/libsql`,
-	 *   `new PgStore(...)` from `@mastra/pg`)
+	 * - A custom provider instance — for persistent storage
 	 */
-	storage(provider: 'memory' | MastraCompositeStore): this {
-		if (provider === 'memory') {
-			this.storageProvider = new InMemoryStore();
-		} else {
-			this.storageProvider = provider;
-		}
+	storage(provider: 'memory' | MemoryProvider): this {
+		this.memoryProvider = provider;
 		return this;
 	}
 
 	/** Set the number of recent messages to include in context. */
 	lastMessages(count: number): this {
-		this.lastMessageCount = count;
+		this.lastMessagesValue = count;
 		return this;
 	}
 
@@ -85,11 +78,11 @@ export class Memory {
 	 * Set the vector store and embedder for semantic recall.
 	 * Required when using `.semanticRecall()`.
 	 *
-	 * @param store - A MastraVector instance (e.g. PgVector, LibSQLVector)
+	 * @param store - A vector store instance (e.g. PgVector, LibSQLVector)
 	 * @param embedder - Embedder model ID (e.g. 'openai/text-embedding-3-small')
 	 */
-	vectorStore(store: MastraVector, embedder: string): this {
-		this.vectorStoreConfig = { store, embedder };
+	vectorStore(store: VectorStoreProvider, embedder: string): this {
+		this.vectorStoreConfig = { provider: store, embedder };
 		return this;
 	}
 
@@ -97,7 +90,6 @@ export class Memory {
 	 * Validate configuration and produce a `BuiltMemory`.
 	 *
 	 * @throws if `.semanticRecall()` is used without `.vectorStore()`
-	 * @throws if no storage provider is configured
 	 */
 	build(): BuiltMemory {
 		if (this.semanticRecallConfig && !this.vectorStoreConfig) {
@@ -107,41 +99,16 @@ export class Memory {
 			);
 		}
 
-		if (!this.storageProvider) {
-			throw new Error(
-				'Memory requires a storage provider. ' +
-					"Add .storage('memory') for in-process storage, " +
-					'or pass a persistent store (e.g. LibSQLStore, PgStore).',
-			);
+		// Working memory and vector store are accepted by the API for forward compatibility
+		// but not yet implemented in the runtime.
+		void this.workingMemorySchema;
+		void this.vectorStoreConfig;
+
+		if (this.memoryProvider === 'memory' || !this.memoryProvider) {
+			return new InMemoryMemory();
 		}
 
-		const semanticRecall = this.semanticRecallConfig
-			? {
-					topK: this.semanticRecallConfig.topK,
-					messageRange: this.semanticRecallConfig.messageRange ?? 0,
-				}
-			: false;
-
-		const workingMemory = this.workingMemorySchema
-			? { enabled: true as const, schema: this.workingMemorySchema }
-			: undefined;
-
-		const mastraMemory = new MastraMemory({
-			storage: this.storageProvider,
-			options: {
-				lastMessages: this.lastMessageCount,
-				semanticRecall,
-				...(workingMemory ? { workingMemory } : {}),
-			},
-		});
-
-		if (this.vectorStoreConfig) {
-			mastraMemory.setVector(this.vectorStoreConfig.store);
-			mastraMemory.setEmbedder(this.vectorStoreConfig.embedder);
-		}
-
-		return {
-			_mastraMemory: mastraMemory,
-		};
+		// Custom BuiltMemory implementation — the provider must conform to the interface
+		return this.memoryProvider as unknown as BuiltMemory;
 	}
 }

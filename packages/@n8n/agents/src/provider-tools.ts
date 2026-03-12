@@ -1,4 +1,4 @@
-import type { BuiltProviderTool, ProviderDefinedTool } from './types';
+import type { BuiltProviderTool } from './types';
 
 interface WebSearchConfig {
 	maxUses?: number;
@@ -37,42 +37,31 @@ export const providerTools = {
 	 * ```
 	 */
 	anthropicWebSearch(config?: WebSearchConfig): BuiltProviderTool {
-		// This creates a provider-defined tool object that Mastra/AI SDK
-		// pass through to the Anthropic API as a server tool.
-		const toolDef: ProviderDefinedTool = {
-			type: 'provider-defined',
-			id: 'anthropic.web_search_20250305',
-			args: {},
-		};
+		const args: Record<string, unknown> = {};
 
 		if (config?.maxUses !== undefined) {
-			toolDef.args.maxUses = config.maxUses;
+			args.maxUses = config.maxUses;
 		}
 		if (config?.allowedDomains) {
-			toolDef.args.allowedDomains = config.allowedDomains;
+			args.allowedDomains = config.allowedDomains;
 		}
 		if (config?.blockedDomains) {
-			toolDef.args.blockedDomains = config.blockedDomains;
+			args.blockedDomains = config.blockedDomains;
 		}
 		if (config?.userLocation) {
-			toolDef.args.userLocation = config.userLocation;
+			args.userLocation = config.userLocation;
 		}
 
 		return {
-			name: 'web_search',
-			_providerTool: toolDef,
+			name: 'web_search_20250305',
+			args,
 		};
 	},
 
 	openaiImageGeneration(): BuiltProviderTool {
-		const toolDef: ProviderDefinedTool = {
-			type: 'provider-defined',
-			id: 'openai.image_generation',
-			args: {},
-		};
 		return {
 			name: 'image_generation',
-			_providerTool: toolDef,
+			args: {},
 		};
 	},
 };

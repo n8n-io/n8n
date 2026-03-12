@@ -1,8 +1,6 @@
-import { createTool } from '@mastra/core/tools';
 import type { z } from 'zod';
 
-import type { Message, MessageContent } from './message';
-import { toMastraContent } from './runtime/message-adapter';
+import type { AgentMessage } from './message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from './types';
 
 type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
@@ -54,11 +52,7 @@ export class Tool<
 		ctx: HandlerContext<TSuspend, TResume>,
 	) => Promise<z.infer<TOutput>>;
 
-	// TODO: allow returning an array of messages
-	private toMessageFn?: (output: z.infer<TOutput>) => Message;
-
-	private toModelOutputFn?: (output: z.infer<TOutput>) => MessageContent[];
-	private persistResults = false;
+	private toMessageFn?: (output: z.infer<TOutput>) => AgentMessage;
 
 	constructor(name: string) {
 		this.name = name;
@@ -112,25 +106,8 @@ export class Tool<
 		return this;
 	}
 
-	toMessage(toMessage: (output: z.infer<TOutput>) => Message): this {
+	toMessage(toMessage: (output: z.infer<TOutput>) => AgentMessage): this {
 		this.toMessageFn = toMessage;
-		return this;
-	}
-
-	toModelOutput(toModelOutput: (output: z.infer<TOutput>) => MessageContent[]): this {
-		this.toModelOutputFn = toModelOutput;
-		return this;
-	}
-
-	/**
-	 * Store this tool's results in conversation memory so the LLM can
-	 * reference them in future turns. Without this, tool results are only
-	 * available in the turn they were generated.
-	 *
-	 * Requires the agent to have `.memory()` configured.
-	 */
-	storeResults(): this {
-		this.persistResults = true;
 		return this;
 	}
 
@@ -164,84 +141,15 @@ export class Tool<
 			throw new Error(`Tool "${this.name}" has .resume() but missing .suspend()`);
 		}
 
-		const handler = this.handlerFn;
-
-		const toMessage = this.toMessageFn
-			? (output: unknown): Message | undefined => {
-					// mastra generates an additional tool call result
-					// skip it, because it's not a real tool output
-					const isDummyToolOutput =
-						typeof output === 'object' &&
-						output !== null &&
-						'providerExecuted' in output &&
-						'toolName' in output &&
-						Object.keys(output).length === 2;
-					if (isDummyToolOutput) {
-						return undefined;
-					}
-					return this.toMessageFn!(output as z.infer<TOutput>);
-				}
-			: undefined;
-
-		const toModelOutput = this.toModelOutputFn
-			? (output: unknown): Record<string, unknown> | undefined => {
-					const content = this.toModelOutputFn!(output as z.infer<TOutput>);
-					const mastraContent = toMastraContent(content);
-					return {
-						type: 'content',
-						value: mastraContent,
-					};
-				}
-			: undefined;
-
-		const suspendSchema = this.suspendSchemaValue;
-		const resumeSchema = this.resumeSchemaValue;
-
-		const mastraTool = createTool({
-			id: this.name,
-			description: this.desc,
-			inputSchema: this.inputSchema,
-			outputSchema: this.outputSchema,
-			...(toModelOutput ? { toModelOutput } : {}),
-			...(suspendSchema ? { suspendSchema } : {}),
-			...(resumeSchema ? { resumeSchema } : {}),
-			execute: async (inputData, mastraCtx) => {
-				if (hasSuspend) {
-					// Mastra passes suspend/resumeData on ctx.agent
-					const agentCtx = (mastraCtx as Record<string, unknown>)?.agent ?? {};
-					const interruptCtx: InterruptibleToolContext = {
-						suspend: async (payload): Promise<never> => {
-							await (agentCtx as { suspend: (p: unknown) => Promise<void> }).suspend(payload);
-							// Mastra's suspend() resolves normally but records the suspension.
-							// The return value from execute() is ignored when suspended.
-							// We type this as Promise<never> so `return await ctx.suspend()`
-							// satisfies any handler return type at compile time.
-							return undefined as never;
-						},
-						resumeData: (agentCtx as { resumeData?: unknown }).resumeData ?? undefined,
-					};
-					return await (handler as (input: unknown, ctx: unknown) => Promise<unknown>)(
-						inputData,
-						interruptCtx,
-					);
-				}
-
-				const toolCtx: ToolContext = {} as ToolContext;
-				return await (handler as (input: unknown, ctx: unknown) => Promise<unknown>)(
-					inputData,
-					toolCtx,
-				);
-			},
-		});
-
 		return {
 			name: this.name,
 			description: this.desc,
-			_mastraTool: mastraTool,
-			_suspendSchema: suspendSchema,
-			_resumeSchema: resumeSchema,
-			_toMessage: toMessage,
-			_storeResults: this.persistResults || undefined,
+			suspendSchema: this.suspendSchemaValue,
+			resumeSchema: this.resumeSchemaValue,
+			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
+			handler: this.handlerFn as (input: unknown, ctx: ToolContext | InterruptibleToolContext) => Promise<unknown>,
+			inputSchema: this.inputSchema,
+			outputSchema: this.outputSchema,
 		};
 	}
 }

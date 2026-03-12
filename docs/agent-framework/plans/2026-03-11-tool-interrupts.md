@@ -4,7 +4,7 @@
 
 **Goal:** Replace the simple `requiresApproval()` boolean with a general-purpose tool interrupt system that supports typed suspend/resume schemas, enabling any HITL pattern (binary approval, free-text input, credential selection, etc.).
 
-**Architecture:** Tools declare typed suspend and resume Zod schemas via `.suspend()` and `.resume()` builder methods. The handler receives a context with `suspend(payload)` (returns the Mastra `InnerOutput` branded void — effectively never returns) and `resumeData` (typed by resume schema, `undefined` on first call). The agent exposes `resume(data, { runId, toolCallId })` which accepts arbitrary resume data and returns a new stream. The stream emits `tool-call-suspended` events instead of `tool-call-approval`.
+**Architecture:** Tools declare typed suspend and resume Zod schemas via `.suspend()` and `.resume()` builder methods. The handler receives a context with `suspend(payload)` (returns `Promise<never>` — a branded `SuspendedToolResult` so code after `return await ctx.suspend()` is unreachable) and `resumeData` (typed by resume schema, `undefined` on first call). The handler uses `return await ctx.suspend(payload)` and the runtime detects suspension by checking the return value for a branded symbol rather than catching a thrown error. The agent exposes `resume(method, data, { runId, toolCallId })` which accepts `'generate'` or `'stream'` as the method, arbitrary resume data, and returns either a `GenerateResult` or `StreamResult` accordingly. The stream emits `tool-call-suspended` events instead of `tool-call-approval`.
 
 **Tech Stack:** TypeScript, Zod (schema validation), Mastra (underlying runtime, hidden behind adapter)
 
@@ -27,7 +27,7 @@ This is intentional — the SDK is pre-1.0 and these are being replaced by the
 interrupt system. No compatibility shims. Consumers must migrate to:
 
 - `Tool.suspend(schema).resume(schema)` for tools
-- `Agent.resume(data, { runId, toolCallId })` for resuming
+- `Agent.resume(method, data, { runId, toolCallId })` for resuming (`method` is `'generate'` or `'stream'`)
 - `tool-call-suspended` StreamChunk for stream detection
 - `RunState` value `suspended` for state tracking
 - `DatasetRow.resumeData` for eval overrides
@@ -74,16 +74,16 @@ The SDK needs to support all of these with a single generic interrupt mechanism.
 | `examples/basic-agent.ts` | Example code |
 | `AGENTS.md` | SDK documentation |
 
-### Mastra's Suspend/Resume Internals
+### Suspend/Resume Internals
 
-Mastra's `createTool` accepts `suspendSchema` and `resumeSchema` as top-level options. Inside the handler:
+Our runtime uses a branded return type to detect tool suspension:
 
-- `ctx.agent.suspend(payload)` returns a branded `InnerOutput` type (void with a unique symbol). It does **NOT** throw an error. The execution engine detects this special return value and halts execution with status `'suspended'`.
-- `ctx.agent.resumeData` is populated with the resume data when the tool is re-invoked after `agent.resumeStream()`.
+- `ctx.suspend(payload)` returns a `Promise<never>` that resolves to a `SuspendedToolResult` — an object tagged with a private `Symbol('SuspendBrand')`. The TypeScript return type is `Promise<never>`, so code after `return await ctx.suspend()` is unreachable.
+- The tool handler uses `return await ctx.suspend(payload)` to propagate the branded value.
+- `executeTool()` checks the return value with `isSuspendedToolResult()`. If it matches, the runtime saves state and emits a `tool-call-suspended` stream chunk.
+- `ctx.resumeData` is populated with the resume data when the tool is re-invoked after `agent.resume(method, data, opts)`.
 
-On the agent side, `agent.resumeStream(data, { runId, toolCallId })` resumes a suspended run and returns a new stream.
-
-**Critical implementation detail:** Our `suspend()` wrapper must `return await ctx.agent.suspend(payload)` — NOT throw an error. The branded return type is how Mastra detects suspension. Throwing would turn a valid suspend into a tool failure.
+**Critical implementation detail:** `ctx.suspend()` does NOT throw — it returns a branded value wrapped in a Promise. The handler MUST use `return await ctx.suspend(payload)` so the branded value propagates to the runtime. Calling it without `return` will not trigger suspension.
 
 ---
 
@@ -104,10 +104,10 @@ Create a throwaway test that:
 4. Calls `agent.resumeStream(data, { runId, toolCallId })`, verifies the tool handler receives `resumeData`
 
 This confirms:
-- Whether `suspend()` must be awaited or returned
+- That `suspend()` returns a branded value (not thrown) and must be used with `return`
 - The exact chunk type emitted (is it `tool-call-suspended`?)
-- Whether `resumeData` is populated directly on `ctx.agent` or nested differently
-- Whether `resumeStream` needs `runId` in the options or as a top-level param
+- Whether `resumeData` is populated directly on `ctx` or nested differently
+- Whether `resume` needs `runId` in the options or as a top-level param
 
 ### Step 2: Run the prototype
 
@@ -194,11 +194,12 @@ export interface StateChangeEvent {
  */
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
   /**
-   * Pause execution and send a payload to the consumer.
-   * Must be awaited — returns Mastra's branded InnerOutput which signals
-   * the execution engine to halt. Code after `await suspend()` is unreachable.
+   * Suspend execution and send a payload to the consumer.
+   * Must be used with `return` — returns a branded SuspendedToolResult which
+   * the execution engine detects on the return path. Code after
+   * `return await ctx.suspend()` is unreachable.
    */
-  suspend: (payload: S) => Promise<void>;
+  suspend: (payload: S) => Promise<never>;
   /** Data from the consumer after resume. Undefined on first invocation. */
   resumeData: R | undefined;
 }
@@ -264,9 +265,15 @@ export interface BuiltAgent {
   }>;
   asTool(description: string): BuiltTool;
   resume(
+    method: 'generate',
     data: unknown,
     options: { runId: string; toolCallId: string },
-  ): Promise<{ fullStream: ReadableStream<StreamChunk> }>;
+  ): Promise<GenerateResult>;
+  resume(
+    method: 'stream',
+    data: unknown,
+    options: { runId: string; toolCallId: string },
+  ): Promise<StreamResult>;
 }
 ```
 
@@ -461,17 +468,15 @@ build(): BuiltTool {
     ...(toModelOutput ? { toModelOutput } : {}),
     ...(this.suspendSchemaValue ? { suspendSchema: this.suspendSchemaValue } : {}),
     ...(this.resumeSchemaValue ? { resumeSchema: this.resumeSchemaValue } : {}),
-    execute: async (inputData, mastraCtx) => {
+    execute: async (inputData) => {
       if (hasSuspend) {
-        const agentCtx = (mastraCtx as Record<string, unknown>)?.agent ?? {};
         const ctx: InterruptibleToolContext = {
-          suspend: async (payload: unknown) => {
-            // Mastra's suspend() returns a branded InnerOutput (void).
-            // The execution engine detects this return value and halts.
-            // We must await and return it — NOT throw.
-            return await (agentCtx as any).suspend(payload);
+          suspend: async (payload: unknown): Promise<never> => {
+            // Returns a branded SuspendedToolResult. The runtime detects
+            // this on the return path via isSuspendedToolResult() — NOT thrown.
+            return { [SUSPEND_BRAND]: true, payload } as never;
           },
-          resumeData: (agentCtx as any).resumeData ?? undefined,
+          resumeData: undefined, // Populated by executeTool() on re-invocation
         };
         return await handler(inputData, ctx as any);
       }
@@ -658,12 +663,23 @@ In `src/agent.ts`:
 **b) Add `resume()` method:**
 
 ```typescript
-/** Resume a suspended tool call with data. Returns the resumed stream. Lazy-builds on first call. */
+/** Resume a suspended tool call with data. Lazy-builds on first call. */
 async resume(
+  method: 'generate',
   data: unknown,
   options: { runId: string; toolCallId: string },
-): Promise<{ fullStream: ReadableStream<StreamChunk> }> {
-  return await this.ensureBuilt().resume(data, options);
+): Promise<GenerateResult>;
+async resume(
+  method: 'stream',
+  data: unknown,
+  options: { runId: string; toolCallId: string },
+): Promise<StreamResult>;
+async resume(
+  method: 'generate' | 'stream',
+  data: unknown,
+  options: { runId: string; toolCallId: string },
+): Promise<GenerateResult | StreamResult> {
+  return await this.ensureBuilt().resume(method, data, options);
 }
 ```
 
@@ -692,8 +708,8 @@ if (hasInterruptibleTools && !this.checkpointStore) {
 ```typescript
 // Remove: approveToolCall, declineToolCall methods
 // Add:
-async resume(data: unknown, opts: { runId: string; toolCallId: string }) {
-  return await adapter.resume(data, opts);
+async resume(method: 'generate' | 'stream', data: unknown, opts: { runId: string; toolCallId: string }) {
+  return await adapter.resume(method, data, opts);
 },
 ```
 
@@ -829,7 +845,7 @@ export interface DatasetRow {
 
 ### Step 2: Rename drainStreamWithApprovals → drainStreamWithInterrupts
 
-Update the function to use `tool-call-suspended` and `agent.resume()`:
+Update the function to use `tool-call-suspended` and `agent.resume('stream', ...)`:
 
 ```typescript
 /**
@@ -883,7 +899,7 @@ async function drainStreamWithInterrupts(
         resumeData = { approved: true };
       }
 
-      const resumed = await agent.resume(resumeData, { runId, toolCallId });
+      const resumed = await agent.resume('stream', resumeData, { runId, toolCallId });
       await drainStreamWithInterrupts(
         resumed.fullStream.getReader(),
         agent,
@@ -1013,9 +1029,9 @@ export function createAgentWithInterruptibleTool(provider: 'anthropic' | 'openai
     }))
     .handler(async ({ path }, ctx) => {
       if (!ctx.resumeData) {
-        await ctx.suspend({ message: `Delete "${path}"?`, severity: 'destructive' });
+        return await ctx.suspend({ message: `Delete "${path}"?`, severity: 'destructive' });
       }
-      if (!ctx.resumeData!.approved) return { deleted: false, path };
+      if (!ctx.resumeData.approved) return { deleted: false, path };
       return { deleted: true, path };
     });
 
@@ -1060,7 +1076,8 @@ it('resumes the stream after resume with approval', async () => {
 
   const event = (chunksOfType(chunks, 'tool-call-suspended')[0]) as StreamChunk & { type: 'tool-call-suspended' };
 
-  const { fullStream: resumedStream } = await agent.resume(
+  const resumedStream = await agent.resume(
+    'stream',
     { approved: true },
     { runId: event.runId!, toolCallId: event.toolCallId! },
   );
@@ -1082,7 +1099,8 @@ it('resumes the stream after resume with denial', async () => {
 
   const event = (chunksOfType(chunks, 'tool-call-suspended')[0]) as StreamChunk & { type: 'tool-call-suspended' };
 
-  const { fullStream: resumedStream } = await agent.resume(
+  const resumedStream = await agent.resume(
+    'stream',
     { approved: false },
     { runId: event.runId!, toolCallId: event.toolCallId! },
   );
@@ -1152,7 +1170,7 @@ export default defineEventHandler(async (event) => {
   const sse = createSSE(event);
 
   try {
-    const result = await agent.resume(body.data ?? {}, {
+    const stream = await agent.resume('stream', body.data ?? {}, {
       runId: body.runId,
       toolCallId: body.toolCallId,
     });
@@ -1310,8 +1328,8 @@ Expected: PASS or SKIP.
 |------|--------|-------|
 | Tool builder | `.requiresApproval()` | `.suspend(schema).resume(schema)` |
 | Handler context | `ToolContext` with stub `pause()` | `InterruptibleToolContext<S, R>` with typed `suspend()` and `resumeData` |
-| suspend() mechanism | N/A | `return await mastraCtx.agent.suspend(payload)` (branded InnerOutput) |
-| Agent API | `approveToolCall()` / `declineToolCall()` | `resume(data, { runId, toolCallId })` |
+| suspend() mechanism | N/A | `return await ctx.suspend(payload)` (branded `SuspendedToolResult`, detected via `isSuspendedToolResult()`) |
+| Agent API | `approveToolCall()` / `declineToolCall()` | `resume(method, data, { runId, toolCallId })` where method is `'generate'` or `'stream'` |
 | Stream event | `tool-call-approval` | `tool-call-suspended` (carries suspend payload) |
 | BuiltTool | `_approval` flag | `_suspendSchema` / `_resumeSchema` |
 | BuiltAgent | `approveToolCall()` / `declineToolCall()` | `resume()` |

@@ -21,11 +21,10 @@ describe('stream timing', () => {
 							code: z.string().describe('The complete source code'),
 						}),
 					)
-
 					.handler(async ({ code }) => ({ ok: true, length: code.length })),
 			);
 
-		const { fullStream } = await agent.streamText(
+		const fullStream = await agent.stream(
 			'Write a TypeScript function that implements bubble sort. Use the set_code tool.',
 		);
 

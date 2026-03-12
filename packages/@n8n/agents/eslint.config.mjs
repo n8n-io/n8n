@@ -7,6 +7,10 @@ export default defineConfig(
 	{
 		rules: {
 			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
+			'@typescript-eslint/naming-convention': ['error', {
+				'selector': 'enumMember',
+				'format': ['UPPER_CASE', 'PascalCase'],
+			}]
 		},
 	},
 	{

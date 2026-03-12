@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "pnpm --filter @n8n/agents build && nuxt dev",
     "build": "nuxt build",
-    "preview": "nuxt preview"
+    "preview": "nuxt preview",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@n8n/agents": "file:..",
@@ -14,7 +15,7 @@
     "marked": "^15.0.0",
     "monaco-editor": "^0.52.0",
     "nuxt": "^3.17.0",
-    "zod": "^3.25.0"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.12.0",

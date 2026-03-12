@@ -1,11 +1,12 @@
 import type { Agent } from './agent';
 import type { Eval } from './eval';
-import type { Message } from './message';
-import type { EvalResults, EvalRunResult, EvalScore, Provider, StreamChunk } from './types';
+import type { AgentMessage } from './message';
+import { filterLlmMessages } from './message';
+import type { EvalResults, EvalRunResult, EvalScore, GenerateResult, Provider } from './types';
 
 /** Extract text content from messages. */
-function extractText(messages: Message[]): string {
-	return messages
+function extractText(messages: AgentMessage[]): string {
+	return filterLlmMessages(messages)
 		.flatMap((m) => m.content)
 		.filter((c) => c.type === 'text')
 		.map((c) => (c as { text: string }).text)
@@ -35,12 +36,6 @@ export interface EvaluateConfig {
 	evals: Eval[];
 }
 
-interface CollectedToolResult {
-	tool: string;
-	input: unknown;
-	output: unknown;
-}
-
 /**
  * Run a dataset through an agent and score the results with evals.
  *
@@ -68,30 +63,9 @@ export async function evaluate(
 
 	const runs: EvalRunResult[] = await Promise.all(
 		dataset.map(async (row) => {
-			const { fullStream, getResult } = await agent.streamText(row.input);
+			const result = await runWithInterrupts(agent, row.input, row.resumeData);
 
-			// Drain stream with interrupt handling, collecting tool results
-			// from ALL streams (including resumed streams after interrupts).
-			const collectedToolResults: CollectedToolResult[] = [];
-			await drainStreamWithInterrupts(
-				fullStream.getReader(),
-				agent,
-				collectedToolResults,
-				row.resumeData,
-			);
-
-			const result = await getResult();
-
-			// Prefer collected tool results — getResult().toolCalls may have
-			// undefined outputs for tools that went through the approval flow,
-			// because their results arrive on the resumed stream which the
-			// adapter's promise-based path doesn't see.
-			const resultToolCalls = result.toolCalls ?? [];
-			const hasUndefined = resultToolCalls.some((tc) => tc.output === undefined);
-			const toolCalls =
-				collectedToolResults.length > 0 && (resultToolCalls.length === 0 || hasUndefined)
-					? collectedToolResults
-					: resultToolCalls;
+			const toolCalls = result.toolCalls ?? [];
 
 			// Build composite output: if the agent's text is empty but it made
 			// tool calls, include the tool outputs so evals have something to score.
@@ -146,68 +120,43 @@ export async function evaluate(
 }
 
 /**
- * Drain a fullStream, auto-resuming suspended tools unless overridden.
- * Collects tool results from ALL streams (original + resumed after interrupts)
- * since getResult().toolCalls may not capture results from resumed streams.
+ * Run the agent with automatic interrupt handling.
+ * Uses generate() and loops: if the result has a pendingSuspend, resolves
+ * the resume data and calls agent.resume('generate', ...) to get a
+ * GenerateResult directly without needing to stream-and-re-generate.
  *
- * The stream uses the SDK's StreamChunk format where:
- * - Tool results are `{ type: 'content', content: { type: 'tool-result', ... } }`
- * - Suspend events are `{ type: 'tool-call-suspended', runId, toolName, toolCallId }`
+ * Tools are auto-resumed with `{ approved: true }` by default;
+ * use `resumeOverrides` to override per tool.
  */
-async function drainStreamWithInterrupts(
-	reader: ReadableStreamDefaultReader<unknown>,
+async function runWithInterrupts(
 	agent: Agent<Provider | undefined>,
-	collected: CollectedToolResult[],
+	input: string,
 	resumeOverrides?: Record<string, 'deny' | Record<string, unknown>>,
-): Promise<void> {
-	while (true) {
-		const { done, value } = await reader.read();
-		if (done) break;
+): Promise<GenerateResult> {
+	let result = await agent.generate(input);
+	const allToolCalls: Array<{ tool: string; input: unknown; output: unknown }> = [
+		...(result.toolCalls ?? []),
+	];
 
-		const chunk = value as StreamChunk;
+	while (result.pendingSuspend) {
+		const { runId, toolCallId, toolName } = result.pendingSuspend;
+		const override = toolName ? resumeOverrides?.[toolName] : undefined;
 
-		// Collect tool results — they arrive as content chunks.
-		// The stream transform stringifies input, so parse it back to JSON.
-		if (chunk.type === 'content' && chunk.content.type === 'tool-result') {
-			let parsedInput: unknown = chunk.content.input;
-			if (typeof parsedInput === 'string') {
-				try {
-					parsedInput = JSON.parse(parsedInput);
-				} catch {
-					// keep as string if not valid JSON
-				}
-			}
-			collected.push({
-				tool: chunk.content.toolName,
-				input: parsedInput,
-				output: chunk.content.result,
-			});
+		let data: Record<string, unknown>;
+		if (override === 'deny') {
+			data = { approved: false };
+		} else if (override && typeof override === 'object') {
+			data = override;
+		} else {
+			data = { approved: true };
 		}
 
-		// Handle suspended tool calls
-		if (chunk.type === 'tool-call-suspended') {
-			const toolName = chunk.toolName ?? '';
-			const override = toolName ? resumeOverrides?.[toolName] : undefined;
-			const runId = chunk.runId ?? '';
-			const toolCallId = chunk.toolCallId ?? '';
-
-			let data: Record<string, unknown>;
-			if (override === 'deny') {
-				data = { approved: false };
-			} else if (override && typeof override === 'object') {
-				data = override;
-			} else {
-				data = { approved: true };
-			}
-
-			const resumed = await agent.resume(data, { runId, toolCallId });
-			await drainStreamWithInterrupts(
-				resumed.fullStream.getReader(),
-				agent,
-				collected,
-				resumeOverrides,
-			);
-			return;
-		}
+		result = await agent.resume('generate', data, { runId, toolCallId });
+		allToolCalls.push(...(result.toolCalls ?? []));
 	}
+
+	return {
+		...result,
+		...(allToolCalls.length > 0 ? { toolCalls: allToolCalls } : {}),
+	};
 }

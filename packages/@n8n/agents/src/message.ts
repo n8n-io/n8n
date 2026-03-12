@@ -1,3 +1,5 @@
+import type { JSONValue } from './json';
+
 export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
 
 export type MessageContent =
@@ -93,10 +95,10 @@ export type ContentToolCall = ContentMetadata & {
 	toolName: string;
 
 	/**
-	 * Stringified JSON object with the tool call arguments. Must match the
+	 * Tool call arguments. Must match the
 	 * parameters schema of the tool.
 	 */
-	input: string;
+	input: JSONValue;
 };
 
 export type ContentToolResult = ContentMetadata & {
@@ -115,12 +117,12 @@ export type ContentToolResult = ContentMetadata & {
 	/**
 	 * Result of the tool call. This is a JSON-serializable object.
 	 */
-	result: unknown;
+	result: JSONValue;
 
 	/**
 	 * The input of the tool call.
 	 */
-	input: unknown;
+	input: JSONValue;
 
 	/**
 	 * Optional flag if the result is an error or an error message.
@@ -144,7 +146,7 @@ export type ContentInvalidToolCall = ContentMetadata & {
 	/**
 	 * The arguments to the tool call.
 	 */
-	args?: string;
+	args?: JSONValue;
 
 	/**
 	 * The name of the tool that was called.
@@ -157,13 +159,63 @@ export type ContentProvider = ContentMetadata & {
 	value: Record<string, unknown>;
 };
 
+// LLM message that can be passed to the LLM
 export interface Message {
+	type?: 'llm';
 	role: MessageRole;
 	content: MessageContent[];
 	name?: string;
+}
 
-	/**
-	 * Message ID from the provider
-	 */
-	id?: string;
+export interface AgentMessageBase {
+	type: 'agent';
+}
+
+/**
+ * Extensible interface for custom app messages.
+ * Apps can extend via declaration merging:
+ *
+ * @example
+ * ```typescript
+ * declare module "@mariozechner/agent" {
+ *   interface CustomAgentMessages {
+ *     artifact: ArtifactMessage;
+ *     notification: NotificationMessage;
+ *   }
+ * }
+ * ```
+ */
+export interface CustomAgentMessages {
+	___dummyCustomMessage: { dummy: string };
+	// Empty by default - apps extend via declaration merging
+}
+
+/**
+ * AgentMessage: Union of LLM messages + custom messages.
+ * This abstraction allows apps to add custom message types while maintaining
+ * type safety and compatibility with the base LLM messages.
+ */
+export type AgentMessage =
+	| Message
+	| ({ type: 'custom' } & CustomAgentMessages[keyof CustomAgentMessages]);
+
+export type AgentDbMessage = { id: string } & AgentMessage;
+
+/**
+ * Wrap an AgentMessage with a stable id. If the message already carries an id
+ * (i.e. it is already an AgentDbMessage), it is returned unchanged.
+ */
+export function toDbMessage(message: AgentMessage): AgentDbMessage {
+	if ('id' in message && typeof message.id === 'string') {
+		return message as AgentDbMessage;
+	}
+	return { ...message, id: crypto.randomUUID() };
+}
+
+export function isLlmMessage(message: AgentMessage): message is Message {
+	return message.type !== 'custom';
+}
+
+export function filterLlmMessages(messages: AgentMessage[]): Message[] {
+	return messages.filter(isLlmMessage);
 }

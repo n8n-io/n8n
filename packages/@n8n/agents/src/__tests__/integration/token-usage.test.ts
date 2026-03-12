@@ -18,16 +18,18 @@ describe('token usage integration', () => {
 			.model(getModel('anthropic'))
 			.instructions('Reply with exactly: "Hello". Nothing else.');
 
-		const { fullStream, getResult } = await agent.streamText('Say hello');
+		const fullStream = await agent.stream('Say hello');
 
-		await collectStreamChunks(fullStream);
-		const result = await getResult();
+		const chunks = await collectStreamChunks(fullStream);
+		const finishChunks = chunksOfType(chunks, 'finish');
+		expect(finishChunks.length).toBeGreaterThan(0);
 
-		expect(result.usage).toBeDefined();
-		expect(result.usage!.promptTokens).toBeGreaterThan(0);
-		expect(result.usage!.completionTokens).toBeGreaterThan(0);
-		expect(result.usage!.totalTokens).toBe(
-			result.usage!.promptTokens + result.usage!.completionTokens,
+		const finish = finishChunks[0] as StreamChunk & { type: 'finish' };
+		expect(finish.usage).toBeDefined();
+		expect(finish.usage!.promptTokens).toBeGreaterThan(0);
+		expect(finish.usage!.completionTokens).toBeGreaterThan(0);
+		expect(finish.usage!.totalTokens).toBe(
+			finish.usage!.promptTokens + finish.usage!.completionTokens,
 		);
 	});
 
@@ -36,9 +38,7 @@ describe('token usage integration', () => {
 			.model(getModel('anthropic'))
 			.instructions('Reply with exactly: "Hello". Nothing else.');
 
-		const run = agent.run('Say hello');
-		const result = await run.result;
-
+		const result = await agent.generate('Say hello');
 		expect(result.usage).toBeDefined();
 		expect(result.usage!.promptTokens).toBeGreaterThan(0);
 		expect(result.usage!.completionTokens).toBeGreaterThan(0);
@@ -50,20 +50,19 @@ describe('token usage integration', () => {
 	it('reports token usage after a multi-step tool call', async () => {
 		const agent = createAgentWithAddTool('anthropic');
 
-		const { fullStream, getResult } = await agent.streamText('What is 7 + 13?');
+		const fullStream = await agent.stream('What is 7 + 13?');
 
-		await collectStreamChunks(fullStream);
-		const result = await getResult();
+		const chunks = await collectStreamChunks(fullStream);
+		const finishChunks = chunksOfType(chunks, 'finish');
+		expect(finishChunks.length).toBeGreaterThan(0);
+		const finish = finishChunks[0] as StreamChunk & { type: 'finish' };
 
-		// Should have used at least 1 step (tool call + response)
-		expect(result.steps).toBeGreaterThanOrEqual(1);
-
-		expect(result.usage).toBeDefined();
+		expect(finish.usage).toBeDefined();
 		// Multi-step should use more tokens than a simple response
-		expect(result.usage!.promptTokens).toBeGreaterThan(0);
-		expect(result.usage!.completionTokens).toBeGreaterThan(0);
-		expect(result.usage!.totalTokens).toBe(
-			result.usage!.promptTokens + result.usage!.completionTokens,
+		expect(finish.usage!.promptTokens).toBeGreaterThan(0);
+		expect(finish.usage!.completionTokens).toBeGreaterThan(0);
+		expect(finish.usage!.totalTokens).toBe(
+			finish.usage!.promptTokens + finish.usage!.completionTokens,
 		);
 	});
 
@@ -72,7 +71,7 @@ describe('token usage integration', () => {
 			.model(getModel('anthropic'))
 			.instructions('Reply with exactly: "OK". Nothing else.');
 
-		const { fullStream } = await agent.streamText('Acknowledge');
+		const fullStream = await agent.stream('Acknowledge');
 
 		const chunks = await collectStreamChunks(fullStream);
 		const finishChunks = chunksOfType(chunks, 'finish');
@@ -95,18 +94,22 @@ describe('token usage integration', () => {
 			.instructions('You are a helpful assistant. Be concise.');
 
 		// Short prompt
-		const short = await agent.streamText('Hi');
-		await collectStreamChunks(short.fullStream);
-		const shortResult = await short.getResult();
+		const short = await agent.stream('Hi');
+		const chunks = await collectStreamChunks(short);
+		const finishChunks = chunksOfType(chunks, 'finish');
+		expect(finishChunks.length).toBeGreaterThan(0);
+		const finishShort = finishChunks[0] as StreamChunk & { type: 'finish' };
 
 		// Longer prompt
-		const long = await agent.streamText(
+		const long = await agent.stream(
 			'Explain the difference between TCP and UDP networking protocols. Include at least three key differences.',
 		);
-		await collectStreamChunks(long.fullStream);
-		const longResult = await long.getResult();
+		const chunksLong = await collectStreamChunks(long);
+		const finishChunksLong = chunksOfType(chunksLong, 'finish');
+		expect(finishChunksLong.length).toBeGreaterThan(0);
+		const finishLong = finishChunksLong[0] as StreamChunk & { type: 'finish' };
 
 		// Longer prompt should use more completion tokens (longer response)
-		expect(longResult.usage!.completionTokens).toBeGreaterThan(shortResult.usage!.completionTokens);
+		expect(finishLong.usage!.completionTokens).toBeGreaterThan(finishShort.usage!.completionTokens);
 	});
 });

@@ -1,11 +1,14 @@
-import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 
 import type { Eval } from './eval';
-import type { Message } from './message';
-import { AgentRun } from './run';
-import { MastraAdapter } from './runtime/mastra-adapter';
+import type { AgentMessage } from './message';
+import { AgentRuntime } from './runtime/agent-runtime';
+import { AgentEventBus } from './runtime/event-bus';
+import { Tool } from './tool';
 import type {
+	AgentEvent,
+	AgentEventHandler,
+	AgentMiddleware,
 	BuiltAgent,
 	BuiltEval,
 	BuiltGuardrail,
@@ -13,19 +16,16 @@ import type {
 	BuiltProviderTool,
 	BuiltTool,
 	CheckpointStore,
+	GenerateResult,
 	Provider,
-	Run,
 	RunOptions,
-	StreamChunk,
+	SerializableAgentState,
+	StreamResult,
 	ThinkingConfig,
 	ThinkingConfigFor,
 } from './types';
 
-/** Convert a plain string prompt into a Message array. */
-function toMessages(prompt: string | Message[]): Message[] {
-	if (Array.isArray(prompt)) return prompt;
-	return [{ role: 'user', content: [{ type: 'text', text: prompt }] }];
-}
+const DEFAULT_LAST_MESSAGES = 10;
 
 /**
  * Builder for creating AI agents with a fluent API.
@@ -38,13 +38,12 @@ function toMessages(prompt: string | Message[]): Message[] {
  *   .instructions('You are a helpful assistant.')
  *   .tool(searchTool);
  *
- * const run = agent.run('Hello!');
- * const result = await run.result;
+ * const result = await agent.generate('Hello!');
  * ```
  */
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
-export class Agent<P extends Provider | undefined = undefined> {
-	private name: string;
+export class Agent<P extends Provider | undefined = undefined> implements BuiltAgent {
+	readonly name: string;
 
 	private modelId?: string;
 
@@ -54,10 +53,10 @@ export class Agent<P extends Provider | undefined = undefined> {
 
 	private providerTools: BuiltProviderTool[] = [];
 
-	private memoryConfig?: BuiltMemory;
+	private memoryConfig?: { memory: BuiltMemory; lastMessages: number };
 
 	// TODO: Guardrails are accepted by the builder API for forward
-	// compatibility but not yet wired to the Mastra adapter.
+	// compatibility but not yet wired to the runtime.
 	private inputGuardrails: BuiltGuardrail[] = [];
 
 	private outputGuardrails: BuiltGuardrail[] = [];
@@ -72,9 +71,13 @@ export class Agent<P extends Provider | undefined = undefined> {
 
 	private credentialName?: string;
 
-	private _resolvedApiKey?: string;
+	private resolvedKey?: string;
 
-	private _built?: BuiltAgent;
+	private runtime?: AgentRuntime;
+
+	private middlewares: AgentMiddleware[] = [];
+
+	private eventBus = new AgentEventBus();
 
 	constructor(name: string) {
 		this.name = name;
@@ -107,12 +110,9 @@ export class Agent<P extends Provider | undefined = undefined> {
 		return this;
 	}
 
-	/** Add a tool to the agent's capabilities. Accepts a built tool, a Tool builder, or a provider-defined tool. */
-	tool(t: BuiltTool | BuiltProviderTool | { build(): BuiltTool }): this {
-		if ('_providerTool' in t) {
-			return this.providerTool(t);
-		}
-		const built = '_mastraTool' in t ? t : t.build();
+	/** Add a tool to the agent's capabilities. Accepts a built tool or a Tool builder (which will be built automatically). */
+	tool(t: BuiltTool | { build(): BuiltTool }): this {
+		const built = 'build' in t ? t.build() : t;
 		this.tools.push(built);
 		return this;
 	}
@@ -124,11 +124,23 @@ export class Agent<P extends Provider | undefined = undefined> {
 	}
 
 	/** Set the memory configuration for the agent. Accepts a built memory or a Memory builder. */
-	memory(m: BuiltMemory | { build(): BuiltMemory }): this {
-		this.memoryConfig = '_mastraMemory' in m ? m : m.build();
+	memory(m: BuiltMemory | { build(): BuiltMemory; lastMessageCount?: number }): this {
+		if ('build' in m && typeof m.build === 'function') {
+			const lastMessages = m.lastMessageCount ?? DEFAULT_LAST_MESSAGES;
+			this.memoryConfig = { memory: m.build(), lastMessages };
+		} else {
+			this.memoryConfig = { memory: m as BuiltMemory, lastMessages: DEFAULT_LAST_MESSAGES };
+		}
 		return this;
 	}
 
+	/** Add a middleware. */
+	middleware(m: AgentMiddleware): this {
+		this.middlewares.push(m);
+		return this;
+	}
+
+	// TODO: guardrails can be a middleware internally
 	/** Add an input guardrail. Accepts a built guardrail or a Guardrail builder. */
 	inputGuardrail(g: BuiltGuardrail | { build(): BuiltGuardrail }): this {
 		this.inputGuardrails.push('_config' in g ? g : g.build());
@@ -160,9 +172,8 @@ export class Agent<P extends Provider | undefined = undefined> {
 	 * const agent = new Agent('assistant')
 	 *   .model('anthropic/claude-sonnet-4-5')
 	 *   .instructions('...')
-	 *   .tool(interruptibleTool) // has .suspend() / .resume()
-	 *   .checkpoint('memory')
-	 *   .build();
+	 *   .tool(dangerousTool) // has .suspend() / .resume()
+	 *   .checkpoint('memory');
 	 * ```
 	 */
 	checkpoint(storage: 'memory' | CheckpointStore): this {
@@ -195,7 +206,7 @@ export class Agent<P extends Provider | undefined = undefined> {
 
 	/** @internal Set the resolved API key (called by the execution engine before super.build()). */
 	protected set resolvedApiKey(key: string) {
-		this._resolvedApiKey = key;
+		this.resolvedKey = key;
 	}
 
 	/**
@@ -210,11 +221,10 @@ export class Agent<P extends Provider | undefined = undefined> {
 	 *   .structuredOutput(z.object({
 	 *     code: z.string(),
 	 *     explanation: z.string(),
-	 *   }))
-	 *   .build();
+	 *   }));
 	 *
-	 * const result = await agent.run('...').result;
-	 * console.log(result.output); // { code: '...', explanation: '...' }
+	 * const result = await agent.generate('...');
+	 * console.log(result.structuredOutput); // { code: '...', explanation: '...' }
 	 * ```
 	 */
 	structuredOutput(schema: z.ZodType): this {
@@ -244,47 +254,128 @@ export class Agent<P extends Provider | undefined = undefined> {
 		return this;
 	}
 
-	/** @internal Lazy-build the agent on first use. */
-	private ensureBuilt(): BuiltAgent {
-		this._built ??= this.build();
-		return this._built;
-	}
-
 	/** Get the evals attached to this agent. */
 	get evaluations(): BuiltEval[] {
 		return [...this.agentEvals];
 	}
 
-	/** Resume a suspended tool call with data. Returns the resumed stream. Lazy-builds on first call. */
+	/**
+	 * Register a handler for an agent lifecycle event.
+	 * Handlers are called synchronously during the agentic loop.
+	 */
+	on(event: AgentEvent, handler: AgentEventHandler): void {
+		this.eventBus.on(event, handler);
+	}
+
+	/**
+	 * Wrap this agent as a tool for use in multi-agent composition.
+	 * The tool sends a text prompt to this agent and returns the text of the response.
+	 *
+	 * @example
+	 * ```typescript
+	 * const coordinatorAgent = new Agent('coordinator')
+	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .instructions('Route tasks to specialist agents.')
+	 *   .tool(writerAgent.asTool('Write content given a topic'));
+	 * ```
+	 */
+	asTool(description: string): BuiltTool {
+		// eslint-disable-next-line @typescript-eslint/no-this-alias
+		const agent = this;
+		const tool = new Tool(this.name)
+			.description(description)
+			.input(
+				z.object({
+					input: z.string().describe('The input to send to the agent'),
+				}),
+			)
+			.output(
+				z.object({
+					result: z.string().describe('The result of the agent'),
+				}),
+			)
+			.handler(async (rawInput) => {
+				const { input } = rawInput as { input: string };
+				const result = await agent.generate(input);
+				const text = result.messages
+					.filter((m) => 'role' in m && m.role === 'assistant')
+					.flatMap((m) => ('content' in m ? m.content : []))
+					.filter((c) => c.type === 'text')
+					.map((c) => ('text' in c ? c.text : ''))
+					.join('');
+				return { result: text };
+			});
+		return tool.build();
+	}
+
+	/** Return the latest state snapshot of the agent. Returns `{ status: 'idle' }` before first run. */
+	getState(): SerializableAgentState {
+		if (!this.runtime) {
+			return {
+				resourceId: '',
+				threadId: '',
+				status: 'idle',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			};
+		}
+		return this.runtime.getState();
+	}
+
+	/**
+	 * Cancel the currently running agent.
+	 * Synchronous — sets an abort flag; the agentic loop checks it asynchronously.
+	 */
+	abort(): void {
+		this.eventBus.abort();
+	}
+
+	/** Generate a response (non-streaming). Lazy-builds on first call. */
+	async generate(input: AgentMessage[] | string, options?: RunOptions): Promise<GenerateResult> {
+		return await this.ensureBuilt().generate(this.toMessages(input), options);
+	}
+
+	/** Stream a response. Lazy-builds on first call. */
+	async stream(input: AgentMessage[] | string, options?: RunOptions): Promise<StreamResult> {
+		return await this.ensureBuilt().stream(this.toMessages(input), options);
+	}
+
+	/** Resume a suspended tool call with data. Lazy-builds on first call. */
 	async resume(
+		method: 'generate',
 		data: unknown,
 		options: { runId: string; toolCallId: string },
-	): Promise<{ fullStream: ReadableStream<StreamChunk> }> {
-		return await this.ensureBuilt().resume(data, options);
+	): Promise<GenerateResult>;
+	async resume(
+		method: 'stream',
+		data: unknown,
+		options: { runId: string; toolCallId: string },
+	): Promise<StreamResult>;
+	async resume(
+		method: 'generate' | 'stream',
+		data: unknown,
+		options: { runId: string; toolCallId: string },
+	): Promise<GenerateResult | StreamResult> {
+		const runtime = this.ensureBuilt();
+		if (method === 'generate') {
+			return await runtime.resume('generate', data, options);
+		}
+		return await runtime.resume('stream', data, options);
 	}
 
-	/** Run the agent with a prompt or messages. Lazy-builds on first call. */
-	run(input: string | Message[], options?: RunOptions): Run {
-		return this.ensureBuilt().run(toMessages(input), options);
+	/** @internal Lazy-build the agent on first use. */
+	private ensureBuilt(): AgentRuntime {
+		this.runtime ??= this.build();
+		return this.runtime;
 	}
 
-	/** Stream the agent with a prompt or messages. Lazy-builds on first call. */
-	stream(input: string | Message[], options?: RunOptions): Run {
-		return this.ensureBuilt().stream(toMessages(input), options);
+	private toMessages(input: string | AgentMessage[]): AgentMessage[] {
+		if (Array.isArray(input)) return input;
+		return [{ role: 'user', content: [{ type: 'text', text: input }] }];
 	}
 
-	/** Stream text from the agent. Lazy-builds on first call. */
-	async streamText(input: string | Message[], options?: RunOptions) {
-		return await this.ensureBuilt().streamText(toMessages(input), options);
-	}
-
-	/** Convert this agent into a tool usable by other agents. Lazy-builds on first call. */
-	asTool(description: string): BuiltTool {
-		return this.ensureBuilt().asTool(description);
-	}
-
-	/** @internal Validate configuration and produce a BuiltAgent. Overridden by the execution engine. */
-	protected build(): BuiltAgent {
+	/** @internal Validate configuration and produce an AgentRuntime. Overridden by the execution engine. */
+	protected build(): AgentRuntime {
 		if (!this.modelId) {
 			throw new Error(`Agent "${this.name}" requires a model`);
 		}
@@ -292,7 +383,7 @@ export class Agent<P extends Provider | undefined = undefined> {
 			throw new Error(`Agent "${this.name}" requires instructions`);
 		}
 
-		const hasInterruptibleTools = this.tools.some((t) => t._suspendSchema);
+		const hasInterruptibleTools = this.tools.some((t) => t.suspendSchema);
 		if (hasInterruptibleTools && !this.checkpointStore) {
 			throw new Error(
 				`Agent "${this.name}" has tools with .suspend()/.resume() but no checkpoint storage. ` +
@@ -301,72 +392,22 @@ export class Agent<P extends Provider | undefined = undefined> {
 			);
 		}
 
-		const modelConfig: string | { id: `${string}/${string}`; apiKey: string } = this._resolvedApiKey
-			? { id: this.modelId as `${string}/${string}`, apiKey: this._resolvedApiKey }
+		const modelConfig = this.resolvedKey
+			? { id: this.modelId, apiKey: this.resolvedKey }
 			: this.modelId;
 
-		const adapter = new MastraAdapter({
+		return new AgentRuntime({
 			name: this.name,
 			model: modelConfig,
 			instructions: this.instructionsText,
 			tools: this.tools.length > 0 ? this.tools : undefined,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
-			memory: this.memoryConfig,
+			memory: this.memoryConfig?.memory,
+			lastMessages: this.memoryConfig?.lastMessages,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
+			eventBus: this.eventBus,
 		});
-
-		const name = this.name;
-
-		return {
-			name,
-
-			run(input: Message[], options?: RunOptions) {
-				const resultPromise = adapter.generate(input, options);
-				return new AgentRun(resultPromise);
-			},
-
-			stream(input: Message[], options?: RunOptions) {
-				// Streaming will be fully wired in a later task.
-				// For now, delegate to generate via the same run mechanism.
-				const resultPromise = adapter.generate(input, options);
-				return new AgentRun(resultPromise);
-			},
-
-			async streamText(input: Message[], options?: RunOptions) {
-				return await adapter.stream(input, options);
-			},
-
-			asTool(description: string): BuiltTool {
-				const agentAdapter = adapter;
-
-				const mastraTool = createTool({
-					id: name,
-					description,
-					inputSchema: z.object({ prompt: z.string() }),
-					outputSchema: z.object({ response: z.string() }),
-					execute: async ({ prompt: toolPrompt }) => {
-						const result = await agentAdapter.generate([
-							{ role: 'user', content: [{ type: 'text', text: toolPrompt }] },
-						]);
-						const textResponse = result.messages[0].content
-							.map((c) => (c.type === 'text' ? (c as { text: string }).text : ''))
-							.join('\n');
-						return { response: textResponse };
-					},
-				});
-
-				return {
-					name,
-					description,
-					_mastraTool: mastraTool,
-				};
-			},
-
-			async resume(data: unknown, opts: { runId: string; toolCallId: string }) {
-				return await adapter.resume(data, opts);
-			},
-		};
 	}
 }

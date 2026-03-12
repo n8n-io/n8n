@@ -5,12 +5,10 @@ export type {
 	BuiltMemory,
 	BuiltGuardrail,
 	BuiltEval,
-	BuiltNetwork,
-	Run,
-	RunEvent,
-	RunState,
 	RunOptions,
 	AgentResult,
+	GenerateResult,
+	StreamResult,
 	EvalInput,
 	EvalScore,
 	EvalRunResult,
@@ -18,7 +16,6 @@ export type {
 	ToolContext,
 	InterruptibleToolContext,
 	CheckpointStore,
-	RunSnapshot,
 	StreamChunk,
 	Provider,
 	ThinkingConfig,
@@ -27,7 +24,11 @@ export type {
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
+	SerializableAgentState,
+	AgentRunState,
 } from './types';
+export { AgentEvent } from './types';
+export type { AgentEventData, AgentEventControls, AgentEventHandler } from './types';
 
 export { Tool } from './tool';
 export { Memory } from './memory';
@@ -36,13 +37,31 @@ export { Eval } from './eval';
 export { evaluate } from './evaluate';
 export type { DatasetRow, EvaluateConfig } from './evaluate';
 export * as evals from './evals/index';
-export { AgentRun } from './run';
 export { Agent } from './agent';
 export { Network } from './network';
 export { configure } from './configure';
 export { providerTools } from './provider-tools';
 export { verify } from './verify';
 export type { VerifyResult } from './verify';
-export type { Message } from './message';
+export type {
+	ContentCitation,
+	ContentFile,
+	ContentMetadata,
+	ContentReasoning,
+	ContentText,
+	ContentToolCall,
+	ContentToolResult,
+	Message,
+	MessageContent,
+	MessageRole,
+	AgentMessage,
+	CustomAgentMessages,
+	AgentDbMessage,
+} from './message';
+export {
+	toDbMessage,
+	filterLlmMessages,
+	isLlmMessage,
+} from './message';
 export { fetchProviderCatalog } from './catalog';
 export type { ProviderCatalog, ProviderInfo, ModelInfo } from './catalog';

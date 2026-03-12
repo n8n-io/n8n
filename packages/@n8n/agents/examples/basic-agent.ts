@@ -3,10 +3,10 @@
  *
  * This example demonstrates the complete builder-pattern API for creating
  * and running AI agents. It shows: tools, agents, memory, guardrails,
- * scorers, multi-agent patterns (agent-as-tool), and the Run event system.
+ * scorers, multi-agent patterns (agent-as-tool), and tool interrupts.
  *
  * To run with real LLM calls, set ANTHROPIC_API_KEY.
- * Without keys, the Mastra runtime will throw on actual LLM calls.
+ * Without keys, the runtime will throw on actual LLM calls.
  */
 import { z } from 'zod';
 
@@ -55,7 +55,7 @@ const writeFileTool = new Tool('write-file')
 		if (!ctx.resumeData) {
 			return await ctx.suspend({ message: `Write to "${path}"?`, severity: 'warning' });
 		}
-		if (!ctx.resumeData!.approved) return { written: false };
+		if (!ctx.resumeData.approved) return { written: false };
 		console.log(`  [Mock] Would write ${content.length} chars to ${path}`);
 		return { written: true };
 	});
@@ -92,7 +92,8 @@ const researcher = new Agent('researcher')
 const writer = new Agent('writer')
 	.model('anthropic/claude-sonnet-4')
 	.instructions('You write clear, engaging content based on research provided to you.')
-	.tool(writeFileTool);
+	.tool(writeFileTool)
+	.checkpoint('memory');
 
 // ---------------------------------------------------------------------------
 // Multi-Agent: Agent as Tool
@@ -113,25 +114,22 @@ const orchestrator = new Agent('orchestrator')
 async function main() {
 	console.log('=== @n8n/agents ===\n');
 
-	// --- 1. Single agent run ---
-	console.log('1. Single agent run:');
-	const run = researcher.run('Find information about RAG architectures', {
-		resourceId: 'user-123',
-		threadId: 'session-1',
-	});
-
-	run.on('stateChange', ({ from, to }) => {
-		console.log(`   State: ${from} -> ${to}`);
-	});
-
-	run.on('step', ({ step, tokens }) => {
-		console.log(`   Step ${step}: ${tokens.input + tokens.output} tokens`);
-	});
-
+	// --- 1. Single agent generate ---
+	console.log('1. Single agent generate:');
 	try {
-		const result = await run.result;
-		console.log(`   Result: ${result.text.slice(0, 100)}...`);
-		console.log(`   Tokens: ${result.tokens.input} in, ${result.tokens.output} out`);
+		const result = await researcher.generate('Find information about RAG architectures', {
+			resourceId: 'user-123',
+			threadId: 'session-1',
+		});
+		const text = result.messages
+			.flatMap((m) => ('content' in m ? m.content : []))
+			.filter((c) => c.type === 'text')
+			.map((c) => ('text' in c ? c.text : ''))
+			.join('');
+		console.log(`   Result: ${text.slice(0, 100)}...`);
+		console.log(
+			`   Usage: ${result.usage?.promptTokens} in, ${result.usage?.completionTokens} out`,
+		);
 	} catch (error) {
 		console.log(`   (Expected) Error: ${(error as Error).message}`);
 		console.log('   (Set ANTHROPIC_API_KEY to run with real LLM calls)');
@@ -139,10 +137,16 @@ async function main() {
 
 	// --- 2. Orchestrator (agent-as-tool pattern) ---
 	console.log('\n2. Orchestrator (agent-as-tool pattern):');
-	const orchRun = orchestrator.run('Research RAG architectures and write a summary');
 	try {
-		const orchResult = await orchRun.result;
-		console.log(`   Result: ${orchResult.text.slice(0, 100)}...`);
+		const orchResult = await orchestrator.generate(
+			'Research RAG architectures and write a summary',
+		);
+		const text = orchResult.messages
+			.flatMap((m) => ('content' in m ? m.content : []))
+			.filter((c) => c.type === 'text')
+			.map((c) => ('text' in c ? c.text : ''))
+			.join('');
+		console.log(`   Result: ${text.slice(0, 100)}...`);
 	} catch (error) {
 		console.log(`   (Expected) Error: ${(error as Error).message}`);
 	}

@@ -1,6 +1,7 @@
+import { handleAgentStream } from '~/server/utils/agent-stream';
 import { getActiveAgent } from '../../utils/agent-runtime';
 import { createSSE } from '../../utils/sse';
-import type { Message, StreamChunk } from '@n8n/agents';
+import { isLlmMessage, type Message, type StreamChunk } from '@n8n/agents';
 
 interface HistoryMessage {
 	role: 'user' | 'assistant';
@@ -93,75 +94,24 @@ export default defineEventHandler(async (event) => {
 	const sse = createSSE(event);
 
 	try {
-		if (typeof agent.streamText === 'function') {
-			const streamResult = await agent.streamText(messages, {
+		if (typeof agent.stream === 'function') {
+			const streamResult = await agent.stream(messages, {
 				threadId: 'playground-session',
 				resourceId: 'playground-user',
 			});
 
-			const reader = streamResult.fullStream.getReader();
-
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-
-				const chunk = value as StreamChunk;
-
-				if (chunk.type === 'text-delta' && 'delta' in chunk && chunk.delta) {
-					sse.send({ text: chunk.delta });
-				} else if (chunk.type === 'reasoning-delta' && 'delta' in chunk && chunk.delta) {
-					sse.send({ thinking: chunk.delta });
-				} else if (chunk.type === 'content' && 'content' in chunk) {
-					const c = chunk.content;
-					if (c.type === 'tool-call') {
-						sse.send({ toolCall: { tool: c.toolName, input: c.input } });
-					} else if (c.type === 'tool-result') {
-						sse.send({ toolResult: { tool: c.toolName, output: c.result } });
-					} else if (c.type === 'text') {
-						sse.send({ text: c.text });
-					} else if (c.type === 'file') {
-						const raw = c.data;
-						const data =
-							typeof raw === 'string'
-								? raw
-								: Buffer.from(raw instanceof ArrayBuffer ? new Uint8Array(raw) : raw).toString(
-										'base64',
-									);
-						sse.send({
-							file: {
-								data,
-								mediaType: c.mediaType ?? 'application/octet-stream',
-							},
-						});
-					} else {
-						sse.send({ text: 'Received unknown content type: ' + c.type });
-					}
-				} else if (chunk.type === 'tool-call-suspended' && 'toolName' in chunk) {
-					sse.send({
-						suspended: {
-							runId: chunk.runId,
-							toolCallId: chunk.toolCallId,
-							toolName: chunk.toolName,
-							input: chunk.input,
-							suspendPayload: chunk.suspendPayload,
-						},
-					});
-				} else if (chunk.type === 'error' && 'error' in chunk) {
-					const err = chunk.error;
-					sse.send({
-						text: err instanceof Error ? err.message : String(err ?? 'Unknown error'),
-					});
-				}
-			}
+			await handleAgentStream(sse, streamResult);
 		} else {
-			const run = agent.run(messages, {
+			// FIXME: Tool calling works strange here
+			const result = await agent.generate(messages, {
 				threadId: 'playground-session',
 				resourceId: 'playground-user',
 			});
-			const result = await run.result;
-			const textResponse = result.messages[0].content
-				.map((c) => (c.type === 'text' ? (c as { text: string }).text : ''))
-				.join('\n');
+			const textResponse =
+				result.messages
+					.filter(isLlmMessage)[0]
+					?.content.map((c) => (c.type === 'text' ? (c as { text: string }).text : ''))
+					.join('\n') ?? 'No text response';
 			sse.send({ text: textResponse });
 			if ((result.toolCalls?.length ?? 0) > 0) {
 				sse.send({ toolCalls: result.toolCalls });

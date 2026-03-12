@@ -1,5 +1,10 @@
 import type { H3Event } from 'h3';
 
+export interface SSEStream {
+	send(data: Record<string, unknown>): void;
+	done(): void;
+	error(message: string): void;
+}
 /**
  * Helper for sending Server-Sent Events. Handles JSON serialization
  * and the SSE wire format so callers don't repeat `data: ...\n\n`.
@@ -7,7 +12,7 @@ import type { H3Event } from 'h3';
  * Disables Nagle's algorithm and output buffering so each write
  * flushes immediately — critical for real-time streaming.
  */
-export function createSSE(event: H3Event) {
+export function createSSE(event: H3Event): SSEStream {
 	setResponseHeaders(event, {
 		'Content-Type': 'text/event-stream',
 		'Cache-Control': 'no-cache',

@@ -65,7 +65,7 @@
 					Tool requires approval
 				</div>
 				<div class="text-sm text-gray-300 mb-1">
-					<code class="text-amber-200">{{ msg.pendingApproval.tool }}</code>
+					<code class="text-amber-200">{{ msg.pendingApproval.toolName }}</code>
 				</div>
 				<div v-if="msg.pendingApproval.input" class="text-xs text-gray-400 mb-3 font-mono">
 					{{ formatInputSummary(msg.pendingApproval.input) }}
@@ -172,6 +172,7 @@
 					class="flex items-baseline gap-2 text-xs text-gray-400"
 				>
 					<code class="text-gray-300">{{ tc.tool }}</code>
+
 					<span v-if="tc.input !== undefined" class="truncate text-gray-500">{{
 						formatInputSummary(tc.input)
 					}}</span>
@@ -213,8 +214,9 @@ const props = withDefaults(
 			pendingApproval?: {
 				runId: string;
 				toolCallId: string;
-				tool: string;
+				toolName: string;
 				input: unknown;
+				suspendPayload?: unknown;
 			};
 			approvalStatus?: 'approved' | 'denied';
 		};
