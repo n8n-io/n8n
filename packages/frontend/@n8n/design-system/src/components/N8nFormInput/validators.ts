@@ -24,7 +24,7 @@ export const minLengthValidator: IValidator<{ minimum: number }> = {
 		if (typeof value === 'string' && value.length < config.minimum) {
 			return {
 				messageKey: 'formInput.validator.minCharactersRequired',
-				options: config,
+				options: { interpolate: config },
 			};
 		}
 
@@ -37,7 +37,7 @@ export const maxLengthValidator: IValidator<{ maximum: number }> = {
 		if (typeof value === 'string' && value.length > config.maximum) {
 			return {
 				messageKey: 'formInput.validator.maxCharactersRequired',
-				options: config,
+				options: { interpolate: config },
 			};
 		}
 
@@ -46,6 +46,7 @@ export const maxLengthValidator: IValidator<{ maximum: number }> = {
 };
 
 export const containsNumberValidator: IValidator<{ minimum: number }> = {
+	// @ts-expect-error TODO: i18n key doesn't exist
 	validate: (value: Validatable, config: { minimum: number }) => {
 		if (typeof value !== 'string') {
 			return false;
@@ -55,7 +56,7 @@ export const containsNumberValidator: IValidator<{ minimum: number }> = {
 		if (numberCount < config.minimum) {
 			return {
 				messageKey: 'formInput.validator.numbersRequired',
-				options: config,
+				options: { interpolate: config },
 			};
 		}
 
@@ -85,7 +86,7 @@ export const containsUpperCaseValidator: IValidator<{ minimum: number }> = {
 		if (uppercaseCount < config.minimum) {
 			return {
 				messageKey: 'formInput.validator.uppercaseCharsRequired',
-				options: config,
+				options: { interpolate: config },
 			};
 		}
 
@@ -96,10 +97,8 @@ export const containsUpperCaseValidator: IValidator<{ minimum: number }> = {
 export const matchRegex: IValidator<{ regex: RegExp; message: string }> = {
 	validate: (value: Validatable, config) => {
 		if (!config.regex.test(`${value as string}`)) {
-			return {
-				message: config.message,
-				options: config,
-			};
+			// Options not used as this function takes resolved messages.
+			return { message: config.message };
 		}
 
 		return false;
