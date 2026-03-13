@@ -145,7 +145,7 @@ export class SecureExec implements INodeType {
 				default: {},
 				placeholder: 'Add Volume Mount',
 				description:
-					'Volumes to mount inside the sandbox. Requires the command-service driver (N8N_SECURE_EXEC_DRIVER=command-service). Ignored by local drivers.',
+					'Volumes to mount inside the sandbox. Supported by the command-service and bubblewrap drivers. Ignored by other drivers.',
 				displayOptions: {
 					show: {
 						resource: ['command'],
@@ -400,7 +400,7 @@ async function executeCommand(
 			// Warn if volumes are specified but the driver doesn't support them
 			if (volumeMounts.length > 0 && !isVolumeManager(driver)) {
 				context.logger.warn(
-					`SecureExec: Volume mounts are ignored by the '${activeDriver}' driver. Use the 'command-service' driver for volume support.`,
+					`SecureExec: Volume mounts are ignored by the '${activeDriver}' driver. Use the 'command-service' or 'bubblewrap' driver for volume support.`,
 				);
 			}
 
@@ -446,7 +446,7 @@ async function executeVolumeOperation(
 	if (!isVolumeManager(driver)) {
 		throw new NodeOperationError(
 			context.getNode(),
-			'Volume operations require the command-service driver. Set N8N_SECURE_EXEC_DRIVER=command-service and N8N_SECURE_EXEC_COMMAND_SERVICE_URL to use volumes.',
+			'Volume operations require a driver with volume support. Use N8N_SECURE_EXEC_DRIVER=bubblewrap (local storage) or N8N_SECURE_EXEC_DRIVER=command-service (S3 storage).',
 		);
 	}
 
@@ -491,10 +491,6 @@ async function executeVolumeOperation(
 							createdAt: volume.createdAt,
 						},
 					});
-				}
-				// If no volumes, return empty item so downstream nodes don't fail
-				if (returnItems.length === 0) {
-					returnItems.push({ json: {} });
 				}
 			} catch (error) {
 				if (context.continueOnFail()) {

@@ -105,7 +105,8 @@ export function createDriver(driverType: DriverType = 'auto'): DriverSelection {
 
 /**
  * Type guard to check whether a driver supports volume management.
- * Only the CommandServiceDriver implements IVolumeManager.
+ * The CommandServiceDriver (S3-backed) and BubblewrapDriver (local filesystem)
+ * implement IVolumeManager.
  */
 export function isVolumeManager(
 	driver: ICommandExecutor,
