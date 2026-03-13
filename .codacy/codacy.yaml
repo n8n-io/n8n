@@ -7,5 +7,5 @@ tools:
     - lizard@1.17.31
     - pmd@6.55.0
     - pylint@3.3.9
-    - semgrep@1.16.2
-    - trivy@0.69.2
+    - semgrep@1.16.4
+    - trivy@0.69.3
