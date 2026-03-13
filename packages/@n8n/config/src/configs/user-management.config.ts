@@ -129,7 +129,14 @@ export class UserManagementConfig {
 	@Env(
 		'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS',
 		(value: string, self: UserManagementConfig) => {
-			const hours = toNumber(value) ?? 0;
+			const hours = toNumber(value);
+			if (hours === undefined) {
+				console.warn(
+					`Invalid number value for N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS: ${value}`,
+				);
+				return 0;
+			}
+
 			if (hours >= self.jwtSessionDurationHours) {
 				console.warn(INVALID_JWT_REFRESH_TIMEOUT_WARNING);
 				return 0;

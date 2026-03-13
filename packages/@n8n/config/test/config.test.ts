@@ -572,6 +572,17 @@ describe('GlobalConfig', () => {
 		);
 	});
 
+	it('should warn on invalid jwt refresh timeout and fall back to default', () => {
+		process.env = {
+			N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS: 'abcd',
+		};
+		const config = Container.get(GlobalConfig);
+		expect(config.userManagement.jwtRefreshTimeoutHours).toEqual(0);
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			'Invalid number value for N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS: abcd',
+		);
+	});
+
 	describe('string unions', () => {
 		it('on invalid value, should warn and fall back to default value', () => {
 			process.env = {
