@@ -1,0 +1,49 @@
+name: Documentation Issue
+description: Report missing, incorrect, or unclear documentation
+labels: ["documentation", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > 📚 Found something wrong or missing in the docs? Help us improve!
+        > For code bugs, use the **Bug Report** template instead.
+
+  - type: input
+    id: doc-url
+    attributes:
+      label: Documentation URL
+      description: Link to the page with the issue (if applicable)
+      placeholder: "https://docs.n8n.io/..."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      options:
+        - "Missing documentation"
+        - "Incorrect / outdated information"
+        - "Unclear or confusing explanation"
+        - "Code example doesn't work"
+        - "Broken link"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe what is wrong or missing in the documentation.
+      placeholder: "The docs say X but the actual behaviour is Y..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: What should the documentation say or include?
+    validations:
+      required: false
