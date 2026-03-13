@@ -1,18 +1,12 @@
 import { spawn } from 'child_process';
 
-import type {
-	ExecutionOptions,
-	ExecutionResult,
-	ICommandExecutor,
-	IVolumeManager,
-	VolumeMetadata,
-} from './ICommandExecutor';
+import type { ExecutionOptions, ExecutionResult, ICommandExecutor } from './ICommandExecutor';
 import { LocalVolumeManager } from './LocalVolumeManager';
 
 // Read-only host paths to expose inside the sandbox so common tools are available
 const RO_BIND_PATHS = ['/usr', '/lib', '/lib64', '/bin', '/sbin', '/etc/alternatives'];
 
-export class BubblewrapDriver implements ICommandExecutor, IVolumeManager {
+export class BubblewrapDriver implements ICommandExecutor {
 	private readonly volumeManager = new LocalVolumeManager();
 
 	async execute(options: ExecutionOptions): Promise<ExecutionResult> {
@@ -91,17 +85,5 @@ export class BubblewrapDriver implements ICommandExecutor, IVolumeManager {
 				reject(new Error(`Failed to start bwrap: ${error.message}`));
 			});
 		});
-	}
-
-	async createVolume(name?: string): Promise<VolumeMetadata> {
-		return await this.volumeManager.createVolume(name);
-	}
-
-	async listVolumes(): Promise<VolumeMetadata[]> {
-		return await this.volumeManager.listVolumes();
-	}
-
-	async deleteVolume(id: string): Promise<void> {
-		await this.volumeManager.deleteVolume(id);
 	}
 }

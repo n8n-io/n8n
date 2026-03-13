@@ -6,8 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { createDriver, isVolumeManager } from './DriverFactory';
-import type { ICommandExecutor, VolumeMount } from './drivers/ICommandExecutor';
+import { createDriver } from './DriverFactory';
+import type { ICommandExecutor, IVolumeManager, VolumeMount } from './drivers/ICommandExecutor';
 
 export class SecureExec implements INodeType {
 	description: INodeTypeDescription = {
@@ -283,20 +283,20 @@ export class SecureExec implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const isExecuteCommandOperation = resource === 'command' && operation === 'execute';
 
-		const { driver, type: activeDriver } = createDriver();
-
-		if (driver.initialize) {
-			await driver.initialize();
-		}
-
+		const { driver, volumeManager, type: activeDriver } = createDriver();
 		try {
-			if (resource === 'command' && operation === 'execute') {
+			if (isExecuteCommandOperation) {
+				if (driver.initialize) {
+					await driver.initialize();
+				}
+
 				return await executeCommand(this, driver, activeDriver);
 			}
 
 			if (resource === 'volume') {
-				return await executeVolumeOperation(this, driver, operation);
+				return await executeVolumeOperation(this, volumeManager, operation);
 			}
 
 			throw new NodeOperationError(
@@ -304,7 +304,7 @@ export class SecureExec implements INodeType {
 				`Unknown resource/operation: ${resource}/${operation}`,
 			);
 		} finally {
-			if (driver.cleanup) {
+			if (isExecuteCommandOperation && driver.cleanup) {
 				await driver.cleanup();
 			}
 		}
@@ -403,16 +403,9 @@ async function executeCommand(
 
 async function executeVolumeOperation(
 	context: IExecuteFunctions,
-	driver: ICommandExecutor,
+	volumeManager: IVolumeManager,
 	operation: string,
 ): Promise<INodeExecutionData[][]> {
-	if (!isVolumeManager(driver)) {
-		throw new NodeOperationError(
-			context.getNode(),
-			'Volume operations require a driver with volume support. Use N8N_SECURE_EXEC_DRIVER=bubblewrap (local storage) or N8N_SECURE_EXEC_DRIVER=command-service (S3 storage).',
-		);
-	}
-
 	const items = context.getInputData();
 	const returnItems: INodeExecutionData[] = [];
 
@@ -421,7 +414,7 @@ async function executeVolumeOperation(
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 				try {
 					const volumeName = context.getNodeParameter('volumeName', itemIndex, '') as string;
-					const volume = await driver.createVolume(volumeName || undefined);
+					const volume = await volumeManager.createVolume(volumeName || undefined);
 					returnItems.push({
 						json: {
 							id: volume.id,
@@ -445,7 +438,7 @@ async function executeVolumeOperation(
 		}
 		case 'list': {
 			try {
-				const volumes = await driver.listVolumes();
+				const volumes = await volumeManager.listVolumes();
 				for (const volume of volumes) {
 					returnItems.push({
 						json: {
@@ -473,7 +466,7 @@ async function executeVolumeOperation(
 					if (!volumeId) {
 						throw new NodeOperationError(context.getNode(), 'Volume ID is required');
 					}
-					await driver.deleteVolume(volumeId);
+					await volumeManager.deleteVolume(volumeId);
 					returnItems.push({
 						json: { deleted: true, volumeId },
 						pairedItem: { item: itemIndex },

@@ -1,11 +1,14 @@
 import { BubblewrapDriver } from './drivers/BubblewrapDriver';
 import { CommandServiceDriver } from './drivers/CommandServiceDriver';
+import { CommandServiceVolumeManager } from './drivers/CommandServiceVolumeManager';
 import type { ICommandExecutor, IVolumeManager } from './drivers/ICommandExecutor';
+import { LocalVolumeManager } from './drivers/LocalVolumeManager';
 
 export type DriverType = 'bubblewrap' | 'command-service';
 
 export interface DriverSelection {
 	driver: ICommandExecutor;
+	volumeManager: IVolumeManager;
 	type: DriverType;
 }
 
@@ -31,16 +34,15 @@ export function createDriver(): DriverSelection {
 			}
 			return {
 				driver: new CommandServiceDriver(serviceUrl),
+				volumeManager: new CommandServiceVolumeManager(serviceUrl),
 				type: 'command-service',
 			};
 		}
 		case 'bubblewrap':
-			return { driver: new BubblewrapDriver(), type: 'bubblewrap' };
+			return {
+				driver: new BubblewrapDriver(),
+				volumeManager: new LocalVolumeManager(),
+				type: 'bubblewrap',
+			};
 	}
-}
-
-export function isVolumeManager(
-	driver: ICommandExecutor,
-): driver is ICommandExecutor & IVolumeManager {
-	return 'createVolume' in driver && 'listVolumes' in driver && 'deleteVolume' in driver;
 }
