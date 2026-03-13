@@ -28,6 +28,7 @@ vi.mock('@/app/composables/useDependencies', () => ({
 	useDependencies: () => ({
 		getDependencies: () => (mockDependencies.length > 0 ? mockDependencies : undefined),
 		fetchDependencies: vi.fn(),
+		getTotalCount: () => 0,
 	}),
 }));
 
