@@ -1,0 +1,12 @@
+{
+ "name": "Crypto News",
+ "nodes": [
+  {
+   "parameters": {
+    "url": "https://cointelegraph.com/rss"
+   },
+   "name": "RSS Feed",
+   "type": "n8n-nodes-base.rssFeedRead"
+  }
+ ]
+}
