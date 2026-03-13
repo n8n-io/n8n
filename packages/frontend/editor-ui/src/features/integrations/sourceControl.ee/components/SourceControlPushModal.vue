@@ -19,6 +19,7 @@ import { useRevealWorkflowInScroller } from '../composables/useRevealWorkflowInS
 import { useSourceControlFileList } from '../composables/useSourceControlFileList';
 import { useWorkflowTreeRows } from '../composables/useWorkflowTreeRows';
 import {
+	buildFolderFilterOptions,
 	formatSourceControlUpdatedAt,
 	getPushPriorityByStatus,
 	getStatusText,
@@ -321,32 +322,7 @@ const filterCount = computed(() =>
 	Object.values(filters.value).reduce((acc, item) => (item ? acc + 1 : acc), 0),
 );
 
-const folderFilterOptions = computed(() => {
-	const folderPathSet = new Set<string>();
-
-	for (const workflow of changes.value.workflow) {
-		const pathSegments = workflow.folderPath ?? [];
-		let path = '';
-
-		for (const segment of pathSegments) {
-			path = path ? `${path}/${segment}` : segment;
-			folderPathSet.add(path);
-		}
-	}
-
-	return Array.from(folderPathSet)
-		.sort((a, b) => {
-			const depthDiff = a.split('/').length - b.split('/').length;
-			if (depthDiff !== 0) {
-				return depthDiff;
-			}
-			return a.localeCompare(b);
-		})
-		.map((path) => ({
-			label: path.replaceAll('/', ' / '),
-			value: path,
-		}));
-});
+const folderFilterOptions = computed(() => buildFolderFilterOptions(changes.value.workflow));
 
 const sortedWorkflows = useSourceControlFileList({
 	files: computed(() => changes.value.workflow),

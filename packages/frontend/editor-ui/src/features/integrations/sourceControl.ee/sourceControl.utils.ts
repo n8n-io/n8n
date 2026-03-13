@@ -211,6 +211,33 @@ export function buildWorkflowTreeRows<T extends SourceControlledFile>(
 	return rows;
 }
 
+export const buildFolderFilterOptions = (workflows: SourceControlledFile[]) => {
+	const folderPathSet = new Set<string>();
+
+	for (const workflow of workflows) {
+		const pathSegments = workflow.folderPath ?? [];
+		let path = '';
+
+		for (const segment of pathSegments) {
+			path = path ? `${path}/${segment}` : segment;
+			folderPathSet.add(path);
+		}
+	}
+
+	return Array.from(folderPathSet)
+		.sort((a, b) => {
+			const depthDiff = a.split('/').length - b.split('/').length;
+			if (depthDiff !== 0) {
+				return depthDiff;
+			}
+			return a.localeCompare(b);
+		})
+		.map((path) => ({
+			label: path.replaceAll('/', ' / '),
+			value: path,
+		}));
+};
+
 export const formatSourceControlUpdatedAt = (updatedAt: string | undefined) => {
 	const currentYear = new Date().getFullYear().toString();
 

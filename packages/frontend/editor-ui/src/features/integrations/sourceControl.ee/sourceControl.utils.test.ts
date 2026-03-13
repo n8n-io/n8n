@@ -1,4 +1,5 @@
 import {
+	buildFolderFilterOptions,
 	buildWorkflowTreeRows,
 	formatSourceControlUpdatedAt,
 	getStatusText,
@@ -108,6 +109,81 @@ describe('source control utils', () => {
 				1,
 			);
 			expect(rows.filter((row) => row.type === 'file')).toHaveLength(2);
+		});
+	});
+
+	describe('buildFolderFilterOptions()', () => {
+		it('builds deduplicated hierarchical options sorted by depth then name', () => {
+			const options = buildFolderFilterOptions([
+				{
+					id: 'wf-alpha',
+					name: 'Alpha',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-alpha.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Alpha'],
+				},
+				{
+					id: 'wf-prod-billing',
+					name: 'Prod Billing',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-prod-billing.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Prod', 'Billing'],
+				},
+				{
+					id: 'wf-prod-analytics',
+					name: 'Prod Analytics',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-prod-analytics.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Prod', 'Analytics'],
+				},
+				{
+					id: 'wf-prod-root',
+					name: 'Prod Root',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-prod-root.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Prod'],
+				},
+			]);
+
+			expect(options).toEqual([
+				{ label: 'Alpha', value: 'Alpha' },
+				{ label: 'Prod', value: 'Prod' },
+				{ label: 'Prod / Analytics', value: 'Prod/Analytics' },
+				{ label: 'Prod / Billing', value: 'Prod/Billing' },
+			]);
+		});
+
+		it('returns empty array when workflows have no folder paths', () => {
+			const options = buildFolderFilterOptions([
+				{
+					id: 'wf-root',
+					name: 'Root',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-root.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+				},
+			]);
+
+			expect(options).toEqual([]);
 		});
 	});
 

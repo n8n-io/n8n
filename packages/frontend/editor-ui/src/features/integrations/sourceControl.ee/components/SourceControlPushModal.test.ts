@@ -1404,6 +1404,96 @@ describe('SourceControlPushModal', () => {
 			});
 		});
 
+		it('should build folder filter options in hierarchical sorted order', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-alpha',
+					name: 'Alpha workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-alpha.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+					folderPath: ['Alpha'],
+				},
+				{
+					id: 'wf-prod-root',
+					name: 'Prod root workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-prod-root.json',
+					updatedAt: '2024-09-20T10:32:40.000Z',
+					folderPath: ['Prod'],
+				},
+				{
+					id: 'wf-prod-billing',
+					name: 'Prod billing workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-prod-billing.json',
+					updatedAt: '2024-09-20T10:33:40.000Z',
+					folderPath: ['Prod', 'Billing'],
+				},
+				{
+					id: 'wf-prod-analytics',
+					name: 'Prod analytics workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-prod-analytics.json',
+					updatedAt: '2024-09-20T10:34:40.000Z',
+					folderPath: ['Prod', 'Analytics'],
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('source-control-filter-dropdown')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('source-control-filter-dropdown'));
+			const folderSelect = getByTestId('source-control-folder-filter');
+			const folderCombobox = within(folderSelect).getByRole('combobox');
+			await userEvent.click(folderCombobox);
+
+			const dropdownId = folderCombobox.getAttribute('aria-controls');
+			expect(dropdownId).toBeTruthy();
+
+			await waitFor(() => {
+				const dropdown = document.getElementById(dropdownId as string);
+				expect(dropdown).toBeInTheDocument();
+				expect(within(dropdown as HTMLElement).getByText('Alpha')).toBeInTheDocument();
+			});
+
+			const dropdown = document.getElementById(dropdownId as string) as HTMLElement;
+			const optionLabels = Array.from(dropdown.querySelectorAll('[role="option"]'))
+				.map((option) => option.textContent?.trim() ?? '')
+				.filter(Boolean);
+
+			expect(optionLabels).toEqual(['Alpha', 'Prod', 'Prod / Analytics', 'Prod / Billing']);
+		});
+
 		test.each([
 			['credential', 'Credentials'],
 			['workflow', 'Workflows'],
