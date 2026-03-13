@@ -135,7 +135,7 @@ export function resetDataProxies(timezone?: string): void {
 				globalThis.__data.$items = globalThis.$items;
 			} else {
 				// Not a function - set to undefined or the value itself
-				globalThis.$items = undefined;
+				globalThis.$items = itemsValue;
 				globalThis.__data.$items = itemsValue;
 			}
 		} catch (error) {
