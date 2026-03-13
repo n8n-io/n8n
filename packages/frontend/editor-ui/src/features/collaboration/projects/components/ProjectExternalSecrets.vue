@@ -115,7 +115,7 @@ const emptyStateConfig = computed(() => {
 });
 
 const sortedConnections = computed(() =>
-	[...projectSecretConnections.value].sort((a, b) => b.secretsCount - a.secretsCount),
+	[...projectSecretConnections.value].sort((a, b) => a.name.localeCompare(b.name)),
 );
 
 const filteredConnections = computed(() => {

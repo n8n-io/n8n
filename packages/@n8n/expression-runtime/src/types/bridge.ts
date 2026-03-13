@@ -32,7 +32,7 @@ export interface RuntimeBridge {
 	 * Note: Synchronous for Node.js vm module (Slice 1).
 	 *       Will be async for isolated-vm (Slice 2).
 	 */
-	execute(code: string, data: Record<string, unknown>): unknown;
+	execute(code: string, data: Record<string, unknown>, options?: ExecuteOptions): unknown;
 
 	/**
 	 * Dispose of the isolated context and free resources.
@@ -70,4 +70,20 @@ export interface BridgeConfig {
 	 * Phase 2+: Chrome DevTools debugging support
 	 */
 	debug?: boolean;
+}
+
+/** Default values for BridgeConfig. Bridge implementations should use this as their baseline. */
+export const DEFAULT_BRIDGE_CONFIG: Required<BridgeConfig> = {
+	memoryLimit: 128,
+	timeout: 5000,
+	debug: false,
+};
+
+/** Options for a single execute() call. */
+export interface ExecuteOptions {
+	/**
+	 * IANA timezone for this evaluation (e.g., 'America/New_York').
+	 * Sets luxon Settings.defaultZone inside the isolate before execution.
+	 */
+	timezone?: string;
 }

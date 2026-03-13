@@ -381,6 +381,7 @@ export class ChatHubService {
 		let processedAttachments: IBinaryData[] = [];
 		let workflow: PreparedChatWorkflow;
 		let previousMessage: ChatHubMessage | undefined;
+
 		try {
 			const result = await this.messageRepository.manager.transaction(async (trx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
@@ -700,7 +701,7 @@ export class ChatHubService {
 
 				const lastHumanMessageIndex = history.indexOf(lastHumanMessage);
 				if (lastHumanMessageIndex !== -1) {
-					history.splice(lastHumanMessageIndex + 1);
+					history.splice(lastHumanMessageIndex);
 				}
 
 				const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;

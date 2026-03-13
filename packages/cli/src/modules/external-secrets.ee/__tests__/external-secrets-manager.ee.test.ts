@@ -287,6 +287,7 @@ describe('ExternalSecretsManager', () => {
 			providerKey: 'my-vault',
 			type: 'dummy',
 			encryptedSettings: 'encrypted-data',
+			isEnabled: true,
 			projectAccess: [],
 			createdAt: new Date(),
 			updatedAt: new Date(),
@@ -843,6 +844,7 @@ describe('ExternalSecretsManager', () => {
 				providerKey: 'my-vault-1',
 				type: 'dummy',
 				encryptedSettings: 'encrypted-data',
+				isEnabled: true,
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -866,6 +868,56 @@ describe('ExternalSecretsManager', () => {
 			expect(mockProviderRegistry.add).toHaveBeenCalledWith('my-vault-1', dummyProvider);
 		});
 
+		it('should tear down disabled providers but not re-setup them', async () => {
+			const enabledConnection = {
+				id: 1,
+				providerKey: 'vault-enabled',
+				type: 'dummy',
+				encryptedSettings: 'encrypted-data',
+				isEnabled: true,
+				projectAccess: [],
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				setUpdateDate: jest.fn(),
+			};
+			const disabledConnection = {
+				id: 2,
+				providerKey: 'vault-disabled',
+				type: 'dummy',
+				encryptedSettings: 'encrypted-data',
+				isEnabled: false,
+				projectAccess: [],
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				setUpdateDate: jest.fn(),
+			};
+
+			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([
+				enabledConnection,
+				disabledConnection,
+			] as any);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+
+			const dummyProvider = new DummyProvider();
+			await dummyProvider.init({ connected: true, connectedAt: null, settings: {} });
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: dummyProvider,
+			});
+
+			await managerWithProjectMode.reloadAllProviders();
+
+			// Both should be torn down
+			expect(mockRetryManager.cancelRetry).toHaveBeenCalledWith('vault-enabled');
+			expect(mockRetryManager.cancelRetry).toHaveBeenCalledWith('vault-disabled');
+			// Only enabled should be set up
+			expect(mockProviderRegistry.add).toHaveBeenCalledWith('vault-enabled', dummyProvider);
+			expect(mockProviderRegistry.add).not.toHaveBeenCalledWith(
+				'vault-disabled',
+				expect.anything(),
+			);
+		});
+
 		it('should support multiple connections of the same provider type', async () => {
 			const mockConnections = [
 				{
@@ -873,6 +925,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-1',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-1',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -883,6 +936,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-2',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-2',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -924,6 +978,7 @@ describe('ExternalSecretsManager', () => {
 				providerKey: 'my-vault',
 				type: 'dummy',
 				encryptedSettings,
+				isEnabled: true,
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -956,6 +1011,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'provider-a',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-1',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -966,6 +1022,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'provider-b',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-2',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -1008,6 +1065,7 @@ describe('ExternalSecretsManager', () => {
 				providerKey: 'my-vault',
 				type: 'dummy',
 				encryptedSettings: 'encrypted-data',
+				isEnabled: true,
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -1041,6 +1099,7 @@ describe('ExternalSecretsManager', () => {
 				providerKey: 'my-vault',
 				type: 'dummy',
 				encryptedSettings: 'invalid-encrypted-data',
+				isEnabled: true,
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -1071,6 +1130,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-1',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-1',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -1081,6 +1141,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-2',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-2',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -1091,6 +1152,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-3',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-3',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -1121,6 +1183,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-1',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-1',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -1131,6 +1194,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-2',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-2',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),

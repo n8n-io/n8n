@@ -141,6 +141,10 @@ import { CreateWorkflowBuilderSessionTable1770220686000 } from '../common/177022
 import { AddScalingFieldsToTestRun1771417407753 } from '../common/1771417407753-AddScalingFieldsToTestRun';
 import { MigrateExternalSecretsToEntityStorage1771500000000 } from '../common/1771500000000-MigrateExternalSecretsToEntityStorage';
 import { AddUnshareScopeToCustomRoles1771500000001 } from '../common/1771500000001-AddUnshareScopeToCustomRoles';
+import { AddFilesColumnToChatHubAgents1771500000002 } from '../common/1771500000002-AddFilesColumnToChatHubAgents';
+import { AddSuggestedPromptsToAgentTable1772000000000 } from '../common/1772000000000-AddSuggestedPromptsToAgentTable';
+import { AddRoleColumnToProjectSecretsProviderAccess1772619247761 } from '../common/1772619247761-AddRoleColumnToProjectSecretsProviderAccess';
+import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../common/1772619247762-ChangeWorkflowPublishedVersionFKsToRestrict';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -287,6 +291,10 @@ const sqliteMigrations: Migration[] = [
 	AddScalingFieldsToTestRun1771417407753,
 	MigrateExternalSecretsToEntityStorage1771500000000,
 	AddUnshareScopeToCustomRoles1771500000001,
+	AddFilesColumnToChatHubAgents1771500000002,
+	AddSuggestedPromptsToAgentTable1772000000000,
+	AddRoleColumnToProjectSecretsProviderAccess1772619247761,
+	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
 ];
 
 export { sqliteMigrations };

@@ -275,7 +275,7 @@ onMounted(async () => {
 						</N8nText>
 					</div>
 				</div>
-				<div :class="$style.actions">
+				<div v-if="!modal.isReadOnly.value" :class="$style.actions">
 					<N8nTooltip placement="left">
 						<N8nIconButton
 							v-if="modal.isEditMode.value && modal.canDelete.value"
@@ -322,6 +322,19 @@ onMounted(async () => {
 						<!-- Connection Tab Content -->
 						<div v-if="ACTIVE_TAB === 'connection'" :class="$style.mainContent">
 							<div>
+								<N8nNotice
+									v-if="modal.isReadOnly.value"
+									class="mb-l"
+									data-test-id="secrets-provider-read-only-notice"
+									:content="
+										i18n.baseText(
+											modal.canShareGlobally.value
+												? 'settings.secretsProviderConnections.modal.readOnly.notice.admin'
+												: 'settings.secretsProviderConnections.modal.readOnly.notice.noPermission',
+										)
+									"
+								/>
+
 								<!-- Connection State Callouts -->
 								<N8nCallout
 									v-if="modal.connection.connectionState.value === 'connected'"
@@ -367,87 +380,93 @@ onMounted(async () => {
 									:details="modal.connection.connectionError.value"
 								/>
 
-								<!-- Provider Name Input -->
-								<div class="mb-l">
-									<N8nInputLabel
-										:label="
-											i18n.baseText('settings.secretsProviderConnections.modal.connectionName')
-										"
-									/>
-									<N8nInput
-										data-test-id="provider-name"
-										:model-value="modal.connectionName.value"
-										:readonly="modal.isEditMode.value"
-										:disabled="modal.isEditMode.value"
-										aria-required="true"
-										placeholder="myVault"
-										@update:model-value="handleConnectionNameUpdate"
-										@blur="handleConnectionNameBlur"
-									/>
-									<N8nText
-										v-if="
-											modal.connectionNameError.value &&
-											modal.connectionNameBlurred.value &&
-											!modal.isEditMode.value
-										"
-										size="small"
-										color="danger"
-										:class="$style.headerHint"
-									>
-										{{ modal.connectionNameError.value }}
-									</N8nText>
-									<N8nText
-										v-else-if="!modal.isEditMode.value"
-										size="small"
-										color="text-light"
-										:class="$style.headerHint"
-									>
-										{{
-											i18n.baseText('settings.secretsProviderConnections.modal.connectionName.hint')
-										}}
-									</N8nText>
-								</div>
-
-								<!-- Provider Type Selector -->
-								<div class="mb-l">
-									<N8nInputLabel
-										:label="i18n.baseText('settings.secretsProviderConnections.modal.providerType')"
-									/>
-									<N8nSelect
-										data-test-id="provider-type-select"
-										:model-value="modal.selectedProviderType.value?.type"
-										:disabled="modal.isEditMode.value"
-										@update:model-value="handleProviderTypeChange"
-									>
-										<N8nOption
-											v-for="option in modal.providerTypeOptions.value"
-											:key="option.value"
-											:label="option.label"
-											:value="option.value"
+								<fieldset :disabled="modal.isReadOnly.value">
+									<!-- Provider Name Input -->
+									<div class="mb-l">
+										<N8nInputLabel
+											:label="
+												i18n.baseText('settings.secretsProviderConnections.modal.connectionName')
+											"
 										/>
-									</N8nSelect>
-								</div>
+										<N8nInput
+											data-test-id="provider-name"
+											:model-value="modal.connectionName.value"
+											:readonly="modal.isEditMode.value"
+											:disabled="modal.isEditMode.value"
+											aria-required="true"
+											placeholder="myVault"
+											@update:model-value="handleConnectionNameUpdate"
+											@blur="handleConnectionNameBlur"
+										/>
+										<N8nText
+											v-if="
+												modal.connectionNameError.value &&
+												modal.connectionNameBlurred.value &&
+												!modal.isEditMode.value
+											"
+											size="small"
+											color="danger"
+											:class="$style.headerHint"
+										>
+											{{ modal.connectionNameError.value }}
+										</N8nText>
+										<N8nText
+											v-else-if="!modal.isEditMode.value"
+											size="small"
+											color="text-light"
+											:class="$style.headerHint"
+										>
+											{{
+												i18n.baseText(
+													'settings.secretsProviderConnections.modal.connectionName.hint',
+												)
+											}}
+										</N8nText>
+									</div>
 
-								<!-- Dynamic Fields -->
-								<form
-									v-for="property in modal.selectedProviderType.value?.properties"
-									v-show="modal.shouldDisplayProperty(property)"
-									:key="property.name"
-									autocomplete="off"
-									@submit.prevent
-								>
-									<N8nNotice v-if="property.type === 'notice'" :content="property.displayName" />
-									<ParameterInputExpanded
-										v-else
-										:ref="(el) => modal.setParameterValidationState(property.name, el)"
-										class="mb-l"
-										:parameter="property"
-										:value="modal.connectionSettings.value[property.name]"
-										:label="LABEL_SIZE"
-										event-source="secrets-provider-connection"
-										@update="handleSettingChange"
-									/>
-								</form>
+									<!-- Provider Type Selector -->
+									<div class="mb-l">
+										<N8nInputLabel
+											:label="
+												i18n.baseText('settings.secretsProviderConnections.modal.providerType')
+											"
+										/>
+										<N8nSelect
+											data-test-id="provider-type-select"
+											:model-value="modal.selectedProviderType.value?.type"
+											:disabled="modal.isEditMode.value"
+											@update:model-value="handleProviderTypeChange"
+										>
+											<N8nOption
+												v-for="option in modal.providerTypeOptions.value"
+												:key="option.value"
+												:label="option.label"
+												:value="option.value"
+											/>
+										</N8nSelect>
+									</div>
+
+									<!-- Dynamic Fields -->
+									<form
+										v-for="property in modal.selectedProviderType.value?.properties"
+										v-show="modal.shouldDisplayProperty(property)"
+										:key="property.name"
+										autocomplete="off"
+										@submit.prevent
+									>
+										<N8nNotice v-if="property.type === 'notice'" :content="property.displayName" />
+										<ParameterInputExpanded
+											v-else
+											:ref="(el) => modal.setParameterValidationState(property.name, el)"
+											class="mb-l"
+											:parameter="property"
+											:value="modal.connectionSettings.value[property.name]"
+											:label="LABEL_SIZE"
+											event-source="secrets-provider-connection"
+											@update="handleSettingChange"
+										/>
+									</form>
+								</fieldset>
 							</div>
 						</div>
 

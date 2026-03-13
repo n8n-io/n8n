@@ -631,6 +631,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 				style="width: 100%"
 				variant="subtle"
 				v-if="parameter.options && parameter.options.length === 1"
+				size="small"
 				data-test-id="fixed-collection-add"
 				:label="getPlaceholderText"
 				@click="onAddButtonClick(parameter.options[0].name)"

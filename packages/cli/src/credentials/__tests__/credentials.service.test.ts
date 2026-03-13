@@ -10,9 +10,12 @@ import type {
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
-import { CREDENTIAL_EMPTY_VALUE, type ICredentialType } from 'n8n-workflow';
-
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import {
+	CREDENTIAL_BLANKING_VALUE,
+	CREDENTIAL_EMPTY_VALUE,
+	type ICredentialDataDecryptedObject,
+	type ICredentialType,
+} from 'n8n-workflow';
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -21,6 +24,7 @@ import type { CredentialsHelper } from '@/credentials-helper';
 import type { ExternalHooks } from '@/external-hooks';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -423,6 +427,94 @@ describe('CredentialsService', () => {
 				headers: {
 					values2: { name: 'Authorization', value: CREDENTIAL_BLANKING_VALUE },
 				},
+			});
+		});
+
+		it('should redact json field for httpCustomAuth credential type', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'httpCustomAuth',
+			});
+
+			const decryptedData = {
+				json: '{"key": "value"}',
+				otherField: 'not-redacted',
+			};
+
+			const httpCustomAuthCredType = {
+				properties: [
+					{
+						name: 'otherField',
+						type: 'string',
+					},
+				],
+			} as unknown as ICredentialType;
+
+			credentialTypes.getByName
+				.calledWith(credential.type)
+				.mockReturnValueOnce(httpCustomAuthCredType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				json: CREDENTIAL_BLANKING_VALUE,
+				otherField: 'not-redacted',
+			});
+		});
+
+		it('should redact empty json field for httpCustomAuth credential type', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'httpCustomAuth',
+			});
+
+			const decryptedData = {
+				json: '',
+				otherField: 'not-redacted',
+			};
+
+			const httpCustomAuthCredType = {
+				properties: [
+					{
+						name: 'otherField',
+						type: 'string',
+					},
+				],
+			} as unknown as ICredentialType;
+
+			credentialTypes.getByName
+				.calledWith(credential.type)
+				.mockReturnValueOnce(httpCustomAuthCredType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				json: CREDENTIAL_EMPTY_VALUE,
+				otherField: 'not-redacted',
+			});
+		});
+
+		it('should not redact json field for non-httpCustomAuth credential types', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+
+			const decryptedData = {
+				json: '{"key": "value"}',
+				clientSecret: 'sensitiveSecret',
+			};
+
+			credentialTypes.getByName.calledWith(credential.type).mockReturnValueOnce(credType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				json: '{"key": "value"}',
+				clientSecret: CREDENTIAL_BLANKING_VALUE,
 			});
 		});
 	});
@@ -1671,6 +1763,7 @@ describe('CredentialsService', () => {
 
 		describe('external secrets', () => {
 			it('should prevent use of external secret expression when required permission is missing', async () => {
+				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
 				const payload = {
 					name: 'Test Credential',
@@ -1938,12 +2031,14 @@ describe('CredentialsService', () => {
 
 	describe('checkCredentialData', () => {
 		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		const testProjectId = 'test-project-id';
 
 		beforeEach(() => {
 			jest.clearAllMocks();
+			jest.spyOn(validation, 'validateExternalSecretsPermissions').mockResolvedValue();
 		});
 
-		it('should pass when all required fields are provided', () => {
+		it('should pass when all required fields are provided', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'API Key',
@@ -1968,10 +2063,12 @@ describe('CredentialsService', () => {
 				domain: 'example.com',
 			};
 
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).resolves.not.toThrow();
 		});
 
-		it('should pass when required field with valid default is not provided', () => {
+		it('should pass when required field with valid default is not provided', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'Host',
@@ -1985,10 +2082,12 @@ describe('CredentialsService', () => {
 
 			const data = {};
 
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).resolves.not.toThrow();
 		});
 
-		it('should pass when credential has no required fields', () => {
+		it('should pass when credential has no required fields', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'Optional Field',
@@ -2001,21 +2100,29 @@ describe('CredentialsService', () => {
 
 			const data = {};
 
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).resolves.not.toThrow();
 		});
 
-		it('should call validateExternalSecretsPermissions', () => {
+		it('should call validateExternalSecretsPermissions', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
-			const validateSpy = jest.spyOn(validation, 'validateExternalSecretsPermissions');
+			const validateSpy = jest
+				.spyOn(validation, 'validateExternalSecretsPermissions')
+				.mockResolvedValue();
 
 			const data = { apiKey: 'test-key' };
 
-			service.checkCredentialData('apiCredential', data, ownerUser);
+			await service.checkCredentialData('apiCredential', data, ownerUser, testProjectId);
 
-			expect(validateSpy).toHaveBeenCalledWith(ownerUser, data);
+			expect(validateSpy).toHaveBeenCalledWith({
+				user: ownerUser,
+				projectId: testProjectId,
+				dataToSave: data,
+			});
 		});
 
-		it('should throw BadRequestError when required field is missing and has no default', () => {
+		it('should throw BadRequestError when required field is missing and has no default', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'API Key',
@@ -2029,12 +2136,12 @@ describe('CredentialsService', () => {
 
 			const data = {}; // apiKey is missing
 
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
-				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
-			);
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
 		});
 
-		it('should throw when required field value is undefined', () => {
+		it('should throw when required field value is undefined', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'API Key',
@@ -2046,15 +2153,14 @@ describe('CredentialsService', () => {
 				},
 			]);
 
-			const data = { apiKey: undefined };
+			const data = { apiKey: undefined } as unknown as ICredentialDataDecryptedObject;
 
-			// @ts-expect-error - Testing edge case with undefined value
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
-				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
-			);
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
 		});
 
-		it('should throw when required field value is empty string', () => {
+		it('should throw when required field value is empty string', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'API Key',
@@ -2068,12 +2174,12 @@ describe('CredentialsService', () => {
 
 			const data = { apiKey: '' };
 
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
-				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
-			);
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
 		});
 
-		it('should skip validation when required field has displayOptions undefined', () => {
+		it('should skip validation when required field has displayOptions undefined', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'API Key',
@@ -2088,10 +2194,12 @@ describe('CredentialsService', () => {
 			const data = {}; // apiKey is missing
 
 			// Should not throw because displayOptions is undefined, so validation is skipped
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).resolves.not.toThrow();
 		});
 
-		it('should skip validation when required field is hidden by displayOptions', () => {
+		it('should skip validation when required field is hidden by displayOptions', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'API Key',
@@ -2110,10 +2218,12 @@ describe('CredentialsService', () => {
 			const data = { authType: 'apiKey' }; // apiKey is missing and field is hidden
 
 			// Should not throw because displayParameter will return false (field is hidden)
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).resolves.not.toThrow();
 		});
 
-		it('should validate when required field is shown by displayOptions', () => {
+		it('should validate when required field is shown by displayOptions', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'API Key',
@@ -2132,12 +2242,12 @@ describe('CredentialsService', () => {
 			const data = { authType: 'oauth2' }; // Field is shown but apiKey is missing
 
 			// Should throw because field is shown but value is missing
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
-				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
-			);
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
 		});
 
-		it('should validate when displayOptions is explicitly null (edge case)', () => {
+		it('should validate when displayOptions is explicitly null (edge case)', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'API Key',
@@ -2154,9 +2264,9 @@ describe('CredentialsService', () => {
 
 			// null !== undefined, so the check passes and displayParameter is called
 			// displayParameter treats null as falsy and returns true, so validation proceeds
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
-				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
-			);
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
 		});
 	});
 });

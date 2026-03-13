@@ -30,7 +30,20 @@ export const chatHubLLMProviderSchema = z.enum([
 	'cohere',
 	'mistralCloud',
 ]);
+
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
+
+export const chatHubVectorStoreProviderSchema = z.enum(['pgvector', 'qdrant', 'pinecone']);
+
+export type ChatHubVectorStoreProvider = z.infer<typeof chatHubVectorStoreProviderSchema>;
+
+export interface ChatHubAgentKnowledgeItem {
+	id: string;
+	type: 'embedding';
+	provider: ChatHubLLMProvider;
+	fileName: string;
+	mimeType: string;
+}
 
 /**
  * Schema for icon or emoji representation
@@ -58,10 +71,7 @@ export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
  * Map of providers to their credential types
  * Only LLM providers (openai, anthropic, google) have credentials
  */
-export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
-	Exclude<ChatHubProvider, 'n8n' | 'custom-agent'>,
-	string
-> = {
+export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubLLMProvider, string> = {
 	openai: 'openAiApi',
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',
@@ -77,6 +87,13 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	cohere: 'cohereApi',
 	mistralCloud: 'mistralCloudApi',
 };
+
+export const VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubVectorStoreProvider, string> =
+	{
+		pgvector: 'chatHubVectorStorePGVectorApi',
+		qdrant: 'chatHubVectorStoreQdrantApi',
+		pinecone: 'chatHubVectorStorePineconeApi',
+	};
 
 /**
  * Chat Hub conversation model configuration
@@ -455,16 +472,27 @@ export interface ChatHubConversationResponse {
 	conversation: ChatHubConversationDto;
 }
 
+export const suggestedPromptSchema = z.object({
+	text: z.string().min(1).max(256),
+	icon: agentIconOrEmojiSchema.optional(),
+});
+
+export const suggestedPromptsSchema = z.array(suggestedPromptSchema).max(6);
+
+export type SuggestedPrompt = z.infer<typeof suggestedPromptSchema>;
+
 export interface ChatHubAgentDto {
 	id: string;
 	name: string;
 	description: string | null;
 	icon: AgentIconOrEmoji | null;
+	suggestedPrompts: SuggestedPrompt[];
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;
 	provider: ChatHubLLMProvider;
 	model: string;
+	files: ChatHubAgentKnowledgeItem[];
 	toolIds: string[];
 	createdAt: string;
 	updatedAt: string;
@@ -474,7 +502,8 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
 	icon: agentIconOrEmojiSchema,
-	systemPrompt: z.string().min(1),
+	systemPrompt: z.string().default(''),
+	suggestedPrompts: suggestedPromptsSchema.optional(),
 	credentialId: z.string(),
 	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
@@ -485,7 +514,8 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128).optional(),
 	description: z.string().max(512).optional(),
 	icon: agentIconOrEmojiSchema.optional(),
-	systemPrompt: z.string().min(1).optional(),
+	systemPrompt: z.string().optional(),
+	suggestedPrompts: suggestedPromptsSchema.optional(),
 	credentialId: z.string().optional(),
 	provider: chatHubLLMProviderSchema.optional(),
 	model: z.string().max(64).optional(),
@@ -524,6 +554,17 @@ export type ChatProviderSettingsDto = z.infer<typeof chatProviderSettingsSchema>
 
 export class UpdateChatSettingsRequest extends Z.class({
 	payload: chatProviderSettingsSchema,
+}) {}
+
+export class ChatHubSemanticSearchSettings extends Z.class({
+	vectorStore: z.object({
+		provider: chatHubVectorStoreProviderSchema,
+		credentialId: z.string().nullable(),
+	}),
+	embeddingModel: z.object({
+		provider: chatHubLLMProviderSchema,
+		credentialId: z.string().nullable(),
+	}),
 }) {}
 
 export interface ChatHubModuleSettings {

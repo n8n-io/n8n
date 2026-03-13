@@ -53,12 +53,14 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 type Props = {
 	node: INodeUi;
 	overrideCredType?: NodeParameterValueType;
 	readonly?: boolean;
 	showAll?: boolean;
 	hideIssues?: boolean;
+	skipAutoSelect?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -66,6 +68,7 @@ const props = withDefaults(defineProps<Props>(), {
 	overrideCredType: '',
 	showAll: false,
 	hideIssues: false,
+	skipAutoSelect: false,
 });
 
 const emit = defineEmits<{
@@ -85,6 +88,7 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 // Quick connect
@@ -147,7 +151,7 @@ const selected = computed<Record<string, INodeCredentialsDetails>>(
 );
 
 const hasWorkflowResolver = computed(() => {
-	return !!workflowsStore.workflowSettings?.credentialResolverId;
+	return !!workflowDocumentStore?.value?.settings?.credentialResolverId;
 });
 
 function isCredentialResolvable(credentialType: string): boolean {
@@ -197,6 +201,7 @@ watch(
 watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
+		if (props.skipAutoSelect) return;
 		if (types.length === 0 || !isEmpty(selected.value)) return;
 
 		const allOptions = types.map((type) => type.options).flat();
@@ -594,6 +599,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				color="text-dark"
 				data-test-id="credentials-label"
 			>
+				<template v-if="$slots['label-postfix']" #options>
+					<slot name="label-postfix" />
+				</template>
 				<div v-if="readonly">
 					<N8nInput
 						:model-value="getSelectedName(type.name)"

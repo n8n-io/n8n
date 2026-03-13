@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.10.0",
+  "version": "2.12.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -48,6 +48,7 @@
       "dist/credentials/BambooHrApi.credentials.js",
       "dist/credentials/BannerbearApi.credentials.js",
       "dist/credentials/BaserowApi.credentials.js",
+      "dist/credentials/BaserowTokenApi.credentials.js",
       "dist/credentials/BeeminderApi.credentials.js",
       "dist/credentials/BeeminderOAuth2Api.credentials.js",
       "dist/credentials/BitbucketAccessTokenApi.credentials.js",
@@ -895,6 +896,7 @@
     "@n8n/imap": "workspace:*",
     "@thednp/dommatrix": "^2.0.12",
     "alasql": "4.4.0",
+    "isolated-vm": "^6.0.2",
     "amqplib": "0.10.6",
     "aws4": "1.11.0",
     "basic-auth": "catalog:",

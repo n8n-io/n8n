@@ -1,6 +1,10 @@
 import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
-import type { ChatHubLLMProvider, ChatProviderSettingsDto } from './chat-hub';
+import type {
+	ChatHubLLMProvider,
+	ChatHubSemanticSearchSettings,
+	ChatProviderSettingsDto,
+} from './chat-hub';
 import type { QuickConnectOption } from './quick-connect';
 import type { InsightsDateRange } from './schemas/insights.schema';
 
@@ -260,6 +264,7 @@ export type FrontendModuleSettings = {
 	'chat-hub'?: {
 		enabled: boolean;
 		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+		semanticSearch: ChatHubSemanticSearchSettings;
 	};
 
 	/**
@@ -279,6 +284,8 @@ export type FrontendModuleSettings = {
 		forProjects: boolean;
 		/** Whether role-based access control for external secrets is enabled. */
 		roleBasedAccess: boolean;
+		/** Whether system roles (admin, editor) have external secrets scopes. */
+		systemRolesEnabled: boolean;
 	};
 };
 

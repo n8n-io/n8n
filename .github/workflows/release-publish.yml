@@ -8,34 +8,21 @@ on:
       - 'release/*'
 
 jobs:
-  build-arm64:
-    runs-on: blacksmith-4vcpu-ubuntu-2204-arm
-    if: github.event.pull_request.merged == true
-    env:
-      NODE_OPTIONS: --max-old-space-size=6144
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup and Build ARM64
-        uses: ./.github/actions/setup-nodejs
-        env:
-          N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
-
   determine-version-info:
     name: Determine publishing track
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     outputs:
       track: ${{ steps.determine-info.outputs.track }}
+      previous_version: ${{ steps.determine-info.outputs.previous_version }}
       version: ${{ steps.determine-info.outputs.version }}
       bump: ${{ steps.determine-info.outputs.bump }}
       new_stable_version: ${{ steps.determine-info.outputs.new_stable_version }}
       release_type: ${{ steps.determine-info.outputs.release_type }}
+      rc_branch: ${{ steps.determine-info.outputs.rc_branch }}
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
@@ -63,7 +50,7 @@ jobs:
       RELEASE: ${{ needs.determine-version-info.outputs.version }} # Used by Vite build process
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
@@ -102,7 +89,7 @@ jobs:
 
   publish-to-docker-hub:
     name: Publish to DockerHub
-    needs: [determine-version-info, publish-to-npm, build-arm64]
+    needs: [determine-version-info]
     uses: ./.github/workflows/docker-build-push.yml
     with:
       n8n_version: ${{ needs.determine-version-info.outputs.version }}
@@ -121,9 +108,17 @@ jobs:
       id-token: write
 
     steps:
-      - name: Create a Release on GitHub
-        uses: ncipollo/release-action@1c89adf39833729d8f85a31ccbc451b078733c80 # v1
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Create a Release on GitHub
+        uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b # v1.20.0
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
           commit: ${{github.event.pull_request.base.ref}}
           tag: 'n8n@${{ needs.determine-version-info.outputs.version }}'
           prerelease: ${{ needs.determine-version-info.outputs.track == 'beta' }}
@@ -162,65 +157,51 @@ jobs:
     secrets: inherit
 
   merge-release-tag-to-master:
-    name: Merge release tag to master
+    name: Merge release tag to master on minor release
     needs: [determine-version-info, publish-to-npm, create-github-release]
     if: |
       github.event.pull_request.merged == true &&
       needs.determine-version-info.outputs.bump == 'minor' &&
       needs.determine-version-info.outputs.release_type != 'rc'
-    runs-on: ubuntu-latest
-    environment: minor-release-tag-merge
-    env:
-      VERSION: ${{ needs.determine-version-info.outputs.version }}
-    steps:
-      - name: Generate GitHub App Token
-        id: generate_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ secrets.RELEASE_TAG_MERGE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_TAG_MERGE_PRIVATE_KEY }}
-          skip-token-revoke: false
+    uses: ./.github/workflows/release-merge-tag-to-branch.yml
+    with:
+      version: ${{ needs.determine-version-info.outputs.version }}
+      target-branch: master
+    secrets: inherit
 
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: master
-          fetch-depth: 500
-          token: ${{ steps.generate_token.outputs.token }}
+  merge-release-tag-to-rc-branch:
+    name: Merge release tag to RC branch on patch release
+    needs: [determine-version-info, publish-to-npm, create-github-release]
+    if: |
+      github.event.pull_request.merged == true &&
+      needs.determine-version-info.outputs.bump == 'patch' &&
+      needs.determine-version-info.outputs.release_type != 'rc'
+    uses: ./.github/workflows/release-merge-tag-to-branch.yml
+    with:
+      version: ${{ needs.determine-version-info.outputs.version }}
+      target-branch: ${{ needs.determine-version-info.outputs.rc_branch }}
+    secrets: inherit
 
-      - name: Verify release tag exists
-        run: |
-          if ! git ls-remote --tags origin "refs/tags/n8n@${VERSION}" | grep -q .; then
-            echo "::error::Tag n8n@${VERSION} not found on remote"
-            exit 1
-          fi
-
-      - name: Fetch release tag
-        run: git fetch origin "refs/tags/n8n@${VERSION}:refs/tags/n8n@${VERSION}"
-
-      - name: Merge release tag to master
-        run: |
-          git config user.name "n8n-release-tag-merge[bot]"
-          git config user.email "256767729+n8n-release-tag-merge[bot]@users.noreply.github.com"
-          git merge --ff "n8n@${VERSION}"
-
-      - name: Push to master
-        run: git push origin HEAD:master
-
-      - name: Notify Slack on failure
-        if: failure()
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
-        with:
-          status: ${{ job.status }}
-          channel: '#updates-and-product-releases'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: |
-            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Release tag merge to master failed for n8n@${{ needs.determine-version-info.outputs.version }} >
   post-release:
     name: Run Post-release actions
-    needs: [determine-version-info, publish-to-npm, create-github-release]
+    needs:
+      [
+        determine-version-info,
+        publish-to-npm,
+        create-github-release,
+        move-track-tag,
+        promote-stable-tag,
+      ]
+    if: |
+      always() &&
+      needs.publish-to-npm.result == 'success' &&
+      needs.create-github-release.result == 'success' &&
+      (needs.move-track-tag.result == 'success' || needs.move-track-tag.result == 'skipped') &&
+      (needs.promote-stable-tag.result == 'success' || needs.promote-stable-tag.result == 'skipped')
     uses: ./.github/workflows/release-publish-post-release.yml
     with:
       track: ${{ needs.determine-version-info.outputs.track }}
+      previous_version: ${{ needs.determine-version-info.outputs.previous_version }}
       version: ${{ needs.determine-version-info.outputs.version }}
       bump: ${{ needs.determine-version-info.outputs.bump }}
       new_stable_version: ${{ needs.determine-version-info.outputs.new_stable_version }}
