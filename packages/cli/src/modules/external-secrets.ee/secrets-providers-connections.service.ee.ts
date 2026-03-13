@@ -368,7 +368,7 @@ export class SecretsProvidersConnectionsService {
 	 * - Deletes connection if requester has global delete scope or project access is owner.
 	 * - Otherwise removes this project's access and disables the connection.
 	 */
-	async cleanupConnectionsForProjectDeletion(projectId: string, user: User): Promise<void> {
+	async cleanupConnectionsForProjectDeletion(projectId: string): Promise<void> {
 		const accessEntries = await this.projectAccessRepository.findByProjectId(projectId);
 		const providerKeysToSync = new Set<string>();
 
