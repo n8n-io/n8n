@@ -28,7 +28,6 @@ import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-s
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
-import { hasGlobalScope } from '@n8n/permissions';
 
 @Service()
 export class SecretsProvidersConnectionsService {
@@ -332,26 +331,26 @@ export class SecretsProvidersConnectionsService {
 		projectId: string,
 		userId: string,
 	): Promise<ReloadSecretProviderConnectionResponse> {
-		const projectConnections = await this.repository.findByProjectId(projectId);
+		const projectConnections = await this.repository.findEnabledByProjectId(projectId);
 		const providers: Record<string, { success: boolean }> = {};
 
 		await Promise.allSettled(
-			projectConnections.map(async (c) => {
+			projectConnections.map(async (connection) => {
 				try {
-					await this.externalSecretsManager.updateProvider(c.providerKey);
-					providers[c.providerKey] = { success: true };
+					await this.externalSecretsManager.updateProvider(connection.providerKey);
+					providers[connection.providerKey] = { success: true };
 
 					this.eventService.emit('external-secrets-connection-reloaded', {
 						userId,
-						providerKey: c.providerKey,
-						vaultType: c.type,
-						...this.extractProjectInfo(c),
+						providerKey: connection.providerKey,
+						vaultType: connection.type,
+						...this.extractProjectInfo(connection),
 					});
 				} catch (error) {
-					providers[c.providerKey] = { success: false };
-					this.logger.warn(`Failed to reload provider ${c.providerKey}`, {
+					providers[connection.providerKey] = { success: false };
+					this.logger.warn(`Failed to reload provider ${connection.providerKey}`, {
 						projectId,
-						providerKey: c.providerKey,
+						providerKey: connection.providerKey,
 					});
 				}
 			}),
