@@ -1,8 +1,10 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
+	ProjectSecretsProviderAccess,
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnection,
 	SecretsProviderConnectionRepository,
+	User,
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_BLANKING_VALUE, type IDataObject, type INodeProperties } from 'n8n-workflow';
@@ -380,6 +382,67 @@ describe('SecretsProvidersConnectionsService', () => {
 			await service.deleteConnection('my-aws', 'user-123');
 
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
+		});
+	});
+
+	describe('cleanupConnectionsForProjectDeletion', () => {
+		it('syncs each affected provider after project cleanup', async () => {
+			const adminUser = {
+				role: {
+					scopes: [{ slug: 'externalSecretsProvider:delete' }],
+				},
+			} as unknown as User;
+
+			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
+				mock<ProjectSecretsProviderAccess>({
+					projectId: 'project-1',
+					role: 'secretsProviderConnection:user',
+					secretsProviderConnectionId: 1,
+					secretsProviderConnection: { providerKey: 'provider-a' },
+				}),
+				mock<ProjectSecretsProviderAccess>({
+					projectId: 'project-1',
+					role: 'secretsProviderConnection:user',
+					secretsProviderConnectionId: 2,
+					secretsProviderConnection: { providerKey: 'provider-b' },
+				}),
+			]);
+
+			await service.cleanupConnectionsForProjectDeletion('project-1', adminUser);
+
+			expect(mockRepository.delete).toHaveBeenCalledTimes(2);
+			expect(mockRepository.delete).toHaveBeenNthCalledWith(1, { id: 1 });
+			expect(mockRepository.delete).toHaveBeenNthCalledWith(2, { id: 2 });
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledTimes(2);
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-a');
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-b');
+		});
+
+		it('disables non-owned connection, removes access, and syncs provider', async () => {
+			const projectAdmin = {
+				role: {
+					scopes: [{ slug: 'project:delete' }],
+				},
+			} as unknown as User;
+
+			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
+				mock<ProjectSecretsProviderAccess>({
+					projectId: 'project-1',
+					role: 'secretsProviderConnection:user',
+					secretsProviderConnectionId: 5,
+					secretsProviderConnection: { providerKey: 'provider-c' },
+				}),
+			]);
+
+			await service.cleanupConnectionsForProjectDeletion('project-1', projectAdmin);
+
+			expect(mockRepository.delete).not.toHaveBeenCalled();
+			expect(mockProjectAccessRepository.delete).toHaveBeenCalledWith({
+				projectId: 'project-1',
+				secretsProviderConnectionId: 5,
+			});
+			expect(mockRepository.update).toHaveBeenCalledWith({ id: 5 }, { isEnabled: false });
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-c');
 		});
 	});
 

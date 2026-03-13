@@ -10,7 +10,7 @@ import {
 	reloadSecretProviderConnectionResponseSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { SecretsProviderConnection, SecretsProviderAccessRole } from '@n8n/db';
+import type { SecretsProviderConnection, SecretsProviderAccessRole, User } from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
@@ -28,6 +28,7 @@ import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-s
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
+import { hasGlobalScope } from '@n8n/permissions';
 
 @Service()
 export class SecretsProvidersConnectionsService {
@@ -333,6 +334,76 @@ export class SecretsProvidersConnectionsService {
 				name: access.project.name,
 			})),
 		};
+	}
+
+	async reloadProjectConnectionSecrets(
+		projectId: string,
+		userId: string,
+	): Promise<ReloadSecretProviderConnectionResponse> {
+		const projectConnections = await this.repository.findByProjectId(projectId);
+		const providers: Record<string, { success: boolean }> = {};
+
+		await Promise.allSettled(
+			projectConnections.map(async (c) => {
+				try {
+					await this.externalSecretsManager.updateProvider(c.providerKey);
+					providers[c.providerKey] = { success: true };
+
+					this.eventService.emit('external-secrets-connection-reloaded', {
+						userId,
+						providerKey: c.providerKey,
+						vaultType: c.type,
+						...this.extractProjectInfo(c),
+					});
+				} catch (error) {
+					providers[c.providerKey] = { success: false };
+					this.logger.warn(`Failed to reload provider ${c.providerKey}`, {
+						projectId,
+						providerKey: c.providerKey,
+					});
+				}
+			}),
+		);
+
+		const allSucceeded = Object.values(providers).every((p) => p.success);
+		return reloadSecretProviderConnectionResponseSchema.parse({
+			success: allSucceeded,
+			providers,
+		});
+	}
+
+	/**
+	 * Cleans up external-secrets connections when a project is deleted.
+	 * - Deletes connection if requester has global delete scope or project access is owner.
+	 * - Otherwise removes this project's access and disables the connection.
+	 */
+	async cleanupConnectionsForProjectDeletion(projectId: string, user: User): Promise<void> {
+		const accessEntries = await this.projectAccessRepository.findByProjectId(projectId);
+		const providerKeysToSync = new Set<string>();
+
+		for (const access of accessEntries) {
+			providerKeysToSync.add(access.secretsProviderConnection.providerKey);
+
+			if (access.role === 'secretsProviderConnection:owner') {
+				// Delete the connection entirely; DB cascade removes the access entry too
+				await this.repository.delete({ id: access.secretsProviderConnectionId });
+				continue;
+			}
+
+			// Remove only this project's access and disable the connection
+			await this.projectAccessRepository.delete({
+				projectId,
+				secretsProviderConnectionId: access.secretsProviderConnectionId,
+			});
+			await this.repository.update(
+				{ id: access.secretsProviderConnectionId },
+				{ isEnabled: false },
+			);
+		}
+
+		for (const providerKey of providerKeysToSync) {
+			await this.externalSecretsManager.syncProviderConnection(providerKey);
+		}
 	}
 
 	private encryptConnectionSettings(settings: IDataObject): string {
