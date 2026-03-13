@@ -1,4 +1,5 @@
 name: 'Release: Create Patch Release PR'
+run-name: 'Release: Create Patch Release PR for track ${{ inputs.track }}'
 
 on:
   workflow_dispatch:
