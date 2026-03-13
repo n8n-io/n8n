@@ -22,6 +22,7 @@ const mockTrackJourney = vi.fn();
 // Reactive object so computed properties in the composable can track changes
 const mockBuilderStoreState = reactive({
 	wizardCurrentStep: 0,
+	wizardHasExecutedWorkflow: false,
 	trackWorkflowBuilderJourney: mockTrackJourney,
 });
 vi.mock('@/features/ai/assistant/builder.store', () => ({
@@ -168,6 +169,7 @@ describe('useBuilderSetupCards', () => {
 		mockAllNodes.value = [];
 		mockFirstTriggerName.value = null;
 		mockBuilderStoreState.wizardCurrentStep = 0;
+		mockBuilderStoreState.wizardHasExecutedWorkflow = false;
 		mockCredentialTestResults.clear();
 	});
 
@@ -338,26 +340,6 @@ describe('useBuilderSetupCards', () => {
 		expect(currentStepIndex.value).toBe(0);
 	});
 
-	it('does not auto-advance when navigating back to a completed card', async () => {
-		mockSetupCards.value = [
-			createCard({ node: createNode({ name: 'Node 1', id: 'n1' }), isComplete: true }),
-			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: false }),
-			createCard({ node: createNode({ name: 'Node 3', id: 'n3' }), isComplete: false }),
-		];
-
-		const { currentStepIndex, goToStep } = await getComposable();
-
-		// Move to step 1 (incomplete)
-		goToStep(1);
-		await nextTick();
-		expect(currentStepIndex.value).toBe(1);
-
-		// Navigate back to completed step 0 — should stay (navigation, not completion)
-		goToStep(0);
-		await nextTick();
-		expect(currentStepIndex.value).toBe(0);
-	});
-
 	it('filters out trigger-only cards that require no setup', async () => {
 		mockSetupCards.value = [
 			createCard({
@@ -466,64 +448,7 @@ describe('useBuilderSetupCards', () => {
 		expect(isAllComplete.value).toBe(false);
 	});
 
-	it('auto-advances credential-only card when it completes', async () => {
-		mockSetupCards.value = [
-			createCard({
-				node: createNode({ name: 'Node 1', id: 'n1' }),
-				credentialType: 'openAiApi',
-				isComplete: false,
-			}),
-			createCard({
-				node: createNode({ name: 'Node 2', id: 'n2' }),
-				credentialType: 'slackApi',
-				isComplete: false,
-			}),
-		];
-
-		const { currentStepIndex } = await getComposable();
-		expect(currentStepIndex.value).toBe(0);
-
-		// Simulate credential card completing (credential set + test passed)
-		mockSetupCards.value = [
-			createCard({
-				node: createNode({ name: 'Node 1', id: 'n1' }),
-				credentialType: 'openAiApi',
-				isComplete: true,
-			}),
-			createCard({
-				node: createNode({ name: 'Node 2', id: 'n2' }),
-				credentialType: 'slackApi',
-				isComplete: false,
-			}),
-		];
-		await nextTick();
-
-		expect(currentStepIndex.value).toBe(1);
-	});
-
-	it('auto-advances through multiple already-complete cards to first incomplete', async () => {
-		mockSetupCards.value = [
-			createCard({
-				node: createNode({ name: 'Node 1', id: 'n1' }),
-				credentialType: 'openAiApi',
-				isComplete: false,
-			}),
-			createCard({
-				node: createNode({ name: 'Node 2', id: 'n2' }),
-				credentialType: 'slackApi',
-				isComplete: true,
-			}),
-			createCard({
-				node: createNode({ name: 'Node 3', id: 'n3' }),
-				credentialType: 'telegramApi',
-				isComplete: false,
-			}),
-		];
-
-		const { currentStepIndex } = await getComposable();
-		expect(currentStepIndex.value).toBe(0);
-
-		// Card 1 completes — should skip past already-complete card 2 to card 3
+	it('onStepExecuted dismisses wizard when all cards are complete', async () => {
 		mockSetupCards.value = [
 			createCard({
 				node: createNode({ name: 'Node 1', id: 'n1' }),
@@ -535,109 +460,68 @@ describe('useBuilderSetupCards', () => {
 				credentialType: 'slackApi',
 				isComplete: true,
 			}),
-			createCard({
-				node: createNode({ name: 'Node 3', id: 'n3' }),
-				credentialType: 'telegramApi',
-				isComplete: false,
-			}),
-		];
-		await nextTick();
-
-		expect(currentStepIndex.value).toBe(2);
-	});
-
-	it('does not auto-advance when wizardHasExecutedWorkflow is true', async () => {
-		mockSetupCards.value = [
-			createCard({
-				node: createNode({ name: 'Node 1', id: 'n1' }),
-				credentialType: 'openAiApi',
-				isComplete: false,
-			}),
-			createCard({
-				node: createNode({ name: 'Node 2', id: 'n2' }),
-				credentialType: 'slackApi',
-				isComplete: false,
-			}),
 		];
 
-		const { currentStepIndex } = await getComposable();
-		(mockBuilderStoreState as Record<string, unknown>).wizardHasExecutedWorkflow = true;
-
-		mockSetupCards.value = [
-			createCard({
-				node: createNode({ name: 'Node 1', id: 'n1' }),
-				credentialType: 'openAiApi',
-				isComplete: true,
-			}),
-			createCard({
-				node: createNode({ name: 'Node 2', id: 'n2' }),
-				credentialType: 'slackApi',
-				isComplete: false,
-			}),
-		];
-		await nextTick();
-
-		expect(currentStepIndex.value).toBe(0);
-		(mockBuilderStoreState as Record<string, unknown>).wizardHasExecutedWorkflow = false;
-	});
-
-	it('onStepExecuted skips to next incomplete card', async () => {
-		mockSetupCards.value = [
-			createCard({
-				node: createNode({ name: 'Node 1', id: 'n1' }),
-				credentialType: 'openAiApi',
-				additionalParameterNames: ['model'],
-				isComplete: true,
-			}),
-			createCard({
-				node: createNode({ name: 'Node 2', id: 'n2' }),
-				credentialType: 'slackApi',
-				isComplete: true,
-			}),
-			createCard({
-				node: createNode({ name: 'Node 3', id: 'n3' }),
-				credentialType: 'telegramApi',
-				isComplete: false,
-			}),
-		];
-
-		const { currentStepIndex, onStepExecuted } = await getComposable();
-		// skipToFirstIncomplete on mount already moves to card 3, reset to 0
-		currentStepIndex.value = 0;
-		await nextTick();
-
+		const { onStepExecuted } = await getComposable();
 		onStepExecuted();
 		await nextTick();
 
-		// Should skip past complete card 2 to incomplete card 3
-		expect(currentStepIndex.value).toBe(2);
+		expect(mockBuilderStoreState.wizardHasExecutedWorkflow).toBe(true);
 	});
 
-	it('does not auto-advance for cards with parameters to avoid disrupting typing', async () => {
+	it('onStepExecuted does not dismiss wizard when some cards are incomplete', async () => {
 		mockSetupCards.value = [
 			createCard({
 				node: createNode({ name: 'Node 1', id: 'n1' }),
-				isComplete: false,
-				additionalParameterNames: ['assignments'],
+				credentialType: 'openAiApi',
+				isComplete: true,
 			}),
-			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: false }),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: false,
+			}),
+		];
+
+		const { onStepExecuted } = await getComposable();
+		onStepExecuted();
+		await nextTick();
+
+		expect(mockBuilderStoreState.wizardHasExecutedWorkflow).toBe(false);
+	});
+
+	it('does not auto-advance when a card completes', async () => {
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'openAiApi',
+				isComplete: false,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: false,
+			}),
 		];
 
 		const { currentStepIndex } = await getComposable();
 		expect(currentStepIndex.value).toBe(0);
 
-		// Simulate card completing (e.g., user filled in the last required param)
+		// Simulate card completing — should stay on the same card
 		mockSetupCards.value = [
 			createCard({
 				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'openAiApi',
 				isComplete: true,
-				additionalParameterNames: ['assignments'],
 			}),
-			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: false }),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: false,
+			}),
 		];
 		await nextTick();
 
-		// Should NOT auto-advance — user may still be editing parameters
 		expect(currentStepIndex.value).toBe(0);
 	});
 });

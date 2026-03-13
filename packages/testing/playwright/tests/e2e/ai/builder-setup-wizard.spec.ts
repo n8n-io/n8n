@@ -9,7 +9,6 @@ import {
 	createBuilderResponseThreeCardsNoTriggerPin,
 	createBuilderResponseSharedCredential,
 	createBuilderResponseBranchingWorkflow,
-	createBuilderResponsePlaceholderMiddleCard,
 } from '../../../config/ai-builder-wizard-fixtures';
 import { test, expect } from '../../../fixtures/base';
 
@@ -177,30 +176,6 @@ test.describe.serial(
 			await expect(wiz.getExecuteStepButton()).not.toBeVisible();
 		});
 
-		// --- Auto-advance ---
-
-		test('should not auto-advance a credential card without a credential selected', async ({
-			n8n,
-		}) => {
-			const { builderWizardComposer: bw } = n8n;
-			const wiz = n8n.aiBuilder.wizard;
-
-			// After filter: 2 cards (Slack + Telegram)
-			await bw.mockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
-			await n8n.page.goto('/workflow/new');
-			await bw.triggerWorkflowGeneration();
-
-			// First card is Slack (no credential) — should stay here
-			await expect(wiz.getCardTitle('Slack')).toBeVisible();
-			await expect(wiz.getStepIndicator(1, 2)).toBeVisible();
-
-			// Assert stability: card stays on Slack (no auto-advance without credential)
-			await expect(async () => {
-				await expect(wiz.getCardTitle('Slack')).toBeVisible();
-				await expect(wiz.getStepIndicator(1, 2)).toBeVisible();
-			}).toPass({ intervals: [100, 200, 300] });
-		});
-
 		// --- Credential grouping ---
 
 		test('should group nodes sharing the same credential type into one card', async ({ n8n }) => {
@@ -273,83 +248,6 @@ test.describe.serial(
 
 		// --- Tests below create credentials and must run after non-credential tests ---
 		// (serial mode + shared DB means credentials from earlier tests leak into later ones)
-
-		test.skip('should auto-complete card when credential is auto-applied and keep wizard visible', async ({
-			n8n,
-			api,
-		}) => {
-			await api.credentials.createCredential({
-				name: `Slack Test ${nanoid()}`,
-				type: 'slackApi',
-				data: { accessToken: 'xoxb-test-token' },
-			});
-
-			const { builderWizardComposer: bw } = n8n;
-			const wiz = n8n.aiBuilder.wizard;
-
-			await bw.mockBuilderStream();
-			await n8n.page.goto('/workflow/new');
-			await bw.triggerWorkflowGeneration();
-
-			// Credential is auto-applied → card becomes complete automatically.
-			// Execute button becoming enabled is the stable signal for all-complete.
-			await expect(wiz.getExecuteWorkflowButton()).toBeEnabled({ timeout: BACKEND_TIMEOUT });
-
-			// Wizard should remain visible — completing cards does NOT dismiss the wizard.
-			// Dismissal only happens after "Execute and refine".
-			await expect(wiz.getWizard()).toBeVisible();
-		});
-
-		test('should auto-advance past completed credential card to next incomplete card', async ({
-			n8n,
-		}) => {
-			// Previous test created a Slack credential that will be auto-applied.
-			const { builderWizardComposer: bw } = n8n;
-			const wiz = n8n.aiBuilder.wizard;
-
-			// 2 credential-only cards: Slack (auto-completes from existing credential) + Telegram
-			await bw.mockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
-			await n8n.page.goto('/workflow/new');
-			await bw.triggerWorkflowGeneration();
-
-			// Slack card (1/2) auto-completes from auto-applied credential → should auto-advance.
-			// Telegram card (2/2) has no credential → wizard lands here.
-			await expect(wiz.getCardTitle('Telegram')).toBeVisible({ timeout: BACKEND_TIMEOUT });
-			await expect(wiz.getStepIndicator(2, 2)).toBeVisible();
-		});
-
-		test('should not auto-advance a credential+parameter card while user is typing', async ({
-			n8n,
-		}) => {
-			// Previous test created a Slack credential that will be auto-applied.
-			const { builderWizardComposer: bw } = n8n;
-			const wiz = n8n.aiBuilder.wizard;
-
-			// 3 visible cards: Telegram (1) → Slack with placeholder (2) → Notion (3).
-			// Slack is in the MIDDLE — not first and not last, so auto-advance toward
-			// Notion could fire if the parameter guard is missing.
-			await bw.mockBuilderStream(createBuilderResponsePlaceholderMiddleCard());
-			await n8n.page.goto('/workflow/new');
-			await bw.triggerWorkflowGeneration();
-
-			// Navigate to Slack card (card 2, has credential + placeholder parameter)
-			await bw.navigateToCard('Slack');
-			await expect(wiz.getStepIndicator(2, 3)).toBeVisible();
-
-			// Parameter input should be visible with placeholder text
-			await expect(wiz.getParameterInput('text')).toBeVisible();
-
-			// Type into the parameter input — user replaces placeholder with real text
-			await wiz.getParameterInputField('text').click();
-			await wiz.getParameterInputField('text').fill('Daily weather report');
-
-			// Card should stay on Slack (2/3) — no auto-advance even though the credential
-			// is set. Cards with parameters require explicit "Continue" or "Execute step".
-			await expect(async () => {
-				await expect(wiz.getCardTitle('Slack')).toBeVisible();
-				await expect(wiz.getStepIndicator(2, 3)).toBeVisible();
-			}).toPass({ intervals: [100, 200, 300] });
-		});
 
 		test('should not complete a card with credential alone when parameters are required', async ({
 			n8n,

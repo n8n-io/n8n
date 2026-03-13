@@ -1,28 +1,15 @@
 <script setup lang="ts">
-import { onMounted, computed, ref, watch, watchEffect } from 'vue';
+import { onMounted, computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nTooltip } from '@n8n/design-system';
 
 import BuilderSetupCard from './BuilderSetupCard.vue';
-import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useBuilderSetupCards } from '@/features/ai/assistant/composables/useBuilderSetupCards';
-import { useBuilderExecution } from '@/features/ai/assistant/composables/useBuilderExecution';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-
-interface Emits {
-	workflowExecuted: [];
-}
-
-const emit = defineEmits<Emits>();
 
 const i18n = useI18n();
 const builderStore = useBuilderStore();
 const setupPanelStore = useSetupPanelStore();
-const workflowsStore = useWorkflowsStore();
-const nodeTypesStore = useNodeTypesStore();
 
 const {
 	currentStepIndex,
@@ -38,24 +25,9 @@ const {
 	onStepExecuted,
 } = useBuilderSetupCards();
 
-const {
-	triggerNodes,
-	availableTriggerNodes,
-	executeButtonTooltip,
-	isWorkflowRunning,
-	isExecutionWaitingForWebhook,
-	execute,
-} = useBuilderExecution(isAllComplete);
-
 const wizardDismissed = computed(
 	() => isAllComplete.value && builderStore.wizardHasExecutedWorkflow,
 );
-
-watchEffect(() => {
-	console.log('isAllComplete', isAllComplete.value);
-	console.log('wizardHasExecutedWorkflow', builderStore.wizardHasExecutedWorkflow);
-	console.log('card', currentCard.value);
-});
 
 const showCard = computed(() => currentCard.value && !wizardDismissed.value);
 
@@ -98,13 +70,6 @@ const descriptionText = computed(() => {
 		? i18n.baseText('aiAssistant.builder.executeMessage.noIssuesWithPinData')
 		: i18n.baseText('aiAssistant.builder.executeMessage.noIssues');
 });
-
-async function onExecute() {
-	// Set post-execution state before starting the run so the execution watcher and UI state
-	// are ready when the run begins.
-	builderStore.wizardHasExecutedWorkflow = true;
-	await execute(() => emit('workflowExecuted'));
-}
 
 function onGoToNext() {
 	builderStore.trackWorkflowBuilderJourney('setup_wizard_step_navigated', {
@@ -178,29 +143,6 @@ onMounted(() => {
 			@credential-selected="onCredentialSelected"
 			@credential-deselected="onCredentialDeselected"
 		/>
-
-		<N8nTooltip
-			v-if="triggerNodes.length > 0"
-			:disabled="isAllComplete"
-			:content="executeButtonTooltip"
-			placement="left"
-		>
-			<CanvasRunWorkflowButton
-				:class="$style.runButton"
-				:disabled="!isAllComplete || builderStore.hasNoCreditsRemaining"
-				:waiting-for-webhook="isExecutionWaitingForWebhook"
-				:hide-tooltip="true"
-				:label="i18n.baseText('aiAssistant.builder.executeMessage.execute')"
-				:executing="isWorkflowRunning"
-				:include-chat-trigger="true"
-				size="medium"
-				:trigger-nodes="availableTriggerNodes"
-				:get-node-type="nodeTypesStore.getNodeType"
-				:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
-				@execute="onExecute"
-				@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
-			/>
-		</N8nTooltip>
 	</div>
 </template>
 
@@ -218,9 +160,5 @@ onMounted(() => {
 	margin: 0;
 	color: var(--color--text--shade-1);
 	line-height: var(--line-height--md);
-}
-
-.runButton {
-	align-self: stretch;
 }
 </style>

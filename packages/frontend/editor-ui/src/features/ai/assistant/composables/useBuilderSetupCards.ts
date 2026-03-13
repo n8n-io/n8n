@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch, watchEffect } from 'vue';
 
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
@@ -78,6 +78,10 @@ export function useBuilderSetupCards() {
 		additionalParametersByNode: placeholderParamsByNode,
 	});
 
+	watchEffect(() => {
+		console.log('cards', baseCards.value);
+	});
+
 	// Step index is persisted in builder store
 	const currentStepIndex = computed({
 		get: () => builderStore.wizardCurrentStep,
@@ -99,8 +103,6 @@ export function useBuilderSetupCards() {
 			return hasCredentials || hasParameters;
 		}),
 	);
-
-	console.log('cards', cards.value);
 
 	const totalCards = computed(() => cards.value.length);
 
@@ -175,70 +177,15 @@ export function useBuilderSetupCards() {
 		goToNext();
 	}
 
-	// --- Advance logic (centralized) ---
-
-	function cardHasParams(card?: SetupCardItem): boolean {
-		if (!card) return false;
-		return (
-			(card.state.additionalParameterNames?.length ?? 0) > 0 ||
-			Object.keys(card.state.parameterIssues).length > 0
-		);
-	}
-
-	// Auto-advance for credential-only cards when they complete.
-	// Cards with parameters don't auto-advance — the user may still be typing.
-	// Watches primitives via tuple so the callback only fires when values actually
-	// change (no spurious fires from new object references).
-	// Reads from cards[index] directly instead of through currentCard to avoid the
-	// isAllComplete → undefined blind spot.
-	watch(
-		[
-			() => cards.value[currentStepIndex.value]?.state.isComplete,
-			() => cards.value[currentStepIndex.value]?.state.node.name,
-		],
-		([isComplete, name], [wasComplete, prevName]) => {
-			// Only react when the SAME card transitions from incomplete → complete.
-			// When the card identity changes (user navigated or auto-advanced),
-			// prevName differs from name — skip to avoid false positives.
-			if (name !== prevName) return;
-			if (!isComplete || wasComplete) return;
-			if (builderStore.wizardHasExecutedWorkflow) return;
-			if (cardHasParams(cards.value[currentStepIndex.value])) return;
-
-			// Skip to the next INCOMPLETE card (not just the next card).
-			// This handles chaining through multiple already-complete cards.
-			const nextIncomplete = cards.value.findIndex(
-				(c, i) => i > currentStepIndex.value && !c.state.isComplete,
-			);
-			if (nextIncomplete !== -1) {
-				currentStepIndex.value = nextIncomplete;
-			}
-		},
-	);
-
 	/**
 	 * Called when a card's step execution finishes (trigger test or node execution).
-	 * Handles last-card dismissal and advance for parameter cards.
+	 * Dismisses the wizard when all cards are complete.
 	 */
 	function onStepExecuted() {
-		const card = currentCard.value;
-		if (!card?.state.isComplete) return;
-
-		const isLastStep = currentStepIndex.value >= totalCards.value - 1;
-
-		if (isLastStep && isAllComplete.value) {
+		if (!currentCard.value?.state.isComplete) return;
+		if (isAllComplete.value) {
 			builderStore.wizardHasExecutedWorkflow = true;
-			return;
-		}
-
-		// Skip to the next INCOMPLETE card (not just the next card).
-		// This handles chaining through multiple already-complete cards.
-		const nextIncomplete = cards.value.findIndex(
-			(c, i) => i > currentStepIndex.value && !c.state.isComplete,
-		);
-		if (nextIncomplete !== -1) {
-			currentStepIndex.value = nextIncomplete;
-		} else if (!isLastStep) {
+		} else {
 			goToNext();
 		}
 	}

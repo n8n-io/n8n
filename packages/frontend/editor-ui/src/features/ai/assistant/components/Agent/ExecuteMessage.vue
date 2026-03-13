@@ -152,7 +152,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 
 <template>
 	<!-- Wizard variant -->
-	<BuilderSetupWizard v-if="isWizardVariant" @workflow-executed="emit('workflowExecuted')" />
+	<BuilderSetupWizard v-if="isWizardVariant" />
 
 	<!-- Control variant (existing behavior) -->
 	<div

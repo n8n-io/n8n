@@ -8,7 +8,6 @@ import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import BuilderSetupWizard from './BuilderSetupWizard.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '../../builder.store';
 
 const mockCards = ref<Array<{ state: Record<string, unknown> }>>([]);
@@ -66,18 +65,6 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-const mockTriggerNodes = ref<INodeUi[]>([]);
-vi.mock('@/features/ai/assistant/composables/useBuilderExecution', () => ({
-	useBuilderExecution: () => ({
-		triggerNodes: mockTriggerNodes,
-		availableTriggerNodes: ref([]),
-		executeButtonTooltip: ref(''),
-		isWorkflowRunning: ref(false),
-		isExecutionWaitingForWebhook: ref(false),
-		execute: vi.fn(),
-	}),
-}));
-
 const triggerNode: INodeUi = {
 	id: '1',
 	name: 'Trigger',
@@ -91,7 +78,6 @@ const renderComponent = createComponentRenderer(BuilderSetupWizard);
 
 describe('BuilderSetupWizard', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
-	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let pinia: ReturnType<typeof createTestingPinia>;
 
@@ -107,18 +93,10 @@ describe('BuilderSetupWizard', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		nodeTypesStore = mockedStore(useNodeTypesStore);
 		builderStore = mockedStore(useBuilderStore);
 
-		mockTriggerNodes.value = [triggerNode];
 		workflowsStore.workflow.nodes = [triggerNode];
 		workflowsStore.workflow.connections = {} as never;
-		nodeTypesStore.isTriggerNode = vi
-			.fn()
-			.mockImplementation((type: string) => type.toLowerCase().includes('trigger'));
-		Object.defineProperty(workflowsStore, 'isWorkflowRunning', { get: () => false });
-		Object.defineProperty(workflowsStore, 'executionWaitingForWebhook', { get: () => false });
-		Object.defineProperty(builderStore, 'hasNoCreditsRemaining', { get: () => false });
 		Object.defineProperty(builderStore, 'hasTodosHiddenByPinnedData', { get: () => false });
 		Object.defineProperty(builderStore, 'wizardHasExecutedWorkflow', {
 			value: false,
@@ -169,22 +147,6 @@ describe('BuilderSetupWizard', () => {
 
 		const { queryByTestId } = render();
 		expect(queryByTestId('builder-setup-card')).not.toBeInTheDocument();
-	});
-
-	it('disables execute button when not all complete', () => {
-		mockIsAllComplete.value = false;
-
-		const { getAllByTestId } = render();
-		const button = getAllByTestId('execute-workflow-button')[0] as HTMLButtonElement;
-		expect(button.disabled).toBe(true);
-	});
-
-	it('enables execute button when all complete', () => {
-		mockIsAllComplete.value = true;
-
-		const { getAllByTestId } = render();
-		const button = getAllByTestId('execute-workflow-button')[0] as HTMLButtonElement;
-		expect(button.disabled).toBe(false);
 	});
 
 	it('tracks setup_wizard_shown on mount', () => {
