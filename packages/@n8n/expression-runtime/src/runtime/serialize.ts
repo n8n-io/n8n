@@ -1,3 +1,5 @@
+import { DateTime, Duration, Interval } from 'luxon';
+
 /**
  * Prepare a value for transfer across the V8 isolate boundary.
  *
@@ -20,12 +22,12 @@ export function __prepareForTransfer(value: unknown): unknown {
 	if (typeof value !== 'object') return value;
 
 	// Luxon DateTime -> ISO string (toISO() returns null for invalid DateTime)
-	if ((value as any).isLuxonDateTime) return (value as any).toISO() ?? null;
+	if (DateTime.isDateTime(value)) return value.toISO() ?? null;
 	// Luxon Duration -> ISO string (toISO() returns null for invalid Duration)
-	if ((value as any).isLuxonDuration) return (value as any).toISO() ?? null;
+	if (Duration.isDuration(value)) return value.toISO() ?? null;
 	// Luxon Interval -> ISO string (toISO() returns "Invalid Interval" for invalid Interval)
-	if ((value as any).isLuxonInterval) {
-		const iso = (value as any).toISO();
+	if (Interval.isInterval(value)) {
+		const iso = value.toISO();
 		return iso === 'Invalid Interval' ? null : iso;
 	}
 
@@ -40,7 +42,7 @@ export function __prepareForTransfer(value: unknown): unknown {
 	// Plain object — walk values
 	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value)) {
-		result[key] = __prepareForTransfer((value as any)[key]);
+		result[key] = __prepareForTransfer((value as Record<string, unknown>)[key]);
 	}
 	return result;
 }
