@@ -5,7 +5,7 @@ import type {
 } from '@n8n/api-types';
 import { ref } from 'vue';
 
-import * as workflowsApi from '@/app/api/workflows';
+import * as workflowDependenciesApi from '@/app/api/workflow-dependencies';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 const dependenciesMap = ref<Record<string, ResolvedDependency[]>>({});
@@ -22,7 +22,7 @@ export function useDependencies() {
 		if (resourceIds.length === 0) return;
 
 		try {
-			const result = await workflowsApi.getResourceDependencyCounts(
+			const result = await workflowDependenciesApi.getResourceDependencyCounts(
 				rootStore.restApiContext,
 				resourceIds,
 				resourceType,
@@ -43,7 +43,7 @@ export function useDependencies() {
 		if (resourceIds.length === 0) return;
 
 		try {
-			const result = await workflowsApi.getResourceDependencies(
+			const result = await workflowDependenciesApi.getResourceDependencies(
 				rootStore.restApiContext,
 				resourceIds,
 				resourceType,

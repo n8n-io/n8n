@@ -82,7 +82,7 @@ const menuItems = computed(() => {
 	if (deps.length === 0) return [];
 
 	const query = searchTerm.value.toLowerCase().trim();
-	const filtered = query ? deps.filter((dep) => dep.name.toLowerCase().includes(query)) : deps;
+	const filtered = query ? deps.filter((dep) => dep.name?.toLowerCase().includes(query)) : deps;
 
 	const groups: Record<DependencyType, ResolvedDependency[]> = {
 		credentialId: [],

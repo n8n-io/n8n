@@ -63,7 +63,7 @@ const groupedDependencies = computed(() => {
 	const query = searchQuery.value.toLowerCase().trim();
 	for (const dep of props.data.dependencies) {
 		const key = dep.type as DependencyType;
-		if (groups[key] && (!query || dep.name.toLowerCase().includes(query))) {
+		if (groups[key] && (!query || dep.name?.toLowerCase().includes(query))) {
 			groups[key].push(dep);
 		}
 	}
