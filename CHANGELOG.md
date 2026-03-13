@@ -1,3 +1,12 @@
+## [1.123.25](https://github.com/n8n-io/n8n/compare/n8n@1.123.24...n8n@1.123.25) (2026-03-13)
+
+
+### Bug Fixes
+
+* **Form Node:** Improve custom CSS sanitization (backport to 1.x) ([#26668](https://github.com/n8n-io/n8n/issues/26668)) ([86191fe](https://github.com/n8n-io/n8n/commit/86191fee1ce5e0e79ef90595b615deeb6522f51e))
+
+
+
 ## [1.123.24](https://github.com/n8n-io/n8n/compare/n8n@1.123.23...n8n@1.123.24) (2026-03-11)
 
 
