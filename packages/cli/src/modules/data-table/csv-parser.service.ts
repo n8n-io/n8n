@@ -90,7 +90,7 @@ export class CsvParserService {
 		});
 	}
 
-	private parseCsvFile<T>(
+	private async parseCsvFile<T>(
 		fileId: string,
 		hasHeaders: boolean,
 		onRow: (rowObject: Record<string, string>, columnNames: string[], rowNumber: number) => void,
@@ -100,7 +100,7 @@ export class CsvParserService {
 		let columnNames: string[] = [];
 		let rowCount = 0;
 
-		return new Promise((resolve, reject) => {
+		return await new Promise((resolve, reject) => {
 			const parser = parse({
 				...this.createParserOptions(hasHeaders),
 				...(hasHeaders && {
