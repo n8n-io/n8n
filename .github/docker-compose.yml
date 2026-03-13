@@ -1,12 +1,14 @@
+version: "3.7"
+
 services:
-  postgres:
-    image: postgres:16
+  n8n:
+    image: n8nio/n8n
     restart: always
-    environment:
-      - POSTGRES_DB=n8n
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
     ports:
-      - 5432:5432
-    tmpfs:
-      - /var/lib/postgresql/data
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=password
+    volumes:
+      - ./n8n_data:/home/node/.n8n
