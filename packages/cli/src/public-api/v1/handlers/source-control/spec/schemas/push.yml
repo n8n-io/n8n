@@ -6,9 +6,20 @@ properties:
   commitMessage:
     type: string
     example: 'chore: automated daily push'
+  ids:
+    type: array
+    description: >
+      Simple list of workflow or credential IDs to push (e.g. ["abc123", "def456"]).
+      Takes precedence over fileNames. If both ids and fileNames are omitted or empty,
+      all eligible files will be pushed.
+    items:
+      type: string
+    example: ['abc123', 'def456']
   fileNames:
     type: array
-    description: List of files to push. If empty, all eligible files will be pushed.
+    description: >
+      List of full file objects to push. Use ids instead for a simpler interface.
+      If both ids and fileNames are omitted or empty, all eligible files will be pushed.
     items:
       type: object
       properties:

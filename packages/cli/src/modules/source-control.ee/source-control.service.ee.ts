@@ -305,40 +305,49 @@ export class SourceControlService {
 
 		const context = new SourceControlContext(user);
 
-		let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
-			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
-				this.gitFolder,
-				file.file,
-			);
-
-			return {
-				...file,
-				file: normalizedPath,
-			};
-		});
-
 		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'push',
 			verbose: false,
 			preferLocalVersion: true,
 		});
 
-		// Fallback to all allowed resources if no fileNames are provided
-		if (!filesToPush.length) {
-			filesToPush = allowedResources;
-		}
+		let filesToPush: SourceControlledFile[];
 
-		// If fileNames are provided, we need to check if they are allowed
-		if (
-			filesToPush !== allowedResources &&
-			filesToPush.some(
-				(file) =>
-					!allowedResources.some((allowed) => {
-						return allowed.id === file.id && allowed.type === file.type;
-					}),
-			)
-		) {
-			throw new ForbiddenError('You are not allowed to push these changes');
+		if (options.ids && options.ids.length > 0) {
+			// Resolve simple IDs against allowed resources
+			const idSet = new Set(options.ids);
+			filesToPush = allowedResources.filter((file) => idSet.has(file.id));
+
+			const unresolvedIds = options.ids.filter(
+				(id) => !allowedResources.some((file) => file.id === id),
+			);
+			if (unresolvedIds.length > 0) {
+				throw new ForbiddenError('You are not allowed to push these changes');
+			}
+		} else if (options.fileNames.length > 0) {
+			// Resolve full file objects, normalizing paths
+			filesToPush = options.fileNames.map((file) => {
+				const normalizedPath = normalizeAndValidateSourceControlledFilePath(
+					this.gitFolder,
+					file.file,
+				);
+				return { ...file, file: normalizedPath };
+			});
+
+			// Check all provided files are allowed
+			if (
+				filesToPush.some(
+					(file) =>
+						!allowedResources.some(
+							(allowed) => allowed.id === file.id && allowed.type === file.type,
+						),
+				)
+			) {
+				throw new ForbiddenError('You are not allowed to push these changes');
+			}
+		} else {
+			// Fallback: push all allowed resources
+			filesToPush = allowedResources;
 		}
 
 		let statusResult: SourceControlledFile[] = filesToPush;

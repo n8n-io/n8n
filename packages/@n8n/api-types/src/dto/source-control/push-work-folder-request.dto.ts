@@ -6,5 +6,6 @@ import { Z } from '../../zod-class';
 export class PushWorkFolderRequestDto extends Z.class({
 	force: z.boolean().optional(),
 	commitMessage: z.string().optional(),
-	fileNames: z.array(SourceControlledFileSchema),
+	fileNames: z.array(SourceControlledFileSchema).default([]),
+	ids: z.array(z.string()).optional(),
 }) {}
