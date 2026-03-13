@@ -325,10 +325,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			for (let attempt = 1; attempt <= maxRetries; attempt++) {
 				const delayMs = 2 ** attempt * 1000; // 2s, 4s, 8s, 16s, 32s (~62s total)
 				this.logger.warn(
-					`License cert not found in database — retrying in ${delayMs / 1000}s (attempt ${attempt}/${maxRetries})`,
+					`Instance not licensed for multi-main — retrying license check in ${delayMs / 1000}s (attempt ${attempt}/${maxRetries})`,
 				);
 				await sleep(delayMs);
-				await this.license.init({ forceRecreate: true });
+				await this.license.reload();
 				if (this.license.isMultiMainLicensed()) return;
 			}
 		}

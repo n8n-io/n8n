@@ -273,7 +273,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 			await initPromise;
 
-			expect(license.init).toHaveBeenCalledWith({ forceRecreate: true });
+			expect(license.reload).toHaveBeenCalledTimes(1);
 		});
 
 		it('should throw FeatureNotLicensedError when follower exhausts all retries', async () => {
@@ -295,9 +295,8 @@ describe('Start - AuthRolesService initialization', () => {
 
 			const result = await initPromise;
 			expect(result).toBe('rejected');
-			// 5 retries = 5 calls to license.init with forceRecreate
-			expect(license.init).toHaveBeenCalledTimes(5);
-			expect(license.init).toHaveBeenCalledWith({ forceRecreate: true });
+			// 5 retries = 5 reload calls
+			expect(license.reload).toHaveBeenCalledTimes(5);
 		});
 
 		it('should not retry when leader fails the license check', async () => {
@@ -311,8 +310,8 @@ describe('Start - AuthRolesService initialization', () => {
 
 			await expect(start.init()).rejects.toThrow(FeatureNotLicensedError);
 
-			// license.init should NOT have been called with forceRecreate (no retry for leaders)
-			expect(license.init).not.toHaveBeenCalledWith({ forceRecreate: true });
+			// Followers only retry via reload; leaders should fail immediately
+			expect(license.reload).not.toHaveBeenCalled();
 		});
 	});
 });
