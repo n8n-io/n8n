@@ -39,9 +39,9 @@ export const evaluate = (value: string, values?: IDataObject[]) =>
  * or ISO strings (VM engine). The VM engine serializes Luxon types to ISO
  * strings at the isolate boundary via __prepareForTransfer.
  *
- * TODO: When the current (Tournament) engine is removed and only the VM
- * engine remains, these helpers become unnecessary — all results will be
- * strings. Replace usages with fromISO() directly.
+ * TODO(CAT-2541): When the current (Tournament) engine is removed and only
+ * the VM engine remains, these helpers become unnecessary — all results will
+ * be strings. Replace usages with fromISO() directly.
  */
 export const asDateTime = (v: unknown): DateTime => {
 	if (DateTime.isDateTime(v)) return v;
