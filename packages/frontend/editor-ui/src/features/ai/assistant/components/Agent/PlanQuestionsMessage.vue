@@ -429,11 +429,14 @@ function onOptionMouseEnter(idx: number) {
 							:class="[
 								$style.somethingElseRow,
 								{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
+								{ [$style.activeSelected]: currentAnswer.selectedOptions.includes(OTHER_SENTINEL) },
 							]"
 							:data-option-index="filteredOptions.length"
 							@mouseenter="onOptionMouseEnter(filteredOptions.length)"
 						>
-							<N8nIcon :class="$style.pencilIcon" icon="pencil" size="small" />
+							<div :class="$style.pencilIconContainer">
+								<N8nIcon :class="$style.pencilIcon" icon="pen" size="medium" />
+							</div>
 							<N8nInput
 								:model-value="currentAnswer.customText"
 								:disabled="disabled"
@@ -470,8 +473,9 @@ function onOptionMouseEnter(idx: number) {
 						<!-- "Something else" row for multi-select -->
 						<div
 							:class="[
-								$style.somethingElseRow,
+								$style.somethingElseRowMulti,
 								{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
+								{ [$style.activeSelected]: currentAnswer.selectedOptions.includes(OTHER_SENTINEL) },
 							]"
 							:data-option-index="filteredOptions.length"
 							@mouseenter="onOptionMouseEnter(filteredOptions.length)"
@@ -627,7 +631,7 @@ function onOptionMouseEnter(idx: number) {
 		background-color: var(--color--primary);
 
 		.numberBadge {
-			background-color: var(--color--primary--shade-1);
+			background-color: var(--color--orange-400);
 			color: white;
 		}
 
@@ -688,10 +692,6 @@ function onOptionMouseEnter(idx: number) {
 	&.highlighted {
 		background-color: var(--background--surface--hover);
 	}
-
-	&.selected {
-		background-color: var(--background--surface--hover);
-	}
 }
 
 .somethingElseRow {
@@ -701,6 +701,45 @@ function onOptionMouseEnter(idx: number) {
 	padding: var(--spacing--3xs) var(--spacing--2xs);
 	border-radius: var(--radius--lg);
 	transition: background-color 0.15s ease;
+	outline: none;
+	border: 0;
+
+	&:hover,
+	&.highlighted {
+		background-color: var(--background--surface--hover);
+	}
+
+	&.activeSelected {
+		background-color: var(--color--primary);
+
+		.pencilIconContainer {
+			background-color: var(--color--orange-400);
+		}
+
+		.pencilIcon {
+			color: white;
+		}
+		input {
+			background-color: transparent;
+			color: white;
+			outline: none;
+
+			&::placeholder {
+				color: rgba(255, 255, 255, 0.7);
+			}
+		}
+	}
+}
+
+.somethingElseRowMulti {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border-radius: var(--radius--lg);
+	transition: background-color 0.15s ease;
+	outline: none;
+	border: 0;
 
 	&:hover,
 	&.highlighted {
@@ -708,7 +747,7 @@ function onOptionMouseEnter(idx: number) {
 	}
 }
 
-.pencilIcon {
+.pencilIconContainer {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -716,12 +755,21 @@ function onOptionMouseEnter(idx: number) {
 	height: var(--spacing--lg);
 	border-radius: var(--radius);
 	background-color: var(--color--foreground--tint-1);
+}
+
+.pencilIcon {
 	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
 
 .somethingElseInput {
 	flex: 1;
+	outline: none;
+	border: 0;
+
+	input {
+		padding: 0 !important;
+	}
 
 	:global(.el-input__wrapper) {
 		box-shadow: none !important;
