@@ -28,6 +28,12 @@ const testWithAPIKey = (method: 'get', url: string, apiKey: string | null) => as
 };
 
 describe('GET /discover', () => {
+	test('should fail when no API key header is sent', async () => {
+		const unauthAgent = testServer.publicApiAgentWithoutApiKey();
+		const response = await unauthAgent.get('/discover');
+		expect(response.statusCode).toBe(401);
+	});
+
 	test('should fail due to missing API Key', testWithAPIKey('get', '/discover', null));
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/discover', 'abcXYZ'));
