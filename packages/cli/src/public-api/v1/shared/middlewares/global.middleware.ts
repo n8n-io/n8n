@@ -88,23 +88,43 @@ export const validCursor = (
 };
 
 const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
+
+export type ScopeTaggedMiddleware = ((...args: unknown[]) => unknown) & {
+	__apiKeyScope: ApiKeyScope;
+};
+
+function tagMiddleware(
+	middleware: (...args: unknown[]) => unknown,
+	apiKeyScope: ApiKeyScope,
+): ScopeTaggedMiddleware {
+	const tagged: ScopeTaggedMiddleware = Object.assign(
+		(req: unknown, res: unknown, next: unknown) => middleware(req, res, next),
+		{ __apiKeyScope: apiKeyScope },
+	);
+	return tagged;
+}
+
 export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
-	return Container.get(License).isApiKeyScopesEnabled()
+	const inner = Container.get(License).isApiKeyScopesEnabled()
 		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
 		: emptyMiddleware;
+	return tagMiddleware(inner, apiKeyScope);
 };
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
+	const apiKeyScope = 'scope' in config ? config.scope : config.apiKeyScope;
 	if ('scope' in config) {
-		return Container.get(License).isApiKeyScopesEnabled()
+		const inner = Container.get(License).isApiKeyScopesEnabled()
 			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.scope)
 			: globalScope(config.scope);
+		return tagMiddleware(inner, apiKeyScope);
 	} else {
-		return Container.get(License).isApiKeyScopesEnabled()
+		const inner = Container.get(License).isApiKeyScopesEnabled()
 			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.apiKeyScope)
 			: globalScope(config.globalScope);
+		return tagMiddleware(inner, apiKeyScope);
 	}
 };
 

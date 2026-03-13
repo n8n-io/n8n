@@ -1,0 +1,89 @@
+import { nanoid } from 'nanoid';
+
+import { test, expect } from '../../../fixtures/base';
+
+test.describe(
+	'API Discovery',
+	{
+		annotation: [{ type: 'owner', description: 'Catalysts' }],
+	},
+	() => {
+		test('owner sees all available operations', async ({ api }) => {
+			const discovery = await api.publicApi.getDiscovery();
+
+			expect(discovery.scopes.length).toBeGreaterThan(0);
+			expect(discovery.resources).toBeDefined();
+			expect(discovery.specUrl).toBe('/api/v1/openapi.yml');
+
+			// Owner's default scopes include workflow operations
+			expect(discovery.resources.workflow).toBeDefined();
+			expect(discovery.resources.workflow.operations.length).toBeGreaterThan(0);
+			expect(discovery.resources.workflow.endpoints.length).toBeGreaterThan(0);
+		});
+
+		test('every endpoint has method, path, and operationId', async ({ api }) => {
+			const discovery = await api.publicApi.getDiscovery();
+
+			for (const [, resource] of Object.entries(discovery.resources)) {
+				for (const endpoint of resource.endpoints) {
+					expect(endpoint.method).toMatch(/^(GET|POST|PUT|DELETE|PATCH)$/);
+					expect(endpoint.path).toMatch(/^\/api\/v1\//);
+					expect(endpoint.operationId).toBeTruthy();
+				}
+			}
+		});
+
+		test('member with restricted scopes sees filtered operations', async ({ api }) => {
+			const member = await api.publicApi.createUser({
+				email: `member-discover-${nanoid()}@test.com`,
+				role: 'global:member',
+			});
+
+			const memberApi = await api.createApiForUser(member);
+
+			// Create an API key with only tag scopes
+			await memberApi.publicApi.createApiKey(`restricted-${nanoid()}`, ['tag:list', 'tag:create']);
+
+			const discovery = await memberApi.publicApi.getDiscovery();
+
+			expect(discovery.scopes).toContain('tag:list');
+			expect(discovery.scopes).toContain('tag:create');
+
+			// Should see tag endpoints
+			expect(discovery.resources.tags).toBeDefined();
+			expect(discovery.resources.tags.endpoints.some((e) => e.operationId === 'getTags')).toBe(
+				true,
+			);
+			expect(discovery.resources.tags.endpoints.some((e) => e.operationId === 'createTag')).toBe(
+				true,
+			);
+
+			// Should NOT see workflow create (no workflow:create scope)
+			const workflowEndpoints = discovery.resources.workflow?.endpoints ?? [];
+			expect(workflowEndpoints.some((e) => e.operationId === 'createWorkflow')).toBe(false);
+		});
+
+		test('discovery includes known endpoints with correct shape', async ({ api }) => {
+			const discovery = await api.publicApi.getDiscovery();
+
+			// Verify well-known endpoints are correctly described
+			const workflowList = discovery.resources.workflow?.endpoints.find(
+				(e) => e.operationId === 'getWorkflows',
+			);
+			expect(workflowList).toEqual({
+				method: 'GET',
+				path: '/api/v1/workflows',
+				operationId: 'getWorkflows',
+			});
+
+			const createTag = discovery.resources.tags?.endpoints.find(
+				(e) => e.operationId === 'createTag',
+			);
+			expect(createTag).toEqual({
+				method: 'POST',
+				path: '/api/v1/tags',
+				operationId: 'createTag',
+			});
+		});
+	},
+);
