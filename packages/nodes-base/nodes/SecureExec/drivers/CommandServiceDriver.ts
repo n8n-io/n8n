@@ -42,6 +42,10 @@ export class CommandServiceDriver implements ICommandExecutor, IVolumeManager {
 			}));
 		}
 
+		if (options.workspacePath) {
+			body.workspacePath = options.workspacePath;
+		}
+
 		const response = await this.request<ExecutionResult>('POST', '/execute', body);
 		return response;
 	}

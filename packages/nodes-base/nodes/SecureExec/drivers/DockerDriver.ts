@@ -28,10 +28,10 @@ export class DockerDriver implements ICommandExecutor {
 			],
 			AttachStdout: true,
 			AttachStderr: true,
-			WorkingDir: workspacePath ? '/workspace' : '/',
+			WorkingDir: workspacePath || '/workspace',
 			Env: env ? Object.entries(env).map(([k, v]) => `${k}=${v}`) : [],
 			HostConfig: {
-				Binds: workspacePath ? [`${workspacePath}:/workspace:rw`] : [],
+				Binds: [],
 				Memory: memoryMB * 1024 * 1024,
 				MemorySwap: -1,
 				CpuQuota: 100_000,

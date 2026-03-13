@@ -19,12 +19,18 @@ export class CommandsController {
 			this.validateVolumes(body.volumes);
 		}
 
+		if (body.workspacePath !== undefined && !body.workspacePath.startsWith('/')) {
+			throw new BadRequestException(
+				`workspacePath '${body.workspacePath}' must be an absolute path (start with /)`,
+			);
+		}
+
 		const volumeCount = body.volumes?.length ?? 0;
 		const envCount = Object.keys(body.env ?? {}).length;
 		const timeoutMs = body.timeoutMs ?? 'default';
 
 		this.logger.log(
-			`Executing command="${body.command}" volumes=${volumeCount} env=${envCount} timeoutMs=${timeoutMs}`,
+			`Executing command="${body.command}" volumes=${volumeCount} env=${envCount} timeoutMs=${timeoutMs} workspacePath=${body.workspacePath ?? 'default'}`,
 		);
 
 		const startTime = Date.now();
@@ -35,6 +41,7 @@ export class CommandsController {
 				volumes: body.volumes,
 				timeoutMs: body.timeoutMs,
 				env: body.env,
+				workspacePath: body.workspacePath,
 			});
 
 			const duration = Date.now() - startTime;

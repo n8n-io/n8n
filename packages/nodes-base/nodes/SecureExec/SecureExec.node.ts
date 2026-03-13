@@ -215,7 +215,7 @@ export class SecureExec implements INodeType {
 						default: '',
 						placeholder: '/data/my-workspace',
 						description:
-							'Host path to mount into the sandbox as the working directory. Leave empty to use a temporary directory. Only used by local drivers.',
+							'Working directory for command execution inside the sandbox. Defaults to /workspace. For the host driver (no sandbox), this is used as the cwd directly.',
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased

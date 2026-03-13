@@ -27,10 +27,8 @@ export class BubblewrapDriver implements ICommandExecutor {
 			args.push('--ro-bind-try', path, path);
 		}
 
-		if (workspacePath) {
-			args.push('--bind', workspacePath, '/workspace');
-			args.push('--chdir', '/workspace');
-		}
+		args.push('--tmpfs', '/workspace');
+		args.push('--chdir', workspacePath || '/workspace');
 
 		if (env) {
 			for (const [key, value] of Object.entries(env)) {

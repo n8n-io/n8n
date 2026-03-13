@@ -38,10 +38,11 @@ export class SandboxService {
 		timeoutMs: number;
 		env?: Record<string, string>;
 		mounts?: SandboxMount[];
+		chdir?: string;
 	}): Promise<ExecuteCommandResponse> {
-		const { command, workDir, timeoutMs, env, mounts } = options;
+		const { command, workDir, timeoutMs, env, mounts, chdir } = options;
 
-		const args = this.buildBwrapArgs(command, workDir, env, mounts);
+		const args = this.buildBwrapArgs(command, workDir, env, mounts, chdir);
 
 		return await new Promise<ExecuteCommandResponse>((resolve, reject) => {
 			const stdoutChunks: Buffer[] = [];
@@ -94,6 +95,7 @@ export class SandboxService {
 		workDir: string,
 		env?: Record<string, string>,
 		mounts?: SandboxMount[],
+		chdir?: string,
 	): string[] {
 		const args: string[] = [
 			// Session & lifecycle
@@ -124,7 +126,7 @@ export class SandboxService {
 
 		// Writable bind mount for the per-execution workspace
 		args.push('--bind', workDir, '/workspace');
-		args.push('--chdir', '/workspace');
+		args.push('--chdir', chdir ?? '/workspace');
 
 		// Volume mounts — each gets a --bind or --ro-bind into the sandbox
 		if (mounts) {

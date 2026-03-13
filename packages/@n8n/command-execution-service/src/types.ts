@@ -32,6 +32,7 @@ export interface ExecuteCommandRequest {
 	volumes?: VolumeMount[];
 	timeoutMs?: number;
 	env?: Record<string, string>;
+	workspacePath?: string;
 }
 
 export interface ExecuteCommandResponse {

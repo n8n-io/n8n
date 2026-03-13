@@ -42,6 +42,7 @@ export class CommandsService {
 		volumes?: VolumeMount[];
 		timeoutMs?: number;
 		env?: Record<string, string>;
+		workspacePath?: string;
 	}): Promise<ExecuteCommandResponse> {
 		// Each execution gets its own isolated workspace so concurrent
 		// executions don't clobber each other's files.
@@ -70,6 +71,7 @@ export class CommandsService {
 				timeoutMs,
 				env: options.env,
 				mounts: sandboxMounts.length > 0 ? sandboxMounts : undefined,
+				chdir: options.workspacePath,
 			});
 
 			// 5. Sync changed files back to S3 for read-write volumes
