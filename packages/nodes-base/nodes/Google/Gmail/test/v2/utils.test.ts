@@ -185,6 +185,36 @@ describe('parseRawEmail', () => {
 		);
 	});
 
+	it('should omit cc, bcc, replyTo, sender when outputFormat is simple', async () => {
+		const executionFunctions = mock<IExecuteFunctions>({ logger });
+		const rawEmail = [
+			'Date: Wed, 28 Aug 2024 00:36:37 -0700',
+			'From: Alice <alice@example.com>',
+			'To: Bob <bob@example.com>',
+			'Cc: Carol <carol@example.com>',
+			'Reply-To: reply@example.com',
+			'Subject: Test',
+			'Content-Type: text/plain',
+			'',
+			'Body',
+		].join('\r\n');
+
+		const { json } = await parseRawEmail.call(
+			executionFunctions as IExecuteFunctions,
+			{ raw: Buffer.from(rawEmail, 'utf8').toString('base64') },
+			'attachment_',
+			{ outputFormat: 'simple' },
+		);
+
+		expect(json.from).toBeDefined();
+		expect(json.to).toBeDefined();
+		expect(json.cc).toBeUndefined();
+		expect(json.bcc).toBeUndefined();
+		expect(json.replyTo).toBeUndefined();
+		expect(json.sender).toBeUndefined();
+		expect(json.textAsHtml).toBeUndefined();
+	});
+
 	it('should include binary data when downloadAttachments is true and message has attachments', async () => {
 		const prepareBinaryData = jest.fn().mockResolvedValue({
 			data: 'eA==',
