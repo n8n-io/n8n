@@ -1,7 +1,7 @@
 import ivm from 'isolated-vm';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
-import type { RuntimeBridge, BridgeConfig } from '../types';
+import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 
 const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
@@ -55,6 +55,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private arrayElementRef?: ivm.Reference;
 	private callFunctionRef?: ivm.Reference;
 
+	// Pre-resolved reference to resetDataProxies() inside the isolate.
+	// Using applySync on a stored reference avoids the per-call
+	// ScriptCompiler::Compile() cost that evalSync incurs.
+	private resetDataProxiesRef?: ivm.Reference;
+
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
 			...DEFAULT_BRIDGE_CONFIG,
@@ -101,6 +106,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Inject E() error handler needed by tournament-generated try-catch code
 		await this.injectErrorHandler();
+
+		// Store a reference to resetDataProxies for efficient per-call invocation
+		this.resetDataProxiesRef = await this.context.global.get('resetDataProxies', {
+			reference: true,
+		});
 
 		this.initialized = true;
 
@@ -249,15 +259,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @private
 	 * @throws {Error} If context not initialized or reset fails
 	 */
-	private resetDataProxies(): void {
-		if (!this.context) {
+	private resetDataProxies(timezone?: string): void {
+		if (!this.resetDataProxiesRef) {
 			throw new Error('Context not initialized');
 		}
 
 		try {
-			// Call the resetDataProxies function in the isolate
-			// This function is loaded as part of the runtime bundle
-			this.context.evalSync('resetDataProxies()');
+			this.resetDataProxiesRef.applySync(null, [timezone ?? null], {
+				arguments: { copy: true },
+			});
 
 			if (this.config.debug) {
 				console.log('[IsolatedVmBridge] Data proxies reset successfully');
@@ -427,7 +437,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @returns Result of the expression
 	 * @throws {Error} If bridge not initialized or execution fails
 	 */
-	execute(code: string, data: Record<string, unknown>): unknown {
+	execute(code: string, data: Record<string, unknown>, options?: ExecuteOptions): unknown {
 		if (!this.initialized || !this.context) {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
@@ -438,7 +448,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 			// Step 2: Reset proxies for this evaluation
 			// This initializes $json, $binary, etc. as lazy proxies
-			this.resetDataProxies();
+			this.resetDataProxies(options?.timezone);
 
 			// Step 3: Wrap transformed code so 'this' === __data in the isolate.
 			// Tournament generates: this.$json.email, this.$items(), etc.
