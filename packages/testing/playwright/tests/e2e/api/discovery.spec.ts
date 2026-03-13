@@ -59,8 +59,7 @@ test.describe(
 			);
 
 			// Should NOT see workflow create (no workflow:create scope)
-			const workflowEndpoints = discovery.resources.workflow?.endpoints ?? [];
-			expect(workflowEndpoints.some((e) => e.operationId === 'createWorkflow')).toBe(false);
+			expect(discovery.resources.workflow).toBeUndefined();
 		});
 
 		test('discovery includes known endpoints with correct shape', async ({ api }) => {
