@@ -511,6 +511,68 @@ describe('ExecutionService', () => {
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
 			});
+
+			it('should stop a queued `new` execution in scaling mode by removing the Bull job', async () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.mode = 'queue';
+				const execution = mock<IExecutionResponse>({
+					id: '123',
+					status: 'new',
+					mode: 'trigger',
+				});
+				executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+
+				const job = mock<Job>({ data: { executionId: execution.id } });
+				scalingService.findJobsByStatus.mockResolvedValue([job]);
+				executionRepository.stopBeforeRun.mockResolvedValue(mock<IExecutionResponse>());
+
+				/**
+				 * Act
+				 */
+				await executionService.stop(execution.id, [execution.id]);
+
+				/**
+				 * Assert
+				 */
+				expect(scalingService.findJobsByStatus).toHaveBeenCalledWith(['waiting']);
+				expect(scalingService.stopJob).toHaveBeenCalledWith(job);
+				expect(executionRepository.stopBeforeRun).toHaveBeenCalledWith(execution);
+				expect(executionRepository.stopDuringRun).not.toHaveBeenCalled();
+				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
+				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
+			});
+
+			it('should stop a queued `new` execution even when no matching Bull job is found', async () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.mode = 'queue';
+				const execution = mock<IExecutionResponse>({
+					id: '123',
+					status: 'new',
+					mode: 'trigger',
+				});
+				executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
+
+				// No matching job in the queue
+				const otherJob = mock<Job>({ data: { executionId: 'other-id' } });
+				scalingService.findJobsByStatus.mockResolvedValue([otherJob]);
+				executionRepository.stopBeforeRun.mockResolvedValue(mock<IExecutionResponse>());
+
+				/**
+				 * Act
+				 */
+				await executionService.stop(execution.id, [execution.id]);
+
+				/**
+				 * Assert
+				 */
+				expect(scalingService.findJobsByStatus).toHaveBeenCalledWith(['waiting']);
+				expect(scalingService.stopJob).not.toHaveBeenCalled();
+				expect(executionRepository.stopBeforeRun).toHaveBeenCalledWith(execution);
+			});
 		});
 	});
 	describe('stopMany', () => {
@@ -543,6 +605,61 @@ describe('ExecutionService', () => {
 			expect(stopFn).toBeCalledWith('2', shared);
 			expect(stopFn).toBeCalledWith('3', shared);
 			expect(executionRepository.findByStopExecutionsFilter).toBeCalledWith(filters);
+		});
+
+		it('should return the count of successfully stopped executions', async () => {
+			/**
+			 * Arrange
+			 */
+			executionRepository.findByStopExecutionsFilter.mockResolvedValue(
+				['1', '2', '3'].map((id) => ({ id })),
+			);
+			const stopFn = jest.fn();
+			executionService.stop = stopFn;
+
+			const filters = {
+				workflowId: '1',
+				status: ['running'],
+			} satisfies ExecutionRequest.StopMany['body']['filter'];
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.stopMany(filters, ['A']);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toBe(3);
+		});
+
+		it('should not count executions that throw MissingExecutionStopError', async () => {
+			/**
+			 * Arrange
+			 */
+			executionRepository.findByStopExecutionsFilter.mockResolvedValue(
+				['1', '2', '3'].map((id) => ({ id })),
+			);
+			const stopFn = jest.fn().mockImplementation((id: string) => {
+				if (id === '2') throw new MissingExecutionStopError(id);
+			});
+			executionService.stop = stopFn;
+
+			const filters = {
+				workflowId: '1',
+				status: ['running'],
+			} satisfies ExecutionRequest.StopMany['body']['filter'];
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.stopMany(filters, ['A']);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toBe(2);
+			expect(stopFn).toBeCalledTimes(3);
 		});
 	});
 });
