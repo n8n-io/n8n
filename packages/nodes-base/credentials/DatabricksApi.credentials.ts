@@ -1,4 +1,4 @@
-import type {
+import {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,27 +7,30 @@ import type {
 
 export class DatabricksApi implements ICredentialType {
 	name = 'databricksApi';
-
-	displayName = 'Databricks API';
-
-	documentationUrl = 'databricks';
-
+	displayName = 'Databricks';
+	documentationUrl = 'https://docs.databricks.com/dev-tools/api/latest/authentication.html';
+	icon = 'file:databricks.svg' as const;
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
 			name: 'host',
 			type: 'string',
 			default: '',
-			placeholder: 'https://adb-1234567890123456.7.azuredatabricks.net',
-			description: 'The workspace URL without a trailing slash',
+			placeholder: 'https://adb-xxxxx.xx.azure.databricks.com',
+			required: true,
+			description: 'Domain of your Databricks workspace',
 		},
 		{
-			displayName: 'Access Token',
+			displayName: 'Personal Access Token',
 			name: 'token',
 			type: 'string',
-			typeOptions: { password: true },
+			typeOptions: {
+				password: true,
+			},
 			default: '',
-			description: 'A Databricks personal access token (PAT)',
+			placeholder: 'dapixxxxxxxxxxxxxxxxxxxxxx',
+			required: true,
+			description: 'Databricks personal access token',
 		},
 	];
 
@@ -43,7 +46,8 @@ export class DatabricksApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.host}}',
-			url: '/api/2.0/sql/warehouses',
+			url: '/api/2.0/serving-endpoints',
+			method: 'GET',
 		},
 	};
 }
