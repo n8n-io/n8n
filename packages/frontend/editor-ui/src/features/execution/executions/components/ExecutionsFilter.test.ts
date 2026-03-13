@@ -395,7 +395,7 @@ describe('ExecutionsFilter', () => {
 			expect(makeRestApiRequestSpy).not.toHaveBeenCalled();
 		});
 
-		it('should fetch versions only once across multiple popover opens', async () => {
+		it('should fetch versions only once across multiple popover opens after success', async () => {
 			makeRestApiRequestSpy.mockResolvedValue(makeVersions(2));
 
 			const { getByTestId } = renderComponent({
@@ -445,6 +445,33 @@ describe('ExecutionsFilter', () => {
 				const select = getByTestId('executions-filter-version-select');
 				expect(select).toBeInTheDocument();
 				expect(select.querySelector('.is-disabled')).toBeTruthy();
+			});
+		});
+
+		it('should retry fetching versions after a failed attempt', async () => {
+			makeRestApiRequestSpy.mockRejectedValueOnce(new Error('Not found'));
+
+			const { getByTestId } = renderComponent({
+				props: { workflowId },
+			});
+
+			// First open — fetch fails
+			await userEvent.click(getByTestId('executions-filter-button'));
+			await waitFor(() => {
+				expect(makeRestApiRequestSpy).toHaveBeenCalledTimes(1);
+			});
+
+			// Close and reopen — should retry
+			makeRestApiRequestSpy.mockResolvedValue(makeVersions(2));
+			await userEvent.click(getByTestId('executions-filter-button'));
+			await userEvent.click(getByTestId('executions-filter-button'));
+
+			await waitFor(() => {
+				expect(makeRestApiRequestSpy).toHaveBeenCalledTimes(2);
+			});
+			await waitFor(() => {
+				const select = getByTestId('executions-filter-version-select');
+				expect(select.querySelector('.is-disabled')).toBeFalsy();
 			});
 		});
 	});

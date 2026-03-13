@@ -112,13 +112,13 @@ function fetchVersions() {
 	)
 		.then((versions) => {
 			workflowVersions.value = versions;
+			hasFetchedVersions.value = true;
 		})
 		.catch(() => {
 			// silently ignore — versions may not be available
 		})
 		.finally(() => {
 			isLoadingVersions.value = false;
-			hasFetchedVersions.value = true;
 		});
 }
 
