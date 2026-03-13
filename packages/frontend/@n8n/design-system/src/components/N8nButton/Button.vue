@@ -94,6 +94,7 @@ const handleClick = (event: MouseEvent) => {
 		:disabled="componentTag === 'button' ? isDisabled || undefined : undefined"
 		:aria-disabled="isDisabled || undefined"
 		:aria-busy="loading || undefined"
+		:data-icon-only="iconOnly || undefined"
 		:tabindex="componentTag === 'a' && isDisabled ? -1 : undefined"
 		:class="classes"
 		aria-live="polite"
@@ -104,6 +105,8 @@ const handleClick = (event: MouseEvent) => {
 				<div :class="[$style['loading-spinner'], 'n8n-spinner']">
 					<N8nIcon icon="loader" :size="computedIconSize" transform-origin="center" />
 				</div>
+				<span v-if="label">{{ label }}</span>
+				<slot v-else />
 			</div>
 		</Transition>
 
@@ -390,6 +393,8 @@ const handleClick = (event: MouseEvent) => {
 	&.iconOnly {
 		width: var(--button--height);
 		padding: 0;
+		justify-content: center;
+		align-items: center;
 
 		> * {
 			width: var(--button--height);
@@ -402,6 +407,7 @@ const handleClick = (event: MouseEvent) => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	gap: var(--spacing--2xs);
 }
 
 .button-inner {
