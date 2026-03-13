@@ -78,12 +78,5 @@ export function useRevealWorkflowInScroller<T extends SourceControlledFile>({
 		}
 	}
 
-	function resetRevealState() {
-		hasScrolledCurrentWorkflow.value = false;
-	}
-
-	return {
-		revealAndScrollToCurrentWorkflow,
-		resetRevealState,
-	};
+	return { revealAndScrollToCurrentWorkflow };
 }

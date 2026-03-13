@@ -378,7 +378,7 @@ const {
 	getAncestorFolderIdsForWorkflow,
 } = useWorkflowTreeRows(sortedWorkflows);
 
-const { revealAndScrollToCurrentWorkflow, resetRevealState } = useRevealWorkflowInScroller({
+const { revealAndScrollToCurrentWorkflow } = useRevealWorkflowInScroller({
 	visibleWorkflowRows,
 	workflowScroller,
 	activeTab,
@@ -637,15 +637,6 @@ watch(
 watch(refDebounced(search, 500), (term) => {
 	telemetry.track('User searched workflows in commit modal', { search: term });
 });
-
-watch(
-	() => activeTab.value,
-	(tab) => {
-		if (tab !== SOURCE_CONTROL_FILE_TYPE.workflow) {
-			resetRevealState();
-		}
-	},
-);
 
 const allVisibleItemsSelected = computed(() => {
 	if (!activeSelection.value.size) {
