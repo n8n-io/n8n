@@ -1,4 +1,4 @@
-import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
+import type { PortWithOptionalBinding, StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { DockerImageNotFoundError } from '../docker-image-not-found-error';
@@ -153,7 +153,12 @@ async function createContainer(
 	}
 
 	const waitStrategy = isWorker ? WORKER_WAIT_STRATEGY : MAIN_WAIT_STRATEGY;
-	const ports = hostPort ? [{ container: 5678, host: hostPort }, 5679] : [5678, 5679];
+	const ports: PortWithOptionalBinding[] = hostPort
+		? [{ container: 5678, host: hostPort }]
+		: [5678];
+	if (isWorker) {
+		ports.push(5679);
+	}
 
 	container = container.withExposedPorts(...ports).withWaitStrategy(waitStrategy);
 
