@@ -1,4 +1,8 @@
-import type { DependencyTypeCounts, ResolvedDependency } from '@n8n/api-types';
+import type {
+	DependencyResourceType,
+	DependencyTypeCounts,
+	ResolvedDependency,
+} from '@n8n/api-types';
 import { ref } from 'vue';
 
 import * as workflowsApi from '@/app/api/workflows';
@@ -11,13 +15,17 @@ export function useDependencies() {
 	const rootStore = useRootStore();
 
 	/** Fetch lightweight dependency counts for resource cards (no name resolution). */
-	async function fetchDependencyCounts(resourceIds: string[]): Promise<void> {
+	async function fetchDependencyCounts(
+		resourceIds: string[],
+		resourceType: DependencyResourceType,
+	): Promise<void> {
 		if (resourceIds.length === 0) return;
 
 		try {
 			const result = await workflowsApi.getResourceDependencyCounts(
 				rootStore.restApiContext,
 				resourceIds,
+				resourceType,
 			);
 			for (const [id, counts] of Object.entries(result)) {
 				countsMap.value[id] = counts;
@@ -28,13 +36,17 @@ export function useDependencies() {
 	}
 
 	/** Fetch full resolved dependencies for any resource type. */
-	async function fetchDependencies(resourceIds: string[]): Promise<void> {
+	async function fetchDependencies(
+		resourceIds: string[],
+		resourceType: DependencyResourceType,
+	): Promise<void> {
 		if (resourceIds.length === 0) return;
 
 		try {
 			const result = await workflowsApi.getResourceDependencies(
 				rootStore.restApiContext,
 				resourceIds,
+				resourceType,
 			);
 			for (const [id, deps] of Object.entries(result)) {
 				dependenciesMap.value[id] = deps;

@@ -116,6 +116,7 @@ export {
 } from './schemas/workflow-version.schema';
 export type {
 	DependencyType,
+	DependencyResourceType,
 	ResolvedDependency,
 	DependenciesBatchResponse,
 } from './schemas/dependency.schema';

@@ -677,20 +677,28 @@ export class WorkflowsController {
 
 	@Post('/dependency-counts')
 	async getResourceDependencyCounts(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: unknown,
 		@Body body: GetResourceDependencyCountsDto,
 	) {
-		return await this.workflowDependencyQueryService.getDependencyCounts(body.resourceIds);
+		return await this.workflowDependencyQueryService.getDependencyCounts(
+			body.resourceIds,
+			body.resourceType,
+			req.user,
+		);
 	}
 
 	@Post('/resource-dependencies')
 	async getResourceDependencies(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: unknown,
 		@Body body: GetResourceDependenciesDto,
 	) {
-		return await this.workflowDependencyQueryService.getResourceDependencies(body.resourceIds);
+		return await this.workflowDependencyQueryService.getResourceDependencies(
+			body.resourceIds,
+			body.resourceType,
+			req.user,
+		);
 	}
 
 	@Post('/with-node-types')

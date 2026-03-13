@@ -118,7 +118,7 @@ const fetchDataTables = async () => {
 		loading.value = false;
 
 		const dataTableIds = dataTableStore.dataTables.map((dt) => dt.id);
-		void fetchDependencyCounts(dataTableIds);
+		void fetchDependencyCounts(dataTableIds, 'dataTable');
 	}
 };
 

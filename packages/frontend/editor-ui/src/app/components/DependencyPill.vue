@@ -149,7 +149,7 @@ function onSearch(term: string) {
 }
 
 async function loadDetails() {
-	await fetchDependencies([props.resourceId]);
+	await fetchDependencies([props.resourceId], props.resourceType);
 }
 
 async function onDropdownToggle(open: boolean) {

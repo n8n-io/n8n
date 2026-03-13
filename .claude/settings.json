@@ -1,19 +1,16 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(git log:*)",
-      "Bash(git show:*)",
-      "Bash(grep:*)",
-      "Bash(ls:*)",
-      "Bash(pnpm build)",
-      "Bash(pnpm lint:*)",
-      "Bash(pnpm test:*)",
-      "Bash(pnpm typecheck:*)",
-      "Bash(popd)",
-      "Bash(pushd:*)",
-      "Bash(git diff:*)",
-      "Bash(find /Users/charliekolb/dev/n8n/packages/editor-ui/src -name *Dependency* -o -name *Pill* -o -name *Dependent*)",
-      "Bash(grep -l \"ref<Record\" /Users/charliekolb/dev/n8n/packages/frontend/editor-ui/src/app/composables/*.ts)"
-    ]
-  }
+	"permissions": {
+		"allow": [
+			"Bash(git log:*)",
+			"Bash(git show:*)",
+			"Bash(grep:*)",
+			"Bash(ls:*)",
+			"Bash(pnpm build)",
+			"Bash(pnpm lint:*)",
+			"Bash(pnpm test:*)",
+			"Bash(pnpm typecheck:*)",
+			"Bash(popd)",
+			"Bash(pushd:*)"
+		]
+	}
 }
