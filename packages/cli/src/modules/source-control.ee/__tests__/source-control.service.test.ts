@@ -217,16 +217,7 @@ describe('SourceControlService', () => {
 
 			// Act
 			const result = await sourceControlService.pushWorkfolder(user, {
-				fileNames: files.map((f) => ({
-					file: f.file,
-					id: f.id,
-					name: f.name,
-					type: f.type,
-					status: f.status,
-					location: f.location,
-					conflict: f.conflict,
-					updatedAt: f.updatedAt,
-				})),
+				fileNames: files.map((f) => ({ id: f.id, type: f.type })),
 				commitMessage,
 			});
 
@@ -284,27 +275,16 @@ describe('SourceControlService', () => {
 			});
 		});
 
-		it('should throw an error if file path validation fails', async () => {
+		it('should throw ForbiddenError when a fileNames selector does not match any allowed resource', async () => {
 			const user = mock<User>();
-			(isContainedWithin as jest.Mock).mockReturnValueOnce(false);
+			// Status service returns no files for this user
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
 
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [
-						{
-							file: '/etc/passwd',
-							id: 'test',
-							name: 'secret-file',
-							type: 'file',
-							status: 'modified',
-							location: 'local',
-							conflict: false,
-							updatedAt: new Date().toISOString(),
-							pushed: false,
-						},
-					],
+					fileNames: [{ id: 'wf-999', type: 'workflow' }],
 				}),
-			).rejects.toThrow('File path /etc/passwd is invalid');
+			).rejects.toThrow(ForbiddenError);
 
 			expect(gitService.stage).not.toHaveBeenCalled();
 			expect(gitService.commit).not.toHaveBeenCalled();
@@ -344,7 +324,7 @@ describe('SourceControlService', () => {
 
 			// ACT
 			const result = await sourceControlService.pushWorkfolder(user, {
-				fileNames: [mockFile],
+				fileNames: [{ id: mockFile.id, type: mockFile.type }],
 				commitMessage: 'A commit message',
 			});
 
@@ -387,7 +367,7 @@ describe('SourceControlService', () => {
 			// ACT & ASSERT
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [mockFile],
+					fileNames: [{ id: mockFile.id, type: mockFile.type }],
 					commitMessage: 'Test commit',
 				}),
 			).rejects.toThrow(exportError);
@@ -433,7 +413,7 @@ describe('SourceControlService', () => {
 			// ACT & ASSERT
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [mockFile],
+					fileNames: [{ id: mockFile.id, type: mockFile.type }],
 					commitMessage: 'Test commit',
 				}),
 			).rejects.toThrow(pushError);
@@ -481,7 +461,7 @@ describe('SourceControlService', () => {
 			// ACT & ASSERT
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [mockFile],
+					fileNames: [{ id: mockFile.id, type: mockFile.type }],
 					commitMessage: 'Test commit',
 				}),
 			).rejects.toThrow(commitError);
@@ -627,7 +607,7 @@ describe('SourceControlService', () => {
 				// ACT — ids says wf-1 only, fileNames says wf-2 only; ids wins
 				await sourceControlService.pushWorkfolder(user, {
 					ids: ['wf-1'],
-					fileNames: [wf2],
+					fileNames: [{ id: wf2.id, type: wf2.type }],
 					commitMessage: 'ids take priority',
 				});
 

@@ -24,7 +24,6 @@ import {
 	getTagsPath,
 	getTrackingInformationFromPostPushResult,
 	getTrackingInformationFromPullResult,
-	normalizeAndValidateSourceControlledFilePath,
 	sourceControlFoldersExistCheck,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
@@ -325,26 +324,17 @@ export class SourceControlService {
 				throw new ForbiddenError('You are not allowed to push these changes');
 			}
 		} else if (options.fileNames.length > 0) {
-			// Resolve full file objects, normalizing paths
+			// Resolve file selections against server-side state (id + type for matching only).
+			// Server state is authoritative for status, conflict, file path, etc.
 			filesToPush = options.fileNames.map((file) => {
-				const normalizedPath = normalizeAndValidateSourceControlledFilePath(
-					this.gitFolder,
-					file.file,
+				const serverFile = allowedResources.find(
+					(allowed) => allowed.id === file.id && allowed.type === file.type,
 				);
-				return { ...file, file: normalizedPath };
+				if (!serverFile) {
+					throw new ForbiddenError('You are not allowed to push these changes');
+				}
+				return serverFile;
 			});
-
-			// Check all provided files are allowed
-			if (
-				filesToPush.some(
-					(file) =>
-						!allowedResources.some(
-							(allowed) => allowed.id === file.id && allowed.type === file.type,
-						),
-				)
-			) {
-				throw new ForbiddenError('You are not allowed to push these changes');
-			}
 		} else {
 			// Fallback: push all allowed resources
 			filesToPush = allowedResources;

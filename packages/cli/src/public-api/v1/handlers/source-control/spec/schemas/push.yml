@@ -18,36 +18,17 @@ properties:
   fileNames:
     type: array
     description: >
-      List of full file objects to push. Use ids instead for a simpler interface.
+      List of file selectors (id + type) to push. Use ids instead for an even simpler interface.
       If both ids and fileNames are omitted or empty, all eligible files will be pushed.
+      Only id and type are required; all other file metadata is resolved server-side.
     items:
       type: object
       properties:
         id:
           type: string
-        name:
-          type: string
         type:
           type: string
           enum: [workflow, credential, variables, tags, folders, project, datatable]
-        status:
-          type: string
-          enum: [new, modified, deleted, renamed, conflicted, ignored]
-        location:
-          type: string
-          enum: [local, remote]
-        conflict:
-          type: boolean
-        file:
-          type: string
-        updatedAt:
-          type: string
       required:
         - id
-        - name
         - type
-        - status
-        - location
-        - conflict
-        - file
-        - updatedAt
