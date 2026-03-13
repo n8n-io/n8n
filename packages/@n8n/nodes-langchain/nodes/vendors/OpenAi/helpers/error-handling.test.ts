@@ -31,25 +31,77 @@ describe('error-handling', () => {
 	});
 
 	describe('openAiFailedAttemptHandler', () => {
-		it('should handle RateLimitError and modify the error message', () => {
-			const error = new RateLimitError(
-				429,
-				{ code: 'rate_limit_exceeded' },
-				'Rate limit exceeded',
-				new Headers(),
-			);
+		describe('RateLimitError handling', () => {
+			it('should throw OperationalError on final attempt (retriesLeft = 0)', () => {
+				const error = new RateLimitError(
+					429,
+					{ code: 'rate_limit_exceeded' },
+					'Rate limit exceeded',
+					new Headers(),
+				);
+				(error as unknown as { retriesLeft: number }).retriesLeft = 0;
 
-			try {
-				openAiFailedAttemptHandler(error);
-			} catch (e) {
-				expect(e).toBeInstanceOf(OperationalError);
-				expect(e.level).toBe('warning');
-				expect(e.cause).toBe(error);
-				expect(e.message).toBe('OpenAI: Rate limit reached');
-			}
+				expect(() => openAiFailedAttemptHandler(error)).toThrow(OperationalError);
+
+				try {
+					openAiFailedAttemptHandler(error);
+				} catch (e) {
+					expect(e).toBeInstanceOf(OperationalError);
+					expect(e.level).toBe('warning');
+					expect(e.cause).toBe(error);
+					expect(e.message).toBe('OpenAI: Rate limit reached');
+				}
+			});
+
+			it('should throw OperationalError when retriesLeft is not set', () => {
+				const error = new RateLimitError(
+					429,
+					{ code: 'rate_limit_exceeded' },
+					'Rate limit exceeded',
+					new Headers(),
+				);
+
+				expect(() => openAiFailedAttemptHandler(error)).toThrow(OperationalError);
+			});
+
+			it('should not throw when retriesLeft > 0 (allows retry)', () => {
+				const error = new RateLimitError(
+					429,
+					{ code: 'rate_limit_exceeded' },
+					'Rate limit exceeded',
+					new Headers(),
+				);
+				(error as unknown as { retriesLeft: number }).retriesLeft = 3;
+
+				expect(() => openAiFailedAttemptHandler(error)).not.toThrow();
+			});
+
+			it('should not throw when retriesLeft = 1 (one retry remaining)', () => {
+				const error = new RateLimitError(
+					429,
+					{ code: 'rate_limit_exceeded' },
+					'Rate limit exceeded',
+					new Headers(),
+				);
+				(error as unknown as { retriesLeft: number }).retriesLeft = 1;
+
+				expect(() => openAiFailedAttemptHandler(error)).not.toThrow();
+			});
+
+			it('should use custom error message for insufficient_quota on final attempt', () => {
+				const error = new RateLimitError(
+					429,
+					{ code: 'insufficient_quota' },
+					'Insufficient quota',
+					new Headers(),
+				);
+				(error as unknown as { retriesLeft: number }).retriesLeft = 0;
+
+				expect(() => openAiFailedAttemptHandler(error)).toThrow('Insufficient quota detected.');
+			});
 		});
 
-		it('should throw the error if it is not a RateLimitError', () => {
+		it('should not throw for non-RateLimitError errors', () => {
 			const error = new Error('Test error');
 
 			expect(() => openAiFailedAttemptHandler(error)).not.toThrow();

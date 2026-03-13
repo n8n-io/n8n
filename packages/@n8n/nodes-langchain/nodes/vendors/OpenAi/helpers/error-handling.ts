@@ -42,6 +42,12 @@ export const openAiFailedAttemptHandler = (error: unknown) => {
 	}
 
 	if (error instanceof RateLimitError) {
+		// Allow LangChain's retry mechanism to work for 429 errors.
+		// Only throw on the final attempt (when retriesLeft is 0 or not set).
+		if ('retriesLeft' in error && (error as { retriesLeft: number }).retriesLeft > 0) {
+			return;
+		}
+
 		// If the error is a rate limit error, we want to handle it differently
 		// because OpenAI has multiple different rate limit errors
 		const errorCode = error?.code;
