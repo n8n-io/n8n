@@ -8,6 +8,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$ROOT_DIR"
+echo "Installing dependencies..."
+corepack enable
+pnpm install --frozen-lockfile
+
 echo "Building n8n from source in $ROOT_DIR..."
 N8N_SKIP_LICENSES=true node scripts/build-n8n.mjs
 

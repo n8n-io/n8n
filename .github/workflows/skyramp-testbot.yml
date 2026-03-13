@@ -37,9 +37,8 @@ jobs:
           github_token: ${{ steps.app-token.outputs.token }}
           # auth_token_command: 'echo ${{ secrets.SKYRAMP_TEST_TOKEN }}'
           target_setup_command: "./deployment-testbot/setup.sh"
-          service_startup_command: "./deployment-testbot/setup.sh"
-          health_check_command: "curl -f http://localhost:5678/healthz"
-          health_check_timeout: 60
+          target_ready_check_command: "curl -f http://localhost:5678/healthz"
+          target_ready_check_timeout: 60
           auth_token_command: "./deployment-testbot/get-token.sh"
 
           test_directory: "skyramp-tests"
