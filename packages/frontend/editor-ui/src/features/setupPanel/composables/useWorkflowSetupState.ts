@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, ref, watch, type Ref, watchEffect } from 'vue';
 
 import type { INodeUi } from '@/Interface';
 import {
@@ -285,6 +285,10 @@ export const useWorkflowSetupState = (
 	const stickyParamNodeIds = ref(new Set<string>());
 	const stickyNodeCredentials = ref(new Set<string>());
 	const stickyCredTypesWithParams = ref(new Set<string>());
+
+	watchEffect(() => {
+		console.log('stickyParamNodeIds', stickyParamNodeIds.value);
+	});
 
 	/**
 	 * Get nodes that require setup:
