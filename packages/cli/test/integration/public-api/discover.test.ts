@@ -124,32 +124,9 @@ describe('GET /discover', () => {
 		expect(resourceKeys).toEqual(['tags']);
 	});
 
-	test('should filter endpoints by operation with ?op=list', async () => {
-		const response = await authOwnerAgent.get('/discover?resource=tags&op=list');
-		expect(response.statusCode).toBe(200);
-
-		const tags = response.body.data.resources.tags;
-		expect(tags).toBeDefined();
-		expect(tags.operations).toEqual(['list']);
-	});
-
 	test('should return empty resources for unknown resource filter', async () => {
 		const response = await authOwnerAgent.get('/discover?resource=nonexistent');
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.resources).toEqual({});
-	});
-
-	test('should combine resource, op, and include filters', async () => {
-		const response = await authOwnerAgent.get(
-			'/discover?resource=workflow&op=create&include=schemas',
-		);
-		expect(response.statusCode).toBe(200);
-
-		const resourceKeys = Object.keys(response.body.data.resources);
-		expect(resourceKeys).toEqual(['workflow']);
-
-		const endpoints = response.body.data.resources.workflow.endpoints;
-		expect(endpoints.length).toBeGreaterThan(0);
-		expect(endpoints[0].requestSchema).toBeDefined();
 	});
 });

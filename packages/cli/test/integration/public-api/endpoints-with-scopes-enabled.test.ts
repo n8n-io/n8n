@@ -1854,6 +1854,35 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 				// Should NOT see tag endpoints (no tag scopes)
 				expect(allEndpoints.some((e: any) => e.operationId === 'createTag')).toBe(false);
 			});
+
+			test('should filter by operation with ?op=list', async () => {
+				const owner = await createOwnerWithApiKey({ scopes: ['tag:list', 'tag:create'] });
+				const agent = testServer.publicApiAgentFor(owner);
+
+				const response = await agent.get('/discover?resource=tags&op=list');
+				expect(response.statusCode).toBe(200);
+
+				const tags = response.body.data.resources.tags;
+				expect(tags).toBeDefined();
+				expect(tags.operations).toEqual(['list']);
+			});
+
+			test('should combine resource, op, and include filters', async () => {
+				const owner = await createOwnerWithApiKey({
+					scopes: ['workflow:create', 'workflow:read'],
+				});
+				const agent = testServer.publicApiAgentFor(owner);
+
+				const response = await agent.get('/discover?resource=workflow&op=create&include=schemas');
+				expect(response.statusCode).toBe(200);
+
+				const resourceKeys = Object.keys(response.body.data.resources);
+				expect(resourceKeys).toEqual(['workflow']);
+
+				const endpoints = response.body.data.resources.workflow.endpoints;
+				expect(endpoints.length).toBeGreaterThan(0);
+				expect(endpoints[0].requestSchema).toBeDefined();
+			});
 		});
 	});
 });
