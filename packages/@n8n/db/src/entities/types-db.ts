@@ -207,6 +207,12 @@ export namespace ExecutionSummaries {
 
 	type AccessFields = {
 		accessibleWorkflowIds?: string[];
+		user?: User;
+		sharingOptions?: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+		};
 	};
 
 	type RangeFields = {

@@ -1,6 +1,11 @@
-import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { ExecutionSummaries } from '@n8n/db';
+import type { ExecutionSummaries, User } from '@n8n/db';
 import { ExecutionMetadataRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -8,10 +13,13 @@ import { mock } from 'jest-mock-extended';
 import { ExecutionService } from '@/executions/execution.service';
 
 import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
+import { createMember, createOwner } from './shared/db/users';
 
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;
 	let executionRepository: ExecutionRepository;
+	let member: User;
+	let owner: User;
 	const globalConfig = Container.get(GlobalConfig);
 
 	beforeAll(async () => {
@@ -37,6 +45,9 @@ describe('ExecutionService', () => {
 			mock(),
 			mock(),
 		);
+
+		owner = await createOwner();
+		member = await createMember();
 	});
 
 	beforeEach(() => {
@@ -511,6 +522,252 @@ describe('ExecutionService', () => {
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
 			expect(output.results).toEqual([expect.objectContaining({ id: firstId })]);
+		});
+	});
+
+	describe('findRangeWithCount — subquery approach', () => {
+		test('should return same results as array approach', async () => {
+			const workflow1 = await createWorkflow({}, member);
+			const workflow2 = await createWorkflow({}, member);
+			const inaccessibleWorkflow = await createWorkflow({}, owner);
+
+			await Promise.all([
+				createExecution({ status: 'success' }, workflow1),
+				createExecution({ status: 'success' }, workflow1),
+				createExecution({ status: 'error' }, workflow2),
+				createExecution({ status: 'success' }, inaccessibleWorkflow),
+			]);
+
+			const arrayQuery: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow1.id, workflow2.id],
+			};
+
+			const subqueryQuery: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				user: member,
+				sharingOptions: {
+					workflowRoles: ['workflow:owner'],
+					projectRoles: ['project:personalOwner'],
+				},
+			};
+
+			const [arrayResult, subqueryResult] = await Promise.all([
+				executionService.findRangeWithCount(arrayQuery),
+				executionService.findRangeWithCount(subqueryQuery),
+			]);
+
+			expect(arrayResult.count).toBe(3);
+			expect(subqueryResult.count).toBe(3);
+			expect(subqueryResult.results).toHaveLength(arrayResult.results.length);
+			expect(subqueryResult.results.map((r) => r.id)).toEqual(arrayResult.results.map((r) => r.id));
+		});
+
+		test('should filter by status correctly', async () => {
+			const workflow = await createWorkflow({}, member);
+
+			await Promise.all([
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'error' }, workflow),
+			]);
+
+			const arrayQuery: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				status: ['success'],
+				accessibleWorkflowIds: [workflow.id],
+			};
+
+			const subqueryQuery: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				status: ['success'],
+				user: member,
+				sharingOptions: {
+					workflowRoles: ['workflow:owner'],
+					projectRoles: ['project:personalOwner'],
+				},
+			};
+
+			const [arrayResult, subqueryResult] = await Promise.all([
+				executionService.findRangeWithCount(arrayQuery),
+				executionService.findRangeWithCount(subqueryQuery),
+			]);
+
+			expect(arrayResult.count).toBe(2);
+			expect(subqueryResult.count).toBe(2);
+			expect(subqueryResult.results.map((r) => r.id)).toEqual(arrayResult.results.map((r) => r.id));
+		});
+
+		test('should filter by workflowId correctly', async () => {
+			const workflow1 = await createWorkflow({}, member);
+			const workflow2 = await createWorkflow({}, member);
+
+			await Promise.all([
+				createExecution({ status: 'success' }, workflow1),
+				createExecution({ status: 'success' }, workflow2),
+				createExecution({ status: 'success' }, workflow2),
+			]);
+
+			const arrayQuery: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				workflowId: workflow1.id,
+				accessibleWorkflowIds: [workflow1.id, workflow2.id],
+			};
+
+			const subqueryQuery: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				workflowId: workflow1.id,
+				user: member,
+				sharingOptions: {
+					workflowRoles: ['workflow:owner'],
+					projectRoles: ['project:personalOwner'],
+				},
+			};
+
+			const [arrayResult, subqueryResult] = await Promise.all([
+				executionService.findRangeWithCount(arrayQuery),
+				executionService.findRangeWithCount(subqueryQuery),
+			]);
+
+			expect(arrayResult.count).toBe(1);
+			expect(subqueryResult.count).toBe(1);
+			expect(subqueryResult.results[0].workflowId).toBe(workflow1.id);
+		});
+
+		test('should work with team project', async () => {
+			const teamProject = await createTeamProject();
+			const personalWorkflow = await createWorkflow({}, owner);
+			const teamWorkflow = await createWorkflow({}, teamProject);
+
+			await Promise.all([
+				createExecution({ status: 'success' }, personalWorkflow),
+				createExecution({ status: 'success' }, teamWorkflow),
+			]);
+
+			const arrayQuery: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [personalWorkflow.id, teamWorkflow.id],
+			};
+
+			const arrayResult = await executionService.findRangeWithCount(arrayQuery);
+			expect(arrayResult.count).toBe(2);
+		});
+
+		test('should work with sharing-enabled roles (team project admin)', async () => {
+			// Simulates the isSharingEnabled() === true path in the controller
+			const teamProject = await createTeamProject(undefined, member);
+			const personalWorkflow = await createWorkflow({}, member);
+			const teamWorkflow = await createWorkflow({}, teamProject);
+			const inaccessibleWorkflow = await createWorkflow({}, owner);
+
+			await Promise.all([
+				createExecution({ status: 'success' }, personalWorkflow),
+				createExecution({ status: 'success' }, teamWorkflow),
+				createExecution({ status: 'error' }, teamWorkflow),
+				createExecution({ status: 'success' }, inaccessibleWorkflow),
+			]);
+
+			// Sharing-enabled roles: member can see workflows they own OR are admin/editor of
+			const sharingEnabledQuery: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				user: member,
+				sharingOptions: {
+					workflowRoles: ['workflow:owner', 'workflow:editor'],
+					projectRoles: ['project:personalOwner', 'project:admin', 'project:editor'],
+				},
+			};
+
+			const result = await executionService.findRangeWithCount(sharingEnabledQuery);
+
+			// member owns personalWorkflow and is admin of teamProject → sees 3 executions
+			expect(result.count).toBe(3);
+			const workflowIds = result.results.map((r) => r.workflowId);
+			expect(workflowIds).toContain(personalWorkflow.id);
+			expect(workflowIds).toContain(teamWorkflow.id);
+			expect(workflowIds).not.toContain(inaccessibleWorkflow.id);
+		});
+
+		test('should work with sharing-enabled roles (team project editor)', async () => {
+			// member is linked as project:editor to a team project they didn't create
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:editor');
+			const teamWorkflow = await createWorkflow({}, teamProject);
+			const personalWorkflow = await createWorkflow({}, member);
+			const inaccessibleWorkflow = await createWorkflow({}, owner);
+
+			await Promise.all([
+				createExecution({ status: 'success' }, teamWorkflow),
+				createExecution({ status: 'success' }, personalWorkflow),
+				createExecution({ status: 'success' }, inaccessibleWorkflow),
+			]);
+
+			const sharingEnabledQuery: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				user: member,
+				sharingOptions: {
+					workflowRoles: ['workflow:owner', 'workflow:editor'],
+					projectRoles: ['project:personalOwner', 'project:admin', 'project:editor'],
+				},
+			};
+
+			const result = await executionService.findRangeWithCount(sharingEnabledQuery);
+
+			// member owns personalWorkflow and is editor in teamProject → sees 2 executions
+			expect(result.count).toBe(2);
+			const workflowIds = result.results.map((r) => r.workflowId);
+			expect(workflowIds).toContain(teamWorkflow.id);
+			expect(workflowIds).toContain(personalWorkflow.id);
+			expect(workflowIds).not.toContain(inaccessibleWorkflow.id);
+		});
+	});
+
+	describe('findLatestCurrentAndCompleted — subquery approach', () => {
+		test('should return same results as array approach', async () => {
+			const workflow = await createWorkflow({}, member);
+
+			await Promise.all([
+				createExecution({ status: 'running', stoppedAt: undefined }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'error' }, workflow),
+			]);
+
+			const arrayQuery: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+			};
+
+			const subqueryQuery: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				user: member,
+				sharingOptions: {
+					workflowRoles: ['workflow:owner'],
+					projectRoles: ['project:personalOwner'],
+				},
+			};
+
+			const [arrayResult, subqueryResult] = await Promise.all([
+				executionService.findLatestCurrentAndCompleted(arrayQuery),
+				executionService.findLatestCurrentAndCompleted(subqueryQuery),
+			]);
+
+			expect(arrayResult.count).toBe(subqueryResult.count);
+			expect(arrayResult.results).toHaveLength(subqueryResult.results.length);
+
+			const arrayIds = arrayResult.results.map((r) => r.id).sort();
+			const subqueryIds = subqueryResult.results.map((r) => r.id).sort();
+			expect(subqueryIds).toEqual(arrayIds);
 		});
 	});
 
