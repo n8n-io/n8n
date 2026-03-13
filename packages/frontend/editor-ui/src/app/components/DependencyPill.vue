@@ -43,9 +43,7 @@ const effectiveCount = computed(
 	() => resolvedDeps.value?.length ?? getTotalCount(props.resourceId) ?? 0,
 );
 
-const hasFullDeps = computed(
-	() => resolvedDeps.value !== undefined && resolvedDeps.value.length > 0,
-);
+const hasFullDeps = computed(() => resolvedDeps.value !== undefined);
 
 const showSearch = computed(() => (resolvedDeps.value?.length ?? 0) >= MIN_ITEMS_FOR_SEARCH);
 
