@@ -387,12 +387,6 @@ describe('SecretsProvidersConnectionsService', () => {
 
 	describe('cleanupConnectionsForProjectDeletion', () => {
 		it('syncs each affected provider after project cleanup', async () => {
-			const adminUser = {
-				role: {
-					scopes: [{ slug: 'externalSecretsProvider:delete' }],
-				},
-			} as unknown as User;
-
 			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
 				mock<ProjectSecretsProviderAccess>({
 					projectId: 'project-1',
@@ -408,7 +402,7 @@ describe('SecretsProvidersConnectionsService', () => {
 				}),
 			]);
 
-			await service.cleanupConnectionsForProjectDeletion('project-1', adminUser);
+			await service.cleanupConnectionsForProjectDeletion('project-1');
 
 			expect(mockRepository.delete).toHaveBeenCalledTimes(2);
 			expect(mockRepository.delete).toHaveBeenNthCalledWith(1, { id: 1 });
@@ -434,7 +428,7 @@ describe('SecretsProvidersConnectionsService', () => {
 				}),
 			]);
 
-			await service.cleanupConnectionsForProjectDeletion('project-1', projectAdmin);
+			await service.cleanupConnectionsForProjectDeletion('project-1');
 
 			expect(mockRepository.delete).not.toHaveBeenCalled();
 			expect(mockProjectAccessRepository.delete).toHaveBeenCalledWith({
