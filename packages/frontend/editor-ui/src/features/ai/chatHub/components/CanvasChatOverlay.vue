@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -17,6 +17,24 @@ const popOutContent = useTemplateRef<HTMLElement>('popOutContent');
 
 const isPoppedOut = computed(() => chatHubPanelStore.isPoppedOut);
 const isVisible = computed(() => chatHubPanelStore.isOpen);
+
+// Lazy guard: mount the component tree once on first open, then keep it alive
+// with v-show to avoid Vue's removeFragment crash on DOM nodes created in popout windows.
+const hasBeenOpened = ref(false);
+
+watch(
+	isVisible,
+	(val) => {
+		if (val) {
+			hasBeenOpened.value = true;
+			// Re-focus input on reopen since the mount-time watcher won't re-fire
+			void nextTick(() => {
+				canvasChatFloatingWindowRef.value?.focusInput();
+			});
+		}
+	},
+	{ immediate: true },
+);
 
 const popOutWindowTitle = computed(() => `Chat - ${workflowsStore.workflowName || 'Workflow'}`);
 const shouldPopOut = computed(() => isPoppedOut.value && chatHubPanelStore.isOpen);
@@ -64,7 +82,8 @@ defineExpose({ focusInput });
 	<div ref="popOutContainer" :class="$style.popOutContainer">
 		<div ref="popOutContent" :class="[$style.popOutContent, { [$style.poppedOut]: isPoppedOut }]">
 			<CanvasChatFloatingWindow
-				v-if="isVisible"
+				v-if="hasBeenOpened"
+				v-show="isVisible"
 				ref="canvasChatFloatingWindowRef"
 				@close="onClose"
 				@pop-out="onPopOut"
