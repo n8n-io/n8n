@@ -1,4 +1,11 @@
-import { BadRequestException, Body, Controller, Logger, Post } from '@nestjs/common';
+import {
+	BadRequestException,
+	Body,
+	Controller,
+	Logger,
+	NotFoundException,
+	Post,
+} from '@nestjs/common';
 
 import type { ExecuteCommandRequest, VolumeMount } from '../types';
 import { CommandsService } from './commands.service';
@@ -50,10 +57,16 @@ export class CommandsController {
 			return result;
 		} catch (error) {
 			const duration = Date.now() - startTime;
+			const message = (error as Error).message;
 			this.logger.error(
-				`Command failed duration=${duration}ms error=${(error as Error).message}`,
+				`Command failed duration=${duration}ms error=${message}`,
 				(error as Error).stack,
 			);
+
+			if (message.startsWith("Volume '") && message.endsWith("' not found")) {
+				throw new NotFoundException(message);
+			}
+
 			throw error;
 		}
 	}
