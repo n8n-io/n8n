@@ -117,7 +117,7 @@ export function resolveRefs(
 		if (isRecord(value)) {
 			result[key] = resolveRefs(value, componentSchemas, new Set(seen));
 		} else if (Array.isArray(value)) {
-			result[key] = value.map((item) =>
+			result[key] = value.map((item): unknown =>
 				isRecord(item) ? resolveRefs(item, componentSchemas, new Set(seen)) : item,
 			);
 		} else {

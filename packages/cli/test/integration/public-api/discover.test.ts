@@ -72,9 +72,9 @@ describe('GET /discover', () => {
 		const response = await authOwnerAgent.get('/discover');
 		const resources = response.body.data.resources;
 
-		for (const resource of Object.values(resources) as any[]) {
-			expect(resource.endpoints.length).toBeGreaterThan(0);
-			for (const endpoint of resource.endpoints) {
+		for (const resource of Object.values(resources)) {
+			expect((resource as any).endpoints.length).toBeGreaterThan(0);
+			for (const endpoint of (resource as any).endpoints) {
 				expect(endpoint.method).toBeDefined();
 				expect(endpoint.path).toBeDefined();
 				expect(endpoint.operationId).toBeDefined();
@@ -87,7 +87,7 @@ describe('GET /discover', () => {
 		const response = await authOwnerAgent.get('/discover');
 		const resources = response.body.data.resources;
 
-		for (const resource of Object.values(resources) as any[]) {
+		for (const resource of Object.values(resources)) {
 			expect(resource.operations).toBeInstanceOf(Array);
 		}
 	});
@@ -112,7 +112,7 @@ describe('GET /discover', () => {
 		expect(withSchema.length).toBeGreaterThan(0);
 
 		for (const endpoint of withSchema) {
-			expect((endpoint as any).requestSchema).toHaveProperty('type');
+			expect((endpoint as Record<string, unknown>).requestSchema).toHaveProperty('type');
 		}
 	});
 });
