@@ -134,6 +134,57 @@ describe('parseRawEmail', () => {
 		expect(typeof json.date).toBe('string');
 	});
 
+	it('should include cc, bcc, replyTo, and sender in parsed output (mailparser shape)', async () => {
+		const executionFunctions = mock<IExecuteFunctions>({ logger });
+		const rawEmail = [
+			'Date: Wed, 28 Aug 2024 00:36:37 -0700',
+			'From: Alice <alice@example.com>',
+			'To: Bob <bob@example.com>',
+			'Cc: Carol <carol@example.com>',
+			'Bcc: Dave <dave@example.com>',
+			'Reply-To: reply@example.com',
+			'Sender: sender@example.com',
+			'Subject: Test',
+			'Content-Type: text/plain',
+			'',
+			'Body',
+		].join('\r\n');
+
+		const { json } = await parseRawEmail.call(
+			executionFunctions as IExecuteFunctions,
+			{ raw: Buffer.from(rawEmail, 'utf8').toString('base64') },
+			'attachment_',
+		);
+
+		const hasAddressShape = (obj: unknown) =>
+			obj !== null &&
+			typeof obj === 'object' &&
+			'value' in obj &&
+			Array.isArray((obj as { value: unknown }).value) &&
+			'text' in obj &&
+			'html' in obj;
+
+		expect(hasAddressShape(json.from)).toBe(true);
+		expect(hasAddressShape(json.to)).toBe(true);
+		expect(hasAddressShape(json.cc)).toBe(true);
+		expect(hasAddressShape(json.bcc)).toBe(true);
+		expect(hasAddressShape(json.replyTo)).toBe(true);
+		expect(hasAddressShape(json.sender)).toBe(true);
+
+		expect((json.cc as { value: { address: string }[] }).value[0].address).toBe(
+			'carol@example.com',
+		);
+		expect((json.bcc as { value: { address: string }[] }).value[0].address).toBe(
+			'dave@example.com',
+		);
+		expect((json.replyTo as { value: { address: string }[] }).value[0].address).toBe(
+			'reply@example.com',
+		);
+		expect((json.sender as { value: { address: string }[] }).value[0].address).toBe(
+			'sender@example.com',
+		);
+	});
+
 	it('should include binary data when downloadAttachments is true and message has attachments', async () => {
 		const prepareBinaryData = jest.fn().mockResolvedValue({
 			data: 'eA==',

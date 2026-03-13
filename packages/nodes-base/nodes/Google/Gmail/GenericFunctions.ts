@@ -242,6 +242,21 @@ export async function parseRawEmail(
 			?.map((a: PostalMimeAddress) => formatAddress(a))
 			.filter(Boolean)
 			.join(', ') ?? '';
+	const ccFormatted =
+		email.cc
+			?.map((a: PostalMimeAddress) => formatAddress(a))
+			.filter(Boolean)
+			.join(', ') ?? '';
+	const bccFormatted =
+		email.bcc
+			?.map((a: PostalMimeAddress) => formatAddress(a))
+			.filter(Boolean)
+			.join(', ') ?? '';
+	const replyToFormatted =
+		email.replyTo
+			?.map((a: PostalMimeAddress) => formatAddress(a))
+			.filter(Boolean)
+			.join(', ') ?? '';
 	const json: IDataObject = {
 		...mailBaseData,
 		headers,
@@ -259,10 +274,43 @@ export async function parseRawEmail(
 		html: email.html,
 		text: email.text,
 	};
+	if (ccFormatted) {
+		json.cc = {
+			text: ccFormatted,
+			value: (email.cc ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
+			html: ccFormatted,
+		};
+	}
+	if (bccFormatted) {
+		json.bcc = {
+			text: bccFormatted,
+			value: (email.bcc ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
+			html: bccFormatted,
+		};
+	}
+	if (replyToFormatted) {
+		json.replyTo = {
+			text: replyToFormatted,
+			value: (email.replyTo ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
+			html: replyToFormatted,
+		};
+	}
 	if (email.subject !== undefined) json.subject = email.subject;
 	if (email.messageId !== undefined) json.messageId = email.messageId;
 	if (email.inReplyTo !== undefined) json.inReplyTo = email.inReplyTo;
 	if (email.references !== undefined) json.references = email.references;
+	if (email.deliveredTo !== undefined) json.deliveredTo = email.deliveredTo;
+	if (email.returnPath !== undefined) json.returnPath = email.returnPath;
+	if (email.sender !== undefined) {
+		const senderFormatted = formatAddress(email.sender);
+		if (senderFormatted) {
+			json.sender = {
+				text: senderFormatted,
+				value: addressToValue(email.sender),
+				html: senderFormatted,
+			};
+		}
+	}
 
 	const useMailparserShape = options?.outputFormat !== 'simple';
 	const jsonOut = useMailparserShape

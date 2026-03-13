@@ -120,6 +120,38 @@ export function toMailparserShape(json: IDataObject): IDataObject {
 		text: formatAddressText(toValue),
 		html: formatAddressHtml(toValue),
 	};
+	const ccValue = (json.cc as { value?: AddressValue[] } | undefined)?.value ?? [];
+	const bccValue = (json.bcc as { value?: AddressValue[] } | undefined)?.value ?? [];
+	const replyToValue = (json.replyTo as { value?: AddressValue[] } | undefined)?.value ?? [];
+	if (ccValue.length) {
+		out.cc = {
+			value: ccValue,
+			text: formatAddressText(ccValue),
+			html: formatAddressHtml(ccValue),
+		};
+	}
+	if (bccValue.length) {
+		out.bcc = {
+			value: bccValue,
+			text: formatAddressText(bccValue),
+			html: formatAddressHtml(bccValue),
+		};
+	}
+	if (replyToValue.length) {
+		out.replyTo = {
+			value: replyToValue,
+			text: formatAddressText(replyToValue),
+			html: formatAddressHtml(replyToValue),
+		};
+	}
+	const senderValue = (json.sender as { value?: AddressValue[] } | undefined)?.value ?? [];
+	if (senderValue.length) {
+		out.sender = {
+			value: senderValue,
+			text: formatAddressText(senderValue),
+			html: formatAddressHtml(senderValue),
+		};
+	}
 
 	// Normalize header values: PostalMime uses U+FFFD, mailparser used "ï¿½"
 	if (out.headers && typeof out.headers === 'object') {
