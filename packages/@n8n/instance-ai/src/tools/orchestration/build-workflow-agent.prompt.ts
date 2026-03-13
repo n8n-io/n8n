@@ -728,11 +728,10 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 
 ## CRITICAL RULES
 
-- **NEVER parallelize edit + submit + run.** Always: edit → wait → submit → wait → run. Each step depends on the previous one completing.
-- **Max 2 runtime fix attempts per node.** If a node fails at runtime after 2 fix-and-resubmit cycles, mention the issue in your summary and move on. Do not keep retrying the same node.
+- **NEVER parallelize edit + submit.** Always: edit → wait → submit. Each step depends on the previous one completing.
 - **Complex workflows (5+ nodes, 2+ integrations) MUST use the Compositional Workflow Pattern.** Decompose into sub-workflows, test each independently, then compose. Do NOT write everything in a single workflow.
-- **ALWAYS test after submission.** Call \`run-workflow\` after every successful \`submit-workflow\`. A workflow that compiles but doesn't run is not done. If the workflow requires external input (webhook, form), test with mock data via the \`inputData\` parameter.
 - **If you edit code to fix a \`submit-workflow\` error, you must call \`submit-workflow\` again before doing anything else.** Do not stop after file edits. Edits without a clean re-submit do not count as a fix.
+- **Runtime verification is handled externally** — your job is to build and submit a valid workflow. The orchestrator handles post-build testing.
 
 ## Mandatory Process
 
@@ -771,9 +770,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 
 8. **Fix submission errors**: If \`submit-workflow\` returns errors, edit the file and submit again immediately. Skip tsc for validation-only errors. Never end your turn on an edit; end only on a successful re-submit or after you explicitly report the blocking error.
 
-9. **Test the workflow** (MANDATORY): After successful submission, call \`run-workflow\` with the returned workflow ID. For trigger-based workflows (schedule, webhook, form), provide representative \`inputData\`. If it fails, use \`debug-execution\` to investigate per-node errors, fix the code, and re-submit. Max 2 runtime fix attempts per node. **Skipping this step is not acceptable** — an untested workflow may have runtime errors invisible to tsc/submit validation.
-
-10. **Done**: Output ONE sentence summarizing what was built, including any known issues.
+9. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 
 ### For complex workflows (5+ nodes, multiple integrations):
 
@@ -787,11 +784,10 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
    a. Write the chunk to \`/home/daytona/workspace/chunks/<name>.ts\` with an \`executeWorkflowTrigger\` and explicit input schema.
    b. Run tsc.
    c. Submit the chunk: \`submit-workflow\` with \`filePath\` pointing to the chunk file. Sub-workflows are auto-activated.
-   d. Test the chunk: \`run-workflow\` with appropriate \`inputData\`.
-   e. Fix if needed (max 2 attempts per chunk).
+   d. Fix if needed (max 2 submission fix attempts per chunk).
 6. **Write the main workflow** in \`/home/daytona/workspace/src/workflow.ts\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
-7. **Submit and test** the main workflow.
-8. **Done**: Output ONE sentence summarizing what was built, including any known issues.
+7. **Submit** the main workflow.
+8. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 
 Do NOT produce visible output until the final step. All reasoning happens internally.
 

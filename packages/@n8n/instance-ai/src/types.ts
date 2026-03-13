@@ -522,12 +522,26 @@ export type ModelConfig = string | { id: `${string}/${string}`; url: string; api
 
 // ── Background task spawning ─────────────────────────────────────────────────
 
+/** Structured result from a background task. The `text` field is the human-readable
+ *  summary; `outcome` carries an optional typed payload consumed by the workflow
+ *  loop controller (additive — existing callers that return a plain string still work). */
+export interface BackgroundTaskResult {
+	text: string;
+	outcome?: Record<string, unknown>;
+}
+
 export interface SpawnBackgroundTaskOptions {
 	taskId: string;
 	threadId: string;
 	agentId: string;
 	role: string;
-	run: (signal: AbortSignal, drainCorrections: () => string[]) => Promise<string>;
+	/** Unique work item ID for workflow loop tracking. When set, the service
+	 *  uses the workflow loop controller to manage verify/repair transitions. */
+	workItemId?: string;
+	run: (
+		signal: AbortSignal,
+		drainCorrections: () => string[],
+	) => Promise<string | BackgroundTaskResult>;
 }
 
 // ── Orchestration context (plan + delegate tools) ───────────────────────────

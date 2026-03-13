@@ -30,6 +30,10 @@ export interface SubmitWorkflowAttempt {
 	filePath: string;
 	sourceHash: string;
 	success: boolean;
+	/** Workflow ID assigned by n8n after a successful save. */
+	workflowId?: string;
+	/** Node types of all trigger nodes in the submitted workflow. */
+	triggerNodeTypes?: string[];
 	errors?: string[];
 }
 
@@ -391,7 +395,8 @@ export function createSubmitWorkflowTool(
 				}
 			}
 
-			reportAttempt({ success: true });
+			const triggerNodeTypes = triggers.map((t) => t.type).filter(Boolean);
+			reportAttempt({ success: true, workflowId: savedId, triggerNodeTypes });
 			return {
 				success: true,
 				workflowId: savedId,

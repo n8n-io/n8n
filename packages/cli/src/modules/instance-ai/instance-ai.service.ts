@@ -16,6 +16,8 @@ import {
 	mapMastraChunkToEvent,
 	BuilderSandboxFactory,
 	SnapshotManager,
+	handleBuildOutcome,
+	workflowBuildOutcomeSchema,
 } from '@n8n/instance-ai';
 import type {
 	McpServerConfig,
@@ -23,6 +25,9 @@ import type {
 	OrchestrationContext,
 	SandboxConfig,
 	SpawnBackgroundTaskOptions,
+	WorkflowBuildOutcome,
+	WorkflowLoopState,
+	WorkflowLoopAction,
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -45,6 +50,8 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { MastraIterationLogStorage } from './iteration-log-storage';
 import { MastraTaskStorage } from './task-storage';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
+// WorkflowLoopStorage is available for Phase 4: deterministic verify/repair loop persistence
+// import { WorkflowLoopStorage } from './workflow-loop-storage';
 
 interface ActiveRun {
 	runId: string;
@@ -93,31 +100,20 @@ interface BackgroundTask {
 	chainDepth: number;
 	/** The messageGroupId this task belongs to — captured at spawn time, not the thread's current one. */
 	messageGroupId?: string;
+	/** Typed outcome for workflow tasks — consumed by the workflow loop controller. */
+	outcome?: WorkflowBuildOutcome;
+	/** Work item ID for workflow loop tracking. */
+	workItemId?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/**
- * Detect whether the builder agent already ran and verified the workflow itself.
- * The sandbox builder executes `run-workflow` after `submit-workflow` as part of
- * its mandatory process. If the result text mentions a successful execution,
- * we can skip the redundant orchestrator-level verification round-trip.
- */
-function builderSelfTestedSuccessfully(result: string | undefined): boolean {
-	if (!result) return false;
-	const lower = result.toLowerCase();
-	// Builder reports execution success — common patterns from sandbox builder output
-	const hasExecutionSignal =
-		lower.includes('execution') &&
-		(lower.includes('success') || lower.includes('completed') || lower.includes('passed'));
-	// Builder reports an error — self-test was attempted but failed
-	const hasError =
-		lower.startsWith('error:') ||
-		lower.includes('execution failed') ||
-		lower.includes('runtime error');
-	return hasExecutionSignal && !hasError;
+/** Try to parse a record as a WorkflowBuildOutcome. Returns undefined if invalid. */
+function parseOutcome(raw: unknown): WorkflowBuildOutcome | undefined {
+	const result = workflowBuildOutcomeSchema.safeParse(raw);
+	return result.success ? result.data : undefined;
 }
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
@@ -650,7 +646,8 @@ export class InstanceAiService {
 				titleModel,
 			};
 
-			// Create memory instance and share it between agent, task storage, iteration log, and snapshot storage
+			// Create memory instance and share it between agent, task storage, iteration log,
+			// snapshot storage, and workflow loop storage
 			const memory = createMemory(memoryConfig);
 			const taskStorage = new MastraTaskStorage(memory);
 			const iterationLog = new MastraIterationLogStorage(memory);
@@ -1080,17 +1077,25 @@ export class InstanceAiService {
 			return pending;
 		};
 
+		task.workItemId = opts.workItemId;
+
 		// Fire-and-forget — runs detached from the orchestrator stream
 		void (async () => {
 			try {
-				const result = await opts.run(abortController.signal, drainCorrections);
+				const raw = await opts.run(abortController.signal, drainCorrections);
+				// Support both plain string and structured result
+				const resultText = typeof raw === 'string' ? raw : raw.text;
+				const outcome = typeof raw === 'string' ? undefined : parseOutcome(raw.outcome);
+
 				task.status = 'completed';
-				task.result = result;
+				task.result = resultText;
+				task.outcome = outcome;
+
 				this.eventBus.publish(opts.threadId, {
 					type: 'agent-completed',
 					runId,
 					agentId: opts.agentId,
-					payload: { role: opts.role, result },
+					payload: { role: opts.role, result: resultText },
 				});
 			} catch (error) {
 				if (abortController.signal.aborted) return;
@@ -1142,7 +1147,9 @@ export class InstanceAiService {
 		);
 	}
 
-	/** Prepend completed/running background task info to a user message. */
+	/** Prepend completed/running background task info to a user message.
+	 *  For workflow-builder tasks with structured outcomes, the controller decides
+	 *  what guidance to inject — no more text heuristics. */
 	private enrichMessageWithBackgroundTasks(threadId: string, message: string): string {
 		const completedTasks = this.drainCompletedTasks(threadId);
 		const runningTasks = this.getRunningTasks(threadId);
@@ -1154,18 +1161,17 @@ export class InstanceAiService {
 		for (const task of completedTasks) {
 			if (task.status === 'completed') {
 				let resultLine = `[Background task completed — ${task.role}]: ${task.result}`;
-				// Signal auto-verification for completed workflow builds — but skip
-				// if the builder already self-tested successfully (sandbox builders
-				// run the workflow as part of their process).
-				if (task.role === 'workflow-builder') {
-					if (builderSelfTestedSuccessfully(task.result)) {
-						resultLine +=
-							'\n\nThe builder already tested this workflow successfully. Report completion to the user — no additional verification needed.';
-					} else {
-						resultLine +=
-							"\n\nVERIFICATION REQUIRED: Run this workflow to verify it works before telling the user it's done. Delegate a verification sub-agent with tools [run-workflow, get-execution, debug-execution, get-workflow].";
-					}
+
+				// Workflow-builder tasks: use typed outcome for deterministic guidance
+				if (task.role === 'workflow-builder' && task.outcome) {
+					const guidance = this.getWorkflowLoopGuidance(task);
+					resultLine += `\n\n${guidance}`;
+				} else if (task.role === 'workflow-builder') {
+					// Fallback for builders without structured outcome (tool mode)
+					resultLine +=
+						'\n\nVERIFICATION: If a workflow was built, run it to verify before reporting to the user.';
 				}
+
 				parts.push(resultLine);
 			} else if (task.status === 'cancelled') {
 				parts.push(`[Background task stopped by user — ${task.role}, task: ${task.taskId}]`);
@@ -1179,6 +1185,46 @@ export class InstanceAiService {
 		}
 
 		return `<background-tasks>\n${parts.join('\n')}\n</background-tasks>\n\n${message}`;
+	}
+
+	/**
+	 * Use the workflow loop controller to determine what guidance to inject
+	 * into the enriched message for a completed workflow-builder task.
+	 */
+	private getWorkflowLoopGuidance(task: BackgroundTask): string {
+		const outcome = task.outcome;
+		if (!outcome) return '';
+
+		// Create initial state for this work item
+		const state: WorkflowLoopState = {
+			workItemId: outcome.workItemId,
+			threadId: task.threadId,
+			workflowId: outcome.workflowId,
+			phase: 'building',
+			status: 'active',
+			source: outcome.workflowId ? 'modify' : 'create',
+			patchAttempts: 0,
+			rebuildAttempts: 0,
+		};
+
+		const { action } = handleBuildOutcome(state, [], outcome);
+		return this.actionToGuidance(action);
+	}
+
+	/** Convert a controller action to orchestrator guidance text. */
+	private actionToGuidance(action: WorkflowLoopAction): string {
+		switch (action.type) {
+			case 'done':
+				return `Workflow is ready. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
+			case 'verify':
+				return `VERIFY: Run workflow ${action.workflowId} to verify it works. Use \`run-workflow\`, then \`debug-execution\` if it fails. Report the result to the user.`;
+			case 'blocked':
+				return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
+			case 'patch':
+				return `PATCH NEEDED: Apply \`patch-workflow\` to node "${action.nodeName}" in workflow ${action.workflowId}, then verify.`;
+			case 'rebuild':
+				return `REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. Call \`build-workflow-with-agent\` again with these details: ${action.failureDetails}`;
+		}
 	}
 
 	/** Maximum number of automatic follow-up runs before stopping and waiting for user input. */

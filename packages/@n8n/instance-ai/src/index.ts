@@ -20,6 +20,23 @@ export { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
 export type { BuilderWorkspace } from './workspace/builder-sandbox-factory';
 export { SnapshotManager } from './workspace/snapshot-manager';
 export type { InstanceAiEventBus, StoredEvent } from './event-bus';
+export {
+	createWorkItem,
+	handleBuildOutcome,
+	handleVerificationVerdict,
+	formatAttemptHistory,
+	workflowBuildOutcomeSchema,
+	attemptRecordSchema,
+	workflowLoopStateSchema,
+	verificationResultSchema,
+} from './workflow-loop';
+export type {
+	WorkflowLoopState,
+	WorkflowLoopAction,
+	WorkflowBuildOutcome,
+	VerificationResult,
+	AttemptRecord,
+} from './workflow-loop';
 export type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -38,6 +55,7 @@ export type {
 	TaskStorage,
 	OrchestrationContext,
 	SpawnBackgroundTaskOptions,
+	BackgroundTaskResult,
 	WorkflowSummary,
 	WorkflowDetail,
 	WorkflowNode,

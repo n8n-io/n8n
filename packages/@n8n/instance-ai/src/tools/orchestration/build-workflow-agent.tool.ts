@@ -23,8 +23,9 @@ import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import type { OrchestrationContext } from '../../types';
+import type { BackgroundTaskResult, OrchestrationContext } from '../../types';
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
+import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
@@ -33,6 +34,48 @@ import {
 	type CredentialMap,
 	type SubmitWorkflowAttempt,
 } from '../workflows/submit-workflow.tool';
+
+/** Node types that can be tested via run-workflow with inputData. */
+const TESTABLE_TRIGGERS = new Set([
+	'n8n-nodes-base.manualTrigger',
+	'n8n-nodes-base.executeWorkflowTrigger',
+]);
+
+function detectTriggerType(attempt: SubmitWorkflowAttempt | undefined): TriggerType {
+	if (!attempt?.triggerNodeTypes || attempt.triggerNodeTypes.length === 0) {
+		return 'manual_or_testable';
+	}
+	const hasTestable = attempt.triggerNodeTypes.some((t) => TESTABLE_TRIGGERS.has(t));
+	return hasTestable ? 'manual_or_testable' : 'trigger_only';
+}
+
+function buildOutcome(
+	workItemId: string,
+	taskId: string,
+	attempt: SubmitWorkflowAttempt | undefined,
+	finalText: string,
+): WorkflowBuildOutcome {
+	if (!attempt?.success) {
+		return {
+			workItemId,
+			taskId,
+			submitted: false,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			failureSignature: attempt?.errors?.join('; '),
+			summary: finalText,
+		};
+	}
+	return {
+		workItemId,
+		taskId,
+		workflowId: attempt.workflowId,
+		submitted: true,
+		triggerType: detectTriggerType(attempt),
+		needsUserInput: false,
+		summary: finalText,
+	};
+}
 
 const BUILDER_MAX_STEPS = 30;
 
@@ -161,6 +204,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 
 			const subAgentId = `agent-builder-${nanoid(6)}`;
 			const taskId = `build-${nanoid(8)}`;
+			const workItemId = `wi_${nanoid(8)}`;
 
 			// Publish agent-spawned so the UI shows the builder agent immediately
 			context.eventBus.publish(context.threadId, {
@@ -206,7 +250,8 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				threadId: context.threadId,
 				agentId: subAgentId,
 				role: 'workflow-builder',
-				run: async (signal, drainCorrections) => {
+				workItemId,
+				run: async (signal, drainCorrections): Promise<BackgroundTaskResult> => {
 					let builderWs: BuilderWorkspace | undefined;
 					const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
 					try {
@@ -314,20 +359,37 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 							const currentMainWorkflowHash = hashContent(currentMainWorkflow);
 
 							if (!mainWorkflowAttempt) {
-								return 'Error: workflow builder finished without submitting /src/workflow.ts.';
+								const text =
+									'Error: workflow builder finished without submitting /src/workflow.ts.';
+								return {
+									text,
+									outcome: buildOutcome(workItemId, taskId, undefined, text),
+								};
 							}
 
 							if (!mainWorkflowAttempt.success) {
 								const errorText =
 									mainWorkflowAttempt.errors?.join(' ') ?? 'Unknown submit-workflow failure.';
-								return `Error: workflow builder stopped after a failed submit-workflow for /src/workflow.ts. ${errorText}`;
+								const text = `Error: workflow builder stopped after a failed submit-workflow for /src/workflow.ts. ${errorText}`;
+								return {
+									text,
+									outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, text),
+								};
 							}
 
 							if (mainWorkflowAttempt.sourceHash !== currentMainWorkflowHash) {
-								return 'Error: workflow builder edited /src/workflow.ts after the last submit-workflow call. It must re-submit the workflow before finishing.';
+								const text =
+									'Error: workflow builder edited /src/workflow.ts after the last submit-workflow call. It must re-submit the workflow before finishing.';
+								return {
+									text,
+									outcome: buildOutcome(workItemId, taskId, undefined, text),
+								};
 							}
 
-							return finalText;
+							return {
+								text: finalText,
+								outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, finalText),
+							};
 						}
 
 						// Tool mode (no sandbox) — original approach
@@ -380,7 +442,9 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 							drainCorrections,
 						});
 
-						return await hitlResult.text;
+						const toolFinalText = await hitlResult.text;
+						// Tool mode has no submit tracking — return text only
+						return { text: toolFinalText };
 					} finally {
 						await builderWs?.cleanup();
 					}
