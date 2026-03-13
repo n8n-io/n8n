@@ -95,7 +95,6 @@ This is a test.`,
 		const content = `\
 @@artifact-edit title="My Document" replaceAll="true" end="END_A7X"
 old text
-@@sep:END_A7X
 new text
 @@end:END_A7X`;
 
@@ -398,6 +397,34 @@ Some content
 		]);
 	});
 
+	it('should unescape \\n in oldString and newString', () => {
+		const result = appendChunkToParsedMessageItems(
+			[],
+			`\
+@@artifact-edit title="Doc" replaceAll="false" end="END_T"
+line1\\nline2
+line3\\nline4
+@@end:END_T`,
+		);
+		expect(result).toEqual([
+			{
+				type: 'artifact-edit',
+				content: `\
+@@artifact-edit title="Doc" replaceAll="false" end="END_T"
+line1\\nline2
+line3\\nline4
+@@end:END_T`,
+				command: {
+					title: 'Doc',
+					oldString: 'line1\nline2',
+					newString: 'line3\nline4',
+					replaceAll: false,
+				},
+				isIncomplete: false,
+			},
+		]);
+	});
+
 	it('should handle incomplete artifact-edit command', () => {
 		const result = appendChunkToParsedMessageItems(
 			[],
@@ -429,14 +456,13 @@ old`,
 			},
 		];
 
-		const result = appendChunkToParsedMessageItems(items, '\n@@sep:END_T\nnew\n@@end:END_T');
+		const result = appendChunkToParsedMessageItems(items, '\nnew\n@@end:END_T');
 		expect(result).toEqual([
 			{
 				type: 'artifact-edit',
 				content: `\
 @@artifact-edit title="Doc" replaceAll="false" end="END_T"
 old
-@@sep:END_T
 new
 @@end:END_T`,
 				command: {
@@ -450,14 +476,13 @@ new
 		]);
 	});
 
-	it('should tolerate trailing characters after sep and end markers', () => {
+	it('should tolerate trailing characters after end marker', () => {
 		// LLMs commonly append a stray `"` after the token (pattern-matching from end="TOKEN")
 		const result = appendChunkToParsedMessageItems(
 			[],
 			`\
 @@artifact-edit title="Doc" replaceAll="false" end="END_T"
 old text
-@@sep:END_T"
 new text
 @@end:END_T"`,
 		);
@@ -467,7 +492,6 @@ new text
 				content: `\
 @@artifact-edit title="Doc" replaceAll="false" end="END_T"
 old text
-@@sep:END_T"
 new text
 @@end:END_T"`,
 				command: {
@@ -488,7 +512,6 @@ Content 1
 @@end:END_C
 @@artifact-edit title="Doc1" replaceAll="false" end="END_E"
 Content 1
-@@sep:END_E
 Updated Content
 @@end:END_E`;
 

@@ -646,7 +646,7 @@ The type can be:
 - A code language like typescript, python, json, etc. for code files
 
 Example response:
-> I'll create an RFC artifact for you.
+> I'll create a sample response for you.
 > 
 > @@artifact-create title="Sample API response" type="json" end="DELIM_A7X"
 > {
@@ -654,36 +654,44 @@ Example response:
 > }
 > @@end:DELIM_A7X
 > 
-> I've created the RFC above. Let me know if you'd like any changes!
+> Done. Let me know if you'd like any changes!
 
 ### Editing an Artifact
 
 Use the command below:
 
 @@artifact-edit title="Artifact Title" replaceAll="false" end="DELIM_XYZ"
-pattern
-@@sep:DELIM_XYZ
-replacement
+pattern (escape newlines as \\n)
+replacement (escape newlines as \\n)
 @@end:DELIM_XYZ
 
 - title and pattern must match the exact title and occurrence of an existing artifact.
 - Set replaceAll to true to replace all occurrences, or false to replace only the first occurrence.
-- Both pattern and replacement can span multiple lines.
+- The first line is the pattern, the second line is the replacement. Escape any literal newlines in either as \\n.
 - To replace different patterns, use the command multiple times. You CANNOT specify multiple patterns in a single command.
 
 For the pattern text, use the shortest unique substring that pinpoints the location — avoid copying large blocks from memory.
 The shorter and more distinctive the string, the less chance of a mismatch.
 If you are not confident you can reproduce the exact text, rewrite the whole artifact using @@artifact-create with the same title.
 
-Example edit:
-> I'll change keys from camel case to lower case.
-> 
+Example edit (single-line pattern):
+> I'll change the key from camel case to snake case.
+>
 > @@artifact-edit title="Sample API response" replaceAll="false" end="DELIM_K9M"
 > statusText
-> @@sep:DELIM_K9M
 > status_text
 > @@end:DELIM_K9M
-> 
+>
+> Done!
+
+Example edit (multi-line pattern — newlines escaped as \\n):
+> I'll update the two-line address block.
+>
+> @@artifact-edit title="Contact details" replaceAll="false" end="DELIM_P4Q"
+> 123 Main St\\n10th Floor
+> 456 Oak Ave\\nSuite 200
+> @@end:DELIM_P4Q
+>
 > Done!
 
 ### Important Note

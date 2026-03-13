@@ -12,7 +12,6 @@ export interface MessageWithContent {
 const CREATE_TAG = '@@artifact-create ';
 const EDIT_TAG = '@@artifact-edit ';
 const END_MARKER_PREFIX = '@@end:';
-const SEP_MARKER_PREFIX = '@@sep:';
 
 export function appendChunkToParsedMessageItems(
 	items: ChatMessageContentChunk[],
@@ -146,7 +145,7 @@ function skipToNextLine(text: string, pos: number): number {
  * Find the first occurrence of `marker` that starts at a line boundary
  * (at `startPos` exactly, or after a `\n`).
  * Any trailing characters after the marker on the same line are ignored, to
- * tolerate LLMs that append stray characters (e.g. `@@sep:TOKEN"`) after the token.
+ * tolerate LLMs that append stray characters (e.g. `@@end:TOKEN"`) after the token.
  * Returns the index where the marker starts, or -1.
  */
 function findFirstLineMarker(text: string, startPos: number, marker: string): number {
@@ -212,6 +211,10 @@ function parseArtifactCreateCommand(content: string): {
 	};
 }
 
+function unescapeNewlines(s: string): string {
+	return s.replace(/\\n/g, '\n');
+}
+
 function parseArtifactEditCommand(content: string): {
 	item: ChatMessageContentChunk;
 	consumed: number;
@@ -224,11 +227,9 @@ function parseArtifactEditCommand(content: string): {
 	const replaceAll = replaceAllStr.toLowerCase() === 'true';
 	const endToken = attrs.end ?? '';
 	const endMarker = END_MARKER_PREFIX + endToken;
-	const sepMarker = SEP_MARKER_PREFIX + endToken;
 
 	const bodyStart = firstNewline === -1 ? content.length : firstNewline + 1;
 	const endIdx = findFirstLineMarker(content, bodyStart, endMarker);
-	const sepIdx = findFirstLineMarker(content, bodyStart, sepMarker);
 	const isIncomplete = endIdx === -1;
 
 	let oldString = '';
@@ -239,20 +240,24 @@ function parseArtifactEditCommand(content: string): {
 		// Only the opening line received so far
 		consumed = content.length;
 	} else if (isIncomplete) {
-		if (sepIdx === -1) {
-			oldString = content.slice(bodyStart);
+		const body = content.slice(bodyStart);
+		const sepNewline = body.indexOf('\n');
+		if (sepNewline === -1) {
+			oldString = unescapeNewlines(body);
 		} else {
-			oldString = content.slice(bodyStart, sepIdx - 1);
-			newString = content.slice(skipToNextLine(content, sepIdx + sepMarker.length));
+			oldString = unescapeNewlines(body.slice(0, sepNewline));
+			newString = unescapeNewlines(body.slice(sepNewline + 1));
 		}
 		consumed = content.length;
 	} else {
-		if (sepIdx !== -1 && sepIdx < endIdx) {
-			oldString = content.slice(bodyStart, sepIdx - 1);
-			newString = content.slice(skipToNextLine(content, sepIdx + sepMarker.length), endIdx - 1);
+		// Body is between bodyStart and the \n preceding @@end:TOKEN
+		const body = content.slice(bodyStart, endIdx - 1);
+		const sepNewline = body.indexOf('\n');
+		if (sepNewline === -1) {
+			oldString = unescapeNewlines(body);
 		} else {
-			// No separator — treat all body content as oldString
-			oldString = content.slice(bodyStart, endIdx - 1);
+			oldString = unescapeNewlines(body.slice(0, sepNewline));
+			newString = unescapeNewlines(body.slice(sepNewline + 1));
 		}
 		consumed = skipToNextLine(content, endIdx + endMarker.length);
 	}
