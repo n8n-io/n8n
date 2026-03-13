@@ -455,10 +455,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// __data has $json, $items, etc. as lazy proxies (set in resetDataProxies).
 			const wrappedCode = `(function() { var __result = (function() {\n${code}\n}).call(__data); return __prepareForTransfer(__result); })()`;
 
-			let script = this.scriptCache.get(code);
+			let script = this.scriptCache.get(wrappedCode);
 			if (!script) {
 				script = this.isolate.compileScriptSync(wrappedCode);
-				this.scriptCache.set(code, script);
+				this.scriptCache.set(wrappedCode, script);
 
 				if (this.config.debug) {
 					console.log('[IsolatedVmBridge] Script compiled and cached');
