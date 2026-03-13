@@ -337,7 +337,7 @@ describe('useWorkflowHelpers', () => {
 			const workflowData = await getWorkflowDataToSave();
 
 			// Simulate a node + connection being added to the store after snapshot
-			// but before the HTTP request serializes the data (race condition)
+			// It should not mutate the connections in the saved workflow data (reference sharing)
 			initialConnections['New Node'] = {
 				main: [[{ node: 'Node B', index: 0, type: NodeConnectionTypes.Main }]],
 			};
