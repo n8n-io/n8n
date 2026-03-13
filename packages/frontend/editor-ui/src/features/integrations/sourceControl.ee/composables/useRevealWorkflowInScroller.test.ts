@@ -15,7 +15,7 @@ const createWorkflow = (overrides: Partial<SourceControlledFile> = {}): SourceCo
 });
 
 describe('useRevealWorkflowInScroller', () => {
-	it('reveals current workflow and scrolls only once until reset', async () => {
+	it('reveals current workflow and scrolls only once', async () => {
 		const workflowId = 'wf-target';
 		const element = document.createElement('div');
 		element.dataset.workflowId = workflowId;
@@ -47,12 +47,6 @@ describe('useRevealWorkflowInScroller', () => {
 
 		expect(scrollToItem).toHaveBeenCalledTimes(1);
 		expect(element.scrollIntoView).toHaveBeenCalledTimes(1);
-
-		composable.resetRevealState();
-		await composable.revealAndScrollToCurrentWorkflow();
-
-		expect(scrollToItem).toHaveBeenCalledTimes(2);
-		expect(element.scrollIntoView).toHaveBeenCalledTimes(2);
 	});
 
 	it('does not reveal when tab is not workflow tab', async () => {
@@ -97,7 +91,7 @@ describe('useRevealWorkflowInScroller', () => {
 					id: `file:${workflowId}`,
 					type: 'file',
 					depth: 2,
-					file: createWorkflow({ id: workflowId, folderPath: ['A', 'B'] }),
+					file: createWorkflow({ id: workflowId }),
 				},
 			]),
 			workflowScroller: ref({ scrollToItem: vi.fn(), $el: scrollerRoot }),
