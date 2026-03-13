@@ -37,9 +37,8 @@ export class BubblewrapDriver implements ICommandExecutor, IVolumeManager {
 		}
 
 		args.push('--tmpfs', '/workspace');
-		args.push('--chdir', workspacePath || '/workspace');
+		args.push('--chdir', workspacePath ?? '/workspace');
 
-		// Volume mounts — each gets a --bind or --ro-bind into the sandbox
 		if (volumes && volumes.length > 0) {
 			for (const mount of volumes) {
 				const exists = await this.volumeManager.exists(mount.volumeId);

@@ -34,7 +34,6 @@ export class SecureExec implements INodeType {
 			},
 		],
 		properties: [
-			// ── Resource selector ──
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -52,8 +51,6 @@ export class SecureExec implements INodeType {
 					},
 				],
 			},
-
-			// ── Operation selectors ──
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -106,8 +103,6 @@ export class SecureExec implements INodeType {
 					},
 				],
 			},
-
-			// ── Command: Execute fields ──
 			{
 				displayName: 'Command',
 				name: 'command',
@@ -144,8 +139,7 @@ export class SecureExec implements INodeType {
 				typeOptions: { multipleValues: true },
 				default: {},
 				placeholder: 'Add Volume Mount',
-				description:
-					'Volumes to mount inside the sandbox. Supported by the command-service and bubblewrap drivers. Ignored by other drivers.',
+				description: 'Volumes to mount inside the sandbox',
 				displayOptions: {
 					show: {
 						resource: ['command'],
@@ -201,21 +195,13 @@ export class SecureExec implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Container Image',
-						name: 'containerImage',
-						type: 'string',
-						default: 'ubuntu:24.04',
-						description:
-							'Docker image to use when the Docker driver is active (controlled via N8N_SECURE_EXEC_DRIVER)',
-					},
-					{
 						displayName: 'Working Directory',
 						name: 'workspacePath',
 						type: 'string',
 						default: '',
 						placeholder: '/data/my-workspace',
 						description:
-							'Working directory for command execution inside the sandbox. Defaults to /workspace. For the host driver (no sandbox), this is used as the cwd directly.',
+							'Working directory for command execution inside the sandbox. Defaults to /workspace.',
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -224,13 +210,6 @@ export class SecureExec implements INodeType {
 						type: 'number',
 						default: 30_000,
 						description: 'Maximum time in milliseconds before the command is killed',
-					},
-					{
-						displayName: 'Memory Limit (MB)',
-						name: 'memoryMB',
-						type: 'number',
-						default: 512,
-						description: 'Maximum memory the container may use (Docker only)',
 					},
 					{
 						displayName: 'Environment Variables',
@@ -261,8 +240,6 @@ export class SecureExec implements INodeType {
 					},
 				],
 			},
-
-			// ── Volume: Create fields ──
 			{
 				displayName: 'Volume Name',
 				name: 'volumeName',
@@ -277,8 +254,6 @@ export class SecureExec implements INodeType {
 					},
 				},
 			},
-
-			// ── Volume: Delete fields ──
 			{
 				displayName: 'Volume ID',
 				name: 'volumeId',
@@ -294,22 +269,22 @@ export class SecureExec implements INodeType {
 					},
 				},
 			},
-
-			// ── Volume: List has no extra fields ──
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const driverEnv = process.env.N8N_SECURE_EXEC_DRIVER;
+		if (driverEnv !== 'bubblewrap' && driverEnv !== 'command-service') {
+			throw new NodeOperationError(
+				this.getNode(),
+				"The Secure Exec node requires N8N_SECURE_EXEC_DRIVER to be set to 'bubblewrap' or 'command-service'.",
+			);
+		}
+
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		const { driver, type: activeDriver, isUnsafeFallback } = createDriver();
-
-		if (isUnsafeFallback) {
-			this.logger.warn(
-				'SecureExec: No Docker socket or bwrap found — falling back to direct host execution. Commands run with n8n process permissions.',
-			);
-		}
+		const { driver, type: activeDriver } = createDriver();
 
 		if (driver.initialize) {
 			await driver.initialize();
@@ -354,10 +329,8 @@ async function executeCommand(
 		try {
 			const command = context.getNodeParameter('command', itemIndex) as string;
 			const options = context.getNodeParameter('options', itemIndex, {}) as {
-				containerImage?: string;
 				workspacePath?: string;
 				timeoutMs?: number;
-				memoryMB?: number;
 				envVars?: { variable?: Array<{ name: string; value: string }> };
 			};
 
@@ -385,7 +358,6 @@ async function executeCommand(
 				if (name) env[name] = value;
 			}
 
-			// Parse volume mounts from the UI
 			const volumesParam = context.getNodeParameter('volumes', itemIndex, {}) as {
 				mount?: Array<{ volumeId: string; mountPath: string; readOnly?: boolean }>;
 			};
@@ -397,19 +369,10 @@ async function executeCommand(
 					readOnly: m.readOnly,
 				}));
 
-			// Warn if volumes are specified but the driver doesn't support them
-			if (volumeMounts.length > 0 && !isVolumeManager(driver)) {
-				context.logger.warn(
-					`SecureExec: Volume mounts are ignored by the '${activeDriver}' driver. Use the 'command-service' or 'bubblewrap' driver for volume support.`,
-				);
-			}
-
 			const result = await driver.execute({
 				command,
-				containerImage: options.containerImage,
 				workspacePath: options.workspacePath ?? undefined,
 				timeoutMs: options.timeoutMs,
-				memoryMB: options.memoryMB,
 				env: Object.keys(env).length > 0 ? env : undefined,
 				volumes: volumeMounts.length > 0 ? volumeMounts : undefined,
 			});

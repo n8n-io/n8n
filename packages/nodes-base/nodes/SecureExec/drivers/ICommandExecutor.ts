@@ -15,8 +15,6 @@ export interface ExecutionOptions {
 	workspacePath?: string;
 	timeoutMs?: number;
 	env?: Record<string, string>;
-	memoryMB?: number;
-	containerImage?: string;
 	volumes?: VolumeMount[];
 }
 
@@ -32,11 +30,6 @@ export interface ICommandExecutor {
 	cleanup?(): Promise<void>;
 }
 
-/**
- * Extended interface for drivers that support volume management
- * (e.g. the command-execution-service HTTP driver).
- * Local drivers (Docker, Bubblewrap, Host) do not implement this.
- */
 export interface IVolumeManager {
 	createVolume(name?: string): Promise<VolumeMetadata>;
 	listVolumes(): Promise<VolumeMetadata[]>;

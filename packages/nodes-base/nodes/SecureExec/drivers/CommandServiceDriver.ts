@@ -6,18 +6,9 @@ import type {
 	VolumeMetadata,
 } from './ICommandExecutor';
 
-/**
- * HTTP client driver that delegates command execution and volume management
- * to the @n8n/command-execution-service over HTTP.
- *
- * Unlike local drivers (Docker, Bubblewrap, Host), this driver:
- * - Supports volume mounts (S3-backed persistent volumes)
- * - Implements IVolumeManager for volume CRUD
- * - Runs no local processes — all work happens on the remote service
- */
 export class CommandServiceDriver implements ICommandExecutor, IVolumeManager {
 	constructor(private readonly serviceUrl: string) {
-		// Strip trailing slash for consistent URL construction
+		// Strip trailing slash
 		this.serviceUrl = serviceUrl.replace(/\/+$/, '');
 	}
 
@@ -61,19 +52,7 @@ export class CommandServiceDriver implements ICommandExecutor, IVolumeManager {
 	}
 
 	async deleteVolume(id: string): Promise<void> {
-		await this.request<void>('DELETE', `/volumes/${encodeURIComponent(id)}`);
-	}
-
-	/**
-	 * Verify the command-execution-service is reachable.
-	 */
-	async healthCheck(): Promise<boolean> {
-		try {
-			await this.request<{ status: string }>('GET', '/health');
-			return true;
-		} catch {
-			return false;
-		}
+		await this.request('DELETE', `/volumes/${encodeURIComponent(id)}`);
 	}
 
 	private async request<T>(

@@ -8,25 +8,6 @@ import type { IVolumeManager, VolumeMetadata } from './ICommandExecutor';
 const MANIFEST_FILE = '.n8n-volume.manifest.json';
 const DATA_DIR = 'data';
 
-/**
- * Manages volumes as directories on the local host filesystem.
- * Mirrors the S3-backed VolumesService from @n8n/command-execution-service
- * but stores everything under a configurable local directory.
- *
- * Volume layout on disk:
- * ```
- * <root>/
- *   vol_xxxxxxxxxxxx/
- *     .n8n-volume.manifest.json   ← metadata (id, name, createdAt)
- *     data/                        ← user files (bind-mounted into sandbox)
- *   vol_yyyyyyyyyyyy/
- *     .n8n-volume.manifest.json
- *     data/
- * ```
- *
- * The root directory is read from the `N8N_SECURE_EXEC_VOLUMES_DIR` env var,
- * defaulting to `~/.n8n/secure-exec-volumes/`.
- */
 export class LocalVolumeManager implements IVolumeManager {
 	private readonly rootDir: string;
 
@@ -42,7 +23,6 @@ export class LocalVolumeManager implements IVolumeManager {
 		const volumeDir = join(this.rootDir, id);
 		const dataDir = join(volumeDir, DATA_DIR);
 
-		// Create both the volume directory and its data subdirectory
 		await mkdir(dataDir, { recursive: true });
 
 		const metadata: VolumeMetadata = {
@@ -57,7 +37,6 @@ export class LocalVolumeManager implements IVolumeManager {
 	}
 
 	async listVolumes(): Promise<VolumeMetadata[]> {
-		// Ensure root directory exists before listing
 		await mkdir(this.rootDir, { recursive: true });
 
 		const entries = await readdir(this.rootDir, { withFileTypes: true });
@@ -84,9 +63,6 @@ export class LocalVolumeManager implements IVolumeManager {
 		await rm(volumeDir, { recursive: true, force: true });
 	}
 
-	/**
-	 * Check whether a volume exists by looking for its manifest file.
-	 */
 	async exists(id: string): Promise<boolean> {
 		try {
 			await readFile(join(this.rootDir, id, MANIFEST_FILE));
@@ -96,10 +72,6 @@ export class LocalVolumeManager implements IVolumeManager {
 		}
 	}
 
-	/**
-	 * Returns the absolute host path to a volume's data directory.
-	 * This path is used for bind-mounting into the bwrap sandbox.
-	 */
 	getDataPath(id: string): string {
 		return join(this.rootDir, id, DATA_DIR);
 	}
