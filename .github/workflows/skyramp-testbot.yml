@@ -41,3 +41,10 @@ jobs:
           health_check_command: "curl -f http://localhost:5678/healthz"
           health_check_timeout: 60
           auth_token_command: "./deployment-testbot/get-token.sh"
+
+          test_directory: "skyramp-tests"
+          auto_commit: true
+          post_pr_comment: true
+          enable_debug: true
+          commit_message: "TestBot: update tests for Prefect"
+          skyramp_mcp_version: next

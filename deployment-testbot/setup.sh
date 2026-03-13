@@ -2,11 +2,19 @@
 set -e
 
 # TestBot Setup Script for n8n
-# This script starts n8n service
+# This script builds n8n from source and starts the service
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "Current directory: $(pwd)"
+cd "$ROOT_DIR"
+echo "Building n8n from source in $ROOT_DIR..."
+N8N_SKIP_LICENSES=true node scripts/build-n8n.mjs
+
+cd "$SCRIPT_DIR"
+echo "Building Docker image..."
+docker compose build
+
 echo "Starting n8n service..."
 docker compose up -d
 
