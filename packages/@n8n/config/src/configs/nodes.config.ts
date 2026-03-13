@@ -66,4 +66,14 @@ export class NodesConfig {
 	 */
 	@Env('N8N_SECURE_EXEC_COMMAND_SERVICE_URL')
 	secureExecCommandServiceUrl: string = '';
+
+	/**
+	 * Additional host paths to bind-mount read-only into the bubblewrap sandbox.
+	 * Useful when CLI tools (e.g. `claude`) are installed outside the standard
+	 * system paths (`/usr`, `/bin`, `/lib`, etc.).
+	 * JSON array of absolute paths.
+	 * @example '["/home/user/.local/bin", "/opt/tools"]'
+	 */
+	@Env('N8N_SECURE_EXEC_EXTRA_BIND_PATHS')
+	secureExecExtraBindPaths: JsonStringArray = [];
 }

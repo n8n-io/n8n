@@ -1,3 +1,6 @@
+import { NodesConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+
 import { BubblewrapDriver } from './drivers/BubblewrapDriver';
 import { CommandServiceDriver } from './drivers/CommandServiceDriver';
 import { CommandServiceVolumeManager } from './drivers/CommandServiceVolumeManager';
@@ -15,7 +18,8 @@ export interface DriverSelection {
 const SUPPORTED_DRIVERS: readonly DriverType[] = ['bubblewrap', 'command-service'];
 
 export function createDriver(): DriverSelection {
-	const requested = process.env.N8N_SECURE_EXEC_DRIVER;
+	const nodesConfig = Container.get(NodesConfig);
+	const requested = nodesConfig.secureExecDriver;
 
 	if (!requested || !SUPPORTED_DRIVERS.includes(requested as DriverType)) {
 		throw new Error(
@@ -26,7 +30,7 @@ export function createDriver(): DriverSelection {
 
 	switch (requested as DriverType) {
 		case 'command-service': {
-			const serviceUrl = process.env.N8N_SECURE_EXEC_COMMAND_SERVICE_URL;
+			const serviceUrl = nodesConfig.secureExecCommandServiceUrl;
 			if (!serviceUrl) {
 				throw new Error(
 					'N8N_SECURE_EXEC_COMMAND_SERVICE_URL must be set when using the command-service driver',
@@ -40,7 +44,7 @@ export function createDriver(): DriverSelection {
 		}
 		case 'bubblewrap':
 			return {
-				driver: new BubblewrapDriver(),
+				driver: new BubblewrapDriver(nodesConfig.secureExecExtraBindPaths),
 				volumeManager: new LocalVolumeManager(),
 				type: 'bubblewrap',
 			};

@@ -1,3 +1,5 @@
+import { NodesConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -6,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { createDriver } from './DriverFactory';
+import { createDriver, type DriverType } from './DriverFactory';
 import type { ICommandExecutor, IVolumeManager, VolumeMount } from './drivers/ICommandExecutor';
 
 export class SecureExec implements INodeType {
@@ -273,8 +275,9 @@ export class SecureExec implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const driverEnv = process.env.N8N_SECURE_EXEC_DRIVER;
-		if (driverEnv !== 'bubblewrap' && driverEnv !== 'command-service') {
+		const nodesConfig = Container.get(NodesConfig);
+		const supportedDrivers: DriverType[] = ['bubblewrap', 'command-service'];
+		if (!supportedDrivers.includes(nodesConfig.secureExecDriver as DriverType)) {
 			throw new NodeOperationError(
 				this.getNode(),
 				"The Secure Exec node requires N8N_SECURE_EXEC_DRIVER to be set to 'bubblewrap' or 'command-service'.",

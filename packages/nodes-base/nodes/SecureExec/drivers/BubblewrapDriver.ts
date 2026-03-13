@@ -4,10 +4,12 @@ import type { ExecutionOptions, ExecutionResult, ICommandExecutor } from './ICom
 import { LocalVolumeManager } from './LocalVolumeManager';
 
 // Read-only host paths to expose inside the sandbox so common tools are available
-const RO_BIND_PATHS = ['/usr', '/lib', '/lib64', '/bin', '/sbin', '/etc/alternatives'];
+const RO_BIND_PATHS = ['/usr', '/lib', '/lib64', '/bin', '/sbin', '/etc'];
 
 export class BubblewrapDriver implements ICommandExecutor {
 	private readonly volumeManager = new LocalVolumeManager();
+
+	constructor(private readonly extraBindPaths: string[] = []) {}
 
 	async execute(options: ExecutionOptions): Promise<ExecutionResult> {
 		const { command, workspacePath, timeoutMs = 30_000, env, volumes } = options;
@@ -27,6 +29,10 @@ export class BubblewrapDriver implements ICommandExecutor {
 		];
 
 		for (const path of RO_BIND_PATHS) {
+			args.push('--ro-bind-try', path, path);
+		}
+
+		for (const path of this.extraBindPaths) {
 			args.push('--ro-bind-try', path, path);
 		}
 

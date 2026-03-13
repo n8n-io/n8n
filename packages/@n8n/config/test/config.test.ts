@@ -172,6 +172,7 @@ describe('GlobalConfig', () => {
 			secureExecDockerImage: 'ubuntu:24.04',
 			secureExecTimeoutMs: 30_000,
 			secureExecCommandServiceUrl: '',
+			secureExecExtraBindPaths: [],
 		},
 		publicApi: {
 			disabled: false,
