@@ -504,6 +504,7 @@ function onOptionMouseEnter(idx: number) {
 					<!-- Text input -->
 					<N8nInput
 						v-else-if="currentQuestion.type === 'text'"
+						:class="$style.textareaInput"
 						:model-value="currentAnswer.customText"
 						type="textarea"
 						:rows="3"
@@ -697,7 +698,7 @@ function onOptionMouseEnter(idx: number) {
 .somethingElseRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	justify-items: space-between;
 	padding: var(--spacing--3xs) var(--spacing--2xs);
 	border-radius: var(--radius--lg);
 	transition: background-color 0.15s ease;
@@ -707,6 +708,17 @@ function onOptionMouseEnter(idx: number) {
 	&:hover,
 	&.highlighted {
 		background-color: var(--background--surface--hover);
+	}
+
+	.somethingElseInput {
+		> * {
+			box-shadow: none;
+			outline: none;
+			background-color: transparent;
+		}
+		input {
+			font-size: var(--font-size--sm);
+		}
 	}
 
 	&.activeSelected {
@@ -719,13 +731,17 @@ function onOptionMouseEnter(idx: number) {
 		.pencilIcon {
 			color: white;
 		}
-		input {
-			background-color: transparent;
-			color: white;
-			outline: none;
+		.somethingElseInput {
+			background-color: var(--color--primary);
 
-			&::placeholder {
-				color: rgba(255, 255, 255, 0.7);
+			input {
+				background-color: var(--color--primary);
+				color: white;
+				outline: none;
+
+				&::placeholder {
+					color: rgba(255, 255, 255, 0.7);
+				}
 			}
 		}
 	}
@@ -751,6 +767,7 @@ function onOptionMouseEnter(idx: number) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	min-width: var(--spacing--lg);
 	width: var(--spacing--lg);
 	height: var(--spacing--lg);
 	border-radius: var(--radius);
@@ -760,29 +777,6 @@ function onOptionMouseEnter(idx: number) {
 .pencilIcon {
 	color: var(--color--text--tint-1);
 	flex-shrink: 0;
-}
-
-.somethingElseInput {
-	flex: 1;
-	outline: none;
-	border: 0;
-
-	input {
-		padding: 0 !important;
-	}
-
-	:global(.el-input__wrapper) {
-		box-shadow: none !important;
-		background-color: transparent;
-
-		&:hover {
-			box-shadow: 0 0 0 1px var(--color--foreground) inset !important;
-		}
-
-		&:focus-within {
-			box-shadow: 0 0 0 1px var(--color--primary) inset !important;
-		}
-	}
 }
 
 .footer {
@@ -829,6 +823,14 @@ function onOptionMouseEnter(idx: number) {
 	display: flex;
 	gap: var(--spacing--2xs);
 	min-height: 28px;
+}
+
+.textareaInput {
+	textarea {
+		height: 5lh;
+		resize: none;
+		overflow-y: auto;
+	}
 }
 
 /* Question fade transition */
