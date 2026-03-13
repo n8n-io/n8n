@@ -259,6 +259,12 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			expect(evaluator.evaluate('{{ "hello" }}', data)).toBe('hello');
 		});
 
+		it('should return null for invalid DateTime', () => {
+			const data = { $json: {} };
+			const result = evaluator.evaluate('{{ DateTime.invalid("test") }}', data);
+			expect(result).toBeNull();
+		});
+
 		it('should preserve Date objects (structured-cloneable)', () => {
 			const data = { $json: {} };
 			const result = evaluator.evaluate('{{ new Date(2024, 0, 15) }}', data);

@@ -19,12 +19,15 @@ export function __prepareForTransfer(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value !== 'object') return value;
 
-	// Luxon DateTime -> ISO string
-	if ((value as any).isLuxonDateTime) return (value as any).toISO();
-	// Luxon Duration -> ISO string (e.g., "PT1H30M")
-	if ((value as any).isLuxonDuration) return (value as any).toISO();
-	// Luxon Interval -> ISO string (e.g., "2024-01-01T00:00/2024-01-02T00:00")
-	if ((value as any).isLuxonInterval) return (value as any).toISO();
+	// Luxon DateTime -> ISO string (toISO() returns null for invalid DateTime)
+	if ((value as any).isLuxonDateTime) return (value as any).toISO() ?? null;
+	// Luxon Duration -> ISO string (toISO() returns null for invalid Duration)
+	if ((value as any).isLuxonDuration) return (value as any).toISO() ?? null;
+	// Luxon Interval -> ISO string (toISO() returns "Invalid Interval" for invalid Interval)
+	if ((value as any).isLuxonInterval) {
+		const iso = (value as any).toISO();
+		return iso === 'Invalid Interval' ? null : iso;
+	}
 
 	// Array — walk elements
 	if (Array.isArray(value)) return value.map(__prepareForTransfer);
