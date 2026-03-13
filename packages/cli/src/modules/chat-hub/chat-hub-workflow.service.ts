@@ -69,12 +69,7 @@ import {
 } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
-import {
-	EMBEDDINGS_NODE_TYPE_MAP,
-	parseMessage,
-	collectChatArtifacts,
-	appendChunkToParsedMessageItems,
-} from '@n8n/chat-hub';
+import { EMBEDDINGS_NODE_TYPE_MAP, parseMessage, collectChatArtifacts } from '@n8n/chat-hub';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 
 @Service()
@@ -607,7 +602,7 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	getSystemMessageMetadata(timeZone: string) {
+	getSystemMessageMetadata(timeZone: string, history: ChatHubMessage[]) {
 		if (inE2ETests) {
 			return '__e2e_system_prompt_placeholder__';
 		}
@@ -628,86 +623,84 @@ When you need to reference "now", use this date and time.
 You are allowed to describe, explain and analyze provided multimedia data if you're capable of, but not allowed to create, generate, edit, or display images, videos, or other non-text content.
 If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.
 
-## Document Generation
+## Artifacts
 
-You can create and edit documents for the user using special heredoc-style commands.
-When you use these commands, documents appear in a side panel next to this chat where users can view them in real-time.
-You can create multiple documents in a conversation, and users can switch between them using a dropdown selector.
+You can create and edit text-based artifacts for the user using special heredoc-style commands.
+When you use these commands, artifacts appear in a side panel next to this chat where users can view them in real-time.
+You can create multiple artifacts in a conversation, and users can switch between them using a dropdown selector.
 
 Write these commands DIRECTLY in your response at the start of a new line - do NOT wrap them in code fences or backticks.
 
-### Creating a Document
+### Creating an Artifact
 
-To create a new document, write the opening command at the start of a new line, then the content, then the end marker on its own line.
-Choose a short unique token for end= that you are confident will not appear verbatim as its own line in the content (e.g. END_A7X, END_K9M — a few random uppercase letters after END_ works well).
+To create a new artifact, write the opening command at the start of a new line, then the content, then the end marker on its own line.
+Choose a short unique token for end= that you are confident will not appear verbatim as its own line in the content (e.g. DELIM_A7X, DELIM_K9M — a few random uppercase letters after DELIM_ works well).
 
-@@artifact-create title="Document Title" type="md" end="END_XYZ"
-Document content here...
-@@end:END_XYZ
+@@artifact-create title="Artifact Title" type="md" end="DELIM_XYZ"
+Artifact content here...
+@@end:DELIM_XYZ
 
 The type can be:
-- html for HTML documents
-- md for Markdown documents
+- html for HTML artifacts
+- md for Markdown artifacts
 - A code language like typescript, python, json, etc. for code files
 
 Example response:
-"I'll create an RFC document for you.
+> I'll create an RFC artifact for you.
+> 
+> @@artifact-create title="Sample API response" type="json" end="DELIM_A7X"
+> {
+>   "statusText": "success"
+> }
+> @@end:DELIM_A7X
+> 
+> I've created the RFC above. Let me know if you'd like any changes!
 
-@@artifact-create title="RFC: New Feature" type="md" end="END_A7X"
-# RFC: New Feature
+### Editing an Artifact
 
-## Summary
-This feature will...
-@@end:END_A7X
+Use the command below:
 
-I've created the RFC above. Let me know if you'd like any changes!"
+@@artifact-edit title="Artifact Title" replaceAll="false" end="DELIM_XYZ"
+pattern
+@@sep:DELIM_XYZ
+replacement
+@@end:DELIM_XYZ
 
-### Editing a Document
-
-To make targeted edits to a document, write the old text, then the separator on its own line, then the replacement text, then the end marker on its own line.
-Use the same end= token strategy as for creating documents.
-
-@@artifact-edit title="Document Title" replaceAll="false" end="END_XYZ"
-text to find
-@@sep:END_XYZ
-replacement text
-@@end:END_XYZ
-
-- title must match the exact title of an existing document.
+- title and pattern must match the exact title and occurrence of an existing artifact.
 - Set replaceAll to true to replace all occurrences, or false to replace only the first occurrence.
-- If the document title doesn't exist, the edit command will be ignored.
-- Both old and new text can span multiple lines.
+- Both pattern and replacement can span multiple lines.
+- To replace different patterns, use the command multiple times. You CANNOT specify multiple patterns in a single command.
 
-For the old text, use the shortest unique substring that pinpoints the location — avoid copying large blocks from memory. The shorter and more distinctive the string, the less chance of a mismatch.
-If you are not confident you can reproduce the exact text, use the "Get Document" tool to retrieve the current content first, then rewrite the whole document using @@artifact-create with the same title.
-
-Each new document must have a title that is unique within the conversation — do not reuse a title unless you intentionally want to replace that document entirely.
+For the pattern text, use the shortest unique substring that pinpoints the location — avoid copying large blocks from memory.
+The shorter and more distinctive the string, the less chance of a mismatch.
+If you are not confident you can reproduce the exact text, rewrite the whole artifact using @@artifact-create with the same title.
 
 Example edit:
-"I'll update the summary section.
+> I'll change keys from camel case to lower case.
+> 
+> @@artifact-edit title="Sample API response" replaceAll="false" end="DELIM_K9M"
+> statusText
+> @@sep:DELIM_K9M
+> status_text
+> @@end:DELIM_K9M
+> 
+> Done!
 
-@@artifact-edit title="RFC: New Feature" replaceAll="false" end="END_K9M"
-This feature will...
-@@sep:END_K9M
-This updated feature will...
-@@end:END_K9M
+### Important Note
 
-Done!"
-
-IMPORTANT:
 - Write these commands at the start of a new line in your response, NOT inside code blocks or fences.
-- ALWAYS include conversational text before and/or after document commands. Never send a message with only commands and no explanation.
-- Answer user's questions in chat by default. Create a document only when the user asked for a report, write-up or other documents that they might want to iterate on.
+- ALWAYS include conversational text before and/or after artifact commands. Never send a message with only commands and no explanation.
+- Answer user's questions in chat by default. Create an artifact only when the user asked for a report, write-up or other artifacts that they might want to iterate on.
 - When creating an HTML, start with the markup and add styles at the end. JavaScript is not allowed.
-`;
+- Each new artifact must have a title that is unique within the conversation — do not reuse a title unless you intentionally want to replace that artifact entirely.
+
+${this.buildCurrentArtifactList(history)}`;
 	}
 
 	private getBaseSystemMessage(history: ChatHubMessage[], timeZone: string) {
-		const artifactContext = this.buildArtifactContext(history);
-
 		return `You are a helpful assistant.
 
-${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
+${this.getSystemMessageMetadata(timeZone, history)}`;
 	}
 
 	private buildToolsAgentNode(
@@ -942,13 +935,6 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 
 		const messages = history.slice().reverse(); // Traversing messages from last to prioritize newer attachments
 
-		// Track whether we've seen a command in AI messages yet (messages are in reverse order).
-		// The most recent command keeps its full @@command content to help LLMs understand the context.
-		// All prior commands in AI messages stripped – the current document
-		// state is already injected into the system prompt, so re-sending the full command
-		// history wastes tokens.
-		let isCommandSeen = false;
-
 		for (const message of messages) {
 			// Empty messages can't be restored by the memory manager
 			if (message.content.length === 0) {
@@ -960,32 +946,19 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 
 			// TODO: Tool messages etc?
 
-			let content = message.content;
-			if (message.type === 'ai') {
-				const stripped = this.stripArtifactCommands(message.content);
-
-				if (stripped) {
-					if (isCommandSeen) {
-						content = stripped;
-					} else {
-						isCommandSeen = true;
-					}
-				}
-			}
-
-			const textSize = content.length;
+			const textSize = message.content.length;
 			currentTotalSize += textSize;
 
 			if (attachments.length === 0) {
 				messageValues.push({
 					type,
-					message: content,
+					message: message.content,
 					hideFromUI: false,
 				});
 				continue;
 			}
 
-			const blocks: ContentBlock[] = [{ type: 'text', text: content }];
+			const blocks: ContentBlock[] = [{ type: 'text', text: message.content }];
 
 			// Add attachments if within size limit
 			for (const attachment of attachments) {
@@ -1327,20 +1300,19 @@ Respond the title only:`,
 			throw new BadRequestError('Credentials not set for agent');
 		}
 
-		const artifactContext = this.buildArtifactContext(history);
+		const model: ChatHubBaseLLMModel = {
+			provider: agent.provider,
+			model: agent.model,
+		};
+
 		const systemMessage = [
 			'Combine provided tools and knowledge to answer questions.',
-			this.getSystemMessageMetadata(timeZone) + artifactContext,
+			this.getSystemMessageMetadata(timeZone, history),
 			this.buildCustomInstructionsContext(agent.systemPrompt),
 			this.buildFileKnowledgeContext(agent.files),
 		]
 			.filter(Boolean)
 			.join('\n\n');
-
-		const model: ChatHubBaseLLMModel = {
-			provider: agent.provider,
-			model: agent.model,
-		};
 
 		const credentials: INodeCredentials = {
 			[PROVIDER_CREDENTIAL_TYPE_MAP[agent.provider]]: {
@@ -1510,55 +1482,23 @@ Use the vector store tool to search the content of these files when answering qu
 Do not proactively mention these files to the user.`;
 	}
 
-	private stripArtifactCommands(content: string): string | undefined {
-		const chunks = appendChunkToParsedMessageItems([], content);
-
-		const newChunks = [];
-		let isStripped = false;
-
-		for (const chunk of chunks) {
-			if (chunk.type === 'artifact-create' || chunk.type === 'artifact-edit') {
-				isStripped = true;
-			} else {
-				newChunks.push(chunk);
-			}
-		}
-
-		if (!isStripped) {
-			return undefined;
-		}
-
-		return newChunks
-			.map((chunk) => chunk.content)
-			.join('')
-			.trim();
-	}
-
-	private buildArtifactContext(history: ChatHubMessage[]): string {
+	private buildCurrentArtifactList(history: ChatHubMessage[]): string {
 		const artifacts = collectChatArtifacts(history.flatMap(parseMessage));
 		if (artifacts.length === 0) {
 			return '';
 		}
 
 		// Multiple artifacts - show all of them
-		const artifactsText = artifacts
+		return artifacts
 			.map(
 				(artifact, index) => `
 
-### Document ${index + 1}: ${artifact.title} (type: ${artifact.type})
+### Artifact ${index + 1}: ${artifact.title} (type: ${artifact.type})
 
 ${artifact.content}
 `,
 			)
 			.join('\n');
-
-		return `
-
-## Current Documents
-
-${artifactsText}
-
-You can update the most recent document using the commands described above, or create a new document.`;
 	}
 
 	private buildVectorStoreNodes(agentId: string, options: SemanticSearchOptions): INode[] {
