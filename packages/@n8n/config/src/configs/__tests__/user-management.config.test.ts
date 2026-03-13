@@ -2,13 +2,6 @@ import { Container } from '@n8n/di';
 
 import { UserManagementConfig } from '../user-management.config';
 
-const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
-const getUserManagementConfig = (env: Record<string, string> = {}) => {
-	process.env = env;
-	return Container.get(UserManagementConfig);
-};
-
 describe('UserManagementConfig', () => {
 	beforeEach(() => {
 		Container.reset();
@@ -20,13 +13,72 @@ describe('UserManagementConfig', () => {
 		process.env = originalEnv;
 	});
 
-	it('should warn on invalid jwt refresh timeout and fall back to default', () => {
-		const config = getUserManagementConfig({
+	test('with refresh timout > session, sets refresh timout to `0`', () => {
+		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+		process.env = {
+			N8N_USER_MANAGEMENT_JWT_DURATION_HOURS: '1',
+			N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS: '2',
+		};
+
+		const config = Container.get(UserManagementConfig);
+
+		expect(config.jwtRefreshTimeoutHours).toBe(0);
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to be smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0.',
+		);
+
+		consoleWarnSpy.mockRestore();
+	});
+
+	test('with refresh timout == session, sets refresh timout to `0`', () => {
+		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+		process.env = {
+			N8N_USER_MANAGEMENT_JWT_DURATION_HOURS: '1',
+			N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS: '1',
+		};
+
+		const config = Container.get(UserManagementConfig);
+
+		expect(config.jwtRefreshTimeoutHours).toBe(0);
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to be smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0.',
+		);
+
+		consoleWarnSpy.mockRestore();
+	});
+
+	test('with refresh timout < session, keeps refresh timout intact', () => {
+		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+		process.env = {
+			N8N_USER_MANAGEMENT_JWT_DURATION_HOURS: '10',
+			N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS: '5',
+		};
+
+		const config = Container.get(UserManagementConfig);
+
+		expect(config.jwtRefreshTimeoutHours).toBe(5);
+		expect(consoleWarnSpy).not.toHaveBeenCalled();
+
+		consoleWarnSpy.mockRestore();
+	});
+
+	test('with invalid refresh timeout, sets refresh timeout to `0` and warns', () => {
+		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+		process.env = {
 			N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS: 'abcd',
-		});
-		expect(config.jwtRefreshTimeoutHours).toEqual(0);
-		expect(consoleWarnMock).toHaveBeenCalledWith(
+		};
+
+		const config = Container.get(UserManagementConfig);
+
+		expect(config.jwtRefreshTimeoutHours).toBe(0);
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
 			'Invalid number value for N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS: abcd',
 		);
+
+		consoleWarnSpy.mockRestore();
 	});
 });
