@@ -68,6 +68,10 @@ class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_NAME_LABEL')
 	includeWorkflowNameLabel: boolean = false;
 
+	/** Whether to include a histogram metric for workflow execution duration. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_EXECUTION_DURATION')
+	includeWorkflowExecutionDuration: boolean = true;
+
 	/** Whether to include workflow execution statistics as metrics. */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_STATISTICS')
 	includeWorkflowStatistics: boolean = false;

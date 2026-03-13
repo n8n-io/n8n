@@ -214,6 +214,7 @@ describe('GlobalConfig', () => {
 				includeCredentialTypeLabel: false,
 				includeApiStatusCodeLabel: false,
 				includeQueueMetrics: false,
+				includeWorkflowExecutionDuration: true,
 				queueMetricsInterval: 20,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
