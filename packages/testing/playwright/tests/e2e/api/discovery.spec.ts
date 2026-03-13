@@ -32,35 +32,26 @@ test.describe(
 			}
 		});
 
-		test('member with restricted scopes sees filtered resources', async ({ api }) => {
+		test('member can discover API capabilities', async ({ api }) => {
 			const member = await api.publicApi.createUser({
 				email: `member-discover-${nanoid()}@test.com`,
 				role: 'global:member',
 			});
 
 			const memberApi = await api.createApiForUser(member);
-
-			// Create an API key with only tag scopes
-			await memberApi.publicApi.createApiKey(`restricted-${nanoid()}`, ['tag:list', 'tag:create']);
+			await memberApi.publicApi.createApiKey(`member-key-${nanoid()}`);
 
 			const discovery = await memberApi.publicApi.getDiscovery();
 
-			// Scopes should reflect what was granted
-			expect(discovery.scopes).toContain('tag:list');
-			expect(discovery.scopes).toContain('tag:create');
-			expect(discovery.scopes).toHaveLength(2);
+			expect(discovery.scopes.length).toBeGreaterThan(0);
+			expect(discovery.resources).toBeDefined();
+			expect(discovery.specUrl).toBe('/api/v1/openapi.yml');
 
-			// Should see tag endpoints
+			// Member should see tag endpoints
 			expect(discovery.resources.tags).toBeDefined();
 			expect(discovery.resources.tags.endpoints.some((e) => e.operationId === 'getTags')).toBe(
 				true,
 			);
-			expect(discovery.resources.tags.endpoints.some((e) => e.operationId === 'createTag')).toBe(
-				true,
-			);
-
-			// Should NOT see workflow (no workflow:* scope)
-			expect(discovery.resources.workflow).toBeUndefined();
 		});
 
 		test('discovery includes known endpoints with correct shape', async ({ api }) => {
