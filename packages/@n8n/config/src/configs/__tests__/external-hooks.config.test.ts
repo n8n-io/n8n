@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import { GlobalConfig } from '../../index';
 
 const getExternalHookFiles = (env: Record<string, string> = {}) => {
-	process.env = env;
+	jest.replaceProperty(process, 'env', env);
 	return Container.get(GlobalConfig).externalHooks.files;
 };
 
@@ -12,9 +12,8 @@ describe('ExternalHooksConfig', () => {
 		Container.reset();
 	});
 
-	const originalEnv = process.env;
 	afterEach(() => {
-		process.env = originalEnv;
+		jest.restoreAllMocks();
 	});
 
 	it('should split by colon separator by default', () => {
