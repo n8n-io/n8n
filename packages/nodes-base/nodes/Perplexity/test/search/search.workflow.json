@@ -10,6 +10,8 @@
 		},
 		{
 			"parameters": {
+				"resource": "search",
+				"operation": "search",
 				"query": "latest AI developments",
 				"requestOptions": {}
 			},

@@ -10,6 +10,8 @@
 		},
 		{
 			"parameters": {
+				"resource": "agent",
+				"operation": "createResponse",
 				"model": {
 					"__rl": true,
 					"value": "openai/gpt-5.2",
