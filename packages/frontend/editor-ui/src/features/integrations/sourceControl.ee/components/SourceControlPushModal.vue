@@ -15,6 +15,7 @@ import type {
 	ProjectSharingData,
 } from '@/features/collaboration/projects/projects.types';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
+import { useRevealWorkflowInScroller } from '../composables/useRevealWorkflowInScroller';
 import { useSourceControlFileList } from '../composables/useSourceControlFileList';
 import { useWorkflowTreeRows } from '../composables/useWorkflowTreeRows';
 import {
@@ -384,9 +385,13 @@ const sortedWorkflows = useSourceControlFileList({
 	},
 });
 
+const activeTab = ref<
+	| typeof SOURCE_CONTROL_FILE_TYPE.workflow
+	| typeof SOURCE_CONTROL_FILE_TYPE.credential
+	| typeof SOURCE_CONTROL_FILE_TYPE.datatable
+>(SOURCE_CONTROL_FILE_TYPE.workflow);
+
 const workflowScroller = ref<{ scrollToItem: (index: number) => void; $el?: Element } | null>(null);
-const hasScrolledCurrentWorkflow = ref(false);
-const isRevealInProgress = ref(false);
 
 const {
 	workflowTreeRows,
@@ -397,68 +402,17 @@ const {
 	getAncestorFolderIdsForWorkflow,
 } = useWorkflowTreeRows(sortedWorkflows);
 
-async function animationFrame() {
-	await new Promise<void>((resolve) => {
-		if (typeof requestAnimationFrame === 'function') {
-			requestAnimationFrame(() => resolve());
-			return;
-		}
-
-		setTimeout(resolve, 0);
-	});
-}
-
-function getCurrentWorkflowRowElement(workflowId: string): HTMLElement | null {
-	const scrollerRoot = workflowScroller.value?.$el;
-	if (!(scrollerRoot instanceof Element)) {
-		return null;
-	}
-
-	return scrollerRoot.querySelector<HTMLElement>(`[data-workflow-id="${workflowId}"]`);
-}
-
-async function revealAndScrollToCurrentWorkflow() {
-	const isWorkflowTab = activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow;
-
-	if (
-		isRevealInProgress.value ||
-		hasScrolledCurrentWorkflow.value ||
-		!isWorkflowTab ||
-		!changes.value.currentWorkflow ||
-		isLoading.value
-	) {
-		return;
-	}
-
-	isRevealInProgress.value = true;
-	try {
-		const currentWorkflowId = changes.value.currentWorkflow.id;
-		expandFolders(getAncestorFolderIdsForWorkflow(currentWorkflowId));
-
-		for (let attempt = 0; attempt < 6; attempt++) {
-			const visibleIndex = visibleWorkflowRows.value.findIndex(
-				(row) => row.type === 'file' && row.file.id === currentWorkflowId,
-			);
-			const scroller = workflowScroller.value;
-
-			if (visibleIndex >= 0 && scroller) {
-				scroller.scrollToItem(visibleIndex);
-				await animationFrame();
-
-				const workflowRowElement = getCurrentWorkflowRowElement(currentWorkflowId);
-				if (!workflowRowElement) {
-					continue;
-				}
-
-				workflowRowElement.scrollIntoView({ block: 'center', inline: 'nearest' });
-				hasScrolledCurrentWorkflow.value = true;
-				return;
-			}
-		}
-	} finally {
-		isRevealInProgress.value = false;
-	}
-}
+const { revealAndScrollToCurrentWorkflow } = useRevealWorkflowInScroller({
+	visibleWorkflowRows,
+	workflowScroller,
+	activeTab,
+	workflowTabValue: SOURCE_CONTROL_FILE_TYPE.workflow,
+	currentWorkflowId: computed(() => changes.value.currentWorkflow?.id),
+	isLoading,
+	expandAncestorFolders: (workflowId) => {
+		expandFolders(getAncestorFolderIdsForWorkflow(workflowId));
+	},
+});
 
 const folderChildrenMap = computed(() => {
 	const childrenByFolderId = new Map<string, string[]>();
@@ -707,12 +661,6 @@ watch(
 watch(refDebounced(search, 500), (term) => {
 	telemetry.track('User searched workflows in commit modal', { search: term });
 });
-
-const activeTab = ref<
-	| typeof SOURCE_CONTROL_FILE_TYPE.workflow
-	| typeof SOURCE_CONTROL_FILE_TYPE.credential
-	| typeof SOURCE_CONTROL_FILE_TYPE.datatable
->(SOURCE_CONTROL_FILE_TYPE.workflow);
 
 const allVisibleItemsSelected = computed(() => {
 	if (!activeSelection.value.size) {

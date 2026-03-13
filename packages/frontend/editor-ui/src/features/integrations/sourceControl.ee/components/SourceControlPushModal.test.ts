@@ -311,7 +311,7 @@ describe('SourceControlPushModal', () => {
 
 		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
-		const { getAllByTestId, getByText } = renderModal({
+		const { getAllByTestId, getByText, getByRole } = renderModal({
 			pinia,
 			props: {
 				data: {
@@ -330,24 +330,23 @@ describe('SourceControlPushModal', () => {
 			expect(getAllByTestId('source-control-push-modal-folder-checkbox')).toHaveLength(1);
 		});
 
-		const fileCheckboxes = getAllByTestId('source-control-push-modal-file-checkbox');
 		const folderCheckbox = getAllByTestId('source-control-push-modal-folder-checkbox')[0];
 
-		expect(fileCheckboxes[0]).not.toBeChecked();
-		expect(fileCheckboxes[1]).not.toBeChecked();
-		expect(fileCheckboxes[2]).not.toBeChecked();
+		expect(getByRole('checkbox', { name: /Root workflow/i })).not.toBeChecked();
+		expect(getByRole('checkbox', { name: /Child workflow 1/i })).not.toBeChecked();
+		expect(getByRole('checkbox', { name: /Child workflow 2/i })).not.toBeChecked();
 
 		await userEvent.click(folderCheckbox);
 
-		expect(fileCheckboxes[0]).not.toBeChecked();
-		expect(fileCheckboxes[1]).toBeChecked();
-		expect(fileCheckboxes[2]).toBeChecked();
+		expect(getByRole('checkbox', { name: /Root workflow/i })).not.toBeChecked();
+		expect(getByRole('checkbox', { name: /Child workflow 1/i })).toBeChecked();
+		expect(getByRole('checkbox', { name: /Child workflow 2/i })).toBeChecked();
 
 		await userEvent.click(folderCheckbox);
 
-		expect(fileCheckboxes[0]).not.toBeChecked();
-		expect(fileCheckboxes[1]).not.toBeChecked();
-		expect(fileCheckboxes[2]).not.toBeChecked();
+		expect(getByRole('checkbox', { name: /Root workflow/i })).not.toBeChecked();
+		expect(getByRole('checkbox', { name: /Child workflow 1/i })).not.toBeChecked();
+		expect(getByRole('checkbox', { name: /Child workflow 2/i })).not.toBeChecked();
 	});
 
 	it('should collapse and expand nested folder workflows', async () => {
