@@ -1,0 +1,79 @@
+ARG NODE_VERSION=22.16
+
+# Build stage
+FROM node:${NODE_VERSION}-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++ git
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY patches ./patches
+COPY scripts ./scripts
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
+
+# Copy all packages
+COPY packages ./packages
+
+# Install dependencies (skip prepare scripts for Docker build)
+RUN pnpm install --frozen-lockfile --ignore-scripts
+
+# Rebuild native modules
+RUN cd node_modules/sqlite3 && npm rebuild || true
+RUN cd node_modules/isolated-vm && npm rebuild || true
+
+# Run postinstall scripts for packages that need them (excluding prepare)
+RUN pnpm rebuild esbuild @swc/core sharp
+
+# Build all packages
+RUN pnpm build
+
+# Production stage
+FROM node:${NODE_VERSION}-alpine
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    tini \
+    su-exec \
+    python3 \
+    make \
+    g++
+
+WORKDIR /home/node
+
+# Copy built application from builder
+COPY --from=builder --chown=node:node /app/packages/cli /usr/local/lib/node_modules/n8n
+
+# Rebuild native modules for production
+RUN cd /usr/local/lib/node_modules/n8n && \
+    npm rebuild sqlite3 isolated-vm
+
+# Create symlink
+RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n
+
+# Create data directory
+RUN mkdir -p /home/node/.n8n && \
+    chown -R node:node /home/node
+
+# Copy entrypoint
+COPY docker/images/n8n/docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
+
+# Environment
+ENV NODE_ENV=production \
+    N8N_RELEASE_TYPE=stable
+
+EXPOSE 5678
+
+USER node
+
+ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
+
+LABEL org.opencontainers.image.title="n8n-operaro" \
+      org.opencontainers.image.description="n8n Workflow Automation - Operaro Custom Build" \
+      org.opencontainers.image.version="2.12.1"

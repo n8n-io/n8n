@@ -30,10 +30,13 @@
 !package.json
 !pnpm-lock.yaml
 !pnpm-workspace.yaml
+!turbo.json
 !patches
 !patches/**
 !scripts
 !scripts/**
+!packages
+!packages/**
 !packages/@n8n/benchmark
 !packages/@n8n/benchmark/**
 !packages/@n8n/typescript-config
