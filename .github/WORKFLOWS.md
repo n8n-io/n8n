@@ -422,7 +422,6 @@ Workflows with `workflow_call` trigger:
 | `test-e2e-ci-reusable.yml`         | `branch`                                      | E2E orchestrator      |
 | `test-e2e-docker-pull-reusable.yml`| `branch`, `n8n_version`                       | E2E with pulled image |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
-| `ci-check-eligibility-reusable.yml`| (internal)                                    | PR eligibility checks |
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled` | Docker build          |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
