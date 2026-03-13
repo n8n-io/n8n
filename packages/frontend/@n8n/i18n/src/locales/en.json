@@ -4322,7 +4322,7 @@
 	"projects.settings.member.removed.title": "Member removed successfully",
 	"projects.settings.member.added.title": "Member added successfully",
 	"projects.settings.users.search.error": "An error occurred while searching for users",
-	"projects.settings.externalSecrets": "External secret stores",
+	"projects.settings.externalSecrets": "External secret vaults",
 	"projects.settings.externalSecrets.emptyState.heading": "No external secrets available yet",
 	"projects.settings.externalSecrets.emptyState.instanceAdmin.noProjectProviders.description": "Share secrets vault with this project to make external secrets available here. Once shared, secrets will appear automatically and can be referenced through aliases in credentials.",
 	"projects.settings.externalSecrets.emptyState.projectAdmin.description": "Add a secrets vault and share it with this project to make external secrets available here. Once shared, secrets will appear automatically and can be referenced through aliases in credentials.",
