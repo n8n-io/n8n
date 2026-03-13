@@ -151,6 +151,8 @@ export function resetDataProxies(timezone?: string): void {
 	// -------------------------------------------------------------------------
 
 	globalThis.__data.DateTime = globalThis.DateTime;
+	globalThis.__data.Duration = globalThis.Duration;
+	globalThis.__data.Interval = globalThis.Interval;
 
 	// Expose extend/extendOptional on __data so tournament's "x in this ? this.x : global.x"
 	// pattern resolves them correctly when the VM checks __data first
