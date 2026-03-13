@@ -21,6 +21,7 @@ const props = withDefaults(
 		hideNodeIssues?: boolean;
 		focusOnLoad?: boolean;
 		hideControls?: boolean;
+		tidyUp?: boolean;
 	}>(),
 	{
 		loading: false,
@@ -34,6 +35,7 @@ const props = withDefaults(
 		hideNodeIssues: false,
 		focusOnLoad: true,
 		hideControls: false,
+		tidyUp: false,
 	},
 );
 
@@ -86,6 +88,7 @@ const loadWorkflow = () => {
 				canOpenNDV: props.canOpenNDV,
 				hideNodeIssues: props.hideNodeIssues,
 				projectId: projectsStore.currentProjectId,
+				tidyUp: props.tidyUp,
 			}),
 			'*',
 		);
@@ -111,6 +114,7 @@ const loadExecution = () => {
 				nodeId: props.nodeId,
 				canOpenNDV: props.canOpenNDV,
 				projectId: projectsStore.currentProjectId,
+				tidyUp: props.tidyUp,
 			}),
 			'*',
 		);

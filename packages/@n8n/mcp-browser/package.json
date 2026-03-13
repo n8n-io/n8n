@@ -1,0 +1,40 @@
+{
+	"name": "@n8n/mcp-browser",
+	"version": "1.0.0",
+	"description": "Browser automation MCP tools built on Playwright, WebDriver BiDi, and safaridriver",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"bin": {
+		"mcp-browser": "dist/server.js"
+	},
+	"files": [
+		"dist/**/*"
+	],
+	"scripts": {
+		"clean": "rimraf dist .turbo",
+		"start": "node dist/server.js",
+		"dev": "tsx watch src/server.ts",
+		"typecheck": "tsc --noEmit",
+		"build": "tsc -p tsconfig.build.json",
+		"format": "biome format --write src",
+		"format:check": "biome ci src",
+		"lint": "eslint . --quiet",
+		"lint:fix": "eslint . --fix",
+		"watch": "tsc -p tsconfig.build.json --watch",
+		"test": "jest",
+		"test:unit": "jest",
+		"test:dev": "jest --watch"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "1.26.0",
+		"nanoid": "catalog:",
+		"playwright-core": "catalog:",
+		"selenium-webdriver": "4.39.0",
+		"yargs-parser": "21.1.1",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@n8n/typescript-config": "workspace:*",
+		"@types/yargs-parser": "21.0.0"
+	}
+}

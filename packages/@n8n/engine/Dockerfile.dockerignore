@@ -1,0 +1,20 @@
+# Whitelist approach — monorepo root is the build context
+*
+
+# Workspace root
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+
+# Engine package
+!packages/@n8n/engine
+!packages/@n8n/engine/**
+packages/@n8n/engine/node_modules
+packages/@n8n/engine/src/web/node_modules
+packages/@n8n/engine/dist
+packages/@n8n/engine/test
+packages/@n8n/engine/perf
+packages/@n8n/engine/.turbo
+
+# Workspace dependencies
+!packages/@n8n/typescript-config
+!packages/@n8n/typescript-config/**

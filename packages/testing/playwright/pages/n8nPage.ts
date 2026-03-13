@@ -3,10 +3,6 @@ import type { Page } from '@playwright/test';
 import { AIAssistantPage } from './AIAssistantPage';
 import { AIBuilderPage } from './AIBuilderPage';
 import { CanvasPage } from './CanvasPage';
-import { ChatHubChatPage } from './ChatHubChatPage';
-import { ChatHubPersonalAgentsPage } from './ChatHubPersonalAgentsPage';
-import { ChatHubSettingsPage } from './ChatHubSettingsPage';
-import { ChatHubWorkflowAgentsPage } from './ChatHubWorkflowAgentsPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
@@ -19,6 +15,7 @@ import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
+import { InstanceAiPage } from './InstanceAiPage';
 import { InteractionsPage } from './InteractionsPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
@@ -71,11 +68,8 @@ export class n8nPage {
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
 	readonly aiBuilder: AIBuilderPage;
+	readonly instanceAi: InstanceAiPage;
 	readonly canvas: CanvasPage;
-	readonly chatHubChat: ChatHubChatPage;
-	readonly chatHubPersonalAgents: ChatHubPersonalAgentsPage;
-	readonly chatHubSettings: ChatHubSettingsPage;
-	readonly chatHubWorkflowAgents: ChatHubWorkflowAgentsPage;
 	readonly communityNodes: CommunityNodesPage;
 	readonly demo: DemoPage;
 	readonly interactions: InteractionsPage;
@@ -148,11 +142,8 @@ export class n8nPage {
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
 		this.aiBuilder = new AIBuilderPage(page);
+		this.instanceAi = new InstanceAiPage(page);
 		this.canvas = new CanvasPage(page);
-		this.chatHubChat = new ChatHubChatPage(page);
-		this.chatHubPersonalAgents = new ChatHubPersonalAgentsPage(page);
-		this.chatHubSettings = new ChatHubSettingsPage(page);
-		this.chatHubWorkflowAgents = new ChatHubWorkflowAgentsPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);
 		this.interactions = new InteractionsPage(page);

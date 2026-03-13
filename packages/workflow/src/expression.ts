@@ -531,9 +531,7 @@ export class Expression {
 			}
 
 			try {
-				const result = Expression.vmEvaluator.evaluate(expression, data, {
-					timezone: this.timezone,
-				});
+				const result = Expression.vmEvaluator.evaluate(expression, data);
 				return result as string | null | (() => unknown);
 			} catch (error) {
 				if (isExpressionError(error)) throw error;

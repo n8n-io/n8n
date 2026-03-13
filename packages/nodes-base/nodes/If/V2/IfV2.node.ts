@@ -43,6 +43,10 @@ export class IfV2 implements INodeType {
 							version: '={{ $nodeVersion >= 2.3 ? 3 : $nodeVersion >= 2.2 ? 2 : 1 }}',
 						},
 					},
+					builderHint: {
+						message:
+							'The conditions filter references options.ignoreCase internally. Always include the options parameter on the IF node (even if empty: options: {}) to prevent "Cannot read properties of undefined" errors at runtime.',
+					},
 				},
 				{
 					...looseTypeValidationProperty,

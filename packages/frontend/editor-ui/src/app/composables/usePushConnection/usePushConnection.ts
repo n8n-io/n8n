@@ -4,6 +4,10 @@ import type { PushMessage } from '@n8n/api-types';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
 	builderCreditsUpdated,
+	codeEngineFinished,
+	codeEngineNodeAfter,
+	codeEngineNodeBefore,
+	codeEngineWebhookDeleted,
 	testWebhookDeleted,
 	testWebhookReceived,
 	reloadNodeType,
@@ -96,6 +100,14 @@ export function usePushConnection({
 				return await workflowAutoDeactivated(event);
 			case 'updateBuilderCredits':
 				return await builderCreditsUpdated(event);
+			case 'codeEngineNodeBefore':
+				return await codeEngineNodeBefore(event);
+			case 'codeEngineNodeAfter':
+				return await codeEngineNodeAfter(event);
+			case 'codeEngineFinished':
+				return await codeEngineFinished(event);
+			case 'codeEngineWebhookDeleted':
+				return await codeEngineWebhookDeleted();
 		}
 	}
 

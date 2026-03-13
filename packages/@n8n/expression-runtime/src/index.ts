@@ -10,7 +10,6 @@ export type {
 	EvaluatorConfig,
 	WorkflowData,
 	EvaluateOptions,
-	ExecuteOptions,
 	RuntimeBridge,
 	BridgeConfig,
 	ObservabilityProvider,

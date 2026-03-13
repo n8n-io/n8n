@@ -456,7 +456,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
+				workflowsStore.getWorkflowRunData = {};
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -476,17 +476,19 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue([
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 0,
-						source: [],
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+				workflowsStore.getWorkflowRunData = {
+					'Node 1': [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+							},
 						},
-					},
-				]);
+					],
+				};
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -518,36 +520,31 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === 'Node 1') {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-									[NodeConnectionTypes.AiAgent]: [[{ json: {} }, { json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					'Node 1': [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
+								[NodeConnectionTypes.AiAgent]: [[{ json: {} }, { json: {} }]],
 							},
-						];
-					} else if (nodeName === 'Node 2') {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
-								},
+						},
+					],
+					'Node 2': [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
 							},
-						];
-					}
-
-					return null;
-				});
+						},
+					],
+				};
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -591,35 +588,37 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue([
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 0,
-						source: [],
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }]],
+				workflowsStore.getWorkflowRunData = {
+					'Node 1': [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							},
 						},
-					},
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 1,
-						source: [],
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 1,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+							},
 						},
-					},
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 2,
-						source: [],
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 2,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+							},
 						},
-					},
-				]);
+					],
+				};
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -648,38 +647,40 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue([
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 0,
-						source: [],
-						executionStatus: 'success',
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+				workflowsStore.getWorkflowRunData = {
+					'Node 1': [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+							},
 						},
-					},
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 1,
-						source: [],
-						executionStatus: 'canceled',
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 1,
+							source: [],
+							executionStatus: 'canceled',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+							},
 						},
-					},
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 2,
-						source: [],
-						executionStatus: 'success',
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }]],
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 2,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							},
 						},
-					},
-				]);
+					],
+				};
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -708,28 +709,30 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue([
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 0,
-						source: [],
-						executionStatus: 'canceled',
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+				workflowsStore.getWorkflowRunData = {
+					'Node 1': [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'canceled',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+							},
 						},
-					},
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 1,
-						source: [],
-						executionStatus: 'canceled',
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }]],
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 1,
+							source: [],
+							executionStatus: 'canceled',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							},
 						},
-					},
-				]);
+					],
+				};
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -771,45 +774,40 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Model node has multiple executions from different sources
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === modelNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: agent1Node.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }, { json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[modelNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [{ previousNode: agent1Node.name }],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }, { json: {} }]],
 							},
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 1,
-								source: [{ previousNode: agent2Node.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }]],
-								},
+						},
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 1,
+							source: [{ previousNode: agent2Node.name }],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }]],
 							},
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 2,
-								source: [{ previousNode: agent1Node.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiLanguageModel]: [
-										[{ json: {} }, { json: {} }, { json: {} }],
-									],
-								},
+						},
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 2,
+							source: [{ previousNode: agent1Node.name }],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }, { json: {} }, { json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -863,35 +861,32 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Embedding node returns data wrapped in response field
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === embeddingNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: vectorStoreNode.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiEmbedding]: [
-										[
-											{
-												json: {
-													response: [
-														{ embedding: [0.1, 0.2] },
-														{ embedding: [0.3, 0.4] },
-														{ embedding: [0.5, 0.6] },
-													],
-												},
+				workflowsStore.getWorkflowRunData = {
+					[embeddingNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [{ previousNode: vectorStoreNode.name }],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.AiEmbedding]: [
+									[
+										{
+											json: {
+												response: [
+													{ embedding: [0.1, 0.2] },
+													{ embedding: [0.3, 0.4] },
+													{ embedding: [0.5, 0.6] },
+												],
 											},
-										],
+										},
 									],
-								},
+								],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1318,7 +1313,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
+				workflowsStore.getWorkflowRunData = {};
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1335,38 +1330,40 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue([
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 0,
-						source: [],
-						executionStatus: 'success',
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }]],
+				workflowsStore.getWorkflowRunData = {
+					'Node 1': [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							},
 						},
-					},
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 1,
-						source: [],
-						executionStatus: 'canceled',
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }]],
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 1,
+							source: [],
+							executionStatus: 'canceled',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							},
 						},
-					},
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 2,
-						source: [],
-						executionStatus: 'error',
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }]],
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 2,
+							source: [],
+							executionStatus: 'error',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							},
 						},
-					},
-				]);
+					],
+				};
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1384,28 +1381,30 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue([
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 0,
-						source: [],
-						executionStatus: 'canceled',
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }]],
+				workflowsStore.getWorkflowRunData = {
+					'Node 1': [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'canceled',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							},
 						},
-					},
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 1,
-						source: [],
-						executionStatus: 'canceled',
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }]],
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 1,
+							source: [],
+							executionStatus: 'canceled',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							},
 						},
-					},
-				]);
+					],
+				};
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1423,28 +1422,30 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue([
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 0,
-						source: [],
-						executionStatus: 'success',
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }]],
+				workflowsStore.getWorkflowRunData = {
+					'Node 1': [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							},
 						},
-					},
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 1,
-						source: [],
-						executionStatus: 'error',
-						data: {
-							[NodeConnectionTypes.Main]: [[{ json: {} }]],
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 1,
+							source: [],
+							executionStatus: 'error',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							},
 						},
-					},
-				]);
+					],
+				};
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2241,23 +2242,20 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'canceled',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'canceled',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2284,33 +2282,30 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 1,
-								source: [],
-								executionStatus: 'canceled',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+						},
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 1,
+							source: [],
+							executionStatus: 'canceled',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2337,33 +2332,30 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'canceled',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'canceled',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 1,
-								source: [],
-								executionStatus: 'canceled',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+						},
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 1,
+							source: [],
+							executionStatus: 'canceled',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2396,23 +2388,20 @@ describe('useCanvasMapping', () => {
 						return nodeName === manualTriggerNode.name;
 					});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'canceled',
-								data: {
-									[NodeConnectionTypes.Main]: [[]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'canceled',
+							data: {
+								[NodeConnectionTypes.Main]: [[]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2553,22 +2542,19 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2596,22 +2582,19 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2639,22 +2622,19 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2682,22 +2662,19 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2725,31 +2702,28 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 1,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
-								},
+						},
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 1,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2777,37 +2751,31 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: setNode.name }],
-								data: {
-									[NodeConnectionTypes.AiTool]: [[{ json: {} }, { json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [{ previousNode: setNode.name }],
+							data: {
+								[NodeConnectionTypes.AiTool]: [[{ json: {} }, { json: {} }]],
 							},
-						];
-					}
-					// Add execution data for target node so connection shows as executed
-					if (nodeName === setNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+						},
+					],
+					[setNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2838,22 +2806,19 @@ describe('useCanvasMapping', () => {
 				setPinData({
 					[manualTriggerNode.name]: [{ json: { id: 1 } }, { json: { id: 2 } }],
 				});
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2882,7 +2847,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
+				workflowsStore.getWorkflowRunData = {};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2911,25 +2876,22 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [
-										[{ json: {} }], // index 0 - 1 item
-										[{ json: {} }, { json: {} }, { json: {} }], // index 1 - 3 items
-									],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [
+									[{ json: {} }], // index 0 - 1 item
+									[{ json: {} }, { json: {} }, { json: {} }], // index 1 - 3 items
+								],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2964,7 +2926,7 @@ describe('useCanvasMapping', () => {
 					.mockImplementation((nodeName: string) => {
 						return nodeName === manualTriggerNode.name;
 					});
-				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
+				workflowsStore.getWorkflowRunData = {};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2994,22 +2956,19 @@ describe('useCanvasMapping', () => {
 				setPinData({
 					[manualTriggerNode.name]: [{ json: {} }],
 				});
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3064,23 +3023,20 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3107,7 +3063,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
+				workflowsStore.getWorkflowRunData = {};
 				setPinData({});
 
 				const { connections: mappedConnections } = useCanvasMapping({
@@ -3306,26 +3262,23 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [
-										[{ json: {} }], // index 0
-										[{ json: {} }, { json: {} }], // index 1
-									],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [
+									[{ json: {} }], // index 0
+									[{ json: {} }, { json: {} }], // index 1
+								],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3352,38 +3305,33 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiTool]: [[{ json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[manualTriggerNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.AiTool]: [[{ json: {} }]],
 							},
-						];
-					}
+						},
+					],
 					// Add execution data for target node so connection shows as executed
-					if (nodeName === setNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: manualTriggerNode.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+					[setNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [{ previousNode: manualTriggerNode.name }],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3412,23 +3360,20 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Only source node has execution data, target does not
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === embeddingNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiEmbedding]: [[{ json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[embeddingNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.AiEmbedding]: [[{ json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3459,37 +3404,32 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Both source and target have execution data
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === embeddingNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: vectorStoreNode.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiEmbedding]: [[{ json: {} }, { json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[embeddingNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [{ previousNode: vectorStoreNode.name }],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.AiEmbedding]: [[{ json: {} }, { json: {} }]],
 							},
-						];
-					}
-					if (nodeName === vectorStoreNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+						},
+					],
+					[vectorStoreNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3524,61 +3464,54 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Model node has execution data with source tracking
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === modelNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: agent1Node.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }, { json: {} }]],
-								},
+				workflowsStore.getWorkflowRunData = {
+					[modelNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [{ previousNode: agent1Node.name }],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }, { json: {} }]],
 							},
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 1,
-								source: [{ previousNode: agent2Node.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }]],
-								},
+						},
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 1,
+							source: [{ previousNode: agent2Node.name }],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }]],
 							},
-						];
-					}
-					if (nodeName === agent1Node.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+						},
+					],
+					[agent1Node.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-						];
-					}
-					if (nodeName === agent2Node.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+						},
+					],
+					[agent2Node.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3618,52 +3551,47 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Embedding node returns data with response array containing 6 items
-				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === embeddingNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: vectorStoreNode.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiEmbedding]: [
-										[
-											{
-												json: {
-													response: [
-														{ embedding: [0.1, 0.2] },
-														{ embedding: [0.3, 0.4] },
-														{ embedding: [0.5, 0.6] },
-														{ embedding: [0.7, 0.8] },
-														{ embedding: [0.9, 1.0] },
-														{ embedding: [1.1, 1.2] },
-													],
-												},
+				workflowsStore.getWorkflowRunData = {
+					[embeddingNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [{ previousNode: vectorStoreNode.name }],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.AiEmbedding]: [
+									[
+										{
+											json: {
+												response: [
+													{ embedding: [0.1, 0.2] },
+													{ embedding: [0.3, 0.4] },
+													{ embedding: [0.5, 0.6] },
+													{ embedding: [0.7, 0.8] },
+													{ embedding: [0.9, 1.0] },
+													{ embedding: [1.1, 1.2] },
+												],
 											},
-										],
+										},
 									],
-								},
+								],
 							},
-						];
-					}
-					if (nodeName === vectorStoreNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-								},
+						},
+					],
+					[vectorStoreNode.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: {
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
-						];
-					}
-					return null;
-				});
+						},
+					],
+				};
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),

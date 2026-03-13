@@ -10,6 +10,9 @@ export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
 
+export { CodeEngineAnalyzeDto } from './code-engine/code-engine-analyze.dto';
+export { CodeEngineRunDto } from './code-engine/code-engine-run.dto';
+
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 

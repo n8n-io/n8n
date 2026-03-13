@@ -5,6 +5,7 @@
  */
 
 import { deepCopy } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import type {
 	WorkflowJSON,
@@ -21,6 +22,16 @@ import {
 	parseVersion,
 } from '../../string-utils';
 import type { SerializerPlugin, SerializerContext } from '../types';
+
+/**
+ * Node types that require a webhookId for proper webhook path registration.
+ * Without it, n8n falls back to encoding the node name into the URL path.
+ */
+const WEBHOOK_NODE_TYPES = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.formTrigger',
+	'@n8n/n8n-nodes-langchain.mcpTrigger',
+]);
 
 /**
  * Serialize a single node to NodeJSON format.
@@ -82,6 +93,12 @@ function serializeNode(
 		position,
 		parameters: serializedParams,
 	};
+
+	// Generate webhookId for webhook-based nodes so n8n registers clean paths
+	// (e.g., "{uuid}/dashboard" instead of "{workflowId}/{encodedNodeName}/dashboard")
+	if (WEBHOOK_NODE_TYPES.has(instance.type)) {
+		n8nNode.webhookId = config.webhookId ?? randomUUID();
+	}
 
 	// Add optional properties
 	if (config.credentials) {

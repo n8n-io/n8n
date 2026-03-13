@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -22,8 +21,6 @@ const WORKFLOW_INDEXED_PLACEHOLDER_KEY = '__INDEXED__';
  */
 @Service()
 export class WorkflowIndexService {
-	private readonly batchSize: number;
-
 	constructor(
 		private readonly dependencyRepository: WorkflowDependencyRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -31,10 +28,8 @@ export class WorkflowIndexService {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly tracing: Tracing,
-		workflowsConfig: WorkflowsConfig,
-	) {
-		this.batchSize = workflowsConfig.indexingBatchSize;
-	}
+		private readonly batchSize = 100,
+	) {}
 
 	init() {
 		this.eventService.on('server-started', async (): Promise<void> => {

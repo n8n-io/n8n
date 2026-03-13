@@ -83,38 +83,15 @@ describe('validate-workflow-code MCP tool', () => {
 		test('includes warnings array when warnings exist', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: { nodes: [{ id: '1' }] },
-				warnings: [
-					{ code: 'deprecated', message: 'Node X is deprecated', nodeName: 'HTTP Request' },
-					{
-						code: 'no-target',
-						message: 'Connection Y has no target',
-						parameterPath: 'options.retry',
-					},
-				],
+				warnings: ['Node X is deprecated', 'Connection Y has no target'],
 			});
 
 			const tool = createTool();
 			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
 
-			const expectedWarnings = [
-				{
-					code: 'deprecated',
-					message: 'Node X is deprecated',
-					nodeName: 'HTTP Request',
-				},
-				{
-					code: 'no-target',
-					message: 'Connection Y has no target',
-					parameterPath: 'options.retry',
-				},
-			];
-
 			const response = parseResult(result);
 			expect(response.valid).toBe(true);
-			expect(response.warnings).toEqual(expectedWarnings);
-			expect(result.structuredContent).toEqual(
-				expect.objectContaining({ warnings: expectedWarnings }),
-			);
+			expect(response.warnings).toEqual(['Node X is deprecated', 'Connection Y has no target']);
 		});
 
 		test('omits warnings key when no warnings', async () => {
@@ -146,7 +123,7 @@ describe('validate-workflow-code MCP tool', () => {
 		test('tracks telemetry on success with nodeCount and warningCount', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: { nodes: [{ id: '1' }, { id: '2' }] },
-				warnings: [{ code: 'warn', message: 'some warning' }],
+				warnings: ['some warning'],
 			});
 
 			const tool = createTool();

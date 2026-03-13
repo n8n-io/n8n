@@ -1,0 +1,7 @@
+node_modules/
+.nuxt/
+.output/
+dist/
+package-lock.json
+.env
+credentials.db

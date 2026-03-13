@@ -279,6 +279,36 @@ export class Logger implements LoggerType {
 
 	// #endregion
 
+	// #region Static factory
+
+	/**
+	 * Create a standalone Logger without the DI container.
+	 * Useful for CLI tools and scripts that don't bootstrap the full n8n backend.
+	 */
+	static create(options: { level?: LogLevel; format?: 'text' | 'json' } = {}): Logger {
+		const level = options.level ?? 'info';
+		const format = options.format ?? 'text';
+
+		const globalConfig = {
+			logging: {
+				level,
+				format,
+				outputs: ['console'] as Array<'console' | 'file'>,
+				scopes: [] as LogScope[],
+				file: { fileSizeMax: 16, fileCountMax: 100, location: 'logs/n8n.log' },
+				cron: { activeInterval: 0 },
+			},
+		} as GlobalConfig;
+
+		const instanceSettingsConfig = {
+			n8nFolder: '',
+		} as InstanceSettingsConfig;
+
+		return new Logger(globalConfig, instanceSettingsConfig, { isRoot: false });
+	}
+
+	// #endregion
+
 	// #region For testing only
 
 	getInternalLogger() {

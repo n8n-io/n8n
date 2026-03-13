@@ -1,0 +1,30 @@
+{
+  "name": "@n8n/code-engine",
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "jest",
+    "test:unit": "jest",
+    "test:dev": "jest --watch"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "reflect-metadata": "catalog:",
+    "typescript": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
+  }
+}

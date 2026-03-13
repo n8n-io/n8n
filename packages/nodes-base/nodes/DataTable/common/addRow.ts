@@ -35,6 +35,10 @@ export function makeAddRow(operation: string, displayOptions: IDisplayOptions) {
 				hideNoDataError: true,
 			},
 		},
+		builderHint: {
+			message:
+				'columns must be a resourceMapper object with mappingMode and value, not a string or expression. Use mappingMode: "defineBelow" with value as a plain object of column-name to expression pairs. Do NOT use self-referential expressions (referencing this same node output in its input) — instead, read existing data in a prior node, compute new values, then write.',
+		},
 		displayOptions,
 	} satisfies INodeProperties;
 }

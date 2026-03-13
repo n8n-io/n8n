@@ -33,13 +33,8 @@ export async function restoreBinaryDataId(
 		const { runData } = run.data.resultData;
 
 		const promises = Object.keys(runData).map(async (nodeName) => {
-			const binaryObj = runData[nodeName]?.[0]?.data?.main?.[0]?.[0]?.binary;
-			if (!binaryObj) return;
+			const binaryDataId = runData[nodeName]?.[0]?.data?.main?.[0]?.[0]?.binary?.data?.id;
 
-			const binaryData = Object.values(binaryObj)[0];
-			if (!binaryData) return;
-
-			const binaryDataId = binaryData.id;
 			if (!binaryDataId) return;
 
 			const [mode, fileId] = binaryDataId.split(':') as [BinaryData.StoredMode, string];
@@ -54,7 +49,8 @@ export async function restoreBinaryDataId(
 
 			const correctBinaryDataId = `${mode}:${correctFileId}`;
 
-			binaryData.id = correctBinaryDataId;
+			// @ts-expect-error Validated at the top
+			run.data.resultData.runData[nodeName][0].data.main[0][0].binary.data.id = correctBinaryDataId;
 		});
 
 		await Promise.all(promises);

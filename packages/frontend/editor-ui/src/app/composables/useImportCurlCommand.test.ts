@@ -17,7 +17,7 @@ describe('useImportCurlCommand', () => {
 			useImportCurlCommand().importCurlCommand(curl);
 			expect(showToast).toHaveBeenCalledWith({
 				duration: 0,
-				message: 'The HTTP node doesn’t support FTP requests',
+				message: 'The HTTP node doesn\u2019t support FTP requests',
 				title: 'Use the FTP node',
 				type: 'error',
 			});

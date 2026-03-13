@@ -1,0 +1,33 @@
+{
+  "name": "@n8n/engine-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.20.0",
+    "@codemirror/commands": "^6.10.1",
+    "@codemirror/lang-javascript": "^6.2.4",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/language": "^6.12.1",
+    "@codemirror/lint": "^6.9.2",
+    "@codemirror/search": "^6.5.11",
+    "@codemirror/state": "^6.5.3",
+    "@codemirror/view": "^6.39.8",
+    "@faker-js/faker": "^9.9.0",
+    "@lezer/highlight": "^1.2.1",
+    "@vueuse/core": "^10.11.0",
+    "pinia": "^2.2.4",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.4",
+    "typescript": "^5.9.2",
+    "vite": "^7.3.1"
+  }
+}

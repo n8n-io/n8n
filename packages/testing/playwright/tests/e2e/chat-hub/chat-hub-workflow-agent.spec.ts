@@ -1,6 +1,9 @@
 import { expect, test, chatHubTestConfig } from './fixtures';
 import { INSTANCE_MEMBER_CREDENTIALS } from '../../../config/test-users';
-import { n8nPage } from '../../../pages/n8nPage';
+import { CanvasPage } from '../../../pages/CanvasPage';
+import { ChatHubChatPage } from '../../../pages/ChatHubChatPage';
+import { ChatHubWorkflowAgentsPage } from '../../../pages/ChatHubWorkflowAgentsPage';
+import { NodeDetailsViewPage } from '../../../pages/NodeDetailsViewPage';
 
 test.use(chatHubTestConfig);
 
@@ -11,55 +14,58 @@ test.describe(
 	},
 	() => {
 		test('manage workflow agents @auth:admin', async ({ n8n, agentWorkflow }) => {
+			const agentsPage = new ChatHubWorkflowAgentsPage(n8n.page);
+			const chatPage = new ChatHubChatPage(n8n.page);
+
 			// STEP: Navigate to workflow agents page and verify agent is listed
 			await n8n.navigate.toChatHubWorkflowAgents();
-			await expect(n8n.chatHubWorkflowAgents.getAgentCards()).toHaveCount(1);
-			await expect(n8n.chatHubWorkflowAgents.getAgentCards().nth(0)).toContainText(
-				agentWorkflow.name,
-			);
+			await expect(agentsPage.getAgentCards()).toHaveCount(1);
+			await expect(agentsPage.getAgentCards().nth(0)).toContainText(agentWorkflow.name);
 
 			// STEP: Click agent card to start conversation
-			await n8n.chatHubWorkflowAgents.getAgentCards().nth(0).click();
-			await n8n.chatHubChat.dismissWelcomeScreen();
-			await expect(n8n.chatHubChat.getModelSelectorButton()).toContainText(agentWorkflow.name);
+			await agentsPage.getAgentCards().nth(0).click();
+			await chatPage.dismissWelcomeScreen();
+			await expect(chatPage.getModelSelectorButton()).toContainText(agentWorkflow.name);
 
-			await n8n.chatHubChat.getChatInput().fill('Hello');
-			await n8n.chatHubChat.getSendButton().click();
-			await expect(n8n.chatHubChat.getChatMessages().last()).toContainText(/Bonjour/i);
+			await chatPage.getChatInput().fill('Hello');
+			await chatPage.getSendButton().click();
+			await expect(chatPage.getChatMessages().last()).toContainText(/Bonjour/i);
 
 			// STEP: Open workflow in new tab and update system prompt
-			const tab1Page = await n8n.chatHubChat.clickOpenWorkflowButton();
-			const tab1 = new n8nPage(tab1Page);
+			const tab1 = await chatPage.clickOpenWorkflowButton();
+			const canvas = new CanvasPage(tab1);
+			const ndv = new NodeDetailsViewPage(tab1);
 
-			await tab1.canvas.openNode('AI Agent');
-			await tab1.ndv.fillParameterInput('System Message', 'Reply in Finnish');
-			await tab1.ndv.close();
-			await tab1.canvas.publishWorkflow();
-			await tab1Page.close();
+			await canvas.openNode('AI Agent');
+			await ndv.fillParameterInput('System Message', 'Reply in Finnish');
+			await ndv.close();
+			await canvas.publishWorkflow();
+			await tab1.close();
 
 			// STEP: Select the workflow agent for new conversation
 			await n8n.navigate.toChatHub();
-			await n8n.chatHubChat.getModelSelectorButton().click();
+			await chatPage.getModelSelectorButton().click();
 			await n8n.page.waitForTimeout(500);
-			await n8n.chatHubChat.getVisiblePopoverMenuItem('Workflow agents').hover({ force: true });
-			await n8n.chatHubChat.getVisiblePopoverMenuItem(agentWorkflow.name, { exact: true }).click();
+			await chatPage.getVisiblePopoverMenuItem('Workflow agents').hover({ force: true });
+			await chatPage.getVisiblePopoverMenuItem(agentWorkflow.name, { exact: true }).click();
 
 			// STEP: Send message again
-			await n8n.chatHubChat.getChatInput().fill('Hello');
-			await n8n.chatHubChat.getSendButton().click();
-			await expect(n8n.chatHubChat.getChatMessages().last()).toContainText(/Hei|Moi/i);
+			await chatPage.getChatInput().fill('Hello');
+			await chatPage.getSendButton().click();
+			await expect(chatPage.getChatMessages().last()).toContainText(/Hei|Moi/i);
 
 			// STEP: Open workflow in new tab and disable ChatHub
-			const tab2Page = await n8n.chatHubChat.clickOpenWorkflowButton();
-			const tab2 = new n8nPage(tab2Page);
+			const tab2 = await chatPage.clickOpenWorkflowButton();
+			const canvas2 = new CanvasPage(tab2);
+			const ndv2 = new NodeDetailsViewPage(tab2);
 
-			await tab2.canvas.openNode('When chat message received');
-			await tab2.ndv.getParameterSwitch('availableInChat').click();
-			await tab2.ndv.close();
-			await tab2.canvas.publishWorkflow();
-			await tab2Page.close();
+			await canvas2.openNode('When chat message received');
+			await ndv2.getParameterSwitch('availableInChat').click();
+			await ndv2.close();
+			await canvas2.publishWorkflow();
+			await tab2.close();
 			await n8n.navigate.toChatHubWorkflowAgents();
-			await expect(n8n.chatHubWorkflowAgents.getEmptyText()).toBeVisible();
+			await expect(agentsPage.getEmptyText()).toBeVisible();
 		});
 
 		test('sharing workflow agent with project chat user', async ({
@@ -76,12 +82,14 @@ test.describe(
 			await n8n.api.workflows.transfer(agentWorkflow.id, project.id);
 
 			// Verify that the agent is visible to owner
+			const ownerWorkflowAgentsPage = new ChatHubWorkflowAgentsPage(n8n.page);
 			await n8n.navigate.toChatHubWorkflowAgents();
-			await expect(n8n.chatHubWorkflowAgents.getAgentCards()).toContainText([agentWorkflow.name]);
+			await expect(ownerWorkflowAgentsPage.getAgentCards()).toContainText([agentWorkflow.name]);
 
 			// Verify that the agent is not visible to member before sharing
+			const memberWorkflowAgentsPage = new ChatHubWorkflowAgentsPage(memberN8n.page);
 			await memberN8n.navigate.toChatHubWorkflowAgents();
-			await expect(memberN8n.chatHubWorkflowAgents.getEmptyText()).toBeVisible();
+			await expect(memberWorkflowAgentsPage.getEmptyText()).toBeVisible();
 
 			// Add member user to the project with project chat user role
 			await n8n.navigate.toProjectSettings(project.id);
@@ -94,15 +102,14 @@ test.describe(
 
 			// Verify that the agent is visible and usable to member after sharing
 			await memberN8n.page.reload();
-			await expect(memberN8n.chatHubWorkflowAgents.getAgentCards()).toContainText([
-				agentWorkflow.name,
-			]);
-			await memberN8n.chatHubWorkflowAgents.getAgentCards().nth(0).click();
+			await expect(memberWorkflowAgentsPage.getAgentCards()).toContainText([agentWorkflow.name]);
+			await memberWorkflowAgentsPage.getAgentCards().nth(0).click();
 
-			await memberN8n.chatHubChat.dismissWelcomeScreen();
-			await memberN8n.chatHubChat.getChatInput().fill('Hello');
-			await memberN8n.chatHubChat.getSendButton().click();
-			await expect(memberN8n.chatHubChat.getChatMessages().last()).toContainText(/Bonjour/i);
+			const memberChatPage = new ChatHubChatPage(memberN8n.page);
+			await memberChatPage.dismissWelcomeScreen();
+			await memberChatPage.getChatInput().fill('Hello');
+			await memberChatPage.getSendButton().click();
+			await expect(memberChatPage.getChatMessages().last()).toContainText(/Bonjour/i);
 		});
 	},
 );

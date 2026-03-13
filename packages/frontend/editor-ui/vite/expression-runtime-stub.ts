@@ -50,4 +50,3 @@ export type MetricsAPI = never;
 export type TracesAPI = never;
 export type Span = never;
 export type LogsAPI = never;
-export type ExecuteOptions = never;

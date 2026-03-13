@@ -1,0 +1,69 @@
+{
+  "name": "@n8n/engine",
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "tsx watch src/main.ts",
+    "dev:web": "cd src/web && npx vite",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "DATABASE_URL=postgres://engine:engine@localhost:5434/engine_test vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "DATABASE_URL=postgres://engine:engine@localhost:5434/engine_test vitest",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "perf": "./perf/run.sh",
+    "dev:up": "docker compose up -d --build",
+    "dev:down": "docker compose down",
+    "test:up": "docker compose -f docker-compose.test.yml up -d",
+    "test:down": "docker compose -f docker-compose.test.yml down",
+    "perf:up": "docker compose -f docker-compose.perf.yml up -d --build",
+    "perf:down": "docker compose -f docker-compose.perf.yml down -v"
+  },
+  "bin": {
+    "engine": "./dist/cli/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk/index.d.ts",
+      "default": "./dist/sdk/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "sdk": [
+        "dist/sdk/index.d.ts"
+      ]
+    }
+  },
+  "dependencies": {
+    "@n8n/typeorm": "catalog:",
+    "ajv": "^8.18.0",
+    "esbuild": "^0.24.0",
+    "express": "5.1.0",
+    "nanoid": "catalog:",
+    "pg": "catalog:",
+    "reflect-metadata": "catalog:",
+    "source-map-support": "^0.5.21",
+    "ts-morph": "catalog:",
+    "uuid": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/express": "catalog:",
+    "@types/source-map-support": "^0.5.10",
+    "@types/supertest": "^6.0.2",
+    "@types/uuid": "catalog:",
+    "rimraf": "catalog:",
+    "supertest": "^7.0.0",
+    "tsx": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -443,24 +443,11 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
-.callout {
-	margin: -1px;
-	padding: var(--spacing--sm);
-	border-radius: 16px 16px 0 0;
-}
-
-.closeButton {
-	margin-left: var(--spacing--sm);
-}
-
-.fileInput {
-	display: none;
-}
-
 .prompt {
+	display: grid;
+	place-items: center;
 	width: 100%;
 	position: relative;
-	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
 
@@ -488,6 +475,20 @@ defineExpose({
 			var(--spacing--sm) + var(--attachments-el--height) + 52px /* callout height */
 		);
 	}
+}
+
+.callout {
+	margin: -1px;
+	padding: var(--spacing--sm);
+	border-radius: 16px 16px 0 0;
+}
+
+.closeButton {
+	margin-left: var(--spacing--sm);
+}
+
+.fileInput {
+	display: none;
 }
 
 .header,

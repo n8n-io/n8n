@@ -4,7 +4,6 @@ export type MetricCategory =
 	| 'cache'
 	| 'logs'
 	| 'queue'
-	| 'workflowExecutionDuration'
 	| 'workflowStatistics';
 
 export type MetricLabel =
