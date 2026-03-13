@@ -315,7 +315,7 @@ describe('useWorkflowHelpers', () => {
 	describe('getWorkflowDataToSave', () => {
 		it('should snapshot connections so later store mutations do not affect saved data', async () => {
 			const workflowId = 'test-workflow-id';
-			const initialConnections = {
+			const initialConnections: IConnections = {
 				'Node A': {
 					main: [[{ node: 'Node B', index: 0, type: NodeConnectionTypes.Main }]],
 				},
