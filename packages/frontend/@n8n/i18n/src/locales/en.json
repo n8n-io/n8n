@@ -1004,6 +1004,8 @@
 	"credentialEdit.credentialEdit.details": "Details",
 	"credentialEdit.credentialEdit.dynamic": "Dynamic",
 	"credentialEdit.credentialEdit.saving": "Saving",
+	"credentialEdit.credentialEdit.setupMergeLink": "Setup Integration Using Merge Link",
+	"credentialEdit.credentialEdit.mergeLinkError": "Failed to setup Merge integration",
 	"credentialEdit.credentialEdit.showError.createCredential.title": "Problem creating credential",
 	"credentialEdit.credentialEdit.showError.deleteCredential.title": "Problem deleting credential",
 	"credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message": "There was a problem generating the authorization URL",

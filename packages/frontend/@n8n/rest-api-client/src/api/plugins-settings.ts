@@ -46,3 +46,23 @@ export async function getMergeDevIntegrations(
 ): Promise<MergeDevIntegrationsResponseDto> {
 	return await makeRestApiRequest(context, 'GET', '/settings/plugins/merge-dev/integrations');
 }
+
+export async function createMergeDevLinkToken(
+	context: IRestApiContext,
+	category: string,
+	integrationSlug?: string,
+): Promise<{ linkToken: string }> {
+	return await makeRestApiRequest(context, 'POST', '/settings/plugins/merge-dev/link-token', {
+		category,
+		...(integrationSlug ? { integrationSlug } : {}),
+	});
+}
+
+export async function getMergeDevAccountToken(
+	context: IRestApiContext,
+	publicToken: string,
+): Promise<{ accountToken: string }> {
+	return await makeRestApiRequest(context, 'POST', '/settings/plugins/merge-dev/account-token', {
+		publicToken,
+	});
+}

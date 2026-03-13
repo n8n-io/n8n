@@ -15,7 +15,8 @@ import {
 	getPluginByCredentialType,
 } from '@/plugins/plugin-registry';
 
-const MERGE_DEV_INTEGRATIONS_URL = 'https://api.merge.dev/api/integrations';
+const MERGE_DEV_API_BASE = 'https://api.merge.dev/api/integrations';
+const MERGE_DEV_INTEGRATIONS_URL = MERGE_DEV_API_BASE;
 const MERGE_DEV_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 interface MergeDevApiIntegration {
@@ -100,6 +101,70 @@ export class PluginsSettingsService {
 			result = { ...result, [field.credentialField]: value };
 		}
 		return result;
+	}
+
+	// ─── Merge.dev Link ───────────────────────────────────────────────────────
+
+	async createMergeDevLinkToken(endUserEmail: string, category: string): Promise<string> {
+		const enabled = await this.getPluginEnabled('mergeDev');
+		if (!enabled) {
+			throw new UserError('Merge.dev plugin is not enabled.');
+		}
+
+		const apiKey = await this.getPluginField('mergeDev', 'apiKey');
+		if (!apiKey) {
+			throw new UserError('Merge.dev API key is not configured.');
+		}
+
+		const response = await fetch(`${MERGE_DEV_API_BASE}/create-link-token`, {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${apiKey}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				end_user_origin_id: crypto.randomUUID(),
+				end_user_email_address: endUserEmail,
+				end_user_organization_name: 'n8n',
+				categories: [category],
+			}),
+		});
+
+		if (!response.ok) {
+			if (response.status === 429) {
+				throw new UserError(
+					'Merge.dev rate limit reached. Please wait a moment before trying again.',
+				);
+			}
+			throw new UnexpectedError(
+				`Failed to create Merge.dev link token: ${String(response.status)}`,
+			);
+		}
+
+		const data = (await response.json()) as { link_token: string };
+		return data.link_token;
+	}
+
+	async getMergeDevAccountToken(publicToken: string): Promise<string> {
+		const apiKey = await this.getPluginField('mergeDev', 'apiKey');
+		if (!apiKey) {
+			throw new UserError('Merge.dev API key is not configured.');
+		}
+
+		const response = await fetch(`${MERGE_DEV_API_BASE}/account-token/${publicToken}`, {
+			headers: {
+				Authorization: `Bearer ${apiKey}`,
+			},
+		});
+
+		if (!response.ok) {
+			throw new UnexpectedError(
+				`Failed to retrieve Merge.dev account token: ${String(response.status)}`,
+			);
+		}
+
+		const data = (await response.json()) as { account_token: string };
+		return data.account_token;
 	}
 
 	// ─── Merge.dev integrations ──────────────────────────────────────────────

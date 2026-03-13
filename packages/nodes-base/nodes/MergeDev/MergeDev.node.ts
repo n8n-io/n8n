@@ -39,6 +39,18 @@ export class MergeDev implements INodeType {
 				default: '',
 			},
 			{
+				displayName: 'Integration Slug',
+				name: 'integrationSlug',
+				type: 'hidden',
+				default: '',
+			},
+			{
+				displayName: 'Link Category',
+				name: 'linkCategory',
+				type: 'hidden',
+				default: '',
+			},
+			{
 				displayName: 'Model',
 				name: 'commonModels',
 				type: 'options',

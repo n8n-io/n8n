@@ -166,11 +166,15 @@ function onSelected(item: INodeCreateElement) {
 		if (isMergeDevVirtualNode(item.key)) {
 			const parsed = parseMergeDevNodeKey(item.key);
 			if (parsed) {
-				emit('nodeTypeSelected', [{ type: MERGE_DEV_NODE_TYPE }]);
+				emit('nodeTypeSelected', [{ type: MERGE_DEV_NODE_TYPE, iconUrl: item.properties.iconUrl }]);
 				setAddedNodeActionParameters({
 					name: item.properties.displayName,
 					key: MERGE_DEV_NODE_TYPE,
-					value: { category: parsed.category } as INodeParameters,
+					value: {
+						category: parsed.category,
+						integrationSlug: parsed.slug,
+						linkCategory: parsed.category,
+					} as INodeParameters,
 				});
 				return;
 			}

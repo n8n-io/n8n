@@ -601,6 +601,7 @@ export type NodeTypeSelectedPayload = {
 		language?: string;
 	};
 	actionName?: string;
+	iconUrl?: string;
 };
 
 export interface SubcategorizedNodeTypes {
