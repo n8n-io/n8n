@@ -30,7 +30,7 @@ const options = computed(() =>
 
 const isHtml = computed(() => selectedArtifact.value?.type === 'html');
 const htmlContent = computed(() => (isHtml.value ? selectedArtifact.value?.content : undefined));
-const throttledHtmlContent = refThrottled(htmlContent, 2000);
+const throttledHtmlContent = refThrottled(htmlContent, 1000);
 const isMarkdown = computed(() => selectedArtifact.value?.type === 'md');
 
 const canToggleSource = computed(() => isHtml.value || isMarkdown.value);
