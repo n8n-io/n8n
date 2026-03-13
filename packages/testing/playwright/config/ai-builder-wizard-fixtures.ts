@@ -166,6 +166,59 @@ export function createBuilderResponseWithPlaceholder(): string {
 }
 
 /**
+ * Builder response with a placeholder value in the Slack node + a Telegram node.
+ * Produces 2 visible cards after trigger-only filter: Slack (with placeholder) + Telegram.
+ * Navigating to the Slack card triggers lazy placeholder clearing.
+ */
+export function createBuilderResponseWithPlaceholderAndTelegram(): string {
+	const workflow = {
+		nodes: [
+			wizardWorkflowNodes.nodes[0], // Schedule Trigger
+			{
+				id: 'telegram-1',
+				name: 'Telegram',
+				type: 'n8n-nodes-base.telegram',
+				typeVersion: 1.2,
+				position: [220, 0] as [number, number],
+				parameters: {
+					resource: 'message',
+					operation: 'sendMessage',
+					chatId: '123456789',
+					text: 'Hello from n8n!',
+				},
+				credentials: {
+					telegramApi: { id: '', name: '' },
+				},
+			},
+			{
+				...wizardWorkflowNodes.nodes[1], // Slack (after Telegram in execution order)
+				position: [440, 0] as [number, number],
+				parameters: {
+					resource: 'message',
+					operation: 'post',
+					select: 'channel',
+					channelId: { __rl: true, mode: 'id', value: 'C01234567' },
+					messageType: 'text',
+					text: '<__PLACEHOLDER_VALUE__notification message__>',
+				},
+			},
+		],
+		connections: {
+			'Schedule Trigger': {
+				main: [[{ node: 'Telegram', type: 'main', index: 0 }]],
+			},
+			Telegram: {
+				main: [[{ node: 'Slack', type: 'main', index: 0 }]],
+			},
+		},
+		pinData: {
+			'Schedule Trigger': wizardWorkflowNodes.pinData['Schedule Trigger'],
+		},
+	};
+	return createBuilderStreamingResponse(workflow);
+}
+
+/**
  * Telegram node definition reused across multi-node fixtures.
  */
 const telegramNode = {
@@ -203,6 +256,29 @@ export function createBuilderResponseThreeCards(): string {
 		},
 		pinData: {
 			...wizardWorkflowNodes.pinData,
+			Telegram: [{ json: { ok: true, result: { message_id: 123 } } }],
+		},
+	};
+	return createBuilderStreamingResponse(workflow);
+}
+
+/**
+ * 3-card workflow WITHOUT trigger pinned data: Schedule Trigger → Slack → Telegram.
+ * Used for tests that need to execute the trigger step without an unpin confirmation dialog.
+ */
+export function createBuilderResponseThreeCardsNoTriggerPin(): string {
+	const workflow = {
+		nodes: [...wizardWorkflowNodes.nodes, telegramNode],
+		connections: {
+			'Schedule Trigger': {
+				main: [[{ node: 'Slack', type: 'main', index: 0 }]],
+			},
+			Slack: {
+				main: [[{ node: 'Telegram', type: 'main', index: 0 }]],
+			},
+		},
+		pinData: {
+			Slack: wizardWorkflowNodes.pinData.Slack,
 			Telegram: [{ json: { ok: true, result: { message_id: 123 } } }],
 		},
 	};
@@ -307,6 +383,247 @@ export function createBuilderResponseMultipleTriggers(): string {
 		connections: {
 			'Morning Schedule': {
 				main: [[{ node: 'Slack', type: 'main', index: 0 }]],
+			},
+		},
+		pinData: {},
+	};
+	return createBuilderStreamingResponse(workflow);
+}
+
+/**
+ * Workflow with two Slack nodes sharing the same credential type (slackApi).
+ * Execution order: Schedule Trigger → Slack Alerts → Slack Reports.
+ * After trigger filter: 1 card (slackApi credential, grouping both nodes).
+ * The card should show "Used in 2 nodes" hint.
+ */
+export function createBuilderResponseSharedCredential(): string {
+	const workflow = {
+		nodes: [
+			{
+				id: 'schedule-trigger-1',
+				name: 'Schedule Trigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: {
+					rule: { interval: [{ field: 'hours', hoursInterval: 1 }] },
+				},
+			},
+			{
+				id: 'slack-alerts',
+				name: 'Slack Alerts',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2.2,
+				position: [220, 0],
+				parameters: {
+					resource: 'message',
+					operation: 'send',
+					channelId: { __rl: true, mode: 'id', value: 'C-ALERTS' },
+					messageType: 'text',
+					text: 'Alert!',
+				},
+				credentials: {
+					slackApi: { id: '', name: '' },
+				},
+			},
+			{
+				id: 'slack-reports',
+				name: 'Slack Reports',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2.2,
+				position: [440, 0],
+				parameters: {
+					resource: 'message',
+					operation: 'send',
+					channelId: { __rl: true, mode: 'id', value: 'C-REPORTS' },
+					messageType: 'text',
+					text: 'Daily report',
+				},
+				credentials: {
+					slackApi: { id: '', name: '' },
+				},
+			},
+		],
+		connections: {
+			'Schedule Trigger': {
+				main: [[{ node: 'Slack Alerts', type: 'main', index: 0 }]],
+			},
+			'Slack Alerts': {
+				main: [[{ node: 'Slack Reports', type: 'main', index: 0 }]],
+			},
+		},
+		pinData: {},
+	};
+	return createBuilderStreamingResponse(workflow);
+}
+
+/**
+ * Branching workflow: Schedule Trigger → If → Slack (true) / Telegram (false).
+ * After trigger filter: 2 cards (Slack credential + Telegram credential).
+ * Tests that cards appear for nodes across different conditional branches.
+ */
+export function createBuilderResponseBranchingWorkflow(): string {
+	const workflow = {
+		nodes: [
+			{
+				id: 'schedule-trigger-1',
+				name: 'Schedule Trigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: {
+					rule: { interval: [{ field: 'hours', hoursInterval: 1 }] },
+				},
+			},
+			{
+				id: 'if-1',
+				name: 'Check Condition',
+				type: 'n8n-nodes-base.if',
+				typeVersion: 2,
+				position: [220, 0],
+				parameters: {
+					conditions: {
+						options: { caseSensitive: true, leftValue: '' },
+						conditions: [
+							{
+								leftValue: '={{ $json.value }}',
+								rightValue: 'yes',
+								operator: { type: 'string', operation: 'equals' },
+							},
+						],
+						combinator: 'and',
+					},
+				},
+			},
+			{
+				id: 'slack-1',
+				name: 'Slack Notification',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2.2,
+				position: [440, -100],
+				parameters: {
+					resource: 'message',
+					operation: 'send',
+					channelId: { __rl: true, mode: 'id', value: 'C01234567' },
+					messageType: 'text',
+					text: 'Condition met!',
+				},
+				credentials: {
+					slackApi: { id: '', name: '' },
+				},
+			},
+			{
+				id: 'telegram-1',
+				name: 'Telegram Fallback',
+				type: 'n8n-nodes-base.telegram',
+				typeVersion: 1.2,
+				position: [440, 100],
+				parameters: {
+					resource: 'message',
+					operation: 'sendMessage',
+					chatId: '123456789',
+					text: 'Condition not met',
+				},
+				credentials: {
+					telegramApi: { id: '', name: '' },
+				},
+			},
+		],
+		connections: {
+			'Schedule Trigger': {
+				main: [[{ node: 'Check Condition', type: 'main', index: 0 }]],
+			},
+			'Check Condition': {
+				main: [
+					[{ node: 'Slack Notification', type: 'main', index: 0 }],
+					[{ node: 'Telegram Fallback', type: 'main', index: 0 }],
+				],
+			},
+		},
+		pinData: {},
+	};
+	return createBuilderStreamingResponse(workflow);
+}
+
+/**
+ * 3-card workflow where the credential+placeholder card is in the MIDDLE.
+ * Execution order: Schedule Trigger → Telegram (cred-only) → Slack (cred+placeholder) → Notion (cred-only).
+ * After trigger filter: Telegram (card 1) → Slack (card 2) → Notion (card 3).
+ * Navigating to Slack triggers placeholder clearing. Slack is NOT the last card,
+ * so auto-advance toward Notion could fire if the parameter guard is missing.
+ */
+export function createBuilderResponsePlaceholderMiddleCard(): string {
+	const workflow = {
+		nodes: [
+			{
+				id: 'schedule-trigger-1',
+				name: 'Schedule Trigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: {
+					rule: { interval: [{ field: 'hours', hoursInterval: 1 }] },
+				},
+			},
+			{
+				id: 'telegram-1',
+				name: 'Telegram',
+				type: 'n8n-nodes-base.telegram',
+				typeVersion: 1.2,
+				position: [220, 0],
+				parameters: {
+					resource: 'message',
+					operation: 'sendMessage',
+					chatId: '123456789',
+					text: 'Hello!',
+				},
+				credentials: {
+					telegramApi: { id: '', name: '' },
+				},
+			},
+			{
+				id: 'slack-1',
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2.2,
+				position: [440, 0],
+				parameters: {
+					resource: 'message',
+					operation: 'post',
+					select: 'channel',
+					channelId: { __rl: true, mode: 'id', value: 'C01234567' },
+					messageType: 'text',
+					text: '<__PLACEHOLDER_VALUE__notification message__>',
+				},
+				credentials: {
+					slackApi: { id: '', name: '' },
+				},
+			},
+			{
+				id: 'notion-1',
+				name: 'Notion',
+				type: 'n8n-nodes-base.notion',
+				typeVersion: 2.2,
+				position: [660, 0],
+				parameters: {
+					resource: 'page',
+					operation: 'create',
+					title: 'Log entry',
+				},
+				credentials: {
+					notionApi: { id: '', name: '' },
+				},
+			},
+		],
+		connections: {
+			'Schedule Trigger': {
+				main: [[{ node: 'Telegram', type: 'main', index: 0 }]],
+			},
+			Telegram: {
+				main: [[{ node: 'Slack', type: 'main', index: 0 }]],
+			},
+			Slack: {
+				main: [[{ node: 'Notion', type: 'main', index: 0 }]],
 			},
 		},
 		pinData: {},

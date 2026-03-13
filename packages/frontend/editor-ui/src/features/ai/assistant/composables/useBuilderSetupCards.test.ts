@@ -22,7 +22,6 @@ const mockTrackJourney = vi.fn();
 // Reactive object so computed properties in the composable can track changes
 const mockBuilderStoreState = reactive({
 	wizardCurrentStep: 0,
-	wizardClearedPlaceholders: new Set<string>(),
 	trackWorkflowBuilderJourney: mockTrackJourney,
 });
 vi.mock('@/features/ai/assistant/builder.store', () => ({
@@ -63,6 +62,15 @@ vi.mock('@/app/composables/useWorkflowState', () => ({
 vi.mock('@/app/composables/useNodeHelpers', () => ({
 	useNodeHelpers: () => ({
 		updateNodesParameterIssues: vi.fn(),
+	}),
+}));
+
+// Pinia unwraps refs, so the store exposes the raw Map (not a Ref).
+// Use reactive() so changes are tracked by Vue's reactivity system.
+const mockCredentialTestResults = reactive(new Map<string, string>());
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({
+		credentialTestResults: mockCredentialTestResults,
 	}),
 }));
 
@@ -142,6 +150,9 @@ async function getComposable() {
 			updateNodesParameterIssues: vi.fn(),
 		}),
 	}));
+	vi.doMock('@/features/credentials/credentials.store', () => ({
+		useCredentialsStore: () => ({ credentialTestResults: mockCredentialTestResults }),
+	}));
 
 	const mod = await import('./useBuilderSetupCards');
 	currentScope = effectScope();
@@ -157,7 +168,7 @@ describe('useBuilderSetupCards', () => {
 		mockAllNodes.value = [];
 		mockFirstTriggerName.value = null;
 		mockBuilderStoreState.wizardCurrentStep = 0;
-		mockBuilderStoreState.wizardClearedPlaceholders = new Set();
+		mockCredentialTestResults.clear();
 	});
 
 	it('passes through cards from useWorkflowSetupState', async () => {
@@ -175,9 +186,21 @@ describe('useBuilderSetupCards', () => {
 
 	it('returns correct navigation state', async () => {
 		mockSetupCards.value = [
-			createCard({ node: createNode({ name: 'Node 1', id: 'n1' }) }),
-			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }) }),
-			createCard({ node: createNode({ name: 'Node 3', id: 'n3' }) }),
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'typeA',
+				issues: ['Not set'],
+			}),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'typeB',
+				issues: ['Not set'],
+			}),
+			createCard({
+				node: createNode({ name: 'Node 3', id: 'n3' }),
+				credentialType: 'typeC',
+				issues: ['Not set'],
+			}),
 		];
 
 		const { currentStepIndex, currentCard, totalCards, goToNext, goToPrev, goToStep } =
@@ -221,7 +244,12 @@ describe('useBuilderSetupCards', () => {
 	it('isAllComplete reflects all cards completion status', async () => {
 		mockSetupCards.value = [
 			createCard({ node: createNode({ name: 'Node 1', id: 'n1' }), isComplete: true }),
-			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: false }),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				isComplete: false,
+				credentialType: 'telegramApi',
+				issues: ['Credential not set'],
+			}),
 		];
 
 		const { isAllComplete } = await getComposable();
@@ -311,8 +339,6 @@ describe('useBuilderSetupCards', () => {
 	});
 
 	it('does not auto-advance when navigating back to a completed card', async () => {
-		vi.useFakeTimers();
-
 		mockSetupCards.value = [
 			createCard({ node: createNode({ name: 'Node 1', id: 'n1' }), isComplete: true }),
 			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: false }),
@@ -326,24 +352,268 @@ describe('useBuilderSetupCards', () => {
 		await nextTick();
 		expect(currentStepIndex.value).toBe(1);
 
-		// Navigate back to completed step 0
+		// Navigate back to completed step 0 — should stay (navigation, not completion)
 		goToStep(0);
 		await nextTick();
 		expect(currentStepIndex.value).toBe(0);
+	});
 
-		// Wait past the auto-advance delay
-		vi.advanceTimersByTime(500);
-		await nextTick();
+	it('filters out trigger-only cards that require no setup', async () => {
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({
+					name: 'Schedule Trigger',
+					id: 'trigger-1',
+					type: 'n8n-nodes-base.scheduleTrigger',
+				}),
+				isTrigger: true,
+				isComplete: false,
+			}),
+			createCard({
+				node: createNode({ name: 'HTTP Request', id: 'n2' }),
+				credentialType: 'httpBasicAuth',
+				isComplete: true,
+			}),
+		];
 
-		// Should still be on step 0 — no auto-advance
+		const { cards, isAllComplete } = await getComposable();
+		expect(cards.value).toHaveLength(1);
+		expect(cards.value[0].state.node.name).toBe('HTTP Request');
+		expect(isAllComplete.value).toBe(true);
+	});
+
+	it('keeps trigger cards that have credentials', async () => {
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({
+					name: 'Telegram Trigger',
+					id: 'trigger-1',
+					type: 'n8n-nodes-base.telegramTrigger',
+				}),
+				isTrigger: true,
+				isComplete: false,
+				credentialType: 'telegramApi',
+			}),
+		];
+
+		const { cards } = await getComposable();
+		expect(cards.value).toHaveLength(1);
+		expect(cards.value[0].state.node.name).toBe('Telegram Trigger');
+	});
+
+	it('keeps trigger cards that have parameter issues', async () => {
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({
+					name: 'Webhook Trigger',
+					id: 'trigger-1',
+					type: 'n8n-nodes-base.webhook',
+				}),
+				isTrigger: true,
+				isComplete: false,
+				parameterIssues: { path: ['Parameter "path" is required'] },
+			}),
+		];
+
+		const { cards } = await getComposable();
+		expect(cards.value).toHaveLength(1);
+	});
+
+	it('treats cards with pending credential tests as effectively complete', async () => {
+		mockCredentialTestResults.set('cred-1', 'pending');
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'telegramApi',
+				selectedCredentialId: 'cred-1',
+				issues: [],
+				isComplete: false, // pending test makes upstream mark it incomplete
+			}),
+		];
+
+		const { isAllComplete } = await getComposable();
+		expect(isAllComplete.value).toBe(true);
+	});
+
+	it('treats cards with failed credential tests as genuinely incomplete', async () => {
+		mockCredentialTestResults.set('cred-1', 'error');
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'telegramApi',
+				selectedCredentialId: 'cred-1',
+				issues: [],
+				isComplete: false,
+			}),
+		];
+
+		const { isAllComplete } = await getComposable();
+		expect(isAllComplete.value).toBe(false);
+	});
+
+	it('treats cards with no credential selected as genuinely incomplete', async () => {
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'telegramApi',
+				selectedCredentialId: undefined,
+				issues: ['Credential not set'],
+				isComplete: false,
+			}),
+		];
+
+		const { isAllComplete } = await getComposable();
+		expect(isAllComplete.value).toBe(false);
+	});
+
+	it('auto-advances credential-only card when it completes', async () => {
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'openAiApi',
+				isComplete: false,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: false,
+			}),
+		];
+
+		const { currentStepIndex } = await getComposable();
 		expect(currentStepIndex.value).toBe(0);
 
-		vi.useRealTimers();
+		// Simulate credential card completing (credential set + test passed)
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'openAiApi',
+				isComplete: true,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: false,
+			}),
+		];
+		await nextTick();
+
+		expect(currentStepIndex.value).toBe(1);
+	});
+
+	it('auto-advances through multiple already-complete cards to first incomplete', async () => {
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'openAiApi',
+				isComplete: false,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: true,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 3', id: 'n3' }),
+				credentialType: 'telegramApi',
+				isComplete: false,
+			}),
+		];
+
+		const { currentStepIndex } = await getComposable();
+		expect(currentStepIndex.value).toBe(0);
+
+		// Card 1 completes — should skip past already-complete card 2 to card 3
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'openAiApi',
+				isComplete: true,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: true,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 3', id: 'n3' }),
+				credentialType: 'telegramApi',
+				isComplete: false,
+			}),
+		];
+		await nextTick();
+
+		expect(currentStepIndex.value).toBe(2);
+	});
+
+	it('does not auto-advance when wizardHasExecutedWorkflow is true', async () => {
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'openAiApi',
+				isComplete: false,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: false,
+			}),
+		];
+
+		const { currentStepIndex } = await getComposable();
+		(mockBuilderStoreState as Record<string, unknown>).wizardHasExecutedWorkflow = true;
+
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'openAiApi',
+				isComplete: true,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: false,
+			}),
+		];
+		await nextTick();
+
+		expect(currentStepIndex.value).toBe(0);
+		(mockBuilderStoreState as Record<string, unknown>).wizardHasExecutedWorkflow = false;
+	});
+
+	it('onStepExecuted skips to next incomplete card', async () => {
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'openAiApi',
+				additionalParameterNames: ['model'],
+				isComplete: true,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: true,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 3', id: 'n3' }),
+				credentialType: 'telegramApi',
+				isComplete: false,
+			}),
+		];
+
+		const { currentStepIndex, onStepExecuted } = await getComposable();
+		// skipToFirstIncomplete on mount already moves to card 3, reset to 0
+		currentStepIndex.value = 0;
+		await nextTick();
+
+		onStepExecuted();
+		await nextTick();
+
+		// Should skip past complete card 2 to incomplete card 3
+		expect(currentStepIndex.value).toBe(2);
 	});
 
 	it('does not auto-advance for cards with parameters to avoid disrupting typing', async () => {
-		vi.useFakeTimers();
-
 		mockSetupCards.value = [
 			createCard({
 				node: createNode({ name: 'Node 1', id: 'n1' }),
@@ -367,13 +637,7 @@ describe('useBuilderSetupCards', () => {
 		];
 		await nextTick();
 
-		// Wait past auto-advance delay
-		vi.advanceTimersByTime(500);
-		await nextTick();
-
 		// Should NOT auto-advance — user may still be editing parameters
 		expect(currentStepIndex.value).toBe(0);
-
-		vi.useRealTimers();
 	});
 });

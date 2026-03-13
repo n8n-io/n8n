@@ -1,4 +1,4 @@
-import { ref, shallowRef, nextTick } from 'vue';
+import { ref, nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 
 import { createTestNode } from '@/__tests__/mocks';
@@ -39,7 +39,8 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
 	return {
 		...actual,
-		injectWorkflowDocumentStore: vi.fn(() => shallowRef(mockWorkflowDocumentStore)),
+		useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
+		createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 	};
 });
 
@@ -96,6 +97,7 @@ describe('useWorkflowSetupState', () => {
 		credentialsStore = mockedStore(useCredentialsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 
+		workflowsStore.workflowId = 'test-workflow';
 		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue(undefined);
 		credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
 		credentialsStore.getNodesWithAccess = vi.fn().mockReturnValue([]);

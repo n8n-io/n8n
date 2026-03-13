@@ -1,13 +1,17 @@
 import type { Page } from '@playwright/test';
 
+import { BuilderSetupWizardPage } from './BuilderSetupWizardPage';
+
 /**
  * Page object for AI Workflow Builder interactions
  */
 export class AIBuilderPage {
 	readonly page: Page;
+	readonly wizard: BuilderSetupWizardPage;
 
 	constructor(page: Page) {
 		this.page = page;
+		this.wizard = new BuilderSetupWizardPage(page);
 	}
 
 	// #region Locators

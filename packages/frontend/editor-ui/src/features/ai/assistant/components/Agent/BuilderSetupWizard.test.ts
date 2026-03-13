@@ -17,6 +17,8 @@ const mockIsAllComplete = ref(false);
 const mockTotalCards = ref(0);
 const mockCurrentStepIndex = ref(0);
 
+const mockOnStepExecuted = vi.fn();
+
 vi.mock('@/features/ai/assistant/composables/useBuilderSetupCards', () => ({
 	useBuilderSetupCards: () => ({
 		cards: mockCards,
@@ -32,6 +34,7 @@ vi.mock('@/features/ai/assistant/composables/useBuilderSetupCards', () => ({
 		goToStep: vi.fn(),
 		skipCurrent: vi.fn(),
 		continueCurrent: vi.fn(),
+		onStepExecuted: mockOnStepExecuted,
 	}),
 }));
 
@@ -63,15 +66,15 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-vi.mock('@/app/composables/useRunWorkflow', () => ({
-	useRunWorkflow: () => ({
-		runWorkflow: vi.fn(),
-	}),
-}));
-
-vi.mock('@/app/composables/useToast', () => ({
-	useToast: () => ({
-		showMessage: vi.fn(),
+const mockTriggerNodes = ref<INodeUi[]>([]);
+vi.mock('@/features/ai/assistant/composables/useBuilderExecution', () => ({
+	useBuilderExecution: () => ({
+		triggerNodes: mockTriggerNodes,
+		availableTriggerNodes: ref([]),
+		executeButtonTooltip: ref(''),
+		isWorkflowRunning: ref(false),
+		isExecutionWaitingForWebhook: ref(false),
+		execute: vi.fn(),
 	}),
 }));
 
@@ -107,6 +110,7 @@ describe('BuilderSetupWizard', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		builderStore = mockedStore(useBuilderStore);
 
+		mockTriggerNodes.value = [triggerNode];
 		workflowsStore.workflow.nodes = [triggerNode];
 		workflowsStore.workflow.connections = {} as never;
 		nodeTypesStore.isTriggerNode = vi
@@ -237,6 +241,11 @@ describe('BuilderSetupWizard', () => {
 		mockTotalCards.value = 1;
 		mockCurrentStepIndex.value = 0;
 		mockIsAllComplete.value = true;
+
+		// The composable's onStepExecuted sets this flag for the last card
+		mockOnStepExecuted.mockImplementation(() => {
+			builderStore.wizardHasExecutedWorkflow = true;
+		});
 
 		const { getByTestId, queryByTestId } = render();
 		expect(getByTestId('builder-setup-wizard')).toBeInTheDocument();

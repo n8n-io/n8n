@@ -1,20 +1,16 @@
 <script setup lang="ts">
-import { onMounted, computed, onBeforeUnmount, ref, watch, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { onMounted, computed, ref, watch, watchEffect } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
 
 import BuilderSetupCard from './BuilderSetupCard.vue';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useBuilderSetupCards } from '@/features/ai/assistant/composables/useBuilderSetupCards';
+import { useBuilderExecution } from '@/features/ai/assistant/composables/useBuilderExecution';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { useLogsStore } from '@/app/stores/logs.store';
-import { useToast } from '@/app/composables/useToast';
-import { isChatNode } from '@/app/utils/aiUtils';
 
 interface Emits {
 	workflowExecuted: [];
@@ -22,16 +18,11 @@ interface Emits {
 
 const emit = defineEmits<Emits>();
 
-const router = useRouter();
 const i18n = useI18n();
 const builderStore = useBuilderStore();
 const setupPanelStore = useSetupPanelStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
-const logsStore = useLogsStore();
-const toast = useToast();
-
-const { runWorkflow } = useRunWorkflow({ router });
 
 const {
 	currentStepIndex,
@@ -44,22 +35,27 @@ const {
 	goToNext,
 	goToPrev,
 	continueCurrent,
+	onStepExecuted,
 } = useBuilderSetupCards();
 
-const triggerNodes = computed(() =>
-	workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
-);
-
-// Empty until all cards are complete — prevents trigger selection in the execute button while setup is pending
-const availableTriggerNodes = computed(() => (isAllComplete.value ? triggerNodes.value : []));
-
-const executeButtonTooltip = computed(() =>
-	!isAllComplete.value ? i18n.baseText('aiAssistant.builder.executeMessage.validationTooltip') : '',
-);
+const {
+	triggerNodes,
+	availableTriggerNodes,
+	executeButtonTooltip,
+	isWorkflowRunning,
+	isExecutionWaitingForWebhook,
+	execute,
+} = useBuilderExecution(isAllComplete);
 
 const wizardDismissed = computed(
 	() => isAllComplete.value && builderStore.wizardHasExecutedWorkflow,
 );
+
+watchEffect(() => {
+	console.log('isAllComplete', isAllComplete.value);
+	console.log('wizardHasExecutedWorkflow', builderStore.wizardHasExecutedWorkflow);
+	console.log('card', currentCard.value);
+});
 
 const showCard = computed(() => currentCard.value && !wizardDismissed.value);
 
@@ -77,8 +73,6 @@ function onMouseLeave() {
 }
 
 // Highlight all nodes associated with the active card while hovering over the wizard.
-// Uses showWizard (not showCard) so highlighting is always cleared when
-// the wizard is hidden — mouseleave won't fire when the DOM is removed by v-if.
 const highlightedNodeIds = computed(() => {
 	const card = currentCard.value;
 	if (!card) return [];
@@ -105,70 +99,11 @@ const descriptionText = computed(() => {
 		: i18n.baseText('aiAssistant.builder.executeMessage.noIssues');
 });
 
-const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
-
-let executionWatcherStop: (() => void) | undefined;
-
-const stopExecutionWatcher = () => {
-	if (executionWatcherStop) {
-		executionWatcherStop();
-		executionWatcherStop = undefined;
-	}
-};
-
-const ensureExecutionWatcher = () => {
-	if (executionWatcherStop) return;
-
-	const RUNNING_STATES = ['running', 'waiting'];
-
-	executionWatcherStop = watch(
-		() => workflowsStore.workflowExecutionData?.status,
-		async (status) => {
-			await nextTick();
-
-			if (!status || RUNNING_STATES.includes(status)) return;
-
-			stopExecutionWatcher();
-
-			if (status !== 'canceled') {
-				emit('workflowExecuted');
-			}
-		},
-	);
-};
-
 async function onExecute() {
-	if (!isAllComplete.value) return;
-
-	const selectedTriggerNode =
-		workflowsStore.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
-	const selectedTriggerNodeType = selectedTriggerNode
-		? workflowsStore.getNodeByName(selectedTriggerNode)
-		: null;
-
-	if (selectedTriggerNodeType && isChatNode(selectedTriggerNodeType)) {
-		toast.showMessage({
-			title: i18n.baseText('aiAssistant.builder.toast.title'),
-			message: i18n.baseText('aiAssistant.builder.toast.description'),
-			type: 'info',
-		});
-		logsStore.toggleOpen(true);
-		return;
-	}
-
-	const runOptions: Parameters<typeof runWorkflow>[0] = {};
-	if (selectedTriggerNode) {
-		runOptions.triggerNode = selectedTriggerNode;
-	}
-
-	// Set post-execution state only after confirming we will actually start a run.
-	// Must be set before runWorkflow() so the execution watcher and UI state
+	// Set post-execution state before starting the run so the execution watcher and UI state
 	// are ready when the run begins.
 	builderStore.wizardHasExecutedWorkflow = true;
-	ensureExecutionWatcher();
-
-	await runWorkflow(runOptions);
+	await execute(() => emit('workflowExecuted'));
 }
 
 function onGoToNext() {
@@ -201,22 +136,10 @@ function onCredentialDeselected(payload: { credentialType: string; nodeName: str
 	unsetCredential(payload.credentialType, payload.nodeName);
 }
 
-function onStepExecuted() {
-	const card = currentCard.value;
-	if (!card?.state.isComplete) return;
-
-	const isLastStep = currentStepIndex.value >= totalCards.value - 1;
-
-	if (isLastStep && isAllComplete.value) {
-		builderStore.wizardHasExecutedWorkflow = true;
+function handleStepExecuted() {
+	onStepExecuted();
+	if (builderStore.wizardHasExecutedWorkflow) {
 		setupPanelStore.clearHighlightedNodes();
-		return;
-	}
-
-	// Auto-advance after step execution for cards with parameters.
-	// Credential-only cards are handled by the composable's auto-advance watcher.
-	if (!isLastStep) {
-		goToNext();
 	}
 }
 
@@ -224,10 +147,6 @@ onMounted(() => {
 	builderStore.trackWorkflowBuilderJourney('setup_wizard_shown', {
 		total: totalCards.value,
 	});
-});
-
-onBeforeUnmount(() => {
-	stopExecutionWatcher();
 });
 </script>
 
@@ -254,7 +173,7 @@ onBeforeUnmount(() => {
 			:first-trigger-name="firstTriggerName"
 			@go-to-next="onGoToNext"
 			@go-to-prev="onGoToPrev"
-			@step-executed="onStepExecuted"
+			@step-executed="handleStepExecuted"
 			@continue-current="continueCurrent"
 			@credential-selected="onCredentialSelected"
 			@credential-deselected="onCredentialDeselected"

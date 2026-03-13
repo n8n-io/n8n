@@ -9,6 +9,7 @@ export const isHttpRequestNodeType = (nodeType: string): boolean =>
 
 import type {
 	CredentialTypeSetupState,
+	NodeSetupState,
 	TriggerSetupState,
 } from '@/features/setupPanel/setupPanel.types';
 import { type INode, type INodeParameters, NodeHelpers } from 'n8n-workflow';
@@ -68,6 +69,7 @@ export function getNodeParametersIssues(nodeTypesStore: NodeTypeProvider, node: 
 	}
 
 	const nodeWithDefaults: INode = { ...node, parameters: paramsWithDefaults };
+	debugger;
 	const issues = NodeHelpers.getNodeParametersIssues(
 		nodeType.properties,
 		nodeWithDefaults,
@@ -192,34 +194,83 @@ export function groupCredentialsByType(
 	return Array.from(map.values());
 }
 
+/** Callbacks needed by completion checks */
+export interface CompletionContext {
+	firstTriggerName: string | null;
+	hasTriggerExecuted: (nodeName: string) => boolean;
+	isTriggerNode: (nodeType: string) => boolean;
+	isCredentialTestedOk?: (credentialId: string) => boolean;
+	hasUnfilledTemplateParams: (node: INodeUi) => boolean;
+}
+
 /**
- * Checks whether a credential card is fully complete.
- * For cards with embedded triggers, complete = credential set + no issues + all triggers executed.
- * When isCredentialTestedOk is provided, also checks that the credential has passed testing.
+ * Single source of truth for whether a per-node setup card is complete.
+ * Handles credential, parameter, and trigger checks uniformly.
+ */
+export function isNodeSetupComplete(
+	state: Pick<
+		NodeSetupState,
+		'credentialType' | 'selectedCredentialId' | 'issues' | 'parameterIssues' | 'isTrigger' | 'node'
+	>,
+	ctx: CompletionContext,
+): boolean {
+	// Credential check
+	if (state.credentialType) {
+		if (!state.selectedCredentialId || (state.issues?.length ?? 0) > 0) return false;
+		if (
+			ctx.isCredentialTestedOk &&
+			state.selectedCredentialId &&
+			!ctx.isCredentialTestedOk(state.selectedCredentialId)
+		) {
+			return false;
+		}
+	}
+
+	// Parameter check
+	if (Object.keys(state.parameterIssues).length > 0 || ctx.hasUnfilledTemplateParams(state.node)) {
+		return false;
+	}
+
+	// Trigger check: only the first trigger requires execution
+	if (
+		state.isTrigger &&
+		state.node.name === ctx.firstTriggerName &&
+		!ctx.hasTriggerExecuted(state.node.name)
+	) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Checks whether a grouped credential card is fully complete.
+ * For cards with embedded triggers, complete = credential set + no issues + test ok + all first-triggers executed.
  */
 export function isCredentialCardComplete(
 	credState: CredentialTypeSetupState,
-	hasTriggerExecuted: (nodeName: string) => boolean,
-	isTriggerNode: (nodeType: string) => boolean,
-	isCredentialTestedOk?: (credentialId: string) => boolean,
+	ctx: CompletionContext,
 ): boolean {
 	const credentialComplete = !!credState.selectedCredentialId && credState.issues.length === 0;
 	if (!credentialComplete) return false;
 
 	if (
-		isCredentialTestedOk &&
+		ctx.isCredentialTestedOk &&
 		credState.selectedCredentialId &&
-		!isCredentialTestedOk(credState.selectedCredentialId)
+		!ctx.isCredentialTestedOk(credState.selectedCredentialId)
 	) {
 		return false;
 	}
 
-	const triggerNodes = credState.nodes.filter((node) => isTriggerNode(node.type));
-	return triggerNodes.every((node) => hasTriggerExecuted(node.name));
+	// Only the first trigger in the group needs to have executed
+	const triggerNodes = credState.nodes.filter(
+		(node) => ctx.isTriggerNode(node.type) && node.name === ctx.firstTriggerName,
+	);
+	return triggerNodes.every((node) => ctx.hasTriggerExecuted(node.name));
 }
 
 /**
- * Builds the setup state for a trigger card.
+ * Builds the setup state for a standalone trigger card.
  * Complete when: trigger has been executed AND all its credential types are satisfied.
  */
 export function buildTriggerSetupState(

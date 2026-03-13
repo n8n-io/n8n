@@ -1,112 +1,20 @@
-import type { Page } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import {
 	builderWizardRequirements,
-	createBuilderStreamingResponse,
-	createBuilderFollowUpResponse,
 	createBuilderResponseWithoutTriggerPinData,
-	createBuilderResponseWithPlaceholder,
+	createBuilderResponseWithPlaceholderAndTelegram,
 	createBuilderFollowUpWithInsertedNode,
 	createBuilderResponseMultipleTriggers,
+	createBuilderResponseThreeCardsNoTriggerPin,
+	createBuilderResponseSharedCredential,
+	createBuilderResponseBranchingWorkflow,
+	createBuilderResponsePlaceholderMiddleCard,
 } from '../../../config/ai-builder-wizard-fixtures';
 import { test, expect } from '../../../fixtures/base';
-import type { n8nPage } from '../../../pages/n8nPage';
 
-/**
- * Intercept the builder streaming endpoint and respond with mock workflow data.
- */
-async function mockBuilderStream(page: Page, responseBody?: string) {
-	const body = responseBody ?? createBuilderStreamingResponse();
-	await page.route('**/rest/ai/build', async (route) => {
-		await route.fulfill({
-			contentType: 'application/json-lines',
-			body,
-		});
-	});
-}
-
-/**
- * Open the builder chat and send a prompt to trigger workflow generation.
- */
-async function triggerWorkflowGeneration(n8n: n8nPage) {
-	await n8n.aiBuilder.getCanvasBuildWithAIButton().click();
-	await expect(n8n.aiAssistant.getAskAssistantChat()).toBeVisible();
-	await n8n.aiAssistant.sendMessage('Create a Slack notification workflow');
-	await n8n.aiAssistant.waitForStreamingComplete();
-}
-
-/**
- * Navigate to the Slack card (card 2) which has the credential picker.
- * The first card is the Schedule Trigger (trigger-only, no credentials).
- */
-async function navigateToSlackCard(page: Page) {
-	const nextButton = page.getByTestId('builder-setup-card-next');
-	await nextButton.click();
-	await expect(page.getByTestId('credentials-label')).toBeVisible();
-}
-
-/**
- * Wait for the workflow to be fully saved to the backend (including builder-generated nodes).
- * The initial POST creates an empty workflow on page load; the first PATCH saves nodes.
- * Register this waiter before triggerWorkflowGeneration, then await the returned promise.
- */
-function waitForWorkflowSaved(page: Page) {
-	return page.waitForResponse(
-		(resp) =>
-			/\/rest\/workflows\/[^/]+$/.test(resp.url()) &&
-			resp.request().method() === 'PATCH' &&
-			resp.status() < 400,
-		{ timeout: 15000 },
-	);
-}
-
-/**
- * Mock workflow autosave (PATCH) so it completes instantly with a `checksum`,
- * clearing the dirty flag and stopping the autosave loop that keeps the chat
- * input disabled. Must be installed AFTER `waitForWorkflowSaved` resolves so the
- * first real PATCH (with builder-generated nodes) reaches the backend.
- *
- * Only needed in tests that send follow-up messages (which require the chat input enabled).
- */
-async function mockAutosave(page: Page) {
-	await page.route('**/rest/workflows/*', async (route) => {
-		if (route.request().method() === 'PATCH') {
-			const body = route.request().postDataJSON();
-			await route.fulfill({
-				contentType: 'application/json',
-				body: JSON.stringify({
-					data: {
-						...body,
-						checksum: nanoid(),
-						updatedAt: new Date().toISOString(),
-					},
-				}),
-			});
-			return;
-		}
-		await route.continue();
-	});
-}
-
-/**
- * Send a follow-up message to the builder after executing a workflow step.
- * Handles autosave timing and focus management that can interfere after execution.
- */
-async function sendFollowUpMessage(n8n: n8nPage, message: string) {
-	// Close any dialogs that may have opened (e.g., rename dialog from canvas focus)
-	await n8n.page.keyboard.press('Escape');
-
-	// Wait for the chat input to become enabled (autosave disables it while saving)
-	const chatInput = n8n.aiAssistant.getChatInput();
-	await expect(chatInput).toBeEnabled({ timeout: 5000 });
-
-	// Focus, type, and send
-	await chatInput.click();
-	await chatInput.fill(message);
-	await expect(n8n.aiAssistant.getSendMessageButton()).toBeEnabled({ timeout: 5000 });
-	await n8n.aiAssistant.getSendMessageButton().click();
-}
+/** Timeout for operations that hit the real backend (trigger execution, workflow save). */
+const BACKEND_TIMEOUT = 15_000;
 
 test.describe.serial(
 	'Builder Setup Wizard @auth:owner @ai',
@@ -117,7 +25,6 @@ test.describe.serial(
 		test.beforeEach(async ({ n8n, setupRequirements }) => {
 			await setupRequirements(builderWizardRequirements);
 
-			// Mock builder credits endpoint
 			await n8n.page.route('**/rest/ai/build/credits', async (route) => {
 				await route.fulfill({
 					contentType: 'application/json',
@@ -125,7 +32,6 @@ test.describe.serial(
 				});
 			});
 
-			// Mock builder sessions endpoint (no previous sessions)
 			await n8n.page.route('**/rest/ai/sessions', async (route) => {
 				await route.fulfill({
 					contentType: 'application/json',
@@ -133,7 +39,6 @@ test.describe.serial(
 				});
 			});
 
-			// Mock credential test to return OK status (page-level overrides context-level)
 			await n8n.page.route('**/rest/credentials/test', async (route) => {
 				if (route.request().method() === 'POST') {
 					await route.fulfill({
@@ -146,257 +51,230 @@ test.describe.serial(
 			});
 		});
 
-		test('should show wizard with disabled execute button after workflow generation', async ({
-			n8n,
-		}) => {
-			await mockBuilderStream(n8n.page);
+		// --- Core wizard behavior ---
+		// Default fixture (Schedule Trigger + Slack) produces 1 visible card (Slack only).
+		// The trigger-only card is filtered by the wizard because it has no credentials or parameters.
+
+		test('should block execution until all setup cards are complete', async ({ n8n }) => {
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			await bw.mockBuilderStream();
 			await n8n.page.goto('/workflow/new');
+			await bw.triggerWorkflowGeneration();
 
-			await triggerWorkflowGeneration(n8n);
-
-			const wizard = n8n.page.getByTestId('builder-setup-wizard');
-			await expect(wizard).toBeVisible();
-
-			const card = n8n.page.getByTestId('builder-setup-card');
-			await expect(card).toBeVisible();
-
-			// Execute button should be disabled when not all cards are complete
-			const executeButton = wizard.getByTestId('execute-workflow-button');
-			await expect(executeButton).toBeDisabled();
+			await expect(wiz.getWizard()).toBeVisible();
+			await expect(wiz.getCard()).toBeVisible();
+			await expect(wiz.getExecuteWorkflowButton()).toBeDisabled();
 		});
 
-		test('should navigate between cards with prev/next arrows', async ({ n8n }) => {
-			await mockBuilderStream(n8n.page);
+		test('should allow stepping through cards in both directions', async ({ n8n }) => {
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			// 3-node fixture → 2 visible cards after trigger filter (Slack + Telegram)
+			await bw.mockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
 			await n8n.page.goto('/workflow/new');
+			await bw.triggerWorkflowGeneration();
 
-			await triggerWorkflowGeneration(n8n);
+			// Should start on Slack (card 1/2)
+			await expect(wiz.getCardTitle('Slack')).toBeVisible();
+			await expect(wiz.getStepIndicator(1, 2)).toBeVisible();
 
-			const card = n8n.page.getByTestId('builder-setup-card');
+			// Navigate forward → Telegram (card 2/2)
+			await wiz.getNextButton().click();
+			await expect(wiz.getCardTitle('Telegram')).toBeVisible();
+			await expect(wiz.getStepIndicator(2, 2)).toBeVisible();
 
-			// Should start on step 1/2
-			await expect(card.getByText('1/2')).toBeVisible();
-
-			// Navigate forward
-			const nextButton = n8n.page.getByTestId('builder-setup-card-next');
-			await nextButton.click();
-
-			// Step indicator should change to 2/2
-			await expect(card.getByText('2/2')).toBeVisible();
-
-			// Navigate back
-			const prevButton = n8n.page.getByTestId('builder-setup-card-prev');
-			await prevButton.click();
-
-			// Step indicator should be back to 1/2
-			await expect(card.getByText('1/2')).toBeVisible();
+			// Navigate back → Slack (card 1/2)
+			await wiz.getPrevButton().click();
+			await expect(wiz.getCardTitle('Slack')).toBeVisible();
+			await expect(wiz.getStepIndicator(1, 2)).toBeVisible();
 		});
 
-		test('should skip completed trigger step after builder follow-up', async ({ n8n }) => {
-			// Use a fixture without trigger pinned data to avoid unpin confirmation dialog
-			await mockBuilderStream(n8n.page, createBuilderResponseWithoutTriggerPinData());
+		// --- Follow-up behavior ---
+
+		test('should reset to first incomplete card after AI updates workflow', async ({ n8n }) => {
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			// 2 visible cards: Slack (card 1) + Telegram (card 2)
+			await bw.mockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
 			await n8n.page.goto('/workflow/new');
 
-			// Register waiter BEFORE generation — the first PATCH fires ~1.5s after streaming
-			const workflowSaved = waitForWorkflowSaved(n8n.page);
-			await triggerWorkflowGeneration(n8n);
-
-			// Wizard should show on step 1 (Schedule Trigger)
-			const wizard = n8n.page.getByTestId('builder-setup-wizard');
-			await expect(wizard).toBeVisible();
-
-			// Ensure the workflow is saved to the backend before executing
+			const workflowSaved = bw.waitForWorkflowSaved();
+			await bw.triggerWorkflowGeneration();
 			await workflowSaved;
+			await bw.mockAutosave();
 
-			// Install autosave mock AFTER the first save (with builder nodes) reaches the backend
-			await mockAutosave(n8n.page);
+			// Navigate to Telegram (card 2/2)
+			await bw.navigateToCard('Telegram');
+			await expect(wiz.getCardTitle('Telegram')).toBeVisible();
+			await expect(wiz.getStepIndicator(2, 2)).toBeVisible();
 
-			// Execute the trigger step
-			const executeStepBtn = n8n.page.getByTestId('trigger-execute-button');
-			await executeStepBtn.click();
-
-			// Wait for auto-advance to Slack card after trigger execution completes.
-			// Don't wait for the check mark — auto-advance swaps card content in ~300ms,
-			// making the check mark locator unreliable. The credential label on the Slack
-			// card is the stable signal that trigger execution completed and advanced.
-			// Trigger execution hits the real backend — needs extra time under parallel load.
-			await n8n.page.getByTestId('credentials-label').waitFor({ state: 'visible', timeout: 15000 });
-
-			// Re-mock the builder endpoint with a follow-up response
-			await n8n.page.unroute('**/rest/ai/build');
-			await mockBuilderStream(n8n.page, createBuilderFollowUpResponse());
-
-			// Send a follow-up message (handles autosave timing and focus issues)
-			await sendFollowUpMessage(n8n, 'Update the Slack message');
+			// Send follow-up with the same structure (both cards still incomplete)
+			await bw.remockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
+			await bw.sendFollowUpMessage('Adjust the workflow');
 			await n8n.aiAssistant.waitForStreamingComplete();
 
-			// After follow-up, wizard resets step to 0 then skips past the completed trigger
-			// to the Slack card (the first incomplete card)
-			await expect(n8n.page.getByTestId('credentials-label')).toBeVisible();
+			// Wizard should reset to Slack (first incomplete card), not stay on Telegram
+			await expect(wiz.getCardTitle('Slack')).toBeVisible({ timeout: 5000 });
+			await expect(wiz.getStepIndicator(1, 2)).toBeVisible();
 		});
 
-		test('should show new node card when follow-up inserts a node before completed ones', async ({
-			n8n,
-		}) => {
-			// Start with the 2-card workflow (no trigger pinned data so we can execute)
-			await mockBuilderStream(n8n.page, createBuilderResponseWithoutTriggerPinData());
+		test('should land on new incomplete card when follow-up inserts a node', async ({ n8n }) => {
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			await bw.mockBuilderStream(createBuilderResponseWithoutTriggerPinData());
 			await n8n.page.goto('/workflow/new');
 
-			const workflowSaved = waitForWorkflowSaved(n8n.page);
-			await triggerWorkflowGeneration(n8n);
-
-			// Ensure the workflow is saved to the backend before executing
+			const workflowSaved = bw.waitForWorkflowSaved();
+			await bw.triggerWorkflowGeneration();
 			await workflowSaved;
+			await bw.mockAutosave();
 
-			// Install autosave mock AFTER the first save (with builder nodes) reaches the backend
-			await mockAutosave(n8n.page);
+			// Execute step on the Slack card
+			await wiz.getExecuteStepButton().click();
+			await wiz.getCredentialLabel().waitFor({ state: 'visible', timeout: BACKEND_TIMEOUT });
 
-			// Execute the trigger step → trigger card completes and auto-advances
-			const executeStepBtn = n8n.page.getByTestId('trigger-execute-button');
-			await executeStepBtn.click();
-
-			// Wait for auto-advance to Slack card (skip check mark — auto-advance swaps card content)
-			// Trigger execution hits the real backend — needs extra time under parallel load
-			await n8n.page.getByTestId('credentials-label').waitFor({ state: 'visible', timeout: 15000 });
-
-			// Follow-up INSERTS a Telegram node between trigger and Slack.
-			// Execution order becomes: Schedule Trigger → Telegram → Slack.
-			await n8n.page.unroute('**/rest/ai/build');
-			await mockBuilderStream(n8n.page, createBuilderFollowUpWithInsertedNode());
-
-			await sendFollowUpMessage(n8n, 'Add a Telegram notification before Slack');
+			// Follow-up inserts Telegram between trigger and Slack.
+			// After filter: Telegram + Slack = 2 cards.
+			await bw.remockBuilderStream(createBuilderFollowUpWithInsertedNode());
+			await bw.sendFollowUpMessage('Add a Telegram notification before Slack');
 			await n8n.aiAssistant.waitForStreamingComplete();
 
-			// After follow-up, wizard resets to step 0. skipToFirstIncomplete finds:
-			// - Card 0 (Schedule Trigger): complete (trigger was executed) → skip
-			// - Card 1 (Telegram): incomplete (new node, no credential) → SHOW THIS
-			// The wizard should land on the Telegram card, NOT skip past it.
-			const card = n8n.page.getByTestId('builder-setup-card');
-			await expect(card.getByText('Telegram', { exact: true })).toBeVisible({ timeout: 5000 });
-			await expect(card.getByText('2/3')).toBeVisible();
+			// Wizard should land on Telegram (first incomplete card in execution order)
+			await expect(wiz.getCardTitle('Telegram')).toBeVisible({ timeout: 5000 });
+			await expect(wiz.getStepIndicator(1, 2)).toBeVisible();
 		});
 
-		test('should show all setup cards but only execute the first trigger in a multi-trigger workflow', async ({
+		// --- Multi-trigger ---
+
+		test('should only allow executing the first trigger in a multi-trigger workflow', async ({
 			n8n,
 		}) => {
-			await mockBuilderStream(n8n.page, createBuilderResponseMultipleTriggers());
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			// Multi-trigger: Morning Schedule (trigger-only, filtered) + Slack + Telegram Listener
+			// After filter: 2 visible cards (Slack + Telegram Listener)
+			await bw.mockBuilderStream(createBuilderResponseMultipleTriggers());
 			await n8n.page.goto('/workflow/new');
+			await bw.triggerWorkflowGeneration();
 
-			await triggerWorkflowGeneration(n8n);
+			// Card 1: Slack — has credential picker and execute button (non-trigger, executable)
+			await expect(wiz.getCardTitle('Slack')).toBeVisible();
+			await expect(wiz.getStepIndicator(1, 2)).toBeVisible();
+			await expect(wiz.getCredentialLabel()).toBeVisible();
+			await expect(wiz.getExecuteStepButton()).toBeVisible();
 
-			const card = n8n.page.getByTestId('builder-setup-card');
+			// Card 2: Telegram Listener (second trigger) — has credential picker but NO execute button
+			await wiz.getNextButton().click();
+			await expect(wiz.getCardTitle('Telegram Listener')).toBeVisible();
+			await expect(wiz.getStepIndicator(2, 2)).toBeVisible();
+			await expect(wiz.getCredentialLabel()).toBeVisible();
+			await expect(wiz.getExecuteStepButton()).not.toBeVisible();
+		});
 
-			// Card 1: Morning Schedule (first trigger) — should have execute button and show 1/3
-			await expect(card.getByText('Morning Schedule')).toBeVisible();
-			await expect(card.getByText('1/3')).toBeVisible();
-			await expect(n8n.page.getByTestId('trigger-execute-button')).toBeVisible();
+		// --- Auto-advance ---
 
-			// Card 2: Slack — should have credential picker and execute button (non-trigger, executable)
-			const nextButton = n8n.page.getByTestId('builder-setup-card-next');
-			await nextButton.click();
-			await expect(card.getByText('Slack', { exact: true })).toBeVisible();
-			await expect(card.getByText('2/3')).toBeVisible();
-			await expect(n8n.page.getByTestId('credentials-label')).toBeVisible();
-			await expect(n8n.page.getByTestId('trigger-execute-button')).toBeVisible();
+		test('should not auto-advance a credential card without a credential selected', async ({
+			n8n,
+		}) => {
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
 
-			// Card 3: Telegram Listener (second trigger) — has credential picker but NO execute button
-			await nextButton.click();
-			await expect(card.getByText('Telegram Listener')).toBeVisible();
-			await expect(card.getByText('3/3')).toBeVisible();
-			await expect(n8n.page.getByTestId('credentials-label')).toBeVisible();
-			await expect(n8n.page.getByTestId('trigger-execute-button')).not.toBeVisible();
+			// After filter: 2 cards (Slack + Telegram)
+			await bw.mockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
+			await n8n.page.goto('/workflow/new');
+			await bw.triggerWorkflowGeneration();
+
+			// First card is Slack (no credential) — should stay here
+			await expect(wiz.getCardTitle('Slack')).toBeVisible();
+			await expect(wiz.getStepIndicator(1, 2)).toBeVisible();
+
+			// Assert stability: card stays on Slack (no auto-advance without credential)
+			await expect(async () => {
+				await expect(wiz.getCardTitle('Slack')).toBeVisible();
+				await expect(wiz.getStepIndicator(1, 2)).toBeVisible();
+			}).toPass({ intervals: [100, 200, 300] });
+		});
+
+		// --- Credential grouping ---
+
+		test('should group nodes sharing the same credential type into one card', async ({ n8n }) => {
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			// Two Slack nodes (Slack Alerts + Slack Reports) both need slackApi → one grouped card
+			await bw.mockBuilderStream(createBuilderResponseSharedCredential());
+			await n8n.page.goto('/workflow/new');
+			await bw.triggerWorkflowGeneration();
+
+			// Only 1 card should exist (both Slack nodes grouped under slackApi)
+			await expect(wiz.getCard()).toBeVisible();
+			await expect(wiz.getCredentialLabel()).toBeVisible();
+
+			// "Used in 2 nodes" hint confirms grouping
+			await expect(wiz.getNodesHint()).toBeVisible();
+
+			// No step indicator arrows (single card)
+			await expect(wiz.getNextButton()).not.toBeVisible();
+			await expect(wiz.getPrevButton()).not.toBeVisible();
+		});
+
+		// --- Branching workflows ---
+
+		test('should show cards for nodes across conditional branches', async ({ n8n }) => {
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			// If node with Slack (true branch) and Telegram (false branch)
+			// After filter: 2 cards for the two credential-requiring nodes
+			await bw.mockBuilderStream(createBuilderResponseBranchingWorkflow());
+			await n8n.page.goto('/workflow/new');
+			await bw.triggerWorkflowGeneration();
+
+			// Card 1: Slack Notification (true branch)
+			await expect(wiz.getCardTitle('Slack Notification')).toBeVisible();
+			await expect(wiz.getStepIndicator(1, 2)).toBeVisible();
+			await expect(wiz.getCredentialLabel()).toBeVisible();
+
+			// Card 2: Telegram Fallback (false branch)
+			await wiz.getNextButton().click();
+			await expect(wiz.getCardTitle('Telegram Fallback')).toBeVisible();
+			await expect(wiz.getStepIndicator(2, 2)).toBeVisible();
+			await expect(wiz.getCredentialLabel()).toBeVisible();
+		});
+
+		// --- Placeholder parameter handling ---
+
+		test('should show placeholder parameters and keep card incomplete until filled', async ({
+			n8n,
+		}) => {
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			// 2-card fixture: Telegram (card 1) + Slack with placeholder (card 2).
+			await bw.mockBuilderStream(createBuilderResponseWithPlaceholderAndTelegram());
+			await n8n.page.goto('/workflow/new');
+			await bw.triggerWorkflowGeneration();
+
+			// Navigate to Slack card
+			await bw.navigateToCard('Slack');
+
+			// Parameter input should be visible with placeholder text for user to type over
+			await expect(wiz.getParameterInput('text')).toBeVisible();
+
+			// Card should NOT be complete — placeholder value doesn't count as filled
+			await expect(wiz.getCompleteCheck()).not.toBeVisible();
 		});
 
 		// --- Tests below create credentials and must run after non-credential tests ---
 		// (serial mode + shared DB means credentials from earlier tests leak into later ones)
 
-		test('should complete card when credential is selected and keep wizard visible', async ({
-			n8n,
-			api,
-		}) => {
-			const credName = `Slack Test ${nanoid()}`;
-			await api.credentials.createCredential({
-				name: credName,
-				type: 'slackApi',
-				data: { accessToken: 'xoxb-test-token' },
-			});
-
-			await mockBuilderStream(n8n.page);
-			await n8n.page.goto('/workflow/new');
-
-			await triggerWorkflowGeneration(n8n);
-
-			// Navigate to the Slack card which has a credential picker
-			await navigateToSlackCard(n8n.page);
-
-			// Open credential dropdown and select the pre-created credential
-			const dropdown = n8n.page.getByTestId('node-credentials-select');
-			await dropdown.click();
-			await n8n.page.getByText(credName).click();
-
-			// Card should show the complete check after async credential test passes
-			const card = n8n.page.getByTestId('builder-setup-card');
-			await expect(card.getByTestId('builder-setup-card-check')).toBeVisible();
-
-			// Wizard and card should remain visible — completing a card does NOT dismiss the wizard.
-			// Dismissal only happens after clicking "Execute and refine" (tested separately).
-			const wizard = n8n.page.getByTestId('builder-setup-wizard');
-			await expect(wizard).toBeVisible();
-			await expect(card).toBeVisible();
-		});
-
-		// Skipped: flaky in serial suite — credentials from earlier tests get auto-applied and
-		// tested before the waitForResponse waiter is registered, causing a timeout.
-		// Re-enable with proper test isolation (TEST_ISOLATION container capability).
-		test.skip('should not complete placeholder card with credential alone', async ({
-			n8n,
-			api,
-		}) => {
-			const credName = `Slack Test ${nanoid()}`;
-			await api.credentials.createCredential({
-				name: credName,
-				type: 'slackApi',
-				data: { accessToken: 'xoxb-test-token' },
-			});
-
-			// Workflow with placeholder text in the Slack node (uses correct operation: 'post'
-			// and select: 'channel' so that displayOptions match and parameters are preserved
-			// during NodeHelpers.getNodeParameters resolution)
-			await mockBuilderStream(n8n.page, createBuilderResponseWithPlaceholder());
-			await n8n.page.goto('/workflow/new');
-
-			await triggerWorkflowGeneration(n8n);
-
-			// Navigate to the Slack card (card 2)
-			await navigateToSlackCard(n8n.page);
-
-			// Credential label should be visible (card has credential section)
-			await expect(n8n.page.getByTestId('credentials-label')).toBeVisible();
-
-			// Register the credential test waiter BEFORE the click that triggers it.
-			// The endpoint is mocked so the response resolves instantly — attaching
-			// waitForResponse after the click would miss it intermittently.
-			const credentialTestDone = n8n.page.waitForResponse(
-				(resp) =>
-					resp.url().includes('/rest/credentials/test') && resp.request().method() === 'POST',
-				{ timeout: 5000 },
-			);
-
-			// Select the credential (triggers testCredentialInBackground → POST /rest/credentials/test)
-			const dropdown = n8n.page.getByTestId('node-credentials-select');
-			await dropdown.click();
-			await n8n.page.getByText(credName).click();
-
-			// Wait for the credential test to complete
-			await credentialTestDone;
-
-			// Card should NOT be complete — the placeholder text parameter still needs to be filled
-			// even though the credential is selected and tested. The text parameter placeholder
-			// was cleared to empty when the card became active, creating a parameter issue.
-			const card = n8n.page.getByTestId('builder-setup-card');
-			await expect(card.getByTestId('builder-setup-card-check')).not.toBeVisible();
-		});
-
-		test('should hide wizard card after all cards complete and workflow executes', async ({
+		test.skip('should auto-complete card when credential is auto-applied and keep wizard visible', async ({
 			n8n,
 			api,
 		}) => {
@@ -406,37 +284,121 @@ test.describe.serial(
 				data: { accessToken: 'xoxb-test-token' },
 			});
 
-			// Use fixture without trigger pinned data so we can execute the trigger.
-			// The credential above will be auto-applied to the Slack node.
-			await mockBuilderStream(n8n.page, createBuilderResponseWithoutTriggerPinData());
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			await bw.mockBuilderStream();
+			await n8n.page.goto('/workflow/new');
+			await bw.triggerWorkflowGeneration();
+
+			// Credential is auto-applied → card becomes complete automatically.
+			// Execute button becoming enabled is the stable signal for all-complete.
+			await expect(wiz.getExecuteWorkflowButton()).toBeEnabled({ timeout: BACKEND_TIMEOUT });
+
+			// Wizard should remain visible — completing cards does NOT dismiss the wizard.
+			// Dismissal only happens after "Execute and refine".
+			await expect(wiz.getWizard()).toBeVisible();
+		});
+
+		test('should auto-advance past completed credential card to next incomplete card', async ({
+			n8n,
+		}) => {
+			// Previous test created a Slack credential that will be auto-applied.
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			// 2 credential-only cards: Slack (auto-completes from existing credential) + Telegram
+			await bw.mockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
+			await n8n.page.goto('/workflow/new');
+			await bw.triggerWorkflowGeneration();
+
+			// Slack card (1/2) auto-completes from auto-applied credential → should auto-advance.
+			// Telegram card (2/2) has no credential → wizard lands here.
+			await expect(wiz.getCardTitle('Telegram')).toBeVisible({ timeout: BACKEND_TIMEOUT });
+			await expect(wiz.getStepIndicator(2, 2)).toBeVisible();
+		});
+
+		test('should not auto-advance a credential+parameter card while user is typing', async ({
+			n8n,
+		}) => {
+			// Previous test created a Slack credential that will be auto-applied.
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			// 3 visible cards: Telegram (1) → Slack with placeholder (2) → Notion (3).
+			// Slack is in the MIDDLE — not first and not last, so auto-advance toward
+			// Notion could fire if the parameter guard is missing.
+			await bw.mockBuilderStream(createBuilderResponsePlaceholderMiddleCard());
+			await n8n.page.goto('/workflow/new');
+			await bw.triggerWorkflowGeneration();
+
+			// Navigate to Slack card (card 2, has credential + placeholder parameter)
+			await bw.navigateToCard('Slack');
+			await expect(wiz.getStepIndicator(2, 3)).toBeVisible();
+
+			// Parameter input should be visible with placeholder text
+			await expect(wiz.getParameterInput('text')).toBeVisible();
+
+			// Type into the parameter input — user replaces placeholder with real text
+			await wiz.getParameterInputField('text').click();
+			await wiz.getParameterInputField('text').fill('Daily weather report');
+
+			// Card should stay on Slack (2/3) — no auto-advance even though the credential
+			// is set. Cards with parameters require explicit "Continue" or "Execute step".
+			await expect(async () => {
+				await expect(wiz.getCardTitle('Slack')).toBeVisible();
+				await expect(wiz.getStepIndicator(2, 3)).toBeVisible();
+			}).toPass({ intervals: [100, 200, 300] });
+		});
+
+		test('should not complete a card with credential alone when parameters are required', async ({
+			n8n,
+		}) => {
+			// Previous test already created a Slack credential that will be auto-applied.
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			// 2-card fixture with placeholder so navigating triggers clearing.
+			// Execution order: Telegram (card 1) → Slack with placeholder (card 2).
+			await bw.mockBuilderStream(createBuilderResponseWithPlaceholderAndTelegram());
+			await n8n.page.goto('/workflow/new');
+			await bw.triggerWorkflowGeneration();
+
+			// Navigate to Slack card (triggers placeholder clearing)
+			await bw.navigateToCard('Slack');
+
+			// Credential is auto-applied, but the text parameter is empty (placeholder was cleared).
+			// Card should NOT be complete — both credential AND parameters are required.
+			await expect(wiz.getCompleteCheck()).not.toBeVisible();
+		});
+
+		test('should dismiss wizard after all cards complete and workflow executes', async ({
+			n8n,
+			api,
+		}) => {
+			await api.credentials.createCredential({
+				name: `Slack Test ${nanoid()}`,
+				type: 'slackApi',
+				data: { accessToken: 'xoxb-test-token' },
+			});
+
+			const { builderWizardComposer: bw } = n8n;
+			const wiz = n8n.aiBuilder.wizard;
+
+			// Credential auto-applies to Slack → Slack card completes immediately
+			await bw.mockBuilderStream(createBuilderResponseWithoutTriggerPinData());
 			await n8n.page.goto('/workflow/new');
 
-			const workflowSaved = waitForWorkflowSaved(n8n.page);
-			await triggerWorkflowGeneration(n8n);
-
-			const wizard = n8n.page.getByTestId('builder-setup-wizard');
-			const card = n8n.page.getByTestId('builder-setup-card');
-
-			// Ensure the workflow is saved to the backend before executing
+			const workflowSaved = bw.waitForWorkflowSaved();
+			await bw.triggerWorkflowGeneration();
 			await workflowSaved;
 
-			// Execute the trigger step — the Slack card is already complete from auto-applied
-			// credentials, so completing the trigger makes all cards complete.
-			const executeStepBtn = n8n.page.getByTestId('trigger-execute-button');
-			await executeStepBtn.click();
+			// Wait for execute button to become enabled (all cards complete from auto-applied credential)
+			await expect(wiz.getExecuteWorkflowButton()).toBeEnabled({ timeout: BACKEND_TIMEOUT });
 
-			// Wait for all cards to complete: trigger execution finishes (real backend call)
-			// and Slack card was already auto-completed. The execute button becoming enabled
-			// is the stable signal that all cards are complete.
-			const executeButton = wizard.getByTestId('execute-workflow-button');
-			await expect(executeButton).toBeEnabled({ timeout: 15000 });
-
-			// Card should still be visible BEFORE clicking execute
-			await expect(card).toBeVisible();
-
-			// Click "Execute and refine" → entire wizard should hide after execution completes
-			await executeButton.click();
-			await expect(wizard).not.toBeVisible({ timeout: 15000 });
+			// Click "Execute and refine" → wizard should dismiss after execution
+			await wiz.getExecuteWorkflowButton().click();
+			await expect(wiz.getWizard()).not.toBeVisible({ timeout: BACKEND_TIMEOUT });
 		});
 	},
 );

@@ -6,6 +6,7 @@ import {
 	groupCredentialsByType,
 	isCredentialCardComplete,
 	buildTriggerSetupState,
+	type CompletionContext,
 } from '@/features/setupPanel/setupPanel.utils';
 import type { CredentialTypeSetupState } from '@/features/setupPanel/setupPanel.types';
 
@@ -578,7 +579,24 @@ describe('setupPanel.utils', () => {
 	});
 
 	describe('isCredentialCardComplete', () => {
-		const isTrigger = (type: string) => type.includes('Trigger');
+		const isTriggerNode = (type: string) => type.includes('Trigger');
+		const noUnfilledParams = () => false;
+
+		function makeCtx(
+			overrides: {
+				hasTriggerExecuted?: (name: string) => boolean;
+				isCredentialTestedOk?: (id: string) => boolean;
+				firstTriggerName?: string | null;
+			} = {},
+		): CompletionContext {
+			return {
+				firstTriggerName: overrides.firstTriggerName ?? null,
+				hasTriggerExecuted: overrides.hasTriggerExecuted ?? (() => false),
+				isTriggerNode,
+				isCredentialTestedOk: overrides.isCredentialTestedOk,
+				hasUnfilledTemplateParams: noUnfilledParams,
+			};
+		}
 
 		it('should return true when credential is set, no issues, and no triggers', () => {
 			const slackNode = createNode({ name: 'SlackNode', type: 'n8n-nodes-base.slack' });
@@ -591,7 +609,7 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(true);
+			expect(isCredentialCardComplete(state, makeCtx())).toBe(true);
 		});
 
 		it('should return false when credential is missing', () => {
@@ -605,7 +623,7 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(false);
+			expect(isCredentialCardComplete(state, makeCtx())).toBe(false);
 		});
 
 		it('should return false when there are issues', () => {
@@ -619,7 +637,7 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(false);
+			expect(isCredentialCardComplete(state, makeCtx())).toBe(false);
 		});
 
 		it('should return false when trigger has not executed', () => {
@@ -633,7 +651,15 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(false);
+			expect(
+				isCredentialCardComplete(
+					state,
+					makeCtx({
+						hasTriggerExecuted: () => false,
+						firstTriggerName: 'SlackTrigger',
+					}),
+				),
+			).toBe(false);
 		});
 
 		it('should return true when credential is set and all triggers have executed', () => {
@@ -647,7 +673,15 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(true);
+			expect(
+				isCredentialCardComplete(
+					state,
+					makeCtx({
+						hasTriggerExecuted: () => true,
+						firstTriggerName: 'SlackTrigger',
+					}),
+				),
+			).toBe(true);
 		});
 
 		it('should return true when single embedded trigger has executed', () => {
@@ -661,7 +695,15 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(true);
+			expect(
+				isCredentialCardComplete(
+					state,
+					makeCtx({
+						hasTriggerExecuted: () => true,
+						firstTriggerName: 'Trigger1',
+					}),
+				),
+			).toBe(true);
 		});
 
 		it('should return false when credential test has not passed', () => {
@@ -678,9 +720,9 @@ describe('setupPanel.utils', () => {
 			expect(
 				isCredentialCardComplete(
 					state,
-					() => false,
-					isTrigger,
-					() => false,
+					makeCtx({
+						isCredentialTestedOk: () => false,
+					}),
 				),
 			).toBe(false);
 		});
@@ -699,14 +741,14 @@ describe('setupPanel.utils', () => {
 			expect(
 				isCredentialCardComplete(
 					state,
-					() => false,
-					isTrigger,
-					() => true,
+					makeCtx({
+						isCredentialTestedOk: () => true,
+					}),
 				),
 			).toBe(true);
 		});
 
-		it('should be backward-compatible when isCredentialTestedOk is not provided', () => {
+		it('should complete when isCredentialTestedOk is not provided (non-testable type)', () => {
 			const slackNode = createNode({ name: 'SlackNode', type: 'n8n-nodes-base.slack' });
 			const state: CredentialTypeSetupState = {
 				credentialType: 'slackApi',
@@ -717,7 +759,7 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(true);
+			expect(isCredentialCardComplete(state, makeCtx())).toBe(true);
 		});
 	});
 

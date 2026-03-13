@@ -1,102 +1,71 @@
-import { computed, nextTick, watch } from 'vue';
-import { type INodeParameters, deepCopy } from 'n8n-workflow';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import {
-	findPlaceholderDetails,
-	isFullPlaceholderValue,
-} from '@/features/ai/assistant/composables/useBuilderTodos';
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { findPlaceholderDetails } from '@/features/ai/assistant/composables/useBuilderTodos';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
-
-/** Delay before auto-advancing to the next card after completion (ms) */
-const AUTO_ADVANCE_DELAY_MS = 300;
-
-/**
- * Navigates a nested object by path segments (supports array index notation like `[0]`).
- * Returns the parent object and the final key, or undefined if the path is invalid.
- */
-function resolveNestedPath(
-	root: Record<string, unknown>,
-	path: string[],
-): { parent: Record<string, unknown> | unknown[]; key: string } | undefined {
-	let target: unknown = root;
-	for (let i = 0; i < path.length - 1; i++) {
-		if (target === null || target === undefined || typeof target !== 'object') return undefined;
-		const segment = path[i];
-		const arrayMatch = /^\[(\d+)]$/.exec(segment);
-		if (arrayMatch && Array.isArray(target)) {
-			target = (target as unknown[])[Number(arrayMatch[1])];
-		} else {
-			target = (target as Record<string, unknown>)[segment];
-		}
-	}
-	if (target === null || target === undefined || typeof target !== 'object') return undefined;
-	return { parent: target as Record<string, unknown> | unknown[], key: path[path.length - 1] };
-}
-
-/**
- * Reads a value from a parent object/array using the final path key.
- */
-function getByKey(parent: Record<string, unknown> | unknown[], key: string): unknown {
-	const arrayMatch = /^\[(\d+)]$/.exec(key);
-	if (arrayMatch && Array.isArray(parent)) return parent[Number(arrayMatch[1])];
-	return (parent as Record<string, unknown>)[key];
-}
-
-/**
- * Clears a value in a parent object/array by setting it to empty string.
- */
-function clearByKey(parent: Record<string, unknown> | unknown[], key: string): void {
-	const value = '';
-	const arrayMatch = /^\[(\d+)]$/.exec(key);
-	if (arrayMatch && Array.isArray(parent)) {
-		parent[Number(arrayMatch[1])] = value;
-	} else if (key in (parent as Record<string, unknown>)) {
-		(parent as Record<string, unknown>)[key] = value;
-	}
-}
 
 /**
  * Composable for managing builder setup wizard cards.
  * Feeds placeholder parameter names into useWorkflowSetupState so it creates
- * proper cards, then adds wizard navigation and lazy placeholder clearing on top.
+ * proper cards, then adds wizard navigation on top.
  */
 export function useBuilderSetupCards() {
 	const builderStore = useBuilderStore();
 	const workflowsStore = useWorkflowsStore();
-	const nodeHelpers = useNodeHelpers();
-	const workflowState = injectWorkflowState();
+	const credentialsStore = useCredentialsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
-	// Persistent map of node name → top-level placeholder parameter names.
-	// Entries are added when placeholders are first detected and survive lazy clear.
-	// Reset when wizard state resets (AI updated the workflow).
-	const seenPlaceholderParams = new Map<string, string[]>();
+	// Sticky map of node name → placeholder parameter names.
+	// Once a node's placeholders are detected, the entry persists even after the user
+	// fills in the values. This prevents the card from reclassifying (nodeStates → credentialTypeStates)
+	// when the user types, which would cause card instability and unwanted auto-advance.
+	const stickyPlaceholderParams = ref(new Map<string, string[]>());
 
-	// Reactive computed that scans all nodes for placeholder parameters,
-	// merging with persisted entries so cards survive lazy clear.
-	const placeholderParamsByNode = computed(() => {
+	// Detect current placeholders (reactive, recomputes when node params change)
+	const detectedPlaceholders = computed(() => {
 		const result = new Map<string, string[]>();
-
-		for (const node of workflowsStore.allNodes) {
+		for (const node of workflowDocumentStore.value?.allNodes ?? []) {
 			if (node.type === MANUAL_TRIGGER_NODE_TYPE || node.disabled) continue;
-
 			const placeholders = findPlaceholderDetails(node.parameters);
 			if (placeholders.length > 0) {
-				const paramNames = [...new Set(placeholders.map((p) => p.path[0]).filter(Boolean))];
-				seenPlaceholderParams.set(node.name, paramNames);
-			}
-
-			const stored = seenPlaceholderParams.get(node.name);
-			if (stored) {
-				result.set(node.name, stored);
+				result.set(node.name, [...new Set(placeholders.map((p) => p.path[0]).filter(Boolean))]);
 			}
 		}
+		return result;
+	});
 
+	// Persist detected placeholder params into the sticky map via watcher (not inside computed)
+	watch(
+		detectedPlaceholders,
+		(detected) => {
+			for (const [name, params] of detected) {
+				stickyPlaceholderParams.value.set(name, params);
+			}
+		},
+		{ immediate: true },
+	);
+
+	// Merge sticky entries with current detections so cards survive after user fills placeholders
+	const placeholderParamsByNode = computed(() => {
+		// Access detectedPlaceholders to trigger recompute when new placeholders appear
+		const current = detectedPlaceholders.value;
+		const result = new Map(stickyPlaceholderParams.value);
+		// Overlay current detections (they may have updated param names)
+		for (const [name, params] of current) {
+			result.set(name, params);
+		}
 		return result;
 	});
 
@@ -117,8 +86,21 @@ export function useBuilderSetupCards() {
 		},
 	});
 
-	// Manual trigger cards are already filtered upstream by useWorkflowSetupState
-	const cards = computed<SetupCardItem[]>(() => baseCards.value);
+	// Filter out trigger-only cards that don't need any configuration.
+	// These cards only require execution to be "complete", which is unnecessary
+	// in the builder wizard — the user has nothing to set up on them.
+	const cards = computed<SetupCardItem[]>(() =>
+		baseCards.value.filter((card) => {
+			if (!card.state.isTrigger) return true;
+			const hasCredentials = !!card.state.credentialType;
+			const hasParameters =
+				Object.keys(card.state.parameterIssues).length > 0 ||
+				(card.state.additionalParameterNames?.length ?? 0) > 0;
+			return hasCredentials || hasParameters;
+		}),
+	);
+
+	console.log('cards', cards.value);
 
 	const totalCards = computed(() => cards.value.length);
 
@@ -126,8 +108,19 @@ export function useBuilderSetupCards() {
 		() => cards.value[currentStepIndex.value],
 	);
 
+	// Credential tests are async — treat pending tests as effectively complete
+	// to prevent card flickering while waiting for test results.
+	function isCardCompleteForWizard(card: SetupCardItem): boolean {
+		if (card.state.isComplete) return true;
+		const credId = card.state.selectedCredentialId;
+		if (credId && credentialsStore.credentialTestResults.get(credId) === 'pending') {
+			return true;
+		}
+		return false;
+	}
+
 	const isAllComplete = computed(
-		() => cards.value.length === 0 || cards.value.every((card) => card.state.isComplete),
+		() => cards.value.length === 0 || cards.value.every(isCardCompleteForWizard),
 	);
 
 	function skipToFirstIncomplete() {
@@ -138,19 +131,6 @@ export function useBuilderSetupCards() {
 			currentStepIndex.value = firstIncomplete;
 		}
 	}
-
-	// Reset persisted placeholder params when wizard state resets.
-	// Also skip to the first incomplete card after reset (handles AI
-	// updating the workflow without the wizard remounting).
-	watch(
-		() => builderStore.wizardClearedPlaceholders.size,
-		(size) => {
-			if (size === 0) {
-				seenPlaceholderParams.clear();
-				void nextTick(() => skipToFirstIncomplete());
-			}
-		},
-	);
 
 	// Clamp step index when cards array changes, and on mount skip to
 	// the first incomplete card (handles wizard remounting after AI update
@@ -166,43 +146,6 @@ export function useBuilderSetupCards() {
 				currentStepIndex.value = newLength - 1;
 			}
 			skipToFirstIncomplete();
-		},
-		{ immediate: true },
-	);
-
-	// Lazy placeholder clearing when a step becomes active
-	watch(
-		currentStepIndex,
-		() => {
-			const card = currentCard.value;
-			if (!card) return;
-
-			const nodeName = card.state.node.name;
-			if (builderStore.wizardClearedPlaceholders.has(nodeName)) return;
-
-			const placeholders = findPlaceholderDetails(card.state.node.parameters);
-			if (placeholders.length === 0) return;
-
-			const updatedParams = deepCopy(card.state.node.parameters);
-
-			for (const { path } of placeholders) {
-				if (path.length === 0) continue;
-				const resolved = resolveNestedPath(updatedParams, path);
-				if (!resolved) continue;
-
-				// Only clear fields whose entire value is a placeholder.
-				// Mixed-content fields (e.g. code with embedded placeholders) are left intact.
-				if (!isFullPlaceholderValue(getByKey(resolved.parent, resolved.key))) continue;
-				clearByKey(resolved.parent, resolved.key);
-			}
-
-			workflowState.updateNodeProperties({
-				name: nodeName,
-				properties: { parameters: updatedParams },
-			});
-
-			builderStore.wizardClearedPlaceholders.add(nodeName);
-			nodeHelpers.updateNodesParameterIssues();
 		},
 		{ immediate: true },
 	);
@@ -232,32 +175,73 @@ export function useBuilderSetupCards() {
 		goToNext();
 	}
 
-	// Auto-advance to the next card when the current one completes (non-last cards).
-	// Only for cards WITHOUT parameter inputs (credential-only/trigger-only).
-	// Cards with parameters should not auto-advance — the user may still be typing.
-	// Those cards advance via explicit "Continue" or "Execute step" actions instead.
-	// Also skips when the full workflow has been executed (wizardHasExecutedWorkflow).
-	let lastWatchedStep = currentStepIndex.value;
+	// --- Advance logic (centralized) ---
+
+	function cardHasParams(card?: SetupCardItem): boolean {
+		if (!card) return false;
+		return (
+			(card.state.additionalParameterNames?.length ?? 0) > 0 ||
+			Object.keys(card.state.parameterIssues).length > 0
+		);
+	}
+
+	// Auto-advance for credential-only cards when they complete.
+	// Cards with parameters don't auto-advance — the user may still be typing.
+	// Watches primitives via tuple so the callback only fires when values actually
+	// change (no spurious fires from new object references).
+	// Reads from cards[index] directly instead of through currentCard to avoid the
+	// isAllComplete → undefined blind spot.
 	watch(
-		() => ({ isComplete: currentCard.value?.state.isComplete, step: currentStepIndex.value }),
-		({ isComplete, step }, old) => {
-			const stepChanged = step !== lastWatchedStep;
-			lastWatchedStep = step;
-			if (stepChanged) return;
+		[
+			() => cards.value[currentStepIndex.value]?.state.isComplete,
+			() => cards.value[currentStepIndex.value]?.state.node.name,
+		],
+		([isComplete, name], [wasComplete, prevName]) => {
+			// Only react when the SAME card transitions from incomplete → complete.
+			// When the card identity changes (user navigated or auto-advanced),
+			// prevName differs from name — skip to avoid false positives.
+			if (name !== prevName) return;
+			if (!isComplete || wasComplete) return;
+			if (builderStore.wizardHasExecutedWorkflow) return;
+			if (cardHasParams(cards.value[currentStepIndex.value])) return;
 
-			if (isComplete && !old?.isComplete && step < cards.value.length - 1) {
-				if (builderStore.wizardHasExecutedWorkflow) return;
-
-				const card = currentCard.value;
-				const hasParams =
-					(card?.state.additionalParameterNames?.length ?? 0) > 0 ||
-					Object.keys(card?.state.parameterIssues ?? {}).length > 0;
-				if (!hasParams) {
-					setTimeout(() => goToNext(), AUTO_ADVANCE_DELAY_MS);
-				}
+			// Skip to the next INCOMPLETE card (not just the next card).
+			// This handles chaining through multiple already-complete cards.
+			const nextIncomplete = cards.value.findIndex(
+				(c, i) => i > currentStepIndex.value && !c.state.isComplete,
+			);
+			if (nextIncomplete !== -1) {
+				currentStepIndex.value = nextIncomplete;
 			}
 		},
 	);
+
+	/**
+	 * Called when a card's step execution finishes (trigger test or node execution).
+	 * Handles last-card dismissal and advance for parameter cards.
+	 */
+	function onStepExecuted() {
+		const card = currentCard.value;
+		if (!card?.state.isComplete) return;
+
+		const isLastStep = currentStepIndex.value >= totalCards.value - 1;
+
+		if (isLastStep && isAllComplete.value) {
+			builderStore.wizardHasExecutedWorkflow = true;
+			return;
+		}
+
+		// Skip to the next INCOMPLETE card (not just the next card).
+		// This handles chaining through multiple already-complete cards.
+		const nextIncomplete = cards.value.findIndex(
+			(c, i) => i > currentStepIndex.value && !c.state.isComplete,
+		);
+		if (nextIncomplete !== -1) {
+			currentStepIndex.value = nextIncomplete;
+		} else if (!isLastStep) {
+			goToNext();
+		}
+	}
 
 	// Track when all cards are complete
 	watch(isAllComplete, (complete, wasComplete) => {
@@ -265,6 +249,13 @@ export function useBuilderSetupCards() {
 			builderStore.trackWorkflowBuilderJourney('setup_wizard_all_complete', {
 				total: totalCards.value,
 			});
+		}
+	});
+
+	onMounted(() => {
+		if (isAllComplete.value) {
+			// if all cards are completed on mount most likely the builder had made an iteration and there's no more work for the wizard
+			builderStore.wizardHasExecutedWorkflow = true;
 		}
 	});
 
@@ -281,5 +272,6 @@ export function useBuilderSetupCards() {
 		goToPrev,
 		goToStep,
 		continueCurrent,
+		onStepExecuted,
 	};
 }
