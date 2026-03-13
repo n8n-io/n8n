@@ -175,6 +175,7 @@ const onClose = () => {
 					:show-file-list="false"
 					accept=".csv"
 					:on-change="handleFileChange"
+					data-test-id="import-csv-upload"
 					@mouseenter="isUploadHovered = true"
 					@mouseleave="isUploadHovered = false"
 				>
@@ -301,7 +302,7 @@ const onClose = () => {
 		width: 100%;
 		padding: var(--spacing--2xl) var(--spacing--lg);
 		border: 1px solid var(--color--foreground);
-		background-color: var(--color--background-base);
+		background-color: var(--color--background);
 		border-radius: var(--radius--lg);
 		transition: all 0.2s ease;
 		display: flex;

@@ -87,11 +87,11 @@ export class DataTableService {
 				if (rows.length > 0) {
 					await this.insertRows(result.id, projectId, rows);
 				}
-
-				await this.csvImportService.cleanupFile(dto.fileId);
 			} catch (error) {
 				await this.deleteDataTable(result.id, projectId);
 				throw error;
+			} finally {
+				await this.csvImportService.cleanupFile(dto.fileId);
 			}
 		}
 

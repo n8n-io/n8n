@@ -39,18 +39,16 @@ export class CsvParserService {
 
 	private readonly TYPE_INFERENCE_SAMPLE_SIZE = 100;
 
-	private createParserOptions(hasHeaders: boolean, onColumnNames: (names: string[]) => void) {
+	private createParserOptions(hasHeaders: boolean) {
 		return {
-			columns: hasHeaders
-				? (header: string[]) => {
-						const trimmed = header.map((h) => h.trim());
-						onColumnNames(trimmed);
-						return trimmed;
-					}
-				: (false as const),
+			columns: hasHeaders ? true : (false as const),
 			skip_empty_lines: true,
 			bom: true,
 		};
+	}
+
+	private trimColumnNames(columns: string[]): string[] {
+		return columns.map((h) => h.trim());
 	}
 
 	private normalizeRow(
@@ -103,11 +101,15 @@ export class CsvParserService {
 		const firstNonEmptyValues = new Map<string, string>();
 
 		return await new Promise((resolve, reject) => {
-			const parser = parse(
-				this.createParserOptions(hasHeaders, (names) => {
-					columnNames = names;
+			const parser = parse({
+				...this.createParserOptions(hasHeaders),
+				...(hasHeaders && {
+					columns: (header: string[]) => {
+						columnNames = this.trimColumnNames(header);
+						return columnNames;
+					},
 				}),
-			)
+			})
 				.on('data', (row: Record<string, string> | string[]) => {
 					rowCount++;
 					// When there are no headers, generate column names from the first row
@@ -143,11 +145,15 @@ export class CsvParserService {
 		let columnNames: string[] = [];
 
 		return await new Promise((resolve, reject) => {
-			const parser = parse(
-				this.createParserOptions(hasHeaders, (names) => {
-					columnNames = names;
+			const parser = parse({
+				...this.createParserOptions(hasHeaders),
+				...(hasHeaders && {
+					columns: (header: string[]) => {
+						columnNames = this.trimColumnNames(header);
+						return columnNames;
+					},
 				}),
-			)
+			})
 				.on('data', (row: Record<string, string> | string[]) => {
 					// When there are no headers, generate column names from the first row
 					if (!hasHeaders && Array.isArray(row) && columnNames.length === 0) {
@@ -179,11 +185,15 @@ export class CsvParserService {
 		const rows: Array<Record<string, string>> = [];
 
 		return await new Promise((resolve, reject) => {
-			const parser = parse(
-				this.createParserOptions(hasHeaders, (names) => {
-					columnNames = names;
+			const parser = parse({
+				...this.createParserOptions(hasHeaders),
+				...(hasHeaders && {
+					columns: (header: string[]) => {
+						columnNames = this.trimColumnNames(header);
+						return columnNames;
+					},
 				}),
-			)
+			})
 				.on('data', (row: Record<string, string> | string[]) => {
 					// When there are no headers, generate column names from the first row
 					if (!hasHeaders && Array.isArray(row) && columnNames.length === 0) {

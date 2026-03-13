@@ -146,11 +146,12 @@ export class DataTableCsvImportService {
 
 		const hasCsvColumnNames = dtoColumns?.some((c) => c.csvColumnName);
 		if (hasCsvColumnNames) {
+			const tableColByName = new Map(tableColumns.map((tc) => [tc.name, tc.name]));
 			for (const dtoCol of dtoColumns!) {
 				if (dtoCol.csvColumnName) {
-					const tableCol = tableColumns.find((tc) => tc.name === dtoCol.name);
-					if (tableCol) {
-						columnMapping.set(dtoCol.csvColumnName, tableCol.name);
+					const tableName = tableColByName.get(dtoCol.name);
+					if (tableName) {
+						columnMapping.set(dtoCol.csvColumnName, tableName);
 					}
 				}
 			}
