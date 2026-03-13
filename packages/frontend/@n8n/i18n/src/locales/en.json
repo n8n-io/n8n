@@ -2217,6 +2217,7 @@
 	"parameterInput.loadOptionsError": "Error fetching options",
 	"parameterInput.loadOptionsCredentialsRequired": "Set up credential to see options",
 	"parameterInput.openEditWindow": "Open Edit Window",
+	"parameterInput.edit": "Edit",
 	"parameterInput.parameter": "Parameter: \"{shortPath}\"",
 	"parameterInput.parameterHasExpression": "Parameter: \"{shortPath}\" has an expression",
 	"parameterInput.parameterHasIssues": "Parameter: \"{shortPath}\" has issues",

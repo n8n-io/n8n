@@ -26,14 +26,16 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		await this.config.bridge.initialize();
 	}
 
-	evaluate(expression: string, data: WorkflowData, _options?: EvaluateOptions): unknown {
+	evaluate(expression: string, data: WorkflowData, options?: EvaluateOptions): unknown {
 		if (this.disposed) throw new Error('Evaluator disposed');
 
 		// Transform template expression → sanitized JavaScript (cached)
 		const transformedCode = this.getTransformedCode(expression);
 
 		try {
-			const result = this.config.bridge.execute(transformedCode, data);
+			const result = this.config.bridge.execute(transformedCode, data, {
+				timezone: options?.timezone,
+			});
 
 			if (this.config.observability) {
 				this.config.observability.metrics.counter('expression.evaluation.success', 1);
