@@ -2,8 +2,11 @@ import type { PineconeStoreParams } from '@langchain/pinecone';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import type {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeProperties,
 	NodeParameterValueType,
 } from 'n8n-workflow';
@@ -38,6 +41,35 @@ const insertFields: INodeProperties[] = [
 		options: [],
 	},
 ];
+
+async function chatHubVectorStorePineconeApiConnectionTest(
+	this: ICredentialTestFunctions,
+	credential: ICredentialsDecrypted,
+): Promise<INodeCredentialTestResult> {
+	const credentials = credential.data as ChatHubVectorStorePineconeApiCredentials;
+
+	try {
+		const client = new Pinecone({ apiKey: credentials.apiKey });
+		const indexes = ((await client.listIndexes()).indexes ?? []).map((i) => i.name);
+
+		if (!indexes.includes(credentials.pineconeIndex)) {
+			return {
+				status: 'Error',
+				message: `Index "${credentials.pineconeIndex}" not found. Please create the index first or check the index name.`,
+			};
+		}
+	} catch (error) {
+		return {
+			status: 'Error',
+			message: error.message as string,
+		};
+	}
+
+	return {
+		status: 'OK',
+		message: 'Connection successful',
+	};
+}
 
 async function deleteDocuments(
 	this: ILoadOptionsFunctions,
@@ -78,12 +110,16 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeSt
 			{
 				name: 'chatHubVectorStorePineconeApi',
 				required: true,
+				testedBy: 'chatHubVectorStorePineconeApiConnectionTest',
 			},
 		],
 		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
 	},
 	hidden: true,
-	methods: { actionHandler: { deleteDocuments } },
+	methods: {
+		credentialTest: { chatHubVectorStorePineconeApiConnectionTest },
+		actionHandler: { deleteDocuments },
+	},
 	sharedFields: [],
 	retrieveFields,
 	loadFields: retrieveFields,

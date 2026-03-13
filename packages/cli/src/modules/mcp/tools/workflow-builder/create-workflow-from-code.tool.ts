@@ -1,4 +1,5 @@
 import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
+import { resolveNodeWebhookId } from 'n8n-workflow';
 import z from 'zod';
 
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
@@ -122,6 +123,15 @@ export const createCreateWorkflowFromCodeTool = (
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
 			});
+
+			for (const node of newWorkflow.nodes) {
+				try {
+					const desc = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+					resolveNodeWebhookId(node, desc.description);
+				} catch {
+					// Node type not found, skip
+				}
+			}
 
 			// Resolve the effective project ID — default to the user's personal project
 			let effectiveProjectId = projectId;

@@ -10,6 +10,7 @@ import * as http from 'node:http';
 import type { ExternalHooks } from '@/external-hooks';
 import type { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { bodyParser, rawBodyReader } from '@/middlewares';
+import type { RedisClientService } from '@/services/redis-client.service';
 
 import { WorkerServer } from '../worker-server';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -35,6 +36,7 @@ describe('WorkerServer', () => {
 	const prometheusMetricsService = mock<PrometheusMetricsService>();
 	const dbConnection = mock<DbConnection>();
 	const credentialsOverwriteService = mock<CredentialsOverwrites>();
+	const redisClientService = mock<RedisClientService>();
 
 	const newWorkerServer = () =>
 		new WorkerServer(
@@ -45,7 +47,7 @@ describe('WorkerServer', () => {
 			externalHooks,
 			instanceSettings,
 			prometheusMetricsService,
-			mock(),
+			redisClientService,
 		);
 
 	beforeEach(() => {
@@ -204,6 +206,92 @@ describe('WorkerServer', () => {
 			await workerServer.init({ health: true, overwrites: true, metrics: true });
 
 			expect(externalHooks.run).toHaveBeenCalledWith('worker.ready');
+		});
+	});
+
+	describe('readiness', () => {
+		let readinessHandler: (req: express.Request, res: express.Response) => Promise<void>;
+
+		async function initWithReadiness({ markReady = true } = {}) {
+			const server = mock<http.Server>();
+			jest.spyOn(http, 'createServer').mockReturnValue(server);
+
+			server.listen.mockImplementation((...args: unknown[]) => {
+				const callback = args.find((arg) => typeof arg === 'function');
+				if (callback) callback();
+				return server;
+			});
+
+			app.get.mockImplementation((...args: unknown[]) => {
+				const [path, handler] = args as [string, (...a: unknown[]) => Promise<void>];
+				if (path === '/internal/health/readiness') {
+					readinessHandler = handler as (
+						req: express.Request,
+						res: express.Response,
+					) => Promise<void>;
+				}
+				return app;
+			});
+
+			(
+				dbConnection as { connectionState: { connected: boolean; migrated: boolean } }
+			).connectionState = {
+				connected: true,
+				migrated: true,
+			};
+			redisClientService.isConnected.mockReturnValue(true);
+
+			const workerServer = newWorkerServer();
+			await workerServer.init({ health: true, overwrites: false, metrics: false });
+			if (markReady) workerServer.markAsReady();
+		}
+
+		it('should return 200 after markAsReady() when DB and Redis are connected', async () => {
+			await initWithReadiness();
+			const res = mock<express.Response>();
+			res.status.mockReturnValue(res);
+
+			await readinessHandler(mock<express.Request>(), res);
+
+			expect(res.status).toHaveBeenCalledWith(200);
+			expect(res.send).toHaveBeenCalledWith({ status: 'ok' });
+		});
+
+		it('should return 503 before markAsReady() even if DB and Redis are connected', async () => {
+			await initWithReadiness({ markReady: false });
+			const res = mock<express.Response>();
+			res.status.mockReturnValue(res);
+
+			await readinessHandler(mock<express.Request>(), res);
+
+			expect(res.status).toHaveBeenCalledWith(503);
+			expect(res.send).toHaveBeenCalledWith({ status: 'error' });
+		});
+
+		it('should return 503 if Redis disconnects after ready', async () => {
+			await initWithReadiness();
+			redisClientService.isConnected.mockReturnValue(false);
+			const res = mock<express.Response>();
+			res.status.mockReturnValue(res);
+
+			await readinessHandler(mock<express.Request>(), res);
+
+			expect(res.status).toHaveBeenCalledWith(503);
+			expect(res.send).toHaveBeenCalledWith({ status: 'error' });
+		});
+
+		it('should return 503 if DB disconnects after ready', async () => {
+			await initWithReadiness();
+			(
+				dbConnection as { connectionState: { connected: boolean; migrated: boolean } }
+			).connectionState = { connected: false, migrated: true };
+			const res = mock<express.Response>();
+			res.status.mockReturnValue(res);
+
+			await readinessHandler(mock<express.Request>(), res);
+
+			expect(res.status).toHaveBeenCalledWith(503);
+			expect(res.send).toHaveBeenCalledWith({ status: 'error' });
 		});
 	});
 });

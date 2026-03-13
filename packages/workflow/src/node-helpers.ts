@@ -5,6 +5,7 @@
 import { ApplicationError } from '@n8n/errors';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
+import { v4 as uuid } from 'uuid';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
 import { isExpression } from './expressions/expression-helpers';
@@ -1099,6 +1100,19 @@ export function getNodeWebhookUrl(
 		path = path.slice(1);
 	}
 	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
+}
+
+/**
+ * Assigns a webhookId to a node if its type has webhook definitions
+ * and the node doesn't already have one.
+ */
+export function resolveNodeWebhookId(
+	node: Pick<INode, 'webhookId'>,
+	nodeTypeDescription: Pick<INodeTypeDescription, 'webhooks'>,
+): void {
+	if (nodeTypeDescription.webhooks?.length && !node.webhookId) {
+		node.webhookId = uuid();
+	}
 }
 
 export function getConnectionTypes(
