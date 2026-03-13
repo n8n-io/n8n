@@ -9,25 +9,21 @@ export function inferProjectIdFromRoute(to: RouteLocationNormalized): string {
 	return routeParts[projectIdIndex];
 }
 
+const pathToResource: Record<string, Resource> = {
+	workflows: 'workflow',
+	credentials: 'credential',
+	users: 'user',
+	variables: 'variable',
+	'source-control': 'sourceControl',
+	'external-secrets': 'externalSecret',
+};
+
 export function inferResourceTypeFromRoute(to: RouteLocationNormalized): Resource | undefined {
-	const routeParts = to.path.split('/');
-	const routeMap: Record<string, string> = {
-		workflow: 'workflows',
-		credential: 'credentials',
-		user: 'users',
-		variable: 'variables',
-		sourceControl: 'source-control',
-		externalSecret: 'external-secrets',
-	};
-
-	const isResource = (key: string): key is Resource => routeParts.includes(routeMap[key]);
-
-	for (const resource of Object.keys(routeMap)) {
-		if (isResource(resource)) {
-			return resource;
-		}
+	const parts = to.path.split('/');
+	for (const part of parts) {
+		const resource = pathToResource[part];
+		if (resource) return resource;
 	}
-
 	return undefined;
 }
 
