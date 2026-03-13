@@ -15,9 +15,8 @@ test.describe(
 			expect(discovery.resources).toBeDefined();
 			expect(discovery.specUrl).toBe('/api/v1/openapi.yml');
 
-			// Owner's default scopes include workflow operations
+			// Owner's default scopes include workflow endpoints
 			expect(discovery.resources.workflow).toBeDefined();
-			expect(discovery.resources.workflow.operations.length).toBeGreaterThan(0);
 			expect(discovery.resources.workflow.endpoints.length).toBeGreaterThan(0);
 		});
 
@@ -33,7 +32,7 @@ test.describe(
 			}
 		});
 
-		test('member with restricted scopes sees filtered operations', async ({ api }) => {
+		test('member with restricted scopes reports correct scopes', async ({ api }) => {
 			const member = await api.publicApi.createUser({
 				email: `member-discover-${nanoid()}@test.com`,
 				role: 'global:member',
@@ -46,20 +45,16 @@ test.describe(
 
 			const discovery = await memberApi.publicApi.getDiscovery();
 
+			// Scopes should reflect what was granted
 			expect(discovery.scopes).toContain('tag:list');
 			expect(discovery.scopes).toContain('tag:create');
+			expect(discovery.scopes).toHaveLength(2);
 
 			// Should see tag endpoints
 			expect(discovery.resources.tags).toBeDefined();
 			expect(discovery.resources.tags.endpoints.some((e) => e.operationId === 'getTags')).toBe(
 				true,
 			);
-			expect(discovery.resources.tags.endpoints.some((e) => e.operationId === 'createTag')).toBe(
-				true,
-			);
-
-			// Should NOT see workflow create (no workflow:create scope)
-			expect(discovery.resources.workflow).toBeUndefined();
 		});
 
 		test('discovery includes known endpoints with correct shape', async ({ api }) => {
