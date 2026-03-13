@@ -6,6 +6,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import {
+	ProjectRepository,
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
@@ -48,10 +49,12 @@ describe('Project deletion with external secrets', () => {
 
 	let connectionRepository: SecretsProviderConnectionRepository;
 	let projectAccessRepository: ProjectSecretsProviderAccessRepository;
+	let projectRepository: ProjectRepository;
 
 	beforeEach(async () => {
 		connectionRepository = Container.get(SecretsProviderConnectionRepository);
 		projectAccessRepository = Container.get(ProjectSecretsProviderAccessRepository);
+		projectRepository = Container.get(ProjectRepository);
 		await testDb.truncate([
 			'User',
 			'Project',
@@ -60,151 +63,251 @@ describe('Project deletion with external secrets', () => {
 		]);
 	});
 
-	test('owner creates global connection shared with a project, project admin deletes project: connection is disabled and access is removed', async () => {
-		const owner = await createOwner();
-		const projectAdmin = await createMember();
-		const project = await createTeamProject('Team Project', owner);
-		await linkUserToProject(projectAdmin, project, 'project:admin');
+	type TestUser = Awaited<ReturnType<typeof createOwner>>;
 
+	const createGlobalSharedConnection = async (
+		owner: TestUser,
+		projectId: string,
+		providerKey: string,
+	) => {
 		await testServer
 			.authAgentFor(owner)
 			.post('/secret-providers/connections')
 			.send({
-				providerKey: 'ownerCreatedGlobalConnection',
+				providerKey,
 				type: 'awsSecretsManager',
-				projectIds: [project.id],
+				projectIds: [projectId],
 				settings: { region: 'us-east-1' },
 			})
 			.expect(200);
+	};
+
+	const createProjectConnection = async (
+		owner: TestUser,
+		projectId: string,
+		providerKey: string,
+	) => {
+		await testServer
+			.authAgentFor(owner)
+			.post(`/secret-providers/projects/${projectId}/connections`)
+			.send({
+				providerKey,
+				type: 'awsSecretsManager',
+				projectIds: [],
+				settings: { region: 'us-east-1' },
+			})
+			.expect(200);
+	};
+
+	test('deletes owner-role connection when project is deleted', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Owner Role Project', owner);
+
+		await createProjectConnection(owner, project.id, 'ownerRoleConnection');
+		const connection = await connectionRepository.findOneByOrFail({
+			providerKey: 'ownerRoleConnection',
+		});
+
+		await projectAccessRepository.update(
+			{
+				projectId: project.id,
+				secretsProviderConnectionId: connection.id,
+			},
+			{
+				role: 'secretsProviderConnection:owner',
+			},
+		);
+
+		const ownerAccess = await projectAccessRepository.findOneByOrFail({
+			projectId: project.id,
+			secretsProviderConnectionId: connection.id,
+		});
+		expect(ownerAccess.role).toBe('secretsProviderConnection:owner');
+
+		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
+
+		const deletedConnection = await connectionRepository.findOneBy({
+			providerKey: 'ownerRoleConnection',
+		});
+		expect(deletedConnection).toBeNull();
+	});
+
+	test('disables user-role connection and removes project access when project is deleted', async () => {
+		const owner = await createOwner();
+		const projectAdmin = await createMember();
+		const project = await createTeamProject('User Role Project', owner);
+		await linkUserToProject(projectAdmin, project, 'project:admin');
+
+		await createGlobalSharedConnection(owner, project.id, 'userRoleConnection');
+		const connection = await connectionRepository.findOneByOrFail({
+			providerKey: 'userRoleConnection',
+		});
+
+		const userAccess = await projectAccessRepository.findOneByOrFail({
+			projectId: project.id,
+			secretsProviderConnectionId: connection.id,
+		});
+		expect(userAccess.role).toBe('secretsProviderConnection:user');
 
 		await testServer.authAgentFor(projectAdmin).delete(`/projects/${project.id}`).expect(200);
 
 		const remainingConnection = await connectionRepository.findOneBy({
-			providerKey: 'ownerCreatedGlobalConnection',
+			providerKey: 'userRoleConnection',
 		});
 		expect(remainingConnection).not.toBeNull();
 		expect(remainingConnection?.isEnabled).toBe(false);
 
 		const accessEntries = await projectAccessRepository.find({
-			where: { secretsProviderConnectionId: remainingConnection!.id },
+			where: { secretsProviderConnectionId: connection.id },
 		});
 		expect(accessEntries).toHaveLength(0);
 	});
 
-	test('owner creates project connection and deletes project: connection and access are removed', async () => {
+	test('deletes owner-role connections and disables user-role connections for the same deleted project', async () => {
 		const owner = await createOwner();
-		const project = await createTeamProject('Project Owner Team', owner);
+		const project = await createTeamProject('Mixed Role Project', owner);
 
-		await testServer
-			.authAgentFor(owner)
-			.post(`/secret-providers/projects/${project.id}/connections`)
-			.send({
-				providerKey: 'projectOwnerOwnedConnection',
-				type: 'awsSecretsManager',
-				projectIds: [],
-				settings: { region: 'us-east-1' },
-			})
-			.expect(200);
+		await createProjectConnection(owner, project.id, 'mixedOwnerConnection');
+		await createGlobalSharedConnection(owner, project.id, 'mixedUserConnection');
 
-		const projectConnection = await connectionRepository.findOneByOrFail({
-			providerKey: 'projectOwnerOwnedConnection',
+		const ownerConnection = await connectionRepository.findOneByOrFail({
+			providerKey: 'mixedOwnerConnection',
 		});
+		const userConnection = await connectionRepository.findOneByOrFail({
+			providerKey: 'mixedUserConnection',
+		});
+
+		await projectAccessRepository.update(
+			{
+				projectId: project.id,
+				secretsProviderConnectionId: ownerConnection.id,
+			},
+			{
+				role: 'secretsProviderConnection:owner',
+			},
+		);
 
 		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
 
-		const deletedConnection = await connectionRepository.findOneBy({
-			providerKey: 'projectOwnerOwnedConnection',
-		});
-		expect(deletedConnection).toBeNull();
+		const [deletedOwnerConnection, remainingUserConnection] = await Promise.all([
+			connectionRepository.findOneBy({ providerKey: 'mixedOwnerConnection' }),
+			connectionRepository.findOneBy({ providerKey: 'mixedUserConnection' }),
+		]);
 
-		const deletedAccessEntries = await projectAccessRepository.find({
-			where: { secretsProviderConnectionId: projectConnection.id },
+		expect(deletedOwnerConnection).toBeNull();
+		expect(remainingUserConnection).not.toBeNull();
+		expect(remainingUserConnection?.isEnabled).toBe(false);
+
+		const userAccessEntries = await projectAccessRepository.find({
+			where: { secretsProviderConnectionId: userConnection.id },
 		});
-		expect(deletedAccessEntries).toHaveLength(0);
+		expect(userAccessEntries).toHaveLength(0);
 	});
 
-	test('owner creates project connection and project admin deletes project: connection is disabled and access is removed', async () => {
+	test('if owner-connection deletion fails, access rows are not deleted', async () => {
 		const owner = await createOwner();
-		const projectAdmin = await createMember();
-		const project = await createTeamProject('Project Admin Team', owner);
-		await linkUserToProject(projectAdmin, project, 'project:admin');
+		const project = await createTeamProject('Rollback Owner Delete Project', owner);
 
-		await testServer
-			.authAgentFor(owner)
-			.post(`/secret-providers/projects/${project.id}/connections`)
-			.send({
-				providerKey: 'projectAdminOwnedConnection',
-				type: 'awsSecretsManager',
-				projectIds: [],
-				settings: { region: 'us-east-1' },
-			})
-			.expect(200);
-
-		const projectConnection = await connectionRepository.findOneByOrFail({
-			providerKey: 'projectAdminOwnedConnection',
+		await createProjectConnection(owner, project.id, 'rollbackOwnerConnection');
+		const connection = await connectionRepository.findOneByOrFail({
+			providerKey: 'rollbackOwnerConnection',
 		});
 
-		await testServer.authAgentFor(projectAdmin).delete(`/projects/${project.id}`).expect(200);
+		await projectAccessRepository.update(
+			{
+				projectId: project.id,
+				secretsProviderConnectionId: connection.id,
+			},
+			{
+				role: 'secretsProviderConnection:owner',
+			},
+		);
 
-		const remainingConnection = await connectionRepository.findOneBy({
-			providerKey: 'projectAdminOwnedConnection',
+		const originalConnectionTarget = connectionRepository.target;
+		Object.defineProperty(connectionRepository, 'target', {
+			value: 'does_not_exist_connection_target',
+			configurable: true,
 		});
+
+		try {
+			await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(500);
+		} finally {
+			Object.defineProperty(connectionRepository, 'target', {
+				value: originalConnectionTarget,
+				configurable: true,
+			});
+		}
+
+		const [remainingProject, remainingConnection, remainingAccess] = await Promise.all([
+			projectRepository.findOneBy({ id: project.id }),
+			connectionRepository.findOneBy({ providerKey: 'rollbackOwnerConnection' }),
+			projectAccessRepository.findOneBy({
+				projectId: project.id,
+				secretsProviderConnectionId: connection.id,
+			}),
+		]);
+
+		expect(remainingProject).not.toBeNull();
 		expect(remainingConnection).not.toBeNull();
-		expect(remainingConnection?.isEnabled).toBe(false);
-
-		const deletedAccessEntries = await projectAccessRepository.find({
-			where: { secretsProviderConnectionId: projectConnection.id },
-		});
-		expect(deletedAccessEntries).toHaveLength(0);
+		expect(remainingAccess).not.toBeNull();
 	});
 
-	test('owner deletes project with global and project-scoped connections: all connections are removed', async () => {
+	test('if access deletion fails, owner connection deletion is rolled back', async () => {
 		const owner = await createOwner();
-		const project = await createTeamProject('Team Project With Multiple Connections', owner);
+		const project = await createTeamProject('Rollback Access Delete Project', owner);
 
-		await testServer
-			.authAgentFor(owner)
-			.post('/secret-providers/connections')
-			.send({
-				providerKey: 'multiDeleteConnection1',
-				type: 'awsSecretsManager',
-				projectIds: [project.id],
-				settings: { region: 'us-east-1' },
-			})
-			.expect(200);
+		await createProjectConnection(owner, project.id, 'rollbackOwnerConnection2');
+		await createGlobalSharedConnection(owner, project.id, 'rollbackUserConnection2');
 
-		await testServer
-			.authAgentFor(owner)
-			.post('/secret-providers/connections')
-			.send({
-				providerKey: 'multiDeleteConnection2',
-				type: 'awsSecretsManager',
-				projectIds: [project.id],
-				settings: { region: 'us-east-1' },
-			})
-			.expect(200);
+		const ownerConnection = await connectionRepository.findOneByOrFail({
+			providerKey: 'rollbackOwnerConnection2',
+		});
+		const userConnection = await connectionRepository.findOneByOrFail({
+			providerKey: 'rollbackUserConnection2',
+		});
 
-		await testServer
-			.authAgentFor(owner)
-			.post(`/secret-providers/projects/${project.id}/connections`)
-			.send({
-				providerKey: 'projectScopedDeleteConnection',
-				type: 'awsSecretsManager',
-				projectIds: [],
-				settings: { region: 'us-east-1' },
-			})
-			.expect(200);
+		await projectAccessRepository.update(
+			{
+				projectId: project.id,
+				secretsProviderConnectionId: ownerConnection.id,
+			},
+			{
+				role: 'secretsProviderConnection:owner',
+			},
+		);
 
-		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
+		const originalProjectAccessTarget = projectAccessRepository.target;
+		Object.defineProperty(projectAccessRepository, 'target', {
+			value: 'does_not_exist_access_target',
+			configurable: true,
+		});
 
-		const [deletedConnection1, deletedConnection2, deletedProjectScopedConnection] =
+		try {
+			await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(500);
+		} finally {
+			Object.defineProperty(projectAccessRepository, 'target', {
+				value: originalProjectAccessTarget,
+				configurable: true,
+			});
+		}
+
+		const [remainingProject, remainingOwnerConnection, remainingOwnerAccess, remainingUserAccess] =
 			await Promise.all([
-				connectionRepository.findOneBy({ providerKey: 'multiDeleteConnection1' }),
-				connectionRepository.findOneBy({ providerKey: 'multiDeleteConnection2' }),
-				connectionRepository.findOneBy({ providerKey: 'projectScopedDeleteConnection' }),
+				projectRepository.findOneBy({ id: project.id }),
+				connectionRepository.findOneBy({ providerKey: 'rollbackOwnerConnection2' }),
+				projectAccessRepository.findOneBy({
+					projectId: project.id,
+					secretsProviderConnectionId: ownerConnection.id,
+				}),
+				projectAccessRepository.findOneBy({
+					projectId: project.id,
+					secretsProviderConnectionId: userConnection.id,
+				}),
 			]);
-		expect(deletedConnection1).toBeNull();
-		expect(deletedConnection2).toBeNull();
-		expect(deletedProjectScopedConnection).toBeNull();
+
+		expect(remainingProject).not.toBeNull();
+		expect(remainingOwnerConnection).not.toBeNull();
+		expect(remainingOwnerAccess).not.toBeNull();
+		expect(remainingUserAccess).not.toBeNull();
 	});
 });

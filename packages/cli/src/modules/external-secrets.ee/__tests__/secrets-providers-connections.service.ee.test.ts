@@ -5,6 +5,7 @@ import type {
 	SecretsProviderConnection,
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
+import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_BLANKING_VALUE, type IDataObject, type INodeProperties } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -376,7 +377,7 @@ describe('SecretsProvidersConnectionsService', () => {
 
 		it('should sync provider connection after deleteConnection', async () => {
 			mockRepository.findOne.mockResolvedValueOnce(savedConnection);
-			mockRepository.remove.mockResolvedValue(savedConnection);
+			mockRepository.remove.mockResolvedValueOnce(savedConnection);
 
 			await service.deleteConnection('my-aws', 'user-123');
 
@@ -385,7 +386,20 @@ describe('SecretsProvidersConnectionsService', () => {
 	});
 
 	describe('cleanupConnectionsForProjectDeletion', () => {
-		it('deletes owner connections and syncs each affected provider after project cleanup', async () => {
+		it('runs owner and non-owner mutations inside a single transaction', async () => {
+			const entityManager = {
+				delete: jest.fn().mockResolvedValueOnce(undefined),
+				update: jest.fn().mockResolvedValueOnce(undefined),
+			};
+			const transaction = jest.fn(
+				async (callback: (em: typeof entityManager) => Promise<void>) =>
+					await callback(entityManager),
+			);
+			Object.defineProperty(mockRepository, 'manager', {
+				value: { transaction },
+				configurable: true,
+			});
+
 			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
 				mock<ProjectSecretsProviderAccess>({
 					projectId: 'project-1',
@@ -395,7 +409,7 @@ describe('SecretsProvidersConnectionsService', () => {
 				}),
 				mock<ProjectSecretsProviderAccess>({
 					projectId: 'project-1',
-					role: 'secretsProviderConnection:owner',
+					role: 'secretsProviderConnection:user',
 					secretsProviderConnectionId: 2,
 					secretsProviderConnection: { providerKey: 'provider-b' },
 				}),
@@ -403,33 +417,26 @@ describe('SecretsProvidersConnectionsService', () => {
 
 			await service.cleanupConnectionsForProjectDeletion('project-1');
 
-			expect(mockRepository.delete).toHaveBeenCalledTimes(2);
-			expect(mockRepository.delete).toHaveBeenNthCalledWith(1, { id: 1 });
-			expect(mockRepository.delete).toHaveBeenNthCalledWith(2, { id: 2 });
+			expect(transaction).toHaveBeenCalledTimes(1);
+			expect(entityManager.delete).toHaveBeenNthCalledWith(1, mockRepository.target, {
+				id: In([1]),
+			});
+			expect(entityManager.delete).toHaveBeenNthCalledWith(2, mockProjectAccessRepository.target, {
+				projectId: 'project-1',
+				secretsProviderConnectionId: In([2]),
+			});
+			expect(entityManager.update).toHaveBeenCalledWith(
+				mockRepository.target,
+				{ id: In([2]) },
+				{ isEnabled: false },
+			);
+
+			expect(mockRepository.delete).not.toHaveBeenCalled();
+			expect(mockRepository.update).not.toHaveBeenCalled();
+			expect(mockProjectAccessRepository.delete).not.toHaveBeenCalled();
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledTimes(2);
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-a');
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-b');
-		});
-
-		it('disables non-owned connection, removes access, and syncs provider', async () => {
-			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
-				mock<ProjectSecretsProviderAccess>({
-					projectId: 'project-1',
-					role: 'secretsProviderConnection:user',
-					secretsProviderConnectionId: 5,
-					secretsProviderConnection: { providerKey: 'provider-c' },
-				}),
-			]);
-
-			await service.cleanupConnectionsForProjectDeletion('project-1');
-
-			expect(mockRepository.delete).not.toHaveBeenCalled();
-			expect(mockProjectAccessRepository.delete).toHaveBeenCalledWith({
-				projectId: 'project-1',
-				secretsProviderConnectionId: 5,
-			});
-			expect(mockRepository.update).toHaveBeenCalledWith({ id: 5 }, { isEnabled: false });
-			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-c');
 		});
 	});
 

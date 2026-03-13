@@ -16,6 +16,7 @@ import {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { In } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
@@ -327,42 +328,6 @@ export class SecretsProvidersConnectionsService {
 		};
 	}
 
-	async reloadProjectConnectionSecrets(
-		projectId: string,
-		userId: string,
-	): Promise<ReloadSecretProviderConnectionResponse> {
-		const projectConnections = await this.repository.findEnabledByProjectId(projectId);
-		const providers: Record<string, { success: boolean }> = {};
-
-		await Promise.allSettled(
-			projectConnections.map(async (connection) => {
-				try {
-					await this.externalSecretsManager.updateProvider(connection.providerKey);
-					providers[connection.providerKey] = { success: true };
-
-					this.eventService.emit('external-secrets-connection-reloaded', {
-						userId,
-						providerKey: connection.providerKey,
-						vaultType: connection.type,
-						...this.extractProjectInfo(connection),
-					});
-				} catch (error) {
-					providers[connection.providerKey] = { success: false };
-					this.logger.warn(`Failed to reload provider ${connection.providerKey}`, {
-						projectId,
-						providerKey: connection.providerKey,
-					});
-				}
-			}),
-		);
-
-		const allSucceeded = Object.values(providers).every((p) => p.success);
-		return reloadSecretProviderConnectionResponseSchema.parse({
-			success: allSucceeded,
-			providers,
-		});
-	}
-
 	/**
 	 * Cleans up external-secrets connections when a project is deleted.
 	 * - If this project owns the connection, delete it entirely (access rows cascade).
@@ -372,26 +337,39 @@ export class SecretsProvidersConnectionsService {
 	async cleanupConnectionsForProjectDeletion(projectId: string): Promise<void> {
 		const accessEntries = await this.projectAccessRepository.findByProjectId(projectId);
 		const providerKeysToSync = new Set<string>();
+		const ownerConnectionIds = new Set<number>();
+		const nonOwnerConnectionIds = new Set<number>();
 
 		for (const access of accessEntries) {
 			providerKeysToSync.add(access.secretsProviderConnection.providerKey);
 
 			if (access.role === 'secretsProviderConnection:owner') {
-				// Delete the connection entirely; DB cascade removes the access entry too
-				await this.repository.delete({ id: access.secretsProviderConnectionId });
-				continue;
+				ownerConnectionIds.add(access.secretsProviderConnectionId);
+			} else {
+				nonOwnerConnectionIds.add(access.secretsProviderConnectionId);
+			}
+		}
+
+		// Wrap deletion + update ops in a transaction for consistency
+		await this.repository.manager.transaction(async (entityManager) => {
+			if (ownerConnectionIds.size > 0) {
+				// Delete owned connections entirely; DB cascade removes access entries
+				await entityManager.delete(this.repository.target, { id: In([...ownerConnectionIds]) });
 			}
 
-			// Remove only this project's access and disable the connection
-			await this.projectAccessRepository.delete({
-				projectId,
-				secretsProviderConnectionId: access.secretsProviderConnectionId,
-			});
-			await this.repository.update(
-				{ id: access.secretsProviderConnectionId },
-				{ isEnabled: false },
-			);
-		}
+			if (nonOwnerConnectionIds.size > 0) {
+				// Remove only this project's access and disable shared connections
+				await entityManager.delete(this.projectAccessRepository.target, {
+					projectId,
+					secretsProviderConnectionId: In([...nonOwnerConnectionIds]),
+				});
+				await entityManager.update(
+					this.repository.target,
+					{ id: In([...nonOwnerConnectionIds]) },
+					{ isEnabled: false },
+				);
+			}
+		});
 
 		for (const providerKey of providerKeysToSync) {
 			await this.externalSecretsManager.syncProviderConnection(providerKey);
