@@ -13,6 +13,8 @@ describe('Discover Handler', () => {
 	let mockResponse: Partial<Response>;
 
 	beforeEach(() => {
+		jest.clearAllMocks();
+
 		mockApiKeyRepository = mockInstance(ApiKeyRepository);
 
 		jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
@@ -24,8 +26,20 @@ describe('Discover Handler', () => {
 			json: jest.fn().mockReturnThis(),
 			status: jest.fn().mockReturnThis(),
 		};
+	});
 
-		jest.clearAllMocks();
+	it('should return 401 when API key header is missing', async () => {
+		const req = {
+			headers: {},
+			query: {},
+		} as unknown as AuthenticatedRequest;
+
+		const handlerFn = handler.getDiscover[0];
+		await handlerFn(req, mockResponse);
+
+		expect(mockResponse.status).toHaveBeenCalledWith(401);
+		expect(mockResponse.json).toHaveBeenCalledWith({ message: 'Unauthorized' });
+		expect(mockApiKeyRepository.findOne).not.toHaveBeenCalled();
 	});
 
 	it('should return 401 when API key not found in DB', async () => {

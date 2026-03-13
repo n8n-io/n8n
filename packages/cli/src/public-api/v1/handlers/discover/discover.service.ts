@@ -42,8 +42,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isScopeTagged(fn: Function): fn is ScopeTaggedMiddleware {
-	return '__apiKeyScope' in fn;
+function isScopeTagged(value: unknown): value is ScopeTaggedMiddleware {
+	return typeof value === 'function' && '__apiKeyScope' in value;
 }
 
 /**
@@ -52,7 +52,7 @@ function isScopeTagged(fn: Function): fn is ScopeTaggedMiddleware {
  */
 function extractScopeFromHandler(handlerChain: unknown[]): ApiKeyScope | null {
 	for (const middleware of handlerChain) {
-		if (typeof middleware === 'function' && isScopeTagged(middleware)) {
+		if (isScopeTagged(middleware)) {
 			return middleware.__apiKeyScope;
 		}
 	}

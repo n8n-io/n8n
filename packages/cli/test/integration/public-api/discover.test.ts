@@ -85,4 +85,28 @@ describe('GET /discover', () => {
 			expect(resource.operations).toBeInstanceOf(Array);
 		}
 	});
+
+	test('should not include requestSchema without ?include=schemas', async () => {
+		const response = await authOwnerAgent.get('/discover');
+		const allEndpoints = Object.values(response.body.data.resources).flatMap(
+			(r: any) => r.endpoints,
+		);
+		const withSchema = allEndpoints.filter((e: any) => 'requestSchema' in e);
+		expect(withSchema).toHaveLength(0);
+	});
+
+	test('should include requestSchema with ?include=schemas', async () => {
+		const response = await authOwnerAgent.get('/discover?include=schemas');
+		expect(response.statusCode).toBe(200);
+
+		const allEndpoints = Object.values(response.body.data.resources).flatMap(
+			(r: any) => r.endpoints,
+		);
+		const withSchema = allEndpoints.filter((e: any) => 'requestSchema' in e);
+		expect(withSchema.length).toBeGreaterThan(0);
+
+		for (const endpoint of withSchema) {
+			expect((endpoint as any).requestSchema).toHaveProperty('type');
+		}
+	});
 });

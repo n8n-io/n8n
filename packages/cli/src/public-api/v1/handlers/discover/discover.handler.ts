@@ -13,10 +13,14 @@ export = {
 			req: AuthenticatedRequest<{}, {}, {}, { include?: string }>,
 			res: express.Response,
 		): Promise<express.Response> => {
-			const apiKeyHeader = req.headers['x-n8n-api-key'] as string;
+			const rawHeader = req.headers['x-n8n-api-key'];
+			const apiKey = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+			if (!apiKey) {
+				return res.status(401).json({ message: 'Unauthorized' });
+			}
 
 			const apiKeyRecord = await Container.get(ApiKeyRepository).findOne({
-				where: { apiKey: apiKeyHeader, audience: API_KEY_AUDIENCE },
+				where: { apiKey, audience: API_KEY_AUDIENCE },
 				select: { scopes: true },
 			});
 
