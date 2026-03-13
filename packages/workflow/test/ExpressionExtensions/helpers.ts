@@ -1,3 +1,5 @@
+import { DateTime, Duration, Interval } from 'luxon';
+
 import type { IDataObject } from '../../src/interfaces';
 import { Workflow } from '../../src/workflow';
 import * as Helpers from '../helpers';
@@ -31,6 +33,24 @@ export const evaluate = (value: string, values?: IDataObject[]) =>
 		'manual',
 		{},
 	);
+
+/**
+ * Normalize expression results that may be Luxon instances (current engine)
+ * or ISO strings (VM engine). The VM engine serializes Luxon types to ISO
+ * strings at the isolate boundary via __prepareForTransfer.
+ *
+ * TODO: When the current (Tournament) engine is removed and only the VM
+ * engine remains, these helpers become unnecessary — all results will be
+ * strings. Replace usages with fromISO() directly.
+ */
+export const asDateTime = (v: unknown): DateTime =>
+	DateTime.isDateTime(v) ? v : DateTime.fromISO(v as string);
+
+export const asDuration = (v: unknown): Duration =>
+	Duration.isDuration(v) ? v : Duration.fromISO(v as string);
+
+export const asInterval = (v: unknown): Interval =>
+	Interval.isInterval(v) ? v : Interval.fromISO(v as string);
 
 export const getLocalISOString = (date: Date) => {
 	const offset = date.getTimezoneOffset();
