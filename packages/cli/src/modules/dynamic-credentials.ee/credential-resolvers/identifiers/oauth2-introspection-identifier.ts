@@ -20,8 +20,8 @@ const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour
 export const OAuth2IntrospectionOptionsSchema = z.object({
 	...OAuth2OptionsSchema.shape,
 	validation: z.literal('oauth2-introspection'),
-	clientId: z.string(),
-	clientSecret: z.string(),
+	clientId: z.string().min(1, 'Client ID is required'),
+	clientSecret: z.string().min(1, 'Client Secret is required'),
 });
 
 type OAuth2IntrospectionOptions = z.infer<typeof OAuth2IntrospectionOptionsSchema>;
