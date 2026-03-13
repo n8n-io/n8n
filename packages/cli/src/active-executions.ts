@@ -145,7 +145,7 @@ export class ActiveExecutions {
 				capacityReservation.release();
 				if (execution.status === 'waiting') {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
-					execution.workflowExecution = null;
+					execution.workflowExecution = undefined;
 				} else {
 					this.activeExecutions.delete(executionId);
 					this.responseModes.delete(executionId);
