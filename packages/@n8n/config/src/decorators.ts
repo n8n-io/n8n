@@ -3,15 +3,20 @@ import { Container, Service } from '@n8n/di';
 import { readFileSync } from 'fs';
 import { z } from 'zod';
 
+import * as coerce from './coerce';
+
 // eslint-disable-next-line @typescript-eslint/no-restricted-types
 type Class = Function;
 type Constructable<T = unknown> = new (rawValue: string) => T;
 type PropertyKey = string | symbol;
 type PropertyType = number | boolean | string | Class;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type InstanceTransform = (value: string, config: any) => unknown;
 interface PropertyMetadata {
 	type: PropertyType;
 	envName?: string;
 	schema?: z.ZodType<unknown>;
+	instanceTransform?: InstanceTransform;
 }
 
 const globalMetadata = new Map<Class, Map<PropertyKey, PropertyMetadata>>();
@@ -44,10 +49,19 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 			throw new Error('Invalid config class: ' + ConfigClass.name);
 		}
 
-		for (const [key, { type, envName, schema }] of classMetadata) {
+		const deferred: Array<[PropertyKey, string, InstanceTransform]> = [];
+
+		for (const [key, { type, envName, schema, instanceTransform }] of classMetadata) {
 			if (typeof type === 'function' && globalMetadata.has(type)) {
 				config[key] = Container.get(type as Constructable);
 			} else if (envName) {
+				// Defer properties with instance transforms to a second pass,
+				// so they can reference other already-resolved properties
+				if (instanceTransform) {
+					deferred.push([key, envName, instanceTransform]);
+					continue;
+				}
+
 				const value = readEnv(envName);
 				if (value === undefined) continue;
 
@@ -61,33 +75,39 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 					}
 					config[key] = result.data;
 				} else if (type === Number) {
-					const parsed = Number(value);
-					if (isNaN(parsed)) {
+					const parsed = coerce.toNumber(value);
+					if (parsed === undefined) {
 						console.warn(`Invalid number value for ${envName}: ${value}`);
 					} else {
 						config[key] = parsed;
 					}
 				} else if (type === Boolean) {
-					if (['true', '1'].includes(value.toLowerCase())) {
-						config[key] = true;
-					} else if (['false', '0'].includes(value.toLowerCase())) {
-						config[key] = false;
-					} else {
+					const parsed = coerce.toBoolean(value);
+					if (parsed === undefined) {
 						console.warn(`Invalid boolean value for ${envName}: ${value}`);
+					} else {
+						config[key] = parsed;
 					}
 				} else if (type === Date) {
-					const timestamp = Date.parse(value);
-					if (isNaN(timestamp)) {
+					const parsed = coerce.toDate(value);
+					if (parsed === undefined) {
 						console.warn(`Invalid timestamp value for ${envName}: ${value}`);
 					} else {
-						config[key] = new Date(timestamp);
+						config[key] = parsed;
 					}
 				} else if (type === String) {
-					config[key] = value.trim().replace(/^(['"])(.*)\1$/, '$2');
+					config[key] = coerce.toString(value);
 				} else {
 					config[key] = new (type as Constructable)(value);
 				}
 			}
+		}
+
+		// Second pass: process instance transforms with access to all resolved properties
+		for (const [key, envName, instanceTransform] of deferred) {
+			const value = readEnv(envName);
+			if (value === undefined) continue;
+			config[key] = instanceTransform(value, config);
 		}
 
 		if (typeof config.sanitize === 'function') config.sanitize();
@@ -107,20 +127,29 @@ export const Nested: PropertyDecorator = (target: object, key: PropertyKey) => {
 };
 
 export const Env =
-	(envName: string, schema?: PropertyMetadata['schema']): PropertyDecorator =>
+	(
+		envName: string,
+		schemaOrTransform?: PropertyMetadata['schema'] | InstanceTransform,
+	): PropertyDecorator =>
 	(target: object, key: PropertyKey) => {
 		const ConfigClass = target.constructor;
 		const classMetadata =
 			globalMetadata.get(ConfigClass) ?? new Map<PropertyKey, PropertyMetadata>();
 
 		const type = Reflect.getMetadata('design:type', target, key) as PropertyType;
-		const isZodSchema = schema instanceof z.ZodType;
-		if (type === Object && !isZodSchema) {
+		const isZodSchema = schemaOrTransform instanceof z.ZodType;
+		const isInstanceTransform = typeof schemaOrTransform === 'function';
+		if (type === Object && !isZodSchema && !isInstanceTransform) {
 			throw new Error(
 				`Invalid decorator metadata on key "${key as string}" on ${ConfigClass.name}\n Please use explicit typing on all config fields`,
 			);
 		}
 
-		classMetadata.set(key, { type, envName, schema });
+		classMetadata.set(key, {
+			type,
+			envName,
+			schema: isZodSchema ? schemaOrTransform : undefined,
+			instanceTransform: isInstanceTransform ? schemaOrTransform : undefined,
+		});
 		globalMetadata.set(ConfigClass, classMetadata);
 	};

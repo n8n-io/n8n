@@ -13,16 +13,13 @@ fs.readFileSync = mockFs.readFileSync;
 
 const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-// Ignore the sanitize function from the GlobalConfig nested types
 type ConfigShape<T> = T extends ReadonlyArray<infer U>
 	? Array<ConfigShape<U>>
 	: T extends object
 		? {
-				[K in keyof T as K extends 'sanitize'
-					? never
-					: T[K] extends (...args: unknown[]) => unknown
-						? never
-						: K]: ConfigShape<T[K]>;
+				[K in keyof T as T[K] extends (...args: unknown[]) => unknown ? never : K]: ConfigShape<
+					T[K]
+				>;
 			}
 		: T;
 
@@ -161,6 +158,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		externalHooks: {
+			separator: ':',
 			files: [],
 		},
 		nodes: {
