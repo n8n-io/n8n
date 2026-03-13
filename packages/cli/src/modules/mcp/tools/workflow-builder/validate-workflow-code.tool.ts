@@ -19,7 +19,20 @@ const inputSchema = {
 const outputSchema = {
 	valid: z.boolean().describe('Whether the workflow code is valid'),
 	nodeCount: z.number().optional().describe('The number of nodes in the workflow (if valid)'),
-	warnings: z.array(z.string()).optional().describe('Validation warnings (if any)'),
+	warnings: z
+		.array(
+			z.object({
+				code: z.string().describe('The warning code identifying the type of warning'),
+				message: z.string().describe('The warning message'),
+				nodeName: z.string().optional().describe('The node that triggered the warning'),
+				parameterPath: z
+					.string()
+					.optional()
+					.describe('The parameter path that triggered the warning'),
+			}),
+		)
+		.optional()
+		.describe('Validation warnings (if any)'),
 	errors: z.array(z.string()).optional().describe('Validation errors (if invalid)'),
 } satisfies z.ZodRawShape;
 

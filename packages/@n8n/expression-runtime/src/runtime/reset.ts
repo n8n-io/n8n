@@ -1,4 +1,7 @@
+import { IANAZone, Settings } from 'luxon';
+
 import { extend, extendOptional } from '../extensions/extend';
+import { extendedFunctions } from '../extensions/function-extensions';
 
 import { __sanitize } from './safe-globals';
 import { createDeepLazyProxy } from './lazy-proxy';
@@ -21,7 +24,12 @@ import { createDeepLazyProxy } from './lazy-proxy';
  *
  * Called from bridge: context.evalSync('resetDataProxies()')
  */
-export function resetDataProxies(): void {
+export function resetDataProxies(timezone?: string): void {
+	if (timezone && !IANAZone.isValidZone(timezone)) {
+		throw new Error(`Invalid timezone: "${timezone}"`);
+	}
+	Settings.defaultZone = timezone ?? 'system';
+
 	// Clear existing __data object
 	globalThis.__data = {};
 
@@ -88,6 +96,9 @@ export function resetDataProxies(): void {
 	(globalThis as any).$itemIndex = globalThis.__data.$itemIndex;
 	(globalThis as any).$data = globalThis.__data.$data;
 	(globalThis as any).$env = globalThis.__data.$env;
+
+	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
+	Object.assign(globalThis.__data, extendedFunctions);
 
 	// -------------------------------------------------------------------------
 	// Handle function properties (check if value is function metadata)
