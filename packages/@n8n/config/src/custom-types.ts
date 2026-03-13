@@ -11,9 +11,3 @@ export class CommaSeparatedStringArray<T extends string> extends StringArray<T> 
 		super(str, ',');
 	}
 }
-
-export class ColonSeparatedStringArray<T extends string = string> extends StringArray<T> {
-	constructor(str: string) {
-		super(str, ':');
-	}
-}
