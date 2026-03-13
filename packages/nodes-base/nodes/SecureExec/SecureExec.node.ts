@@ -7,7 +7,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { createDriver, isVolumeManager } from './DriverFactory';
-import type { ICommandExecutor, IVolumeManager, VolumeMount } from './drivers/ICommandExecutor';
+import type { ICommandExecutor, VolumeMount } from './drivers/ICommandExecutor';
 
 export class SecureExec implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,14 +26,11 @@ export class SecureExec implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 				name: 'secureExecEnvironmentVariables',
 				required: false,
-				displayOptions: {
-					show: {
-						resource: ['command'],
-						operation: ['execute'],
-					},
-				},
+				// NOTE: not putting `displayOptions` here because it
+				// causes an issue where Resource/Operation are not shown
 			},
 		],
 		properties: [
@@ -303,8 +300,8 @@ export class SecureExec implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const { driver, type: activeDriver, isUnsafeFallback } = createDriver();
 
@@ -453,7 +450,6 @@ async function executeVolumeOperation(
 		);
 	}
 
-	const volumeDriver = driver as ICommandExecutor & IVolumeManager;
 	const items = context.getInputData();
 	const returnItems: INodeExecutionData[] = [];
 
@@ -462,7 +458,7 @@ async function executeVolumeOperation(
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 				try {
 					const volumeName = context.getNodeParameter('volumeName', itemIndex, '') as string;
-					const volume = await volumeDriver.createVolume(volumeName || undefined);
+					const volume = await driver.createVolume(volumeName || undefined);
 					returnItems.push({
 						json: {
 							id: volume.id,
@@ -486,7 +482,7 @@ async function executeVolumeOperation(
 		}
 		case 'list': {
 			try {
-				const volumes = await volumeDriver.listVolumes();
+				const volumes = await driver.listVolumes();
 				for (const volume of volumes) {
 					returnItems.push({
 						json: {
@@ -516,9 +512,9 @@ async function executeVolumeOperation(
 				try {
 					const volumeId = context.getNodeParameter('volumeId', itemIndex) as string;
 					if (!volumeId) {
-						throw new Error('Volume ID is required');
+						throw new NodeOperationError(context.getNode(), 'Volume ID is required');
 					}
-					await volumeDriver.deleteVolume(volumeId);
+					await driver.deleteVolume(volumeId);
 					returnItems.push({
 						json: { deleted: true, volumeId },
 						pairedItem: { item: itemIndex },
