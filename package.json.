@@ -1,0 +1,7 @@
+{
+  "name": "n8n-app",
+  "private": true,
+  "scripts": {
+    "start": "npx n8n"
+  }
+}
