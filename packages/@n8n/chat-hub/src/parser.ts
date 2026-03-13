@@ -11,6 +11,7 @@ export interface MessageWithContent {
 
 const CREATE_TAG = '@@artifact-create ';
 const EDIT_TAG = '@@artifact-edit ';
+const SEP_MARKER = '@@sep';
 
 export function appendChunkToParsedMessageItems(
 	items: ChatMessageContentChunk[],
@@ -222,10 +223,6 @@ function parseArtifactCreateCommand(content: string): {
 	};
 }
 
-function unescapeNewlines(s: string): string {
-	return s.replace(/\\n/g, '\n');
-}
-
 function parseArtifactEditCommand(content: string): {
 	item: ChatMessageContentChunk;
 	consumed: number;
@@ -240,6 +237,7 @@ function parseArtifactEditCommand(content: string): {
 
 	const bodyStart = firstNewline === -1 ? content.length : firstNewline + 1;
 	const endIdx = endToken ? findFirstLineMarker(content, bodyStart, endToken) : -1;
+	const sepIdx = findFirstLineMarker(content, bodyStart, SEP_MARKER);
 	const isIncomplete = endIdx === -1;
 
 	let oldString = '';
@@ -250,24 +248,19 @@ function parseArtifactEditCommand(content: string): {
 		// Only the opening line received so far
 		consumed = content.length;
 	} else if (isIncomplete) {
-		const body = content.slice(bodyStart);
-		const sepNewline = body.indexOf('\n');
-		if (sepNewline === -1) {
-			oldString = unescapeNewlines(body);
+		if (sepIdx === -1) {
+			oldString = content.slice(bodyStart);
 		} else {
-			oldString = unescapeNewlines(body.slice(0, sepNewline));
-			newString = unescapeNewlines(body.slice(sepNewline + 1));
+			oldString = content.slice(bodyStart, sepIdx - 1);
+			newString = content.slice(skipToNextLine(content, sepIdx + SEP_MARKER.length));
 		}
 		consumed = content.length;
 	} else {
-		// Body is between bodyStart and the \n preceding TOKEN
-		const body = content.slice(bodyStart, endIdx - 1);
-		const sepNewline = body.indexOf('\n');
-		if (sepNewline === -1) {
-			oldString = unescapeNewlines(body);
+		if (sepIdx !== -1 && sepIdx < endIdx) {
+			oldString = content.slice(bodyStart, sepIdx - 1);
+			newString = content.slice(skipToNextLine(content, sepIdx + SEP_MARKER.length), endIdx - 1);
 		} else {
-			oldString = unescapeNewlines(body.slice(0, sepNewline));
-			newString = unescapeNewlines(body.slice(sepNewline + 1));
+			oldString = content.slice(bodyStart, endIdx - 1);
 		}
 		consumed = skipToNextLine(content, endIdx + endToken.length);
 	}

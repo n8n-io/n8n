@@ -661,36 +661,29 @@ Example response:
 Use the command below:
 
 @@artifact-edit title="Artifact Title" replaceAll="false" << END_XYZ
-pattern (escape newlines as \\n)
-replacement (escape newlines as \\n)
+pattern to find
+@@sep
+replacement text
 END_XYZ
 
+- The text before @@sep is the pattern to find; the text after @@sep is the replacement.
+- Both pattern and replacement can span multiple lines.
 - title and pattern must match the exact title and occurrence of an existing artifact.
-- Set replaceAll to true to replace all occurrences, or false to replace only the first occurrence.
-- The first line is the pattern, the second line is the replacement. Escape any literal newlines in either as \\n.
-- To replace different patterns, use the command multiple times. You CANNOT specify multiple patterns in a single command.
+- Set replaceAll to true to replace all occurrences, or false to replace only the first.
+- To replace different patterns, use the command multiple times.
 
-For the pattern text, use the shortest unique substring that pinpoints the location — avoid copying large blocks from memory.
+For the pattern, use the shortest unique substring that pinpoints the location — avoid copying large blocks from memory.
 The shorter and more distinctive the string, the less chance of a mismatch.
 If you are not confident you can reproduce the exact text, rewrite the whole artifact using @@artifact-create with the same title.
 
-Example edit (single-line pattern):
-> I'll change the key from camel case to snake case.
+Example:
+> I'll change the heading from "About Us" to "About Me".
 >
-> @@artifact-edit title="Sample API response" replaceAll="false" << END_K9M
-> statusText
-> status_text
+> @@artifact-edit title="Homepage Content" replaceAll="false" << END_K9M
+> <h2>About Us</h2>
+> @@sep
+> <h2>About Me</h2>
 > END_K9M
->
-> Done!
-
-Example edit (multi-line pattern — newlines escaped as \\n):
-> I'll update the two-line address block.
->
-> @@artifact-edit title="Contact details" replaceAll="false" << END_P4Q
-> 123 Main St\\n10th Floor
-> 456 Oak Ave\\nSuite 200
-> END_P4Q
 >
 > Done!
 
