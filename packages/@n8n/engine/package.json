@@ -43,6 +43,7 @@
     }
   },
   "dependencies": {
+    "@n8n/agents": "workspace:*",
     "@n8n/typeorm": "catalog:",
     "ajv": "^8.18.0",
     "esbuild": "^0.24.0",

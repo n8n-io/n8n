@@ -18,3 +18,6 @@ packages/@n8n/engine/.turbo
 # Workspace dependencies
 !packages/@n8n/typescript-config
 !packages/@n8n/typescript-config/**
+!packages/@n8n/agents
+!packages/@n8n/agents/**
+packages/@n8n/agents/node_modules

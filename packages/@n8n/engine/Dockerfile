@@ -16,6 +16,7 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml ./
 RUN echo '{"name":"n8n-monorepo","private":true}' > package.json
 
 COPY packages/@n8n/engine/package.json packages/@n8n/engine/
+COPY packages/@n8n/agents/ packages/@n8n/agents/
 COPY packages/@n8n/typescript-config/ packages/@n8n/typescript-config/
 
 RUN pnpm install --filter=@n8n/engine... --no-frozen-lockfile --ignore-scripts

@@ -6,7 +6,8 @@ import { resolve } from 'path';
 const apiTarget = process.env.VITE_API_URL ?? 'http://localhost:3100';
 
 export default defineConfig({
-	plugins: [vue()],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	plugins: [vue() as any],
 	root: resolve(__dirname),
 	resolve: {
 		alias: {

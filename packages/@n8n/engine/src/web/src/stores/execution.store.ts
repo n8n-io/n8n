@@ -188,6 +188,18 @@ export const useExecutionStore = defineStore('execution', () => {
 		}
 	}
 
+	async function resumeAgentStep(stepExecutionId: string, data: unknown) {
+		const res = await fetch(`/api/workflow-step-executions/${stepExecutionId}/resume`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ data }),
+		});
+		if (!res.ok) {
+			const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+			throw new Error(body.error ?? 'Failed to resume agent step');
+		}
+	}
+
 	async function deleteExecution(id: string) {
 		const res = await fetch(`/api/workflow-executions/${id}`, { method: 'DELETE' });
 		if (!res.ok) throw new Error(`Failed: ${res.status}`);
@@ -218,6 +230,7 @@ export const useExecutionStore = defineStore('execution', () => {
 		resumeExecution,
 		approvalTokens,
 		approveStep,
+		resumeAgentStep,
 		deleteExecution,
 		clearEvents,
 	};

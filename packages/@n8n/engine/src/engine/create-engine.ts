@@ -10,6 +10,7 @@ import { CompletionService } from './completion.service';
 import { BroadcasterService } from './broadcaster.service';
 import { WorkflowTriggerService } from './workflow-trigger.service';
 import { BatchExecutorService } from './batch-executor.service';
+import { AgentBridgeService } from './agent-bridge.service';
 import { registerEventHandlers } from './event-handlers';
 
 export interface Engine {
@@ -20,6 +21,7 @@ export interface Engine {
 	engineService: EngineService;
 	workflowTrigger: WorkflowTriggerService;
 	batchExecutor: BatchExecutorService;
+	agentBridge: AgentBridgeService;
 	stepProcessor: StepProcessorService;
 	broadcaster: BroadcasterService;
 	queue: StepQueueService;
@@ -44,11 +46,13 @@ export function createEngine(dataSource: DataSource): Engine {
 	const engineService = new EngineService(dataSource, eventBus, stepPlanner);
 	const workflowTrigger = new WorkflowTriggerService(dataSource, engineService, eventBus);
 	const batchExecutor = new BatchExecutorService(dataSource, eventBus);
+	const agentBridge = new AgentBridgeService(process.env.AGENT_STATE_DIR ?? '/tmp/agent-state');
 	const stepProcessor = new StepProcessorService(
 		dataSource,
 		eventBus,
 		workflowTrigger,
 		batchExecutor,
+		agentBridge,
 	);
 	const broadcaster = new BroadcasterService(eventBus);
 
@@ -65,6 +69,7 @@ export function createEngine(dataSource: DataSource): Engine {
 		engineService,
 		workflowTrigger,
 		batchExecutor,
+		agentBridge,
 		stepProcessor,
 		broadcaster,
 		queue,

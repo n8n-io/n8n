@@ -1,5 +1,12 @@
 import type { ZodType } from 'zod';
 
+// ---------------------------------------------------------------------------
+// Agent types — uses `unknown` to avoid importing @n8n/agents at build time
+// (TS moduleResolution can't resolve the workspace-linked package).
+// The real Agent/Tool objects come from require("@n8n/agents") in compiled
+// workflow code; the bridge casts to its own AgentLike at runtime.
+// ---------------------------------------------------------------------------
+
 export interface StepDefinition {
 	/** Step display name (shown on canvas) */
 	name: string;
@@ -118,6 +125,37 @@ export interface TriggerWorkflowConfig {
 	timeout?: number;
 }
 
+export interface AgentStepConfig {
+	name: string;
+	description?: string;
+	icon?: string;
+	color?: string;
+	/** Timeout for the entire agent invocation (default: 600_000ms / 10 min) */
+	timeout?: number;
+}
+
+export interface AgentStepResult {
+	/** 'completed' when the agent finished, 'suspended' when a tool needs external input */
+	status: 'completed' | 'suspended';
+	/** Final agent output (when status === 'completed') */
+	output?: unknown;
+	/** Opaque snapshot blob for restoring agent state on resume (when status === 'suspended') */
+	snapshot?: unknown;
+	/** What condition must be met before the engine resumes this step */
+	resumeCondition?: ResumeCondition;
+	/** Human-readable payload describing what the tool needs (when status === 'suspended') */
+	suspendPayload?: unknown;
+	/** Token usage for this invocation */
+	usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+	/** Tool calls made during this invocation */
+	toolCalls?: Array<{ tool: string; input: unknown; output: unknown }>;
+}
+
+export type ResumeCondition =
+	| { type: 'approval' }
+	| { type: 'chat'; prompt?: string }
+	| { type: 'webhook'; path?: string };
+
 export interface ExecutionContext<TTriggerData = Record<string, unknown>> {
 	input: Record<string, unknown>;
 	triggerData: TTriggerData;
@@ -147,6 +185,16 @@ export interface ExecutionContext<TTriggerData = Record<string, unknown>> {
 	waitUntil: (date: Date) => Promise<void>;
 	/** Trigger another workflow and wait for its result. Handled at compile time by the transpiler — creates a trigger-workflow graph node. */
 	triggerWorkflow: (config: TriggerWorkflowConfig) => Promise<unknown>;
+	/**
+	 * Run an agent as a workflow step. The agent is built from the @n8n/agents
+	 * framework and executed within the engine's lifecycle (suspend/resume,
+	 * credential resolution).
+	 *
+	 * When a tool suspends, the step completes with status 'suspended' and the
+	 * engine arranges the resume condition. On resume, this method is called again
+	 * with the agent's state restored.
+	 */
+	agent: (agent: unknown, input: string | unknown[]) => Promise<AgentStepResult>;
 	getSecret: (name: string) => string | undefined;
 }
 

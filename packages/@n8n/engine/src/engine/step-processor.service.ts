@@ -17,6 +17,7 @@ import type { ErrorData } from './errors/error-classifier';
 import type { EngineEventBus } from './event-bus.service';
 import type { WorkflowTriggerService } from './workflow-trigger.service';
 import type { BatchExecutorService } from './batch-executor.service';
+import type { AgentBridgeService, AgentInvocation } from './agent-bridge.service';
 
 type StepFunction = (ctx: ExecutionContext) => Promise<unknown>;
 
@@ -58,6 +59,7 @@ export class StepProcessorService {
 		private readonly eventBus: EngineEventBus,
 		private readonly workflowTrigger?: WorkflowTriggerService,
 		private readonly batchExecutor?: BatchExecutorService,
+		private readonly agentBridge?: AgentBridgeService,
 	) {}
 
 	async processStep(stepJob: WorkflowStepExecution): Promise<void> {
@@ -208,6 +210,96 @@ export class StepProcessorService {
 				// Fan out child steps -- the batch executor handles parent completion
 				const onItemFailure = stepConfig.onItemFailure ?? 'continue';
 				await this.batchExecutor.processBatch(stepJob, items, graph, onItemFailure);
+				return;
+			}
+
+			// 5d. Handle agent steps: execute function to get agent + input, then invoke bridge
+			if (node?.type === 'agent' && this.agentBridge) {
+				this.eventBus.emit({
+					type: 'step:started',
+					executionId: execution.id,
+					stepId: stepJob.stepId,
+					attempt: stepJob.attempt,
+				});
+
+				// Load and execute the step function — it returns { agent, input }
+				const stepFn = this.loadStepFunction(
+					execution.workflowId,
+					execution.workflowVersion,
+					workflow.compiledCode,
+					graph,
+					stepJob.stepId,
+					stepJob.metadata,
+				);
+				const ctx = this.buildStepContext(stepJob, execution);
+				const { agent, input } = (await stepFn(ctx)) as {
+					agent: unknown;
+					input: string | unknown[];
+				};
+
+				const startTime = Date.now();
+				const metadata = (stepJob.metadata ?? {}) as Record<string, unknown>;
+				const timeout = stepConfig.agentConfig?.timeout ?? 600_000;
+
+				const result = await Promise.race([
+					this.agentBridge.invoke({
+						executionId: execution.id,
+						stepId: stepJob.stepId,
+						agent: agent as AgentInvocation['agent'],
+						input,
+						resumeState: metadata.agentSnapshot as unknown,
+						resumeData: metadata.agentResumeData as unknown,
+					}),
+					new Promise<never>((_, reject) =>
+						setTimeout(() => reject(new StepTimeoutError(stepJob.stepId, timeout)), timeout),
+					),
+				]);
+
+				if (result.status === 'suspended') {
+					// Mark step as suspended, persist metadata for resume
+					await this.dataSource
+						.getRepository(WorkflowStepExecution)
+						.createQueryBuilder()
+						.update(WorkflowStepExecution)
+						.set({
+							status: StepStatus.Suspended,
+							output: {
+								suspendPayload: result.suspendPayload,
+								resumeCondition: result.resumeCondition,
+								usage: result.usage,
+								toolCalls: result.toolCalls,
+							},
+							metadata: {
+								...metadata,
+								agentSnapshot: result.snapshot,
+								agentResumeCondition: result.resumeCondition,
+							},
+						} as Record<string, unknown>)
+						.where('id = :id', { id: stepJob.id })
+						.execute();
+
+					this.eventBus.emit({
+						type: 'step:agent_suspended',
+						executionId: execution.id,
+						stepId: stepJob.stepId,
+						suspendPayload: result.suspendPayload,
+						toolName: '',
+					});
+				} else {
+					// Agent completed — store as AgentStepResult so downstream
+					// steps can access answer.output, answer.usage, etc.
+					await this.updateStepAndEmit(stepJob, execution, {
+						status: StepStatus.Completed,
+						output: {
+							status: 'completed',
+							output: result.output,
+							usage: result.usage,
+							toolCalls: result.toolCalls,
+						},
+						completedAt: new Date(),
+						durationMs: Date.now() - startTime,
+					});
+				}
 				return;
 			}
 
@@ -514,6 +606,12 @@ export class StepProcessorService {
 				return await this.workflowTrigger.triggerAndAwait(stepJob, config);
 			},
 
+			// Agent — handled at compile time by the transpiler.
+			// This stub exists only to satisfy the interface; it should never be called at runtime.
+			agent: async () => {
+				throw new Error('ctx.agent() is handled at compile time by the transpiler');
+			},
+
 			// Secrets -- reads from environment variables (PoC)
 			getSecret: (name: string) => process.env[name],
 		};
@@ -630,6 +728,8 @@ function mapStatusToEvent(status: string): string {
 		case StepStatus.WaitingApproval:
 			return 'step:waiting_approval';
 		case StepStatus.Waiting:
+			return 'step:waiting';
+		case StepStatus.Suspended:
 			return 'step:waiting';
 		default:
 			return `step:${status}`;

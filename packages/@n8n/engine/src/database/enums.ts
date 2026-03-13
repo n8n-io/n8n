@@ -14,6 +14,7 @@ export enum StepStatus {
 	RetryPending = 'retry_pending',
 	WaitingApproval = 'waiting_approval',
 	Waiting = 'waiting',
+	Suspended = 'suspended',
 	Completed = 'completed',
 	Failed = 'failed',
 	Cancelled = 'cancelled',
@@ -29,6 +30,7 @@ export enum StepType {
 	Condition = 'condition',
 	Sleep = 'sleep',
 	TriggerWorkflow = 'trigger_workflow',
+	Agent = 'agent',
 }
 
 export const TERMINAL_STATUSES: StepStatus[] = [
@@ -46,4 +48,5 @@ export const NON_TERMINAL_STATUSES: StepStatus[] = [
 	StepStatus.RetryPending,
 	StepStatus.WaitingApproval,
 	StepStatus.Waiting,
+	StepStatus.Suspended,
 ];

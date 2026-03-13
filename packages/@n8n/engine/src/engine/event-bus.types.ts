@@ -63,6 +63,20 @@ export interface StepChunkEvent {
 	timestamp: number;
 }
 
+export interface StepAgentSuspendedEvent {
+	type: 'step:agent_suspended';
+	executionId: string;
+	stepId: string;
+	suspendPayload: unknown;
+	toolName: string;
+}
+
+export interface StepAgentResumedEvent {
+	type: 'step:agent_resumed';
+	executionId: string;
+	stepId: string;
+}
+
 export interface ExecutionStartedEvent {
 	type: 'execution:started';
 	executionId: string;
@@ -123,7 +137,9 @@ export type StepEvent =
 	| StepWaitingEvent
 	| StepWaitingApprovalEvent
 	| StepCancelledEvent
-	| StepChunkEvent;
+	| StepChunkEvent
+	| StepAgentSuspendedEvent
+	| StepAgentResumedEvent;
 
 export type ExecutionEvent =
 	| ExecutionStartedEvent

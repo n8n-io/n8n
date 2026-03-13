@@ -53,6 +53,14 @@ const stepTypeIcon = computed(() => {
 	return icons[props.step.stepType] ?? '\u25CB';
 });
 
+const suspendMessage = computed(() => {
+	const output = props.step.output as Record<string, unknown> | null | undefined;
+	const payload = output?.suspendPayload as Record<string, unknown> | undefined;
+	return (
+		(payload?.message as string) ?? 'This step is suspended and requires a response to continue.'
+	);
+});
+
 const cardClasses = computed(() => {
 	return [
 		$style.card,
@@ -86,6 +94,21 @@ function handleApprove(approved: boolean) {
 			<!-- Approval actions -->
 			<div v-if="step.status === 'waiting_approval'" :class="$style.approvalActions">
 				<p :class="$style.approvalText">This step requires human approval to continue.</p>
+				<div :class="$style.approvalButtons">
+					<button :class="[$style.btn, $style.btnSuccess]" @click="handleApprove(true)">
+						Approve
+					</button>
+					<button :class="[$style.btn, $style.btnDanger]" @click="handleApprove(false)">
+						Decline
+					</button>
+				</div>
+			</div>
+
+			<!-- Suspended actions -->
+			<div v-if="step.status === 'suspended'" :class="$style.approvalActions">
+				<p :class="$style.approvalText">
+					{{ suspendMessage }}
+				</p>
 				<div :class="$style.approvalButtons">
 					<button :class="[$style.btn, $style.btnSuccess]" @click="handleApprove(true)">
 						Approve

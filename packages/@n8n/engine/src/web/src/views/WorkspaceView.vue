@@ -134,6 +134,18 @@ const approvalMessage = computed(() => {
 	return null;
 });
 
+const suspendMessage = computed(() => {
+	if (!selectedStep.value) return null;
+	const output = selectedStep.value.output;
+	if (output && typeof output === 'object' && 'suspendPayload' in output) {
+		const payload = (output as Record<string, unknown>).suspendPayload;
+		if (payload && typeof payload === 'object' && 'message' in payload) {
+			return (payload as Record<string, unknown>).message as string;
+		}
+	}
+	return null;
+});
+
 const graph = computed(() => workflowStore.currentWorkflow?.graph ?? null);
 
 const isWorkflowActive = computed(() => workflowStore.currentWorkflow?.active ?? false);
@@ -246,13 +258,15 @@ watch(isTerminal, (terminal) => {
 	}
 });
 
-// Auto-select approval steps when they appear
+// Auto-select approval/suspended steps when they appear
 watch(
 	() => executionStore.steps,
 	(steps) => {
-		const waitingApproval = steps.find((s) => s.status === 'waiting_approval');
-		if (waitingApproval && selectedStepId.value !== waitingApproval.stepId) {
-			selectedStepId.value = waitingApproval.stepId;
+		const actionRequired = steps.find(
+			(s) => s.status === 'waiting_approval' || s.status === 'suspended',
+		);
+		if (actionRequired && selectedStepId.value !== actionRequired.stepId) {
+			selectedStepId.value = actionRequired.stepId;
 		}
 	},
 	{ deep: true },
@@ -431,6 +445,13 @@ async function handleDeleteCurrentExecution() {
 
 async function handleApproveStep(stepId: string, approved: boolean) {
 	await executionStore.approveStep(stepId, approved);
+	if (currentExecId.value) {
+		await executionStore.fetchSteps(currentExecId.value);
+	}
+}
+
+async function handleResumeAgentStep(stepId: string, approved: boolean) {
+	await executionStore.resumeAgentStep(stepId, { approved });
 	if (currentExecId.value) {
 		await executionStore.fetchSteps(currentExecId.value);
 	}
@@ -1457,6 +1478,29 @@ function navigateToErrorLine() {
 								<button
 									:class="[$style.btn, $style.btnDanger]"
 									@click="handleApproveStep(selectedStep.id, false)"
+								>
+									Decline
+								</button>
+							</div>
+						</div>
+
+						<!-- Suspended actions -->
+						<div v-if="selectedStep.status === 'suspended'" :class="$style.approvalActions">
+							<p :class="$style.approvalText">
+								{{
+									suspendMessage ?? 'This step is suspended and requires a response to continue.'
+								}}
+							</p>
+							<div :class="$style.approvalButtons">
+								<button
+									:class="[$style.btn, $style.btnSuccess]"
+									@click="handleResumeAgentStep(selectedStep.id, true)"
+								>
+									Approve
+								</button>
+								<button
+									:class="[$style.btn, $style.btnDanger]"
+									@click="handleResumeAgentStep(selectedStep.id, false)"
 								>
 									Decline
 								</button>

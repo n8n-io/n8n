@@ -1201,6 +1201,9 @@ importers:
 
   packages/@n8n/engine:
     dependencies:
+      '@n8n/agents':
+        specifier: workspace:*
+        version: link:../agents
       '@n8n/typeorm':
         specifier: 'catalog:'
         version: 0.3.20-16(@sentry/node@10.36.0)(mysql2@3.17.0)(pg@8.17.0)(sqlite3@5.1.7)

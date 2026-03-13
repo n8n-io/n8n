@@ -148,11 +148,35 @@ interface TriggerWorkflowDefinition {
 	triggerDataVars: Set<string>;
 }
 
-/** Union of step, sleep, and trigger-workflow calls for sequential ordering */
+interface AgentDefinition {
+	/** Deterministic ID derived from position */
+	id: string;
+	/** Display name for the agent node */
+	name: string;
+	/** Position in source for ordering */
+	sourcePos: number;
+	/** The CallExpression node for the ctx.agent() call */
+	callNode: CallExpression;
+	/** The full text of the agent builder expression (first arg — preserved verbatim for runtime) */
+	agentBuilderExpr: string;
+	/** The input expression text (second arg — string or AgentMessage[]) */
+	inputExpr: string;
+	/** The variable name this call's output is assigned to (if any) */
+	assignedVariable: string | undefined;
+	/** Names of variables from other step outputs referenced in the agent/input expressions */
+	dependencies: Map<string, string>;
+	/** Variables from ctx.triggerData referenced in the expressions */
+	triggerDataVars: Set<string>;
+	/** Timeout override for the agent step */
+	timeout?: number;
+}
+
+/** Union of step, sleep, trigger-workflow, and agent calls for sequential ordering */
 type OrchestratorCall =
 	| { kind: 'step'; step: StepDefinition; sourcePos: number }
 	| { kind: 'sleep'; sleep: SleepDefinition; sourcePos: number }
-	| { kind: 'trigger-workflow'; triggerWorkflow: TriggerWorkflowDefinition; sourcePos: number };
+	| { kind: 'trigger-workflow'; triggerWorkflow: TriggerWorkflowDefinition; sourcePos: number }
+	| { kind: 'agent'; agent: AgentDefinition; sourcePos: number };
 
 interface HelperFunction {
 	name: string;
@@ -246,6 +270,16 @@ declare module '@n8n/engine/sdk' {
 		};
 	}
 
+	export interface AgentStepResult {
+		status: 'completed' | 'suspended';
+		output?: unknown;
+		snapshot?: unknown;
+		resumeCondition?: unknown;
+		suspendPayload?: unknown;
+		usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+		toolCalls?: Array<{ tool: string; input: unknown; output: unknown }>;
+	}
+
 	export interface ExecutionContext {
 		input: Record<string, unknown>;
 		triggerData: { body: any; query: any; headers: any; method: string; path: string; [key: string]: unknown };
@@ -261,6 +295,7 @@ declare module '@n8n/engine/sdk' {
 		sleep: (ms: number) => Promise<void>;
 		waitUntil: (date: Date) => Promise<void>;
 		triggerWorkflow: (config: TriggerWorkflowConfig) => Promise<unknown>;
+		agent: (agent: any, input: string | any[]) => Promise<AgentStepResult>;
 		getSecret: (name: string) => string | undefined;
 	}
 
@@ -316,6 +351,34 @@ declare module 'zod' {
 }
 `;
 
+const AGENTS_TYPE_DECLARATIONS = `
+declare module '@n8n/agents' {
+	export class Agent {
+		model(provider: string, model: string): Agent;
+		instructions(text: string): Agent;
+		tool(tool: any): Agent;
+		memory(memory: any): Agent;
+		credential(name: string): Agent;
+		structuredOutput(schema: any): Agent;
+		thinking(config?: any): Agent;
+		checkpoint(store: any): Agent;
+	}
+	export class Tool {
+		constructor(name: string);
+		description(text: string): Tool;
+		input(schema: any): Tool;
+		handler(fn: (input: any, ctx?: any) => Promise<any>): Tool;
+	}
+	export interface BuiltAgent {
+		generate(input: any, options?: any): Promise<any>;
+		resume(method: string, data: unknown, options: { runId: string; toolCallId: string }): Promise<any>;
+		getState(): any;
+		abort(): void;
+	}
+	export type AgentMessage = any;
+}
+`;
+
 // ---------------------------------------------------------------------------
 // TranspilerService
 // ---------------------------------------------------------------------------
@@ -366,6 +429,7 @@ export class TranspilerService {
 
 		// Inject SDK type declarations for type checking
 		project.createSourceFile('node_modules/@n8n/engine/sdk.d.ts', SDK_TYPE_DECLARATIONS);
+		project.createSourceFile('node_modules/@n8n/agents/index.d.ts', AGENTS_TYPE_DECLARATIONS);
 
 		const sourceFile = project.createSourceFile('workflow.ts', source);
 
@@ -422,16 +486,17 @@ export class TranspilerService {
 		// Extract triggers from the workflow definition object
 		const triggers = this.findTriggers(workflowDef.objectLiteral);
 
-		// Step 1: Find all ctx.step(), ctx.approval(), ctx.batch(), ctx.sleep(), and ctx.triggerWorkflow() calls
+		// Step 1: Find all ctx.step(), ctx.approval(), ctx.batch(), ctx.sleep(), ctx.triggerWorkflow(), and ctx.agent() calls
 		const stepCalls = this.findStepCalls(workflowDef.runMethod);
 		const batchCalls = this.findBatchCalls(workflowDef.runMethod);
 		const steps = [...stepCalls, ...batchCalls];
 		const sleeps = this.findSleepCalls(workflowDef.runMethod);
 		const triggerWorkflows = this.findTriggerWorkflowCalls(workflowDef.runMethod);
+		const agentCalls = this.findAgentCalls(workflowDef.runMethod);
 
-		if (steps.length === 0) {
+		if (steps.length === 0 && agentCalls.length === 0) {
 			errors.push({
-				message: 'No ctx.step() or ctx.batch() calls found in run() method',
+				message: 'No ctx.step(), ctx.batch(), or ctx.agent() calls found in run() method',
 				severity: 'error',
 			});
 			return {
@@ -481,6 +546,11 @@ export class TranspilerService {
 				variableToStepId.set(tw.assignedVariable, tw.id);
 			}
 		}
+		for (const ag of agentCalls) {
+			if (ag.assignedVariable) {
+				variableToStepId.set(ag.assignedVariable, ag.id);
+			}
+		}
 
 		// Detect variables destructured from ctx.triggerData
 		const triggerDataVars = this.findTriggerDataVariables(workflowDef.runMethod);
@@ -503,20 +573,38 @@ export class TranspilerService {
 		// Step 3b: Detect try/catch
 		this.detectTryCatch(workflowDef.runMethod, steps);
 
-		// Step 4: Find helper functions
-		const helpers = this.findHelperFunctions(sourceFile, steps);
+		// Step 4: Find helper functions (also considers agent builder expressions)
+		const helpers = this.findHelperFunctions(sourceFile, steps, agentCalls);
 
-		// Step 5: Build ordered list of orchestrator calls (steps + sleeps + trigger-workflows)
-		const orchestratorCalls = this.buildOrchestratorCallOrder(steps, sleeps, triggerWorkflows);
+		// Resolve dependencies for agent calls
+		for (const ag of agentCalls) {
+			this.resolveAgentDependencies(ag, variableToStepId);
+		}
 
-		// Step 6: Build the graph (now includes sleep and trigger-workflow nodes)
-		const graph = this.buildGraph(steps, sleeps, orchestratorCalls, triggers, triggerWorkflows);
+		// Step 5: Build ordered list of orchestrator calls (steps + sleeps + trigger-workflows + agents)
+		const orchestratorCalls = this.buildOrchestratorCallOrder(
+			steps,
+			sleeps,
+			triggerWorkflows,
+			agentCalls,
+		);
 
-		// Step 7: Generate compiled code (for step functions and trigger-workflow functions)
+		// Step 6: Build the graph (now includes sleep, trigger-workflow, and agent nodes)
+		const graph = this.buildGraph(
+			steps,
+			sleeps,
+			orchestratorCalls,
+			triggers,
+			triggerWorkflows,
+			agentCalls,
+		);
+
+		// Step 7: Generate compiled code (for step functions, trigger-workflow functions, and agent functions)
 		const { code: rawCode, generatedToOriginalLineMap } = this.generateCode(
 			steps,
 			helpers,
 			triggerWorkflows,
+			agentCalls,
 		);
 
 		// Step 8: Compile with esbuild
@@ -954,6 +1042,62 @@ export class TranspilerService {
 		return triggerWorkflows;
 	}
 
+	private findAgentCalls(runMethod: Node): AgentDefinition[] {
+		const agents: AgentDefinition[] = [];
+		const callExpressions = runMethod.getDescendantsOfKind(SyntaxKind.CallExpression);
+
+		let agentIndex = 0;
+		for (const call of callExpressions) {
+			if (!this.isCtxAgentCall(call)) continue;
+
+			const args = call.getArguments();
+			if (args.length < 2) continue;
+
+			// First arg: Agent builder expression (preserved verbatim for runtime execution)
+			const agentBuilderExpr = args[0].getText();
+
+			// Second arg: input (string literal or expression)
+			const inputExpr = args[1].getText();
+
+			const name = `agent-${agentIndex}`;
+			const id = sha256(`__agent__${agentIndex}`);
+
+			// Determine assigned variable
+			const assignedVariable = this.findAssignedVariable(call);
+
+			agents.push({
+				id,
+				name,
+				sourcePos: call.getStart(),
+				callNode: call,
+				agentBuilderExpr,
+				inputExpr,
+				assignedVariable,
+				dependencies: new Map(),
+				triggerDataVars: new Set(),
+			});
+
+			agentIndex++;
+		}
+
+		return agents;
+	}
+
+	private resolveAgentDependencies(
+		ag: AgentDefinition,
+		variableToStepId: Map<string, string>,
+	): void {
+		// Check if the agent builder or input expressions reference variables from other steps
+		const fullText = `${ag.agentBuilderExpr} ${ag.inputExpr}`;
+		for (const [varName, stepId] of variableToStepId) {
+			if (stepId === ag.id) continue;
+			const regex = new RegExp(`\\b${escapeRegExp(varName)}\\b`);
+			if (regex.test(fullText)) {
+				ag.dependencies.set(varName, stepId);
+			}
+		}
+	}
+
 	private resolveTriggerWorkflowDependencies(
 		tw: TriggerWorkflowDefinition,
 		variableToStepId: Map<string, string>,
@@ -1012,6 +1156,14 @@ export class TranspilerService {
 				const objectExpr = expr.getExpression();
 				return objectExpr.getText() === 'ctx';
 			}
+		}
+		return false;
+	}
+
+	private isCtxAgentCall(call: CallExpression): boolean {
+		const expr = call.getExpression();
+		if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+			return expr.getName() === 'agent' && expr.getExpression().getText() === 'ctx';
 		}
 		return false;
 	}
@@ -1518,9 +1670,17 @@ export class TranspilerService {
 		return undefined;
 	}
 
-	private findHelperFunctions(sourceFile: SourceFile, steps: StepDefinition[]): HelperFunction[] {
+	private findHelperFunctions(
+		sourceFile: SourceFile,
+		steps: StepDefinition[],
+		agents: AgentDefinition[] = [],
+	): HelperFunction[] {
 		const helpers: HelperFunction[] = [];
-		const allFnBodies = steps.map((s) => s.functionBodyText).join('\n');
+		// Include step bodies and agent builder/input expressions for reference checking
+		const allFnBodies =
+			steps.map((s) => s.functionBodyText).join('\n') +
+			'\n' +
+			agents.map((ag) => `${ag.agentBuilderExpr} ${ag.inputExpr}`).join('\n');
 
 		// Find top-level function declarations
 		for (const fn of sourceFile.getFunctions()) {
@@ -1534,14 +1694,11 @@ export class TranspilerService {
 			});
 		}
 
-		// Find top-level const/let arrow functions
+		// Find top-level variable declarations (arrow functions, builder chains, etc.)
 		for (const stmt of sourceFile.getVariableStatements()) {
 			for (const decl of stmt.getDeclarations()) {
 				const init = decl.getInitializer();
-				if (
-					init &&
-					(init.isKind(SyntaxKind.ArrowFunction) || init.isKind(SyntaxKind.FunctionExpression))
-				) {
+				if (init) {
 					const name = decl.getName();
 					helpers.push({
 						name,
@@ -1570,7 +1727,7 @@ export class TranspilerService {
 		};
 
 		for (const helper of helpers) {
-			// Check if any step body references this helper
+			// Check if any step body or agent expression references this helper
 			const regex = new RegExp(`\\b${escapeRegExp(helper.name)}\\b`);
 			if (regex.test(allFnBodies)) {
 				markReferenced(helper.name);
@@ -1636,6 +1793,7 @@ export class TranspilerService {
 		steps: StepDefinition[],
 		sleeps: SleepDefinition[],
 		triggerWorkflows: TriggerWorkflowDefinition[] = [],
+		agents: AgentDefinition[] = [],
 	): OrchestratorCall[] {
 		const calls: OrchestratorCall[] = [];
 
@@ -1647,6 +1805,9 @@ export class TranspilerService {
 		}
 		for (const tw of triggerWorkflows) {
 			calls.push({ kind: 'trigger-workflow', triggerWorkflow: tw, sourcePos: tw.sourcePos });
+		}
+		for (const ag of agents) {
+			calls.push({ kind: 'agent', agent: ag, sourcePos: ag.sourcePos });
 		}
 
 		calls.sort((a, b) => a.sourcePos - b.sourcePos);
@@ -1663,6 +1824,7 @@ export class TranspilerService {
 		orchestratorCalls: OrchestratorCall[],
 		triggers: TriggerConfig[],
 		triggerWorkflows: TriggerWorkflowDefinition[] = [],
+		agents: AgentDefinition[] = [],
 	): WorkflowGraphData {
 		const nodes: GraphNodeData[] = [];
 		const edges: GraphEdgeData[] = [];
@@ -1738,6 +1900,22 @@ export class TranspilerService {
 			});
 		}
 
+		// Add agent nodes
+		for (const ag of agents) {
+			nodes.push({
+				id: ag.id,
+				name: ag.name,
+				type: 'agent',
+				stepFunctionRef: `step_${ag.id}`,
+				config: {
+					name: ag.name,
+					agentConfig: {
+						timeout: ag.timeout ?? 600_000,
+					},
+				},
+			});
+		}
+
 		// --- Sequential-by-default edge building ---
 		// Steps chain sequentially by declaration order. Promise.all groups
 		// fan-out/fan-in. Conditionals branch. Sleeps insert inline.
@@ -1777,6 +1955,16 @@ export class TranspilerService {
 					addEdge(prevId, twId);
 				}
 				previousNodeIds = [twId];
+				idx++;
+				continue;
+			}
+
+			if (call.kind === 'agent') {
+				const agId = call.agent.id;
+				for (const prevId of previousNodeIds) {
+					addEdge(prevId, agId);
+				}
+				previousNodeIds = [agId];
 				idx++;
 				continue;
 			}
@@ -1877,6 +2065,7 @@ export class TranspilerService {
 		steps: StepDefinition[],
 		helpers: HelperFunction[],
 		triggerWorkflows: TriggerWorkflowDefinition[] = [],
+		agents: AgentDefinition[] = [],
 	): { code: string; generatedToOriginalLineMap: Record<number, number> } {
 		// Track the current line number in the generated code (1-based)
 		let currentLine = 1;
@@ -1897,6 +2086,15 @@ export class TranspilerService {
 				currentLine++;
 			}
 		};
+
+		// Emit agent framework require before helpers (helpers may reference Agent/Tool/z)
+		if (agents.length > 0) {
+			appendLine('// --- Agent framework ---');
+			appendLine('const __agents__ = require("@n8n/agents");');
+			appendLine('const { Agent, Tool } = __agents__;');
+			appendLine('const { z } = require("zod");');
+			appendLine('');
+		}
 
 		// Emit helper functions at module level
 		if (helpers.length > 0) {
@@ -1995,6 +2193,33 @@ export class TranspilerService {
 			for (const bl of bodyLines) {
 				appendLine(`    ${bl}`);
 			}
+			appendLine(`};`);
+			appendLine('');
+		}
+
+		// Emit agent step functions
+		for (const ag of agents) {
+			const fnName = `step_${toCamelCase(ag.name)}`;
+			const exportName = `step_${ag.id}`;
+
+			const injections: string[] = [];
+			for (const [varName, sourceStepId] of ag.dependencies) {
+				injections.push(`const ${varName} = ctx.input['${sourceStepId}'];`);
+			}
+			if (ag.triggerDataVars.size > 0) {
+				const varNames = [...ag.triggerDataVars].join(', ');
+				injections.push(`const { ${varNames} } = ctx.triggerData;`);
+			}
+
+			// The agent step function returns { agent, input } for the bridge to invoke.
+			// The agent builder expression is preserved verbatim — it's runtime code.
+			appendLine(`exports.${exportName} = async function ${fnName}(ctx) {`);
+			for (const inj of injections) {
+				appendLine(`    ${inj}`);
+			}
+			appendLine(`    const __agent__ = ${ag.agentBuilderExpr};`);
+			appendLine(`    const __input__ = ${ag.inputExpr};`);
+			appendLine(`    return { agent: __agent__, input: __input__ };`);
 			appendLine(`};`);
 			appendLine('');
 		}

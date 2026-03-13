@@ -43,6 +43,7 @@ services:
       DATABASE_URL: postgres://engine:engine@postgres:5432/engine
       PORT: '3100'
       NODE_ENV: development
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy

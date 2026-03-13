@@ -112,5 +112,57 @@ export function createStepExecutionRouter(deps: AppDependencies): Router {
 		}
 	});
 
+	// POST /api/workflow-step-executions/:id/resume - Resume suspended agent step
+	router.post('/:id/resume', async (req: Request, res: Response) => {
+		try {
+			const { id } = req.params;
+			const { data } = req.body as { data: unknown };
+
+			const step = await dataSource.getRepository(WorkflowStepExecution).findOneBy({ id });
+
+			if (!step) {
+				res.status(404).json({ error: 'Step execution not found' });
+				return;
+			}
+
+			if (step.status !== StepStatus.Suspended) {
+				res.status(409).json({
+					error: `Step is not suspended (current status: ${step.status})`,
+				});
+				return;
+			}
+
+			// Set resume data in metadata and re-queue the step
+			const metadata = (step.metadata as Record<string, unknown>) ?? {};
+			await dataSource
+				.getRepository(WorkflowStepExecution)
+				.createQueryBuilder()
+				.update(WorkflowStepExecution)
+				.set({
+					status: StepStatus.Queued,
+					metadata: {
+						...metadata,
+						agentResumeData: data,
+					},
+				} as Record<string, unknown>)
+				.where('id = :id AND status = :status', {
+					id,
+					status: StepStatus.Suspended,
+				})
+				.execute();
+
+			// Emit step:agent_resumed event
+			eventBus.emit({
+				type: 'step:agent_resumed',
+				executionId: step.executionId,
+				stepId: step.stepId,
+			});
+
+			res.status(200).json({ status: 'queued' });
+		} catch (error) {
+			res.status(500).json({ error: (error as Error).message });
+		}
+	});
+
 	return router;
 }

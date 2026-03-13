@@ -75,6 +75,7 @@ const STATUS_COLORS: Record<string, string> = {
 	pending: '#d1d5db',
 	waiting: '#4a9eff',
 	waiting_approval: '#8b5cf6',
+	suspended: '#8b5cf6',
 	cancelled: '#9ca3af',
 	retry_pending: '#f5a623',
 	skipped: '#9ca3af',
@@ -89,6 +90,7 @@ const STATUS_LABELS: Record<string, string> = {
 	pending: 'Pending',
 	waiting: 'Waiting',
 	waiting_approval: 'Awaiting Approval',
+	suspended: 'Suspended',
 	cancelled: 'Cancelled',
 	retry_pending: 'Retry Pending',
 	skipped: 'Skipped',
@@ -103,9 +105,15 @@ function findStep(stepId: string): StepExecution | undefined {
 const executionFinished = computed(() => {
 	if (props.steps.length === 0) return false;
 	const hasRunning = props.steps.some((s) =>
-		['running', 'queued', 'pending', 'retry_pending', 'waiting', 'waiting_approval'].includes(
-			s.status,
-		),
+		[
+			'running',
+			'queued',
+			'pending',
+			'retry_pending',
+			'waiting',
+			'waiting_approval',
+			'suspended',
+		].includes(s.status),
 	);
 	return !hasRunning;
 });

@@ -27,6 +27,7 @@ const statusConfig = computed(() => {
 		queued: { label: 'Queued', color: 'muted' },
 		retry_pending: { label: 'Retry Pending', color: 'warning' },
 		waiting_approval: { label: 'Awaiting Approval', color: 'info' },
+		suspended: { label: 'Suspended', color: 'info' },
 		skipped: { label: 'Skipped', color: 'muted' },
 		cached: { label: 'Cached', color: 'success' },
 	};

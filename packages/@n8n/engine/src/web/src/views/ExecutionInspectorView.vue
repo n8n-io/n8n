@@ -128,7 +128,12 @@ async function handleResume() {
 }
 
 async function handleApprove(stepId: string, approved: boolean) {
-	await executionStore.approveStep(stepId, approved);
+	const step = executionStore.steps.find((s) => s.id === stepId);
+	if (step?.status === 'suspended') {
+		await executionStore.resumeAgentStep(stepId, { approved });
+	} else {
+		await executionStore.approveStep(stepId, approved);
+	}
 	await executionStore.fetchSteps(executionId.value);
 }
 
@@ -188,13 +193,19 @@ function formatDateTime(dateString: string | null): string {
 <template>
 	<div :class="$style.page">
 		<!-- Loading -->
-		<div v-if="executionStore.loading && !executionStore.currentExecution" :class="$style.loadingPage">
+		<div
+			v-if="executionStore.loading && !executionStore.currentExecution"
+			:class="$style.loadingPage"
+		>
 			<div :class="$style.spinner" />
 			Loading execution...
 		</div>
 
 		<!-- Error -->
-		<div v-else-if="executionStore.error && !executionStore.currentExecution" :class="$style.errorPage">
+		<div
+			v-else-if="executionStore.error && !executionStore.currentExecution"
+			:class="$style.errorPage"
+		>
 			<h2>Failed to load execution</h2>
 			<p>{{ executionStore.error }}</p>
 			<button :class="[$style.btn, $style.btnGhost]" @click="$router.push('/')">
@@ -209,8 +220,17 @@ function formatDateTime(dateString: string | null): string {
 				<div :class="$style.headerTop">
 					<div :class="$style.headerLeft">
 						<button :class="$style.backBtn" @click="goToWorkflow" title="Back to workflow">
-							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-								<polyline points="15 18 9 12 15 6"/>
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<polyline points="15 18 9 12 15 6" />
 							</svg>
 							Workflow
 						</button>
@@ -232,7 +252,9 @@ function formatDateTime(dateString: string | null): string {
 					</div>
 					<div :class="$style.metaItem">
 						<span :class="$style.metaLabel">Version</span>
-						<span :class="$style.metaValuePill">v{{ executionStore.currentExecution.workflowVersion }}</span>
+						<span :class="$style.metaValuePill"
+							>v{{ executionStore.currentExecution.workflowVersion }}</span
+						>
 					</div>
 					<div :class="$style.metaItem">
 						<span :class="$style.metaLabel">Mode</span>
@@ -240,21 +262,21 @@ function formatDateTime(dateString: string | null): string {
 					</div>
 					<div :class="$style.metaItem">
 						<span :class="$style.metaLabel">Started</span>
-						<span :class="$style.metaValue">{{ formatDateTime(executionStore.currentExecution.startedAt) }}</span>
+						<span :class="$style.metaValue">{{
+							formatDateTime(executionStore.currentExecution.startedAt)
+						}}</span>
 					</div>
 					<div v-if="executionStore.currentExecution.completedAt" :class="$style.metaItem">
 						<span :class="$style.metaLabel">Completed</span>
-						<span :class="$style.metaValue">{{ formatDateTime(executionStore.currentExecution.completedAt) }}</span>
+						<span :class="$style.metaValue">{{
+							formatDateTime(executionStore.currentExecution.completedAt)
+						}}</span>
 					</div>
 				</div>
 
 				<!-- Timing breakdown -->
 				<div v-if="timingParts.length" :class="$style.timingBar">
-					<div
-						v-for="part in timingParts"
-						:key="part.label"
-						:class="$style.timingItem"
-					>
+					<div v-for="part in timingParts" :key="part.label" :class="$style.timingItem">
 						<span :class="$style.timingLabel">{{ part.label }}</span>
 						<span :class="$style.timingValue">{{ part.value }}</span>
 					</div>
@@ -263,24 +285,34 @@ function formatDateTime(dateString: string | null): string {
 				<!-- Action buttons -->
 				<div :class="$style.actionBar">
 					<template v-if="!isTerminal">
-						<button
-							v-if="isRunning"
-							:class="[$style.btn, $style.btnDanger]"
-							@click="handleCancel"
-						>
-							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-								<rect x="3" y="3" width="18" height="18" rx="2"/>
+						<button v-if="isRunning" :class="[$style.btn, $style.btnDanger]" @click="handleCancel">
+							<svg
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<rect x="3" y="3" width="18" height="18" rx="2" />
 							</svg>
 							Cancel
 						</button>
-						<button
-							v-if="isRunning"
-							:class="[$style.btn, $style.btnWarning]"
-							@click="handlePause"
-						>
-							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-								<rect x="6" y="4" width="4" height="16"/>
-								<rect x="14" y="4" width="4" height="16"/>
+						<button v-if="isRunning" :class="[$style.btn, $style.btnWarning]" @click="handlePause">
+							<svg
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<rect x="6" y="4" width="4" height="16" />
+								<rect x="14" y="4" width="4" height="16" />
 							</svg>
 							Pause
 						</button>
@@ -289,8 +321,17 @@ function formatDateTime(dateString: string | null): string {
 							:class="[$style.btn, $style.btnPrimary]"
 							@click="handleResume"
 						>
-							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-								<polygon points="5 3 19 12 5 21 5 3"/>
+							<svg
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<polygon points="5 3 19 12 5 21 5 3" />
 							</svg>
 							Resume
 						</button>
@@ -301,13 +342,21 @@ function formatDateTime(dateString: string | null): string {
 					</template>
 					<template v-else>
 						<div :class="$style.actionBarSpacer" />
-						<button
-							:class="[$style.btn, $style.btnDangerGhost]"
-							@click="handleDelete"
-						>
-							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-								<polyline points="3 6 5 6 21 6"/>
-								<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+						<button :class="[$style.btn, $style.btnDangerGhost]" @click="handleDelete">
+							<svg
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<polyline points="3 6 5 6 21 6" />
+								<path
+									d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+								/>
 							</svg>
 							Delete
 						</button>
@@ -318,12 +367,21 @@ function formatDateTime(dateString: string | null): string {
 			<!-- Workflow Graph -->
 			<div v-if="workflowGraph" :class="$style.graphSection">
 				<button :class="$style.graphToggle" @click="showGraph = !showGraph">
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<circle cx="18" cy="5" r="3"/>
-						<circle cx="6" cy="12" r="3"/>
-						<circle cx="18" cy="19" r="3"/>
-						<line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-						<line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+					<svg
+						width="14"
+						height="14"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<circle cx="18" cy="5" r="3" />
+						<circle cx="6" cy="12" r="3" />
+						<circle cx="18" cy="19" r="3" />
+						<line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+						<line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
 					</svg>
 					Workflow Graph
 					<span :class="[$style.chevron, showGraph ? $style.chevronUp : '']">&#9662;</span>
@@ -348,10 +406,20 @@ function formatDateTime(dateString: string | null): string {
 					</div>
 
 					<div v-if="!executionStore.steps.length" :class="$style.emptySteps">
-						<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" :class="$style.emptyIcon">
-							<circle cx="12" cy="12" r="10"/>
-							<line x1="12" y1="8" x2="12" y2="12"/>
-							<line x1="12" y1="16" x2="12.01" y2="16"/>
+						<svg
+							width="32"
+							height="32"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							:class="$style.emptyIcon"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<line x1="12" y1="8" x2="12" y2="12" />
+							<line x1="12" y1="16" x2="12.01" y2="16" />
 						</svg>
 						<p>No steps recorded yet</p>
 					</div>
@@ -364,16 +432,15 @@ function formatDateTime(dateString: string | null): string {
 						>
 							<!-- Timeline connector -->
 							<div :class="$style.timeline">
-								<div :class="[
-									$style.timelineDot,
-									step.status === 'completed' ? $style.timelineDotSuccess : '',
-									step.status === 'failed' ? $style.timelineDotDanger : '',
-									step.status === 'running' ? $style.timelineDotWarning : '',
-								]" />
 								<div
-									v-if="idx < executionStore.steps.length - 1"
-									:class="$style.timelineLine"
+									:class="[
+										$style.timelineDot,
+										step.status === 'completed' ? $style.timelineDotSuccess : '',
+										step.status === 'failed' ? $style.timelineDotDanger : '',
+										step.status === 'running' ? $style.timelineDotWarning : '',
+									]"
 								/>
+								<div v-if="idx < executionStore.steps.length - 1" :class="$style.timelineLine" />
 							</div>
 							<div :class="$style.stepContent">
 								<StepCard
@@ -393,8 +460,17 @@ function formatDateTime(dateString: string | null): string {
 					<div v-if="executionStore.currentExecution.result" :class="$style.sidebarCard">
 						<button :class="$style.sidebarCardHeader" @click="showResult = !showResult">
 							<span :class="$style.sidebarCardTitle">
-								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-									<polyline points="20 6 9 17 4 12"/>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<polyline points="20 6 9 17 4 12" />
 								</svg>
 								Result
 							</span>
@@ -406,13 +482,25 @@ function formatDateTime(dateString: string | null): string {
 					</div>
 
 					<!-- Error -->
-					<div v-if="executionStore.currentExecution.error" :class="[$style.sidebarCard, $style.sidebarCardError]">
+					<div
+						v-if="executionStore.currentExecution.error"
+						:class="[$style.sidebarCard, $style.sidebarCardError]"
+					>
 						<button :class="$style.sidebarCardHeader" @click="showError = !showError">
 							<span :class="$style.sidebarCardTitle">
-								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-									<circle cx="12" cy="12" r="10"/>
-									<line x1="15" y1="9" x2="9" y2="15"/>
-									<line x1="9" y1="9" x2="15" y2="15"/>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<line x1="15" y1="9" x2="9" y2="15" />
+									<line x1="9" y1="9" x2="15" y2="15" />
 								</svg>
 								Error
 							</span>
@@ -427,9 +515,18 @@ function formatDateTime(dateString: string | null): string {
 					<div v-if="executionStore.currentExecution.resumeAfter" :class="$style.sidebarCard">
 						<div :class="$style.sidebarCardHeader">
 							<span :class="$style.sidebarCardTitle">
-								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-									<circle cx="12" cy="12" r="10"/>
-									<polyline points="12 6 12 12 16 14"/>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<polyline points="12 6 12 12 16 14" />
 								</svg>
 								Resume After
 							</span>
@@ -445,12 +542,21 @@ function formatDateTime(dateString: string | null): string {
 					<div :class="$style.sidebarCard">
 						<button :class="$style.sidebarCardHeader" @click="showEvents = !showEvents">
 							<span :class="$style.sidebarCardTitle">
-								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-									<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-									<polyline points="14 2 14 8 20 8"/>
-									<line x1="16" y1="13" x2="8" y2="13"/>
-									<line x1="16" y1="17" x2="8" y2="17"/>
-									<polyline points="10 9 9 9 8 9"/>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+									<polyline points="14 2 14 8 20 8" />
+									<line x1="16" y1="13" x2="8" y2="13" />
+									<line x1="16" y1="17" x2="8" y2="17" />
+									<polyline points="10 9 9 9 8 9" />
 								</svg>
 								Event Log
 							</span>
@@ -467,9 +573,9 @@ function formatDateTime(dateString: string | null): string {
 									:key="idx"
 									:class="$style.eventItem"
 								>
-									<code :class="$style.eventType">{{ (event as Record<string, unknown>).type }}</code>
-									<span v-if="(event as Record<string, unknown>).stepId" :class="$style.eventDetail">
-										{{ (event as Record<string, unknown>).stepId }}
+									<code :class="$style.eventType">{{ event.type }}</code>
+									<span v-if="event.stepId" :class="$style.eventDetail">
+										{{ event.stepId }}
 									</span>
 								</div>
 							</div>
@@ -510,7 +616,9 @@ function formatDateTime(dateString: string | null): string {
 }
 
 @keyframes spin {
-	to { transform: rotate(360deg); }
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .errorPage h2 {
@@ -756,8 +864,13 @@ function formatDateTime(dateString: string | null): string {
 }
 
 @keyframes blink {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.3; }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.3;
+	}
 }
 
 .liveDot {
@@ -898,8 +1011,13 @@ function formatDateTime(dateString: string | null): string {
 }
 
 @keyframes pulseDot {
-	0%, 100% { box-shadow: 0 0 0 2px var(--color-warning-tint); }
-	50% { box-shadow: 0 0 0 4px var(--color-warning-tint); }
+	0%,
+	100% {
+		box-shadow: 0 0 0 2px var(--color-warning-tint);
+	}
+	50% {
+		box-shadow: 0 0 0 4px var(--color-warning-tint);
+	}
 }
 
 .timelineLine {

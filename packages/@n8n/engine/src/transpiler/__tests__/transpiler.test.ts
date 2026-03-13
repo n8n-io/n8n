@@ -1666,4 +1666,120 @@ export default defineWorkflow({
 			expect(lineMap[String(secondLineIdx + 1)]).toBe(10);
 		});
 	});
+
+	// -----------------------------------------------------------------------
+	// Agent primitive — ctx.agent() detection
+	// -----------------------------------------------------------------------
+
+	describe('Agent primitive — ctx.agent() creates agent node', () => {
+		const source = `
+import { defineWorkflow } from '@n8n/engine/sdk';
+import { Agent, Tool } from '@n8n/agents';
+
+export default defineWorkflow({
+	name: 'With Agent',
+	async run(ctx) {
+		const result = await ctx.agent(
+			new Agent()
+				.model('anthropic', 'claude-sonnet-4-5')
+				.instructions('You are a research assistant'),
+			'What are the latest trends?',
+		);
+	},
+});
+`;
+		it('compiles without errors', () => {
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
+		});
+
+		it('creates an agent node in the graph', () => {
+			const result = transpiler.compile(source);
+			const agentNode = result.graph.nodes.find((n) => n.type === 'agent');
+			expect(agentNode).toBeDefined();
+			expect(agentNode!.name).toBe('agent-0');
+		});
+
+		it('agent node has agentConfig in config', () => {
+			const result = transpiler.compile(source);
+			const agentNode = result.graph.nodes.find((n) => n.type === 'agent');
+			expect(agentNode!.config.agentConfig).toBeDefined();
+			expect(agentNode!.config.agentConfig!.timeout).toBe(600_000);
+		});
+
+		it('agent node has a stepFunctionRef', () => {
+			const result = transpiler.compile(source);
+			const agentNode = result.graph.nodes.find((n) => n.type === 'agent');
+			expect(agentNode!.stepFunctionRef).toBe(`step_${agentNode!.id}`);
+		});
+
+		it('preserves the Agent builder expression in compiled code', () => {
+			const result = transpiler.compile(source);
+			expect(result.code).toContain('new Agent()');
+			expect(result.code).toContain('claude-sonnet-4-5');
+		});
+
+		it('compiled agent function returns { agent, input }', () => {
+			const result = transpiler.compile(source);
+			expect(result.code).toContain('__agent__');
+			expect(result.code).toContain('__input__');
+			expect(result.code).toContain('return { agent: __agent__, input: __input__ }');
+		});
+
+		it('requires @n8n/agents at module level', () => {
+			const result = transpiler.compile(source);
+			expect(result.code).toContain('require("@n8n/agents")');
+		});
+
+		it('creates trigger → agent edge', () => {
+			const result = transpiler.compile(source);
+			const agentNode = result.graph.nodes.find((n) => n.type === 'agent')!;
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: 'trigger', to: agentNode.id }),
+			);
+		});
+	});
+
+	describe('Agent pipeline — step → agent → step', () => {
+		const source = `
+import { defineWorkflow } from '@n8n/engine/sdk';
+import { Agent } from '@n8n/agents';
+
+export default defineWorkflow({
+	name: 'Agent Pipeline',
+	async run(ctx) {
+		const prep = await ctx.step({ name: 'Prepare' }, async () => ({ question: 'hello' }));
+		const result = await ctx.agent(
+			new Agent().model('anthropic', 'claude-sonnet-4-5').instructions('...'),
+			prep.question,
+		);
+		await ctx.step({ name: 'Save' }, async () => result);
+	},
+});
+`;
+		it('compiles without errors', () => {
+			const result = transpiler.compile(source);
+			expect(result.errors).toHaveLength(0);
+		});
+
+		it('creates sequential edges: Prepare → agent → Save', () => {
+			const result = transpiler.compile(source);
+			const prepNode = result.graph.nodes.find((n) => n.name === 'Prepare')!;
+			const agentNode = result.graph.nodes.find((n) => n.type === 'agent')!;
+			const saveNode = result.graph.nodes.find((n) => n.name === 'Save')!;
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: prepNode.id, to: agentNode.id }),
+			);
+			expect(result.graph.edges).toContainEqual(
+				expect.objectContaining({ from: agentNode.id, to: saveNode.id }),
+			);
+		});
+
+		it('agent step function injects predecessor dependency', () => {
+			const result = transpiler.compile(source);
+			const prepId = sha256('Prepare');
+			// esbuild normalizes strings to double quotes
+			expect(result.code).toContain(`ctx.input["${prepId}"]`);
+		});
+	});
 });

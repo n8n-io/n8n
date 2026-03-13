@@ -26,6 +26,11 @@ export interface GraphStepConfig {
 	workflow?: string;
 	/** Batch failure strategy */
 	onItemFailure?: 'fail-fast' | 'continue' | 'abort-remaining';
+	/** Agent-specific config — populated by the transpiler from ctx.agent() calls */
+	agentConfig?: {
+		/** Default timeout override for agent steps (longer than regular steps) */
+		timeout?: number;
+	};
 }
 
 export interface GraphNodeData {
@@ -39,6 +44,7 @@ export interface GraphNodeData {
 		| 'approval'
 		| 'sleep'
 		| 'trigger-workflow'
+		| 'agent'
 		| 'end';
 	stepFunctionRef: string;
 	config: GraphStepConfig;

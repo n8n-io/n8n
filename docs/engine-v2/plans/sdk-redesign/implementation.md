@@ -1525,6 +1525,683 @@ addressed as part of the SDK redesign work since the code is being touched anywa
 
 ---
 
+## Chunk 10: Agent Framework Integration
+
+Integrate the `@n8n/agents` framework so that agents can be used as first-class steps in engine workflows. An agent step is a single graph node that encapsulates the full agentic loop (LLM calls, tool execution, suspend/resume). From the graph's perspective, it behaves like any other step — it gets invoked, may complete or suspend, and produces output that flows to successors.
+
+**Depends on:** Chunks 1–4 (core engine primitives). Can be developed in parallel with Chunks 5–9.
+
+**Key design decisions:**
+
+- **Single graph node**: An agent appears as one node in the graph/UI. Internal tool calls and LLM turns are visible in the step detail panel, not as separate graph nodes.
+- **Suspend = structured completion**: When an agent tool suspends, the agent step *completes* with a structured result containing a status, an opaque state blob, a human-readable suspend payload, and a resume condition. The engine persists the blob and arranges the resume condition.
+- **Re-invocation on resume**: When the resume condition fires, the engine re-invokes the same agent node, passing back the state blob and the resume data. The agent reconstructs from the blob and continues.
+- **Filesystem state persistence**: Agent state blobs are stored on the filesystem (`<data-dir>/agent-state/<executionId>/<stepId>.json`) for simplicity. Can be moved to DB or object storage later.
+- **Stream bridging (TODO)**: Streaming support is deferred. When implemented, agent `StreamChunk`s will be piped through `ctx.sendChunk()` so the engine's SSE broadcaster delivers them to the UI in real time.
+
+---
+
+### Task 10.1: SDK Types for Agent Steps
+
+**Files:**
+- Modify: `src/sdk/types.ts`
+- Modify: `src/graph/graph.types.ts`
+- Modify: `src/database/enums.ts`
+
+- [ ] **Step 1: Add `agent()` to `ExecutionContext`**
+
+```typescript
+export interface AgentStepConfig {
+	name: string;
+	description?: string;
+	icon?: string;
+	color?: string;
+	/** Timeout for the entire agent invocation (default: 600_000ms / 10 min) */
+	timeout?: number;
+}
+
+export interface AgentStepResult {
+	/** 'completed' when the agent finished, 'suspended' when a tool needs external input */
+	status: 'completed' | 'suspended';
+	/** Final agent output (when status === 'completed') */
+	output?: unknown;
+	/** Opaque snapshot blob for restoring agent state on resume (when status === 'suspended') */
+	snapshot?: unknown;
+	/** What condition must be met before the engine resumes this step */
+	resumeCondition?: ResumeCondition;
+	/** Human-readable payload describing what the tool needs (when status === 'suspended') */
+	suspendPayload?: unknown;
+	/** Token usage for this invocation */
+	usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+	/** Tool calls made during this invocation */
+	toolCalls?: Array<{ tool: string; input: unknown; output: unknown }>;
+}
+
+export type ResumeCondition =
+	| { type: 'approval' }
+	| { type: 'chat'; prompt?: string }
+	| { type: 'webhook'; path?: string };
+```
+
+Add to `ExecutionContext`:
+```typescript
+/**
+ * Run an agent as a workflow step. The agent is built from the @n8n/agents
+ * framework and executed within the engine's lifecycle (suspend/resume,
+ * credential resolution).
+ *
+ * When a tool suspends, the step completes with status 'suspended' and the
+ * engine arranges the resume condition. On resume, this method is called again
+ * with the agent's state restored.
+ */
+agent: (agent: BuiltAgent, input: string | AgentMessage[]) => Promise<AgentStepResult>;
+```
+
+- [ ] **Step 2: Add `'agent'` to graph node types**
+
+In `src/graph/graph.types.ts`, add `'agent'` to the `GraphNodeData.type` union.
+
+Add to `GraphStepConfig`:
+```typescript
+/** Agent-specific config — populated by the transpiler from ctx.agent() calls */
+agentConfig?: {
+	/** Default timeout override for agent steps (longer than regular steps) */
+	timeout?: number;
+};
+```
+
+- [ ] **Step 3: Add `StepType.Agent` to enums**
+
+In `src/database/enums.ts`:
+```typescript
+Agent = 'agent',
+```
+
+- [ ] **Step 4: Add `StepStatus.Suspended` to enums**
+
+A new status distinct from `WaitingApproval` — agent suspension is a general concept, not specifically approval:
+```typescript
+Suspended = 'suspended',
+```
+
+- [ ] **Step 5: Run typecheck**
+
+```bash
+pushd packages/@n8n/engine && pnpm typecheck 2>&1 | tail -20 && popd
+```
+
+Expected: Errors in step-processor (new types not yet implemented). Correct — fixed in Task 10.3.
+
+- [ ] **Logical checkpoint** — agent types defined in SDK, graph, and enums
+
+### Task 10.2: Transpiler — Detect `ctx.agent()` Calls
+
+**Files:**
+- Modify: `src/transpiler/transpiler.service.ts`
+- Test: `src/transpiler/__tests__/transpiler.test.ts`
+
+- [ ] **Step 1: Write failing test for `ctx.agent()` detection**
+
+```typescript
+describe('agent primitive', () => {
+	it('creates an agent node in the graph', () => {
+		const source = `
+			import { defineWorkflow } from '@n8n/engine/sdk';
+			import { Agent, Tool } from '@n8n/agents';
+
+			const searchTool = new Tool('search')
+				.description('Search the web')
+				.input(z.object({ query: z.string() }))
+				.handler(async ({ query }) => ({ results: [] }));
+
+			export default defineWorkflow({
+				name: 'With Agent',
+				async run(ctx) {
+					const result = await ctx.agent(
+						new Agent()
+							.model('anthropic', 'claude-sonnet-4-5')
+							.instructions('You are a research assistant')
+							.tool(searchTool),
+						'What are the latest trends?',
+					);
+				},
+			});
+		`;
+		const result = transpiler.compile(source);
+		expect(result.errors).toHaveLength(0);
+		const agentNode = result.graph.nodes.find(n => n.type === 'agent');
+		expect(agentNode).toBeDefined();
+		expect(agentNode!.config.agentConfig).toBeDefined();
+	});
+
+	it('preserves the agent builder expression in compiled code', () => {
+		// The Agent() builder call must survive compilation so it can
+		// be executed at runtime to produce the BuiltAgent instance
+		const source = `...`; // same as above
+		const result = transpiler.compile(source);
+		expect(result.compiledCode).toContain('new Agent()');
+	});
+
+	it('creates sequential edges: step → agent → step', () => {
+		const source = `
+			import { defineWorkflow } from '@n8n/engine/sdk';
+			import { Agent } from '@n8n/agents';
+
+			export default defineWorkflow({
+				name: 'Agent Pipeline',
+				async run(ctx) {
+					await ctx.step({ name: 'Prepare' }, async () => ({ question: 'hello' }));
+					const result = await ctx.agent(
+						new Agent().model('anthropic', 'claude-sonnet-4-5').instructions('...'),
+						'hello',
+					);
+					await ctx.step({ name: 'Save' }, async () => result);
+				},
+			});
+		`;
+		const result = transpiler.compile(source);
+		const prepNode = result.graph.nodes.find(n => n.name === 'Prepare')!;
+		const agentNode = result.graph.nodes.find(n => n.type === 'agent')!;
+		const saveNode = result.graph.nodes.find(n => n.name === 'Save')!;
+		expect(result.graph.edges).toContainEqual(
+			expect.objectContaining({ from: prepNode.id, to: agentNode.id }),
+		);
+		expect(result.graph.edges).toContainEqual(
+			expect.objectContaining({ from: agentNode.id, to: saveNode.id }),
+		);
+	});
+});
+```
+
+- [ ] **Step 2: Add `ctx.agent()` detection to transpiler**
+
+Add a detection method similar to `getCtxSleepType()`:
+
+```typescript
+private isCtxAgentCall(call: CallExpression): boolean {
+	const expr = call.getExpression();
+	if (Node.isPropertyAccessExpression(expr)) {
+		return expr.getName() === 'agent' && expr.getExpression().getText() === 'ctx';
+	}
+	return false;
+}
+```
+
+In the main `compile()` pipeline, detect `ctx.agent()` calls alongside step and sleep calls. For each:
+- Create an `agent` graph node
+- The first argument (the Agent builder expression) is preserved verbatim in the compiled step function — it's runtime code, not config
+- The compiled step function calls the builder to get a `BuiltAgent`, then invokes it
+- Sequential edges are built using the same positional ordering as steps/sleeps
+
+**Key difference from sleep**: Agent nodes have a `stepFunctionRef` (like regular steps) because they execute code. Sleep nodes don't. The compiled function wraps the agent builder + invocation.
+
+- [ ] **Step 3: Handle `@n8n/agents` imports in esbuild**
+
+The transpiler compiles workflow source with esbuild. `@n8n/agents` must be marked as external (not bundled) so it resolves at runtime:
+
+```typescript
+// In compileWithEsbuild(), add to external list:
+external: ['@n8n/engine/sdk', '@n8n/agents'],
+```
+
+- [ ] **Step 4: Run transpiler tests**
+
+```bash
+pushd packages/@n8n/engine && pnpm test -- src/transpiler/__tests__/transpiler.test.ts && popd
+```
+
+- [ ] **Logical checkpoint** — transpiler detects `ctx.agent()` and creates agent graph nodes
+
+### Task 10.3: Step Processor — Agent Execution Bridge
+
+This is the core integration. The step processor handles agent nodes by bridging between the engine lifecycle and the agent framework runtime.
+
+**Files:**
+- Modify: `src/engine/step-processor.service.ts`
+- Create: `src/engine/agent-bridge.service.ts`
+- Test: `src/engine/__tests__/agent-bridge.test.ts`
+
+- [ ] **Step 1: Create `AgentBridgeService`**
+
+```typescript
+import type { BuiltAgent, GenerateResult } from '@n8n/agents';
+import type { EngineEventBus } from './event-bus.service';
+// TODO: streaming support — import StreamChunk when implementing stream bridging
+
+export interface AgentInvocation {
+	executionId: string;
+	stepId: string;
+	agent: BuiltAgent;
+	input: string | unknown[];
+	/** Opaque state blob from a previous suspension (undefined on first invocation) */
+	resumeState?: unknown;
+	/** Resume data from the external caller (approval decision, user input, etc.) */
+	resumeData?: unknown;
+}
+
+export interface AgentInvocationResult {
+	status: 'completed' | 'suspended';
+	/** Final output (when completed) */
+	output?: unknown;
+	/** Opaque snapshot blob for restoring agent state on resume (when suspended) */
+	snapshot?: unknown;
+	/** What condition must be met before the engine resumes this step */
+	resumeCondition?: ResumeCondition;
+	/** Human-readable payload for the UI/caller (when suspended) */
+	suspendPayload?: unknown;
+	/** Token usage */
+	usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+	/** Tool calls made */
+	toolCalls?: Array<{ tool: string; input: unknown; output: unknown }>;
+}
+
+export class AgentBridgeService {
+	constructor(
+		private readonly eventBus: EngineEventBus,
+		private readonly stateDir: string, // e.g., '<data-dir>/agent-state'
+	) {}
+
+	/**
+	 * Execute an agent invocation, bridging suspend/resume.
+	 * TODO: Add streaming support — use agent.stream() and pipe chunks through sendChunk.
+	 */
+	async invoke(invocation: AgentInvocation): Promise<AgentInvocationResult> {
+		const { agent, input, executionId, stepId, resumeState, resumeData } = invocation;
+
+		let result: GenerateResult;
+
+		if (resumeState && resumeData) {
+			// --- RESUME PATH ---
+			// Load the saved state, inject it back into the agent, resume
+			const state = await this.loadState(executionId, stepId);
+			if (!state) throw new Error(`No saved agent state for ${executionId}/${stepId}`);
+
+			result = await agent.resume(resumeData, {
+				runId: state.runId,
+				toolCallId: state.toolCallId,
+			});
+		} else {
+			// --- FIRST INVOCATION ---
+			result = await agent.generate(input);
+		}
+
+		// Check if agent suspended
+		if (result.pendingSuspend) {
+			const stateBlob = agent.getState();
+			await this.saveState(executionId, stepId, {
+				...stateBlob,
+				runId: result.pendingSuspend.runId,
+				toolCallId: result.pendingSuspend.toolCallId,
+			});
+
+			return {
+				status: 'suspended',
+				snapshot: { runId: result.pendingSuspend.runId, toolCallId: result.pendingSuspend.toolCallId },
+				resumeCondition: { type: 'approval' },
+				suspendPayload: result.pendingSuspend.suspendPayload,
+				usage: result.usage,
+				toolCalls: result.toolCalls,
+			};
+		}
+
+		// Agent completed normally
+		await this.deleteState(executionId, stepId);
+		return {
+			status: 'completed',
+			output: result.structuredOutput ?? this.extractTextOutput(result),
+			usage: result.usage,
+			toolCalls: result.toolCalls,
+		};
+	}
+
+	// --- Filesystem state persistence ---
+
+	private async saveState(executionId: string, stepId: string, state: unknown): Promise<void> {
+		const path = this.statePath(executionId, stepId);
+		await fs.mkdir(dirname(path), { recursive: true });
+		await fs.writeFile(path, JSON.stringify(state));
+	}
+
+	private async loadState(executionId: string, stepId: string): Promise<unknown> {
+		const path = this.statePath(executionId, stepId);
+		const data = await fs.readFile(path, 'utf-8');
+		return JSON.parse(data);
+	}
+
+	private async deleteState(executionId: string, stepId: string): Promise<void> {
+		const path = this.statePath(executionId, stepId);
+		await fs.unlink(path).catch(() => {});
+	}
+
+	private statePath(executionId: string, stepId: string): string {
+		return join(this.stateDir, executionId, `${stepId}.json`);
+	}
+}
+```
+
+- [ ] **Step 2: Add agent handling to `processStep()`**
+
+In `step-processor.service.ts`, add a code path for agent nodes (after the sleep handler, before regular step execution):
+
+```typescript
+// 5c. Handle agent steps
+if (node?.type === 'agent') {
+	this.eventBus.emit({
+		type: 'step:started',
+		executionId: execution.id,
+		stepId: stepJob.stepId,
+		attempt: stepJob.attempt,
+	});
+
+	// Load and execute the step function — it returns a BuiltAgent + input
+	const stepFn = this.loadStepFunction(/* ... */);
+	const ctx = this.buildStepContext(stepJob, execution);
+	const { agent, input } = await stepFn(ctx);
+
+	// Invoke via the bridge
+	const result = await this.agentBridge.invoke({
+		executionId: execution.id,
+		stepId: stepJob.stepId,
+		agent,
+		input,
+		resumeState: stepJob.metadata?.agentSnapshot,
+		resumeData: stepJob.metadata?.agentResumeData,
+	});
+
+	if (result.status === 'suspended') {
+		// Mark step as suspended, persist metadata for resume
+		await this.dataSource
+			.getRepository(WorkflowStepExecution)
+			.createQueryBuilder()
+			.update(WorkflowStepExecution)
+			.set({
+				status: StepStatus.Suspended,
+				output: {
+					suspendPayload: result.suspendPayload,
+					resumeCondition: result.resumeCondition,
+					usage: result.usage,
+					toolCalls: result.toolCalls,
+				},
+				metadata: {
+					...stepJob.metadata,
+					agentSnapshot: result.snapshot,
+					agentResumeCondition: result.resumeCondition,
+				},
+			})
+			.where('id = :id', { id: stepJob.id })
+			.execute();
+
+		this.eventBus.emit({
+			type: 'step:waiting',
+			executionId: execution.id,
+			stepId: stepJob.stepId,
+		});
+	} else {
+		// Agent completed — normal step completion
+		await this.updateStepAndEmit(stepJob, execution, {
+			status: StepStatus.Completed,
+			output: result.output,
+			completedAt: new Date(),
+			durationMs: Date.now() - startTime,
+		});
+	}
+	return;
+}
+```
+
+- [ ] **Step 3: (TODO) Implement stream consumption with chunk forwarding**
+
+> **TODO:** Streaming support is deferred. When implemented, add a `consumeStream()` method that reads the agent's `ReadableStream<StreamChunk>` and forwards each chunk through the engine's event bus as `step:chunk` events. Switch `invoke()` to use `agent.stream()` / `agent.resume('stream', ...)` instead of `agent.generate()` / `agent.resume()`.
+
+- [ ] **Step 4: Write unit tests for AgentBridgeService**
+
+Test:
+- First invocation: agent completes → returns `{ status: 'completed', output }`
+- First invocation: agent suspends → saves state to filesystem, returns `{ status: 'suspended', suspendPayload }`
+- Resume invocation: loads state, calls `agent.resume()`, agent completes → deletes state file
+- Resume invocation: agent suspends again → updates state file
+- State file cleanup on completion
+
+- [ ] **Step 5: Run tests**
+
+```bash
+pushd packages/@n8n/engine && pnpm test -- src/engine/__tests__/agent-bridge.test.ts && popd
+```
+
+- [ ] **Logical checkpoint** — agent bridge service handles execution and suspend/resume
+
+### Task 10.4: Resume Endpoint
+
+When an agent step is suspended, the engine needs an endpoint to receive the resume signal.
+
+**Files:**
+- Modify: `src/api/step-execution.controller.ts`
+- Modify: `src/engine/step-queue.service.ts`
+
+- [ ] **Step 1: Add resume endpoint**
+
+Extend the existing step execution controller:
+
+```typescript
+// POST /api/workflow-step-executions/:id/resume
+// Body: { data: unknown }  — the resume payload (approval decision, user input, etc.)
+```
+
+The handler:
+1. Loads the step execution, verifies `status === 'suspended'`
+2. Sets `metadata.agentResumeData` to the provided data
+3. Re-queues the step by setting `status: 'queued'`
+4. The step queue picks it up, the step processor detects the resume metadata, and invokes the agent bridge with the saved state
+
+- [ ] **Step 2: Update step processor to detect resume invocation**
+
+In the agent handler (Task 10.3 Step 2), check `stepJob.metadata?.agentSnapshot` to determine if this is a resume. If present, pass it to `AgentBridgeService.invoke()`.
+
+- [ ] **Step 3: Write integration test**
+
+```typescript
+describe('agent suspend/resume', () => {
+	it('suspends on tool interrupt and resumes with approval data', async () => {
+		// 1. Create workflow with agent step that has an approval tool
+		// 2. Start execution → agent calls tool → suspends
+		// 3. Verify step status is 'suspended'
+		// 4. Verify state file exists on disk
+		// 5. POST /resume with approval data
+		// 6. Agent resumes → completes
+		// 7. Verify step status is 'completed'
+		// 8. Verify state file cleaned up
+	});
+});
+```
+
+- [ ] **Logical checkpoint** — resume endpoint re-queues suspended agent steps
+
+### Task 10.5: Credential Resolution
+
+Agents need API keys for LLM providers. The engine should resolve these from its secret management and inject them into the agent before execution.
+
+**Files:**
+- Modify: `src/engine/agent-bridge.service.ts`
+- Modify: `src/engine/step-processor.service.ts`
+
+- [ ] **Step 1: Resolve credentials before agent invocation**
+
+The agent framework's `.credential('name')` declares a requirement. At execution time, the engine resolves it:
+
+```typescript
+// In the agent handler, before calling agentBridge.invoke():
+// The step function returns the agent builder. Before invoking,
+// the engine resolves any declared credentials via ctx.getSecret()
+// and injects the API key into the agent's model configuration.
+```
+
+The exact mechanism depends on how the Agent builder exposes credential injection. Options:
+- The compiled step function uses `ctx.getSecret()` directly to build the model config
+- The engine introspects the agent's declared credentials and injects them
+
+Start with the simpler approach: the compiled step function uses `ctx.getSecret()`:
+
+```typescript
+// What the user writes:
+await ctx.agent(
+	new Agent()
+		.model('anthropic', 'claude-sonnet-4-5')
+		.credential('my-anthropic-key'),
+	'Hello',
+);
+
+// What the transpiler compiles to:
+const apiKey = ctx.getSecret('my-anthropic-key');
+const agent = new Agent()
+	.model({ id: 'anthropic/claude-sonnet-4-5', apiKey })
+	.instructions('...');
+```
+
+- [ ] **Logical checkpoint** — credentials resolved at execution time via engine secrets
+
+### Task 10.6: Agent Step Event Types
+
+**Files:**
+- Modify: `src/engine/event-bus.types.ts`
+
+- [ ] **Step 1: Add agent-specific event types**
+
+```typescript
+export interface StepAgentSuspendedEvent {
+	type: 'step:agent_suspended';
+	executionId: string;
+	stepId: string;
+	suspendPayload: unknown;
+	toolName: string;
+}
+
+export interface StepAgentResumedEvent {
+	type: 'step:agent_resumed';
+	executionId: string;
+	stepId: string;
+}
+```
+
+Add to the `StepEvent` union and `EngineEvent`.
+
+Note: Token streaming is deferred (TODO). When implemented, it will reuse `step:chunk` events — no new event type needed. The chunk `data` field will carry the typed `StreamChunk` from the agent framework.
+
+- [ ] **Logical checkpoint** — agent-specific events defined
+
+### Task 10.7: Integration Tests
+
+**Files:**
+- Create: `test/integration/agent.test.ts`
+
+- [ ] **Step 1: Write end-to-end integration tests**
+
+```typescript
+describe('agent steps', () => {
+	it('executes a simple agent step and returns output', async () => {
+		// Agent with no tools, simple generate
+		// Verify: step completes, output contains agent response
+	});
+
+	// TODO: streaming test — when streaming is implemented:
+	// it('streams agent tokens as step chunks', async () => {
+	//     // Agent with streaming
+	//     // Verify: step:chunk events emitted with text-delta data
+	// });
+
+	it('agent step receives predecessor output as input', async () => {
+		// step → agent (agent input references step output)
+		// Verify: agent receives correct input from predecessor
+	});
+
+	it('agent step output flows to successor steps', async () => {
+		// agent → step (step input references agent output)
+		// Verify: downstream step receives agent result
+	});
+
+	it('suspends when agent tool requires approval', async () => {
+		// Agent with approval tool → tool suspends
+		// Verify: step status = 'suspended', state file exists, suspendPayload in output
+	});
+
+	it('resumes after approval and completes', async () => {
+		// Continue from above → POST /resume with approval
+		// Verify: agent resumes, completes, state file cleaned up
+	});
+
+	it('handles agent errors gracefully', async () => {
+		// Agent with invalid model → error
+		// Verify: step fails with error data, no dangling state
+	});
+
+	it('respects timeout for agent steps', async () => {
+		// Agent with very long execution + short timeout
+		// Verify: step times out, agent aborted
+	});
+});
+```
+
+- [ ] **Step 2: Run integration tests**
+
+```bash
+pushd packages/@n8n/engine && pnpm test:db -- test/integration/agent.test.ts && popd
+```
+
+- [ ] **Logical checkpoint** — agent integration tests passing
+
+### Task 10.8: Example Workflows
+
+**Files:**
+- Create: `examples/22-agent-step.ts`
+- Create: `examples/23-agent-with-tools.ts`
+- Create: `examples/24-agent-approval-flow.ts`
+
+- [ ] **Step 1: Simple agent step example**
+
+```typescript
+import { defineWorkflow } from '@n8n/engine/sdk';
+import { Agent } from '@n8n/agents';
+
+export default defineWorkflow({
+	name: 'Agent Step',
+	async run(ctx) {
+		const prep = await ctx.step({ name: 'Prepare Question' }, async () => ({
+			question: 'What are the key benefits of TypeScript?',
+		}));
+
+		const answer = await ctx.agent(
+			new Agent()
+				.model('anthropic', 'claude-sonnet-4-5')
+				.instructions('You are a helpful programming assistant. Be concise.'),
+			prep.question,
+		);
+
+		return await ctx.step({ name: 'Format Response' }, async () => ({
+			question: prep.question,
+			answer: answer.output,
+			tokensUsed: answer.usage?.totalTokens,
+		}));
+	},
+});
+```
+
+- [ ] **Step 2: Agent with tools example**
+
+Agent that uses custom tools (web search, calculation) within a workflow.
+
+- [ ] **Step 3: Agent approval flow example**
+
+Agent with an approval tool — demonstrates suspend/resume within a workflow pipeline.
+
+- [ ] **Logical checkpoint** — agent examples added and verified
+
+### Chunk 10 Verification Gate
+
+- [ ] Run the full verification gate (format, typecheck, build, unit tests, integration tests with DB). 0 failures, 0 skips.
+- [ ] Verify agent state files are cleaned up after completed executions.
+- [ ] TODO: Verify streaming works end-to-end once streaming support is implemented.
+
+---
+
 ## Execution Order
 
 ```
@@ -1538,14 +2215,15 @@ Chunk 3 (Engine Core: Sleep, Batch, Polling, Trigger)
     ↓
 Chunk 4 (Wiring & Cleanup)
     ↓
-Chunk 5 (Examples)         Chunk 6 (Infrastructure)     Chunk 7 (UI)
-    ↓                           ↓                          ↓
+Chunk 5 (Examples)         Chunk 6 (Infrastructure)     Chunk 7 (UI)       Chunk 10 (Agent Integration)
+    ↓                           ↓                          ↓                     ↓
                     Chunk 8 (Documentation)
                            ↓
                     Chunk 9 (Bug Fixes & Code Quality)
 ```
 
-Chunks 5, 6, and 7 can be executed in parallel after Chunk 4.
+Chunks 5, 6, 7, and 10 can be executed in parallel after Chunk 4.
+Chunk 10 depends on Chunks 1–4 for the core engine primitives (types, transpiler, step processor patterns).
 Chunk 9 can be interleaved with other chunks when touching the same files.
 
 ### Final Verification Gate
