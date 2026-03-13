@@ -283,8 +283,12 @@ function onKeydown(event: KeyboardEvent) {
 	const isInputFocused = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
 	if (isInputFocused) {
-		// Enter in any input advances to next question / submits
+		// Enter in input: for multi-select, require Cmd/Ctrl+Enter to advance
 		if (event.key === 'Enter' && !event.shiftKey) {
+			if (q.type === 'multi' && !event.metaKey && !event.ctrlKey) {
+				// Plain Enter in multi-select input does nothing (user must use Cmd/Ctrl+Enter)
+				return;
+			}
 			event.preventDefault();
 			if (hasCustomText.value || isNextEnabled.value) {
 				emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
