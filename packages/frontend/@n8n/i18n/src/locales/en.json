@@ -3763,7 +3763,7 @@
 	"workflows.dynamic.tooltip": "This workflow resolves credentials at runtime based on who executes it.",
 	"workflows.dynamic.tooltipTitle": "Dynamic credentials",
 	"workflows.dynamic.resolverMissing": "Credential resolver missing",
-	"workflows.dependencies.tooltip": "{count} dependencies",
+	"workflows.dependencies.tooltip": "1 dependency | {count} dependencies",
 	"workflows.dependencies.modal.title": "Dependencies",
 	"workflows.dependencies.modal.search": "Search dependencies...",
 	"workflows.dependencies.type.credentials": "Credentials",
