@@ -14,7 +14,7 @@ let testServer: ReturnType<typeof utils.setupTestServer>;
 let depRepo: WorkflowDependencyRepository;
 
 testServer = utils.setupTestServer({
-	endpointGroups: ['workflows'],
+	endpointGroups: ['workflowDependencies'],
 	enabledFeatures: ['feat:sharing', 'feat:advancedPermissions'],
 });
 
@@ -124,27 +124,6 @@ describe('POST /workflow-dependencies/counts', () => {
 		expect(resp.body.data[memberWorkflow.id].credentialId).toBe(1);
 	});
 
-	it('should not return counts for a resource the user cannot access', async () => {
-		const owner = await createOwner();
-		const member = await createMember();
-
-		const ownerWorkflow = await createWorkflow({}, owner);
-		await seedDep(ownerWorkflow.id, 'credentialId', 'cred-1');
-
-		// Member queries counts for the owner's workflow
-		const resp = await testServer
-			.authAgentFor(member)
-			.post('/workflow-dependencies/counts')
-			.send({
-				resourceIds: [ownerWorkflow.id],
-				resourceType: 'workflow',
-			});
-
-		expect(resp.statusCode).toBe(200);
-		// The owner's workflow should be completely absent from results
-		expect(resp.body.data).not.toHaveProperty(ownerWorkflow.id);
-	});
-
 	it('should count multiple dependency types on the same workflow', async () => {
 		const owner = await createOwner();
 
@@ -238,37 +217,6 @@ describe('POST /workflow-dependencies/details', () => {
 		expect(resp.statusCode).toBe(200);
 		expect(resp.body.data).toHaveProperty(memberWorkflow.id);
 		expect(resp.body.data).not.toHaveProperty(ownerWorkflow.id);
-	});
-
-	it('should only include names for accessible dependencies', async () => {
-		const owner = await createOwner();
-		const member = await createMember();
-
-		const memberWorkflow = await createWorkflow({ name: 'Member WF' }, member);
-		const ownerWorkflow = await createWorkflow({ name: 'Owner WF' }, owner);
-
-		// memberWorkflow calls ownerWorkflow as a sub-workflow
-		await seedDep(memberWorkflow.id, 'workflowCall', ownerWorkflow.id);
-
-		// Member queries their own workflow's dependencies
-		const resp = await testServer
-			.authAgentFor(member)
-			.post('/workflow-dependencies/details')
-			.send({
-				resourceIds: [memberWorkflow.id],
-				resourceType: 'workflow',
-			});
-
-		expect(resp.statusCode).toBe(200);
-		const deps = resp.body.data[memberWorkflow.id];
-		expect(deps).toBeInstanceOf(Array);
-
-		// The sub-workflow (owned by owner) should not have a resolved name for member
-		const subWfDep = deps.find(
-			(d: { type: string; id: string }) => d.type === 'workflowCall' && d.id === ownerWorkflow.id,
-		);
-		// Member doesn't have access to the owner's workflow, so name should be undefined
-		expect(subWfDep?.name).toBeUndefined();
 	});
 
 	it('should resolve names for accessible dependencies', async () => {

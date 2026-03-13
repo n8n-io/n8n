@@ -43,11 +43,6 @@ export class WorkflowDependencyQueryService {
 		private readonly roleService: RoleService,
 	) {}
 
-	/**
-	 * Lightweight counts-only query for resource cards.
-	 * - For workflows: returns { credentialId: N, dataTableId: N, workflowCall: N, workflowParent: N }
-	 * - For credentials / data tables: returns { workflowParent: N }
-	 */
 	async getDependencyCounts(
 		resourceIds: string[],
 		resourceType: DependencyResourceType,

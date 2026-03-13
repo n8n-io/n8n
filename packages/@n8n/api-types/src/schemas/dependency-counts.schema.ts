@@ -7,6 +7,6 @@ export interface DependencyTypeCounts {
 
 /**
  * Lightweight response for workflow cards — only the counts per type,
- * no resolved names / project IDs.  Keyed by workflow ID.
+ * no resolved names / project IDs.  Keyed by resource ID.
  */
 export type DependencyCountsBatchResponse = Record<string, DependencyTypeCounts>;
