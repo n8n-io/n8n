@@ -370,13 +370,22 @@ export class ImpactAnalyzer {
 /**
  * Format impact result for console output
  */
+function formatChangedFileEntry(
+	file: string,
+	strategies: Record<string, ResolutionStrategy>,
+): string {
+	const strategy = strategies[file];
+	const label = strategy ? ` [${strategy}]` : '';
+	return `  - ${file}${label}`;
+}
+
 export function formatImpactConsole(result: ImpactResult, verbose = false): void {
 	console.log('\n====================================');
 	console.log('       IMPACT ANALYSIS REPORT');
 	console.log('====================================\n');
 
 	console.log(`Changed files: ${result.changedFiles.length}`);
-	result.changedFiles.forEach((f) => console.log(`  - ${f}`));
+	result.changedFiles.forEach((f) => console.log(formatChangedFileEntry(f, result.strategies)));
 
 	console.log(`\nAffected test files: ${result.affectedTests.length}`);
 	if (result.affectedTests.length === 0) {

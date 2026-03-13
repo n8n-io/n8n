@@ -8,7 +8,13 @@ export class SsrfBlockedIpError extends UserError {
 	readonly hostname?: string;
 
 	constructor(ip: string, hostname?: string) {
-		super('IP address is blocked', {
+		const target = hostname ? `'${hostname}' (${ip})` : ip;
+		super('The request was blocked because it resolves to a restricted IP address', {
+			description:
+				`The target ${target} is not allowed. ` +
+				'This is a security measure to prevent Server-Side Request Forgery (SSRF). ' +
+				'If you need to access internal resources, ask your n8n administrator to allowlist ' +
+				'the hostname or IP range in the environment configuration.',
 			extra: { ip, hostname },
 		});
 
