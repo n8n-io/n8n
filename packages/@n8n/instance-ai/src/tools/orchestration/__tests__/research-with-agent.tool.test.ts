@@ -35,6 +35,7 @@ function createMockEventBus(): InstanceAiEventBus {
 		getEventsAfter: jest.fn(),
 		getNextEventId: jest.fn(),
 		getEventsForRun: jest.fn().mockReturnValue([]),
+		getEventsForRuns: jest.fn().mockReturnValue([]),
 	};
 }
 

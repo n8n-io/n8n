@@ -30,6 +30,7 @@ import { nanoid } from 'nanoid';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 
 import type {
+	InstanceAiEvent,
 	InstanceAiThreadStatusResponse,
 	InstanceAiGatewayCapabilities,
 	McpToolCallResult,
@@ -90,6 +91,8 @@ interface BackgroundTask {
 	corrections: string[];
 	/** How many automatic follow-up runs preceded this task (0 = user-initiated). */
 	chainDepth: number;
+	/** The messageGroupId this task belongs to — captured at spawn time, not the thread's current one. */
+	messageGroupId?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -168,6 +171,12 @@ export class InstanceAiService {
 
 	/** Tracks the last researchMode setting per thread for follow-up runs. */
 	private readonly threadResearchMode = new Map<string, boolean>();
+
+	/** Tracks the current messageGroupId per thread for auto-follow-up run merging. */
+	private readonly threadMessageGroupId = new Map<string, string>();
+
+	/** Tracks all runIds that belong to each messageGroupId. */
+	private readonly runIdsByMessageGroup = new Map<string, string[]>();
 
 	/** Pre-warmed image manager for builder sandboxes (Daytona only). */
 	private snapshotManager?: SnapshotManager;
@@ -308,6 +317,8 @@ export class InstanceAiService {
 				agentId: t.agentId,
 				status: t.status,
 				startedAt: t.startedAt,
+				runId: t.runId,
+				messageGroupId: t.messageGroupId,
 			}));
 		return { hasActiveRun, isSuspended, backgroundTasks: bgTasks };
 	}
@@ -322,17 +333,70 @@ export class InstanceAiService {
 			this.threadResearchMode.set(threadId, researchMode);
 		}
 
-		// Reset chain depth on user-initiated runs so the circuit breaker
-		// starts fresh. Auto-follow-up runs use the internal (continue) message
-		// which preserves chain depth via the background task inheritance.
+		// User-initiated runs get a fresh messageGroupId.
+		// Auto-follow-up runs reuse the existing one so the frontend
+		// merges them into the same assistant message bubble.
 		if (message !== AUTO_FOLLOW_UP_MESSAGE) {
 			this.resetChainDepths(threadId);
+			const newGroupId = `mg_${nanoid()}`;
+			this.threadMessageGroupId.set(threadId, newGroupId);
+			this.runIdsByMessageGroup.set(newGroupId, []);
+		}
+
+		const messageGroupId = this.threadMessageGroupId.get(threadId);
+		// Register this runId with its messageGroup
+		if (messageGroupId) {
+			const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
+			if (groupRunIds) groupRunIds.push(runId);
 		}
 
 		// Fire-and-forget — errors handled inside executeRun
-		void this.executeRun(user, threadId, runId, message, abortController, researchMode);
+		void this.executeRun(
+			user,
+			threadId,
+			runId,
+			message,
+			abortController,
+			researchMode,
+			messageGroupId,
+		);
 
 		return runId;
+	}
+
+	/** Get the current messageGroupId for a thread (used by SSE sync). */
+	getMessageGroupId(threadId: string): string | undefined {
+		return this.threadMessageGroupId.get(threadId);
+	}
+
+	/**
+	 * Get the messageGroupId for the thread's live activity.
+	 * Prefers the active/suspended run's group, then falls back to the
+	 * most recent running background task's group (which was captured
+	 * at spawn time and may differ from the thread's current group
+	 * if the user started a new turn).
+	 */
+	getLiveMessageGroupId(threadId: string): string | undefined {
+		// If there's an active/suspended orchestrator run, use the thread-global
+		// (it was set when that run started).
+		if (this.activeRuns.has(threadId) || this.suspendedRuns.has(threadId)) {
+			return this.threadMessageGroupId.get(threadId);
+		}
+		// Background-only: find the most recent running task's group
+		const runningTask = [...this.backgroundTasks.values()]
+			.filter((t) => t.threadId === threadId && t.status === 'running')
+			.sort((a, b) => b.startedAt - a.startedAt)[0];
+		return runningTask?.messageGroupId ?? this.threadMessageGroupId.get(threadId);
+	}
+
+	/** Get all runIds belonging to a messageGroupId. */
+	getRunIdsForMessageGroup(messageGroupId: string): string[] {
+		return this.runIdsByMessageGroup.get(messageGroupId) ?? [];
+	}
+
+	/** Get the active runId for a thread. */
+	getActiveRunId(threadId: string): string | undefined {
+		return this.activeRuns.get(threadId)?.runId;
 	}
 
 	/** Reset chain depths for all non-running tasks on a thread (called on user-initiated runs). */
@@ -538,6 +602,7 @@ export class InstanceAiService {
 		message: string,
 		abortController: AbortController,
 		researchMode?: boolean,
+		messageGroupId?: string,
 	): Promise<void> {
 		const signal = abortController.signal;
 
@@ -548,7 +613,7 @@ export class InstanceAiService {
 				runId,
 				agentId: ORCHESTRATOR_AGENT_ID,
 				userId: user.id,
-				payload: { messageId: nanoid() },
+				payload: { messageId: nanoid(), messageGroupId },
 			});
 
 			// Check if already cancelled before starting agent work
@@ -989,6 +1054,10 @@ export class InstanceAiService {
 		// during automatic follow-up chains.
 		const currentMaxDepth = this.getMaxChainDepth(opts.threadId) + 1;
 
+		// Capture the messageGroupId at spawn time — NOT the thread's current one,
+		// which may change if the user starts a new turn while this task runs.
+		const messageGroupId = this.threadMessageGroupId.get(opts.threadId);
+
 		const task: BackgroundTask = {
 			taskId: opts.taskId,
 			threadId: opts.threadId,
@@ -1000,6 +1069,7 @@ export class InstanceAiService {
 			abortController,
 			corrections: [],
 			chainDepth: currentMaxDepth,
+			messageGroupId,
 		};
 		this.backgroundTasks.set(opts.taskId, task);
 
@@ -1034,8 +1104,16 @@ export class InstanceAiService {
 					payload: { role: opts.role, result: '', error: errorMessage },
 				});
 			}
-			// Re-save snapshot so the completed/failed background agent is captured
-			await this.saveAgentTreeSnapshot(opts.threadId, runId, snapshotStorage, true);
+			// Re-save snapshot so the completed/failed background agent is captured.
+			// Use the task's own messageGroupId (captured at spawn time), not the
+			// thread's current one — the user may have started a new turn since.
+			await this.saveAgentTreeSnapshot(
+				opts.threadId,
+				runId,
+				snapshotStorage,
+				true,
+				task.messageGroupId,
+			);
 
 			// Auto-trigger a follow-up orchestrator run so results are delivered without
 			// the user needing to send another message. Only triggers when:
@@ -1177,15 +1255,30 @@ export class InstanceAiService {
 		runId: string,
 		snapshotStorage: AgentTreeSnapshotStorage,
 		isUpdate = false,
+		/** Override the messageGroupId instead of using the thread's current one.
+		 *  Background tasks pass their own group since the thread-global may have
+		 *  changed if the user started a new turn. */
+		overrideMessageGroupId?: string,
 	): Promise<void> {
 		try {
-			const runEvents = this.eventBus.getEventsForRun(threadId, runId);
-			const agentTree = buildAgentTreeFromEvents(runEvents);
+			const messageGroupId = overrideMessageGroupId ?? this.threadMessageGroupId.get(threadId);
+
+			// Build tree from ALL runs in the message group (not just the latest run)
+			// so the snapshot captures the full merged assistant turn.
+			let events: InstanceAiEvent[];
+			let groupRunIds: string[] | undefined;
+			if (messageGroupId) {
+				groupRunIds = this.getRunIdsForMessageGroup(messageGroupId);
+				events = this.eventBus.getEventsForRuns(threadId, groupRunIds);
+			} else {
+				events = this.eventBus.getEventsForRun(threadId, runId);
+			}
+			const agentTree = buildAgentTreeFromEvents(events);
 
 			if (isUpdate) {
-				await snapshotStorage.updateLast(threadId, agentTree, runId);
+				await snapshotStorage.updateLast(threadId, agentTree, runId, messageGroupId, groupRunIds);
 			} else {
-				await snapshotStorage.save(threadId, agentTree, runId);
+				await snapshotStorage.save(threadId, agentTree, runId, messageGroupId, groupRunIds);
 			}
 		} catch (error) {
 			this.logger.warn('Failed to save agent tree snapshot', {

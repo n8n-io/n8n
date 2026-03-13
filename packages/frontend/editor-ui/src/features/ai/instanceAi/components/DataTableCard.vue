@@ -6,7 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ref } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
-import InstanceAiToolCall from './InstanceAiToolCall.vue';
+import AgentTimeline from './AgentTimeline.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -103,6 +103,9 @@ const isCompleted = computed(
 				<N8nIcon v-else-if="isError" icon="triangle-alert" size="small" :class="$style.errorIcon" />
 				<N8nIcon v-else icon="check" size="small" :class="$style.successIcon" />
 				<span :class="$style.title">{{ i18n.baseText('instanceAi.dataTableCard.title') }}</span>
+				<span v-if="props.agentNode.subtitle" :class="$style.subtitle">
+					{{ props.agentNode.subtitle }}
+				</span>
 			</div>
 			<button v-if="isActive" :class="$style.stopButton" @click="handleStop">
 				<N8nIcon icon="square" size="small" />
@@ -149,11 +152,7 @@ const isCompleted = computed(
 				<N8nIcon :icon="isDetailOpen ? 'chevron-up' : 'chevron-down'" size="small" />
 			</CollapsibleTrigger>
 			<CollapsibleContent :class="$style.detailContent">
-				<InstanceAiToolCall
-					v-for="tc in props.agentNode.toolCalls"
-					:key="tc.toolCallId"
-					:tool-call="tc"
-				/>
+				<AgentTimeline :agent-node="props.agentNode" :compact="true" />
 			</CollapsibleContent>
 		</CollapsibleRoot>
 
@@ -197,6 +196,15 @@ const isCompleted = computed(
 .title {
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
+}
+
+.subtitle {
+	color: var(--color--text--tint-1);
+	font-weight: var(--font-weight--regular);
+	max-width: 280px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .timeline {

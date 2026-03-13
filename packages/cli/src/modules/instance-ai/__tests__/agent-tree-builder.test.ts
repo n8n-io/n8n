@@ -233,11 +233,11 @@ describe('buildAgentTreeFromEvents', () => {
 		expect(tree.reasoning).toBe('Thinking... more thoughts');
 	});
 
-	it('should return a default completed tree for empty events list', () => {
+	it('should return a default active tree for empty events list', () => {
 		const tree = buildAgentTreeFromEvents([]);
 
 		expect(tree.agentId).toBe('agent-001');
-		expect(tree.status).toBe('completed');
+		expect(tree.status).toBe('active');
 		expect(tree.textContent).toBe('');
 		expect(tree.toolCalls).toEqual([]);
 		expect(tree.children).toEqual([]);

@@ -9,6 +9,10 @@ export interface AgentTreeSnapshot {
 	tree: InstanceAiAgentNode;
 	/** The n8n runId (e.g. run_xxx) — used so historical messages carry the same runId as live SSE events. */
 	runId: string;
+	/** Stable group ID across auto-follow-up runs within one user turn. */
+	messageGroupId?: string;
+	/** All runIds in the message group — needed so historical restore can rebuild the full routing table. */
+	runIds?: string[];
 }
 
 /**
@@ -19,6 +23,8 @@ export interface AgentTreeSnapshot {
 const agentTreeSnapshotSchema = z.object({
 	tree: z.record(z.unknown()),
 	runId: z.string(),
+	messageGroupId: z.string().optional(),
+	runIds: z.array(z.string()).optional(),
 });
 
 const snapshotsArraySchema = z.array(agentTreeSnapshotSchema);
@@ -36,6 +42,16 @@ function parseSnapshots(raw: unknown): AgentTreeSnapshot[] {
 	return result.data as unknown as AgentTreeSnapshot[];
 }
 
+function findLastSnapshotIndex(
+	snapshots: AgentTreeSnapshot[],
+	predicate: (snapshot: AgentTreeSnapshot) => boolean,
+): number {
+	for (let i = snapshots.length - 1; i >= 0; i--) {
+		if (predicate(snapshots[i])) return i;
+	}
+	return -1;
+}
+
 /**
  * Persists agent tree snapshots in Mastra thread metadata.
  * Snapshots are stored as an ordered array (appended chronologically)
@@ -46,12 +62,18 @@ function parseSnapshots(raw: unknown): AgentTreeSnapshot[] {
 export class AgentTreeSnapshotStorage {
 	constructor(private readonly memory: Memory) {}
 
-	async save(threadId: string, agentTree: InstanceAiAgentNode, runId: string): Promise<void> {
+	async save(
+		threadId: string,
+		agentTree: InstanceAiAgentNode,
+		runId: string,
+		messageGroupId?: string,
+		runIds?: string[],
+	): Promise<void> {
 		const thread = await this.memory.getThreadById({ threadId });
 		if (!thread) return;
 
 		const existing = parseSnapshots(thread.metadata?.[SNAPSHOTS_KEY]);
-		const snapshot: AgentTreeSnapshot = { tree: agentTree, runId };
+		const snapshot: AgentTreeSnapshot = { tree: agentTree, runId, messageGroupId, runIds };
 		await this.memory.updateThread({
 			id: threadId,
 			title: thread.title ?? threadId,
@@ -66,18 +88,35 @@ export class AgentTreeSnapshotStorage {
 	 * Update the last snapshot in place (used when background tasks complete
 	 * after the initial snapshot was saved).
 	 */
-	async updateLast(threadId: string, agentTree: InstanceAiAgentNode, runId: string): Promise<void> {
+	async updateLast(
+		threadId: string,
+		agentTree: InstanceAiAgentNode,
+		runId: string,
+		messageGroupId?: string,
+		runIds?: string[],
+	): Promise<void> {
 		const thread = await this.memory.getThreadById({ threadId });
 		if (!thread) return;
 
 		const existing = parseSnapshots(thread.metadata?.[SNAPSHOTS_KEY]);
-		// Find the snapshot with the matching runId and update it
-		const idx = existing.findIndex((s) => s.runId === runId);
+		// Find the snapshot — match by messageGroupId first (covers follow-up runs
+		// where the runId changed), then by runId for backward compat.
+		let idx = messageGroupId
+			? findLastSnapshotIndex(existing, (snapshot) => snapshot.messageGroupId === messageGroupId)
+			: -1;
+		if (idx < 0) {
+			idx = findLastSnapshotIndex(existing, (snapshot) => snapshot.runId === runId);
+		}
 		if (idx >= 0) {
-			existing[idx] = { tree: agentTree, runId };
+			existing[idx] = {
+				tree: agentTree,
+				runId,
+				messageGroupId: messageGroupId ?? existing[idx].messageGroupId,
+				runIds: runIds ?? existing[idx].runIds,
+			};
 		} else {
 			// Fallback: append if not found (shouldn't happen normally)
-			existing.push({ tree: agentTree, runId });
+			existing.push({ tree: agentTree, runId, messageGroupId, runIds });
 		}
 		await this.memory.updateThread({
 			id: threadId,

@@ -69,7 +69,19 @@ export const WORKFLOW_RULES = `Follow these rules strictly when generating workf
    - When a node needs credentials, always use \`newCredential('Name')\` in the credentials config
    - NEVER use placeholder strings, fake API keys, or hardcoded auth values
    - Example: \`credentials: { slackApi: newCredential('Slack Bot') }\`
-   - The credential type must match what the node expects`;
+   - The credential type must match what the node expects
+
+2. **Handle empty outputs with \`alwaysOutputData: true\`**
+   - Nodes that query data (Data Table get, Google Sheets lookup, HTTP Request, etc.) may return 0 items
+   - When a node returns 0 items, all downstream nodes are SKIPPED — the workflow chain breaks silently
+   - Set \`alwaysOutputData: true\` on any node whose output feeds downstream nodes and might return empty results
+   - Common cases: fresh/empty Data Tables, filtered queries, conditional lookups, API searches with no matches
+   - Example: \`config: { ..., alwaysOutputData: true }\`
+
+3. **Use \`executeOnce: true\` for single-execution nodes**
+   - When a node receives N items but should only execute once (not N times), set \`executeOnce: true\`
+   - Common cases: sending a summary notification, generating a report, calling an API that doesn't need per-item execution
+   - Example: \`config: { ..., executeOnce: true }\``;
 
 /**
  * Workflow SDK patterns — condensed examples of common workflow shapes
@@ -108,6 +120,11 @@ export default workflow('id', 'name')
 
 <independent_sources>
 When nodes return more than 1 item, chaining causes item multiplication: if Source A returns N items, a chained Source B runs N times instead of once.
+
+**When to use \`executeOnce: true\`:**
+- A node fetches data independently but is chained after another data source (prevents N×M multiplication)
+- A node should summarize/aggregate all upstream items in a single call (e.g., AI summary, send one notification)
+- A node calls an API that doesn't vary per input item
 
 Fix with \`executeOnce: true\` (simplest) or parallel branches + Merge (when combining results):
 
@@ -148,6 +165,53 @@ export default workflow('id', 'name')
 \`\`\`
 
 </independent_sources>
+
+<zero_item_safety>
+Nodes that fetch or filter data may return 0 items, which stops the entire downstream chain.
+Use \`alwaysOutputData: true\` on data-fetching nodes to ensure the chain continues with an empty item \`{json: {}}\`.
+
+\`\`\`javascript
+// Data Table might be empty (fresh table, no matching rows)
+const getReflections = node({
+  type: 'n8n-nodes-base.dataTable',
+  version: 1.1,
+  config: {
+    name: 'Get Reflections',
+    alwaysOutputData: true,  // Chain continues even if table is empty
+    parameters: { resource: 'row', operation: 'get', returnAll: true }
+  }
+});
+
+// Downstream Code node handles the empty case
+const processData = node({
+  type: 'n8n-nodes-base.code',
+  version: 2,
+  config: {
+    name: 'Process Data',
+    parameters: {
+      mode: 'runOnceForAllItems',
+      jsCode: \\\`
+const items = $input.all();
+// items will be [{json: {}}] if upstream had no data
+const hasData = items.length > 0 && Object.keys(items[0].json).length > 0;
+// ... handle both cases
+\\\`.trim()
+    }
+  }
+});
+\`\`\`
+
+**When to use \`alwaysOutputData: true\`:**
+- Data Table with \`operation: 'get'\` (table may be empty or freshly created)
+- Any lookup/search/filter node whose result feeds into downstream processing
+- HTTP Request that may return an empty array
+
+**When NOT to use it:**
+- Trigger nodes (they always produce output)
+- Code nodes (handle empty input in your code logic instead)
+- Nodes at the end of the chain (no downstream to protect)
+
+</zero_item_safety>
 
 <conditional_branching>
 

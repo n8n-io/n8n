@@ -5,9 +5,8 @@ import { N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
-import InstanceAiToolCall from './InstanceAiToolCall.vue';
-import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
+import AgentTimeline from './AgentTimeline.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -104,22 +103,18 @@ const runResults = computed(() => {
 				</CollapsibleContent>
 			</CollapsibleRoot>
 
-			<!-- Tool calls -->
-			<template v-for="tc in props.agentNode.toolCalls" :key="tc.toolCallId">
-				<InstanceAiToolCall :tool-call="tc" />
-				<ExecutionPreviewCard
-					v-if="runResults.has(tc.toolCallId)"
-					:execution-id="runResults.get(tc.toolCallId)!.executionId"
-					:workflow-id="runResults.get(tc.toolCallId)!.workflowId"
-					:status="runResults.get(tc.toolCallId)!.status"
-					:error="runResults.get(tc.toolCallId)!.error"
-				/>
-			</template>
-
-			<!-- Text content from sub-agent -->
-			<div v-if="props.agentNode.textContent" :class="$style.textContent">
-				<InstanceAiMarkdown :content="props.agentNode.textContent" />
-			</div>
+			<!-- Unified timeline -->
+			<AgentTimeline :agent-node="props.agentNode" :compact="true">
+				<template #after-tool-call="{ toolCall: tc }">
+					<ExecutionPreviewCard
+						v-if="runResults.has(tc.toolCallId)"
+						:execution-id="runResults.get(tc.toolCallId)!.executionId"
+						:workflow-id="runResults.get(tc.toolCallId)!.workflowId"
+						:status="runResults.get(tc.toolCallId)!.status"
+						:error="runResults.get(tc.toolCallId)!.error"
+					/>
+				</template>
+			</AgentTimeline>
 
 			<!-- Error -->
 			<div v-if="props.agentNode.error" :class="$style.errorBlock">

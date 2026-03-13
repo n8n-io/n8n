@@ -221,6 +221,7 @@ export {
 	instanceAiRunStatusSchema,
 	instanceAiConfirmationSeveritySchema,
 	instanceAiAgentStatusSchema,
+	instanceAiAgentKindSchema,
 	instanceAiEventSchema,
 	taskItemSchema,
 	taskListSchema,
@@ -243,6 +244,7 @@ export {
 	mcpToolCallRequestSchema,
 	mcpToolCallResultSchema,
 	getRenderHint,
+	isSafeObjectKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 } from './schemas/instance-ai.schema';
 
@@ -256,6 +258,7 @@ export type {
 	InstanceAiConfirmationSeverity,
 	InstanceAiCredentialRequest,
 	InstanceAiAgentStatus,
+	InstanceAiAgentKind,
 	TaskItem,
 	TaskList,
 	InstanceAiRunStartEvent,
@@ -297,4 +300,14 @@ export type {
 	InstanceAiModelCredential,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
+	InstanceAiTargetResource,
 } from './schemas/instance-ai.schema';
+
+export {
+	createInitialState,
+	reduceEvent,
+	findAgent,
+	toAgentTree,
+} from './schemas/agent-run-reducer';
+
+export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';

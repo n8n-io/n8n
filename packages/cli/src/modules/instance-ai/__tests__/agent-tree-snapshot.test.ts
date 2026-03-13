@@ -160,4 +160,92 @@ describe('AgentTreeSnapshotStorage', () => {
 			expect(result).toEqual([]);
 		});
 	});
+
+	describe('messageGroupId and runIds persistence', () => {
+		it('save persists messageGroupId and runIds', async () => {
+			const { memory } = createMockMemory();
+			const storage = new AgentTreeSnapshotStorage(memory);
+
+			await storage.save('thread-1', makeTree(), 'run_2', 'mg_1', ['run_1', 'run_2']);
+
+			const saved = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			expect(saved.instanceAiRunSnapshots[0].messageGroupId).toBe('mg_1');
+			expect(saved.instanceAiRunSnapshots[0].runIds).toEqual(['run_1', 'run_2']);
+		});
+
+		it('updateLast matches by messageGroupId and preserves runIds', async () => {
+			const { memory } = createMockMemory({
+				instanceAiRunSnapshots: [
+					{
+						tree: makeTree({ textContent: 'Old' }),
+						runId: 'run_1',
+						messageGroupId: 'mg_1',
+						runIds: ['run_1'],
+					},
+				],
+			});
+			const storage = new AgentTreeSnapshotStorage(memory);
+
+			// Follow-up run updates the snapshot — new runId but same messageGroupId
+			await storage.updateLast('thread-1', makeTree({ textContent: 'Updated' }), 'run_2', 'mg_1', [
+				'run_1',
+				'run_2',
+			]);
+
+			const saved = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			expect(saved.instanceAiRunSnapshots).toHaveLength(1);
+			expect(saved.instanceAiRunSnapshots[0].runId).toBe('run_2');
+			expect(saved.instanceAiRunSnapshots[0].messageGroupId).toBe('mg_1');
+			expect(saved.instanceAiRunSnapshots[0].runIds).toEqual(['run_1', 'run_2']);
+		});
+
+		it('updateLast matches the newest snapshot for a shared messageGroupId', async () => {
+			const { memory } = createMockMemory({
+				instanceAiRunSnapshots: [
+					{
+						tree: makeTree({ textContent: 'First' }),
+						runId: 'run_1',
+						messageGroupId: 'mg_1',
+						runIds: ['run_1'],
+					},
+					{
+						tree: makeTree({ textContent: 'Second' }),
+						runId: 'run_2',
+						messageGroupId: 'mg_1',
+						runIds: ['run_1', 'run_2'],
+					},
+				],
+			});
+			const storage = new AgentTreeSnapshotStorage(memory);
+
+			await storage.updateLast(
+				'thread-1',
+				makeTree({ textContent: 'Updated newest' }),
+				'run_3',
+				'mg_1',
+				['run_1', 'run_2', 'run_3'],
+			);
+
+			const saved = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			expect(saved.instanceAiRunSnapshots).toHaveLength(2);
+			expect(saved.instanceAiRunSnapshots[0].tree.textContent).toBe('First');
+			expect(saved.instanceAiRunSnapshots[1].tree.textContent).toBe('Updated newest');
+			expect(saved.instanceAiRunSnapshots[1].runId).toBe('run_3');
+			expect(saved.instanceAiRunSnapshots[1].runIds).toEqual(['run_1', 'run_2', 'run_3']);
+		});
+
+		it('getAll returns runIds from stored snapshots', async () => {
+			const { memory } = createMockMemory({
+				instanceAiRunSnapshots: [
+					{ tree: makeTree(), runId: 'run_2', messageGroupId: 'mg_1', runIds: ['run_1', 'run_2'] },
+				],
+			});
+			const storage = new AgentTreeSnapshotStorage(memory);
+
+			const result = await storage.getAll('thread-1');
+
+			expect(result[0].messageGroupId).toBe('mg_1');
+			expect(result[0].runIds).toEqual(['run_1', 'run_2']);
+		});
+	});
 });

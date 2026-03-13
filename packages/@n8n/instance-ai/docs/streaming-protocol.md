@@ -229,8 +229,8 @@ ADR-006). The tool's execution is paused until the user responds.
     "toolCallId": "tc_abc123",
     "toolName": "delete-workflow",
     "args": {"workflowId": "wf-123"},
-    "severity": "destructive",
-    "message": "Delete workflow 'My Workflow'?"
+    "severity": "warning",
+    "message": "Archive workflow 'My Workflow'?"
   }
 }
 ```

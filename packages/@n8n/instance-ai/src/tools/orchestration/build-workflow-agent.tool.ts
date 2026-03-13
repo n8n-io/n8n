@@ -18,6 +18,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { BUILDER_AGENT_PROMPT, SANDBOX_BUILDER_AGENT_PROMPT } from './build-workflow-agent.prompt';
+import { truncateLabel } from './display-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
@@ -171,6 +172,13 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					role: 'workflow-builder',
 					tools: Object.keys(builderTools),
 					taskId,
+					kind: 'builder',
+					title: 'Building workflow',
+					subtitle: truncateLabel(input.task),
+					goal: input.task,
+					targetResource: input.workflowId
+						? { type: 'workflow' as const, id: input.workflowId }
+						: { type: 'workflow' as const },
 				},
 			});
 

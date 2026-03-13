@@ -182,5 +182,13 @@ Without proper unique identifiers or upsert logic, you may create duplicate reco
 ### Ignoring Storage Limits
 
 Each storage system has limits (row counts, API rates, file sizes). Design your workflow to work within these constraints or implement pagination/batching.
+
+### Not Handling Empty Query Results
+
+Data Tables and other storage nodes return 0 items when:
+- The table is freshly created and has no rows yet
+- A filter/lookup query matches nothing
+
+This silently breaks the downstream chain — all nodes after the empty result are skipped. Always set \`alwaysOutputData: true\` on data-fetching nodes (operation: 'get') when downstream nodes depend on their output.
 `;
 }

@@ -5,7 +5,7 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
-import InstanceAiToolCall from './InstanceAiToolCall.vue';
+import AgentTimeline from './AgentTimeline.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -138,11 +138,7 @@ const headerTitle = computed(() => {
 				<N8nIcon :icon="isDetailOpen ? 'chevron-up' : 'chevron-down'" size="small" />
 			</CollapsibleTrigger>
 			<CollapsibleContent :class="$style.detailContent">
-				<InstanceAiToolCall
-					v-for="tc in props.agentNode.toolCalls"
-					:key="tc.toolCallId"
-					:tool-call="tc"
-				/>
+				<AgentTimeline :agent-node="props.agentNode" :compact="true" />
 			</CollapsibleContent>
 		</CollapsibleRoot>
 

@@ -40,6 +40,13 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		return events.filter((e) => e.event.runId === runId).map((e) => e.event);
 	}
 
+	getEventsForRuns(threadId: string, runIds: string[]): InstanceAiEvent[] {
+		const events = this.store.get(threadId);
+		if (!events || runIds.length === 0) return [];
+		const runIdSet = new Set(runIds);
+		return events.filter((e) => runIdSet.has(e.event.runId)).map((e) => e.event);
+	}
+
 	getNextEventId(threadId: string): number {
 		const events = this.store.get(threadId);
 		return (events?.length ?? 0) + 1;

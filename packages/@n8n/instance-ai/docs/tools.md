@@ -224,11 +224,11 @@ Update an existing workflow. Only provided fields are changed.
 
 ### `delete-workflow`
 
-Permanently delete a workflow. **Irreversible** — agent must confirm with user.
+Archive a workflow. This is a soft delete that deactivates it if needed and can be undone later.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `workflowId` | string | yes | Workflow to delete |
+| `workflowId` | string | yes | Workflow to archive |
 
 **Returns**: `{ success: boolean }`
 

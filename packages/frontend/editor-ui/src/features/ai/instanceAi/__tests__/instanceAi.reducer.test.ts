@@ -4,6 +4,7 @@ import {
 	findMessageByRunId,
 	findAgentNode,
 	getRenderHint,
+	rebuildRunStateFromTree,
 } from '../instanceAi.reducer';
 import type { InstanceAiReducerState } from '../instanceAi.reducer';
 import type { InstanceAiEvent } from '@n8n/api-types';
@@ -16,6 +17,8 @@ function makeState(overrides?: Partial<InstanceAiReducerState>): InstanceAiReduc
 	return {
 		messages: [],
 		activeRunId: null,
+		runStateByGroupId: {},
+		groupIdByRunId: {},
 		...overrides,
 	};
 }
@@ -181,6 +184,11 @@ function stateWithRun(runId: string, agentId: string): InstanceAiReducerState {
 	return state;
 }
 
+function expectReducerMapsNotPolluted(state: InstanceAiReducerState): void {
+	expect(Object.getPrototypeOf(state.runStateByGroupId)).toBe(Object.prototype);
+	expect(Object.getPrototypeOf(state.groupIdByRunId)).toBe(Object.prototype);
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -239,10 +247,14 @@ describe('instanceAi.reducer', () => {
 	describe('content streaming', () => {
 		test('text-delta for root appends to textContent AND message.content', () => {
 			const state = stateWithRun('run-1', 'agent-root');
+			const rootNode = state.messages[0].agentTree!;
 			handleEvent(state, makeTextDeltaEvent('run-1', 'agent-root', 'Hello'));
+			const firstTimelineEntry = rootNode.timeline[0];
 			handleEvent(state, makeTextDeltaEvent('run-1', 'agent-root', ' world'));
 
 			const msg = state.messages[0];
+			expect(msg.agentTree).toBe(rootNode);
+			expect(rootNode.timeline[0]).toBe(firstTimelineEntry);
 			expect(msg.agentTree!.textContent).toBe('Hello world');
 			expect(msg.content).toBe('Hello world');
 		});
@@ -250,19 +262,22 @@ describe('instanceAi.reducer', () => {
 		test('text-delta for sub-agent appends to sub-agent textContent only, not msg.content', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 			handleEvent(state, makeAgentSpawnedEvent('run-1', 'sub-1', 'agent-root'));
+			const child = state.messages[0].agentTree!.children[0];
 			handleEvent(state, makeTextDeltaEvent('run-1', 'sub-1', 'sub text'));
 
 			const msg = state.messages[0];
-			const child = msg.agentTree!.children[0];
+			expect(msg.agentTree!.children[0]).toBe(child);
 			expect(child.textContent).toBe('sub text');
 			expect(msg.content).toBe('');
 		});
 
 		test('reasoning-delta for root appends to node reasoning AND message.reasoning', () => {
 			const state = stateWithRun('run-1', 'agent-root');
+			const rootNode = state.messages[0].agentTree!;
 			handleEvent(state, makeReasoningDeltaEvent('run-1', 'agent-root', 'thinking'));
 
 			const msg = state.messages[0];
+			expect(msg.agentTree).toBe(rootNode);
 			expect(msg.agentTree!.reasoning).toBe('thinking');
 			expect(msg.reasoning).toBe('thinking');
 		});
@@ -270,10 +285,11 @@ describe('instanceAi.reducer', () => {
 		test('reasoning-delta for sub-agent appends to sub-agent reasoning only', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 			handleEvent(state, makeAgentSpawnedEvent('run-1', 'sub-1', 'agent-root'));
+			const child = state.messages[0].agentTree!.children[0];
 			handleEvent(state, makeReasoningDeltaEvent('run-1', 'sub-1', 'sub thinking'));
 
 			const msg = state.messages[0];
-			const child = msg.agentTree!.children[0];
+			expect(msg.agentTree!.children[0]).toBe(child);
 			expect(child.reasoning).toBe('sub thinking');
 			expect(msg.reasoning).toBe('');
 		});
@@ -297,9 +313,11 @@ describe('instanceAi.reducer', () => {
 		test('tool-result resolves matching toolCallId with isLoading=false and result set', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'some-tool'));
+			const pendingToolCall = state.messages[0].agentTree!.toolCalls[0];
 			handleEvent(state, makeToolResultEvent('run-1', 'agent-root', 'tc-1', { ok: true }));
 
 			const tc = state.messages[0].agentTree!.toolCalls[0];
+			expect(tc).not.toBe(pendingToolCall);
 			expect(tc.isLoading).toBe(false);
 			expect(tc.result).toEqual({ ok: true });
 		});
@@ -438,6 +456,76 @@ describe('instanceAi.reducer', () => {
 		});
 	});
 
+	describe('unsafe identifiers', () => {
+		test('run-start with unsafe runId is ignored', () => {
+			const state = makeState();
+
+			const activeRunId = handleEvent(state, makeRunStartEvent('__proto__', 'agent-root'));
+
+			expect(activeRunId).toBeNull();
+			expect(state.messages).toHaveLength(0);
+			expectReducerMapsNotPolluted(state);
+		});
+
+		test('run-start with unsafe messageGroupId is ignored', () => {
+			const state = makeState();
+
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-safe',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: '__proto__' },
+			});
+
+			expect(state.messages).toHaveLength(0);
+			expect(state.groupIdByRunId['run-safe']).toBeUndefined();
+			expectReducerMapsNotPolluted(state);
+		});
+
+		test('non-run-start event with unsafe agentId is ignored', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+
+			handleEvent(state, makeTextDeltaEvent('run-1', '__proto__', 'ignored'));
+
+			expect(state.messages).toHaveLength(1);
+			expect(state.messages[0].content).toBe('');
+			expectReducerMapsNotPolluted(state);
+		});
+
+		test('agent-spawned with unsafe parentId is ignored', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+
+			handleEvent(state, makeAgentSpawnedEvent('run-1', 'child-1', '__proto__'));
+
+			expect(state.messages[0].agentTree?.children).toHaveLength(0);
+			expectReducerMapsNotPolluted(state);
+		});
+
+		test('tool-call with unsafe toolCallId is ignored', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', '__proto__', 'update-tasks'));
+
+			expect(state.messages[0].agentTree?.toolCalls).toHaveLength(0);
+			expectReducerMapsNotPolluted(state);
+		});
+
+		test('rebuildRunStateFromTree skips unsafe roots', () => {
+			const runState = rebuildRunStateFromTree({
+				agentId: '__proto__',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			});
+
+			expect(runState).toBeUndefined();
+		});
+	});
+
 	// -----------------------------------------------------------------------
 	// Helpers
 	// -----------------------------------------------------------------------
@@ -491,6 +579,185 @@ describe('instanceAi.reducer', () => {
 
 		test('returns default for other tool names', () => {
 			expect(getRenderHint('some-tool')).toBe('default');
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// Regression: messageGroupId merging
+	// -----------------------------------------------------------------------
+	describe('messageGroupId merging', () => {
+		test('run-start with messageGroupId creates message with messageGroupId', () => {
+			const state = makeState();
+			const event: Extract<InstanceAiEvent, { type: 'run-start' }> = {
+				type: 'run-start',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
+			};
+			handleEvent(state, event);
+
+			expect(state.messages).toHaveLength(1);
+			expect(state.messages[0].messageGroupId).toBe('mg-1');
+		});
+
+		test('follow-up run-start with same messageGroupId merges into existing message', () => {
+			const state = makeState();
+
+			// First run
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
+			} as Extract<InstanceAiEvent, { type: 'run-start' }>);
+
+			// Add a background agent child
+			handleEvent(state, makeAgentSpawnedEvent('run-1', 'builder-1', 'agent-root'));
+
+			// Finish first run
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
+
+			// Follow-up run with same messageGroupId
+			const newActiveRunId = handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-2',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-2', messageGroupId: 'mg-1' },
+			} as Extract<InstanceAiEvent, { type: 'run-start' }>);
+
+			// Should NOT create a new message — merged into existing
+			expect(state.messages).toHaveLength(1);
+			expect(state.messages[0].runId).toBe('run-2');
+			expect(state.messages[0].isStreaming).toBe(true);
+			expect(newActiveRunId).toBe('run-2');
+		});
+
+		test('follow-up merge preserves background agent children', () => {
+			const state = makeState();
+
+			// First run spawns a builder
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
+			} as Extract<InstanceAiEvent, { type: 'run-start' }>);
+			handleEvent(state, makeAgentSpawnedEvent('run-1', 'builder-1', 'agent-root'));
+			handleEvent(state, makeToolCallEvent('run-1', 'builder-1', 'tc-1', 'search-nodes'));
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
+
+			// Follow-up merge
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-2',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-2', messageGroupId: 'mg-1' },
+			} as Extract<InstanceAiEvent, { type: 'run-start' }>);
+
+			// Builder child should still be in the tree
+			const tree = state.messages[0].agentTree!;
+			expect(tree.children).toHaveLength(1);
+			expect(tree.children[0].agentId).toBe('builder-1');
+			expect(tree.children[0].toolCalls).toHaveLength(1);
+		});
+
+		test('late events from old runId route to merged message via alias', () => {
+			const state = makeState();
+
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
+			} as Extract<InstanceAiEvent, { type: 'run-start' }>);
+			handleEvent(state, makeAgentSpawnedEvent('run-1', 'builder-1', 'agent-root'));
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
+
+			// Merge follow-up
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-2',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-2', messageGroupId: 'mg-1' },
+			} as Extract<InstanceAiEvent, { type: 'run-start' }>);
+
+			// Late event from builder using OLD runId
+			handleEvent(state, makeAgentCompletedEvent('run-1', 'builder-1', 'built it'));
+
+			// Should NOT create a new message — routed via alias
+			expect(state.messages).toHaveLength(1);
+			// Builder should be marked completed
+			const builder = state.messages[0].agentTree!.children.find((c) => c.agentId === 'builder-1');
+			expect(builder?.status).toBe('completed');
+			expect(builder?.result).toBe('built it');
+		});
+
+		test('three-run chain A→B→C: late event from run A still routes to merged message', () => {
+			const state = makeState();
+
+			// Run A
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-A',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
+			} as Extract<InstanceAiEvent, { type: 'run-start' }>);
+			handleEvent(state, makeAgentSpawnedEvent('run-A', 'bg-A', 'agent-root'));
+			handleEvent(state, makeRunFinishEvent('run-A', 'agent-root', 'completed'));
+
+			// Run B (follow-up)
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-B',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-2', messageGroupId: 'mg-1' },
+			} as Extract<InstanceAiEvent, { type: 'run-start' }>);
+			handleEvent(state, makeAgentSpawnedEvent('run-B', 'bg-B', 'agent-root'));
+			handleEvent(state, makeRunFinishEvent('run-B', 'agent-root', 'completed'));
+
+			// Run C (second follow-up)
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-C',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-3', messageGroupId: 'mg-1' },
+			} as Extract<InstanceAiEvent, { type: 'run-start' }>);
+
+			// Late event from run A's background agent
+			handleEvent(state, makeAgentCompletedEvent('run-A', 'bg-A', 'done from A'));
+
+			// Everything in one message
+			expect(state.messages).toHaveLength(1);
+			const bgA = state.messages[0].agentTree!.children.find((c) => c.agentId === 'bg-A');
+			expect(bgA?.status).toBe('completed');
+			expect(bgA?.result).toBe('done from A');
+		});
+
+		test('run-start without messageGroupId always creates new message', () => {
+			const state = makeState();
+			handleEvent(state, makeRunStartEvent('run-1', 'agent-root'));
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
+			handleEvent(state, makeRunStartEvent('run-2', 'agent-root'));
+
+			expect(state.messages).toHaveLength(2);
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// Regression: deep agent lookup (no depth limit)
+	// -----------------------------------------------------------------------
+	describe('deep agent lookup', () => {
+		test('findAgentNode finds deeply nested agents', () => {
+			const state = stateWithRun('run-1', 'root');
+			handleEvent(state, makeAgentSpawnedEvent('run-1', 'child', 'root'));
+			handleEvent(state, makeAgentSpawnedEvent('run-1', 'grandchild', 'child'));
+			handleEvent(state, makeTextDeltaEvent('run-1', 'grandchild', 'deep'));
+
+			const msg = state.messages[0];
+			// grandchild should be findable
+			const node = findAgentNode(msg, 'grandchild');
+			expect(node).toBeDefined();
+			expect(node!.textContent).toBe('deep');
 		});
 	});
 });

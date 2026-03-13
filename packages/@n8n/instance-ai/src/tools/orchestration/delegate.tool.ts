@@ -3,6 +3,7 @@ import { createTool } from '@mastra/core/tools';
 import { nanoid } from 'nanoid';
 
 import { delegateInputSchema, delegateOutputSchema } from './delegate.schemas';
+import { truncateLabel } from './display-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
@@ -67,6 +68,9 @@ export function createDelegateTool(context: OrchestrationContext) {
 					parentId: context.orchestratorAgentId,
 					role: input.role,
 					tools: input.tools,
+					kind: 'delegate',
+					subtitle: truncateLabel(input.briefing),
+					goal: input.briefing,
 				},
 			});
 

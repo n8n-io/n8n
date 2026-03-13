@@ -182,6 +182,10 @@ export class InstanceAiAdapterService {
 				return toWorkflowDetail(workflow);
 			},
 
+			async archive(workflowId: string) {
+				await workflowService.archive(user, workflowId, { skipArchived: true });
+			},
+
 			async delete(workflowId: string) {
 				await workflowService.delete(user, workflowId);
 			},

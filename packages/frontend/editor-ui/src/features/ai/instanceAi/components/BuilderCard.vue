@@ -10,7 +10,7 @@ import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useInstanceAiStore } from '../instanceAi.store';
-import InstanceAiToolCall from './InstanceAiToolCall.vue';
+import AgentTimeline from './AgentTimeline.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -206,6 +206,9 @@ watch(
 				<N8nIcon v-else-if="isError" icon="triangle-alert" size="small" :class="$style.errorIcon" />
 				<N8nIcon v-else icon="check" size="small" :class="$style.successIcon" />
 				<span :class="$style.title">{{ i18n.baseText('instanceAi.builderCard.title') }}</span>
+				<span v-if="props.agentNode.subtitle" :class="$style.subtitle">
+					{{ props.agentNode.subtitle }}
+				</span>
 			</div>
 			<button v-if="isActive" :class="$style.stopButton" @click="handleStop">
 				<N8nIcon icon="square" size="small" />
@@ -252,52 +255,52 @@ watch(
 				<N8nIcon :icon="isDetailOpen ? 'chevron-up' : 'chevron-down'" size="small" />
 			</CollapsibleTrigger>
 			<CollapsibleContent :class="$style.detailContent">
-				<template v-for="tc in props.agentNode.toolCalls" :key="tc.toolCallId">
-					<InstanceAiToolCall :tool-call="tc" />
-
-					<!-- Inline workflow preview after successful submit-workflow -->
-					<div
-						v-if="submitResults.has(tc.toolCallId) && previewWorkflows.has(tc.toolCallId)"
-						:class="$style.previewBlock"
-					>
-						<div :class="$style.previewHeader">
-							<N8nIcon icon="check" size="small" :class="$style.successIcon" />
-							<span :class="$style.previewName">
-								{{
-									submitResults.get(tc.toolCallId)!.workflowName ??
-									i18n.baseText('instanceAi.builderCard.success')
-								}}
-							</span>
-							<button :class="$style.workflowLink" @click="workflowModalId = tc.toolCallId">
-								Details
-								<N8nIcon icon="expand" size="small" />
-							</button>
-							<a
-								:href="`/workflow/${submitResults.get(tc.toolCallId)!.workflowId}`"
-								target="_blank"
-								:class="$style.workflowLink"
-							>
-								Open
-								<N8nIcon icon="external-link" size="small" />
-							</a>
+				<AgentTimeline :agent-node="props.agentNode" :compact="true">
+					<template #after-tool-call="{ toolCall: tc }">
+						<!-- Inline workflow preview after successful submit-workflow -->
+						<div
+							v-if="submitResults.has(tc.toolCallId) && previewWorkflows.has(tc.toolCallId)"
+							:class="$style.previewBlock"
+						>
+							<div :class="$style.previewHeader">
+								<N8nIcon icon="check" size="small" :class="$style.successIcon" />
+								<span :class="$style.previewName">
+									{{
+										submitResults.get(tc.toolCallId)!.workflowName ??
+										i18n.baseText('instanceAi.builderCard.success')
+									}}
+								</span>
+								<button :class="$style.workflowLink" @click="workflowModalId = tc.toolCallId">
+									Details
+									<N8nIcon icon="expand" size="small" />
+								</button>
+								<a
+									:href="`/workflow/${submitResults.get(tc.toolCallId)!.workflowId}`"
+									target="_blank"
+									:class="$style.workflowLink"
+								>
+									Open
+									<N8nIcon icon="external-link" size="small" />
+								</a>
+							</div>
+							<div :class="$style.previewCanvas">
+								<WorkflowMiniCanvas
+									:workflow="previewWorkflows.get(tc.toolCallId)!"
+									:canvas-id="`builder-preview-${tc.toolCallId}`"
+								/>
+							</div>
 						</div>
-						<div :class="$style.previewCanvas">
-							<WorkflowMiniCanvas
-								:workflow="previewWorkflows.get(tc.toolCallId)!"
-								:canvas-id="`builder-preview-${tc.toolCallId}`"
-							/>
-						</div>
-					</div>
 
-					<!-- Inline execution preview after run-workflow -->
-					<ExecutionPreviewCard
-						v-if="runResults.has(tc.toolCallId)"
-						:execution-id="runResults.get(tc.toolCallId)!.executionId"
-						:workflow-id="runResults.get(tc.toolCallId)!.workflowId"
-						:status="runResults.get(tc.toolCallId)!.status"
-						:error="runResults.get(tc.toolCallId)!.error"
-					/>
-				</template>
+						<!-- Inline execution preview after run-workflow -->
+						<ExecutionPreviewCard
+							v-if="runResults.has(tc.toolCallId)"
+							:execution-id="runResults.get(tc.toolCallId)!.executionId"
+							:workflow-id="runResults.get(tc.toolCallId)!.workflowId"
+							:status="runResults.get(tc.toolCallId)!.status"
+							:error="runResults.get(tc.toolCallId)!.error"
+						/>
+					</template>
+				</AgentTimeline>
 			</CollapsibleContent>
 		</CollapsibleRoot>
 
@@ -392,6 +395,15 @@ watch(
 .title {
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
+}
+
+.subtitle {
+	color: var(--color--text--tint-1);
+	font-weight: var(--font-weight--regular);
+	max-width: 280px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .timeline {

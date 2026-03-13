@@ -252,6 +252,8 @@ export function parseStoredMessages(
 			messages.push({
 				id: msg.id,
 				runId,
+				messageGroupId: snapshot?.messageGroupId,
+				runIds: snapshot?.runIds,
 				role: 'assistant',
 				createdAt: msg.createdAt.toISOString(),
 				content: text,

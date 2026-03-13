@@ -121,6 +121,7 @@ export interface InstanceAiWorkflowService {
 	createFromWorkflowJSON(json: WorkflowJSON): Promise<WorkflowDetail>;
 	/** Update a workflow from SDK-produced WorkflowJSON. */
 	updateFromWorkflowJSON(workflowId: string, json: WorkflowJSON): Promise<WorkflowDetail>;
+	archive(workflowId: string): Promise<void>;
 	delete(workflowId: string): Promise<void>;
 	activate(workflowId: string): Promise<void>;
 	deactivate(workflowId: string): Promise<void>;

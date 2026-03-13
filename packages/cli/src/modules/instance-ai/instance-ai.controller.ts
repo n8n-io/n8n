@@ -20,6 +20,7 @@ import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiService } from './instance-ai.service';
+import { buildAgentTreeFromEvents } from './agent-tree-builder';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -99,6 +100,63 @@ export class InstanceAiController {
 		for (const stored of missed) {
 			this.writeSseEvent(res, stored);
 		}
+
+		// 3b. Bootstrap sync: emit one run-sync control frame per live message group.
+		//     Multiple groups can be active simultaneously when a background task
+		//     from an older turn outlives its original turn. Each frame uses named
+		//     SSE event type (event: run-sync) with NO id: field so the browser's
+		//     lastEventId is unaffected and replay cursor stays consistent.
+		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
+
+		// Collect all distinct message groups that have live activity.
+		const liveGroups = new Map<
+			string,
+			{ runIds: string[]; status: 'active' | 'suspended' | 'background' }
+		>();
+
+		// The active/suspended orchestrator run's group
+		if (threadStatus.hasActiveRun || threadStatus.isSuspended) {
+			const groupId = this.instanceAiService.getMessageGroupId(threadId);
+			if (groupId) {
+				liveGroups.set(groupId, {
+					runIds: this.instanceAiService.getRunIdsForMessageGroup(groupId),
+					status: threadStatus.hasActiveRun ? 'active' : 'suspended',
+				});
+			}
+		}
+
+		// Background tasks — each may belong to a different group
+		for (const task of threadStatus.backgroundTasks) {
+			if (task.status !== 'running' || !task.messageGroupId) continue;
+			if (!liveGroups.has(task.messageGroupId)) {
+				liveGroups.set(task.messageGroupId, {
+					runIds: this.instanceAiService.getRunIdsForMessageGroup(task.messageGroupId),
+					status: 'background',
+				});
+			}
+		}
+
+		for (const [groupId, group] of liveGroups) {
+			const runEvents = this.eventBus.getEventsForRuns(threadId, group.runIds);
+			if (runEvents.length === 0) continue;
+
+			const agentTree = buildAgentTreeFromEvents(runEvents);
+			// Use the group's own latest runId — NOT the thread-global activeRunId,
+			// which belongs to the current orchestrator turn and would be wrong for
+			// background groups from older turns.
+			const groupRunId = group.runIds.at(-1);
+			res.write(
+				`event: run-sync\ndata: ${JSON.stringify({
+					runId: groupRunId,
+					messageGroupId: groupId,
+					runIds: group.runIds,
+					agentTree,
+					status: group.status,
+					backgroundTasks: threadStatus.backgroundTasks,
+				})}\n\n`,
+			);
+		}
+		if (liveGroups.size > 0) res.flush?.();
 
 		// 4. Subscribe to live events
 		const unsubscribe = this.eventBus.subscribe(threadId, (stored) => {

@@ -14,6 +14,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			getAsWorkflowJSON: jest.fn(),
 			createFromWorkflowJSON: jest.fn(),
 			updateFromWorkflowJSON: jest.fn(),
+			archive: jest.fn(),
 			delete: jest.fn(),
 			activate: jest.fn(),
 			deactivate: jest.fn(),
@@ -70,13 +71,17 @@ describe('createDeleteWorkflowTool', () => {
 		const tool = createDeleteWorkflowTool(context);
 
 		expect(tool.id).toBe('delete-workflow');
-		expect(tool.description).toContain('delete a workflow');
+		expect(tool.description).toContain('Archive a workflow');
 	});
 
 	describe('when permissions require approval (default)', () => {
 		it('suspends for user confirmation on first call', async () => {
 			const tool = createDeleteWorkflowTool(context);
 			const suspend = jest.fn();
+			(context.workflowService.get as jest.Mock).mockResolvedValue({
+				id: 'wf-123',
+				name: 'Quarterly Cleanup',
+			});
 
 			await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend, resumeData: undefined },
@@ -87,8 +92,8 @@ describe('createDeleteWorkflowTool', () => {
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					message: expect.stringContaining('wf-123'),
-					severity: 'destructive',
+					message: expect.stringContaining('Quarterly Cleanup'),
+					severity: 'warning',
 				}),
 			);
 		});
@@ -106,15 +111,15 @@ describe('createDeleteWorkflowTool', () => {
 			expect(suspendArg.requestId.length).toBeGreaterThan(0);
 		});
 
-		it('deletes the workflow when resumed with approved: true', async () => {
-			(context.workflowService.delete as jest.Mock).mockResolvedValue(undefined);
+		it('archives the workflow when resumed with approved: true', async () => {
+			(context.workflowService.archive as jest.Mock).mockResolvedValue(undefined);
 			const tool = createDeleteWorkflowTool(context);
 
 			const result = await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: true } },
 			} as never);
 
-			expect(context.workflowService.delete).toHaveBeenCalledWith('wf-123');
+			expect(context.workflowService.archive).toHaveBeenCalledWith('wf-123');
 			expect(result).toEqual({ success: true });
 		});
 
@@ -125,7 +130,7 @@ describe('createDeleteWorkflowTool', () => {
 				agent: { suspend: jest.fn(), resumeData: { approved: false } },
 			} as never);
 
-			expect(context.workflowService.delete).not.toHaveBeenCalled();
+			expect(context.workflowService.archive).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				success: false,
 				denied: true,
@@ -133,14 +138,14 @@ describe('createDeleteWorkflowTool', () => {
 			});
 		});
 
-		it('does not call delete when the user denies', async () => {
+		it('does not call archive when the user denies', async () => {
 			const tool = createDeleteWorkflowTool(context);
 
 			await tool.execute!({ workflowId: 'wf-999' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: false } },
 			} as never);
 
-			expect(context.workflowService.delete).not.toHaveBeenCalled();
+			expect(context.workflowService.archive).not.toHaveBeenCalled();
 		});
 	});
 
@@ -158,8 +163,8 @@ describe('createDeleteWorkflowTool', () => {
 			});
 		});
 
-		it('skips confirmation and deletes immediately', async () => {
-			(context.workflowService.delete as jest.Mock).mockResolvedValue(undefined);
+		it('skips confirmation and archives immediately', async () => {
+			(context.workflowService.archive as jest.Mock).mockResolvedValue(undefined);
 			const tool = createDeleteWorkflowTool(context);
 			const suspend = jest.fn();
 
@@ -168,12 +173,12 @@ describe('createDeleteWorkflowTool', () => {
 			} as never);
 
 			expect(suspend).not.toHaveBeenCalled();
-			expect(context.workflowService.delete).toHaveBeenCalledWith('wf-123');
+			expect(context.workflowService.archive).toHaveBeenCalledWith('wf-123');
 			expect(result).toEqual({ success: true });
 		});
 
 		it('does not suspend even when resumeData is undefined', async () => {
-			(context.workflowService.delete as jest.Mock).mockResolvedValue(undefined);
+			(context.workflowService.archive as jest.Mock).mockResolvedValue(undefined);
 			const tool = createDeleteWorkflowTool(context);
 			const suspend = jest.fn();
 
@@ -186,15 +191,15 @@ describe('createDeleteWorkflowTool', () => {
 	});
 
 	describe('error handling', () => {
-		it('propagates errors from the workflow service on delete', async () => {
-			(context.workflowService.delete as jest.Mock).mockRejectedValue(new Error('Delete failed'));
+		it('propagates errors from the workflow service on archive', async () => {
+			(context.workflowService.archive as jest.Mock).mockRejectedValue(new Error('Archive failed'));
 			const tool = createDeleteWorkflowTool(context);
 
 			await expect(
 				tool.execute!({ workflowId: 'wf-123' }, {
 					agent: { suspend: jest.fn(), resumeData: { approved: true } },
 				} as never),
-			).rejects.toThrow('Delete failed');
+			).rejects.toThrow('Archive failed');
 		});
 	});
 });

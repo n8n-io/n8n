@@ -51,12 +51,33 @@ export type InstanceAiConfirmationSeverity = z.infer<typeof instanceAiConfirmati
 export const instanceAiAgentStatusSchema = z.enum(['active', 'completed', 'cancelled', 'error']);
 export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
 
+export const instanceAiAgentKindSchema = z.enum([
+	'builder',
+	'data-table',
+	'researcher',
+	'delegate',
+	'browser-setup',
+]);
+export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
+
+export const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+export function isSafeObjectKey(key: string): boolean {
+	return !UNSAFE_OBJECT_KEYS.has(key);
+}
+
 // ---------------------------------------------------------------------------
 // Event payloads
 // ---------------------------------------------------------------------------
 
 export const runStartPayloadSchema = z.object({
 	messageId: z.string().describe('Correlates with the user message that triggered this run'),
+	messageGroupId: z
+		.string()
+		.optional()
+		.describe(
+			'Stable ID across auto-follow-up runs within one user turn. When present, follow-up runs share this ID so the frontend merges them into one assistant message.',
+		),
 });
 
 export const runFinishPayloadSchema = z.object({
@@ -64,11 +85,29 @@ export const runFinishPayloadSchema = z.object({
 	reason: z.string().optional(),
 });
 
+export const agentSpawnedTargetResourceSchema = z.object({
+	type: z.enum(['workflow', 'data-table', 'credential', 'other']),
+	id: z.string().optional(),
+	name: z.string().optional(),
+});
+export type InstanceAiTargetResource = z.infer<typeof agentSpawnedTargetResourceSchema>;
+
 export const agentSpawnedPayloadSchema = z.object({
 	parentId: z.string().describe("Orchestrator's agentId"),
 	role: z.string().describe('Free-form role description'),
 	tools: z.array(z.string()).describe('Tool names the sub-agent received'),
 	taskId: z.string().optional().describe('Background task ID (only for background agents)'),
+	// Display metadata — enriched identity for the UI
+	kind: instanceAiAgentKindSchema.optional().describe('Agent kind for card dispatch'),
+	title: z.string().optional().describe('Short display title, e.g. "Building workflow"'),
+	subtitle: z
+		.string()
+		.optional()
+		.describe('Brief task description for distinguishing sibling agents'),
+	goal: z.string().optional().describe('Full task description for tooltip/details'),
+	targetResource: agentSpawnedTargetResourceSchema
+		.optional()
+		.describe('Resource this agent works on'),
 });
 
 export const agentCompletedPayloadSchema = z.object({
@@ -327,6 +366,16 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents (workflow-builder, data-table-manager). */
 	taskId?: string;
+	/** Agent kind for card dispatch (builder, data-table, researcher, delegate, browser-setup). */
+	kind?: InstanceAiAgentKind;
+	/** Short display title, e.g. "Building workflow". */
+	title?: string;
+	/** Brief task description for distinguishing sibling agents. */
+	subtitle?: string;
+	/** Full task description for tooltip/details. */
+	goal?: string;
+	/** Resource this agent works on. */
+	targetResource?: InstanceAiTargetResource;
 	status: InstanceAiAgentStatus;
 	textContent: string;
 	reasoning: string;
@@ -343,6 +392,10 @@ export interface InstanceAiAgentNode {
 export interface InstanceAiMessage {
 	id: string;
 	runId?: string;
+	/** Stable group ID across auto-follow-up runs within one user turn. */
+	messageGroupId?: string;
+	/** All runIds in this message group — used to rebuild routing table on restore. */
+	runIds?: string[];
 	role: 'user' | 'assistant';
 	createdAt: string;
 	content: string;
@@ -425,6 +478,10 @@ export interface InstanceAiThreadStatusResponse {
 		agentId: string;
 		status: 'running' | 'completed' | 'failed' | 'cancelled';
 		startedAt: number;
+		/** The runId this background task belongs to — used for run-sync on reconnect. */
+		runId?: string;
+		/** The messageGroupId this task was spawned under. */
+		messageGroupId?: string;
 	}>;
 }
 

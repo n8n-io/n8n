@@ -11,6 +11,7 @@ import { createTool } from '@mastra/core/tools';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { truncateLabel } from './display-utils';
 import { RESEARCH_AGENT_PROMPT } from './research-agent-prompt';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { mapMastraChunkToEvent } from '../../stream/map-chunk';
@@ -73,6 +74,10 @@ export function createResearchWithAgentTool(context: OrchestrationContext) {
 					role: 'web-researcher',
 					tools: Object.keys(researchTools),
 					taskId,
+					kind: 'researcher',
+					title: 'Researching',
+					subtitle: truncateLabel(input.goal),
+					goal: input.goal,
 				},
 			});
 

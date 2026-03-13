@@ -4046,7 +4046,7 @@
 	"instanceAi.tools.patch-workflow": "Updating workflow",
 	"instanceAi.tools.list-workflows": "Listing workflows",
 	"instanceAi.tools.get-workflow": "Reading workflow",
-	"instanceAi.tools.delete-workflow": "Deleting workflow",
+	"instanceAi.tools.delete-workflow": "Archiving workflow",
 	"instanceAi.tools.activate-workflow": "Activating workflow",
 	"instanceAi.tools.materialize-node-type": "Installing node type",
 	"instanceAi.tools.write-file": "Writing file",

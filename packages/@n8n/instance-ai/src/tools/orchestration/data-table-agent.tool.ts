@@ -13,6 +13,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { DATA_TABLE_AGENT_PROMPT } from './data-table-agent.prompt';
+import { truncateLabel } from './display-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
@@ -82,6 +83,11 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 					role: 'data-table-manager',
 					tools: Object.keys(dataTableTools),
 					taskId,
+					kind: 'data-table',
+					title: 'Managing data table',
+					subtitle: truncateLabel(input.task),
+					goal: input.task,
+					targetResource: { type: 'data-table' as const },
 				},
 			});
 

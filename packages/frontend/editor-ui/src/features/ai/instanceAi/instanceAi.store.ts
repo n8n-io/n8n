@@ -5,19 +5,20 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { ResponseError } from '@n8n/rest-api-client';
-import { instanceAiEventSchema } from '@n8n/api-types';
+import { instanceAiEventSchema, isSafeObjectKey } from '@n8n/api-types';
 import { postMessage, postCancel, postCancelTask, postConfirmation } from './instanceAi.api';
 import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadMessages as fetchThreadMessagesApi,
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
-import { handleEvent as reduceEvent } from './instanceAi.reducer';
+import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
 import { useResourceRegistry } from './useResourceRegistry';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import type {
 	InstanceAiEvent,
 	InstanceAiMessage,
+	InstanceAiAgentNode,
 	InstanceAiThreadSummary,
 	InstanceAiSSEConnectionState,
 } from '@n8n/api-types';
@@ -25,6 +26,15 @@ import type {
 // Module-level EventSource reference — not in reactive state (not serializable,
 // not needed for rendering, wrapping in a reactive proxy causes issues).
 let eventSource: EventSource | null = null;
+
+// Module-level reducer state storage — kept outside Vue reactivity.
+import type { AgentRunState } from '@n8n/api-types';
+let runStateByGroupId: Record<string, AgentRunState> = {};
+let groupIdByRunId: Record<string, string> = {};
+
+// SSE connection generation — incremented on every connectSSE() call.
+// Stale EventSource instances from previous threads discard events.
+let sseGeneration = 0;
 
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
@@ -129,7 +139,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			}
 			const previousRunId = activeRunId.value;
 			activeRunId.value = reduceEvent(
-				{ messages: messages.value, activeRunId: activeRunId.value },
+				{
+					messages: messages.value,
+					activeRunId: activeRunId.value,
+					runStateByGroupId,
+					groupIdByRunId,
+				},
 				parsed.data,
 			);
 			// When a run finishes, refresh thread list to pick up Mastra-generated titles
@@ -141,12 +156,85 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	/**
+	 * Handle run-sync control frames — full state snapshot from the backend.
+	 * Replaces the agent tree AND rebuilds the group-level run state so
+	 * subsequent live events have state to reduce into. Also restores the
+	 * runId → groupId mapping so late events from any run in the group route
+	 * to the correct message.
+	 */
+	function onRunSync(sseEvent: MessageEvent): void {
+		try {
+			const data = JSON.parse(String(sseEvent.data)) as {
+				runId: string;
+				messageGroupId?: string;
+				runIds?: string[];
+				agentTree: InstanceAiAgentNode;
+				status: string;
+			};
+
+			const groupId = data.messageGroupId ?? data.runId;
+			if (!isSafeObjectKey(data.runId) || !isSafeObjectKey(groupId)) return;
+			const rebuiltRunState = rebuildRunStateFromTree(data.agentTree);
+			if (!rebuiltRunState) return;
+
+			// Find the message to update — by messageGroupId first, then runId
+			let msg: InstanceAiMessage | undefined;
+			if (data.messageGroupId) {
+				msg = messages.value.find(
+					(m) => m.messageGroupId === data.messageGroupId && m.role === 'assistant',
+				);
+			}
+			if (!msg) {
+				msg = messages.value.find((m) => m.runId === data.runId);
+			}
+
+			if (msg) {
+				msg.agentTree = data.agentTree;
+				msg.runId = data.runId;
+				msg.messageGroupId = groupId;
+				const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
+				// For background-only groups, the orchestrator already finished.
+				// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
+				// computed correctly detects active children and shows the indicator.
+				msg.isStreaming = isOrchestratorLive;
+				// Only the active/suspended orchestrator run should claim activeRunId.
+				// Background-only groups update their message but don't override the
+				// global active run, which controls input state and cancel buttons.
+				if (isOrchestratorLive) {
+					activeRunId.value = data.runId;
+				}
+
+				// Rebuild normalized run state keyed by groupId
+				runStateByGroupId[groupId] = rebuiltRunState;
+
+				// Restore runId → groupId mappings for ALL runs in the group.
+				// This ensures late events from older follow-up runs still route
+				// to this message after reconnect.
+				if (data.runIds) {
+					for (const rid of data.runIds) {
+						if (!isSafeObjectKey(rid)) continue;
+						groupIdByRunId[rid] = groupId;
+					}
+				}
+				// Always register the current runId
+				groupIdByRunId[data.runId] = groupId;
+			}
+		} catch {
+			// Malformed run-sync — skip
+		}
+	}
+
 	function connectSSE(threadId?: string): void {
 		const tid = threadId ?? currentThreadId.value;
 		if (eventSource) {
 			closeSSE();
 		}
 		sseState.value = 'connecting';
+
+		// Increment generation — stale EventSource handlers will check this
+		const gen = ++sseGeneration;
+		const capturedThreadId = tid;
 
 		const lastEventId = lastEventIdByThread.value[tid];
 		const baseUrl = rootStore.restApiContext.baseUrl;
@@ -158,14 +246,24 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		eventSource = new EventSource(url, { withCredentials: true });
 
 		eventSource.onopen = () => {
+			if (gen !== sseGeneration) return;
 			sseState.value = 'connected';
 		};
 
 		eventSource.onmessage = (ev: MessageEvent) => {
+			// Guard: discard events from stale connections or wrong threads
+			if (gen !== sseGeneration || capturedThreadId !== currentThreadId.value) return;
 			onSSEMessage(ev);
 		};
 
+		// Listen for run-sync control frames (named SSE event, no id: field)
+		eventSource.addEventListener('run-sync', (ev: MessageEvent) => {
+			if (gen !== sseGeneration || capturedThreadId !== currentThreadId.value) return;
+			onRunSync(ev);
+		});
+
 		eventSource.onerror = () => {
+			if (gen !== sseGeneration) return;
 			// EventSource auto-reconnects. Mark as reconnecting if not already closed.
 			if (eventSource?.readyState === EventSource.CONNECTING) {
 				sseState.value = 'reconnecting';
@@ -191,6 +289,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		messages.value = [];
 		activeRunId.value = null;
 		debugEvents.value = [];
+		runStateByGroupId = {};
+		groupIdByRunId = {};
 		// 3. Switch thread
 		currentThreadId.value = threadId;
 		// 4. Load rich historical messages first, then connect SSE after.
@@ -211,6 +311,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		messages.value = [];
 		activeRunId.value = null;
 		debugEvents.value = [];
+		runStateByGroupId = {};
+		groupIdByRunId = {};
 		currentThreadId.value = newThreadId;
 
 		threads.value.unshift({
@@ -243,6 +345,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				messages.value = [];
 				activeRunId.value = null;
 				debugEvents.value = [];
+				runStateByGroupId = {};
+				groupIdByRunId = {};
 				currentThreadId.value = freshId;
 				threads.value.push({
 					id: freshId,
@@ -282,6 +386,28 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			// Backend now returns InstanceAiMessage[] directly — no conversion needed
 			if (result.messages.length > 0) {
 				messages.value = result.messages;
+
+				// Rebuild reducer routing state from historical messages so SSE
+				// replay events (which arrive before run-sync) can reduce into
+				// existing run states instead of being dropped or creating phantoms.
+				for (const msg of result.messages) {
+					if (msg.role !== 'assistant' || !msg.agentTree) continue;
+					const groupId = msg.messageGroupId ?? msg.runId;
+					if (!groupId || !isSafeObjectKey(groupId)) continue;
+					const rebuiltRunState = rebuildRunStateFromTree(msg.agentTree);
+					if (!rebuiltRunState) continue;
+					runStateByGroupId[groupId] = rebuiltRunState;
+					// Register ALL runIds in the group — not just the latest one.
+					// This ensures late events from older runs in a merged A→B→C
+					// chain still route to the correct message after restore.
+					if (msg.runIds) {
+						for (const rid of msg.runIds) {
+							if (!isSafeObjectKey(rid)) continue;
+							groupIdByRunId[rid] = groupId;
+						}
+					}
+					if (msg.runId && isSafeObjectKey(msg.runId)) groupIdByRunId[msg.runId] = groupId;
+				}
 			}
 			// Set SSE cursor to skip past events already covered by historical messages.
 			// This prevents duplicate messages when SSE replays in-memory events.
@@ -310,25 +436,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				lastAssistant.isStreaming = status.hasActiveRun;
 			}
 
-			// Inject running background tasks as active children in the agent tree
-			// so the UI shows them as in-progress sub-agents
-			if (status.backgroundTasks.length > 0 && lastAssistant.agentTree) {
-				for (const task of status.backgroundTasks) {
-					const existing = lastAssistant.agentTree.children.find((c) => c.agentId === task.agentId);
-					if (!existing) {
-						lastAssistant.agentTree.children.push({
-							agentId: task.agentId,
-							role: task.role,
-							status: task.status === 'running' ? 'active' : 'completed',
-							textContent: '',
-							reasoning: '',
-							toolCalls: [],
-							children: [],
-							timeline: [],
-						});
-					}
-				}
-			}
+			// Background task visibility is handled by the run-sync control frame
+			// that is sent on SSE connect. No need to inject children directly here.
 		} catch {
 			// Silently ignore
 		}

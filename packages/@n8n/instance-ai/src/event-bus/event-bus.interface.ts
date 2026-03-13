@@ -37,6 +37,13 @@ export interface InstanceAiEventBus {
 	getEventsForRun(threadId: string, runId: string): InstanceAiEvent[];
 
 	/**
+	 * Retrieve all persisted events for a thread that belong to any of the
+	 * specified runs. Used for rebuilding merged assistant turns that span
+	 * multiple auto-follow-up runs.
+	 */
+	getEventsForRuns(threadId: string, runIds: string[]): InstanceAiEvent[];
+
+	/**
 	 * Get the next event ID that will be assigned for a thread.
 	 * Useful for the SSE endpoint to know whether there are events to replay.
 	 */

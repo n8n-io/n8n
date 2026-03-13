@@ -8,9 +8,10 @@ import type { InstanceAiContext } from '../../types';
 export function createDeleteWorkflowTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'delete-workflow',
-		description: 'Permanently delete a workflow by ID. Irreversible.',
+		description:
+			'Archive a workflow by ID. This is a soft delete that deactivates the workflow if needed and can be undone later.',
 		inputSchema: z.object({
-			workflowId: z.string().describe('ID of the workflow to delete'),
+			workflowId: z.string().describe('ID of the workflow to archive'),
 		}),
 		outputSchema: z.object({
 			success: z.boolean(),
@@ -32,10 +33,18 @@ export function createDeleteWorkflowTool(context: InstanceAiContext) {
 
 			// State 1: First call — suspend for confirmation (unless always_allow)
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
+				const workflow = await Promise.resolve(context.workflowService.get(input.workflowId)).catch(
+					() => undefined,
+				);
+				const workflowLabel =
+					typeof workflow?.name === 'string' && workflow.name.trim().length > 0
+						? workflow.name
+						: input.workflowId;
+
 				await suspend?.({
 					requestId: nanoid(),
-					message: `Delete workflow "${input.workflowId}"? This cannot be undone.`,
-					severity: 'destructive' as const,
+					message: `Archive workflow "${workflowLabel}"? This will deactivate it if needed and can be undone later.`,
+					severity: 'warning' as const,
 				});
 				// suspend() never resolves — this line is unreachable but satisfies the type checker
 				return { success: false };
@@ -47,7 +56,7 @@ export function createDeleteWorkflowTool(context: InstanceAiContext) {
 			}
 
 			// State 3: Approved or always_allow — execute
-			await context.workflowService.delete(input.workflowId);
+			await context.workflowService.archive(input.workflowId);
 			return { success: true };
 		},
 	});

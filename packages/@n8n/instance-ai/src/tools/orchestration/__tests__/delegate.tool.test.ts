@@ -35,6 +35,7 @@ function createMockContext(domainTools: Record<string, unknown> = {}): Orchestra
 			getEventsAfter: jest.fn(),
 			getNextEventId: jest.fn(),
 			getEventsForRun: jest.fn().mockReturnValue([]),
+			getEventsForRuns: jest.fn().mockReturnValue([]),
 		},
 		domainTools: domainTools as OrchestrationContext['domainTools'],
 		abortSignal: new AbortController().signal,
