@@ -11,7 +11,6 @@ export interface MessageWithContent {
 
 const CREATE_TAG = '@@artifact-create ';
 const EDIT_TAG = '@@artifact-edit ';
-const END_MARKER_PREFIX = '@@end:';
 
 export function appendChunkToParsedMessageItems(
 	items: ChatMessageContentChunk[],
@@ -142,21 +141,28 @@ function skipToNextLine(text: string, pos: number): number {
 }
 
 /**
- * Find the first occurrence of `marker` that starts at a line boundary
- * (at `startPos` exactly, or after a `\n`).
- * Any trailing characters after the marker on the same line are ignored, to
- * tolerate LLMs that append stray characters (e.g. `@@end:TOKEN"`) after the token.
+ * Find the first occurrence of `marker` that occupies an entire line
+ * (starts at a line boundary and is followed by `\n` or end of string).
  * Returns the index where the marker starts, or -1.
  */
 function findFirstLineMarker(text: string, startPos: number, marker: string): number {
-	// Check if marker appears right at startPos (it's at a line boundary because
-	// startPos is either 0 or right after a \n from the caller's perspective)
-	if (text.startsWith(marker, startPos)) {
+	const isFullLine = (idx: number) => {
+		const after = idx + marker.length;
+		return after >= text.length || text[after] === '\n';
+	};
+
+	if (text.startsWith(marker, startPos) && isFullLine(startPos)) {
 		return startPos;
 	}
-	// Search for \n + marker
-	const idx = text.indexOf('\n' + marker, startPos);
-	return idx === -1 ? -1 : idx + 1;
+
+	let searchFrom = startPos;
+	while (true) {
+		const idx = text.indexOf('\n' + marker, searchFrom);
+		if (idx === -1) return -1;
+		const markerIdx = idx + 1;
+		if (isFullLine(markerIdx)) return markerIdx;
+		searchFrom = markerIdx;
+	}
 }
 
 function parseOpeningLineAttributes(line: string): Record<string, string> {
@@ -170,6 +176,11 @@ function parseOpeningLineAttributes(line: string): Record<string, string> {
 	return result;
 }
 
+function parseEndToken(line: string): string {
+	const match = /<<\s*(\S+)/.exec(line);
+	return match ? match[1] : '';
+}
+
 function parseArtifactCreateCommand(content: string): {
 	item: ChatMessageContentChunk;
 	consumed: number;
@@ -179,10 +190,10 @@ function parseArtifactCreateCommand(content: string): {
 	const attrs = parseOpeningLineAttributes(openingLine);
 	const title = attrs.title ?? '';
 	const type = attrs.type ?? '';
-	const endToken = attrs.end ?? '';
-	const endMarker = END_MARKER_PREFIX + endToken;
+	const endToken = parseEndToken(openingLine);
 
-	const endIdx = findFirstLineMarker(content, 0, endMarker);
+	const bodyStart = firstNewline === -1 ? content.length : firstNewline + 1;
+	const endIdx = endToken ? findFirstLineMarker(content, bodyStart, endToken) : -1;
 	const isIncomplete = endIdx === -1;
 
 	let documentContent = '';
@@ -192,12 +203,12 @@ function parseArtifactCreateCommand(content: string): {
 		// Only the opening line received so far
 		consumed = content.length;
 	} else if (isIncomplete) {
-		documentContent = content.slice(firstNewline + 1);
+		documentContent = content.slice(bodyStart);
 		consumed = content.length;
 	} else {
-		// Content is between the opening line's \n and the \n preceding @@end:TOKEN
-		documentContent = content.slice(firstNewline + 1, endIdx - 1);
-		consumed = skipToNextLine(content, endIdx + endMarker.length);
+		// Content is between the opening line's \n and the \n preceding TOKEN
+		documentContent = content.slice(bodyStart, endIdx - 1);
+		consumed = skipToNextLine(content, endIdx + endToken.length);
 	}
 
 	return {
@@ -225,11 +236,10 @@ function parseArtifactEditCommand(content: string): {
 	const title = attrs.title ?? '';
 	const replaceAllStr = attrs.replaceAll ?? 'false';
 	const replaceAll = replaceAllStr.toLowerCase() === 'true';
-	const endToken = attrs.end ?? '';
-	const endMarker = END_MARKER_PREFIX + endToken;
+	const endToken = parseEndToken(openingLine);
 
 	const bodyStart = firstNewline === -1 ? content.length : firstNewline + 1;
-	const endIdx = findFirstLineMarker(content, bodyStart, endMarker);
+	const endIdx = endToken ? findFirstLineMarker(content, bodyStart, endToken) : -1;
 	const isIncomplete = endIdx === -1;
 
 	let oldString = '';
@@ -250,7 +260,7 @@ function parseArtifactEditCommand(content: string): {
 		}
 		consumed = content.length;
 	} else {
-		// Body is between bodyStart and the \n preceding @@end:TOKEN
+		// Body is between bodyStart and the \n preceding TOKEN
 		const body = content.slice(bodyStart, endIdx - 1);
 		const sepNewline = body.indexOf('\n');
 		if (sepNewline === -1) {
@@ -259,7 +269,7 @@ function parseArtifactEditCommand(content: string): {
 			oldString = unescapeNewlines(body.slice(0, sepNewline));
 			newString = unescapeNewlines(body.slice(sepNewline + 1));
 		}
-		consumed = skipToNextLine(content, endIdx + endMarker.length);
+		consumed = skipToNextLine(content, endIdx + endToken.length);
 	}
 
 	return {

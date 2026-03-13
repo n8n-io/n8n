@@ -316,7 +316,7 @@ describe(collectChatArtifacts, () => {
 		const items: ChatMessageContentChunk[] = [
 			{
 				type: 'artifact-create',
-				content: '@@artifact-create title="Test" type="md" end="END_T"\nPartial content',
+				content: '@@artifact-create title="Test" type="md" << END_T\nPartial content',
 				command: {
 					title: 'Test',
 					type: 'md',

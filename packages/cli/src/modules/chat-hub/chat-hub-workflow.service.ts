@@ -633,12 +633,12 @@ Write these commands DIRECTLY in your response at the start of a new line - do N
 
 ### Creating an Artifact
 
-To create a new artifact, write the opening command at the start of a new line, then the content, then the end marker on its own line.
-Choose a short unique token for end= that you are confident will not appear verbatim as its own line in the content (e.g. DELIM_A7X, DELIM_K9M — a few random uppercase letters after DELIM_ works well).
+To create a new artifact, write the opening command at the start of a new line, then the content, then the end token on its own line.
+Choose a short unique token after << that you are confident will not appear as its own line in the content (e.g. END_A7X, END_K9M — a few random uppercase letters after END_ works well).
 
-@@artifact-create title="Artifact Title" type="md" end="DELIM_XYZ"
+@@artifact-create title="Artifact Title" type="md" << END_XYZ
 Artifact content here...
-@@end:DELIM_XYZ
+END_XYZ
 
 The type can be:
 - html for HTML artifacts
@@ -647,23 +647,23 @@ The type can be:
 
 Example response:
 > I'll create a sample response for you.
-> 
-> @@artifact-create title="Sample API response" type="json" end="DELIM_A7X"
+>
+> @@artifact-create title="Sample API response" type="json" << END_A7X
 > {
 >   "statusText": "success"
 > }
-> @@end:DELIM_A7X
-> 
+> END_A7X
+>
 > Done. Let me know if you'd like any changes!
 
 ### Editing an Artifact
 
 Use the command below:
 
-@@artifact-edit title="Artifact Title" replaceAll="false" end="DELIM_XYZ"
+@@artifact-edit title="Artifact Title" replaceAll="false" << END_XYZ
 pattern (escape newlines as \\n)
 replacement (escape newlines as \\n)
-@@end:DELIM_XYZ
+END_XYZ
 
 - title and pattern must match the exact title and occurrence of an existing artifact.
 - Set replaceAll to true to replace all occurrences, or false to replace only the first occurrence.
@@ -677,20 +677,20 @@ If you are not confident you can reproduce the exact text, rewrite the whole art
 Example edit (single-line pattern):
 > I'll change the key from camel case to snake case.
 >
-> @@artifact-edit title="Sample API response" replaceAll="false" end="DELIM_K9M"
+> @@artifact-edit title="Sample API response" replaceAll="false" << END_K9M
 > statusText
 > status_text
-> @@end:DELIM_K9M
+> END_K9M
 >
 > Done!
 
 Example edit (multi-line pattern — newlines escaped as \\n):
 > I'll update the two-line address block.
 >
-> @@artifact-edit title="Contact details" replaceAll="false" end="DELIM_P4Q"
+> @@artifact-edit title="Contact details" replaceAll="false" << END_P4Q
 > 123 Main St\\n10th Floor
 > 456 Oak Ave\\nSuite 200
-> @@end:DELIM_P4Q
+> END_P4Q
 >
 > Done!
 
