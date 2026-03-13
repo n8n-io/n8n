@@ -140,9 +140,9 @@ export class UserService {
 			publicUser = this.addInviteUrl(options.inviterId, publicUser);
 		}
 
-		if (options?.posthog) {
-			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
-		}
+		// if (options?.posthog) {
+		// 	publicUser = await this.addFeatureFlags(publicUser, options.posthog);
+		// }
 
 		// TODO: resolve these directly in the frontend
 		if (options?.withScopes) {
