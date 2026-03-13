@@ -88,6 +88,8 @@ describe('Discover Handler', () => {
 		expect(mockResponse.json).toHaveBeenCalledWith({ data: mockDiscoverResponse });
 		expect(discoverService.buildDiscoverResponse).toHaveBeenCalledWith(scopes, {
 			includeSchemas: false,
+			resource: undefined,
+			operation: undefined,
 		});
 	});
 
@@ -136,6 +138,33 @@ describe('Discover Handler', () => {
 
 		expect(discoverService.buildDiscoverResponse).toHaveBeenCalledWith(scopes, {
 			includeSchemas: true,
+			resource: undefined,
+			operation: undefined,
+		});
+	});
+
+	it('should pass resource and op query params to service', async () => {
+		const scopes = ['workflow:create'] as any[];
+		mockApiKeyRepository.findOne.mockResolvedValue({ scopes } as any);
+
+		jest.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
+			scopes,
+			resources: {},
+			specUrl: '/api/v1/openapi.yml',
+		});
+
+		const req = {
+			headers: { 'x-n8n-api-key': 'valid-key' },
+			query: { resource: 'workflow', op: 'create' },
+		} as unknown as AuthenticatedRequest;
+
+		const handlerFn = handler.getDiscover[0];
+		await handlerFn(req, mockResponse);
+
+		expect(discoverService.buildDiscoverResponse).toHaveBeenCalledWith(scopes, {
+			includeSchemas: false,
+			resource: 'workflow',
+			operation: 'create',
 		});
 	});
 

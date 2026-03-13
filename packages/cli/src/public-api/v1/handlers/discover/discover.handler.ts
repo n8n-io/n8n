@@ -10,7 +10,7 @@ const API_KEY_AUDIENCE = 'public-api';
 export = {
 	getDiscover: [
 		async (
-			req: AuthenticatedRequest<{}, {}, {}, { include?: string }>,
+			req: AuthenticatedRequest<{}, {}, {}, { include?: string; resource?: string; op?: string }>,
 			res: express.Response,
 		): Promise<express.Response> => {
 			const rawHeader = req.headers['x-n8n-api-key'];
@@ -29,7 +29,11 @@ export = {
 			}
 
 			const includeSchemas = req.query.include === 'schemas';
-			const response = await buildDiscoverResponse(apiKeyRecord.scopes, { includeSchemas });
+			const response = await buildDiscoverResponse(apiKeyRecord.scopes, {
+				includeSchemas,
+				resource: req.query.resource,
+				operation: req.query.op,
+			});
 			return res.json({ data: response });
 		},
 	],

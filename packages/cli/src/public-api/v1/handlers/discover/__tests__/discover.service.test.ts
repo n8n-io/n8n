@@ -161,6 +161,58 @@ describe('buildDiscoverResponse', () => {
 	});
 });
 
+describe('resource and operation filtering', () => {
+	it('should filter to a single resource when resource option is set', async () => {
+		const result = await buildDiscoverResponse(
+			['tag:list', 'tag:create', 'workflow:read'] as ApiKeyScope[],
+			{ resource: 'tags' },
+		);
+
+		expect(Object.keys(result.resources)).toEqual(['tags']);
+		expect(result.resources.tags.endpoints.length).toBeGreaterThan(0);
+	});
+
+	it('should return empty resources for non-existent resource', async () => {
+		const result = await buildDiscoverResponse(['tag:list'] as ApiKeyScope[], {
+			resource: 'nonexistent',
+		});
+
+		expect(result.resources).toEqual({});
+	});
+
+	it('should be case-insensitive for resource filtering', async () => {
+		const result = await buildDiscoverResponse(['tag:list'] as ApiKeyScope[], {
+			resource: 'Tags',
+		});
+
+		expect(Object.keys(result.resources)).toEqual(['tags']);
+	});
+
+	it('should filter endpoints by operation', async () => {
+		const result = await buildDiscoverResponse(['tag:list', 'tag:create'] as ApiKeyScope[], {
+			operation: 'list',
+		});
+
+		const tagOps = result.resources.tags;
+		expect(tagOps).toBeDefined();
+		expect(tagOps.operations).toEqual(['list']);
+		expect(tagOps.endpoints.every((e) => e.operationId === 'getTags')).toBe(true);
+	});
+
+	it('should apply both resource and operation filters together', async () => {
+		const result = await buildDiscoverResponse(
+			['tag:list', 'tag:create', 'workflow:read', 'workflow:create'] as ApiKeyScope[],
+			{ resource: 'workflow', operation: 'create' },
+		);
+
+		expect(Object.keys(result.resources)).toEqual(['workflow']);
+		expect(result.resources.workflow.operations).toEqual(['create']);
+		expect(
+			result.resources.workflow.endpoints.every((e) => e.operationId === 'createWorkflow'),
+		).toBe(true);
+	});
+});
+
 describe('resolveRefs', () => {
 	it('should return object as-is when no $ref present', () => {
 		const schema = { type: 'string', example: 'hello' };

@@ -7,7 +7,7 @@ get:
   description: >
     Returns a filtered capability map based on the caller's API key scopes.
     Each resource includes the operations and endpoints accessible to the
-    authenticated API key. Use ?include=schemas to inline request body schemas.
+    authenticated API key. Use query parameters to narrow the response.
   parameters:
     - name: include
       in: query
@@ -19,6 +19,20 @@ get:
       description: >
         Include additional data. Use "schemas" to inline request body schemas
         per endpoint, eliminating the need to fetch the full OpenAPI spec.
+    - name: resource
+      in: query
+      required: false
+      schema:
+        type: string
+      description: >
+        Filter to a specific resource (e.g. "workflow", "tags", "credential").
+    - name: op
+      in: query
+      required: false
+      schema:
+        type: string
+      description: >
+        Filter to endpoints with a specific operation (e.g. "read", "create", "list").
   responses:
     '200':
       description: Discovery response with available resources and endpoints.
