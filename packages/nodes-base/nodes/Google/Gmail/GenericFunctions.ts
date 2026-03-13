@@ -178,16 +178,10 @@ function addressToValue(
 	return [];
 }
 
-export interface ParseRawEmailOptions {
-	/** When 'simple', return PostalMime-native shape (plain from/to, no textAsHtml). When 'mailparser', return mailparser-compatible shape. Default 'mailparser'. */
-	outputFormat?: 'mailparser' | 'simple';
-}
-
 export async function parseRawEmail(
 	this: IExecuteFunctions | IPollFunctions,
 	messageData: any,
 	dataPropertyNameDownload: string,
-	options?: ParseRawEmailOptions,
 ): Promise<INodeExecutionData> {
 	const buffer = Buffer.from(messageData.raw as string, 'base64');
 	const CHUNK_SIZE = 64 * 1024;
@@ -280,52 +274,41 @@ export async function parseRawEmail(
 	if (email.inReplyTo !== undefined) json.inReplyTo = email.inReplyTo;
 	if (email.references !== undefined) json.references = email.references;
 
-	const useMailparserShape = options?.outputFormat !== 'simple';
-	// Only add mailparser-only address/header fields when returning mailparser shape;
-	// keep Gmail Trigger's outputFormat: 'simple' payload unchanged.
-	if (useMailparserShape) {
-		if (ccFormatted) {
-			json.cc = {
-				text: ccFormatted,
-				value: (email.cc ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
-				html: ccFormatted,
+	if (ccFormatted) {
+		json.cc = {
+			text: ccFormatted,
+			value: (email.cc ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
+			html: ccFormatted,
+		};
+	}
+	if (bccFormatted) {
+		json.bcc = {
+			text: bccFormatted,
+			value: (email.bcc ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
+			html: bccFormatted,
+		};
+	}
+	if (replyToFormatted) {
+		json.replyTo = {
+			text: replyToFormatted,
+			value: (email.replyTo ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
+			html: replyToFormatted,
+		};
+	}
+	if (email.deliveredTo !== undefined) json.deliveredTo = email.deliveredTo;
+	if (email.returnPath !== undefined) json.returnPath = email.returnPath;
+	if (email.sender !== undefined) {
+		const senderFormatted = formatAddress(email.sender);
+		if (senderFormatted) {
+			json.sender = {
+				text: senderFormatted,
+				value: addressToValue(email.sender),
+				html: senderFormatted,
 			};
-		}
-		if (bccFormatted) {
-			json.bcc = {
-				text: bccFormatted,
-				value: (email.bcc ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
-				html: bccFormatted,
-			};
-		}
-		if (replyToFormatted) {
-			json.replyTo = {
-				text: replyToFormatted,
-				value: (email.replyTo ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
-				html: replyToFormatted,
-			};
-		}
-		if (email.deliveredTo !== undefined) json.deliveredTo = email.deliveredTo;
-		if (email.returnPath !== undefined) json.returnPath = email.returnPath;
-		if (email.sender !== undefined) {
-			const senderFormatted = formatAddress(email.sender);
-			if (senderFormatted) {
-				json.sender = {
-					text: senderFormatted,
-					value: addressToValue(email.sender),
-					html: senderFormatted,
-				};
-			}
 		}
 	}
-	const jsonOut = useMailparserShape
-		? toMailparserShape(json)
-		: (() => {
-				for (const key of Object.keys(json)) {
-					if (json[key] === undefined) delete json[key];
-				}
-				return json;
-			})();
+
+	const jsonOut = toMailparserShape(json);
 
 	const result: INodeExecutionData = { json: jsonOut };
 	if (Object.keys(binaryData).length) result.binary = binaryData;

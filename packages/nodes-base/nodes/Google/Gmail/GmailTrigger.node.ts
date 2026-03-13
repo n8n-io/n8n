@@ -377,9 +377,7 @@ export class GmailTrigger implements INodeType {
 						const dataPropertyNameDownload =
 							options.dataPropertyAttachmentsPrefixName ?? 'attachment_';
 
-						const parsed = await parseRawEmail.call(this, fullMessage, dataPropertyNameDownload, {
-							outputFormat: 'simple',
-						});
+						const parsed = await parseRawEmail.call(this, fullMessage, dataPropertyNameDownload);
 						responseData.push(parsed);
 					} else {
 						responseData.push({ json: fullMessage });
