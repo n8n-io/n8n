@@ -75,6 +75,20 @@ get:
                                   Request body schema (only present when
                                   include=schemas and the endpoint accepts a
                                   request body).
+                  filters:
+                    type: object
+                    description: >
+                      Available query parameter filters. The values arrays
+                      reflect what the caller's scopes permit.
+                    additionalProperties:
+                      type: object
+                      properties:
+                        description:
+                          type: string
+                        values:
+                          type: array
+                          items:
+                            type: string
                   specUrl:
                     type: string
                     description: URL to the full OpenAPI specification

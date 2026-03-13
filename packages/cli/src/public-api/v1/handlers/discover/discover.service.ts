@@ -26,9 +26,16 @@ interface ResourceInfo {
 	endpoints: EndpointEntry[];
 }
 
+interface FilterInfo {
+	description: string;
+	example?: string;
+	values?: string[];
+}
+
 export interface DiscoverResponse {
 	scopes: ApiKeyScope[];
 	resources: Record<string, ResourceInfo>;
+	filters: Record<string, FilterInfo>;
 	specUrl: string;
 }
 
@@ -305,9 +312,25 @@ export async function buildDiscoverResponse(
 		filteredResources = result;
 	}
 
+	const allOperations = [...new Set(Object.values(resources).flatMap((r) => r.operations))];
+
 	return {
 		scopes: callerScopes,
 		resources: filteredResources,
+		filters: {
+			resource: {
+				description: 'Filter to a specific resource',
+				values: Object.keys(resources),
+			},
+			op: {
+				description: 'Filter to a specific operation',
+				values: allOperations,
+			},
+			include: {
+				description: 'Include additional data',
+				values: ['schemas'],
+			},
+		},
 		specUrl: '/api/v1/openapi.yml',
 	};
 }

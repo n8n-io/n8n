@@ -76,6 +76,27 @@ describe('buildDiscoverResponse', () => {
 		expect(result.specUrl).toBe('/api/v1/openapi.yml');
 	});
 
+	it('should include filters with available resource and operation values', async () => {
+		const result = await buildDiscoverResponse(['tag:list', 'workflow:read'] as ApiKeyScope[]);
+
+		expect(result.filters.resource.values).toContain('tags');
+		expect(result.filters.resource.values).toContain('workflow');
+		expect(result.filters.op.values).toContain('list');
+		expect(result.filters.op.values).toContain('read');
+		expect(result.filters.include.values).toEqual(['schemas']);
+	});
+
+	it('should show all resources in filters even when resource filter is applied', async () => {
+		const result = await buildDiscoverResponse(['tag:list', 'workflow:read'] as ApiKeyScope[], {
+			resource: 'tags',
+		});
+
+		// Filtered response only has tags
+		expect(Object.keys(result.resources)).toEqual(['tags']);
+		// But filters still show all available resources
+		expect(result.filters.resource.values).toContain('workflow');
+	});
+
 	it('should deduplicate operations within a resource', async () => {
 		// workflow:read covers both getWorkflow and getWorkflowVersion
 		const result = await buildDiscoverResponse(['workflow:read'] as ApiKeyScope[]);

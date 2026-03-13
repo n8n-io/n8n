@@ -72,6 +72,7 @@ describe('Discover Handler', () => {
 					],
 				},
 			},
+			filters: {},
 			specUrl: '/api/v1/openapi.yml',
 		};
 
@@ -101,6 +102,7 @@ describe('Discover Handler', () => {
 		jest.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
 			scopes: ['tag:list'] as any[],
 			resources: {},
+			filters: {},
 			specUrl: '/api/v1/openapi.yml',
 		});
 
@@ -125,6 +127,7 @@ describe('Discover Handler', () => {
 		jest.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
 			scopes,
 			resources: {},
+			filters: {},
 			specUrl: '/api/v1/openapi.yml',
 		});
 
@@ -150,6 +153,7 @@ describe('Discover Handler', () => {
 		jest.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
 			scopes,
 			resources: {},
+			filters: {},
 			specUrl: '/api/v1/openapi.yml',
 		});
 
@@ -176,6 +180,7 @@ describe('Discover Handler', () => {
 		jest.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
 			scopes: ['workflow:read'] as any[],
 			resources: {},
+			filters: {},
 			specUrl: '/api/v1/openapi.yml',
 		});
 
