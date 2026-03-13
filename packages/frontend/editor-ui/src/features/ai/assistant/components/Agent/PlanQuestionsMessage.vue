@@ -670,6 +670,7 @@ function onOptionMouseEnter(idx: number) {
 	margin-left: auto;
 	opacity: 0;
 	color: var(--color--text--tint-1);
+	flex-shrink: 0;
 	transition: opacity 0.15s ease;
 }
 
@@ -718,6 +719,10 @@ function onOptionMouseEnter(idx: number) {
 		}
 		input {
 			font-size: var(--font-size--sm);
+
+			&::placeholder {
+				color: var(--color--text);
+			}
 		}
 	}
 
@@ -738,10 +743,6 @@ function onOptionMouseEnter(idx: number) {
 				background-color: var(--color--primary);
 				color: white;
 				outline: none;
-
-				&::placeholder {
-					color: rgba(255, 255, 255, 0.7);
-				}
 			}
 		}
 	}
