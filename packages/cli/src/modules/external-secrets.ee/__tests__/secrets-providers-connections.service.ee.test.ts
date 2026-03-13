@@ -4,7 +4,6 @@ import type {
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnection,
 	SecretsProviderConnectionRepository,
-	User,
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_BLANKING_VALUE, type IDataObject, type INodeProperties } from 'n8n-workflow';
@@ -386,17 +385,17 @@ describe('SecretsProvidersConnectionsService', () => {
 	});
 
 	describe('cleanupConnectionsForProjectDeletion', () => {
-		it('syncs each affected provider after project cleanup', async () => {
+		it('deletes owner connections and syncs each affected provider after project cleanup', async () => {
 			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
 				mock<ProjectSecretsProviderAccess>({
 					projectId: 'project-1',
-					role: 'secretsProviderConnection:user',
+					role: 'secretsProviderConnection:owner',
 					secretsProviderConnectionId: 1,
 					secretsProviderConnection: { providerKey: 'provider-a' },
 				}),
 				mock<ProjectSecretsProviderAccess>({
 					projectId: 'project-1',
-					role: 'secretsProviderConnection:user',
+					role: 'secretsProviderConnection:owner',
 					secretsProviderConnectionId: 2,
 					secretsProviderConnection: { providerKey: 'provider-b' },
 				}),
@@ -413,12 +412,6 @@ describe('SecretsProvidersConnectionsService', () => {
 		});
 
 		it('disables non-owned connection, removes access, and syncs provider', async () => {
-			const projectAdmin = {
-				role: {
-					scopes: [{ slug: 'project:delete' }],
-				},
-			} as unknown as User;
-
 			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
 				mock<ProjectSecretsProviderAccess>({
 					projectId: 'project-1',

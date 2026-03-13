@@ -10,7 +10,7 @@ import {
 	reloadSecretProviderConnectionResponseSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { SecretsProviderConnection, User } from '@n8n/db';
+import type { SecretsProviderConnection } from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
@@ -365,8 +365,9 @@ export class SecretsProvidersConnectionsService {
 
 	/**
 	 * Cleans up external-secrets connections when a project is deleted.
-	 * - Deletes connection if requester has global delete scope or project access is owner.
-	 * - Otherwise removes this project's access and disables the connection.
+	 * - If this project owns the connection, delete it entirely (access rows cascade).
+	 * - Otherwise, remove this project's access and disable the shared connection.
+	 * - Sync each affected provider key once after cleanup.
 	 */
 	async cleanupConnectionsForProjectDeletion(projectId: string): Promise<void> {
 		const accessEntries = await this.projectAccessRepository.findByProjectId(projectId);
