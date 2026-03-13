@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.databricks",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development", "Data & Storage"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.databricks.com/dev-tools/api/latest/authentication.html"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.databricks.com/api/workspace/introduction"
+			}
+		]
+	}
+}
