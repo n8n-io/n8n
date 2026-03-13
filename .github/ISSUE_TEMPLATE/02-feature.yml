@@ -1,0 +1,65 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for n8n
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > ✨ Thanks for taking the time to suggest a feature!
+        > Please fill out this form clearly so we can understand and evaluate your idea.
+        > 💬 For general questions or discussions, visit our [community forum](https://community.n8n.io).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Use Case
+      description: What problem does this feature solve? Describe the use case that motivated the request.
+      placeholder: "I'm trying to automate X but currently there's no way to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature you'd like to see added and how it should work.
+      placeholder: "A new node / option / setting that..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you found any workarounds or alternative approaches?
+      placeholder: "Currently I work around this by..."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature Area
+      description: Which part of n8n does this feature relate to?
+      options:
+        - "Workflow Editor (UI)"
+        - "Nodes (built-in integrations)"
+        - "AI / LangChain nodes"
+        - "API / Webhooks"
+        - "Credentials / Authentication"
+        - "Execution engine"
+        - "Hosting / Deployment"
+        - "Enterprise features (SSO, RBAC, audit logs)"
+        - "CLI / Developer tooling"
+        - "Documentation"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any screenshots, diagrams, or links that might help explain the feature.
+    validations:
+      required: false
