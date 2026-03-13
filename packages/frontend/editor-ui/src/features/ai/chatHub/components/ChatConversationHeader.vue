@@ -8,7 +8,7 @@ import type {
 	ChatModelDto,
 	ChatSessionId,
 } from '@n8n/api-types';
-import { N8nButton, N8nIconButton } from '@n8n/design-system';
+import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, useTemplateRef, watch, ref } from 'vue';
 import { useChatStore } from '../chat.store';
@@ -103,11 +103,12 @@ defineExpose({
 				:label="i18n.baseText('chatHub.chat.header.button.editAgent')"
 				@click="emit('editCustomAgent', selectedModel.model.agentId)"
 			/>
-			<N8nIconButton
+			<N8nButton
 				v-if="showArtifactIcon"
 				variant="subtle"
 				size="small"
 				icon="panel-right"
+				:label="i18n.baseText('chatHub.chat.header.button.artifact')"
 				@click="emit('reopenArtifact')"
 			/>
 			<N8nButton
