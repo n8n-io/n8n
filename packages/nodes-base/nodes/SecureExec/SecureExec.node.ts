@@ -31,8 +31,11 @@ export class SecureExec implements INodeType {
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 				name: 'secureExecEnvironmentVariables',
 				required: false,
-				// NOTE: not putting `displayOptions` here because it
-				// causes an issue where Resource/Operation are not shown
+				displayOptions: {
+					show: {
+						sendSensitiveEnvVars: [true],
+					},
+				},
 			},
 		],
 		properties: [
@@ -104,6 +107,20 @@ export class SecureExec implements INodeType {
 						action: 'List volumes',
 					},
 				],
+			},
+			{
+				displayName: 'Send Sensitive Environment Variables',
+				name: 'sendSensitiveEnvVars',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to inject environment variables from stored credentials into the sandbox',
+				displayOptions: {
+					show: {
+						resource: ['command'],
+						operation: ['execute'],
+					},
+				},
 			},
 			{
 				displayName: 'Command',

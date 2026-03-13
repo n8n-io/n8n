@@ -58,6 +58,7 @@ export const SALESFORCE_NODE_TYPE = 'n8n-nodes-base.salesforce';
 export const SEGMENT_NODE_TYPE = 'n8n-nodes-base.segment';
 export const SET_NODE_TYPE = 'n8n-nodes-base.set';
 export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
+export const SECURE_EXEC_NODE_TYPE = 'n8n-nodes-base.secureExec';
 export const SERVICENOW_NODE_TYPE = 'n8n-nodes-base.serviceNow';
 export const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
 export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
@@ -161,6 +162,7 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 	DISCORD_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	SECURE_EXEC_NODE_TYPE,
 ];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [
