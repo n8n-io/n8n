@@ -1,0 +1,42 @@
+type: object
+properties:
+  force:
+    type: boolean
+    example: false
+  commitMessage:
+    type: string
+    example: 'chore: automated daily push'
+  fileNames:
+    type: array
+    description: List of files to push. If empty, all eligible files will be pushed.
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [workflow, credential, variables, tags, folders, project, datatable]
+        status:
+          type: string
+          enum: [new, modified, deleted, renamed, conflicted, ignored]
+        location:
+          type: string
+          enum: [local, remote]
+        conflict:
+          type: boolean
+        file:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - name
+        - type
+        - status
+        - location
+        - conflict
+        - file
+        - updatedAt
