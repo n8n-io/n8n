@@ -3818,6 +3818,99 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 		);
 	});
 
+	// Regression test for N8N-9760: CSV import fails if there's an 'ID' column
+	test('should reject CSV import with reserved column name "id"', async () => {
+		// Upload CSV with 'id' column (reserved system column name)
+		const csvContent = 'id,name,email\n1,Alice,alice@example.com\n2,Bob,bob@example.com';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Attempt to create data table with 'id' column
+		const payload = {
+			name: 'Table with ID column',
+			columns: [
+				{ name: 'id', type: 'number' },
+				{ name: 'name', type: 'string' },
+				{ name: 'email', type: 'string' },
+			],
+			fileId,
+		};
+
+		// Should fail with clear error message about reserved column name
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toContain('id');
+		expect(response.body.message).toMatch(/reserved|system/i);
+	});
+
+	test('should reject CSV import with reserved column name "ID" (case insensitive)', async () => {
+		// Upload CSV with 'ID' column (uppercase - should also be rejected)
+		const csvContent = 'ID,name,email\n1,Alice,alice@example.com\n2,Bob,bob@example.com';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Attempt to create data table with 'ID' column
+		const payload = {
+			name: 'Table with ID column',
+			columns: [
+				{ name: 'ID', type: 'number' },
+				{ name: 'name', type: 'string' },
+				{ name: 'email', type: 'string' },
+			],
+			fileId,
+		};
+
+		// Should fail with clear error message about reserved column name
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toContain('ID');
+		expect(response.body.message).toMatch(/reserved|system/i);
+	});
+
+	test('should reject CSV import with reserved column name "createdAt"', async () => {
+		// Upload CSV with 'createdAt' column (another reserved system column)
+		const csvContent = 'name,createdAt\nAlice,2024-01-01\nBob,2024-01-02';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Attempt to create data table with 'createdAt' column
+		const payload = {
+			name: 'Table with createdAt column',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'createdAt', type: 'string' },
+			],
+			fileId,
+		};
+
+		// Should fail with clear error message about reserved column name
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toContain('createdAt');
+		expect(response.body.message).toMatch(/reserved|system/i);
+	});
+
 	test('should map CSV columns to table columns by position', async () => {
 		// Upload CSV with column names that have spaces
 		const csvContent =
