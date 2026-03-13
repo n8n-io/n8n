@@ -1,0 +1,326 @@
+import type { AxiosRequestConfig, AxiosResponse } from 'axios';
+import FormData from 'form-data';
+
+import {
+	createFormDataObject,
+	digestAuthAxiosConfig,
+	generateContentLengthHeader,
+	getBeforeRedirectFn,
+	getHostFromRequestObject,
+	isIgnoreStatusErrorConfig,
+	searchForHeader,
+	validateUrl,
+} from '../axios-utils';
+
+jest.mock('@/http-proxy', () => ({
+	createHttpProxyAgent: jest.fn((_proxy, _url, opts) => ({ type: 'http', ...opts })),
+	createHttpsProxyAgent: jest.fn((_proxy, _url, opts) => ({ type: 'https', ...opts })),
+}));
+
+describe('axios-utils', () => {
+	describe('validateUrl', () => {
+		test.each<[string | undefined, boolean]>([
+			['https://example.com', true],
+			['http://localhost:3000', true],
+			['ftp://files.example.com/path', true],
+			['not-a-url', false],
+			['://missing-protocol', false],
+			[undefined, false],
+			['', false],
+		])('should return %s for %p', (url, expected) => {
+			expect(validateUrl(url)).toBe(expected);
+		});
+	});
+
+	describe('isIgnoreStatusErrorConfig', () => {
+		test('should return true for valid IgnoreStatusErrorConfig', () => {
+			expect(isIgnoreStatusErrorConfig({ ignore: true, except: [401] })).toBe(true);
+			expect(isIgnoreStatusErrorConfig({ ignore: true })).toBe(true);
+		});
+
+		test('should return false when ignore is not true', () => {
+			expect(isIgnoreStatusErrorConfig({ ignore: false })).toBe(false);
+		});
+
+		test('should return false for non-object values', () => {
+			expect(isIgnoreStatusErrorConfig(true)).toBe(false);
+			expect(isIgnoreStatusErrorConfig(null)).toBe(false);
+			expect(isIgnoreStatusErrorConfig(undefined)).toBe(false);
+			expect(isIgnoreStatusErrorConfig('string')).toBe(false);
+		});
+	});
+
+	describe('searchForHeader', () => {
+		test('should find header case-insensitively', () => {
+			const config: AxiosRequestConfig = {
+				headers: { 'Content-Type': 'application/json', Authorization: 'Bearer token' },
+			};
+			expect(searchForHeader(config, 'content-type')).toBe('Content-Type');
+			expect(searchForHeader(config, 'AUTHORIZATION')).toBe('Authorization');
+		});
+
+		test('should return undefined when header is not found', () => {
+			const config: AxiosRequestConfig = { headers: { 'Content-Type': 'application/json' } };
+			expect(searchForHeader(config, 'Authorization')).toBeUndefined();
+		});
+
+		test('should return undefined when headers are undefined', () => {
+			expect(searchForHeader({}, 'Content-Type')).toBeUndefined();
+		});
+	});
+
+	describe('getHostFromRequestObject', () => {
+		test('should extract hostname from url', () => {
+			expect(getHostFromRequestObject({ url: 'https://example.com/path' })).toBe('example.com');
+		});
+
+		test('should extract hostname from uri', () => {
+			expect(getHostFromRequestObject({ uri: 'https://example.com/path' })).toBe('example.com');
+		});
+
+		test('should resolve relative url with baseURL', () => {
+			expect(getHostFromRequestObject({ url: '/path', baseURL: 'https://example.com' })).toBe(
+				'example.com',
+			);
+		});
+
+		test('should return null for invalid URLs', () => {
+			expect(getHostFromRequestObject({ url: 'not-a-url' })).toBeNull();
+			expect(getHostFromRequestObject({})).toBeNull();
+		});
+	});
+
+	describe('getBeforeRedirectFn', () => {
+		const agentOptions = { rejectUnauthorized: true };
+		const axiosConfig: AxiosRequestConfig = {
+			url: 'https://example.com/api',
+			headers: { Authorization: 'Bearer token' },
+			auth: { username: 'user', password: 'pass' },
+		};
+
+		test('should copy auth headers on same-origin redirect', () => {
+			const beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig, undefined, false);
+			const redirectedRequest: Record<string, unknown> = {
+				href: 'https://example.com/other',
+				hostname: 'example.com',
+				headers: {} as Record<string, string>,
+				agents: {},
+			};
+
+			beforeRedirect(redirectedRequest);
+
+			expect((redirectedRequest.headers as Record<string, string>).Authorization).toBe(
+				'Bearer token',
+			);
+			expect(redirectedRequest.auth).toBe('user:pass');
+		});
+
+		test('should not copy auth headers on cross-origin redirect when disabled', () => {
+			const beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig, undefined, false);
+			const redirectedRequest: Record<string, unknown> = {
+				href: 'https://other.com/api',
+				hostname: 'other.com',
+				headers: {} as Record<string, string>,
+				agents: {},
+			};
+
+			beforeRedirect(redirectedRequest);
+
+			expect((redirectedRequest.headers as Record<string, string>).Authorization).toBeUndefined();
+			expect(redirectedRequest.auth).toBeUndefined();
+		});
+
+		test('should copy auth headers on cross-origin redirect when enabled', () => {
+			const beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig, undefined, true);
+			const redirectedRequest: Record<string, unknown> = {
+				href: 'https://other.com/api',
+				hostname: 'other.com',
+				headers: {} as Record<string, string>,
+				agents: {},
+			};
+
+			beforeRedirect(redirectedRequest);
+
+			expect((redirectedRequest.headers as Record<string, string>).Authorization).toBe(
+				'Bearer token',
+			);
+		});
+
+		test('should call ssrfBridge.validateRedirectSync when provided', () => {
+			const ssrfBridge = {
+				validateRedirectSync: jest.fn(),
+				createSecureLookup: jest.fn().mockReturnValue(jest.fn()),
+				validateIp: jest.fn(),
+				validateUrl: jest.fn(),
+			};
+
+			const beforeRedirect = getBeforeRedirectFn(
+				agentOptions,
+				axiosConfig,
+				undefined,
+				false,
+				ssrfBridge,
+			);
+			const redirectedRequest: Record<string, unknown> = {
+				href: 'https://example.com/other',
+				hostname: 'example.com',
+				headers: {} as Record<string, string>,
+				agents: {},
+			};
+
+			beforeRedirect(redirectedRequest);
+
+			expect(ssrfBridge.validateRedirectSync).toHaveBeenCalledWith('https://example.com/other');
+		});
+
+		test('should use resolveProxyUrl when provided', () => {
+			const resolveProxyUrl = jest.fn().mockReturnValue('http://proxy:8080');
+			const beforeRedirect = getBeforeRedirectFn(
+				agentOptions,
+				axiosConfig,
+				'http://proxy:8080',
+				false,
+				undefined,
+				resolveProxyUrl,
+			);
+			const redirectedRequest: Record<string, unknown> = {
+				href: 'https://example.com/other',
+				hostname: 'example.com',
+				headers: {} as Record<string, string>,
+				agents: {},
+			};
+
+			beforeRedirect(redirectedRequest);
+
+			expect(resolveProxyUrl).toHaveBeenCalledWith('http://proxy:8080');
+		});
+
+		test('should set https agent for https redirects', () => {
+			const beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig, undefined, false);
+			const redirectedRequest: Record<string, unknown> = {
+				href: 'https://example.com/other',
+				hostname: 'example.com',
+				headers: {} as Record<string, string>,
+				agents: {},
+			};
+
+			beforeRedirect(redirectedRequest);
+
+			expect((redirectedRequest.agent as { type: string }).type).toBe('https');
+		});
+
+		test('should set http agent for http redirects', () => {
+			const configWithHttp: AxiosRequestConfig = { url: 'http://example.com/api' };
+			const beforeRedirect = getBeforeRedirectFn(agentOptions, configWithHttp, undefined, false);
+			const redirectedRequest: Record<string, unknown> = {
+				href: 'http://example.com/other',
+				hostname: 'example.com',
+				headers: {} as Record<string, string>,
+				agents: {},
+			};
+
+			beforeRedirect(redirectedRequest);
+
+			expect((redirectedRequest.agent as { type: string }).type).toBe('http');
+		});
+	});
+
+	describe('digestAuthAxiosConfig', () => {
+		test('should build a Digest Authorization header', () => {
+			const axiosConfig: AxiosRequestConfig = {
+				method: 'GET',
+				url: 'https://example.com/protected',
+			};
+			const response = {
+				headers: {
+					'www-authenticate':
+						'Digest realm="test-realm", nonce="test-nonce", qop="auth", opaque="test-opaque"',
+				},
+			} as unknown as AxiosResponse;
+			const auth = { username: 'user', password: 'pass' };
+
+			const result = digestAuthAxiosConfig(axiosConfig, response, auth);
+
+			expect(result.headers?.authorization).toMatch(
+				/^Digest username="user",realm="test-realm",nonce="test-nonce"/,
+			);
+			expect(result.headers?.authorization).toContain('opaque="test-opaque"');
+			expect(result.headers?.authorization).toContain('algorithm="MD5"');
+		});
+
+		test('should omit opaque when not present in challenge', () => {
+			const axiosConfig: AxiosRequestConfig = {
+				method: 'GET',
+				url: 'https://example.com/protected',
+			};
+			const response = {
+				headers: {
+					'www-authenticate': 'Digest realm="test-realm", nonce="test-nonce", qop="auth"',
+				},
+			} as unknown as AxiosResponse;
+			const auth = { username: 'user', password: 'pass' };
+
+			const result = digestAuthAxiosConfig(axiosConfig, response, auth);
+
+			expect(result.headers?.authorization).not.toContain('opaque=');
+		});
+	});
+
+	describe('createFormDataObject', () => {
+		test('should create FormData with simple key-value pairs', () => {
+			const data = { key1: 'value1', key2: 'value2' };
+			const formData = createFormDataObject(data);
+
+			expect(formData).toBeInstanceOf(FormData);
+
+			const formDataEntries: string[] = [];
+			formData.getHeaders(); // Ensures form data is processed
+
+			formData.on('data', (chunk) => {
+				formDataEntries.push(chunk.toString());
+			});
+		});
+
+		test('should handle array values', () => {
+			const data = { files: ['file1.txt', 'file2.txt'] };
+			const formData = createFormDataObject(data);
+
+			expect(formData).toBeInstanceOf(FormData);
+		});
+
+		test('should handle complex form data with options', () => {
+			const data = {
+				file: {
+					value: Buffer.from('test content'),
+					options: {
+						filename: 'test.txt',
+						contentType: 'text/plain',
+					},
+				},
+			};
+
+			const formData = createFormDataObject(data);
+
+			expect(formData).toBeInstanceOf(FormData);
+		});
+	});
+
+	describe('generateContentLengthHeader', () => {
+		test('should set content-length header for FormData', async () => {
+			const formData = new FormData();
+			formData.append('key', 'value');
+
+			const config: AxiosRequestConfig = { data: formData, headers: {} };
+			await generateContentLengthHeader(config);
+
+			expect(config.headers!['content-length']).toBeGreaterThan(0);
+		});
+
+		test('should skip non-FormData bodies', async () => {
+			const config: AxiosRequestConfig = { data: { key: 'value' }, headers: {} };
+			await generateContentLengthHeader(config);
+
+			expect(config.headers!['content-length']).toBeUndefined();
+		});
+	});
+});

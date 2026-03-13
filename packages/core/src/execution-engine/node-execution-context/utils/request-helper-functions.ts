@@ -17,7 +17,7 @@ import type {
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
+import type { AxiosError, AxiosHeaders, AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
 import FormData from 'form-data';
@@ -45,7 +45,6 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
-	IgnoreStatusErrorConfig,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -74,6 +73,16 @@ import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
+import {
+	createFormDataObject,
+	digestAuthAxiosConfig,
+	generateContentLengthHeader,
+	getBeforeRedirectFn,
+	getHostFromRequestObject,
+	isIgnoreStatusErrorConfig,
+	searchForHeader,
+	validateUrl,
+} from './request-helpers';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -90,24 +99,9 @@ axios.defaults.paramsSerializer = (params) => {
 // Axios proxy option has problems: https://github.com/axios/axios/issues/4531
 axios.defaults.proxy = false;
 
-function validateUrl(url?: string): boolean {
-	if (!url) return false;
-
-	return tryParseUrl(url) !== null;
-}
-
-function isIgnoreStatusErrorConfig(
-	ignoreHttpStatusErrors: unknown,
-): ignoreHttpStatusErrors is IgnoreStatusErrorConfig {
-	return (
-		typeof ignoreHttpStatusErrors === 'object' &&
-		ignoreHttpStatusErrors !== null &&
-		'ignore' in ignoreHttpStatusErrors &&
-		ignoreHttpStatusErrors.ignore === true
-	);
-}
-
-function getUrlFromProxyConfig(proxyConfig: IHttpRequestOptions['proxy'] | string): string | null {
+export function getUrlFromProxyConfig(
+	proxyConfig: IHttpRequestOptions['proxy'] | string,
+): string | null {
 	if (typeof proxyConfig === 'string') {
 		return validateUrl(proxyConfig) ? proxyConfig : null;
 	}
@@ -185,135 +179,6 @@ axios.interceptors.request.use((config) => {
 	return config;
 });
 
-function searchForHeader(config: AxiosRequestConfig, headerName: string) {
-	if (config.headers === undefined) {
-		return undefined;
-	}
-
-	const headerNames = Object.keys(config.headers);
-	headerName = headerName.toLowerCase();
-	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
-}
-
-const getHostFromRequestObject = (
-	requestObject: Partial<{
-		url: string;
-		uri: string;
-		baseURL: string;
-	}>,
-): string | null => {
-	try {
-		const url = (requestObject.url ?? requestObject.uri) as string;
-		return new URL(url, requestObject.baseURL).hostname;
-	} catch (error) {
-		return null;
-	}
-};
-
-const getBeforeRedirectFn =
-	(
-		agentOptions: AgentOptions,
-		axiosConfig: AxiosRequestConfig,
-		proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
-		sendCredentialsOnCrossOriginRedirect: boolean,
-		ssrfBridge?: SsrfBridge,
-	) =>
-	(redirectedRequest: Record<string, any>) => {
-		// SSRF: validate redirect target synchronously for direct-IP URIs.
-		// Hostname-based redirect targets are caught by secureLookup on the agent.
-		if (ssrfBridge) {
-			ssrfBridge.validateRedirectSync(redirectedRequest.href);
-		}
-
-		const redirectAgentOptions: AgentOptions = {
-			...agentOptions,
-			servername: redirectedRequest.hostname,
-		};
-		const customProxyUrl = getUrlFromProxyConfig(proxyConfig);
-
-		// Inject secureLookup into redirect agents for non-proxy paths
-		const effectiveRedirectOptions =
-			ssrfBridge && !customProxyUrl
-				? { ...redirectAgentOptions, lookup: ssrfBridge.createSecureLookup() }
-				: redirectAgentOptions;
-
-		// Create both agents and set them
-		const targetUrl = redirectedRequest.href;
-		const httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, effectiveRedirectOptions);
-		const httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, effectiveRedirectOptions);
-
-		redirectedRequest.agent = redirectedRequest.href.startsWith('https://')
-			? httpsAgent
-			: httpAgent;
-		redirectedRequest.agents = { http: httpAgent, https: httpsAgent };
-
-		const originalUrl = axiosConfig.baseURL
-			? new URL(axiosConfig.url ?? '', axiosConfig.baseURL)
-			: new URL(axiosConfig.url ?? '');
-		const originalOrigin = originalUrl.origin;
-		const targetOrigin = new URL(targetUrl).origin;
-		// Copy auth headers
-		if (originalOrigin === targetOrigin || sendCredentialsOnCrossOriginRedirect) {
-			if (axiosConfig.headers?.Authorization) {
-				redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
-			}
-			if (axiosConfig.auth) {
-				redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
-			}
-		}
-	};
-
-function digestAuthAxiosConfig(
-	axiosConfig: AxiosRequestConfig,
-	response: AxiosResponse,
-	auth: AxiosRequestConfig['auth'],
-): AxiosRequestConfig {
-	const authDetails = response.headers['www-authenticate']
-		.split(',')
-		.map((v: string) => v.split('='));
-	if (authDetails) {
-		const nonceCount = '000000001';
-		const cnonce = crypto.randomBytes(24).toString('hex');
-		const realm: string = authDetails
-			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
-			.replace(/"/g, '');
-		// If authDetails does not have opaque, we should not add it to authorization.
-		const opaqueKV = authDetails.find((el: any) => el[0].toLowerCase().indexOf('opaque') > -1);
-		const opaque: string = opaqueKV ? opaqueKV[1].replace(/"/g, '') : undefined;
-		const nonce: string = authDetails
-			.find((el: any) => el[0].toLowerCase().indexOf('nonce') > -1)[1]
-			.replace(/"/g, '');
-		const ha1 = crypto
-			.createHash('md5')
-			.update(`${auth?.username as string}:${realm}:${auth?.password as string}`)
-			.digest('hex');
-		const url = new URL(axios.getUri(axiosConfig));
-		const path = url.pathname + url.search;
-		const ha2 = crypto
-			.createHash('md5')
-			.update(`${axiosConfig.method ?? 'GET'}:${path}`)
-			.digest('hex');
-		const response = crypto
-			.createHash('md5')
-			.update(`${ha1}:${nonce}:${nonceCount}:${cnonce}:auth:${ha2}`)
-			.digest('hex');
-		let authorization =
-			`Digest username="${auth?.username as string}",realm="${realm}",` +
-			`nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",` +
-			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}"`;
-		// Only when opaque exists, add it to authorization.
-		if (opaque) {
-			authorization += `,opaque="${opaque}"`;
-		}
-		if (axiosConfig.headers) {
-			axiosConfig.headers.authorization = authorization;
-		} else {
-			axiosConfig.headers = { authorization };
-		}
-	}
-	return axiosConfig;
-}
-
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
 	authOptions: IRequestOptions['auth'] = {},
@@ -331,51 +196,6 @@ export async function invokeAxios(
 		delete axiosConfig.auth;
 		axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
 		return await axios(axiosConfig);
-	}
-}
-
-const pushFormDataValue = (form: FormData, key: string, value: any) => {
-	if (value?.hasOwnProperty('value') && value.hasOwnProperty('options')) {
-		form.append(key, value.value, value.options);
-	} else {
-		form.append(key, value);
-	}
-};
-
-export const createFormDataObject = (data: Record<string, unknown>) => {
-	const formData = new FormData();
-	const keys = Object.keys(data);
-	keys.forEach((key) => {
-		const formField = data[key];
-
-		if (formField instanceof Array) {
-			formField.forEach((item) => {
-				pushFormDataValue(formData, key, item);
-			});
-		} else {
-			pushFormDataValue(formData, key, formField);
-		}
-	});
-	return formData;
-};
-
-async function generateContentLengthHeader(config: AxiosRequestConfig) {
-	if (!(config.data instanceof FormData)) {
-		return;
-	}
-	try {
-		const length = await new Promise<number>((res, rej) => {
-			config.data.getLength((error: Error | null, dataLength: number) => {
-				if (error) rej(error);
-				else res(dataLength);
-			});
-		});
-		config.headers = {
-			...config.headers,
-			'content-length': length,
-		};
-	} catch (error) {
-		Container.get(Logger).error('Unable to calculate form data length', { error });
 	}
 }
 
@@ -631,6 +451,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 		requestObject.proxy,
 		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
 		ssrfBridge,
+		getUrlFromProxyConfig,
 	);
 
 	if (requestObject.useStream) {
@@ -825,6 +646,7 @@ export function convertN8nRequestToAxios(
 		n8nRequest.proxy,
 		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
 		ssrfBridge,
+		getUrlFromProxyConfig,
 	);
 
 	if (n8nRequest.arrayFormat !== undefined) {
