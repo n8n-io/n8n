@@ -147,10 +147,11 @@ const createCompareRoute = (compareVersionId: string) => {
 	};
 };
 
-const sendTelemetry = (event: string) => {
+const sendTelemetry = (event: string, extras?: Record<string, unknown>) => {
 	telemetry.track(event, {
 		instance_id: useRootStore().instanceId,
 		workflow_id: workflowId.value,
+		...extras,
 	});
 };
 
@@ -492,6 +493,7 @@ const openCompareView = async (compareVersionId: WorkflowVersionId) => {
 	}
 
 	await router.push(createCompareRoute(compareVersionId));
+	sendTelemetry('user_clicks_compare_workflows', { source: 'version_history' });
 };
 
 const closeCompareView = async () => {
