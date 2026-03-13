@@ -1,3 +1,5 @@
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+
 import type { InstanceAiContext } from '../../../types';
 import { createCleanupTestExecutionsTool } from '../cleanup-test-executions.tool';
 
@@ -106,12 +108,8 @@ describe('cleanup-test-executions tool', () => {
 	describe('always_allow permission', () => {
 		it('skips confirmation and cleans up immediately', async () => {
 			const context = createMockContext({
+				...DEFAULT_INSTANCE_AI_PERMISSIONS,
 				cleanupTestExecutions: 'always_allow',
-				runWorkflow: 'require_approval',
-				activateWorkflow: 'require_approval',
-				deleteWorkflow: 'require_approval',
-				deleteCredential: 'require_approval',
-				deleteFolder: 'require_approval',
 			});
 			(context.workspaceService!.cleanupTestExecutions as jest.Mock).mockResolvedValue({
 				deletedCount: 3,
@@ -130,12 +128,8 @@ describe('cleanup-test-executions tool', () => {
 	describe('error handling', () => {
 		it('propagates service errors', async () => {
 			const context = createMockContext({
+				...DEFAULT_INSTANCE_AI_PERMISSIONS,
 				cleanupTestExecutions: 'always_allow',
-				runWorkflow: 'require_approval',
-				activateWorkflow: 'require_approval',
-				deleteWorkflow: 'require_approval',
-				deleteCredential: 'require_approval',
-				deleteFolder: 'require_approval',
 			});
 			(context.workspaceService!.cleanupTestExecutions as jest.Mock).mockRejectedValue(
 				new Error('Workflow not found'),

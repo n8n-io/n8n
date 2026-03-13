@@ -1,7 +1,9 @@
 import type { InstanceAiContext } from '../../../types';
 import { createCreateFolderTool } from '../create-folder.tool';
 
-function createMockContext(): InstanceAiContext {
+function createMockContext(
+	permissionOverrides?: InstanceAiContext['permissions'],
+): InstanceAiContext {
 	return {
 		userId: 'test-user',
 		workflowService: {} as InstanceAiContext['workflowService'],
@@ -20,6 +22,7 @@ function createMockContext(): InstanceAiContext {
 			createTag: jest.fn(),
 			cleanupTestExecutions: jest.fn(),
 		},
+		permissions: permissionOverrides,
 	};
 }
 
@@ -50,7 +53,9 @@ describe('create-folder tool', () => {
 
 	describe('execute', () => {
 		it('creates a root-level folder', async () => {
-			const context = createMockContext();
+			const context = createMockContext({
+				createFolder: 'always_allow',
+			} as InstanceAiContext['permissions']);
 			const created = { id: 'f-new', name: 'Automations', parentFolderId: null };
 			(context.workspaceService!.createFolder as jest.Mock).mockResolvedValue(created);
 
@@ -66,7 +71,9 @@ describe('create-folder tool', () => {
 		});
 
 		it('creates a nested folder', async () => {
-			const context = createMockContext();
+			const context = createMockContext({
+				createFolder: 'always_allow',
+			} as InstanceAiContext['permissions']);
 			const created = { id: 'f-sub', name: 'Sub', parentFolderId: 'f-parent' };
 			(context.workspaceService!.createFolder as jest.Mock).mockResolvedValue(created);
 
@@ -85,7 +92,9 @@ describe('create-folder tool', () => {
 		});
 
 		it('propagates service errors', async () => {
-			const context = createMockContext();
+			const context = createMockContext({
+				createFolder: 'always_allow',
+			} as InstanceAiContext['permissions']);
 			(context.workspaceService!.createFolder as jest.Mock).mockRejectedValue(
 				new Error('Parent folder not found'),
 			);

@@ -10,6 +10,7 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 120_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5 MB
 const DEFAULT_MAX_CONTENT_LENGTH = 30_000;
+const MAX_REDIRECTS = 10;
 
 export interface FetchAndExtractOptions {
 	maxContentLength?: number;
@@ -20,6 +21,9 @@ export interface FetchAndExtractOptions {
 /**
  * Fetch a URL, extract its main content, and convert to markdown.
  * Routes by content-type: HTML → Readability + Turndown, PDF → pdf-parse, text → passthrough.
+ *
+ * Every redirect hop is validated against the SSRF guard before following,
+ * preventing open-redirect chains to internal/private addresses.
  */
 export async function fetchAndExtract(
 	url: string,
@@ -29,32 +33,50 @@ export async function fetchAndExtract(
 	const maxResponseBytes = options?.maxResponseBytes ?? MAX_RESPONSE_BYTES;
 	const timeoutMs = Math.min(options?.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
-	// Pre-fetch SSRF check
-	await assertPublicUrl(url);
+	// Manual redirect handling — validate every hop against SSRF guard
+	let currentUrl = url;
+	let response!: Response;
+	let redirectCount = 0;
 
-	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), timeoutMs);
+	while (redirectCount <= MAX_REDIRECTS) {
+		await assertPublicUrl(currentUrl);
 
-	let response: Response;
-	try {
-		response = await fetch(url, {
-			signal: controller.signal,
-			headers: {
-				'User-Agent': 'n8n-instance-ai/1.0 (content extraction)',
-				Accept:
-					'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,application/pdf;q=0.7,*/*;q=0.5',
-			},
-			redirect: 'follow',
-		});
-	} finally {
-		clearTimeout(timeout);
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+		try {
+			response = await fetch(currentUrl, {
+				signal: controller.signal,
+				headers: {
+					'User-Agent': 'n8n-instance-ai/1.0 (content extraction)',
+					Accept:
+						'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,application/pdf;q=0.7,*/*;q=0.5',
+				},
+				redirect: 'manual',
+			});
+		} finally {
+			clearTimeout(timeout);
+		}
+
+		// Follow redirects manually so each hop is SSRF-checked
+		if (response.status >= 300 && response.status < 400) {
+			const location = response.headers.get('location');
+			if (!location) break;
+
+			redirectCount++;
+			if (redirectCount > MAX_REDIRECTS) {
+				throw new Error(`Too many redirects (max ${MAX_REDIRECTS})`);
+			}
+
+			// Resolve relative redirect URLs against the current URL
+			currentUrl = new URL(location, currentUrl).href;
+			continue;
+		}
+
+		break;
 	}
 
-	// Post-redirect SSRF check
-	const finalUrl = response.url;
-	if (finalUrl !== url) {
-		await assertPublicUrl(finalUrl);
-	}
+	const finalUrl = currentUrl;
 
 	if (!response.ok) {
 		return {

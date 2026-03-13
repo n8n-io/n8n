@@ -42,7 +42,7 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInpu
 			id: toolName,
 			description,
 			inputSchema,
-			execute: async (args) => {
+			execute: async (args: Record<string, unknown>) => {
 				const result = await server.callTool({
 					name: toolName,
 					arguments: args,

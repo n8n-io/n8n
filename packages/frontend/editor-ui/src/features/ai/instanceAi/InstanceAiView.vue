@@ -66,14 +66,6 @@ const showMemoryPanel = ref(false);
 const showDebugPanel = ref(false);
 const showSettingsPanel = ref(false);
 
-// Auto-open artifacts panel when a task list or resource first appears
-watch(
-	() => store.currentTasks !== null || store.resourceRegistry.size > 0,
-	(hasArtifacts, hadArtifacts) => {
-		if (hasArtifacts && !hadArtifacts) showArtifactsPanel.value = true;
-	},
-);
-
 // --- Sidebar resize ---
 const sidebarWidth = ref(260);
 function handleSidebarResize({ width }: { width: number }) {

@@ -1,6 +1,3 @@
-import { existsSync } from 'node:fs';
-import { homedir } from 'node:os';
-
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
@@ -286,26 +283,15 @@ export class InstanceAiService {
 		return !!this.instanceAiConfig.model;
 	}
 
-	/** Auto-detect whether local gateway fallback (direct filesystem) is available.
-	 *  1. FILESYSTEM_PATH explicitly set → local FS (restricted to that path)
-	 *  2. Container detected → gateway only (no useful local files)
-	 *  3. Bare metal (default) → local FS (unrestricted) */
-	isLocalGatewayAvailable(): boolean {
-		if (this.instanceAiConfig.filesystemPath?.trim()) return true;
-		return !this.isContainerEnvironment();
+	/** Local filesystem is only available when an explicit base path is configured. */
+	isLocalFilesystemAvailable(): boolean {
+		return !!this.instanceAiConfig.filesystemPath?.trim();
 	}
 
-	/** Return the local gateway fallback directory, or null if not available. */
-	getLocalGatewayFallbackDirectory(): string | null {
-		if (!this.isLocalGatewayAvailable()) return null;
-		const explicit = this.instanceAiConfig.filesystemPath?.trim();
-		return explicit || homedir();
-	}
-
-	private isContainerEnvironment(): boolean {
-		return (
-			existsSync('/.dockerenv') || !!process.env.KUBERNETES_SERVICE_HOST || !!process.env.container
-		);
+	/** Return the configured filesystem root directory, or null if not configured. */
+	getLocalFilesystemDirectory(): string | null {
+		const basePath = this.instanceAiConfig.filesystemPath?.trim();
+		return basePath || null;
 	}
 
 	hasActiveRun(threadId: string): boolean {
@@ -552,7 +538,7 @@ export class InstanceAiService {
 	}
 
 	isLocalGatewayDisabled(): boolean {
-		return this.settingsService.isLocalGatewayDisabled();
+		return this.settingsService.isFilesystemDisabled();
 	}
 
 	/** Return gateway connection status for the frontend. */
@@ -648,9 +634,9 @@ export class InstanceAiService {
 				return;
 			}
 
-			const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
+			const localGatewayDisabled = this.settingsService.isFilesystemDisabled();
 			const localFilesystemService =
-				!localGatewayDisabled && !this.localGateway.isConnected && this.isLocalGatewayAvailable()
+				!localGatewayDisabled && !this.localGateway.isConnected && this.isLocalFilesystemAvailable()
 					? this.getLocalFsProvider()
 					: undefined;
 			const context = this.adapterService.createContext(user, localFilesystemService);

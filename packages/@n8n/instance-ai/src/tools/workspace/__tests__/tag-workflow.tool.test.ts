@@ -1,7 +1,9 @@
 import type { InstanceAiContext } from '../../../types';
 import { createTagWorkflowTool } from '../tag-workflow.tool';
 
-function createMockContext(): InstanceAiContext {
+function createMockContext(
+	permissionOverrides?: InstanceAiContext['permissions'],
+): InstanceAiContext {
 	return {
 		userId: 'test-user',
 		workflowService: {} as InstanceAiContext['workflowService'],
@@ -20,6 +22,7 @@ function createMockContext(): InstanceAiContext {
 			createTag: jest.fn(),
 			cleanupTestExecutions: jest.fn(),
 		},
+		permissions: permissionOverrides,
 	};
 }
 
@@ -49,7 +52,9 @@ describe('tag-workflow tool', () => {
 
 	describe('execute', () => {
 		it('applies tags to workflow', async () => {
-			const context = createMockContext();
+			const context = createMockContext({
+				tagWorkflow: 'always_allow',
+			} as InstanceAiContext['permissions']);
 			(context.workspaceService!.tagWorkflow as jest.Mock).mockResolvedValue(['ai-built', 'gmail']);
 
 			const tool = createTagWorkflowTool(context);
@@ -66,7 +71,9 @@ describe('tag-workflow tool', () => {
 		});
 
 		it('propagates errors when workflow not found', async () => {
-			const context = createMockContext();
+			const context = createMockContext({
+				tagWorkflow: 'always_allow',
+			} as InstanceAiContext['permissions']);
 			(context.workspaceService!.tagWorkflow as jest.Mock).mockRejectedValue(
 				new Error('Workflow not found'),
 			);

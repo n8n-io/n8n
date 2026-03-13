@@ -1,3 +1,5 @@
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+
 import type { InstanceAiContext } from '../../../types';
 import { createDeleteCredentialTool } from '../delete-credential.tool';
 
@@ -110,12 +112,8 @@ describe('delete-credential tool', () => {
 	describe('always_allow permission', () => {
 		it('skips confirmation and deletes immediately', async () => {
 			const context = createMockContext({
+				...DEFAULT_INSTANCE_AI_PERMISSIONS,
 				deleteCredential: 'always_allow',
-				runWorkflow: 'require_approval',
-				activateWorkflow: 'require_approval',
-				deleteWorkflow: 'require_approval',
-				deleteFolder: 'require_approval',
-				cleanupTestExecutions: 'require_approval',
 			});
 			(context.credentialService.delete as jest.Mock).mockResolvedValue(undefined);
 			const tool = createDeleteCredentialTool(context);
@@ -133,12 +131,8 @@ describe('delete-credential tool', () => {
 	describe('error handling', () => {
 		it('propagates service errors on delete', async () => {
 			const context = createMockContext({
+				...DEFAULT_INSTANCE_AI_PERMISSIONS,
 				deleteCredential: 'always_allow',
-				runWorkflow: 'require_approval',
-				activateWorkflow: 'require_approval',
-				deleteWorkflow: 'require_approval',
-				deleteFolder: 'require_approval',
-				cleanupTestExecutions: 'require_approval',
 			});
 			(context.credentialService.delete as jest.Mock).mockRejectedValue(
 				new Error('Credential in use'),

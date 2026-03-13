@@ -45,8 +45,10 @@ export function createDeleteDataTableRowsTool(context: InstanceAiContext) {
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
 
-			// State 1: First call — suspend for confirmation
-			if (resumeData === undefined || resumeData === null) {
+			const needsApproval = context.permissions?.mutateDataTableRows !== 'always_allow';
+
+			// State 1: First call — suspend for confirmation (unless always_allow)
+			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				const filterDesc = input.filter.filters
 					.map((f) => `${f.columnName} ${f.condition} ${String(f.value)}`)
 					.join(` ${input.filter.type} `);
@@ -59,11 +61,11 @@ export function createDeleteDataTableRowsTool(context: InstanceAiContext) {
 			}
 
 			// State 2: Denied
-			if (!resumeData.approved) {
+			if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 				return { success: false, denied: true, reason: 'User denied the action' };
 			}
 
-			// State 3: Approved — execute
+			// State 3: Approved or always_allow — execute
 			const result = await context.dataTableService.deleteRows(input.dataTableId, input.filter);
 			return { success: true, deletedCount: result.deletedCount };
 		},

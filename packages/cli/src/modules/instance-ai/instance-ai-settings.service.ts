@@ -4,8 +4,10 @@ import { SettingsRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
-	InstanceAiSettingsResponse,
-	InstanceAiSettingsUpdateRequest,
+	InstanceAiAdminSettingsResponse,
+	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiUserPreferencesResponse,
+	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiModelCredential,
 	InstanceAiPermissions,
 } from '@n8n/api-types';
@@ -16,7 +18,8 @@ import { jsonParse } from 'n8n-workflow';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
-const SETTINGS_KEY = 'instanceAi.settings';
+const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
+const USER_PREFERENCES_KEY_PREFIX = 'instanceAi.preferences.';
 
 /** Credential types we support and their Mastra provider mapping. */
 const CREDENTIAL_TO_MASTRA_PROVIDER: Record<string, string> = {
@@ -42,44 +45,37 @@ const URL_FIELD_MAP: Record<string, string> = {
 	ollamaApi: 'baseUrl',
 };
 
-/** Shape stored in the DB. */
-interface PersistedSettings {
-	credentialId?: string | null;
-	modelName?: string;
-	mcpServers?: string;
+// ---------------------------------------------------------------------------
+// Persisted shapes (no secrets — those come from env/config only)
+// ---------------------------------------------------------------------------
+
+/** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
+interface PersistedAdminSettings {
 	lastMessages?: number;
 	embedderModel?: string;
 	semanticRecallTopK?: number;
 	timeout?: number;
 	subAgentMaxSteps?: number;
 	browserMcp?: boolean;
-	sandboxEnabled?: boolean;
-	sandboxProvider?: string;
-	daytonaApiUrl?: string;
-	daytonaApiKey?: string;
-	sandboxImage?: string;
-	sandboxTimeout?: number;
-	braveSearchApiKey?: string;
-	searxngUrl?: string;
-	localGatewayDisabled?: boolean;
 	permissions?: Partial<InstanceAiPermissions>;
+}
+
+/** Per-user preferences stored under USER_PREFERENCES_KEY_PREFIX + userId. */
+interface PersistedUserPreferences {
+	credentialId?: string | null;
+	modelName?: string;
+	filesystemDisabled?: boolean;
 }
 
 @Service()
 export class InstanceAiSettingsService {
 	private readonly config: InstanceAiConfig;
 
-	/** Credential ID selected in the settings panel (null = use env vars). */
-	private credentialId: string | null = null;
-
-	/** Model name selected in settings (e.g. "claude-sonnet-4-5"). */
-	private modelName: string = '';
-
-	/** When true, local gateway tools are suppressed regardless of gateway/local availability. */
-	private localGatewayDisabled = false;
-
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
+
+	/** In-memory cache of per-user preferences keyed by userId. */
+	private readonly userPreferences = new Map<string, PersistedUserPreferences>();
 
 	constructor(
 		globalConfig: GlobalConfig,
@@ -92,25 +88,75 @@ export class InstanceAiSettingsService {
 
 	/** Load persisted settings from DB and apply to the singleton config. Call on module init. */
 	async loadFromDb(): Promise<void> {
-		const row = await this.settingsRepository.findByKey(SETTINGS_KEY);
+		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
 		if (!row) return;
 
-		const persisted = jsonParse<PersistedSettings>(row.value, { fallbackValue: {} });
-		this.applyPersistedSettings(persisted);
+		const persisted = jsonParse<PersistedAdminSettings & PersistedUserPreferences>(row.value, {
+			fallbackValue: {},
+		});
+		this.applyAdminSettings(persisted);
+
+		// Migrate legacy user fields from admin settings (credentialId, modelName,
+		// filesystemDisabled) — these were previously stored in the shared settings blob.
+		// They become defaults for users who haven't set their own preferences yet.
+		if (
+			persisted.credentialId !== undefined ||
+			persisted.modelName !== undefined ||
+			persisted.filesystemDisabled !== undefined
+		) {
+			this.userPreferences.set('__legacy_default__', {
+				credentialId: persisted.credentialId,
+				modelName: persisted.modelName,
+				filesystemDisabled: persisted.filesystemDisabled,
+			});
+		}
 	}
 
-	async getSettings(user: User): Promise<InstanceAiSettingsResponse> {
+	// ── Admin settings ────────────────────────────────────────────────────
+
+	getAdminSettings(): InstanceAiAdminSettingsResponse {
 		const c = this.config;
+		return {
+			lastMessages: c.lastMessages,
+			embedderModel: c.embedderModel,
+			semanticRecallTopK: c.semanticRecallTopK,
+			timeout: c.timeout,
+			subAgentMaxSteps: c.subAgentMaxSteps,
+			browserMcp: c.browserMcp,
+			permissions: { ...this.permissions },
+		};
+	}
+
+	async updateAdminSettings(
+		update: InstanceAiAdminSettingsUpdateRequest,
+	): Promise<InstanceAiAdminSettingsResponse> {
+		const c = this.config;
+		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
+		if (update.embedderModel !== undefined) c.embedderModel = update.embedderModel;
+		if (update.semanticRecallTopK !== undefined) c.semanticRecallTopK = update.semanticRecallTopK;
+		if (update.timeout !== undefined) c.timeout = update.timeout;
+		if (update.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = update.subAgentMaxSteps;
+		if (update.browserMcp !== undefined) c.browserMcp = update.browserMcp;
+		if (update.permissions) {
+			this.permissions = { ...this.permissions, ...update.permissions };
+		}
+		await this.persistAdminSettings();
+		return this.getAdminSettings();
+	}
+
+	// ── User preferences ──────────────────────────────────────────────────
+
+	async getUserPreferences(user: User): Promise<InstanceAiUserPreferencesResponse> {
+		const prefs = await this.loadUserPreferences(user.id);
+		const credentialId = prefs.credentialId ?? null;
 
 		let credentialType: string | null = null;
 		let credentialName: string | null = null;
 
-		if (this.credentialId) {
-			const cred = await this.credentialsFinderService.findCredentialForUser(
-				this.credentialId,
-				user,
-				['credential:read'],
-			);
+		if (credentialId) {
+			const cred = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
+				'credential:read',
+			]);
 			if (cred) {
 				credentialType = cred.type;
 				credentialName = cred.name;
@@ -118,45 +164,29 @@ export class InstanceAiSettingsService {
 		}
 
 		return {
-			credentialId: this.credentialId,
+			credentialId,
 			credentialType,
 			credentialName,
-			modelName: this.modelName || this.extractModelName(c.model),
-			mcpServers: c.mcpServers,
-			lastMessages: c.lastMessages,
-			embedderModel: c.embedderModel,
-			semanticRecallTopK: c.semanticRecallTopK,
-			timeout: c.timeout,
-			subAgentMaxSteps: c.subAgentMaxSteps,
-			browserMcp: c.browserMcp,
-			sandboxEnabled: c.sandboxEnabled,
-			sandboxProvider: c.sandboxProvider,
-			daytonaApiUrl: c.daytonaApiUrl,
-			hasDaytonaApiKey: !!c.daytonaApiKey,
-			sandboxImage: c.sandboxImage,
-			sandboxTimeout: c.sandboxTimeout,
-			hasBraveSearchApiKey: !!c.braveSearchApiKey,
-			searxngUrl: c.searxngUrl,
-			localGatewayDisabled: this.localGatewayDisabled,
-			permissions: { ...this.permissions },
+			modelName: prefs.modelName || this.extractModelName(this.config.model),
+			filesystemDisabled: prefs.filesystemDisabled ?? false,
 		};
 	}
 
-	async updateSettings(
+	async updateUserPreferences(
 		user: User,
-		update: InstanceAiSettingsUpdateRequest,
-	): Promise<InstanceAiSettingsResponse> {
-		if (update.credentialId !== undefined) this.credentialId = update.credentialId;
-		if (update.modelName !== undefined) this.modelName = update.modelName;
-		if (update.localGatewayDisabled !== undefined)
-			this.localGatewayDisabled = update.localGatewayDisabled;
-		if (update.permissions) {
-			this.permissions = { ...this.permissions, ...update.permissions };
-		}
-		this.applyConfigFields(update);
-		await this.persistToDb();
-		return await this.getSettings(user);
+		update: InstanceAiUserPreferencesUpdateRequest,
+	): Promise<InstanceAiUserPreferencesResponse> {
+		const prefs = await this.loadUserPreferences(user.id);
+		if (update.credentialId !== undefined) prefs.credentialId = update.credentialId;
+		if (update.modelName !== undefined) prefs.modelName = update.modelName;
+		if (update.filesystemDisabled !== undefined)
+			prefs.filesystemDisabled = update.filesystemDisabled;
+		this.userPreferences.set(user.id, prefs);
+		await this.persistUserPreferences(user.id, prefs);
+		return await this.getUserPreferences(user);
 	}
+
+	// ── Shared accessors ──────────────────────────────────────────────────
 
 	/** List credentials the user can access that are usable as LLM providers. */
 	async listModelCredentials(user: User): Promise<InstanceAiModelCredential[]> {
@@ -178,26 +208,35 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
-	/** Whether local gateway is disabled by the user. */
-	isLocalGatewayDisabled(): boolean {
-		return this.localGatewayDisabled;
+	/** Whether filesystem access is disabled by a given user. */
+	isFilesystemDisabledForUser(userId: string): boolean {
+		const prefs = this.userPreferences.get(userId);
+		return prefs?.filesystemDisabled ?? false;
+	}
+
+	/** Whether filesystem access is disabled (legacy — uses default preferences). */
+	isFilesystemDisabled(): boolean {
+		// Check legacy default first, then fall back to false
+		const legacy = this.userPreferences.get('__legacy_default__');
+		return legacy?.filesystemDisabled ?? false;
 	}
 
 	/** Resolve the current model configuration for an agent run. */
 	async resolveModelConfig(user: User): Promise<ModelConfig> {
-		if (!this.credentialId) {
-			// Fall back to env var config
+		const prefs = await this.loadUserPreferences(user.id);
+		const credentialId = prefs.credentialId ?? null;
+
+		if (!credentialId) {
 			return this.envVarModelConfig();
 		}
 
 		const credential = await this.credentialsFinderService.findCredentialForUser(
-			this.credentialId,
+			credentialId,
 			user,
 			['credential:read'],
 		);
 
 		if (!credential) {
-			// Credential not found or not accessible — fall back to env vars
 			return this.envVarModelConfig();
 		}
 
@@ -211,15 +250,13 @@ export class InstanceAiSettingsService {
 		const urlField = URL_FIELD_MAP[credential.type];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
-		const modelName = this.modelName || this.extractModelName(this.config.model);
+		const modelName = prefs.modelName || this.extractModelName(this.config.model);
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 
-		// If there's a custom base URL, use the object format
 		if (baseUrl) {
 			return { id, url: baseUrl, ...(apiKey ? { apiKey } : {}) };
 		}
 
-		// Built-in provider with API key override
 		if (apiKey) {
 			return { id, url: '', apiKey };
 		}
@@ -227,7 +264,7 @@ export class InstanceAiSettingsService {
 		return id;
 	}
 
-	// --- Private helpers ---
+	// ── Private helpers ───────────────────────────────────────────────────
 
 	private envVarModelConfig(): ModelConfig {
 		const { model, modelUrl, modelApiKey } = this.config;
@@ -238,68 +275,69 @@ export class InstanceAiSettingsService {
 		return { id, url: modelUrl, ...(modelApiKey ? { apiKey: modelApiKey } : {}) };
 	}
 
-	/** Extract the model name from a "provider/model" string. */
 	private extractModelName(model: string): string {
 		const slash = model.indexOf('/');
 		return slash >= 0 ? model.slice(slash + 1) : model;
 	}
 
-	private applyPersistedSettings(persisted: PersistedSettings): void {
-		if (persisted.credentialId !== undefined) this.credentialId = persisted.credentialId;
-		if (persisted.modelName !== undefined) this.modelName = persisted.modelName;
-		if (persisted.localGatewayDisabled !== undefined)
-			this.localGatewayDisabled = persisted.localGatewayDisabled;
+	private applyAdminSettings(persisted: PersistedAdminSettings): void {
+		const c = this.config;
+		if (persisted.lastMessages !== undefined) c.lastMessages = persisted.lastMessages;
+		if (persisted.embedderModel !== undefined) c.embedderModel = persisted.embedderModel;
+		if (persisted.semanticRecallTopK !== undefined)
+			c.semanticRecallTopK = persisted.semanticRecallTopK;
+		if (persisted.timeout !== undefined) c.timeout = persisted.timeout;
+		if (persisted.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = persisted.subAgentMaxSteps;
+		if (persisted.browserMcp !== undefined) c.browserMcp = persisted.browserMcp;
 		if (persisted.permissions) {
 			this.permissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS, ...persisted.permissions };
 		}
-		this.applyConfigFields(persisted);
 	}
 
-	private applyConfigFields(update: Partial<PersistedSettings>): void {
-		const c = this.config;
-		if (update.mcpServers !== undefined) c.mcpServers = update.mcpServers;
-		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
-		if (update.embedderModel !== undefined) c.embedderModel = update.embedderModel;
-		if (update.semanticRecallTopK !== undefined) c.semanticRecallTopK = update.semanticRecallTopK;
-		if (update.timeout !== undefined) c.timeout = update.timeout;
-		if (update.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = update.subAgentMaxSteps;
-		if (update.browserMcp !== undefined) c.browserMcp = update.browserMcp;
-		if (update.sandboxEnabled !== undefined) c.sandboxEnabled = update.sandboxEnabled;
-		if (update.sandboxProvider !== undefined) c.sandboxProvider = update.sandboxProvider;
-		if (update.daytonaApiUrl !== undefined) c.daytonaApiUrl = update.daytonaApiUrl;
-		if (update.daytonaApiKey !== undefined) c.daytonaApiKey = update.daytonaApiKey;
-		if (update.sandboxImage !== undefined) c.sandboxImage = update.sandboxImage;
-		if (update.sandboxTimeout !== undefined) c.sandboxTimeout = update.sandboxTimeout;
-		if (update.braveSearchApiKey !== undefined) c.braveSearchApiKey = update.braveSearchApiKey;
-		if (update.searxngUrl !== undefined) c.searxngUrl = update.searxngUrl;
+	private async loadUserPreferences(userId: string): Promise<PersistedUserPreferences> {
+		const cached = this.userPreferences.get(userId);
+		if (cached) return { ...cached };
+
+		const row = await this.settingsRepository.findByKey(`${USER_PREFERENCES_KEY_PREFIX}${userId}`);
+		if (row) {
+			const prefs = jsonParse<PersistedUserPreferences>(row.value, { fallbackValue: {} });
+			this.userPreferences.set(userId, prefs);
+			return { ...prefs };
+		}
+
+		// Fall back to legacy defaults (migrated from old shared settings)
+		const legacy = this.userPreferences.get('__legacy_default__');
+		return legacy ? { ...legacy } : {};
 	}
 
-	private async persistToDb(): Promise<void> {
+	private async persistAdminSettings(): Promise<void> {
 		const c = this.config;
-		const value: PersistedSettings = {
-			credentialId: this.credentialId,
-			modelName: this.modelName,
-			mcpServers: c.mcpServers,
+		const value: PersistedAdminSettings = {
 			lastMessages: c.lastMessages,
 			embedderModel: c.embedderModel,
 			semanticRecallTopK: c.semanticRecallTopK,
 			timeout: c.timeout,
 			subAgentMaxSteps: c.subAgentMaxSteps,
 			browserMcp: c.browserMcp,
-			sandboxEnabled: c.sandboxEnabled,
-			sandboxProvider: c.sandboxProvider,
-			daytonaApiUrl: c.daytonaApiUrl,
-			daytonaApiKey: c.daytonaApiKey,
-			sandboxImage: c.sandboxImage,
-			sandboxTimeout: c.sandboxTimeout,
-			braveSearchApiKey: c.braveSearchApiKey,
-			searxngUrl: c.searxngUrl,
-			localGatewayDisabled: this.localGatewayDisabled,
 			permissions: this.permissions,
 		};
 
 		await this.settingsRepository.upsert(
-			{ key: SETTINGS_KEY, value: JSON.stringify(value), loadOnStartup: true },
+			{ key: ADMIN_SETTINGS_KEY, value: JSON.stringify(value), loadOnStartup: true },
+			['key'],
+		);
+	}
+
+	private async persistUserPreferences(
+		userId: string,
+		prefs: PersistedUserPreferences,
+	): Promise<void> {
+		await this.settingsRepository.upsert(
+			{
+				key: `${USER_PREFERENCES_KEY_PREFIX}${userId}`,
+				value: JSON.stringify(prefs),
+				loadOnStartup: false,
+			},
 			['key'],
 		);
 	}

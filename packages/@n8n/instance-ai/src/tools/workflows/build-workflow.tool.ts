@@ -1,5 +1,7 @@
 import { createTool } from '@mastra/core/tools';
+import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
@@ -49,8 +51,20 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			workflowId: z.string().optional(),
 			errors: z.array(z.string()).optional(),
 			warnings: z.array(z.string()).optional(),
+			denied: z.boolean().optional(),
+			reason: z.string().optional(),
 		}),
-		execute: async ({ code, patches, workflowId, name }) => {
+		suspendSchema: z.object({
+			requestId: z.string(),
+			message: z.string(),
+			severity: instanceAiConfirmationSeveritySchema,
+		}),
+		resumeSchema: z.object({
+			approved: z.boolean(),
+		}),
+		execute: async (input, ctx) => {
+			const { code, patches, workflowId, name } = input;
+			const { resumeData, suspend } = ctx?.agent ?? {};
 			let finalCode: string;
 
 			if (patches) {
@@ -138,7 +152,26 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			// Save
+			const needsApproval = context.permissions?.buildWorkflow !== 'always_allow';
+
+			// State 1: First call — suspend for confirmation (unless always_allow)
+			if (needsApproval && (resumeData === undefined || resumeData === null)) {
+				await suspend?.({
+					requestId: nanoid(),
+					message: workflowId
+						? `Update workflow "${workflowId}" from SDK code?`
+						: `Create new workflow "${json.name ?? ''}" from SDK code?`,
+					severity: 'warning' as const,
+				});
+				return { success: false };
+			}
+
+			// State 2: Denied
+			if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+				return { success: false, denied: true, reason: 'User denied the action' };
+			}
+
+			// State 3: Approved or always_allow — save
 			try {
 				if (workflowId) {
 					const updated = await context.workflowService.updateFromWorkflowJSON(workflowId, json);

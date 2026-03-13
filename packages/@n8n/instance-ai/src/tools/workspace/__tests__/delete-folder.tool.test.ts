@@ -1,3 +1,5 @@
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+
 import type { InstanceAiContext } from '../../../types';
 import { createDeleteFolderTool } from '../delete-folder.tool';
 
@@ -118,12 +120,8 @@ describe('delete-folder tool', () => {
 	describe('always_allow permission', () => {
 		it('skips confirmation and deletes immediately', async () => {
 			const context = createMockContext({
+				...DEFAULT_INSTANCE_AI_PERMISSIONS,
 				deleteFolder: 'always_allow',
-				runWorkflow: 'require_approval',
-				activateWorkflow: 'require_approval',
-				deleteWorkflow: 'require_approval',
-				deleteCredential: 'require_approval',
-				cleanupTestExecutions: 'require_approval',
 			});
 			(context.workspaceService!.deleteFolder as jest.Mock).mockResolvedValue(undefined);
 			const tool = createDeleteFolderTool(context);
@@ -145,12 +143,8 @@ describe('delete-folder tool', () => {
 	describe('error handling', () => {
 		it('propagates service errors', async () => {
 			const context = createMockContext({
+				...DEFAULT_INSTANCE_AI_PERMISSIONS,
 				deleteFolder: 'always_allow',
-				runWorkflow: 'require_approval',
-				activateWorkflow: 'require_approval',
-				deleteWorkflow: 'require_approval',
-				deleteCredential: 'require_approval',
-				cleanupTestExecutions: 'require_approval',
 			});
 			(context.workspaceService!.deleteFolder as jest.Mock).mockRejectedValue(
 				new Error('Folder not found'),

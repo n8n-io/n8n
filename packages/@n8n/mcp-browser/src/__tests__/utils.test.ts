@@ -83,8 +83,8 @@ describe('formatImageResponse', () => {
 
 describe('toError', () => {
 	it('should return Error instances unchanged', () => {
-		const err = new Error('test');
-		expect(toError(err)).toBe(err);
+		const error = new Error('test');
+		expect(toError(error)).toBe(error);
 	});
 
 	it('should wrap string values in Error', () => {
@@ -113,18 +113,17 @@ describe('formatErrorResponse', () => {
 
 		expect(result.isError).toBe(true);
 		expect(result.content).toHaveLength(1);
-
-		const parsed = JSON.parse((result.content[0] as { text: string }).text);
-		expect(parsed.error).toBe('Something broke');
+		expect(result.structuredContent).toMatchObject({ error: 'Something broke' });
 	});
 
 	it('should include hint when present', () => {
 		const error = new McpBrowserError('Session expired', 'Create a new session');
 		const result = formatErrorResponse(error);
 
-		const parsed = JSON.parse((result.content[0] as { text: string }).text);
-		expect(parsed.error).toBe('Session expired');
-		expect(parsed.hint).toBe('Create a new session');
+		expect(result.structuredContent).toMatchObject({
+			error: 'Session expired',
+			hint: 'Create a new session',
+		});
 	});
 
 	it('should set structuredContent matching the text content', () => {

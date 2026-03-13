@@ -525,20 +525,82 @@ export interface InstanceAiPermissions {
 	runWorkflow: InstanceAiPermissionMode;
 	activateWorkflow: InstanceAiPermissionMode;
 	deleteWorkflow: InstanceAiPermissionMode;
+	buildWorkflow: InstanceAiPermissionMode;
+	patchWorkflow: InstanceAiPermissionMode;
 	deleteCredential: InstanceAiPermissionMode;
+	createFolder: InstanceAiPermissionMode;
 	deleteFolder: InstanceAiPermissionMode;
+	moveWorkflowToFolder: InstanceAiPermissionMode;
+	tagWorkflow: InstanceAiPermissionMode;
+	createDataTable: InstanceAiPermissionMode;
+	mutateDataTableSchema: InstanceAiPermissionMode;
+	mutateDataTableRows: InstanceAiPermissionMode;
 	cleanupTestExecutions: InstanceAiPermissionMode;
+	readFilesystem: InstanceAiPermissionMode;
 }
 
 export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	runWorkflow: 'require_approval',
 	activateWorkflow: 'require_approval',
 	deleteWorkflow: 'require_approval',
+	buildWorkflow: 'require_approval',
+	patchWorkflow: 'require_approval',
 	deleteCredential: 'require_approval',
+	createFolder: 'require_approval',
 	deleteFolder: 'require_approval',
+	moveWorkflowToFolder: 'require_approval',
+	tagWorkflow: 'require_approval',
+	createDataTable: 'require_approval',
+	mutateDataTableSchema: 'require_approval',
+	mutateDataTableRows: 'require_approval',
 	cleanupTestExecutions: 'require_approval',
+	readFilesystem: 'require_approval',
 };
 
+// ---------------------------------------------------------------------------
+// Admin settings — instance-scoped, admin-only
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiAdminSettingsResponse {
+	lastMessages: number;
+	embedderModel: string;
+	semanticRecallTopK: number;
+	timeout: number;
+	subAgentMaxSteps: number;
+	browserMcp: boolean;
+	permissions: InstanceAiPermissions;
+}
+
+export interface InstanceAiAdminSettingsUpdateRequest {
+	lastMessages?: number;
+	embedderModel?: string;
+	semanticRecallTopK?: number;
+	timeout?: number;
+	subAgentMaxSteps?: number;
+	browserMcp?: boolean;
+	permissions?: Partial<InstanceAiPermissions>;
+}
+
+// ---------------------------------------------------------------------------
+// User preferences — per-user, self-service
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiUserPreferencesResponse {
+	credentialId: string | null;
+	credentialType: string | null;
+	credentialName: string | null;
+	modelName: string;
+	filesystemDisabled: boolean;
+}
+
+export interface InstanceAiUserPreferencesUpdateRequest {
+	credentialId?: string | null;
+	modelName?: string;
+	filesystemDisabled?: boolean;
+}
+
+// Legacy combined types — kept temporarily for frontend migration.
+// Frontend should migrate to InstanceAiAdminSettingsResponse + InstanceAiUserPreferencesResponse.
 export interface InstanceAiSettingsResponse {
 	credentialId: string | null;
 	credentialType: string | null;

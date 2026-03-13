@@ -335,7 +335,7 @@ export class GatewayClient {
 		await this.getAllDefinitions();
 		const def = this.definitionMap.get(name);
 		if (!def) throw new Error(`Unknown tool: ${name}`);
-		const typedArgs = def.inputSchema.parse(args);
+		const typedArgs: unknown = def.inputSchema.parse(args);
 		return await def.execute(typedArgs, { dir: this.dir });
 	}
 

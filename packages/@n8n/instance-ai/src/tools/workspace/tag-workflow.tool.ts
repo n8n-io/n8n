@@ -1,4 +1,6 @@
 import { createTool } from '@mastra/core/tools';
+import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
@@ -14,8 +16,39 @@ export function createTagWorkflowTool(context: InstanceAiContext) {
 		}),
 		outputSchema: z.object({
 			appliedTags: z.array(z.string()),
+			denied: z.boolean().optional(),
+			reason: z.string().optional(),
 		}),
-		execute: async (input) => {
+		suspendSchema: z.object({
+			requestId: z.string(),
+			message: z.string(),
+			severity: instanceAiConfirmationSeveritySchema,
+		}),
+		resumeSchema: z.object({
+			approved: z.boolean(),
+		}),
+		execute: async (input, ctx) => {
+			const { resumeData, suspend } = ctx?.agent ?? {};
+
+			const needsApproval = context.permissions?.tagWorkflow !== 'always_allow';
+
+			// State 1: First call — suspend for confirmation (unless always_allow)
+			if (needsApproval && (resumeData === undefined || resumeData === null)) {
+				await suspend?.({
+					requestId: nanoid(),
+					message: `Tag workflow "${input.workflowId}" with [${input.tags.join(', ')}]?`,
+					severity: 'info' as const,
+				});
+				// suspend() never resolves — this line is unreachable but satisfies the type checker
+				return { appliedTags: [] };
+			}
+
+			// State 2: Denied
+			if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+				return { appliedTags: [], denied: true, reason: 'User denied the action' };
+			}
+
+			// State 3: Approved or always_allow — execute
 			const appliedTags = await context.workspaceService!.tagWorkflow(input.workflowId, input.tags);
 			return { appliedTags };
 		},

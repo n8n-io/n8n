@@ -1,4 +1,6 @@
 import { createTool } from '@mastra/core/tools';
+import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
@@ -51,8 +53,40 @@ export function createListFilesTool(context: InstanceAiContext) {
 			),
 			truncated: z.boolean(),
 			totalCount: z.number(),
+			denied: z.boolean().optional(),
+			reason: z.string().optional(),
 		}),
-		execute: async ({ dirPath, pattern, maxResults, type, recursive }) => {
+		suspendSchema: z.object({
+			requestId: z.string(),
+			message: z.string(),
+			severity: instanceAiConfirmationSeveritySchema,
+		}),
+		resumeSchema: z.object({
+			approved: z.boolean(),
+		}),
+		execute: async ({ dirPath, pattern, maxResults, type, recursive }, ctx) => {
+			const { resumeData, suspend } = ctx?.agent ?? {};
+			const needsApproval = context.permissions?.readFilesystem !== 'always_allow';
+
+			if (needsApproval && (resumeData === undefined || resumeData === null)) {
+				await suspend?.({
+					requestId: nanoid(),
+					message: `List files in "${dirPath}"?`,
+					severity: 'info' as const,
+				});
+				return { files: [], truncated: false, totalCount: 0 };
+			}
+
+			if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+				return {
+					files: [],
+					truncated: false,
+					totalCount: 0,
+					denied: true,
+					reason: 'User denied the action',
+				};
+			}
+
 			if (!context.filesystemService) {
 				throw new Error('No filesystem access available.');
 			}

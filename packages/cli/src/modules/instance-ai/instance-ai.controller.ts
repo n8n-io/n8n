@@ -2,7 +2,11 @@ import { timingSafeEqual } from 'node:crypto';
 import { AuthenticatedRequest } from '@n8n/db';
 import { GlobalConfig } from '@n8n/config';
 import { RestController, Get, Post, Put, Param } from '@n8n/decorators';
-import type { InstanceAiSendMessageRequest, InstanceAiSettingsUpdateRequest } from '@n8n/api-types';
+import type {
+	InstanceAiSendMessageRequest,
+	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiUserPreferencesUpdateRequest,
+} from '@n8n/api-types';
 import {
 	instanceAiGatewayCapabilitiesSchema,
 	instanceAiFilesystemResponseSchema,
@@ -52,6 +56,9 @@ export class InstanceAiController {
 		if (!message?.trim()) {
 			throw new BadRequestError('Message is required');
 		}
+
+		// Verify the requesting user owns this thread (or it's new)
+		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
 		// One active run per thread
 		if (this.instanceAiService.hasActiveRun(threadId)) {
@@ -208,18 +215,20 @@ export class InstanceAiController {
 	}
 
 	@Post('/chat/:threadId/cancel')
-	async cancel(_req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+	async cancel(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.cancelRun(threadId);
 		return { ok: true };
 	}
 
 	@Post('/chat/:threadId/tasks/:taskId/cancel')
 	async cancelTask(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
 		@Param('taskId') taskId: string,
 	) {
+		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.cancelBackgroundTask(threadId, taskId);
 		return { ok: true };
 	}
@@ -228,9 +237,10 @@ export class InstanceAiController {
 	async correctTask(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('threadId') _threadId: string,
+		@Param('threadId') threadId: string,
 		@Param('taskId') taskId: string,
 	) {
+		await this.assertThreadAccess(req.user.id, threadId);
 		const { message } = req.body as { message?: string };
 		if (!message?.trim()) {
 			throw new BadRequestError('Correction message is required');
@@ -239,16 +249,33 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	// ── Admin settings (owner/admin only) ──────────────────────────────────
+
 	@Get('/settings')
-	async getSettings(req: AuthenticatedRequest) {
-		return await this.settingsService.getSettings(req.user);
+	async getAdminSettings(req: AuthenticatedRequest) {
+		this.assertAdmin(req);
+		return this.settingsService.getAdminSettings();
 	}
 
 	@Put('/settings')
-	async updateSettings(req: AuthenticatedRequest) {
-		const body = req.body as InstanceAiSettingsUpdateRequest;
-		const result = await this.settingsService.updateSettings(req.user, body);
-		if (body.localGatewayDisabled !== undefined) {
+	async updateAdminSettings(req: AuthenticatedRequest) {
+		this.assertAdmin(req);
+		const body = req.body as InstanceAiAdminSettingsUpdateRequest;
+		return await this.settingsService.updateAdminSettings(body);
+	}
+
+	// ── User preferences (per-user, self-service) ──────────────────────────
+
+	@Get('/preferences')
+	async getUserPreferences(req: AuthenticatedRequest) {
+		return await this.settingsService.getUserPreferences(req.user);
+	}
+
+	@Put('/preferences')
+	async updateUserPreferences(req: AuthenticatedRequest) {
+		const body = req.body as InstanceAiUserPreferencesUpdateRequest;
+		const result = await this.settingsService.updateUserPreferences(req.user, body);
+		if (body.filesystemDisabled !== undefined) {
 			await this.moduleRegistry.refreshModuleSettings('instance-ai');
 		}
 		return result;
@@ -310,10 +337,11 @@ export class InstanceAiController {
 
 	@Get('/threads/:threadId/status')
 	async getThreadStatus(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
 	) {
+		await this.assertThreadAccess(req.user.id, threadId);
 		return this.instanceAiService.getThreadStatus(threadId);
 	}
 
@@ -441,6 +469,32 @@ export class InstanceAiController {
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────────
+
+	/**
+	 * Verify thread ownership. Throws ForbiddenError if another user owns it.
+	 * @param allowNew When true, a non-existent thread is permitted (new conversation).
+	 */
+	private async assertThreadAccess(
+		userId: string,
+		threadId: string,
+		options?: { allowNew?: boolean },
+	): Promise<void> {
+		const ownership = await this.memoryService.checkThreadOwnership(userId, threadId);
+		if (ownership === 'other_user') {
+			throw new ForbiddenError('Not authorized for this thread');
+		}
+		if (!options?.allowNew && ownership === 'not_found') {
+			throw new NotFoundError('Thread not found');
+		}
+	}
+
+	/** Verify the requesting user is an instance owner or admin. */
+	private assertAdmin(req: AuthenticatedRequest): void {
+		const slug = req.user.role?.slug;
+		if (slug !== 'global:owner' && slug !== 'global:admin') {
+			throw new ForbiddenError('Admin access required');
+		}
+	}
 
 	/**
 	 * Validate the gateway API key from query param or header.

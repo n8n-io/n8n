@@ -217,7 +217,7 @@ describe('sanitizeMcpToolSchemas', () => {
 				.inputSchema;
 
 			expect(resultSchema instanceof z.ZodRecord).toBe(true);
-			expect(resultSchema.safeParse({ any: 'value' }).success).toBe(true);
+			expect(resultSchema.safeParse({ key: 'value' }).success).toBe(true);
 		});
 
 		it('should fall back to z.record for top-level z.union([z.string(), z.number()])', () => {
@@ -229,7 +229,7 @@ describe('sanitizeMcpToolSchemas', () => {
 
 			// Non-object top-level → falls back to z.record(z.unknown())
 			expect(resultSchema instanceof z.ZodRecord).toBe(true);
-			expect(resultSchema.safeParse({ any: 'value' }).success).toBe(true);
+			expect(resultSchema.safeParse({ key: 'value' }).success).toBe(true);
 		});
 
 		it('should fall back to z.record for top-level z.string()', () => {

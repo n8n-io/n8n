@@ -29,8 +29,10 @@ export function createDeleteDataTableColumnTool(context: InstanceAiContext) {
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
 
-			// State 1: First call — suspend for confirmation
-			if (resumeData === undefined || resumeData === null) {
+			const needsApproval = context.permissions?.mutateDataTableSchema !== 'always_allow';
+
+			// State 1: First call — suspend for confirmation (unless always_allow)
+			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				await suspend?.({
 					requestId: nanoid(),
 					message: `Delete column "${input.columnId}" from data table "${input.dataTableId}"? All data in this column will be permanently lost.`,
@@ -40,11 +42,11 @@ export function createDeleteDataTableColumnTool(context: InstanceAiContext) {
 			}
 
 			// State 2: Denied
-			if (!resumeData.approved) {
+			if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 				return { success: false, denied: true, reason: 'User denied the action' };
 			}
 
-			// State 3: Approved — execute
+			// State 3: Approved or always_allow — execute
 			await context.dataTableService.deleteColumn(input.dataTableId, input.columnId);
 			return { success: true };
 		},

@@ -1,3 +1,5 @@
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+
 import type { InstanceAiContext } from '../../../types';
 import { createDeleteWorkflowTool } from '../delete-workflow.tool';
 
@@ -153,12 +155,8 @@ describe('createDeleteWorkflowTool', () => {
 		beforeEach(() => {
 			context = createMockContext({
 				permissions: {
+					...DEFAULT_INSTANCE_AI_PERMISSIONS,
 					deleteWorkflow: 'always_allow',
-					runWorkflow: 'require_approval',
-					activateWorkflow: 'require_approval',
-					deleteCredential: 'require_approval',
-					deleteFolder: 'require_approval',
-					cleanupTestExecutions: 'require_approval',
 				},
 			});
 		});

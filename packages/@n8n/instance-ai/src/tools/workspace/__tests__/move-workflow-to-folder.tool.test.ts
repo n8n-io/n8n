@@ -1,7 +1,9 @@
 import type { InstanceAiContext } from '../../../types';
 import { createMoveWorkflowToFolderTool } from '../move-workflow-to-folder.tool';
 
-function createMockContext(): InstanceAiContext {
+function createMockContext(
+	permissionOverrides?: InstanceAiContext['permissions'],
+): InstanceAiContext {
 	return {
 		userId: 'test-user',
 		workflowService: {} as InstanceAiContext['workflowService'],
@@ -20,6 +22,7 @@ function createMockContext(): InstanceAiContext {
 			createTag: jest.fn(),
 			cleanupTestExecutions: jest.fn(),
 		},
+		permissions: permissionOverrides,
 	};
 }
 
@@ -40,7 +43,9 @@ describe('move-workflow-to-folder tool', () => {
 
 	describe('execute', () => {
 		it('moves workflow to folder', async () => {
-			const context = createMockContext();
+			const context = createMockContext({
+				moveWorkflowToFolder: 'always_allow',
+			} as InstanceAiContext['permissions']);
 			(context.workspaceService!.moveWorkflowToFolder as jest.Mock).mockResolvedValue(undefined);
 
 			const tool = createMoveWorkflowToFolderTool(context);
@@ -51,7 +56,9 @@ describe('move-workflow-to-folder tool', () => {
 		});
 
 		it('propagates errors when workflow not found', async () => {
-			const context = createMockContext();
+			const context = createMockContext({
+				moveWorkflowToFolder: 'always_allow',
+			} as InstanceAiContext['permissions']);
 			(context.workspaceService!.moveWorkflowToFolder as jest.Mock).mockRejectedValue(
 				new Error('Workflow wf-bad not found or not accessible'),
 			);

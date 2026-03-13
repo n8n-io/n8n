@@ -176,6 +176,7 @@ watch(
 	display: flex;
 	flex-direction: column;
 	z-index: 10;
+	overflow: hidden;
 }
 
 .header {
@@ -201,6 +202,7 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	flex: 1;
+	min-height: 0;
 	overflow-y: auto;
 }
 
@@ -209,6 +211,7 @@ watch(
 	border-radius: var(--radius--lg);
 	overflow: hidden;
 	cursor: pointer;
+	flex-shrink: 0;
 }
 
 .cardHeader {
@@ -260,6 +263,8 @@ watch(
 .expandedContent {
 	padding: 0 var(--spacing--sm) var(--spacing--2xs);
 	border-top: 1px solid var(--color--foreground--tint-2);
+	max-height: 300px;
+	overflow-y: auto;
 }
 
 .previewContainer {
