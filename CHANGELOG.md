@@ -1,3 +1,20 @@
+## [2.11.3](https://github.com/n8n-io/n8n/compare/n8n@2.11.2...n8n@2.11.3) (2026-03-13)
+
+
+### Bug Fixes
+
+* **core:** Fix entity import failing in Kubernetes due to ZIP self-inclusion and local header size placeholders (backport to release-candidate/2.11.x) ([#26822](https://github.com/n8n-io/n8n/issues/26822)) ([b528e25](https://github.com/n8n-io/n8n/commit/b528e2531653d5717711cd5b7f2be055eb657f05))
+* **core:** Fix task runner hanging when connection attempt fails (backport to release-candidate/2.11.x) ([#26929](https://github.com/n8n-io/n8n/issues/26929)) ([fc74077](https://github.com/n8n-io/n8n/commit/fc74077d32791640cdf25de4359b3348b629545f))
+* **editor:** Reduce fixed collection add button sizes (backport to release-candidate/2.11.x) ([#26762](https://github.com/n8n-io/n8n/issues/26762)) ([b8fb072](https://github.com/n8n-io/n8n/commit/b8fb0723014f28de027bed17d71324fe20726db1))
+* Fix segfault in arm64 image due to missing native addon (backport to release-candidate/2.11.x) ([#26869](https://github.com/n8n-io/n8n/issues/26869)) ([89922a9](https://github.com/n8n-io/n8n/commit/89922a937ce2928fc5d788a1f5513557243b34dc))
+
+
+### Features
+
+* Allow skipping foreignkey constraint disablement for imports (backport to release-candidate/2.11.x) ([#26884](https://github.com/n8n-io/n8n/issues/26884)) ([e17ef12](https://github.com/n8n-io/n8n/commit/e17ef12c477c6250b75309e3582a3ce295bb1a1f))
+
+
+
 ## [2.11.2](https://github.com/n8n-io/n8n/compare/n8n@2.11.1...n8n@2.11.2) (2026-03-09)
 
 
