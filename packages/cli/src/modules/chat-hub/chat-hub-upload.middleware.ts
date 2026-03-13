@@ -8,7 +8,7 @@ export class ChatHubUploadMiddleware {
 	private readonly upload: multer.Multer;
 
 	constructor(globalConfig: GlobalConfig) {
-		const maxFileSizeBytes = globalConfig.endpoints.payloadSizeMax * 1024 * 1024;
+		const maxFileSizeBytes = globalConfig.endpoints.formDataFileSizeMax * 1024 * 1024;
 		this.upload = multer({
 			storage: multer.diskStorage({}),
 			limits: { fileSize: maxFileSizeBytes },

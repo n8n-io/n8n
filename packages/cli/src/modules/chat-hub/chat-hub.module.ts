@@ -35,7 +35,7 @@ export class ChatHubModule implements ModuleInterface {
 			enabled,
 			providers,
 			semanticSearch,
-			agentUploadMaxSizeMb: Container.get(GlobalConfig).endpoints.payloadSizeMax,
+			agentUploadMaxSizeMb: Container.get(GlobalConfig).endpoints.formDataFileSizeMax,
 		};
 	}
 
