@@ -702,8 +702,7 @@ export class SourceControlImportService {
 				});
 			}
 
-			await this.saveOrUpdateWorkflowHistory(importedWorkflow, userId);
-
+			const savedVersionId = await this.saveOrUpdateWorkflowHistory(importedWorkflow, userId);
 			const localOwner = allSharedWorkflows.find(
 				(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
 			);
@@ -716,8 +715,17 @@ export class SourceControlImportService {
 				repository: this.sharedWorkflowRepository,
 			});
 
+			if (importedWorkflow.active && !savedVersionId) {
+				throw new UnexpectedError(
+					'Failed to create workflow history entry for new active version',
+					{
+						extra: { workflowId: importedWorkflow.id ?? 'new' },
+					},
+				);
+			}
+
 			await this.activateImportedWorkflowIfAlreadyActive(
-				{ existingWorkflow, importedWorkflow },
+				{ existingWorkflow, importedWorkflow, versionIdToActivate: savedVersionId! },
 				userId,
 			);
 
@@ -750,9 +758,11 @@ export class SourceControlImportService {
 		{
 			existingWorkflow,
 			importedWorkflow,
+			versionIdToActivate,
 		}: {
 			existingWorkflow?: WorkflowEntity;
 			importedWorkflow: IWorkflowToImport;
+			versionIdToActivate: string;
 		},
 		userId: string,
 	) {
@@ -776,23 +786,17 @@ export class SourceControlImportService {
 			// update the versionId of the workflow to match the imported workflow
 			await this.workflowRepository.update(
 				{ id: existingWorkflow.id },
-				{ versionId: importedWorkflow.versionId },
+				{
+					versionId: importedWorkflow.versionId,
+					...(didAdd ? { activeVersionId: versionIdToActivate } : {}),
+				},
 			);
-			if (didAdd) {
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId: existingWorkflow.id,
-					versionId: existingWorkflow.activeVersionId,
-					event: 'activated',
-					userId,
-				});
-			} else {
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId: existingWorkflow.id,
-					versionId: existingWorkflow.activeVersionId,
-					event: 'deactivated',
-					userId,
-				});
-			}
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId: existingWorkflow.id,
+				versionId: versionIdToActivate ?? existingWorkflow.activeVersionId,
+				event: didAdd ? 'activated' : 'deactivated',
+				userId,
+			});
 		}
 	}
 
@@ -1280,10 +1284,10 @@ export class SourceControlImportService {
 	private async saveOrUpdateWorkflowHistory(
 		importedWorkflow: IWorkflowToImport,
 		userId: string,
-	): Promise<void> {
+	): Promise<string | undefined> {
 		if (!importedWorkflow.versionId || !importedWorkflow.nodes || !importedWorkflow.connections) {
 			this.logger.debug('Skipping workflow history - missing versionId, nodes, or connections');
-			return;
+			return undefined;
 		}
 
 		// Fetch user for author info
@@ -1335,11 +1339,13 @@ export class SourceControlImportService {
 					importedWorkflow.id,
 				);
 			}
+			return importedWorkflow.versionId;
 		} catch (error) {
 			this.logger.error(
 				`Failed to save/update workflow history for workflow ${importedWorkflow.id}`,
 				{ error: ensureError(error) },
 			);
+			return undefined;
 		}
 	}
 }
