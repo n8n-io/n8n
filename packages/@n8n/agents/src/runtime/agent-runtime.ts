@@ -33,7 +33,16 @@ import { AgentMessageList, type SerializedMessageList } from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
 import { createModel } from './model-factory';
 import { RunStateManager, generateRunId } from './run-state';
-import { convertChunk, toTokenUsage } from './stream';
+import {
+	accumulateUsage,
+	applySubAgentUsage,
+	extractToolResults,
+	findToolName,
+	makeErrorStream,
+	makeToolResultMessage,
+	normalizeInput,
+} from './runtime-helpers';
+import { convertChunk } from './stream';
 import {
 	isAgentToolResult,
 	isSuspendedToolResult,
@@ -67,6 +76,45 @@ const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	inputIds: [],
 	responseIds: [],
 };
+
+/** Pending tool calls from a suspended run, passed into the loop to execute before the first LLM call. */
+interface PendingResume {
+	pendingToolCalls: Record<string, PendingToolCall>;
+	/** The tool call being resumed with new data. */
+	resumeToolCallId: string;
+	resumeData: unknown;
+	/** Message history for resolving tool names via findToolName(). */
+	messages: AgentDbMessage[];
+}
+
+type ToolCallOutcome =
+	| {
+			outcome: 'success';
+			toolEntry: ToolResultEntry;
+			subAgentUsage?: SubAgentUsage[];
+			customMessage?: AgentDbMessage;
+	  }
+	| { outcome: 'suspended'; payload: unknown };
+
+/** Per-iteration result yielded by iteratePendingToolCalls. */
+type PendingToolResult =
+	| {
+			type: 'success';
+			toolCallId: string;
+			toolName: string;
+			input: JSONValue;
+			toolEntry: ToolResultEntry;
+			subAgentUsage?: SubAgentUsage[];
+			customMessage?: AgentDbMessage;
+	  }
+	| {
+			type: 'suspended';
+			runId: string;
+			toolCallId: string;
+			toolName: string;
+			input: JSONValue;
+			payload: unknown;
+	  };
 
 /**
  * Core agent execution engine using the Vercel AI SDK directly.
@@ -117,19 +165,9 @@ export class AgentRuntime {
 
 	/** Non-streaming: run the full agent loop using generateText and return the final result. */
 	async generate(input: AgentMessage[] | string, options?: RunOptions): Promise<GenerateResult> {
-		this.eventBus.resetAbort();
-		this.updateState({
-			status: 'running',
-			resourceId: options?.resourceId ?? '',
-			threadId: options?.threadId ?? '',
-		});
-		this.eventBus.emit({ type: AgentEvent.AgentStart });
-
-		const normalizedInput = this.normalizeInput(input);
-
 		let list: AgentMessageList;
 		try {
-			list = await this.buildMessageList(normalizedInput, options);
+			list = await this.initRun(input, options);
 		} catch (error) {
 			this.updateState({ status: 'failed' });
 			this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
@@ -137,14 +175,8 @@ export class AgentRuntime {
 		}
 
 		try {
-			await this.ensureModelCost();
-			let result = await this.runGenerateLoop(list, options);
-			result.usage = this.applyCost(result.usage);
-			result.model = this.modelIdString;
-			result = this.applySubAgentUsage(result);
-			this.updateState({ status: 'success', messageList: list.serialize() });
-			this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: result.messages });
-			return result;
+			const rawResult = await this.runGenerateLoop(list, options);
+			return this.finalizeGenerate(rawResult, list);
 		} catch (error) {
 			const isAbort = this.eventBus.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
@@ -157,27 +189,16 @@ export class AgentRuntime {
 
 	/** Streaming: run the agent loop using streamText, yielding chunks in real time. */
 	async stream(input: AgentMessage[] | string, options?: RunOptions): Promise<StreamResult> {
-		this.eventBus.resetAbort();
-		this.updateState({
-			status: 'running',
-			resourceId: options?.resourceId ?? '',
-			threadId: options?.threadId ?? '',
-		});
-		this.eventBus.emit({ type: AgentEvent.AgentStart });
-		await this.ensureModelCost();
-
-		const normalizedInput = this.normalizeInput(input);
-
 		let list: AgentMessageList;
 		try {
-			list = await this.buildMessageList(normalizedInput, options);
+			list = await this.initRun(input, options);
 		} catch (error) {
 			const isAbort = this.eventBus.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
-			return this.makeErrorStream(error);
+			return makeErrorStream(error);
 		}
 
 		return this.startStreamLoop(list, options);
@@ -185,9 +206,8 @@ export class AgentRuntime {
 
 	/**
 	 * Resume a suspended tool call with arbitrary data.
-	 * Re-invokes the tool handler with `ctx.resumeData` populated, processes
-	 * any remaining pending tool calls, then continues the agent loop once
-	 * all tool calls for the turn are resolved.
+	 * Restores the suspended run state, passes pending tool calls into the loop
+	 * as pending tool calls, and delegates to the same generate/stream loop used for fresh runs.
 	 *
 	 * - `'generate'` — runs the generate loop after tool execution, returns `GenerateResult`.
 	 * - `'stream'` — runs the stream loop after tool execution, returns `StreamResult`.
@@ -211,95 +231,23 @@ export class AgentRuntime {
 			const state = await this.runState.resume(options.runId);
 			if (!state) throw new Error(`No suspended run found for runId: ${options.runId}`);
 
-			const pending = this.resolvePending(state, options.toolCallId);
-			const toolMap = buildToolMap(this.config.tools);
-			const toolName = this.findToolName(pending.toolCallId, state.messageList.messages);
-
 			const list = AgentMessageList.deserialize(state.messageList);
-			const initialChunks: StreamChunk[] = [];
-			const resumeToolCallSummary: ToolResultEntry[] = [];
-			const resumeSubAgentUsage: SubAgentUsage[] = [];
-
-			const result = await this.executeAndRecordToolCall(
-				pending,
-				toolName,
-				toolMap,
-				list,
-				initialChunks,
-				data,
-			);
-
-			if (result.suspended) {
-				const remainingPending = { ...state.pendingToolCalls };
-				return await this.suspendRun(
-					method,
-					state,
-					remainingPending,
-					toolName,
-					result.suspendPayload,
-					list,
-				);
-			}
-
-			if (result.toolEntry) {
-				resumeToolCallSummary.push(result.toolEntry);
-			}
-			if (result.subAgentUsage) {
-				resumeSubAgentUsage.push(...result.subAgentUsage);
-			}
-
-			// Remove the resolved tool call and process remaining pending ones
-			const remainingPending = { ...state.pendingToolCalls };
-			delete remainingPending[pending.toolCallId];
-
-			const remainingResult = await this.processRemainingPendingToolCalls(
-				remainingPending,
-				toolMap,
-				list,
-				state,
-				initialChunks,
-			);
-
-			for (const entry of remainingResult.toolEntries) {
-				resumeToolCallSummary.push(entry);
-			}
-			resumeSubAgentUsage.push(...remainingResult.subAgentUsage);
-
-			if (remainingResult.suspended) {
-				return await this.suspendRun(
-					method,
-					state,
-					remainingResult.remainingPending ?? {},
-					remainingResult.suspendedToolName ?? '',
-					remainingResult.suspendPayload,
-					list,
-				);
-			}
-
 			const resumeOptions: RunOptions = { resourceId: state.resourceId, threadId: state.threadId };
+			const pendingResume: PendingResume = {
+				pendingToolCalls: state.pendingToolCalls,
+				resumeToolCallId: options.toolCallId,
+				resumeData: data,
+				messages: state.messageList.messages,
+			};
+
+			await this.ensureModelCost();
 
 			if (method === 'generate') {
-				await this.ensureModelCost();
-				const genResult = await this.runGenerateLoop(list, resumeOptions);
-				genResult.usage = this.applyCost(genResult.usage);
-				genResult.model = this.modelIdString;
-				// Merge sub-agent usage from resume + generate loop
-				const allSubAgentUsage = [...resumeSubAgentUsage, ...(genResult.subAgentUsage ?? [])];
-				if (allSubAgentUsage.length > 0) {
-					genResult.subAgentUsage = allSubAgentUsage;
-				}
-				let finalResult = this.applySubAgentUsage(genResult);
-				this.updateState({ status: 'success', messageList: list.serialize() });
-				this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: finalResult.messages });
-				const allToolCalls = [...resumeToolCallSummary, ...(finalResult.toolCalls ?? [])];
-				finalResult = {
-					...finalResult,
-					...(allToolCalls.length > 0 && { toolCalls: allToolCalls }),
-				};
-				return finalResult;
+				const rawResult = await this.runGenerateLoop(list, resumeOptions, pendingResume);
+				return this.finalizeGenerate(rawResult, list);
 			}
 
-			return this.startStreamLoop(list, resumeOptions, initialChunks);
+			return this.startStreamLoop(list, resumeOptions, pendingResume);
 		} catch (error) {
 			const isAbort = this.eventBus.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
@@ -309,231 +257,11 @@ export class AgentRuntime {
 			if (method === 'generate') {
 				return { messages: [], finishReason: 'error', error };
 			}
-			return this.makeErrorStream(error);
+			return makeErrorStream(error);
 		}
-	}
-
-	/**
-	 * Execute a single tool call, emit events, record the result in the
-	 * message list and initialChunks (for streaming). Returns whether the
-	 * tool suspended.
-	 */
-	private async executeAndRecordToolCall(
-		pending: PendingToolCall,
-		toolName: string,
-		toolMap: Map<string, BuiltTool>,
-		list: AgentMessageList,
-		initialChunks: StreamChunk[],
-		resumeData?: unknown,
-	): Promise<{
-		suspended: boolean;
-		suspendPayload?: unknown;
-		toolEntry?: ToolResultEntry;
-		subAgentUsage?: SubAgentUsage[];
-	}> {
-		this.eventBus.emit({
-			type: AgentEvent.ToolExecutionStart,
-			toolCallId: pending.toolCallId,
-			toolName,
-			args: pending.input,
-		});
-
-		let toolResult: unknown;
-		try {
-			toolResult = await executeTool(toolName, pending.input, toolMap, resumeData);
-		} catch (error) {
-			this.eventBus.emit({
-				type: AgentEvent.ToolExecutionEnd,
-				toolCallId: pending.toolCallId,
-				toolName,
-				result: error,
-				isError: true,
-			});
-			throw error;
-		}
-
-		if (isSuspendedToolResult(toolResult)) {
-			return { suspended: true, suspendPayload: toolResult.payload };
-		}
-
-		// Unwrap branded agent-tool results (from asTool)
-		let actualResult = toolResult;
-		let extractedSubAgentUsage: SubAgentUsage[] | undefined;
-		if (isAgentToolResult(toolResult)) {
-			actualResult = toolResult.output;
-			extractedSubAgentUsage = toolResult.subAgentUsage;
-		}
-
-		this.eventBus.emit({
-			type: AgentEvent.ToolExecutionEnd,
-			toolCallId: pending.toolCallId,
-			toolName,
-			result: actualResult,
-			isError: false,
-		});
-
-		const toolResultMsg = this.makeToolResultMessage(pending.toolCallId, toolName, actualResult);
-		list.addResponse(fromAiMessages([toolResultMsg]));
-
-		initialChunks.push({
-			type: 'message',
-			message: {
-				role: 'tool',
-				content: [
-					{
-						type: 'tool-result',
-						toolCallId: pending.toolCallId,
-						toolName,
-						result: actualResult as JSONValue,
-						input: pending.input,
-					},
-				],
-			},
-		});
-
-		const builtTool = toolMap.get(toolName);
-		const customToolMessage = builtTool?.toMessage?.(actualResult);
-		if (customToolMessage) {
-			const dbCustomToolMessage = toDbMessage(customToolMessage);
-			list.addResponse([dbCustomToolMessage]);
-			initialChunks.push({ type: 'message', message: dbCustomToolMessage });
-		}
-
-		return {
-			suspended: false,
-			toolEntry: { tool: toolName, input: pending.input, output: actualResult },
-			subAgentUsage: extractedSubAgentUsage,
-		};
-	}
-
-	/**
-	 * Process remaining pending tool calls (first invocations, no resume data).
-	 * Executes them one by one; stops and returns early if any tool suspends.
-	 */
-	private async processRemainingPendingToolCalls(
-		pendingToolCalls: Record<string, PendingToolCall>,
-		toolMap: Map<string, BuiltTool>,
-		list: AgentMessageList,
-		state: SerializableAgentState,
-		initialChunks: StreamChunk[],
-	): Promise<{
-		suspended: boolean;
-		suspendedToolName?: string;
-		suspendPayload?: unknown;
-		remainingPending?: Record<string, PendingToolCall>;
-		toolEntries: ToolResultEntry[];
-		subAgentUsage: SubAgentUsage[];
-	}> {
-		const toolCallIds = Object.keys(pendingToolCalls);
-		const toolEntries: ToolResultEntry[] = [];
-		const subAgentUsage: SubAgentUsage[] = [];
-
-		for (let i = 0; i < toolCallIds.length; i++) {
-			const tcId = toolCallIds[i];
-			const pending = pendingToolCalls[tcId];
-			const toolName = this.findToolName(tcId, state.messageList.messages);
-
-			const result = await this.executeAndRecordToolCall(
-				pending,
-				toolName,
-				toolMap,
-				list,
-				initialChunks,
-			);
-
-			if (result.suspended) {
-				const remaining: Record<string, PendingToolCall> = {};
-				for (let j = i; j < toolCallIds.length; j++) {
-					remaining[toolCallIds[j]] = pendingToolCalls[toolCallIds[j]];
-				}
-				return {
-					suspended: true,
-					suspendedToolName: toolName,
-					suspendPayload: result.suspendPayload,
-					remainingPending: remaining,
-					toolEntries,
-					subAgentUsage,
-				};
-			}
-
-			if (result.toolEntry) {
-				toolEntries.push(result.toolEntry);
-			}
-			if (result.subAgentUsage) {
-				subAgentUsage.push(...result.subAgentUsage);
-			}
-		}
-
-		return { suspended: false, toolEntries, subAgentUsage };
-	}
-
-	/**
-	 * Save the run as suspended and return the appropriate result type.
-	 * Used both when a tool re-suspends during resume and when a remaining
-	 * pending tool call suspends for the first time.
-	 */
-	private async suspendRun(
-		method: 'generate' | 'stream',
-		state: SerializableAgentState,
-		pendingToolCalls: Record<string, PendingToolCall>,
-		toolName: string,
-		suspendPayload: unknown,
-		list: AgentMessageList,
-	): Promise<GenerateResult | StreamResult> {
-		const runId = generateRunId();
-		const toolCallId = Object.keys(pendingToolCalls)[0];
-		const pending = pendingToolCalls[toolCallId];
-		const suspendState: SerializableAgentState = {
-			resourceId: state.resourceId,
-			threadId: state.threadId,
-			status: 'suspended',
-			messageList: list.serialize(),
-			pendingToolCalls,
-			usage: state.usage,
-		};
-		await this.runState.suspend(runId, suspendState);
-		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
-
-		if (method === 'generate') {
-			return {
-				messages: list.responseDelta(),
-				finishReason: 'tool-calls',
-				usage: state.usage,
-				pendingSuspend: {
-					runId,
-					toolCallId: pending.toolCallId,
-					toolName,
-					input: pending.input,
-					suspendPayload,
-				},
-			};
-		}
-
-		return new ReadableStream<StreamChunk>({
-			start(controller) {
-				controller.enqueue({
-					type: 'tool-call-suspended',
-					runId,
-					toolCallId: pending.toolCallId,
-					toolName,
-					input: pending.input,
-					suspendPayload,
-				});
-				controller.enqueue({ type: 'finish', finishReason: 'tool-calls' });
-				controller.close();
-			},
-		});
 	}
 
 	// --- Private ---
-
-	/** Normalize a string input to an AgentDbMessage array, assigning ids where missing. */
-	private normalizeInput(input: AgentMessage[] | string): AgentDbMessage[] {
-		if (typeof input === 'string') {
-			return [toDbMessage({ role: 'user', content: [{ type: 'text', text: input }] })];
-		}
-		return input.map(toDbMessage);
-	}
 
 	/**
 	 * Build an AgentMessageList for the current turn:
@@ -561,14 +289,51 @@ export class AgentRuntime {
 	}
 
 	/**
+	 * Common setup for generate() and stream(): reset abort state, transition to running,
+	 * emit AgentStart, fetch model cost, normalize input, and build the message list.
+	 * Throws if buildMessageList fails; callers catch and handle the error.
+	 */
+	private async initRun(
+		input: AgentMessage[] | string,
+		options?: RunOptions,
+	): Promise<AgentMessageList> {
+		this.eventBus.resetAbort();
+		this.updateState({
+			status: 'running',
+			resourceId: options?.resourceId ?? '',
+			threadId: options?.threadId ?? '',
+		});
+		this.eventBus.emit({ type: AgentEvent.AgentStart });
+		await this.ensureModelCost();
+		const normalizedInput = normalizeInput(input);
+		return await this.buildMessageList(normalizedInput, options);
+	}
+
+	/**
+	 * Post-loop finalization for generate: apply cost, set model id, roll up sub-agent usage,
+	 * transition to success, and emit AgentEnd. Returns the finalized result.
+	 */
+	private finalizeGenerate(result: GenerateResult, list: AgentMessageList): GenerateResult {
+		result.usage = this.applyCost(result.usage);
+		result.model = this.modelIdString;
+		const finalized = applySubAgentUsage(result);
+		this.updateState({ status: 'success', messageList: list.serialize() });
+		this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: finalized.messages });
+		return finalized;
+	}
+
+	/**
 	 * Core generate loop using generateText (non-streaming).
 	 *
 	 * @param list - Message list for this turn. Grows during the loop via addResponse().
 	 * @param options - Run options for memory persistence.
+	 * @param pendingResume - When resuming a suspended run, contains the pending tool calls
+	 *   to execute before the first LLM call.
 	 */
 	private async runGenerateLoop(
 		list: AgentMessageList,
 		options: RunOptions | undefined,
+		pendingResume?: PendingResume,
 	): Promise<GenerateResult> {
 		const { model, toolMap, aiTools, providerOptions, hasTools } = this.buildLoopContext();
 
@@ -576,6 +341,34 @@ export class AgentRuntime {
 		let lastFinishReason: FinishReason = 'stop';
 		const toolCallSummary: ToolResultEntry[] = [];
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
+
+		// Resolve pending tool calls from a resumed run before the first LLM call.
+		if (pendingResume) {
+			for await (const result of this.iteratePendingToolCalls(
+				pendingResume,
+				toolMap,
+				list,
+				options,
+				totalUsage,
+			)) {
+				if (result.type === 'suspended') {
+					return {
+						messages: list.responseDelta(),
+						finishReason: 'tool-calls',
+						usage: totalUsage,
+						pendingSuspend: {
+							runId: result.runId,
+							toolCallId: result.toolCallId,
+							toolName: result.toolName,
+							input: result.input,
+							suspendPayload: result.payload,
+						},
+					};
+				}
+				toolCallSummary.push(result.toolEntry);
+				if (result.subAgentUsage) collectedSubAgentUsage.push(...result.subAgentUsage);
+			}
+		}
 
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		for (let i = 0; i < maxIterations; i++) {
@@ -597,10 +390,9 @@ export class AgentRuntime {
 			});
 
 			const aiFinishReason = result.finishReason;
-			const finishReason = fromAiFinishReason(aiFinishReason);
-			lastFinishReason = finishReason;
+			lastFinishReason = fromAiFinishReason(aiFinishReason);
 
-			totalUsage = this.accumulateUsage(
+			totalUsage = accumulateUsage(
 				totalUsage,
 				result.usage as { inputTokens?: number; outputTokens?: number; totalTokens?: number },
 			);
@@ -610,99 +402,41 @@ export class AgentRuntime {
 			list.addResponse(newMessages);
 
 			if (aiFinishReason !== 'tool-calls') {
-				this.emitTurnEnd(newMessages, this.extractToolResults(newMessages));
+				this.emitTurnEnd(newMessages, extractToolResults(newMessages));
 				break;
 			}
 
-			// Process tool calls sequentially. Interruptible tools (with suspend/resume)
-			// return a branded SuspendedToolResult from their handler.
-			// When that happens, execution halts and the run is suspended.
-			// Provider-executed tool calls are skipped — they run on the provider's
-			// infrastructure and cannot be interrupted (no HITL).
-			for (let tcIdx = 0; tcIdx < result.toolCalls.length; tcIdx++) {
-				const tc = result.toolCalls[tcIdx];
-				if (tc.providerExecuted) continue;
-
-				const toolInput = tc.input as JSONValue;
-
+			for await (const tcResult of this.iterateToolCalls(
+				result.toolCalls,
+				toolMap,
+				list,
+				options,
+				totalUsage,
+			)) {
 				if (this.eventBus.isAborted) {
 					this.updateState({ status: 'cancelled' });
 					throw new Error('Agent run was aborted');
 				}
-
-				this.eventBus.emit({
-					type: AgentEvent.ToolExecutionStart,
-					toolCallId: tc.toolCallId,
-					toolName: tc.toolName,
-					args: toolInput,
-				});
-
-				let toolResult: unknown;
-				try {
-					toolResult = await executeTool(tc.toolName, toolInput, toolMap);
-				} catch (error) {
-					this.eventBus.emit({
-						type: AgentEvent.ToolExecutionEnd,
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						result: error,
-						isError: true,
-					});
-					throw error;
-				}
-
-				if (isSuspendedToolResult(toolResult)) {
-					// Capture this + ALL remaining tool calls so none are lost
-					const { runId } = await this.suspendRunFromToolCalls(
-						result.toolCalls,
-						tcIdx,
-						options,
-						list,
-						totalUsage,
-					);
+				if (tcResult.type === 'suspended') {
 					return {
 						messages: list.responseDelta(),
 						finishReason: 'tool-calls',
 						usage: totalUsage,
 						pendingSuspend: {
-							runId,
-							toolCallId: tc.toolCallId,
-							toolName: tc.toolName,
-							input: toolInput,
-							suspendPayload: toolResult.payload,
+							runId: tcResult.runId,
+							toolCallId: tcResult.toolCallId,
+							toolName: tcResult.toolName,
+							input: tcResult.input,
+							suspendPayload: tcResult.payload,
 						},
 					};
 				}
-
-				// Unwrap branded agent-tool results (from asTool) to extract sub-agent usage
-				let actualResult = toolResult;
-				if (isAgentToolResult(toolResult)) {
-					actualResult = toolResult.output;
-					collectedSubAgentUsage.push(...toolResult.subAgentUsage);
-				}
-
-				this.eventBus.emit({
-					type: AgentEvent.ToolExecutionEnd,
-					toolCallId: tc.toolCallId,
-					toolName: tc.toolName,
-					result: actualResult,
-					isError: false,
-				});
-
-				toolCallSummary.push({ tool: tc.toolName, input: toolInput, output: actualResult });
-
-				const toolResultMsg = this.makeToolResultMessage(tc.toolCallId, tc.toolName, actualResult);
-				list.addResponse(fromAiMessages([toolResultMsg]));
-
-				const builtTool = toolMap.get(tc.toolName);
-				const customToolMessage = builtTool?.toMessage?.(actualResult);
-				if (customToolMessage) {
-					list.addResponse([toDbMessage(customToolMessage)]);
-				}
+				toolCallSummary.push(tcResult.toolEntry);
+				if (tcResult.subAgentUsage) collectedSubAgentUsage.push(...tcResult.subAgentUsage);
 			}
 
 			// Emit TurnEnd after all tool calls in this iteration are processed
-			this.emitTurnEnd(newMessages, this.extractToolResults(list.responseDelta()));
+			this.emitTurnEnd(newMessages, extractToolResults(list.responseDelta()));
 		}
 
 		if (lastFinishReason === 'tool-calls') {
@@ -726,27 +460,18 @@ export class AgentRuntime {
 	 * Wire up the external StreamResult and start the stream loop asynchronously.
 	 * Returns the readable side immediately; the loop runs in the background.
 	 *
-	 * @param initialChunks - Optional chunks to emit before the LLM stream starts.
-	 *   Used when resuming after tool approval to emit the tool-result chunk first.
+	 * @param pendingResume - When resuming a suspended run, contains the pending tool calls
+	 *   to execute before the first LLM stream starts.
 	 */
 	private startStreamLoop(
 		list: AgentMessageList,
 		options: RunOptions | undefined,
-		initialChunks?: StreamChunk[],
+		pendingResume?: PendingResume,
 	): StreamResult {
 		const { readable, writable } = new TransformStream<StreamChunk, StreamChunk>();
 		const writer = writable.getWriter();
 
-		const run = async () => {
-			if (initialChunks) {
-				for (const chunk of initialChunks) {
-					await writer.write(chunk);
-				}
-			}
-			await this.runStreamLoop(list, options, writer);
-		};
-
-		run().catch(async (error: unknown) => {
+		this.runStreamLoop(list, options, writer, pendingResume).catch(async (error: unknown) => {
 			// Unexpected error that escaped runStreamLoop — write error chunks and close cleanly
 			// so consumers always receive a well-formed stream rather than a thrown error.
 			try {
@@ -769,11 +494,14 @@ export class AgentRuntime {
 	 * @param list - Message list for this turn. Grows during the loop via addResponse().
 	 * @param options - Run options for memory persistence.
 	 * @param writer - Stream writer to emit StreamChunks to the consumer.
+	 * @param pendingResume - When resuming a suspended run, contains the pending tool calls
+	 *   to execute before the first LLM call.
 	 */
 	private async runStreamLoop(
 		list: AgentMessageList,
 		options: RunOptions | undefined,
 		writer: WritableStreamDefaultWriter<StreamChunk>,
+		pendingResume?: PendingResume,
 	): Promise<void> {
 		const { model, toolMap, aiTools, providerOptions, hasTools } = this.buildLoopContext();
 
@@ -794,6 +522,56 @@ export class AgentRuntime {
 			await closeStreamWithError(new Error('Agent run was aborted'), 'cancelled');
 			return true;
 		};
+
+		// Resolve pending tool calls from a resumed run before the first LLM call.
+		if (pendingResume) {
+			try {
+				for await (const result of this.iteratePendingToolCalls(
+					pendingResume,
+					toolMap,
+					list,
+					options,
+					totalUsage,
+				)) {
+					if (result.type === 'suspended') {
+						await writer.write({
+							type: 'tool-call-suspended',
+							runId: result.runId,
+							toolCallId: result.toolCallId,
+							toolName: result.toolName,
+							input: result.input,
+							suspendPayload: result.payload,
+						});
+						await writer.write({ type: 'finish', finishReason: 'tool-calls' });
+						await writer.close();
+						return;
+					}
+					if (result.subAgentUsage) collectedSubAgentUsage.push(...result.subAgentUsage);
+					await writer.write({
+						type: 'message',
+						message: {
+							role: 'tool',
+							content: [
+								{
+									type: 'tool-result',
+									toolCallId: result.toolCallId,
+									toolName: result.toolName,
+									result: result.toolEntry.output as JSONValue,
+									input: result.input,
+								},
+							],
+						},
+					});
+					if (result.customMessage) {
+						await writer.write({ type: 'message', message: result.customMessage });
+					}
+				}
+			} catch (error) {
+				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
+				await closeStreamWithError(error, 'failed');
+				return;
+			}
+		}
 
 		for (let i = 0; i < maxIterations; i++) {
 			if (await handleAbort()) return;
@@ -839,7 +617,7 @@ export class AgentRuntime {
 
 			lastFinishReason = fromAiFinishReason(aiFinishReason);
 
-			totalUsage = this.accumulateUsage(
+			totalUsage = accumulateUsage(
 				totalUsage,
 				usage as { inputTokens?: number; outputTokens?: number; totalTokens?: number },
 			);
@@ -849,119 +627,63 @@ export class AgentRuntime {
 			list.addResponse(newMessages);
 
 			if (aiFinishReason !== 'tool-calls') {
-				this.emitTurnEnd(newMessages, this.extractToolResults(newMessages));
+				this.emitTurnEnd(newMessages, extractToolResults(newMessages));
 				break;
 			}
 
 			const toolCalls = await result.toolCalls;
 
-			for (let tcIdx = 0; tcIdx < toolCalls.length; tcIdx++) {
-				const tc = toolCalls[tcIdx];
-				// Provider-executed tool calls are skipped — they run on the provider's
-				// infrastructure and cannot be interrupted (no HITL).
-				if (tc.providerExecuted) continue;
-
-				const toolInput = tc.input as JSONValue;
-
-				if (await handleAbort()) return;
-
-				this.eventBus.emit({
-					type: AgentEvent.ToolExecutionStart,
-					toolCallId: tc.toolCallId,
-					toolName: tc.toolName,
-					args: toolInput,
-				});
-
-				let toolResult: unknown;
-				try {
-					toolResult = await executeTool(tc.toolName, toolInput, toolMap);
-				} catch (error) {
-					this.eventBus.emit({
-						type: AgentEvent.ToolExecutionEnd,
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						result: error,
-						isError: true,
-					});
-					this.eventBus.emit({
-						type: AgentEvent.Error,
-						message: String(error),
-						error,
-					});
-					await closeStreamWithError(error, 'failed');
-					return;
-				}
-
-				if (isSuspendedToolResult(toolResult)) {
-					// Capture this + ALL remaining tool calls so none are lost
-					const { runId } = await this.suspendRunFromToolCalls(
-						toolCalls,
-						tcIdx,
-						options,
-						list,
-						totalUsage,
-					);
-
+			try {
+				for await (const tcResult of this.iterateToolCalls(
+					toolCalls,
+					toolMap,
+					list,
+					options,
+					totalUsage,
+				)) {
+					if (await handleAbort()) return;
+					if (tcResult.type === 'suspended') {
+						await writer.write({
+							type: 'tool-call-suspended',
+							runId: tcResult.runId,
+							toolCallId: tcResult.toolCallId,
+							toolName: tcResult.toolName,
+							input: tcResult.input,
+							suspendPayload: tcResult.payload,
+						});
+						// Emit finish and close — consumer calls resume() to continue
+						await writer.write({ type: 'finish', finishReason: 'tool-calls' });
+						await writer.close();
+						return;
+					}
+					if (tcResult.subAgentUsage) collectedSubAgentUsage.push(...tcResult.subAgentUsage);
 					await writer.write({
-						type: 'tool-call-suspended',
-						runId,
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: toolInput,
-						suspendPayload: toolResult.payload,
+						type: 'message',
+						message: {
+							role: 'tool',
+							content: [
+								{
+									type: 'tool-result',
+									toolCallId: tcResult.toolCallId,
+									toolName: tcResult.toolName,
+									result: tcResult.toolEntry.output as JSONValue,
+									input: tcResult.input,
+								},
+							],
+						},
 					});
-
-					// Emit finish and close — consumer calls resume() to continue
-					await writer.write({ type: 'finish', finishReason: 'tool-calls' });
-					await writer.close();
-					return;
+					if (tcResult.customMessage) {
+						await writer.write({ type: 'message', message: tcResult.customMessage });
+					}
 				}
-
-				// Unwrap branded agent-tool results (from asTool)
-				let actualResult = toolResult;
-				if (isAgentToolResult(toolResult)) {
-					actualResult = toolResult.output;
-					collectedSubAgentUsage.push(...toolResult.subAgentUsage);
-				}
-
-				this.eventBus.emit({
-					type: AgentEvent.ToolExecutionEnd,
-					toolCallId: tc.toolCallId,
-					toolName: tc.toolName,
-					result: actualResult,
-					isError: false,
-				});
-
-				const toolResultMsg = this.makeToolResultMessage(tc.toolCallId, tc.toolName, actualResult);
-				list.addResponse(fromAiMessages([toolResultMsg]));
-
-				await writer.write({
-					type: 'message',
-					message: {
-						role: 'tool',
-						content: [
-							{
-								type: 'tool-result',
-								toolCallId: tc.toolCallId,
-								toolName: tc.toolName,
-								result: actualResult as JSONValue,
-								input: toolInput,
-							},
-						],
-					},
-				});
-
-				const builtTool = toolMap.get(tc.toolName);
-				const customToolMessage = builtTool?.toMessage?.(actualResult);
-				if (customToolMessage) {
-					const dbCustomToolMessage = toDbMessage(customToolMessage);
-					list.addResponse([dbCustomToolMessage]);
-					await writer.write({ type: 'message', message: dbCustomToolMessage });
-				}
+			} catch (error) {
+				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
+				await closeStreamWithError(error, 'failed');
+				return;
 			}
 
 			// Emit TurnEnd after all tool calls in this iteration are processed
-			this.emitTurnEnd(newMessages, this.extractToolResults(list.responseDelta()));
+			this.emitTurnEnd(newMessages, extractToolResults(list.responseDelta()));
 		}
 
 		const costUsage = this.applyCost(totalUsage);
@@ -1043,79 +765,214 @@ export class AgentRuntime {
 		}
 	}
 
-	/** Accumulate token usage across loop iterations. */
-	private mergeUsage(
-		current: TokenUsage | undefined,
-		next: TokenUsage | undefined,
-	): TokenUsage | undefined {
-		if (!next) return current;
-		if (!current) return next;
-		return {
-			promptTokens: current.promptTokens + next.promptTokens,
-			completionTokens: current.completionTokens + next.completionTokens,
-			totalTokens: current.totalTokens + next.totalTokens,
-		};
+	/**
+	/**
+	 * Iterate over all pending tool calls from a suspended run, execute each one,
+	 * and yield a typed result per call. Callers handle delivery (return values or stream
+	 * chunks) while this method owns: findToolName, processToolCall, building the
+	 * remaining-pending map, and persistSuspension.
+	 *
+	 * Errors from processToolCall propagate out of the generator so each caller can handle
+	 * them in its own way (re-throw for generate, write error chunks for stream).
+	 *
+	 * Yields `{ type: 'suspended' }` for the suspended call then stops. Yields
+	 * `{ type: 'success' }` for each completed call.
+	 */
+	private async *iteratePendingToolCalls(
+		pendingResume: PendingResume,
+		toolMap: Map<string, BuiltTool>,
+		list: AgentMessageList,
+		options: RunOptions | undefined,
+		totalUsage: TokenUsage | undefined,
+	): AsyncGenerator<PendingToolResult> {
+		const pendingIds = Object.keys(pendingResume.pendingToolCalls);
+		for (let i = 0; i < pendingIds.length; i++) {
+			const tcId = pendingIds[i];
+			const pending = pendingResume.pendingToolCalls[tcId];
+			const toolName = findToolName(tcId, pendingResume.messages);
+			const resumeData =
+				tcId === pendingResume.resumeToolCallId ? pendingResume.resumeData : undefined;
+
+			const processResult = await this.processToolCall(
+				pending.toolCallId,
+				toolName,
+				pending.input,
+				toolMap,
+				list,
+				resumeData,
+			);
+
+			if (processResult.outcome === 'suspended') {
+				const remainingPending: Record<string, PendingToolCall> = {};
+				for (let j = i; j < pendingIds.length; j++) {
+					remainingPending[pendingIds[j]] = pendingResume.pendingToolCalls[pendingIds[j]];
+				}
+				const runId = await this.persistSuspension(remainingPending, options, list, totalUsage);
+				yield {
+					type: 'suspended',
+					runId,
+					toolCallId: pending.toolCallId,
+					toolName,
+					input: pending.input,
+					payload: processResult.payload,
+				};
+				return;
+			}
+
+			yield {
+				type: 'success',
+				toolCallId: pending.toolCallId,
+				toolName,
+				input: pending.input,
+				toolEntry: processResult.toolEntry,
+				subAgentUsage: processResult.subAgentUsage,
+				customMessage: processResult.customMessage,
+			};
+		}
 	}
 
-	/** Build an AI SDK tool ModelMessage for a tool execution result. */
-	private makeToolResultMessage(
+	/**
+	 * Iterate over tool calls returned by a single LLM turn, execute each one sequentially,
+	 * and yield a typed result per call. Provider-executed calls are skipped.
+	 * Callers handle delivery (return values or stream chunks) while this method owns:
+	 * processToolCall, suspendRunFromToolCalls, and suspension detection.
+	 *
+	 * Interruptible tools return a branded SuspendedToolResult. When that happens this
+	 * generator yields `{ type: 'suspended' }` and stops so the caller can halt the run.
+	 *
+	 * Errors from processToolCall propagate out of the generator so each caller can handle
+	 * them in its own way (re-throw for generate, write error chunks for stream).
+	 */
+	private async *iterateToolCalls(
+		toolCalls: Array<{
+			toolCallId: string;
+			toolName: string;
+			input: unknown;
+			providerExecuted?: boolean;
+		}>,
+		toolMap: Map<string, BuiltTool>,
+		list: AgentMessageList,
+		options: RunOptions | undefined,
+		totalUsage: TokenUsage | undefined,
+	): AsyncGenerator<PendingToolResult> {
+		for (let tcIdx = 0; tcIdx < toolCalls.length; tcIdx++) {
+			const tc = toolCalls[tcIdx];
+			if (tc.providerExecuted) continue;
+
+			const toolInput = tc.input as JSONValue;
+
+			const processResult = await this.processToolCall(
+				tc.toolCallId,
+				tc.toolName,
+				toolInput,
+				toolMap,
+				list,
+			);
+
+			if (processResult.outcome === 'suspended') {
+				const { runId } = await this.suspendRunFromToolCalls(
+					toolCalls,
+					tcIdx,
+					options,
+					list,
+					totalUsage,
+				);
+				yield {
+					type: 'suspended',
+					runId,
+					toolCallId: tc.toolCallId,
+					toolName: tc.toolName,
+					input: toolInput,
+					payload: processResult.payload,
+				};
+				return;
+			}
+
+			yield {
+				type: 'success',
+				toolCallId: tc.toolCallId,
+				toolName: tc.toolName,
+				input: toolInput,
+				toolEntry: processResult.toolEntry,
+				subAgentUsage: processResult.subAgentUsage,
+				customMessage: processResult.customMessage,
+			};
+		}
+	}
+
+	/**
+	 * Execute a single tool call, emit lifecycle events, record the result in the
+	 * message list, and return the outcome. The caller is responsible for writing
+	 * any stream chunks and for handling suspension (building pendingToolCalls and
+	 * persisting state).
+	 *
+	 * On tool execution errors, emits ToolExecutionEnd with isError=true and re-throws.
+	 */
+	private async processToolCall(
 		toolCallId: string,
 		toolName: string,
-		result: unknown,
-	): ModelMessage {
-		return {
-			role: 'tool',
-			content: [
-				{
-					type: 'tool-result',
-					toolCallId,
-					toolName,
-					output: { type: 'json', value: result as JSONValue },
-				},
-			],
-		};
-	}
+		toolInput: JSONValue,
+		toolMap: Map<string, BuiltTool>,
+		list: AgentMessageList,
+		resumeData?: unknown,
+	): Promise<ToolCallOutcome> {
+		this.eventBus.emit({
+			type: AgentEvent.ToolExecutionStart,
+			toolCallId,
+			toolName,
+			args: toolInput,
+		});
 
-	/**
-	 * Find the tool name for a given toolCallId by scanning the message history.
-	 * Skips custom messages.
-	 */
-	private findToolName(toolCallId: string, messages: AgentDbMessage[]): string {
-		for (let i = messages.length - 1; i >= 0; i--) {
-			const msg = messages[i];
-			if (msg.type === 'custom') continue;
-			if (msg.role === 'assistant') {
-				for (const part of msg.content) {
-					if (part.type === 'tool-call' && part.toolCallId === toolCallId) {
-						return part.toolName;
-					}
-				}
-			}
+		let toolResult: unknown;
+		try {
+			toolResult = await executeTool(toolName, toolInput, toolMap, resumeData);
+		} catch (error) {
+			this.eventBus.emit({
+				type: AgentEvent.ToolExecutionEnd,
+				toolCallId,
+				toolName,
+				result: error,
+				isError: true,
+			});
+			throw error;
 		}
-		throw new Error(`Could not find tool name for toolCallId: ${toolCallId}`);
-	}
 
-	/** Resolve the pending tool call from state, using the given toolCallId or defaulting to the first. */
-	private resolvePending(state: SerializableAgentState, toolCallId?: string): PendingToolCall {
-		const pending = toolCallId
-			? state.pendingToolCalls[toolCallId]
-			: Object.values(state.pendingToolCalls)[0];
-		if (!pending) throw new Error('No pending tool call found in suspended state');
-		return pending;
-	}
+		if (isSuspendedToolResult(toolResult)) {
+			return { outcome: 'suspended', payload: toolResult.payload };
+		}
 
-	/**
-	 * Return a ReadableStream that immediately yields an error chunk followed by
-	 * a finish chunk. Used when setup errors prevent the normal stream loop from
-	 * starting, so callers always receive a well-formed stream.
-	 */
-	private makeErrorStream(error: unknown): StreamResult {
-		const { readable, writable } = new TransformStream<StreamChunk, StreamChunk>();
-		const writer = writable.getWriter();
-		writer.write({ type: 'error', error }).catch(() => {});
-		writer.write({ type: 'finish', finishReason: 'error' }).catch(() => {});
-		writer.close().catch(() => {});
-		return readable;
+		let actualResult = toolResult;
+		let extractedSubAgentUsage: SubAgentUsage[] | undefined;
+		if (isAgentToolResult(toolResult)) {
+			actualResult = toolResult.output;
+			extractedSubAgentUsage = toolResult.subAgentUsage;
+		}
+
+		this.eventBus.emit({
+			type: AgentEvent.ToolExecutionEnd,
+			toolCallId,
+			toolName,
+			result: actualResult,
+			isError: false,
+		});
+
+		const toolResultMsg = makeToolResultMessage(toolCallId, toolName, actualResult);
+		list.addResponse(fromAiMessages([toolResultMsg]));
+
+		const builtTool = toolMap.get(toolName);
+		const customToolMessage = builtTool?.toMessage?.(actualResult);
+		let customMessage: AgentDbMessage | undefined;
+		if (customToolMessage) {
+			customMessage = toDbMessage(customToolMessage);
+			list.addResponse([customMessage]);
+		}
+
+		return {
+			outcome: 'success',
+			toolEntry: { tool: toolName, input: toolInput, output: actualResult },
+			subAgentUsage: extractedSubAgentUsage,
+			customMessage,
+		};
 	}
 
 	/** Build common LLM call dependencies shared by both the generate and stream loops. */
@@ -1133,29 +990,17 @@ export class AgentRuntime {
 	}
 
 	/**
-	 * Build a pending-tool-calls map from the remaining entries in `toolCalls`
-	 * (starting at `fromIndex`), persist the suspended run, and update the
-	 * current state snapshot. Returns the new runId and pendingToolCalls map.
-	 * Provider-executed tool calls are excluded — they run on the provider's
-	 * infrastructure and cannot be resumed.
+	 * Persist a suspended run state and update the current state snapshot.
+	 * Returns the new runId. Used both when a tool suspends during a fresh run
+	 * (via suspendRunFromToolCalls) and when one suspends during pending tool call resolution.
 	 */
-	private async suspendRunFromToolCalls(
-		toolCalls: Array<{ toolCallId: string; input: unknown; providerExecuted?: boolean }>,
-		fromIndex: number,
+	private async persistSuspension(
+		pendingToolCalls: Record<string, PendingToolCall>,
 		options: RunOptions | undefined,
 		list: AgentMessageList,
 		totalUsage: TokenUsage | undefined,
-	): Promise<{ runId: string; pendingToolCalls: Record<string, PendingToolCall> }> {
+	): Promise<string> {
 		const runId = generateRunId();
-		const pendingToolCalls: Record<string, PendingToolCall> = {};
-		for (let j = fromIndex; j < toolCalls.length; j++) {
-			const tc = toolCalls[j];
-			if (tc.providerExecuted) continue;
-			pendingToolCalls[tc.toolCallId] = {
-				toolCallId: tc.toolCallId,
-				input: tc.input as JSONValue,
-			};
-		}
 		const state: SerializableAgentState = {
 			resourceId: options?.resourceId ?? '',
 			threadId: options?.threadId ?? '',
@@ -1166,14 +1011,34 @@ export class AgentRuntime {
 		};
 		await this.runState.suspend(runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
-		return { runId, pendingToolCalls };
+		return runId;
 	}
 
-	/** Extract all tool-result content parts from a flat list of agent messages. */
-	private extractToolResults(messages: AgentDbMessage[]): ContentToolResult[] {
-		return messages
-			.flatMap((m) => ('content' in m ? m.content : []))
-			.filter((c): c is ContentToolResult => c.type === 'tool-result');
+	/**
+	 * Build a pending-tool-calls map from the remaining entries in `toolCalls`
+	 * (starting at `fromIndex`), then delegate to persistSuspension().
+	 * Provider-executed tool calls are excluded — they run on the provider's
+	 * infrastructure and cannot be resumed.
+	 * Returns the new runId and pendingToolCalls map.
+	 */
+	private async suspendRunFromToolCalls(
+		toolCalls: Array<{ toolCallId: string; input: unknown; providerExecuted?: boolean }>,
+		fromIndex: number,
+		options: RunOptions | undefined,
+		list: AgentMessageList,
+		totalUsage: TokenUsage | undefined,
+	): Promise<{ runId: string; pendingToolCalls: Record<string, PendingToolCall> }> {
+		const pendingToolCalls: Record<string, PendingToolCall> = {};
+		for (let j = fromIndex; j < toolCalls.length; j++) {
+			const tc = toolCalls[j];
+			if (tc.providerExecuted) continue;
+			pendingToolCalls[tc.toolCallId] = {
+				toolCallId: tc.toolCallId,
+				input: tc.input as JSONValue,
+			};
+		}
+		const runId = await this.persistSuspension(pendingToolCalls, options, list, totalUsage);
+		return { runId, pendingToolCalls };
 	}
 
 	/** Emit a TurnEnd event when an assistant message is present in `newMessages`. */
@@ -1182,18 +1047,6 @@ export class AgentRuntime {
 		if (assistantMsg) {
 			this.eventBus.emit({ type: AgentEvent.TurnEnd, message: assistantMsg, toolResults });
 		}
-	}
-
-	/**
-	 * Accumulate token usage across loop iterations.
-	 * Wraps `mergeUsage` + `toTokenUsage` to keep call sites concise.
-	 */
-	private accumulateUsage(
-		current: TokenUsage | undefined,
-		raw: { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined,
-	): TokenUsage | undefined {
-		if (!raw) return current;
-		return this.mergeUsage(current, toTokenUsage(raw));
 	}
 
 	/** Patch the current state with partial updates. */
@@ -1221,15 +1074,5 @@ export class AgentRuntime {
 	private applyCost(usage: TokenUsage | undefined): TokenUsage | undefined {
 		if (!usage || !this.modelCost) return usage;
 		return { ...usage, cost: computeCost(usage, this.modelCost) };
-	}
-
-	/** Compute totalCost from sub-agent usage already present on the result. */
-	private applySubAgentUsage(result: GenerateResult): GenerateResult {
-		if (!result.subAgentUsage || result.subAgentUsage.length === 0) return result;
-
-		const parentCost = result.usage?.cost ?? 0;
-		const subCost = result.subAgentUsage.reduce((sum, s) => sum + (s.usage.cost ?? 0), 0);
-
-		return { ...result, totalCost: parentCost + subCost };
 	}
 }

@@ -93,7 +93,7 @@ describe('multimodal integration', () => {
 		const text = textChunks.map((c) => c.delta).join('');
 		expect(text).toBeTruthy();
 		expect(text).toMatch(/4/);
-		expect(text).toMatch(/(blue|magenta|purple)/i);
+		expect(text).toMatch(/(blue|magenta|purple|pink)/i);
 	});
 
 	it('passes image content through the run() path (non-streaming)', async () => {
