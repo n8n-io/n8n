@@ -128,7 +128,13 @@ export class ChatHubWorkflowService {
 				attachments,
 				credentials,
 				model,
-				systemMessage: systemMessage ?? this.getBaseSystemMessage(history, timeZone),
+				systemMessage:
+					systemMessage ??
+					this.getBaseSystemMessage(
+						history,
+						timeZone,
+						getModelMetadata(model.provider, model.model).capabilities.functionCalling,
+					),
 				tools,
 				vectorStoreSearch,
 				executionMetadata,
@@ -385,6 +391,10 @@ export class ChatHubWorkflowService {
 		const restoreMemoryNode = await this.buildRestoreMemoryNode(history, model);
 		const clearMemoryNode = this.buildClearMemoryNode();
 		const mergeNode = this.buildMergeNode();
+		const readArtifactToolNode = this.buildReadArtifactToolNode(
+			history,
+			getModelMetadata(model.provider, model.model).capabilities.functionCalling,
+		);
 
 		const nodes: INode[] = [
 			chatTriggerNode,
@@ -394,6 +404,7 @@ export class ChatHubWorkflowService {
 			restoreMemoryNode,
 			clearMemoryNode,
 			mergeNode,
+			...(readArtifactToolNode ? [readArtifactToolNode] : []),
 			...(vectorStoreSearch
 				? this.buildVectorStoreNodes(vectorStoreSearch.agentId, vectorStoreSearch.options)
 				: []),
@@ -478,6 +489,21 @@ export class ChatHubWorkflowService {
 
 				return acc;
 			}, {}),
+			...(readArtifactToolNode
+				? {
+						[NODE_NAMES.READ_ARTIFACT_TOOL]: {
+							[NodeConnectionTypes.AiTool]: [
+								[
+									{
+										node: NODE_NAMES.REPLY_AGENT,
+										type: NodeConnectionTypes.AiTool,
+										index: 0,
+									},
+								],
+							],
+						},
+					}
+				: {}),
 			...(vectorStoreSearch
 				? {
 						[NODE_NAMES.EMBEDDINGS_MODEL]: {
@@ -602,7 +628,7 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	getSystemMessageMetadata(timeZone: string, history: ChatHubMessage[]) {
+	getSystemMessageMetadata(timeZone: string, history: ChatHubMessage[], functionCalling = true) {
 		if (inE2ETests) {
 			return '__e2e_system_prompt_placeholder__';
 		}
@@ -623,85 +649,17 @@ When you need to reference "now", use this date and time.
 You are allowed to describe, explain and analyze provided multimedia data if you're capable of, but not allowed to create, generate, edit, or display images, videos, or other non-text content.
 If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.
 
-## Artifacts
-
-You can create and edit text-based artifacts for the user using special heredoc-style commands.
-When you use these commands, artifacts appear in a side panel next to this chat where users can view them in real-time.
-You can create multiple artifacts in a conversation, and users can switch between them using a dropdown selector.
-
-Write these commands DIRECTLY in your response at the start of a new line - do NOT wrap them in code fences or backticks.
-
-### Creating an Artifact
-
-To create a new artifact, write the opening command at the start of a new line, then the content, then the end token on its own line.
-Choose a short unique token after << that you are confident will not appear as its own line in the content (e.g. END_A7X, END_K9M — a few random uppercase letters after END_ works well).
-
-@@artifact-create title="Artifact Title" type="md" << END_XYZ
-Artifact content here...
-END_XYZ
-
-The type can be:
-- html for HTML artifacts
-- md for Markdown artifacts
-- A code language like typescript, python, json, etc. for code files
-
-Example response:
-> I'll create a sample response for you.
->
-> @@artifact-create title="Sample API response" type="json" << END_A7X
-> {
->   "statusText": "success"
-> }
-> END_A7X
->
-> Done. Let me know if you'd like any changes!
-
-### Editing an Artifact
-
-Use the command below:
-
-@@artifact-edit title="Artifact Title" replaceAll="false" << END_XYZ
-pattern to find
-@@sep
-replacement text
-END_XYZ
-
-- The text before @@sep is the exact pattern to find; the text after @@sep is the replacement.
-- Both pattern and replacement can span multiple lines.
-- title and pattern must match the exact title and occurrence of an existing artifact.
-- Set replaceAll to true to replace all occurrences, or false to replace only the first.
-- To replace different patterns, use the command multiple times.
-
-For the pattern, use the shortest unique substring that pinpoints the location — avoid copying large blocks from memory.
-The shorter and more distinctive the string, the less chance of a mismatch.
-If you are not confident you can reproduce the exact text, rewrite the whole artifact using @@artifact-create with the same title.
-
-Example:
-> I'll change the heading from "About Us" to "About Me".
->
-> @@artifact-edit title="Homepage Content" replaceAll="false" << END_K9M
-> <h2>About Us</h2>
-> @@sep
-> <h2>About Me</h2>
-> END_K9M
->
-> Done!
-
-### Important Note
-
-- Write these commands at the start of a new line in your response, NOT inside code blocks or fences.
-- ALWAYS include conversational text before and/or after artifact commands. Never send a message with only commands and no explanation.
-- Answer user's questions in chat by default. Create an artifact only when the user asked for a report, write-up or other artifacts that they might want to iterate on.
-- When creating an HTML, start with the markup and add styles at the end. JavaScript is not allowed.
-- Each new artifact must have a title that is unique within the conversation — do not reuse a title unless you intentionally want to replace that artifact entirely.
-
-${this.buildCurrentArtifactList(history)}`;
+${this.buildArtifactSection(history, functionCalling)}`;
 	}
 
-	private getBaseSystemMessage(history: ChatHubMessage[], timeZone: string) {
+	private getBaseSystemMessage(
+		history: ChatHubMessage[],
+		timeZone: string,
+		functionCalling = true,
+	) {
 		return `You are a helpful assistant.
 
-${this.getSystemMessageMetadata(timeZone, history)}`;
+${this.getSystemMessageMetadata(timeZone, history, functionCalling)}`;
 	}
 
 	private buildToolsAgentNode(
@@ -1308,7 +1266,11 @@ Respond the title only:`,
 
 		const systemMessage = [
 			'Combine provided tools and knowledge to answer questions.',
-			this.getSystemMessageMetadata(timeZone, history),
+			this.getSystemMessageMetadata(
+				timeZone,
+				history,
+				getModelMetadata(model.provider, model.model).capabilities.functionCalling,
+			),
 			this.buildCustomInstructionsContext(agent.systemPrompt),
 			this.buildFileKnowledgeContext(agent.files),
 		]
@@ -1483,6 +1445,86 @@ Use the vector store tool to search the content of these files when answering qu
 Do not proactively mention these files to the user.`;
 	}
 
+	private buildArtifactSection(history: ChatHubMessage[], functionCalling = true) {
+		if (!functionCalling) {
+			return '';
+		}
+
+		return `## Artifacts
+
+You can create and edit text-based artifacts for the user using special heredoc-style commands.
+When you use these commands, artifacts appear in a side panel next to this chat where users can view them in real-time.
+You can create multiple artifacts in a conversation, and users can switch between them using a dropdown selector.
+
+Write these commands DIRECTLY in your response at the start of a new line - do NOT wrap them in code fences or backticks.
+
+### Creating an Artifact
+
+To create a new artifact, write the opening command at the start of a new line, then the content, then the end token on its own line.
+Choose a short unique token after << that you are confident will not appear as its own line in the content (e.g. END_A7X, END_K9M — a few random uppercase letters after END_ works well).
+
+@@artifact-create title="Artifact Title" type="md" << END_XYZ
+Artifact content here...
+END_XYZ
+
+The type can be:
+- html for HTML artifacts
+- md for Markdown artifacts
+- A code language like typescript, python, json, etc. for code files
+
+Example response:
+> I'll create a sample response for you.
+>
+> @@artifact-create title="Sample API response" type="json" << END_A7X
+> {
+>   "statusText": "success"
+> }
+> END_A7X
+>
+> Done. Let me know if you'd like any changes!
+
+### Editing an Artifact
+
+Use the command below:
+
+@@artifact-edit title="Artifact Title" replaceAll="false" << END_XYZ
+pattern to find
+@@sep
+replacement text
+END_XYZ
+
+- The text before @@sep is the exact pattern to find; the text after @@sep is the replacement.
+- Both pattern and replacement can span multiple lines.
+- title and pattern must match the exact title and occurrence of an existing artifact.
+- Set replaceAll to true to replace all occurrences, or false to replace only the first.
+- To replace different patterns, use the command multiple times.
+
+For the pattern, use the shortest unique substring that pinpoints the location — avoid copying large blocks from memory.
+The shorter and more distinctive the string, the less chance of a mismatch.
+If you are not confident you can reproduce the exact text, rewrite the whole artifact using @@artifact-create with the same title.
+
+Example:
+> I'll change the heading from "About Us" to "About Me".
+>
+> @@artifact-edit title="Homepage Content" replaceAll="false" << END_K9M
+> <h2>About Us</h2>
+> @@sep
+> <h2>About Me</h2>
+> END_K9M
+>
+> Done!
+
+### Important Note
+
+- Write these commands at the start of a new line in your response, NOT inside code blocks or fences.
+- ALWAYS include conversational text before and/or after artifact commands. Never send a message with only commands and no explanation.
+- Answer user's questions in chat by default. Create an artifact only when the user asked for a report, write-up or other artifacts that they might want to iterate on.
+- When creating an HTML, start with the markup and add styles at the end. JavaScript is not allowed.
+- Each new artifact must have a title that is unique within the conversation — do not reuse a title unless you intentionally want to replace that artifact entirely.
+
+${this.buildCurrentArtifactList(history)}`;
+	}
+
 	private buildCurrentArtifactList(history: ChatHubMessage[]): string {
 		const artifacts = collectChatArtifacts(history.flatMap(parseMessage));
 		if (artifacts.length === 0) {
@@ -1490,16 +1532,13 @@ Do not proactively mention these files to the user.`;
 		}
 
 		// Multiple artifacts - show all of them
-		return artifacts
-			.map(
-				(artifact, index) => `
+		const items = artifacts.map((artifact) => `- ${artifact.title} `).join('\n');
 
-### Artifact ${index + 1}: ${artifact.title} (type: ${artifact.type})
+		return `### Artifacts in this conversation
 
-${artifact.content}
-`,
-			)
-			.join('\n');
+${items}
+
+Use read_artifact tool to read the latest content of each artifacts with all edits applied.`;
 	}
 
 	private buildVectorStoreNodes(agentId: string, options: SemanticSearchOptions): INode[] {
@@ -1561,6 +1600,57 @@ ${artifact.content}
 					name: '',
 				},
 			},
+		};
+	}
+
+	private buildReadArtifactToolNode(
+		history: ChatHubMessage[],
+		functionCalling = true,
+	): INode | null {
+		if (!functionCalling) {
+			return null;
+		}
+
+		const artifacts = collectChatArtifacts(history.flatMap(parseMessage));
+
+		if (artifacts.length === 0) {
+			return null;
+		}
+
+		const artifactsJson = JSON.stringify(artifacts);
+		const jsCode = `const artifacts = ${artifactsJson};
+const artifact = artifacts.find(a => a.title === query.title);
+if (!artifact) {
+  const titles = artifacts.map(a => a.title).join(', ');
+  return 'Artifact not found: ' + query.title + '. Available artifacts: ' + titles;
+}
+return artifact.content;`;
+
+		const inputSchema = JSON.stringify({
+			type: 'object',
+			properties: {
+				title: {
+					type: 'string',
+					description: 'The exact title of the artifact to read',
+				},
+			},
+			required: ['title'],
+		});
+
+		return {
+			parameters: {
+				description: 'Read the full content of an artifact by its title',
+				language: 'javaScript',
+				jsCode,
+				specifyInputSchema: true,
+				schemaType: 'manual',
+				inputSchema,
+			},
+			type: '@n8n/n8n-nodes-langchain.toolCode',
+			typeVersion: 1.3,
+			position: [700, 600],
+			id: uuidv4(),
+			name: NODE_NAMES.READ_ARTIFACT_TOOL,
 		};
 	}
 

@@ -107,6 +107,7 @@ export const NODE_NAMES = {
 	RESTORE_CHAT_MEMORY: 'Restore Chat Memory',
 	CLEAR_CHAT_MEMORY: 'Clear Chat Memory',
 	MERGE: 'Merge',
+	READ_ARTIFACT_TOOL: 'Read Artifact',
 } as const;
 
 /* eslint-disable @typescript-eslint/naming-convention */
