@@ -7,14 +7,19 @@ import { buildDiscoverResponse } from './discover.service';
 
 const API_KEY_AUDIENCE = 'public-api';
 
+function firstString(value: unknown): string | undefined {
+	if (typeof value === 'string') return value;
+	if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+	return undefined;
+}
+
 export = {
 	getDiscover: [
 		async (
 			req: AuthenticatedRequest<{}, {}, {}, { include?: string; resource?: string; op?: string }>,
 			res: express.Response,
 		): Promise<express.Response> => {
-			const rawHeader = req.headers['x-n8n-api-key'];
-			const apiKey = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+			const apiKey = firstString(req.headers['x-n8n-api-key']);
 			if (!apiKey) {
 				return res.status(401).json({ message: 'Unauthorized' });
 			}
@@ -31,8 +36,8 @@ export = {
 			const includeSchemas = req.query.include === 'schemas';
 			const response = await buildDiscoverResponse(apiKeyRecord.scopes, {
 				includeSchemas,
-				resource: req.query.resource,
-				operation: req.query.op,
+				resource: firstString(req.query.resource),
+				operation: firstString(req.query.op),
 			});
 			return res.json({ data: response });
 		},

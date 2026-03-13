@@ -296,12 +296,14 @@ export async function buildDiscoverResponse(
 	}
 
 	if (operationFilter) {
+		const scopeByOperationId = new Map(
+			filtered.map((f) => [f.operationId, f.scope?.split(':')[1]?.toLowerCase()]),
+		);
 		const result: Record<string, ResourceInfo> = {};
 		for (const [key, info] of Object.entries(filteredResources)) {
-			const matchingEndpoints = info.endpoints.filter((ep) => {
-				const epScope = filtered.find((f) => f.operationId === ep.operationId)?.scope;
-				return epScope?.split(':')[1]?.toLowerCase() === operationFilter;
-			});
+			const matchingEndpoints = info.endpoints.filter(
+				(ep) => scopeByOperationId.get(ep.operationId) === operationFilter,
+			);
 			if (matchingEndpoints.length > 0) {
 				result[key] = {
 					operations: info.operations.filter((o) => o.toLowerCase() === operationFilter),
