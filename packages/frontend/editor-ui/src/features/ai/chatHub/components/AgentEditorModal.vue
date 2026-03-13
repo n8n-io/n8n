@@ -48,6 +48,7 @@ import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const props = defineProps<{
 	modalName: string;
@@ -62,6 +63,7 @@ const props = defineProps<{
 const chatStore = useChatStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const credentialsStore = useCredentialsStore();
 const i18n = useI18n();
 
 const canConfigureVectorStore = computed(() => usersStore.isInstanceOwner);
@@ -455,6 +457,7 @@ watch(
 watch(documentVisibility, (visibility) => {
 	if (visibility === 'visible' && !canUploadFiles.value) {
 		void settingsStore.getModuleSettings();
+		void credentialsStore.fetchAllCredentials();
 	}
 });
 </script>
