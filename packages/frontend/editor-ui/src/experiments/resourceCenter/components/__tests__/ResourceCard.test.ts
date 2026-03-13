@@ -4,6 +4,10 @@ import { createTestingPinia } from '@pinia/testing';
 import ResourceCard from '../ResourceCard.vue';
 import type { ResourceItem } from '../../data/resourceCenterData';
 
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({ getNodeType: vi.fn(() => null) }),
+}));
+
 const templateItem: ResourceItem = {
 	id: 7639,
 	type: 'template',
