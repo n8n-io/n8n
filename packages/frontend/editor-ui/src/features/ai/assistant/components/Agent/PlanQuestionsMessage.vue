@@ -283,21 +283,21 @@ function onKeydown(event: KeyboardEvent) {
 	const isInputFocused = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
 	if (isInputFocused) {
-		// Allow Cmd/Ctrl+Enter to pass through for advancing
-		if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+		// Enter in any input advances to next question / submits
+		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
-			if (q.type === 'multi' && isNextEnabled.value) {
+			if (hasCustomText.value || isNextEnabled.value) {
 				emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
 				goToNextInternal();
 			}
 			return;
 		}
-		// Allow plain Enter in text fields to advance
-		if (event.key === 'Enter' && q.type === 'text' && !event.shiftKey) {
+		// Arrow keys move focus back to the container for navigation
+		if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
 			event.preventDefault();
-			if (hasCustomText.value) {
-				emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
-				goToNextInternal();
+			containerRef.value?.focus();
+			if (event.key === 'ArrowUp') {
+				highlightedIndex.value = Math.max(0, highlightedIndex.value - 1);
 			}
 			return;
 		}
@@ -365,6 +365,13 @@ function scrollHighlightedIntoView() {
 	void nextTick(() => {
 		const el = containerRef.value?.querySelector(`[data-option-index="${highlightedIndex.value}"]`);
 		el?.scrollIntoView({ block: 'nearest' });
+
+		// Auto-focus the "Something else" input when highlighted
+		const isSomethingElse = highlightedIndex.value === filteredOptions.value.length;
+		if (isSomethingElse) {
+			const input = el?.querySelector('input');
+			input?.focus();
+		}
 	});
 }
 
@@ -408,12 +415,13 @@ function onOptionMouseEnter(idx: number) {
 							:data-option-index="idx"
 							:disabled="disabled"
 							type="button"
+							tabindex="-1"
 							@click="onSingleSelectAndAdvance(option)"
 							@mouseenter="onOptionMouseEnter(idx)"
 						>
 							<span :class="$style.numberBadge">{{ idx + 1 }}</span>
 							<span :class="$style.optionLabel">{{ option }}</span>
-							<N8nIcon :class="$style.arrowIndicator" icon="arrow-right" size="small" />
+							<N8nIcon :class="$style.arrowIndicator" icon="arrow-right" :size="16" />
 						</button>
 
 						<!-- "Something else" row for single-select -->
@@ -535,7 +543,7 @@ function onOptionMouseEnter(idx: number) {
 				<div :class="$style.navigation">
 					<N8nButton
 						v-if="showSkipButton"
-						variant="subtle"
+						variant="outline"
 						size="small"
 						:disabled="disabled"
 						data-test-id="plan-mode-questions-skip"
@@ -572,9 +580,9 @@ function onOptionMouseEnter(idx: number) {
 }
 
 .container {
-	border: var(--border);
-	border-radius: var(--radius);
 	outline: none;
+	border: var(--border);
+	border-radius: var(--radius--lg);
 }
 
 .question {
@@ -598,7 +606,7 @@ function onOptionMouseEnter(idx: number) {
 	width: 100%;
 	padding: var(--spacing--3xs) var(--spacing--2xs);
 	border: none;
-	border-radius: var(--radius);
+	border-radius: var(--radius--lg);
 	background: none;
 	cursor: pointer;
 	transition: background-color 0.15s ease;
@@ -606,7 +614,8 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: var(--color--foreground);
+		/* stylelint-disable @n8n/css-var-naming */
+		background-color: var(--background--surface--hover);
 	}
 
 	&:hover .arrowIndicator,
@@ -662,6 +671,7 @@ function onOptionMouseEnter(idx: number) {
 .optionLabel {
 	color: var(--color--text);
 	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
 	line-height: var(--line-height--xl);
 }
 
@@ -671,16 +681,16 @@ function onOptionMouseEnter(idx: number) {
 	gap: var(--spacing--2xs);
 	cursor: pointer;
 	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border-radius: var(--radius);
+	border-radius: var(--radius--lg);
 	transition: background-color 0.15s ease;
 
 	&:hover,
 	&.highlighted {
-		background-color: var(--color--foreground);
+		background-color: var(--background--surface--hover);
 	}
 
 	&.selected {
-		background-color: var(--color--foreground);
+		background-color: var(--background--surface--hover);
 	}
 }
 
@@ -689,16 +699,23 @@ function onOptionMouseEnter(idx: number) {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border-radius: var(--radius);
+	border-radius: var(--radius--lg);
 	transition: background-color 0.15s ease;
 
 	&:hover,
 	&.highlighted {
-		background-color: var(--color--foreground);
+		background-color: var(--background--surface--hover);
 	}
 }
 
 .pencilIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	border-radius: var(--radius);
+	background-color: var(--color--foreground--tint-1);
 	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
@@ -725,7 +742,7 @@ function onOptionMouseEnter(idx: number) {
 	justify-content: space-between;
 	align-items: center;
 	border-top: var(--border);
-	padding: var(--spacing--xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .pagination {
@@ -746,7 +763,7 @@ function onOptionMouseEnter(idx: number) {
 	color: var(--color--text);
 
 	&:hover:not(:disabled) {
-		background-color: var(--color--foreground);
+		background-color: var(--background--surface--hover);
 	}
 
 	&:disabled {
@@ -763,6 +780,7 @@ function onOptionMouseEnter(idx: number) {
 .navigation {
 	display: flex;
 	gap: var(--spacing--2xs);
+	min-height: 28px;
 }
 
 /* Question fade transition */
