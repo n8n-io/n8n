@@ -7,6 +7,9 @@ import {
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
 	findTriggerNodeToAutoSelect,
+	buildExecutionResponseFromSchema,
+	generatePlaceholderValue,
+	generateFakeDataFromSchema,
 } from './executions.utils';
 import type {
 	INode,
@@ -16,7 +19,7 @@ import type {
 	INodeTypeDescription,
 	Workflow,
 } from 'n8n-workflow';
-import { type INodeUi } from '@/Interface';
+import { type INodeUi, type IWorkflowDb } from '@/Interface';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CORE_NODES_CATEGORY,
@@ -702,5 +705,287 @@ describe(findTriggerNodeToAutoSelect, () => {
 				getNodeType,
 			),
 		).toEqual(expect.objectContaining({ name: 'B' }));
+	});
+});
+
+describe('buildExecutionResponseFromSchema', () => {
+	const mockWorkflow = {
+		id: 'test-workflow',
+		name: 'Test Workflow',
+		nodes: [
+			createTestNode({ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE }),
+			createTestNode({ name: 'HTTP Request', type: 'n8n-nodes-base.httpRequest' }),
+		],
+		connections: {},
+	} as unknown as IWorkflowDb;
+
+	it('builds execution response with all nodes success', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: { executionStatus: 'success', executionTime: 10 },
+				'HTTP Request': { executionStatus: 'success', executionTime: 200 },
+			},
+			executionStatus: 'success',
+		});
+
+		expect(result.id).toBe('preview');
+		expect(result.finished).toBe(true);
+		expect(result.mode).toBe('manual');
+		expect(result.status).toBe('success');
+		expect(result.workflowData).toBe(mockWorkflow);
+
+		const runData = result.data?.resultData.runData;
+		expect(runData).toBeDefined();
+		expect(runData?.Start).toHaveLength(1);
+		expect(runData?.Start[0].executionStatus).toBe('success');
+		expect(runData?.Start[0].executionTime).toBe(10);
+		expect(runData?.Start[0].data).toBeUndefined();
+		expect(runData?.['HTTP Request'][0].executionStatus).toBe('success');
+		expect(runData?.['HTTP Request'][0].executionTime).toBe(200);
+		expect(runData?.['HTTP Request'][0].data).toBeUndefined();
+	});
+
+	it('builds execution response with node error', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: { executionStatus: 'success', executionTime: 5 },
+				'HTTP Request': {
+					executionStatus: 'error',
+					error: { message: 'Connection refused', name: 'NodeApiError' },
+				},
+			},
+			executionStatus: 'error',
+			lastNodeExecuted: 'HTTP Request',
+		});
+
+		expect(result.finished).toBe(false);
+		expect(result.status).toBe('error');
+
+		const runData = result.data?.resultData.runData;
+		expect(runData?.['HTTP Request'][0].error).toBeDefined();
+		expect(runData?.['HTTP Request'][0].error?.message).toBe('Connection refused');
+		expect(result.data?.resultData.lastNodeExecuted).toBe('HTTP Request');
+	});
+
+	it('builds execution response with mixed statuses', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: { executionStatus: 'success', executionTime: 5 },
+				'HTTP Request': { executionStatus: 'canceled' },
+			},
+			executionStatus: 'canceled',
+		});
+
+		const runData = result.data?.resultData.runData;
+		expect(runData?.Start[0].executionStatus).toBe('success');
+		expect(runData?.['HTTP Request'][0].executionStatus).toBe('canceled');
+		expect(runData?.['HTTP Request'][0].executionTime).toBe(0);
+	});
+
+	it('builds execution response with empty schema', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {},
+			executionStatus: 'success',
+		});
+
+		expect(result.data?.resultData.runData).toEqual({});
+		expect(result.finished).toBe(true);
+	});
+
+	it('builds execution response with top-level execution error', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: { executionStatus: 'success' },
+			},
+			executionStatus: 'error',
+			executionError: { message: 'Workflow timed out', name: 'WorkflowOperationError' },
+		});
+
+		expect(result.data?.resultData.error).toBeDefined();
+		expect(result.data?.resultData.error?.message).toBe('Workflow timed out');
+		expect(result.finished).toBe(false);
+	});
+
+	it('includes fake data when outputSchema is provided', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				'HTTP Request': {
+					executionStatus: 'success',
+					executionTime: 100,
+					outputSchema: {
+						itemCount: 2,
+						fields: [
+							{ name: 'id', type: 'number' },
+							{ name: 'name', type: 'string' },
+						],
+					},
+				},
+			},
+			executionStatus: 'success',
+		});
+
+		const taskData = result.data?.resultData.runData?.['HTTP Request']?.[0];
+		expect(taskData?.data).toBeDefined();
+		expect(taskData?.data?.main).toHaveLength(1);
+		expect(taskData?.data?.main[0]).toHaveLength(2);
+		expect(taskData?.data?.main[0]?.[0].json).toEqual({ id: 0, name: '' });
+	});
+
+	it('omits data when outputSchema has empty fields', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: {
+					executionStatus: 'success',
+					outputSchema: { fields: [] },
+				},
+			},
+			executionStatus: 'success',
+		});
+
+		expect(result.data?.resultData.runData?.Start?.[0].data).toBeUndefined();
+	});
+});
+
+describe('generatePlaceholderValue', () => {
+	it('returns empty string for string type', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'string' })).toBe('');
+	});
+
+	it('returns 0 for number type', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'number' })).toBe(0);
+	});
+
+	it('returns false for boolean type', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'boolean' })).toBe(false);
+	});
+
+	it('returns empty object for object type with no fields', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'object' })).toEqual({});
+	});
+
+	it('returns nested object for object type with fields', () => {
+		expect(
+			generatePlaceholderValue({
+				name: 'address',
+				type: 'object',
+				fields: [
+					{ name: 'street', type: 'string' },
+					{ name: 'zip', type: 'number' },
+				],
+			}),
+		).toEqual({ street: '', zip: 0 });
+	});
+
+	it('returns empty array for array type with no itemSchema', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'array' })).toEqual([]);
+	});
+
+	it('returns array with one element matching itemSchema', () => {
+		expect(
+			generatePlaceholderValue({
+				name: 'tags',
+				type: 'array',
+				itemSchema: [
+					{ name: 'id', type: 'number' },
+					{ name: 'label', type: 'string' },
+				],
+			}),
+		).toEqual([{ id: 0, label: '' }]);
+	});
+
+	it('truncates at max nesting depth', () => {
+		let field: {
+			name: string;
+			type: 'object';
+			fields: Array<{ name: string; type: 'object'; fields?: unknown[] }>;
+		} = {
+			name: 'level0',
+			type: 'object',
+			fields: [{ name: 'leaf', type: 'object' }],
+		};
+		for (let i = 1; i < 7; i++) {
+			field = { name: `level${i}`, type: 'object', fields: [field] };
+		}
+		const result = generatePlaceholderValue(field as never);
+		expect(result).toBeDefined();
+	});
+});
+
+describe('generateFakeDataFromSchema', () => {
+	it('generates single item by default', () => {
+		const result = generateFakeDataFromSchema({
+			fields: [
+				{ name: 'id', type: 'number' },
+				{ name: 'name', type: 'string' },
+			],
+		});
+		expect(result).toHaveLength(1);
+		expect(result[0].json).toEqual({ id: 0, name: '' });
+	});
+
+	it('generates specified number of items', () => {
+		const result = generateFakeDataFromSchema({
+			itemCount: 3,
+			fields: [{ name: 'active', type: 'boolean' }],
+		});
+		expect(result).toHaveLength(3);
+		for (const item of result) {
+			expect(item.json).toEqual({ active: false });
+		}
+	});
+
+	it('clamps itemCount to max 10', () => {
+		const result = generateFakeDataFromSchema({
+			itemCount: 100,
+			fields: [{ name: 'x', type: 'string' }],
+		});
+		expect(result).toHaveLength(10);
+	});
+
+	it('uses minimum of 1 item for itemCount <= 0', () => {
+		const result = generateFakeDataFromSchema({
+			itemCount: 0,
+			fields: [{ name: 'x', type: 'string' }],
+		});
+		expect(result).toHaveLength(1);
+	});
+
+	it('generates items with complex nested schema', () => {
+		const result = generateFakeDataFromSchema({
+			fields: [
+				{ name: 'id', type: 'number' },
+				{
+					name: 'profile',
+					type: 'object',
+					fields: [
+						{ name: 'email', type: 'string' },
+						{ name: 'verified', type: 'boolean' },
+					],
+				},
+				{
+					name: 'roles',
+					type: 'array',
+					itemSchema: [{ name: 'name', type: 'string' }],
+				},
+			],
+		});
+		expect(result[0].json).toEqual({
+			id: 0,
+			profile: { email: '', verified: false },
+			roles: [{ name: '' }],
+		});
+	});
+
+	it('returns items with empty json when fields array is empty', () => {
+		const result = generateFakeDataFromSchema({ fields: [] });
+		expect(result).toHaveLength(1);
+		expect(result[0].json).toEqual({});
 	});
 });

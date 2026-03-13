@@ -11,7 +11,7 @@
             "type": "null"
         },
         "source": {
-            "type": "string"
+            "type": "null"
         },
         "state": {
             "type": "string"
@@ -40,5 +40,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

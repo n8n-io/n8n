@@ -217,7 +217,6 @@ export class CredentialsTester {
 				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
 					additionalData,
 					credentialsDecrypted.data,
-					credentialsDecrypted,
 					credentialType,
 					'internal' as WorkflowExecuteMode,
 					undefined,

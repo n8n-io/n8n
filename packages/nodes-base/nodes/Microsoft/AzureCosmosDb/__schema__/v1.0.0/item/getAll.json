@@ -1,9 +1,80 @@
 {
     "type": "object",
     "properties": {
+        "createdDate": {
+            "type": "string"
+        },
+        "documentType": {
+            "type": "string"
+        },
+        "estadoManifiesto": {
+            "type": "string"
+        },
+        "estadoValidacion": {
+            "type": "string"
+        },
+        "eTag": {
+            "type": "string"
+        },
+        "fechaExpedicionManifiesto": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
+        },
+        "ingresoIdManifiesto": {
+            "type": "integer"
+        },
+        "isActive": {
+            "type": "boolean"
+        },
+        "lastModifiedDate": {
+            "type": "string"
+        },
+        "lastUpdateDate": {
+            "type": "string"
+        },
+        "metadata": {
+            "type": "null"
+        },
+        "numNitEmpresaTransporte": {
+            "type": "string"
+        },
+        "numPlaca": {
+            "type": "string"
+        },
+        "partitionKey": {
+            "type": "string"
+        },
+        "procesado": {
+            "type": "boolean"
+        },
+        "puntosControl": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "codPuntoControl": {
+                        "type": "integer"
+                    },
+                    "estadoPunto": {
+                        "type": "string"
+                    },
+                    "fechaCita": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "resourceId": {
+            "type": "string"
+        },
+        "selfLink": {
+            "type": "string"
+        },
+        "timeStamp": {
+            "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

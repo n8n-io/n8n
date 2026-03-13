@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
@@ -37,7 +37,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExecutionDataService } from '@/executions/execution-data.service';
+import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
 import {
 	CredentialsPermissionChecker,
@@ -47,6 +47,7 @@ import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
@@ -224,6 +225,14 @@ export async function executeWorkflow(
 
 	const executionId = await activeExecutions.add(runData);
 
+	Container.get(EventService).emit('workflow-executed', {
+		user: additionalData.userId ? { id: additionalData.userId } : undefined,
+		workflowId: workflowData.id,
+		workflowName: workflowData.name,
+		executionId,
+		source: 'integrated',
+	});
+
 	const executionPromise = startExecution(
 		additionalData,
 		options,
@@ -302,6 +311,10 @@ async function startExecution(
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+		// Propagate the root execution mode so nested subworkflows retain the original
+		// mode (e.g. 'manual') even though their own WorkflowExecute runs as 'integrated'
+		additionalDataIntegrated.rootExecutionMode =
+			additionalData.rootExecutionMode ?? options.executionMode;
 		if (additionalData.httpResponse) {
 			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
 		}
@@ -334,7 +347,7 @@ async function startExecution(
 		data = await execution;
 	} catch (error) {
 		const executionError = error as ExecutionError;
-		const fullRunData = Container.get(ExecutionDataService).generateFailedExecutionFromError(
+		const fullRunData = Container.get(FailedRunFactory).generateFailedExecutionFromError(
 			runData.executionMode,
 			executionError,
 			'node' in executionError ? executionError.node : undefined,
@@ -527,6 +540,11 @@ export async function getBase({
 			eventService.emit(eventName, payload),
 		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
 	};
+
+	const ssrfConfig = Container.get(SsrfProtectionConfig);
+	if (ssrfConfig.enabled) {
+		additionalData.ssrfBridge = Container.get(SsrfProtectionService);
+	}
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {
 		// @ts-expect-error Adding an index signature `[key: string]: unknown`

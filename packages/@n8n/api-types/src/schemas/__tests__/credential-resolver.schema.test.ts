@@ -50,7 +50,7 @@ describe('credential-resolver.schema', () => {
 
 	describe('credentialResolverTypeNameSchema', () => {
 		test.each([
-			{ name: 'valid type', value: 'credential-resolver.stub-1.0', expected: true },
+			{ name: 'valid type', value: 'credential-resolver.test-1.0', expected: true },
 			{ name: 'simple type', value: 'simple', expected: true },
 			{ name: 'type with dots', value: 'resolver.aws.v2', expected: true },
 			{ name: 'minimum length (1 char)', value: 'A', expected: true },
@@ -64,19 +64,19 @@ describe('credential-resolver.schema', () => {
 		});
 
 		test('should trim whitespace', () => {
-			const result = credentialResolverTypeNameSchema.safeParse('  credential-resolver.stub-1.0  ');
+			const result = credentialResolverTypeNameSchema.safeParse('  credential-resolver.test-1.0  ');
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data).toBe('credential-resolver.stub-1.0');
+				expect(result.data).toBe('credential-resolver.test-1.0');
 			}
 		});
 	});
 
 	describe('credentialResolverTypeSchema', () => {
 		const validType = {
-			name: 'credential-resolver.stub-1.0',
-			displayName: 'Stub Resolver',
-			description: 'A stub resolver for testing',
+			name: 'credential-resolver.test-1.0',
+			displayName: 'Test Resolver',
+			description: 'A test resolver for testing',
 			options: [{ key: 'value' }],
 		};
 
@@ -174,38 +174,38 @@ describe('credential-resolver.schema', () => {
 		});
 
 		test('should trim name', () => {
-			const typeWithWhitespace = { ...validType, name: '  stub-resolver  ' };
+			const typeWithWhitespace = { ...validType, name: '  test-resolver  ' };
 			const result = credentialResolverTypeSchema.safeParse(typeWithWhitespace);
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.name).toBe('stub-resolver');
+				expect(result.data.name).toBe('test-resolver');
 			}
 		});
 
 		test('should trim displayName', () => {
-			const typeWithWhitespace = { ...validType, displayName: '  Stub Resolver  ' };
+			const typeWithWhitespace = { ...validType, displayName: '  Test Resolver  ' };
 			const result = credentialResolverTypeSchema.safeParse(typeWithWhitespace);
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.displayName).toBe('Stub Resolver');
+				expect(result.data.displayName).toBe('Test Resolver');
 			}
 		});
 
 		test('should trim description', () => {
-			const typeWithWhitespace = { ...validType, description: '  A stub resolver  ' };
+			const typeWithWhitespace = { ...validType, description: '  A test resolver  ' };
 			const result = credentialResolverTypeSchema.safeParse(typeWithWhitespace);
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.description).toBe('A stub resolver');
+				expect(result.data.description).toBe('A test resolver');
 			}
 		});
 	});
 
 	describe('credentialResolverTypesSchema', () => {
 		const validType1 = {
-			name: 'credential-resolver.stub-1.0',
-			displayName: 'Stub Resolver',
-			description: 'A stub resolver for testing',
+			name: 'credential-resolver.test-1.0',
+			displayName: 'Test Resolver',
+			description: 'A test resolver for testing',
 			options: [{ key: 'value' }],
 		};
 
@@ -292,9 +292,9 @@ describe('credential-resolver.schema', () => {
 		const validResolver = {
 			id: 'resolver-123',
 			name: 'Test Resolver',
-			type: 'credential-resolver.stub-1.0',
+			type: 'credential-resolver.test-1.0',
 			config: 'encrypted-config-string',
-			decryptedConfig: { prefix: 'test-' },
+			decryptedConfig: { test: 'value' },
 			createdAt: new Date('2024-01-01T00:00:00.000Z'),
 			updatedAt: new Date('2024-01-02T00:00:00.000Z'),
 		};
@@ -387,7 +387,7 @@ describe('credential-resolver.schema', () => {
 		const validResolver1 = {
 			id: 'resolver-1',
 			name: 'Test Resolver 1',
-			type: 'credential-resolver.stub-1.0',
+			type: 'credential-resolver.test-1.0',
 			config: 'encrypted-config-1',
 			createdAt: new Date('2024-01-01T00:00:00.000Z'),
 			updatedAt: new Date('2024-01-02T00:00:00.000Z'),
@@ -396,7 +396,7 @@ describe('credential-resolver.schema', () => {
 		const validResolver2 = {
 			id: 'resolver-2',
 			name: 'Test Resolver 2',
-			type: 'credential-resolver.stub-2.0',
+			type: 'credential-resolver.test-2.0',
 			config: 'encrypted-config-2',
 			decryptedConfig: { prefix: 'test-' },
 			createdAt: new Date('2024-01-03T00:00:00.000Z'),

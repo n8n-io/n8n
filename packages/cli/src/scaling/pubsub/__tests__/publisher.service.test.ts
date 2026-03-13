@@ -162,6 +162,61 @@ describe('Publisher', () => {
 		});
 	});
 
+	describe('publishMcpRelay', () => {
+		it('should do nothing if not in scaling mode', async () => {
+			// Clear previous mock calls from other tests
+			client.publish.mockClear();
+
+			const regularModeConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				regularModeConfig,
+				globalConfig,
+			);
+			const msg = { sessionId: 'session-123', messageId: 'msg-456', response: { test: true } };
+
+			await publisher.publishMcpRelay(msg);
+
+			expect(client.publish).not.toHaveBeenCalled();
+		});
+
+		it('should publish MCP relay message to prefixed channel', async () => {
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				executionsConfig,
+				globalConfig,
+			);
+			const msg = { sessionId: 'session-123', messageId: 'msg-456', response: { test: true } };
+
+			await publisher.publishMcpRelay(msg);
+
+			expect(client.publish).toHaveBeenCalledWith('n8n:n8n.mcp-relay', JSON.stringify(msg));
+		});
+
+		it('should apply configured prefix to MCP relay channel', async () => {
+			const customConfig = mockInstance(GlobalConfig, { redis: { prefix: 'n8n-instance-1' } });
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				executionsConfig,
+				customConfig,
+			);
+			const msg = { sessionId: 'session-123', messageId: 'msg-456', response: { test: true } };
+
+			await publisher.publishMcpRelay(msg);
+
+			expect(client.publish).toHaveBeenCalledWith(
+				'n8n-instance-1:n8n.mcp-relay',
+				JSON.stringify(msg),
+			);
+		});
+	});
+
 	describe('prefix isolation', () => {
 		it('should apply configured prefix to both command and worker response channels', async () => {
 			const customConfig = mockInstance(GlobalConfig, { redis: { prefix: 'n8n-instance-1' } });

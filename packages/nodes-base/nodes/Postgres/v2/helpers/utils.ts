@@ -22,6 +22,7 @@ import type {
 	WhereClause,
 } from './interfaces';
 import { generatePairedItemData } from '../../../../utils/utilities';
+import { operatorOptions } from '../actions/common.descriptions';
 
 export function isJSON(str: string) {
 	try {
@@ -127,8 +128,8 @@ export function parsePostgresError(
 }
 
 export function addWhereClauses(
-	node: INode,
-	itemIndex: number,
+	_node: INode,
+	_itemIndex: number,
 	query: string,
 	clauses: WhereClause[],
 	replacements: QueryValues,
@@ -152,21 +153,10 @@ export function addWhereClauses(
 			clause.condition = '=';
 		}
 		if (['>', '<', '>=', '<='].includes(clause.condition)) {
-			const value = Number(clause.value);
-
-			if (Number.isNaN(value)) {
-				throw new NodeOperationError(
-					node,
-					`Operator in entry ${index + 1} of 'Select Rows' works with numbers, but value ${
-						clause.value
-					} is not a number`,
-					{
-						itemIndex,
-					},
-				);
+			const numericValue = Number(clause.value);
+			if (String(clause.value).trim() !== '' && !Number.isNaN(numericValue)) {
+				clause.value = numericValue;
 			}
-
-			clause.value = value;
 		}
 		const columnReplacement = `$${replacementIndex}:name`;
 		values.push(clause.column);
@@ -624,6 +614,37 @@ export const convertArraysToPostgresFormat = (
 	}
 
 	return newData;
+};
+
+// operations use 'equal' instead of '=' because of the way expressions are handled
+// manually add '=' to allow entering it instead of 'equal'
+const conditionSet = new Set(operatorOptions.map((option) => option.value)).add('=');
+
+export const isWhereClause = (clause: unknown): clause is WhereClause => {
+	if (typeof clause !== 'object' || clause === null) return false;
+	if (!('column' in clause)) return false;
+	if (
+		!('condition' in clause) ||
+		typeof clause.condition !== 'string' ||
+		!conditionSet.has(clause.condition)
+	)
+		return false;
+	return true;
+};
+
+export const getWhereClauses = (ctx: IExecuteFunctions, itemIndex: number): WhereClause[] => {
+	const whereClauses = ctx.getNodeParameter('where', itemIndex, []) as IDataObject;
+	const whereClausesValues = whereClauses.values as unknown[];
+	if (!Array.isArray(whereClausesValues)) {
+		return [];
+	}
+	const someInvalid = whereClausesValues.some((clause) => !isWhereClause(clause));
+	if (someInvalid) {
+		throw new NodeOperationError(ctx.getNode(), 'Invalid where clause', {
+			itemIndex,
+		});
+	}
+	return whereClausesValues as WhereClause[];
 };
 
 export const runQueriesAndHandleErrors = async (

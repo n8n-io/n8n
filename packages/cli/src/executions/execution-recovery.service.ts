@@ -271,6 +271,7 @@ export class ExecutionRecoveryService {
 			startedAt: execution.startedAt,
 			stoppedAt: execution.stoppedAt,
 			status: execution.status,
+			storedAt: execution.storedAt,
 		};
 
 		await lifecycleHooks.runHook('workflowExecuteAfter', [run]);

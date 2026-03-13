@@ -5,23 +5,26 @@ import {
 	AI_SUBCATEGORY,
 	CUSTOM_API_CALL_KEY,
 	HTTP_REQUEST_NODE_TYPE,
+	SIMPLE_MEMORY_NODE_TYPE,
 } from '@/app/constants';
 import memoize from 'lodash/memoize';
 import startCase from 'lodash/startCase';
-import type {
-	ICredentialType,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
-	INodeTypeDescription,
+import {
+	EVALUATION_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	type ICredentialType,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { i18n } from '@n8n/i18n';
 
 import { getCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { formatTriggerActionName } from '../nodeCreator.utils';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -110,12 +113,7 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTy
 				languageProperty,
 				nodeTypeDescription,
 			);
-			if (customParsedItems) {
-				// temporary until native Python runner is GA
-				return useSettingsStore().isNativePythonRunnerEnabled
-					? customParsedItems.filter((item) => item.actionKey !== 'language_python')
-					: customParsedItems.filter((item) => item.actionKey !== 'language_pythonNative');
-			}
+			if (customParsedItems) return customParsedItems;
 		}
 	}
 
@@ -310,12 +308,15 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 
 export function useActionsGenerator() {
 	function generateNodeActions(node: INodeTypeDescription | undefined) {
-		if (!node) return [];
+		if (!node) {
+			return [];
+		}
 		if (
 			node.codex?.subcategories?.AI?.includes(AI_CATEGORY_TOOLS) &&
 			!node.codex?.subcategories?.AI?.includes(AI_CATEGORY_ROOT_NODES)
-		)
+		) {
 			return [];
+		}
 		return [
 			...triggersCategory(node),
 			...operationsCategory(node),
@@ -373,15 +374,25 @@ export function useActionsGenerator() {
 		httpOnlyCredentials: ICredentialType[],
 	) {
 		const evaluationStore = useEvaluationStore();
+		const settingsStore = useSettingsStore();
 
 		const visibleNodeTypes = nodeTypes.filter((node) => {
-			if (evaluationStore.isEvaluationEnabled) {
-				return true;
+			// Filter out evaluation nodes if evaluation is not enabled
+			if (!evaluationStore.isEvaluationEnabled) {
+				if ([EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE].includes(node.name)) {
+					return false;
+				}
 			}
-			return (
-				node.name !== 'n8n-nodes-base.evaluation' &&
-				node.name !== 'n8n-nodes-base.evaluationTrigger'
-			);
+
+			// Filter out Simple Memory node in queue mode or multi-main setup
+			// because it stores memory in-process which doesn't work with multiple workers
+			if (settingsStore.isQueueModeEnabled || settingsStore.isMultiMain) {
+				if (node.name === SIMPLE_MEMORY_NODE_TYPE) {
+					return false;
+				}
+			}
+
+			return true;
 		});
 
 		const actions: ActionsRecord<typeof mergedNodes> = {};

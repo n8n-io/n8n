@@ -3,8 +3,8 @@ get:
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow
-  summary: Retrieves a workflow
-  description: Retrieves a workflow.
+  summary: Retrieve a workflow
+  description: Retrieve a workflow.
   parameters:
     - name: excludePinnedData
       in: query
@@ -31,7 +31,7 @@ delete:
   tags:
     - Workflow
   summary: Delete a workflow
-  description: Deletes a workflow.
+  description: Delete a workflow.
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
   responses:
@@ -51,7 +51,7 @@ put:
   tags:
     - Workflow
   summary: Update a workflow
-  description: Update a workflow. If the workflow is active, the updated version will be automatically reactivated.
+  description: Update a workflow. If the workflow is published, the updated version will be automatically re-published.
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
   requestBody:

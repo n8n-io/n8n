@@ -410,17 +410,17 @@ onBeforeUnmount(() => {
 				/>
 
 				<N8nButton
+					variant="subtle"
 					v-if="mfaDisabled"
 					:class="$style.button"
-					type="tertiary"
 					:label="i18n.baseText('settings.personal.mfa.button.enabled')"
 					data-test-id="enable-mfa-button"
 					@click="onMfaEnableClick"
 				/>
 				<N8nButton
+					variant="subtle"
 					v-else
 					:class="$style.disableMfaButton"
-					type="tertiary"
 					:label="i18n.baseText('settings.personal.mfa.button.disabled')"
 					data-test-id="disable-mfa-button"
 					@click="onMfaDisableClick"

@@ -1,7 +1,6 @@
 import { DynamicStructuredTool, type DynamicStructuredToolInput } from '@langchain/core/tools';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { Toolkit } from '@langchain/classic/agents';
 import { type IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -107,10 +106,4 @@ export function mcpToolToDynamicTool(
 		func: onCallTool,
 		metadata: { isFromToolkit: true },
 	});
-}
-
-export class McpToolkit extends Toolkit {
-	constructor(public tools: DynamicStructuredTool[]) {
-		super();
-	}
 }

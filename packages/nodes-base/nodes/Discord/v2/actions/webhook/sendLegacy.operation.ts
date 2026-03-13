@@ -136,7 +136,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			let response: IDataObject[] = [];
 
 			if (files?.length) {
-				const multiPartBody = await prepareMultiPartForm.call(this, items, files, body, i);
+				const multiPartBody = await prepareMultiPartForm.call(this, files, body, i);
 
 				response = await discordApiMultiPartRequest.call(this, 'POST', '', multiPartBody);
 			} else {

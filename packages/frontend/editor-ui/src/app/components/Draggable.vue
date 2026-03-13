@@ -11,6 +11,8 @@ type Props = {
 	disabled?: boolean;
 	canDrop?: boolean;
 	stickyPosition?: XYPosition | null;
+	/** Minimum distance in pixels the mouse must move before drag operation starts. Prevents accidental drags. */
+	dragThreshold?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -20,6 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
 	disabled: false,
 	canDrop: false,
 	stickyPosition: null,
+	dragThreshold: 10,
 });
 
 const emit = defineEmits<{
@@ -32,6 +35,7 @@ const isDragging = ref(false);
 const draggingElement = ref<HTMLElement>();
 const draggablePosition = ref<XYPosition>([0, 0]);
 const animationFrameId = ref<number>();
+const dragStartPosition = ref<XYPosition | null>(null);
 
 const draggableStyle = computed<StyleValue>(() => ({
 	transform: `translate(${draggablePosition.value[0]}px, ${draggablePosition.value[1]}px)`,
@@ -58,6 +62,7 @@ const onDragStart = (event: MouseEvent) => {
 	event.stopPropagation();
 
 	isDragging.value = false;
+	dragStartPosition.value = [event.pageX, event.pageY];
 	draggablePosition.value = [event.pageX, event.pageY];
 
 	window.addEventListener('mousemove', onDrag);
@@ -79,6 +84,16 @@ const onDrag = (event: MouseEvent) => {
 	}
 
 	if (!isDragging.value && draggingElement.value) {
+		if (dragStartPosition.value && props.dragThreshold > 0) {
+			const dx = event.pageX - dragStartPosition.value[0];
+			const dy = event.pageY - dragStartPosition.value[1];
+			const distance = Math.sqrt(dx * dx + dy * dy);
+
+			if (distance < props.dragThreshold) {
+				return;
+			}
+		}
+
 		isDragging.value = true;
 
 		const data = props.targetDataKey ? draggingElement.value.dataset.value : (props.data ?? '');
@@ -110,14 +125,15 @@ const onDragEnd = () => {
 	}
 
 	setTimeout(() => {
-		if (draggingElement.value) emit('dragend', draggingElement.value);
+		if (isDragging.value && draggingElement.value) emit('dragend', draggingElement.value);
 		isDragging.value = false;
 		draggingElement.value = undefined;
+		dragStartPosition.value = null;
 	});
 };
 
 onBeforeUnmount(() => {
-	if (draggingElement.value) {
+	if (isDragging.value && draggingElement.value) {
 		emit('dragend', draggingElement.value);
 	}
 });

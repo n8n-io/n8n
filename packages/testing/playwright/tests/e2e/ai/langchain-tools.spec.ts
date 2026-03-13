@@ -5,7 +5,6 @@ import {
 	MANUAL_CHAT_TRIGGER_NODE_NAME,
 } from '../../../config/constants';
 import { test, expect } from '../../../fixtures/base';
-import { capabilities } from '../../../fixtures/capabilities';
 import type { n8nPage } from '../../../pages/n8nPage';
 
 // Helper functions for common operations
@@ -52,57 +51,64 @@ async function setupBasicAgentWorkflow(n8n: n8nPage, additionalNodes: string[] =
 	await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
 }
 
-test.use({ addContainerCapability: capabilities.proxy });
-test.describe('Langchain Integration @capability:proxy', () => {
-	test.beforeEach(async ({ n8n, proxyServer }) => {
-		await proxyServer.clearAllExpectations();
-		await proxyServer.loadExpectations('langchain');
-		await n8n.canvas.openNewWorkflow();
-	});
-
-	// @AI team to look at this
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('Tool Usage Notifications', () => {
-		test('should show tool info notice if no existing tools were used during execution', async ({
-			n8n,
-		}) => {
-			await setupBasicAgentWorkflow(n8n, [AI_TOOL_CALCULATOR_NODE_NAME]);
-			await n8n.canvas.openNode(AGENT_NODE_NAME);
-
-			const inputMessage = 'Hello!';
-			await n8n.ndv.execute();
-			await executeChatAndWaitForResponse(n8n, inputMessage);
-
-			await n8n.canvas.closeManualChatModal();
-			await n8n.canvas.openNode(AGENT_NODE_NAME);
-
-			await expect(n8n.ndv.getRunDataInfoCallout()).toBeVisible();
+test.use({ capability: 'proxy' });
+test.describe(
+	'Langchain Integration @capability:proxy',
+	{
+		annotation: [{ type: 'owner', description: 'AI' }],
+	},
+	() => {
+		test.beforeEach(async ({ n8n, services }) => {
+			await services.proxy.clearAllExpectations();
+			await services.proxy.loadExpectations('langchain');
+			await n8n.canvas.openNewWorkflow();
 		});
-		test('should not show tool info notice if tools were used during execution', async ({
-			n8n,
-		}) => {
-			await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, { closeNDV: true });
-			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: false });
-			await expect(n8n.ndv.getRunDataInfoCallout()).toBeHidden();
-			await n8n.ndv.clickBackToCanvasButton();
 
-			await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
+		// @AI team to look at this
+		test.describe('Tool Usage Notifications', () => {
+			test.fixme();
 
-			await n8n.canvas.addSupplementalNodeToParent(
-				AI_TOOL_CALCULATOR_NODE_NAME,
-				'ai_tool',
-				AGENT_NODE_NAME,
-				{ closeNDV: true },
-			);
+			test('should show tool info notice if no existing tools were used during execution', async ({
+				n8n,
+			}) => {
+				await setupBasicAgentWorkflow(n8n, [AI_TOOL_CALCULATOR_NODE_NAME]);
+				await n8n.canvas.openNode(AGENT_NODE_NAME);
 
-			const inputMessage = 'What is 1000 * 10?';
-			await n8n.canvas.clickManualChatButton();
-			await executeChatAndWaitForResponse(n8n, inputMessage);
+				const inputMessage = 'Hello!';
+				await n8n.ndv.execute();
+				await executeChatAndWaitForResponse(n8n, inputMessage);
 
-			await n8n.canvas.closeManualChatModal();
-			await n8n.canvas.openNode(AGENT_NODE_NAME);
+				await n8n.canvas.closeManualChatModal();
+				await n8n.canvas.openNode(AGENT_NODE_NAME);
 
-			await expect(n8n.ndv.getRunDataInfoCallout()).toBeHidden();
+				await expect(n8n.ndv.getRunDataInfoCallout()).toBeVisible();
+			});
+			test('should not show tool info notice if tools were used during execution', async ({
+				n8n,
+			}) => {
+				await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, { closeNDV: true });
+				await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: false });
+				await expect(n8n.ndv.getRunDataInfoCallout()).toBeHidden();
+				await n8n.ndv.clickBackToCanvasButton();
+
+				await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
+
+				await n8n.canvas.addSupplementalNodeToParent(
+					AI_TOOL_CALCULATOR_NODE_NAME,
+					'ai_tool',
+					AGENT_NODE_NAME,
+					{ closeNDV: true },
+				);
+
+				const inputMessage = 'What is 1000 * 10?';
+				await n8n.canvas.clickManualChatButton();
+				await executeChatAndWaitForResponse(n8n, inputMessage);
+
+				await n8n.canvas.closeManualChatModal();
+				await n8n.canvas.openNode(AGENT_NODE_NAME);
+
+				await expect(n8n.ndv.getRunDataInfoCallout()).toBeHidden();
+			});
 		});
-	});
-});
+	},
+);

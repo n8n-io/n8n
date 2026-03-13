@@ -6,8 +6,11 @@ import {
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
@@ -15,6 +18,7 @@ import { NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { usePinnedData } from '@/app/composables/usePinnedData';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export type ContextMenuAction =
 	| 'open'
@@ -35,21 +39,26 @@ export type ContextMenuAction =
 	| 'change_color'
 	| 'open_sub_workflow'
 	| 'tidy_up'
-	| 'extract_sub_workflow';
+	| 'extract_sub_workflow'
+	| 'focus_ai_on_selected';
 
 type Item = ActionDropdownItem<ContextMenuAction>;
 
 export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
+	const settingsStore = useSettingsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const sourceControlStore = useSourceControlStore();
+	const collaborationStore = useCollaborationStore();
+	const focusedNodesStore = useFocusedNodesStore();
 	const i18n = useI18n();
 
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+		() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
 	);
 
 	const isReadOnly = computed(
@@ -57,7 +66,8 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			sourceControlStore.preferences.branchReadOnly ||
 			uiStore.isReadOnlyView ||
 			!workflowPermissions.value.update ||
-			workflowsStore.workflow.isArchived,
+			(workflowDocumentStore?.value?.isArchived ?? false) ||
+			collaborationStore.shouldBeReadOnly,
 	);
 
 	const canOpenSubworkflow = computed(() => {
@@ -71,11 +81,15 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	});
 
 	const targetNodes = computed(() =>
-		targetNodeIds.value.map((nodeId) => workflowsStore.getNodeById(nodeId)).filter(isPresent),
+		targetNodeIds.value
+			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId) ?? null)
+			.filter(isPresent),
 	);
 
 	const canAddNodeOfType = (nodeType: INodeTypeDescription) => {
-		const sameTypeNodes = workflowsStore.allNodes.filter((n) => n.type === nodeType.name);
+		const sameTypeNodes = (workflowDocumentStore?.value?.allNodes ?? []).filter(
+			(n) => n.type === nodeType.name,
+		);
 		return nodeType.maxNodes === undefined || sameTypeNodes.length < nodeType.maxNodes;
 	};
 
@@ -88,7 +102,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	};
 
 	const hasPinData = (node: INode): boolean => {
-		return !!workflowsStore.pinDataByNodeName(node.name);
+		return !!workflowDocumentStore?.value?.pinData?.[node.name];
 	};
 
 	const isExecutable = (node: INodeUi) => {
@@ -128,7 +142,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				divided: true,
 				label: i18n.baseText('contextMenu.selectAll'),
 				shortcut: { metaKey: true, keys: ['A'] },
-				disabled: nodes.length === workflowsStore.allNodes.length,
+				disabled: nodes.length === (workflowDocumentStore?.value?.allNodes ?? []).length,
 			},
 			{
 				id: 'deselect_all',
@@ -146,6 +160,21 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				disabled: isReadOnly.value,
 			},
 		];
+
+		const aiActions: Item[] = [
+			!onlyStickies &&
+				settingsStore.isAiAssistantOrBuilderEnabled &&
+				focusedNodesStore.isFeatureEnabled && {
+					id: 'focus_ai_on_selected',
+					divided: true,
+					label: i18n.baseText('contextMenu.focusAiOnSelected', {
+						adjustToNumber: nodes.length,
+						interpolate: { count: nodes.length },
+					}),
+					shortcut: { altKey: true, keys: ['I'] },
+					disabled: isReadOnly.value,
+				},
+		].filter(Boolean) as Item[];
 
 		const layoutActions: Item[] = [
 			{
@@ -207,6 +236,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				},
 				...layoutActions,
 				...extractionActions,
+				...aiActions,
 				...selectionActions,
 				{
 					id: 'delete',
@@ -222,7 +252,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 				if (isWebhookNode(nodes[0])) {
 					const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(nodes[0].type);
-					const isWorkflowActive = workflowsStore.workflow.active;
+					const isWorkflowActive = workflowDocumentStore?.value?.active ?? false;
 					if (!isProductionOnly) {
 						copyWebhookActions.push({
 							divided: true,

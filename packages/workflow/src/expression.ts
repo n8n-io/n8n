@@ -1,33 +1,29 @@
+import { ApplicationError } from '@n8n/errors';
+import type { IExpressionEvaluator } from '@n8n/expression-runtime';
+import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { ApplicationError } from '@n8n/errors';
+import { UnexpectedError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
-import { sanitizer, sanitizerName } from './expression-sandboxing';
+import {
+	DollarSignValidator,
+	PrototypeSanitizer,
+	ThisSanitizer,
+	sanitizer,
+	sanitizerName,
+} from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
-import { getGlobalState } from './global-state';
-import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type {
 	IDataObject,
-	IExecuteData,
-	INode,
-	INodeExecutionData,
-	INodeParameterResourceLocator,
 	INodeParameters,
-	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	NodeParameterValue,
-	NodeParameterValueType,
-	WorkflowExecuteMode,
 } from './interfaces';
-import type { Workflow } from './workflow';
-import { WorkflowDataProxy } from './workflow-data-proxy';
-import type { IRunExecutionData } from './run-execution-data/run-execution-data';
-
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
 	Object.keys(process).length === 1 &&
@@ -50,8 +46,213 @@ setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
 
+/**
+ * Creates a safe Object wrapper that removes dangerous static methods
+ * that could be used to bypass property access sanitization.
+ *
+ * Blocked methods:
+ * - defineProperty/defineProperties: Can set properties bypassing access checks
+ * - setPrototypeOf/getPrototypeOf: Can manipulate prototype chains
+ * - getOwnPropertyDescriptor(s): Can introspect sensitive properties
+ * - __defineGetter__/__defineSetter__: Legacy methods that can bypass set traps
+ * - __lookupGetter__/__lookupSetter__: Can introspect getters/setters
+ *
+ * Object.create is wrapped to prevent passing property descriptors (2nd argument)
+ */
+const createSafeObject = (): typeof Object => {
+	const safeCreate = (proto: object | null): object => {
+		// Only allow single-argument create (no property descriptors)
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return Object.create(proto);
+	};
+
+	// Block dangerous static and prototype methods
+	const blockedMethods = new Set([
+		// Static methods that can bypass property access checks
+		'defineProperty',
+		'defineProperties',
+		'setPrototypeOf',
+		'getPrototypeOf',
+		'getOwnPropertyDescriptor',
+		'getOwnPropertyDescriptors',
+		// Legacy methods that can bypass Proxy set traps
+		'__defineGetter__',
+		'__defineSetter__',
+		'__lookupGetter__',
+		'__lookupSetter__',
+	]);
+
+	// Create a proxy that blocks dangerous methods
+	return new Proxy(Object, {
+		get(target, prop, receiver) {
+			if (blockedMethods.has(prop as string)) {
+				return undefined;
+			}
+
+			// Wrap Object.create to prevent property descriptor argument
+			if (prop === 'create') {
+				return safeCreate;
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return Reflect.get(target, prop, receiver);
+		},
+		// Block defineProperty trap to prevent __defineGetter__ from working
+		defineProperty() {
+			return false;
+		},
+	});
+};
+
+/**
+ * List of properties that are blocked on Error and all Error subclasses.
+ * These properties can be exploited for sandbox escape via V8's stack trace API.
+ */
+const blockedErrorProperties = new Set([
+	// V8 stack trace manipulation
+	'captureStackTrace',
+	'prepareStackTrace',
+	'stackTraceLimit',
+	// Legacy methods that can bypass Proxy set traps
+	'__defineGetter__',
+	'__defineSetter__',
+	'__lookupGetter__',
+	'__lookupSetter__',
+]);
+
+/**
+ * Creates a safe Error constructor that removes dangerous static methods
+ * like captureStackTrace and prepareStackTrace which can be exploited for RCE.
+ *
+ * The V8 prepareStackTrace attack works by:
+ * 1. Setting Error.prepareStackTrace to a malicious function
+ * 2. Creating a new Error and accessing its .stack property
+ * 3. V8 calls the prepareStackTrace function with CallSite objects
+ * 4. CallSite.getThis() returns the real global object, escaping the sandbox
+ */
+const createSafeError = (): typeof Error => {
+	return new Proxy(Error, {
+		get(target, prop, receiver) {
+			if (blockedErrorProperties.has(prop as string)) {
+				return undefined;
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return Reflect.get(target, prop, receiver);
+		},
+		set() {
+			// Prevent setting any properties on Error (like prepareStackTrace)
+			return false;
+		},
+		defineProperty() {
+			// Prevent defineProperty (blocks __defineGetter__ internally)
+			return false;
+		},
+	});
+};
+
+/**
+ * Creates a safe wrapper for Error subclasses (TypeError, SyntaxError, etc.)
+ * While prepareStackTrace is only on Error in V8, we wrap subclasses for defense in depth.
+ */
+const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T => {
+	return new Proxy(ErrorClass, {
+		get(target, prop, receiver) {
+			if (blockedErrorProperties.has(prop as string)) {
+				return undefined;
+			}
+
+			return Reflect.get(target, prop, receiver);
+		},
+		set() {
+			return false;
+		},
+		defineProperty() {
+			return false;
+		},
+	});
+};
+
 export class Expression {
-	constructor(private readonly workflow: Workflow) {}
+	// Feature gate for expression engine selection
+	private static expressionEngine: 'current' | 'vm' = (() => {
+		if (typeof process === 'undefined') return 'current';
+		const env = process.env.N8N_EXPRESSION_ENGINE;
+		if (env === 'vm' || env === 'current') return env;
+		if (env) {
+			console.warn(
+				`Unknown N8N_EXPRESSION_ENGINE="${env}", falling back to "current". Valid values: current, vm`,
+			);
+		}
+		return 'current';
+	})();
+
+	private static vmEvaluator?: IExpressionEvaluator;
+
+	constructor(private readonly timezone: string) {}
+
+	/**
+	 * Check if VM evaluator should be used for evaluation.
+	 * @private
+	 */
+	private static shouldUseVm(): boolean {
+		return this.expressionEngine === 'vm' && !IS_FRONTEND && !!this.vmEvaluator;
+	}
+
+	/**
+	 * Initialize the VM evaluator (if feature flag is enabled).
+	 * Should be called once during application startup.
+	 * Only available in Node.js environments (not in browser).
+	 */
+	static async initializeVmEvaluator(): Promise<void> {
+		if (this.expressionEngine !== 'vm' || IS_FRONTEND) return;
+
+		if (!this.vmEvaluator) {
+			// Dynamic import to avoid loading expression-runtime in browser environments
+			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
+			const bridge = new IsolatedVmBridge({ timeout: 5000 });
+			this.vmEvaluator = new ExpressionEvaluator({
+				bridge,
+				hooks: {
+					before: [ThisSanitizer],
+					after: [PrototypeSanitizer, DollarSignValidator],
+				},
+			});
+			await this.vmEvaluator.initialize();
+		}
+	}
+
+	/**
+	 * Dispose the VM evaluator and release resources.
+	 * Should be called during application shutdown or test teardown.
+	 */
+	static async disposeVmEvaluator(): Promise<void> {
+		if (this.vmEvaluator) {
+			await this.vmEvaluator.dispose();
+			this.vmEvaluator = undefined;
+		}
+	}
+
+	/**
+	 * Get the active expression evaluation implementation.
+	 * Used for testing and verification.
+	 */
+	static getActiveImplementation(): 'current' | 'vm' {
+		if (this.shouldUseVm()) return 'vm';
+		return 'current';
+	}
+
+	/**
+	 * Set the expression engine programmatically.
+	 *
+	 * WARNING: This is a global setting — switching engines mid-execution could
+	 * cause a workflow to evaluate some expressions with one engine and some with
+	 * another. Only use this in benchmarks and tests, never in production code.
+	 * In production, set `N8N_EXPRESSION_ENGINE` before process startup instead.
+	 */
+	static setExpressionEngine(engine: 'current' | 'vm'): void {
+		this.expressionEngine = engine;
+	}
 
 	static initializeGlobalContext(data: IDataObject) {
 		/**
@@ -76,7 +277,17 @@ export class Expression {
 		data.uneval = {};
 		data.setTimeout = {};
 		data.setInterval = {};
+		data.setImmediate = {};
+		data.clearImmediate = {};
+		data.queueMicrotask = {};
 		data.Function = {};
+
+		// Prevent Node.js module access
+		data.require = {};
+		data.module = {};
+		data.Buffer = {};
+		data.__dirname = {};
+		data.__filename = {};
 
 		// Prevent requests
 		data.fetch = {};
@@ -97,6 +308,11 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
+		data.__lookupGetter__ = undefined;
+		data.__lookupSetter__ = undefined;
+		data.__defineGetter__ = undefined;
+		data.__defineSetter__ = undefined;
+
 		// Deprecated
 		data.escape = {};
 		data.unescape = {};
@@ -111,8 +327,8 @@ export class Expression {
 		data.Interval = Interval;
 		data.Duration = Duration;
 
-		// Objects
-		data.Object = Object;
+		// Objects - use safe wrapper to block dangerous methods like defineProperty
+		data.Object = createSafeObject();
 
 		// Arrays
 		data.Array = Array;
@@ -134,14 +350,15 @@ export class Expression {
 		data.Set = typeof Set !== 'undefined' ? Set : {};
 		data.WeakSet = typeof WeakSet !== 'undefined' ? WeakSet : {};
 
-		// Errors
-		data.Error = Error;
-		data.TypeError = TypeError;
-		data.SyntaxError = SyntaxError;
-		data.EvalError = EvalError;
-		data.RangeError = RangeError;
-		data.ReferenceError = ReferenceError;
-		data.URIError = URIError;
+		// Errors - use safe wrappers to block prepareStackTrace, captureStackTrace,
+		// and other dangerous properties that could enable sandbox escape
+		data.Error = createSafeError();
+		data.TypeError = createSafeErrorSubclass(TypeError);
+		data.SyntaxError = createSafeErrorSubclass(SyntaxError);
+		data.EvalError = createSafeErrorSubclass(EvalError);
+		data.RangeError = createSafeErrorSubclass(RangeError);
+		data.ReferenceError = createSafeErrorSubclass(ReferenceError);
+		data.URIError = createSafeErrorSubclass(URIError);
 
 		// Internationalization
 		data.Intl = typeof Intl !== 'undefined' ? Intl : {};
@@ -208,7 +425,7 @@ export class Expression {
 		if (value instanceof Date) {
 			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
 			result = DateTime.fromJSDate(value, {
-				zone: this.workflow.settings?.timezone ?? getGlobalState().defaultTimezone,
+				zone: this.timezone,
 			}).toISO();
 		} else if (DateTime.isDateTime(value)) {
 			result = value.toString();
@@ -227,25 +444,14 @@ export class Expression {
 	 * Resolves the parameter value.  If it is an expression it will execute it and
 	 * return the result. For everything simply the supplied value will be returned.
 	 *
-	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {boolean} [returnObjectAsString=false]
+	 * @param {NodeParameterValue} parameterValue - The parameter value to resolve
+	 * @param {IWorkflowDataProxyData} data - The workflow data proxy data
+	 * @param {boolean} [returnObjectAsString=false] - Whether to convert objects to strings
 	 */
-	// TODO: Clean that up at some point and move all the options into an options object
-	// eslint-disable-next-line complexity
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
-		siblingParameters: INodeParameters,
-		runExecutionData: IRunExecutionData | null,
-		runIndex: number,
-		itemIndex: number,
-		activeNodeName: string,
-		connectionInputData: INodeExecutionData[],
-		mode: WorkflowExecuteMode,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		executeData?: IExecuteData,
+		data: IWorkflowDataProxyData,
 		returnObjectAsString = false,
-		selfData = {},
-		contextNodeName?: string,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Check if it is an expression
 		if (!isExpression(parameterValue)) {
@@ -256,26 +462,7 @@ export class Expression {
 		// Is an expression
 
 		// Remove the equal sign
-
 		parameterValue = parameterValue.substr(1);
-
-		// Generate a data proxy which allows to query workflow data
-		const dataProxy = new WorkflowDataProxy(
-			this.workflow,
-			runExecutionData,
-			runIndex,
-			itemIndex,
-			activeNodeName,
-			connectionInputData,
-			siblingParameters,
-			mode,
-			additionalKeys,
-			executeData,
-			-1,
-			selfData,
-			contextNodeName,
-		);
-		const data = dataProxy.getDataProxy();
 
 		// Support only a subset of process properties
 		data.process =
@@ -298,7 +485,11 @@ export class Expression {
 		data.extend = extend;
 		data.extendOptional = extendOptional;
 
-		data[sanitizerName] = sanitizer;
+		Object.defineProperty(data, sanitizerName, {
+			value: sanitizer,
+			writable: false,
+			configurable: false,
+		});
 
 		Object.assign(data, extendedFunctions);
 
@@ -306,8 +497,8 @@ export class Expression {
 		if (parameterValue.match(constructorValidation)) {
 			throw new ExpressionError('Expression contains invalid constructor function call', {
 				causeDetailed: 'Constructor override attempt is not allowed due to security concerns',
-				runIndex,
-				itemIndex,
+				runIndex: data.$thisRunIndex,
+				itemIndex: data.$thisItemIndex,
 			});
 		}
 
@@ -331,6 +522,46 @@ export class Expression {
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
+		// Use VM evaluator if engine is set to 'vm' and we're not in the browser
+		if (Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
+			if (!Expression.vmEvaluator) {
+				throw new UnexpectedError(
+					'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initializeVmEvaluator() during application startup.',
+				);
+			}
+
+			try {
+				const result = Expression.vmEvaluator.evaluate(expression, data);
+				return result as string | null | (() => unknown);
+			} catch (error) {
+				if (isExpressionError(error)) throw error;
+
+				if (error instanceof TimeoutError) {
+					const wrapped = new ExpressionError('Expression timed out');
+					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
+					wrapped.cause = error;
+					throw wrapped;
+				}
+				if (error instanceof MemoryLimitError) {
+					const wrapped = new ExpressionError('Expression exceeded memory limit');
+					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
+					wrapped.cause = error;
+					throw wrapped;
+				}
+				if (error instanceof SecurityViolationError) {
+					const wrapped = new ExpressionError(error.message);
+					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
+					wrapped.cause = error;
+					throw wrapped;
+				}
+
+				if (isSyntaxError(error)) throw new ExpressionError('invalid syntax');
+
+				throw error;
+			}
+		}
+
+		// Fall back to current implementation
 		try {
 			return evaluateExpression(expression, data);
 		} catch (error) {
@@ -351,217 +582,12 @@ export class Expression {
 	}
 
 	/**
-	 * Resolves value of parameter. But does not work for workflow-data.
-	 *
-	 * @param {(string | undefined)} parameterValue
-	 */
-	getSimpleParameterValue(
-		node: INode,
-		parameterValue: string | boolean | undefined,
-		mode: WorkflowExecuteMode,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		executeData?: IExecuteData,
-		defaultValue?: boolean | number | string | unknown[],
-	): boolean | number | string | undefined | unknown[] {
-		if (parameterValue === undefined) {
-			// Value is not set so return the default
-			return defaultValue;
-		}
-
-		// Get the value of the node (can be an expression)
-		const runIndex = 0;
-		const itemIndex = 0;
-		const connectionInputData: INodeExecutionData[] = [];
-		const runData = createEmptyRunExecutionData();
-
-		return this.getParameterValue(
-			parameterValue,
-			runData,
-			runIndex,
-			itemIndex,
-			node.name,
-			connectionInputData,
-			mode,
-			additionalKeys,
-			executeData,
-		) as boolean | number | string | undefined;
-	}
-
-	/**
-	 * Resolves value of complex parameter. But does not work for workflow-data.
-	 *
-	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
-	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)} [defaultValue]
-	 */
-	getComplexParameterValue(
-		node: INode,
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-		mode: WorkflowExecuteMode,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		executeData?: IExecuteData,
-		defaultValue: NodeParameterValueType | undefined = undefined,
-		selfData = {},
-	): NodeParameterValueType | undefined {
-		if (parameterValue === undefined) {
-			// Value is not set so return the default
-			return defaultValue;
-		}
-
-		// Get the value of the node (can be an expression)
-		const runIndex = 0;
-		const itemIndex = 0;
-		const connectionInputData: INodeExecutionData[] = [];
-		const runData = createEmptyRunExecutionData();
-
-		// Resolve the "outer" main values
-		const returnData = this.getParameterValue(
-			parameterValue,
-			runData,
-			runIndex,
-			itemIndex,
-			node.name,
-			connectionInputData,
-			mode,
-			additionalKeys,
-			executeData,
-			false,
-			selfData,
-		);
-
-		// Resolve the "inner" values
-		return this.getParameterValue(
-			returnData,
-			runData,
-			runIndex,
-			itemIndex,
-			node.name,
-			connectionInputData,
-			mode,
-			additionalKeys,
-			executeData,
-			false,
-			selfData,
-		);
-	}
-
-	/**
 	 * Returns the resolved node parameter value. If it is an expression it will execute it and
 	 * return the result. If the value to resolve is an array or object it will do the same
 	 * for all of the items and values.
 	 *
-	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
-	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {boolean} [returnObjectAsString=false]
+	 * @param {NodeParameterValueType | INodeParameterResourceLocator} parameterValue - The parameter value to resolve
+	 * @param {IWorkflowDataProxyData} data - The workflow data proxy data
+	 * @param {boolean} [returnObjectAsString=false] - Whether to convert objects to strings
 	 */
-	// TODO: Clean that up at some point and move all the options into an options object
-	getParameterValue(
-		parameterValue: NodeParameterValueType | INodeParameterResourceLocator,
-		runExecutionData: IRunExecutionData | null,
-		runIndex: number,
-		itemIndex: number,
-		activeNodeName: string,
-		connectionInputData: INodeExecutionData[],
-		mode: WorkflowExecuteMode,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		executeData?: IExecuteData,
-		returnObjectAsString = false,
-		selfData = {},
-		contextNodeName?: string,
-	): NodeParameterValueType {
-		// Helper function which returns true when the parameter is a complex one or array
-		const isComplexParameter = (value: NodeParameterValueType) => {
-			return typeof value === 'object';
-		};
-
-		// Helper function which resolves a parameter value depending on if it is simply or not
-		const resolveParameterValue = (
-			value: NodeParameterValueType,
-			siblingParameters: INodeParameters,
-		) => {
-			if (isComplexParameter(value)) {
-				return this.getParameterValue(
-					value,
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					activeNodeName,
-					connectionInputData,
-					mode,
-					additionalKeys,
-					executeData,
-					returnObjectAsString,
-					selfData,
-					contextNodeName,
-				);
-			}
-
-			return this.resolveSimpleParameterValue(
-				value as NodeParameterValue,
-				siblingParameters,
-				runExecutionData,
-				runIndex,
-				itemIndex,
-				activeNodeName,
-				connectionInputData,
-				mode,
-				additionalKeys,
-				executeData,
-				returnObjectAsString,
-				selfData,
-				contextNodeName,
-			);
-		};
-
-		// Check if it value is a simple one that we can get it resolved directly
-		if (!isComplexParameter(parameterValue)) {
-			return this.resolveSimpleParameterValue(
-				parameterValue as NodeParameterValue,
-				{},
-				runExecutionData,
-				runIndex,
-				itemIndex,
-				activeNodeName,
-				connectionInputData,
-				mode,
-				additionalKeys,
-				executeData,
-				returnObjectAsString,
-				selfData,
-				contextNodeName,
-			);
-		}
-
-		// The parameter value is complex so resolve depending on type
-		if (Array.isArray(parameterValue)) {
-			// Data is an array
-			const returnData = parameterValue.map((item) =>
-				resolveParameterValue(item as NodeParameterValueType, {}),
-			);
-			return returnData as NodeParameterValue[] | INodeParameters[];
-		}
-
-		if (parameterValue === null || parameterValue === undefined) {
-			return parameterValue;
-		}
-
-		if (typeof parameterValue !== 'object') {
-			return {};
-		}
-
-		// Data is an object
-		const returnData: INodeParameters = {};
-
-		for (const [key, value] of Object.entries(parameterValue)) {
-			returnData[key] = resolveParameterValue(
-				value as NodeParameterValueType,
-				parameterValue as INodeParameters,
-			);
-		}
-
-		if (returnObjectAsString && typeof returnData === 'object') {
-			return this.convertObjectValueToString(returnData);
-		}
-
-		return returnData;
-	}
 }

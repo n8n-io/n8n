@@ -7,6 +7,7 @@ import BetaTag from '../BetaTag/BetaTag.vue';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
+import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 
@@ -25,6 +26,10 @@ const emit = defineEmits<{
 }>();
 
 const to = computed(() => {
+	if (props.item.disabled) {
+		return undefined;
+	}
+
 	if (props.item.route) {
 		return props.item.route.to;
 	}
@@ -35,6 +40,13 @@ const to = computed(() => {
 
 	return undefined;
 });
+
+const handleClick = () => {
+	if (props.item.disabled) {
+		return;
+	}
+	emit('click');
+};
 
 const icon = computed<IconName | undefined>(() => {
 	if (typeof props.item.icon === 'object' && props.item.icon?.type === 'icon') {
@@ -56,21 +68,51 @@ const iconColor = computed(() => {
 
 	return props.item.icon?.color;
 });
+
+const tooltipDisabled = computed(() => {
+	return !props.compact && !(props.item.disabled && props.item.disabledReason);
+});
+
+const tooltipContent = computed(() => {
+	if (props.item.disabled && props.item.disabledReason) {
+		return props.item.disabledReason;
+	}
+
+	if (props.compact) {
+		return props.item.label;
+	}
+
+	return undefined;
+});
+
+const tooltipPlacement = computed(() => {
+	return props.item.disabled && props.item.disabledReason ? 'top' : 'right';
+});
 </script>
 
 <template>
 	<div :data-test-id="item.id" :class="$style.menuItemWrapper">
-		<N8nTooltip :placement="'right'" :disabled="!compact" :show-after="500">
-			<template v-if="compact" #content>{{ item.label }}</template>
+		<N8nTooltip :placement="tooltipPlacement" :disabled="tooltipDisabled" :show-after="500">
+			<template #content>
+				{{ tooltipContent }}
+			</template>
 
 			<N8nRoute
 				:id="item.id"
 				:to="to"
 				role="menuitem"
-				:class="[$style.menuItem, { [$style.active]: active, [$style.compact]: compact }]"
+				:class="[
+					$style.menuItem,
+					{
+						[$style.active]: active,
+						[$style.compact]: compact,
+						[$style.disabled]: item.disabled,
+					},
+				]"
 				:aria-label="props.ariaLabel ?? props.item.label"
+				:aria-disabled="item.disabled"
 				data-test-id="menu-item"
-				@click="emit('click')"
+				@click="handleClick"
 			>
 				<div
 					v-if="item.icon"
@@ -85,10 +127,20 @@ const iconColor = computed(() => {
 					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
 				</div>
 				<div :class="$style.menuItemLabel">
-					<N8nText v-if="!compact" :class="$style.menuItemText" color="text-dark">
+					<N8nText
+						v-if="!compact"
+						:class="$style.menuItemText"
+						:color="item.disabled ? 'text-light' : 'text-dark'"
+					>
 						{{ item.label }}
 					</N8nText>
 					<BetaTag v-if="!compact && item.beta" />
+					<N8nTag
+						v-if="!compact && item.new"
+						:clickable="false"
+						text="New"
+						:class="$style.newTag"
+					/>
 				</div>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
 			</N8nRoute>
@@ -118,7 +170,7 @@ const iconColor = computed(() => {
 	width: 100%;
 	position: relative;
 
-	&:hover .menuItemIcon {
+	&:hover:not(.disabled) .menuItemIcon {
 		color: var(--color--text--shade-1);
 	}
 
@@ -127,7 +179,7 @@ const iconColor = computed(() => {
 		background-color: var(--color--background--light-1);
 	}
 
-	&:hover:not(.active):not(:global(.router-link-active)) {
+	&:hover:not(.active):not(:global(.router-link-active)):not(.disabled) {
 		background-color: var(--color--background--light-1);
 		color: var(--color--text--shade-1);
 	}
@@ -140,6 +192,10 @@ const iconColor = computed(() => {
 .menuItem:focus-visible {
 	outline: 1px solid var(--color--secondary);
 	outline-offset: -1px;
+}
+
+.menuItem.disabled {
+	cursor: not-allowed;
 }
 
 .menuItemText {
@@ -193,5 +249,18 @@ const iconColor = computed(() => {
 	gap: var(--spacing--3xs);
 	flex: 1;
 	min-width: 0;
+}
+
+.newTag {
+	background-color: var(--color--foreground--shade-2);
+	color: var(--color--background);
+	border-color: var(--color--foreground--shade-2);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	padding: var(--spacing--5xs) var(--spacing--4xs);
+	border-radius: var(--spacing--sm);
+	min-height: auto;
+	height: auto;
+	line-height: 1;
 }
 </style>

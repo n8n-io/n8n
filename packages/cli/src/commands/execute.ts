@@ -6,6 +6,7 @@ import { ExecutionBaseError, UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
+import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -93,6 +94,14 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		const executionId = await workflowRunner.run(runData);
+
+		Container.get(EventService).emit('workflow-executed', {
+			user: { id: user.id },
+			workflowId: workflowData.id,
+			workflowName: workflowData.name,
+			executionId,
+			source: 'cli',
+		});
 
 		const activeExecutions = Container.get(ActiveExecutions);
 		const data = await activeExecutions.getPostExecutePromise(executionId);

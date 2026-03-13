@@ -92,7 +92,7 @@ describe('WorkflowDescriptionModal', () => {
 			nodes: [],
 			connections: {},
 		};
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 	});
 
 	afterEach(() => {

@@ -37,6 +37,8 @@ interface CsvColumn {
 	compatibleTypes: ColumnType[];
 	typeOptions: Array<{ label: string; value: string }>;
 	error?: string;
+	included: boolean;
+	csvColumnName: string;
 }
 
 const props = defineProps<Props>();
@@ -59,7 +61,7 @@ const uploadedFileName = ref<string>('');
 const csvColumns = ref<CsvColumn[]>([]);
 const csvRowCount = ref<number>(0);
 const csvColumnCount = ref<number>(0);
-const isUploading = ref(false);
+const isLoading = ref(false);
 const hasHeaders = ref(true);
 const isUploadHovered = ref(false);
 
@@ -97,15 +99,22 @@ const validateColumnName = (columnName: string): string | undefined => {
 	return undefined;
 };
 
+const includedColumns = computed(() => csvColumns.value.filter((col) => col.included));
+
 const hasValidationErrors = computed(() => {
 	if (creationMode.value !== 'import') return false;
-	return csvColumns.value.some((column) => column.error !== undefined);
+	return includedColumns.value.some((column) => column.error !== undefined);
 });
 
 const hasDuplicateNames = computed(() => {
 	if (creationMode.value !== 'import') return false;
-	const names = csvColumns.value.map((col) => col.name.toLowerCase());
+	const names = includedColumns.value.map((col) => col.name.toLowerCase());
 	return names.length !== new Set(names).size;
+});
+
+const hasNoIncludedColumns = computed(() => {
+	if (creationMode.value !== 'import') return false;
+	return includedColumns.value.length === 0;
 });
 
 const modalTitle = computed(() => {
@@ -121,7 +130,8 @@ const isCreateDisabled = computed(() => {
 			!dataTableName.value ||
 			!uploadedFileId.value ||
 			hasValidationErrors.value ||
-			hasDuplicateNames.value
+			hasDuplicateNames.value ||
+			hasNoIncludedColumns.value
 		);
 	}
 	return true;
@@ -137,7 +147,7 @@ onMounted(() => {
 const selectedOption = ref<'scratch' | 'import'>('scratch');
 
 const proceedFromSelect = async () => {
-	if (!selectedOption.value || !dataTableName.value) return;
+	if (!selectedOption.value || !dataTableName.value || isLoading.value) return;
 
 	if (selectedOption.value === 'scratch') {
 		await onSubmit();
@@ -147,33 +157,32 @@ const proceedFromSelect = async () => {
 	}
 };
 
+const revalidateAllColumns = () => {
+	csvColumns.value.forEach((col, idx) => {
+		if (!col.included) {
+			col.error = undefined;
+			return;
+		}
+		const validationError = validateColumnName(col.name);
+		const isDuplicate = csvColumns.value.some(
+			(c, i) => i !== idx && c.included && c.name.toLowerCase() === col.name.toLowerCase(),
+		);
+		if (isDuplicate && !validationError) {
+			col.error = i18n.baseText('dataTable.import.duplicateColumnName');
+		} else {
+			col.error = validationError;
+		}
+	});
+};
+
 const onColumnNameChange = (index: number) => {
 	const column = csvColumns.value[index];
 	if (!column) return;
+	revalidateAllColumns();
+};
 
-	column.error = validateColumnName(column.name);
-
-	const isDuplicate = csvColumns.value.some(
-		(col, idx) => idx !== index && col.name.toLowerCase() === column.name.toLowerCase(),
-	);
-
-	if (isDuplicate && !column.error) {
-		column.error = i18n.baseText('dataTable.import.duplicateColumnName');
-	}
-
-	csvColumns.value.forEach((col, idx) => {
-		if (idx !== index) {
-			const otherIsDuplicate = csvColumns.value.some(
-				(c, i) => i !== idx && c.name.toLowerCase() === col.name.toLowerCase(),
-			);
-			const validationError = validateColumnName(col.name);
-			if (otherIsDuplicate && !validationError) {
-				col.error = i18n.baseText('dataTable.import.duplicateColumnName');
-			} else {
-				col.error = validationError;
-			}
-		}
-	});
+const onColumnIncludedChange = () => {
+	revalidateAllColumns();
 };
 
 const reset = (clearTableName = false) => {
@@ -199,7 +208,7 @@ const handleFileChange = (uploadFile: UploadFile) => {
 const uploadFile = async () => {
 	if (!selectedFile.value) return;
 
-	isUploading.value = true;
+	isLoading.value = true;
 	creationMode.value = 'import';
 
 	try {
@@ -218,6 +227,8 @@ const uploadFile = async () => {
 				compatibleTypes,
 				typeOptions: getColumnTypeOptions(compatibleTypes),
 				error: validateColumnName(sanitizedName),
+				included: true,
+				csvColumnName: col.name,
 			};
 		});
 
@@ -229,11 +240,12 @@ const uploadFile = async () => {
 		toast.showError(error, i18n.baseText('dataTable.upload.error'));
 		reset();
 	} finally {
-		isUploading.value = false;
+		isLoading.value = false;
 	}
 };
 
 const onSubmit = async () => {
+	isLoading.value = true;
 	try {
 		let newDataTable;
 
@@ -243,10 +255,18 @@ const onSubmit = async () => {
 				route.params.projectId as string,
 			);
 		} else if (creationMode.value === 'import' && uploadedFileId.value) {
+			const hasColumnChanges = csvColumns.value.some(
+				(col) => !col.included || col.name !== col.csvColumnName.replace(/\s+/g, '_'),
+			);
+
 			newDataTable = await dataTableStore.createDataTable(
 				dataTableName.value,
 				route.params.projectId as string,
-				csvColumns.value.map((col) => ({ name: col.name, type: col.type })),
+				includedColumns.value.map((col) => ({
+					name: col.name,
+					type: col.type,
+					...(hasColumnChanges ? { csvColumnName: col.csvColumnName } : {}),
+				})),
 				uploadedFileId.value,
 				hasHeaders.value,
 			);
@@ -269,6 +289,8 @@ const onSubmit = async () => {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataTable.add.error'));
+	} finally {
+		isLoading.value = false;
 	}
 };
 
@@ -308,6 +330,7 @@ const redirectToDataTables = () => {
 						:placeholder="i18n.baseText('dataTable.add.input.name.placeholder')"
 						data-test-id="data-table-name-input-select"
 						name="dataTableNameSelect"
+						@keydown.enter="proceedFromSelect"
 					/>
 				</N8nInputLabel>
 				<ElRadioGroup v-model="selectedOption" :class="$style.radioGroup">
@@ -353,7 +376,7 @@ const redirectToDataTables = () => {
 			</div>
 
 			<div v-else-if="creationMode === 'import'" :class="$style.content">
-				<div v-if="isUploading" :class="$style.uploadingMessage">
+				<div v-if="isLoading" :class="$style.uploadingMessage">
 					{{ i18n.baseText('dataTable.upload.uploading') }}
 				</div>
 
@@ -376,6 +399,7 @@ const redirectToDataTables = () => {
 					</div>
 
 					<div :class="$style.columnHeaders">
+						<div :aria-label="i18n.baseText('dataTable.import.includeColumn')" />
 						<div :class="$style.columnHeaderLabel">
 							{{ i18n.baseText('dataTable.import.columnName') }}
 						</div>
@@ -386,11 +410,19 @@ const redirectToDataTables = () => {
 
 					<div :class="$style.columnsContainer">
 						<div v-for="(column, index) in csvColumns" :key="index" :class="$style.columnItem">
+							<div :class="$style.columnCheckboxWrapper">
+								<N8nCheckbox
+									v-model="column.included"
+									:data-test-id="`column-include-${index}`"
+									@update:model-value="onColumnIncludedChange"
+								/>
+							</div>
 							<div :class="$style.columnInputWrapper">
 								<N8nInput
 									v-model="column.name"
 									:placeholder="i18n.baseText('dataTable.import.columnNamePlaceholder')"
 									:data-test-id="`column-name-${index}`"
+									:disabled="!column.included"
 									:class="{ [$style.inputError]: column.error }"
 									@update:model-value="onColumnNameChange(index)"
 								/>
@@ -401,7 +433,8 @@ const redirectToDataTables = () => {
 							<div :class="$style.columnTypeWrapper">
 								<N8nSelect
 									v-model="column.type"
-									:disabled="column.typeOptions.length === 1"
+									:disabled="!column.included || column.typeOptions.length === 1"
+									:class="{ 'column-type-excluded': !column.included }"
 									:data-test-id="`column-type-${index}`"
 								>
 									<N8nOption
@@ -420,8 +453,8 @@ const redirectToDataTables = () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
+					variant="subtle"
 					v-if="creationMode === 'select'"
-					type="secondary"
 					size="large"
 					:label="i18n.baseText('generic.cancel')"
 					data-test-id="cancel-select-button"
@@ -429,6 +462,7 @@ const redirectToDataTables = () => {
 				/>
 				<N8nButton
 					v-if="creationMode === 'select'"
+					:loading="isLoading"
 					size="large"
 					:disabled="
 						!dataTableName || !selectedOption || (selectedOption === 'import' && !selectedFile)
@@ -439,8 +473,8 @@ const redirectToDataTables = () => {
 				/>
 
 				<N8nButton
+					variant="subtle"
 					v-if="creationMode === 'import'"
-					type="secondary"
 					size="large"
 					:label="i18n.baseText('generic.back')"
 					data-test-id="back-button"
@@ -448,6 +482,7 @@ const redirectToDataTables = () => {
 				/>
 				<N8nButton
 					v-if="creationMode === 'import'"
+					:loading="isLoading"
 					size="large"
 					:disabled="isCreateDisabled"
 					:label="i18n.baseText('generic.create')"
@@ -543,9 +578,10 @@ const redirectToDataTables = () => {
 
 .columnHeaders {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: var(--spacing--sm) 1fr 1fr;
 	gap: var(--spacing--md);
 	padding: 0 var(--spacing--2xs);
+	align-items: baseline;
 }
 
 .columnHeaderLabel {
@@ -565,9 +601,16 @@ const redirectToDataTables = () => {
 
 .columnItem {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: var(--spacing--sm) 1fr 1fr;
 	gap: var(--spacing--md);
 	align-items: start;
+}
+
+.columnCheckboxWrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: var(--spacing--xl);
 }
 
 .columnInputWrapper {
@@ -579,6 +622,15 @@ const redirectToDataTables = () => {
 .columnTypeWrapper {
 	display: flex;
 	align-items: center;
+
+	:global(.column-type-excluded.n8n-select) {
+		/* stylelint-disable-next-line @n8n/css-var-naming */
+		--el-disabled-bg-color: var(--color--background--light-3);
+		--input--color--background--disabled: var(--color--background--light-3);
+		pointer-events: none;
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
 }
 
 .inputError {

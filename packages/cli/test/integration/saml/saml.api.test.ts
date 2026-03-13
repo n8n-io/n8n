@@ -5,8 +5,8 @@ import { Container } from '@n8n/di';
 import type express from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { setSamlLoginEnabled } from '@/sso.ee/saml/saml-helpers';
-import { SamlService } from '@/sso.ee/saml/saml.service.ee';
+import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
+import { SamlService } from '@/modules/sso-saml/saml.service.ee';
 import {
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
@@ -201,8 +201,11 @@ describe('Check endpoint permissions', () => {
 			await authOwnerAgent.get('/sso/saml/initsso').expect(200);
 		});
 
-		test('should be able to access GET /sso/saml/config/test', async () => {
-			await authOwnerAgent.get('/sso/saml/config/test').expect(200);
+		test('should be able to access POST /sso/saml/config/test', async () => {
+			await authOwnerAgent
+				.post('/sso/saml/config/test')
+				.send({ metadata: sampleConfig.metadata })
+				.expect(200);
 		});
 	});
 
@@ -241,8 +244,8 @@ describe('Check endpoint permissions', () => {
 			await authMemberAgent.get('/sso/saml/initsso').expect(200);
 		});
 
-		test('should NOT be able to access GET /sso/saml/config/test', async () => {
-			await authMemberAgent.get('/sso/saml/config/test').expect(403);
+		test('should NOT be able to access POST /sso/saml/config/test', async () => {
+			await authMemberAgent.post('/sso/saml/config/test').expect(403);
 		});
 	});
 	describe('Non-Authenticated User', () => {
@@ -280,8 +283,8 @@ describe('Check endpoint permissions', () => {
 			await testServer.authlessAgent.get('/sso/saml/initsso').expect(200);
 		});
 
-		test('should NOT be able to access GET /sso/saml/config/test', async () => {
-			await testServer.authlessAgent.get('/sso/saml/config/test').expect(401);
+		test('should NOT be able to access POST /sso/saml/config/test', async () => {
+			await testServer.authlessAgent.post('/sso/saml/config/test').expect(401);
 		});
 	});
 });

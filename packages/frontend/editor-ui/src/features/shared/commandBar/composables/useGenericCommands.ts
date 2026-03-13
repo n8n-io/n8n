@@ -10,6 +10,7 @@ import type { CommandGroup, CommandBarItem } from '../types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 
 const ITEM_ID = {
 	CHAT_HUB: 'chat-hub',
@@ -33,6 +34,7 @@ export function useGenericCommands(): CommandGroup {
 	const router = useRouter();
 	const settingsStore = useSettingsStore();
 	const projectsStore = useProjectsStore();
+	const templatesStore = useTemplatesStore();
 	const { getReportingURL } = useBugReporting();
 
 	const genericCommands = computed<CommandBarItem[]>(() => [
@@ -80,7 +82,11 @@ export function useGenericCommands(): CommandGroup {
 						title: i18n.baseText('generic.templates'),
 						section: i18n.baseText('commandBar.sections.general'),
 						handler: () => {
-							void router.push({ name: VIEWS.PRE_BUILT_AGENT_TEMPLATES });
+							if (templatesStore.hasCustomTemplatesHost) {
+								void router.push({ name: VIEWS.TEMPLATES });
+							} else {
+								window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
+							}
 						},
 						icon: {
 							component: N8nIcon,

@@ -1,9 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import { TaskRunnersConfig } from '@n8n/config';
+import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
-import { jsonStringify, UserError } from 'n8n-workflow';
+import { jsonStringify, sleep, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
 import { WsStatusCodes } from '@/constants';
@@ -40,6 +40,7 @@ export class TaskBrokerWsServer {
 		private disconnectAnalyzer: DefaultTaskRunnerDisconnectAnalyzer,
 		private readonly taskTunnersConfig: TaskRunnersConfig,
 		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	start() {
@@ -178,13 +179,40 @@ export class TaskBrokerWsServer {
 	}
 
 	private async stopConnectedRunners() {
-		// TODO: We should give runners some time to finish their tasks before
-		// shutting them down
+		await this.drainActiveTasks();
+
 		await Promise.all(
 			Array.from(this.runnerConnections.keys()).map(
 				async (id) =>
 					await this.removeConnection(id, 'shutting-down', WsStatusCodes.CloseGoingAway),
 			),
 		);
+	}
+
+	private async drainActiveTasks() {
+		const drainTimeout = Math.floor(this.globalConfig.generic.gracefulShutdownTimeout * 0.8);
+
+		const drainTimeoutMs = drainTimeout * Time.seconds.toMilliseconds;
+
+		this.taskBroker.startDraining();
+
+		for (const connection of this.runnerConnections.values()) {
+			try {
+				connection.send(JSON.stringify({ type: 'broker:drain' }));
+			} catch {
+				// Connection may be closed or errored, continue notifying other runners
+			}
+		}
+
+		const start = Date.now();
+		while (this.taskBroker.hasActiveTasks() && Date.now() - start < drainTimeoutMs) {
+			await sleep(100);
+		}
+
+		if (this.taskBroker.hasActiveTasks()) {
+			this.logger.warn(
+				`Drain timeout reached after ${drainTimeout}s, will force-shutdown with active tasks...`,
+			);
+		}
 	}
 }

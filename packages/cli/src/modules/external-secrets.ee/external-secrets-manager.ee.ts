@@ -1,9 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
+import { SecretsProviderConnectionRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { type IExternalSecretsManager } from 'n8n-core';
-import { UnexpectedError, type IDataObject } from 'n8n-workflow';
+import { Cipher, type IExternalSecretsManager } from 'n8n-core';
+import { jsonParse, UnexpectedError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -12,8 +13,8 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
 import {
-	ProviderConnectResult,
 	ExternalSecretsProviderLifecycle,
+	ProviderConnectResult,
 } from './provider-lifecycle.service';
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 import { ExternalSecretsRetryManager } from './retry-manager.service';
@@ -44,6 +45,8 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		private readonly providerLifecycle: ExternalSecretsProviderLifecycle,
 		private readonly retryManager: ExternalSecretsRetryManager,
 		private readonly secretsCache: ExternalSecretsSecretsCache,
+		private readonly secretsProviderConnectionRepository: SecretsProviderConnectionRepository,
+		private readonly cipher: Cipher,
 	) {
 		this.logger = this.logger.scoped('external-secrets');
 	}
@@ -91,6 +94,14 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		return this.providerRegistry.get(provider);
 	}
 
+	getProviderProperties(providerType: string): INodeProperties[] {
+		const ProviderClass = this.providersFactory.getProvider(providerType);
+		if (!ProviderClass) {
+			throw new NotFoundError(`Provider type "${providerType}" not found`);
+		}
+		return new ProviderClass().properties;
+	}
+
 	hasProvider(provider: string): boolean {
 		return this.providerRegistry.has(provider);
 	}
@@ -125,20 +136,49 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		};
 	}
 
-	async updateProvider(provider: string): Promise<void> {
-		const providerInstance = this.providerRegistry.get(provider);
+	async syncProviderConnection(providerKey: string): Promise<void> {
+		await this.tearDownProviderConnection(providerKey);
+
+		const connection = await this.secretsProviderConnectionRepository.findOne({
+			where: { providerKey },
+		});
+
+		// Note: connection can be undefined if called after a delete operation
+		if (connection) {
+			const settings = this.decryptSettings(connection.encryptedSettings);
+			await this.setupProvider(
+				connection.type,
+				{ connected: true, connectedAt: null, settings },
+				providerKey,
+			);
+
+			const provider = this.providerRegistry.get(providerKey);
+			if (provider) {
+				await this.secretsCache.refreshProvider(providerKey, provider);
+			}
+		}
+
+		this.broadcastReload();
+	}
+
+	async updateProvider(providerKey: string): Promise<void> {
+		const providerInstance = this.providerRegistry.get(providerKey);
 
 		if (!providerInstance) {
-			throw new NotFoundError(`Provider "${provider}" not found`);
+			throw new NotFoundError(`Provider "${providerKey}" not found`);
 		}
 
 		if (providerInstance.state !== 'connected') {
-			throw new UnexpectedError(`Provider "${provider}" is not connected`);
+			throw new UnexpectedError(`Provider "${providerKey}" is not connected`);
 		}
 
 		await providerInstance.update();
 		this.broadcastReload();
-		this.logger.debug(`Updated provider ${provider}`);
+		this.logger.debug(`Updated provider ${providerKey}`);
+
+		this.eventService.emit('external-secrets-provider-reloaded', {
+			vaultType: providerKey,
+		});
 	}
 
 	// ========================================
@@ -207,7 +247,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		const errorState = {
 			success: false,
 			testState: 'error',
-		};
+		} as const;
 
 		const result = await this.providerLifecycle.initialize(provider, testSettings);
 
@@ -216,11 +256,26 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		}
 
 		try {
-			const [success, error] = await result.provider.test();
-			const currentSettings = await this.settingsStore.getProvider(provider);
-			const testState = this.determineTestState(success, currentSettings?.connected ?? false);
+			// Connect the provider to authenticate before testing
+			const connectResult = await this.providerLifecycle.connect(result.provider);
+			if (!connectResult.success) {
+				return {
+					...errorState,
+					error: connectResult.error?.message,
+				};
+			}
 
-			return { success, testState, error };
+			const [success, error] = await result.provider.test();
+
+			// This mostly forces the "typing" to work correctly
+			if (!success) {
+				return { success: false, testState: 'error', error };
+			}
+
+			const currentSettings = await this.settingsStore.getProvider(provider);
+			const testState: 'connected' | 'tested' = currentSettings?.connected ? 'connected' : 'tested';
+
+			return { success: true, testState };
 		} catch {
 			return errorState;
 		} finally {
@@ -234,8 +289,12 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 	@OnPubSubEvent('reload-external-secrets-providers')
 	async reloadAllProviders(): Promise<void> {
-		this.logger.debug('Reloading all external secrets providers');
+		if (this.config.externalSecretsForProjects || this.config.externalSecretsMultipleConnections) {
+			await this.reloadProvidersFromConnectionsRepo();
+			return;
+		}
 
+		this.logger.debug('Reloading all external secrets providers');
 		const newSettings = await this.settingsStore.reload();
 
 		// Reload/add providers from new settings
@@ -247,22 +306,52 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		this.logger.debug('Reloaded all external secrets providers');
 	}
 
+	private async reloadProvidersFromConnectionsRepo(): Promise<void> {
+		this.logger.debug('Initializing external secrets with project-based providers');
+		const connections = await this.secretsProviderConnectionRepository.findAll();
+
+		for (const connection of connections) {
+			await this.tearDownProviderConnection(connection.providerKey);
+			const settings: SecretsProviderSettings['settings'] = this.decryptSettings(
+				connection.encryptedSettings,
+			);
+
+			const connectionSettings: SecretsProviderSettings = {
+				connected: true,
+				connectedAt: null,
+				settings,
+			};
+
+			await this.setupProvider(connection.type, connectionSettings, connection.providerKey);
+		}
+
+		await this.secretsCache.refreshAll();
+		this.logger.debug('Reloaded external secrets providers');
+	}
+
 	// ========================================
 	// Private - Provider Management
 	// ========================================
 
-	private async addProvider(name: string, config: SecretsProviderSettings): Promise<void> {
-		const result = await this.providerLifecycle.initialize(name, config);
+	private async setupProvider(
+		providerType: string,
+		config: SecretsProviderSettings,
+		providerKey?: string,
+	): Promise<void> {
+		const key = providerKey ?? providerType;
+		const result = await this.providerLifecycle.initialize(providerType, config);
 
 		if (!result.success || !result.provider) {
-			this.logger.error(`Failed to initialize provider ${name}`, { error: result.error });
+			this.logger.error(`Failed to initialize provider ${key}`, {
+				error: result.error,
+			});
 			return;
 		}
 
-		this.providerRegistry.add(name, result.provider);
+		this.providerRegistry.add(key, result.provider);
 
 		if (config.connected) {
-			await this.retryManager.runWithRetry(name, async () => await this.connectProvider(name));
+			await this.retryManager.runWithRetry(key, async () => await this.connectProvider(key));
 		}
 	}
 
@@ -283,18 +372,30 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			return;
 		}
 
-		// Cancel any pending retries before removing provider
-		this.retryManager.cancelRetry(name);
+		await this.tearDownProviderConnection(name);
+		await this.setupProvider(name, config);
+	}
 
-		// Remove existing provider
-		const existingProvider = this.providerRegistry.get(name);
+	private async tearDownProviderConnection(providerKey: string): Promise<void> {
+		this.retryManager.cancelRetry(providerKey);
+		const existingProvider = this.providerRegistry.get(providerKey);
 		if (existingProvider) {
+			this.logger.debug(`Tearing down provider connection: ${providerKey}`);
 			await this.providerLifecycle.disconnect(existingProvider);
-			this.providerRegistry.remove(name);
+			this.providerRegistry.remove(providerKey);
 		}
+	}
 
-		// Re-add provider with new settings
-		await this.addProvider(name, config);
+	private decryptSettings(encryptedData: string): SecretsProviderSettings['settings'] {
+		try {
+			const decryptedData = this.cipher.decrypt(encryptedData);
+			return jsonParse<SecretsProviderSettings['settings']>(decryptedData);
+		} catch (e) {
+			this.logger.error('Failed to decrypt external secrets settings', { error: e });
+			throw new UnexpectedError(
+				'External Secrets Settings could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
+			);
+		}
 	}
 
 	// ========================================
@@ -349,16 +450,6 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			isValid: testResult?.[0] ?? false,
 			errorMessage: testResult?.[1],
 		});
-	}
-
-	private determineTestState(
-		success: boolean,
-		isConnected: boolean,
-	): 'connected' | 'tested' | 'error' {
-		if (!success) {
-			return 'error';
-		}
-		return isConnected ? 'connected' : 'tested';
 	}
 
 	private getCachedSettings(): ExternalSecretsSettings {

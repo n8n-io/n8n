@@ -31,7 +31,12 @@ describe('ImportEntitiesCommand', () => {
 			await command.run();
 
 			// Verify service call with transaction-based approach
-			expect(mockImportService.importEntities).toHaveBeenCalledWith('./outputs', false, undefined);
+			expect(mockImportService.importEntities).toHaveBeenCalledWith(
+				'./outputs',
+				false,
+				undefined,
+				false,
+			);
 		});
 
 		it('should import entities with custom input directory', async () => {
@@ -55,6 +60,7 @@ describe('ImportEntitiesCommand', () => {
 				'/custom/path',
 				false,
 				undefined,
+				false,
 			);
 		});
 
@@ -76,7 +82,12 @@ describe('ImportEntitiesCommand', () => {
 			await command.run();
 
 			// Verify service call with truncation enabled
-			expect(mockImportService.importEntities).toHaveBeenCalledWith('./outputs', true, undefined);
+			expect(mockImportService.importEntities).toHaveBeenCalledWith(
+				'./outputs',
+				true,
+				undefined,
+				false,
+			);
 		});
 
 		it('should import entities with a custom encryption key', async () => {
@@ -96,7 +107,38 @@ describe('ImportEntitiesCommand', () => {
 
 			await command.run();
 
-			expect(mockImportService.importEntities).toHaveBeenCalledWith('./outputs', false, 'key.txt');
+			expect(mockImportService.importEntities).toHaveBeenCalledWith(
+				'./outputs',
+				false,
+				'key.txt',
+				false,
+			);
+		});
+
+		it('should skip migration checks when skipMigrationChecks flag is true', async () => {
+			const command = new ImportEntitiesCommand();
+			// @ts-expect-error Protected property
+			command.flags = {
+				inputDir: './outputs',
+				truncateTables: false,
+				skipMigrationChecks: true,
+			};
+			// @ts-expect-error Protected property
+			command.logger = {
+				info: jest.fn(),
+				error: jest.fn(),
+			};
+
+			mockImportService.importEntities.mockResolvedValue(undefined);
+
+			await command.run();
+
+			expect(mockImportService.importEntities).toHaveBeenCalledWith(
+				'./outputs',
+				false,
+				undefined,
+				true,
+			);
 		});
 
 		it('should handle service errors gracefully', async () => {
@@ -117,7 +159,12 @@ describe('ImportEntitiesCommand', () => {
 			await expect(command.run()).rejects.toThrow('Database connection failed');
 
 			// Verify service was called
-			expect(mockImportService.importEntities).toHaveBeenCalledWith('./outputs', false, undefined);
+			expect(mockImportService.importEntities).toHaveBeenCalledWith(
+				'./outputs',
+				false,
+				undefined,
+				false,
+			);
 		});
 
 		it('should handle import errors with transactions', async () => {
@@ -138,7 +185,12 @@ describe('ImportEntitiesCommand', () => {
 			await expect(command.run()).rejects.toThrow('Transaction failed');
 
 			// Verify service was called with truncation enabled
-			expect(mockImportService.importEntities).toHaveBeenCalledWith('./outputs', true, undefined);
+			expect(mockImportService.importEntities).toHaveBeenCalledWith(
+				'./outputs',
+				true,
+				undefined,
+				false,
+			);
 		});
 	});
 

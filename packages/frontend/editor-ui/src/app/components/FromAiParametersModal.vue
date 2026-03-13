@@ -1,25 +1,25 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { useI18n } from '@n8n/i18n';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/app/constants';
-import { useAgentRequestStore, type IAgentRequest } from '@n8n/stores/useAgentRequestStore';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createEventBus } from '@n8n/utils/event-bus';
-import type { INode, FromAIArgument, IDataObject } from 'n8n-workflow';
-import { traverseNodeParameters, NodeConnectionTypes } from 'n8n-workflow';
-import type { FormFieldValueUpdate, IFormInput } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { FROM_AI_PARAMETERS_MODAL_KEY } from '@/app/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { type JSONSchema7 } from 'json-schema';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-
-import { ElCol, ElRow } from 'element-plus';
+import type { FormFieldValueUpdate } from '@n8n/design-system';
 import { N8nButton, N8nCallout, N8nFormInputs, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { useAgentRequestStore, type IAgentRequest } from '@n8n/stores/useAgentRequestStore';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { ElCol, ElRow } from 'element-plus';
+import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useToolParameters } from '../composables/useToolParameters';
+
 type Value = string | number | boolean | null | undefined;
+
+type FieldMetadata = {
+	nodeName: string;
+} & ({ type: 'selector' } | { type: 'query'; propertyName: string; implicitInput?: boolean });
 
 const props = defineProps<{
 	modalName: string;
@@ -28,17 +28,18 @@ const props = defineProps<{
 	};
 }>();
 
-const inputs = ref<{ getValues: () => Record<string, Value> }>();
+const inputs = ref<{
+	getValues: () => Record<string, Value>;
+	getValuesWithMetadata: () => Record<string, { value: Value; metadata: FieldMetadata }>;
+}>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
 const modalBus = createEventBus();
 const workflowsStore = useWorkflowsStore();
-const nodeTypesStore = useNodeTypesStore();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 const agentRequestStore = useAgentRequestStore();
-const projectsStore = useProjectsStore();
 
 const node = computed(() =>
 	props.data.nodeName ? workflowsStore.getNodeByName(props.data.nodeName) : undefined,
@@ -51,187 +52,7 @@ const parentNode = computed(() => {
 	return workflowsStore.getNodeByName(parentNodes[0])?.name;
 });
 
-const parameters = ref<IFormInput[]>([]);
-const selectedTool = ref<string>('');
-const error = ref<Error | undefined>(undefined);
-
-const nodeRunData = computed(() => {
-	if (!node.value) return undefined;
-
-	const workflowExecutionData = workflowsStore.getWorkflowExecution;
-	const lastRunData = workflowExecutionData?.data?.resultData.runData[node.value?.name];
-	if (!lastRunData) return undefined;
-	return lastRunData[0];
-});
-
-const mapTypes: {
-	[key: string]: {
-		inputType: 'text' | 'number' | 'checkbox';
-		defaultValue: string | number | boolean | null | undefined;
-	};
-} = {
-	['string']: {
-		inputType: 'text',
-		defaultValue: '',
-	},
-	['boolean']: {
-		inputType: 'checkbox',
-		defaultValue: true,
-	},
-	['number']: {
-		inputType: 'number',
-		defaultValue: 0,
-	},
-	['json']: {
-		inputType: 'text',
-		defaultValue: '',
-	},
-};
-
-const getMCPTools = async (newNode: INode, newSelectedTool: string): Promise<IFormInput[]> => {
-	const result: IFormInput[] = [];
-
-	const tools = await nodeTypesStore.getNodeParameterOptions({
-		nodeTypeAndVersion: {
-			name: newNode.type,
-			version: newNode.typeVersion,
-		},
-		path: 'parameters.includedTools',
-		methodName: 'getTools',
-		currentNodeParameters: newNode.parameters,
-		credentials: newNode.credentials,
-		projectId: projectsStore.currentProjectId,
-	});
-
-	// Load available tools
-	const toolOptions = tools?.map((tool) => ({
-		label: tool.name,
-		value: String(tool.value),
-		disabled: false,
-	}));
-
-	result.push({
-		name: 'toolName',
-		initialValue: '',
-		properties: {
-			label: 'Tool name',
-			type: 'select',
-			options: toolOptions,
-			required: true,
-		},
-	});
-
-	// Only show parameters for selected tool
-	if (newSelectedTool) {
-		const selectedToolData = tools?.find((tool) => String(tool.value) === newSelectedTool);
-		const schema = selectedToolData?.inputSchema as JSONSchema7;
-		if (schema.properties) {
-			for (const [propertyName, value] of Object.entries(schema.properties)) {
-				const type =
-					typeof value === 'object' && 'type' in value && typeof value.type === 'string'
-						? value.type
-						: 'text';
-
-				result.push({
-					name: 'query.' + propertyName,
-					initialValue: '',
-					properties: {
-						label: propertyName,
-						type: mapTypes[type].inputType,
-						required: true,
-					},
-				});
-			}
-		}
-	}
-
-	return result;
-};
-
-function checkImplicitInput(node: INode) {
-	// Check if this is a Vector Store node with 'retrieve-as-tool' operation
-	// These nodes always have an implicit 'query' parameter for the query
-	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-	const aiSubcategories = nodeType?.codex?.subcategories?.AI;
-	const isVectorStoreToolNode =
-		aiSubcategories?.includes('Vector Stores') && aiSubcategories?.includes('Tools');
-	const mode = node.parameters.mode;
-	return isVectorStoreToolNode && mode === 'retrieve-as-tool';
-}
-
-watch(
-	[node, selectedTool],
-	async ([newNode, newSelectedTool]) => {
-		error.value = undefined;
-
-		if (!newNode) {
-			parameters.value = [];
-			return;
-		}
-
-		const result: IFormInput[] = [];
-
-		// Handle MCPClientTool nodes differently
-		if (newNode.type === AI_MCP_TOOL_NODE_TYPE) {
-			try {
-				const mcpResult = await getMCPTools(newNode, newSelectedTool);
-				parameters.value = mcpResult;
-
-				return;
-			} catch (e: unknown) {
-				error.value = e instanceof Error ? e : new Error('Unknown error occurred');
-			}
-		}
-
-		// Handle regular tool nodes
-		const params = newNode.parameters;
-		const collectedArgs: FromAIArgument[] = [];
-		traverseNodeParameters(params, collectedArgs);
-		const inputOverrides =
-			nodeRunData.value?.inputOverride?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
-
-		collectedArgs.forEach((value: FromAIArgument) => {
-			const type = value.type ?? 'string';
-			const inputQuery = inputOverrides?.query as IDataObject;
-			const initialValue = inputQuery?.[value.key]
-				? inputQuery[value.key]
-				: (agentRequestStore.getQueryValue(workflowsStore.workflowId, newNode.id, value.key) ??
-					mapTypes[type]?.defaultValue);
-
-			result.push({
-				name: 'query.' + value.key,
-				initialValue: initialValue as string | number | boolean | null | undefined,
-				properties: {
-					label: value.key,
-					type: mapTypes[value.type ?? 'string'].inputType,
-					required: true,
-				},
-			});
-		});
-
-		const hasImplicitInput = checkImplicitInput(newNode);
-		if (result.length === 0 || hasImplicitInput) {
-			const key = hasImplicitInput ? 'input' : 'query';
-			const inputQuery = inputOverrides?.[key];
-			const queryValue =
-				inputQuery ??
-				agentRequestStore.getQueryValue(workflowsStore.workflowId, newNode.id, key) ??
-				'';
-
-			result.unshift({
-				name: hasImplicitInput ? 'query.input' : 'query',
-				initialValue: (queryValue as string) ?? '',
-				properties: {
-					label: 'Query',
-					type: 'text',
-					required: true,
-				},
-			});
-		}
-		parameters.value = result;
-	},
-	{ immediate: true },
-);
+const { getToolName, parameters, error, updateSelectedTool } = useToolParameters({ node });
 
 const onClose = () => {
 	modalBus.emit('close');
@@ -239,25 +60,34 @@ const onClose = () => {
 
 const onExecute = async () => {
 	if (!node.value) return;
-	const inputValues = inputs.value?.getValues() ?? {};
+	const nodeName = node.value.name;
+	const inputValues = Object.values(inputs.value?.getValuesWithMetadata() ?? {});
 
 	agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.value.id);
+	// check if there's a selected tool, e.g. HITL/MCP client tool selector
+	// findLast is used to get the last selected tool from the tool chain
+	const selectedToolName = inputValues.findLast((value) => value.metadata?.type === 'selector')
+		?.value as string | undefined;
 
-	// Structure the input values as IAgentRequest
 	const agentRequest: IAgentRequest = {
 		query: {},
-		toolName: inputValues.toolName as string,
+		toolName: selectedToolName ? getToolName(selectedToolName) : getToolName(nodeName),
 	};
 
-	// Move all query.* fields to query object
-	Object.entries(inputValues).forEach(([key, value]) => {
-		if (key === 'query') {
-			agentRequest.query = value as string;
-		} else if (key.startsWith('query.') && 'string' !== typeof agentRequest.query) {
-			const queryKey = key.replace('query.', '');
-			agentRequest.query[queryKey] = value;
+	for (const input of inputValues) {
+		if (input.metadata?.type !== 'query') {
+			continue;
 		}
-	});
+		const inputNode = getToolName(input.metadata.nodeName);
+		const queryKey = input.metadata.propertyName;
+		const queryValue = input.value;
+		if (input.metadata.implicitInput) {
+			agentRequest.query[inputNode] = queryValue as string;
+		} else {
+			agentRequest.query[inputNode] ??= {};
+			(agentRequest.query[inputNode] as Record<string, unknown>)[queryKey] = queryValue as string;
+		}
+	}
 
 	agentRequestStore.setAgentRequestForNode(workflowsStore.workflowId, node.value.id, agentRequest);
 
@@ -279,9 +109,10 @@ const onExecute = async () => {
 
 // Add handler for tool selection change
 const onUpdate = (change: FormFieldValueUpdate) => {
-	if (change.name !== 'toolName') return;
+	const metadata = change.metadata as FieldMetadata | undefined;
+	if (metadata?.type !== 'selector') return;
 	if (typeof change.value === 'string') {
-		selectedTool.value = change.value;
+		updateSelectedTool(metadata.nodeName, change.value);
 	}
 };
 </script>
@@ -317,6 +148,7 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 			<ElCol>
 				<ElRow :class="$style.row">
 					<N8nFormInputs
+						v-if="parameters.length"
 						ref="inputs"
 						:inputs="parameters"
 						:column-view="true"

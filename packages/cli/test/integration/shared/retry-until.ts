@@ -6,11 +6,11 @@
  *   () => expect(service.someState).toBe(true)
  * );
  */
-export const retryUntil = async (
-	assertion: () => Promise<void> | void,
+export const retryUntil = async <T>(
+	assertion: () => Promise<T> | T,
 	{ intervalMs = 200, timeoutMs = 5000 } = {},
-) => {
-	return await new Promise((resolve, reject) => {
+): Promise<T> => {
+	return await new Promise<T>((resolve, reject) => {
 		const startTime = Date.now();
 
 		const tryAgain = () => {

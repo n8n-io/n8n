@@ -5,7 +5,7 @@ import { ref } from 'vue';
 import N8nPromptInput from './N8nPromptInput.vue';
 
 export default {
-	title: 'Atoms/PromptInput',
+	title: 'Core/PromptInput',
 	component: N8nPromptInput,
 	argTypes: {
 		modelValue: {

@@ -89,11 +89,16 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return {\n  id: 3,\n  name: 'Don',\n  age: 37,\n  data: 'data 44',\n};"
+				"data": {
+					"id": 3,
+					"name": "Don",
+					"age": 37,
+					"data": "data 44"
+				}
 			},
 			"id": "eb908630-7324-46a5-890d-b5cfccf17cb2",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [660, 380]
 		}

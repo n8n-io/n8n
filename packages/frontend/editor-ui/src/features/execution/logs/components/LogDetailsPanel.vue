@@ -126,8 +126,8 @@ function handleResizeEnd() {
 						:shortcut="{ keys: ['i'] }"
 					>
 						<N8nButton
-							size="mini"
-							type="secondary"
+							variant="subtle"
+							size="xsmall"
 							:class="panels === LOG_DETAILS_PANEL_STATE.OUTPUT ? '' : $style.pressed"
 							@click.stop="emit('toggleInputOpen')"
 						>
@@ -139,8 +139,8 @@ function handleResizeEnd() {
 						:shortcut="{ keys: ['o'] }"
 					>
 						<N8nButton
-							size="mini"
-							type="secondary"
+							variant="subtle"
+							size="xsmall"
 							:class="panels === LOG_DETAILS_PANEL_STATE.INPUT ? '' : $style.pressed"
 							@click.stop="emit('toggleOutputOpen')"
 						>

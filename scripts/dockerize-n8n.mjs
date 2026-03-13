@@ -119,7 +119,17 @@ const __dirname = path.dirname(__filename);
 const isInScriptsDir = path.basename(__dirname) === 'scripts';
 const rootDir = isInScriptsDir ? path.join(__dirname, '..') : __dirname;
 
+const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
+const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
+const nodeVersion = process.env.NODE_VERSION || '24.13.1';
+
 const config = {
+	base: {
+		dockerfilePath: path.join(rootDir, 'docker/images/n8n-base/Dockerfile'),
+		get fullImageName() {
+			return `n8nio/base:${nodeVersion}`;
+		},
+	},
 	n8n: {
 		dockerfilePath: path.join(rootDir, 'docker/images/n8n/Dockerfile'),
 		imageBaseName: process.env.IMAGE_BASE_NAME || 'n8nio/n8n',
@@ -153,30 +163,42 @@ async function main() {
 	echo(`INFO: n8n Image: ${config.n8n.fullImageName}`);
 	echo(`INFO: Runners Image: ${config.runners.fullImageName}`);
 	echo(`INFO: Platform: ${platform}`);
+	if (noCache) echo(chalk.yellow('INFO: Docker layer cache disabled (DOCKER_BUILD_NO_CACHE=true)'));
+	if (withBaseImage) echo(chalk.yellow('INFO: Building base image first (DOCKER_BUILD_BASE_IMAGE=true)'));
 	echo(chalk.gray('-'.repeat(47)));
 
 	await checkPrerequisites();
 
-	// Build n8n Docker image
+	if (withBaseImage) {
+		await buildDockerImage({
+			name: 'base',
+			dockerfilePath: config.base.dockerfilePath,
+			fullImageName: config.base.fullImageName,
+			buildArgs: [`NODE_VERSION=${nodeVersion}`],
+		});
+	}
+
+	const nodeVersionArgs = withBaseImage ? [`NODE_VERSION=${nodeVersion}`] : [];
+
 	const n8nBuildTime = await buildDockerImage({
 		name: 'n8n',
 		dockerfilePath: config.n8n.dockerfilePath,
 		fullImageName: config.n8n.fullImageName,
+		buildArgs: nodeVersionArgs,
 	});
 
-	// Build runners Docker image
 	const runnersBuildTime = await buildDockerImage({
 		name: 'runners',
 		dockerfilePath: config.runners.dockerfilePath,
 		fullImageName: config.runners.fullImageName,
+		buildArgs: nodeVersionArgs,
 	});
 
 	// Get image details
 	const n8nImageSize = await getImageSize(config.n8n.fullImageName);
 	const runnersImageSize = await getImageSize(config.runners.fullImageName);
 
-	// Display summary
-	displaySummary([
+	const imageStats = [
 		{
 			imageName: config.n8n.fullImageName,
 			platform,
@@ -189,7 +211,24 @@ async function main() {
 			size: runnersImageSize,
 			buildTime: runnersBuildTime,
 		},
-	]);
+	];
+
+	// Write docker build manifest for telemetry collection
+	const dockerManifest = {
+		buildTime: new Date().toISOString(),
+		platform,
+		images: imageStats.map(({ imageName, size, buildTime }) => ({
+			imageName,
+			size,
+			buildTime,
+		})),
+	};
+	await fs.writeJson(path.join(config.buildContext, 'docker-build-manifest.json'), dockerManifest, {
+		spaces: 2,
+	});
+
+	// Display summary
+	displaySummary(imageStats);
 }
 
 async function checkPrerequisites() {
@@ -212,16 +251,29 @@ async function checkPrerequisites() {
 	}
 }
 
-async function buildDockerImage({ name, dockerfilePath, fullImageName }) {
+async function buildDockerImage({ name, dockerfilePath, fullImageName, buildArgs = [] }) {
 	const startTime = Date.now();
 	const containerEngine = await getContainerEngine();
+	// Push directly if image name contains a registry (e.g., ghcr.io/...)
+	// This avoids the slow --load step (export/import tarball) when pushing to a registry
+	const shouldPush = fullImageName.includes('/') && fullImageName.split('/').length > 2;
+
+	const extraFlags = [
+		...buildArgs.flatMap((arg) => ['--build-arg', arg]),
+		...(noCache ? ['--no-cache'] : []),
+	];
+
 	echo(chalk.yellow(`INFO: Building ${name} Docker image using ${containerEngine}...`));
+	if (shouldPush) {
+		echo(chalk.yellow(`INFO: Registry detected - pushing directly to ${fullImageName}`));
+	}
 
 	try {
 		if (containerEngine === 'podman') {
 			const { stdout } = await $`podman build \
 				--platform ${platform} \
 				--build-arg TARGETPLATFORM=${platform} \
+				${extraFlags} \
 				-t ${fullImageName} \
 				-f ${dockerfilePath} \
 				${config.buildContext}`;
@@ -229,12 +281,17 @@ async function buildDockerImage({ name, dockerfilePath, fullImageName }) {
 		} else {
 			// Use docker buildx build to leverage Blacksmith's layer caching when running in CI.
 			// The setup-docker-builder action creates a buildx builder with sticky disk cache.
+			// In CI, push directly to registry to avoid slow --load (export/import tarball).
+			// Locally, use --load to make image available in local daemon.
+			const outputFlag = shouldPush ? '--push' : '--load';
 			const { stdout } = await $`docker buildx build \
 				--platform ${platform} \
 				--build-arg TARGETPLATFORM=${platform} \
+				${extraFlags} \
 				-t ${fullImageName} \
 				-f ${dockerfilePath} \
-				--load \
+				--provenance=false \
+				${outputFlag} \
 				${config.buildContext}`;
 			echo(stdout);
 		}

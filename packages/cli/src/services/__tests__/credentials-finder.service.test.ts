@@ -82,7 +82,7 @@ describe('CredentialsFinderService', () => {
 				where: { credentialsId },
 				relations: {
 					credentials: {
-						shared: { project: { projectRelations: { user: true } } },
+						shared: { project: true },
 					},
 				},
 			});
@@ -120,7 +120,7 @@ describe('CredentialsFinderService', () => {
 				},
 				relations: {
 					credentials: {
-						shared: { project: { projectRelations: { user: true } } },
+						shared: { project: true },
 					},
 				},
 			});
@@ -153,7 +153,7 @@ describe('CredentialsFinderService', () => {
 				},
 				relations: {
 					credentials: {
-						shared: { project: { projectRelations: { user: true } } },
+						shared: { project: true },
 					},
 				},
 			});
@@ -163,7 +163,7 @@ describe('CredentialsFinderService', () => {
 					isGlobal: true,
 				},
 				relations: {
-					shared: { project: { projectRelations: { user: true } } },
+					shared: { project: true },
 				},
 			});
 			expect(credential).toEqual(null);
@@ -186,7 +186,7 @@ describe('CredentialsFinderService', () => {
 					isGlobal: true,
 				},
 				relations: {
-					shared: { project: { projectRelations: { user: true } } },
+					shared: { project: true },
 				},
 			});
 			expect(credential).toEqual(globalCredential);
@@ -248,7 +248,7 @@ describe('CredentialsFinderService', () => {
 				},
 				relations: {
 					credentials: {
-						shared: { project: { projectRelations: { user: true } } },
+						shared: { project: true },
 					},
 				},
 			});
@@ -966,7 +966,7 @@ describe('CredentialsFinderService', () => {
 		});
 
 		test('should find global credential by ID with relations', async () => {
-			const relations = { shared: { project: { projectRelations: { user: true } } } };
+			const relations = { shared: { project: true as const } };
 			credentialsRepository.findOne.mockResolvedValueOnce(mockGlobalCredential);
 
 			const result = await credentialsFinderService.findGlobalCredentialById(

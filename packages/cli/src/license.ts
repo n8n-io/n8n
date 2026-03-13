@@ -198,12 +198,14 @@ export class License implements LicenseProvider {
 		}
 	}
 
-	async activate(activationKey: string, eulaUri?: string): Promise<void> {
+	async activate(activationKey: string): Promise<void>;
+	async activate(activationKey: string, eulaUri: string, userEmail: string): Promise<void>;
+	async activate(activationKey: string, eulaUri?: string, userEmail?: string): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
 
-		await this.manager.activate(activationKey, eulaUri);
+		await this.manager.activate(activationKey, { eulaUri, email: userEmail });
 		this.logger.debug('License activated');
 	}
 
@@ -449,6 +451,52 @@ export class License implements LicenseProvider {
 
 	getPlanName(): string {
 		return this.getValue('planName') ?? 'Community';
+	}
+
+	getExpiryDate(): Date | null {
+		try {
+			return this.manager?.getExpiryDate() ?? null;
+		} catch {
+			return null;
+		}
+	}
+
+	getTerminationDate(): Date | null {
+		try {
+			return this.manager?.getTerminationDate() ?? null;
+		} catch {
+			return null;
+		}
+	}
+
+	getExpiringInDays(): number | undefined {
+		const expiryDate = this.getExpiryDate();
+		if (!expiryDate) return undefined;
+
+		const expiryTime = expiryDate.getTime();
+		if (Number.isNaN(expiryTime)) return undefined;
+
+		const now = new Date();
+		const diffMs = expiryTime - now.getTime();
+		const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+		// Return 0 for already expired licenses instead of negative values
+		return Math.max(0, diffDays);
+	}
+
+	getTerminatingInDays(): number | undefined {
+		const terminationDate = this.getTerminationDate();
+		if (!terminationDate) return undefined;
+
+		const terminationTime = terminationDate.getTime();
+		if (Number.isNaN(terminationTime)) return undefined;
+
+		const now = new Date();
+		const diffMs = terminationTime - now.getTime();
+		const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+		// Return 0 for already terminated licenses instead of negative values
+		return Math.max(0, diffDays);
 	}
 
 	getInfo(): string {

@@ -101,7 +101,7 @@ const sampleItems = [
 ];
 
 export default {
-	title: 'Molecules/CommandBar',
+	title: 'Core/CommandBar',
 	component: N8nCommandBar,
 	argTypes: {
 		placeholder: {

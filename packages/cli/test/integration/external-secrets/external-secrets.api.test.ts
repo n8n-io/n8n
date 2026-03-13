@@ -1,7 +1,9 @@
 import { LicenseState } from '@n8n/backend-common';
-import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
+import { SecretsProviderConnectionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
@@ -70,6 +72,8 @@ const resetManager = async () => {
 	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
 	const retryManager = Container.get(ExternalSecretsRetryManager);
 	const secretsCache = Container.get(ExternalSecretsSecretsCache);
+	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
+	const cipher = Container.get(Cipher);
 
 	Container.set(
 		ExternalSecretsManager,
@@ -84,6 +88,8 @@ const resetManager = async () => {
 			providerLifecycle,
 			retryManager,
 			secretsCache,
+			secretsProviderConnectionRepository,
+			cipher,
 		),
 	);
 
@@ -130,11 +136,15 @@ beforeAll(async () => {
 
 	// Get all service dependencies from Container
 	const config = Container.get(ExternalSecretsConfig);
+	config.externalSecretsForProjects = false;
+	config.externalSecretsMultipleConnections = false;
 	const settingsStore = Container.get(ExternalSecretsSettingsStore);
 	const providerRegistry = Container.get(ExternalSecretsProviderRegistry);
 	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
 	const retryManager = Container.get(ExternalSecretsRetryManager);
 	const secretsCache = Container.get(ExternalSecretsSecretsCache);
+	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
+	const cipher = Container.get(Cipher);
 
 	Container.set(
 		ExternalSecretsManager,
@@ -149,6 +159,8 @@ beforeAll(async () => {
 			providerLifecycle,
 			retryManager,
 			secretsCache,
+			secretsProviderConnectionRepository,
+			cipher,
 		),
 	);
 });

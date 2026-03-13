@@ -31,7 +31,7 @@ defineProps({
 }
 
 .icon {
-	color: var(--color--foreground--shade-1);
+	color: var(--color--text--tint-1);
 	cursor: help;
 
 	&:hover {

@@ -9,11 +9,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, sleep } from 'n8n-workflow';
 
-import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
+import { getBatchingOptionFields, getTemplateNoticeField } from '@n8n/ai-utilities';
 
 import { processItem } from './processItem';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 
+/* istanbul ignore next */
 function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
 	const operationMode = parameters?.operationMode;
@@ -63,6 +64,19 @@ export class ChainSummarizationV2 implements INodeType {
 
 			inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
 			outputs: [NodeConnectionTypes.Main],
+			builderHint: {
+				inputs: {
+					ai_languageModel: { required: true },
+					ai_document: {
+						required: true,
+						displayOptions: { show: { operationMode: ['documentLoader'] } },
+					},
+					ai_textSplitter: {
+						required: false,
+						displayOptions: { show: { chunkingMode: ['advanced'] } },
+					},
+				},
+			},
 			credentials: [],
 			properties: [
 				getTemplateNoticeField(1951),

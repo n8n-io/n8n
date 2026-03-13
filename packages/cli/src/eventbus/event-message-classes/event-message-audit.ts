@@ -1,5 +1,5 @@
 import { EventMessageTypeNames } from 'n8n-workflow';
-import type { JsonObject, JsonValue } from 'n8n-workflow';
+import type { JsonObject, JsonValue, WorkflowSettings } from 'n8n-workflow';
 
 import type { EventNamesAuditType } from '.';
 import { AbstractEventMessage, isEventMessageOptionsWithType } from './abstract-event-message';
@@ -21,9 +21,17 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	workflowId?: string;
 	workflowName?: string;
 	activeVersionId?: string | null;
+	deactivatedVersionId?: string | null;
+	versionId?: string;
+	versionName?: string | null;
+	versionDescription?: string | null;
 	settingsChanged?: Record<string, { from: JsonValue; to: JsonValue }>;
 	variableId?: string;
 	variableKey?: string;
+	executionId?: string;
+	ipAddress?: string;
+	userAgent?: string;
+	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 }
 
 export interface EventMessageAuditOptions extends AbstractEventMessageOptions {
