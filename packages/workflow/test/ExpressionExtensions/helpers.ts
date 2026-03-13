@@ -43,14 +43,23 @@ export const evaluate = (value: string, values?: IDataObject[]) =>
  * engine remains, these helpers become unnecessary — all results will be
  * strings. Replace usages with fromISO() directly.
  */
-export const asDateTime = (v: unknown): DateTime =>
-	DateTime.isDateTime(v) ? v : DateTime.fromISO(v as string);
+export const asDateTime = (v: unknown): DateTime => {
+	if (DateTime.isDateTime(v)) return v;
+	if (typeof v !== 'string') throw new Error(`Expected DateTime or ISO string, got ${typeof v}`);
+	return DateTime.fromISO(v);
+};
 
-export const asDuration = (v: unknown): Duration =>
-	Duration.isDuration(v) ? v : Duration.fromISO(v as string);
+export const asDuration = (v: unknown): Duration => {
+	if (Duration.isDuration(v)) return v;
+	if (typeof v !== 'string') throw new Error(`Expected Duration or ISO string, got ${typeof v}`);
+	return Duration.fromISO(v);
+};
 
-export const asInterval = (v: unknown): Interval =>
-	Interval.isInterval(v) ? v : Interval.fromISO(v as string);
+export const asInterval = (v: unknown): Interval => {
+	if (Interval.isInterval(v)) return v;
+	if (typeof v !== 'string') throw new Error(`Expected Interval or ISO string, got ${typeof v}`);
+	return Interval.fromISO(v);
+};
 
 export const getLocalISOString = (date: Date) => {
 	const offset = date.getTimezoneOffset();
