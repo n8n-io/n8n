@@ -32,26 +32,49 @@ export async function restoreBinaryDataId(
 	try {
 		const { runData } = run.data.resultData;
 
-		const promises = Object.keys(runData).map(async (nodeName) => {
+		// Collect all binary data references that need renaming, grouped by
+		// fileId so each unique file is only renamed once.  When binary data
+		// flows through multiple nodes they all share the same underlying file,
+		// so renaming more than once causes ENOENT on the second attempt.
+		const renameTasks = new Map<
+			string,
+			{ mode: BinaryData.StoredMode; correctFileId: string; nodeNames: string[] }
+		>();
+
+		for (const nodeName of Object.keys(runData)) {
 			const binaryDataId = runData[nodeName]?.[0]?.data?.main?.[0]?.[0]?.binary?.data?.id;
 
-			if (!binaryDataId) return;
+			if (!binaryDataId) continue;
 
 			const [mode, fileId] = binaryDataId.split(':') as [BinaryData.StoredMode, string];
 
-			const isMissingExecutionId = fileId.includes('/temp/');
+			if (!fileId.includes('/temp/')) continue;
 
-			if (!isMissingExecutionId) return;
+			const existing = renameTasks.get(fileId);
+			if (existing) {
+				existing.nodeNames.push(nodeName);
+			} else {
+				renameTasks.set(fileId, {
+					mode,
+					correctFileId: fileId.replace('temp', executionId),
+					nodeNames: [nodeName],
+				});
+			}
+		}
 
-			const correctFileId = fileId.replace('temp', executionId);
+		const promises = [...renameTasks.entries()].map(
+			async ([fileId, { mode, correctFileId, nodeNames }]) => {
+				await Container.get(BinaryDataService).rename(fileId, correctFileId);
 
-			await Container.get(BinaryDataService).rename(fileId, correctFileId);
+				const correctBinaryDataId = `${mode}:${correctFileId}`;
 
-			const correctBinaryDataId = `${mode}:${correctFileId}`;
-
-			// @ts-expect-error Validated at the top
-			run.data.resultData.runData[nodeName][0].data.main[0][0].binary.data.id = correctBinaryDataId;
-		});
+				for (const nodeName of nodeNames) {
+					// @ts-expect-error Validated at the top
+					run.data.resultData.runData[nodeName][0].data.main[0][0].binary.data.id =
+						correctBinaryDataId;
+				}
+			},
+		);
 
 		await Promise.all(promises);
 	} catch (e) {
