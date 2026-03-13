@@ -1,9 +1,10 @@
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import {
 	createTestNode,
 	createTestWorkflowObject,
 	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from './RunData.vue';
@@ -1317,6 +1318,9 @@ describe('RunData', () => {
 				displayMode,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => workflowId ?? 'test-workflow'),
+				},
 				stubs: {
 					RunDataPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
 					NodeErrorView: { template: '<div data-test-id="node-error-view"></div>' },

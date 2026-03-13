@@ -8,6 +8,7 @@ import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useI18n } from '@n8n/i18n';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { IconColor } from '@n8n/design-system';
@@ -36,6 +37,7 @@ const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 const locale = useI18n();
 
+const workflowId = useInjectWorkflowId();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -114,8 +116,6 @@ const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefi
 	}
 	return undefined;
 });
-const currentWorkflowId = computed(() => workflowsStore.workflowId);
-
 watch(workflowSettings, (newSettings: IWorkflowSettings) => {
 	updateSettings(newSettings);
 });
@@ -162,8 +162,8 @@ function openWorkflowSettings(): void {
 
 async function onSaveWorkflowClick(): Promise<void> {
 	let currentId: string | undefined = undefined;
-	if (currentWorkflowId.value) {
-		currentId = currentWorkflowId.value;
+	if (workflowId.value) {
+		currentId = workflowId.value;
 	} else if (route.params.name) {
 		const routeName = route.params.name;
 		currentId = Array.isArray(routeName) ? routeName[0] : routeName;
@@ -193,7 +193,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 		<template #customContent>
 			<footer class="mt-2xs">
 				{{ i18n.baseText('executionsLandingPage.emptyState.accordion.footer') }}
-				<N8nTooltip :disabled="workflowsStore.isWorkflowSaved[currentWorkflowId]">
+				<N8nTooltip :disabled="workflowsStore.isWorkflowSaved[workflowId]">
 					<template #content>
 						<div>
 							<N8nLink @click.prevent="onSaveWorkflowClick">{{
@@ -203,7 +203,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 						</div>
 					</template>
 					<N8nLink
-						:class="{ [$style.disabled]: !workflowsStore.isWorkflowSaved[currentWorkflowId] }"
+						:class="{ [$style.disabled]: !workflowsStore.isWorkflowSaved[workflowId] }"
 						size="small"
 						@click.prevent="openWorkflowSettings"
 					>
