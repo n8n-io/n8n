@@ -173,6 +173,13 @@ export {
 	type MergeDevIntegrationsResponseDto,
 } from './plugins-settings/merge-dev-integration.dto';
 
+export {
+	MergeDevLinkTokenRequestDto,
+	MergeDevAccountTokenRequestDto,
+	type MergeDevLinkTokenResponseDto,
+	type MergeDevAccountTokenResponseDto,
+} from './plugins-settings/merge-dev-link.dto';
+
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
 
