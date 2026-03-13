@@ -404,7 +404,7 @@ describe('POST /workflow-dependencies/details', () => {
 });
 
 describe('indexing disabled', () => {
-	it('should return 501 for counts when indexing is disabled', async () => {
+	it('should return 503 for counts when indexing is disabled', async () => {
 		workflowsConfig.indexingEnabled = false;
 		const owner = await createOwner();
 
@@ -416,10 +416,10 @@ describe('indexing disabled', () => {
 				resourceType: 'workflow',
 			});
 
-		expect(resp.statusCode).toBe(501);
+		expect(resp.statusCode).toBe(503);
 	});
 
-	it('should return 501 for details when indexing is disabled', async () => {
+	it('should return 503 for details when indexing is disabled', async () => {
 		workflowsConfig.indexingEnabled = false;
 		const owner = await createOwner();
 
@@ -431,6 +431,6 @@ describe('indexing disabled', () => {
 				resourceType: 'workflow',
 			});
 
-		expect(resp.statusCode).toBe(501);
+		expect(resp.statusCode).toBe(503);
 	});
 });

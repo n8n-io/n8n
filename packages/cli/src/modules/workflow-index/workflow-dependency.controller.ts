@@ -3,7 +3,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, RestController } from '@n8n/decorators';
 
-import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
 import { WorkflowDependencyQueryService } from './workflow-dependency-query.service';
 
@@ -46,7 +46,7 @@ export class WorkflowDependencyController {
 
 	private assertIndexingEnabled() {
 		if (!this.workflowsConfig.indexingEnabled) {
-			throw new NotImplementedError('Workflow dependency indexing is not enabled');
+			throw new ServiceUnavailableError('Workflow dependency indexing is not enabled');
 		}
 	}
 }
