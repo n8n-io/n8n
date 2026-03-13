@@ -666,7 +666,7 @@ pattern to find
 replacement text
 END_XYZ
 
-- The text before @@sep is the pattern to find; the text after @@sep is the replacement.
+- The text before @@sep is the exact pattern to find; the text after @@sep is the replacement.
 - Both pattern and replacement can span multiple lines.
 - title and pattern must match the exact title and occurrence of an existing artifact.
 - Set replaceAll to true to replace all occurrences, or false to replace only the first.

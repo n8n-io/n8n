@@ -249,7 +249,11 @@ function parseArtifactEditCommand(content: string): {
 		consumed = content.length;
 	} else if (isIncomplete) {
 		if (sepIdx === -1) {
-			oldString = content.slice(bodyStart);
+			// No @@sep yet — accumulate into newString.
+			// If the command completes without @@sep, this becomes a full document rewrite
+			// (oldString stays empty). This tolerates a common LLM mistake of omitting @@sep
+			// and writing only the replacement content.
+			newString = content.slice(bodyStart);
 		} else {
 			oldString = content.slice(bodyStart, sepIdx - 1);
 			newString = content.slice(skipToNextLine(content, sepIdx + SEP_MARKER.length));
@@ -260,7 +264,8 @@ function parseArtifactEditCommand(content: string): {
 			oldString = content.slice(bodyStart, sepIdx - 1);
 			newString = content.slice(skipToNextLine(content, sepIdx + SEP_MARKER.length), endIdx - 1);
 		} else {
-			oldString = content.slice(bodyStart, endIdx - 1);
+			// No @@sep — tolerate by treating the entire body as a full document rewrite
+			newString = content.slice(bodyStart, endIdx - 1);
 		}
 		consumed = skipToNextLine(content, endIdx + endToken.length);
 	}

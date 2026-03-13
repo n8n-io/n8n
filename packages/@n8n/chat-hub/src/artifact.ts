@@ -26,7 +26,10 @@ export function collectChatArtifacts(items: ChatMessageContentChunk[]): ChatArti
 			const targetDoc = artifacts.find((doc) => doc.title === item.command.title);
 
 			if (targetDoc) {
-				if (item.command.replaceAll) {
+				if (item.command.oldString === '') {
+					// Empty oldString signals a full document rewrite
+					targetDoc.content = item.command.newString;
+				} else if (item.command.replaceAll) {
 					targetDoc.content = targetDoc.content
 						.split(item.command.oldString)
 						.join(item.command.newString);

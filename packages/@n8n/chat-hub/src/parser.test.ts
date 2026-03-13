@@ -114,6 +114,28 @@ END_A7X`;
 			},
 		]);
 	});
+
+	it('should parse artifact-edit command without @@sep as full document rewrite', () => {
+		const content = `\
+@@artifact-edit title="My Document" << END_A7X
+new full content
+END_A7X`;
+
+		const result = parseMessage({ type: 'ai', content });
+		expect(result).toEqual([
+			{
+				type: 'artifact-edit',
+				content,
+				command: {
+					title: 'My Document',
+					oldString: '',
+					newString: 'new full content',
+					replaceAll: false,
+				},
+				isIncomplete: false,
+			},
+		]);
+	});
 });
 
 describe(appendChunkToParsedMessageItems, () => {
@@ -398,20 +420,48 @@ END_T`,
 		]);
 	});
 
-	it('should handle incomplete artifact-edit command', () => {
+	it('should handle incomplete artifact-edit command without @@sep (accumulates as newString)', () => {
 		const result = appendChunkToParsedMessageItems(
 			[],
 			`\
 @@artifact-edit title="My Doc" replaceAll="false" << END_T
-old`,
+new content so far`,
 		);
 		expect(result).toEqual([
 			{
 				type: 'artifact-edit',
 				content: `\
 @@artifact-edit title="My Doc" replaceAll="false" << END_T
-old`,
-				command: { title: 'My Doc', oldString: 'old', newString: '', replaceAll: false },
+new content so far`,
+				command: {
+					title: 'My Doc',
+					oldString: '',
+					newString: 'new content so far',
+					replaceAll: false,
+				},
+				isIncomplete: true,
+			},
+		]);
+	});
+
+	it('should handle incomplete artifact-edit command with @@sep', () => {
+		const result = appendChunkToParsedMessageItems(
+			[],
+			`\
+@@artifact-edit title="My Doc" replaceAll="false" << END_T
+old
+@@sep
+new`,
+		);
+		expect(result).toEqual([
+			{
+				type: 'artifact-edit',
+				content: `\
+@@artifact-edit title="My Doc" replaceAll="false" << END_T
+old
+@@sep
+new`,
+				command: { title: 'My Doc', oldString: 'old', newString: 'new', replaceAll: false },
 				isIncomplete: true,
 			},
 		]);
@@ -424,7 +474,7 @@ old`,
 				content: `\
 @@artifact-edit title="Doc" replaceAll="false" << END_T
 old`,
-				command: { title: 'Doc', oldString: 'old', newString: '', replaceAll: false },
+				command: { title: 'Doc', oldString: '', newString: 'old', replaceAll: false },
 				isIncomplete: true,
 			},
 		];
