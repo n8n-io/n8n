@@ -604,4 +604,6 @@ export interface CreateInstanceAgentOptions {
 	memory?: Memory;
 	/** Workspace with sandbox for code execution. When provided, the agent gets execute_command tool. */
 	workspace?: Workspace;
+	/** When true, all tools are loaded eagerly (no ToolSearchProcessor). Workaround for Mastra bug where toModelOutput is not called for deferred tools. */
+	disableDeferredTools?: boolean;
 }

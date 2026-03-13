@@ -16,6 +16,7 @@ import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceA
 import { useResourceRegistry } from './useResourceRegistry';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import type {
+	InstanceAiAttachment,
 	InstanceAiEvent,
 	InstanceAiMessage,
 	InstanceAiAgentNode,
@@ -57,8 +58,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// --- Computed ---
 	const isStreaming = computed(() => activeRunId.value !== null);
 	const hasMessages = computed(() => messages.value.length > 0);
-	const isLocalFilesystemEnabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.filesystem === true,
+	const isLocalGatewayEnabled = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.localGateway === true,
 	);
 	const isGatewayConnected = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.gatewayConnected === true,
@@ -66,10 +67,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const gatewayDirectory = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.gatewayDirectory ?? null,
 	);
-	const filesystemDirectory = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.filesystemDirectory ?? null,
+	const localGatewayFallbackDirectory = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayFallbackDirectory ?? null,
 	);
-	const activeDirectory = computed(() => gatewayDirectory.value ?? filesystemDirectory.value);
+	const activeDirectory = computed(
+		() => gatewayDirectory.value ?? localGatewayFallbackDirectory.value,
+	);
 
 	// Resource registry — maps known resource names to their types & IDs
 	const { registry: resourceRegistry } = useResourceRegistry(() => messages.value);
@@ -443,7 +446,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function sendMessage(message: string): Promise<void> {
+	async function sendMessage(message: string, attachments?: InstanceAiAttachment[]): Promise<void> {
 		// Clear amend context on new message
 		amendContext.value = null;
 
@@ -455,6 +458,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			content: message,
 			reasoning: '',
 			isStreaming: false,
+			attachments: attachments && attachments.length > 0 ? attachments : undefined,
 		};
 		messages.value.push(userMessage);
 
@@ -467,6 +471,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				currentThreadId.value,
 				message,
 				researchMode.value || undefined,
+				attachments,
 			);
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
@@ -653,10 +658,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		// Computed
 		isStreaming,
 		hasMessages,
-		isLocalFilesystemEnabled,
+		isLocalGatewayEnabled,
 		isGatewayConnected,
 		gatewayDirectory,
-		filesystemDirectory,
+		localGatewayFallbackDirectory,
 		activeDirectory,
 		contextualSuggestion,
 		currentTasks,

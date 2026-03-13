@@ -1,26 +1,16 @@
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { z } from 'zod';
 
-export type McpTextContent = { type: 'text'; text: string };
-
-export type McpImageContent = {
-	type: 'media';
-	data: string;
-	mediaType: string;
-};
-
-export interface CallToolResult<
-	TContent extends Array<McpTextContent | McpImageContent> = Array<
-		McpTextContent | McpImageContent
-	>,
-> {
-	content: TContent;
-	isError?: boolean;
-}
+export type { CallToolResult };
 
 export interface McpTool {
 	name: string;
 	description?: string;
-	inputSchema: Record<string, unknown>;
+	inputSchema: {
+		type: 'object';
+		properties?: Record<string, unknown>;
+		required?: string[];
+	};
 }
 
 export interface ToolContext {
@@ -29,26 +19,24 @@ export interface ToolContext {
 }
 
 export interface ToolAnnotations {
-	/** Default permission level for this tool (not enforced yet) */
+	/** Default permission level for this tool (n8n-specific, not part of MCP spec) */
 	defaultPermission?: 'allow' | 'confirm' | 'block';
-	/** Tool only reads data, never mutates state */
-	readOnly?: boolean;
-	/** Tool can cause irreversible side effects */
-	destructive?: boolean;
+	/** If true, tool does not modify its environment (default: false) */
+	readOnlyHint?: boolean;
+	/** If true, tool may perform destructive updates (default: true) */
+	destructiveHint?: boolean;
+	/** If true, repeated calls with same args have no additional effect (default: false) */
+	idempotentHint?: boolean;
+	/** If true, tool interacts with external entities (default: true) */
+	openWorldHint?: boolean;
 }
 
-export interface ToolDefinition<
-	TSchema extends z.ZodObject<z.ZodRawShape> = z.ZodObject<z.ZodRawShape>,
-	TContent extends McpTextContent | McpImageContent = McpTextContent | McpImageContent,
-> {
+export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
 	name: string;
 	description: string;
 	inputSchema: TSchema;
 	annotations?: ToolAnnotations;
-	execute(
-		args: z.infer<TSchema>,
-		context: ToolContext,
-	): CallToolResult<TContent[]> | Promise<CallToolResult<TContent[]>>;
+	execute(args: z.infer<TSchema>, context: ToolContext): CallToolResult | Promise<CallToolResult>;
 }
 
 export interface ToolModule {

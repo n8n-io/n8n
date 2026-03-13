@@ -25,12 +25,21 @@ const TABLE_TOOLS = new Set([
 	'list-data-tables',
 ]);
 
-function isMcpResult(result: unknown): result is McpToolCallResult['content'] {
-	return result !== null && Array.isArray(result);
+function extractMcpContent(result: unknown): McpToolCallResult['content'] | null {
+	if (Array.isArray(result)) return result;
+	if (
+		result !== null &&
+		typeof result === 'object' &&
+		'content' in result &&
+		Array.isArray((result as McpToolCallResult).content)
+	) {
+		return (result as McpToolCallResult).content;
+	}
+	return null;
 }
 
 function detectType(result: unknown, toolName: string): ResultType {
-	if (isMcpResult(result)) return 'content';
+	if (extractMcpContent(result) !== null) return 'content';
 	if (CODE_TOOLS.has(toolName)) return 'code';
 	if (TABLE_TOOLS.has(toolName) && result && typeof result === 'object') return 'table';
 	return 'json';
@@ -74,7 +83,7 @@ function extractTableRows(result: unknown): Array<Record<string, unknown>> | nul
 }
 
 const resultType = computed(() => detectType(props.result, props.toolName));
-const contentItems = computed(() => (isMcpResult(props.result) ? props.result : null));
+const contentItems = computed(() => extractMcpContent(props.result));
 const codeContent = computed(() => extractCode(props.result, props.toolName));
 const tableRows = computed(() => extractTableRows(props.result));
 </script>
@@ -82,11 +91,7 @@ const tableRows = computed(() => extractTableRows(props.result));
 <template>
 	<div v-if="resultType === 'content' && contentItems" :class="$style.contentList">
 		<template v-for="(item, idx) in contentItems" :key="idx">
-			<ToolResultMedia
-				v-if="item.type === 'media'"
-				:data="item.data"
-				:media-type="item.mediaType"
-			/>
+			<ToolResultMedia v-if="item.type === 'image'" :data="item.data" :mime-type="item.mimeType" />
 			<ToolResultText v-else-if="item.type === 'text'" :text="item.text" />
 		</template>
 	</div>

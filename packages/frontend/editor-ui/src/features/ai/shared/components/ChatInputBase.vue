@@ -1,14 +1,18 @@
 <script lang="ts" setup>
-import { ref, useTemplateRef } from 'vue';
-import { N8nIconButton, N8nInput } from '@n8n/design-system';
+import { ref, useTemplateRef, watch } from 'vue';
+import { N8nIconButton, N8nInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useSpeechRecognition } from '@vueuse/core';
 
-defineProps<{
+const props = defineProps<{
 	modelValue: string;
 	placeholder?: string;
 	isStreaming: boolean;
 	canSubmit: boolean;
 	disabled?: boolean;
+	showVoice?: boolean;
+	showAttach?: boolean;
+	acceptedMimeTypes?: string;
 }>();
 
 const emit = defineEmits<{
@@ -16,18 +20,78 @@ const emit = defineEmits<{
 	submit: [];
 	stop: [];
 	tab: [];
+	'files-selected': [files: File[]];
 }>();
 
 const i18n = useI18n();
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
+const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const isFocused = ref(false);
+
+// Voice input
+const committedSpokenMessage = ref('');
+const speechInput = useSpeechRecognition({
+	continuous: true,
+	interimResults: true,
+	lang: navigator.language,
+});
+
+watch(speechInput.result, (spoken) => {
+	if (props.showVoice) {
+		emit('update:modelValue', committedSpokenMessage.value + ' ' + spoken.trimStart());
+	}
+});
+
+watch(
+	speechInput.isFinal,
+	(final) => {
+		if (final && props.showVoice) {
+			committedSpokenMessage.value = props.modelValue;
+		}
+	},
+	{ flush: 'post' },
+);
+
+function handleMic() {
+	committedSpokenMessage.value = props.modelValue;
+	if (speechInput.isListening.value) {
+		speechInput.stop();
+	} else {
+		speechInput.start();
+	}
+}
+
+function handleAttach() {
+	fileInputRef.value?.click();
+}
+
+function handleFileSelect(e: Event) {
+	const target = e.target as HTMLInputElement;
+	const files = target.files;
+	if (!files || files.length === 0) return;
+	emit('files-selected', Array.from(files));
+	target.value = '';
+	inputRef.value?.focus();
+}
+
+function handlePaste(e: ClipboardEvent) {
+	if (!props.showAttach || !e.clipboardData?.files.length) return;
+
+	const files = Array.from(e.clipboardData.files);
+	if (files.length > 0) {
+		e.preventDefault();
+		emit('files-selected', files);
+	}
+}
 
 function handleKeydown(e: KeyboardEvent) {
 	if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
 		e.preventDefault();
+		speechInput.stop();
 		emit('submit');
 	} else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
 		e.preventDefault();
+		speechInput.stop();
 		emit('submit');
 	} else if (e.key === 'Tab' && !e.shiftKey) {
 		e.preventDefault();
@@ -45,7 +109,23 @@ defineExpose({
 </script>
 
 <template>
-	<div :class="[$style.inputWrapper, { [$style.focused]: isFocused }]" @click="handleClickWrapper">
+	<div
+		:class="[$style.inputWrapper, { [$style.focused]: isFocused }]"
+		@click="handleClickWrapper"
+		@paste="handlePaste"
+	>
+		<input
+			v-if="showAttach"
+			ref="fileInputRef"
+			type="file"
+			:class="$style.fileInput"
+			:accept="acceptedMimeTypes"
+			multiple
+			@change="handleFileSelect"
+		/>
+
+		<slot name="attachments" />
+
 		<N8nInput
 			ref="inputRef"
 			:model-value="modelValue"
@@ -65,6 +145,30 @@ defineExpose({
 				<slot name="footer-start" />
 			</div>
 			<div :class="$style.actions">
+				<N8nTooltip
+					v-if="showAttach"
+					:content="i18n.baseText('chatInputBase.button.attach')"
+					placement="top"
+				>
+					<N8nIconButton
+						variant="ghost"
+						:disabled="disabled || isStreaming"
+						icon="paperclip"
+						icon-size="large"
+						data-test-id="chat-input-attach-button"
+						@click.stop="handleAttach"
+					/>
+				</N8nTooltip>
+				<N8nIconButton
+					v-if="showVoice && speechInput.isSupported"
+					variant="outline"
+					:disabled="disabled || isStreaming"
+					:icon="speechInput.isListening.value ? 'square' : 'mic'"
+					:class="{ [$style.recording]: speechInput.isListening.value }"
+					icon-size="large"
+					data-test-id="chat-input-voice-button"
+					@click.stop="handleMic"
+				/>
 				<N8nIconButton
 					v-if="isStreaming"
 					native-type="button"
@@ -92,11 +196,11 @@ defineExpose({
 <style lang="scss" module>
 .inputWrapper {
 	width: 100%;
-	border-radius: 16px;
-	padding: 16px;
-	box-shadow: 0 10px 24px 0 #00000010;
+	border-radius: var(--radius--xl);
+	padding: var(--spacing--sm);
+	box-shadow: 0 10px 24px 0 color-mix(in srgb, var(--color--foreground--shade-2) 6%, transparent);
 	background-color: var(--color--background--light-3);
-	border: none;
+	border: 1px solid var(--color--foreground--tint-1);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
@@ -104,6 +208,9 @@ defineExpose({
 	--input--border-color: transparent;
 	--input--border-color--hover: transparent;
 	--input--border-color--focus: transparent;
+	--input--border--shadow: none;
+	--input--border--shadow--hover: none;
+	--input--border--shadow--focus: none;
 	--input--color--background: transparent;
 
 	&.focused,
@@ -120,6 +227,11 @@ defineExpose({
 
 	:global(.n8n-input) > div {
 		padding: 0;
+	}
+
+	:global(.n8n-input__wrapper) {
+		box-shadow: none !important;
+		outline: none !important;
 	}
 }
 
@@ -141,6 +253,25 @@ defineExpose({
 
 	& button path {
 		stroke-width: 2.5;
+	}
+}
+
+.fileInput {
+	display: none;
+}
+
+.recording {
+	animation: chatInputRecordingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes chatInputRecordingPulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0.6;
 	}
 }
 </style>

@@ -127,11 +127,11 @@ export async function setupInstanceAiMocks(
 				data: {
 					'instance-ai': {
 						enabled: true,
-						filesystem: true,
+						localGateway: true,
 						gatewayConnected: true,
 						gatewayDirectory: '/tmp/test',
-						filesystemDisabled: false,
-						filesystemDirectory: null,
+						localGatewayDisabled: false,
+						localGatewayFallbackDirectory: null,
 					},
 				},
 			}),

@@ -10,18 +10,18 @@ export interface ServerOptions {
 	port: number;
 }
 
-function envString(name: string): string | undefined {
-	return process.env[`${ENV_PREFIX}${name}`];
+function envString(envKey: string): string | undefined {
+	return process.env[`${ENV_PREFIX}${envKey}`];
 }
 
-function envBoolean(name: string): boolean | undefined {
-	const raw = envString(name);
+function envBoolean(envKey: string): boolean | undefined {
+	const raw = envString(envKey);
 	if (raw === undefined) return undefined;
 	return raw === 'true' || raw === '1';
 }
 
-function envNumber(name: string): number | undefined {
-	const raw = envString(name);
+function envNumber(envKey: string): number | undefined {
+	const raw = envString(envKey);
 	if (raw === undefined) return undefined;
 	const n = Number(raw);
 	return Number.isNaN(n) ? undefined : n;
@@ -33,10 +33,28 @@ function parseViewport(raw: string): { width: number; height: number } | undefin
 	return { width: Number(match[1]), height: Number(match[2]) };
 }
 
+/* eslint-disable @typescript-eslint/naming-convention -- kebab-case keys from yargs CLI parsing */
+interface ParsedArgs {
+	browser?: string;
+	mode?: string;
+	headless?: boolean;
+	viewport?: string;
+	'session-ttl-ms'?: number;
+	'max-sessions'?: number;
+	'profiles-dir'?: string;
+	transport?: string;
+	port?: number;
+	_: string[];
+}
+/* eslint-enable @typescript-eslint/naming-convention */
+
 export function parseServerOptions(argv = process.argv.slice(2)): ServerOptions {
 	const args = yargsParser(argv, {
+		// eslint-disable-next-line id-denylist
 		string: ['browser', 'mode', 'viewport', 'profiles-dir', 'transport'],
+		// eslint-disable-next-line id-denylist
 		boolean: ['headless'],
+		// eslint-disable-next-line id-denylist
 		number: ['session-ttl-ms', 'max-sessions', 'port'],
 		alias: {
 			b: 'browser',
@@ -44,7 +62,7 @@ export function parseServerOptions(argv = process.argv.slice(2)): ServerOptions 
 			p: 'port',
 			t: 'transport',
 		},
-	});
+	}) as ParsedArgs;
 
 	// Build config from env vars (lower priority)
 	const envConfig: Partial<Config> = {};

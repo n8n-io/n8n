@@ -94,9 +94,9 @@ describe('screen_screenshot tool', () => {
 		expect(result.content).toHaveLength(1);
 
 		const imageBlock = result.content[0];
-		expect(imageBlock.type).toBe('media');
+		expect(imageBlock.type).toBe('image');
 		expect(imageBlock).toHaveProperty('data', Buffer.from('fake-jpeg').toString('base64'));
-		expect(imageBlock).toHaveProperty('mediaType', 'image/jpeg');
+		expect(imageBlock).toHaveProperty('mimeType', 'image/jpeg');
 	});
 
 	it('uses the primary monitor when multiple monitors are available', async () => {
@@ -136,7 +136,7 @@ describe('screen_screenshot tool', () => {
 		expect(pipeline.resize).toHaveBeenCalledWith(1920, 1080);
 	});
 
-	it('does not resize when physical dimensions already match logical dimensions', async () => {
+	it('downscales to max 1024px when physical dimensions match logical dimensions', async () => {
 		const monitor = makeMockMonitor({
 			isPrimary: true,
 			width: 1920,
@@ -148,7 +148,8 @@ describe('screen_screenshot tool', () => {
 		await screenshotTool.execute({}, DUMMY_CONTEXT);
 
 		const pipeline = mockSharp.mock.results[0].value as { resize: jest.Mock };
-		expect(pipeline.resize).not.toHaveBeenCalled();
+		// No HiDPI resize, but LLM downscale kicks in (1920x1080 → 1024x576)
+		expect(pipeline.resize).toHaveBeenCalledWith(1024, 576);
 	});
 });
 
@@ -169,8 +170,8 @@ describe('screen_screenshot_region tool', () => {
 		expect(result.content).toHaveLength(1);
 
 		const imageBlock = result.content[0];
-		expect(imageBlock.type).toBe('media');
-		expect(imageBlock).toHaveProperty('mediaType', 'image/jpeg');
+		expect(imageBlock.type).toBe('image');
+		expect(imageBlock).toHaveProperty('mimeType', 'image/jpeg');
 		expect(imageBlock).toHaveProperty('data');
 	});
 

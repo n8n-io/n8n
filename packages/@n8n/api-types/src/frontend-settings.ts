@@ -279,11 +279,11 @@ export type FrontendModuleSettings = {
 	 */
 	'instance-ai'?: {
 		enabled: boolean;
-		filesystem: boolean;
+		localGateway: boolean;
 		gatewayConnected: boolean;
 		gatewayDirectory: string | null;
-		filesystemDisabled: boolean;
-		filesystemDirectory: string | null;
+		localGatewayDisabled: boolean;
+		localGatewayFallbackDirectory: string | null;
 	};
 
 	/**

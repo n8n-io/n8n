@@ -4,7 +4,7 @@ import { McpBrowserError } from '../errors';
 import type { SessionManager } from '../session-manager';
 import type { ToolContext, ToolDefinition } from '../types';
 import { browserNameSchema, sessionModeSchema, viewportSchema } from '../types';
-import { formatErrorResponse, formatToolResponse } from '../utils';
+import { formatErrorResponse, formatCallToolResult } from '../utils';
 import { sessionIdField } from './helpers';
 
 export function createSessionTools(sessionManager: SessionManager): ToolDefinition[] {
@@ -33,16 +33,30 @@ const browserOpenSchema = z.object({
 	ttlMs: z.number().positive().optional().describe('Session idle timeout in milliseconds'),
 });
 
+const browserOpenOutputSchema = z.object({
+	sessionId: z.string(),
+	browser: z.string(),
+	mode: z.string(),
+	pages: z.array(
+		z.object({
+			id: z.string(),
+			title: z.string(),
+			url: z.string(),
+		}),
+	),
+});
+
 function browserOpen(sessionManager: SessionManager): ToolDefinition<typeof browserOpenSchema> {
 	return {
 		name: 'browser_open',
 		description:
 			"Create a new browser session. Returns a sessionId for use in all other browser tools. Supports ephemeral (throwaway), persistent (named profile), and local (user's real browser) modes.",
 		inputSchema: browserOpenSchema,
+		outputSchema: browserOpenOutputSchema,
 		async execute(args, _context: ToolContext) {
 			try {
 				const result = await sessionManager.open(args);
-				return formatToolResponse({
+				return formatCallToolResult({
 					sessionId: result.sessionId,
 					browser: result.browser,
 					mode: result.mode,
@@ -66,15 +80,21 @@ const browserCloseSchema = z.object({
 	sessionId: sessionIdField,
 });
 
+const browserCloseOutputSchema = z.object({
+	closed: z.boolean(),
+	sessionId: z.string(),
+});
+
 function browserClose(sessionManager: SessionManager): ToolDefinition<typeof browserCloseSchema> {
 	return {
 		name: 'browser_close',
 		description: 'Close a browser session and release all resources.',
 		inputSchema: browserCloseSchema,
+		outputSchema: browserCloseOutputSchema,
 		async execute(args, _context: ToolContext) {
 			try {
 				await sessionManager.close(args.sessionId);
-				return formatToolResponse({ closed: true, sessionId: args.sessionId });
+				return formatCallToolResult({ closed: true, sessionId: args.sessionId });
 			} catch (error) {
 				if (error instanceof McpBrowserError) return formatErrorResponse(error);
 				return formatErrorResponse(

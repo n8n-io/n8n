@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type { SessionManager } from '../session-manager';
 import type { ToolDefinition } from '../types';
+import { formatCallToolResult } from '../utils';
 import { createSessionTool, pageIdField, sessionIdField } from './helpers';
 
 export function createStateTools(sessionManager: SessionManager): ToolDefinition[] {
@@ -32,37 +33,62 @@ const cookieSchema = z.object({
 	sameSite: z.enum(['Strict', 'Lax', 'None']).optional(),
 });
 
+const cookiesGetSchema = z.object({
+	sessionId: sessionIdField,
+	action: z.literal('get'),
+	url: z.string().optional().describe('Filter cookies by URL'),
+	pageId: pageIdField,
+});
+
+const cookiesSetSchema = z.object({
+	sessionId: sessionIdField,
+	action: z.literal('set'),
+	cookies: z.array(cookieSchema).describe('Cookies to set'),
+	pageId: pageIdField,
+});
+
+const cookiesClearSchema = z.object({
+	sessionId: sessionIdField,
+	action: z.literal('clear'),
+	pageId: pageIdField,
+});
+
+const browserCookiesSchema = z.discriminatedUnion('action', [
+	cookiesGetSchema,
+	cookiesSetSchema,
+	cookiesClearSchema,
+]);
+
+const browserCookiesOutputSchema = z.object({
+	cookies: z.array(z.record(z.unknown())).optional(),
+	set: z.boolean().optional(),
+	count: z.number().optional(),
+	cleared: z.boolean().optional(),
+});
+
 function browserCookies(sessionManager: SessionManager): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_cookies',
 		'Get, set, or clear cookies.',
-		{
-			sessionId: sessionIdField,
-			action: z.enum(['get', 'set', 'clear']).describe('Cookie action'),
-			cookies: z
-				.array(cookieSchema)
-				.optional()
-				.describe('Cookies to set (required for "set" action)'),
-			url: z.string().optional().describe('Filter cookies by URL (for "get")'),
-			pageId: pageIdField,
-		},
+		browserCookiesSchema,
 		async (session, input, pageId) => {
 			switch (input.action) {
 				case 'get': {
 					const cookies = await session.adapter.getCookies(pageId, input.url);
-					return { cookies };
+					return formatCallToolResult({ cookies });
 				}
 				case 'set': {
-					await session.adapter.setCookies(pageId, input.cookies ?? []);
-					return { set: true, count: input.cookies?.length ?? 0 };
+					await session.adapter.setCookies(pageId, input.cookies);
+					return formatCallToolResult({ set: true, count: input.cookies.length });
 				}
 				case 'clear': {
 					await session.adapter.clearCookies(pageId);
-					return { cleared: true };
+					return formatCallToolResult({ cleared: true });
 				}
 			}
 		},
+		browserCookiesOutputSchema,
 	);
 }
 
@@ -70,37 +96,65 @@ function browserCookies(sessionManager: SessionManager): ToolDefinition {
 // browser_storage
 // ---------------------------------------------------------------------------
 
+const storageKindField = z.enum(['local', 'session']).describe('Storage type');
+
+const storageGetSchema = z.object({
+	sessionId: sessionIdField,
+	kind: storageKindField,
+	action: z.literal('get'),
+	pageId: pageIdField,
+});
+
+const storageSetSchema = z.object({
+	sessionId: sessionIdField,
+	kind: storageKindField,
+	action: z.literal('set'),
+	data: z.record(z.string(), z.string()).describe('Key-value pairs to set'),
+	pageId: pageIdField,
+});
+
+const storageClearSchema = z.object({
+	sessionId: sessionIdField,
+	kind: storageKindField,
+	action: z.literal('clear'),
+	pageId: pageIdField,
+});
+
+const browserStorageSchema = z.discriminatedUnion('action', [
+	storageGetSchema,
+	storageSetSchema,
+	storageClearSchema,
+]);
+
+const browserStorageOutputSchema = z.object({
+	data: z.record(z.unknown()).optional(),
+	set: z.boolean().optional(),
+	cleared: z.boolean().optional(),
+});
+
 function browserStorage(sessionManager: SessionManager): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_storage',
 		'Get, set, or clear localStorage or sessionStorage.',
-		{
-			sessionId: sessionIdField,
-			kind: z.enum(['local', 'session']).describe('Storage type'),
-			action: z.enum(['get', 'set', 'clear']).describe('Storage action'),
-			data: z
-				.record(z.string(), z.string())
-				.optional()
-				.describe('Key-value pairs to set (required for "set" action)'),
-			pageId: pageIdField,
-		},
+		browserStorageSchema,
 		async (session, input, pageId) => {
 			switch (input.action) {
 				case 'get': {
 					const data = await session.adapter.getStorage(pageId, input.kind);
-					return { data };
+					return formatCallToolResult({ data });
 				}
 				case 'set': {
-					await session.adapter.setStorage(pageId, input.kind, input.data ?? {});
-					return { set: true };
+					await session.adapter.setStorage(pageId, input.kind, input.data);
+					return formatCallToolResult({ set: true });
 				}
 				case 'clear': {
 					await session.adapter.clearStorage(pageId, input.kind);
-					return { cleared: true };
+					return formatCallToolResult({ cleared: true });
 				}
 			}
 		},
+		browserStorageOutputSchema,
 	);
 }
 
@@ -108,20 +162,27 @@ function browserStorage(sessionManager: SessionManager): ToolDefinition {
 // browser_set_offline
 // ---------------------------------------------------------------------------
 
+const browserSetOfflineSchema = z.object({
+	sessionId: sessionIdField,
+	offline: z.boolean().describe('true = offline, false = online'),
+	pageId: pageIdField,
+});
+
+const browserSetOfflineOutputSchema = z.object({
+	offline: z.boolean(),
+});
+
 function browserSetOffline(sessionManager: SessionManager): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_set_offline',
 		'Toggle offline mode. Playwright only.',
-		{
-			sessionId: sessionIdField,
-			offline: z.boolean().describe('true = offline, false = online'),
-			pageId: pageIdField,
-		},
+		browserSetOfflineSchema,
 		async (session, input, pageId) => {
 			await session.adapter.setOffline(pageId, input.offline);
-			return { offline: input.offline };
+			return formatCallToolResult({ offline: input.offline });
 		},
+		browserSetOfflineOutputSchema,
 	);
 }
 
@@ -129,20 +190,27 @@ function browserSetOffline(sessionManager: SessionManager): ToolDefinition {
 // browser_set_headers
 // ---------------------------------------------------------------------------
 
+const browserSetHeadersSchema = z.object({
+	sessionId: sessionIdField,
+	headers: z.record(z.string(), z.string()).describe('Headers to set'),
+	pageId: pageIdField,
+});
+
+const browserSetHeadersOutputSchema = z.object({
+	headers: z.record(z.unknown()),
+});
+
 function browserSetHeaders(sessionManager: SessionManager): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_set_headers',
 		'Set extra HTTP headers for all subsequent requests. Pass empty object to clear.',
-		{
-			sessionId: sessionIdField,
-			headers: z.record(z.string(), z.string()).describe('Headers to set'),
-			pageId: pageIdField,
-		},
+		browserSetHeadersSchema,
 		async (session, input, pageId) => {
 			await session.adapter.setHeaders(pageId, input.headers);
-			return { headers: input.headers };
+			return formatCallToolResult({ headers: input.headers });
 		},
+		browserSetHeadersOutputSchema,
 	);
 }
 
@@ -150,32 +218,47 @@ function browserSetHeaders(sessionManager: SessionManager): ToolDefinition {
 // browser_set_geolocation
 // ---------------------------------------------------------------------------
 
+const geoSetSchema = z.object({
+	sessionId: sessionIdField,
+	action: z.literal('set'),
+	latitude: z.number().describe('Latitude'),
+	longitude: z.number().describe('Longitude'),
+	accuracy: z.number().optional().describe('Accuracy in meters'),
+	pageId: pageIdField,
+});
+
+const geoClearSchema = z.object({
+	sessionId: sessionIdField,
+	action: z.literal('clear'),
+	pageId: pageIdField,
+});
+
+const browserSetGeolocationSchema = z.discriminatedUnion('action', [geoSetSchema, geoClearSchema]);
+
+const browserSetGeolocationOutputSchema = z.object({
+	geolocation: z.record(z.unknown()).nullable(),
+});
+
 function browserSetGeolocation(sessionManager: SessionManager): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_set_geolocation',
-		'Override geolocation. Set clear=true to remove the override.',
-		{
-			sessionId: sessionIdField,
-			latitude: z.number().optional().describe('Latitude'),
-			longitude: z.number().optional().describe('Longitude'),
-			accuracy: z.number().optional().describe('Accuracy in meters'),
-			clear: z.boolean().optional().describe('Remove geolocation override'),
-			pageId: pageIdField,
-		},
+		'Override geolocation (action: "set") or remove the override (action: "clear").',
+		browserSetGeolocationSchema,
 		async (session, input, pageId) => {
-			if (input.clear) {
+			if (input.action === 'clear') {
 				await session.adapter.setGeolocation(pageId, null);
-				return { geolocation: null };
+				return formatCallToolResult({ geolocation: null });
 			}
 			const geo = {
-				latitude: input.latitude ?? 0,
-				longitude: input.longitude ?? 0,
+				latitude: input.latitude,
+				longitude: input.longitude,
 				accuracy: input.accuracy,
 			};
 			await session.adapter.setGeolocation(pageId, geo);
-			return { geolocation: geo };
+			return formatCallToolResult({ geolocation: geo });
 		},
+		browserSetGeolocationOutputSchema,
 	);
 }
 
@@ -183,20 +266,27 @@ function browserSetGeolocation(sessionManager: SessionManager): ToolDefinition {
 // browser_set_timezone
 // ---------------------------------------------------------------------------
 
+const browserSetTimezoneSchema = z.object({
+	sessionId: sessionIdField,
+	timezone: z.string().describe('IANA timezone'),
+	pageId: pageIdField,
+});
+
+const browserSetTimezoneOutputSchema = z.object({
+	timezone: z.string(),
+});
+
 function browserSetTimezone(sessionManager: SessionManager): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_set_timezone',
 		'Override timezone. IANA format (e.g. "America/New_York"). Playwright only.',
-		{
-			sessionId: sessionIdField,
-			timezone: z.string().describe('IANA timezone'),
-			pageId: pageIdField,
-		},
+		browserSetTimezoneSchema,
 		async (session, input, pageId) => {
 			await session.adapter.setTimezone(pageId, input.timezone);
-			return { timezone: input.timezone };
+			return formatCallToolResult({ timezone: input.timezone });
 		},
+		browserSetTimezoneOutputSchema,
 	);
 }
 
@@ -204,20 +294,27 @@ function browserSetTimezone(sessionManager: SessionManager): ToolDefinition {
 // browser_set_locale
 // ---------------------------------------------------------------------------
 
+const browserSetLocaleSchema = z.object({
+	sessionId: sessionIdField,
+	locale: z.string().describe('BCP 47 locale'),
+	pageId: pageIdField,
+});
+
+const browserSetLocaleOutputSchema = z.object({
+	locale: z.string(),
+});
+
 function browserSetLocale(sessionManager: SessionManager): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_set_locale',
 		'Override locale. BCP 47 format (e.g. "en-US", "de-DE"). Playwright only.',
-		{
-			sessionId: sessionIdField,
-			locale: z.string().describe('BCP 47 locale'),
-			pageId: pageIdField,
-		},
+		browserSetLocaleSchema,
 		async (session, input, pageId) => {
 			await session.adapter.setLocale(pageId, input.locale);
-			return { locale: input.locale };
+			return formatCallToolResult({ locale: input.locale });
 		},
+		browserSetLocaleOutputSchema,
 	);
 }
 
@@ -225,19 +322,26 @@ function browserSetLocale(sessionManager: SessionManager): ToolDefinition {
 // browser_set_device
 // ---------------------------------------------------------------------------
 
+const browserSetDeviceSchema = z.object({
+	sessionId: sessionIdField,
+	device: z.string().describe('Playwright device name (e.g. "iPhone 14")'),
+	pageId: pageIdField,
+});
+
+const browserSetDeviceOutputSchema = z.object({
+	device: z.string(),
+});
+
 function browserSetDevice(sessionManager: SessionManager): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_set_device',
 		'Emulate a device (viewport, user agent, touch, etc.). Playwright only. Examples: "iPhone 14", "Pixel 7".',
-		{
-			sessionId: sessionIdField,
-			device: z.string().describe('Playwright device name (e.g. "iPhone 14")'),
-			pageId: pageIdField,
-		},
+		browserSetDeviceSchema,
 		async (session, input, pageId) => {
 			await session.adapter.setDevice(pageId, { name: input.device });
-			return { device: input.device };
+			return formatCallToolResult({ device: input.device });
 		},
+		browserSetDeviceOutputSchema,
 	);
 }

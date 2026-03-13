@@ -164,20 +164,32 @@ export const confirmationRequestPayloadSchema = z.object({
 
 export const errorPayloadSchema = z.object({
 	content: z.string(),
+	statusCode: z.number().optional(),
+	provider: z.string().optional(),
+	technicalDetails: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
 // MCP protocol types (used by the filesystem gateway)
 // ---------------------------------------------------------------------------
 
+// Plain object schema: { type: "object", properties: { ... } }
+const mcpObjectInputSchema = z.object({
+	type: z.literal('object'),
+	properties: z.record(z.unknown()),
+	required: z.array(z.string()).optional(),
+});
+
+// Union schemas produced by z.discriminatedUnion / z.union via zodToJsonSchema
+const mcpAnyOfInputSchema = z.object({ anyOf: z.array(mcpObjectInputSchema) });
+const mcpOneOfInputSchema = z.object({ oneOf: z.array(mcpObjectInputSchema) });
+
+const mcpInputSchema = z.union([mcpObjectInputSchema, mcpAnyOfInputSchema, mcpOneOfInputSchema]);
+
 export const mcpToolSchema = z.object({
 	name: z.string(),
 	description: z.string().optional(),
-	inputSchema: z.object({
-		type: z.literal('object'),
-		properties: z.record(z.unknown()),
-		required: z.array(z.string()).optional(),
-	}),
+	inputSchema: mcpInputSchema,
 });
 export type McpTool = z.infer<typeof mcpToolSchema>;
 
@@ -190,12 +202,13 @@ export type McpToolCallRequest = z.infer<typeof mcpToolCallRequestSchema>;
 const mcpTextContentSchema = z.object({ type: z.literal('text'), text: z.string() });
 
 const mcpImageContentSchema = z.object({
-	type: z.literal('media'),
+	type: z.literal('image'),
 	data: z.string(),
-	mediaType: z.string(),
+	mimeType: z.string(),
 });
 export const mcpToolCallResultSchema = z.object({
 	content: z.array(z.union([mcpTextContentSchema, mcpImageContentSchema])),
+	structuredContent: z.record(z.string(), z.unknown()).optional(),
 	isError: z.boolean().optional(),
 });
 export type McpToolCallResult = z.infer<typeof mcpToolCallResultSchema>;
@@ -314,9 +327,16 @@ export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemRe
 // API types
 // ---------------------------------------------------------------------------
 
+export interface InstanceAiAttachment {
+	data: string;
+	mimeType: string;
+	fileName: string;
+}
+
 export interface InstanceAiSendMessageRequest {
 	message: string;
 	researchMode?: boolean;
+	attachments?: InstanceAiAttachment[];
 }
 
 export interface InstanceAiSendMessageResponse {
@@ -387,6 +407,11 @@ export interface InstanceAiAgentNode {
 	tasks?: TaskList;
 	result?: string;
 	error?: string;
+	errorDetails?: {
+		statusCode?: number;
+		provider?: string;
+		technicalDetails?: string;
+	};
 }
 
 export interface InstanceAiMessage {
@@ -402,6 +427,7 @@ export interface InstanceAiMessage {
 	reasoning: string;
 	isStreaming: boolean;
 	agentTree?: InstanceAiAgentNode;
+	attachments?: InstanceAiAttachment[];
 }
 
 export interface InstanceAiThreadSummary {
@@ -533,7 +559,7 @@ export interface InstanceAiSettingsResponse {
 	sandboxTimeout: number;
 	hasBraveSearchApiKey: boolean;
 	searxngUrl: string;
-	filesystemDisabled: boolean;
+	localGatewayDisabled: boolean;
 	permissions: InstanceAiPermissions;
 }
 
@@ -555,7 +581,7 @@ export interface InstanceAiSettingsUpdateRequest {
 	sandboxTimeout?: number;
 	braveSearchApiKey?: string;
 	searxngUrl?: string;
-	filesystemDisabled?: boolean;
+	localGatewayDisabled?: boolean;
 	permissions?: Partial<InstanceAiPermissions>;
 }
 

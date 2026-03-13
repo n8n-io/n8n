@@ -1,6 +1,10 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { InstanceAiSendMessageResponse, InstanceAiConfirmResponse } from '@n8n/api-types';
+import type {
+	InstanceAiAttachment,
+	InstanceAiSendMessageResponse,
+	InstanceAiConfirmResponse,
+} from '@n8n/api-types';
 
 /**
  * POST /instance-ai/chat/:threadId -> { runId }
@@ -11,12 +15,17 @@ export async function postMessage(
 	threadId: string,
 	message: string,
 	researchMode?: boolean,
+	attachments?: InstanceAiAttachment[],
 ): Promise<InstanceAiSendMessageResponse> {
 	return await makeRestApiRequest<InstanceAiSendMessageResponse>(
 		context,
 		'POST',
 		`/instance-ai/chat/${threadId}`,
-		{ message, ...(researchMode ? { researchMode } : {}) },
+		{
+			message,
+			...(researchMode ? { researchMode } : {}),
+			...(attachments && attachments.length > 0 ? { attachments } : {}),
+		},
 	);
 }
 

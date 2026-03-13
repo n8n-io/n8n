@@ -359,7 +359,11 @@ export interface SnapshotScriptResult {
 
 export function parseSnapshotResult(raw: unknown): SnapshotScriptResult {
 	if (typeof raw === 'string') {
-		return JSON.parse(raw) as SnapshotScriptResult;
+		try {
+			return JSON.parse(raw) as SnapshotScriptResult;
+		} catch {
+			return { yaml: '(parse error)', refCount: 0 };
+		}
 	}
 	// If the driver already parsed the JSON for us
 	return raw as SnapshotScriptResult;

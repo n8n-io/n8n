@@ -1,7 +1,8 @@
 import { spawn } from 'child_process';
 import { z } from 'zod';
 
-import type { McpTextContent, ToolDefinition } from '../types';
+import type { CallToolResult, ToolDefinition } from '../types';
+import { formatCallToolResult } from '../utils';
 
 const inputSchema = z.object({
 	command: z.string().describe('Shell command to execute'),
@@ -9,11 +10,11 @@ const inputSchema = z.object({
 	cwd: z.string().optional().describe('Working directory for the command'),
 });
 
-export const shellExecuteTool: ToolDefinition<typeof inputSchema, McpTextContent> = {
+export const shellExecuteTool: ToolDefinition<typeof inputSchema> = {
 	name: 'shell_execute',
 	description: 'Execute a shell command and return stdout, stderr, and exit code',
 	inputSchema,
-	annotations: { defaultPermission: 'confirm', destructive: true },
+	annotations: { defaultPermission: 'confirm', destructiveHint: true },
 	async execute({ command, timeout = 30_000, cwd }) {
 		return await runCommand(command, { timeout, cwd });
 	},
@@ -22,8 +23,8 @@ export const shellExecuteTool: ToolDefinition<typeof inputSchema, McpTextContent
 async function runCommand(
 	command: string,
 	options: { timeout: number; cwd?: string },
-): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-	return await new Promise<{ content: Array<{ type: 'text'; text: string }> }>((resolve) => {
+): Promise<CallToolResult> {
+	return await new Promise<CallToolResult>((resolve) => {
 		const isWindows = process.platform === 'win32';
 		const child = spawn(
 			isWindows ? 'cmd.exe' : 'sh',
@@ -43,21 +44,12 @@ async function runCommand(
 
 		const timer = setTimeout(() => {
 			child.kill();
-			resolve({
-				content: [
-					{
-						type: 'text',
-						text: JSON.stringify({ stdout, stderr, exitCode: null, timedOut: true }),
-					},
-				],
-			});
+			resolve(formatCallToolResult({ stdout, stderr, exitCode: null, timedOut: true }));
 		}, options.timeout);
 
 		child.on('close', (code) => {
 			clearTimeout(timer);
-			resolve({
-				content: [{ type: 'text', text: JSON.stringify({ stdout, stderr, exitCode: code }) }],
-			});
+			resolve(formatCallToolResult({ stdout, stderr, exitCode: code }));
 		});
 	});
 }

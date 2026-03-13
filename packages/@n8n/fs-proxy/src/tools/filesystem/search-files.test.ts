@@ -1,6 +1,7 @@
 import type { Dirent, Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 
+import { textOf } from '../test-utils';
 import { searchFilesTool } from './search-files';
 
 jest.mock('node:fs/promises');
@@ -113,7 +114,7 @@ describe('searchFilesTool', () => {
 
 			const result = await searchFilesTool.execute({ dirPath: '.', query: 'foo' }, CONTEXT);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const data = JSON.parse(result.content[0].text) as {
+			const data = JSON.parse(textOf(result)) as {
 				query: string;
 				matches: Array<{ path: string; lineNumber: number; line: string }>;
 				truncated: boolean;
@@ -135,7 +136,7 @@ describe('searchFilesTool', () => {
 				CONTEXT,
 			);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const data = JSON.parse(result.content[0].text) as { matches: unknown[] };
+			const data = JSON.parse(textOf(result)) as { matches: unknown[] };
 
 			expect(data.matches).toHaveLength(2);
 		});
@@ -151,7 +152,7 @@ describe('searchFilesTool', () => {
 				CONTEXT,
 			);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const data = JSON.parse(result.content[0].text) as {
+			const data = JSON.parse(textOf(result)) as {
 				matches: unknown[];
 				truncated: boolean;
 			};
@@ -173,7 +174,7 @@ describe('searchFilesTool', () => {
 				CONTEXT,
 			);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const data = JSON.parse(result.content[0].text) as {
+			const data = JSON.parse(textOf(result)) as {
 				matches: Array<{ path: string }>;
 			};
 
@@ -192,7 +193,7 @@ describe('searchFilesTool', () => {
 				CONTEXT,
 			);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const data = JSON.parse(result.content[0].text) as {
+			const data = JSON.parse(textOf(result)) as {
 				matches: unknown[];
 				totalMatches: number;
 			};

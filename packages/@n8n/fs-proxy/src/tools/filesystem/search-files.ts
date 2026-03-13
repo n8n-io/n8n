@@ -2,7 +2,8 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { z } from 'zod';
 
-import type { McpTextContent, ToolDefinition } from '../types';
+import type { ToolDefinition } from '../types';
+import { formatCallToolResult } from '../utils';
 import { EXCLUDED_DIRS, resolveSafePath } from './fs-utils';
 
 const MAX_FILE_SIZE = 512 * 1024; // 512 KB
@@ -15,11 +16,11 @@ const inputSchema = z.object({
 	maxResults: z.number().int().optional().describe('Maximum number of results (default: 50)'),
 });
 
-export const searchFilesTool: ToolDefinition<typeof inputSchema, McpTextContent> = {
+export const searchFilesTool: ToolDefinition<typeof inputSchema> = {
 	name: 'search_files',
 	description: 'Search for text patterns across files using a regex query',
 	inputSchema,
-	annotations: { defaultPermission: 'allow', readOnly: true },
+	annotations: { defaultPermission: 'allow', readOnlyHint: true },
 	async execute({ dirPath, query, filePattern, ignoreCase, maxResults }, { dir }) {
 		const resolvedDir = resolveSafePath(dir, dirPath);
 		const limit = maxResults ?? 50;
@@ -56,8 +57,7 @@ export const searchFilesTool: ToolDefinition<typeof inputSchema, McpTextContent>
 			}
 		}
 
-		const result = { query, matches, truncated: totalMatches > limit, totalMatches };
-		return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+		return formatCallToolResult({ query, matches, truncated: totalMatches > limit, totalMatches });
 	},
 };
 

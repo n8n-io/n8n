@@ -121,7 +121,7 @@ describe('sanitizeMcpToolSchemas', () => {
 		expect(resultSchema.safeParse({ result: null }).success).toBe(false);
 	});
 
-	it('should handle standalone ZodNull by replacing with optional string', () => {
+	it('should handle standalone ZodNull by falling back to z.record', () => {
 		const tools = makeTools({ myTool: { input: z.null() } });
 
 		const result = sanitizeMcpToolSchemas(tools);
@@ -129,9 +129,9 @@ describe('sanitizeMcpToolSchemas', () => {
 		const resultSchema = (result as Record<string, { inputSchema: z.ZodTypeAny }>).myTool
 			.inputSchema;
 
-		// ZodNull is replaced with z.string().optional()
-		expect(resultSchema.safeParse(undefined).success).toBe(true);
-		expect(resultSchema.safeParse('hello').success).toBe(true);
+		// ZodNull → z.string().optional() (not object) → falls back to z.record(z.unknown())
+		expect(resultSchema instanceof z.ZodRecord).toBe(true);
+		expect(resultSchema.safeParse({}).success).toBe(true);
 	});
 
 	it('should handle union where all members are null (degenerate case)', () => {
@@ -195,5 +195,78 @@ describe('sanitizeMcpToolSchemas', () => {
 		const result = sanitizeMcpToolSchemas(tools);
 
 		expect(result).toBe(tools);
+	});
+
+	describe('ensureTopLevelObject guard', () => {
+		it('should leave z.object inputSchema unchanged', () => {
+			const tools = makeTools({ myTool: { input: z.object({ a: z.string() }) } });
+
+			const result = sanitizeMcpToolSchemas(tools);
+			const resultSchema = (result as Record<string, { inputSchema: z.ZodTypeAny }>).myTool
+				.inputSchema;
+
+			expect(resultSchema instanceof z.ZodObject).toBe(true);
+			expect(resultSchema.safeParse({ a: 'hello' }).success).toBe(true);
+		});
+
+		it('should leave z.record inputSchema unchanged', () => {
+			const tools = makeTools({ myTool: { input: z.record(z.unknown()) } });
+
+			const result = sanitizeMcpToolSchemas(tools);
+			const resultSchema = (result as Record<string, { inputSchema: z.ZodTypeAny }>).myTool
+				.inputSchema;
+
+			expect(resultSchema instanceof z.ZodRecord).toBe(true);
+			expect(resultSchema.safeParse({ any: 'value' }).success).toBe(true);
+		});
+
+		it('should fall back to z.record for top-level z.union([z.string(), z.number()])', () => {
+			const tools = makeTools({ myTool: { input: z.union([z.string(), z.number()]) } });
+
+			const result = sanitizeMcpToolSchemas(tools);
+			const resultSchema = (result as Record<string, { inputSchema: z.ZodTypeAny }>).myTool
+				.inputSchema;
+
+			// Non-object top-level → falls back to z.record(z.unknown())
+			expect(resultSchema instanceof z.ZodRecord).toBe(true);
+			expect(resultSchema.safeParse({ any: 'value' }).success).toBe(true);
+		});
+
+		it('should fall back to z.record for top-level z.string()', () => {
+			const tools = makeTools({ myTool: { input: z.string() } });
+
+			const result = sanitizeMcpToolSchemas(tools);
+			const resultSchema = (result as Record<string, { inputSchema: z.ZodTypeAny }>).myTool
+				.inputSchema;
+
+			expect(resultSchema instanceof z.ZodRecord).toBe(true);
+		});
+
+		it('should not apply guard to outputSchema', () => {
+			const tools = makeTools({ myTool: { output: z.string() } });
+
+			const result = sanitizeMcpToolSchemas(tools);
+			const resultSchema = (result as Record<string, { outputSchema: z.ZodTypeAny }>).myTool
+				.outputSchema;
+
+			// outputSchema is NOT guarded — only inputSchema needs type: object
+			expect(resultSchema instanceof z.ZodRecord).toBe(false);
+		});
+	});
+
+	describe('ZodRecord handling', () => {
+		it('should recurse into record value type and sanitize nullables', () => {
+			const tools = makeTools({
+				myTool: { input: z.object({ data: z.record(z.nullable(z.string())) }) },
+			});
+
+			const result = sanitizeMcpToolSchemas(tools);
+			const resultSchema = (result as Record<string, { inputSchema: z.ZodObject<z.ZodRawShape> }>)
+				.myTool.inputSchema;
+
+			expect(resultSchema.safeParse({ data: { key: 'value' } }).success).toBe(true);
+			expect(resultSchema.safeParse({ data: { key: undefined } }).success).toBe(true);
+			expect(resultSchema.safeParse({ data: { key: null } }).success).toBe(false);
+		});
 	});
 });

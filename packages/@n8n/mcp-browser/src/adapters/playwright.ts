@@ -24,7 +24,7 @@ import type {
 	WaitOptions,
 } from '../types';
 import { isChromiumBased } from '../types';
-import { generateId } from '../utils';
+import { generateId, toError } from '../utils';
 import type { BrowserAdapter } from './adapter';
 
 // ---------------------------------------------------------------------------
@@ -309,7 +309,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
 		}
 
 		// Otherwise, arm a one-shot handler and wait
-		return new Promise<string>((resolve, reject) => {
+		return await new Promise<string>((resolve, reject) => {
 			const timeout = setTimeout(() => {
 				reject(new Error('No dialog appeared within 10 seconds'));
 			}, 10_000);
@@ -324,8 +324,8 @@ export class PlaywrightAdapter implements BrowserAdapter {
 						await dlg.dismiss();
 					}
 					resolve(dialogType);
-				} catch (err) {
-					reject(err);
+				} catch (error) {
+					reject(toError(error));
 				}
 			});
 		});
@@ -400,6 +400,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
 		return await page.evaluate(script);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async getConsole(pageId: string, level?: string, clear?: boolean): Promise<ConsoleEntry[]> {
 		const state = this.requirePage(pageId);
 		let entries = [...state.consoleBuffer];
@@ -415,6 +416,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
 		return entries;
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async getErrors(pageId: string, clear?: boolean): Promise<ErrorEntry[]> {
 		const state = this.requirePage(pageId);
 		const entries = [...state.errorBuffer];
@@ -440,6 +442,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
 		return { data, pages: 1 };
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async getNetwork(pageId: string, filter?: string, clear?: boolean): Promise<NetworkEntry[]> {
 		const state = this.requirePage(pageId);
 		let entries = [...state.networkBuffer];
@@ -465,7 +468,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
 		const start = Date.now();
 		const timeout = options.timeoutMs ?? 30_000;
 
-		const promises: Promise<unknown>[] = [];
+		const promises: Array<Promise<unknown>> = [];
 
 		if (options.selector) {
 			promises.push(page.waitForSelector(options.selector, { timeout }));
@@ -526,7 +529,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
 				expires: c.expires,
 				httpOnly: c.httpOnly,
 				secure: c.secure,
-				sameSite: c.sameSite as 'Strict' | 'Lax' | 'None' | undefined,
+				sameSite: c.sameSite,
 			})),
 		);
 	}
@@ -599,6 +602,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
 		}
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async setTimezone(pageId: string, _timezone: string): Promise<void> {
 		this.requirePage(pageId);
 		// Timezone can only be set at context creation time in Playwright.
@@ -606,11 +610,13 @@ export class PlaywrightAdapter implements BrowserAdapter {
 		throw new UnsupportedOperationError('setTimezone (must be set at session creation)', this.name);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async setLocale(pageId: string, _locale: string): Promise<void> {
 		this.requirePage(pageId);
 		throw new UnsupportedOperationError('setLocale (must be set at session creation)', this.name);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async setDevice(pageId: string, device: DeviceDescriptor): Promise<void> {
 		this.requirePage(pageId);
 		const descriptor = devices[device.name];
@@ -739,11 +745,11 @@ export class PlaywrightAdapter implements BrowserAdapter {
 	}
 
 	private async resolveLocator(pageId: string, target: ElementTarget): Promise<Locator> {
-		if ('ref' in target && target.ref !== undefined) {
+		if ('ref' in target) {
 			return (await this.resolveRef(pageId, target.ref)) as Locator;
 		}
 		const { page } = this.requirePage(pageId);
-		return page.locator(target.selector!);
+		return page.locator(target.selector);
 	}
 
 	private globToRegex(pattern: string): RegExp {

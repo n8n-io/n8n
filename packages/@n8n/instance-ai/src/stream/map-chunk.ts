@@ -5,6 +5,53 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+interface ErrorInfo {
+	content: string;
+	statusCode?: number;
+	provider?: string;
+	technicalDetails?: string;
+}
+
+/** Extract structured error info from Mastra's error chunk payload.
+ *  Mastra sets `payload.error` to the raw Error object, not a string. */
+function extractErrorInfo(error: unknown): ErrorInfo {
+	if (typeof error === 'string') return { content: error };
+
+	if (error instanceof Error) {
+		const info: ErrorInfo = { content: error.message };
+
+		// APICallError from ai-sdk carries statusCode and responseBody
+		if ('statusCode' in error && typeof error.statusCode === 'number') {
+			info.statusCode = error.statusCode;
+		}
+
+		if ('responseBody' in error && typeof error.responseBody === 'string') {
+			info.technicalDetails = error.responseBody;
+			try {
+				const body = JSON.parse(error.responseBody) as {
+					error?: { message?: string; type?: string };
+				};
+				if (body?.error?.message) {
+					info.content = body.error.message;
+				}
+			} catch {
+				// not JSON — keep raw responseBody as technicalDetails
+			}
+		}
+
+		// Extract provider from error name or URL if available
+		if ('url' in error && typeof error.url === 'string') {
+			const urlStr = error.url;
+			if (urlStr.includes('anthropic')) info.provider = 'Anthropic';
+			else if (urlStr.includes('openai')) info.provider = 'OpenAI';
+		}
+
+		return info;
+	}
+
+	return { content: 'Unknown error' };
+}
+
 /**
  * Maps a Mastra fullStream chunk to our InstanceAiEvent schema.
  *
@@ -150,12 +197,16 @@ export function mapMastraChunkToEvent(
 	}
 
 	if (type === 'error') {
+		const errorInfo = extractErrorInfo(payload.error);
 		return {
 			type: 'error',
 			runId,
 			agentId,
 			payload: {
-				content: typeof payload.error === 'string' ? payload.error : 'Unknown error',
+				content: errorInfo.content,
+				...(errorInfo.statusCode !== undefined ? { statusCode: errorInfo.statusCode } : {}),
+				...(errorInfo.provider ? { provider: errorInfo.provider } : {}),
+				...(errorInfo.technicalDetails ? { technicalDetails: errorInfo.technicalDetails } : {}),
 			},
 		};
 	}

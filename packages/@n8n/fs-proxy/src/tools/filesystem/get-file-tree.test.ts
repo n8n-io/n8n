@@ -1,6 +1,7 @@
 import type { Dirent, Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 
+import { textOf } from '../test-utils';
 import { getFileTreeTool } from './get-file-tree';
 
 jest.mock('node:fs/promises');
@@ -94,7 +95,7 @@ describe('getFileTreeTool', () => {
 			const result = await getFileTreeTool.execute({ dirPath: '.' }, CONTEXT);
 
 			expect(result.content).toHaveLength(1);
-			const text = result.content[0].text;
+			const text = textOf(result);
 			expect(text).toContain('src/');
 			expect(text).toContain('index.ts');
 			expect(text).toContain('package.json');
@@ -105,7 +106,7 @@ describe('getFileTreeTool', () => {
 			mockStat();
 
 			const result = await getFileTreeTool.execute({ dirPath: '.' }, CONTEXT);
-			const text = result.content[0].text;
+			const text = textOf(result);
 
 			// Should be indented tree text, not a JSON structure
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
@@ -119,7 +120,7 @@ describe('getFileTreeTool', () => {
 			mockReaddir([dirent('a', true)], [dirent('b', true)]);
 
 			const result = await getFileTreeTool.execute({ dirPath: '.', maxDepth: 1 }, CONTEXT);
-			const text = result.content[0].text;
+			const text = textOf(result);
 
 			expect(text).toContain('truncated');
 		});
@@ -129,7 +130,7 @@ describe('getFileTreeTool', () => {
 			mockStat();
 
 			const result = await getFileTreeTool.execute({ dirPath: '.', maxDepth: 5 }, CONTEXT);
-			const text = result.content[0].text;
+			const text = textOf(result);
 
 			expect(text).not.toContain('truncated');
 		});
@@ -144,7 +145,7 @@ describe('getFileTreeTool', () => {
 			mockStat();
 
 			const result = await getFileTreeTool.execute({ dirPath: '.' }, CONTEXT);
-			const text = result.content[0].text;
+			const text = textOf(result);
 
 			expect(text).not.toContain('node_modules');
 			expect(text).not.toContain('.git');

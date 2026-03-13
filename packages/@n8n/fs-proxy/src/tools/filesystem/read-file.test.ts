@@ -1,6 +1,7 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 
+import { textOf } from '../test-utils';
 import { readFileTool } from './read-file';
 
 jest.mock('node:fs/promises');
@@ -77,7 +78,7 @@ describe('readFileTool', () => {
 
 			const result = await readFileTool.execute({ filePath: 'hello.txt' }, CONTEXT);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const content = JSON.parse(result.content[0].text) as {
+			const content = JSON.parse(textOf(result)) as {
 				path: string;
 				content: string;
 				truncated: boolean;
@@ -97,7 +98,7 @@ describe('readFileTool', () => {
 
 			const result = await readFileTool.execute({ filePath: 'big.txt', maxLines: 10 }, CONTEXT);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const content = JSON.parse(result.content[0].text) as {
+			const content = JSON.parse(textOf(result)) as {
 				content: string;
 				truncated: boolean;
 				totalLines: number;
@@ -118,7 +119,7 @@ describe('readFileTool', () => {
 				CONTEXT,
 			);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const content = JSON.parse(result.content[0].text) as { content: string };
+			const content = JSON.parse(textOf(result)) as { content: string };
 
 			expect(content.content).toBe('Line 5\nLine 6\nLine 7');
 		});

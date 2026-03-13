@@ -326,7 +326,7 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 		}
 	}
 
-	// Resolve dir to absolute path
+	// Resolve dir to absolute path (pre-parse, for explicitly provided values)
 	if (merged.filesystem && typeof merged.filesystem === 'object') {
 		const fs = merged.filesystem as Record<string, unknown>;
 		if (typeof fs.dir === 'string') {
@@ -335,6 +335,11 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 	}
 
 	const config = gatewayConfigSchema.parse(merged);
+
+	// Resolve dir to absolute path (post-parse, for Zod defaults like '.')
+	if (config.filesystem !== false) {
+		config.filesystem.dir = path.resolve(config.filesystem.dir);
+	}
 
 	// Resolve url
 	if (url) url = url.replace(/\/$/, '');

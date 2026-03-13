@@ -22,19 +22,19 @@ export class InstanceAiModule implements ModuleInterface {
 		const service = Container.get(InstanceAiService);
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = service.isEnabled();
-		const filesystem = service.isLocalFilesystemAvailable();
+		const localGateway = service.isLocalGatewayAvailable();
 		const gatewayStatus = service.getGatewayStatus();
 		const gatewayConnected = gatewayStatus.connected;
 		const gatewayDirectory = gatewayStatus.directory;
-		const filesystemDisabled = settingsService.isFilesystemDisabled();
-		const filesystemDirectory = service.getLocalFilesystemDirectory();
+		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
+		const localGatewayFallbackDirectory = service.getLocalGatewayFallbackDirectory();
 		return {
 			enabled,
-			filesystem,
+			localGateway,
 			gatewayConnected,
 			gatewayDirectory,
-			filesystemDisabled,
-			filesystemDirectory,
+			localGatewayDisabled,
+			localGatewayFallbackDirectory,
 		};
 	}
 

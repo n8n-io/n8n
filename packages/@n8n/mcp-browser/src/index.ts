@@ -16,5 +16,5 @@ export type {
 	SessionMode,
 	ToolContext,
 	ToolDefinition,
-	ToolResponse,
+	CallToolResult,
 } from './types';

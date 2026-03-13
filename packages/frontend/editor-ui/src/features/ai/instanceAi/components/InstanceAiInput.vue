@@ -3,22 +3,28 @@ import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
+import AttachmentPreview from './AttachmentPreview.vue';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { useInstanceAiStore } from '../instanceAi.store';
+import type { InstanceAiAttachment } from '@n8n/api-types';
 
 const props = defineProps<{
 	isStreaming: boolean;
 }>();
 
 const emit = defineEmits<{
-	submit: [message: string];
+	submit: [message: string, attachments?: InstanceAiAttachment[]];
 	stop: [];
 }>();
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
 const inputText = ref('');
+const attachedFiles = ref<File[]>([]);
 
-const canSubmit = computed(() => inputText.value.trim().length > 0 && !props.isStreaming);
+const canSubmit = computed(
+	() => (inputText.value.trim().length > 0 || attachedFiles.value.length > 0) && !props.isStreaming,
+);
 
 const placeholder = computed(() => {
 	if (store.amendContext) {
@@ -32,11 +38,23 @@ const placeholder = computed(() => {
 	return i18n.baseText('instanceAi.input.placeholder');
 });
 
-function handleSubmit() {
+async function handleSubmit() {
 	const text = inputText.value.trim();
-	if (!text || props.isStreaming) return;
-	emit('submit', text);
+	if ((!text && attachedFiles.value.length === 0) || props.isStreaming) return;
+
+	let attachments: InstanceAiAttachment[] | undefined;
+	if (attachedFiles.value.length > 0) {
+		const binaryData = await Promise.all(attachedFiles.value.map(convertFileToBinaryData));
+		attachments = binaryData.map((b) => ({
+			data: b.data,
+			mimeType: b.mimeType,
+			fileName: b.fileName ?? 'unnamed',
+		}));
+	}
+
+	emit('submit', text, attachments);
 	inputText.value = '';
+	attachedFiles.value = [];
 }
 
 function handleStop() {
@@ -48,6 +66,17 @@ function handleTabAutocomplete() {
 		inputText.value = store.contextualSuggestion;
 	}
 }
+
+function handleFilesSelected(files: File[]) {
+	attachedFiles.value.push(...files);
+}
+
+function handleFileRemove(file: File) {
+	const idx = attachedFiles.value.indexOf(file);
+	if (idx !== -1) {
+		attachedFiles.value.splice(idx, 1);
+	}
+}
 </script>
 
 <template>
@@ -56,10 +85,24 @@ function handleTabAutocomplete() {
 		:placeholder="placeholder"
 		:is-streaming="props.isStreaming"
 		:can-submit="canSubmit"
+		show-voice
+		show-attach
 		@submit="handleSubmit"
 		@stop="handleStop"
 		@tab="handleTabAutocomplete"
+		@files-selected="handleFilesSelected"
 	>
+		<template v-if="attachedFiles.length > 0" #attachments>
+			<div :class="$style.attachments">
+				<AttachmentPreview
+					v-for="(file, index) in attachedFiles"
+					:key="index"
+					:file="file"
+					:is-removable="true"
+					@remove="handleFileRemove"
+				/>
+			</div>
+		</template>
 		<template #footer-start>
 			<N8nTooltip
 				:content="i18n.baseText('instanceAi.input.researchToggle.tooltip')"
@@ -89,6 +132,12 @@ function handleTabAutocomplete() {
 </template>
 
 <style module lang="scss">
+.attachments {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+
 .researchToggle {
 	display: inline-flex;
 	align-items: center;
@@ -114,7 +163,7 @@ function handleTabAutocomplete() {
 
 	&.active {
 		background: var(--color--primary);
-		color: #fff;
+		color: var(--button--color--text--primary);
 		border-color: var(--color--primary);
 
 		&:hover {

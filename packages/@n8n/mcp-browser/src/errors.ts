@@ -1,7 +1,7 @@
 export class McpBrowserError extends Error {
 	constructor(
 		message: string,
-		public readonly hint?: string,
+		readonly hint?: string,
 	) {
 		super(message);
 		this.name = this.constructor.name;
@@ -9,7 +9,7 @@ export class McpBrowserError extends Error {
 }
 
 export class SessionNotFoundError extends McpBrowserError {
-	constructor(public readonly sessionId: string) {
+	constructor(readonly sessionId: string) {
 		super(
 			`Session not found: ${sessionId}`,
 			'The session may have expired or been closed. Create a new session with browser_open.',
@@ -19,8 +19,8 @@ export class SessionNotFoundError extends McpBrowserError {
 
 export class PageNotFoundError extends McpBrowserError {
 	constructor(
-		public readonly pageId: string,
-		public readonly sessionId: string,
+		readonly pageId: string,
+		readonly sessionId: string,
 	) {
 		super(
 			`Page not found: ${pageId}`,
@@ -30,7 +30,7 @@ export class PageNotFoundError extends McpBrowserError {
 }
 
 export class StaleRefError extends McpBrowserError {
-	constructor(public readonly ref: string) {
+	constructor(readonly ref: string) {
 		super(
 			`Stale element ref: ${ref}`,
 			'The ref is from a previous snapshot. Take a fresh snapshot with browser_snapshot and use the new refs.',
@@ -40,8 +40,8 @@ export class StaleRefError extends McpBrowserError {
 
 export class UnsupportedOperationError extends McpBrowserError {
 	constructor(
-		public readonly operation: string,
-		public readonly adapterName: string,
+		readonly operation: string,
+		readonly adapterName: string,
 	) {
 		super(
 			`Operation not supported: ${operation}`,
@@ -51,7 +51,7 @@ export class UnsupportedOperationError extends McpBrowserError {
 }
 
 export class MaxSessionsError extends McpBrowserError {
-	constructor(public readonly max: number) {
+	constructor(readonly max: number) {
 		super(
 			`Maximum concurrent sessions (${max}) reached`,
 			'Close an existing session with browser_close before opening a new one.',
@@ -60,7 +60,7 @@ export class MaxSessionsError extends McpBrowserError {
 }
 
 export class BrowserNotAvailableError extends McpBrowserError {
-	constructor(public readonly browser: string) {
+	constructor(readonly browser: string) {
 		super(
 			`Browser not available: ${browser}`,
 			`${browser} was not found on this system. Install it or configure the executablePath.`,
@@ -73,15 +73,6 @@ export class ProfileLockedError extends McpBrowserError {
 		super(
 			'Firefox profile is locked',
 			'Close Firefox before opening a local Firefox session. The profile can only be used by one Firefox instance at a time.',
-		);
-	}
-}
-
-export class ElementTargetError extends McpBrowserError {
-	constructor() {
-		super(
-			'Exactly one of ref or selector must be provided',
-			'Provide either a ref (from browser_snapshot) or a selector string, not both.',
 		);
 	}
 }

@@ -90,7 +90,9 @@ if (tryServe()) {
 	// noop — server is running
 } else {
 	void main().catch((error) => {
-		console.error('Fatal error:', error instanceof Error ? error.message : String(error));
+		logger.error('Fatal error', {
+			error: error instanceof Error ? error.message : String(error),
+		});
 		process.exit(1);
 	});
 }
@@ -102,7 +104,7 @@ async function main(): Promise<void> {
 	printBanner();
 
 	if (!parsed.url || !parsed.apiKey) {
-		console.error('Missing required arguments: url and token.');
+		logger.error('Missing required arguments: url and token');
 		printUsage();
 		process.exit(1);
 	}
@@ -113,11 +115,11 @@ async function main(): Promise<void> {
 		try {
 			const stat = await fs.stat(dir);
 			if (!stat.isDirectory()) {
-				console.error(`Error: "${dir}" is not a directory`);
+				logger.error('Path is not a directory', { dir });
 				process.exit(1);
 			}
 		} catch {
-			console.error(`Error: Directory "${dir}" does not exist`);
+			logger.error('Directory does not exist', { dir });
 			process.exit(1);
 		}
 	}

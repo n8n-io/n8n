@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
 import type { JSONSchema } from 'zod-from-json-schema-v3';
 
+import { sanitizeMcpToolSchemas } from '../../agent/sanitize-mcp-schemas';
 import type { LocalMcpServer } from '../../types';
 
 /**
@@ -44,15 +45,51 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInpu
 			execute: async (args) => {
 				const result = await server.callTool({
 					name: toolName,
-					arguments: args as Record<string, unknown>,
+					arguments: args,
 				});
-				return result.content;
+				return result;
 			},
-			toModelOutput: (value: unknown) => {
+			toModelOutput: (result: unknown) => {
+				// Mastra passes { toolCallId, input, output } — unwrap to get the actual MCP result.
+				// Handle both shapes for forward-compatibility.
+				const raw = (
+					result !== null && typeof result === 'object' && 'output' in result
+						? (result as { output: unknown }).output
+						: result
+				) as {
+					content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>;
+					structuredContent?: Record<string, unknown>;
+				};
+
+				if (!raw?.content || !Array.isArray(raw.content)) {
+					return { type: 'text', value: JSON.stringify(result) };
+				}
+
+				const hasMedia = raw.content.some((item) => item.type === 'image');
+
+				// When we have structuredContent and no media, prefer it as compact text
+				if (raw.structuredContent && !hasMedia) {
+					return {
+						type: 'content',
+						value: [{ type: 'text' as const, text: JSON.stringify(raw.structuredContent) }],
+					};
+				}
+
+				// Convert MCP 'image' → Mastra 'media' (Mastra translates to 'image-data' for the provider)
+				const value = raw.content.map((item) => {
+					if (item.type === 'image') {
+						return {
+							type: 'media' as const,
+							data: item.data ?? '',
+							mediaType: item.mimeType ?? 'image/jpeg',
+						};
+					}
+					return { type: 'text' as const, text: item.text ?? '' };
+				});
 				return { type: 'content', value };
 			},
 		});
 	}
 
-	return tools;
+	return sanitizeMcpToolSchemas(tools);
 }

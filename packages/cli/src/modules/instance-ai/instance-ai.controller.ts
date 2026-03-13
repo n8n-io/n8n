@@ -47,7 +47,7 @@ export class InstanceAiController {
 
 	@Post('/chat/:threadId')
 	async chat(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
-		const { message, researchMode } = req.body as InstanceAiSendMessageRequest;
+		const { message, researchMode, attachments } = req.body as InstanceAiSendMessageRequest;
 
 		if (!message?.trim()) {
 			throw new BadRequestError('Message is required');
@@ -59,7 +59,14 @@ export class InstanceAiController {
 		}
 
 		const safeResearchMode = typeof researchMode === 'boolean' ? researchMode : undefined;
-		const runId = this.instanceAiService.startRun(req.user, threadId, message, safeResearchMode);
+		const safeAttachments = Array.isArray(attachments) ? attachments : undefined;
+		const runId = this.instanceAiService.startRun(
+			req.user,
+			threadId,
+			message,
+			safeResearchMode,
+			safeAttachments,
+		);
 		return { runId };
 	}
 
@@ -241,7 +248,7 @@ export class InstanceAiController {
 	async updateSettings(req: AuthenticatedRequest) {
 		const body = req.body as InstanceAiSettingsUpdateRequest;
 		const result = await this.settingsService.updateSettings(req.user, body);
-		if (body.filesystemDisabled !== undefined) {
+		if (body.localGatewayDisabled !== undefined) {
 			await this.moduleRegistry.refreshModuleSettings('instance-ai');
 		}
 		return result;

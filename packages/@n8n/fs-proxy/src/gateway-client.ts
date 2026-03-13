@@ -2,20 +2,33 @@ import { EventSource } from 'eventsource';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import type { ResolvedGatewayConfig } from './config';
-import { logger, printToolCall, printToolResult } from './logger';
+import {
+	logger,
+	printAuthFailure,
+	printDisconnected,
+	printReconnecting,
+	printReinitFailed,
+	printReinitializing,
+	printToolCall,
+	printToolResult,
+} from './logger';
 import type { BrowserModule } from './tools/browser';
 import { filesystemTools } from './tools/filesystem';
 import { MouseKeyboardModule } from './tools/mouse-keyboard';
 import { ScreenshotModule } from './tools/screenshot';
 import { ShellModule } from './tools/shell';
 import type { CallToolResult, McpTool, ToolDefinition } from './tools/types';
+import { formatErrorResult } from './tools/utils';
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
+const MAX_AUTH_RETRIES = 5;
 
 export interface GatewayClientOptions {
 	url: string;
 	apiKey: string;
 	config: ResolvedGatewayConfig;
+	/** Called when the client gives up reconnecting after persistent auth failures. */
+	onPersistentFailure?: () => void;
 }
 
 interface FilesystemRequestEvent {
@@ -36,6 +49,9 @@ export class GatewayClient {
 	private reconnectDelay = 1000;
 
 	private shouldReconnect = true;
+
+	/** Consecutive auth failures during reconnection attempts. */
+	private authRetryCount = 0;
 
 	/** Session key issued by the server after pairing token is consumed. */
 	private sessionKey: string | null = null;
@@ -58,10 +74,10 @@ export class GatewayClient {
 		return this.sessionKey ?? this.options.apiKey;
 	}
 
-	/** Resolved filesystem directory, or '.' as fallback. */
+	/** Resolved filesystem directory, or cwd as fallback. */
 	private get dir(): string {
 		const fs = this.options.config.filesystem;
-		return fs !== false ? fs.dir : '.';
+		return fs !== false ? fs.dir : process.cwd();
 	}
 
 	/** Start the client: upload capabilities, connect SSE, handle requests. */
@@ -98,7 +114,7 @@ export class GatewayClient {
 				signal: AbortSignal.timeout(3000),
 			});
 			if (response.ok) {
-				logger.info('Disconnected from gateway');
+				printDisconnected();
 			} else {
 				logger.error('Gateway disconnect failed', { status: response.status });
 			}
@@ -225,6 +241,7 @@ export class GatewayClient {
 		this.eventSource.onopen = () => {
 			logger.debug('Connected to gateway SSE');
 			this.reconnectDelay = 1000;
+			this.authRetryCount = 0;
 		};
 
 		this.eventSource.onmessage = (event: MessageEvent) => {
@@ -239,19 +256,20 @@ export class GatewayClient {
 			const eventObj = event as Record<string, string | undefined> | null;
 			const statusCode = eventObj?.status ?? eventObj?.code ?? '';
 			const errorMessage = eventObj?.message ?? '';
-			logger.warn('Connection lost, reconnecting', {
-				statusCode,
-				message: errorMessage,
-				delayMs: this.reconnectDelay,
-			});
+			printReconnecting(errorMessage || undefined);
 
 			if (this.eventSource) {
 				this.eventSource.close();
 				this.eventSource = null;
 			}
 
+			const isAuthError = String(statusCode) === '403' || String(statusCode) === '500';
+
 			setTimeout(() => {
-				if (this.shouldReconnect) {
+				if (!this.shouldReconnect) return;
+				if (isAuthError) {
+					void this.reInitialize();
+				} else {
 					this.connectSSE();
 				}
 			}, this.reconnectDelay);
@@ -259,6 +277,31 @@ export class GatewayClient {
 			// Exponential backoff: 1s → 2s → 4s → 8s → ... → 30s max
 			this.reconnectDelay = Math.min(this.reconnectDelay * 2, MAX_RECONNECT_DELAY_MS);
 		};
+	}
+
+	/** Re-initialize the gateway connection (re-upload capabilities + reconnect SSE). */
+	private async reInitialize(): Promise<void> {
+		this.authRetryCount++;
+		if (this.authRetryCount >= MAX_AUTH_RETRIES) {
+			printAuthFailure();
+			this.shouldReconnect = false;
+			this.options.onPersistentFailure?.();
+			return;
+		}
+
+		try {
+			printReinitializing();
+			await this.uploadCapabilities();
+			this.reconnectDelay = 1000;
+			this.authRetryCount = 0;
+			this.connectSSE();
+		} catch (error) {
+			printReinitFailed(error instanceof Error ? error.message : String(error));
+			setTimeout(() => {
+				if (this.shouldReconnect) void this.reInitialize();
+			}, this.reconnectDelay);
+			this.reconnectDelay = Math.min(this.reconnectDelay * 2, MAX_RECONNECT_DELAY_MS);
+		}
 	}
 
 	private async handleMessage(event: MessageEvent): Promise<void> {
@@ -277,10 +320,7 @@ export class GatewayClient {
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
 				printToolResult(toolCall.name, Date.now() - start, message);
-				await this.postResponse(requestId, {
-					content: [{ type: 'text', text: message }],
-					isError: true,
-				});
+				await this.postResponse(requestId, formatErrorResult(message));
 			}
 		} catch {
 			// Malformed message — skip

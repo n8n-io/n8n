@@ -114,7 +114,7 @@ const suggestions = [
 	align-items: flex-start;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--sm);
-	background: var(--color--background);
+	background: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	cursor: pointer;
@@ -126,7 +126,7 @@ const suggestions = [
 
 	&:hover {
 		border-color: var(--color--primary);
-		background: color-mix(in srgb, var(--color--primary) 10%, var(--color--background));
+		background: color-mix(in srgb, var(--color--primary) 10%, var(--color--background--light-3));
 	}
 }
 

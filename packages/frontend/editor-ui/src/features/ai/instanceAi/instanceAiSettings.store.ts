@@ -30,8 +30,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const setupCommand = ref<string | null>(null);
 	const isGatewayPolling = ref(false);
 
-	const isLocalFilesystemEnabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.filesystem === true,
+	const isLocalGatewayEnabled = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.localGateway === true,
 	);
 	const isGatewayConnected = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.gatewayConnected === true,
@@ -39,12 +39,14 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const gatewayDirectory = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.gatewayDirectory ?? null,
 	);
-	const filesystemDirectory = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.filesystemDirectory ?? null,
+	const localGatewayFallbackDirectory = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayFallbackDirectory ?? null,
 	);
-	const activeDirectory = computed(() => gatewayDirectory.value ?? filesystemDirectory.value);
-	const isFilesystemDisabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.filesystemDisabled === true,
+	const activeDirectory = computed(
+		() => gatewayDirectory.value ?? localGatewayFallbackDirectory.value,
+	);
+	const isLocalGatewayDisabled = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled === true,
 	);
 
 	const isDirty = computed(() => {
@@ -254,12 +256,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isDaemonConnecting,
 		setupCommand,
 		isGatewayPolling,
-		isLocalFilesystemEnabled,
+		isLocalGatewayEnabled,
 		isGatewayConnected,
 		gatewayDirectory,
-		filesystemDirectory,
+		localGatewayFallbackDirectory,
 		activeDirectory,
-		isFilesystemDisabled,
+		isLocalGatewayDisabled,
 		pollGatewayStatus,
 		stopGatewayPolling,
 		startDaemonProbing,

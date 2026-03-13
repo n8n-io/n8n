@@ -160,6 +160,28 @@ export function printDisconnected(): void {
 	logger.info(`  ${pc.yellow('●')} Disconnected`);
 }
 
+export function printReconnecting(reason?: string): void {
+	const suffix = reason ? ` ${pc.dim(reason)}` : '';
+	logger.warn(`  ${pc.yellow('●')} Reconnecting${suffix}`);
+}
+
+export function printAuthFailure(): void {
+	logger.error(`  ${pc.red('✗')} Authentication failed — waiting for new pairing token`);
+}
+
+export function printReinitializing(): void {
+	logger.info(`  ${pc.magenta('▸')} Re-initializing gateway connection`);
+}
+
+export function printReinitFailed(error: string): void {
+	const msg = error.length > 80 ? error.slice(0, 77) + '...' : error;
+	logger.error(`  ${pc.red('✗')} Re-initialization failed ${pc.dim(msg)}`);
+}
+
+export function printShuttingDown(): void {
+	logger.info(`  ${pc.yellow('●')} Shutting down`);
+}
+
 export function printToolCall(name: string, args: Record<string, unknown>): void {
 	const summary = summarizeArgs(args);
 	const suffix = summary ? ` ${pc.dim(summary)}` : '';

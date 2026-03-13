@@ -465,6 +465,21 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 						? event.agentId
 						: runState.rootAgentId;
 					syncStreamingTextNode(msg, runState, targetAgentId);
+					// Enrich the rendered node with structured error details from HEAD
+					const target = findAgentNode(msg, targetAgentId) ?? msg.agentTree;
+					if (target) {
+						target.status = 'error';
+						target.error = event.payload.content;
+						target.errorDetails = {
+							...(event.payload.statusCode !== undefined
+								? { statusCode: event.payload.statusCode }
+								: {}),
+							...(event.payload.provider ? { provider: event.payload.provider } : {}),
+							...(event.payload.technicalDetails
+								? { technicalDetails: event.payload.technicalDetails }
+								: {}),
+						};
+					}
 				}
 			} else if (msg) {
 				msg.content += '\n\n*Error: ' + event.payload.content + '*';
@@ -482,9 +497,21 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 				if (msg) {
 					msg.isStreaming = false;
 					syncAgentTree(msg, runState);
+					// Preserve error status set by a prior 'error' event (don't downgrade)
+					const { status, reason } = event.payload;
+					if (msg.agentTree && msg.agentTree.status !== 'error' && status === 'error') {
+						msg.agentTree.status = 'error';
+					}
+					if (msg.agentTree && status === 'error' && reason && !msg.agentTree.error) {
+						msg.agentTree.error = reason;
+					}
 				}
 			} else if (msg) {
 				msg.isStreaming = false;
+				const { status, reason } = event.payload;
+				if (status === 'error' && reason) {
+					msg.content += '\n\n*Error: ' + reason + '*';
+				}
 			}
 			return null;
 		}

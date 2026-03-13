@@ -1,6 +1,7 @@
 import type { Dirent, Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 
+import { textOf } from '../test-utils';
 import { listFilesTool } from './list-files';
 
 jest.mock('node:fs/promises');
@@ -101,7 +102,7 @@ describe('listFilesTool', () => {
 
 			const result = await listFilesTool.execute({ dirPath: '.' }, CONTEXT);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const entries = JSON.parse(result.content[0].text) as Array<{
+			const entries = JSON.parse(textOf(result)) as Array<{
 				path: string;
 				type: string;
 			}>;
@@ -118,7 +119,7 @@ describe('listFilesTool', () => {
 
 			const result = await listFilesTool.execute({ dirPath: '.' }, CONTEXT);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const entries = JSON.parse(result.content[0].text) as Array<{ path: string }>;
+			const entries = JSON.parse(textOf(result)) as Array<{ path: string }>;
 
 			const names = entries.map((e) => e.path);
 			expect(names).not.toContain('src/nested');
@@ -131,7 +132,7 @@ describe('listFilesTool', () => {
 
 			const result = await listFilesTool.execute({ dirPath: '.', type: 'file' }, CONTEXT);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const entries = JSON.parse(result.content[0].text) as Array<{
+			const entries = JSON.parse(textOf(result)) as Array<{
 				path: string;
 				type: string;
 			}>;
@@ -145,7 +146,7 @@ describe('listFilesTool', () => {
 
 			const result = await listFilesTool.execute({ dirPath: '.', type: 'directory' }, CONTEXT);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const entries = JSON.parse(result.content[0].text) as Array<{
+			const entries = JSON.parse(textOf(result)) as Array<{
 				path: string;
 				type: string;
 			}>;
@@ -160,7 +161,7 @@ describe('listFilesTool', () => {
 
 			const result = await listFilesTool.execute({ dirPath: '.', maxResults: 3 }, CONTEXT);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const entries = JSON.parse(result.content[0].text) as unknown[];
+			const entries = JSON.parse(textOf(result)) as unknown[];
 
 			expect(entries).toHaveLength(3);
 		});
@@ -171,7 +172,7 @@ describe('listFilesTool', () => {
 
 			const result = await listFilesTool.execute({ dirPath: '.' }, CONTEXT);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const entries = JSON.parse(result.content[0].text) as Array<{
+			const entries = JSON.parse(textOf(result)) as Array<{
 				path: string;
 				sizeBytes?: number;
 			}>;

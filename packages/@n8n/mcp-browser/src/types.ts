@@ -1,4 +1,8 @@
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
+
+import type { BrowserAdapter } from './adapters/adapter';
+import type { SessionManager as SessionManagerType } from './session-manager';
 
 // ---------------------------------------------------------------------------
 // Browser names
@@ -87,7 +91,7 @@ export interface PageInfo {
 
 export interface BrowserSession {
 	id: string;
-	adapter: import('./adapters/adapter').BrowserAdapter;
+	adapter: BrowserAdapter;
 	config: SessionConfig;
 	pages: Map<string, PageInfo>;
 	activePageId: string;
@@ -117,7 +121,7 @@ export interface SessionOpenResult {
 // Element targeting
 // ---------------------------------------------------------------------------
 
-export type ElementTarget = { ref: string; selector?: never } | { selector: string; ref?: never };
+export type ElementTarget = { ref: string } | { selector: string };
 
 // ---------------------------------------------------------------------------
 // Adapter result types
@@ -204,39 +208,27 @@ export interface WaitOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Tool system types
+// Tool system types (re-exported from MCP SDK)
 // ---------------------------------------------------------------------------
 
-export type McpTextContent = { type: 'text'; text: string };
-
-export type McpImageContent = {
-	type: 'media';
-	data: string;
-	mediaType: string;
-};
-
-export interface ToolResponse {
-	content: Array<McpTextContent | McpImageContent>;
-	isError?: boolean;
-}
+export type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 export interface ToolContext {
 	/** Base filesystem directory (used by filesystem tools) */
 	dir: string;
 }
 
-export interface ToolDefinition<
-	TSchema extends z.ZodObject<z.ZodRawShape> = z.ZodObject<z.ZodRawShape>,
-> {
+export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
 	name: string;
 	description: string;
 	inputSchema: TSchema;
-	execute(args: z.infer<TSchema>, context: ToolContext): ToolResponse | Promise<ToolResponse>;
+	outputSchema?: z.ZodObject<z.ZodRawShape>;
+	execute(args: z.infer<TSchema>, context: ToolContext): CallToolResult | Promise<CallToolResult>;
 }
 
 export interface BrowserToolkit {
 	tools: ToolDefinition[];
-	sessionManager: import('./session-manager').SessionManager;
+	sessionManager: SessionManagerType;
 }
 
 // ---------------------------------------------------------------------------

@@ -35,6 +35,7 @@ import { nanoid } from 'nanoid';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 
 import type {
+	InstanceAiAttachment,
 	InstanceAiEvent,
 	InstanceAiThreadStatusResponse,
 	InstanceAiGatewayCapabilities,
@@ -110,6 +111,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function getErrorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
 /** Try to parse a record as a WorkflowBuildOutcome. Returns undefined if invalid. */
 function parseOutcome(raw: unknown): WorkflowBuildOutcome | undefined {
 	const result = workflowBuildOutcomeSchema.safeParse(raw);
@@ -151,7 +156,12 @@ export class InstanceAiService {
 	/** Timer for graceful gateway disconnect (allows brief SSE reconnects). */
 	private disconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-	private readonly DISCONNECT_GRACE_MS = 10_000;
+	/** How many consecutive SSE disconnects without a successful reconnect. */
+	private reconnectCount = 0;
+
+	private readonly INITIAL_GRACE_MS = 10_000;
+
+	private readonly MAX_GRACE_MS = 120_000;
 
 	/** One-time pairing token generated via the UI — consumed on gateway/init. */
 	private pairingToken: { token: string; createdAt: number } | null = null;
@@ -276,18 +286,18 @@ export class InstanceAiService {
 		return !!this.instanceAiConfig.model;
 	}
 
-	/** Auto-detect whether local filesystem access is useful.
+	/** Auto-detect whether local gateway fallback (direct filesystem) is available.
 	 *  1. FILESYSTEM_PATH explicitly set → local FS (restricted to that path)
 	 *  2. Container detected → gateway only (no useful local files)
 	 *  3. Bare metal (default) → local FS (unrestricted) */
-	isLocalFilesystemAvailable(): boolean {
+	isLocalGatewayAvailable(): boolean {
 		if (this.instanceAiConfig.filesystemPath?.trim()) return true;
 		return !this.isContainerEnvironment();
 	}
 
-	/** Return the local filesystem root directory, or null if local FS is not available. */
-	getLocalFilesystemDirectory(): string | null {
-		if (!this.isLocalFilesystemAvailable()) return null;
+	/** Return the local gateway fallback directory, or null if not available. */
+	getLocalGatewayFallbackDirectory(): string | null {
+		if (!this.isLocalGatewayAvailable()) return null;
 		const explicit = this.instanceAiConfig.filesystemPath?.trim();
 		return explicit || homedir();
 	}
@@ -319,7 +329,13 @@ export class InstanceAiService {
 		return { hasActiveRun, isSuspended, backgroundTasks: bgTasks };
 	}
 
-	startRun(user: User, threadId: string, message: string, researchMode?: boolean): string {
+	startRun(
+		user: User,
+		threadId: string,
+		message: string,
+		researchMode?: boolean,
+		attachments?: InstanceAiAttachment[],
+	): string {
 		const runId = `run_${nanoid()}`;
 		const abortController = new AbortController();
 
@@ -354,6 +370,7 @@ export class InstanceAiService {
 			message,
 			abortController,
 			researchMode,
+			attachments,
 			messageGroupId,
 		);
 
@@ -520,6 +537,7 @@ export class InstanceAiService {
 	/** Initialize gateway from a daemon's MCP capabilities upload. */
 	initGateway(data: InstanceAiGatewayCapabilities): void {
 		this.clearDisconnectTimer();
+		this.reconnectCount = 0;
 		this.localGateway.init(data);
 	}
 
@@ -533,8 +551,8 @@ export class InstanceAiService {
 		this.localGateway.disconnect();
 	}
 
-	isFilesystemDisabled(): boolean {
-		return this.settingsService.isFilesystemDisabled();
+	isLocalGatewayDisabled(): boolean {
+		return this.settingsService.isLocalGatewayDisabled();
 	}
 
 	/** Return gateway connection status for the frontend. */
@@ -545,12 +563,18 @@ export class InstanceAiService {
 	/** Start a grace-period timer. If the daemon doesn't reconnect, fully disconnect the gateway. */
 	startDisconnectTimer(onDisconnect: () => void): void {
 		this.clearDisconnectTimer();
+		const graceMs = Math.min(
+			this.INITIAL_GRACE_MS * Math.pow(2, this.reconnectCount),
+			this.MAX_GRACE_MS,
+		);
+		this.reconnectCount++;
 		this.disconnectTimer = setTimeout(() => {
 			this.disconnectTimer = null;
 			this.disconnectGateway();
-			this.activeSessionKey = null;
+			// Keep activeSessionKey alive so the client can re-authenticate on reconnect.
+			// Session key is only cleared on explicit /gateway/disconnect.
 			onDisconnect();
-		}, this.DISCONNECT_GRACE_MS);
+		}, graceMs);
 	}
 
 	/** Cancel a pending disconnect timer (e.g. daemon reconnected in time). */
@@ -598,6 +622,7 @@ export class InstanceAiService {
 		message: string,
 		abortController: AbortController,
 		researchMode?: boolean,
+		attachments?: InstanceAiAttachment[],
 		messageGroupId?: string,
 	): Promise<void> {
 		const signal = abortController.signal;
@@ -623,13 +648,13 @@ export class InstanceAiService {
 				return;
 			}
 
-			const filesystemDisabled = this.settingsService.isFilesystemDisabled();
+			const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
 			const localFilesystemService =
-				!filesystemDisabled && !this.localGateway.isConnected && this.isLocalFilesystemAvailable()
+				!localGatewayDisabled && !this.localGateway.isConnected && this.isLocalGatewayAvailable()
 					? this.getLocalFsProvider()
 					: undefined;
 			const context = this.adapterService.createContext(user, localFilesystemService);
-			if (!filesystemDisabled && this.localGateway.isConnected) {
+			if (!localGatewayDisabled && this.localGateway.isConnected) {
 				context.localMcpServer = this.localGateway;
 			}
 			context.permissions = this.settingsService.getPermissions();
@@ -721,12 +746,31 @@ export class InstanceAiService {
 				memoryConfig,
 				memory,
 				workspace: sandboxEntry?.workspace,
+				disableDeferredTools: true,
 			});
 
 			// Inject completed/running background task context into the message
 			const enrichedMessage = this.enrichMessageWithBackgroundTasks(threadId, message);
 
-			const result = await agent.stream(enrichedMessage, {
+			// Build multimodal message when attachments are present
+			const streamInput =
+				attachments && attachments.length > 0
+					? [
+							{
+								role: 'user' as const,
+								content: [
+									{ type: 'text' as const, text: enrichedMessage },
+									...attachments.map((a) => ({
+										type: 'file' as const,
+										data: a.data,
+										mimeType: a.mimeType,
+									})),
+								],
+							},
+						]
+					: enrichedMessage;
+
+			const result = await agent.stream(streamInput, {
 				abortSignal: signal,
 				memory: {
 					resource: user.id,
@@ -792,7 +836,6 @@ export class InstanceAiService {
 					payload: { status: 'cancelled', reason: 'user_cancelled' },
 				});
 			} else {
-				// Publish run-finish
 				this.eventBus.publish(threadId, {
 					type: 'run-finish',
 					runId,
@@ -815,8 +858,10 @@ export class InstanceAiService {
 				return;
 			}
 
+			const errorMessage = getErrorMessage(error);
+
 			this.logger.error('Instance AI run error', {
-				error: error instanceof Error ? error.message : String(error),
+				error: errorMessage,
 				threadId,
 				runId,
 			});
@@ -827,7 +872,7 @@ export class InstanceAiService {
 				agentId: ORCHESTRATOR_AGENT_ID,
 				payload: {
 					status: 'error',
-					reason: error instanceof Error ? error.message : String(error),
+					reason: errorMessage,
 				},
 			});
 		} finally {
@@ -955,7 +1000,9 @@ export class InstanceAiService {
 				}
 
 				const event = mapMastraChunkToEvent(opts.runId, ORCHESTRATOR_AGENT_ID, chunk);
-				if (event) this.eventBus.publish(opts.threadId, event);
+				if (event) {
+					this.eventBus.publish(opts.threadId, event);
+				}
 			}
 
 			if (lastSuspension && !opts.signal.aborted) {
@@ -973,14 +1020,21 @@ export class InstanceAiService {
 				return;
 			}
 
-			this.eventBus.publish(opts.threadId, {
-				type: 'run-finish',
-				runId: opts.runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
-				payload: opts.signal.aborted
-					? { status: 'cancelled', reason: 'user_cancelled' }
-					: { status: 'completed' },
-			});
+			if (opts.signal.aborted) {
+				this.eventBus.publish(opts.threadId, {
+					type: 'run-finish',
+					runId: opts.runId,
+					agentId: ORCHESTRATOR_AGENT_ID,
+					payload: { status: 'cancelled', reason: 'user_cancelled' },
+				});
+			} else {
+				this.eventBus.publish(opts.threadId, {
+					type: 'run-finish',
+					runId: opts.runId,
+					agentId: ORCHESTRATOR_AGENT_ID,
+					payload: { status: 'completed' },
+				});
+			}
 
 			// Save agent tree snapshot for session restore
 			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
@@ -995,8 +1049,10 @@ export class InstanceAiService {
 				return;
 			}
 
+			const errorMessage = getErrorMessage(error);
+
 			this.logger.error('Instance AI resumed run error', {
-				error: error instanceof Error ? error.message : String(error),
+				error: errorMessage,
 				threadId: opts.threadId,
 				runId: opts.runId,
 			});
@@ -1007,7 +1063,7 @@ export class InstanceAiService {
 				agentId: ORCHESTRATOR_AGENT_ID,
 				payload: {
 					status: 'error',
-					reason: error instanceof Error ? error.message : String(error),
+					reason: errorMessage,
 				},
 			});
 		} finally {
@@ -1099,7 +1155,7 @@ export class InstanceAiService {
 				});
 			} catch (error) {
 				if (abortController.signal.aborted) return;
-				const errorMessage = error instanceof Error ? error.message : String(error);
+				const errorMessage = getErrorMessage(error);
 				task.status = 'failed';
 				task.error = errorMessage;
 				this.eventBus.publish(opts.threadId, {

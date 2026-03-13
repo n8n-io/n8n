@@ -181,7 +181,7 @@ function handleThreadAction(action: string, threadId: string) {
 	flex-direction: column;
 	height: 100%;
 	border-right: var(--border);
-	background: var(--color--background);
+	background: var(--color--background--light-2);
 }
 
 .header {
@@ -222,10 +222,10 @@ function handleThreadAction(action: string, threadId: string) {
 	}
 
 	&.active {
-		background-color: color-mix(in srgb, var(--color--primary) 12%, var(--color--background));
+		background-color: var(--color--background);
 
 		&:hover {
-			background-color: color-mix(in srgb, var(--color--primary) 20%, var(--color--background));
+			background-color: var(--color--background--shade-1);
 		}
 	}
 }
@@ -288,7 +288,7 @@ function handleThreadAction(action: string, threadId: string) {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 	color: var(--color--text);
-	background: var(--color--background);
+	background: var(--color--background--light-2);
 	border: var(--border);
 	border-color: var(--color--primary);
 	border-radius: var(--radius);

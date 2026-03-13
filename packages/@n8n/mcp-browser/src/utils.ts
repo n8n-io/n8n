@@ -1,9 +1,9 @@
+import { nanoid } from 'nanoid';
 import os from 'node:os';
 import path from 'node:path';
-import { nanoid } from 'nanoid';
 
-import { ElementTargetError, McpBrowserError } from './errors';
-import type { ElementTarget, ToolResponse } from './types';
+import type { McpBrowserError } from './errors';
+import type { CallToolResult } from './types';
 
 /**
  * Expand a leading `~` to the user's home directory.
@@ -21,29 +21,11 @@ export function generateId(prefix: string): string {
 	return `${prefix}_${nanoid(12)}`;
 }
 
-/**
- * Validate and extract an ElementTarget from raw tool input.
- * Exactly one of `ref` or `selector` must be provided.
- */
-export function resolveElementTarget(input: {
-	ref?: string;
-	selector?: string;
-}): ElementTarget {
-	const hasRef = input.ref !== undefined && input.ref !== null;
-	const hasSelector =
-		input.selector !== undefined && input.selector !== null && input.selector !== '';
-
-	if (hasRef && hasSelector) throw new ElementTargetError();
-	if (!hasRef && !hasSelector) throw new ElementTargetError();
-
-	if (hasRef) return { ref: input.ref! };
-	return { selector: input.selector! };
-}
-
 /** Wrap a JSON-serializable result as a successful MCP tool response. */
-export function formatToolResponse(data: Record<string, unknown>): ToolResponse {
+export function formatCallToolResult(data: Record<string, unknown>): CallToolResult {
 	return {
 		content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+		structuredContent: data,
 	};
 }
 
@@ -51,9 +33,9 @@ export function formatToolResponse(data: Record<string, unknown>): ToolResponse 
 export function formatImageResponse(
 	base64Data: string,
 	metadata?: Record<string, unknown>,
-): ToolResponse {
-	const content: ToolResponse['content'] = [
-		{ type: 'media', data: base64Data, mediaType: 'image/png' },
+): CallToolResult {
+	const content: CallToolResult['content'] = [
+		{ type: 'image', data: base64Data, mimeType: 'image/png' },
 	];
 	if (metadata) {
 		content.push({ type: 'text', text: JSON.stringify(metadata, null, 2) });
@@ -61,12 +43,19 @@ export function formatImageResponse(
 	return { content };
 }
 
+/** Coerce an unknown caught value into an Error instance. */
+export function toError(value: unknown): Error {
+	if (value instanceof Error) return value;
+	return new Error(String(value));
+}
+
 /** Wrap an error as a structured MCP error response. */
-export function formatErrorResponse(error: McpBrowserError): ToolResponse {
+export function formatErrorResponse(error: McpBrowserError): CallToolResult {
 	const data: Record<string, string> = { error: error.message };
 	if (error.hint) data.hint = error.hint;
 	return {
 		content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+		structuredContent: data,
 		isError: true,
 	};
 }

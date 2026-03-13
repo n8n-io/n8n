@@ -32,7 +32,8 @@ export class SessionManager {
 		for (const [name, info] of Object.entries(discovery)) {
 			if (name === 'geckodriverPath' || name === 'safaridriverPath') continue;
 			if (info && typeof info === 'object' && 'executablePath' in info) {
-				browsers.set(name as BrowserName, { ...info, available: true });
+				const browserInfo = info as { executablePath: string; profilePath?: string };
+				browsers.set(name as BrowserName, { ...browserInfo, available: true });
 			}
 		}
 
@@ -150,7 +151,7 @@ export class SessionManager {
 			this.reaperInterval = undefined;
 		}
 
-		await Promise.all(Array.from(this.sessions.keys()).map((id) => this.close(id)));
+		await Promise.all(Array.from(this.sessions.keys()).map(async (id) => await this.close(id)));
 	}
 
 	get sessionCount(): number {
@@ -170,7 +171,7 @@ export class SessionManager {
 
 		// Ephemeral and persistent always use Playwright (bundled browsers)
 		if (mode === 'ephemeral' || mode === 'persistent') {
-			return this.createPlaywrightAdapter();
+			return await this.createPlaywrightAdapter();
 		}
 
 		// Local mode — adapter depends on browser
@@ -178,19 +179,19 @@ export class SessionManager {
 			if (isChromiumBased(browser)) {
 				// Verify browser is available for local mode
 				this.requireBrowserAvailable(browser);
-				return this.createPlaywrightAdapter();
+				return await this.createPlaywrightAdapter();
 			}
 
 			if (browser === 'firefox') {
 				this.requireBrowserAvailable('firefox');
-				return this.createWebDriverBiDiAdapter();
+				return await this.createWebDriverBiDiAdapter();
 			}
 
 			if (browser === 'safari') {
 				if (process.platform !== 'darwin') {
 					throw new BrowserNotAvailableError('safari (macOS only)');
 				}
-				return this.createSafariDriverAdapter();
+				return await this.createSafariDriverAdapter();
 			}
 
 			// webkit in local mode isn't supported — webkit is Playwright-only

@@ -61,7 +61,7 @@ interface PersistedSettings {
 	sandboxTimeout?: number;
 	braveSearchApiKey?: string;
 	searxngUrl?: string;
-	filesystemDisabled?: boolean;
+	localGatewayDisabled?: boolean;
 	permissions?: Partial<InstanceAiPermissions>;
 }
 
@@ -75,8 +75,8 @@ export class InstanceAiSettingsService {
 	/** Model name selected in settings (e.g. "claude-sonnet-4-5"). */
 	private modelName: string = '';
 
-	/** When true, filesystem tools are suppressed regardless of gateway/local availability. */
-	private filesystemDisabled = false;
+	/** When true, local gateway tools are suppressed regardless of gateway/local availability. */
+	private localGatewayDisabled = false;
 
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
@@ -137,7 +137,7 @@ export class InstanceAiSettingsService {
 			sandboxTimeout: c.sandboxTimeout,
 			hasBraveSearchApiKey: !!c.braveSearchApiKey,
 			searxngUrl: c.searxngUrl,
-			filesystemDisabled: this.filesystemDisabled,
+			localGatewayDisabled: this.localGatewayDisabled,
 			permissions: { ...this.permissions },
 		};
 	}
@@ -148,8 +148,8 @@ export class InstanceAiSettingsService {
 	): Promise<InstanceAiSettingsResponse> {
 		if (update.credentialId !== undefined) this.credentialId = update.credentialId;
 		if (update.modelName !== undefined) this.modelName = update.modelName;
-		if (update.filesystemDisabled !== undefined)
-			this.filesystemDisabled = update.filesystemDisabled;
+		if (update.localGatewayDisabled !== undefined)
+			this.localGatewayDisabled = update.localGatewayDisabled;
 		if (update.permissions) {
 			this.permissions = { ...this.permissions, ...update.permissions };
 		}
@@ -178,9 +178,9 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
-	/** Whether filesystem access is disabled by the user. */
-	isFilesystemDisabled(): boolean {
-		return this.filesystemDisabled;
+	/** Whether local gateway is disabled by the user. */
+	isLocalGatewayDisabled(): boolean {
+		return this.localGatewayDisabled;
 	}
 
 	/** Resolve the current model configuration for an agent run. */
@@ -247,8 +247,8 @@ export class InstanceAiSettingsService {
 	private applyPersistedSettings(persisted: PersistedSettings): void {
 		if (persisted.credentialId !== undefined) this.credentialId = persisted.credentialId;
 		if (persisted.modelName !== undefined) this.modelName = persisted.modelName;
-		if (persisted.filesystemDisabled !== undefined)
-			this.filesystemDisabled = persisted.filesystemDisabled;
+		if (persisted.localGatewayDisabled !== undefined)
+			this.localGatewayDisabled = persisted.localGatewayDisabled;
 		if (persisted.permissions) {
 			this.permissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS, ...persisted.permissions };
 		}
@@ -294,7 +294,7 @@ export class InstanceAiSettingsService {
 			sandboxTimeout: c.sandboxTimeout,
 			braveSearchApiKey: c.braveSearchApiKey,
 			searxngUrl: c.searxngUrl,
-			filesystemDisabled: this.filesystemDisabled,
+			localGatewayDisabled: this.localGatewayDisabled,
 			permissions: this.permissions,
 		};
 

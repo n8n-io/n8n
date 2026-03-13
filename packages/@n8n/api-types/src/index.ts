@@ -279,6 +279,7 @@ export type {
 	McpToolCallRequest,
 	McpToolCallResult,
 	InstanceAiEvent,
+	InstanceAiAttachment,
 	InstanceAiSendMessageRequest,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmResponse,

@@ -1,7 +1,8 @@
 import { Builder } from 'selenium-webdriver';
-import { Options as FirefoxOptions } from 'selenium-webdriver/firefox';
+import type { WebDriver } from 'selenium-webdriver';
 import LogInspector from 'selenium-webdriver/bidi/logInspector';
 import Network from 'selenium-webdriver/bidi/network';
+import { Options as FirefoxOptions } from 'selenium-webdriver/firefox';
 
 import type {
 	ConsoleEntry,
@@ -10,7 +11,6 @@ import type {
 	ResolvedConfig,
 	SessionConfig,
 } from '../types';
-import type { WebDriver } from 'selenium-webdriver';
 import { WebDriverBaseAdapter } from './webdriver-base';
 
 // ---------------------------------------------------------------------------
@@ -150,6 +150,7 @@ export class WebDriverBiDiAdapter extends WebDriverBaseAdapter {
 	// Override: Console/Errors/Network (BiDi-enhanced)
 	// =========================================================================
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async getConsole(_pageId: string, level?: string, clear?: boolean): Promise<ConsoleEntry[]> {
 		let entries = [...this.consoleBuffer];
 
@@ -164,6 +165,7 @@ export class WebDriverBiDiAdapter extends WebDriverBaseAdapter {
 		return entries;
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async getErrors(_pageId: string, clear?: boolean): Promise<ErrorEntry[]> {
 		const entries = [...this.errorBuffer];
 
@@ -174,6 +176,7 @@ export class WebDriverBiDiAdapter extends WebDriverBaseAdapter {
 		return entries;
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async getNetwork(_pageId: string, filter?: string, clear?: boolean): Promise<NetworkEntry[]> {
 		let entries = [...this.networkBuffer];
 
@@ -211,7 +214,7 @@ export class WebDriverBiDiAdapter extends WebDriverBaseAdapter {
 		// Add intercept for all requests
 		this.headerInterceptId = await this.network.addIntercept('beforeRequestSent');
 
-		await this.network.beforeRequestSent(async (event) => {
+		await this.network.beforeRequestSent((event) => {
 			const modifiedHeaders = event.request.headers.map((h) => ({
 				name: h.name,
 				value: h.value,

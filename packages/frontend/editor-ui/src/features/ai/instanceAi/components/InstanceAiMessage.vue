@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import AgentActivityTree from './AgentActivityTree.vue';
 import type { InstanceAiMessage } from '@n8n/api-types';
@@ -20,6 +21,38 @@ const isUser = computed(() => props.message.role === 'user');
 const isStreaming = computed(() => props.message.isStreaming);
 const showContent = computed(() => props.message.content.length > 0 || isStreaming.value);
 
+const runError = computed(() => {
+	const tree = props.message.agentTree;
+	if (!tree || tree.status !== 'error' || !tree.error) return null;
+	return tree.error;
+});
+
+const errorDetails = computed(() => {
+	const tree = props.message.agentTree;
+	if (!tree || tree.status !== 'error') return null;
+	return tree.errorDetails ?? null;
+});
+
+const errorTitle = computed(() => {
+	const details = errorDetails.value;
+	if (details?.provider) {
+		return `${details.provider} ${i18n.baseText('instanceAi.agentTree.error')}`;
+	}
+	return i18n.baseText('instanceAi.error.title');
+});
+
+const formattedTechnicalDetails = computed(() => {
+	const details = errorDetails.value;
+	if (!details?.technicalDetails) return null;
+	try {
+		return JSON.stringify(JSON.parse(details.technicalDetails), null, 2);
+	} catch {
+		return details.technicalDetails;
+	}
+});
+
+const attachments = computed(() => props.message.attachments ?? []);
+
 /**
  * Background task indicator: shows when the orchestrator run has finished
  * but child agents (e.g., workflow builder) are still working in the background.
@@ -28,28 +61,6 @@ const hasActiveBackgroundTasks = computed(() => {
 	if (!props.message.agentTree || props.message.isStreaming) return false;
 	return props.message.agentTree.children.some((c) => c.status === 'active');
 });
-
-const emit = defineEmits<{
-	retry: [message: string];
-}>();
-
-const canRetry = computed(() => {
-	if (isUser.value || isStreaming.value) return false;
-	const tree = props.message.agentTree;
-	if (!tree) return false;
-	return tree.status === 'error' || tree.status === 'cancelled';
-});
-
-function handleRetry() {
-	const msgIndex = store.messages.findIndex((m) => m.id === props.message.id);
-	const prevUserMsg = store.messages
-		.slice(0, msgIndex)
-		.reverse()
-		.find((m) => m.role === 'user');
-	if (prevUserMsg) {
-		emit('retry', prevUserMsg.content);
-	}
-}
 
 function formatJson(value: unknown): string {
 	try {
@@ -64,6 +75,14 @@ function formatJson(value: unknown): string {
 	<div :class="[$style.message, isUser ? $style.userMessage : $style.assistantMessage]">
 		<!-- User message -->
 		<div v-if="isUser" :class="$style.userBubble" data-test-id="instance-ai-user-message">
+			<div v-if="attachments.length > 0" :class="$style.userAttachments">
+				<AttachmentPreview
+					v-for="(attachment, index) in attachments"
+					:key="index"
+					:attachment="attachment"
+					:is-removable="false"
+				/>
+			</div>
 			<span>{{ props.message.content }}</span>
 		</div>
 
@@ -77,6 +96,28 @@ function formatJson(value: unknown): string {
 						:agent-node="props.message.agentTree"
 						:is-root="true"
 					/>
+
+					<!-- Run-level error -->
+					<div v-if="runError" :class="$style.errorBubble" role="alert">
+						<div :class="$style.errorIcon">
+							<N8nIcon icon="triangle-alert" size="medium" />
+						</div>
+						<div :class="$style.errorBody">
+							<div :class="$style.errorHeader">
+								<span :class="$style.errorTitle">{{ errorTitle }}</span>
+								<span v-if="errorDetails?.statusCode" :class="$style.errorStatusCode">{{
+									errorDetails.statusCode
+								}}</span>
+							</div>
+							<p :class="$style.errorDescription">{{ runError }}</p>
+							<details v-if="formattedTechnicalDetails" :class="$style.errorDetailsCollapsible">
+								<summary :class="$style.errorDetailsSummary">
+									{{ i18n.baseText('instanceAi.error.technicalDetails') }}
+								</summary>
+								<pre :class="$style.errorDetailsContent">{{ formattedTechnicalDetails }}</pre>
+							</details>
+						</div>
+					</div>
 
 					<!-- Text content (shown when no agentTree, or streaming dots) -->
 					<div v-if="showContent && !props.message.agentTree" :class="$style.textContent">
@@ -99,15 +140,6 @@ function formatJson(value: unknown): string {
 
 			<div :class="$style.actionButtons">
 				<N8nIconButton
-					v-if="canRetry"
-					icon="refresh-cw"
-					variant="ghost"
-					size="xsmall"
-					:class="$style.actionBtn"
-					:title="i18n.baseText('instanceAi.message.retry')"
-					@click="handleRetry"
-				/>
-				<N8nIconButton
 					v-if="store.debugMode && !isUser"
 					icon="code"
 					variant="ghost"
@@ -123,7 +155,7 @@ function formatJson(value: unknown): string {
 
 <style lang="scss" module>
 .message {
-	padding: var(--spacing--xs) 0;
+	padding: var(--spacing--sm) 0;
 }
 
 .userMessage {
@@ -136,8 +168,15 @@ function formatJson(value: unknown): string {
 	justify-content: flex-start;
 }
 
+.userAttachments {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--2xs);
+}
+
 .userBubble {
-	background: color-mix(in srgb, var(--color--primary) 12%, var(--color--background));
+	background: var(--color--background);
 	color: var(--color--text);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
@@ -212,6 +251,81 @@ function formatJson(value: unknown): string {
 	50% {
 		opacity: 0;
 	}
+}
+
+.errorBubble {
+	display: flex;
+	gap: var(--spacing--xs);
+	margin-top: var(--spacing--2xs);
+	padding: var(--spacing--xs);
+	border: var(--border-width) var(--border-style) var(--callout--border-color--danger);
+	border-radius: var(--radius);
+	background-color: var(--callout--color--background--danger);
+	color: var(--callout--color--text--danger);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--xl);
+}
+
+.errorIcon {
+	flex-shrink: 0;
+	color: var(--callout--icon-color--danger);
+	line-height: 1;
+	padding-top: var(--spacing--5xs);
+}
+
+.errorBody {
+	flex: 1;
+	min-width: 0;
+}
+
+.errorHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.errorTitle {
+	font-weight: var(--font-weight--bold);
+}
+
+.errorStatusCode {
+	margin-left: auto;
+	font-weight: var(--font-weight--bold);
+	opacity: 0.7;
+}
+
+.errorDescription {
+	margin: var(--spacing--4xs) 0 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.errorDetailsCollapsible {
+	margin-top: var(--spacing--2xs);
+}
+
+.errorDetailsSummary {
+	cursor: pointer;
+	user-select: none;
+	opacity: 0.7;
+
+	&:hover {
+		opacity: 1;
+	}
+}
+
+.errorDetailsContent {
+	margin-top: var(--spacing--4xs);
+	padding: var(--spacing--2xs);
+	background: color-mix(in srgb, var(--callout--color--background--danger) 50%, transparent);
+	border-radius: var(--radius);
+	font-family: monospace;
+	font-size: var(--font-size--3xs);
+	line-height: var(--line-height--xl);
+	white-space: pre-wrap;
+	word-break: break-word;
+	max-height: 200px;
+	overflow-y: auto;
 }
 
 .debugJson {

@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
 
+import { textOf } from '../test-utils';
 import { ShellModule } from './index';
 import { shellExecuteTool } from './shell-execute';
 
@@ -53,7 +54,7 @@ describe('shell_execute tool', () => {
 
 		const result = await resultPromise;
 		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-		const parsed = JSON.parse(result.content[0].text) as {
+		const parsed = JSON.parse(textOf(result)) as {
 			stdout: string;
 			stderr: string;
 			exitCode: number;
@@ -79,7 +80,7 @@ describe('shell_execute tool', () => {
 
 		const result = await resultPromise;
 		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-		const parsed = JSON.parse(result.content[0].text) as {
+		const parsed = JSON.parse(textOf(result)) as {
 			stdout: string;
 			stderr: string;
 			exitCode: number;
@@ -105,7 +106,7 @@ describe('shell_execute tool', () => {
 
 		const result = await resultPromise;
 		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-		const parsed = JSON.parse(result.content[0].text) as {
+		const parsed = JSON.parse(textOf(result)) as {
 			stdout: string;
 			stderr: string;
 			exitCode: number;
@@ -130,7 +131,7 @@ describe('shell_execute tool', () => {
 
 		const result = await resultPromise;
 		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-		const parsed = JSON.parse(result.content[0].text) as {
+		const parsed = JSON.parse(textOf(result)) as {
 			stdout: string;
 			stderr: string;
 			exitCode: null;
@@ -229,7 +230,7 @@ describe('shell_execute tool', () => {
 			expect(result.content).toHaveLength(1);
 			expect(result.content[0].type).toBe('text');
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse, @typescript-eslint/no-unsafe-return
-			expect(() => JSON.parse(result.content[0].text)).not.toThrow();
+			expect(() => JSON.parse(textOf(result))).not.toThrow();
 		});
 	});
 
@@ -252,7 +253,7 @@ describe('shell_execute tool', () => {
 
 			const result = await resultPromise;
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const parsed = JSON.parse(result.content[0].text) as { exitCode: number };
+			const parsed = JSON.parse(textOf(result)) as { exitCode: number };
 
 			expect(parsed.exitCode).toBe(exitCode);
 		});

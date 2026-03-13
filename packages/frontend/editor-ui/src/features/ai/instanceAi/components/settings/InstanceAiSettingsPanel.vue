@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import ModelSection from './ModelSection.vue';
 import MemorySection from './MemorySection.vue';
-import FileAccessSection from './FileAccessSection.vue';
+import LocalGatewaySection from './LocalGatewaySection.vue';
 import SandboxSection from './SandboxSection.vue';
 import SearchSection from './SearchSection.vue';
 import AdvancedSection from './AdvancedSection.vue';
@@ -41,7 +41,7 @@ watch(
 			<div v-else-if="store.settings" :class="$style.sections">
 				<ModelSection />
 				<MemorySection />
-				<FileAccessSection />
+				<LocalGatewaySection />
 				<SandboxSection />
 				<SearchSection />
 				<AdvancedSection />

@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { z } from 'zod';
 
-import type { McpTextContent, ToolDefinition } from '../types';
+import type { ToolDefinition } from '../types';
 import { resolveSafePath, scanDirectory } from './fs-utils';
 
 const inputSchema = z.object({
@@ -13,11 +13,11 @@ const inputSchema = z.object({
 	maxResults: z.number().int().optional().describe('Maximum number of results (default: 200)'),
 });
 
-export const listFilesTool: ToolDefinition<typeof inputSchema, McpTextContent> = {
+export const listFilesTool: ToolDefinition<typeof inputSchema> = {
 	name: 'list_files',
 	description: 'List immediate children of a directory',
 	inputSchema,
-	annotations: { defaultPermission: 'allow', readOnly: true },
+	annotations: { defaultPermission: 'allow', readOnlyHint: true },
 	async execute({ dirPath, type, maxResults }, { dir }) {
 		const resolvedDir = resolveSafePath(dir, dirPath || '.');
 		// maxDepth=0 → immediate children only, no recursion
@@ -35,6 +35,9 @@ export const listFilesTool: ToolDefinition<typeof inputSchema, McpTextContent> =
 			sizeBytes: e.sizeBytes,
 		}));
 
-		return { content: [{ type: 'text', text: JSON.stringify(entries) }] };
+		return {
+			content: [{ type: 'text', text: JSON.stringify(entries) }],
+			structuredContent: { entries },
+		};
 	},
 };

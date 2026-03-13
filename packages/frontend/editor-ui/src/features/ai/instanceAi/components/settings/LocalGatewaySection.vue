@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
@@ -20,43 +20,29 @@ async function copyCommand() {
 	}, 2000);
 }
 
-onMounted(async () => {
-	try {
-		await store.refreshModuleSettings();
-	} catch {
-		// Continue initialization if settings refresh fails
-	}
-	store.startDaemonProbing();
-	store.startGatewayPushListener();
-	store.pollGatewayStatus();
+onMounted(() => {
 	if (!store.isGatewayConnected) {
 		void store.fetchSetupCommand();
 	}
-});
-
-onUnmounted(() => {
-	store.stopDaemonProbing();
-	store.stopGatewayPolling();
-	store.stopGatewayPushListener();
 });
 </script>
 
 <template>
 	<div :class="$style.section">
 		<div :class="$style.sectionHeader">
-			<N8nIcon icon="folder-open" size="small" />
+			<N8nIcon icon="plug" size="small" />
 			{{ i18n.baseText('instanceAi.filesystem.label') }}
 		</div>
 
 		<div :class="$style.switchRow">
 			<span :class="$style.switchLabel">{{ i18n.baseText('instanceAi.filesystem.label') }}</span>
 			<ElSwitch
-				:model-value="!getBool('filesystemDisabled')"
-				@update:model-value="store.setField('filesystemDisabled', !$event)"
+				:model-value="!getBool('localGatewayDisabled')"
+				@update:model-value="store.setField('localGatewayDisabled', !$event)"
 			/>
 		</div>
 
-		<template v-if="!getBool('filesystemDisabled')">
+		<template v-if="!getBool('localGatewayDisabled')">
 			<!-- Gateway connected -->
 			<div v-if="store.isGatewayConnected" :class="$style.statusRow">
 				<span :class="[$style.dot, $style.dotConnected]" />
@@ -67,10 +53,10 @@ onUnmounted(() => {
 
 			<!-- Local filesystem (no gateway) -->
 			<template v-else>
-				<div v-if="store.isLocalFilesystemEnabled" :class="$style.statusRow">
+				<div v-if="store.isLocalGatewayEnabled" :class="$style.statusRow">
 					<span :class="[$style.dot, $style.dotLocal]" />
 					<N8nText size="small" color="text-light">
-						{{ store.filesystemDirectory }}
+						{{ store.localGatewayFallbackDirectory }}
 					</N8nText>
 				</div>
 

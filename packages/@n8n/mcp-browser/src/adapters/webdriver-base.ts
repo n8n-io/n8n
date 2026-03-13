@@ -413,14 +413,17 @@ export abstract class WebDriverBaseAdapter implements BrowserAdapter {
 	// Subclasses with BiDi support can override these.
 	// =========================================================================
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async getConsole(_pageId: string, _level?: string, _clear?: boolean): Promise<ConsoleEntry[]> {
 		throw new UnsupportedOperationError('getConsole', this.name);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async getErrors(_pageId: string, _clear?: boolean): Promise<ErrorEntry[]> {
 		throw new UnsupportedOperationError('getErrors', this.name);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async getNetwork(_pageId: string, _filter?: string, _clear?: boolean): Promise<NetworkEntry[]> {
 		throw new UnsupportedOperationError('getNetwork', this.name);
 	}
@@ -434,7 +437,7 @@ export abstract class WebDriverBaseAdapter implements BrowserAdapter {
 		const start = Date.now();
 		const timeout = options.timeoutMs ?? 30_000;
 
-		const promises: Promise<unknown>[] = [];
+		const promises: Array<Promise<unknown>> = [];
 
 		if (options.selector) {
 			promises.push(
@@ -509,7 +512,7 @@ export abstract class WebDriverBaseAdapter implements BrowserAdapter {
 			expires: c.expiry,
 			httpOnly: c.httpOnly,
 			secure: c.secure,
-			sameSite: c.sameSite as Cookie['sameSite'],
+			sameSite: c.sameSite,
 		}));
 	}
 
@@ -578,14 +581,17 @@ export abstract class WebDriverBaseAdapter implements BrowserAdapter {
 	}
 
 	// State methods that require browser-specific support — default to unsupported
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async setOffline(_pageId: string, _offline: boolean): Promise<void> {
 		throw new UnsupportedOperationError('setOffline', this.name);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async setHeaders(_pageId: string, _headers: Record<string, string>): Promise<void> {
 		throw new UnsupportedOperationError('setHeaders', this.name);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async setGeolocation(
 		_pageId: string,
 		_geo: { latitude: number; longitude: number; accuracy?: number } | null,
@@ -593,14 +599,17 @@ export abstract class WebDriverBaseAdapter implements BrowserAdapter {
 		throw new UnsupportedOperationError('setGeolocation', this.name);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async setTimezone(_pageId: string, _timezone: string): Promise<void> {
 		throw new UnsupportedOperationError('setTimezone', this.name);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async setLocale(_pageId: string, _locale: string): Promise<void> {
 		throw new UnsupportedOperationError('setLocale', this.name);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async setDevice(_pageId: string, _device: DeviceDescriptor): Promise<void> {
 		throw new UnsupportedOperationError('setDevice', this.name);
 	}
@@ -668,13 +677,13 @@ export abstract class WebDriverBaseAdapter implements BrowserAdapter {
 	}
 
 	protected async resolveElement(driver: WebDriver, target: ElementTarget): Promise<WebElement> {
-		if ('ref' in target && target.ref !== undefined) {
+		if ('ref' in target) {
 			return (await this.resolveRef(
 				this.findPageIdForCurrentHandle(driver),
 				target.ref,
 			)) as WebElement;
 		}
-		return await driver.findElement(toWebDriverLocator(target.selector!));
+		return await driver.findElement(toWebDriverLocator(target.selector));
 	}
 
 	private findPageIdForCurrentHandle(_driver: WebDriver): string {
@@ -697,12 +706,14 @@ export abstract class WebDriverBaseAdapter implements BrowserAdapter {
 	}
 
 	private modifierToKey(modifier: string): string | undefined {
+		/* eslint-disable @typescript-eslint/naming-convention -- keys match Playwright modifier names */
 		const map: Record<string, string> = {
 			Alt: Key.ALT,
 			Control: Key.CONTROL,
 			Meta: Key.META,
 			Shift: Key.SHIFT,
 		};
+		/* eslint-enable @typescript-eslint/naming-convention */
 		return map[modifier];
 	}
 }

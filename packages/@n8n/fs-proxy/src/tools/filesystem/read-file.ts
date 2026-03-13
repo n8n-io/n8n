@@ -1,7 +1,8 @@
 import * as fs from 'node:fs/promises';
 import { z } from 'zod';
 
-import type { McpTextContent, ToolDefinition } from '../types';
+import type { ToolDefinition } from '../types';
+import { formatCallToolResult } from '../utils';
 import { resolveSafePath } from './fs-utils';
 
 const MAX_FILE_SIZE = 512 * 1024; // 512 KB
@@ -14,11 +15,11 @@ const inputSchema = z.object({
 	maxLines: z.number().int().optional().describe('Maximum number of lines (default: 200)'),
 });
 
-export const readFileTool: ToolDefinition<typeof inputSchema, McpTextContent> = {
+export const readFileTool: ToolDefinition<typeof inputSchema> = {
 	name: 'read_file',
 	description: 'Read the contents of a file',
 	inputSchema,
-	annotations: { defaultPermission: 'allow', readOnly: true },
+	annotations: { defaultPermission: 'allow', readOnlyHint: true },
 	async execute({ filePath, startLine, maxLines }, { dir }) {
 		const resolvedPath = resolveSafePath(dir, filePath);
 
@@ -52,6 +53,6 @@ export const readFileTool: ToolDefinition<typeof inputSchema, McpTextContent> = 
 			totalLines: allLines.length,
 		};
 
-		return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+		return formatCallToolResult(result);
 	},
 };

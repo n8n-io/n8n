@@ -1,8 +1,8 @@
 import { Builder } from 'selenium-webdriver';
+import type { WebDriver } from 'selenium-webdriver';
 import { Options as SafariOptions } from 'selenium-webdriver/safari';
 
 import type { ResolvedConfig, SessionConfig } from '../types';
-import type { WebDriver } from 'selenium-webdriver';
 import { WebDriverBaseAdapter } from './webdriver-base';
 
 // ---------------------------------------------------------------------------

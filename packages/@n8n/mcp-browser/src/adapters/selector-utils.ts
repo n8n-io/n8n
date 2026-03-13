@@ -47,7 +47,7 @@ export function toWebDriverLocator(selector: string): By {
  */
 export function mapPlaywrightKeyToWebDriver(keys: string): string[] {
 	// Dynamic import avoids referencing Key at module load time
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	const { Key } = require('selenium-webdriver') as typeof import('selenium-webdriver');
 
 	const parts = keys.split('+');
@@ -89,6 +89,7 @@ function escapeXPathString(str: string): string {
 }
 
 /** Map from Playwright key names to selenium-webdriver Key constant names. */
+/* eslint-disable @typescript-eslint/naming-convention -- keys match Playwright key name spec */
 const PLAYWRIGHT_KEY_MAP: Record<string, string> = {
 	Enter: 'ENTER',
 	Return: 'RETURN',
@@ -123,3 +124,4 @@ const PLAYWRIGHT_KEY_MAP: Record<string, string> = {
 	F11: 'F11',
 	F12: 'F12',
 };
+/* eslint-enable @typescript-eslint/naming-convention */

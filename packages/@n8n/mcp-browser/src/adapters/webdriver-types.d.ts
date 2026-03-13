@@ -300,7 +300,7 @@ declare module 'selenium-webdriver' {
 // ---------------------------------------------------------------------------
 
 declare module 'selenium-webdriver/firefox' {
-	import { Capabilities, WebDriver } from 'selenium-webdriver';
+	import type { Capabilities, WebDriver } from 'selenium-webdriver';
 
 	export class Options extends Capabilities {
 		setBinary(binary: string): this;
@@ -334,7 +334,7 @@ declare module 'selenium-webdriver/firefox' {
 // ---------------------------------------------------------------------------
 
 declare module 'selenium-webdriver/safari' {
-	import { Capabilities, WebDriver } from 'selenium-webdriver';
+	import type { Capabilities, WebDriver } from 'selenium-webdriver';
 
 	export class Options extends Capabilities {
 		setTechnologyPreview(useTechnologyPreview: boolean): this;
@@ -356,7 +356,7 @@ declare module 'selenium-webdriver/safari' {
 // ---------------------------------------------------------------------------
 
 declare module 'selenium-webdriver/bidi/logInspector' {
-	import { WebDriver } from 'selenium-webdriver';
+	import type { WebDriver } from 'selenium-webdriver';
 
 	interface LogEntry {
 		level: string;
@@ -379,9 +379,13 @@ declare module 'selenium-webdriver/bidi/logInspector' {
 	class LogInspector {
 		constructor(driver: WebDriver);
 		init(): Promise<void>;
+		// eslint-disable-next-line id-denylist
 		onConsoleEntry(callback: (entry: LogEntry) => void): Promise<void>;
+		// eslint-disable-next-line id-denylist
 		onJavascriptLog(callback: (entry: LogEntry) => void): Promise<void>;
+		// eslint-disable-next-line id-denylist
 		onJavascriptException(callback: (entry: LogEntry) => void): Promise<void>;
+		// eslint-disable-next-line id-denylist
 		onLog(callback: (entry: LogEntry) => void): Promise<void>;
 		close(): Promise<void>;
 	}
@@ -390,7 +394,7 @@ declare module 'selenium-webdriver/bidi/logInspector' {
 }
 
 declare module 'selenium-webdriver/bidi/browsingContext' {
-	import { WebDriver, WebElement } from 'selenium-webdriver';
+	import type { WebDriver } from 'selenium-webdriver';
 
 	interface NavigateResult {
 		url: string;
@@ -424,7 +428,7 @@ declare module 'selenium-webdriver/bidi/browsingContext' {
 }
 
 declare module 'selenium-webdriver/bidi/scriptManager' {
-	import { WebDriver } from 'selenium-webdriver';
+	import type { WebDriver } from 'selenium-webdriver';
 
 	interface EvaluateResult {
 		result: {
@@ -471,7 +475,7 @@ declare module 'selenium-webdriver/bidi/scriptManager' {
 }
 
 declare module 'selenium-webdriver/bidi/network' {
-	import { WebDriver } from 'selenium-webdriver';
+	import type { WebDriver } from 'selenium-webdriver';
 
 	interface BeforeRequestSentEvent {
 		request: {
@@ -513,7 +517,9 @@ declare module 'selenium-webdriver/bidi/network' {
 			method?: string;
 			headers?: Array<{ name: string; value: { type: string; value: string } }>;
 		}): Promise<void>;
+		// eslint-disable-next-line id-denylist
 		beforeRequestSent(callback: (event: BeforeRequestSentEvent) => void): Promise<void>;
+		// eslint-disable-next-line id-denylist
 		responseCompleted(callback: (event: ResponseCompletedEvent) => void): Promise<void>;
 		close(): Promise<void>;
 	}
@@ -522,7 +528,7 @@ declare module 'selenium-webdriver/bidi/network' {
 }
 
 declare module 'selenium-webdriver/bidi/storage' {
-	import { WebDriver } from 'selenium-webdriver';
+	import type { WebDriver } from 'selenium-webdriver';
 
 	interface CookieFilter {
 		name?: string;

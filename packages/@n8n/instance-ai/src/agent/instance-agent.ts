@@ -1,17 +1,18 @@
-import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
+import { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
+import { ToolSearchProcessor, type ToolSearchProcessorOptions } from '@mastra/core/processors';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import { withLangsmithMetadata, LangSmithExporter } from '@mastra/langsmith';
+import { LangSmithExporter, withLangsmithMetadata } from '@mastra/langsmith';
 import { MCPClient } from '@mastra/mcp';
 import { buildTracingOptions, Observability } from '@mastra/observability';
 import { nanoid } from 'nanoid';
 
 import { createMemory } from '../memory/memory-config';
 import { createAllTools, createOrchestrationTools } from '../tools';
+import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import type { CreateInstanceAgentOptions, McpServerConfig } from '../types';
-import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { getSystemPrompt } from './system-prompt';
 
 function buildMcpServers(
@@ -42,8 +43,35 @@ let cachedMcpServersKey = '';
 let cachedBrowserMcpTools: ToolsInput | null = null;
 let cachedBrowserMcpKey = '';
 
+let cachedToolSearchProcessor: ToolSearchProcessor | null = null;
+let cachedToolSearchKey = '';
+
 let cachedMastra: Mastra | null = null;
 let cachedMastraStorageKey = '';
+
+// Tools that are always loaded into the orchestrator's context (no search required).
+// These are used in nearly every conversation per system prompt analysis.
+// All other tools are deferred behind ToolSearchProcessor for on-demand discovery.
+const ALWAYS_LOADED_TOOLS = new Set([
+	'plan',
+	'delegate',
+	'build-workflow-with-agent',
+	'ask-user',
+	'web-search',
+	'fetch-url',
+]);
+
+function getOrCreateToolSearchProcessor(tools: ToolsInput): ToolSearchProcessor {
+	const key = JSON.stringify(Object.keys(tools).sort());
+	if (cachedToolSearchProcessor && cachedToolSearchKey === key) return cachedToolSearchProcessor;
+
+	cachedToolSearchProcessor = new ToolSearchProcessor({
+		tools: tools as ToolSearchProcessorOptions['tools'],
+		search: { topK: 5 },
+	});
+	cachedToolSearchKey = key;
+	return cachedToolSearchProcessor;
+}
 
 async function getMcpTools(mcpServers: McpServerConfig[]): Promise<ToolsInput> {
 	const key = JSON.stringify(mcpServers);
@@ -105,7 +133,14 @@ function ensureMastraRegistered(agent: Agent, storage: MastraCompositeStore): vo
 // ── Agent factory ───────────────────────────────────────────────────────────
 
 export async function createInstanceAgent(options: CreateInstanceAgentOptions): Promise<Agent> {
-	const { modelId, context, orchestrationContext, mcpServers = [], memoryConfig } = options;
+	const {
+		modelId,
+		context,
+		orchestrationContext,
+		mcpServers = [],
+		memoryConfig,
+		disableDeferredTools = false,
+	} = options;
 
 	// Build native n8n domain tools (context captured via closures — per-run)
 	const domainTools = createAllTools(context);
@@ -189,6 +224,35 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	// which would add 200KB+ images to the orchestrator's context.
 	const orchestratorMcpTools: ToolsInput = { ...safeMcpTools };
 
+	// ── Tool search: split tools into always-loaded core vs deferred ────────
+	// Anthropic guidance: "Keep your 3-5 most-used tools always loaded, defer the rest."
+	// Tool selection accuracy degrades past 10+ tools; tool search improves it significantly.
+	const localMcpTools = context.localMcpServer
+		? createToolsFromLocalMcpServer(context.localMcpServer)
+		: {};
+
+	const allOrchestratorTools: ToolsInput = {
+		...orchestratorDomainTools,
+		...orchestrationTools,
+		...orchestratorMcpTools,
+		...localMcpTools,
+	};
+
+	const coreTools: ToolsInput = {};
+	const deferrableTools: ToolsInput = {};
+	for (const [name, tool] of Object.entries(allOrchestratorTools)) {
+		if (ALWAYS_LOADED_TOOLS.has(name)) {
+			coreTools[name] = tool;
+		} else {
+			deferrableTools[name] = tool;
+		}
+	}
+
+	const hasDeferrableTools = !disableDeferredTools && Object.keys(deferrableTools).length > 0;
+	const toolSearchProcessor = hasDeferrableTools
+		? getOrCreateToolSearchProcessor(deferrableTools)
+		: undefined;
+
 	// Use pre-built memory if provided, otherwise create from config
 	const memory = options.memory ?? createMemory(memoryConfig);
 
@@ -201,18 +265,15 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				researchMode: orchestrationContext?.researchMode,
 				webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 				filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
+				toolSearchEnabled: hasDeferrableTools,
 			}),
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
 			},
 		},
 		model: modelId,
-		tools: {
-			...orchestratorDomainTools,
-			...orchestrationTools,
-			...orchestratorMcpTools,
-			...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
-		},
+		tools: hasDeferrableTools ? coreTools : allOrchestratorTools,
+		inputProcessors: toolSearchProcessor ? [toolSearchProcessor] : undefined,
 		defaultOptions: {
 			tracingOptions: buildTracingOptions(
 				withLangsmithMetadata({ projectName: 'instance-ai' }),

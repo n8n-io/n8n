@@ -1,40 +1,29 @@
 #!/usr/bin/env node
 
-import { randomUUID } from 'node:crypto';
-import { createServer } from 'node:http';
-
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:http';
 
 import { parseServerOptions } from './server-config';
 import { createBrowserTools } from './tools/index';
-import type { McpImageContent, ToolResponse } from './types';
-
-/**
- * Convert our internal `media`/`mediaType` content to the MCP SDK's `image`/`mimeType` format.
- * This is the boundary conversion — internally we use `media`/`mediaType` everywhere,
- * but the MCP SDK expects `image`/`mimeType`.
- */
-function toMcpResult(response: ToolResponse) {
-	return {
-		...response,
-		content: response.content.map((c) => {
-			if (c.type === 'media') {
-				const media = c as McpImageContent;
-				return { type: 'image' as const, data: media.data, mimeType: media.mediaType };
-			}
-			return c;
-		}),
-	};
-}
 
 function registerTools(server: McpServer, tools: ReturnType<typeof createBrowserTools>['tools']) {
 	for (const tool of tools) {
-		server.tool(tool.name, tool.description, tool.inputSchema.shape, async (args) => {
-			const result = await tool.execute(args as Record<string, unknown>, { dir: '' });
-			return toMcpResult(result);
-		});
+		server.registerTool(
+			tool.name,
+			{
+				description: tool.description,
+				inputSchema: tool.inputSchema,
+				outputSchema: tool.outputSchema,
+			},
+			async (args) => {
+				const result = await tool.execute(args as Record<string, unknown>, { dir: '' });
+				// Spread to satisfy SDK's index-signature requirement
+				return { ...result };
+			},
+		);
 	}
 }
 
@@ -45,12 +34,14 @@ async function main() {
 	if (transportType === 'http') {
 		const sessions = new Map<string, StreamableHTTPServerTransport>();
 
+		/* eslint-disable @typescript-eslint/naming-convention -- HTTP header names */
 		const corsHeaders: Record<string, string> = {
 			'Access-Control-Allow-Origin': '*',
 			'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
 			'Access-Control-Allow-Headers': 'Content-Type, Accept, Mcp-Session-Id, Mcp-Protocol-Version',
 			'Access-Control-Expose-Headers': 'Mcp-Session-Id',
 		};
+		/* eslint-enable @typescript-eslint/naming-convention */
 
 		const httpServer = createServer((req, res) => {
 			if (req.method === 'OPTIONS') {
@@ -73,6 +64,7 @@ async function main() {
 
 			if (sessionId) {
 				// Unknown session ID — tell client to re-initialize
+				// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
 				res.writeHead(404, { 'Content-Type': 'application/json' });
 				res.end(
 					JSON.stringify({
@@ -121,7 +113,9 @@ async function main() {
 		process.exit(0);
 	};
 
+	// eslint-disable-next-line no-void
 	process.on('SIGTERM', () => void shutdown());
+	// eslint-disable-next-line no-void
 	process.on('SIGINT', () => void shutdown());
 }
 

@@ -351,6 +351,6 @@ export class BrowserDiscovery {
 let defaultDiscovery: BrowserDiscovery | undefined;
 
 export function getDefaultDiscovery(): BrowserDiscovery {
-	if (!defaultDiscovery) defaultDiscovery = new BrowserDiscovery();
+	defaultDiscovery ??= new BrowserDiscovery();
 	return defaultDiscovery;
 }

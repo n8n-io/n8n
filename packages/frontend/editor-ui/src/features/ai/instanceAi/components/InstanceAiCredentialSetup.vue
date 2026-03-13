@@ -214,7 +214,7 @@ function handleAutoSetup() {
 	cursor: pointer;
 	border: none;
 	background: var(--color--primary);
-	color: white;
+	color: var(--button--color--text--primary);
 
 	&:hover:not(:disabled) {
 		background: var(--color--primary--shade-1);

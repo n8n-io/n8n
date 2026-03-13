@@ -4,8 +4,10 @@ import { useRoute } from 'vue-router';
 import { N8nIconButton, N8nResizeWrapper, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
+import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInstanceAiStore } from './instanceAi.store';
+import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
@@ -18,6 +20,7 @@ import InstanceAiSettingsPanel from './components/settings/InstanceAiSettingsPan
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 
 const store = useInstanceAiStore();
+const settingsStore = useInstanceAiSettingsStore();
 const i18n = useI18n();
 const route = useRoute();
 const documentTitle = useDocumentTitle();
@@ -27,7 +30,35 @@ documentTitle.set('Instance AI');
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
 	void store.loadThreads();
+
+	// Auto-connect local gateway if enabled
+	void settingsStore
+		.refreshModuleSettings()
+		.catch(() => {})
+		.then(() => {
+			if (!settingsStore.isLocalGatewayDisabled) {
+				settingsStore.startDaemonProbing();
+				settingsStore.startGatewayPushListener();
+				settingsStore.pollGatewayStatus();
+			}
+		});
 });
+
+// React to local gateway being toggled in settings without requiring a page reload
+watch(
+	() => settingsStore.isLocalGatewayDisabled,
+	(disabled) => {
+		if (disabled) {
+			settingsStore.stopDaemonProbing();
+			settingsStore.stopGatewayPolling();
+			settingsStore.stopGatewayPushListener();
+		} else {
+			settingsStore.startDaemonProbing();
+			settingsStore.startGatewayPushListener();
+			settingsStore.pollGatewayStatus();
+		}
+	},
+);
 
 // --- Side panels ---
 const showArtifactsPanel = ref(false);
@@ -134,6 +165,9 @@ onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
 	store.closeSSE();
+	settingsStore.stopDaemonProbing();
+	settingsStore.stopGatewayPolling();
+	settingsStore.stopGatewayPushListener();
 });
 
 // --- Route-thread synchronization ---
@@ -188,10 +222,10 @@ watch(
 );
 
 // --- Message handlers ---
-async function handleSubmit(message: string) {
+async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
-	await store.sendMessage(message);
+	await store.sendMessage(message, attachments);
 }
 
 function handleSuggestionSelect(prompt: string) {
@@ -280,7 +314,6 @@ function handleStop() {
 							v-for="message in store.messages"
 							:key="message.id"
 							:message="message"
-							@retry="handleSubmit"
 						/>
 					</TransitionGroup>
 				</div>
@@ -348,6 +381,7 @@ function handleStop() {
 	min-width: 0;
 	overflow: hidden;
 	position: relative;
+	background-color: var(--color--background--light-2);
 }
 
 .header {
@@ -406,7 +440,7 @@ function handleStop() {
 	left: 0;
 	right: 0;
 	padding: 0 var(--spacing--lg) var(--spacing--sm);
-	background: linear-gradient(transparent 0%, var(--color--background) 30%);
+	background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
 	pointer-events: none;
 	z-index: 2;
 

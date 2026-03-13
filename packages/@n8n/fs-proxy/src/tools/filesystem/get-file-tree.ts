@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { McpTextContent, ToolDefinition } from '../types';
+import type { ToolDefinition } from '../types';
 import { resolveSafePath, scanDirectory } from './fs-utils';
 
 const inputSchema = z.object({
@@ -8,11 +8,11 @@ const inputSchema = z.object({
 	maxDepth: z.number().int().optional().describe('Maximum depth to traverse (default: 2)'),
 });
 
-export const getFileTreeTool: ToolDefinition<typeof inputSchema, McpTextContent> = {
+export const getFileTreeTool: ToolDefinition<typeof inputSchema> = {
 	name: 'get_file_tree',
 	description: 'Get an indented directory tree',
 	inputSchema,
-	annotations: { defaultPermission: 'allow', readOnly: true },
+	annotations: { defaultPermission: 'allow', readOnlyHint: true },
 	async execute({ dirPath, maxDepth }, { dir }) {
 		const resolvedDir = resolveSafePath(dir, dirPath || '.');
 		const depth = maxDepth ?? 2;

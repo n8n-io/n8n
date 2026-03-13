@@ -401,14 +401,14 @@ describe('instanceAi.reducer', () => {
 			handleEvent(state, makeErrorEvent('run-1', 'sub-1', 'sub failed'));
 
 			const child = state.messages[0].agentTree!.children[0];
-			expect(child.textContent).toContain('sub failed');
+			expect(child.error).toContain('sub failed');
 		});
 
 		test('falls back to root agentTree when agentId is unknown', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 			handleEvent(state, makeErrorEvent('run-1', 'unknown-agent', 'root fallback'));
 
-			expect(state.messages[0].agentTree!.textContent).toContain('root fallback');
+			expect(state.messages[0].agentTree!.error).toContain('root fallback');
 		});
 
 		test('falls back to msg.content when no agentTree', () => {

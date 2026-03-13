@@ -376,7 +376,7 @@ function handleTextSkip() {
 
 .approveButton {
 	background: var(--color--primary);
-	color: white;
+	color: var(--button--color--text--primary);
 	border-color: var(--color--primary);
 
 	&:hover {
@@ -386,7 +386,7 @@ function handleTextSkip() {
 
 .approveDestructive {
 	background: var(--color--danger);
-	color: white;
+	color: var(--button--color--text--primary);
 	border-color: var(--color--danger);
 
 	&:hover {

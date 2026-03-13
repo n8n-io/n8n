@@ -29,6 +29,36 @@ function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
 		return sanitizeZodType((schema as z.ZodNullable<z.ZodTypeAny>).unwrap()).optional();
 	}
 
+	// ZodDiscriminatedUnion — flatten to a single z.object
+	// (discriminator becomes an enum, variant-specific fields become optional).
+	// Anthropic rejects top-level unions because they produce schemas without type=object.
+	if (schema instanceof z.ZodDiscriminatedUnion) {
+		const disc = schema as z.ZodDiscriminatedUnion<string, Array<z.ZodObject<z.ZodRawShape>>>;
+		const discriminator = disc.discriminator;
+		const variants = [...disc.options.values()] as Array<z.ZodObject<z.ZodRawShape>>;
+
+		const mergedShape: z.ZodRawShape = {};
+		const discriminatorValues: string[] = [];
+
+		for (const variant of variants) {
+			for (const [key, value] of Object.entries(variant.shape)) {
+				if (key === discriminator) {
+					if (value instanceof z.ZodLiteral) {
+						discriminatorValues.push(String(value.value));
+					}
+				} else if (!(key in mergedShape)) {
+					mergedShape[key] = sanitizeZodType(value).optional();
+				}
+			}
+		}
+
+		if (discriminatorValues.length > 0) {
+			mergedShape[discriminator] = z.enum(discriminatorValues as [string, ...string[]]);
+		}
+
+		return z.object(mergedShape);
+	}
+
 	// ZodUnion — strip ZodNull members, make result optional if null was present
 	if (schema instanceof z.ZodUnion) {
 		const options = (schema as z.ZodUnion<[z.ZodTypeAny, ...z.ZodTypeAny[]]>)
@@ -76,8 +106,30 @@ function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
 		);
 	}
 
+	// ZodRecord — recurse into value type
+	if (schema instanceof z.ZodRecord) {
+		return z.record(
+			sanitizeZodType((schema as z.ZodRecord<z.ZodString, z.ZodTypeAny>).valueSchema),
+		);
+	}
+
 	// Leaf types (string, number, boolean, enum, literal, etc.) — pass through
 	return schema;
+}
+
+/**
+ * Ensure a tool's top-level inputSchema produces `type: "object"` in JSON Schema.
+ * Anthropic requires all tool input_schema to have `type: "object"` at the root.
+ * If the sanitized schema isn't an object type, fall back to z.record(z.unknown())
+ * which accepts any object — same fallback used when schema conversion fails.
+ */
+function ensureTopLevelObject(schema: z.ZodTypeAny): z.ZodTypeAny {
+	if (schema instanceof z.ZodObject || schema instanceof z.ZodRecord) {
+		return schema;
+	}
+	// Fallback: accept any object rather than sending a non-object schema that
+	// Anthropic would reject with "input_schema.type: Field required"
+	return z.record(z.unknown());
 }
 
 /**
@@ -88,11 +140,12 @@ export function sanitizeMcpToolSchemas(tools: ToolsInput): ToolsInput {
 	for (const tool of Object.values(tools)) {
 		const t = tool as { inputSchema?: z.ZodTypeAny; outputSchema?: z.ZodTypeAny };
 		if (t.inputSchema) {
-			t.inputSchema = sanitizeZodType(t.inputSchema);
+			t.inputSchema = ensureTopLevelObject(sanitizeZodType(t.inputSchema));
 		}
 		if (t.outputSchema) {
 			t.outputSchema = sanitizeZodType(t.outputSchema);
 		}
 	}
+
 	return tools;
 }

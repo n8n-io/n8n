@@ -10,6 +10,7 @@ import {
 	printListening,
 	printModuleStatus,
 	printToolList,
+	printShuttingDown,
 	printWaiting,
 } from './logger';
 
@@ -49,7 +50,7 @@ function jsonResponse(
 
 function getDir(): string {
 	const fs = state.config.filesystem;
-	return fs !== false ? fs.dir : '.';
+	return fs !== false ? fs.dir : process.cwd();
 }
 
 async function readBody(req: http.IncomingMessage): Promise<string> {
@@ -101,6 +102,12 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 			url: url.replace(/\/$/, ''),
 			apiKey: token,
 			config: state.config,
+			onPersistentFailure: () => {
+				state.client = null;
+				state.connectedAt = null;
+				state.connectedUrl = null;
+				printDisconnected();
+			},
 		});
 
 		await client.start();
@@ -206,7 +213,7 @@ export function startDaemon(config: ResolvedGatewayConfig): void {
 
 	// Graceful shutdown
 	const shutdown = () => {
-		logger.info('Shutting down');
+		printShuttingDown();
 		const done = () => server.close(() => process.exit(0));
 		if (state.client) {
 			void state.client.disconnect().finally(done);
