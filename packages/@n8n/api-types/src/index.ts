@@ -76,6 +76,8 @@ export {
 	chatHubVectorStoreProviderSchema,
 	type ChatHubVectorStoreProvider,
 	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
+	chatHubSessionTypeSchema,
+	type ChatHubSessionType,
 } from './chat-hub';
 
 export type {
