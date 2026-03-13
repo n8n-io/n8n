@@ -125,6 +125,15 @@ const selectedStepName = computed(() => {
 	return node?.name ?? null;
 });
 
+const approvalMessage = computed(() => {
+	if (!selectedStep.value) return null;
+	const output = selectedStep.value.output;
+	if (output && typeof output === 'object' && 'message' in output) {
+		return (output as Record<string, unknown>).message as string;
+	}
+	return null;
+});
+
 const graph = computed(() => workflowStore.currentWorkflow?.graph ?? null);
 
 const isWorkflowActive = computed(() => workflowStore.currentWorkflow?.active ?? false);
@@ -236,6 +245,18 @@ watch(isTerminal, (terminal) => {
 		closeEventSource();
 	}
 });
+
+// Auto-select approval steps when they appear
+watch(
+	() => executionStore.steps,
+	(steps) => {
+		const waitingApproval = steps.find((s) => s.status === 'waiting_approval');
+		if (waitingApproval && selectedStepId.value !== waitingApproval.stepId) {
+			selectedStepId.value = waitingApproval.stepId;
+		}
+	},
+	{ deep: true },
+);
 
 // ------------------------------------------------------------------
 // Data loading
@@ -852,16 +873,21 @@ function findStepRange(stepName: string, nodeType?: string): { from: number; to:
 	}
 	if (nameIdx < 0) return null;
 
-	// Walk backward to find ctx.step(, ctx.batch(, ctx.triggerWorkflow(, or await variants
+	// Walk backward to find ctx.step(, ctx.approval(, ctx.batch(, ctx.triggerWorkflow(, or await variants
 	const before = src.substring(0, nameIdx);
-	const callPatterns = ['ctx.step(', 'ctx.batch(', 'ctx.triggerWorkflow('];
+	const callPatterns = ['ctx.step(', 'ctx.approval(', 'ctx.batch(', 'ctx.triggerWorkflow('];
 	let bestCallIdx = -1;
 	for (const cp of callPatterns) {
 		const idx = before.lastIndexOf(cp);
 		if (idx >= 0 && idx > bestCallIdx) bestCallIdx = idx;
 	}
 	// Check for await prefix
-	const awaitPatterns = ['await ctx.step(', 'await ctx.batch(', 'await ctx.triggerWorkflow('];
+	const awaitPatterns = [
+		'await ctx.step(',
+		'await ctx.approval(',
+		'await ctx.batch(',
+		'await ctx.triggerWorkflow(',
+	];
 	let bestAwaitIdx = -1;
 	for (const ap of awaitPatterns) {
 		const idx = before.lastIndexOf(ap);
@@ -1418,7 +1444,9 @@ function navigateToErrorLine() {
 
 						<!-- Approval actions -->
 						<div v-if="selectedStep.status === 'waiting_approval'" :class="$style.approvalActions">
-							<p :class="$style.approvalText">This step requires human approval to continue.</p>
+							<p :class="$style.approvalText">
+								{{ approvalMessage ?? 'This step requires human approval to continue.' }}
+							</p>
 							<div :class="$style.approvalButtons">
 								<button
 									:class="[$style.btn, $style.btnSuccess]"

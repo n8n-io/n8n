@@ -643,6 +643,50 @@ export default defineWorkflow({
 	});
 
 	// -----------------------------------------------------------------------
+	// 9b. Approval steps — stepType: 'approval'
+	// -----------------------------------------------------------------------
+
+	describe('Approval steps', () => {
+		const source = `
+import { defineWorkflow } from '@n8n/engine/sdk';
+export default defineWorkflow({
+	name: 'Approval Test',
+	async run(ctx) {
+		const prep = await ctx.step({ name: 'prepare' }, async () => {
+			return { amount: 5000 };
+		});
+		const approval = await ctx.approval({
+			name: 'manager-approval',
+		}, async () => {
+			return { message: 'Approve?' };
+		});
+		return approval;
+	},
+});
+`;
+
+		it('graph node for approval step has type "approval"', () => {
+			const result = transpiler.compile(source);
+			const approvalNode = result.graph.nodes.find((n) => n.name === 'manager-approval');
+			expect(approvalNode).toBeDefined();
+			expect(approvalNode?.type).toBe('approval');
+			expect(approvalNode?.config.stepType).toBe('approval');
+		});
+
+		it('approval step has a stepFunctionRef', () => {
+			const result = transpiler.compile(source);
+			const approvalNode = result.graph.nodes.find((n) => n.name === 'manager-approval');
+			expect(approvalNode?.stepFunctionRef).toMatch(/^step_/);
+		});
+
+		it('non-approval steps still have type "step"', () => {
+			const result = transpiler.compile(source);
+			const prepNode = result.graph.nodes.find((n) => n.name === 'prepare');
+			expect(prepNode?.type).toBe('step');
+		});
+	});
+
+	// -----------------------------------------------------------------------
 	// 10. Sleep — ctx.sleep() between steps
 	// -----------------------------------------------------------------------
 

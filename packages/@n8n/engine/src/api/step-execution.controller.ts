@@ -45,52 +45,67 @@ export function createStepExecutionRouter(deps: AppDependencies): Router {
 	router.post('/:id/approve', async (req: Request, res: Response) => {
 		try {
 			const { id } = req.params;
-			const { approved } = req.body as { approved: boolean };
+			const { approved, token } = req.body as { approved: boolean; token: string };
 
 			if (typeof approved !== 'boolean') {
 				res.status(400).json({ error: 'approved (boolean) is required' });
 				return;
 			}
 
-			// Atomically update only if step is in waiting_approval status
+			if (typeof token !== 'string' || token.length === 0) {
+				res.status(400).json({ error: 'token (string) is required' });
+				return;
+			}
+
+			// Load the step to get existing output for merging
+			const step = await dataSource.getRepository(WorkflowStepExecution).findOneBy({ id });
+
+			if (!step) {
+				res.status(404).json({ error: 'Step execution not found' });
+				return;
+			}
+
+			// Merge existing output (approval context from step function) with approval decision
+			const existingOutput = (step.output as Record<string, unknown>) ?? {};
+			const mergedOutput = { ...existingOutput, approved };
+
+			// Atomically update only if step is in waiting_approval status AND token matches
 			const updateResult = await dataSource
 				.getRepository(WorkflowStepExecution)
 				.createQueryBuilder()
 				.update(WorkflowStepExecution)
 				.set({
 					status: StepStatus.Completed,
-					output: { approved } as unknown as Record<string, unknown>,
+					output: mergedOutput as unknown as Record<string, unknown>,
 					completedAt: new Date(),
 				})
-				.where('id = :id AND status = :status', {
+				.where('id = :id AND status = :status AND "approvalToken" = :token', {
 					id,
 					status: StepStatus.WaitingApproval,
+					token,
 				})
 				.execute();
 
 			if (updateResult.affected === 0) {
 				res.status(409).json({
-					error: 'Approval already processed or step not waiting',
+					error: 'Approval already processed, step not waiting, or invalid token',
 				});
 				return;
 			}
-
-			// Load the step to get executionId and stepId for the event
-			const step = await dataSource.getRepository(WorkflowStepExecution).findOneByOrFail({ id });
 
 			// Emit step:completed event so event handlers plan next steps
 			eventBus.emit({
 				type: 'step:completed',
 				executionId: step.executionId,
 				stepId: step.stepId,
-				output: { approved },
+				output: mergedOutput,
 				durationMs: 0,
 				parentStepExecutionId: step.parentStepExecutionId ?? undefined,
 			});
 
 			res.status(200).json({
 				status: 'completed',
-				output: { approved },
+				output: mergedOutput,
 			});
 		} catch (error) {
 			res.status(500).json({ error: (error as Error).message });

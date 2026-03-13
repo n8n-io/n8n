@@ -43,6 +43,10 @@ export interface StepWaitingApprovalEvent {
 	type: 'step:waiting_approval';
 	executionId: string;
 	stepId: string;
+	stepExecutionId: string;
+	approvalToken: string;
+	/** The approval context returned by the step function — shown to the approver in the UI */
+	context: unknown;
 }
 
 export interface StepCancelledEvent {

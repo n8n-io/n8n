@@ -129,6 +129,11 @@ export interface ExecutionContext<TTriggerData = Record<string, unknown>> {
 	stepId: string;
 	attempt: number;
 	step: <T>(definition: StepDefinition, fn: () => Promise<T>) => Promise<T>;
+	/** Define an approval step that pauses execution until a human approves or declines. The function body returns the approval context shown to the approver. */
+	approval: <T>(
+		definition: StepDefinition,
+		fn: () => Promise<T>,
+	) => Promise<T & { approved: boolean }>;
 	batch: <T, I>(
 		definition: BatchStepDefinition,
 		items: I[],

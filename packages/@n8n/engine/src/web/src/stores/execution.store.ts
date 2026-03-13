@@ -64,6 +64,7 @@ export const useExecutionStore = defineStore('execution', () => {
 	const events = ref<SSEEvent[]>([]);
 	const loading = ref(false);
 	const error = ref<string | null>(null);
+	const approvalTokens = ref<Map<string, string>>(new Map());
 
 	async function fetchExecutions(filters?: { workflowId?: string; status?: string }) {
 		loading.value = true;
@@ -129,6 +130,14 @@ export const useExecutionStore = defineStore('execution', () => {
 			try {
 				const event: SSEEvent = JSON.parse(e.data);
 				events.value.push(event);
+				// Store approval tokens from waiting_approval events
+				if (
+					event.type === 'step:waiting_approval' &&
+					event.approvalToken &&
+					event.stepExecutionId
+				) {
+					approvalTokens.value.set(event.stepExecutionId as string, event.approvalToken as string);
+				}
 				// Auto-refresh on terminal events
 				if (event.type?.startsWith('execution:')) {
 					void fetchExecution(executionId);
@@ -163,11 +172,15 @@ export const useExecutionStore = defineStore('execution', () => {
 		await fetchExecution(id);
 	}
 
-	async function approveStep(stepId: string, approved: boolean) {
-		const res = await fetch(`/api/workflow-step-executions/${stepId}/approve`, {
+	async function approveStep(stepExecutionId: string, approved: boolean, token?: string) {
+		const approvalToken = token ?? approvalTokens.value.get(stepExecutionId);
+		if (!approvalToken) {
+			throw new Error('No approval token available for this step');
+		}
+		const res = await fetch(`/api/workflow-step-executions/${stepExecutionId}/approve`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ approved }),
+			body: JSON.stringify({ approved, token: approvalToken }),
 		});
 		if (!res.ok) {
 			const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
@@ -203,6 +216,7 @@ export const useExecutionStore = defineStore('execution', () => {
 		cancelExecution,
 		pauseExecution,
 		resumeExecution,
+		approvalTokens,
 		approveStep,
 		deleteExecution,
 		clearEvents,

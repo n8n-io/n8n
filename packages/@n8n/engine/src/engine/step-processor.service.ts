@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Module, createRequire } from 'node:module';
 
 import type { DataSource } from '@n8n/typeorm';
@@ -28,6 +29,7 @@ interface StepUpdate {
 	retryAfter?: Date | null;
 	completedAt?: Date | null;
 	durationMs?: number | null;
+	approvalToken?: string;
 }
 
 /**
@@ -147,6 +149,38 @@ export class StepProcessorService {
 						stepId: stepJob.stepId,
 					});
 				}
+				return;
+			}
+
+			// 5b2. Handle approval steps: execute function, then pause for human approval
+			if (node?.type === 'approval') {
+				this.eventBus.emit({
+					type: 'step:started',
+					executionId: execution.id,
+					stepId: stepJob.stepId,
+					attempt: stepJob.attempt,
+				});
+
+				// Load and execute the step function to get approval context
+				const stepFn = this.loadStepFunction(
+					execution.workflowId,
+					execution.workflowVersion,
+					workflow.compiledCode,
+					graph,
+					stepJob.stepId,
+					stepJob.metadata,
+				);
+				const ctx = this.buildStepContext(stepJob, execution);
+				const approvalContext = await stepFn(ctx);
+
+				// Generate approval token and transition to waiting_approval
+				const approvalToken = randomUUID();
+				await this.updateStepAndEmit(stepJob, execution, {
+					status: StepStatus.WaitingApproval,
+					output: approvalContext,
+					approvalToken,
+				});
+
 				return;
 			}
 
@@ -425,6 +459,14 @@ export class StepProcessorService {
 				return await fn();
 			},
 
+			// Approval — handled at compile time by the transpiler.
+			// This stub exists only to satisfy the interface; it should never be called at runtime.
+			approval: async (_definition, fn) => {
+				return { ...(await fn()), approved: false } as Awaited<ReturnType<typeof fn>> & {
+					approved: boolean;
+				};
+			},
+
 			// Batch processing — handled at compile time by the transpiler.
 			// This stub exists only to satisfy the interface; it should never be called at runtime.
 			batch: async () => {
@@ -553,6 +595,9 @@ export class StepProcessorService {
 					type: 'step:waiting_approval',
 					executionId: execution.id,
 					stepId: stepJob.stepId,
+					stepExecutionId: stepJob.id,
+					approvalToken: update.approvalToken ?? '',
+					context: update.output,
 				});
 				break;
 			default:

@@ -254,6 +254,7 @@ declare module '@n8n/engine/sdk' {
 		stepId: string;
 		attempt: number;
 		step: <T>(definition: StepDefinition, fn: () => Promise<T>) => Promise<T>;
+		approval: <T>(definition: StepDefinition, fn: () => Promise<T>) => Promise<T & { approved: boolean }>;
 		batch: <T, I>(definition: BatchStepDefinition, items: I[], fn: (item: I, index: number) => Promise<T>) => Promise<BatchResult<T>[]>;
 		sendChunk: (data: unknown) => Promise<void>;
 		respondToWebhook: (response: WebhookResponse) => Promise<void>;
@@ -421,7 +422,7 @@ export class TranspilerService {
 		// Extract triggers from the workflow definition object
 		const triggers = this.findTriggers(workflowDef.objectLiteral);
 
-		// Step 1: Find all ctx.step(), ctx.batch(), ctx.sleep(), and ctx.triggerWorkflow() calls
+		// Step 1: Find all ctx.step(), ctx.approval(), ctx.batch(), ctx.sleep(), and ctx.triggerWorkflow() calls
 		const stepCalls = this.findStepCalls(workflowDef.runMethod);
 		const batchCalls = this.findBatchCalls(workflowDef.runMethod);
 		const steps = [...stepCalls, ...batchCalls];
@@ -645,7 +646,10 @@ export class TranspilerService {
 		}
 
 		for (const call of callExpressions) {
-			if (!this.isCtxStepCall(call)) continue;
+			// Match both ctx.step() and ctx.approval() calls
+			const isStep = this.isCtxStepCall(call);
+			const isApproval = !isStep && this.isCtxApprovalCall(call);
+			if (!isStep && !isApproval) continue;
 
 			const args = call.getArguments();
 			if (args.length < 2) continue;
@@ -667,7 +671,7 @@ export class TranspilerService {
 				continue; // skip dynamic names
 			}
 
-			// Normal 2-arg call: ctx.step(def, fn)
+			// Normal 2-arg call: ctx.step(def, fn) or ctx.approval(def, fn)
 			const fnArg = args[1];
 			const fnBodyText = this.extractFunctionBodyText(fnArg);
 
@@ -677,7 +681,8 @@ export class TranspilerService {
 			const description = this.extractStringProperty(defArg, 'description');
 			const icon = this.extractStringProperty(defArg, 'icon');
 			const color = this.extractStringProperty(defArg, 'color');
-			const stepType = this.extractStringProperty(defArg, 'stepType');
+			// For ctx.approval(), force stepType to 'approval'; for ctx.step(), read from definition
+			const stepType = isApproval ? 'approval' : this.extractStringProperty(defArg, 'stepType');
 
 			// Extract retry config from the definition object
 			const retryProp = defArg.getProperty('retry');
@@ -981,6 +986,18 @@ export class TranspilerService {
 			if (name === 'step') {
 				const objectExpr = expr.getExpression();
 				// Match ctx.step, or any *.step pattern
+				return objectExpr.getText() === 'ctx';
+			}
+		}
+		return false;
+	}
+
+	private isCtxApprovalCall(call: CallExpression): boolean {
+		const expr = call.getExpression();
+		if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+			const name = expr.getName();
+			if (name === 'approval') {
+				const objectExpr = expr.getExpression();
 				return objectExpr.getText() === 'ctx';
 			}
 		}
@@ -1682,7 +1699,7 @@ export class TranspilerService {
 			nodes.push({
 				id: step.id,
 				name: step.name,
-				type: step.isBatch ? 'batch' : 'step',
+				type: step.isBatch ? 'batch' : step.stepType === 'approval' ? 'approval' : 'step',
 				stepFunctionRef: `step_${step.id}`,
 				config,
 			});

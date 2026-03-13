@@ -25,20 +25,18 @@ export default defineWorkflow({
 			},
 		);
 
-		const approval = (await ctx.step(
+		const approval = await ctx.approval(
 			{
 				name: 'Await Manager Approval',
 				icon: 'user-check',
 				color: '#eab308',
 				description: 'Waits for approval',
-				stepType: 'approval',
 			},
 			async () => {
 				await new Promise((r) => setTimeout(r, 100)); // Simulate setup
-				// Engine detects this as an approval step and pauses
 				return { requiresApproval: true, message: `Approve expense: $${request.amount}?` };
 			},
-		)) as { requiresApproval: boolean; message: string; approved: boolean };
+		);
 
 		if (approval.approved) {
 			await ctx.step(

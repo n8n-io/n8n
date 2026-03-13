@@ -41,8 +41,8 @@ export default defineWorkflow({
 		);
 
 		// Approval step to simulate form waiting
-		const approval = await ctx.step(
-			{ name: 'Wait for Approval', icon: 'clock', color: '#eab308', stepType: 'approval' },
+		const approval = await ctx.approval(
+			{ name: 'Wait for Approval', icon: 'clock', color: '#eab308' },
 			async () => {
 				return { context: 'Please approve this request' };
 			},
