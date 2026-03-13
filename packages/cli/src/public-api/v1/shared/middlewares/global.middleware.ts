@@ -105,11 +105,10 @@ function tagMiddleware(
 }
 
 export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
-	if (!Container.get(License).isApiKeyScopesEnabled()) return emptyMiddleware;
-	return tagMiddleware(
-		Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope),
-		apiKeyScope,
-	);
+	const middleware = Container.get(License).isApiKeyScopesEnabled()
+		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
+		: emptyMiddleware;
+	return tagMiddleware(middleware, apiKeyScope);
 };
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
@@ -118,7 +117,7 @@ export const apiKeyHasScopeWithGlobalScopeFallback = (
 	const apiKeyScope = 'scope' in config ? config.scope : config.apiKeyScope;
 	if (!Container.get(License).isApiKeyScopesEnabled()) {
 		const fallbackScope = 'scope' in config ? config.scope : config.globalScope;
-		return globalScope(fallbackScope);
+		return tagMiddleware(globalScope(fallbackScope), apiKeyScope);
 	}
 	return tagMiddleware(
 		Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope),

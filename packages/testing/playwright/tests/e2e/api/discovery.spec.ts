@@ -32,7 +32,7 @@ test.describe(
 			}
 		});
 
-		test('member with restricted scopes reports correct scopes', async ({ api }) => {
+		test('member with restricted scopes sees filtered resources', async ({ api }) => {
 			const member = await api.publicApi.createUser({
 				email: `member-discover-${nanoid()}@test.com`,
 				role: 'global:member',
@@ -55,6 +55,12 @@ test.describe(
 			expect(discovery.resources.tags.endpoints.some((e) => e.operationId === 'getTags')).toBe(
 				true,
 			);
+			expect(discovery.resources.tags.endpoints.some((e) => e.operationId === 'createTag')).toBe(
+				true,
+			);
+
+			// Should NOT see workflow (no workflow:* scope)
+			expect(discovery.resources.workflow).toBeUndefined();
 		});
 
 		test('discovery includes known endpoints with correct shape', async ({ api }) => {
