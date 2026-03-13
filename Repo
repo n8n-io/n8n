@@ -1,5 +1,0 @@
-n8n/
- ├── docker-compose.yml
- ├── workflows/
- │     └── crypto-news-workflow.json
- └── README.md
