@@ -30,7 +30,7 @@ jest.spyOn(middlewares, 'globalScope').mockReturnValue(createMockMiddleware as a
 jest.spyOn(middlewares, 'validLicenseWithUserQuota').mockReturnValue(createMockMiddleware as any);
 jest.spyOn(middlewares, 'isLicensed').mockReturnValue(createMockMiddleware as any);
 
-import { buildDiscoverResponse, _resetCache } from '../discover.service';
+import { buildDiscoverResponse, resolveRefs, _resetCache } from '../discover.service';
 
 beforeEach(() => {
 	_resetCache();
@@ -158,6 +158,58 @@ describe('buildDiscoverResponse', () => {
 				expect(nodes.$ref).toBeUndefined();
 			}
 		}
+	});
+});
+
+describe('resolveRefs', () => {
+	it('should return object as-is when no $ref present', () => {
+		const schema = { type: 'string', example: 'hello' };
+		const result = resolveRefs(schema, {});
+		expect(result).toEqual(schema);
+	});
+
+	it('should resolve a top-level $ref', () => {
+		const components = { foo: { type: 'object', properties: { name: { type: 'string' } } } };
+		const result = resolveRefs({ $ref: '#/components/schemas/foo' }, components);
+		expect(result).toEqual(components.foo);
+	});
+
+	it('should resolve nested $ref in properties', () => {
+		const components = { bar: { type: 'string' } };
+		const schema = { type: 'object', properties: { child: { $ref: '#/components/schemas/bar' } } };
+		const result = resolveRefs(schema, components);
+		expect(result.properties).toEqual({ child: { type: 'string' } });
+	});
+
+	it('should resolve $ref inside arrays', () => {
+		const components = { item: { type: 'number' } };
+		const schema = { items: [{ $ref: '#/components/schemas/item' }, { type: 'string' }] };
+		const result = resolveRefs(schema, components);
+		expect(result.items).toEqual([{ type: 'number' }, { type: 'string' }]);
+	});
+
+	it('should handle circular references without infinite loop', () => {
+		const components: Record<string, unknown> = {};
+		components.self = {
+			type: 'object',
+			properties: { child: { $ref: '#/components/schemas/self' } },
+		};
+		const result = resolveRefs({ $ref: '#/components/schemas/self' }, components);
+		expect(result.type).toBe('object');
+		const props = result.properties as Record<string, Record<string, unknown>>;
+		expect(props.child.description).toContain('circular');
+	});
+
+	it('should return original object when $ref target not found in components', () => {
+		const schema = { $ref: '#/components/schemas/missing' };
+		const result = resolveRefs(schema, {});
+		expect(result).toEqual(schema);
+	});
+
+	it('should preserve non-object, non-array values', () => {
+		const schema = { type: 'string', maxLength: 100, required: true };
+		const result = resolveRefs(schema, {});
+		expect(result).toEqual(schema);
 	});
 });
 

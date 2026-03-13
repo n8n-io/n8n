@@ -96,7 +96,7 @@ const COMPONENTS_SCHEMA_PREFIX = '#/components/schemas/';
  * nested refs (e.g. workflow → nodes → node) so the returned schema is
  * fully self-contained. A `seen` set prevents circular reference loops.
  */
-function resolveRefs(
+export function resolveRefs(
 	obj: Record<string, unknown>,
 	componentSchemas: Record<string, unknown>,
 	seen = new Set<string>(),

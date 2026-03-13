@@ -91,6 +91,54 @@ describe('Discover Handler', () => {
 		});
 	});
 
+	it('should use first value when API key header is an array', async () => {
+		mockApiKeyRepository.findOne.mockResolvedValue({
+			scopes: ['tag:list'],
+		} as any);
+
+		jest.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
+			scopes: ['tag:list'] as any[],
+			resources: {},
+			specUrl: '/api/v1/openapi.yml',
+		});
+
+		const req = {
+			headers: { 'x-n8n-api-key': ['first-key', 'second-key'] },
+			query: {},
+		} as unknown as AuthenticatedRequest;
+
+		const handlerFn = handler.getDiscover[0];
+		await handlerFn(req, mockResponse);
+
+		expect(mockApiKeyRepository.findOne).toHaveBeenCalledWith({
+			where: { apiKey: 'first-key', audience: 'public-api' },
+			select: { scopes: true },
+		});
+	});
+
+	it('should pass includeSchemas true when query include is schemas', async () => {
+		const scopes = ['tag:list'] as any[];
+		mockApiKeyRepository.findOne.mockResolvedValue({ scopes } as any);
+
+		jest.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
+			scopes,
+			resources: {},
+			specUrl: '/api/v1/openapi.yml',
+		});
+
+		const req = {
+			headers: { 'x-n8n-api-key': 'valid-key' },
+			query: { include: 'schemas' },
+		} as unknown as AuthenticatedRequest;
+
+		const handlerFn = handler.getDiscover[0];
+		await handlerFn(req, mockResponse);
+
+		expect(discoverService.buildDiscoverResponse).toHaveBeenCalledWith(scopes, {
+			includeSchemas: true,
+		});
+	});
+
 	it('should query ApiKeyRepository with correct parameters', async () => {
 		mockApiKeyRepository.findOne.mockResolvedValue({
 			scopes: ['workflow:read'],
