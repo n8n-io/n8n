@@ -71,7 +71,7 @@ const emit = defineEmits<{
 	update: [content: string, keptAttachmentIndices: number[], newFiles: File[]];
 	regenerate: [message: ChatMessage];
 	switchAlternative: [messageId: ChatMessageId];
-	openArtifact: [title: string];
+	downloadArtifact: [title: string];
 }>();
 
 const chatStore = useChatStore();
@@ -440,7 +440,7 @@ onBeforeMount(() => {
 							:key="index"
 							:source="chunk"
 							:is-buttons-disabled="message.status !== 'waiting'"
-							@open-artifact="emit('openArtifact', $event)"
+							@download-artifact="emit('downloadArtifact', $event)"
 						/>
 						<Teleport v-if="activeCodeBlockTeleport" :to="activeCodeBlockTeleport.target">
 							<CopyButton :content="activeCodeBlockTeleport.content" />

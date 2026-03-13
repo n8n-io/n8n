@@ -58,12 +58,7 @@ export function useChatArtifacts(
 		isViewerCollapsed.value = false;
 	}
 
-	function handleDownload() {
-		const artifact = selectedArtifact.value;
-		if (!artifact) {
-			return;
-		}
-
+	function downloadArtifact(artifact: { title: string; type: string; content: string }) {
 		const blob = new Blob([artifact.content], { type: 'text/plain' });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
@@ -71,6 +66,19 @@ export function useChatArtifacts(
 		a.download = `${artifact.title}.${artifact.type}`;
 		a.click();
 		URL.revokeObjectURL(url);
+	}
+
+	function handleDownload() {
+		if (selectedArtifact.value) {
+			downloadArtifact(selectedArtifact.value);
+		}
+	}
+
+	function handleDownloadByTitle(title: string) {
+		const artifact = allArtifacts.value.find((d) => d.title === title);
+		if (artifact) {
+			downloadArtifact(artifact);
+		}
 	}
 
 	return {
@@ -85,6 +93,7 @@ export function useChatArtifacts(
 		handleViewerResizeEnd,
 		handleCloseViewer,
 		handleDownload,
+		handleDownloadByTitle,
 		handleSelect,
 	};
 }

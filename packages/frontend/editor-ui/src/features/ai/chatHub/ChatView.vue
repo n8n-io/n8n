@@ -834,7 +834,7 @@ function onFilesDropped(files: File[]) {
 								@regenerate="handleRegenerateMessage"
 								@update="handleEditMessage"
 								@switch-alternative="handleSwitchAlternative"
-								@open-artifact="artifacts.handleOpenViewer"
+								@download-artifact="artifacts.handleDownloadByTitle"
 							/>
 						</div>
 

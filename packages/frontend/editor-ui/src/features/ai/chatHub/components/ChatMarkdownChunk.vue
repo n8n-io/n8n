@@ -3,8 +3,8 @@ import VueMarkdown from 'vue-markdown-render';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
 import { ref, useCssModule } from 'vue';
 import type { ChatMessageContentChunk } from '@n8n/api-types';
-import { N8nIcon, N8nSpinner } from '@n8n/design-system';
-import { I18nT } from 'vue-i18n';
+import { N8nIcon, N8nIconButton, N8nSpinner } from '@n8n/design-system';
+import { I18nT, useI18n } from 'vue-i18n';
 import ChatButtons from './ChatButtons.vue';
 
 const {
@@ -17,9 +17,12 @@ const {
 	isButtonsDisabled?: boolean;
 }>();
 
-const emit = defineEmits<{ openArtifact: [title: string] }>();
+const emit = defineEmits<{
+	downloadArtifact: [title: string];
+}>();
 
 const styles = useCssModule();
+const { t } = useI18n();
 const markdown = useChatHubMarkdownOptions(styles.codeBlockActions, styles.tableContainer);
 const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 
@@ -71,46 +74,44 @@ defineExpose({
 		<ChatButtons :buttons="source.buttons" :is-disabled="isButtonsDisabled" />
 	</div>
 	<div v-else-if="source.type === 'hidden'" />
-	<button
-		v-else-if="source.type === 'artifact-edit'"
-		:class="$style.command"
-		@click="emit('openArtifact', source.command.title)"
+	<div
+		v-else-if="source.type === 'artifact-edit' || source.type === 'artifact-create'"
+		:class="$style.commandWrapper"
 	>
-		<N8nSpinner v-if="source.isIncomplete" size="large" :class="$style.commandIcon" />
-		<N8nIcon v-else icon="check" size="large" :class="$style.commandIcon" />
-		<I18nT
-			:keypath="
-				source.isIncomplete
-					? 'chatHub.message.artifact.updating'
-					: 'chatHub.message.artifact.updated'
-			"
-			scope="global"
-		>
-			<template #title
-				><b>{{ source.command.title }}</b></template
-			>
-		</I18nT>
-	</button>
-	<button
-		v-else-if="source.type === 'artifact-create'"
-		:class="$style.command"
-		@click="emit('openArtifact', source.command.title)"
-	>
-		<N8nSpinner v-if="source.isIncomplete" size="large" :class="$style.commandIcon" />
-		<N8nIcon v-else icon="check" size="large" :class="$style.commandIcon" />
-		<I18nT
-			:keypath="
-				source.isIncomplete
-					? 'chatHub.message.artifact.creating'
-					: 'chatHub.message.artifact.created'
-			"
-			scope="global"
-		>
-			<template #title
-				><b>{{ source.command.title }}</b></template
-			>
-		</I18nT>
-	</button>
+		<div :class="$style.commandRow">
+			<span :class="$style.commandLabel">
+				<N8nSpinner v-if="source.isIncomplete" size="large" :class="$style.commandIcon" />
+				<N8nIcon v-else icon="check" size="large" :class="$style.commandIcon" />
+				<span>
+					<I18nT
+						:keypath="
+							source.type === 'artifact-create'
+								? source.isIncomplete
+									? 'chatHub.message.artifact.creating'
+									: 'chatHub.message.artifact.created'
+								: source.isIncomplete
+									? 'chatHub.message.artifact.updating'
+									: 'chatHub.message.artifact.updated'
+						"
+						scope="global"
+					>
+						<template #title
+							><b>{{ source.command.title }}</b></template
+						>
+					</I18nT>
+				</span>
+			</span>
+			<N8nIconButton
+				v-if="!source.isIncomplete"
+				:class="$style.commandRowAction"
+				icon="download"
+				variant="ghost"
+				size="small"
+				:aria-label="t('chatHub.message.artifact.download')"
+				@click="emit('downloadArtifact', source.command.title)"
+			/>
+		</div>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -472,25 +473,48 @@ defineExpose({
 	}
 }
 
-.command {
+.commandWrapper {
 	border: var(--border);
 	border-color: var(--color--foreground);
 	border-radius: var(--radius--lg);
-	padding: var(--spacing--sm);
 	margin-bottom: var(--spacing--sm);
-	background-color: transparent;
+	overflow: hidden;
+}
+
+.commandRow {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--xs);
+	gap: var(--spacing--4xs);
+}
+
+.commandLabel {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	width: 100%;
-	text-align: left;
-	font-weight: var(--font-weight--regular);
-	cursor: pointer;
+	flex: 1;
 }
 
 .commandIcon {
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
+}
+
+.commandRowAction {
+	margin-block: calc(-1 * var(--spacing--2xs));
+}
+
+.diffSeparator {
+	border: none;
+	border-top: var(--border);
+	border-color: var(--color--foreground);
+	margin: 0;
+}
+
+.diff {
+	:global(.code-diff-view) {
+		margin: 0 !important;
+	}
 }
 </style>
