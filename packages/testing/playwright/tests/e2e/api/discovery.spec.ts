@@ -47,11 +47,11 @@ test.describe(
 			expect(discovery.resources).toBeDefined();
 			expect(discovery.specUrl).toBe('/api/v1/openapi.yml');
 
-			// Member should see tag endpoints
-			expect(discovery.resources.tags).toBeDefined();
-			expect(discovery.resources.tags.endpoints.some((e) => e.operationId === 'getTags')).toBe(
-				true,
-			);
+			// Member should see workflow endpoints (included in default API key scopes)
+			expect(discovery.resources.workflow).toBeDefined();
+			expect(
+				discovery.resources.workflow.endpoints.some((e) => e.operationId === 'getWorkflows'),
+			).toBe(true);
 		});
 
 		test('discovery includes known endpoints with correct shape', async ({ api }) => {
