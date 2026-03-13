@@ -80,7 +80,7 @@ const initialize = async () => {
 		await showErrorAndGoBackToList(error);
 	} finally {
 		loading.value = false;
-		void fetchDependencyCounts([props.id], 'dataTableId');
+		void fetchDependencyCounts([props.id]);
 	}
 };
 

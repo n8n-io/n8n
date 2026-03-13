@@ -683,7 +683,7 @@ const fetchWorkflows = async () => {
 			.filter((r) => r.resource === 'workflow' || r.resource === undefined)
 			.map((r) => r.id);
 		if (workflowIds.length > 0) {
-			void fetchDependencyCounts(workflowIds, 'workflow');
+			void fetchDependencyCounts(workflowIds);
 		}
 
 		// Toggle ownership cards visibility only after we have fetched the workflows

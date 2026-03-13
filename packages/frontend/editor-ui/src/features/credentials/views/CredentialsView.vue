@@ -234,7 +234,7 @@ const initialize = async () => {
 
 	// Fire-and-forget: fetch which workflows use these credentials
 	const credentialIds = credentialsStore.allCredentials.map((c) => c.id);
-	void fetchDependencyCounts(credentialIds, 'credentialId');
+	void fetchDependencyCounts(credentialIds);
 };
 
 credentialsStore.$onAction(({ name, after }) => {

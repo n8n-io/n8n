@@ -6,7 +6,6 @@ import type {
 import { CredentialsRepository, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import uniq from 'lodash/uniq';
 
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
@@ -70,15 +69,19 @@ export class WorkflowDependencyQueryService {
 			return {};
 		}
 
-		const upsertMap = <V, M extends Map<string, V[]>>(map: M, key: string, val: V) => {
-			const arr = map.get(key);
-			map.set(key, [...(arr ?? []), val]);
+		const addToSet = (map: Map<string, Set<string>>, key: string, val: string) => {
+			let set = map.get(key);
+			if (!set) {
+				set = new Set();
+				map.set(key, set);
+			}
+			set.add(val);
 		};
 
-		const credMap = new Map<string, string[]>();
-		const dtMap = new Map<string, string[]>();
-		const subMap = new Map<string, string[]>();
-		const parentMap = new Map<string, string[]>();
+		const credMap = new Map<string, Set<string>>();
+		const dtMap = new Map<string, Set<string>>();
+		const subMap = new Map<string, Set<string>>();
+		const parentMap = new Map<string, Set<string>>();
 
 		const credNames = new Map<string, string | null>();
 		const wfNames = new Map<string, string | null>();
@@ -86,18 +89,18 @@ export class WorkflowDependencyQueryService {
 
 		for (const dep of rawDeps) {
 			wfNames.set(dep.workflowId, null);
-			upsertMap(parentMap, dep.dependencyKey, dep.workflowId);
+			addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 			switch (dep.dependencyType) {
 				case 'credentialId':
-					upsertMap(credMap, dep.workflowId, dep.dependencyKey);
+					addToSet(credMap, dep.workflowId, dep.dependencyKey);
 					credNames.set(dep.dependencyKey, null);
 					break;
 				case 'dataTableId':
-					upsertMap(dtMap, dep.workflowId, dep.dependencyKey);
+					addToSet(dtMap, dep.workflowId, dep.dependencyKey);
 					dataTableNames.set(dep.dependencyKey, null);
 					break;
 				case 'workflowCall':
-					upsertMap(subMap, dep.workflowId, dep.dependencyKey);
+					addToSet(subMap, dep.workflowId, dep.dependencyKey);
 					wfNames.set(dep.dependencyKey, null);
 					break;
 			}
@@ -109,27 +112,23 @@ export class WorkflowDependencyQueryService {
 
 		const result: Record<string, ResolvedDependency[]> = {};
 		for (const resourceId of resourceIds) {
-			const wfDeps = uniq(subMap.get(resourceId) ?? []).map<ResolvedDependency>((id) => ({
-				id,
-				name: wfNames.get(id)!,
-				type: 'workflowCall',
-			}));
-			const credDeps = uniq(credMap.get(resourceId) ?? []).map<ResolvedDependency>((id) => ({
-				id,
-				name: credNames.get(id)!,
-				type: 'credentialId',
-			}));
-			const dtDeps = uniq(dtMap.get(resourceId) ?? []).map<ResolvedDependency>((id) => {
-				const { name, projectId } = dataTableNames.get(id)!;
-				return { id, name, type: 'dataTableId', projectId };
-			});
-			const parentDeps = uniq(parentMap.get(resourceId) ?? []).map<ResolvedDependency>((x) => ({
-				id: x,
-				name: wfNames.get(x)!,
-				type: 'workflowParent',
-			}));
+			const deps: ResolvedDependency[] = [];
 
-			result[resourceId] = [...wfDeps, ...parentDeps, ...credDeps, ...dtDeps];
+			for (const id of subMap.get(resourceId) ?? []) {
+				deps.push({ id, name: wfNames.get(id)!, type: 'workflowCall' });
+			}
+			for (const id of parentMap.get(resourceId) ?? []) {
+				deps.push({ id, name: wfNames.get(id)!, type: 'workflowParent' });
+			}
+			for (const id of credMap.get(resourceId) ?? []) {
+				deps.push({ id, name: credNames.get(id)!, type: 'credentialId' });
+			}
+			for (const id of dtMap.get(resourceId) ?? []) {
+				const { name, projectId } = dataTableNames.get(id)!;
+				deps.push({ id, name, type: 'dataTableId', projectId });
+			}
+
+			result[resourceId] = deps;
 		}
 
 		return result;

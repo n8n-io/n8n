@@ -12,10 +12,9 @@ import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useDependencies, type ResolvedDependency } from '@/app/composables/useDependencies';
+import type { DependencyType, ResolvedDependency } from '@n8n/api-types';
+import { useDependencies } from '@/app/composables/useDependencies';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
-
-type DependencyType = 'credentialId' | 'dataTableId' | 'workflowCall' | 'workflowParent';
 
 const MIN_ITEMS_FOR_SEARCH = 6;
 
@@ -179,7 +178,6 @@ async function onDropdownToggle(open: boolean) {
 		:searchable="showSearch"
 		extra-popper-class="dependency-pill-dropdown"
 		:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder')"
-		:empty-text="i18n.baseText('workflows.dependencies.search.empty')"
 		:max-height="280"
 		:data-test-id="dataTestId"
 		@select="onSelect"

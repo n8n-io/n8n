@@ -1,9 +1,8 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, In, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
+import { DataSource, EntityManager, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
 
 import { WorkflowDependency } from '../entities';
-import type { DependencyType } from '../entities/workflow-dependency-entity';
 
 const INDEX_VERSION_ID = 1;
 
@@ -154,81 +153,6 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			workflowId,
 		]);
 		return await tx.existsBy(WorkflowDependency, whereConditions);
-	}
-
-	/**
-	 * Get dependency counts per workflow, grouped by dependency type.
-	 * Also includes reverse workflowCall counts (parent workflows).
-	 */
-	async getDependencyCountsForWorkflows(
-		workflowIds: string[],
-		dependencyTypes: DependencyType[],
-	): Promise<Array<{ resourceId: string; dependencyType: string; count: number }>> {
-		if (workflowIds.length === 0) return [];
-
-		const [forwardRows, reverseRows] = await Promise.all([
-			// Forward counts: how many of each type does each workflow use?
-			this.createQueryBuilder('dep')
-				.select('dep.workflowId', 'resourceId')
-				.addSelect('dep.dependencyType', 'dependencyType')
-				.addSelect('COUNT(DISTINCT dep.dependencyKey)', 'count')
-				.where({
-					workflowId: In(workflowIds),
-					dependencyType: In(dependencyTypes),
-					publishedVersionId: IsNull(),
-				})
-				.groupBy('dep.workflowId')
-				.addGroupBy('dep.dependencyType')
-				.getRawMany<{ resourceId: string; dependencyType: string; count: string }>(),
-
-			// Reverse counts: how many parent workflows call each of these workflows?
-			this.createQueryBuilder('dep')
-				.select('dep.dependencyKey', 'resourceId')
-				.addSelect("'workflowParent'", 'dependencyType')
-				.addSelect('COUNT(DISTINCT dep.workflowId)', 'count')
-				.where({
-					dependencyKey: In(workflowIds),
-					dependencyType: 'workflowCall' as DependencyType,
-					publishedVersionId: IsNull(),
-				})
-				.groupBy('dep.dependencyKey')
-				.getRawMany<{ resourceId: string; dependencyType: string; count: string }>(),
-		]);
-
-		return [...forwardRows, ...reverseRows].map((row) => ({
-			resourceId: row.resourceId,
-			dependencyType: row.dependencyType,
-			count: Number(row.count),
-		}));
-	}
-
-	/**
-	 * Get reverse dependency counts: how many workflows reference each resource.
-	 * Used for credential and data table cards.
-	 */
-	async getReverseDependencyCounts(
-		resourceIds: string[],
-		dependencyType: DependencyType,
-	): Promise<Array<{ resourceId: string; dependencyType: string; count: number }>> {
-		if (resourceIds.length === 0) return [];
-
-		const rows = await this.createQueryBuilder('dep')
-			.select('dep.dependencyKey', 'resourceId')
-			.addSelect("'workflowParent'", 'dependencyType')
-			.addSelect('COUNT(DISTINCT dep.workflowId)', 'count')
-			.where({
-				dependencyKey: In(resourceIds),
-				dependencyType,
-				publishedVersionId: IsNull(),
-			})
-			.groupBy('dep.dependencyKey')
-			.getRawMany<{ resourceId: string; dependencyType: string; count: string }>();
-
-		return rows.map((row) => ({
-			resourceId: row.resourceId,
-			dependencyType: row.dependencyType,
-			count: Number(row.count),
-		}));
 	}
 
 	private getTableName(name: string): string {

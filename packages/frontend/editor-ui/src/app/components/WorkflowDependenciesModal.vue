@@ -6,17 +6,9 @@ import type { BaseTextKey } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import type { DependencyType, ResolvedDependency } from '@n8n/api-types';
 import { N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
-
-interface ResolvedDependency {
-	type: string;
-	id: string;
-	name: string;
-	projectId?: string;
-}
-
-type DependencyType = 'credentialId' | 'dataTableId' | 'workflowCall' | 'workflowParent';
 
 const props = defineProps<{
 	modalName: string;

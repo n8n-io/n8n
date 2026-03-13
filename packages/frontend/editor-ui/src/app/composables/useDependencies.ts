@@ -4,8 +4,6 @@ import { ref } from 'vue';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-export type { DependencyTypeCounts, ResolvedDependency };
-
 const dependenciesMap = ref<Record<string, ResolvedDependency[]>>({});
 const countsMap = ref<Record<string, DependencyTypeCounts>>({});
 
