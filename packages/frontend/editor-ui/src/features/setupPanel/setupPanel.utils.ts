@@ -69,7 +69,6 @@ export function getNodeParametersIssues(nodeTypesStore: NodeTypeProvider, node: 
 	}
 
 	const nodeWithDefaults: INode = { ...node, parameters: paramsWithDefaults };
-	debugger;
 	const issues = NodeHelpers.getNodeParametersIssues(
 		nodeType.properties,
 		nodeWithDefaults,
