@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-import { toNumber } from '../coerce';
 import { Config, Env, Nested } from '../decorators';
 
 @Config
@@ -126,23 +125,13 @@ export class UserManagementConfig {
 	 * - `0` means 25% of `N8N_USER_MANAGEMENT_JWT_DURATION_HOURS`.
 	 * - `-1` means it will never refresh. This forces users to log back in after expiration.
 	 */
-	@Env(
-		'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS',
-		(value: string, self: UserManagementConfig) => {
-			const hours = toNumber(value);
-			if (hours === undefined) {
-				console.warn(
-					`Invalid number value for N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS: ${value}`,
-				);
-				return 0;
-			}
-
-			if (hours >= self.jwtSessionDurationHours) {
-				console.warn(INVALID_JWT_REFRESH_TIMEOUT_WARNING);
-				return 0;
-			}
-			return hours;
-		},
-	)
+	@Env('N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS')
 	jwtRefreshTimeoutHours: number = 0;
+
+	sanitize() {
+		if (this.jwtRefreshTimeoutHours >= this.jwtSessionDurationHours) {
+			console.warn(INVALID_JWT_REFRESH_TIMEOUT_WARNING);
+			this.jwtRefreshTimeoutHours = 0;
+		}
+	}
 }
