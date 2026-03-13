@@ -29,6 +29,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { assert } from '@n8n/utils/assert';
 import {
+	getAppNameFromCredType,
 	getAuthTypeForNodeCredential,
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
@@ -52,12 +53,14 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 type Props = {
 	node: INodeUi;
 	overrideCredType?: NodeParameterValueType;
 	readonly?: boolean;
 	showAll?: boolean;
 	hideIssues?: boolean;
+	skipAutoSelect?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -65,6 +68,7 @@ const props = withDefaults(defineProps<Props>(), {
 	overrideCredType: '',
 	showAll: false,
 	hideIssues: false,
+	skipAutoSelect: false,
 });
 
 const emit = defineEmits<{
@@ -84,11 +88,18 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 // Quick connect
-const { isQuickConnectEnabled, getQuickConnectOption, connect, cancelConnect } = useQuickConnect();
-const { isGoogleOAuthType, hasManagedOAuthCredentials } = useCredentialOAuth();
+const {
+	loading: quickConnectLoading,
+	isQuickConnectEnabled,
+	getQuickConnectOption,
+	connect,
+	cancelConnect,
+} = useQuickConnect();
+const { hasManagedOAuthCredentials } = useCredentialOAuth();
 
 const canCreateCredentials = computed(
 	() =>
@@ -121,6 +132,7 @@ const {
 	node,
 	nodeType,
 	computed(() => props.overrideCredType),
+	() => props.showAll,
 );
 
 const credentialTypeNames = computed(() => {
@@ -139,7 +151,7 @@ const selected = computed<Record<string, INodeCredentialsDetails>>(
 );
 
 const hasWorkflowResolver = computed(() => {
-	return !!workflowsStore.workflowSettings?.credentialResolverId;
+	return !!workflowDocumentStore?.value?.settings?.credentialResolverId;
 });
 
 function isCredentialResolvable(credentialType: string): boolean {
@@ -171,7 +183,6 @@ watch(
 		if (isActive && nodeType.value && listeningForAuthChange.value) {
 			if (mainNodeAuthField.value && oldValue && newValue) {
 				const newAuth = newValue[mainNodeAuthField.value.name];
-
 				if (newAuth) {
 					const authType =
 						typeof newAuth === 'object' ? JSON.stringify(newAuth) : newAuth.toString();
@@ -190,6 +201,7 @@ watch(
 watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
+		if (props.skipAutoSelect) return;
 		if (types.length === 0 || !isEmpty(selected.value)) return;
 
 		const allOptions = types.map((type) => type.options).flat();
@@ -329,6 +341,7 @@ function createNewCredential(
 	credentialType: string,
 	listenForAuthChange: boolean = false,
 	showAuthOptions = false,
+	forceManualMode = false,
 ) {
 	if (listenForAuthChange) {
 		// If new credential dialog is open, start listening for auth type change which should happen in the modal
@@ -337,7 +350,7 @@ function createNewCredential(
 		subscribedToCredentialType.value = credentialType;
 	}
 
-	uiStore.openNewCredential(credentialType, showAuthOptions);
+	uiStore.openNewCredential(credentialType, showAuthOptions, forceManualMode);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
 		source: 'node',
@@ -530,7 +543,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 
 function getServiceName(credentialTypeName: string): string {
 	const displayName = credentialTypeNames.value[credentialTypeName] ?? credentialTypeName;
-	return displayName.replace(/\s+OAuth2?\s+API$/i, '').replace(/\s+API$/i, '');
+	return getAppNameFromCredType(displayName);
 }
 
 const quickConnectCredentialType = computed(() => {
@@ -550,15 +563,25 @@ function showStandardEmptyState(type: INodeCredentialDescription): boolean {
 
 async function onQuickConnectSignIn(credentialTypeName: string) {
 	subscribedToCredentialType.value = credentialTypeName;
+	const serviceName = getServiceName(credentialTypeName);
 
-	const credential = await connect({
-		credentialTypeName,
-		nodeType: props.node.type,
-		source: 'node',
-	});
+	try {
+		const credential = await connect({
+			credentialTypeName,
+			nodeType: props.node.type,
+			source: 'node_type',
+			serviceName,
+		});
 
-	if (credential) {
-		onCredentialSelected(credentialTypeName, credential.id);
+		if (credential) {
+			onCredentialSelected(credentialTypeName, credential.id);
+			toast.showMessage({
+				title: i18n.baseText('nodeCredentials.quickConnect.credential.created.success'),
+				type: 'success',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('nodeCredentials.quickConnect.credential.created.error'));
 	}
 }
 </script>
@@ -576,6 +599,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				color="text-dark"
 				data-test-id="credentials-label"
 			>
+				<template v-if="$slots['label-postfix']" #options>
+					<slot name="label-postfix" />
+				</template>
 				<div v-if="readonly">
 					<N8nInput
 						:model-value="getSelectedName(type.name)"
@@ -585,19 +611,17 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					/>
 				</div>
 				<div
-					v-else-if="showQuickConnectEmptyState(type) && quickConnectCredentialType"
-					:class="[
-						$style.quickConnectContainer,
-						{ [$style.noMarginTop]: isGoogleOAuthType(quickConnectCredentialType) },
-					]"
+					v-else-if="
+						options.length === 0 && showQuickConnectEmptyState(type) && quickConnectCredentialType
+					"
+					:class="[$style.quickConnectContainer]"
 					data-test-id="quick-connect-empty-state"
 				>
 					<QuickConnectButton
+						size="small"
+						:disabled="quickConnectLoading"
 						:credential-type-name="quickConnectCredentialType"
-						:service-name="
-							getQuickConnectOption(quickConnectCredentialType, props.node.type)?.serviceName ??
-							getServiceName(quickConnectCredentialType)
-						"
+						:service-name="getServiceName(quickConnectCredentialType)"
 						@click="onQuickConnectSignIn(quickConnectCredentialType)"
 					/>
 					<span :class="$style.setupManuallyContainer">
@@ -610,7 +634,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							underline
 							size="small"
 							data-test-id="setup-manually-link"
-							@click="createNewCredential(type.name, true, showMixedCredentials(type))"
+							@click="createNewCredential(type.name, true, showMixedCredentials(type), true)"
 						>
 							{{ i18n.baseText('nodeCredentials.quickConnect.setupManually') }}
 						</N8nLink>
@@ -630,8 +654,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					/>
 					<N8nButton
 						v-if="canCreateCredentials"
-						type="highlightFill"
-						size="medium"
+						variant="subtle"
+						size="small"
 						data-test-id="setup-credential-button"
 						@click="createNewCredential(type.name, true, showMixedCredentials(type))"
 					>
@@ -900,12 +924,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--4xs);
-
-	&.noMarginTop {
-		margin-top: 0;
-	}
 }
 
 .setupManuallyContainer {

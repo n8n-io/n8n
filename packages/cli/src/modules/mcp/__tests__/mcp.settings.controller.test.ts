@@ -11,12 +11,10 @@ import type { ListQuery } from '@/requests';
 import { UpdateAllowedRedirectUrisDto } from '../dto/update-allowed-redirect-uris.dto';
 import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
-import { SUPPORTED_MCP_TRIGGERS } from '../mcp.constants';
 import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
 import { createWorkflow } from './mock.utils';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -216,10 +214,8 @@ describe('McpSettingsController', () => {
 				user,
 				expect.objectContaining({
 					filter: expect.objectContaining({
-						active: true,
 						isArchived: false,
 						availableInMCP: false,
-						triggerNodeTypes: Object.keys(SUPPORTED_MCP_TRIGGERS),
 					}),
 				}),
 				false, // includeScopes
@@ -269,10 +265,8 @@ describe('McpSettingsController', () => {
 				expect.objectContaining({
 					filter: expect.objectContaining({
 						name: 'test-workflow',
-						active: true,
 						isArchived: false,
 						availableInMCP: false,
-						triggerNodeTypes: Object.keys(SUPPORTED_MCP_TRIGGERS),
 					}),
 					take: 10,
 					skip: 5,
@@ -302,7 +296,6 @@ describe('McpSettingsController', () => {
 				user,
 				expect.objectContaining({
 					filter: expect.objectContaining({
-						active: true,
 						isArchived: false,
 						availableInMCP: false,
 					}),
@@ -345,18 +338,29 @@ describe('McpSettingsController', () => {
 			expect(workflowService.update).not.toHaveBeenCalled();
 		});
 
-		test('rejects enabling MCP for inactive workflows', async () => {
+		test('allows enabling MCP for inactive workflows', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				createWorkflow({ activeVersionId: null }),
+				createWorkflow({
+					activeVersionId: null,
+					nodes: [createWebhookNode({ disabled: false })],
+				}),
+			);
+			workflowService.update.mockResolvedValue({
+				id: workflowId,
+				settings: { saveManualExecutions: true, availableInMCP: true },
+				versionId: 'client-version',
+			} as unknown as WorkflowEntity);
+
+			await controller.toggleWorkflowMCPAccess(
+				createReq({}, { user }),
+				mock<Response>(),
+				workflowId,
+				{
+					availableInMCP: true,
+				},
 			);
 
-			await expect(
-				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
-					availableInMCP: true,
-				}),
-			).rejects.toThrow(new BadRequestError('MCP access can only be set for published workflows'));
-
-			expect(workflowService.update).not.toHaveBeenCalled();
+			expect(workflowService.update).toHaveBeenCalledTimes(1);
 		});
 
 		test('allows disabling MCP for inactive workflows', async () => {
@@ -378,12 +382,11 @@ describe('McpSettingsController', () => {
 			expect(workflowService.update).toHaveBeenCalledTimes(1);
 		});
 
-		test('rejects enabling MCP without active webhook nodes', async () => {
+		test('allows enabling MCP regardless of trigger node types', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				createWorkflow({
 					activeVersionId: uuid(),
 					nodes: [
-						createWebhookNode({ disabled: true }),
 						{
 							id: 'node-2',
 							name: 'HTTP Request',
@@ -395,18 +398,22 @@ describe('McpSettingsController', () => {
 					],
 				}),
 			);
+			workflowService.update.mockResolvedValue({
+				id: workflowId,
+				settings: { saveManualExecutions: true, availableInMCP: true },
+				versionId: 'client-version',
+			} as unknown as WorkflowEntity);
 
-			await expect(
-				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
+			await controller.toggleWorkflowMCPAccess(
+				createReq({}, { user }),
+				mock<Response>(),
+				workflowId,
+				{
 					availableInMCP: true,
-				}),
-			).rejects.toThrow(
-				new BadRequestError(
-					'MCP access can only be set for published workflows with one of the following trigger nodes: Schedule Trigger, Webhook Trigger, Form Trigger, Chat Trigger.',
-				),
+				},
 			);
 
-			expect(workflowService.update).not.toHaveBeenCalled();
+			expect(workflowService.update).toHaveBeenCalledTimes(1);
 		});
 
 		test('persists MCP availability when validation passes', async () => {

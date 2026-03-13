@@ -8,25 +8,30 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PROJECT_OWNER_ROLE_SLUG,
 	PERSONAL_SPACE_SHARING_SETTING,
+	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
 } from '@n8n/permissions';
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 
-import { Scope } from '../entities';
-import { RoleRepository, ScopeRepository, SettingsRepository } from '../repositories';
+import { Role, Scope, Settings } from '../entities';
+import { DbLock, DbLockService } from './db-lock.service';
 
 @Service()
 export class AuthRolesService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly scopeRepository: ScopeRepository,
-		private readonly roleRepository: RoleRepository,
-		private readonly settingsRepository: SettingsRepository,
+		private readonly dbLockService: DbLockService,
 	) {}
 
-	private async syncScopes() {
-		const availableScopes = await this.scopeRepository.find({
+	private async syncScopes(tx: EntityManager) {
+		const scopeRepo = tx.getRepository(Scope);
+		const roleRepo = tx.getRepository(Role);
+
+		const availableScopes = await scopeRepo.find({
 			select: {
 				slug: true,
 				displayName: true,
@@ -65,13 +70,13 @@ export class AuthRolesService {
 
 		if (scopesToUpdate.length > 0) {
 			this.logger.debug(`Updating ${scopesToUpdate.length} scopes...`);
-			await this.scopeRepository.save(scopesToUpdate);
+			await scopeRepo.save(scopesToUpdate);
 			this.logger.debug('Scopes updated successfully.');
 		} else {
 			this.logger.debug('No scopes to update.');
 		}
 
-		// // // Find and delete scopes that are no longer in ALL_SCOPES
+		// Find and delete scopes that are no longer in ALL_SCOPES
 		const scopesToDelete = availableScopes.filter((scope) => !ALL_SCOPES.includes(scope.slug));
 
 		if (scopesToDelete.length > 0) {
@@ -81,7 +86,7 @@ export class AuthRolesService {
 
 			// First, remove these scopes from any roles that reference them
 			const obsoleteScopeSlugs = scopesToDelete.map((s) => s.slug);
-			const rolesWithObsoleteScopes = await this.roleRepository.find({
+			const rolesWithObsoleteScopes = await roleRepo.find({
 				relations: ['scopes'],
 				where: { scopes: { slug: In(obsoleteScopeSlugs) } },
 			});
@@ -93,20 +98,20 @@ export class AuthRolesService {
 
 			if (rolesToUpdate.length > 0) {
 				this.logger.debug(`Removing obsolete scopes from ${rolesToUpdate.length} roles...`);
-				await this.roleRepository.save(rolesToUpdate);
+				await roleRepo.save(rolesToUpdate);
 			}
 
 			// Now delete the scopes themselves
-			await this.scopeRepository.remove(scopesToDelete);
+			await scopeRepo.remove(scopesToDelete);
 			this.logger.debug('Obsolete scopes deleted successfully.');
 		} else {
 			this.logger.debug('No obsolete scopes to delete.');
 		}
 	}
 
-	private async getPersonalOwnerSettingsScopes() {
+	private async getPersonalOwnerSettingsScopes(tx: EntityManager) {
 		const settingKeys = [PERSONAL_SPACE_PUBLISHING_SETTING.key, PERSONAL_SPACE_SHARING_SETTING.key];
-		const rows = (await this.settingsRepository.findByKeys(settingKeys)) ?? [];
+		const rows = await tx.findBy(Settings, { key: In(settingKeys) });
 		const personalSpacePublishingValue = rows.find(
 			(r) => r.key === PERSONAL_SPACE_PUBLISHING_SETTING.key,
 		)?.value;
@@ -132,26 +137,60 @@ export class AuthRolesService {
 		return scopes;
 	}
 
+	private async getExternalSecretsSystemRolesScopes(
+		roleSlug: string,
+		tx: EntityManager,
+	): Promise<string[]> {
+		const settingRow = await tx.findOneBy(Settings, {
+			key: EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key,
+		});
+
+		if (settingRow?.value !== 'true') {
+			return [];
+		}
+
+		const roleScopeMap = EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap;
+		const scopesForRole = roleScopeMap[roleSlug];
+
+		if (scopesForRole) {
+			this.logger.debug(
+				`${EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key} is enabled - allowing ${scopesForRole.join(', ')} scopes to ${roleSlug} role`,
+			);
+			return scopesForRole;
+		}
+
+		return [];
+	}
+
 	/**
 	 * Modifies the expected scopes for a role based on settings.
-	 * Currently only applies to project:personalOwner role.
-	 * Uses a "closed first" approach: workflow:publish is not in the base definition
-	 * and is added when the setting is enabled.
+	 * Uses a "closed first" approach: certain scopes are not in the base definition
+	 * and are added when the corresponding setting is enabled.
 	 */
 	private async updateScopesBasedOnSettings(
 		roleSlug: string,
 		defaultScopes: string[],
+		tx: EntityManager,
 	): Promise<string[]> {
 		const scopes = [...defaultScopes];
 		// Special handling for project:personalOwner role
 		if (roleSlug === PROJECT_OWNER_ROLE_SLUG) {
-			scopes.push(...(await this.getPersonalOwnerSettingsScopes()));
+			scopes.push(...(await this.getPersonalOwnerSettingsScopes(tx)));
 		}
+
+		// External secrets system roles scopes
+		if (roleSlug === PROJECT_ADMIN_ROLE_SLUG || roleSlug === PROJECT_EDITOR_ROLE_SLUG) {
+			scopes.push(...(await this.getExternalSecretsSystemRolesScopes(roleSlug, tx)));
+		}
+
 		return scopes;
 	}
 
-	private async syncRoles() {
-		const existingRoles = await this.roleRepository.find({
+	private async syncRoles(tx: EntityManager) {
+		const roleRepo = tx.getRepository(Role);
+		const scopeRepo = tx.getRepository(Scope);
+
+		const existingRoles = await roleRepo.find({
 			select: {
 				slug: true,
 				displayName: true,
@@ -164,7 +203,7 @@ export class AuthRolesService {
 			},
 		});
 
-		const allScopes = await this.scopeRepository.find({
+		const allScopes = await scopeRepo.find({
 			select: {
 				slug: true,
 			},
@@ -177,10 +216,10 @@ export class AuthRolesService {
 				ALL_ROLES[roleNamespace].map(async (role) => {
 					const existingRole = existingRolesMap.get(role.slug);
 
-					const expectedScopes = await this.updateScopesBasedOnSettings(role.slug, role.scopes);
+					const expectedScopes = await this.updateScopesBasedOnSettings(role.slug, role.scopes, tx);
 
 					if (!existingRole) {
-						const newRole = this.roleRepository.create({
+						const newRole = roleRepo.create({
 							slug: role.slug,
 							displayName: role.displayName,
 							description: role.description ?? null,
@@ -212,7 +251,7 @@ export class AuthRolesService {
 			const filteredRolesToUpdate = rolesToUpdate.filter((role) => role !== null);
 			if (filteredRolesToUpdate.length > 0) {
 				this.logger.debug(`Updating ${filteredRolesToUpdate.length} ${roleNamespace} roles...`);
-				await this.roleRepository.save(filteredRolesToUpdate);
+				await roleRepo.save(filteredRolesToUpdate);
 				this.logger.debug(`${roleNamespace} roles updated successfully.`);
 			} else {
 				this.logger.debug(`No ${roleNamespace} roles to update.`);
@@ -222,8 +261,10 @@ export class AuthRolesService {
 
 	async init() {
 		this.logger.debug('Initializing AuthRolesService...');
-		await this.syncScopes();
-		await this.syncRoles();
+		await this.dbLockService.withLock(DbLock.AUTH_ROLES_SYNC, async (tx) => {
+			await this.syncScopes(tx);
+			await this.syncRoles(tx);
+		});
 		this.logger.debug('AuthRolesService initialized successfully.');
 	}
 }

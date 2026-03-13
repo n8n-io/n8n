@@ -41,7 +41,10 @@ import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
+import {
+	getParameterTypeOption,
+	type ParameterOptionsOverrides,
+} from '@/features/ndv/shared/ndv.utils';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { captureException } from '@sentry/vue';
 import { throttledWatch } from '@vueuse/core';
@@ -82,6 +85,8 @@ type Props = {
 	removeFirstParameterMargin?: boolean;
 	removeLastParameterMargin?: boolean;
 	newlyAddedParameters?: Set<string>;
+	optionsOverrides?: ParameterOptionsOverrides;
+	layout?: 'inline';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -249,6 +254,20 @@ throttledWatch(
 	},
 	{ throttle: 200, immediate: true },
 );
+
+// When the active node changes (e.g. via floating node navigation arrows),
+// immediately nullify dependentParametersValues in the cached items.
+// The throttledWatch above will recompute them asynchronously, but until then
+// the ResourceMapper component would see stale dep values from the previous node.
+// By setting them to null, the ResourceMapper's dependency watcher sees a
+// null → correctValue transition which is naturally ignored (oldValue !== null guard),
+// preventing it from incorrectly clearing the new node's field values.
+watch(node, () => {
+	parameterItems.value = parameterItems.value.map((item) => ({
+		...item,
+		dependentParametersValues: null,
+	}));
+});
 
 const credentialsParameterIndex = computed(() => {
 	return parameterItems.value.findIndex((paramData) => paramData.parameter.type === 'credentials');
@@ -564,7 +583,7 @@ watch(
 </script>
 
 <template>
-	<div class="parameter-input-list-wrapper">
+	<div :class="['parameter-input-list-wrapper', { [$style.inlineLayout]: layout === 'inline' }]">
 		<div
 			v-for="(item, index) in parameterItems"
 			:key="item.parameter.name"
@@ -776,6 +795,7 @@ watch(
 			</div>
 			<ResourceMapper
 				v-else-if="item.parameter.type === 'resourceMapper'"
+				:key="node?.name"
 				:parameter="item.parameter"
 				:node="node"
 				:path="item.path"
@@ -829,9 +849,10 @@ watch(
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
 					:value="getParameterValue(item.parameter.name)"
 					:display-options="item.showOptions"
+					:options-overrides="optionsOverrides"
 					:path="item.path"
 					:is-read-only="isReadOnly || item.isDisabled"
-					:hide-label="false"
+					:hide-label="layout === 'inline'"
 					:node-values="nodeValues"
 					:show-delete="
 						!isReadOnly &&
@@ -934,6 +955,25 @@ watch(
 	> :global(.parameter-item),
 	> :global(.multi-parameter) {
 		margin-bottom: 0;
+	}
+}
+
+.inlineLayout {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+
+	.parameterContainer {
+		flex: 1;
+		min-width: 0;
+
+		&:first-child {
+			flex: 0 0 auto;
+		}
+	}
+
+	:global(.parameter-item) {
+		margin: 0;
 	}
 }
 </style>

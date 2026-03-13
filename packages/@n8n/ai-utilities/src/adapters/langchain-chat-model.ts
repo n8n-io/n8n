@@ -15,7 +15,7 @@ import type { ChatModel, ChatModelConfig } from '../types/chat-model';
 import { makeN8nLlmFailedAttemptHandler } from '../utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../utils/n8n-llm-tracing';
 
-export class LangchainAdapter<
+export class LangchainChatModelAdapter<
 	CallOptions extends ChatModelConfig = ChatModelConfig,
 > extends BaseChatModel<CallOptions> {
 	constructor(
@@ -223,7 +223,7 @@ export class LangchainAdapter<
 	): Runnable<BaseLanguageModelInput, AIMessageChunk, CallOptions> {
 		const genericTools = tools.map(fromLcTool);
 		const newModel = this.chatModel.withTools(genericTools);
-		const newAdapter = new LangchainAdapter(newModel, this.ctx);
+		const newAdapter = new LangchainChatModelAdapter(newModel, this.ctx);
 
 		return newAdapter as any;
 	}

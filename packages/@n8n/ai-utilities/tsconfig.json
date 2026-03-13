@@ -13,6 +13,5 @@
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts", "examples/**/*.ts", "integration-tests/**/*.ts"],
-	"references": [{ "path": "../../workflow/tsconfig.build.esm.json" }]
+	"include": ["src/**/*.ts", "test/**/*.ts", "integration-tests/**/*.ts"]
 }

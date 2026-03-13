@@ -53,12 +53,18 @@ interface ExecutionOrderItem {
  * backend v1 execution strategy). This lets users complete one full branch
  * before moving to the next. Nodes reachable from multiple triggers appear
  * only under the first trigger visited.
+ *
+ * AI sub-nodes (tools, memory, etc.) connected via non-main connection types
+ * are discovered through connectionsByDestinationNode, mirroring how the
+ * backend discovers them on-demand via getInputConnectionData().
+ *
  * Orphaned nodes (not reachable from any trigger) are dropped.
  * When there are no triggers, returns an empty array.
  */
 export function sortNodesByExecutionOrder<T extends ExecutionOrderItem>(
 	nodes: T[],
 	connectionsBySourceNode: IConnections,
+	connectionsByDestinationNode: IConnections = {},
 ): T[] {
 	const triggers = nodes
 		.filter((item) => item.isTrigger)
@@ -74,25 +80,46 @@ export function sortNodesByExecutionOrder<T extends ExecutionOrderItem>(
 	const result: T[] = [];
 	const visited = new Set<string>();
 
+	const visitNode = (name: string) => {
+		if (visited.has(name)) return;
+		visited.add(name);
+		const item = itemsByName.get(name);
+		if (item) {
+			result.push(item);
+		}
+	};
+
 	for (const trigger of triggers) {
-		if (visited.has(trigger.node.name)) continue;
-		visited.add(trigger.node.name);
-		result.push(trigger);
+		visitNode(trigger.node.name);
 
 		// DFS through all workflow connections from this trigger
 		const dfs = (name: string) => {
-			const nodeConns = connectionsBySourceNode[name];
-			if (!nodeConns) return;
-			for (const type of Object.keys(nodeConns)) {
-				for (const outputs of nodeConns[type]) {
-					for (const conn of outputs ?? []) {
-						if (visited.has(conn.node)) continue;
-						visited.add(conn.node);
-						const item = itemsByName.get(conn.node);
-						if (item) {
-							result.push(item);
+			// Follow outgoing connections (main flow + any source-side connections)
+			const sourceConns = connectionsBySourceNode[name];
+			if (sourceConns) {
+				for (const type of Object.keys(sourceConns)) {
+					for (const outputs of sourceConns[type]) {
+						for (const conn of outputs ?? []) {
+							if (visited.has(conn.node)) continue;
+							visitNode(conn.node);
+							dfs(conn.node);
 						}
-						dfs(conn.node);
+					}
+				}
+			}
+
+			// Discover AI sub-nodes connected to this node's non-main inputs
+			// (e.g. tools, memory, language models connected via ai_tool, ai_memory, etc.)
+			const destConns = connectionsByDestinationNode[name];
+			if (destConns) {
+				for (const type of Object.keys(destConns)) {
+					if (type === 'main') continue;
+					for (const inputs of destConns[type]) {
+						for (const conn of inputs ?? []) {
+							if (visited.has(conn.node)) continue;
+							visitNode(conn.node);
+							dfs(conn.node);
+						}
 					}
 				}
 			}

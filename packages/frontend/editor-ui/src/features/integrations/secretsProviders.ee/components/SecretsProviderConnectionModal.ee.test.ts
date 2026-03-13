@@ -67,6 +67,8 @@ const mockConnectionModal = {
 	canUpdate: { value: true },
 	canDelete: { value: true },
 	canShareGlobally: { value: true },
+	isScopedMode: { value: false },
+	isReadOnly: { value: false },
 	projectIds: { value: [] as string[] },
 	sharedWithProjects: { value: [] as ProjectSharingData[] },
 	selectProviderType: vi.fn(),
@@ -107,7 +109,6 @@ const ModalStub = {
 
 const mockProjects = orderBy(
 	Array.from({ length: 3 }, () => createProjectListItem('team')),
-	// Sort by type and name as in ProjectSharing component
 	['type', (project) => project.name?.toLowerCase()],
 	['desc', 'asc'],
 );
@@ -125,14 +126,6 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: vi.fn(() => mockProjectsStore),
 }));
 
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag: vi.fn(() => ({
-		check: {
-			value: vi.fn((flag: string) => flag === 'EXTERNAL_SECRETS_FOR_PROJECTS'),
-		},
-	})),
-}));
-
 const initialState = {
 	[STORES.UI]: {
 		modalsById: {
@@ -141,6 +134,15 @@ const initialState = {
 			},
 		},
 		modalStack: [SECRETS_PROVIDER_CONNECTION_MODAL_KEY],
+	},
+	[STORES.SETTINGS]: {
+		moduleSettings: {
+			'external-secrets': {
+				multipleConnections: true,
+				forProjects: true,
+				roleBasedAccess: false,
+			},
+		},
 	},
 };
 
@@ -176,6 +178,8 @@ describe('SecretsProviderConnectionModal', () => {
 		mockConnection.isTesting.value = false;
 		mockConnectionModal.connectionProjects.value = [];
 		mockConnectionModal.isSharedGlobally.value = false;
+		mockConnectionModal.isScopedMode.value = false;
+		mockConnectionModal.isReadOnly.value = false;
 	});
 
 	it('should load connection data', async () => {
@@ -357,6 +361,25 @@ describe('SecretsProviderConnectionModal', () => {
 			mockConnectionModal.isEditMode.value = true;
 		});
 
+		it('should not show sharing tab navigation when user has no global update permission', async () => {
+			mockConnectionModal.canShareGlobally.value = false;
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						activeTab: 'sharing',
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			expect(queryByTestId('sharing-tab')).not.toBeInTheDocument();
+		});
+
 		it('should not fetch projects from store when projects are already in store', async () => {
 			mockConnectionModal.connectionProjects.value = mockProjects.map((p) => ({
 				id: p.id,
@@ -417,6 +440,7 @@ describe('SecretsProviderConnectionModal', () => {
 			mockConnectionModal.projectIds.value = [];
 			mockConnectionModal.isSharedGlobally.value = false;
 			mockConnectionModal.canUpdate.value = true;
+			mockConnectionModal.canShareGlobally.value = true;
 			mockConnectionModal.isEditMode.value = true;
 			mockProjectsStore.projects = mockProjects;
 
@@ -433,7 +457,7 @@ describe('SecretsProviderConnectionModal', () => {
 
 			await nextTick();
 
-			const projectSelect = queryByTestId('project-sharing-select');
+			const projectSelect = queryByTestId('secrets-provider-scope-select');
 
 			expect(projectSelect).toBeInTheDocument();
 
@@ -441,7 +465,7 @@ describe('SecretsProviderConnectionModal', () => {
 			const projectSelectDropdownItems = await getDropdownItems(projectSelect as HTMLElement);
 
 			expect(projectSelectDropdownItems.length).toBeGreaterThan(1);
-			// The first item is "All users" (global), so select the second item (team project)
+			// The first item is "Global", so select the second item (team project)
 			const teamProject = projectSelectDropdownItems[1];
 
 			await userEvent.click(teamProject as HTMLElement);
@@ -450,12 +474,11 @@ describe('SecretsProviderConnectionModal', () => {
 			expect(mockConnectionModal.setScopeState).toHaveBeenCalledWith([mockProject.id], false);
 		});
 
-		it('should call setScopeState when sharing globally', async () => {
-			// Ensure clean state for global sharing
-			mockConnectionModal.connectionProjects.value = [];
-			mockConnectionModal.projectIds.value = [];
-			mockConnectionModal.isSharedGlobally.value = false;
+		it('should disable scope select when isScopedMode is true', async () => {
 			mockConnectionModal.canUpdate.value = true;
+			mockConnectionModal.isScopedMode.value = true;
+			mockConnectionModal.canShareGlobally.value = true;
+			mockConnectionModal.isEditMode.value = true;
 			mockProjectsStore.projects = mockProjects;
 
 			const { queryByTestId } = renderComponent({
@@ -471,7 +494,36 @@ describe('SecretsProviderConnectionModal', () => {
 
 			await nextTick();
 
-			const projectSelect = queryByTestId('project-sharing-select');
+			const scopeSelect = queryByTestId('secrets-provider-scope-select');
+			expect(scopeSelect).toBeInTheDocument();
+
+			const selectInput = scopeSelect?.querySelector('input');
+			expect(selectInput).toHaveAttribute('disabled');
+		});
+
+		it('should call setScopeState when sharing globally', async () => {
+			// Ensure clean state for global sharing
+			mockConnectionModal.connectionProjects.value = [];
+			mockConnectionModal.projectIds.value = [];
+			mockConnectionModal.isSharedGlobally.value = false;
+			mockConnectionModal.canUpdate.value = true;
+			mockConnectionModal.canShareGlobally.value = true;
+			mockProjectsStore.projects = mockProjects;
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						activeTab: 'sharing',
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			const projectSelect = queryByTestId('secrets-provider-scope-select');
 
 			expect(projectSelect).toBeInTheDocument();
 
@@ -486,6 +538,69 @@ describe('SecretsProviderConnectionModal', () => {
 
 			// Verify setScopeState was called with empty array and true for global sharing
 			expect(mockConnectionModal.setScopeState).toHaveBeenCalledWith([], true);
+		});
+	});
+
+	describe('read-only mode for global connections', () => {
+		it('should hide the save button when isReadOnly is true', async () => {
+			mockConnectionModal.isReadOnly.value = true;
+
+			const { container } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			const saveButton = container.querySelector(
+				'[data-test-id="secrets-provider-connection-save-button"]',
+			);
+			expect(saveButton).not.toBeInTheDocument();
+		});
+
+		it('should hide the delete button when isReadOnly is true', async () => {
+			mockConnectionModal.isReadOnly.value = true;
+
+			const { container } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			const deleteButton = container.querySelector(
+				'[data-test-id="secrets-provider-delete-button"]',
+			);
+			expect(deleteButton).not.toBeInTheDocument();
+		});
+
+		it('should show read-only notice when isReadOnly is true', async () => {
+			mockConnectionModal.isReadOnly.value = true;
+
+			const { container } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			const notice = container.querySelector('[data-test-id="secrets-provider-read-only-notice"]');
+			expect(notice).toBeInTheDocument();
 		});
 	});
 });

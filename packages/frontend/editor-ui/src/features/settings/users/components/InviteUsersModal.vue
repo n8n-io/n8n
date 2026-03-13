@@ -381,6 +381,7 @@ onMounted(() => {
 							<N8nIconButton
 								variant="subtle"
 								icon="link"
+								:aria-label="i18n.baseText('settings.users.actions.generateInviteLink')"
 								data-test-id="generate-invite-link-button"
 								@click="onCopyInviteLink(user)"
 							></N8nIconButton>
@@ -392,6 +393,7 @@ onMounted(() => {
 							<N8nIconButton
 								variant="subtle"
 								icon="link"
+								:aria-label="i18n.baseText('settings.users.inviteLink.copy')"
 								data-test-id="copy-invite-link-button"
 								:data-invite-link="user.inviteAcceptUrl"
 								@click="onCopyInviteLink(user)"

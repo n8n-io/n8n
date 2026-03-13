@@ -66,6 +66,7 @@ const emit = defineEmits<{
 	'update:outputs': [id: string];
 	move: [id: string, position: XYPosition];
 	focus: [id: string];
+	'replace:node': [id: string];
 	'add:ai': [id: string];
 }>();
 
@@ -285,6 +286,10 @@ function onFocus(id: string) {
 	emit('focus', id);
 }
 
+function onReplaceNode(id: string) {
+	emit('replace:node', id);
+}
+
 function onAddToAi(id: string) {
 	emit('add:ai', id);
 }
@@ -426,6 +431,7 @@ onBeforeUnmount(() => {
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
 			@delete="onDelete"
+			@replace:node="onReplaceNode"
 		/>
 
 		<CanvasNodeTrigger

@@ -1,10 +1,13 @@
-import type { SecretCompletionsResponse, SecretsProviderType } from '@n8n/api-types';
 import {
-	CreateSecretsProviderConnectionDto,
-	TestSecretProviderConnectionResponse,
+	type CreateSecretsProviderConnectionDto,
+	type ReloadSecretProviderConnectionResponse,
+	type TestSecretProviderConnectionResponse,
+	type SecretCompletionsResponse,
+	type SecretProviderConnection,
+	type SecretProviderConnectionListItem,
+	type SecretsProviderType,
 	testSecretProviderConnectionResponseSchema,
 	reloadSecretProviderConnectionResponseSchema,
-	ReloadSecretProviderConnectionResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { SecretsProviderConnection } from '@n8n/db';
@@ -15,15 +18,16 @@ import {
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
-
 import { jsonParse } from 'n8n-workflow';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
-import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
+
+import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 
 @Service()
 export class SecretsProvidersConnectionsService {
@@ -31,6 +35,7 @@ export class SecretsProvidersConnectionsService {
 		private readonly logger: Logger,
 		private readonly repository: SecretsProviderConnectionRepository,
 		private readonly projectAccessRepository: ProjectSecretsProviderAccessRepository,
+		private readonly providerRegistry: ExternalSecretsProviderRegistry,
 		private readonly cipher: Cipher,
 		private readonly externalSecretsManager: ExternalSecretsManager,
 		private readonly redactionService: RedactionService,
@@ -95,6 +100,7 @@ export class SecretsProvidersConnectionsService {
 			type?: string;
 			projectIds?: string[];
 			settings?: IDataObject;
+			isEnabled?: boolean;
 		},
 		userId: string,
 	): Promise<SecretsProviderConnection> {
@@ -116,6 +122,9 @@ export class SecretsProvidersConnectionsService {
 			const savedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
 			const unredactedSettings = this.redactionService.unredact(updates.settings, savedSettings);
 			connection.encryptedSettings = this.encryptConnectionSettings(unredactedSettings);
+		}
+		if (updates.isEnabled !== undefined) {
+			connection.isEnabled = updates.isEnabled;
 		}
 
 		await this.repository.save(connection);
@@ -179,11 +188,19 @@ export class SecretsProvidersConnectionsService {
 	}
 
 	async getGlobalCompletions(): Promise<SecretsProviderConnection[]> {
-		return await this.repository.findGlobalConnections();
+		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
+
+		return await this.repository.findEnabledGlobalConnections({
+			providerKeys: connectedProviderKeys,
+		});
 	}
 
 	async getProjectCompletions(projectId: string): Promise<SecretsProviderConnection[]> {
-		return await this.repository.findByProjectId(projectId);
+		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
+
+		return await this.repository.findEnabledByProjectId(projectId, {
+			providerKeys: connectedProviderKeys,
+		});
 	}
 
 	async listConnectionsForProject(projectId: string): Promise<SecretsProviderConnection[]> {
@@ -201,7 +218,7 @@ export class SecretsProvidersConnectionsService {
 
 	toPublicConnectionListItem(
 		connection: SecretsProviderConnection,
-	): SecretsProvidersResponses.ConnectionListItem {
+	): SecretProviderConnectionListItem {
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
 		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
@@ -209,6 +226,7 @@ export class SecretsProvidersConnectionsService {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
+			isEnabled: connection.isEnabled,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -222,7 +240,7 @@ export class SecretsProvidersConnectionsService {
 		};
 	}
 
-	toPublicConnection(connection: SecretsProviderConnection): SecretsProvidersResponses.Connection {
+	toPublicConnection(connection: SecretsProviderConnection): SecretProviderConnection {
 		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
 		const properties = this.externalSecretsManager.getProviderProperties(connection.type);
 		const redactedSettings = this.redactionService.redact(decryptedSettings, properties);
@@ -233,6 +251,7 @@ export class SecretsProvidersConnectionsService {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
+			isEnabled: connection.isEnabled,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -308,42 +327,6 @@ export class SecretsProvidersConnectionsService {
 		};
 	}
 
-	async reloadProjectConnectionSecrets(
-		projectId: string,
-		userId: string,
-	): Promise<ReloadSecretProviderConnectionResponse> {
-		const projectConnections = await this.repository.findByProjectId(projectId);
-		const providers: Record<string, { success: boolean }> = {};
-
-		await Promise.allSettled(
-			projectConnections.map(async (c) => {
-				try {
-					await this.externalSecretsManager.updateProvider(c.providerKey);
-					providers[c.providerKey] = { success: true };
-
-					this.eventService.emit('external-secrets-connection-reloaded', {
-						userId,
-						providerKey: c.providerKey,
-						vaultType: c.type,
-						...this.extractProjectInfo(c),
-					});
-				} catch (error) {
-					providers[c.providerKey] = { success: false };
-					this.logger.warn(`Failed to reload provider ${c.providerKey}`, {
-						projectId,
-						providerKey: c.providerKey,
-					});
-				}
-			}),
-		);
-
-		const allSucceeded = Object.values(providers).every((p) => p.success);
-		return reloadSecretProviderConnectionResponseSchema.parse({
-			success: allSucceeded,
-			providers,
-		});
-	}
-
 	private encryptConnectionSettings(settings: IDataObject): string {
 		return this.cipher.encrypt(settings);
 	}
@@ -353,6 +336,22 @@ export class SecretsProvidersConnectionsService {
 		projectId: string,
 	): Promise<SecretsProviderConnection> {
 		const connection = await this.repository.findByProviderKeyAndProjectId(providerKey, projectId);
+
+		if (!connection) {
+			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
+		}
+
+		return connection;
+	}
+
+	async getConnectionAccessibleFromProject(
+		providerKey: string,
+		projectId: string,
+	): Promise<SecretsProviderConnection> {
+		const connection = await this.repository.findAccessibleByProviderKeyAndProjectId(
+			providerKey,
+			projectId,
+		);
 
 		if (!connection) {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);

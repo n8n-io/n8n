@@ -156,7 +156,31 @@ describe('ToolSettingsContent', () => {
 		projectsStore.setCurrentProject = vi.fn();
 	});
 
-	it('should render tabs for parameters and settings', () => {
+	it('should hide settings tab when there are no settings', () => {
+		const { queryByText } = renderComponent({
+			props: { initialNode: createMockNode() },
+		});
+
+		expect(queryByText('nodeSettings.parameters')).toBeFalsy();
+		expect(queryByText('nodeSettings.settings')).toBeFalsy();
+	});
+
+	it('should render tabs for parameters and settings when node type has settings', () => {
+		const nodeTypeWithSettings: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			properties: [
+				...MOCK_NODE_TYPE.properties,
+				{
+					displayName: 'Custom Setting',
+					name: 'customSetting',
+					type: 'boolean',
+					default: false,
+					isNodeSetting: true,
+				},
+			],
+		};
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithSettings);
+
 		const { getByText } = renderComponent({
 			props: { initialNode: createMockNode() },
 		});

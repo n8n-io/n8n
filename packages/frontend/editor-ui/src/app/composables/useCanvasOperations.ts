@@ -112,8 +112,9 @@ import {
 	TelemetryHelpers,
 	isCommunityPackageName,
 	isHitlToolType,
+	resolveNodeWebhookId,
 } from 'n8n-workflow';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
@@ -131,13 +132,15 @@ import type { TelemetryNdvSource, TelemetryNdvType } from '@/app/types/telemetry
 import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
-import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useClipboard } from '@vueuse/core';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
 
 type AddNodeData = Partial<INodeUi> & {
@@ -187,6 +190,7 @@ export function useCanvasOperations() {
 	const experimentalNdvStore = useExperimentalNdvStore();
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
+	const setupPanelStore = useSetupPanelStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -196,7 +200,6 @@ export function useCanvasOperations() {
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
 	const { uniqueNodeName } = useUniqueNodeName();
-	const { fetchAndSetParentFolder } = useParentFolder();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -679,16 +682,15 @@ export function useCanvasOperations() {
 		const nodes = workflowsStore.getNodesByIds(ids);
 
 		// Filter to only pinnable nodes
-		const pinnableNodes = nodes.filter((node) => {
-			const pinnedDataForNode = usePinnedData(node);
-			return pinnedDataForNode.canPinNode(true);
-		});
-		const nextStatePinned = pinnableNodes.some(
-			(node) => !workflowsStore.pinDataByNodeName(node.name),
+		const pinnableNodesWithPinnedData = nodes
+			.map((node) => ({ node, pinnedData: usePinnedData(node) }))
+			.filter(({ pinnedData }) => pinnedData.canPinNode(true));
+
+		const nextStatePinned = pinnableNodesWithPinnedData.some(
+			({ pinnedData }) => !pinnedData.hasData.value,
 		);
 
-		for (const node of pinnableNodes) {
-			const pinnedDataForNode = usePinnedData(node);
+		for (const { node, pinnedData: pinnedDataForNode } of pinnableNodesWithPinnedData) {
 			if (nextStatePinned) {
 				const dataToPin = useDataSchema().getInputDataWithPinned(node);
 				if (dataToPin.length !== 0) {
@@ -748,7 +750,14 @@ export function useCanvasOperations() {
 		}
 
 		for (const [index, nodeAddData] of nodesWithTypeVersion.entries()) {
-			const { isAutoAdd, openDetail: openNDV, actionName, positionOffset, ...node } = nodeAddData;
+			const {
+				isAutoAdd,
+				placeholder,
+				openDetail: openNDV,
+				actionName,
+				positionOffset,
+				...node
+			} = nodeAddData;
 
 			const rawPosition = node.position ?? insertPosition;
 			const position: XYPosition | undefined =
@@ -773,6 +782,9 @@ export function useCanvasOperations() {
 					},
 				);
 				lastAddedNode = newNode;
+				if (nodeAddData.placeholder) {
+					newNode.placeholder = true;
+				}
 				addedNodes.push(newNode);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('error'));
@@ -1113,6 +1125,7 @@ export function useCanvasOperations() {
 			position,
 			disabled,
 			parameters,
+			placeholder: node.placeholder,
 		};
 
 		resolveNodeName(nodeData);
@@ -1463,9 +1476,7 @@ export function useCanvasOperations() {
 	}
 
 	function resolveNodeWebhook(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		if (nodeTypeDescription.webhooks?.length && !node.webhookId) {
-			nodeHelpers.assignWebhookId(node);
-		}
+		resolveNodeWebhookId(node, nodeTypeDescription);
 
 		// if it's a webhook and the path is empty set the UUID as the default path
 		if (
@@ -2304,8 +2315,6 @@ export function useCanvasOperations() {
 
 		workflowsStore.setNodes(data.nodes);
 		workflowsStore.setConnections(data.connections);
-		workflowState.setWorkflowProperty('createdAt', data.createdAt);
-		workflowState.setWorkflowProperty('updatedAt', data.updatedAt);
 
 		return { workflowDocumentStore };
 	}
@@ -2762,10 +2771,15 @@ export function useCanvasOperations() {
 
 		for (const node of nodes) {
 			const nodeSaveData = workflowHelpers.getNodeDataToSave(node);
-			const pinDataForNode = workflowsStore.pinDataByNodeName(node.name);
+			const workflowDocumentStore = workflowsStore.workflowId
+				? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+				: null;
+			const pinDataForNode = workflowDocumentStore
+				? pinDataToExecutionData(workflowDocumentStore.pinData)[node.name]
+				: undefined;
 
 			if (pinDataForNode) {
-				data.pinData[node.name] = pinDataForNode;
+				data.pinData[node.name] = pinDataForNode as IPinData[string];
 			}
 
 			if (
@@ -2774,7 +2788,7 @@ export function useCanvasOperations() {
 			) {
 				nodeSaveData.credentials = filterAllowedCredentials(
 					nodeSaveData.credentials,
-					workflowsStore.usedCredentials,
+					workflowDocumentStore?.usedCredentials ?? {},
 				);
 			}
 
@@ -2791,7 +2805,7 @@ export function useCanvasOperations() {
 
 	function filterAllowedCredentials(
 		credentials: INodeCredentials,
-		usedCredentials: Record<string, IUsedCredential>,
+		usedCredentials: DeepReadonly<Record<string, IUsedCredential>>,
 	): INodeCredentials {
 		return Object.fromEntries(
 			Object.entries(credentials).filter(([, credential]) => {
@@ -2854,9 +2868,11 @@ export function useCanvasOperations() {
 	async function copyNodes(ids: string[]) {
 		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
 
+		const workflowDocumentId = createWorkflowDocumentId(workflowsStore.workflowId);
+		const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 		workflowData.meta = {
 			...workflowData.meta,
-			...workflowsStore.workflow.meta,
+			...workflowDocumentStore.meta,
 			instanceId: rootStore.instanceId,
 		};
 
@@ -2899,7 +2915,12 @@ export function useCanvasOperations() {
 		workflowState.setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
-			workflowState.setWorkflowPinData({});
+			if (workflowsStore.workflowId) {
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
+				workflowDocumentStore.setPinData({});
+			}
 		}
 
 		if (nodeId) {
@@ -2942,22 +2963,23 @@ export function useCanvasOperations() {
 	}
 
 	async function importTemplate({
-		id,
 		name,
 		workflow,
 	}: {
-		id: string | number;
 		name?: string;
 		workflow: IWorkflowTemplate['workflow'] | WorkflowDataWithTemplateId;
 	}) {
-		const convertedNodes = workflow.nodes?.map(workflowsStore.convertTemplateNodeToNodeUi);
+		let convertedNodes = workflow.nodes?.map(workflowsStore.convertTemplateNodeToNodeUi);
+
+		if (setupPanelStore.isFeatureEnabled && convertedNodes) {
+			convertedNodes = clearAllNodeResourceLocatorValues(convertedNodes);
+		}
 
 		if (workflow.connections) {
 			workflowsStore.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
-		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
-		workflowState.addToWorkflowMetadata({ templateId: `${id}` });
+		await workflowState.getNewWorkflowData(name, projectsStore.currentProjectId);
 	}
 
 	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
@@ -3085,6 +3107,13 @@ export function useCanvasOperations() {
 		});
 	}
 
+	function openSetupPanelIfEnabled() {
+		if (setupPanelStore.isFeatureEnabled) {
+			focusPanelStore.openFocusPanel();
+			focusPanelStore.setSelectedTab('setup');
+		}
+	}
+
 	async function openWorkflowTemplate(templateId: string) {
 		resetWorkspace();
 
@@ -3117,12 +3146,19 @@ export function useCanvasOperations() {
 		uiStore.isBlankRedirect = true;
 		await router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
-		await importTemplate({ id: templateId, name: data.name, workflow: data.workflow });
+		await importTemplate({ name: data.name, workflow: data.workflow });
 
 		// Set the workflow ID from the route params (auto-generated by router)
 		if (typeof route.params.name === 'string') {
 			workflowState.setWorkflowId(route.params.name);
 		}
+
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.addToMeta({ templateId: `${templateId}` });
+
+		openSetupPanelIfEnabled();
 
 		canvasStore.stopLoading();
 
@@ -3157,7 +3193,6 @@ export function useCanvasOperations() {
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
 		await projectsStore.refreshCurrentProject();
-		await fetchAndSetParentFolder(parentFolderId);
 
 		await router.replace({
 			name: VIEWS.NEW_WORKFLOW,
@@ -3165,10 +3200,16 @@ export function useCanvasOperations() {
 		});
 
 		await importTemplate({
-			id: templateId,
 			name: workflow.name,
 			workflow,
 		});
+
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.addToMeta({ templateId: `${templateId}` });
+
+		openSetupPanelIfEnabled();
 
 		canvasStore.stopLoading();
 

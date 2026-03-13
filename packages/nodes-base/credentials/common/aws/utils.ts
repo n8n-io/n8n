@@ -252,13 +252,7 @@ export async function assumeRole(
 				'System AWS credentials are required for role assumption. Please ensure AWS credentials are available via environment variables, instance metadata, or container role.',
 			);
 		}
-		if (systemCredentials.source !== 'environment') {
-			return {
-				accessKeyId: systemCredentials.accessKeyId,
-				secretAccessKey: systemCredentials.secretAccessKey,
-				sessionToken: systemCredentials.sessionToken as string,
-			};
-		}
+
 		stsCallCredentials = systemCredentials;
 	} else {
 		if (!credentials.stsAccessKeyId || credentials.stsAccessKeyId.trim() === '') {

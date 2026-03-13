@@ -427,6 +427,7 @@ onMounted(() => {
 						>
 							<N8nButton
 								variant="subtle"
+								size="small"
 								data-test-id="variable-row-edit-button"
 								class="mr-xs"
 								:disabled="!(globalPermissions.update ?? projectPermissions.update)"
@@ -444,6 +445,7 @@ onMounted(() => {
 						>
 							<N8nButton
 								variant="subtle"
+								size="small"
 								data-test-id="variable-row-delete-button"
 								:disabled="!(globalPermissions.delete ?? projectPermissions.delete)"
 								@click="handleDeleteVariable(data)"
@@ -479,6 +481,8 @@ onMounted(() => {
 	padding: 2px;
 }
 .action-buttons {
+	display: flex;
+	justify-content: end;
 	opacity: 0;
 	transition: opacity 0.2s ease;
 }

@@ -1,4 +1,4 @@
-import { chatWithAssistant, replaceCode } from '@/features/ai/assistant/assistant.api';
+import { chatWithAssistant } from '@/features/ai/assistant/assistant.api';
 import { type VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { ASSISTANT_ENABLED_VIEWS } from './constants';
@@ -7,29 +7,22 @@ import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
-import { computed, h, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import type { ICredentialType, INodeParameters, NodeError, INode } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-import { codeNodeEditorEventBus } from '@/app/event-bus';
-import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import type { IUpdateInformation } from '@/Interface';
+import type { ICredentialType, NodeError, INode } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
-import AiUpdatedCodeMessage from '@/app/components/AiUpdatedCodeMessage.vue';
 import { useChatPanelStateStore } from './chatPanelState.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
+import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { v4 as uuid } from 'uuid';
 
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
@@ -45,17 +38,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const workflowsStore = useWorkflowsStore();
 	const route = useRoute();
 	const streaming = ref<boolean>();
-	const ndvStore = useNDVStore();
+	const streamingAbortController = ref<AbortController | null>(null);
 	const locale = useI18n();
 	const telemetry = useTelemetry();
 	const assistantHelpers = useAIAssistantHelpers();
 
-	const suggestions = ref<{
-		[suggestionId: string]: {
-			previous: INodeParameters;
-			suggested: INodeParameters;
-		};
-	}>({});
+	const { suggestions, applyCodeDiff, undoCodeDiff } = useCodeDiff({
+		chatMessages,
+		getTargetNodeName: () => chatSessionError.value!.node.name,
+		getSessionId: () => currentSessionId.value!,
+	});
 
 	type NodeExecutionStatus = 'error' | 'not_executed' | 'success';
 
@@ -216,6 +208,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	function stopStreaming() {
 		streaming.value = false;
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+			streamingAbortController.value = null;
+		}
+	}
+
+	function abortStreaming() {
+		stopStreaming();
 	}
 
 	function addAssistantError(content: string, id: string, retry?: () => Promise<void>) {
@@ -247,6 +247,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		assert(e instanceof Error);
 		stopStreaming();
 		assistantThinkingMessage.value = undefined;
+
+		if (e.name === 'AbortError') {
+			return;
+		}
+
 		addAssistantError(
 			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
 			id,
@@ -295,8 +300,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	async function initCredHelp(credType: ICredentialType) {
 		const hasExistingSession = !!currentSessionId.value;
-		const credentialName = credType.displayName;
-		const question = `How do I set up the credentials for ${credentialName}?`;
+		const question = locale.baseText('aiAssistant.builder.credentialHelpMessage', {
+			interpolate: { credentialName: credType.displayName },
+		});
 
 		await initSupportChat(question, credType);
 
@@ -435,6 +441,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			};
 		}
 
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+		}
+		streamingAbortController.value = new AbortController();
+
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
@@ -444,6 +455,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			() => onDoneStreaming(id),
 			(e) =>
 				handleServiceError(e, id, async () => await initSupportChat(userMessage, credentialType)),
+			streamingAbortController.value.signal,
 		);
 	}
 
@@ -495,6 +507,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				},
 			},
 		};
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+		}
+		streamingAbortController.value = new AbortController();
+
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
@@ -503,6 +520,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
 			(e) => handleServiceError(e, id, async () => await initErrorHelper(context)),
+			streamingAbortController.value.signal,
 		);
 	}
 
@@ -518,6 +536,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const id = getRandomId();
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
+
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+		}
+		streamingAbortController.value = new AbortController();
+
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
@@ -532,6 +556,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
 			(e) => handleServiceError(e, id, async () => await sendEvent(eventName, error)),
+			streamingAbortController.value.signal,
 		);
 	}
 
@@ -598,6 +623,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			});
 			const userContext = await getVisualContext(nodeInfo);
 
+			if (streamingAbortController.value) {
+				streamingAbortController.value.abort();
+			}
+			streamingAbortController.value = new AbortController();
+
 			chatWithAssistant(
 				rootStore.restApiContext,
 				{
@@ -614,6 +644,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				(msg) => onEachStreamingMessage(msg, id),
 				() => onDoneStreaming(id),
 				(e) => handleServiceError(e, id, retry),
+				streamingAbortController.value.signal,
 			);
 			trackUserMessage(chatMessage.text, !!chatMessage.quickReplyType);
 		} catch (e: unknown) {
@@ -672,131 +703,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	function updateParameters(
-		workflowState: WorkflowState,
-		nodeName: string,
-		parameters: INodeParameters,
-	) {
-		if (ndvStore.activeNodeName === nodeName) {
-			Object.keys(parameters).forEach((key) => {
-				const update: IUpdateInformation = {
-					node: nodeName,
-					name: `parameters.${key}`,
-					value: parameters[key],
-				};
-
-				ndvEventBus.emit('updateParameterValue', update);
-			});
-		} else {
-			workflowState.setNodeParameters(
-				{
-					name: nodeName,
-					value: parameters,
-				},
-				true,
-			);
-		}
-	}
-
-	function getRelevantParameters(
-		parameters: INodeParameters,
-		keysToKeep: string[],
-	): INodeParameters {
-		return keysToKeep.reduce((accu: INodeParameters, key: string) => {
-			accu[key] = deepCopy(parameters[key]);
-			return accu;
-		}, {} as INodeParameters);
-	}
-
-	async function applyCodeDiff(workflowState: WorkflowState, index: number) {
-		const codeDiffMessage = chatMessages.value[index];
-		if (!codeDiffMessage || codeDiffMessage.type !== 'code-diff') {
-			throw new Error('No code diff to apply');
-		}
-
-		try {
-			assert(chatSessionError.value);
-			assert(currentSessionId.value);
-
-			codeDiffMessage.replacing = true;
-			const suggestionId = codeDiffMessage.suggestionId;
-
-			const workflowObject = workflowsStore.workflowObject;
-			const activeNode = workflowObject.getNode(chatSessionError.value.node.name);
-			assert(activeNode);
-
-			const cached = suggestions.value[suggestionId];
-			if (cached) {
-				updateParameters(workflowState, activeNode.name, cached.suggested);
-			} else {
-				const { parameters: suggested } = await replaceCode(rootStore.restApiContext, {
-					suggestionId: codeDiffMessage.suggestionId,
-					sessionId: currentSessionId.value,
-				});
-
-				suggestions.value[suggestionId] = {
-					previous: getRelevantParameters(activeNode.parameters, Object.keys(suggested)),
-					suggested,
-				};
-				updateParameters(workflowState, activeNode.name, suggested);
-			}
-
-			codeDiffMessage.replaced = true;
-			codeNodeEditorEventBus.emit('codeDiffApplied');
-			showCodeUpdateToastIfNeeded(activeNode.name);
-		} catch (e) {
-			console.error(e);
-			codeDiffMessage.error = true;
-		}
-		codeDiffMessage.replacing = false;
-	}
-
-	async function undoCodeDiff(workflowState: WorkflowState, index: number) {
-		const codeDiffMessage = chatMessages.value[index];
-		if (!codeDiffMessage || codeDiffMessage.type !== 'code-diff') {
-			throw new Error('No code diff to apply');
-		}
-
-		try {
-			assert(chatSessionError.value);
-			assert(currentSessionId.value);
-
-			codeDiffMessage.replacing = true;
-			const suggestionId = codeDiffMessage.suggestionId;
-
-			const suggestion = suggestions.value[suggestionId];
-			assert(suggestion);
-
-			const workflowObject = workflowsStore.workflowObject;
-			const activeNode = workflowObject.getNode(chatSessionError.value.node.name);
-			assert(activeNode);
-
-			const suggested = suggestion.previous;
-			updateParameters(workflowState, activeNode.name, suggested);
-
-			codeDiffMessage.replaced = false;
-			codeNodeEditorEventBus.emit('codeDiffApplied');
-			showCodeUpdateToastIfNeeded(activeNode.name);
-		} catch (e) {
-			console.error(e);
-			codeDiffMessage.error = true;
-		}
-		codeDiffMessage.replacing = false;
-	}
-
-	function showCodeUpdateToastIfNeeded(errorNodeName: string) {
-		if (errorNodeName !== ndvStore.activeNodeName) {
-			useToast().showMessage({
-				type: 'success',
-				title: locale.baseText('aiAssistant.codeUpdated.message.title'),
-				message: h(AiUpdatedCodeMessage, {
-					nodeName: errorNodeName,
-				}),
-				duration: 4000,
-			});
-		}
-	}
-
 	watch(route, () => {
 		const activeWorkflowId = workflowsStore.workflowId;
 		if (
@@ -851,5 +757,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		initCredHelp,
 		isCredTypeActive,
 		handleServiceError,
+		abortStreaming,
 	};
 });

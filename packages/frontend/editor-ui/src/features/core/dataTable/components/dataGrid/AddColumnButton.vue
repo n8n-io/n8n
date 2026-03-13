@@ -166,6 +166,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 							variant="ghost"
 							data-test-id="data-table-add-column-trigger-button"
 							icon="plus"
+							:aria-label="i18n.baseText('dataTable.addColumn.label')"
 							:disabled="isDisabled"
 						/>
 					</template>

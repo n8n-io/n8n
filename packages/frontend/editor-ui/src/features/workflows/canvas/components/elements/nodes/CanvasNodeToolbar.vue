@@ -172,6 +172,7 @@ function onAddToAi() {
 				v-if="isFocusNodeVisible"
 				size="small"
 				icon="crosshair"
+				:aria-label="i18n.baseText('node.focusNode')"
 				@click.stop="onFocusNode"
 			/>
 			<CanvasNodeStickyColorSelector
@@ -186,6 +187,7 @@ function onAddToAi() {
 					size="small"
 					text
 					icon="sparkles"
+					:aria-label="i18n.baseText('node.addToAi')"
 					@click.stop="onAddToAi"
 				/>
 			</N8nTooltip>
@@ -194,6 +196,7 @@ function onAddToAi() {
 				data-test-id="overflow-node-button"
 				size="small"
 				icon="node-ellipsis"
+				:aria-label="i18n.baseText('node.moreActions')"
 				@click.stop="onOpenContextMenu"
 			/>
 		</div>

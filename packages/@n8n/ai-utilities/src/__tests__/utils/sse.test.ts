@@ -2,26 +2,18 @@ import type { ServerSentEventMessage } from 'src/utils/sse';
 import { parseSSEStream } from 'src/utils/sse';
 
 describe('parseSSEStream', () => {
-	// Helper to create a ReadableStream from string chunks
-	function createStreamFromChunks(chunks: string[]): ReadableStream<Uint8Array> {
+	function createStreamFromChunks(chunks: string[]): AsyncIterableIterator<Buffer | Uint8Array> {
 		const encoder = new TextEncoder();
-		let index = 0;
-
-		return new ReadableStream<Uint8Array>({
-			pull(controller) {
-				if (index < chunks.length) {
-					controller.enqueue(encoder.encode(chunks[index]));
-					index++;
-				} else {
-					controller.close();
-				}
-			},
-		});
+		return (async function* () {
+			for (const chunk of chunks) {
+				yield encoder.encode(chunk);
+			}
+		})();
 	}
 
 	// Helper to collect all events from stream
 	async function collectEvents(
-		stream: ReadableStream<Uint8Array>,
+		stream: AsyncIterableIterator<Buffer | Uint8Array>,
 	): Promise<ServerSentEventMessage[]> {
 		const events: ServerSentEventMessage[] = [];
 		for await (const event of parseSSEStream(stream)) {
@@ -186,13 +178,10 @@ describe('parseSSEStream', () => {
 		const chunk1 = bytes.slice(0, 8);
 		const chunk2 = bytes.slice(8);
 
-		const stream = new ReadableStream<Uint8Array>({
-			start(controller) {
-				controller.enqueue(chunk1);
-				controller.enqueue(chunk2);
-				controller.close();
-			},
-		});
+		const stream = (async function* () {
+			yield chunk1;
+			yield chunk2;
+		})();
 
 		const events = await collectEvents(stream);
 

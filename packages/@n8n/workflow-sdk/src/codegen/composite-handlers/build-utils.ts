@@ -92,13 +92,38 @@ export function extractInputIndex(slotName: string): number {
 }
 
 /**
- * Extract output index from semantic output name (e.g., 'output0' → 0, 'output1' → 1)
+ * Extract output index from semantic output name.
+ * Maps known semantic names to their corresponding output indices:
+ * - 'output{N}' → N
+ * - 'trueBranch' → 0, 'falseBranch' → 1 (IF node)
+ * - 'case{N}' → N (Switch node)
+ * - 'done' → 0, 'loop' → 1 (SplitInBatches node)
+ * - 'error' → 0 (for nodes with continueErrorOutput, stored under error connection type)
  */
 export function getOutputIndex(outputName: string): number {
-	const match = outputName.match(/^output(\d+)$/);
-	if (match) {
-		return parseInt(match[1], 10);
+	// IF node outputs
+	if (outputName === 'trueBranch') return 0;
+	if (outputName === 'falseBranch') return 1;
+
+	// SplitInBatches outputs
+	if (outputName === 'done') return 0;
+	if (outputName === 'loop') return 1;
+
+	// Error output (stored under 'error' connection type at index 0)
+	if (outputName === 'error') return 0;
+
+	// output{N} pattern
+	const outputMatch = outputName.match(/^output(\d+)$/);
+	if (outputMatch) {
+		return parseInt(outputMatch[1], 10);
 	}
+
+	// case{N} pattern (Switch node)
+	const caseMatch = outputName.match(/^case(\d+)$/);
+	if (caseMatch) {
+		return parseInt(caseMatch[1], 10);
+	}
+
 	return 0;
 }
 
@@ -125,10 +150,14 @@ export function getAllFirstOutputTargets(node: SemanticNode): string[] {
 }
 
 /**
- * Check if a node has error output (onError: 'continueErrorOutput')
+ * Check if a node has error output connections.
+ * Either via explicit onError: 'continueErrorOutput' setting,
+ * or via error type connections in the workflow JSON.
  */
 export function hasErrorOutput(node: SemanticNode): boolean {
-	return node.json.onError === 'continueErrorOutput';
+	if (node.json.onError === 'continueErrorOutput') return true;
+	const errorConnections = node.outputs.get('error');
+	return !!errorConnections && errorConnections.length > 0;
 }
 
 /**

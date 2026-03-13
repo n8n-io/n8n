@@ -54,7 +54,7 @@ describe('WorkflowRepository', () => {
 	});
 
 	describe('applyNameFilter', () => {
-		it('should search for workflows containing any word from the query', async () => {
+		it('should search for workflows containing all words from the query', async () => {
 			const workflowIds = ['workflow1'];
 			const options = {
 				filter: { query: 'Users database' },
@@ -63,7 +63,7 @@ describe('WorkflowRepository', () => {
 			await workflowRepository.getMany(workflowIds, options);
 
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				expect.stringContaining('OR'),
+				expect.stringContaining('AND'),
 				expect.objectContaining({
 					searchWord0: '%users%',
 					searchWord1: '%database%',

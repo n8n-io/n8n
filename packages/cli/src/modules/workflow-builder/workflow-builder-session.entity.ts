@@ -1,11 +1,13 @@
+import { randomUUID } from 'node:crypto';
 import type { StoredMessage } from '@langchain/core/messages';
 import { JsonColumn, WithTimestamps } from '@n8n/db';
 import {
+	BeforeInsert,
 	Column,
 	Entity,
 	JoinColumn,
 	ManyToOne,
-	PrimaryGeneratedColumn,
+	PrimaryColumn,
 	Unique,
 } from '@n8n/typeorm';
 import type { Relation } from '@n8n/typeorm';
@@ -24,8 +26,15 @@ export interface IWorkflowBuilderSession {
 @Entity({ name: 'workflow_builder_session' })
 @Unique(['workflowId', 'userId'])
 export class WorkflowBuilderSession extends WithTimestamps implements IWorkflowBuilderSession {
-	@PrimaryGeneratedColumn('uuid')
+	@PrimaryColumn('uuid')
 	id: string;
+
+	@BeforeInsert()
+	generateId() {
+		if (!this.id) {
+			this.id = randomUUID();
+		}
+	}
 
 	@Column({ type: 'varchar', length: 36 })
 	workflowId: string;

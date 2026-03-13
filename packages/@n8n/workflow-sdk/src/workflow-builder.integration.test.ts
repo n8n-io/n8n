@@ -527,8 +527,8 @@ describe('New SDK API', () => {
 
 			// HTTP output 0 -> Success
 			expect(json.connections['HTTP'].main[0]![0].node).toBe('Success');
-			// HTTP output 1 (error) -> Error
-			expect(json.connections['HTTP'].main[1]![0].node).toBe('Error');
+			// HTTP error output -> Error (via error connection type)
+			expect(json.connections['HTTP'].error[0]![0].node).toBe('Error');
 		});
 	});
 
@@ -763,7 +763,7 @@ describe('New SDK API', () => {
 
 			// Both success and error paths should converge at Notify
 			expect(json.connections['Risky API Call'].main[0]![0].node).toBe('Process Success');
-			expect(json.connections['Risky API Call'].main[1]![0].node).toBe('Handle Error');
+			expect(json.connections['Risky API Call'].error[0]![0].node).toBe('Handle Error');
 			expect(json.connections['Process Success'].main[0]![0].node).toBe('Notify');
 			expect(json.connections['Handle Error'].main[0]![0].node).toBe('Notify');
 		});

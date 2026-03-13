@@ -283,5 +283,85 @@ describe('workflowUtils', () => {
 
 			expect(result.map((n) => n.node.name)).toEqual(['TriggerA', 'Shared', 'TriggerB']);
 		});
+
+		it('should discover AI sub-nodes connected via non-main inputs', () => {
+			const trigger = makeNode('MCPServer', [0, 0], true);
+			const tool1 = makeNode('Tool1', [100, 100]);
+			const tool2 = makeNode('Tool2', [100, 200]);
+
+			// Tools connect TO the MCP Server (tool is source, MCP Server is destination)
+			const connectionsBySource = {
+				Tool1: { ai_tool: [[{ node: 'MCPServer', type: 'ai_tool' as const, index: 0 }]] },
+				Tool2: { ai_tool: [[{ node: 'MCPServer', type: 'ai_tool' as const, index: 0 }]] },
+			};
+
+			// Inverted: MCP Server has incoming ai_tool connections from tools
+			const connectionsByDestination = {
+				MCPServer: {
+					ai_tool: [
+						[
+							{ node: 'Tool1', type: 'ai_tool' as const, index: 0 },
+							{ node: 'Tool2', type: 'ai_tool' as const, index: 0 },
+						],
+					],
+				},
+			};
+
+			const result = sortNodesByExecutionOrder(
+				[tool2, tool1, trigger],
+				connectionsBySource,
+				connectionsByDestination,
+			);
+
+			expect(result.map((n) => n.node.name)).toEqual(['MCPServer', 'Tool1', 'Tool2']);
+		});
+
+		it('should discover AI sub-nodes alongside main downstream nodes', () => {
+			const trigger = makeNode('Agent', [0, 0], true);
+			const tool = makeNode('Tool', [100, 100]);
+			const downstream = makeNode('Downstream', [200, 0]);
+
+			const connectionsBySource = {
+				Agent: { main: [[{ node: 'Downstream', type: 'main' as const, index: 0 }]] },
+				Tool: { ai_tool: [[{ node: 'Agent', type: 'ai_tool' as const, index: 0 }]] },
+			};
+
+			const connectionsByDestination = {
+				Agent: {
+					ai_tool: [[{ node: 'Tool', type: 'ai_tool' as const, index: 0 }]],
+				},
+			};
+
+			const result = sortNodesByExecutionOrder(
+				[downstream, tool, trigger],
+				connectionsBySource,
+				connectionsByDestination,
+			);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Agent', 'Downstream', 'Tool']);
+		});
+
+		it('should not follow main connections from connectionsByDestinationNode', () => {
+			const trigger = makeNode('Trigger', [0, 0], true);
+			const nodeA = makeNode('A', [100, 0]);
+
+			const connectionsBySource = {
+				Trigger: { main: [[{ node: 'A', type: 'main' as const, index: 0 }]] },
+			};
+
+			// main connections in destination map should be ignored
+			// (they are already followed via connectionsBySourceNode)
+			const connectionsByDestination = {
+				A: { main: [[{ node: 'Trigger', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder(
+				[nodeA, trigger],
+				connectionsBySource,
+				connectionsByDestination,
+			);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'A']);
+		});
 	});
 });

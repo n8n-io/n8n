@@ -132,6 +132,7 @@ describe('Secret Providers Connections API', () => {
 				id: expect.any(String),
 				name: 'awsProd',
 				type: 'awsSecretsManager',
+				isEnabled: true,
 				secretsCount: 2,
 				state: 'connected',
 				secrets: [{ name: 'test1' }, { name: 'test2' }],
@@ -355,12 +356,7 @@ describe('Secret Providers Connections API', () => {
 			).findOneByOrFail({ providerKey: 'deleteTest' });
 			const connectionId = savedConnection.id;
 
-			const response = await ownerAgent
-				.delete('/secret-providers/connections/deleteTest')
-				.expect(200);
-
-			expect(response.body.data.name).toBe('deleteTest');
-			expect(response.body.data.projects).toHaveLength(2);
+			await ownerAgent.delete('/secret-providers/connections/deleteTest').expect(204);
 
 			// Verify deletion via GET
 			await ownerAgent.get('/secret-providers/connections/deleteTest').expect(404);
@@ -422,6 +418,7 @@ describe('Secret Providers Connections API', () => {
 					id: expect.any(String),
 					name: expect.any(String),
 					type: expect.any(String),
+					isEnabled: true,
 					state: expect.any(String),
 					projects: expect.any(Array),
 					createdAt: expect.any(String),
@@ -466,6 +463,7 @@ describe('Secret Providers Connections API', () => {
 				id: expect.any(String),
 				name: 'getTest',
 				type: 'awsSecretsManager',
+				isEnabled: true,
 				state: expect.any(String),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
@@ -541,16 +539,8 @@ describe('Secret Providers Connections API', () => {
 			expect(listResponseString).not.toContain('AKIAIOSFODNN7EXAMPLE');
 			expect(listResponseString).not.toContain('very-secret-session-token');
 
-			// DELETE endpoint should include redacted settings in response
-			const deleteResponse = await ownerAgent
-				.delete('/secret-providers/connections/securityTest')
-				.expect(200);
-
-			expect(deleteResponse.body.data).toHaveProperty('settings');
-			const deleteResponseString = JSON.stringify(deleteResponse.body.data.settings);
-			expect(deleteResponseString).toContain('__n8n_BLANK_VALUE_');
-			expect(deleteResponseString).not.toContain('AKIAIOSFODNN7EXAMPLE');
-			expect(deleteResponseString).not.toContain('very-secret-session-token');
+			// DELETE endpoint should return 204 with no body
+			await ownerAgent.delete('/secret-providers/connections/securityTest').expect(204);
 		});
 	});
 
@@ -684,10 +674,9 @@ describe('Secret Providers Connections API', () => {
 				const providerKey = `deleteAuth${role.charAt(0).toUpperCase() + role.slice(1)}Test`;
 				const response = await agents[role]
 					.delete(`/secret-providers/connections/${providerKey}`)
-					.expect(allowed ? 200 : 403);
+					.expect(allowed ? 204 : 403);
 
 				if (allowed) {
-					expect(response.body.data.name).toBe(providerKey);
 					await ownerAgent.get(`/secret-providers/connections/${providerKey}`).expect(404);
 				} else {
 					expect(response.body.message).toBe(FORBIDDEN_MESSAGE);

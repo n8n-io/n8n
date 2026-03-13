@@ -15,6 +15,7 @@ describe('ChatTrigger Templates Security', () => {
 		allowedFilesMimeTypes: '',
 		customCss: '',
 		enableStreaming: false,
+		initialMessages: '',
 	};
 
 	describe('XSS Prevention in initialMessages', () => {
@@ -210,6 +211,54 @@ describe('ChatTrigger Templates Security', () => {
 			// Should still have i18n structure but no en property in the i18n config
 			expect(result).toContain('i18n: {');
 			expect(result).not.toContain('en: {');
+		});
+	});
+
+	describe('XSS Prevention in allowedFilesMimeTypes', () => {
+		it('should prevent script injection through allowedFilesMimeTypes', () => {
+			const maliciousInput = '</script><script>alert(document.cookie)</script>';
+
+			const result = createPage({
+				...defaultParams,
+				allowFileUploads: true,
+				allowedFilesMimeTypes: maliciousInput,
+			});
+
+			expect(result).not.toContain('<script>alert(document.cookie)</script>');
+			expect(result).not.toContain('</script><script>');
+			expect(result).not.toContain('alert(document.cookie)');
+		});
+
+		it('should sanitize common XSS payloads in allowedFilesMimeTypes', () => {
+			const xssPayloads = [
+				{ input: '<img src=x onerror=alert(1)>', dangerous: ['onerror=', '<img'] },
+				{ input: '<svg onload=alert(1)>', dangerous: ['onload=', '<svg'] },
+				{ input: 'javascript:alert(1)', dangerous: ['javascript:'] },
+			];
+
+			xssPayloads.forEach(({ input, dangerous }) => {
+				const result = createPage({
+					...defaultParams,
+					allowFileUploads: true,
+					allowedFilesMimeTypes: input,
+				});
+
+				dangerous.forEach((dangerousContent) => {
+					expect(result).not.toContain(dangerousContent);
+				});
+			});
+		});
+
+		it('should preserve legitimate MIME types', () => {
+			const legitimateMimeTypes = 'image/*,text/plain,application/pdf';
+
+			const result = createPage({
+				...defaultParams,
+				allowFileUploads: true,
+				allowedFilesMimeTypes: legitimateMimeTypes,
+			});
+
+			expect(result).toContain(legitimateMimeTypes);
 		});
 	});
 

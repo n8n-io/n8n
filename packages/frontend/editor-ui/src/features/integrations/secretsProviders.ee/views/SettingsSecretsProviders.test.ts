@@ -7,18 +7,54 @@ import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import SettingsSecretsProviders from './SettingsSecretsProviders.ee.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
 import { setupServer } from '@/__tests__/server';
 import { computed, ref } from 'vue';
 import type { SecretProviderConnection } from '@n8n/api-types';
-import * as restApiClient from '@n8n/rest-api-client';
 
-vi.mock('@n8n/rest-api-client', async (importOriginal) => {
-	const original = await importOriginal<typeof restApiClient>();
+// The projects store is auto-stubbed by createTestingPinia, but its `currentProjectId`
+// computed calls `useRoute()` internally, which requires vue-router to be available.
+vi.mock('vue-router', async () => {
+	const actual = await vi.importActual('vue-router');
 	return {
-		...original,
-		reloadSecretProviderConnection: vi.fn(),
+		...actual,
+		useRouter: () => ({
+			push: vi.fn(),
+		}),
+		useRoute: () => ({
+			params: {},
+			query: {},
+		}),
 	};
 });
+
+const mockShowMessage = vi.fn();
+const mockShowError = vi.fn();
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: vi.fn(() => ({
+		showMessage: mockShowMessage,
+		showError: mockShowError,
+	})),
+}));
+
+const mockReloadConnection = vi.fn();
+const mockActivateConnection = vi.fn();
+
+vi.mock('../composables/useSecretsProviderConnection.ee', () => ({
+	useSecretsProviderConnection: () => ({
+		reloadConnection: mockReloadConnection,
+		connectionState: ref('initializing'),
+		connectionError: ref(undefined),
+		isLoading: ref(false),
+		isTesting: ref(false),
+		getConnection: vi.fn(),
+		createConnection: vi.fn(),
+		updateConnection: vi.fn(),
+		testConnection: vi.fn(),
+		activateConnection: mockActivateConnection,
+	}),
+}));
 
 const mockFetchProviders = vi.fn();
 const mockFetchActiveConnections = vi.fn();
@@ -58,12 +94,14 @@ describe('SettingsSecretsProviders', () => {
 		mockFetchProviders.mockResolvedValue(undefined);
 		mockFetchActiveConnections.mockResolvedValue(undefined);
 		mockFetchConnection.mockResolvedValue(undefined);
+		mockActivateConnection.mockResolvedValue(undefined);
 		mockIsEnterpriseEnabled.value = false;
 		mockProviders.value = [];
 		mockActiveProviders.value = [];
 		mockIsLoading.value = false;
 
 		pinia = createTestingPinia({
+			stubActions: false,
 			initialState: {
 				[STORES.SETTINGS]: {
 					settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
@@ -132,8 +170,8 @@ describe('SettingsSecretsProviders', () => {
 				id: '1',
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
-				state: 'connected',
 				isEnabled: true,
+				state: 'connected',
 				projects: [],
 				settings: {},
 				secretsCount: 5,
@@ -161,8 +199,8 @@ describe('SettingsSecretsProviders', () => {
 				id: '1',
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
-				state: 'connected',
 				isEnabled: true,
+				state: 'connected',
 				projects: [],
 				settings: {},
 				secretsCount: 5,
@@ -174,8 +212,8 @@ describe('SettingsSecretsProviders', () => {
 				id: '2',
 				name: 'gcp-staging',
 				type: 'gcpSecretsManager',
-				state: 'connected',
 				isEnabled: true,
+				state: 'connected',
 				projects: [],
 				settings: {},
 				secretsCount: 3,
@@ -245,8 +283,8 @@ describe('SettingsSecretsProviders', () => {
 				id: '1',
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
-				state: 'connected',
 				isEnabled: true,
+				state: 'connected',
 				projects: [],
 				settings: {},
 				secretsCount: 5,
@@ -256,15 +294,16 @@ describe('SettingsSecretsProviders', () => {
 			},
 		];
 
-		it('should call reloadSecretProviderConnection and fetchConnection on success', async () => {
+		it('should call reloadConnection and fetchConnection on success', async () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
 			mockIsEnterpriseEnabled.value = true;
 			mockIsLoading.value = false;
 			mockActiveProviders.value = activeProviders;
 
-			vi.mocked(restApiClient.reloadSecretProviderConnection).mockResolvedValue({
-				success: true,
-			});
+			const rbacStore = useRBACStore();
+			rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+
+			mockReloadConnection.mockResolvedValue({ success: true });
 
 			const { getByTestId } = renderComponent({ pinia });
 
@@ -272,10 +311,7 @@ describe('SettingsSecretsProviders', () => {
 			await userEvent.click(getByTestId('action-reload'));
 
 			await vi.waitFor(() => {
-				expect(restApiClient.reloadSecretProviderConnection).toHaveBeenCalledWith(
-					expect.anything(),
-					'aws-prod',
-				);
+				expect(mockReloadConnection).toHaveBeenCalledWith('aws-prod');
 			});
 
 			expect(mockFetchConnection).toHaveBeenCalledWith('aws-prod');
@@ -287,19 +323,17 @@ describe('SettingsSecretsProviders', () => {
 			mockIsLoading.value = false;
 			mockActiveProviders.value = activeProviders;
 
-			vi.mocked(restApiClient.reloadSecretProviderConnection).mockResolvedValue({
-				success: false,
-			});
+			const rbacStore = useRBACStore();
+			rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+
+			mockReloadConnection.mockResolvedValue({ success: false });
 
 			const { getByTestId } = renderComponent({ pinia });
 
 			await userEvent.click(getByTestId('action-reload'));
 
 			await vi.waitFor(() => {
-				expect(restApiClient.reloadSecretProviderConnection).toHaveBeenCalledWith(
-					expect.anything(),
-					'aws-prod',
-				);
+				expect(mockReloadConnection).toHaveBeenCalledWith('aws-prod');
 			});
 
 			expect(mockFetchConnection).not.toHaveBeenCalled();
@@ -311,22 +345,84 @@ describe('SettingsSecretsProviders', () => {
 			mockIsLoading.value = false;
 			mockActiveProviders.value = activeProviders;
 
-			vi.mocked(restApiClient.reloadSecretProviderConnection).mockRejectedValue(
-				new Error('Reload failed'),
-			);
+			const rbacStore = useRBACStore();
+			rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+
+			mockReloadConnection.mockRejectedValue(new Error('Reload failed'));
 
 			const { getByTestId } = renderComponent({ pinia });
 
 			await userEvent.click(getByTestId('action-reload'));
 
 			await vi.waitFor(() => {
-				expect(restApiClient.reloadSecretProviderConnection).toHaveBeenCalledWith(
-					expect.anything(),
-					'aws-prod',
-				);
+				expect(mockReloadConnection).toHaveBeenCalledWith('aws-prod');
 			});
 
 			expect(mockFetchConnection).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('handleActivate', () => {
+		const activeProviders: SecretProviderConnection[] = [
+			{
+				id: '1',
+				name: 'aws-prod',
+				type: 'awsSecretsManager',
+				state: 'connected',
+				isEnabled: false,
+				projects: [],
+				settings: {},
+				secretsCount: 5,
+				secrets: [],
+				createdAt: '2024-01-20T10:00:00Z',
+				updatedAt: '2024-01-20T10:00:00Z',
+			},
+		];
+
+		it('should call activateConnection, fetchConnection and show success toast on success', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			mockIsEnterpriseEnabled.value = true;
+			mockIsLoading.value = false;
+			mockActiveProviders.value = activeProviders;
+
+			const rbacStore = useRBACStore();
+			rbacStore.globalScopes = ['externalSecretsProvider:update'];
+
+			mockActivateConnection.mockResolvedValue({ ...activeProviders[0], isEnabled: true });
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			await userEvent.click(getByTestId('action-activate'));
+
+			await vi.waitFor(() => {
+				expect(mockActivateConnection).toHaveBeenCalledWith('aws-prod');
+			});
+
+			expect(mockFetchConnection).toHaveBeenCalledWith('aws-prod');
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+
+		it('should show error toast and not fetch connection when activation fails', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			mockIsEnterpriseEnabled.value = true;
+			mockIsLoading.value = false;
+			mockActiveProviders.value = activeProviders;
+
+			const rbacStore = useRBACStore();
+			rbacStore.globalScopes = ['externalSecretsProvider:update'];
+
+			mockActivateConnection.mockRejectedValue(new Error('Activation failed'));
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			await userEvent.click(getByTestId('action-activate'));
+
+			await vi.waitFor(() => {
+				expect(mockActivateConnection).toHaveBeenCalledWith('aws-prod');
+			});
+
+			expect(mockFetchConnection).not.toHaveBeenCalled();
+			expect(mockShowError).toHaveBeenCalled();
 		});
 	});
 });

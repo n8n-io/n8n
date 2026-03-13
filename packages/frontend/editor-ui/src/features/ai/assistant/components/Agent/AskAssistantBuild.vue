@@ -5,8 +5,9 @@ import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/wo
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
-import { AutoSaveState } from '@/app/constants';
+import { AutoSaveState, VIEWS } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots } from 'vue';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -14,8 +15,10 @@ import { useRoute, useRouter } from 'vue-router';
 import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/app/event-bus';
+import { jsonParse } from 'n8n-workflow';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
+import ReviewChangesBanner from './ReviewChangesBanner.vue';
 import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
 import MessageFocusedNodesChips from '../FocusedNodes/MessageFocusedNodesChips.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -23,30 +26,31 @@ import { useBrowserNotifications } from '@/app/composables/useBrowserNotificatio
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
-import { VIEWS } from '@/app/constants';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import { jsonParse } from 'n8n-workflow';
 import shuffle from 'lodash/shuffle';
-import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
+import { useReviewChanges } from '@/features/ai/assistant/composables/useReviewChanges';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
-import { N8nAskAssistantChat } from '@n8n/design-system';
+import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
 import {
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
 	isPlanModeUserAnswersMessage,
+	isWebFetchApprovalCustomMessage,
 	type PlanMode,
 } from '../../assistant.types';
 import PlanDisplayMessage from './PlanDisplayMessage.vue';
 import PlanModeSelector from './PlanModeSelector.vue';
 import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
 import UserAnswersMessage from './UserAnswersMessage.vue';
+import WebFetchApprovalMessage from './WebFetchApprovalMessage.vue';
 
 const emit = defineEmits<{
 	close: [];
@@ -58,11 +62,12 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
 const workflowAutosaveStore = useWorkflowSaveStore();
-const settingsStore = useSettingsStore();
+const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
 const assistantStore = useAssistantStore();
+const settingsStore = useSettingsStore();
 const chatPanelStateStore = useChatPanelStateStore();
 const router = useRouter();
 const i18n = useI18n();
@@ -100,12 +105,9 @@ watch(
 	},
 );
 
-const showSettingsButton = computed(() => {
-	return assistantStore.canManageAISettings;
-});
-
-const allowSendingParameterValues = computed(
-	() => settingsStore.settings.ai.allowSendingParameterValues,
+const showUsabilityNotice = computed(
+	() =>
+		assistantStore.canManageAISettings && !settingsStore.settings.ai.allowSendingParameterValues,
 );
 
 const shouldShowNotificationBanner = computed(() => {
@@ -153,7 +155,8 @@ const showExecuteMessage = computed(() => {
 	const hasPendingInteraction =
 		lastAssistantMessage &&
 		(isPlanModeQuestionsMessage(lastAssistantMessage) ||
-			isPlanModePlanMessage(lastAssistantMessage));
+			isPlanModePlanMessage(lastAssistantMessage) ||
+			isWebFetchApprovalCustomMessage(lastAssistantMessage));
 
 	return (
 		!builderStore.streaming &&
@@ -197,6 +200,23 @@ const isChatInputDisabled = computed(() => {
 	return isInputDisabled.value || builderStore.shouldDisableChatInput;
 });
 
+const { showReviewChanges, nodeChanges, isExpanded, toggleExpanded, openDiffView } =
+	useReviewChanges();
+
+function onSelectChangedNode(nodeId: string) {
+	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
+}
+
+const codeDiffWorkflowState = injectWorkflowState();
+
+async function onCodeReplace(index: number) {
+	await builderStore.applyCodeDiff(codeDiffWorkflowState, index);
+}
+
+async function onCodeUndo(index: number) {
+	await builderStore.undoCodeDiff(codeDiffWorkflowState, index);
+}
+
 const disabledTooltip = computed(() => {
 	if (!isChatInputDisabled.value) {
 		return undefined;
@@ -239,6 +259,34 @@ function isLastPlanMessage(message: PlanMode.PlanMessage): boolean {
 	return !messages.slice(idx + 1).some((m) => m.role === 'user');
 }
 
+async function onWebFetchDecision(payload: {
+	requestId: string;
+	url: string;
+	domain: string;
+	action: 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
+}) {
+	builderStore.trackWorkflowBuilderJourney('web_fetch_decision', {
+		domain: payload.domain,
+		url: payload.url,
+		decision: payload.action,
+	});
+
+	const textMap: Record<string, string> = {
+		deny: i18n.baseText('aiAssistant.builder.webFetch.deny'),
+		allow_once: i18n.baseText('aiAssistant.builder.webFetch.allowOnce'),
+		allow_domain: i18n.baseText('aiAssistant.builder.webFetch.allowDomain', {
+			interpolate: { domain: payload.domain },
+		}),
+		allow_all: i18n.baseText('aiAssistant.builder.webFetch.allowAll'),
+	};
+
+	await builderStore.sendChatMessage({
+		text: textMap[payload.action],
+		resumeData: payload,
+		skipUserMessage: true,
+	});
+}
+
 async function onUserMessage(content: string) {
 	// Record activity to maintain write lock while building
 	collaborationStore.requestWriteAccess();
@@ -273,14 +321,14 @@ function onFeedback(feedback: RatingFeedback) {
 	if (feedback.rating) {
 		telemetry.track('User rated workflow generation', {
 			helpful: feedback.rating === 'up',
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			session_id: builderStore.trackingSessionId,
 		});
 	}
 	if (feedback.feedback) {
 		telemetry.track('User submitted workflow generation feedback', {
 			feedback: feedback.feedback,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			session_id: builderStore.trackingSessionId,
 			user_message_id: builderStore.lastUserMessageId,
 		});
@@ -413,8 +461,16 @@ watch(
 			builderStore.initialGeneration = false;
 		}
 
-		// Zoom to fit all nodes after generation completes
+		// Tidy up all nodes and zoom to fit after generation completes
 		if (accumulatedNodeIdsToTidyUp.value.length > 0) {
+			accumulatedNodeIdsToTidyUp.value = [];
+			await nextTick();
+			canvasEventBus.emit('tidyUp', {
+				source: 'builder-update',
+				trackEvents: false,
+				trackHistory: false,
+				trackBulk: false,
+			});
 			await nextTick();
 			canvasEventBus.emit('fitView');
 		}
@@ -462,7 +518,7 @@ function onShowVersion(versionId: string) {
 	const route = router.resolve({
 		name: VIEWS.WORKFLOW_HISTORY,
 		params: {
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowId.value,
 			versionId,
 		},
 	});
@@ -514,7 +570,7 @@ defineExpose({
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
 			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
-			:workflow-id="workflowsStore.workflowId"
+			:workflow-id="workflowId"
 			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 			:disabled="isChatInputDisabled"
 			:disabled-tooltip="disabledTooltip"
@@ -525,22 +581,28 @@ defineExpose({
 			@stop="builderStore.abortStreaming"
 			@restore-confirm="onRestoreConfirm"
 			@show-version="onShowVersion"
+			@code-replace="onCodeReplace"
+			@code-undo="onCodeUndo"
 		>
 			<template #focused-nodes-chips="{ message }">
 				<MessageFocusedNodesChips :focused-node-names="message.focusedNodeNames" />
 			</template>
-			<template #header>
-				<div :class="{ [$style.header]: true, [$style['with-slot']]: !!slots.header }">
-					<slot name="header" />
-					<AISettingsButton
-						v-if="showSettingsButton"
-						:show-usability-notice="!allowSendingParameterValues"
-						:disabled="builderStore.streaming"
-					/>
-				</div>
+			<template v-if="slots.header || showUsabilityNotice" #header>
+				<slot name="header" />
+				<N8nInfoTip v-if="showUsabilityNotice" theme="warning" type="tooltip">
+					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
+				</N8nInfoTip>
 			</template>
 			<template #inputHeader>
-				<Transition name="slide">
+				<ReviewChangesBanner
+					v-if="showReviewChanges"
+					:node-changes="nodeChanges"
+					:expanded="isExpanded"
+					@toggle="toggleExpanded"
+					@open-diff="openDiffView"
+					@select-node="onSelectChangedNode"
+				/>
+				<Transition v-else name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
 				</Transition>
 			</template>
@@ -570,6 +632,12 @@ defineExpose({
 				<UserAnswersMessage
 					v-else-if="isPlanModeUserAnswersMessage(message)"
 					:answers="message.data.answers"
+				/>
+				<WebFetchApprovalMessage
+					v-else-if="isWebFetchApprovalCustomMessage(message)"
+					:data="message.data"
+					:disabled="builderStore.streaming"
+					@decision="onWebFetchDecision"
 				/>
 			</template>
 			<template
@@ -656,17 +724,6 @@ defineExpose({
 .container {
 	height: 100%;
 	width: 100%;
-}
-
-.header {
-	display: flex;
-	justify-content: end;
-	align-items: center;
-	flex: 1;
-
-	&.with-slot {
-		justify-content: space-between;
-	}
 }
 
 .newWorkflowButtonWrapper {
