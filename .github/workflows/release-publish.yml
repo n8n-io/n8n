@@ -108,9 +108,17 @@ jobs:
       id-token: write
 
     steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
       - name: Create a Release on GitHub
         uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b # v1.20.0
         with:
+          token: ${{ steps.generate_token.outputs.token }}
           commit: ${{github.event.pull_request.base.ref}}
           tag: 'n8n@${{ needs.determine-version-info.outputs.version }}'
           prerelease: ${{ needs.determine-version-info.outputs.track == 'beta' }}
