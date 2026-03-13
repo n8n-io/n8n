@@ -19,8 +19,13 @@ This guide walks through setting up a full n8n development environment from sour
 ## Step 1 – Clone the Repository
 
 ```bash
-git clone https://github.com/abhilashjaiswal0110/n8n-repo.git
-cd n8n-repo
+# Clone the upstream n8n repository
+git clone https://github.com/n8n-io/n8n.git
+cd n8n
+
+# Or, if working from this fork:
+# git clone https://github.com/abhilashjaiswal0110/n8n-repo.git
+# cd n8n-repo
 ```
 
 ---

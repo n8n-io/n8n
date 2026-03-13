@@ -25,6 +25,7 @@ This directory contains Claude Code agent skills and plugins tailored for n8n de
 
 2. Start Claude Code in the repository root:
    ```bash
+   # Claude Code CLI (install from https://claude.ai/download)
    claude
    ```
 

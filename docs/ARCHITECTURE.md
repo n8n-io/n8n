@@ -222,7 +222,7 @@ n8n supports **SQLite** (default) and **PostgreSQL**. The database layer uses Ty
 - Migrations in `packages/@n8n/db/src/migrations/`
 - Repositories in `packages/@n8n/db/src/repositories/`
 
-> Migrations in `packages/@n8n/db/src/migrations/` require review by `@n8n-io/migrations-review` (see [CODEOWNERS](../.github/CODEOWNERS)).
+> Migrations in `packages/@n8n/db/src/migrations/` require careful review before merging. If a CODEOWNERS file is present in `.github/CODEOWNERS`, ensure the migrations path is covered by the appropriate reviewers.
 
 ---
 
