@@ -13,7 +13,6 @@ import type { ExternalSecretsProviderRegistry } from '@/modules/external-secrets
 import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 import { SecretsProvidersConnectionsService } from '@/modules/external-secrets.ee/secrets-providers-connections.service.ee';
 import type { SecretsProvider } from '@/modules/external-secrets.ee/types';
-
 describe('SecretsProvidersConnectionsService', () => {
 	const mockRepository = mock<SecretsProviderConnectionRepository>();
 	const mockProjectAccessRepository = mock<ProjectSecretsProviderAccessRepository>();
@@ -358,6 +357,7 @@ describe('SecretsProvidersConnectionsService', () => {
 					projectIds: [],
 				},
 				'user-123',
+				'secretsProviderConnection:user',
 			);
 
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
@@ -418,6 +418,7 @@ describe('SecretsProvidersConnectionsService', () => {
 					projectIds: ['p1', 'p2'],
 				},
 				'user-123',
+				'secretsProviderConnection:user',
 			);
 
 			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-created', {
@@ -665,6 +666,7 @@ describe('SecretsProvidersConnectionsService', () => {
 					projectIds: [],
 				},
 				'test-user',
+				'secretsProviderConnection:user',
 			);
 
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
@@ -687,6 +689,56 @@ describe('SecretsProvidersConnectionsService', () => {
 			await service.deleteConnection('my-aws', 'test-user');
 
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
+		});
+	});
+
+	describe('role assignment on project access', () => {
+		const savedConnection = {
+			id: 1,
+			providerKey: 'my-aws',
+			type: 'awsSecretsManager',
+			encryptedSettings: '{"apiKey":"secret"}',
+			isEnabled: true,
+			projectAccess: [],
+			createdAt: new Date('2024-01-01'),
+			updatedAt: new Date('2024-01-02'),
+		} as unknown as SecretsProviderConnection;
+
+		it('should pass the provided role when creating project access entries', async () => {
+			mockRepository.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(savedConnection);
+			mockRepository.create.mockReturnValue(savedConnection);
+			mockRepository.save.mockResolvedValue(savedConnection);
+
+			await service.createConnection(
+				{
+					providerKey: 'my-aws',
+					type: 'awsSecretsManager',
+					settings: { apiKey: 'secret' },
+					projectIds: ['p1'],
+				},
+				'user-123',
+				'secretsProviderConnection:owner',
+			);
+
+			expect(mockProjectAccessRepository.create).toHaveBeenCalledWith({
+				secretsProviderConnectionId: 1,
+				projectId: 'p1',
+				role: 'secretsProviderConnection:owner',
+			});
+		});
+
+		it('should set user role when updating project access via updateConnection', async () => {
+			mockRepository.findOne
+				.mockResolvedValueOnce(savedConnection)
+				.mockResolvedValueOnce(savedConnection);
+
+			await service.updateConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+
+			expect(mockProjectAccessRepository.setProjectAccess).toHaveBeenCalledWith(
+				1,
+				['p1'],
+				'secretsProviderConnection:user',
+			);
 		});
 	});
 
