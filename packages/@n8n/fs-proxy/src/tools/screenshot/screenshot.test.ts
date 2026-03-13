@@ -99,7 +99,7 @@ describe('screen_screenshot tool', () => {
 		expect(imageBlock).toHaveProperty('mediaType', 'image/jpeg');
 	});
 
-	it('defaults to the primary monitor when no display argument is given', async () => {
+	it('uses the primary monitor when multiple monitors are available', async () => {
 		const secondary = makeMockMonitor({ isPrimary: false, x: 1920 });
 		const primary = makeMockMonitor({ isPrimary: true, x: 0 });
 		(MockMonitor.all as jest.Mock).mockReturnValue([secondary, primary]);
@@ -110,31 +110,11 @@ describe('screen_screenshot tool', () => {
 		expect(secondary.captureImage).not.toHaveBeenCalled();
 	});
 
-	it('selects the correct monitor by display index', async () => {
-		const monitor0 = makeMockMonitor({ isPrimary: true });
-		const monitor1 = makeMockMonitor({ isPrimary: false, x: 1920 });
-		(MockMonitor.all as jest.Mock).mockReturnValue([monitor0, monitor1]);
-
-		await screenshotTool.execute({ display: 1 }, DUMMY_CONTEXT);
-
-		expect(monitor1.captureImage).toHaveBeenCalled();
-		expect(monitor0.captureImage).not.toHaveBeenCalled();
-	});
-
 	it('throws when no monitors are available', async () => {
 		(MockMonitor.all as jest.Mock).mockReturnValue([]);
 
 		await expect(screenshotTool.execute({}, DUMMY_CONTEXT)).rejects.toThrow(
 			'No monitors available',
-		);
-	});
-
-	it('throws a helpful error when display index is out of range', async () => {
-		const monitor = makeMockMonitor({ isPrimary: true });
-		(MockMonitor.all as jest.Mock).mockReturnValue([monitor]);
-
-		await expect(screenshotTool.execute({ display: 5 }, DUMMY_CONTEXT)).rejects.toThrow(
-			'Display index 5 out of range',
 		);
 	});
 

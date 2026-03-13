@@ -1,6 +1,7 @@
 import robot from '@jitsi/robotjs';
 import { z } from 'zod';
 
+import { getPrimaryMonitor } from '../monitor-utils';
 import type { ToolDefinition } from '../types';
 
 const IS_MACOS = process.platform === 'darwin';
@@ -50,9 +51,52 @@ const SHORTCUT_EXAMPLE = IS_MACOS
 
 // ── Mouse tools ──────────────────────────────────────────────────────────────
 
+const screenSizeParams = {
+	screenWidth: z
+		.number()
+		.int()
+		.optional()
+		.describe(
+			'Width of the screen as the agent perceived it from the screenshot (pixels). ' +
+				'Use the actual pixel width of the screenshot image you received.',
+		),
+	screenHeight: z
+		.number()
+		.int()
+		.optional()
+		.describe(
+			'Height of the screen as the agent perceived it from the screenshot (pixels). ' +
+				'Use the actual pixel height of the screenshot image you received.',
+		),
+};
+
+/**
+ * Scale agent coordinates to real monitor coordinates.
+ *
+ * The agent calculates positions based on the screenshot it receives.
+ * When `screenWidth`/`screenHeight` are provided they represent the
+ * image dimensions the agent used. We map those back to the real
+ * logical monitor resolution using the same primary-monitor dimensions
+ * that the screenshot tool uses.
+ */
+function scaleCoord(
+	x: number,
+	y: number,
+	screenWidth: number | undefined,
+	screenHeight: number | undefined,
+): { x: number; y: number } {
+	if (!screenWidth || !screenHeight) return { x, y };
+	const monitor = getPrimaryMonitor();
+	return {
+		x: Math.round((x * monitor.width()) / screenWidth),
+		y: Math.round((y * monitor.height()) / screenHeight),
+	};
+}
+
 const mouseMoveSchema = z.object({
 	x: z.number().int().describe('Target X coordinate in pixels'),
 	y: z.number().int().describe('Target Y coordinate in pixels'),
+	...screenSizeParams,
 });
 
 export const mouseMoveTool: ToolDefinition<typeof mouseMoveSchema> = {
@@ -60,8 +104,9 @@ export const mouseMoveTool: ToolDefinition<typeof mouseMoveSchema> = {
 	description: 'Move the mouse cursor to the specified screen coordinates',
 	inputSchema: mouseMoveSchema,
 	annotations: { defaultPermission: 'confirm' },
-	execute({ x, y }) {
-		robot.moveMouse(x, y);
+	execute({ x, y, screenWidth, screenHeight }) {
+		const scaled = scaleCoord(x, y, screenWidth, screenHeight);
+		robot.moveMouse(scaled.x, scaled.y);
 		return { content: [{ type: 'text', text: 'ok' }] };
 	},
 };
@@ -70,6 +115,7 @@ const mouseClickSchema = z.object({
 	x: z.number().int().describe('X coordinate to click'),
 	y: z.number().int().describe('Y coordinate to click'),
 	button: z.enum(['left', 'right', 'middle']).optional().describe('Mouse button (default: left)'),
+	...screenSizeParams,
 });
 
 export const mouseClickTool: ToolDefinition<typeof mouseClickSchema> = {
@@ -77,8 +123,9 @@ export const mouseClickTool: ToolDefinition<typeof mouseClickSchema> = {
 	description: 'Move the mouse to the specified coordinates and click',
 	inputSchema: mouseClickSchema,
 	annotations: { defaultPermission: 'confirm' },
-	execute({ x, y, button = 'left' }) {
-		robot.moveMouse(x, y);
+	execute({ x, y, button = 'left', screenWidth, screenHeight }) {
+		const scaled = scaleCoord(x, y, screenWidth, screenHeight);
+		robot.moveMouse(scaled.x, scaled.y);
 		robot.mouseClick(button);
 		return { content: [{ type: 'text', text: 'ok' }] };
 	},
@@ -87,6 +134,7 @@ export const mouseClickTool: ToolDefinition<typeof mouseClickSchema> = {
 const mouseDoubleClickSchema = z.object({
 	x: z.number().int().describe('X coordinate to double-click'),
 	y: z.number().int().describe('Y coordinate to double-click'),
+	...screenSizeParams,
 });
 
 export const mouseDoubleClickTool: ToolDefinition<typeof mouseDoubleClickSchema> = {
@@ -94,8 +142,9 @@ export const mouseDoubleClickTool: ToolDefinition<typeof mouseDoubleClickSchema>
 	description: 'Move the mouse to the specified coordinates and double-click',
 	inputSchema: mouseDoubleClickSchema,
 	annotations: { defaultPermission: 'confirm' },
-	execute({ x, y }) {
-		robot.moveMouse(x, y);
+	execute({ x, y, screenWidth, screenHeight }) {
+		const scaled = scaleCoord(x, y, screenWidth, screenHeight);
+		robot.moveMouse(scaled.x, scaled.y);
 		robot.mouseClick('left', true);
 		return { content: [{ type: 'text', text: 'ok' }] };
 	},
@@ -106,6 +155,7 @@ const mouseDragSchema = z.object({
 	fromY: z.number().int().describe('Starting Y coordinate'),
 	toX: z.number().int().describe('Target X coordinate'),
 	toY: z.number().int().describe('Target Y coordinate'),
+	...screenSizeParams,
 });
 
 export const mouseDragTool: ToolDefinition<typeof mouseDragSchema> = {
@@ -113,10 +163,12 @@ export const mouseDragTool: ToolDefinition<typeof mouseDragSchema> = {
 	description: 'Click-drag from one coordinate to another',
 	inputSchema: mouseDragSchema,
 	annotations: { defaultPermission: 'confirm' },
-	execute({ fromX, fromY, toX, toY }) {
-		robot.moveMouse(fromX, fromY);
+	execute({ fromX, fromY, toX, toY, screenWidth, screenHeight }) {
+		const scaledFrom = scaleCoord(fromX, fromY, screenWidth, screenHeight);
+		const scaledTo = scaleCoord(toX, toY, screenWidth, screenHeight);
+		robot.moveMouse(scaledFrom.x, scaledFrom.y);
 		robot.mouseToggle('down');
-		robot.dragMouse(toX, toY);
+		robot.dragMouse(scaledTo.x, scaledTo.y);
 		robot.mouseToggle('up');
 		return { content: [{ type: 'text', text: 'ok' }] };
 	},
@@ -127,6 +179,7 @@ const mouseScrollSchema = z.object({
 	y: z.number().int().describe('Y coordinate to scroll at'),
 	direction: z.enum(['up', 'down', 'left', 'right']).describe('Scroll direction'),
 	amount: z.number().int().describe('Number of scroll ticks'),
+	...screenSizeParams,
 });
 
 export const mouseScrollTool: ToolDefinition<typeof mouseScrollSchema> = {
@@ -134,8 +187,9 @@ export const mouseScrollTool: ToolDefinition<typeof mouseScrollSchema> = {
 	description: 'Scroll at the specified screen coordinates',
 	inputSchema: mouseScrollSchema,
 	annotations: { defaultPermission: 'confirm' },
-	execute({ x, y, direction, amount }) {
-		robot.moveMouse(x, y);
+	execute({ x, y, direction, amount, screenWidth, screenHeight }) {
+		const scaled = scaleCoord(x, y, screenWidth, screenHeight);
+		robot.moveMouse(scaled.x, scaled.y);
 		// robotjs scrollMouse(x, y): positive x = right, positive y = down
 		const dx = direction === 'right' ? amount : direction === 'left' ? -amount : 0;
 		const dy = direction === 'down' ? amount : direction === 'up' ? -amount : 0;

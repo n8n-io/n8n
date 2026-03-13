@@ -27,6 +27,10 @@ jest.mock('@jitsi/robotjs', () => ({
 	},
 }));
 
+jest.mock('../monitor-utils', () => ({
+	getPrimaryMonitor: jest.fn().mockReturnValue({ width: () => 1920, height: () => 1080 }),
+}));
+
 const mockRobot = robot as jest.Mocked<typeof robot>;
 
 const DUMMY_CONTEXT = { dir: '/test/base' };
@@ -43,6 +47,16 @@ describe('mouse_move', () => {
 		expect(mockRobot.moveMouse).toHaveBeenCalledWith(100, 200);
 		expect(result).toEqual(OK_RESULT);
 	});
+
+	it('scales coordinates when screenWidth and screenHeight are provided', async () => {
+		// Real screen: 1920x1080, agent perceived: 960x540 → scale factor 2
+		await mouseMoveTool.execute(
+			{ x: 100, y: 50, screenWidth: 960, screenHeight: 540 },
+			DUMMY_CONTEXT,
+		);
+
+		expect(mockRobot.moveMouse).toHaveBeenCalledWith(200, 100);
+	});
 });
 
 describe('mouse_click', () => {
@@ -50,8 +64,8 @@ describe('mouse_click', () => {
 		['left', 100, 50],
 		['right', 300, 400],
 		['middle', 0, 0],
-	] as const)('moves then clicks with %s button', (button, x, y) => {
-		const result = mouseClickTool.execute({ x, y, button }, DUMMY_CONTEXT);
+	] as const)('moves then clicks with %s button', async (button, x, y) => {
+		const result = await mouseClickTool.execute({ x, y, button }, DUMMY_CONTEXT);
 
 		expect(mockRobot.moveMouse).toHaveBeenCalledWith(x, y);
 		expect(mockRobot.mouseClick).toHaveBeenCalledWith(button);
@@ -63,20 +77,38 @@ describe('mouse_click', () => {
 
 		expect(mockRobot.mouseClick).toHaveBeenCalledWith('left');
 	});
+
+	it('scales coordinates when screenWidth and screenHeight are provided', async () => {
+		await mouseClickTool.execute(
+			{ x: 100, y: 50, screenWidth: 960, screenHeight: 540 },
+			DUMMY_CONTEXT,
+		);
+
+		expect(mockRobot.moveMouse).toHaveBeenCalledWith(200, 100);
+	});
 });
 
 describe('mouse_double_click', () => {
-	it('calls mouseClick with left button and double=true', () => {
-		const result = mouseDoubleClickTool.execute({ x: 50, y: 75 }, DUMMY_CONTEXT);
+	it('calls mouseClick with left button and double=true', async () => {
+		const result = await mouseDoubleClickTool.execute({ x: 50, y: 75 }, DUMMY_CONTEXT);
 
 		expect(mockRobot.moveMouse).toHaveBeenCalledWith(50, 75);
 		expect(mockRobot.mouseClick).toHaveBeenCalledWith('left', true);
 		expect(result).toEqual(OK_RESULT);
 	});
+
+	it('scales coordinates when screenWidth and screenHeight are provided', async () => {
+		await mouseDoubleClickTool.execute(
+			{ x: 100, y: 50, screenWidth: 960, screenHeight: 540 },
+			DUMMY_CONTEXT,
+		);
+
+		expect(mockRobot.moveMouse).toHaveBeenCalledWith(200, 100);
+	});
 });
 
 describe('mouse_drag', () => {
-	it('moves, toggles down, drags, toggles up in order', () => {
+	it('moves, toggles down, drags, toggles up in order', async () => {
 		const callOrder: string[] = [];
 		(mockRobot.moveMouse as jest.Mock).mockImplementation(() => callOrder.push('moveMouse'));
 		(mockRobot.mouseToggle as jest.Mock).mockImplementation((dir: string) =>
@@ -84,7 +116,7 @@ describe('mouse_drag', () => {
 		);
 		(mockRobot.dragMouse as jest.Mock).mockImplementation(() => callOrder.push('dragMouse'));
 
-		const result = mouseDragTool.execute(
+		const result = await mouseDragTool.execute(
 			{ fromX: 10, fromY: 20, toX: 100, toY: 200 },
 			DUMMY_CONTEXT,
 		);
@@ -96,6 +128,16 @@ describe('mouse_drag', () => {
 		expect(callOrder).toEqual(['moveMouse', 'toggle-down', 'dragMouse', 'toggle-up']);
 		expect(result).toEqual(OK_RESULT);
 	});
+
+	it('scales from and to coordinates when screenWidth and screenHeight are provided', async () => {
+		await mouseDragTool.execute(
+			{ fromX: 100, fromY: 50, toX: 200, toY: 100, screenWidth: 960, screenHeight: 540 },
+			DUMMY_CONTEXT,
+		);
+
+		expect(mockRobot.moveMouse).toHaveBeenCalledWith(200, 100);
+		expect(mockRobot.dragMouse).toHaveBeenCalledWith(400, 200);
+	});
 });
 
 describe('mouse_scroll', () => {
@@ -106,14 +148,26 @@ describe('mouse_scroll', () => {
 		['right', 4, 4, 0],
 	] as const)(
 		'direction %s with amount %i passes dx=%i dy=%i to scrollMouse',
-		(direction, amount, expectedDx, expectedDy) => {
-			const result = mouseScrollTool.execute({ x: 50, y: 50, direction, amount }, DUMMY_CONTEXT);
+		async (direction, amount, expectedDx, expectedDy) => {
+			const result = await mouseScrollTool.execute(
+				{ x: 50, y: 50, direction, amount },
+				DUMMY_CONTEXT,
+			);
 
 			expect(mockRobot.moveMouse).toHaveBeenCalledWith(50, 50);
 			expect(mockRobot.scrollMouse).toHaveBeenCalledWith(expectedDx, expectedDy);
 			expect(result).toEqual(OK_RESULT);
 		},
 	);
+
+	it('scales coordinates when screenWidth and screenHeight are provided', async () => {
+		await mouseScrollTool.execute(
+			{ x: 100, y: 50, direction: 'down', amount: 3, screenWidth: 960, screenHeight: 540 },
+			DUMMY_CONTEXT,
+		);
+
+		expect(mockRobot.moveMouse).toHaveBeenCalledWith(200, 100);
+	});
 });
 
 describe('keyboard_type', () => {
@@ -156,22 +210,22 @@ describe('keyboard_type', () => {
 });
 
 describe('keyboard_key_tap', () => {
-	it('passes the key directly to keyTap', () => {
-		const result = keyboardKeyTapTool.execute({ key: 'enter' }, DUMMY_CONTEXT);
+	it('passes the key directly to keyTap', async () => {
+		const result = await keyboardKeyTapTool.execute({ key: 'enter' }, DUMMY_CONTEXT);
 
 		expect(mockRobot.keyTap).toHaveBeenCalledWith('enter');
 		expect(result).toEqual(OK_RESULT);
 	});
 
-	it('normalizes "return" alias to "enter"', () => {
-		const result = keyboardKeyTapTool.execute({ key: 'return' }, DUMMY_CONTEXT);
+	it('normalizes "return" alias to "enter"', async () => {
+		const result = await keyboardKeyTapTool.execute({ key: 'return' }, DUMMY_CONTEXT);
 
 		expect(mockRobot.keyTap).toHaveBeenCalledWith('enter');
 		expect(result).toEqual(OK_RESULT);
 	});
 
-	it('normalizes "esc" alias to "escape"', () => {
-		const result = keyboardKeyTapTool.execute({ key: 'esc' }, DUMMY_CONTEXT);
+	it('normalizes "esc" alias to "escape"', async () => {
+		const result = await keyboardKeyTapTool.execute({ key: 'esc' }, DUMMY_CONTEXT);
 
 		expect(mockRobot.keyTap).toHaveBeenCalledWith('escape');
 		expect(result).toEqual(OK_RESULT);
@@ -186,8 +240,8 @@ describe('keyboard_shortcut', () => {
 		[['cmd', 'alt', 'delete'], 'delete', ['command', 'alt']],
 	] as const)(
 		'keys %p → taps %s with normalized modifiers %p',
-		(keys, expectedKey, expectedModifiers) => {
-			const result = keyboardShortcutTool.execute({ keys: [...keys] }, DUMMY_CONTEXT);
+		async (keys, expectedKey, expectedModifiers) => {
+			const result = await keyboardShortcutTool.execute({ keys: [...keys] }, DUMMY_CONTEXT);
 
 			expect(mockRobot.keyTap).toHaveBeenCalledWith(expectedKey, expectedModifiers);
 			expect(result).toEqual(OK_RESULT);

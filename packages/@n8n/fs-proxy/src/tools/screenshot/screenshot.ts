@@ -1,27 +1,16 @@
-import { Monitor } from 'node-screenshots';
 import sharp from 'sharp';
 import { z } from 'zod';
 
+import { getPrimaryMonitor } from '../monitor-utils';
 import type { McpImageContent, ToolContext, ToolDefinition } from '../types';
 
-const screenshotSchema = z.object({
-	display: z
-		.number()
-		.int()
-		.optional()
-		.describe('Display index (0-based). Defaults to the primary monitor.'),
-});
+const screenshotSchema = z.object({});
 
 const screenshotRegionSchema = z.object({
 	x: z.number().int().describe('Region left position in pixels (absolute screen coordinates)'),
 	y: z.number().int().describe('Region top position in pixels (absolute screen coordinates)'),
 	width: z.number().int().describe('Region width in pixels'),
 	height: z.number().int().describe('Region height in pixels'),
-	display: z
-		.number()
-		.int()
-		.optional()
-		.describe('Display index (0-based). Defaults to the primary monitor.'),
 });
 
 async function toJpeg(
@@ -38,26 +27,13 @@ async function toJpeg(
 	return await pipeline.jpeg({ quality: 80 }).toBuffer();
 }
 
-function getMonitor(displayIndex?: number): Monitor {
-	const monitors = Monitor.all();
-	if (monitors.length === 0) throw new Error('No monitors available');
-	if (displayIndex === undefined || displayIndex === null) {
-		return monitors.find((m) => m.isPrimary()) ?? monitors[0];
-	}
-	const monitor = monitors[displayIndex];
-	if (!monitor) {
-		throw new Error(`Display index ${displayIndex} out of range (${monitors.length} displays)`);
-	}
-	return monitor;
-}
-
 export const screenshotTool: ToolDefinition<typeof screenshotSchema, McpImageContent> = {
 	name: 'screen_screenshot',
 	description: 'Capture a screenshot of the full screen and return it as a base64-encoded JPEG',
 	inputSchema: screenshotSchema,
 	annotations: { defaultPermission: 'allow', readOnly: true },
-	async execute({ display }: z.infer<typeof screenshotSchema>, _context: ToolContext) {
-		const monitor = getMonitor(display);
+	async execute(_input: z.infer<typeof screenshotSchema>, _context: ToolContext) {
+		const monitor = getPrimaryMonitor();
 		const image = await monitor.captureImage();
 		const rawBuffer = await image.toRaw();
 		const jpegBuffer = await toJpeg(
@@ -86,10 +62,10 @@ export const screenshotRegionTool: ToolDefinition<typeof screenshotRegionSchema,
 		inputSchema: screenshotRegionSchema,
 		annotations: { defaultPermission: 'allow', readOnly: true },
 		async execute(
-			{ x, y, width, height, display }: z.infer<typeof screenshotRegionSchema>,
+			{ x, y, width, height }: z.infer<typeof screenshotRegionSchema>,
 			_context: ToolContext,
 		) {
-			const monitor = getMonitor(display);
+			const monitor = getPrimaryMonitor();
 			const image = await monitor.captureImage();
 			const scaleFactor = monitor.scaleFactor();
 
