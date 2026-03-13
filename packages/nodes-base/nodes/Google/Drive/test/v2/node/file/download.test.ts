@@ -13,6 +13,10 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('test GoogleDriveV2: file download', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be called with', async () => {
 		const nodeParameters = {
 			operation: 'deleteFile',
@@ -44,6 +48,44 @@ describe('test GoogleDriveV2: file download', () => {
 			'/drive/v3/files/fileIDxxxxxx',
 			{},
 			{ alt: 'media', supportsAllDrives: true },
+			undefined,
+			{ encoding: 'arraybuffer', json: false, returnFullResponse: true, useStream: true },
+		);
+	});
+
+	it('should export Google Docs as Markdown', async () => {
+		const nodeParameters = {
+			fileId: {
+				__rl: true,
+				value: 'fileIDxxxxxx',
+				mode: 'list',
+			},
+			options: {
+				googleFileConversion: {
+					conversion: {
+						docsToFormat: 'text/markdown',
+					},
+				},
+			},
+		};
+
+		(transport.googleApiRequest as jest.Mock)
+			.mockResolvedValueOnce({ mimeType: 'application/vnd.google-apps.document', name: 'test' })
+			.mockResolvedValueOnce({
+				headers: { 'content-type': 'text/markdown' },
+				body: Buffer.from(''),
+			});
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, driveNode);
+		await download.execute.call(fakeExecuteFunction, 0, { json: {} });
+
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.googleApiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/drive/v3/files/fileIDxxxxxx/export',
+			{},
+			{ mimeType: 'text/markdown', supportsAllDrives: true },
 			undefined,
 			{ encoding: 'arraybuffer', json: false, returnFullResponse: true, useStream: true },
 		);
