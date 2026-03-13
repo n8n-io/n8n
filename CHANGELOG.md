@@ -1,3 +1,14 @@
+## [1.123.24](https://github.com/n8n-io/n8n/compare/n8n@1.123.23...n8n@1.123.24) (2026-03-13)
+
+
+### Bug Fixes
+
+* **core:** Fix entity import failing in Kubernetes due to ZIP self-inclusion and local header size placeholders (backport to 1.x) ([#26823](https://github.com/n8n-io/n8n/issues/26823)) ([ebf7721](https://github.com/n8n-io/n8n/commit/ebf7721a59604d6dd78cb58dc53501dd414aeb8e))
+* **Form Node:** Improve custom CSS sanitization (backport to 1.x) ([#26668](https://github.com/n8n-io/n8n/issues/26668)) ([4aa5c06](https://github.com/n8n-io/n8n/commit/4aa5c06fc4fa28d629f6cf6b863fb65fcb4a9069))
+* **Form Node:** Improve form rendering consistency (backport to 1.x) ([#26656](https://github.com/n8n-io/n8n/issues/26656)) ([4849d95](https://github.com/n8n-io/n8n/commit/4849d95b4b70a309f778c698540aa8c1a4d24966))
+
+
+
 ## [1.123.23](https://github.com/n8n-io/n8n/compare/n8n@1.123.22...n8n@1.123.23) (2026-03-04)
 
 
