@@ -155,3 +155,5 @@ minimumReleaseAgeExclude:
   - multer
   - simple-git
   - underscore
+  # Renovate security update: minimatch@<=5.1.8@9.0.7
+  - minimatch@<=5.1.8@9.0.7
