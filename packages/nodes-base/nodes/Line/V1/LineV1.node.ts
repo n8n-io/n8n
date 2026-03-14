@@ -61,57 +61,57 @@ export class LineV1 implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
-				if (resource === 'notification') {
-					if (operation === 'send') {
-						const message = this.getNodeParameter('message', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const body: IDataObject = { message };
-						Object.assign(body, additionalFields);
-
-						if (body.hasOwnProperty('notificationDisabled')) {
-							body.notificationDisabled = body.notificationDisabled ? 'true' : 'false';
-						}
-
-						if (body.stickerUi) {
-							const sticker = (body.stickerUi as IDataObject).stickerValue as IDataObject;
-							if (sticker) {
-								body.stickerId = sticker.stickerId;
-								body.stickerPackageId = sticker.stickerPackageId;
-							}
-							delete body.stickerUi;
-						}
-
-						if (body.imageUi) {
-							const image = (body.imageUi as IDataObject).imageValue as IDataObject;
-							if (image && image.binaryData === true) {
-								const binaryProperty = image.binaryProperty as string;
-								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
-								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-									i,
-									binaryProperty,
-								);
-								body.imageFile = {
-									value: binaryDataBuffer,
-									options: { filename: binaryData.fileName },
-								};
-							} else {
-								body.imageFullsize = image.imageFullsize;
-								body.imageThumbnail = image.imageThumbnail;
-							}
-							delete body.imageUi;
-						}
-
-						responseData = await lineApiRequest.call(
-							this,
-							'POST',
-							'',
-							{},
-							{},
-							'https://notify-api.line.me/api/notify',
-							{ formData: body },
-						);
-					}
+				if (resource !== 'notification' || operation !== 'send') {
+					continue;
 				}
+
+				const message = this.getNodeParameter('message', i) as string;
+				const additionalFields = this.getNodeParameter('additionalFields', i);
+				const body: IDataObject = { message };
+				Object.assign(body, additionalFields);
+
+				if (body.hasOwnProperty('notificationDisabled')) {
+					body.notificationDisabled = body.notificationDisabled ? 'true' : 'false';
+				}
+
+				if (body.stickerUi) {
+					const sticker = (body.stickerUi as IDataObject).stickerValue as IDataObject;
+					if (sticker) {
+						body.stickerId = sticker.stickerId;
+						body.stickerPackageId = sticker.stickerPackageId;
+					}
+					delete body.stickerUi;
+				}
+
+				if (body.imageUi) {
+					const image = (body.imageUi as IDataObject).imageValue as IDataObject;
+					if (image && image.binaryData === true) {
+						const binaryProperty = image.binaryProperty as string;
+						const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+							i,
+							binaryProperty,
+						);
+						body.imageFile = {
+							value: binaryDataBuffer,
+							options: { filename: binaryData.fileName },
+						};
+					} else {
+						body.imageFullsize = image.imageFullsize;
+						body.imageThumbnail = image.imageThumbnail;
+					}
+					delete body.imageUi;
+				}
+
+				responseData = await lineApiRequest.call(
+					this,
+					'POST',
+					'',
+					{},
+					{},
+					'https://notify-api.line.me/api/notify',
+					{ formData: body },
+				);
 
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject),
