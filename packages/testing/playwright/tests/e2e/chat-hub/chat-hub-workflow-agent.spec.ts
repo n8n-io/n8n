@@ -40,8 +40,9 @@ test.describe(
 			// STEP: Select the workflow agent for new conversation
 			await n8n.navigate.toChatHub();
 			await n8n.chatHubChat.getModelSelectorButton().click();
-			await n8n.page.waitForTimeout(500);
-			await n8n.chatHubChat.getVisiblePopoverMenuItem('Workflow agents').hover({ force: true });
+			const workflowAgentsItem = n8n.chatHubChat.getVisiblePopoverMenuItem('Workflow agents');
+			await workflowAgentsItem.waitFor({ state: 'visible' });
+			await workflowAgentsItem.hover();
 			await n8n.chatHubChat.getVisiblePopoverMenuItem(agentWorkflow.name, { exact: true }).click();
 
 			// STEP: Send message again

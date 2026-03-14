@@ -112,7 +112,7 @@ test.describe(
 			await memberN8n.chatHubChat.getModelSelectorButton().click();
 			await expect(memberN8n.chatHubChat.getVisiblePopoverMenuItem('Anthropic')).toBeVisible();
 			await expect(memberN8n.chatHubChat.getVisiblePopoverMenuItem('OpenAI')).toBeHidden();
-			await memberN8n.chatHubChat.getVisiblePopoverMenuItem('Anthropic').hover({ force: true });
+			await memberN8n.chatHubChat.getVisiblePopoverMenuItem('Anthropic').hover();
 
 			const anthropicModels = memberN8n.chatHubChat.getVisiblePopoverMenuItem(/^Claude/);
 			await expect(anthropicModels).toHaveText(['Claude Opus 4.5']);
