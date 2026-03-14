@@ -155,3 +155,5 @@ minimumReleaseAgeExclude:
   - multer
   - simple-git
   - underscore
+  # Renovate security update: file-type@21.3.1
+  - file-type@21.3.1
