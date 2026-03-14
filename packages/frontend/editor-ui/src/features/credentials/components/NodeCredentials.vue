@@ -33,6 +33,7 @@ import {
 	getAuthTypeForNodeCredential,
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
+	getInactiveCredentials,
 } from '@/app/utils/nodeTypesUtils';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -461,10 +462,28 @@ function onCredentialSelected(
 
 	const node = props.node;
 
-	const credentials = {
+	// Start with existing credentials and add new selection
+	let credentials = {
 		...(node.credentials ?? {}),
 		[selectedCredentialsType]: newSelectedCredentials,
 	};
+
+	// Clean up credentials that are no longer active due to displayOptions mismatch
+	if (nodeType.value) {
+		const inactiveCredentials = getInactiveCredentials(
+			{ ...node, credentials },
+			nodeType.value,
+			nodeHelpers,
+		);
+
+		// Remove all inactive credentials
+		if (inactiveCredentials.length > 0) {
+			credentials = { ...credentials };
+			inactiveCredentials.forEach((credType) => {
+				delete credentials[credType];
+			});
+		}
+	}
 
 	const updateInformation: INodeUpdatePropertiesInformation = {
 		name: props.node.name,

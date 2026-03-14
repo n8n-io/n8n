@@ -23,6 +23,7 @@ import {
 	type Themed,
 } from 'n8n-workflow';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import type { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
 /*
 	Constants and utility functions mainly used to get information about
@@ -490,3 +491,48 @@ export const getThemedValue = <T extends string>(
 
 	return value[theme];
 };
+
+/**
+ * Returns credential type names that are currently inactive
+ * (their displayOptions don't match the node's current parameters)
+ *
+ * This follows the same approach as the backend credential permission checker:
+ * 1. Determine which credentials are active based on displayOptions
+ * 2. Handle special case where nodeCredentialType parameter specifies the active credential
+ * 3. Return credentials that are in node.credentials but not in the active set
+ */
+export function getInactiveCredentials(
+	node: INodeUi,
+	nodeType: INodeTypeDescription | null,
+	nodeHelpers: ReturnType<typeof useNodeHelpers>,
+): string[] {
+	if (!node.credentials || !nodeType?.credentials) {
+		return [];
+	}
+
+	const activeCredentialTypes = new Set<string>();
+
+	// Check credentials defined in the node type description with display options
+	for (const credentialDescription of nodeType.credentials) {
+		if (nodeHelpers.displayParameter(node.parameters, credentialDescription, '', node)) {
+			activeCredentialTypes.add(credentialDescription.name);
+		}
+	}
+
+	// For nodes using predefined credential type (e.g., HTTP Request node),
+	// the active credential is specified by the nodeCredentialType parameter
+	const { nodeCredentialType } = node.parameters;
+	if (typeof nodeCredentialType === 'string' && nodeCredentialType) {
+		activeCredentialTypes.add(nodeCredentialType);
+	}
+
+	// Return credentials that are present but not active
+	const inactiveCredentials: string[] = [];
+	for (const credentialTypeName in node.credentials) {
+		if (!activeCredentialTypes.has(credentialTypeName)) {
+			inactiveCredentials.push(credentialTypeName);
+		}
+	}
+
+	return inactiveCredentials;
+}
