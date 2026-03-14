@@ -7,6 +7,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
 import type { DateValue } from '@internationalized/date';
 import { getLocalTimeZone, today } from '@internationalized/date';
 import type { InsightsSummaryType } from '@n8n/api-types';
@@ -63,6 +64,8 @@ const i18n = useI18n();
 
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
+const rbacStore = useRBACStore();
+
 const isTimeSavedRoute = computed(() => route.params.insightType === INSIGHT_TYPES.TIME_SAVED);
 
 const chartComponents = computed(() => ({
@@ -195,15 +198,28 @@ onMounted(() => {
 // Must be *only* <email> — no extra text before or after
 const emailPattern = /^<([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})>$/;
 
+const hasGlobalInsightsAccess = computed(() => rbacStore.hasScope('insights:list'));
+
 const searchFn = useAvailableProjectSearch();
-const filterFn = (project: ProjectListItem) =>
-	!!project.name && !emailPattern.test(project.name.trim());
+const filterFn = (project: ProjectListItem) => {
+	if (!project.name || emailPattern.test(project.name.trim())) return false;
+	if (hasGlobalInsightsAccess.value) return true;
+	return rbacStore.hasScope('insights:list', { projectId: project.id });
+};
 
 onBeforeMount(async () => {
 	// Members filter locally over myProjects — preload them.
 	// Admins use remote search, so skip the unpaginated GET /projects call.
 	if (!projectsStore.globalProjectPermissions.list) {
 		await projectsStore.getAvailableProjects();
+	}
+
+	const queryProjectId = route.query.projectId as string | undefined;
+	if (queryProjectId) {
+		const match = projectsStore.availableProjects.find((p) => p.id === queryProjectId);
+		if (match) {
+			selectedProject.value = match;
+		}
 	}
 });
 </script>
@@ -224,7 +240,7 @@ onBeforeMount(async () => {
 					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 					size="mini"
 					:class="$style.projectSelect"
-					clearable
+					:clearable="hasGlobalInsightsAccess"
 					@clear="selectedProject = null"
 				/>
 

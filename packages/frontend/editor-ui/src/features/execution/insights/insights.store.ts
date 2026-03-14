@@ -6,6 +6,7 @@ import * as insightsApi from '@/features/execution/insights/insights.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
 import { transformInsightsSummary } from '@/features/execution/insights/insights.utils';
 import { getResourcePermissions } from '@n8n/permissions';
 
@@ -13,6 +14,7 @@ export const useInsightsStore = defineStore('insights', () => {
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
+	const rbacStore = useRBACStore();
 
 	const globalInsightsPermissions = computed(
 		() => getResourcePermissions(usersStore.currentUser?.globalScopes).insights,
@@ -44,6 +46,23 @@ export const useInsightsStore = defineStore('insights', () => {
 		{ immediate: false, resetOnExecute: false },
 	);
 
+	const projectSummary = useAsyncState(
+		async (projectId?: string) => {
+			const raw = await insightsApi.fetchInsightsSummary(rootStore.restApiContext, { projectId });
+			return transformInsightsSummary(raw);
+		},
+		[],
+		{ immediate: false, resetOnExecute: false },
+	);
+
+	async function fetchProjectSummary(projectId: string) {
+		return await projectSummary.execute(0, projectId);
+	}
+
+	function hasProjectInsightsAccess(projectId: string): boolean {
+		return rbacStore.hasScope('insights:list', { projectId });
+	}
+
 	const charts = useAsyncState(
 		async (filter?: InsightsDateFilterDto) => {
 			const dataFetcher = isDashboardEnabled.value
@@ -74,6 +93,9 @@ export const useInsightsStore = defineStore('insights', () => {
 		isSummaryEnabled,
 		isDashboardEnabled,
 		weeklySummary,
+		projectSummary,
+		fetchProjectSummary,
+		hasProjectInsightsAccess,
 		summary,
 		charts,
 		table,

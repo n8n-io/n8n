@@ -5,6 +5,18 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 
+// Bypass service-level authorization in all controller tests
+jest.mock('@n8n/permissions', () => ({
+	...jest.requireActual('@n8n/permissions'),
+	hasGlobalScope: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: jest.fn().mockResolvedValue(true),
+}));
+
+import { hasGlobalScope } from '@n8n/permissions';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
@@ -42,6 +54,10 @@ describe('InsightsController', () => {
 
 		licenseState.getInsightsMaxHistory.mockReturnValue(-1);
 		licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+		// Re-establish auth bypasses (jest.resetAllMocks clears mockReturnValue)
+		jest.mocked(hasGlobalScope).mockReturnValue(true);
+		jest.mocked(userHasScopes).mockResolvedValue(true);
 	});
 
 	describe('getInsightsSummary', () => {
