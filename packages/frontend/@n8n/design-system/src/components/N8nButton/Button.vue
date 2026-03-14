@@ -112,15 +112,13 @@ const handleClick = (event: MouseEvent) => {
 			</div>
 		</Transition>
 
-		<div :class="$style['button-inner']">
+		<div :class="$style['button-inner']" :aria-hidden="loading || undefined">
 			<slot name="icon">
 				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
 			</slot>
 
-			<template v-if="!iconOnly">
-				<span v-if="label">{{ label }}</span>
-				<slot v-else />
-			</template>
+			<span v-if="label">{{ label }}</span>
+			<slot v-else />
 		</div>
 	</component>
 </template>

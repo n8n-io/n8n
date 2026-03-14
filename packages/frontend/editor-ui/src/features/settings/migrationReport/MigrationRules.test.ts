@@ -426,7 +426,7 @@ describe('MigrationRules', () => {
 
 		// Button should still be visible (with loading state) during refresh
 		await waitFor(() => {
-			const button = screen.getByText('Refresh');
+			const button = screen.getAllByText('Refresh')[0];
 			expect(button).toBeInTheDocument();
 			// Button should be disabled during loading
 			expect(button.closest('button')).toBeDisabled();

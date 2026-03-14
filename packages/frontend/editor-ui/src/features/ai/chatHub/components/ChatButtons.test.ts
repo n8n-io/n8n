@@ -181,7 +181,7 @@ describe('ChatButtons', () => {
 		});
 		fetchMock.mockReturnValueOnce(firstFetchPromise);
 
-		const { getByText } = render(ChatButtons, {
+		const { getAllByText } = render(ChatButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: false,
@@ -189,15 +189,15 @@ describe('ChatButtons', () => {
 		});
 
 		// First click starts loading
-		await fireEvent.click(getByText('Approve'));
+		await fireEvent.click(getAllByText('Approve')[0]);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 
 		// Try clicking other button while first request is in-flight
-		await fireEvent.click(getByText('Reject'));
+		await fireEvent.click(getAllByText('Reject')[0]);
 		expect(fetchMock).toHaveBeenCalledTimes(1); // Should still be 1
 
 		// Try clicking same button again while loading
-		await fireEvent.click(getByText('Approve'));
+		await fireEvent.click(getAllByText('Approve')[0]);
 		expect(fetchMock).toHaveBeenCalledTimes(1); // Should still be 1
 
 		// Resolve the first fetch
@@ -217,7 +217,7 @@ describe('ChatButtons', () => {
 		});
 		fetchMock.mockReturnValueOnce(firstFetchPromise);
 
-		const { getByText } = render(ChatButtons, {
+		const { getAllByText } = render(ChatButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: false,
@@ -225,11 +225,11 @@ describe('ChatButtons', () => {
 		});
 
 		// Click to start loading
-		await fireEvent.click(getByText('Approve'));
+		await fireEvent.click(getAllByText('Approve')[0]);
 
 		// Both buttons should be disabled while loading
-		const approveButton = getByText('Approve').closest('button');
-		const rejectButton = getByText('Reject').closest('button');
+		const approveButton = getAllByText('Approve')[0].closest('button');
+		const rejectButton = getAllByText('Reject')[0].closest('button');
 		expect(approveButton?.disabled).toBe(true);
 		expect(rejectButton?.disabled).toBe(true);
 
@@ -238,7 +238,7 @@ describe('ChatButtons', () => {
 
 		await waitFor(() => {
 			// After resolution, only Approve should be visible and disabled
-			expect(getByText('Approve').closest('button')?.disabled).toBe(true);
+			expect(getAllByText('Approve')[0].closest('button')?.disabled).toBe(true);
 		});
 	});
 });
