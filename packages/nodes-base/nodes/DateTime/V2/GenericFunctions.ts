@@ -49,7 +49,7 @@ export function parseDate(
 	// We check the string directly rather than inspecting the parsed zone type,
 	// because n8n sets Luxon's Settings.defaultZone to the workflow timezone globally,
 	// which causes naive ISO strings to get zone.type === 'iana' instead of 'local'.
-	const hasExplicitOffset = /(?:Z|[+-]\d{2}(?::?\d{2})?)$/.test(dateStr.trim());
+	const hasExplicitOffset = /T.*(?:Z|[+-]\d{2}(?::?\d{2})?)$/.test(dateStr.trim());
 	const isoDate = DateTime.fromISO(dateStr);
 	if (hasExplicitOffset && isoDate.isValid) {
 		return isoDate.setZone(timezone);

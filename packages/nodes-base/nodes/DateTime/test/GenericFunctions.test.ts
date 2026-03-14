@@ -90,6 +90,15 @@ describe('parseDate', () => {
 			Settings.defaultZone = 'Europe/Athens';
 		});
 
+		it('should keep wall-clock day for a date-only string (must not misread trailing digits as an offset)', () => {
+			// '2023-04-11' ends with '-11'; the regex must not treat that as a +/-HH offset.
+			const result = parseDate.call(mockExecuteFunctions, '2023-04-11', {
+				timezone: 'Europe/Athens',
+			});
+			expect(result.day).toBe(11);
+			expect(result.hour).toBe(0);
+		});
+
 		it('should keep wall-clock hour for a space-separated naive date string', () => {
 			const result = parseDate.call(mockExecuteFunctions, '2023-04-11 14:30:00', {
 				timezone: 'Europe/Athens',
