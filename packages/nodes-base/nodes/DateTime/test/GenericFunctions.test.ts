@@ -48,6 +48,22 @@ describe('parseDate', () => {
 			});
 			expect(result.hour).toBe(10);
 		});
+
+		it('should correctly convert an ISO string with a compact offset (+HHmm)', () => {
+			// 14:30 +0500 = 09:30 UTC = 05:30 EDT
+			const result = parseDate.call(mockExecuteFunctions, '2023-04-11T14:30:00+0500', {
+				timezone: 'America/New_York',
+			});
+			expect(result.hour).toBe(5);
+		});
+
+		it('should correctly convert an ISO string with an hour-only offset (+HH)', () => {
+			// 14:30 +05 = 09:30 UTC = 05:30 EDT
+			const result = parseDate.call(mockExecuteFunctions, '2023-04-11T14:30:00+05', {
+				timezone: 'America/New_York',
+			});
+			expect(result.hour).toBe(5);
+		});
 	});
 
 	describe('DateTime instance input', () => {
