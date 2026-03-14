@@ -75,7 +75,8 @@
       "dist/credentials/ZepApi.credentials.js",
       "dist/credentials/ChatHubVectorStorePGVectorApi.credentials.js",
       "dist/credentials/ChatHubVectorStoreQdrantApi.credentials.js",
-      "dist/credentials/ChatHubVectorStorePineconeApi.credentials.js"
+      "dist/credentials/ChatHubVectorStorePineconeApi.credentials.js",
+      "dist/credentials/NvidiaApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
@@ -188,7 +189,8 @@
       "dist/nodes/vector_store/VectorStoreChromaDB/VectorStoreChromaDB.node.js",
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
       "dist/nodes/ModelSelector/ModelSelector.node.js",
-      "dist/nodes/Guardrails/Guardrails.node.js"
+      "dist/nodes/Guardrails/Guardrails.node.js",
+      "dist/nodes/llms/LmChatNvidia/LmChatNvidia.node.js"
     ]
   },
   "devDependencies": {
