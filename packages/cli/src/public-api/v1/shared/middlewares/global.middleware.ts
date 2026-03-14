@@ -87,7 +87,8 @@ export const validCursor = (
 	return next();
 };
 
-const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
+const emptyMiddleware = (_req: express.Request, _res: express.Response, next: NextFunction) =>
+	next();
 
 export type ScopeTaggedMiddleware = ((...args: unknown[]) => unknown) & {
 	__apiKeyScope: ApiKeyScope;

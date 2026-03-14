@@ -41,11 +41,12 @@ export interface DiscoverResponse {
 
 export interface DiscoverOptions {
 	includeSchemas?: boolean;
+	scopesEnabled?: boolean;
 	resource?: string;
 	operation?: string;
 }
 
-let cachedEndpoints: EndpointInfo[] | undefined;
+let cachedEndpointsPromise: Promise<EndpointInfo[]> | undefined;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -168,8 +169,16 @@ function extractRequestSchema(
 }
 
 async function parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
-	if (cachedEndpoints) return cachedEndpoints;
+	if (!cachedEndpointsPromise) {
+		cachedEndpointsPromise = _parseEndpointsFromSpec().catch((e) => {
+			cachedEndpointsPromise = undefined;
+			throw e;
+		});
+	}
+	return await cachedEndpointsPromise;
+}
 
+async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 	const { default: YAML } = await import('yamljs');
 
 	const specDir = path.join(__dirname, '..', '..');
@@ -243,7 +252,6 @@ async function parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 		}
 	}
 
-	cachedEndpoints = endpoints;
 	return endpoints;
 }
 
@@ -254,8 +262,13 @@ export async function buildDiscoverResponse(
 	const allEndpoints = await parseEndpointsFromSpec();
 	const scopeSet = new Set(callerScopes);
 	const includeSchemas = options?.includeSchemas === true;
+	const scopesEnabled = options?.scopesEnabled !== false;
 
-	const filtered = allEndpoints.filter((ep) => ep.scope === null || scopeSet.has(ep.scope));
+	// When scopes are not licensed (community edition), show all endpoints
+	// since all API keys have unrestricted access regardless of stored scopes
+	const filtered = scopesEnabled
+		? allEndpoints.filter((ep) => ep.scope === null || scopeSet.has(ep.scope))
+		: allEndpoints;
 
 	const resources: Record<string, ResourceInfo> = {};
 
@@ -339,5 +352,5 @@ export async function buildDiscoverResponse(
 
 /** Exported for testing — resets the cached endpoints */
 export function _resetCache(): void {
-	cachedEndpoints = undefined;
+	cachedEndpointsPromise = undefined;
 }

@@ -3,6 +3,8 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 
+import { License } from '@/license';
+
 import { buildDiscoverResponse } from './discover.service';
 
 const API_KEY_AUDIENCE = 'public-api';
@@ -33,9 +35,11 @@ export = {
 				return res.status(401).json({ message: 'Unauthorized' });
 			}
 
+			const scopesEnabled = Container.get(License).isApiKeyScopesEnabled();
 			const includeSchemas = req.query.include === 'schemas';
 			const response = await buildDiscoverResponse(apiKeyRecord.scopes, {
 				includeSchemas,
+				scopesEnabled,
 				resource: firstString(req.query.resource),
 				operation: firstString(req.query.op),
 			});
