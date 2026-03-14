@@ -170,10 +170,7 @@ function extractRequestSchema(
 
 async function parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 	if (!cachedEndpointsPromise) {
-		cachedEndpointsPromise = _parseEndpointsFromSpec().catch((e) => {
-			cachedEndpointsPromise = undefined;
-			throw e;
-		});
+		cachedEndpointsPromise = _parseEndpointsFromSpec();
 	}
 	return await cachedEndpointsPromise;
 }
