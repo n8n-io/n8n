@@ -26,3 +26,12 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+version: "3"
+
+services:
+  n8n:
+    image: n8nio/n8n
+    ports:
+      - "5678:5678"
+    restart: always
