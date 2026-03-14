@@ -276,6 +276,35 @@ describe('TelegramTrigger', () => {
 			expect(responseData).toEqual({});
 		});
 
+		test('should pass through events without chat ID when chatIds filter is active', async () => {
+			mockResult.inline_query = {
+				from: { id: 777 },
+			};
+
+			const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+				workflow: mock<Workflow>({ id: '1', active: true }),
+				node: mock<INode>({
+					id: '2',
+					parameters: {
+						additionalFields: {
+							download: false,
+							chatIds: '555',
+						},
+					},
+				}),
+				headerData: {
+					'x-telegram-bot-api-secret-token': '1_2',
+				},
+				bodyData: {
+					inline_query: {
+						from: { id: 777 },
+					},
+				},
+			});
+
+			expect(responseData).toEqual({ workflowData: [[{ json: mockResult }]] });
+		});
+
 		test('should pass chatIds filter for edited_message events', async () => {
 			mockResult.edited_message = {
 				chat: { id: 555 },
