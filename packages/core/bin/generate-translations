@@ -81,7 +81,7 @@ const colorize = (ansiColorCode, string) =>
  * Write node translation headers to single file at `/dist/nodes/headers.js`.
  */
 const { N8N_DEFAULT_LOCALE: locale } = process.env;
-
+console.log('environment variables', process.env);
 log(`Default locale set to: ${colorize(PURPLE_ANSI_COLOR_CODE, locale || 'en')}`);
 
 if (!locale || locale === 'en') {

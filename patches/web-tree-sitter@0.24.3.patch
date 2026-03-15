@@ -1,0 +1,21 @@
+diff --git a/tree-sitter.js b/tree-sitter.js
+--- a/tree-sitter.js
++++ b/tree-sitter.js
+@@ -1192,7 +1192,7 @@
+                 }
+                 args = args.join(",");
+                 var func = `(${args}) => { ${body} };`;
+-                ASM_CONSTS[start] = eval(func);
++                ASM_CONSTS[start] = (0, eval)(func);
+               }
+               // Add any EM_ASM function that exist in the side module
+               if ("__start_em_asm" in moduleExports) {
+@@ -1218,7 +1218,7 @@
+                   }
+                 }
+                 var func = `(${jsArgs}) => ${body};`;
+-                moduleExports[name] = eval(func);
++                moduleExports[name] = (0, eval)(func);
+               }
+               for (var name in moduleExports) {
+                 if (name.startsWith("__em_js__")) {

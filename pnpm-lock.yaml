@@ -412,6 +412,9 @@ patchedDependencies:
   vue-tsc@2.2.8:
     hash: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
     path: patches/vue-tsc@2.2.8.patch
+  web-tree-sitter@0.24.3:
+    hash: bcea5d13c32a0ad912b78ed580d589dec436bbcf56b7a4199f57ee286345e38a
+    path: patches/web-tree-sitter@0.24.3.patch
   z-vue-scan:
     hash: bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8
     path: patches/z-vue-scan.patch
@@ -3316,7 +3319,7 @@ importers:
         version: https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7
       web-tree-sitter:
         specifier: 0.24.3
-        version: 0.24.3
+        version: 0.24.3(patch_hash=bcea5d13c32a0ad912b78ed580d589dec436bbcf56b7a4199f57ee286345e38a)
       xss:
         specifier: 'catalog:'
         version: 1.0.15
@@ -29640,7 +29643,7 @@ snapshots:
       lossless-json: 4.0.2
       tree-sitter: 0.21.1
       tree-sitter-bash: 0.23.3(tree-sitter@0.21.1)
-      web-tree-sitter: 0.24.3
+      web-tree-sitter: 0.24.3(patch_hash=bcea5d13c32a0ad912b78ed580d589dec436bbcf56b7a4199f57ee286345e38a)
       yamljs: 0.3.0
 
   currency-codes@2.1.0:
@@ -39031,7 +39034,7 @@ snapshots:
 
   web-streams-polyfill@4.0.0-beta.3: {}
 
-  web-tree-sitter@0.24.3: {}
+  web-tree-sitter@0.24.3(patch_hash=bcea5d13c32a0ad912b78ed580d589dec436bbcf56b7a4199f57ee286345e38a): {}
 
   webidl-conversions@3.0.1: {}
 

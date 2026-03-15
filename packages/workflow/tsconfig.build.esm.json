@@ -1,6 +1,7 @@
 {
 	"extends": ["./tsconfig.json"],
 	"compilerOptions": {
+		"composite": true,
 		"rootDir": "src",
 		"outDir": "dist/esm",
 		"tsBuildInfoFile": "dist/esm/typecheck.tsbuildinfo"

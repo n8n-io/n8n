@@ -1,6 +1,6 @@
 {
 	"globalEnv": ["CI", "BUILD_WITH_COVERAGE", "RELEASE"],
-	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN"],
+	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN", "N8N_DEFAULT_LOCALE", "N8N_LOG_LEVEL", "N8N_DEV_RELOAD"],
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {

@@ -10,7 +10,7 @@
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
-    "build": "turbo run build",
+    "build": "cross-env N8N_DEFAULT_LOCALE=zh-CN N8N_LOG_LEVEL=debug N8N_DEV_RELOAD=true turbo run build",
     "build:n8n": "node scripts/build-n8n.mjs",
     "build:deploy": "node scripts/build-n8n.mjs",
     "build:docker": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs",
@@ -18,12 +18,12 @@
     "build:docker:scan": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && node scripts/scan-n8n-image.mjs",
     "build:docker:clean": "TURBO_FORCE=true node scripts/build-n8n.mjs && DOCKER_BUILD_NO_CACHE=true DOCKER_BUILD_BASE_IMAGE=true node scripts/dockerize-n8n.mjs",
     "build:docker:test": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && turbo run test:container:standard --filter=n8n-playwright",
-    "typecheck": "turbo typecheck",
-    "dev": "turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner",
-    "dev:be": "turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner --filter=!n8n-editor-ui",
-    "dev:ai": "turbo run dev --parallel --env-mode=loose --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
+    "typecheck": "cross-env NODE_OPTIONS=--max-old-space-size=8192 turbo typecheck",
+    "dev": "cross-env N8N_DEFAULT_LOCALE=zh-CN N8N_LOG_LEVEL=debug N8N_DEV_RELOAD=true turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner",
+    "dev:be": "cross-env N8N_DEFAULT_LOCALE=zh-CN N8N_LOG_LEVEL=debug N8N_DEV_RELOAD=true turbo run dev --parallel --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner --filter=!n8n-editor-ui",
+    "dev:ai": "cross-env N8N_DEFAULT_LOCALE=zh-CN N8N_LOG_LEVEL=debug N8N_DEV_RELOAD=true turbo run dev --parallel --env-mode=loose --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
     "dev:fe": "run-p start \"dev:fe:editor --filter=@n8n/design-system\"",
-    "dev:fe:editor": "turbo run dev --parallel --env-mode=loose --filter=n8n-editor-ui",
+    "dev:fe:editor": "cross-env N8N_DEFAULT_LOCALE=zh-CN N8N_LOG_LEVEL=debug N8N_DEV_RELOAD=true turbo run dev --parallel --env-mode=loose --filter=n8n-editor-ui",
     "dev:e2e": "pnpm --filter=n8n-playwright dev --ui",
     "clean": "turbo run clean",
     "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
@@ -84,8 +84,32 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@biomejs/biome",
+      "@parcel/watcher",
+      "@sentry-internal/node-cpu-profiler",
+      "@sentry-internal/node-native-stacktrace",
+      "@sentry/cli",
+      "@swc/core",
+      "bufferutil",
+      "core-js",
+      "cpu-features",
+      "es5-ext",
+      "esbuild",
+      "eslint-plugin-n8n-nodes-base",
       "isolated-vm",
-      "sqlite3"
+      "lefthook",
+      "msgpackr-extract",
+      "oracledb",
+      "protobufjs",
+      "sharp",
+      "sqlite3",
+      "ssh2",
+      "tree-sitter",
+      "tree-sitter-bash",
+      "unrs-resolver",
+      "utf-8-validate",
+      "v-code-diff",
+      "vue-demi"
     ],
     "overrides": {
       "@isaacs/brace-expansion": "5.0.1",
@@ -166,7 +190,8 @@
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
-      "assert@2.1.0": "patches/assert@2.1.0.patch"
+      "assert@2.1.0": "patches/assert@2.1.0.patch",
+      "web-tree-sitter@0.24.3": "patches/web-tree-sitter@0.24.3.patch"
     }
   }
 }
