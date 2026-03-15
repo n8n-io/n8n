@@ -415,7 +415,9 @@ function _getResponseForOutbinds(
 				itemData: { item: j },
 			});
 			if (executionData) {
-				returnData.push(...executionData);
+				for (const item of executionData) {
+					returnData.push(item);
+				}
 			}
 		}
 	}
@@ -582,10 +584,13 @@ export function configureQueryRunner(
 								wrapData(rowData as IDataObject[]),
 								{ itemData: { item: i } },
 							);
-
-							returnData.push.apply(returnData, executionData);
+							for (const item of executionData) {
+								returnData.push(item);
+							}
 						} else {
-							returnData.push.apply(returnData, resultOutBinds);
+							for (const item of resultOutBinds) {
+								returnData.push(item);
+							}
 						}
 					} catch (caughtError) {
 						const error = parseOracleError(node, caughtError, i);
@@ -639,9 +644,13 @@ export function configureQueryRunner(
 								wrapData(rowData as IDataObject[]),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionData);
+							for (const item of executionData) {
+								returnData.push(item);
+							}
 						} else {
-							returnData.push.apply(returnData, resultOutBinds);
+							for (const item of resultOutBinds) {
+								returnData.push(item);
+							}
 						}
 					} catch (caughtError) {
 						const error = parseOracleError(node, caughtError, i);
