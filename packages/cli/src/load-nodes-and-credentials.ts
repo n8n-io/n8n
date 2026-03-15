@@ -218,14 +218,29 @@ export class LoadNodesAndCredentials {
 			return path.resolve(loader.directory, iconPath);
 		};
 
-		const resolvePathCustom = (path: string) => {
-			if (isWindowsFilePath(path)) return path;
-			return path.startsWith('/') ? path : '/' + path;
+		const resolvePathCustomLegacy = (iconPath: string) => {
+			if (isWindowsFilePath(iconPath)) return iconPath;
+			return iconPath.startsWith('/') ? iconPath : '/' + iconPath;
 		};
 
 		const pathPrefix = `/icons/${packageName}/`;
 		const urlFilePath = url.substring(pathPrefix.length);
-		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
+
+		// Custom nodes used to encode absolute filesystem paths in icon URLs,
+		// producing malformed URLs like `/icons/CUSTOM//home/user/.n8n/...`.
+		// They now use relative paths (fixed in directory-loader.ts), but we
+		// keep the legacy absolute-path fallback for backward compatibility.
+		let filePath: string;
+		if (isCustom) {
+			const relativePath = resolvePath(urlFilePath);
+			if (isContainedWithin(loader.directory, relativePath)) {
+				filePath = relativePath;
+			} else {
+				filePath = resolvePathCustomLegacy(urlFilePath);
+			}
+		} else {
+			filePath = resolvePath(urlFilePath);
+		}
 
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
 	}
