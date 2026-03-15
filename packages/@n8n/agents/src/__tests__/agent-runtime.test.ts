@@ -1,7 +1,10 @@
+import { z } from 'zod';
+
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
 import { AgentEvent } from '../types/event';
 import type { StreamChunk } from '../types/stream';
+import type { BuiltTool, InterruptibleToolContext } from '../types/tool';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -25,6 +28,9 @@ jest.mock('ai', () => ({
 	generateText: jest.fn(),
 	streamText: jest.fn(),
 	tool: jest.fn((config: unknown) => config),
+	Output: {
+		object: jest.fn(({ schema }: { schema: unknown }) => ({ _type: 'object', schema })),
+	},
 }));
 
 // ---------------------------------------------------------------------------
@@ -117,6 +123,67 @@ function createRuntime(eventBus?: AgentEventBus) {
 		eventBus: bus,
 	});
 	return { runtime, bus };
+}
+
+const testSchema = z.object({ answer: z.string(), score: z.number() });
+
+/** Build a runtime configured with structuredOutput. */
+function createStructuredRuntime(options?: { tools?: BuiltTool[]; eventBus?: AgentEventBus }) {
+	const bus = options?.eventBus ?? new AgentEventBus();
+	const runtime = new AgentRuntime({
+		name: 'test-structured',
+		model: 'openai/gpt-4o-mini',
+		instructions: 'You are a test assistant.',
+		structuredOutput: testSchema,
+		eventBus: bus,
+		...(options?.tools ? { tools: options.tools } : {}),
+	});
+	return { runtime, bus };
+}
+
+/** Minimal successful generateText response with structured output. */
+function makeGenerateSuccessWithOutput(output: unknown, text = 'OK') {
+	return { ...makeGenerateSuccess(text), output };
+}
+
+/** Minimal successful streamText response with structured output. */
+function makeStreamSuccessWithOutput(output: unknown, text = 'Hello') {
+	return { ...makeStreamSuccess(text), output: Promise.resolve(output) };
+}
+
+/** Mock generateText response that triggers a tool call. */
+function makeGenerateWithToolCall(toolCallId: string, toolName: string, input: unknown) {
+	return {
+		finishReason: 'tool-calls',
+		usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+		response: {
+			messages: [
+				{
+					role: 'assistant',
+					content: [{ type: 'tool-call', toolCallId, toolName, args: input }],
+				},
+			],
+		},
+		toolCalls: [{ toolCallId, toolName, input }],
+	};
+}
+
+/** Build an interruptible tool that suspends on first call and returns on resume. */
+function makeInterruptibleTool(): BuiltTool {
+	return {
+		name: 'approve',
+		description: 'Requires approval',
+		inputSchema: z.object({ question: z.string() }),
+		suspendSchema: z.object({ question: z.string() }),
+		resumeSchema: z.object({ approved: z.boolean() }),
+		handler: async (_input: unknown, ctx: unknown) => {
+			const { suspend, resumeData } = ctx as InterruptibleToolContext;
+			if (!resumeData) {
+				return await suspend({ question: 'approve?' });
+			}
+			return { approved: true };
+		},
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -460,5 +527,268 @@ describe('AgentRuntime — state transitions on error', () => {
 		await runtime.generate('hi');
 
 		expect(runtime.getState().status).toBe('success');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Structured output — generate()
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.generate() — structured output', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('returns structuredOutput when schema is configured', async () => {
+		const expected = { answer: 'Paris', score: 0.95 };
+		generateText.mockResolvedValue(makeGenerateSuccessWithOutput(expected));
+
+		const { runtime } = createStructuredRuntime();
+		const result = await runtime.generate('What is the capital of France?');
+
+		expect(result.structuredOutput).toEqual(expected);
+		expect(result.finishReason).toBe('stop');
+	});
+
+	it('does not include structuredOutput when no schema is configured', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Just text'));
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('hello');
+
+		expect(result.structuredOutput).toBeUndefined();
+	});
+
+	it('passes the output spec to generateText when schema is configured', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccessWithOutput({ answer: 'test', score: 1 }));
+
+		const { runtime } = createStructuredRuntime();
+		await runtime.generate('hello');
+
+		const callArgs = (generateText.mock.calls[0] as [unknown, unknown])[0] as Record<
+			string,
+			unknown
+		>;
+		expect(callArgs.output).toBeDefined();
+		expect(callArgs.output).toEqual(
+			expect.objectContaining({ _type: 'object', schema: testSchema }),
+		);
+	});
+
+	it('does not pass the output spec to generateText when no schema is configured', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const { runtime } = createRuntime();
+		await runtime.generate('hello');
+
+		const callArgs = (generateText.mock.calls[0] as [unknown, unknown])[0] as Record<
+			string,
+			unknown
+		>;
+		expect(callArgs.output).toBeUndefined();
+	});
+
+	it('preserves structuredOutput through tool-call iterations', async () => {
+		const tool: BuiltTool = {
+			name: 'add',
+			description: 'Add numbers',
+			inputSchema: z.object({ a: z.number(), b: z.number() }),
+			handler: async (input: unknown) => {
+				const { a, b } = input as { a: number; b: number };
+				return await Promise.resolve({ sum: a + b });
+			},
+		};
+
+		const expected = { answer: '5', score: 1 };
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'add', { a: 2, b: 3 }))
+			.mockResolvedValueOnce(makeGenerateSuccessWithOutput(expected, 'The sum is 5'));
+
+		const { runtime } = createStructuredRuntime({ tools: [tool] });
+		const result = await runtime.generate('What is 2 + 3?');
+
+		expect(result.structuredOutput).toEqual(expected);
+		expect(result.finishReason).toBe('stop');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Structured output — stream()
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.stream() — structured output', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('includes structuredOutput in the finish chunk when schema is configured', async () => {
+		const expected = { answer: 'Paris', score: 0.95 };
+		streamText.mockReturnValue(makeStreamSuccessWithOutput(expected));
+
+		const { runtime } = createStructuredRuntime();
+		const stream = await runtime.stream('What is the capital of France?');
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.find((c) => c.type === 'finish') as StreamChunk & {
+			type: 'finish';
+		};
+		expect(finish).toBeDefined();
+		expect(finish.structuredOutput).toEqual(expected);
+	});
+
+	it('does not include structuredOutput in the finish chunk when no schema is configured', async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+
+		const { runtime } = createRuntime();
+		const stream = await runtime.stream('hello');
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.find((c) => c.type === 'finish') as StreamChunk & {
+			type: 'finish';
+		};
+		expect(finish).toBeDefined();
+		expect(finish.structuredOutput).toBeUndefined();
+	});
+
+	it('passes the output spec to streamText when schema is configured', async () => {
+		streamText.mockReturnValue(makeStreamSuccessWithOutput({ answer: 'test', score: 1 }));
+
+		const { runtime } = createStructuredRuntime();
+		const stream = await runtime.stream('hello');
+		await collectChunks(stream);
+
+		const callArgs = (streamText.mock.calls[0] as [unknown, unknown])[0] as Record<string, unknown>;
+		expect(callArgs.output).toBeDefined();
+		expect(callArgs.output).toEqual(
+			expect.objectContaining({ _type: 'object', schema: testSchema }),
+		);
+	});
+
+	it('does not pass the output spec to streamText when no schema is configured', async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+
+		const { runtime } = createRuntime();
+		const stream = await runtime.stream('hello');
+		await collectChunks(stream);
+		const callArgs = (streamText.mock.calls[0] as [unknown, unknown])[0] as Record<string, unknown>;
+		expect(callArgs.output).toBeUndefined();
+	});
+
+	it('preserves structuredOutput through tool-call iterations', async () => {
+		const tool: BuiltTool = {
+			name: 'add',
+			description: 'Add numbers',
+			inputSchema: z.object({ a: z.number(), b: z.number() }),
+			handler: async (input: unknown) => {
+				const { a, b } = input as { a: number; b: number };
+				return await Promise.resolve({ sum: a + b });
+			},
+		};
+
+		const expected = { answer: '5', score: 1 };
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([
+					{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'add', args: { a: 2, b: 3 } },
+				]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-1',
+									toolName: 'add',
+									args: { a: 2, b: 3 },
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-1', toolName: 'add', input: { a: 2, b: 3 } },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccessWithOutput(expected, 'The sum is 5'));
+
+		const { runtime } = createStructuredRuntime({ tools: [tool] });
+		const stream = await runtime.stream('What is 2 + 3?');
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.find((c) => c.type === 'finish') as StreamChunk & {
+			type: 'finish';
+		};
+		expect(finish).toBeDefined();
+		expect(finish.structuredOutput).toEqual(expected);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Structured output — resume()
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.resume() — structured output', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('returns structuredOutput after resume in generate mode', async () => {
+		const interruptibleTool = makeInterruptibleTool();
+		const { runtime } = createStructuredRuntime({ tools: [interruptibleTool] });
+
+		// First call: LLM triggers the interruptible tool
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'approve', { question: 'proceed?' }),
+		);
+
+		const firstResult = await runtime.generate('Should I proceed?');
+		expect(firstResult.finishReason).toBe('tool-calls');
+		expect(firstResult.pendingSuspend).toBeDefined();
+
+		const { runId, toolCallId } = firstResult.pendingSuspend!;
+
+		// Second call (after resume): LLM returns final answer with structured output
+		const expected = { answer: 'Approved', score: 1 };
+		generateText.mockResolvedValueOnce(makeGenerateSuccessWithOutput(expected, 'Approved'));
+
+		const resumeResult = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId, toolCallId },
+		);
+
+		expect(resumeResult.structuredOutput).toEqual(expected);
+		expect(resumeResult.finishReason).toBe('stop');
+	});
+
+	it('returns structuredOutput after resume in stream mode', async () => {
+		const interruptibleTool = makeInterruptibleTool();
+		const { runtime } = createStructuredRuntime({ tools: [interruptibleTool] });
+
+		// First call: LLM triggers the interruptible tool (via generate to get the runId)
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'approve', { question: 'proceed?' }),
+		);
+
+		const firstResult = await runtime.generate('Should I proceed?');
+		expect(firstResult.pendingSuspend).toBeDefined();
+
+		const { runId, toolCallId } = firstResult.pendingSuspend!;
+
+		// Second call (after resume): LLM streams final answer with structured output
+		const expected = { answer: 'Approved', score: 1 };
+		streamText.mockReturnValueOnce(makeStreamSuccessWithOutput(expected, 'Approved'));
+
+		const stream = await runtime.resume('stream', { approved: true }, { runId, toolCallId });
+
+		const chunks = await collectChunks(stream as ReadableStream<unknown>);
+		const finish = chunks.find((c) => c.type === 'finish') as StreamChunk & {
+			type: 'finish';
+		};
+		expect(finish).toBeDefined();
+		expect(finish.structuredOutput).toEqual(expected);
 	});
 });

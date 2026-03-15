@@ -25,6 +25,7 @@ export type StreamChunk = ContentMetadata &
 				finishReason: FinishReason;
 				usage?: TokenUsage;
 				model?: string;
+				structuredOutput?: unknown;
 				subAgentUsage?: SubAgentUsage[];
 				totalCost?: number;
 		  }

@@ -1,4 +1,4 @@
-import { generateText, streamText } from 'ai';
+import { generateText, streamText, Output } from 'ai';
 import type { ModelMessage } from 'ai';
 import type { z } from 'zod';
 
@@ -335,10 +335,12 @@ export class AgentRuntime {
 		options: RunOptions | undefined,
 		pendingResume?: PendingResume,
 	): Promise<GenerateResult> {
-		const { model, toolMap, aiTools, providerOptions, hasTools } = this.buildLoopContext();
+		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
+			this.buildLoopContext();
 
 		let totalUsage: TokenUsage | undefined;
 		let lastFinishReason: FinishReason = 'stop';
+		let structuredOutput: unknown;
 		const toolCallSummary: ToolResultEntry[] = [];
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
 
@@ -387,6 +389,7 @@ export class AgentRuntime {
 				...(providerOptions
 					? { providerOptions: providerOptions as Record<string, JSONObject> }
 					: {}),
+				...(outputSpec ? { output: outputSpec } : {}),
 			});
 
 			const aiFinishReason = result.finishReason;
@@ -402,6 +405,9 @@ export class AgentRuntime {
 			list.addResponse(newMessages);
 
 			if (aiFinishReason !== 'tool-calls') {
+				if (outputSpec) {
+					structuredOutput = result.output;
+				}
 				this.emitTurnEnd(newMessages, extractToolResults(newMessages));
 				break;
 			}
@@ -451,6 +457,7 @@ export class AgentRuntime {
 			messages: list.responseDelta(),
 			finishReason: lastFinishReason,
 			usage: totalUsage,
+			...(structuredOutput !== undefined && { structuredOutput }),
 			...(toolCallSummary.length > 0 && { toolCalls: toolCallSummary }),
 			...(collectedSubAgentUsage.length > 0 && { subAgentUsage: collectedSubAgentUsage }),
 		};
@@ -503,10 +510,12 @@ export class AgentRuntime {
 		writer: WritableStreamDefaultWriter<StreamChunk>,
 		pendingResume?: PendingResume,
 	): Promise<void> {
-		const { model, toolMap, aiTools, providerOptions, hasTools } = this.buildLoopContext();
+		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
+			this.buildLoopContext();
 
 		let totalUsage: TokenUsage | undefined;
 		let lastFinishReason: FinishReason = 'stop';
+		let structuredOutput: unknown;
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 
@@ -586,6 +595,7 @@ export class AgentRuntime {
 				...(providerOptions
 					? { providerOptions: providerOptions as Record<string, JSONObject> }
 					: {}),
+				...(outputSpec ? { output: outputSpec } : {}),
 			});
 
 			// Consume the stream. When the AbortSignal fires mid-stream the
@@ -627,6 +637,9 @@ export class AgentRuntime {
 			list.addResponse(newMessages);
 
 			if (aiFinishReason !== 'tool-calls') {
+				if (outputSpec) {
+					structuredOutput = await result.output;
+				}
 				this.emitTurnEnd(newMessages, extractToolResults(newMessages));
 				break;
 			}
@@ -694,6 +707,7 @@ export class AgentRuntime {
 			finishReason: lastFinishReason,
 			...(costUsage && { usage: costUsage }),
 			model: this.modelIdString,
+			...(structuredOutput !== undefined && { structuredOutput }),
 			...(collectedSubAgentUsage.length > 0 && {
 				subAgentUsage: collectedSubAgentUsage,
 				totalCost: parentCost + subCost,
@@ -986,6 +1000,9 @@ export class AgentRuntime {
 			aiTools: allTools,
 			providerOptions: this.buildProviderOptions(),
 			hasTools: Object.keys(allTools).length > 0,
+			outputSpec: this.config.structuredOutput
+				? Output.object({ schema: this.config.structuredOutput })
+				: undefined,
 		};
 	}
 
