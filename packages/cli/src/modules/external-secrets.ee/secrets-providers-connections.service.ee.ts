@@ -155,14 +155,6 @@ export class SecretsProvidersConnectionsService {
 		return await this.syncAndEmitUpdate(providerKey, userId);
 	}
 
-	private async findConnectionOrFail(providerKey: string): Promise<SecretsProviderConnection> {
-		const connection = await this.repository.findOne({ where: { providerKey } });
-		if (!connection) {
-			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
-		}
-		return connection;
-	}
-
 	private applyConnectionUpdates(
 		connection: SecretsProviderConnection,
 		updates: { type?: string; settings?: IDataObject; isEnabled?: boolean },
@@ -206,12 +198,7 @@ export class SecretsProvidersConnectionsService {
 	}
 
 	async deleteConnection(providerKey: string, userId: string): Promise<SecretsProviderConnection> {
-		const connection = await this.repository.findOne({ where: { providerKey } });
-
-		if (!connection) {
-			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
-		}
-
+		const connection = await this.findConnectionOrFail(providerKey);
 		const projectInfo = this.extractProjectInfo(connection);
 
 		await this.projectAccessRepository.deleteByConnectionId(connection.id);
@@ -226,6 +213,14 @@ export class SecretsProvidersConnectionsService {
 			...projectInfo,
 		});
 
+		return connection;
+	}
+
+	private async findConnectionOrFail(providerKey: string): Promise<SecretsProviderConnection> {
+		const connection = await this.repository.findOne({ where: { providerKey } });
+		if (!connection) {
+			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
+		}
 		return connection;
 	}
 
