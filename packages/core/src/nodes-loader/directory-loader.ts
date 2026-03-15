@@ -419,8 +419,8 @@ export abstract class DirectoryLoader {
 	private getIconPath(icon: string, filePath: string) {
 		const iconPath = path.join(path.dirname(filePath), icon.replace('file:', ''));
 
-		// Resolve to absolute path for security validation
-		const absoluteIconPath = path.resolve(iconPath);
+		// Resolve to absolute path for security validation (relative to loader directory, not CWD)
+		const absoluteIconPath = path.resolve(this.directory, iconPath);
 		if (!isContainedWithin(this.directory, absoluteIconPath)) {
 			throw new UnexpectedError(
 				`Icon path "${iconPath}" is not contained within the package directory "${this.directory}"`,
@@ -446,7 +446,7 @@ export abstract class DirectoryLoader {
 				: isExpression(icon.light) || isExpression(icon.dark);
 
 		if (hasExpression) {
-			const absoluteDirPath = path.resolve(path.dirname(filePath));
+			const absoluteDirPath = path.resolve(this.directory, path.dirname(filePath));
 			const relativeDirPath = path.relative(this.directory, absoluteDirPath);
 			obj.iconBasePath = `icons/${this.packageName}/${relativeDirPath}`;
 			return;
