@@ -8,6 +8,7 @@ import type {
 	ThinkingContentBlock,
 	RedactedThinkingContentBlock,
 	ToolUseContentBlock,
+	ActionStepData,
 } from './types';
 
 /**
@@ -149,7 +150,7 @@ function buildMessageContent(
 		);
 	}
 
-	// Default: simple string content
+	// Default: tool-calling content only (announcements are separate AIMessages)
 	return `Calling ${toolName} with input: ${JSON.stringify(toolInput)}`;
 }
 
@@ -212,6 +213,7 @@ function buildIndividualAIMessage(
 	toolName: string,
 	toolInput: IDataObject,
 	providerMetadata: ProviderMetadata,
+	contentOverride?: string,
 ): AIMessage {
 	const toolCall = {
 		id: toolId,
@@ -220,7 +222,8 @@ function buildIndividualAIMessage(
 		type: 'tool_call' as const,
 	};
 
-	const content = buildMessageContent(providerMetadata, toolInput, toolId, toolName);
+	const content =
+		contentOverride ?? buildMessageContent(providerMetadata, toolInput, toolId, toolName);
 
 	return new AIMessage({
 		content,
@@ -232,6 +235,40 @@ function buildIndividualAIMessage(
 				providerMetadata.thoughtSignature,
 			),
 		}),
+	});
+}
+
+/**
+ * Builds a shared AIMessage for parallel tool calls.
+ *
+ * For parallel function calls, LangChain/APIs (e.g. Gemini) expect ALL function calls in a single
+ * AIMessage ("model" turn), followed by one ToolMessage per tool call. Splitting parallel tool calls
+ * into separate AIMessages breaks memory serialization and causes "number of function response parts
+ * must equal function call parts" errors when the history is sent back to the model.
+ *
+ * @param processedTools - Array of processed tool responses to include
+ * @returns AIMessage with all tool calls combined
+ */
+function buildSharedAIMessage(
+	processedTools: ProcessedToolResponse[],
+	contentOverride?: string,
+): AIMessage {
+	const allToolCalls = processedTools.map((pt) => ({
+		id: pt.toolId,
+		name: pt.toolName,
+		args: pt.toolInput,
+		type: 'tool_call' as const,
+	}));
+
+	const content =
+		contentOverride ??
+		processedTools
+			.map((pt) => `Calling ${pt.toolName} with input: ${JSON.stringify(pt.toolInput)}`)
+			.join('\n');
+
+	return new AIMessage({
+		content,
+		tool_calls: allToolCalls,
 	});
 }
 
@@ -253,6 +290,7 @@ function buildIndividualAIMessage(
 function buildSharedGeminiAIMessage(
 	processedTools: ProcessedToolResponse[],
 	thoughtSignature: string,
+	contentOverride?: string,
 ): AIMessage {
 	const allToolCalls = processedTools.map((pt) => ({
 		id: pt.toolId,
@@ -261,10 +299,14 @@ function buildSharedGeminiAIMessage(
 		type: 'tool_call' as const,
 	}));
 
-	const toolNames = processedTools.map((pt) => pt.nodeName).join(', ');
+	const content =
+		contentOverride ??
+		processedTools
+			.map((pt) => `Calling ${pt.toolName} with input: ${JSON.stringify(pt.toolInput)}`)
+			.join('\n');
 
 	return new AIMessage({
-		content: `Calling tools: ${toolNames}`,
+		content,
 		tool_calls: allToolCalls,
 		additional_kwargs: buildGeminiAdditionalKwargs(allToolCalls, thoughtSignature),
 	});
@@ -331,7 +373,11 @@ export function buildSteps(
 		};
 		if (!tool.data) continue;
 
-		const existingStep = steps.find((s) => s.action.toolCallId === toolInput.id);
+		const existingStep = steps.find(
+			(s) =>
+				s.action.type !== 'announcement' &&
+				(s as ActionStepData).action.toolCallId === toolInput.id,
+		);
 		if (existingStep) continue;
 
 		const providerMetadata = extractProviderMetadata(tool.action.metadata);
@@ -348,20 +394,42 @@ export function buildSteps(
 		});
 	}
 
-	// Check if this batch has Gemini thought signatures and multiple parallel tool calls.
-	// If so, we must group them into a single AIMessage because:
-	// 1. The thought_signature is cryptographically tied to the combined parallel call turn
-	// 2. Splitting into separate model turns invalidates the signature
-	// 3. Google's API requires matching function response parts per function call turn
+	// For parallel tool calls (batchTools.length > 1), group them into a single AIMessage so that
+	// memory has one "model" turn with N tool_calls followed by N ToolMessages. This satisfies
+	// Gemini (and other APIs): "number of function response parts = function call parts per turn".
+	// For Gemini with thought signatures, use the builder that includes the cryptographic signature.
 	const sharedThoughtSignature = batchTools.find((bt) => bt.providerMetadata.thoughtSignature)
 		?.providerMetadata.thoughtSignature;
 
-	const sharedAIMessage =
-		sharedThoughtSignature && batchTools.length > 1
-			? buildSharedGeminiAIMessage(batchTools, sharedThoughtSignature)
-			: undefined;
+	// When saveAnnouncements is on and an announcement exists, use announcement
+	// as the AIMessage content (replacing the generic "Calling toolname..." text)
+	const batchAnnouncement = batchTools[0]?.tool.action.metadata?.announcement || '';
+	const firstToolOptions = batchTools[0]?.tool.action.metadata?.options as
+		| Record<string, unknown>
+		| undefined;
+	const isStreaming = firstToolOptions?.enableStreaming === true;
+	// Only when streaming is on and saveAnnouncements is explicitly true do we use announcement content
+	const saveAnnouncements = isStreaming && firstToolOptions?.saveAnnouncements === true;
+	const sharedContentOverride =
+		saveAnnouncements && batchAnnouncement ? String(batchAnnouncement) : undefined;
+
+	// Always use a single AIMessage for parallel tool calls so memory has one "model" turn
+	// (N tool_calls + N ToolMessages). Use announcement as content only when saveAnnouncements is on.
+	let sharedAIMessage: AIMessage | undefined;
+	if (batchTools.length > 1) {
+		if (sharedThoughtSignature) {
+			sharedAIMessage = buildSharedGeminiAIMessage(
+				batchTools,
+				sharedThoughtSignature,
+				sharedContentOverride,
+			);
+		} else {
+			sharedAIMessage = buildSharedAIMessage(batchTools, sharedContentOverride);
+		}
+	}
 
 	// Second pass: build steps
+
 	for (let i = 0; i < batchTools.length; i++) {
 		const { tool, toolInput, toolId, toolName, nodeName, providerMetadata } = batchTools[i];
 
@@ -370,14 +438,38 @@ export function buildSteps(
 		// Exclude metadata fields (id, log, type) from the tool input forwarded to the result
 		const { id, log, type, ...toolInputForResult } = toolInput;
 
-		// Parallel Gemini tool calls: first step gets the shared AIMessage,
-		// subsequent steps get empty messageLog. LangChain's formatToToolMessages
-		// will produce: [SharedAIMessage, ToolMsg_1, ToolMsg_2, ...]
+		// Extract clean announcement text from metadata
+		const announcement = tool.action.metadata?.announcement || '';
+
+		// Push a scratchpad-only announcement step for the first tool in the batch.
+		// The text is already embedded as the tool call AIMessage's content (see messageLog
+		// below), so this step is never written to memory.
+		if (i === 0 && announcement && saveAnnouncements) {
+			steps.push({
+				action: {
+					type: 'announcement',
+					log: announcement,
+				},
+			});
+		}
+
+		// When saveAnnouncements is on and announcement exists, use it as the
+		// AIMessage content (replacing the generic "Calling tool..." text)
+		const announcementContent = saveAnnouncements && announcement ? announcement : undefined;
+
 		const messageLog = sharedAIMessage
 			? i === 0
 				? [sharedAIMessage]
 				: []
-			: [buildIndividualAIMessage(toolId, toolName, toolInput, providerMetadata)];
+			: [
+					buildIndividualAIMessage(
+						toolId,
+						toolName,
+						toolInput,
+						providerMetadata,
+						announcementContent,
+					),
+				];
 
 		steps.push({
 			action: {

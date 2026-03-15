@@ -24,10 +24,24 @@ export type ToolCallRequest = {
 };
 
 /**
- * Represents a tool call action and its observation result.
- * Used for building agent steps and maintaining conversation context.
+ * Represents an announcement step during agent execution.
+ * The step itself is scratchpad/UI only and is never written to memory directly.
+ * The announcement text is preserved in memory by being embedded as the content
+ * of the tool call AIMessage (see buildSteps → buildMessagesFromSteps).
  */
-export type ToolCallData = {
+export type AnnouncementStepData = {
+	action: {
+		type: 'announcement';
+		log: string | number | true | object;
+		/** Clean announcement text streamed by the LLM before a tool call */
+		announcement?: string;
+	};
+};
+
+/**
+ * Represents a tool call action and its observation result.
+ */
+export type ActionStepData = {
 	action: {
 		tool: string;
 		toolInput: Record<string, unknown>;
@@ -38,6 +52,11 @@ export type ToolCallData = {
 	};
 	observation: string;
 };
+
+/**
+ * A step in the agent execution, either a tool call action or an announcement.
+ */
+export type ToolCallData = ActionStepData | AnnouncementStepData;
 
 /**
  * Result from an agent execution, optionally including tool calls and intermediate steps.
@@ -152,6 +171,10 @@ export type RequestResponseMetadata = {
 	anthropic?: AnthropicThinkingMetadata;
 	/** HITL (Human-in-the-Loop) metadata - presence indicates this is an HITL tool action */
 	hitl?: HitlMetadata;
+	/** Clean announcement text streamed by the LLM before a tool call */
+	announcement?: string;
+	/** Agent options (saveAnnouncements, clearToolCallInputInformation, etc.) */
+	options?: Record<string, unknown> & { clearToolCallInputInformation?: boolean };
 };
 
 /**

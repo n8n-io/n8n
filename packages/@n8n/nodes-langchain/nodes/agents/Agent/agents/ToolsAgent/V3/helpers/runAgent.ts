@@ -46,7 +46,9 @@ export async function runAgent(
 
 	const invokeParams = {
 		// steps are passed to the ToolCallingAgent in the runnable sequence to keep track of tool calls
-		steps,
+		// Filter out announcement steps — they are only for display/memory,
+		// not for the agent scratchpad (LangChain's formatToToolMessages doesn't understand them)
+		steps: steps.filter((s) => s.action.type !== 'announcement'),
 		input,
 		system_message: options.systemMessage ?? SYSTEM_MESSAGE,
 		formatting_instructions:
@@ -79,17 +81,22 @@ export async function runAgent(
 
 		// If result contains tool calls, build the request object like the normal flow
 		if (result.toolCalls && result.toolCalls.length > 0) {
-			const actions = createEngineRequests(result.toolCalls, itemIndex, tools);
+			const actions = createEngineRequests(result.toolCalls, itemIndex, tools, options);
 
 			return {
 				actions,
 				metadata: buildResponseMetadata(response, itemIndex),
 			};
 		}
-		// Save conversation to memory including any tool call context
+		// Save conversation to memory including any tool call context.
+		// When saveAnnouncements is on (and streaming is on), pass undefined so all steps are included in memory.
+		// When off or omitted, use previousCount to only save the latest tool batch.
 		if (memory && input && result?.output) {
-			const previousCount = response?.metadata?.previousRequests?.length;
-			await saveToMemory(input, result.output, memory, steps, previousCount);
+			const useSaveAnnouncements = options.enableStreaming && options.saveAnnouncements === true;
+			const previousCount = useSaveAnnouncements
+				? undefined
+				: response?.metadata?.previousRequests?.length;
+			await saveToMemory(input, result.output, memory, steps, previousCount, options);
 		}
 
 		if (options.returnIntermediateSteps && steps.length > 0) {
@@ -107,10 +114,21 @@ export async function runAgent(
 		});
 
 		if ('returnValues' in modelResponse) {
-			// Save conversation to memory including any tool call context
+			// Save conversation to memory including any tool call context.
+			// saveAnnouncements is only relevant when streaming is on; when streaming is off, always use previousCount.
 			if (memory && input && modelResponse.returnValues.output) {
-				const previousCount = response?.metadata?.previousRequests?.length;
-				await saveToMemory(input, modelResponse.returnValues.output, memory, steps, previousCount);
+				const useSaveAnnouncements = options.enableStreaming && options.saveAnnouncements === true;
+				const previousCount = useSaveAnnouncements
+					? undefined
+					: response?.metadata?.previousRequests?.length;
+				await saveToMemory(
+					input,
+					modelResponse.returnValues.output,
+					memory,
+					steps,
+					previousCount,
+					options,
+				);
 			}
 			// Include intermediate steps if requested
 			const result = { ...modelResponse.returnValues };
@@ -119,10 +137,7 @@ export async function runAgent(
 			}
 			return result;
 		}
-
-		// If response contains tool calls, we need to return this in the right format
-		const actions = createEngineRequests(modelResponse, itemIndex, tools);
-
+		const actions = createEngineRequests(modelResponse, itemIndex, tools, options);
 		return {
 			actions,
 			metadata: buildResponseMetadata(response, itemIndex),
