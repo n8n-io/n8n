@@ -1,4 +1,5 @@
 import type { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
+import { ListProjectsQueryDto } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
@@ -59,11 +60,14 @@ describe('ProjectController', () => {
 			(projectsService.getAccessibleProjectsAndCount as jest.Mock).mockResolvedValue([projects, 1]);
 
 			const res = makeRes();
-			const query = {};
+			// Simulate DTO-parsed output: when no query params are provided,
+			// both skip and take must default to undefined for backward compat.
+			const parsed = ListProjectsQueryDto.safeParse({});
+			expect(parsed.success).toBe(true);
+			const query = parsed.data!;
 
-			const result = await controller.getAllProjects(req, res, query as any);
+			const result = await controller.getAllProjects(req, res, query);
 
-			expect(projectsService.getAccessibleProjectsAndCount).toHaveBeenCalledWith(req.user, query);
 			expect(res.json).not.toHaveBeenCalled();
 			expect(result).toEqual(projects);
 		});

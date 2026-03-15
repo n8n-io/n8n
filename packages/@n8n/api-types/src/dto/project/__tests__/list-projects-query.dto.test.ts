@@ -6,7 +6,7 @@ describe('ListProjectsQueryDto', () => {
 			{
 				name: 'no parameters (defaults)',
 				request: {},
-				expected: { skip: 0 },
+				expected: {},
 			},
 			{
 				name: 'with skip and take',
@@ -16,27 +16,27 @@ describe('ListProjectsQueryDto', () => {
 			{
 				name: 'with search',
 				request: { search: ' my project ' },
-				expected: { skip: 0, search: 'my project' },
+				expected: { search: 'my project' },
 			},
 			{
 				name: 'with type personal',
 				request: { type: 'personal' },
-				expected: { skip: 0, type: 'personal' },
+				expected: { type: 'personal' },
 			},
 			{
 				name: 'with type team',
 				request: { type: 'team' },
-				expected: { skip: 0, type: 'team' },
+				expected: { type: 'team' },
 			},
 			{
 				name: 'with activated true',
 				request: { activated: 'true' },
-				expected: { skip: 0, activated: true },
+				expected: { activated: true },
 			},
 			{
 				name: 'with activated false',
 				request: { activated: 'false' },
-				expected: { skip: 0, activated: false },
+				expected: { activated: false },
 			},
 			{
 				name: 'with all parameters',
@@ -64,6 +64,14 @@ describe('ListProjectsQueryDto', () => {
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.take).toBeUndefined();
+			}
+		});
+
+		it('should default skip to undefined when not provided', () => {
+			const result = ListProjectsQueryDto.safeParse({});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.skip).toBeUndefined();
 			}
 		});
 	});
