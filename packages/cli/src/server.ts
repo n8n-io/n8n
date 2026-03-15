@@ -487,6 +487,7 @@ export class Server extends AbstractServer {
 
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
+
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
 	}
