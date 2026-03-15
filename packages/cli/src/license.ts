@@ -252,6 +252,10 @@ export class License implements LicenseProvider {
 	}
 
 	isLicensed(feature: BooleanLicenseFeature) {
+		if (feature === LICENSE_FEATURES.SHOW_NON_PROD_BANNER) {
+			return false;
+		}
+
 		// return this.manager?.hasFeatureEnabled(feature) ?? false;
 		return true;
 	}
@@ -447,7 +451,8 @@ export class License implements LicenseProvider {
 
 	/** @deprecated Use `LicenseState` instead. */
 	getTeamProjectLimit() {
-		return this.getValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
+		// return this.getValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
+		return UNLIMITED_LICENSE_QUOTA;
 	}
 
 	getPlanName(): string {
