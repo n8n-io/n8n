@@ -5,19 +5,18 @@ import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/co
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { doesNodeHaveAllCredentialsFilled } from '@/app/utils/nodes/nodeTransforms';
 
 import { N8nButton } from '@n8n/design-system';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+
 import { useRoute } from 'vue-router';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
-const workflowsStore = useWorkflowsStore();
 const readyToRunStore = useReadyToRunStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const posthogStore = usePostHog();
 const uiStore = useUIStore();
@@ -31,7 +30,7 @@ const isTemplateImportRoute = computed(() => {
 });
 
 const isTemplateSetupCompleted = computed(() => {
-	return !!workflowsStore.workflow?.meta?.templateCredsSetupCompleted;
+	return !!workflowDocumentStore?.value?.meta?.templateCredsSetupCompleted;
 });
 
 const allCredentialsFilled = computed(() => {
@@ -39,7 +38,7 @@ const allCredentialsFilled = computed(() => {
 		return true;
 	}
 
-	const nodes = workflowsStore.getNodes();
+	const nodes = workflowDocumentStore?.value?.getNodes() ?? [];
 	if (!nodes.length) {
 		return true;
 	}
@@ -58,13 +57,13 @@ const isSetupPanelFeatureEnabled = computed(() => {
 });
 
 const showButton = computed(() => {
-	const isCreatedFromTemplate = !!workflowsStore.workflow?.meta?.templateId;
+	const isCreatedFromTemplate = !!workflowDocumentStore?.value?.meta?.templateId;
 	if (!isCreatedFromTemplate) {
 		return false;
 	}
 
 	if (isSetupPanelFeatureEnabled.value) {
-		return workflowsStore.getNodes().length > 0;
+		return (workflowDocumentStore?.value?.getNodes() ?? []).length > 0;
 	}
 
 	if (isTemplateSetupCompleted.value) {
@@ -84,7 +83,7 @@ const isButtonDisabled = computed(() => {
 
 const unsubscribe = watch(allCredentialsFilled, (newValue) => {
 	if (newValue) {
-		workflowState.addToWorkflowMetadata({
+		workflowDocumentStore?.value?.addToMeta({
 			templateCredsSetupCompleted: true,
 		});
 
@@ -115,10 +114,10 @@ onBeforeUnmount(() => {
 
 onMounted(async () => {
 	// Wait for all reactive updates to settle before checking conditions
-	// This ensures workflow.meta.templateId is available after initialization
+	// This ensures meta.templateId is available after initialization
 	await nextTick();
 
-	const templateId = workflowsStore.workflow?.meta?.templateId;
+	const templateId = workflowDocumentStore?.value?.meta?.templateId;
 	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
 
 	if (

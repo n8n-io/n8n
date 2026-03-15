@@ -14,13 +14,19 @@ import { DateTime } from 'luxon';
 import { isDateObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@/app/stores/rbac.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const i18n = useI18n();
 const rbacStore = useRBACStore();
+const projectsStore = useProjectsStore();
+const settingsStore = useSettingsStore();
+const isProjectScopedSecretsEnabled =
+	settingsStore.moduleSettings['external-secrets']?.forProjects ?? false;
 
 const props = defineProps<{
 	provider: SecretProviderConnection;
@@ -32,7 +38,9 @@ const props = defineProps<{
 const emit = defineEmits<{
 	edit: [providerKey: string];
 	share: [providerKey: string];
+	reload: [providerKey: string];
 	delete: [providerKey: string];
+	activate: [providerKey: string];
 }>();
 
 const provider = toRef(props, 'provider');
@@ -50,7 +58,29 @@ const showDisconnectedBadge = computed(() => {
 	return provider.value.state === 'error';
 });
 
-const canDelete = computed(() => rbacStore.hasScope('externalSecretsProvider:delete'));
+const isDisabled = computed(() => provider.value.isEnabled === false);
+
+const canDelete = computed(() => {
+	if (rbacStore.hasScope('externalSecretsProvider:delete')) return true;
+	if (provider.value.projects.length > 0) {
+		return provider.value.projects.every((p) => {
+			const project = projectsStore.myProjects.find((mp) => mp.id === p.id);
+			return project?.scopes?.includes('externalSecretsProvider:delete') ?? false;
+		});
+	}
+	return false;
+});
+
+const canSync = computed(() => {
+	if (rbacStore.hasScope('externalSecretsProvider:sync')) return true;
+	if (provider.value.projects.length > 0) {
+		return provider.value.projects.every((p) => {
+			const project = projectsStore.myProjects.find((mp) => mp.id === p.id);
+			return project?.scopes?.includes('externalSecretsProvider:sync') ?? false;
+		});
+	}
+	return false;
+});
 
 const isGlobal = computed(() => provider.value.projects.length === 0);
 
@@ -90,11 +120,28 @@ const actionDropdownOptions = computed(() => {
 			label: i18n.baseText('generic.edit'),
 			value: 'edit',
 		},
-		{
+	];
+
+	if (isDisabled.value) {
+		options.push({
+			label: i18n.baseText('generic.activate'),
+			value: 'activate',
+		});
+	}
+
+	if (isProjectScopedSecretsEnabled) {
+		options.push({
 			label: i18n.baseText('settings.secretsProviderConnections.actions.share'),
 			value: 'share',
-		},
-	];
+		});
+	}
+
+	if (provider.value.state === 'connected' && canSync.value && !isDisabled.value) {
+		options.push({
+			label: i18n.baseText('settings.externalSecrets.card.actionDropdown.reload'),
+			value: 'reload',
+		});
+	}
 
 	if (canDelete.value) {
 		options.push({
@@ -109,8 +156,12 @@ const actionDropdownOptions = computed(() => {
 function onAction(action: string) {
 	if (action === 'edit') {
 		emit('edit', provider.value.name);
+	} else if (action === 'activate') {
+		emit('activate', provider.value.name);
 	} else if (action === 'share') {
 		emit('share', provider.value.name);
+	} else if (action === 'reload') {
+		emit('reload', provider.value.name);
 	} else if (action === 'delete') {
 		emit('delete', provider.value.name);
 	}
@@ -118,7 +169,7 @@ function onAction(action: string) {
 </script>
 
 <template>
-	<N8nCard :class="$style.card" hoverable>
+	<N8nCard :class="$style.card">
 		<template v-if="providerTypeInfo" #prepend>
 			<SecretsProviderImage
 				:class="$style.providerImage"
@@ -132,7 +183,16 @@ function onAction(action: string) {
 					provider.name
 				}}</N8nHeading>
 				<N8nBadge
-					v-if="showDisconnectedBadge"
+					v-if="isDisabled"
+					theme="tertiary"
+					:bold="false"
+					size="xsmall"
+					data-test-id="disabled-badge"
+				>
+					{{ i18n.baseText('settings.secretsProviderConnections.state.disabled') }}
+				</N8nBadge>
+				<N8nBadge
+					v-else-if="showDisconnectedBadge"
 					theme="warning"
 					:bold="false"
 					size="xsmall"
@@ -150,17 +210,10 @@ function onAction(action: string) {
 				|
 				<span data-test-id="secrets-provider-secrets-count">
 					{{
-						provider.secretsCount === 1
-							? i18n.baseText('settings.externalSecrets.card.secretCount', {
-									interpolate: {
-										count: `${provider.secretsCount}`,
-									},
-								})
-							: i18n.baseText('settings.externalSecrets.card.secretsCount', {
-									interpolate: {
-										count: `${provider.secretsCount ?? 0}`,
-									},
-								})
+						i18n.baseText('settings.externalSecrets.card.secretsCount', {
+							interpolate: { count: provider.secretsCount },
+							adjustToNumber: provider.secretsCount,
+						})
 					}}
 				</span>
 				|
@@ -176,7 +229,7 @@ function onAction(action: string) {
 			</N8nText>
 		</template>
 		<template #append>
-			<N8nTooltip :class="$style.cardBadge" placement="top">
+			<N8nTooltip v-if="!isDisabled" :class="$style.cardBadge" placement="top">
 				<N8nBadge
 					:class="$style.badge"
 					theme="tertiary"
@@ -209,6 +262,12 @@ function onAction(action: string) {
 .card {
 	--card--padding: var(--spacing--2xs);
 	padding-left: var(--spacing--sm);
+	transition: box-shadow 0.3s ease;
+	cursor: pointer;
+
+	&:hover {
+		box-shadow: var(--shadow--card-hover);
+	}
 }
 
 .providerImage {
@@ -230,7 +289,8 @@ function onAction(action: string) {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	background-color: var(--color--background--light-3);
 	border-color: var(--color--foreground);
-	height: 23px;
+	height: var(--spacing--lg);
+	cursor: pointer;
 
 	& > span {
 		display: flex;

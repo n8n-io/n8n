@@ -194,7 +194,13 @@ describe('AiWorkflowBuilderService', () => {
 		// Mock SessionManagerService
 		mockSessionManager = mock<SessionManagerService>();
 		(mockSessionManager.getCheckpointer as jest.Mock).mockReturnValue(mockMemorySaver);
+		(mockSessionManager.loadSessionMessages as jest.Mock).mockResolvedValue([]);
 		MockedSessionManagerService.mockImplementation(() => mockSessionManager);
+		// Mock the static generateThreadId method
+		MockedSessionManagerService.generateThreadId = jest.fn(
+			(workflowId?: string, userId?: string) =>
+				workflowId ? `workflow-${workflowId}-user-${userId ?? 'anonymous'}` : 'random-uuid',
+		);
 
 		// Mock WorkflowBuilderAgent - capture config and call onGenerationSuccess
 		MockedWorkflowBuilderAgent.mockImplementation((config) => {
@@ -217,6 +223,7 @@ describe('AiWorkflowBuilderService', () => {
 		// Create service instance
 		service = new AiWorkflowBuilderService(
 			mockNodeTypeDescriptions,
+			undefined, // sessionStorage
 			mockClient,
 			mockLogger,
 			'test-instance-id',
@@ -230,6 +237,7 @@ describe('AiWorkflowBuilderService', () => {
 		it('should initialize with provided dependencies', () => {
 			const testService = new AiWorkflowBuilderService(
 				mockNodeTypeDescriptions,
+				undefined, // sessionStorage
 				mockClient,
 				mockLogger,
 				'test-instance-id',
@@ -241,6 +249,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
 			expect(MockedSessionManagerService).toHaveBeenCalledWith(
 				expect.arrayContaining([expect.objectContaining({ name: 'n8n-nodes-base.testNode' })]),
+				undefined, // sessionStorage
 				mockLogger,
 			);
 		});
@@ -249,7 +258,11 @@ describe('AiWorkflowBuilderService', () => {
 			const testService = new AiWorkflowBuilderService(mockNodeTypeDescriptions);
 
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
-			expect(MockedSessionManagerService).toHaveBeenCalledWith(expect.any(Array), undefined);
+			expect(MockedSessionManagerService).toHaveBeenCalledWith(
+				expect.any(Array),
+				undefined,
+				undefined,
+			);
 		});
 
 		it('should filter out ignored types and hidden nodes except the data table', () => {
@@ -257,6 +270,7 @@ describe('AiWorkflowBuilderService', () => {
 
 			new AiWorkflowBuilderService(
 				mockNodeTypeDescriptions,
+				undefined, // sessionStorage
 				mockClient,
 				mockLogger,
 				'test-instance-id',
@@ -287,6 +301,7 @@ describe('AiWorkflowBuilderService', () => {
 
 			new AiWorkflowBuilderService(
 				mockNodeTypeDescriptions,
+				undefined, // sessionStorage
 				mockClient,
 				mockLogger,
 				'test-instance-id',
@@ -351,6 +366,8 @@ describe('AiWorkflowBuilderService', () => {
 				mockPayload,
 				'test-user-id',
 				abortController.signal,
+				undefined, // externalCallbacks
+				[], // historicalMessages (empty from loadSessionMessages mock)
 			);
 		});
 
@@ -376,7 +393,8 @@ describe('AiWorkflowBuilderService', () => {
 		it('should create WorkflowBuilderAgent without tracer when no client', async () => {
 			const serviceWithoutClient = new AiWorkflowBuilderService(
 				mockNodeTypeDescriptions,
-				undefined,
+				undefined, // sessionStorage
+				undefined, // client
 				mockLogger,
 			);
 
@@ -463,6 +481,32 @@ describe('AiWorkflowBuilderService', () => {
 
 			// Verify callback was called with correct parameters
 			expect(mockOnCreditsUpdated).toHaveBeenCalledWith('test-user-id', 10, 1);
+		});
+
+		it('should save session to persistent storage after chat completes', async () => {
+			const generator = service.chat(mockPayload, mockUser);
+			// Drain the generator to complete the stream
+			for await (const _ of generator) {
+				// consume all outputs
+			}
+
+			// Verify session was saved after stream completion
+			expect(mockSessionManager.saveSessionFromCheckpointer).toHaveBeenCalledTimes(1);
+			expect(mockSessionManager.saveSessionFromCheckpointer).toHaveBeenCalledWith(
+				'workflow-test-workflow-user-test-user-id',
+				undefined, // previousSummary from state
+			);
+		});
+
+		it('should load historical messages before starting chat', async () => {
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			// Verify historical messages were loaded
+			expect(mockSessionManager.loadSessionMessages).toHaveBeenCalledTimes(1);
+			expect(mockSessionManager.loadSessionMessages).toHaveBeenCalledWith(
+				'workflow-test-workflow-user-test-user-id',
+			);
 		});
 	});
 

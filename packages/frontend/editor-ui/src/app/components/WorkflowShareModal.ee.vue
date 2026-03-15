@@ -24,6 +24,10 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useI18n } from '@n8n/i18n';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nInfoTip, N8nText } from '@n8n/design-system';
@@ -87,10 +91,20 @@ const modalTitle = computed(() => {
 	);
 });
 
-const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+const workflowPermissions = computed(() => {
+	// For existing workflows, scopes come from the API response on the workflow object.
+	// For new unsaved workflows, scopes are only in the workflowDocument store.
+	const scopes =
+		workflow.value?.scopes ??
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflow.value.id)).scopes;
+	return getResourcePermissions(scopes).workflow;
+});
 
-const isPersonalSpace = computed(
-	() => projectsStore.currentProject?.type === ProjectTypes.Personal,
+const isPersonalSpaceRestricted = computed(
+	() =>
+		workflow.value.homeProject?.type === ProjectTypes.Personal &&
+		workflow.value.homeProject?.id === projectsStore.personalProject?.id &&
+		!workflowPermissions.value.share,
 );
 
 const workflowOwnerName = computed(() =>
@@ -261,20 +275,15 @@ watch(
 			</div>
 			<div v-else :class="$style.container">
 				<N8nInfoTip
-					v-if="!workflowPermissions.share && !isHomeTeamProject"
+					v-if="!workflowPermissions.share && !isHomeTeamProject && !isPersonalSpaceRestricted"
 					:bold="false"
 					class="mb-s"
 				>
-					<template v-if="isPersonalSpace">
-						{{ i18n.baseText('workflows.shareModal.info.personalSpaceRestricted') }}
-					</template>
-					<template v-else>
-						{{
-							i18n.baseText('workflows.shareModal.info.sharee', {
-								interpolate: { workflowOwnerName },
-							})
-						}}
-					</template>
+					{{
+						i18n.baseText('workflows.shareModal.info.sharee', {
+							interpolate: { workflowOwnerName },
+						})
+					}}
 				</N8nInfoTip>
 				<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 					<div>
@@ -285,6 +294,11 @@ watch(
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
 							:static="isHomeTeamProject || !workflowPermissions.share"
+							:disabled-tooltip="
+								isPersonalSpaceRestricted
+									? i18n.baseText('workflows.shareModal.info.personalSpaceRestricted')
+									: undefined
+							"
 							:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 							:empty-options-text="i18n.baseText('workflows.shareModel.select.notFound')"
 							@project-added="onProjectAdded"

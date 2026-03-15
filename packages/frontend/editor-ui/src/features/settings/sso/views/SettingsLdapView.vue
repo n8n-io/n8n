@@ -666,7 +666,7 @@ onMounted(async () => {
 					@submit="onSubmit"
 				/>
 			</div>
-			<div>
+			<div :class="$style.buttonContainer">
 				<N8nButton
 					v-if="loginEnabled"
 					:label="
@@ -732,7 +732,7 @@ onMounted(async () => {
 					</template>
 				</ElTable>
 			</div>
-			<div class="pb-3xl">
+			<div :class="['pb-3xl', $style.buttonContainer]">
 				<N8nButton
 					variant="subtle"
 					:label="i18n.baseText('settings.ldap.dryRun')"
@@ -804,5 +804,11 @@ onMounted(async () => {
 	& > div {
 		margin-bottom: var(--spacing--xl);
 	}
+}
+
+.buttonContainer {
+	display: flex;
+	align-items: center;
+	justify-content: start;
 }
 </style>

@@ -1,5 +1,6 @@
 {
-	"name": "@n8n/playwright-janitor",
+  "name": "@n8n/playwright-janitor",
+  "private": true,
 	"version": "0.1.0",
 	"description": "Static analysis and architecture enforcement for Playwright test suites",
 	"main": "dist/index.js",
@@ -16,6 +17,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
+		"format": "biome format --write .",
+		"format:check": "biome ci .",
 		"lint": "eslint . --quiet",
 		"lint:fix": "eslint . --fix",
 		"typecheck": "tsc --noEmit"

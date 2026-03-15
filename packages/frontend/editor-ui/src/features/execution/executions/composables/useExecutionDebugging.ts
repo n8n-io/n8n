@@ -8,6 +8,10 @@ import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants'
 import { DEBUG_PAYWALL_MODAL_KEY } from '../executions.constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -57,7 +61,10 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 		// Using the pinned data of the workflow to check if the node is pinned
 		// because workflowsStore.getCurrentWorkflow() returns a cached workflow without the updated pinned data
-		const workflowPinnedNodeNames = Object.keys(workflowsStore.workflow.pinData ?? {});
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+		const workflowPinnedNodeNames = Object.keys(workflowDocumentStore?.pinData ?? {});
 		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
 			workflowPinnedNodeNames.includes(name),
 		);
@@ -86,10 +93,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 			if (overWritePinnedDataConfirm === MODAL_CONFIRM) {
 				matchingPinnedNodeNames.forEach((name) => {
-					const node = workflowsStore.getNodeByName(name);
-					if (node) {
-						workflowsStore.unpinData({ node });
-					}
+					workflowDocumentStore?.unpinNodeData(name);
 				});
 			} else {
 				await router.push({
@@ -118,11 +122,14 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 				const nodeData = taskData.data.main.find((output) => output && output.length > 0);
 				if (nodeData) {
 					pinnings++;
-					workflowsStore.pinData({
-						node,
-						data: nodeData,
-						isRestoration: true,
-					});
+					workflowDocumentStore?.pinNodeData(node.name, nodeData);
+
+					// Clear dirtiness timestamps so nodes don't appear dirty after restoration.
+					// The old pinData({ isRestoration: true }) handled this internally.
+					if (workflowsStore.nodeMetadata[node.name]) {
+						delete workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt;
+						delete workflowsStore.nodeMetadata[node.name].pinnedDataLastRemovedAt;
+					}
 				}
 			}
 		});

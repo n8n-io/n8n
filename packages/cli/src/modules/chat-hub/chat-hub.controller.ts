@@ -10,11 +10,15 @@ import {
 	ChatMessageId,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
+	ChatHubCreateToolRequest,
+	ChatHubUpdateToolRequest,
 	ChatHubConversationsRequest,
 	ViewableMimeTypes,
 	type ChatSendMessageResponse,
 	type ChatReconnectResponse,
 	ChatReconnectRequest,
+	ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES,
+	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -28,10 +32,14 @@ import {
 	Patch,
 	Query,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { sanitizeFilename } from '@n8n/utils';
 import type { Response } from 'express';
+import multer from 'multer';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubUploadMiddleware } from './chat-hub-upload.middleware';
+import { ChatHubToolService } from './chat-hub-tool.service';
 import { extractAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
@@ -40,12 +48,15 @@ import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+const chatHubUploadMiddleware = Container.get(ChatHubUploadMiddleware);
+
 @RestController('/chat')
 export class ChatHubController {
 	constructor(
 		private readonly chatService: ChatHubService,
 		private readonly chatModelsService: ChatHubModelsService,
 		private readonly chatAgentService: ChatHubAgentService,
+		private readonly chatToolService: ChatHubToolService,
 		private readonly chatAttachmentService: ChatHubAttachmentService,
 	) {}
 
@@ -256,16 +267,55 @@ export class ChatHubController {
 		res.status(204).send();
 	}
 
-	@Get('/agents')
-	@GlobalScope('chatHubAgent:list')
-	async getAgents(req: AuthenticatedRequest) {
-		return await this.chatAgentService.getAgentsByUserId(req.user.id);
+	@Get('/tools')
+	@GlobalScope('chatHub:message')
+	async getTools(req: AuthenticatedRequest) {
+		const tools = await this.chatToolService.getToolsByUserId(req.user.id);
+		return tools.map((tool) => ChatHubToolService.toDto(tool));
+	}
+
+	@Post('/tools')
+	@GlobalScope('chatHub:message')
+	async createTool(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ChatHubCreateToolRequest,
+	) {
+		this.assertToolTypeAllowed(payload.definition.type, req.user);
+		const tool = await this.chatToolService.createTool(req.user, payload);
+		return ChatHubToolService.toDto(tool);
+	}
+
+	@Patch('/tools/:toolId')
+	@GlobalScope('chatHub:message')
+	async updateTool(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('toolId') toolId: string,
+		@Body payload: ChatHubUpdateToolRequest,
+	) {
+		if (payload.definition?.type) {
+			this.assertToolTypeAllowed(payload.definition.type, req.user);
+		}
+		const tool = await this.chatToolService.updateTool(toolId, req.user, payload);
+		return ChatHubToolService.toDto(tool);
+	}
+
+	@Delete('/tools/:toolId')
+	@GlobalScope('chatHub:message')
+	async deleteTool(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('toolId') toolId: string,
+	): Promise<void> {
+		await this.chatToolService.deleteTool(toolId, req.user.id);
+		res.status(204).send();
 	}
 
 	@Get('/agents/:agentId')
 	@GlobalScope('chatHubAgent:read')
 	async getAgent(req: AuthenticatedRequest, _res: Response, @Param('agentId') agentId: string) {
-		return await this.chatAgentService.getAgentById(agentId, req.user.id);
+		return await this.chatAgentService.getAgentByIdAsDto(agentId, req.user.id);
 	}
 
 	@Post('/agents')
@@ -299,5 +349,54 @@ export class ChatHubController {
 		await this.chatAgentService.deleteAgent(agentId, req.user.id);
 
 		res.status(204).send();
+	}
+
+	@Post('/agents/:agentId/files', {
+		middlewares: [chatHubUploadMiddleware.array('files')],
+	})
+	@GlobalScope('chatHubAgent:update')
+	async uploadAgentFiles(
+		req: AuthenticatedRequest & { files?: Express.Multer.File[]; fileUploadError?: Error },
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		if (req.fileUploadError) {
+			const error = req.fileUploadError;
+			if (error instanceof multer.MulterError) {
+				throw new BadRequestError(`File upload error: ${error.message}`);
+			}
+			throw error instanceof BadRequestError ? error : new BadRequestError('File upload failed');
+		}
+
+		const files = req.files ?? [];
+		if (files.length === 0) {
+			throw new BadRequestError('No files uploaded');
+		}
+
+		return await this.chatAgentService.addFilesToAgent(agentId, req.user, files);
+	}
+
+	@Delete('/agents/:agentId/files/:fileKnowledgeId')
+	@GlobalScope('chatHubAgent:update')
+	async deleteAgentFile(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('agentId') agentId: string,
+		@Param('fileKnowledgeId') fileKnowledgeId: string,
+	): Promise<void> {
+		await this.chatAgentService.deleteAgentFile(agentId, req.user, fileKnowledgeId);
+		res.status(204).send();
+	}
+
+	private assertToolTypeAllowed(type: string, user: AuthenticatedRequest['user']) {
+		if (ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES.includes(type)) {
+			throw new BadRequestError(`Tool type "${type}" is not supported in the Chat Hub`);
+		}
+		if (
+			user.role.slug === 'global:chatUser' &&
+			CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES.includes(type)
+		) {
+			throw new BadRequestError(`Tool type "${type}" is not available for your role`);
+		}
 	}
 }

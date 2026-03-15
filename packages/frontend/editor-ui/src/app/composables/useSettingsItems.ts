@@ -7,6 +7,7 @@ import { VIEWS } from '../constants';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
 export function useSettingsItems() {
 	const router = useRouter();
@@ -57,6 +58,7 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.PROJECT_ROLES_SETTINGS),
 				route: { to: { name: VIEWS.PROJECT_ROLES_SETTINGS } },
+				new: true,
 			},
 			{
 				id: 'settings-api',
@@ -144,14 +146,16 @@ export function useSettingsItems() {
 			route: { to: { name: VIEWS.COMMUNITY_NODES } },
 		});
 
-		menuItems.push({
-			id: 'settings-migration-report',
-			icon: 'list-checks',
-			label: i18n.baseText('settings.migrationReport'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
-			route: { to: { name: VIEWS.MIGRATION_REPORT } },
-		});
+		if (MIGRATION_REPORT_TARGET_VERSION) {
+			menuItems.push({
+				id: 'settings-migration-report',
+				icon: 'list-checks',
+				label: i18n.baseText('settings.migrationReport'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
+				route: { to: { name: VIEWS.MIGRATION_REPORT } },
+			});
+		}
 
 		// Append module-registered settings sidebar items.
 		const moduleItems = uiStore.settingsSidebarItems;

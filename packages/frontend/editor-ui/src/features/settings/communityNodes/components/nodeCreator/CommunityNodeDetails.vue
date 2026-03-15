@@ -34,7 +34,7 @@ const quickConnect = computed(() => {
 const nodeCreatorStore = useNodeCreatorStore();
 const { installNode, loading } = useInstallNode();
 
-const isOwner = computed(() => useUsersStore().isInstanceOwner);
+const isAdminOrOwner = computed(() => useUsersStore().isAdminOrOwner);
 
 const updateViewStack = (key: string) => {
 	const installedNodeKey = removePreviewToken(key);
@@ -71,7 +71,11 @@ const updateStoresAndViewStack = (key: string) => {
 };
 
 const onInstall = async () => {
-	if (isOwner.value && activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
+	if (
+		isAdminOrOwner.value &&
+		activeViewStack.communityNodeDetails &&
+		!communityNodeDetails?.installed
+	) {
 		const { key, packageName } = activeViewStack.communityNodeDetails;
 		const result = await installNode({
 			type: 'verified',
@@ -123,7 +127,7 @@ const onInstall = async () => {
 				</div>
 
 				<N8nButton
-					v-if="isOwner && !communityNodeDetails.installed"
+					v-if="isAdminOrOwner && !communityNodeDetails.installed"
 					:loading="loading"
 					:disabled="loading"
 					:label="i18n.baseText('communityNodeDetails.install')"

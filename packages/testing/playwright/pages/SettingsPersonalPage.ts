@@ -10,7 +10,7 @@ export class SettingsPersonalPage extends BasePage {
 		return this.page.getByTestId('menu-item');
 	}
 
-	async goToSettings() {
+	async gotoSettings() {
 		await this.page.goto('/settings');
 	}
 
@@ -18,7 +18,7 @@ export class SettingsPersonalPage extends BasePage {
 		return this.page.getByTestId('current-user-role');
 	}
 
-	async goToPersonalSettings(): Promise<void> {
+	async goto(): Promise<void> {
 		await this.page.goto('/settings/personal');
 	}
 
@@ -65,7 +65,7 @@ export class SettingsPersonalPage extends BasePage {
 	 * @param lastName - The new last name
 	 */
 	async updateFirstAndLastName(firstName: string, lastName: string): Promise<void> {
-		await this.goToPersonalSettings();
+		await this.goto();
 		await this.fillPersonalData(firstName, lastName);
 		await this.saveSettings();
 	}
@@ -98,7 +98,7 @@ export class SettingsPersonalPage extends BasePage {
 	 * Navigate to personal settings and initiate MFA disable workflow
 	 */
 	async triggerDisableMfa(): Promise<void> {
-		await this.goToPersonalSettings();
+		await this.goto();
 		await this.clickDisableMfa();
 	}
 

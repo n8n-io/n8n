@@ -37,7 +37,7 @@ describe('assumeRole', () => {
 	});
 
 	describe('with system credentials', () => {
-		it('should successfully assume role using system credentials', async () => {
+		it('should successfully assume role using system credentials by environment', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
@@ -51,6 +51,82 @@ describe('assumeRole', () => {
 				secretAccessKey: 'system-secret-key',
 				sessionToken: 'system-session-token',
 				source: 'environment' as const,
+			};
+
+			jest
+				.spyOn(systemCredentialsUtils, 'getSystemCredentials')
+				.mockResolvedValue(mockSystemCredentials);
+
+			const mockResponse = {
+				ok: true,
+				text: jest.fn().mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
+					<AssumeRoleResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
+						<AssumeRoleResult>
+							<Credentials>
+								<AccessKeyId>assumed-access-key</AccessKeyId>
+								<SecretAccessKey>assumed-secret-key</SecretAccessKey>
+								<SessionToken>assumed-session-token</SessionToken>
+							</Credentials>
+						</AssumeRoleResult>
+					</AssumeRoleResponse>`),
+			};
+
+			mockFetch.mockResolvedValue(mockResponse as any);
+
+			mockParseString.mockImplementation((_xml, _options, callback) => {
+				callback(null, {
+					AssumeRoleResponse: {
+						AssumeRoleResult: {
+							Credentials: {
+								AccessKeyId: 'assumed-access-key',
+								SecretAccessKey: 'assumed-secret-key',
+								SessionToken: 'assumed-session-token',
+							},
+						},
+					},
+				});
+			});
+
+			const result = await assumeRole(credentials, 'us-east-1');
+
+			expect(result).toEqual({
+				accessKeyId: 'assumed-access-key',
+				secretAccessKey: 'assumed-secret-key',
+				sessionToken: 'assumed-session-token',
+			});
+
+			expect(systemCredentialsUtils.getSystemCredentials).toHaveBeenCalled();
+			expect(mockSign).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'POST',
+					path: '/',
+					region: 'us-east-1',
+				}),
+				mockSystemCredentials,
+			);
+			expect(mockFetch).toHaveBeenCalledWith(
+				'https://sts.us-east-1.amazonaws.com',
+				expect.objectContaining({
+					method: 'POST',
+					body: expect.stringContaining('Action=AssumeRole'),
+				}),
+			);
+		});
+
+		it('should successfully assume role using system credentials by instanceMetadata', async () => {
+			const credentials: AwsAssumeRoleCredentialsType = {
+				region: 'us-east-1',
+				customEndpoints: false,
+				useSystemCredentialsForRole: true,
+				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				roleSessionName: 'test-session',
+			};
+
+			const mockSystemCredentials = {
+				accessKeyId: 'system-access-key',
+				secretAccessKey: 'system-secret-key',
+				sessionToken: 'system-session-token',
+				source: 'instanceMetadata' as const,
 			};
 
 			jest

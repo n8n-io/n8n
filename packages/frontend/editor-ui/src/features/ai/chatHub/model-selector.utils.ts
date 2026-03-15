@@ -35,6 +35,7 @@ export interface BuildMenuItemsOptions {
 	isLoading: boolean;
 	i18n: I18nClass;
 	settings: Partial<Record<ChatHubLLMProvider, ChatProviderSettingsDto>>;
+	credentials: Partial<Record<ChatHubLLMProvider, string | null>> | null;
 }
 
 /**
@@ -217,8 +218,9 @@ function buildWorkflowAgentsMenuItem(
 function buildLlmProviderMenuItem(
 	provider: ChatHubLLMProvider,
 	{ models, error }: ChatModelsResponse[ChatHubLLMProvider],
-	{ settings, i18n, isLoading }: BuildMenuItemsOptions,
+	options: BuildMenuItemsOptions,
 ): MenuItem | null {
+	const { settings, i18n, isLoading, credentials } = options;
 	const providerSettings = settings[provider];
 
 	// Filter out disabled providers from the menu
@@ -282,7 +284,8 @@ function buildLlmProviderMenuItem(
 	const children = [
 		configureMenu,
 		...agentOptions,
-		...(agentOptions.length > 0 && providerSettings?.allowedModels.length === 0
+		...((agentOptions.length > 0 || !!credentials?.[provider]) &&
+		providerSettings?.allowedModels.length === 0
 			? [
 					{
 						id: `${provider}::add-model`,

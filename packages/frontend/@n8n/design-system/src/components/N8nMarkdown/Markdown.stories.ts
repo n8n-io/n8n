@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nMarkdown from './Markdown.vue';
 
 export default {
-	title: 'Atoms/Markdown',
+	title: 'Core/Markdown',
 	component: N8nMarkdown,
 	argTypes: {
 		content: {

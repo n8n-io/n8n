@@ -4,12 +4,14 @@ exports[`v2/components/DropdownMenuSearch > rendering > should render correctly 
 <div
   class="search-container"
 >
+  <!--v-if-->
   <input
     class="search-input"
     placeholder="Search..."
     type="text"
     value=""
   />
+  <!--v-if-->
 </div>
 `;
 
@@ -17,12 +19,14 @@ exports[`v2/components/DropdownMenuSearch > rendering > should render with custo
 <div
   class="search-container"
 >
+  <!--v-if-->
   <input
     class="search-input"
     placeholder="Type to filter..."
     type="text"
     value=""
   />
+  <!--v-if-->
 </div>
 `;
 
@@ -30,11 +34,13 @@ exports[`v2/components/DropdownMenuSearch > rendering > should render with value
 <div
   class="search-container"
 >
+  <!--v-if-->
   <input
     class="search-input"
     placeholder="Search..."
     type="text"
     value="search term"
   />
+  <!--v-if-->
 </div>
 `;

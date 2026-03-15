@@ -4,7 +4,7 @@ import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 import { type IconSize } from './icon';
 
-const BUTTON_VARIANT = ['solid', 'subtle', 'ghost', 'outline', 'destructive'] as const;
+const BUTTON_VARIANT = ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'] as const;
 export type ButtonVariant = (typeof BUTTON_VARIANT)[number];
 
 /** @deprecated Use 'ghost' or 'subtle' instead */

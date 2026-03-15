@@ -91,6 +91,7 @@ describe('External Secrets Event Handling', () => {
 
 			const config = Container.get(ExternalSecretsConfig);
 			(config as any).externalSecretsForProjects = false;
+			(config as any).externalSecretsMultipleConnections = false;
 
 			const settingsRepository = Container.get(SettingsRepository);
 			const cipher = Container.get(Cipher);
@@ -149,12 +150,14 @@ describe('External Secrets Event Handling', () => {
 				providerKey: 'my-vault',
 				type: 'dummy',
 				encryptedSettings,
+				isEnabled: true,
 			});
 
 			await connectionRepository.save({
 				providerKey: 'another-vault',
 				type: 'another_dummy',
 				encryptedSettings,
+				isEnabled: true,
 			});
 
 			module = Container.get(ExternalSecretsModule);

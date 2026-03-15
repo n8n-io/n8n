@@ -44,7 +44,7 @@ describe('AgentIterationHandler', () => {
 				});
 
 				// Exhaust the generator
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 				for await (const _chunk of generator) {
 					// consume chunks
 				}

@@ -10,12 +10,15 @@ import type {
 	HITLInterruptValue,
 	PlanInterruptValue,
 	QuestionsInterruptValue,
+	WebFetchApprovalInterruptValue,
 } from '../types/planning';
 import type {
 	AgentMessageChunk,
+	MessagesCompactedChunk,
 	PlanChunk,
 	QuestionsChunk,
 	ToolProgressChunk,
+	WebFetchApprovalChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
 } from '../types/streaming';
@@ -66,6 +69,7 @@ const SKIPPED_NODES = [
 	'auto_compact_messages',
 	'builder_subgraph',
 	'discovery_subgraph',
+	'assistant_subgraph',
 ];
 
 /**
@@ -194,6 +198,16 @@ function isPlanInterruptValue(value: unknown): value is PlanInterruptValue {
 	return value.type === 'plan' && isRecord(value.plan);
 }
 
+function isWebFetchApprovalInterruptValue(value: unknown): value is WebFetchApprovalInterruptValue {
+	if (!isRecord(value)) return false;
+	return (
+		value.type === 'web_fetch_approval' &&
+		typeof value.requestId === 'string' &&
+		typeof value.url === 'string' &&
+		typeof value.domain === 'string'
+	);
+}
+
 function extractInterruptPayload(
 	update: unknown,
 ): { value: HITLInterruptValue; id?: string } | null {
@@ -209,7 +223,11 @@ function extractInterruptPayload(
 	if (!isRecord(value)) return null;
 	const id = typeof first.id === 'string' ? first.id : undefined;
 
-	if (isQuestionsInterruptValue(value) || isPlanInterruptValue(value)) {
+	if (
+		isQuestionsInterruptValue(value) ||
+		isPlanInterruptValue(value) ||
+		isWebFetchApprovalInterruptValue(value)
+	) {
 		return { value, id };
 	}
 
@@ -223,6 +241,17 @@ function processInterrupt(interruptValue: HITLInterruptValue, id?: string): Stre
 			type: 'questions',
 			introMessage: interruptValue.introMessage,
 			questions: interruptValue.questions,
+		};
+		return { messages: [chunk], ...(id ? { interruptId: id } : {}) };
+	}
+
+	if (interruptValue.type === 'web_fetch_approval') {
+		const chunk: WebFetchApprovalChunk = {
+			role: 'assistant',
+			type: 'web_fetch_approval',
+			requestId: interruptValue.requestId,
+			url: interruptValue.url,
+			domain: interruptValue.domain,
 		};
 		return { messages: [chunk], ...(id ? { interruptId: id } : {}) };
 	}
@@ -284,12 +313,20 @@ function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput
 	return { messages: [messageChunk] };
 }
 
-/** Handle custom tool progress chunk */
-function processToolChunk(chunk: unknown): StreamOutput | null {
-	const typed = chunk as ToolProgressChunk;
-	if (typed?.type !== 'tool') return null;
+/** Handle custom event chunks (tool progress + assistant messages) */
+function processCustomChunk(chunk: unknown): StreamOutput | null {
+	if (!chunk || typeof chunk !== 'object') return null;
+	const typed = chunk as { type?: string };
 
-	return { messages: [typed] };
+	if (typed.type === 'tool') {
+		return { messages: [typed as ToolProgressChunk] };
+	}
+
+	if (typed.type === 'message' && 'role' in typed && 'text' in typed) {
+		return { messages: [typed as AgentMessageChunk] };
+	}
+
+	return null;
 }
 
 // ============================================================================
@@ -300,7 +337,12 @@ function processToolChunk(chunk: unknown): StreamOutput | null {
 function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput | null {
 	if (!nodeUpdate || typeof nodeUpdate !== 'object') return null;
 
-	if (nodeUpdate.delete_messages || nodeUpdate.compact_messages) {
+	if (nodeUpdate.compact_messages) {
+		const compactedChunk: MessagesCompactedChunk = { type: 'messages-compacted' };
+		return { messages: [compactedChunk] };
+	}
+
+	if (nodeUpdate.delete_messages) {
 		return null;
 	}
 
@@ -339,7 +381,7 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 	}
 
 	if (streamMode === 'custom') {
-		return processToolChunk(chunk);
+		return processCustomChunk(chunk);
 	}
 
 	return null;
@@ -538,7 +580,8 @@ function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>>
 
 function tryFormatHitlMessage(msg: AIMessage): Record<string, unknown> | null {
 	const messageType = msg.additional_kwargs?.messageType;
-	if (messageType !== 'questions' && messageType !== 'plan') return null;
+	if (messageType !== 'questions' && messageType !== 'plan' && messageType !== 'web_fetch_approval')
+		return null;
 	if (typeof msg.content !== 'string') return null;
 
 	let parsed: unknown;
@@ -559,6 +602,22 @@ function tryFormatHitlMessage(msg: AIMessage): Record<string, unknown> | null {
 			type: 'questions',
 			questions,
 			...(introMessage ? { introMessage } : {}),
+		};
+	}
+
+	if (messageType === 'web_fetch_approval') {
+		if (
+			typeof parsed.requestId !== 'string' ||
+			typeof parsed.url !== 'string' ||
+			typeof parsed.domain !== 'string'
+		)
+			return null;
+		return {
+			role: 'assistant',
+			type: 'web_fetch_approval',
+			requestId: parsed.requestId,
+			url: parsed.url,
+			domain: parsed.domain,
 		};
 	}
 
@@ -638,18 +697,21 @@ export function formatMessages(
 		if (msg instanceof HumanMessage) {
 			formattedMessages.push(formatHumanMessage(msg));
 		} else if (msg instanceof AIMessage) {
+			// Check for HITL messages (questions/plan) from persistence
 			const hitlMessage = tryFormatHitlMessage(msg);
 			if (hitlMessage) {
 				formattedMessages.push(hitlMessage);
 				continue;
 			}
 
-			// Add AI message content
-			formattedMessages.push(...processAIMessageContent(msg));
-
-			// Add tool calls if present
+			// If the message has tool_calls, only process the tool calls.
+			// The content in tool-calling messages is intermediate LLM "thinking" text
+			// that shouldn't be shown to the user.
 			if (msg.tool_calls?.length) {
 				formattedMessages.push(...processToolCalls(msg.tool_calls, builderTools));
+			} else {
+				// No tool calls - this is a final response, include the content
+				formattedMessages.push(...processAIMessageContent(msg));
 			}
 		} else if (msg instanceof ToolMessage) {
 			processToolMessage(msg, formattedMessages);

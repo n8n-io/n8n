@@ -3,7 +3,7 @@ import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -60,6 +60,9 @@ describe('FrontendService', () => {
 			saml: { loginEnabled: false },
 			oidc: { loginEnabled: false },
 		},
+		credentials: {
+			overwrite: { skipTypes: [] },
+		},
 	});
 
 	const instanceSettings = mock<InstanceSettings>({
@@ -74,6 +77,10 @@ describe('FrontendService', () => {
 
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
 		addPostProcessor: jest.fn(),
+		collectTypes: jest.fn().mockResolvedValue({
+			credentials: [],
+			nodes: [],
+		}),
 		types: {
 			credentials: [],
 			nodes: [],
@@ -280,8 +287,12 @@ describe('FrontendService', () => {
 			process.env.N8N_PREVIEW_MODE = 'true';
 
 			const { service } = createMockService();
-			const settings = await service.getPublicSettings(false);
+			const publicSettings = await service.getPublicSettings(false);
 
+			expect(publicSettings.previewMode).toBe(true);
+			expect(publicSettings.userManagement.showSetupOnFirstLoad).toBe(false);
+
+			const settings = await service.getSettings();
 			expect(settings.previewMode).toBe(true);
 			expect(settings.userManagement.showSetupOnFirstLoad).toBe(false);
 		});
@@ -477,15 +488,87 @@ describe('FrontendService', () => {
 		});
 	});
 
+	describe('overwriteCredentialsProperties', () => {
+		afterEach(() => {
+			// Restore globalConfig.credentials to the default so other tests are unaffected
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+			loadNodesAndCredentials.types = { credentials: [], nodes: [] };
+		});
+
+		it('should set __skipManagedCreation for types in the skip list', () => {
+			const skipCredential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			const normalCredential = {
+				name: 'slackOAuth2Api',
+				displayName: 'Slack OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = {
+				credentials: [skipCredential, normalCredential],
+				nodes: [],
+			};
+			(globalConfig as any).credentials = {
+				overwrite: { skipTypes: ['googleSheetsOAuth2Api'] },
+			};
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(skipCredential.__skipManagedCreation).toBe(true);
+			expect(normalCredential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should not set __skipManagedCreation when skip list is empty', () => {
+			const credential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should clear stale __skipManagedCreation when type is removed from skip list', () => {
+			const credential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+				__skipManagedCreation: true, // Previously set
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+	});
+
 	describe('generateTypes', () => {
 		it('should write node versions file with generated identifiers', async () => {
-			const { service } = createMockService();
-
-			const originalNodes = (loadNodesAndCredentials.types as any).nodes;
-			(loadNodesAndCredentials.types as any).nodes = [
+			const testNodes = [
 				{ name: 'n8n-nodes-base.single', version: 1 },
 				{ name: 'n8n-nodes-base.multi', version: [1, 2] },
 			];
+
+			(loadNodesAndCredentials.collectTypes as jest.Mock).mockResolvedValue({
+				nodes: testNodes,
+				credentials: [],
+			});
+
+			const { service } = createMockService();
 
 			const writeStaticJSONSpy = jest
 				.spyOn(service as any, 'writeStaticJSON')
@@ -512,7 +595,6 @@ describe('FrontendService', () => {
 				expect(identifiers).toHaveLength(3);
 			} finally {
 				writeStaticJSONSpy.mockRestore();
-				(loadNodesAndCredentials.types as any).nodes = originalNodes;
 			}
 		});
 	});

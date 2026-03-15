@@ -9,6 +9,10 @@ import {
 } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
@@ -19,15 +23,7 @@ import {
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
-import type {
-	IConnection,
-	IConnections,
-	INodeExecutionData,
-	INode,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-import { stringSizeInBytes } from '@/app/utils/typesUtils';
-import { dataPinningEventBus } from '@/app/event-bus';
+import type { IConnection, IConnections, INode, INodeTypeDescription } from 'n8n-workflow';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
@@ -669,41 +665,6 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('getPinDataSize()', () => {
-		it('returns zero when pinData is empty', () => {
-			const pinData = {};
-			const result = workflowsStore.getPinDataSize(pinData);
-			expect(result).toBe(0);
-		});
-
-		it('returns correct size when pinData contains string values', () => {
-			const pinData = {
-				key1: 'value1',
-				key2: 'value2',
-			} as Record<string, string | INodeExecutionData[]>;
-			const result = workflowsStore.getPinDataSize(pinData);
-			expect(result).toBe(stringSizeInBytes(pinData.key1) + stringSizeInBytes(pinData.key2));
-		});
-
-		it('returns correct size when pinData contains array values', () => {
-			const pinData = {
-				key1: [{ parameters: 'value1', data: null }],
-				key2: [{ parameters: 'value2', data: null }],
-			} as unknown as Record<string, string | INodeExecutionData[]>;
-			const result = workflowsStore.getPinDataSize(pinData);
-			expect(result).toBe(stringSizeInBytes(pinData.key1) + stringSizeInBytes(pinData.key2));
-		});
-
-		it('returns correct size when pinData contains mixed string and array values', () => {
-			const pinData = {
-				key1: 'value1',
-				key2: [{ parameters: 'value2', data: null }],
-			} as unknown as Record<string, string | INodeExecutionData[]>;
-			const result = workflowsStore.getPinDataSize(pinData);
-			expect(result).toBe(stringSizeInBytes(pinData.key1) + stringSizeInBytes(pinData.key2));
-		});
-	});
-
 	describe('fetchAllWorkflows()', () => {
 		it('should fetch workflows successfully', async () => {
 			const workflowsListStore = useWorkflowsListStore();
@@ -908,7 +869,7 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('setWorkflowActive()', () => {
-		it('should set workflow as active when it is not already active', async () => {
+		it('should set workflow as active in list cache and clear dirty state', async () => {
 			const workflowsListStore = useWorkflowsListStore();
 			uiStore.markStateDirty();
 			workflowsListStore.workflowsById = { '1': { active: false } as IWorkflowDb };
@@ -928,7 +889,6 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsListStore.activeWorkflows).toContain('1');
 			expect(workflowsListStore.workflowsById['1'].active).toBe(true);
-			expect(workflowsStore.workflow.active).toBe(true);
 			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
@@ -952,10 +912,9 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsListStore.activeWorkflows).toEqual(['1']);
 			expect(workflowsListStore.workflowsById['1'].active).toBe(true);
-			expect(workflowsStore.workflow.active).toBe(true);
 		});
 
-		it('should not set current workflow as active when it is not the target', () => {
+		it('should not clear dirty state when targeting a different workflow', () => {
 			const workflowsListStore = useWorkflowsListStore();
 			uiStore.markStateDirty();
 			workflowsStore.workflow.id = '1';
@@ -996,11 +955,14 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsListStore.workflowsById['2'].active).toBe(true);
 		});
 
-		it('should set current workflow as inactive when it is the target', () => {
+		it('should update list cache when targeting any workflow', () => {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.activeWorkflows = ['1'];
+			workflowsListStore.workflowsById = { '1': { active: true } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
-			workflowsStore.workflow.active = true;
 			workflowsStore.setWorkflowInactive('1');
-			expect(workflowsStore.workflow.active).toBe(false);
+			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsListStore.activeWorkflows).toEqual([]);
 		});
 	});
 
@@ -1028,107 +990,6 @@ describe('useWorkflowsStore', () => {
 			vi.mocked(workflowsApi).getNewWorkflow.mockRejectedValue(new Error('API Error'));
 			const newName = await workflowsStore.getDuplicateCurrentWorkflowName(name);
 			expect(newName).toBe(expectedName);
-		});
-	});
-
-	describe('pinData', () => {
-		it('should create pinData object if it does not exist', async () => {
-			workflowsStore.workflow.pinData = undefined;
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-			workflowsStore.pinData({ node, data });
-			expect(workflowsStore.workflow.pinData).toBeDefined();
-		});
-
-		it('should convert data to array if it is not', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = { json: 'testData' } as unknown as INodeExecutionData;
-			workflowsStore.pinData({ node, data: data as unknown as INodeExecutionData[] });
-			expect(Array.isArray(workflowsStore.workflow.pinData?.[node.name])).toBe(true);
-		});
-
-		it('should store pinData correctly', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-			workflowsStore.pinData({ node, data });
-			expect(workflowsStore.workflow.pinData?.[node.name]).toEqual(data);
-		});
-
-		it('should emit pin-data event', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-			const emitSpy = vi.spyOn(dataPinningEventBus, 'emit');
-			workflowsStore.pinData({ node, data });
-			expect(emitSpy).toHaveBeenCalledWith('pin-data', { [node.name]: data });
-		});
-
-		it('should set stateIsDirty to true', async () => {
-			uiStore.markStateClean();
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-			workflowsStore.pinData({ node, data });
-			expect(uiStore.stateIsDirty).toBe(true);
-		});
-
-		it('should preserve binary data when pinning', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [
-				{
-					json: { test: 'data' },
-					binary: {
-						data: {
-							fileName: 'test.txt',
-							mimeType: 'text/plain',
-							data: 'dGVzdCBkYXRh',
-						},
-					},
-				},
-			] as unknown as INodeExecutionData[];
-
-			workflowsStore.pinData({ node, data });
-
-			expect(workflowsStore.workflow.pinData?.[node.name]).toEqual([
-				{
-					json: { test: 'data' },
-					binary: {
-						data: {
-							fileName: 'test.txt',
-							mimeType: 'text/plain',
-							data: 'dGVzdCBkYXRh',
-						},
-					},
-				},
-			]);
-		});
-
-		it('should not update timestamp during restoration', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-
-			// Set up existing pinned data with metadata
-			workflowsStore.workflow.pinData = { [node.name]: data };
-			workflowsStore.nodeMetadata[node.name] = { pristine: false, pinnedDataLastUpdatedAt: 1000 };
-
-			workflowsStore.pinData({ node, data, isRestoration: true });
-
-			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt).toBeUndefined();
-		});
-
-		it('should clear timestamps during restoration', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-
-			// Set up existing metadata with timestamps
-			workflowsStore.nodeMetadata[node.name] = {
-				pristine: false,
-				pinnedDataLastUpdatedAt: 1000,
-				pinnedDataLastRemovedAt: 2000,
-			};
-
-			workflowsStore.pinData({ node, data, isRestoration: true });
-
-			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt).toBeUndefined();
-			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastRemovedAt).toBeUndefined();
 		});
 	});
 
@@ -1480,9 +1341,11 @@ describe('useWorkflowsStore', () => {
 				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
 			};
 			workflowsStore.workflow.active = true;
-			workflowsStore.workflow.isArchived = false;
 			workflowsStore.workflow.id = workflowId;
 			workflowsStore.workflow.versionId = versionId;
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setIsArchived(false);
 
 			const makeRestApiRequestSpy = vi
 				.spyOn(apiUtils, 'makeRestApiRequest')
@@ -1496,8 +1359,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
 			expect(workflowsListStore.workflowsById['1'].isArchived).toBe(true);
 			expect(workflowsListStore.workflowsById['1'].versionId).toBe(updatedVersionId);
-			expect(workflowsStore.workflow.active).toBe(false);
-			expect(workflowsStore.workflow.isArchived).toBe(true);
+			expect(workflowDocumentStore.isArchived).toBe(true);
 			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -1520,10 +1382,11 @@ describe('useWorkflowsStore', () => {
 			workflowsListStore.workflowsById = {
 				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
 			};
-			workflowsStore.workflow.active = true;
-			workflowsStore.workflow.isArchived = false;
 			workflowsStore.workflow.id = workflowId;
 			workflowsStore.workflow.versionId = versionId;
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setIsArchived(false);
 
 			const makeRestApiRequestSpy = vi
 				.spyOn(apiUtils, 'makeRestApiRequest')
@@ -1557,9 +1420,11 @@ describe('useWorkflowsStore', () => {
 				'1': { active: false, isArchived: true, versionId } as IWorkflowDb,
 			};
 			workflowsStore.workflow.active = false;
-			workflowsStore.workflow.isArchived = true;
 			workflowsStore.workflow.id = workflowId;
 			workflowsStore.workflow.versionId = versionId;
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setIsArchived(true);
 
 			const makeRestApiRequestSpy = vi
 				.spyOn(apiUtils, 'makeRestApiRequest')
@@ -1573,8 +1438,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
 			expect(workflowsListStore.workflowsById['1'].isArchived).toBe(false);
 			expect(workflowsListStore.workflowsById['1'].versionId).toBe(updatedVersionId);
-			expect(workflowsStore.workflow.active).toBe(false);
-			expect(workflowsStore.workflow.isArchived).toBe(false);
+			expect(workflowDocumentStore.isArchived).toBe(false);
 			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -1599,6 +1463,10 @@ describe('useWorkflowsStore', () => {
 				executionOrder: 'v1',
 				timezone: 'UTC',
 			};
+
+			// Also populate the document store since updateWorkflowSetting reads from it
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w1'));
+			workflowDocumentStore.setSettings({ executionOrder: 'v1', timezone: 'UTC' });
 
 			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
 				createTestWorkflow({
@@ -1631,8 +1499,9 @@ describe('useWorkflowsStore', () => {
 			// Assert returned value and store updates
 			expect(result.versionId).toBe('v1');
 			expect(workflowsStore.workflow.versionId).toBe('v1');
-			expect(workflowsStore.workflow.settings).toEqual({
+			expect(workflowDocumentStore.settings).toEqual({
 				executionOrder: 'v1',
+				binaryMode: 'separate',
 				timezone: 'UTC',
 				executionTimeout: 10,
 			});
@@ -1813,6 +1682,8 @@ describe('useWorkflowsStore', () => {
 				},
 			} as unknown as IExecutionResponse;
 
+			workflowsStore.workflow.id = 'test-workflow-id';
+
 			workflowsStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
@@ -1822,7 +1693,10 @@ describe('useWorkflowsStore', () => {
 				typeVersion: 3.4,
 			});
 
-			workflowsStore.workflow.pinData = {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			workflowDocumentStore.setPinData({
 				[nodeName]: [
 					{
 						json: {
@@ -1851,7 +1725,7 @@ describe('useWorkflowsStore', () => {
 						],
 					},
 				],
-			};
+			});
 
 			workflowsStore.renameNodeSelectedAndExecution({ old: nodeName, new: newName });
 
@@ -1884,9 +1758,9 @@ describe('useWorkflowsStore', () => {
 				},
 			});
 
-			expect(workflowsStore.workflow.pinData?.[nodeName]).not.toBeDefined();
-			expect(workflowsStore.workflow.pinData?.[newName]).toBeDefined();
-			expect(workflowsStore.workflow.pinData?.['Edit Fields'][0].pairedItem).toEqual([
+			expect(workflowDocumentStore.pinData?.[nodeName]).not.toBeDefined();
+			expect(workflowDocumentStore.pinData?.[newName]).toBeDefined();
+			expect(workflowDocumentStore.pinData?.['Edit Fields'][0].pairedItem).toEqual([
 				{
 					item: 3,
 					sourceOverwrite: {
@@ -2342,8 +2216,9 @@ describe('useWorkflowsStore', () => {
 				status: 'success',
 			});
 
+			const workflowId = 'workflow-123';
 			const testWorkflow = createTestWorkflow({
-				id: 'workflow-123',
+				id: workflowId,
 				scopes: ['workflow:update'],
 			});
 
@@ -2351,10 +2226,13 @@ describe('useWorkflowsStore', () => {
 			// Add workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(testWorkflow);
 
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+
 			// Verify the mock is set up correctly
 			expect(workflowsStore.workflow.scopes).toContain('workflow:update');
 			expect(workflowsStore.workflow.id).toBe('workflow-123');
-			expect(workflowsStore.workflow.isArchived).toBe(false);
+			expect(workflowDocumentStore.isArchived).toBe(false);
 
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(mockExecution);
 
@@ -2380,6 +2258,11 @@ describe('useWorkflowsStore', () => {
 			// Add workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(testWorkflow);
 
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(testWorkflow.id),
+			);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(null);
 
 			await workflowsStore.fetchLastSuccessfulExecution();
@@ -2403,6 +2286,11 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.workflow = testWorkflow;
 			// Add workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(testWorkflow);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(testWorkflow.id),
+			);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
 
 			const error = new Error('API Error');
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockRejectedValue(error);
@@ -2444,11 +2332,15 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not fetch when workflow is archived', async () => {
+			const workflowId = 'workflow-123';
 			workflowsStore.workflow = createTestWorkflow({
-				id: 'workflow-123',
+				id: workflowId,
 				scopes: ['workflow:update'],
-				isArchived: true,
 			});
+			workflowsListStore.addWorkflow(workflowsStore.workflow);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setIsArchived(true);
 
 			await workflowsStore.fetchLastSuccessfulExecution();
 

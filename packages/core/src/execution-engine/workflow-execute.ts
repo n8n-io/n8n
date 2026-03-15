@@ -1251,6 +1251,12 @@ export class WorkflowExecute {
 			);
 		}
 
+		if (nodeType.supplyData) {
+			throw new ApplicationError(
+				`The node "${node.type}" has a "supplyData" method but no "execute" method.`,
+			);
+		}
+
 		const isDeclarativeNode = nodeType.description.requestDefaults !== undefined;
 		if (nodeType.webhook && !isDeclarativeNode) {
 			// Check if the node have requestDefaults(Declarative Node),
@@ -1502,6 +1508,9 @@ export class WorkflowExecute {
 					executionData =
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
+
+					// Reset per-node dynamic credential flag before each node execution
+					this.additionalData.currentNodeUsedDynamicCredentials = false;
 
 					const taskStartedData: ITaskStartedData = {
 						startTime: Date.now(),
@@ -1819,6 +1828,8 @@ export class WorkflowExecute {
 						executionTime: Date.now() - taskStartedData.startTime,
 						metadata: executionData.metadata,
 						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
+						usedDynamicCredentials:
+							this.additionalData.currentNodeUsedDynamicCredentials || undefined,
 					};
 
 					if (executionError !== undefined) {

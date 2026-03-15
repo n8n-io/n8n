@@ -179,6 +179,7 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-pre-execute', {
 					executionId,
 					data: workflowData,
+					mode: 'manual',
 				});
 			});
 		});

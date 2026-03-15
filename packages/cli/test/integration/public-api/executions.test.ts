@@ -706,3 +706,281 @@ describe('PUT /executions/:id/tags', () => {
 		]);
 	});
 });
+
+describe('POST /executions/:id/stop', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/executions/1/stop', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/executions/1/stop', 'abcXYZ'),
+	);
+
+	test('should stop a running execution', async () => {
+		const mockedStopResponse = {
+			mode: 'manual',
+			startedAt: new Date().toISOString(),
+			stoppedAt: new Date().toISOString(),
+			finished: false,
+			status: 'canceled',
+		} as any;
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'stop')
+			.mockResolvedValue({
+				...mockedStopResponse,
+				startedAt: new Date(mockedStopResponse.startedAt),
+				stoppedAt: new Date(mockedStopResponse.stoppedAt),
+			});
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual(mockedStopResponse);
+		expect(executionServiceSpy).toHaveBeenCalled();
+		// The execution ID from the route parameter is passed to the service
+		const calledExecutionId = executionServiceSpy.mock.calls[0][0];
+		// URL parameters come as strings, so we expect string conversion
+		expect(String(calledExecutionId)).toBe(execution.id.toString());
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 404 when execution is not found', async () => {
+		const nonExistentExecutionId = 99999999;
+
+		const response = await authUser1Agent.post(`/executions/${nonExistentExecutionId}/stop`);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Not Found');
+	});
+
+	test('member should not be able to stop execution of workflow not shared with them', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Not Found');
+	});
+
+	test('should allow stopping execution of shared workflow', async () => {
+		testServer.license.enable('feat:sharing');
+
+		const mockedStopResponse = {
+			mode: 'manual',
+			startedAt: new Date().toISOString(),
+			stoppedAt: new Date().toISOString(),
+			finished: false,
+			status: 'canceled',
+		} as any;
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'stop')
+			.mockResolvedValue({
+				...mockedStopResponse,
+				startedAt: new Date(mockedStopResponse.startedAt),
+				stoppedAt: new Date(mockedStopResponse.stoppedAt),
+			});
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		await shareWorkflowWithUsers(workflow, [user2]);
+
+		const response = await authUser2Agent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual(mockedStopResponse);
+
+		executionServiceSpy.mockRestore();
+	});
+});
+
+describe('POST /executions/stop', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/executions/stop', null));
+
+	test('should fail due to invalid API Key', testWithAPIKey('post', '/executions/stop', 'abcXYZ'));
+
+	test('should return 400 when status is not provided', async () => {
+		const response = await authUser1Agent.post('/executions/stop').send({});
+
+		expect(response.statusCode).toBe(400);
+		// OpenAPI validation catches this before our handler validation
+		expect(response.body.message).toContain('status');
+	});
+
+	test('should return 400 when status is empty array', async () => {
+		const response = await authUser1Agent.post('/executions/stop').send({ status: [] });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Status filter is required');
+		expect(response.body.example).toBeDefined();
+	});
+
+	test('should stop multiple running executions', async () => {
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(3);
+
+		await createWorkflow({}, user1);
+
+		const response = await authUser1Agent
+			.post('/executions/stop')
+			.send({ status: ['running', 'waiting'] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ stopped: 3 });
+		expect(executionServiceSpy).toHaveBeenCalledWith(
+			{
+				workflowId: 'all',
+				status: ['running', 'waiting'],
+				startedAfter: undefined,
+				startedBefore: undefined,
+			},
+			expect.any(Array),
+		);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should stop executions filtered by workflowId', async () => {
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(2);
+
+		const workflow = await createWorkflow({}, user1);
+
+		const response = await authUser1Agent
+			.post('/executions/stop')
+			.send({ status: ['running'], workflowId: workflow.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ stopped: 2 });
+		expect(executionServiceSpy).toHaveBeenCalledWith(
+			{
+				workflowId: workflow.id,
+				status: ['running'],
+				startedAfter: undefined,
+				startedBefore: undefined,
+			},
+			expect.any(Array),
+		);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should stop executions with date filters', async () => {
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(1);
+
+		await createWorkflow({}, user1);
+		const startedAfter = '2024-01-01T00:00:00.000Z';
+		const startedBefore = '2024-12-31T23:59:59.999Z';
+
+		const response = await authUser1Agent.post('/executions/stop').send({
+			status: ['running'],
+			startedAfter,
+			startedBefore,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ stopped: 1 });
+		expect(executionServiceSpy).toHaveBeenCalledWith(
+			{
+				workflowId: 'all',
+				status: ['running'],
+				startedAfter,
+				startedBefore,
+			},
+			expect.any(Array),
+		);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should validate workflowId access when provided', async () => {
+		// Create a workflow for user1
+		const workflow = await createWorkflow({}, user1);
+
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(1);
+
+		// User1 should be able to stop executions in their own workflow
+		const response = await authUser1Agent
+			.post('/executions/stop')
+			.send({ status: ['running'], workflowId: workflow.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(executionServiceSpy).toHaveBeenCalled();
+		expect(executionServiceSpy.mock.calls[0][0].workflowId).toBe(workflow.id);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 0 stopped when user has no workflows', async () => {
+		const executionServiceSpy = jest.spyOn(Container.get(ExecutionService), 'stopMany');
+
+		// Create a new user with no workflows
+		const userWithNoWorkflows = await createMemberWithApiKey();
+		const authAgentWithNoWorkflows = testServer.publicApiAgentFor(userWithNoWorkflows);
+
+		const response = await authAgentWithNoWorkflows
+			.post('/executions/stop')
+			.send({ status: ['running'] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ stopped: 0 });
+		// stopMany should not be called if user has no workflows
+		expect(executionServiceSpy).not.toHaveBeenCalled();
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('owner should be able to stop executions across all workflows', async () => {
+		// Create some workflows so owner has workflows to access
+		await createManyWorkflows(2, {}, owner);
+
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(5);
+
+		const response = await authOwnerAgent
+			.post('/executions/stop')
+			.send({ status: ['running', 'waiting'] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ stopped: 5 });
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('member should only stop executions in their accessible workflows', async () => {
+		testServer.license.enable('feat:sharing');
+
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(2);
+
+		const [workflow1, workflow2] = await createManyWorkflows(2, {}, user1);
+		const workflow3 = await createWorkflow({}, user2);
+
+		// Share workflow3 with user1
+		await shareWorkflowWithUsers(workflow3, [user1]);
+
+		const response = await authUser1Agent.post('/executions/stop').send({ status: ['running'] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ stopped: 2 });
+		// Verify that the service was called with workflow IDs accessible to user1
+		const calledWithWorkflowIds = executionServiceSpy.mock.calls[0][1];
+		expect(calledWithWorkflowIds).toContain(workflow1.id);
+		expect(calledWithWorkflowIds).toContain(workflow2.id);
+		expect(calledWithWorkflowIds).toContain(workflow3.id);
+
+		executionServiceSpy.mockRestore();
+	});
+});

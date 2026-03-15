@@ -5,16 +5,24 @@
  * graph where connections use meaningful names instead of indices.
  */
 
+import { deepCopy } from 'n8n-workflow';
+
 import { getOutputName, getInputName } from './semantic-registry';
 import type { SemanticGraph, SemanticNode, SemanticConnection, AiConnectionType } from './types';
 import { AI_CONNECTION_TYPES } from './types';
 import type { WorkflowJSON, NodeJSON } from '../types/base';
+import { normalizeConnections, generateUniqueName } from '../types/base';
 import { isTriggerNodeType } from '../utils/trigger-detection';
 
 /**
  * Create a SemanticNode from a NodeJSON
  */
 function createSemanticNode(nodeJson: NodeJSON): SemanticNode {
+	// Normalize typeVersion to number (some workflows store it as a string)
+	if (typeof nodeJson.typeVersion === 'string') {
+		nodeJson.typeVersion = Number(nodeJson.typeVersion);
+	}
+
 	return {
 		name: nodeJson.name ?? nodeJson.id, // Use id as fallback for nodes without names
 		type: nodeJson.type,
@@ -84,8 +92,49 @@ function parseMainConnections(
 }
 
 /**
- * Parse AI subnode connections and add to graph
- * Skips connections from non-existent source nodes (dangling connections from malformed workflow data)
+ * Parse error type connections from the workflow JSON.
+ * Stores them under the "error" output name on the source node.
+ */
+function parseErrorConnections(
+	sourceName: string,
+	outputs: Array<Array<{ node: string; type: string; index: number }> | null>,
+	graph: SemanticGraph,
+): void {
+	const sourceNode = graph.nodes.get(sourceName);
+	if (!sourceNode) return;
+
+	const connections: SemanticConnection[] = [];
+
+	for (const targets of outputs) {
+		if (!targets) continue;
+
+		for (const target of targets) {
+			const targetNode = graph.nodes.get(target.node);
+			if (!targetNode) continue;
+
+			const inputSlot = getInputName(targetNode.type, target.index, targetNode.json);
+
+			const sources = targetNode.inputSources.get(inputSlot) ?? [];
+			sources.push({ from: sourceName, outputSlot: 'error' });
+			targetNode.inputSources.set(inputSlot, sources);
+
+			connections.push({
+				target: target.node,
+				targetInputSlot: inputSlot,
+			});
+		}
+	}
+
+	if (connections.length > 0) {
+		sourceNode.outputs.set('error', connections);
+	}
+}
+
+/**
+ * Parse AI subnode connections and add to graph.
+ * Uses `target.index` to preserve ordering when multiple subnodes of the same type
+ * connect to the same parent (e.g., primary + fallback language model).
+ * Skips connections to non-existent parent nodes (stale references from malformed workflow data).
  */
 function parseAiConnections(
 	sourceName: string,
@@ -93,22 +142,21 @@ function parseAiConnections(
 	outputs: Array<Array<{ node: string; type: string; index: number }> | null>,
 	graph: SemanticGraph,
 ): void {
-	// Skip connections from non-existent source nodes
 	const sourceNode = graph.nodes.get(sourceName);
 	if (!sourceNode) return;
 
-	// AI connections go from subnode → parent node
 	outputs.forEach((targets) => {
 		if (!targets) return;
 
 		targets.forEach((target) => {
 			const parentNode = graph.nodes.get(target.node);
-			if (parentNode) {
-				parentNode.subnodes.push({
-					connectionType,
-					subnodeName: sourceName,
-				});
-			}
+			if (!parentNode) return; // stale ref — skip
+
+			parentNode.subnodes.push({
+				connectionType,
+				subnodeName: sourceName,
+				index: target.index,
+			});
 		});
 	});
 }
@@ -285,10 +333,12 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 		cycleEdges: new Map(),
 	};
 
-	// Phase 1: Create nodes
-	// Generate unique names for nodes with undefined names to prevent Map key collisions
+	// Phase 1: Create nodes (shallow-clone each NodeJSON to avoid mutating the input)
+	// Generate unique names for nodes with undefined/empty names or duplicate names
+	// to prevent Map key collisions
 	const unnamedCounters = new Map<string, number>();
-	for (const nodeJson of json.nodes) {
+	for (const rawNode of json.nodes) {
+		const nodeJson = { ...rawNode };
 		let nodeName = nodeJson.name;
 		if (nodeName === undefined || nodeName === '') {
 			// Generate a unique name based on type, preserving the undefined/empty name in json
@@ -296,12 +346,22 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 			const counter = (unnamedCounters.get(typeSuffix) ?? 0) + 1;
 			unnamedCounters.set(typeSuffix, counter);
 			nodeName = `__unnamed_${typeSuffix}_${counter}__`;
+		} else if (graph.nodes.has(nodeName)) {
+			// Duplicate node name — generate a unique key to avoid Map collision.
+			// The first instance keeps the original name (connections reference it).
+			nodeName = generateUniqueName(nodeName, (n) => graph.nodes.has(n));
 		}
-		graph.nodes.set(nodeName, createSemanticNode(nodeJson));
+		const semanticNode = createSemanticNode(nodeJson);
+		// Ensure SemanticNode.name matches the unique graph key for variable name generation
+		semanticNode.name = nodeName;
+		graph.nodes.set(nodeName, semanticNode);
 	}
 
-	// Phase 2: Parse connections
-	for (const [sourceName, connectionTypes] of Object.entries(json.connections)) {
+	// Phase 2: Normalize and parse connections (deep-clone to avoid mutating input)
+	const connections = deepCopy(json.connections);
+	normalizeConnections(connections);
+
+	for (const [sourceName, connectionTypes] of Object.entries(connections)) {
 		for (const [connType, outputs] of Object.entries(connectionTypes)) {
 			const typedOutputs = outputs as Array<Array<{
 				node: string;
@@ -311,10 +371,17 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 
 			if (connType === 'main') {
 				parseMainConnections(sourceName, typedOutputs, graph);
+			} else if (connType === 'error') {
+				parseErrorConnections(sourceName, typedOutputs, graph);
 			} else if (isAiConnectionType(connType)) {
 				parseAiConnections(sourceName, connType, typedOutputs, graph);
 			}
 		}
+	}
+
+	// Sort subnodes by index for deterministic ordering
+	for (const [, node] of graph.nodes) {
+		node.subnodes.sort((a, b) => a.index - b.index);
 	}
 
 	// Phase 3: Identify roots (triggers + nodes with no incoming connections)

@@ -64,6 +64,7 @@ function onDelete() {
 				size="small"
 				icon-size="medium"
 				icon="plus"
+				:aria-label="i18n.baseText('node.addNode')"
 				@click="onAdd"
 			/>
 		</CanvasEdgeTooltip>
@@ -75,6 +76,7 @@ function onDelete() {
 				size="small"
 				icon-size="medium"
 				icon="trash-2"
+				:aria-label="i18n.baseText('node.deleteConnection')"
 				@click="onDelete"
 			/>
 		</CanvasEdgeTooltip>

@@ -6,7 +6,8 @@ import {
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { isValueExpression } from '@/app/utils/nodeTypesUtils';
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
+import { ChatHubToolContextKey } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { AI_TRANSFORM_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
@@ -26,6 +27,7 @@ interface Props {
 	value: NodeParameterValueType;
 	showOptions?: boolean;
 	showExpressionSelector?: boolean;
+	showFocusPanel?: boolean;
 	customActions?: Array<{ label: string; value: string; disabled?: boolean }>;
 	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
@@ -38,6 +40,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
 	showOptions: true,
 	showExpressionSelector: true,
+	showFocusPanel: true,
 	customActions: () => [],
 	iconOrientation: 'vertical',
 	loading: false,
@@ -59,13 +62,21 @@ const activeNode = computed(() => ndvStore.activeNode);
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
 const editor = computed(() => getParameterTypeOption(props.parameter, 'editor'));
+const isChatHubToolContext = inject(ChatHubToolContextKey, false);
+
 const shouldShowExpressionSelector = computed(
-	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
+	() =>
+		!isChatHubToolContext &&
+		!props.parameter.noDataExpression &&
+		props.showExpressionSelector &&
+		!props.isReadOnly,
 );
 const isInEmbeddedNdv = useIsInExperimentalNdv();
 const experimentalNdvStore = useExperimentalNdvStore();
 
 const canBeOpenedInFocusPanel = computed(() => {
+	if (!props.showFocusPanel) return false;
+	if (isChatHubToolContext) return false;
 	if (props.parameter.isNodeSetting || props.isReadOnly || props.isContentOverridden) {
 		return false;
 	}

@@ -249,7 +249,14 @@ defineExpose({ open, close });
 						@key:arrow-right="navigation.handleArrowRight"
 						@key:arrow-left="navigation.handleArrowLeft"
 						@key:enter="navigation.handleEnter"
-					/>
+					>
+						<template v-if="slots['search-prefix']" #search-prefix>
+							<slot name="search-prefix" />
+						</template>
+						<template v-if="slots['search-suffix']" #search-suffix>
+							<slot name="search-suffix" />
+						</template>
+					</N8nDropdownMenuSearch>
 
 					<div :class="$style['items-container']" data-menu-items>
 						<template v-if="loading">

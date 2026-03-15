@@ -23,7 +23,7 @@ export function useBackendStatus() {
 		const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
 
 		try {
-			const response = await fetch(`/${settingsStore.endpointHealth}`, {
+			const response = await fetch(settingsStore.endpointHealth, {
 				cache: 'no-store',
 				signal: controller.signal,
 			});
@@ -59,6 +59,10 @@ export function useBackendStatus() {
 	});
 
 	onMounted(() => {
+		if (settingsStore.isPreviewMode) {
+			return;
+		}
+
 		// Initial health check and start polling
 		void updateOnlineStatus();
 		startHeartbeat();

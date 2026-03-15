@@ -1,7 +1,8 @@
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import type { RenameDataTableColumnDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectRelationRepository } from '@n8n/db';
+import { ProjectRelationRepository, type User } from '@n8n/db';
+import type { DataTableInfoById } from 'n8n-workflow';
 
 import { CsvParserService } from '../csv-parser.service';
 import type { DataTableColumn } from '../data-table-column.entity';
@@ -360,6 +361,115 @@ describe('DataTableService', () => {
 				);
 				expect(result.name).toBe(specialCharDto.name);
 			});
+		});
+	});
+
+	describe('getDataTablesSize', () => {
+		const projectId1 = 'project-1';
+		const projectId2 = 'project-2';
+
+		const allDataTables: DataTableInfoById = {
+			'dt-1': {
+				id: 'dt-1',
+				name: 'Table 1',
+				projectId: projectId1,
+				projectName: 'Project 1',
+				sizeBytes: 1024,
+			},
+			'dt-2': {
+				id: 'dt-2',
+				name: 'Table 2',
+				projectId: projectId2,
+				projectName: 'Project 2',
+				sizeBytes: 2048,
+			},
+		};
+
+		const cachedSizeData = {
+			totalBytes: 3072,
+			dataTables: allDataTables,
+		};
+
+		beforeEach(() => {
+			mockDataTableSizeValidator.getCachedSizeData.mockImplementation(async (fn) => {
+				await fn();
+				return cachedSizeData;
+			});
+			mockDataTableSizeValidator.sizeToState.mockReturnValue('ok');
+			mockRoleService.rolesWithScope.mockResolvedValue([]);
+		});
+
+		it('should return all data tables for a global admin', async () => {
+			// Arrange
+			const adminUser = {
+				id: 'user-admin',
+				role: { slug: 'global:owner', scopes: [{ slug: 'dataTable:listProject' }] },
+			} as unknown as User;
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([projectId1]);
+
+			// Act
+			const result = await dataTableService.getDataTablesSize(adminUser);
+
+			// Assert - admin receives the full unfiltered map
+			expect(result.dataTables).toEqual(allDataTables);
+			expect(result.totalBytes).toBe(3072);
+			expect(result.quotaStatus).toBe('ok');
+		});
+
+		it('should return only accessible data tables for a regular user', async () => {
+			// Arrange
+			const regularUser = {
+				id: 'user-regular',
+				role: { slug: 'global:member', scopes: [] },
+			} as unknown as User;
+			// User has access only to project-1
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([projectId1]);
+
+			// Act
+			const result = await dataTableService.getDataTablesSize(regularUser);
+
+			// Assert - only the data table belonging to project-1 is returned
+			expect(result.dataTables).toEqual({ 'dt-1': allDataTables['dt-1'] });
+			expect(result.totalBytes).toBe(3072);
+			expect(result.quotaStatus).toBe('ok');
+		});
+
+		it('should return no data tables when user has no accessible projects', async () => {
+			// Arrange
+			const regularUser = {
+				id: 'user-no-access',
+				role: { slug: 'global:member', scopes: [] },
+			} as unknown as User;
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			// Act
+			const result = await dataTableService.getDataTablesSize(regularUser);
+
+			// Assert
+			expect(result.dataTables).toEqual({});
+		});
+
+		it('should query accessible projects using the correct role scope', async () => {
+			// Arrange
+			const mockRoles = [{ slug: 'project:member' }] as any[];
+			mockRoleService.rolesWithScope.mockResolvedValue(mockRoles);
+			const regularUser = {
+				id: 'user-regular',
+				role: { slug: 'global:member', scopes: [] },
+			} as unknown as User;
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			// Act
+			await dataTableService.getDataTablesSize(regularUser);
+
+			// Assert
+			expect(mockRoleService.rolesWithScope).toHaveBeenCalledWith('project', [
+				'dataTable:listProject',
+			]);
+			expect(mockProjectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+				regularUser.id,
+				mockRoles,
+			);
 		});
 	});
 });

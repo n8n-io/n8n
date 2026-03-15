@@ -214,14 +214,11 @@ export class CredentialsTester {
 				credentialsDataSecretKeys = getAllKeyPaths(credentialsDecrypted.data, '', [], (value) =>
 					value.includes('$secrets.'),
 				);
-				const canUseExternalSecrets =
-					await this.credentialsHelper.credentialCanUseExternalSecrets(credentialsDecrypted);
 				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
 					additionalData,
 					credentialsDecrypted.data,
 					credentialType,
 					'internal' as WorkflowExecuteMode,
-					canUseExternalSecrets,
 					undefined,
 					undefined,
 				);

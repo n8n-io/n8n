@@ -130,8 +130,11 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 		if (!showDropdown.value) {
 			const charBeforeCursor = value.charAt(cursorPosition - 1);
 			if (charBeforeCursor === '@') {
-				openDropdown(inputElement);
-				mentionStartIndex.value = cursorPosition - 1;
+				const charBeforeAt = cursorPosition >= 2 ? value.charAt(cursorPosition - 2) : '';
+				if (!charBeforeAt || /\s/.test(charBeforeAt)) {
+					openDropdown(inputElement);
+					mentionStartIndex.value = cursorPosition - 1;
+				}
 				return;
 			}
 		} else {
@@ -177,7 +180,7 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 
 			case 'Escape':
 				event.preventDefault();
-				closeDropdown(filteredNodes.value.length === 0);
+				closeDropdown();
 				return true;
 
 			case 'Tab':

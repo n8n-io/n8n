@@ -8,13 +8,13 @@ import { ChatHubToolsModal } from './components/ChatHubToolsModal';
 
 export class ChatHubChatPage extends BasePage {
 	readonly sidebar = new ChatHubSidebar(this.page.locator('#sidebar'));
-	readonly toolsModal = new ChatHubToolsModal(this.page.getByTestId('toolsSelectorModal-modal'));
+	readonly toolsModal = new ChatHubToolsModal(
+		this.page.getByRole('dialog').filter({ has: this.page.locator('[data-tools-manager-modal]') }),
+	);
 	readonly credModal = new ChatHubCredentialModal(
 		this.page.getByTestId('chatCredentialSelectorModal-modal'),
 	);
-	readonly personalAgentModal = new ChatHubPersonalAgentModal(
-		this.page.getByTestId('agentEditorModal-modal'),
-	);
+	readonly personalAgentModal = new ChatHubPersonalAgentModal(this.page.getByRole('dialog'));
 
 	constructor(page: Page) {
 		super(page);

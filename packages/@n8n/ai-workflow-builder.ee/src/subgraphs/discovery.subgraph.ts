@@ -27,6 +27,12 @@ import {
 } from '@/tools/introspect.tool';
 import { createNodeSearchTool } from '@/tools/node-search.tool';
 import { submitQuestionsTool } from '@/tools/submit-questions.tool';
+import {
+	createLangGraphSecurityManagerFactory,
+	createMutableSecurityManagerFactory,
+	type MutableWebFetchState,
+} from '@/tools/utils/web-fetch-security';
+import { createWebFetchTool } from '@/tools/web-fetch.tool';
 import type { CoordinationLogEntry } from '@/types/coordination';
 import { createDiscoveryMetadata } from '@/types/coordination';
 import type { DiscoveryContext } from '@/types/discovery-types';
@@ -45,7 +51,11 @@ import {
 	type ResourceOperationInfo,
 } from '@/utils/resource-operation-extractor';
 import { appendArrayReducer, cachedTemplatesReducer } from '@/utils/state-reducers';
-import { executeSubgraphTools, extractUserRequest } from '@/utils/subgraph-helpers';
+import {
+	executeSubgraphTools,
+	extractUserRequest,
+	extractToolMessagesForPersistence,
+} from '@/utils/subgraph-helpers';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
@@ -201,6 +211,32 @@ export const DiscoverySubgraphState = Annotation.Root({
 		reducer: (x, y) => y ?? x,
 		default: () => 0,
 	}),
+
+	// Web Fetch: Per-session approved domains
+	approvedDomains: Annotation<string[]>({
+		reducer: (x, y) => [...new Set([...x, ...y])],
+		default: () => [],
+	}),
+
+	// Web Fetch: Whether all domains are approved
+	allDomainsApproved: Annotation<boolean>({
+		reducer: (x, y) => y ?? x,
+		default: () => false,
+	}),
+
+	// Web Fetch: Per-turn fetch count
+	webFetchCount: Annotation<number>({
+		reducer: (_x, y) => y,
+		default: () => 0,
+	}),
+
+	// Web Fetch: Accumulated fetched URL content (success + error)
+	fetchedUrlContent: Annotation<
+		Array<{ url: string; status: 'success' | 'error'; title: string; content: string }>
+	>({
+		reducer: (x, y) => x.concat(y),
+		default: () => [],
+	}),
 });
 
 export interface DiscoverySubgraphConfig {
@@ -228,6 +264,14 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	private parsedNodeTypes!: INodeTypeDescription[];
 	private featureFlags?: BuilderFeatureFlags;
 
+	/** Mutable state for planner web_fetch hooks, updated before each planner invocation */
+	private plannerWebFetchState: MutableWebFetchState = {
+		approvedDomains: [],
+		allDomainsApproved: false,
+		webFetchCount: 0,
+		messages: [],
+	};
+
 	create(config: DiscoverySubgraphConfig) {
 		this.logger = config.logger;
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -238,10 +282,21 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const includePlanMode = config.featureFlags?.planMode === true;
 		const enableIntrospection = config.featureFlags?.enableIntrospection === true;
 
+		// Create security manager factories for web_fetch in each context
+		const discoverySecurityFactory = createLangGraphSecurityManagerFactory();
+		const plannerSecurityFactory = createMutableSecurityManagerFactory(this.plannerWebFetchState);
+
 		// Create base tools - search_nodes provides all data needed for discovery
 		const baseTools: StructuredTool[] = includePlanMode
-			? [createNodeSearchTool(config.parsedNodeTypes).tool, submitQuestionsTool]
-			: [createNodeSearchTool(config.parsedNodeTypes).tool];
+			? [
+					createNodeSearchTool(config.parsedNodeTypes).tool,
+					submitQuestionsTool,
+					createWebFetchTool(discoverySecurityFactory).tool,
+				]
+			: [
+					createNodeSearchTool(config.parsedNodeTypes).tool,
+					createWebFetchTool(discoverySecurityFactory).tool,
+				];
 
 		// Conditionally add introspect tool if feature flag is enabled
 		if (enableIntrospection) {
@@ -299,7 +354,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		this.agent = systemPrompt.pipe(config.llm.bindTools(allTools));
 		this.plannerAgent = createPlannerAgent({
 			llm: config.plannerLLM,
-			tools: [createGetDocumentationTool().tool],
+			tools: [createGetDocumentationTool().tool, createWebFetchTool(plannerSecurityFactory).tool],
 		});
 
 		// Build the subgraph
@@ -358,6 +413,12 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			return {};
 		}
 
+		// Seed planner web_fetch state from discovery state so previously approved domains carry over
+		this.plannerWebFetchState.approvedDomains = [...(state.approvedDomains ?? [])];
+		this.plannerWebFetchState.allDomainsApproved = state.allDomainsApproved ?? false;
+		this.plannerWebFetchState.webFetchCount = state.webFetchCount ?? 0;
+		this.plannerWebFetchState.messages = state.messages ?? [];
+
 		const result = await invokePlannerNode(
 			this.plannerAgent,
 			{
@@ -374,11 +435,18 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			runnableConfig,
 		);
 
+		// Propagate planner's accumulated web_fetch approvals back to discovery state
+		const webFetchUpdates = {
+			approvedDomains: this.plannerWebFetchState.approvedDomains,
+			allDomainsApproved: this.plannerWebFetchState.allDomainsApproved,
+			webFetchCount: this.plannerWebFetchState.webFetchCount,
+		};
+
 		if (result.planDecision === 'modify') {
-			return { ...result, planModifyCount: state.planModifyCount + 1 };
+			return { ...result, ...webFetchUpdates, planModifyCount: state.planModifyCount + 1 };
 		}
 
-		return result;
+		return { ...result, ...webFetchUpdates };
 	}
 
 	private shouldPlan(state: typeof DiscoverySubgraphState.State): 'planner' | typeof END {
@@ -705,6 +773,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			selectedNodesContext: selectedNodesSummary ?? '',
 			messages: [contextMessage], // Context already in messages
 			cachedTemplates: parentState.cachedTemplates,
+			approvedDomains: parentState.approvedDomains ?? [],
+			allDomainsApproved: parentState.allDomainsApproved ?? false,
+			webFetchCount: 0, // Reset per-turn
 		};
 	}
 
@@ -714,9 +785,16 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	) {
 		const nodesFound = subgraphOutput.nodesFound || [];
 		const templateIds = subgraphOutput.templateIds || [];
+
+		// Read fetched URL content from state field (populated by web_fetch tool)
+		const fetchedUrlContent = subgraphOutput.fetchedUrlContent?.length
+			? subgraphOutput.fetchedUrlContent
+			: undefined;
+
 		const discoveryContext: DiscoveryContext = {
 			nodesFound,
 			bestPractices: subgraphOutput.bestPractices,
+			...(fetchedUrlContent ? { fetchedUrlContent } : {}),
 		};
 
 		// Create coordination log entry (not a message)
@@ -731,6 +809,10 @@ export class DiscoverySubgraph extends BaseSubgraph<
 				hasBestPractices: !!subgraphOutput.bestPractices,
 			}),
 		};
+
+		// Extract tool-related messages for persistence (skip the first context message).
+		// This allows the frontend to restore UI state after page refresh.
+		const toolMessages = extractToolMessagesForPersistence(subgraphOutput.messages);
 
 		// If the modify-loop cap was reached, the subgraph exited with the
 		// last plan but planDecision is still 'modify'. Clear it so the
@@ -756,6 +838,11 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			planPrevious: subgraphOutput.planPrevious,
 			...(subgraphOutput.mode ? { mode: subgraphOutput.mode } : {}),
 			introspectionEvents,
+			// Include tool messages for persistence to restore frontend state on refresh
+			messages: toolMessages,
+			// Propagate web_fetch security state back to parent
+			approvedDomains: subgraphOutput.approvedDomains ?? [],
+			allDomainsApproved: subgraphOutput.allDomainsApproved ?? false,
 		};
 	}
 }

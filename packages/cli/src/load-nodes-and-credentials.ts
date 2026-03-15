@@ -67,8 +67,12 @@ export class LoadNodesAndCredentials {
 		if (inTest) throw new UnexpectedError('Not available in tests');
 
 		// Make sure the imported modules can resolve dependencies fine.
+		// Preserve any existing NODE_PATH (e.g. set by Docker ENV for global npm packages)
+		// so that the task runner subprocess can also resolve externally installed modules.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
-		process.env.NODE_PATH = module.paths.join(delimiter);
+		process.env.NODE_PATH = [module.paths.join(delimiter), process.env.NODE_PATH]
+			.filter(Boolean)
+			.join(delimiter);
 
 		// @ts-ignore
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -110,6 +114,30 @@ export class LoadNodesAndCredentials {
 		for (const loader of Object.values(this.loaders)) {
 			loader.releaseTypes();
 		}
+	}
+
+	/**
+	 * Returns the current node and credential types.
+	 * If types have been released from memory, re-runs postProcessLoaders to
+	 * repopulate them first, then releases after snapshotting.
+	 *
+	 * WARNING: Holding types in memory is very consuming. Use sparingly and only
+	 * where the caller genuinely needs its own copy (e.g. the AI workflow builder
+	 * service or the frontend service writing static JSON files).
+	 */
+	async collectTypes(): Promise<Types> {
+		const needsReload = this.types.nodes.length === 0 && this.types.credentials.length === 0;
+		if (needsReload) {
+			await this.postProcessLoaders();
+		}
+		const types: Types = {
+			nodes: this.types.nodes,
+			credentials: this.types.credentials,
+		};
+		if (needsReload) {
+			this.releaseTypes();
+		}
+		return types;
 	}
 
 	isKnownNode(type: string) {

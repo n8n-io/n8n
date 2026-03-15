@@ -13,7 +13,7 @@ export class WorkerViewPage extends BasePage {
 		return this.page.getByTestId('menu-item').getByText('Workers', { exact: true });
 	}
 
-	async visitWorkerView() {
+	async goto() {
 		await this.page.goto('/settings/workers');
 	}
 }

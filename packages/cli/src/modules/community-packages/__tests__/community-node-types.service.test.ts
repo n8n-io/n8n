@@ -31,6 +31,7 @@ describe('CommunityNodeTypesService', () => {
 		configMock = {
 			enabled: true,
 			verifiedEnabled: true,
+			aiNodeSdkVersion: 1,
 		};
 		communityPackagesServiceMock = {};
 
@@ -51,26 +52,26 @@ describe('CommunityNodeTypesService', () => {
 		it('should use staging environment when ENVIRONMENT=staging', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging');
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1);
 		});
 
 		it('should use production environment when inProduction=true', async () => {
 			(inProduction as unknown as jest.Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production');
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production', {}, 1);
 		});
 
 		it('should use production environment when ENVIRONMENT=production', async () => {
 			process.env.ENVIRONMENT = 'production';
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production');
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production', {}, 1);
 		});
 
 		it('should prioritize ENVIRONMENT=staging over inProduction=true', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			(inProduction as unknown as jest.Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging');
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1);
 		});
 
 		it('should call setTimestampForRetry when detectUpdates returns scheduleRetry', async () => {
@@ -113,6 +114,39 @@ describe('CommunityNodeTypesService', () => {
 
 			expect(detectUpdatesSpy).toHaveBeenCalled();
 			expect(setTimestampForRetrySpy).not.toHaveBeenCalled();
+		});
+
+		it('should batch IDs into chunks of 100 when updating >100 node types', async () => {
+			// Set up initial state so detectUpdates is called
+			(service as any).communityNodeTypes.set('node-1', {
+				name: 'node-1',
+				packageName: 'package-1',
+				npmVersion: '1.0.0',
+			});
+
+			const ids = Array.from({ length: 250 }, (_, i) => i + 1);
+
+			getCommunityNodeTypes.mockResolvedValue([]);
+
+			jest.spyOn(service as any, 'detectUpdates').mockResolvedValue({ typesToUpdate: ids });
+
+			await (service as any).fetchNodeTypes();
+
+			// 250 IDs should result in 3 batches
+			expect(getCommunityNodeTypes).toHaveBeenCalledTimes(3);
+
+			const firstCallFilters = getCommunityNodeTypes.mock.calls[0][1].filters.id.$in;
+			const secondCallFilters = getCommunityNodeTypes.mock.calls[1][1].filters.id.$in;
+			const thirdCallFilters = getCommunityNodeTypes.mock.calls[2][1].filters.id.$in;
+
+			expect(firstCallFilters).toHaveLength(100);
+			expect(secondCallFilters).toHaveLength(100);
+			expect(thirdCallFilters).toHaveLength(50);
+
+			expect(firstCallFilters[0]).toBe(1);
+			expect(firstCallFilters[99]).toBe(100);
+			expect(secondCallFilters[0]).toBe(101);
+			expect(thirdCallFilters[49]).toBe(250);
 		});
 	});
 
