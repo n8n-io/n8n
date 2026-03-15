@@ -10,14 +10,17 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    ports:
+      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: gtw
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
+    command: postgres -c listen_addresses='*'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d n8n"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gtw"]
       interval: 5s
       timeout: 5s
       retries: 5
