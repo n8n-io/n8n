@@ -138,7 +138,7 @@ export class SecretProvidersProjectController {
 		});
 
 		const { projectIds: _, ...updates } = body;
-		const updated = await this.connectionsService.updateConnection(
+		const updated = await this.connectionsService.updateProjectConnection(
 			providerKey,
 			updates,
 			req.user.id,

@@ -363,12 +363,23 @@ describe('SecretsProvidersConnectionsService', () => {
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
 		});
 
-		it('should sync provider connection after updateConnection', async () => {
+		it('should sync provider connection after updateGlobalConnection', async () => {
+			mockRepository.findOne
+				.mockResolvedValueOnce(savedConnection)
+				.mockResolvedValueOnce(savedConnection);
+			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([]);
+
+			await service.updateGlobalConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
+		});
+
+		it('should sync provider connection after updateProjectConnection', async () => {
 			mockRepository.findOne
 				.mockResolvedValueOnce(savedConnection)
 				.mockResolvedValueOnce(savedConnection);
 
-			await service.updateConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+			await service.updateProjectConnection('my-aws', { isEnabled: false }, 'user-123');
 
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
 		});
@@ -433,8 +444,9 @@ describe('SecretsProvidersConnectionsService', () => {
 			mockRepository.findOne
 				.mockResolvedValueOnce(connectionWithProjects)
 				.mockResolvedValueOnce(connectionWithProjects);
+			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([]);
 
-			await service.updateConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+			await service.updateGlobalConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
 
 			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-updated', {
 				userId: 'user-123',
@@ -672,12 +684,13 @@ describe('SecretsProvidersConnectionsService', () => {
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
 		});
 
-		it('should sync provider connection after updateConnection', async () => {
+		it('should sync provider connection after updateGlobalConnection', async () => {
 			mockRepository.findOne
 				.mockResolvedValueOnce(savedConnection)
 				.mockResolvedValueOnce(savedConnection);
+			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([]);
 
-			await service.updateConnection('my-aws', { projectIds: ['p1'] }, 'test-user');
+			await service.updateGlobalConnection('my-aws', { projectIds: ['p1'] }, 'test-user');
 
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
 		});
@@ -727,18 +740,71 @@ describe('SecretsProvidersConnectionsService', () => {
 			});
 		});
 
-		it('should set user role when updating project access via updateConnection', async () => {
+		it('should assign user role to newly added projects via updateGlobalConnection', async () => {
+			mockRepository.findOne
+				.mockResolvedValueOnce(savedConnection)
+				.mockResolvedValueOnce(savedConnection);
+			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([]);
+
+			await service.updateGlobalConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+
+			expect(mockProjectAccessRepository.updateProjectAccess).toHaveBeenCalledWith(
+				1,
+				[],
+				[
+					{
+						projectId: 'p1',
+						role: 'secretsProviderConnection:user',
+					},
+				],
+			);
+		});
+
+		it('should preserve existing project roles when updating via updateGlobalConnection', async () => {
+			mockRepository.findOne
+				.mockResolvedValueOnce(savedConnection)
+				.mockResolvedValueOnce(savedConnection);
+			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([
+				{ projectId: 'p1', role: 'secretsProviderConnection:owner' },
+			] as any);
+
+			await service.updateGlobalConnection('my-aws', { projectIds: ['p1', 'p2'] }, 'user-123');
+
+			expect(mockProjectAccessRepository.updateProjectAccess).toHaveBeenCalledWith(
+				1,
+				[],
+				[
+					{
+						projectId: 'p2',
+						role: 'secretsProviderConnection:user',
+					},
+				],
+			);
+		});
+
+		it('should remove projects no longer in the list via updateGlobalConnection', async () => {
+			mockRepository.findOne
+				.mockResolvedValueOnce(savedConnection)
+				.mockResolvedValueOnce(savedConnection);
+			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([
+				{ projectId: 'p1', role: 'secretsProviderConnection:user' },
+				{ projectId: 'p2', role: 'secretsProviderConnection:owner' },
+			] as any);
+
+			await service.updateGlobalConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+
+			expect(mockProjectAccessRepository.updateProjectAccess).toHaveBeenCalledWith(1, ['p2'], []);
+		});
+
+		it('should not touch project access via updateProjectConnection', async () => {
 			mockRepository.findOne
 				.mockResolvedValueOnce(savedConnection)
 				.mockResolvedValueOnce(savedConnection);
 
-			await service.updateConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+			await service.updateProjectConnection('my-aws', { isEnabled: false }, 'user-123');
 
-			expect(mockProjectAccessRepository.setProjectAccess).toHaveBeenCalledWith(
-				1,
-				['p1'],
-				'secretsProviderConnection:user',
-			);
+			expect(mockProjectAccessRepository.updateProjectAccess).not.toHaveBeenCalled();
+			expect(mockProjectAccessRepository.findByConnectionId).not.toHaveBeenCalled();
 		});
 	});
 
