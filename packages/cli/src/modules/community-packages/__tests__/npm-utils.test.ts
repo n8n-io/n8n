@@ -206,7 +206,7 @@ describe('executeNpmCommand', () => {
 			);
 
 			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
-				/Command failed: npm install some-package\nSome unknown error/,
+				'Failed to execute npm command',
 			);
 		});
 
@@ -300,7 +300,9 @@ describe('executeNpmCommand', () => {
 		it('should handle non-Error objects being thrown', async () => {
 			(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', '', 1, 'string error'));
 
-			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow('string error');
+			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
+				'Failed to execute npm command',
+			);
 		});
 
 		it('should handle errors with no message', async () => {

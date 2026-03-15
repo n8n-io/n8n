@@ -72,6 +72,9 @@ export async function executeNpmCommand(
 				if (code === 0) {
 					resolve({ stdout: stdoutData, stderr: stderrData });
 				} else {
+					// Build a verbose error with full command details for server-side logging only.
+					// Do NOT include this message in user-facing errors as it may contain
+					// sensitive data such as registry URLs with embedded credentials.
 					const error = new Error(`Command failed: npm ${args.join(' ')}\n${stderrData}`);
 					Object.assign(error, { stdout: stdoutData, stderr: stderrData, code });
 					reject(error);
@@ -84,9 +87,12 @@ export async function executeNpmCommand(
 			throw error;
 		}
 
+		// Extract the full message for pattern matching and server-side logging only.
+		// Never use this raw message in user-facing errors as it may contain
+		// sensitive details like registry URLs with embedded credentials.
 		const errorMessage = error instanceof Error ? error.message : String(error);
 
-		LoggerProxy.warn('Failed to execute npm command', { errorMessage });
+		LoggerProxy.warn('Failed to execute npm command', { error: errorMessage });
 
 		// Check for specific error patterns
 		if (matchesErrorPattern(errorMessage, NPM_ERROR_PATTERNS.PACKAGE_NOT_FOUND)) {
@@ -114,7 +120,9 @@ export async function executeNpmCommand(
 			);
 		}
 
-		throw new UnexpectedError(errorMessage || 'Failed to execute npm command', { cause: error });
+		// Fall-through: unknown error. Always throw a generic sanitized message.
+		// The full verbose details are preserved in `cause` for server-side diagnostics/logs.
+		throw new UnexpectedError('Failed to execute npm command', { cause: error });
 	}
 }
 
