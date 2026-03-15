@@ -1,10 +1,7 @@
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import axios from 'axios';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-
-const asyncExecFile = promisify(execFile);
+import spawn from 'cross-spawn';
 
 const REQUEST_TIMEOUT = 30000;
 
@@ -58,8 +55,30 @@ export async function executeNpmCommand(
 	const { cwd, doNotHandleError } = options;
 
 	try {
-		const { stdout } = await asyncExecFile('npm', args, cwd ? { cwd } : undefined);
-		return typeof stdout === 'string' ? stdout : stdout.toString();
+		const { stdout } = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+			const child = spawn('npm', args, { cwd });
+			let stdoutData = '';
+			let stderrData = '';
+
+			child.stdout?.on('data', (data: Buffer) => {
+				stdoutData += data.toString();
+			});
+			child.stderr?.on('data', (data: Buffer) => {
+				stderrData += data.toString();
+			});
+
+			child.once('error', reject);
+			child.once('close', (code) => {
+				if (code === 0) {
+					resolve({ stdout: stdoutData, stderr: stderrData });
+				} else {
+					const error = new Error(`Command failed: npm ${args.join(' ')}\n${stderrData}`);
+					Object.assign(error, { stdout: stdoutData, stderr: stderrData, code });
+					reject(error);
+				}
+			});
+		});
+		return stdout;
 	} catch (error) {
 		if (doNotHandleError) {
 			throw error;
@@ -95,7 +114,7 @@ export async function executeNpmCommand(
 			);
 		}
 
-		throw new UnexpectedError('Failed to execute npm command', { cause: error });
+		throw new UnexpectedError(errorMessage || 'Failed to execute npm command', { cause: error });
 	}
 }
 

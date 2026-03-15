@@ -1,33 +1,54 @@
+import spawn from 'cross-spawn';
 import { UnexpectedError } from 'n8n-workflow';
 import nock from 'nock';
 
-const mockAsyncExec = jest.fn();
-
-jest.mock('node:child_process', () => ({
-	...jest.requireActual('node:child_process'),
-	execFile: jest.fn(),
-}));
-
-jest.mock('node:util', () => {
-	const actual = jest.requireActual('node:util');
-	return {
-		...actual,
-		promisify: jest.fn((fn) => {
-			if (fn === require('node:child_process').execFile) {
-				return mockAsyncExec;
-			}
-			return actual.promisify(fn);
-		}),
-	};
-});
-
-import { executeNpmCommand, verifyIntegrity, checkIfVersionExistsOrThrow } from '../npm-utils';
+import { checkIfVersionExistsOrThrow, executeNpmCommand, verifyIntegrity } from '../npm-utils';
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
+
+jest.mock('cross-spawn');
+
+// Helper to simulate child process behavior
+function createMockProcess(
+	stdout: string | Buffer = '',
+	stderr = '',
+	exitCode = 0,
+	eventError?: Error | string | null,
+) {
+	const mockProcess = {
+		stdout: {
+			on: (event: string, cb: (data: Buffer) => void) => {
+				if (event === 'data' && stdout) cb(Buffer.isBuffer(stdout) ? stdout : Buffer.from(stdout));
+			},
+		},
+		stderr: {
+			on: (event: string, cb: (data: Buffer) => void) => {
+				if (event === 'data' && stderr) cb(Buffer.from(stderr));
+			},
+		},
+		on: (event: string, cb: (arg?: any) => void) => {
+			if (event === 'error' && eventError) {
+				cb(typeof eventError === 'string' ? new Error(eventError) : eventError);
+			}
+			if (event === 'close' && !eventError) {
+				cb(exitCode);
+			}
+		},
+		once: (event: string, cb: (arg?: any) => void) => {
+			if (event === 'error' && eventError) {
+				cb(typeof eventError === 'string' ? new Error(eventError) : eventError);
+			}
+			if (event === 'close' && !eventError) {
+				cb(exitCode);
+			}
+		},
+	};
+	return mockProcess;
+}
 
 describe('executeNpmCommand', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		mockAsyncExec.mockReset();
+		(spawn as unknown as jest.Mock).mockReset();
 	});
 
 	afterEach(() => {
@@ -36,34 +57,31 @@ describe('executeNpmCommand', () => {
 
 	describe('successful execution', () => {
 		it('should execute npm command and return stdout as string', async () => {
-			mockAsyncExec.mockResolvedValue({
-				stdout: 'command output',
-				stderr: '',
-			});
+			(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('command output', '', 0));
 
 			const result = await executeNpmCommand(['install', 'some-package']);
 
 			expect(result).toBe('command output');
-			expect(mockAsyncExec).toHaveBeenCalledWith('npm', ['install', 'some-package'], undefined);
+			expect(spawn).toHaveBeenCalledWith('npm', ['install', 'some-package'], expect.any(Object));
 		});
 
 		it('should execute npm command with cwd option', async () => {
-			mockAsyncExec.mockResolvedValue({
-				stdout: 'command output',
-				stderr: '',
-			});
+			(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('command output', '', 0));
 
 			const result = await executeNpmCommand(['install'], { cwd: '/some/path' });
 
 			expect(result).toBe('command output');
-			expect(mockAsyncExec).toHaveBeenCalledWith('npm', ['install'], { cwd: '/some/path' });
+			expect(spawn).toHaveBeenCalledWith(
+				'npm',
+				['install'],
+				expect.objectContaining({ cwd: '/some/path' }),
+			);
 		});
 
 		it('should convert Buffer stdout to string', async () => {
-			mockAsyncExec.mockResolvedValue({
-				stdout: Buffer.from('buffer output'),
-				stderr: '',
-			});
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(Buffer.from('buffer output'), '', 0),
+			);
 
 			const result = await executeNpmCommand(['list']);
 
@@ -73,8 +91,12 @@ describe('executeNpmCommand', () => {
 
 	describe('error handling', () => {
 		it('should throw UnexpectedError for package not found (npm ERR! 404)', async () => {
-			mockAsyncExec.mockRejectedValue(
-				new Error('npm ERR! 404 Not Found - GET https://registry.npmjs.org/nonexistent-package'),
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(
+					'',
+					'npm ERR! 404 Not Found - GET https://registry.npmjs.org/nonexistent-package',
+					1,
+				),
 			);
 
 			await expect(executeNpmCommand(['install', 'nonexistent-package'])).rejects.toThrow(
@@ -83,9 +105,11 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should throw UnexpectedError for package not found (E404)', async () => {
-			mockAsyncExec.mockRejectedValue(
-				new Error(
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(
+					'',
 					`${NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR} - GET https://registry.npmjs.org/nonexistent-package`,
+					1,
 				),
 			);
 
@@ -95,7 +119,9 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should throw UnexpectedError for package not found (404 Not Found)', async () => {
-			mockAsyncExec.mockRejectedValue(new Error('404 Not Found - package does not exist'));
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess('', '404 Not Found - package does not exist', 1),
+			);
 
 			await expect(executeNpmCommand(['install', 'nonexistent-package'])).rejects.toThrow(
 				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
@@ -103,7 +129,9 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should throw UnexpectedError for no version available', async () => {
-			mockAsyncExec.mockRejectedValue(new Error('No valid versions available for package'));
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess('', 'No valid versions available for package', 1),
+			);
 
 			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
 				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
@@ -111,8 +139,12 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should throw UnexpectedError for package version not found', async () => {
-			mockAsyncExec.mockRejectedValue(
-				new Error(`${NPM_COMMAND_TOKENS.NPM_PACKAGE_VERSION_NOT_FOUND_ERROR} package@1.2.3`),
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(
+					'',
+					`${NPM_COMMAND_TOKENS.NPM_PACKAGE_VERSION_NOT_FOUND_ERROR} package@1.2.3`,
+					1,
+				),
 			);
 
 			await expect(executeNpmCommand(['install', 'package@1.2.3'])).rejects.toThrow(
@@ -121,8 +153,12 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should throw UnexpectedError for disk full (ENOSPC)', async () => {
-			mockAsyncExec.mockRejectedValue(
-				new Error(`${NPM_COMMAND_TOKENS.NPM_DISK_NO_SPACE}: no space left on device`),
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(
+					'',
+					`${NPM_COMMAND_TOKENS.NPM_DISK_NO_SPACE}: no space left on device`,
+					1,
+				),
 			);
 
 			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
@@ -131,7 +167,9 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should throw UnexpectedError for insufficient disk space', async () => {
-			mockAsyncExec.mockRejectedValue(new Error('Error: insufficient space on device'));
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess('', 'Error: insufficient space on device', 1),
+			);
 
 			await expect(executeNpmCommand(['install', 'large-package'])).rejects.toThrow(
 				new UnexpectedError(RESPONSE_ERROR_MESSAGES.DISK_IS_FULL),
@@ -139,7 +177,9 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should throw UnexpectedError for DNS getaddrinfo errors', async () => {
-			mockAsyncExec.mockRejectedValue(new Error('getaddrinfo ENOTFOUND registry.npmjs.org'));
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess('', 'getaddrinfo ENOTFOUND registry.npmjs.org', 1),
+			);
 
 			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
 				new UnexpectedError(
@@ -149,7 +189,9 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should throw UnexpectedError for DNS ENOTFOUND errors', async () => {
-			mockAsyncExec.mockRejectedValue(new Error('ENOTFOUND registry.npmjs.org'));
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess('', 'ENOTFOUND registry.npmjs.org', 1),
+			);
 
 			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
 				new UnexpectedError(
@@ -159,16 +201,18 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should throw generic UnexpectedError for unknown errors', async () => {
-			mockAsyncExec.mockRejectedValue(new Error('Some unknown error'));
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess('', 'Some unknown error', 1),
+			);
 
 			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
-				'Failed to execute npm command',
+				/Command failed: npm install some-package\nSome unknown error/,
 			);
 		});
 
 		it('should preserve the original error as cause', async () => {
 			const originalError = new Error('Some unknown error');
-			mockAsyncExec.mockRejectedValue(originalError);
+			(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', '', 1, originalError));
 
 			try {
 				await executeNpmCommand(['install', 'some-package']);
@@ -183,7 +227,7 @@ describe('executeNpmCommand', () => {
 	describe('doNotHandleError option', () => {
 		it('should throw raw error when doNotHandleError is true', async () => {
 			const rawError = new Error('Raw npm error');
-			mockAsyncExec.mockRejectedValue(rawError);
+			(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', '', 1, rawError));
 
 			await expect(
 				executeNpmCommand(['outdated', '--json'], { doNotHandleError: true }),
@@ -192,7 +236,7 @@ describe('executeNpmCommand', () => {
 
 		it('should not convert error to UnexpectedError when doNotHandleError is true', async () => {
 			const rawError = new Error('npm ERR! 404 Not Found');
-			mockAsyncExec.mockRejectedValue(rawError);
+			(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', '', 1, rawError));
 
 			try {
 				await executeNpmCommand(['install', 'nonexistent'], { doNotHandleError: true });
@@ -204,7 +248,9 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should handle errors normally when doNotHandleError is false', async () => {
-			mockAsyncExec.mockRejectedValue(new Error('npm ERR! 404 Not Found'));
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess('', 'npm ERR! 404 Not Found', 1),
+			);
 
 			await expect(
 				executeNpmCommand(['install', 'nonexistent'], { doNotHandleError: false }),
@@ -212,7 +258,9 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should handle errors normally when doNotHandleError is undefined (default)', async () => {
-			mockAsyncExec.mockRejectedValue(new Error('npm ERR! 404 Not Found'));
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess('', 'npm ERR! 404 Not Found', 1),
+			);
 
 			await expect(executeNpmCommand(['install', 'nonexistent'])).rejects.toThrow(
 				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
@@ -222,10 +270,7 @@ describe('executeNpmCommand', () => {
 
 	describe('command arguments', () => {
 		it('should pass all arguments to npm command', async () => {
-			mockAsyncExec.mockResolvedValue({
-				stdout: 'success',
-				stderr: '',
-			});
+			(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('success', '', 0));
 
 			await executeNpmCommand([
 				'install',
@@ -234,39 +279,36 @@ describe('executeNpmCommand', () => {
 				'--json',
 			]);
 
-			expect(mockAsyncExec).toHaveBeenCalledWith(
+			expect(spawn).toHaveBeenCalledWith(
 				'npm',
 				['install', 'package-name@1.0.0', '--registry=https://custom-registry.com', '--json'],
-				undefined,
+				expect.any(Object),
 			);
 		});
 
 		it('should handle empty arguments array', async () => {
-			mockAsyncExec.mockResolvedValue({
-				stdout: 'npm help output',
-				stderr: '',
-			});
+			(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('npm help output', '', 0));
 
 			const result = await executeNpmCommand([]);
 
 			expect(result).toBe('npm help output');
-			expect(mockAsyncExec).toHaveBeenCalledWith('npm', [], undefined);
+			expect(spawn).toHaveBeenCalledWith('npm', [], expect.any(Object));
 		});
 	});
 
 	describe('edge cases', () => {
 		it('should handle non-Error objects being thrown', async () => {
-			mockAsyncExec.mockRejectedValue('string error');
+			(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', '', 1, 'string error'));
 
-			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
-				new UnexpectedError('Failed to execute npm command'),
-			);
+			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow('string error');
 		});
 
 		it('should handle errors with no message', async () => {
 			const errorWithoutMessage = new Error();
 			errorWithoutMessage.message = '';
-			mockAsyncExec.mockRejectedValue(errorWithoutMessage);
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess('', '', 1, errorWithoutMessage),
+			);
 
 			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
 				'Failed to execute npm command',
@@ -274,10 +316,7 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should handle empty stdout', async () => {
-			mockAsyncExec.mockResolvedValue({
-				stdout: '',
-				stderr: '',
-			});
+			(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', '', 0));
 
 			const result = await executeNpmCommand(['prune']);
 
@@ -294,7 +333,7 @@ describe('verifyIntegrity', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		mockAsyncExec.mockReset();
+		(spawn as unknown as jest.Mock).mockReset();
 	});
 
 	afterEach(() => {
@@ -333,7 +372,7 @@ describe('verifyIntegrity', () => {
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.reply(500);
 
-		mockAsyncExec.mockRejectedValue(new Error('CLI command failed'));
+		(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', 'CLI command failed', 1));
 
 		await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
 			UnexpectedError,
@@ -345,7 +384,7 @@ describe('verifyIntegrity', () => {
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.replyWithError('Network failure');
 
-		mockAsyncExec.mockRejectedValue(new Error('CLI command failed'));
+		(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', 'CLI command failed', 1));
 
 		await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
 			new UnexpectedError(
@@ -359,7 +398,9 @@ describe('verifyIntegrity', () => {
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.replyWithError('getaddrinfo ENOTFOUND internal.registry.local');
 
-		mockAsyncExec.mockRejectedValue(new Error('getaddrinfo ENOTFOUND registry.npmjs.org'));
+		(spawn as unknown as jest.Mock).mockReturnValue(
+			createMockProcess('', 'getaddrinfo ENOTFOUND registry.npmjs.org', 1),
+		);
 
 		await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
 			new UnexpectedError(
@@ -373,7 +414,9 @@ describe('verifyIntegrity', () => {
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.replyWithError('ENOTFOUND some.internal.registry');
 
-		mockAsyncExec.mockRejectedValue(new Error('ENOTFOUND registry.npmjs.org'));
+		(spawn as unknown as jest.Mock).mockReturnValue(
+			createMockProcess('', 'ENOTFOUND registry.npmjs.org', 1),
+		);
 
 		await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
 			new UnexpectedError(
@@ -388,17 +431,16 @@ describe('verifyIntegrity', () => {
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockResolvedValue({
-				stdout: JSON.stringify(integrity),
-				stderr: '',
-			});
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(JSON.stringify(integrity), '', 0),
+			);
 
 			await expect(
 				verifyIntegrity(packageName, version, registryUrl, integrity),
 			).resolves.not.toThrow();
 
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith(
+			expect(spawn).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledWith(
 				'npm',
 				[
 					'view',
@@ -407,7 +449,7 @@ describe('verifyIntegrity', () => {
 					`--registry=${registryUrl}`,
 					'--json',
 				],
-				undefined,
+				expect.any(Object),
 			);
 		});
 
@@ -418,10 +460,9 @@ describe('verifyIntegrity', () => {
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockResolvedValue({
-				stdout: JSON.stringify(wrongIntegrity),
-				stderr: '',
-			});
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(JSON.stringify(wrongIntegrity), '', 0),
+			);
 
 			await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
 				new UnexpectedError(
@@ -429,7 +470,7 @@ describe('verifyIntegrity', () => {
 				),
 			);
 
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle special characters in package name and version safely', async () => {
@@ -440,15 +481,14 @@ describe('verifyIntegrity', () => {
 				.get(`/${encodeURIComponent(specialPackageName)}/${specialVersion}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockResolvedValue({
-				stdout: JSON.stringify(integrity),
-				stderr: '',
-			});
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(JSON.stringify(integrity), '', 0),
+			);
 
 			await verifyIntegrity(specialPackageName, specialVersion, registryUrl, integrity);
 
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith(
+			expect(spawn).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledWith(
 				'npm',
 				[
 					'view',
@@ -457,7 +497,7 @@ describe('verifyIntegrity', () => {
 					`--registry=${registryUrl}`,
 					'--json',
 				],
-				undefined,
+				expect.any(Object),
 			);
 		});
 
@@ -466,7 +506,9 @@ describe('verifyIntegrity', () => {
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockRejectedValue(new Error('getaddrinfo ENOTFOUND registry.npmjs.org'));
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess('', 'getaddrinfo ENOTFOUND registry.npmjs.org', 1),
+			);
 
 			await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
 				new UnexpectedError(
@@ -474,7 +516,7 @@ describe('verifyIntegrity', () => {
 				),
 			);
 
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle npm errors in CLI fallback', async () => {
@@ -482,8 +524,12 @@ describe('verifyIntegrity', () => {
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockRejectedValue(
-				new Error('npm ERR! 404 Not Found - GET https://registry.npmjs.org/nonexistent-package'),
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(
+					'',
+					'npm ERR! 404 Not Found - GET https://registry.npmjs.org/nonexistent-package',
+					1,
+				),
 			);
 
 			await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
@@ -492,7 +538,7 @@ describe('verifyIntegrity', () => {
 				),
 			);
 
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle generic CLI errors', async () => {
@@ -500,7 +546,7 @@ describe('verifyIntegrity', () => {
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockRejectedValue(new Error('Some other error'));
+			(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', 'Some other error', 1));
 
 			await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
 				new UnexpectedError(
@@ -508,7 +554,7 @@ describe('verifyIntegrity', () => {
 				),
 			);
 
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledTimes(1);
 		});
 	});
 });
@@ -520,7 +566,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		mockAsyncExec.mockReset();
+		(spawn as unknown as jest.Mock).mockReset();
 	});
 
 	afterEach(() => {
@@ -545,7 +591,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.reply(404);
 
-		mockAsyncExec.mockRejectedValue(new Error('E404 Not Found'));
+		(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', 'E404 Not Found', 1));
 
 		await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
 			new UnexpectedError('Package version does not exist'),
@@ -557,7 +603,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.reply(404);
 
-		mockAsyncExec.mockRejectedValue(new Error('Some error'));
+		(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', 'Some error', 1));
 
 		await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
 			new UnexpectedError('Failed to check package version existence'),
@@ -569,7 +615,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.replyWithError('Network failure');
 
-		mockAsyncExec.mockRejectedValue(new Error('CLI network failure'));
+		(spawn as unknown as jest.Mock).mockReturnValue(
+			createMockProcess('', 'CLI network failure', 1),
+		);
 
 		await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
 			new UnexpectedError('Failed to check package version existence'),
@@ -581,7 +629,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.reply(500);
 
-		mockAsyncExec.mockRejectedValue(new Error('CLI error'));
+		(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', 'CLI error', 1));
 
 		await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
 			UnexpectedError,
@@ -593,7 +641,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.replyWithError('getaddrinfo ENOTFOUND internal.registry.local');
 
-		mockAsyncExec.mockRejectedValue(new Error('getaddrinfo ENOTFOUND registry.npmjs.org'));
+		(spawn as unknown as jest.Mock).mockReturnValue(
+			createMockProcess('', 'getaddrinfo ENOTFOUND registry.npmjs.org', 1),
+		);
 
 		await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
 			new UnexpectedError(
@@ -607,7 +657,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.replyWithError('ENOTFOUND some.internal.registry');
 
-		mockAsyncExec.mockRejectedValue(new Error('ENOTFOUND registry.npmjs.org'));
+		(spawn as unknown as jest.Mock).mockReturnValue(
+			createMockProcess('', 'ENOTFOUND registry.npmjs.org', 1),
+		);
 
 		await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
 			new UnexpectedError(
@@ -622,18 +674,17 @@ describe('checkIfVersionExistsOrThrow', () => {
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockResolvedValue({
-				stdout: JSON.stringify(version),
-				stderr: '',
-			});
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(JSON.stringify(version), '', 0),
+			);
 
 			const result = await checkIfVersionExistsOrThrow(packageName, version, registryUrl);
 			expect(result).toBe(true);
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith(
+			expect(spawn).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledWith(
 				'npm',
 				['view', `${packageName}@${version}`, 'version', `--registry=${registryUrl}`, '--json'],
-				undefined,
+				expect.any(Object),
 			);
 		});
 
@@ -644,15 +695,14 @@ describe('checkIfVersionExistsOrThrow', () => {
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockResolvedValue({
-				stdout: JSON.stringify(differentVersion),
-				stderr: '',
-			});
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(JSON.stringify(differentVersion), '', 0),
+			);
 
 			await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
 				new UnexpectedError('Failed to check package version existence'),
 			);
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle special characters in package name and version safely for checkIfVersionExistsOrThrow', async () => {
@@ -663,10 +713,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 				.get(`/${encodeURIComponent(specialPackageName)}/${specialVersion}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockResolvedValue({
-				stdout: JSON.stringify(specialVersion),
-				stderr: '',
-			});
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(JSON.stringify(specialVersion), '', 0),
+			);
 
 			const result = await checkIfVersionExistsOrThrow(
 				specialPackageName,
@@ -674,8 +723,8 @@ describe('checkIfVersionExistsOrThrow', () => {
 				registryUrl,
 			);
 			expect(result).toBe(true);
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith(
+			expect(spawn).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledWith(
 				'npm',
 				[
 					'view',
@@ -684,7 +733,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 					`--registry=${registryUrl}`,
 					'--json',
 				],
-				undefined,
+				expect.any(Object),
 			);
 		});
 
@@ -693,15 +742,19 @@ describe('checkIfVersionExistsOrThrow', () => {
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockRejectedValue(
-				new Error('E404 Not Found - GET https://registry.npmjs.org/nonexistent-package'),
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess(
+					'',
+					'E404 Not Found - GET https://registry.npmjs.org/nonexistent-package',
+					1,
+				),
 			);
 
 			await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
 				new UnexpectedError('Package version does not exist'),
 			);
 
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle DNS errors in CLI fallback for checkIfVersionExistsOrThrow', async () => {
@@ -709,7 +762,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockRejectedValue(new Error('getaddrinfo ENOTFOUND registry.npmjs.org'));
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess('', 'getaddrinfo ENOTFOUND registry.npmjs.org', 1),
+			);
 
 			await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
 				new UnexpectedError(
@@ -717,7 +772,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 				),
 			);
 
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle npm errors in CLI fallback for checkIfVersionExistsOrThrow', async () => {
@@ -725,7 +780,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockRejectedValue(new Error('npm ERR! 500 Internal Server Error'));
+			(spawn as unknown as jest.Mock).mockReturnValue(
+				createMockProcess('', 'npm ERR! 500 Internal Server Error', 1),
+			);
 
 			await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
 				new UnexpectedError(
@@ -733,7 +790,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 				),
 			);
 
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle generic CLI errors for checkIfVersionExistsOrThrow', async () => {
@@ -741,13 +798,13 @@ describe('checkIfVersionExistsOrThrow', () => {
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockRejectedValue(new Error('Some other error'));
+			(spawn as unknown as jest.Mock).mockReturnValue(createMockProcess('', 'Some other error', 1));
 
 			await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
 				new UnexpectedError('Failed to check package version existence'),
 			);
 
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
+			expect(spawn).toHaveBeenCalledTimes(1);
 		});
 	});
 
