@@ -1,0 +1,45 @@
+# Observability stack — compose with other setups via -f flag
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.o11y.yml up
+#   docker compose -f docker-compose.scaling.yml -f docker-compose.o11y.yml up
+#
+# URLs:
+#   Prometheus: http://localhost:9099
+#   Grafana:    http://localhost:3300
+
+networks:
+  engine:
+    name: engine-network
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.3.0
+    networks: [engine]
+    volumes:
+      - ./o11y/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - '9099:9090'
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.67.0
+    networks: [engine]
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    ports:
+      - '9121:9121'
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    networks: [engine]
+    volumes:
+      - ./o11y/grafana/provisioning:/etc/grafana/provisioning
+      - ./o11y/grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - '3300:3000'
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      # Dev-only: anonymous admin access. Do not use in staging/production.
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    depends_on:
+      - prometheus

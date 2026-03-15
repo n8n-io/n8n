@@ -3,6 +3,7 @@
  * Called on server startup — skips workflows that already exist (idempotent).
  * Scans both examples/ (numbered examples) and examples/use-cases/ (ported fixtures).
  */
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import type { DataSource } from '@n8n/typeorm';
@@ -68,6 +69,23 @@ function fileNameToDisplayName(filePath: string): string {
 		.join(' ');
 }
 
+/**
+ * Generates a deterministic UUID from a workflow name.
+ * Same name always produces the same ID, so multiple instances
+ * seeding concurrently won't create duplicate workflows.
+ */
+function deterministicId(name: string): string {
+	const hash = createHash('sha256').update(`engine-seed:${name}`).digest('hex');
+	// Format as UUID: 8-4-4-4-12
+	return [
+		hash.slice(0, 8),
+		hash.slice(8, 12),
+		hash.slice(12, 16),
+		hash.slice(16, 20),
+		hash.slice(20, 32),
+	].join('-');
+}
+
 export async function seedExampleWorkflows(dataSource: DataSource): Promise<void> {
 	const transpiler = new TranspilerService();
 
@@ -130,22 +148,32 @@ export async function seedExampleWorkflows(dataSource: DataSource): Promise<void
 				updated++;
 				console.log(`  ↻ ${name} (updated)`);
 			} else {
-				const id = crypto.randomUUID();
-				const workflow = workflowRepo.create({
-					id,
-					version: 1,
-					name,
-					code: source,
-					compiledCode: compiled.code,
-					triggers: compiled.triggers,
-					settings: {},
-					graph: compiled.graph,
-					sourceMap: compiled.sourceMap,
-					active: false,
-				});
-				await workflowRepo.save(workflow);
-				seeded++;
-				console.log(`  ✓ ${name}`);
+				const id = deterministicId(name);
+				// Use INSERT ... ON CONFLICT DO NOTHING so concurrent instances
+				// don't create duplicates (all generate the same deterministic id).
+				const result = await workflowRepo
+					.createQueryBuilder()
+					.insert()
+					.into(WorkflowEntity)
+					.values({
+						id,
+						version: 1,
+						name,
+						code: source,
+						compiledCode: compiled.code,
+						triggers: compiled.triggers,
+						settings: {},
+						graph: compiled.graph,
+						sourceMap: compiled.sourceMap,
+						active: false,
+					} as Record<string, unknown>)
+					.orIgnore()
+					.execute();
+
+				if (result.identifiers.length > 0) {
+					seeded++;
+					console.log(`  ✓ ${name}`);
+				}
 			}
 		} catch (err) {
 			console.warn(`  ✗ ${basename(filePath)}: ${(err as Error).message}`);

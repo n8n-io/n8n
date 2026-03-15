@@ -1,13 +1,18 @@
 import type { ErrorData } from './errors/error-classifier';
 
-export interface StepStartedEvent {
+export interface BaseEvent {
+	eventId: string;
+	createdAt: number;
+}
+
+export interface StepStartedEvent extends BaseEvent {
 	type: 'step:started';
 	executionId: string;
 	stepId: string;
 	attempt: number;
 }
 
-export interface StepCompletedEvent {
+export interface StepCompletedEvent extends BaseEvent {
 	type: 'step:completed';
 	executionId: string;
 	stepId: string;
@@ -16,7 +21,7 @@ export interface StepCompletedEvent {
 	parentStepExecutionId?: string;
 }
 
-export interface StepFailedEvent {
+export interface StepFailedEvent extends BaseEvent {
 	type: 'step:failed';
 	executionId: string;
 	stepId: string;
@@ -24,7 +29,7 @@ export interface StepFailedEvent {
 	parentStepExecutionId?: string;
 }
 
-export interface StepRetryingEvent {
+export interface StepRetryingEvent extends BaseEvent {
 	type: 'step:retrying';
 	executionId: string;
 	stepId: string;
@@ -33,13 +38,13 @@ export interface StepRetryingEvent {
 	error: ErrorData;
 }
 
-export interface StepWaitingEvent {
+export interface StepWaitingEvent extends BaseEvent {
 	type: 'step:waiting';
 	executionId: string;
 	stepId: string;
 }
 
-export interface StepWaitingApprovalEvent {
+export interface StepWaitingApprovalEvent extends BaseEvent {
 	type: 'step:waiting_approval';
 	executionId: string;
 	stepId: string;
@@ -49,13 +54,13 @@ export interface StepWaitingApprovalEvent {
 	context: unknown;
 }
 
-export interface StepCancelledEvent {
+export interface StepCancelledEvent extends BaseEvent {
 	type: 'step:cancelled';
 	executionId: string;
 	stepId: string;
 }
 
-export interface StepChunkEvent {
+export interface StepChunkEvent extends BaseEvent {
 	type: 'step:chunk';
 	executionId: string;
 	stepId: string;
@@ -63,7 +68,7 @@ export interface StepChunkEvent {
 	timestamp: number;
 }
 
-export interface StepAgentSuspendedEvent {
+export interface StepAgentSuspendedEvent extends BaseEvent {
 	type: 'step:agent_suspended';
 	executionId: string;
 	stepId: string;
@@ -71,57 +76,57 @@ export interface StepAgentSuspendedEvent {
 	toolName: string;
 }
 
-export interface StepAgentResumedEvent {
+export interface StepAgentResumedEvent extends BaseEvent {
 	type: 'step:agent_resumed';
 	executionId: string;
 	stepId: string;
 }
 
-export interface ExecutionStartedEvent {
+export interface ExecutionStartedEvent extends BaseEvent {
 	type: 'execution:started';
 	executionId: string;
 }
 
-export interface ExecutionCompletedEvent {
+export interface ExecutionCompletedEvent extends BaseEvent {
 	type: 'execution:completed';
 	executionId: string;
 	result: unknown;
 }
 
-export interface ExecutionFailedEvent {
+export interface ExecutionFailedEvent extends BaseEvent {
 	type: 'execution:failed';
 	executionId: string;
 	error: ErrorData;
 }
 
-export interface ExecutionCancelledEvent {
+export interface ExecutionCancelledEvent extends BaseEvent {
 	type: 'execution:cancelled';
 	executionId: string;
 }
 
-export interface ExecutionPausedEvent {
+export interface ExecutionPausedEvent extends BaseEvent {
 	type: 'execution:paused';
 	executionId: string;
 	lastCompletedStepId: string;
 }
 
-export interface ExecutionResumedEvent {
+export interface ExecutionResumedEvent extends BaseEvent {
 	type: 'execution:resumed';
 	executionId: string;
 }
 
-export interface ExecutionCancelRequestedEvent {
+export interface ExecutionCancelRequestedEvent extends BaseEvent {
 	type: 'execution:cancel_requested';
 	executionId: string;
 }
 
-export interface ExecutionPauseRequestedEvent {
+export interface ExecutionPauseRequestedEvent extends BaseEvent {
 	type: 'execution:pause_requested';
 	executionId: string;
 	resumeAfter?: string;
 }
 
-export interface WebhookRespondEvent {
+export interface WebhookRespondEvent extends BaseEvent {
 	type: 'webhook:respond';
 	executionId: string;
 	statusCode: number;
@@ -152,3 +157,10 @@ export type ExecutionEvent =
 	| ExecutionPauseRequestedEvent;
 
 export type EngineEvent = StepEvent | ExecutionEvent | WebhookRespondEvent;
+
+/** Distributive Omit that preserves discriminated unions */
+type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
+
+/** Input type for emit() — eventId and createdAt are auto-assigned if omitted */
+export type EmittableEvent = DistributiveOmit<EngineEvent, 'eventId' | 'createdAt'> &
+	Partial<Pick<BaseEvent, 'eventId' | 'createdAt'>>;

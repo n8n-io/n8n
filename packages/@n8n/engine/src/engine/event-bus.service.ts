@@ -1,6 +1,10 @@
 import { EventEmitter } from 'node:events';
 
-import type { EngineEvent, StepEvent, ExecutionEvent } from './event-bus.types';
+import { nanoid } from 'nanoid';
+
+import type { EngineEvent, EmittableEvent, StepEvent, ExecutionEvent } from './event-bus.types';
+import type { EventRelay } from './event-relay';
+import type { MetricsService } from './metrics.service';
 
 type EventHandler<T> = (event: T) => void | Promise<void>;
 
@@ -9,20 +13,37 @@ type EventHandler<T> = (event: T) => void | Promise<void>;
  * - Strongly typed event emission and subscription
  * - Wildcard listeners for event categories (step:*, execution:*)
  * - An `onAny` method that receives all engine events
+ * - Auto-assigned `eventId` and `createdAt` on every emitted event
+ * - Optional EventRelay for cross-instance event broadcasting
  */
 export class EngineEventBus {
 	private emitter = new EventEmitter();
 
-	constructor() {
+	constructor(
+		private readonly relay?: EventRelay,
+		private readonly metrics?: MetricsService,
+	) {
 		this.emitter.setMaxListeners(100);
 	}
 
-	emit(event: EngineEvent): void {
+	emit(input: EmittableEvent): void {
+		const event: EngineEvent = {
+			...input,
+			eventId: input.eventId ?? nanoid(),
+			createdAt: input.createdAt ?? Date.now(),
+		} as EngineEvent;
+
 		this.safeEmit(event.type, event);
 
 		// Wildcard: emit 'step:*' for all step events, 'execution:*' for all execution events
 		const prefix = event.type.split(':')[0];
 		this.safeEmit(`${prefix}:*`, event);
+
+		// Broadcast to other instances via relay (no-op for LocalEventRelay)
+		this.relay?.broadcast(event);
+
+		// Track event publication metrics
+		this.metrics?.eventsPublishedTotal.inc({ type: event.type });
 	}
 
 	/**
@@ -70,5 +91,10 @@ export class EngineEventBus {
 
 	removeAllListeners(): void {
 		this.emitter.removeAllListeners();
+	}
+
+	async close(): Promise<void> {
+		this.removeAllListeners();
+		await this.relay?.close();
 	}
 }

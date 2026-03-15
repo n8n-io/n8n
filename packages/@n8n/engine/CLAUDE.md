@@ -79,6 +79,62 @@ docker compose -f docker-compose.perf.yml up -d
 k6 run perf/webhook-throughput.js
 ```
 
+#### Observability (`docker-compose.o11y.yml`)
+
+Prometheus + Grafana stack for metrics collection and dashboards. Shared across
+all environments via compose file composition.
+
+```bash
+docker compose -f docker-compose.o11y.yml up    # Standalone o11y stack
+```
+
+| Service | Port | Description |
+|---------|------|-------------|
+| `prometheus` | 9090 | Prometheus scraping `/metrics` |
+| `grafana` | 3300 | Grafana dashboards (auto-provisioned) |
+
+#### Scaling (`docker-compose.scaling.yml`)
+
+Multi-instance deployment with 3 engine instances, Redis for event relay,
+and Traefik for load balancing.
+
+```bash
+docker compose -f docker-compose.scaling.yml -f docker-compose.o11y.yml up
+```
+
+| Service | Port | Description |
+|---------|------|-------------|
+| `engine-1/2/3` | -- | 3 engine instances (internal network) |
+| `redis` | 6379 | Redis for cross-instance event relay |
+| `traefik` | 3100 | Load balancer routing to engine instances |
+| `postgres` | 5433 | Shared PostgreSQL database |
+
+#### Compose file composition
+
+The compose files are designed to be layered with `-f` flags:
+
+```bash
+# Development with o11y (default `pnpm dev`)
+docker compose -f docker-compose.yml -f docker-compose.o11y.yml up
+
+# Scaling with o11y
+docker compose -f docker-compose.scaling.yml -f docker-compose.o11y.yml up
+
+# Performance with o11y
+docker compose -f docker-compose.perf.yml -f docker-compose.o11y.yml up
+```
+
+#### Scripts
+
+| Script | Description |
+|--------|-------------|
+| `pnpm dev` | Development stack + o11y (Prometheus + Grafana) |
+| `pnpm dev:scaling` | 3 engine instances + Redis + Traefik + o11y |
+| `pnpm dev:perf` | Performance stack (k6 + Grafana) + o11y |
+| `pnpm dev:o11y` | Standalone Prometheus + Grafana |
+| `pnpm scaling:up` | Start scaling stack in background (detached) |
+| `pnpm scaling:down` | Stop scaling stack and remove volumes |
+
 ## URLs
 
 | Environment | Frontend | API | Database |
@@ -86,6 +142,15 @@ k6 run perf/webhook-throughput.js
 | Development | http://localhost:3200 | http://localhost:3100 | `localhost:5433` |
 | Production | http://localhost:3100 | http://localhost:3100 | `localhost:5433` |
 | Test DB | -- | -- | `localhost:5434` |
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `postgres://engine:engine@localhost:5433/engine` | PostgreSQL connection string |
+| `PORT` | `3100` | HTTP server port |
+| `REDIS_URL` | -- | Redis connection string. If set, enables cross-instance event relay for horizontal scaling. If absent, events stay in-process. |
+| `MAX_CONCURRENCY` | `10` | Maximum concurrent step executions per instance |
 
 ## CLI
 
@@ -133,6 +198,12 @@ POST   /api/workflow-step-executions/:id/approve   Approve/decline
 ### Webhooks
 ```
 ALL    /webhook/:path    Incoming webhook handler (4 response modes)
+```
+
+### System
+```
+GET    /health    Health check (ok/degraded/error)
+GET    /metrics   Prometheus metrics
 ```
 
 ## Project Structure
@@ -208,9 +279,14 @@ packages/@n8n/engine/
 │   ├── helpers.ts                  createTestDataSource, cleanDatabase
 │   ├── fixtures.ts                 Predefined workflow source strings
 │   └── integration/                13 integration test suites (need PostgreSQL)
+├── o11y/                       Observability configs (Prometheus + Grafana)
+│   ├── prometheus.yml              Prometheus scrape config
+│   └── grafana/                    Grafana provisioning and dashboards
 ├── docker-compose.yml          Development (hot-reload)
 ├── docker-compose.test.yml     Testing (ephemeral DB)
 ├── docker-compose.perf.yml     Performance (k6 + Grafana)
+├── docker-compose.o11y.yml     Observability (Prometheus + Grafana)
+├── docker-compose.scaling.yml  Scaling (3 engines + Redis + Traefik)
 └── Dockerfile                  Single multi-stage: dev/web/build/prod targets
 ```
 
@@ -309,6 +385,8 @@ integrations (Gmail, Telegram, SSL monitoring, SAP, etc.).
 - **Zod schema validation**: Webhook triggers support Zod schemas (body/query/headers) transpiled to JSON Schema and validated with Ajv at request time
 - **Type inference**: `webhook()` with Zod schemas provides type-safe `ctx.triggerData` via `InferTriggerData`
 - **In-process typechecking**: Transpiler injects SDK type declarations into ts-morph and reports type errors before compilation
+- **Event relay**: Abstract `EventRelay` interface with `LocalEventRelay` (no-op, default) and `RedisEventRelay` (Redis pub/sub, when `REDIS_URL` is set). Orchestration is always local. Redis is for cross-instance SSE event delivery only.
+- **Prometheus metrics**: `prom-client` exposes execution, step, webhook, error, and event delivery metrics on `GET /metrics`
 
 ## Module Dependencies
 

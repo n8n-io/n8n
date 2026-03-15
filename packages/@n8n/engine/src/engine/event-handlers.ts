@@ -10,6 +10,7 @@ import type {
 	StepCancelledEvent,
 	ExecutionCompletedEvent,
 	ExecutionFailedEvent,
+	ExecutionCancelledEvent,
 } from './event-bus.types';
 import { WorkflowGraph } from '../graph/workflow-graph';
 import type { WorkflowGraphData } from '../graph/graph.types';
@@ -19,13 +20,29 @@ import { WorkflowExecution } from '../database/entities/workflow-execution.entit
 import { WorkflowStepExecution } from '../database/entities/workflow-step-execution.entity';
 
 /**
- * Loads the workflow entity for a given execution (by executionId).
- * Returns the workflow at the pinned version.
+ * In-memory cache of WorkflowGraph and execution metadata per executionId.
+ * Avoids re-querying the DB and re-constructing the graph on every step event.
+ * Entries are cleared when the execution reaches a terminal state.
  */
-async function loadWorkflowForExecution(
+const graphCache = new Map<string, { graph: WorkflowGraph; execution: WorkflowExecution }>();
+
+/** Clear the cached graph for a given execution. */
+export function clearGraphCache(executionId: string): void {
+	graphCache.delete(executionId);
+}
+
+/**
+ * Loads the workflow graph and execution for a given executionId.
+ * Returns from cache if available, otherwise queries the DB, builds
+ * the WorkflowGraph, and caches the result for subsequent events.
+ */
+async function loadGraphForExecution(
 	dataSource: DataSource,
 	executionId: string,
-): Promise<{ workflow: WorkflowEntity; execution: WorkflowExecution }> {
+): Promise<{ graph: WorkflowGraph; execution: WorkflowExecution }> {
+	const cached = graphCache.get(executionId);
+	if (cached) return cached;
+
 	const execution = await dataSource
 		.getRepository(WorkflowExecution)
 		.findOneByOrFail({ id: executionId });
@@ -39,7 +56,10 @@ async function loadWorkflowForExecution(
 		})
 		.getOneOrFail()) as WorkflowEntity;
 
-	return { workflow, execution };
+	const graph = new WorkflowGraph(workflow.graph as WorkflowGraphData);
+	const entry = { graph, execution };
+	graphCache.set(executionId, entry);
+	return entry;
 }
 
 /**
@@ -184,14 +204,15 @@ export function registerEventHandlers(
 			return;
 		}
 
-		const { workflow, execution } = await loadWorkflowForExecution(dataSource, event.executionId);
-		const graph = new WorkflowGraph(workflow.graph as WorkflowGraphData);
+		const { graph, execution } = await loadGraphForExecution(dataSource, event.executionId);
+
+		// Compute successors once — used for pause check, planning, and completion skip
+		const successors = graph.getSuccessors(event.stepId, event.output);
 
 		// Check for pause BEFORE planning next steps
 		if (execution.pauseRequested) {
 			// But first: check if this was the LAST step (no successors to plan).
 			// If so, the execution is done -- don't pause a completed execution.
-			const successors = graph.getSuccessors(event.stepId, event.output);
 			if (successors.length === 0) {
 				// No more steps -- check if execution is complete
 				await completionService.checkExecutionComplete(event.executionId, graph);
@@ -207,8 +228,13 @@ export function registerEventHandlers(
 		}
 
 		// Normal step completion -- plan successors
-		await stepPlanner.planNextSteps(event.executionId, event.stepId, event.output, graph);
-		await completionService.checkExecutionComplete(event.executionId, graph);
+		if (successors.length > 0) {
+			await stepPlanner.planNextSteps(event.executionId, event.stepId, event.output, graph);
+			// Don't check completion — we just planned successors, so execution continues
+		} else {
+			// No successors — this might be the last step, check completion
+			await completionService.checkExecutionComplete(event.executionId, graph);
+		}
 	});
 
 	// step:failed handler
@@ -248,8 +274,7 @@ export function registerEventHandlers(
 		}
 
 		// Check for error handlers (catch blocks) before failing the execution
-		const { workflow } = await loadWorkflowForExecution(dataSource, event.executionId);
-		const graph = new WorkflowGraph(workflow.graph as WorkflowGraphData);
+		const { graph } = await loadGraphForExecution(dataSource, event.executionId);
 		const errorHandlers = graph.getErrorHandlers(event.stepId);
 
 		if (errorHandlers.length > 0) {
@@ -329,19 +354,25 @@ export function registerEventHandlers(
 
 	// step:cancelled handler
 	eventBus.on<StepCancelledEvent>('step:cancelled', async (event) => {
-		const { workflow } = await loadWorkflowForExecution(dataSource, event.executionId);
-		const graph = new WorkflowGraph(workflow.graph as WorkflowGraphData);
+		const { graph } = await loadGraphForExecution(dataSource, event.executionId);
 		await completionService.checkExecutionComplete(event.executionId, graph);
 	});
 
 	// execution:completed handler — resolve parent steps waiting for child executions
 	eventBus.on<ExecutionCompletedEvent>('execution:completed', async (event) => {
+		clearGraphCache(event.executionId);
 		await resolveWaitingParentSteps(dataSource, eventBus, event.executionId, event.result);
 	});
 
 	// execution:failed handler — fail parent steps waiting for child executions
 	eventBus.on<ExecutionFailedEvent>('execution:failed', async (event) => {
+		clearGraphCache(event.executionId);
 		await failWaitingParentSteps(dataSource, eventBus, event.executionId);
+	});
+
+	// execution:cancelled handler — clear cached graph
+	eventBus.on<ExecutionCancelledEvent>('execution:cancelled', async (event) => {
+		clearGraphCache(event.executionId);
 	});
 }
 

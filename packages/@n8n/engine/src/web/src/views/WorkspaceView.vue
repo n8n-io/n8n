@@ -1702,7 +1702,6 @@ function navigateToErrorLine() {
 									<th>Status</th>
 									<th>Execution ID</th>
 									<th>Duration</th>
-									<th>Compute</th>
 									<th>Started</th>
 									<th></th>
 								</tr>
@@ -1723,7 +1722,6 @@ function navigateToErrorLine() {
 										<code :class="$style.execTableId">{{ exec.id }}</code>
 									</td>
 									<td :class="$style.execTableMono">{{ formatMs(exec.durationMs) }}</td>
-									<td :class="$style.execTableMono">-</td>
 									<td :class="$style.execTableTime">
 										{{ timeAgo(exec.startedAt ?? exec.createdAt) }}
 									</td>

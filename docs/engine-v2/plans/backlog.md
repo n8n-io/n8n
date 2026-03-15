@@ -138,6 +138,7 @@ workflow ID at compile time if possible.
   match — conditional logic, batch processing, and product catalog
   results differ from expectations.
 
-### Redis pub/sub for multi-instance event delivery
-In-process event bus doesn't reach SSE clients on other instances. Required
-for horizontal scaling.
+### ~~Redis pub/sub for multi-instance event delivery~~
+Implemented in `docs/engine-v2/plans/scaling/spec.md`. `EventRelay` interface
+with `LocalEventRelay` (default) and `RedisEventRelay` (when `REDIS_URL` is
+set).

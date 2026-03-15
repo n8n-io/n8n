@@ -82,6 +82,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Agent Steps', () => {
 			eventBus,
 			undefined, // workflowTrigger
 			undefined, // batchExecutor
+			undefined, // metrics
 			mockBridge,
 		);
 		engineService = new EngineService(dataSource, eventBus, stepPlanner);

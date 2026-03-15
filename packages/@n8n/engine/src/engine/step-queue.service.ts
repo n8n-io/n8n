@@ -5,6 +5,7 @@ import { StepStatus, ExecutionStatus } from '../database/enums';
 import { WorkflowStepExecution } from '../database/entities/workflow-step-execution.entity';
 import { WorkflowExecution } from '../database/entities/workflow-execution.entity';
 import type { StepProcessorService } from './step-processor.service';
+import type { MetricsService } from './metrics.service';
 
 /** Minimum polling interval (ms) — used immediately after wake() or finding work. */
 const MIN_POLL_INTERVAL = 10;
@@ -29,6 +30,7 @@ export class StepQueueService {
 		private readonly dataSource: DataSource,
 		private readonly stepProcessor: StepProcessorService,
 		private readonly maxConcurrency: number = 10,
+		private readonly metrics?: MetricsService,
 	) {}
 
 	start(): void {
@@ -123,6 +125,52 @@ export class StepQueueService {
 		// Work found: reset to minimum interval
 		this.currentInterval = MIN_POLL_INTERVAL;
 
+		// Track claim latency for each claimed step
+		for (const step of claimed) {
+			const latency = Date.now() - new Date(step.createdAt).getTime();
+			this.metrics?.stepQueueClaimLatency.observe(latency);
+		}
+
+		// Track queue depth and DB-derived status metrics piggybacked on the poll cycle
+		if (this.metrics) {
+			const depth = await this.dataSource
+				.getRepository(WorkflowStepExecution)
+				.createQueryBuilder('wse')
+				.where('wse.status = :status', { status: StepStatus.Queued })
+				.getCount();
+			this.metrics.stepQueueDepth.set(depth);
+
+			// Collect execution counts by status
+			const execCounts = await this.dataSource
+				.getRepository(WorkflowExecution)
+				.createQueryBuilder('we')
+				.select('we.status', 'status')
+				.addSelect('COUNT(*)', 'count')
+				.groupBy('we.status')
+				.getRawMany();
+
+			for (const { status, count } of execCounts) {
+				this.metrics.executionsByStatus.set({ status }, parseInt(count, 10));
+			}
+
+			// Derive active executions from DB instead of inc/dec across instances
+			const runningCount = execCounts.find((c: { status: string }) => c.status === 'running');
+			this.metrics.executionActive.set(runningCount ? parseInt(runningCount.count, 10) : 0);
+
+			// Collect step execution counts by status
+			const stepCounts = await this.dataSource
+				.getRepository(WorkflowStepExecution)
+				.createQueryBuilder('wse')
+				.select('wse.status', 'status')
+				.addSelect('COUNT(*)', 'count')
+				.groupBy('wse.status')
+				.getRawMany();
+
+			for (const { status, count } of stepCounts) {
+				this.metrics.stepExecutionsByStatus.set({ status }, parseInt(count, 10));
+			}
+		}
+
 		// Dispatch concurrently, outside any transaction
 		this.inFlight += claimed.length;
 
@@ -156,6 +204,23 @@ export class StepQueueService {
 				thresholdMs: defaultStaleThresholdMs,
 			})
 			.execute();
+	}
+
+	/**
+	 * Stop accepting new work and wait for in-flight steps to finish.
+	 * Returns when all in-flight steps are done or timeout is reached.
+	 */
+	async drain(timeoutMs: number = 30_000): Promise<void> {
+		this.stop();
+
+		const deadline = Date.now() + timeoutMs;
+		while (this.inFlight > 0 && Date.now() < deadline) {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+
+		if (this.inFlight > 0) {
+			console.warn(`StepQueueService drain timeout: ${this.inFlight} steps still in-flight`);
+		}
 	}
 
 	getInFlightCount(): number {

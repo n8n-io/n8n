@@ -76,20 +76,22 @@ export class StepPlannerService {
 
 	async gatherStepInput(
 		executionId: string,
-		_stepId: string,
-		_graph: WorkflowGraph,
+		stepId: string,
+		graph: WorkflowGraph,
 	): Promise<Record<string, unknown>> {
-		// Include outputs from ALL completed steps in this execution.
-		// Compiled step code can reference any earlier step's output via
-		// ctx.input[stepId] — not just direct graph predecessors. For example,
-		// in a parallel fan-out/fan-in pattern (Prepare → [A, B] → Merge),
-		// the Merge step references Prepare's output even though Prepare is
-		// a grandparent, not a direct predecessor.
+		// Load only the specific step outputs this step needs.
+		// The transpiler stores dataDependencies on each graph node — the exact
+		// step IDs whose output the step function references via ctx.input[stepId].
+		// This avoids loading all ancestors and reduces DB query size.
+		const depIds = graph.getStepDataDependencyIds(stepId);
+		if (depIds.length === 0) return {};
+
 		const completedSteps = await this.dataSource
 			.getRepository(WorkflowStepExecution)
 			.createQueryBuilder('wse')
 			.select(['wse.stepId', 'wse.output'])
 			.where('wse.executionId = :executionId', { executionId })
+			.andWhere('wse.stepId IN (:...stepIds)', { stepIds: depIds })
 			.andWhere('wse.status = :status', { status: StepStatus.Completed })
 			.getMany();
 

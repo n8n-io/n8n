@@ -1,0 +1,115 @@
+# Multi-instance scaling setup — 3 engine replicas + Redis + Traefik
+#
+# Usage:
+#   pnpm dev:scaling
+#
+# URLs:
+#   Engine (via Traefik): http://localhost:3100
+
+networks:
+  engine:
+    name: engine-network
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    networks: [engine]
+    environment:
+      POSTGRES_DB: engine
+      POSTGRES_USER: engine
+      POSTGRES_PASSWORD: engine
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata-scaling:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U engine']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    networks: [engine]
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  engine-1: &engine
+    build:
+      context: ../../../
+      dockerfile: packages/@n8n/engine/Dockerfile
+      target: dev
+    hostname: engine-1
+    networks: [engine]
+    restart: on-failure
+    environment: &engine-env
+      DATABASE_URL: postgres://engine:engine@postgres:5432/engine
+      REDIS_URL: redis://redis:6379
+      PORT: '3100'
+      NODE_ENV: development
+      MAX_CONCURRENCY: '50'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3100/health || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    volumes: &engine-volumes # Mount source for hot-reload via tsx watch (same as dev compose)
+      - ./src:/app/packages/@n8n/engine/src
+      - ./examples:/app/packages/@n8n/engine/examples
+    labels: &engine-labels
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.engine.rule=PathPrefix(`/`)'
+      - 'traefik.http.services.engine.loadbalancer.server.port=3100'
+      # Disable response buffering so SSE streams are delivered immediately
+      - 'traefik.http.services.engine.loadbalancer.responseforwarding.flushinterval=1ms'
+
+  engine-2:
+    <<: *engine
+    hostname: engine-2
+
+  engine-3:
+    <<: *engine
+    hostname: engine-3
+
+  web:
+    build:
+      context: ../../../
+      dockerfile: packages/@n8n/engine/Dockerfile
+      target: web
+    networks: [engine]
+    ports:
+      - '3200:3200'
+    environment:
+      VITE_API_URL: http://traefik:3100
+    depends_on:
+      - engine-1
+    volumes:
+      - ./src/web/src:/app/src
+      - ./src/web/index.html:/app/index.html
+      - ./src/web/vite.config.ts:/app/vite.config.ts
+
+  traefik:
+    image: traefik:v3.0
+    networks: [engine]
+    command:
+      - '--providers.docker=true'
+      - '--providers.docker.exposedbydefault=false'
+      - '--entrypoints.web.address=:3100'
+    ports:
+      - '3100:3100'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  pgdata-scaling:

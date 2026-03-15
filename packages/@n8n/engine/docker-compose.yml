@@ -10,13 +10,13 @@
 #   Database: postgres://engine:engine@localhost:5433/engine
 
 networks:
-  dev:
-    name: engine-dev
+  engine:
+    name: engine-network
 
 services:
   postgres:
     image: postgres:16-alpine
-    networks: [dev]
+    networks: [engine]
     environment:
       POSTGRES_DB: engine
       POSTGRES_USER: engine
@@ -32,7 +32,7 @@ services:
       retries: 5
 
   api:
-    networks: [dev]
+    networks: [engine]
     build:
       context: ../../../
       dockerfile: packages/@n8n/engine/Dockerfile
@@ -54,7 +54,7 @@ services:
     restart: unless-stopped
 
   web:
-    networks: [dev]
+    networks: [engine]
     build:
       context: ../../../
       dockerfile: packages/@n8n/engine/Dockerfile

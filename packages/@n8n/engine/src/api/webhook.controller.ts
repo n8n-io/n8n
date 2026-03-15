@@ -13,10 +13,26 @@ import { validateWebhookRequest } from './validate-webhook-schema';
 
 export function createWebhookRouter(deps: AppDependencies): Router {
 	const router = Router();
-	const { dataSource, engineService, eventBus } = deps;
+	const { dataSource, engineService, eventBus, metrics } = deps;
 
 	// ALL /webhook/* - Handle incoming webhook
 	router.all('/*path', async (req: Request, res: Response) => {
+		const startTime = Date.now();
+
+		// Track webhook metrics when the response finishes
+		res.on('finish', () => {
+			const durationMs = Date.now() - startTime;
+			const rawParam = req.params.path ?? req.params[0] ?? '';
+			const rawPath = Array.isArray(rawParam) ? rawParam.join('/') : String(rawParam);
+			const path = rawPath.replace(/^\//, '');
+			metrics?.webhookRequestsTotal.inc({
+				method: req.method.toUpperCase(),
+				path,
+				status_code: String(res.statusCode),
+			});
+			metrics?.webhookDuration.observe(durationMs);
+		});
+
 		try {
 			// Express 5 wildcard params can be arrays
 			const rawParam = req.params.path ?? req.params[0] ?? '';

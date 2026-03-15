@@ -1,20 +1,40 @@
 import type { Response } from 'express';
 
 import type { EngineEventBus } from './event-bus.service';
+import type { EventRelay } from './event-relay';
 import type { EngineEvent } from './event-bus.types';
+import type { MetricsService } from './metrics.service';
 
 /**
  * Delivers engine events to HTTP clients via Server-Sent Events (SSE).
  * Subscribes to all events on the EngineEventBus and forwards them
  * to connected SSE clients grouped by executionId.
+ *
+ * Also subscribes to an optional EventRelay for cross-instance events.
+ * No dedup needed: LocalEventRelay.onBroadcast is a no-op, and
+ * RedisEventRelay filters out same-instance events via instanceId.
  */
 export class BroadcasterService {
 	/** Map executionId -> Set of SSE response objects */
 	private clients = new Map<string, Set<Response>>();
 
-	constructor(private readonly eventBus: EngineEventBus) {
-		// Subscribe to all events and forward to SSE clients
+	constructor(
+		private readonly eventBus: EngineEventBus,
+		private readonly relay?: EventRelay,
+		private readonly metrics?: MetricsService,
+	) {
+		// Local events (this instance)
 		this.eventBus.onAny((event: EngineEvent) => {
+			if ('executionId' in event) {
+				this.send(event.executionId, event);
+			}
+		});
+
+		// Remote events (other instances via Redis).
+		// No dedup needed: LocalEventRelay.onBroadcast is a no-op, and
+		// RedisEventRelay filters out same-instance events via instanceId.
+		this.relay?.onBroadcast((event: EngineEvent) => {
+			this.metrics?.redisRelayLatency.observe(Date.now() - event.createdAt);
 			if ('executionId' in event) {
 				this.send(event.executionId, event);
 			}
@@ -43,6 +63,7 @@ export class BroadcasterService {
 			this.clients.set(executionId, new Set());
 		}
 		this.clients.get(executionId)!.add(res);
+		this.metrics?.sseConnectedClients.inc();
 
 		// Cleanup on disconnect
 		res.on('close', () => {
@@ -50,6 +71,7 @@ export class BroadcasterService {
 			if (this.clients.get(executionId)?.size === 0) {
 				this.clients.delete(executionId);
 			}
+			this.metrics?.sseConnectedClients.dec();
 		});
 	}
 

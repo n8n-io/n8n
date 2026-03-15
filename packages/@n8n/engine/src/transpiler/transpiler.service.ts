@@ -1858,6 +1858,12 @@ export class TranspilerService {
 					config.onItemFailure = step.batchConfig.onItemFailure as GraphStepConfig['onItemFailure'];
 				}
 			}
+			// Collect data dependencies: step IDs whose output this step references.
+			// Always include 'trigger' — ctx.triggerData reads from it.
+			const depStepIds = new Set(step.dependencies.values());
+			depStepIds.add('trigger');
+			config.dataDependencies = Array.from(depStepIds);
+
 			nodes.push({
 				id: step.id,
 				name: step.name,
@@ -1888,6 +1894,8 @@ export class TranspilerService {
 
 		// Add trigger-workflow nodes
 		for (const tw of triggerWorkflows) {
+			const twDepIds = new Set(tw.dependencies.values());
+			twDepIds.add('trigger');
 			nodes.push({
 				id: tw.id,
 				name: tw.name,
@@ -1896,12 +1904,15 @@ export class TranspilerService {
 				config: {
 					name: tw.name,
 					workflow: tw.workflow,
+					dataDependencies: Array.from(twDepIds),
 				},
 			});
 		}
 
 		// Add agent nodes
 		for (const ag of agents) {
+			const agDepIds = new Set(ag.dependencies.values());
+			agDepIds.add('trigger');
 			nodes.push({
 				id: ag.id,
 				name: ag.name,
@@ -1912,6 +1923,7 @@ export class TranspilerService {
 					agentConfig: {
 						timeout: ag.timeout ?? 600_000,
 					},
+					dataDependencies: Array.from(agDepIds),
 				},
 			});
 		}

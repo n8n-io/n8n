@@ -1,0 +1,650 @@
+{
+	"annotations": { "list": [] },
+	"editable": true,
+	"graphTooltip": 1,
+	"panels": [
+		{
+			"title": "Overview",
+			"type": "row",
+			"gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+			"collapsed": false,
+			"panels": []
+		},
+		{
+			"title": "Execution Throughput",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "sum by (status) (increase(execution_total[5m]))",
+					"legendFormat": "{{status}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "short",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Active Executions",
+			"type": "stat",
+			"gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "sum(execution_active)",
+					"legendFormat": "active",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"color": { "mode": "thresholds" },
+					"thresholds": {
+						"steps": [
+							{ "color": "green", "value": null },
+							{ "color": "yellow", "value": 50 },
+							{ "color": "red", "value": 100 }
+						]
+					}
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Execution Duration p95",
+			"type": "stat",
+			"gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "histogram_quantile(0.95, rate(execution_duration_ms_bucket[5m]))",
+					"legendFormat": "p95",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] }
+		},
+		{
+			"title": "Error Rate",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "sum by (classification) (increase(errors_total[5m]))",
+					"legendFormat": "{{classification}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "short",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "API",
+			"type": "row",
+			"gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+			"collapsed": false,
+			"panels": []
+		},
+		{
+			"title": "API Requests by Path",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "sum by (path) (increase(api_requests_total[5m]))",
+					"legendFormat": "{{path}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "short",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "API Latency p95 by Path",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "histogram_quantile(0.95, sum by (path, le) (rate(api_request_duration_ms_bucket[5m])))",
+					"legendFormat": "{{path}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "ms",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "API Error Rate (4xx/5xx)",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "sum by (path, status_code) (increase(api_requests_total{status_code=~\"4..|5..\"}[5m]))",
+					"legendFormat": "{{path}} {{status_code}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "short",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Steps",
+			"type": "row",
+			"gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 },
+			"collapsed": false,
+			"panels": []
+		},
+		{
+			"title": "Step Throughput",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 0, "y": 31 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "sum by (status) (increase(step_execution_total[5m]))",
+					"legendFormat": "{{status}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "short",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Step Duration p50 / p95",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 12, "y": 31 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "histogram_quantile(0.5, sum by (le) (rate(step_execution_duration_ms_bucket[5m])))",
+					"legendFormat": "p50",
+					"refId": "A"
+				},
+				{
+					"expr": "histogram_quantile(0.95, sum by (le) (rate(step_execution_duration_ms_bucket[5m])))",
+					"legendFormat": "p95",
+					"refId": "B"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "ms",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Queue Depth",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 0, "y": 39 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "sum(step_queue_depth)",
+					"legendFormat": "depth",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Claim Latency p95",
+			"type": "stat",
+			"gridPos": { "h": 4, "w": 6, "x": 12, "y": 39 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "histogram_quantile(0.95, sum by (le) (rate(step_queue_claim_latency_ms_bucket[5m])))",
+					"legendFormat": "p95",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] }
+		},
+		{
+			"title": "Step Retries",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 6, "x": 18, "y": 39 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "sum(increase(step_retries_total[5m]))",
+					"legendFormat": "retries",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "short",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Webhooks",
+			"type": "row",
+			"gridPos": { "h": 1, "w": 24, "x": 0, "y": 47 },
+			"collapsed": false,
+			"panels": []
+		},
+		{
+			"title": "Webhook Requests",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 16, "x": 0, "y": 48 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "sum by (status_code) (increase(webhook_requests_total[5m]))",
+					"legendFormat": "{{status_code}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "short",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Webhook Latency p95",
+			"type": "stat",
+			"gridPos": { "h": 8, "w": 8, "x": 16, "y": 48 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "histogram_quantile(0.95, sum by (le) (rate(webhook_duration_ms_bucket[5m])))",
+					"legendFormat": "p95",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] }
+		},
+		{
+			"title": "Events",
+			"type": "row",
+			"gridPos": { "h": 1, "w": 24, "x": 0, "y": 56 },
+			"collapsed": false,
+			"panels": []
+		},
+		{
+			"title": "Events Published by Type",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 0, "y": 57 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "sum by (type) (increase(events_published_total[5m]))",
+					"legendFormat": "{{type}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "short",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "SSE Connected Clients",
+			"type": "stat",
+			"gridPos": { "h": 4, "w": 6, "x": 12, "y": 57 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "sum(sse_connected_clients)",
+					"legendFormat": "clients",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": { "defaults": {}, "overrides": [] }
+		},
+		{
+			"title": "Redis Relay Latency p95",
+			"type": "stat",
+			"gridPos": { "h": 4, "w": 6, "x": 18, "y": 57 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "histogram_quantile(0.95, sum by (le) (rate(redis_relay_latency_ms_bucket[5m])))",
+					"legendFormat": "p95",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] }
+		},
+		{
+			"title": "Redis",
+			"type": "row",
+			"gridPos": { "h": 1, "w": 24, "x": 0, "y": 65 },
+			"collapsed": false,
+			"panels": []
+		},
+		{
+			"title": "Redis Up",
+			"type": "stat",
+			"gridPos": { "h": 4, "w": 4, "x": 0, "y": 66 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "redis_up",
+					"legendFormat": "{{instance}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"mappings": [
+						{ "type": "value", "options": { "1": { "text": "UP", "color": "green" } } },
+						{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" } } }
+					],
+					"color": { "mode": "thresholds" },
+					"thresholds": {
+						"steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
+					}
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Redis Connected Clients",
+			"type": "stat",
+			"gridPos": { "h": 4, "w": 5, "x": 4, "y": 66 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "redis_connected_clients",
+					"legendFormat": "clients",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": { "defaults": {}, "overrides": [] }
+		},
+		{
+			"title": "Redis Pub/Sub Channels",
+			"type": "stat",
+			"gridPos": { "h": 4, "w": 5, "x": 9, "y": 66 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "redis_pubsub_channels",
+					"legendFormat": "channels",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": { "defaults": {}, "overrides": [] }
+		},
+		{
+			"title": "Redis Memory Usage",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 10, "x": 14, "y": 66 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "redis_used_memory_bytes",
+					"legendFormat": "used memory",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "bytes",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Redis Commands/s",
+			"type": "timeseries",
+			"gridPos": { "h": 4, "w": 14, "x": 0, "y": 70 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "rate(redis_commands_processed_total[5m])",
+					"legendFormat": "ops/s",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "ops",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "DB Status",
+			"type": "row",
+			"gridPos": { "h": 1, "w": 24, "x": 0, "y": 74 },
+			"collapsed": false,
+			"panels": []
+		},
+		{
+			"title": "Executions by Status",
+			"type": "bargauge",
+			"gridPos": { "h": 8, "w": 8, "x": 0, "y": 75 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "max by (status) (executions_by_status)",
+					"legendFormat": "{{status}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"color": { "mode": "palette-classic" },
+					"thresholds": {
+						"steps": [{ "color": "green", "value": null }]
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"orientation": "horizontal",
+				"displayMode": "gradient",
+				"reduceOptions": { "calcs": ["lastNotNull"] }
+			}
+		},
+		{
+			"title": "Step Executions by Status",
+			"type": "bargauge",
+			"gridPos": { "h": 8, "w": 8, "x": 8, "y": 75 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "max by (status) (step_executions_by_status)",
+					"legendFormat": "{{status}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"color": { "mode": "palette-classic" },
+					"thresholds": {
+						"steps": [{ "color": "green", "value": null }]
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"orientation": "horizontal",
+				"displayMode": "gradient",
+				"reduceOptions": { "calcs": ["lastNotNull"] }
+			}
+		},
+		{
+			"title": "Top Workflows by Execution Count",
+			"type": "bargauge",
+			"gridPos": { "h": 8, "w": 8, "x": 16, "y": 75 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "topk(10, sum by (workflow_id) (execution_duration_ms_count))",
+					"legendFormat": "{{workflow_id}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"color": { "mode": "palette-classic" },
+					"thresholds": {
+						"steps": [{ "color": "blue", "value": null }]
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"orientation": "horizontal",
+				"displayMode": "gradient",
+				"reduceOptions": { "calcs": ["lastNotNull"] }
+			}
+		},
+		{
+			"title": "Resources",
+			"type": "row",
+			"gridPos": { "h": 1, "w": 24, "x": 0, "y": 83 },
+			"collapsed": false,
+			"panels": []
+		},
+		{
+			"title": "Engine Process CPU Usage",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 0, "y": 84 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "rate(process_cpu_seconds_total{job=~\"engine|engine-dev\"}[5m])",
+					"legendFormat": "{{instance_name}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "percentunit",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Engine Process Memory (RSS)",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 12, "y": 84 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "process_resident_memory_bytes{job=~\"engine|engine-dev\"}",
+					"legendFormat": "{{instance_name}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "bytes",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Engine Heap Used vs Total",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 0, "y": 92 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "nodejs_heap_size_used_bytes{job=~\"engine|engine-dev\"}",
+					"legendFormat": "{{instance_name}} used",
+					"refId": "A"
+				},
+				{
+					"expr": "nodejs_heap_size_total_bytes{job=~\"engine|engine-dev\"}",
+					"legendFormat": "{{instance_name}} total",
+					"refId": "B"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "bytes",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		},
+		{
+			"title": "Event Loop Lag (p99)",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 12, "y": 92 },
+			"datasource": "Prometheus",
+			"targets": [
+				{
+					"expr": "nodejs_eventloop_lag_p99_seconds{job=~\"engine|engine-dev\"}",
+					"legendFormat": "{{instance_name}}",
+					"refId": "A"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "s",
+					"custom": { "drawStyle": "line", "fillOpacity": 10 }
+				},
+				"overrides": []
+			}
+		}
+	],
+	"refresh": "10s",
+	"schemaVersion": 39,
+	"tags": ["engine"],
+	"time": { "from": "now-15m", "to": "now" },
+	"title": "Engine",
+	"uid": "engine",
+	"version": 2
+}

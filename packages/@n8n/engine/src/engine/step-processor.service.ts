@@ -17,6 +17,7 @@ import type { ErrorData } from './errors/error-classifier';
 import type { EngineEventBus } from './event-bus.service';
 import type { WorkflowTriggerService } from './workflow-trigger.service';
 import type { BatchExecutorService } from './batch-executor.service';
+import type { MetricsService } from './metrics.service';
 import type { AgentBridgeService, AgentInvocation } from './agent-bridge.service';
 
 type StepFunction = (ctx: ExecutionContext) => Promise<unknown>;
@@ -59,6 +60,7 @@ export class StepProcessorService {
 		private readonly eventBus: EngineEventBus,
 		private readonly workflowTrigger?: WorkflowTriggerService,
 		private readonly batchExecutor?: BatchExecutorService,
+		private readonly metrics?: MetricsService,
 		private readonly agentBridge?: AgentBridgeService,
 	) {}
 
@@ -345,6 +347,12 @@ export class StepProcessorService {
 					completedAt: new Date(),
 					durationMs,
 				});
+
+				this.metrics?.stepExecutionTotal.inc({
+					status: 'completed',
+					step_type: node?.type ?? 'unknown',
+				});
+				this.metrics?.stepExecutionDuration.observe(durationMs);
 			} catch (error) {
 				// 11. Handle step errors (retriable or not)
 				const durationMs = Date.now() - startTime;
@@ -405,6 +413,9 @@ export class StepProcessorService {
 						retryAfter: new Date(Date.now() + delay),
 						error: errorData,
 					});
+
+					this.metrics?.stepRetriesTotal.inc();
+					this.metrics?.errorsTotal.inc({ classification: 'retriable' });
 				} else {
 					await this.updateStepAndEmit(stepJob, execution, {
 						status: StepStatus.Failed,
@@ -415,6 +426,12 @@ export class StepProcessorService {
 						completedAt: new Date(),
 						durationMs,
 					});
+
+					this.metrics?.stepExecutionTotal.inc({
+						status: 'failed',
+						step_type: node?.type ?? 'unknown',
+					});
+					this.metrics?.errorsTotal.inc({ classification: 'non_retriable' });
 				}
 			}
 		} catch (infrastructureError) {

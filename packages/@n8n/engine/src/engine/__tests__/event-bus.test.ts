@@ -1,14 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { EngineEventBus } from '../event-bus.service';
-import type {
-	StepStartedEvent,
-	StepCompletedEvent,
-	StepFailedEvent,
-	ExecutionStartedEvent,
-	ExecutionCompletedEvent,
-	WebhookRespondEvent,
-} from '../event-bus.types';
+import type { StepStartedEvent } from '../event-bus.types';
 
 describe('EngineEventBus', () => {
 	let bus: EngineEventBus;
@@ -26,100 +19,100 @@ describe('EngineEventBus', () => {
 			const handler = vi.fn();
 			bus.on<StepStartedEvent>('step:started', handler);
 
-			const event: StepStartedEvent = {
-				type: 'step:started',
+			const input = {
+				type: 'step:started' as const,
 				executionId: 'exec-1',
 				stepId: 'step-1',
 				attempt: 1,
 			};
-			bus.emit(event);
+			bus.emit(input);
 
 			expect(handler).toHaveBeenCalledOnce();
-			expect(handler).toHaveBeenCalledWith(event);
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining(input));
 		});
 
 		it('emits and receives a step:completed event', () => {
 			const handler = vi.fn();
-			bus.on<StepCompletedEvent>('step:completed', handler);
+			bus.on('step:completed', handler);
 
-			const event: StepCompletedEvent = {
-				type: 'step:completed',
+			const input = {
+				type: 'step:completed' as const,
 				executionId: 'exec-1',
 				stepId: 'step-1',
 				output: { value: 42 },
 				durationMs: 150,
 			};
-			bus.emit(event);
+			bus.emit(input);
 
 			expect(handler).toHaveBeenCalledOnce();
-			expect(handler).toHaveBeenCalledWith(event);
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining(input));
 		});
 
 		it('emits and receives a step:failed event', () => {
 			const handler = vi.fn();
-			bus.on<StepFailedEvent>('step:failed', handler);
+			bus.on('step:failed', handler);
 
-			const event: StepFailedEvent = {
-				type: 'step:failed',
+			const input = {
+				type: 'step:failed' as const,
 				executionId: 'exec-1',
 				stepId: 'step-1',
 				error: {
 					message: 'boom',
-					code: 'UNKNOWN',
-					category: 'step',
+					code: 'UNKNOWN' as const,
+					category: 'step' as const,
 					retriable: true,
 				},
 			};
-			bus.emit(event);
+			bus.emit(input);
 
 			expect(handler).toHaveBeenCalledOnce();
-			expect(handler).toHaveBeenCalledWith(event);
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining(input));
 		});
 
 		it('emits and receives an execution:started event', () => {
 			const handler = vi.fn();
-			bus.on<ExecutionStartedEvent>('execution:started', handler);
+			bus.on('execution:started', handler);
 
-			const event: ExecutionStartedEvent = {
-				type: 'execution:started',
+			const input = {
+				type: 'execution:started' as const,
 				executionId: 'exec-1',
 			};
-			bus.emit(event);
+			bus.emit(input);
 
 			expect(handler).toHaveBeenCalledOnce();
-			expect(handler).toHaveBeenCalledWith(event);
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining(input));
 		});
 
 		it('emits and receives an execution:completed event', () => {
 			const handler = vi.fn();
-			bus.on<ExecutionCompletedEvent>('execution:completed', handler);
+			bus.on('execution:completed', handler);
 
-			const event: ExecutionCompletedEvent = {
-				type: 'execution:completed',
+			const input = {
+				type: 'execution:completed' as const,
 				executionId: 'exec-1',
 				result: { done: true },
 			};
-			bus.emit(event);
+			bus.emit(input);
 
 			expect(handler).toHaveBeenCalledOnce();
-			expect(handler).toHaveBeenCalledWith(event);
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining(input));
 		});
 
 		it('emits and receives a webhook:respond event', () => {
 			const handler = vi.fn();
-			bus.on<WebhookRespondEvent>('webhook:respond', handler);
+			bus.on('webhook:respond', handler);
 
-			const event: WebhookRespondEvent = {
-				type: 'webhook:respond',
+			const input = {
+				type: 'webhook:respond' as const,
 				executionId: 'exec-1',
 				statusCode: 200,
 				body: { ok: true },
 				headers: { 'content-type': 'application/json' },
 			};
-			bus.emit(event);
+			bus.emit(input);
 
 			expect(handler).toHaveBeenCalledOnce();
-			expect(handler).toHaveBeenCalledWith(event);
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining(input));
 		});
 
 		it('does not fire handler for unrelated event type', () => {
@@ -147,27 +140,27 @@ describe('EngineEventBus', () => {
 			const handler = vi.fn();
 			bus.onStepEvent(handler);
 
-			const started: StepStartedEvent = {
-				type: 'step:started',
+			const started = {
+				type: 'step:started' as const,
 				executionId: 'exec-1',
 				stepId: 'step-1',
 				attempt: 1,
 			};
-			const completed: StepCompletedEvent = {
-				type: 'step:completed',
+			const completed = {
+				type: 'step:completed' as const,
 				executionId: 'exec-1',
 				stepId: 'step-1',
 				output: 42,
 				durationMs: 100,
 			};
-			const failed: StepFailedEvent = {
-				type: 'step:failed',
+			const failed = {
+				type: 'step:failed' as const,
 				executionId: 'exec-1',
 				stepId: 'step-2',
 				error: {
 					message: 'err',
-					code: 'UNKNOWN',
-					category: 'step',
+					code: 'UNKNOWN' as const,
+					category: 'step' as const,
 					retriable: false,
 				},
 			};
@@ -177,9 +170,9 @@ describe('EngineEventBus', () => {
 			bus.emit(failed);
 
 			expect(handler).toHaveBeenCalledTimes(3);
-			expect(handler).toHaveBeenNthCalledWith(1, started);
-			expect(handler).toHaveBeenNthCalledWith(2, completed);
-			expect(handler).toHaveBeenNthCalledWith(3, failed);
+			expect(handler).toHaveBeenNthCalledWith(1, expect.objectContaining(started));
+			expect(handler).toHaveBeenNthCalledWith(2, expect.objectContaining(completed));
+			expect(handler).toHaveBeenNthCalledWith(3, expect.objectContaining(failed));
 		});
 
 		it('onStepEvent does not receive execution events', () => {
@@ -198,12 +191,12 @@ describe('EngineEventBus', () => {
 			const handler = vi.fn();
 			bus.onExecutionEvent(handler);
 
-			const started: ExecutionStartedEvent = {
-				type: 'execution:started',
+			const started = {
+				type: 'execution:started' as const,
 				executionId: 'exec-1',
 			};
-			const completed: ExecutionCompletedEvent = {
-				type: 'execution:completed',
+			const completed = {
+				type: 'execution:completed' as const,
 				executionId: 'exec-1',
 				result: 'done',
 			};
@@ -212,8 +205,8 @@ describe('EngineEventBus', () => {
 			bus.emit(completed);
 
 			expect(handler).toHaveBeenCalledTimes(2);
-			expect(handler).toHaveBeenNthCalledWith(1, started);
-			expect(handler).toHaveBeenNthCalledWith(2, completed);
+			expect(handler).toHaveBeenNthCalledWith(1, expect.objectContaining(started));
+			expect(handler).toHaveBeenNthCalledWith(2, expect.objectContaining(completed));
 		});
 
 		it('onExecutionEvent does not receive step events', () => {
@@ -240,31 +233,31 @@ describe('EngineEventBus', () => {
 			const handler = vi.fn();
 			bus.onAny(handler);
 
-			const stepEvent: StepStartedEvent = {
-				type: 'step:started',
+			const stepInput = {
+				type: 'step:started' as const,
 				executionId: 'exec-1',
 				stepId: 'step-1',
 				attempt: 1,
 			};
-			const execEvent: ExecutionStartedEvent = {
-				type: 'execution:started',
+			const execInput = {
+				type: 'execution:started' as const,
 				executionId: 'exec-1',
 			};
-			const webhookEvent: WebhookRespondEvent = {
-				type: 'webhook:respond',
+			const webhookInput = {
+				type: 'webhook:respond' as const,
 				executionId: 'exec-1',
 				statusCode: 200,
 				body: null,
 			};
 
-			bus.emit(stepEvent);
-			bus.emit(execEvent);
-			bus.emit(webhookEvent);
+			bus.emit(stepInput);
+			bus.emit(execInput);
+			bus.emit(webhookInput);
 
 			expect(handler).toHaveBeenCalledTimes(3);
-			expect(handler).toHaveBeenNthCalledWith(1, stepEvent);
-			expect(handler).toHaveBeenNthCalledWith(2, execEvent);
-			expect(handler).toHaveBeenNthCalledWith(3, webhookEvent);
+			expect(handler).toHaveBeenNthCalledWith(1, expect.objectContaining(stepInput));
+			expect(handler).toHaveBeenNthCalledWith(2, expect.objectContaining(execInput));
+			expect(handler).toHaveBeenNthCalledWith(3, expect.objectContaining(webhookInput));
 		});
 	});
 
@@ -279,13 +272,12 @@ describe('EngineEventBus', () => {
 			bus.on<StepStartedEvent>('step:started', handler1);
 			bus.on<StepStartedEvent>('step:started', handler2);
 
-			const event: StepStartedEvent = {
+			bus.emit({
 				type: 'step:started',
 				executionId: 'exec-1',
 				stepId: 'step-1',
 				attempt: 1,
-			};
-			bus.emit(event);
+			});
 
 			expect(handler1).toHaveBeenCalledOnce();
 			expect(handler2).toHaveBeenCalledOnce();
@@ -295,17 +287,16 @@ describe('EngineEventBus', () => {
 			const typedHandler = vi.fn();
 			const wildcardHandler = vi.fn();
 
-			bus.on<StepCompletedEvent>('step:completed', typedHandler);
+			bus.on('step:completed', typedHandler);
 			bus.onStepEvent(wildcardHandler);
 
-			const event: StepCompletedEvent = {
+			bus.emit({
 				type: 'step:completed',
 				executionId: 'exec-1',
 				stepId: 'step-1',
 				output: 'result',
 				durationMs: 50,
-			};
-			bus.emit(event);
+			});
 
 			expect(typedHandler).toHaveBeenCalledOnce();
 			expect(wildcardHandler).toHaveBeenCalledOnce();
@@ -390,5 +381,140 @@ describe('EngineEventBus', () => {
 			await new Promise<void>((resolve) => setTimeout(resolve, 20));
 			expect(results).toEqual(['handled:step-1']);
 		});
+	});
+
+	// -----------------------------------------------------------------------
+	// eventId and createdAt auto-assignment
+	// -----------------------------------------------------------------------
+
+	describe('eventId and createdAt', () => {
+		it('should auto-assign eventId and createdAt on emit', () => {
+			const handler = vi.fn();
+			bus.on('step:started', handler);
+
+			bus.emit({
+				type: 'step:started',
+				executionId: 'exec-1',
+				stepId: 'step-1',
+				attempt: 1,
+			});
+
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({
+					eventId: expect.any(String),
+					createdAt: expect.any(Number),
+					type: 'step:started',
+				}),
+			);
+		});
+
+		it('should generate unique eventIds', () => {
+			const events: unknown[] = [];
+			bus.on('step:started', (e) => {
+				events.push(e);
+			});
+
+			bus.emit({ type: 'step:started', executionId: 'e1', stepId: 's1', attempt: 1 });
+			bus.emit({ type: 'step:started', executionId: 'e1', stepId: 's1', attempt: 2 });
+
+			const ids = events.map((e) => (e as { eventId: string }).eventId);
+			expect(ids[0]).not.toBe(ids[1]);
+		});
+
+		it('should not overwrite eventId if already set', () => {
+			const handler = vi.fn();
+			bus.on('step:started', handler);
+
+			bus.emit({
+				type: 'step:started',
+				executionId: 'e1',
+				stepId: 's1',
+				attempt: 1,
+				eventId: 'custom-id',
+				createdAt: 12345,
+			});
+
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({ eventId: 'custom-id', createdAt: 12345 }),
+			);
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// close()
+	// -----------------------------------------------------------------------
+
+	describe('close', () => {
+		it('should call close() without errors when no relay', async () => {
+			await expect(bus.close()).resolves.toBeUndefined();
+		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// EngineEventBus with relay
+// ---------------------------------------------------------------------------
+
+describe('EngineEventBus with relay', () => {
+	it('should broadcast events to relay on emit', async () => {
+		const { LocalEventRelay } = await import('../event-relay');
+		const relay = new LocalEventRelay();
+		const relaySpy = vi.spyOn(relay, 'broadcast');
+		const bus = new EngineEventBus(relay);
+
+		bus.emit({
+			type: 'step:started',
+			executionId: 'e1',
+			stepId: 's1',
+			attempt: 1,
+		});
+
+		expect(relaySpy).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'step:started', eventId: expect.any(String) }),
+		);
+	});
+
+	it('should close relay on close()', async () => {
+		const { LocalEventRelay } = await import('../event-relay');
+		const relay = new LocalEventRelay();
+		const closeSpy = vi.spyOn(relay, 'close');
+		const bus = new EngineEventBus(relay);
+
+		await bus.close();
+		expect(closeSpy).toHaveBeenCalled();
+	});
+
+	it('should broadcast execution events to relay', async () => {
+		const { LocalEventRelay } = await import('../event-relay');
+		const relay = new LocalEventRelay();
+		const relaySpy = vi.spyOn(relay, 'broadcast');
+		const bus = new EngineEventBus(relay);
+
+		bus.emit({
+			type: 'execution:started',
+			executionId: 'e1',
+		});
+
+		expect(relaySpy).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'execution:started', executionId: 'e1' }),
+		);
+	});
+
+	it('should broadcast webhook events to relay', async () => {
+		const { LocalEventRelay } = await import('../event-relay');
+		const relay = new LocalEventRelay();
+		const relaySpy = vi.spyOn(relay, 'broadcast');
+		const bus = new EngineEventBus(relay);
+
+		bus.emit({
+			type: 'webhook:respond',
+			executionId: 'e1',
+			statusCode: 200,
+			body: { ok: true },
+		});
+
+		expect(relaySpy).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'webhook:respond', executionId: 'e1' }),
+		);
 	});
 });

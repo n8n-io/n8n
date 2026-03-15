@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { EngineEventBus } from '../event-bus.service';
-import { registerEventHandlers } from '../event-handlers';
+import { registerEventHandlers, clearGraphCache } from '../event-handlers';
 import type { StepPlannerService } from '../step-planner.service';
 import type { CompletionService } from '../completion.service';
-import type { StepCompletedEvent, StepFailedEvent, StepCancelledEvent } from '../event-bus.types';
+import type { EmittableEvent } from '../event-bus.types';
 import { ExecutionStatus } from '../../database/enums';
 
 // -------------------------------------------------------------------------
@@ -106,6 +106,8 @@ describe('registerEventHandlers', () => {
 
 	afterEach(() => {
 		eventBus.removeAllListeners();
+		// Clear graph cache between tests to avoid test pollution
+		clearGraphCache('exec-1');
 	});
 
 	// -----------------------------------------------------------------------
@@ -148,7 +150,7 @@ describe('registerEventHandlers', () => {
 
 			registerEventHandlers(eventBus, dataSource as never, stepPlanner, completionService);
 
-			const event: StepCompletedEvent = {
+			const event: EmittableEvent = {
 				type: 'step:completed',
 				executionId: 'exec-1',
 				stepId: 'child-step',
@@ -168,11 +170,11 @@ describe('registerEventHandlers', () => {
 			});
 		});
 
-		it('calls planNextSteps and checkExecutionComplete for normal step completion', async () => {
+		it('calls planNextSteps but skips checkExecutionComplete when step has successors', async () => {
 			const { dataSource, mockRepo } = createMockDataSource();
 			const workflowData = createMockWorkflowData();
 
-			// Mock execution lookup (for loadWorkflowForExecution)
+			// Mock execution lookup (for loadGraphForExecution)
 			mockRepo.findOneByOrFail.mockResolvedValue({
 				id: 'exec-1',
 				workflowId: 'wf-1',
@@ -196,7 +198,8 @@ describe('registerEventHandlers', () => {
 
 			registerEventHandlers(eventBus, dataSource as never, stepPlanner, completionService);
 
-			const event: StepCompletedEvent = {
+			// step-1 has a successor (step-2) in the mock graph
+			const event: EmittableEvent = {
 				type: 'step:completed',
 				executionId: 'exec-1',
 				stepId: 'step-1',
@@ -215,6 +218,55 @@ describe('registerEventHandlers', () => {
 				expect.any(Object), // WorkflowGraph instance
 			);
 
+			// Should NOT check completion since step-1 has successors
+			expect(completionService.checkExecutionComplete).not.toHaveBeenCalled();
+		});
+
+		it('calls checkExecutionComplete when step has no successors (leaf node)', async () => {
+			const { dataSource, mockRepo } = createMockDataSource();
+			const workflowData = createMockWorkflowData();
+
+			// Mock execution lookup (for loadGraphForExecution)
+			mockRepo.findOneByOrFail.mockResolvedValue({
+				id: 'exec-1',
+				workflowId: 'wf-1',
+				workflowVersion: 1,
+				pauseRequested: false,
+			});
+
+			// Mock workflow lookup
+			const mockWorkflowQb = {
+				where: vi.fn().mockReturnThis(),
+				getOneOrFail: vi.fn().mockResolvedValue(workflowData),
+			};
+			dataSource.getRepository.mockImplementation((entity: string) => {
+				if (entity === 'WorkflowEntity') {
+					return {
+						createQueryBuilder: vi.fn().mockReturnValue(mockWorkflowQb),
+					};
+				}
+				return mockRepo;
+			});
+
+			registerEventHandlers(eventBus, dataSource as never, stepPlanner, completionService);
+
+			// step-2 is a leaf node (no successors) in the mock graph
+			const event: EmittableEvent = {
+				type: 'step:completed',
+				executionId: 'exec-1',
+				stepId: 'step-2',
+				output: { result: 'final' },
+				durationMs: 100,
+			};
+
+			eventBus.emit(event);
+
+			await new Promise<void>((resolve) => setTimeout(resolve, 50));
+
+			// Should NOT plan next steps (no successors)
+			expect(stepPlanner.planNextSteps).not.toHaveBeenCalled();
+
+			// Should check completion since step-2 is a leaf node
 			expect(completionService.checkExecutionComplete).toHaveBeenCalledWith(
 				'exec-1',
 				expect.any(Object), // WorkflowGraph instance
@@ -257,7 +309,7 @@ describe('registerEventHandlers', () => {
 
 			registerEventHandlers(eventBus, dataSource as never, stepPlanner, completionService);
 
-			const event: StepFailedEvent = {
+			const event: EmittableEvent = {
 				type: 'step:failed',
 				executionId: 'exec-1',
 				stepId: 'child-step',
@@ -313,7 +365,7 @@ describe('registerEventHandlers', () => {
 				failedEvents.push(event);
 			});
 
-			const event: StepFailedEvent = {
+			const event: EmittableEvent = {
 				type: 'step:failed',
 				executionId: 'exec-1',
 				stepId: 'step-1',
@@ -370,7 +422,7 @@ describe('registerEventHandlers', () => {
 
 			registerEventHandlers(eventBus, dataSource as never, stepPlanner, completionService);
 
-			const event: StepCancelledEvent = {
+			const event: EmittableEvent = {
 				type: 'step:cancelled',
 				executionId: 'exec-1',
 				stepId: 'step-1',

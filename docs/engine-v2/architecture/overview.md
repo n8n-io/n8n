@@ -2147,6 +2147,8 @@ When a step needs to process multiple items independently, child step executions
 
 ## Event Delivery and Scaling
 
+> **Status: Implemented.** See `docs/engine-v2/plans/scaling/spec.md` for the full design.
+
 ### Phase 1: Simple In-Process Broadcasting
 
 For the PoC, the broadcaster is a simple in-process event emitter. SSE endpoints subscribe and forward events. This works when API and workers are the same process.
@@ -3388,7 +3390,7 @@ These are **PoC limitations** — design choices made for simplicity that have k
 | PoC Limitation | Why It's Acceptable for PoC | Scaling Path (Phase 2) |
 |----------------|---------------------------|----------------------|
 | **Polling latency** (50ms interval) | Aggressive polling keeps latency low. Partial index makes poll query near-instant (~20 queries/s per worker is negligible for PostgreSQL). | Adaptive polling (fast when busy, slow when idle) if needed |
-| **In-process event delivery** | Single-process deployment for PoC | Redis pub/sub for multi-process; subscribe by `executionId` channel for ordering guarantees |
+| **In-process event delivery** | **Resolved.** `EventRelay` interface with `LocalEventRelay` (default) and `RedisEventRelay` (when `REDIS_URL` is set). See `docs/engine-v2/plans/scaling/spec.md`. | -- |
 | **JSONB step outputs** | Works for typical payloads | Binary data stored in object storage (S3/filesystem) with JSONB reference — no JSONB overflow |
 | **Hot table** (`workflow_step_execution`) | Partial index `idx_wse_queue` limits scan to active jobs | Separate queue table if write contention becomes an issue |
 | **PostgreSQL-only** | No Redis dependency simplifies testing | Redis added only for event delivery, not for queue |
@@ -3396,16 +3398,17 @@ These are **PoC limitations** — design choices made for simplicity that have k
 
 ### Deployment mode support
 
-| Mode | Phase 1 (PoC) | Phase 2 |
-|------|--------------|---------|
-| **Single process** | Fully supported | Fully supported |
-| **Queue mode** (separate workers) | Not supported — event delivery is in-process | PostgreSQL queue already works with multiple pollers (SKIP LOCKED). Add Redis pub/sub for event delivery to ensure events reach the correct API process and are consumed in order. |
-| **Multi-main** (HA) | Not supported | Redis pub/sub for event relay between API processes. Same pattern as current engine: publish to channel, only the process with the client connection delivers. |
+| Mode | Status | Notes |
+|------|--------|-------|
+| **Single process** | Supported | `LocalEventRelay` (default, no Redis needed) |
+| **Queue mode** (separate workers) | Supported | PostgreSQL queue works with multiple pollers (SKIP LOCKED). `RedisEventRelay` delivers SSE events cross-instance when `REDIS_URL` is set. |
+| **Multi-main** (HA) | Supported | `RedisEventRelay` provides event relay between API processes. Each instance skips its own events via `instanceId` envelope. |
 
-**Phase 2 scales to all modes** because:
+**All modes are supported** because:
 - The PostgreSQL queue is inherently multi-worker (SKIP LOCKED)
-- Redis pub/sub provides ordered, scoped event delivery
+- `RedisEventRelay` provides cross-instance event delivery via pub/sub
 - The event-driven architecture means handlers work the same regardless of where events originate
+- Orchestration is always local; Redis is only for SSE event delivery
 
 ---
 

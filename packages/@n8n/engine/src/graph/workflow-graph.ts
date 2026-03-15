@@ -124,6 +124,36 @@ export class WorkflowGraph {
 		return this.data.edges.filter((e) => e.to === stepId).map((e) => e.from);
 	}
 
+	/**
+	 * Get the specific step IDs whose output this step needs, based on
+	 * the transpiler's variable reference analysis stored in config.dataDependencies.
+	 */
+	getStepDataDependencyIds(stepId: string): string[] {
+		return this.getNode(stepId)?.config.dataDependencies ?? [];
+	}
+
+	/**
+	 * Get ALL ancestor step IDs reachable by walking backwards through the graph.
+	 * Used by gatherStepInput to load all outputs the step might reference
+	 * (the transpiler rewrites variable references to ctx.input[stepId] for
+	 * any ancestor, not just direct predecessors).
+	 */
+	getAllAncestorIds(stepId: string): string[] {
+		const ancestors = new Set<string>();
+		const queue = this.getPredecessorIds(stepId);
+
+		while (queue.length > 0) {
+			const current = queue.pop()!;
+			if (ancestors.has(current)) continue;
+			ancestors.add(current);
+			for (const predId of this.getPredecessorIds(current)) {
+				if (!ancestors.has(predId)) queue.push(predId);
+			}
+		}
+
+		return Array.from(ancestors);
+	}
+
 	getSuccessors(stepId: string, stepOutput?: unknown): GraphNodeData[] {
 		return this.data.edges
 			.filter((e) => e.from === stepId)

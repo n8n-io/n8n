@@ -5,6 +5,7 @@ import { TERMINAL_STATUSES, StepStatus, StepType, ExecutionStatus } from '../dat
 import { WorkflowExecution } from '../database/entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../database/entities/workflow-step-execution.entity';
 import type { EngineEventBus } from './event-bus.service';
+import type { MetricsService } from './metrics.service';
 
 /**
  * Determines when a workflow execution is complete and calculates
@@ -15,6 +16,7 @@ export class CompletionService {
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly eventBus: EngineEventBus,
+		private readonly metrics?: MetricsService,
 	) {}
 
 	async checkExecutionComplete(executionId: string, graph: WorkflowGraph): Promise<void> {
@@ -116,6 +118,10 @@ export class CompletionService {
 
 		// If no rows affected, another call already finalized -- skip event emission
 		if (updateResult.affected === 0) return;
+
+		// Track execution completion metrics
+		this.metrics?.executionTotal.inc({ status: finalStatus });
+		this.metrics?.executionDuration.observe({ workflow_id: execution.workflowId }, wallMs);
 
 		// 7. Emit execution:completed or execution:failed
 		if (finalStatus === ExecutionStatus.Completed) {

@@ -26,6 +26,10 @@ export interface GraphStepConfig {
 	workflow?: string;
 	/** Batch failure strategy */
 	onItemFailure?: 'fail-fast' | 'continue' | 'abort-remaining';
+	/** Step IDs whose output this step's function references via ctx.input[stepId].
+	 *  Set by the transpiler from variable reference analysis. Used by
+	 *  gatherStepInput() to load only the specific outputs the step needs. */
+	dataDependencies?: string[];
 	/** Agent-specific config — populated by the transpiler from ctx.agent() calls */
 	agentConfig?: {
 		/** Default timeout override for agent steps (longer than regular steps) */

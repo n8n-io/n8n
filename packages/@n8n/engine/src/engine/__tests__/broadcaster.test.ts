@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 
 import { BroadcasterService } from '../broadcaster.service';
 import { EngineEventBus } from '../event-bus.service';
+import { LocalEventRelay } from '../event-relay';
 import type { EngineEvent } from '../event-bus.types';
 
 /**
@@ -98,12 +99,12 @@ describe('BroadcasterService', () => {
 			const res = createMockResponse();
 			broadcaster.subscribe('exec-1', res as never);
 
-			const event: EngineEvent = {
+			const event = {
 				type: 'step:started',
 				executionId: 'exec-1',
 				stepId: 'step-1',
 				attempt: 1,
-			};
+			} as EngineEvent;
 			broadcaster.send('exec-1', event);
 
 			expect(res.write).toHaveBeenCalledWith(`data: ${JSON.stringify(event)}\n\n`);
@@ -116,10 +117,10 @@ describe('BroadcasterService', () => {
 			broadcaster.subscribe('exec-1', res1 as never);
 			broadcaster.subscribe('exec-1', res2 as never);
 
-			const event: EngineEvent = {
+			const event = {
 				type: 'execution:started',
 				executionId: 'exec-1',
-			};
+			} as EngineEvent;
 			broadcaster.send('exec-1', event);
 
 			const expectedData = `data: ${JSON.stringify(event)}\n\n`;
@@ -138,10 +139,10 @@ describe('BroadcasterService', () => {
 			res1.write.mockClear();
 			res2.write.mockClear();
 
-			const event: EngineEvent = {
+			const event = {
 				type: 'execution:started',
 				executionId: 'exec-1',
-			};
+			} as EngineEvent;
 			broadcaster.send('exec-1', event);
 
 			expect(res1.write).toHaveBeenCalled();
@@ -153,7 +154,7 @@ describe('BroadcasterService', () => {
 			broadcaster.send('exec-nonexistent', {
 				type: 'execution:started',
 				executionId: 'exec-nonexistent',
-			});
+			} as EngineEvent);
 		});
 	});
 
@@ -195,7 +196,7 @@ describe('BroadcasterService', () => {
 			broadcaster.send('exec-1', {
 				type: 'execution:started',
 				executionId: 'exec-1',
-			});
+			} as EngineEvent);
 
 			// write was called once during subscribe's flushHeaders, but not after
 			// The only write call should be from before disconnect, if any
@@ -313,6 +314,71 @@ describe('BroadcasterService', () => {
 
 			res1.simulateClose();
 			expect(broadcaster.getTotalSubscriberCount()).toBe(1);
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// Relay integration
+	// -----------------------------------------------------------------------
+
+	describe('relay integration', () => {
+		it('should deliver local events to SSE clients with relay wired in', () => {
+			const relay = new LocalEventRelay();
+			const busWithRelay = new EngineEventBus(relay);
+			const broadcasterWithRelay = new BroadcasterService(busWithRelay, relay);
+
+			const res = createMockResponse();
+			broadcasterWithRelay.subscribe('exec-1', res as never);
+
+			busWithRelay.emit({
+				type: 'step:started',
+				executionId: 'exec-1',
+				stepId: 's1',
+				attempt: 1,
+			});
+
+			const eventWrites = res
+				.getWritten()
+				.filter((data) => data.startsWith('data:') && data.includes('step:started'));
+			expect(eventWrites.length).toBe(1);
+		});
+
+		it('should not double-deliver with LocalEventRelay (no-op relay)', () => {
+			const relay = new LocalEventRelay();
+			const busWithRelay = new EngineEventBus(relay);
+			const broadcasterWithRelay = new BroadcasterService(busWithRelay, relay);
+
+			const res = createMockResponse();
+			broadcasterWithRelay.subscribe('exec-1', res as never);
+
+			busWithRelay.emit({
+				type: 'step:started',
+				executionId: 'exec-1',
+				stepId: 's1',
+				attempt: 1,
+			});
+
+			const eventWrites = res
+				.getWritten()
+				.filter((data) => data.startsWith('data:') && data.includes('step:started'));
+			// Exactly 1: local bus delivers, relay is no-op
+			expect(eventWrites.length).toBe(1);
+		});
+
+		it('should track SSE client count with relay', () => {
+			const relay = new LocalEventRelay();
+			const busWithRelay = new EngineEventBus(relay);
+			const broadcasterWithRelay = new BroadcasterService(busWithRelay, relay);
+
+			expect(broadcasterWithRelay.getTotalSubscriberCount()).toBe(0);
+
+			const res = createMockResponse();
+			broadcasterWithRelay.subscribe('exec-1', res as never);
+			expect(broadcasterWithRelay.getTotalSubscriberCount()).toBe(1);
+
+			// Simulate disconnect
+			res.simulateClose();
+			expect(broadcasterWithRelay.getTotalSubscriberCount()).toBe(0);
 		});
 	});
 });

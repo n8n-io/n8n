@@ -1,20 +1,20 @@
-# Performance testing compose — isolated network, clean database
+# Performance testing compose — clean database + InfluxDB for k6 results
 #
 # Usage:
-#   pnpm perf:up    # Start
+#   pnpm dev:perf   # Start with observability
 #   pnpm perf       # Run k6 tests
 #   pnpm perf:down  # Tear down
 #
-# Grafana dashboard: http://localhost:3300/d/k6-perf
+# Grafana dashboard: http://localhost:3300/d/k6-perf (via docker-compose.o11y.yml)
 
 networks:
-  perf:
-    name: engine-perf
+  engine:
+    name: engine-network
 
 services:
   postgres-perf:
     image: postgres:16-alpine
-    networks: [perf]
+    networks: [engine]
     environment:
       POSTGRES_DB: engine_perf
       POSTGRES_USER: engine
@@ -34,7 +34,7 @@ services:
       context: ../../../
       dockerfile: packages/@n8n/engine/Dockerfile
       target: dev
-    networks: [perf]
+    networks: [engine]
     ports:
       - '3101:3101'
     environment:
@@ -47,23 +47,8 @@ services:
 
   influxdb:
     image: influxdb:1.11
-    networks: [perf]
+    networks: [engine]
     environment:
       INFLUXDB_DB: k6
     ports:
       - '8086:8086'
-
-  grafana:
-    image: grafana/grafana:latest
-    networks: [perf]
-    ports:
-      - '3300:3000'
-    environment:
-      GF_AUTH_ANONYMOUS_ENABLED: 'true'
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-    volumes:
-      - ./perf/grafana/provisioning:/etc/grafana/provisioning
-      - ./perf/grafana/dashboards:/var/lib/grafana/dashboards
-    depends_on:
-      - influxdb

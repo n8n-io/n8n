@@ -445,12 +445,12 @@ forwarded. The SSE data format is:
 data: {"type":"step:completed","executionId":"...","stepId":"...","output":...}\n\n
 ```
 
-#### Scaling Considerations
+#### Scaling
 
-The current implementation is **in-process only**. In a multi-process
-deployment, events emitted by worker processes do not reach SSE clients
-connected to different API processes. The plan document specifies a
-Phase 2 solution using Redis pub/sub channels keyed by execution ID.
+The `BroadcasterService` now supports multi-instance deployments via
+the `EventRelay` abstraction. It subscribes to both the local event bus
+and an optional `EventRelay` for cross-instance events. See
+[EventRelay](#eventrelay--cross-instance-event-delivery) below.
 
 #### Key Methods
 
@@ -471,17 +471,36 @@ A typed wrapper around Node.js `EventEmitter` providing:
 
 - **Typed emission and subscription** -- `emit(event: EngineEvent)` and
   `on<T>(eventType, handler)` ensure type safety.
+- **Auto-assigned base fields** -- `eventId` (nanoid) and `createdAt`
+  (timestamp) are auto-assigned on every `emit()` call if not provided.
 - **Wildcard listeners** -- `onStepEvent()` subscribes to `step:*`,
   `onExecutionEvent()` to `execution:*`.
 - **`onAny()`** -- receives step events, execution events, AND webhook
   events (subscribes to `step:*`, `execution:*`, and `webhook:respond`).
 - **Max listeners** -- set to 100 to accommodate multiple subscribers.
+- **Optional EventRelay** -- if provided, `emit()` calls
+  `relay.broadcast(event)` to deliver events to other instances.
+- **Optional MetricsService** -- if provided, `emit()` increments
+  `engine_events_published_total{type}`.
 
 Implementation detail: wildcard events are implemented by emitting
-a second event with the `prefix:*` pattern on every `emit()` call
-(line 24-25).
+a second event with the `prefix:*` pattern on every `emit()` call.
 
 ### Event Types (`event-bus.types.ts`)
+
+**Base event fields:**
+
+All engine events extend `BaseEvent`, which provides two auto-assigned fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `eventId` | `string` | Unique identifier (nanoid), auto-assigned by `EngineEventBus.emit()` if not provided |
+| `createdAt` | `number` | Unix timestamp (ms), auto-assigned by `EngineEventBus.emit()` if not provided |
+
+The `EmittableEvent` type makes both fields optional on input -- callers
+emit events without specifying them, and the event bus fills them in.
+This enables latency tracking for cross-instance event delivery
+(`Date.now() - event.createdAt`).
 
 **Step events:**
 
@@ -555,6 +574,66 @@ Loads the workflow graph and calls `checkExecutionComplete()`.
 | `resolveParentStep(dataSource, eventBus, parentId, output)` | 43-75 | Marks parent completed, re-emits step:completed |
 | `failParentStep(dataSource, eventBus, parentId)` | 81-116 | Marks parent failed, re-emits step:failed |
 | `markExecutionPaused(dataSource, executionId)` | 121-132 | Sets execution status to paused (CAS on running) |
+
+### EventRelay — Cross-Instance Event Delivery
+
+**Files:** `event-relay.ts`, `redis-event-relay.ts`
+
+The `EventRelay` interface abstracts cross-instance event broadcasting.
+The `EngineEventBus` accepts an optional relay at construction and calls
+`relay.broadcast(event)` on every `emit()`. The `BroadcasterService`
+subscribes to both the local event bus and the relay, delivering events
+from both sources to SSE clients.
+
+#### Interface
+
+```typescript
+interface EventRelay {
+  broadcast(event: EngineEvent): void;
+  onBroadcast(handler: (event: EngineEvent) => void): void;
+  close(): Promise<void>;
+}
+```
+
+#### Implementations
+
+| Class | When Used | Behavior |
+|-------|-----------|----------|
+| `LocalEventRelay` | Default (no `REDIS_URL`) | No-op. `broadcast()` does nothing, `onBroadcast()` never fires. All events stay in-process. |
+| `RedisEventRelay` | When `REDIS_URL` is set | Publishes events to Redis pub/sub, receives events from other instances. |
+
+#### RedisEventRelay Design
+
+- **Two Redis connections**: one for publishing, one for subscribing (Redis
+  requires dedicated connections for subscribers).
+- **Envelope dedup**: Events are wrapped in `{ instanceId, event }`. On
+  receive, each instance skips events with its own `instanceId` (already
+  handled locally by the event bus).
+- **Channel**: All events go to a single channel (`engine:events:{prefix}`).
+- **Resilient to Redis failures**: Logs errors and continues. Local
+  orchestration is unaffected. Cross-instance SSE delivery is lost
+  until Redis recovers. ioredis auto-reconnects by default.
+
+#### BroadcasterService Integration
+
+The `BroadcasterService` subscribes to two event sources:
+
+1. **Local events** via `eventBus.onAny()` -- events emitted by this instance.
+2. **Remote events** via `relay.onBroadcast()` -- events from other instances.
+
+No deduplication is needed because `LocalEventRelay.onBroadcast` is a no-op,
+and `RedisEventRelay` filters out same-instance events via the `instanceId`
+envelope.
+
+#### MetricsService Integration
+
+The `EngineEventBus` and `BroadcasterService` accept an optional
+`MetricsService` parameter. When provided:
+
+- `EngineEventBus.emit()` increments `engine_events_published_total{type}`
+- `BroadcasterService` observes `engine_redis_relay_latency_seconds` on relay events
+  (computed as `Date.now() - event.createdAt`)
+- `BroadcasterService.subscribe()` / disconnect tracks `engine_sse_connected_clients`
 
 ## Error Handling
 

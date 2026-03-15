@@ -5,4 +5,4 @@ datasources:
     access: proxy
     url: http://influxdb:8086
     database: k6
-    isDefault: true
+    isDefault: false

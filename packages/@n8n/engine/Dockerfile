@@ -58,6 +58,7 @@ FROM node:22-alpine AS prod
 
 WORKDIR /app/packages/@n8n/engine
 COPY --from=base /app/node_modules/ /app/node_modules/
+COPY --from=base /app/packages/@n8n/agents/ /app/packages/@n8n/agents/
 COPY --from=base /app/packages/@n8n/engine/node_modules/ ./node_modules/
 COPY --from=build /app/packages/@n8n/engine/dist/ ./dist/
 COPY --from=build /app/packages/@n8n/engine/examples/ ./examples/

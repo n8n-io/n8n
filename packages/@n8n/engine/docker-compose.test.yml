@@ -26,3 +26,10 @@ services:
       retries: 10
     tmpfs:
       - /var/lib/postgresql/data
+  redis-test:
+    image: redis:7-alpine
+    networks: [test]
+    ports:
+      - '6380:6379'
+    tmpfs:
+      - /data
