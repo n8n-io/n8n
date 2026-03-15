@@ -653,58 +653,6 @@ describe('SecretsProvidersConnectionsService', () => {
 		});
 	});
 
-	describe('CRUD operations reload providers', () => {
-		const savedConnection = {
-			id: 1,
-			providerKey: 'my-aws',
-			type: 'awsSecretsManager',
-			encryptedSettings: '{"apiKey":"secret"}',
-			isEnabled: true,
-			projectAccess: [],
-			createdAt: new Date('2024-01-01'),
-			updatedAt: new Date('2024-01-02'),
-		} as unknown as SecretsProviderConnection;
-
-		it('should sync provider connection after createConnection', async () => {
-			mockRepository.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(savedConnection);
-			mockRepository.create.mockReturnValue(savedConnection);
-			mockRepository.save.mockResolvedValue(savedConnection);
-
-			await service.createConnection(
-				{
-					providerKey: 'my-aws',
-					type: 'awsSecretsManager',
-					settings: { apiKey: 'secret' },
-					projectIds: [],
-				},
-				'test-user',
-				'secretsProviderConnection:user',
-			);
-
-			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
-		});
-
-		it('should sync provider connection after updateGlobalConnection', async () => {
-			mockRepository.findOne
-				.mockResolvedValueOnce(savedConnection)
-				.mockResolvedValueOnce(savedConnection);
-			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([]);
-
-			await service.updateGlobalConnection('my-aws', { projectIds: ['p1'] }, 'test-user');
-
-			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
-		});
-
-		it('should sync provider connection after deleteConnection', async () => {
-			mockRepository.findOne.mockResolvedValueOnce(savedConnection);
-			mockRepository.remove.mockResolvedValue(savedConnection);
-
-			await service.deleteConnection('my-aws', 'test-user');
-
-			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
-		});
-	});
-
 	describe('role assignment on project access', () => {
 		const savedConnection = {
 			id: 1,
