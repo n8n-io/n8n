@@ -25,6 +25,11 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
+	/** Cached DB server time to avoid querying on every 5s poll. Refreshed every 60s. */
+	private serverTimeCache: { serverTime: Date; localTimeAtFetch: number } | null = null;
+
+	private readonly serverTimeCacheTtlMs = 60_000;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -46,20 +51,57 @@ export class WaitTracker {
 
 	@OnLeaderTakeover()
 	private startTracking() {
-		// Poll every 60 seconds a list of upcoming executions
+		// Poll every 5 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
-		}, 60000);
+		}, 5000);
 
 		void this.getWaitingExecutions();
 
 		this.logger.debug('Started tracking waiting executions');
 	}
 
+	/**
+	 * Returns an approximation of the DB server's current time.
+	 * Fetches from the DB at most once every 60s and approximates intermediate
+	 * values by adding elapsed local wall-clock time since the last fetch.
+	 * This reduces DB load from 12 queries/min (one per 5s poll) to 1 query/min
+	 * while keeping triggerTime precision within the local clock drift rate.
+	 *
+	 * Side effect: the clock skew warning in getWaitingExecutions() is derived from
+	 * this value, so it reflects the skew measured at the last cache refresh rather
+	 * than the live skew. This is intentional — it detects structural clock drift
+	 * (e.g. broken NTP) rather than transient noise.
+	 */
+	private async getApproximateServerTime(): Promise<Date> {
+		const nowMs = Date.now();
+		if (
+			this.serverTimeCache !== null &&
+			nowMs - this.serverTimeCache.localTimeAtFetch < this.serverTimeCacheTtlMs
+		) {
+			const elapsed = nowMs - this.serverTimeCache.localTimeAtFetch;
+			return new Date(this.serverTimeCache.serverTime.getTime() + elapsed);
+		}
+		const serverTime = await this.executionRepository.getServerTime();
+		this.serverTimeCache = { serverTime, localTimeAtFetch: nowMs };
+		return serverTime;
+	}
+
 	async getWaitingExecutions() {
 		this.logger.debug('Querying database for waiting executions');
 
-		const executions = await this.executionRepository.getWaitingExecutions();
+		const [executions, serverTime] = await Promise.all([
+			this.executionRepository.getWaitingExecutions(),
+			this.getApproximateServerTime(),
+		]);
+
+		// Warn if this instance's clock is significantly skewed from the DB server
+		const skewMs = serverTime.getTime() - Date.now();
+		if (Math.abs(skewMs) > 2000) {
+			this.logger.warn(
+				`Clock skew detected: this instance is ${Math.abs(skewMs)}ms ${skewMs > 0 ? 'behind' : 'ahead of'} the database server`,
+			);
+		}
 
 		if (executions.length === 0) {
 			return;
@@ -71,18 +113,21 @@ export class WaitTracker {
 		);
 
 		// Add timers for each waiting execution that they get started at the correct time
-
 		for (const execution of executions) {
 			const executionId = execution.id;
-			if (this.waitingExecutions[executionId] === undefined) {
-				const triggerTime = execution.waitTill!.getTime() - new Date().getTime();
-				this.waitingExecutions[executionId] = {
-					executionId,
-					timer: setTimeout(() => {
+			if (this.waitingExecutions[executionId] !== undefined) continue;
+			if (execution.waitTill === null) continue; // row without a waitTill should never be returned, skip defensively
+
+			const triggerTime = execution.waitTill.getTime() - serverTime.getTime();
+			this.waitingExecutions[executionId] = {
+				executionId,
+				timer: setTimeout(
+					() => {
 						void this.startExecution(executionId);
-					}, triggerTime),
-				};
-			}
+					},
+					Math.max(triggerTime, 0),
+				),
+			};
 		}
 	}
 
@@ -175,6 +220,7 @@ export class WaitTracker {
 		Object.keys(this.waitingExecutions).forEach((executionId) => {
 			clearTimeout(this.waitingExecutions[executionId].timer);
 		});
+		this.serverTimeCache = null;
 
 		this.logger.debug('Stopped tracking waiting executions');
 	}

@@ -602,28 +602,43 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await this.delete({ id: In(executionIds) });
 	}
 
-	async getWaitingExecutions() {
-		// Find all the executions which should be triggered in the next 70 seconds
-		const waitTill = new Date(Date.now() + 70000);
-		const where: FindOptionsWhere<ExecutionEntity> = {
-			waitTill: LessThanOrEqual(waitTill),
-			status: Not('crashed'),
-		};
-
+	async getWaitingExecutions(): Promise<Pick<ExecutionEntity, 'id' | 'waitTill'>[]> {
+		// Find all executions whose waitTill falls within the next 15 seconds,
+		// using the DB server clock to avoid client-side clock skew.
+		// Poll interval is 5s; 15s window gives a 10s safety buffer if a single poll is delayed.
 		const dbType = this.globalConfig.database.type;
-		if (dbType === 'sqlite') {
-			// This is needed because of issue in TypeORM <> SQLite:
-			// https://github.com/typeorm/typeorm/issues/2286
-			where.waitTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(waitTill));
-		}
 
-		return await this.findMultipleExecutions({
-			select: ['id', 'waitTill'],
-			where,
-			order: {
-				waitTill: 'ASC',
-			},
-		});
+		const lookaheadCondition =
+			dbType === 'postgresdb'
+				? "e.waitTill <= NOW() + INTERVAL '15 seconds'"
+				: "e.waitTill <= datetime('now', '+15 seconds')";
+
+		// Exclude crashed executions (they can't be resumed) but allow all other statuses.
+		// Cancelled executions are implicitly excluded because cancellation sets waitTill to null,
+		// which the lookahead condition filters out via NULL comparison.
+		return await this.createQueryBuilder('e')
+			.select(['e.id', 'e.waitTill'])
+			.where(lookaheadCondition)
+			.andWhere('e.status != :status', { status: 'crashed' })
+			.orderBy('e.waitTill', 'ASC')
+			.getMany();
+	}
+
+	async getServerTime(): Promise<Date> {
+		const dbType = this.globalConfig.database.type;
+		if (dbType === 'postgresdb') {
+			const [{ now }] = (await this.query('SELECT CURRENT_TIMESTAMP(3) AS now')) as [{ now: Date }];
+			return new Date(now);
+		}
+		// SQLite returns a string in 'YYYY-MM-DD HH:MM:SS.SSS' format
+		const [{ now }] = (await this.query("SELECT STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') AS now")) as [
+			{ now: string },
+		];
+		const date = new Date(now.replace(' ', 'T') + 'Z');
+		if (Number.isNaN(date.getTime())) {
+			throw new UnexpectedError(`Invalid DB server time: ${now}`);
+		}
+		return date;
 	}
 
 	async getExecutionsCountForPublicApi(params: {

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { In, LessThan, And, Not } from '@n8n/typeorm';
 

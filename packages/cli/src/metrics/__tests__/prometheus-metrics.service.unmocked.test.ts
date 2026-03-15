@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
+import type { WorkflowRepository, LicenseMetricsRepository, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -46,6 +46,7 @@ describe('workflow_success_total', () => {
 			instanceSettings,
 			workflowRepository,
 			mock<LicenseMetricsRepository>(),
+			mock<ExecutionRepository>(),
 		);
 
 		await prometheusMetricsService.init(app);
@@ -90,6 +91,7 @@ workflow_success_total{workflow_id="1234"} 1"
 			instanceSettings,
 			workflowRepository,
 			mock<LicenseMetricsRepository>(),
+			mock<ExecutionRepository>(),
 		);
 
 		await prometheusMetricsService.init(app);
@@ -131,6 +133,7 @@ workflow_success_total{workflow_name="wf_1234"} 1"
 			instanceSettings,
 			workflowRepository,
 			mock<LicenseMetricsRepository>(),
+			mock<ExecutionRepository>(),
 		);
 
 		// ACT
@@ -176,6 +179,7 @@ describe('Active workflow count', () => {
 		instanceSettings,
 		workflowRepository,
 		mock<LicenseMetricsRepository>(),
+		mock<ExecutionRepository>(),
 	);
 
 	afterEach(() => {

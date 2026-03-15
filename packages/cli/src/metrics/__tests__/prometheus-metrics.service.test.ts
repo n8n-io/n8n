@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
+import type { WorkflowRepository, LicenseMetricsRepository, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
@@ -35,6 +35,7 @@ describe('PrometheusMetricsService', () => {
 	let instanceSettings: InstanceSettings;
 	let workflowRepository: WorkflowRepository;
 	let licenseMetricsRepository: LicenseMetricsRepository;
+	let executionRepository: ExecutionRepository;
 	let prometheusMetricsService: PrometheusMetricsService;
 
 	beforeEach(() => {
@@ -78,6 +79,7 @@ describe('PrometheusMetricsService', () => {
 		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 		workflowRepository = mock<WorkflowRepository>();
 		licenseMetricsRepository = mock<LicenseMetricsRepository>();
+		executionRepository = mock<ExecutionRepository>();
 
 		prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
@@ -87,6 +89,7 @@ describe('PrometheusMetricsService', () => {
 			instanceSettings,
 			workflowRepository,
 			licenseMetricsRepository,
+			executionRepository,
 		);
 
 		promClient.Counter.prototype.inc = jest.fn();
@@ -115,6 +118,7 @@ describe('PrometheusMetricsService', () => {
 				instanceSettings,
 				mock(),
 				mock(),
+				mock<ExecutionRepository>(),
 			);
 
 			await customPrometheusMetricsService.init(app);
@@ -257,7 +261,7 @@ describe('PrometheusMetricsService', () => {
 
 			await prometheusMetricsService.init(app);
 
-			expect(promClient.Gauge).toHaveBeenCalledTimes(3); // version metric + active workflow count metric + instance role metric
+			expect(promClient.Gauge).toHaveBeenCalledTimes(4); // version metric + instance role metric + active workflow count metric + db_clock_skew_ms
 			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
 			expect(eventService.on).not.toHaveBeenCalled();
 		});
@@ -270,7 +274,7 @@ describe('PrometheusMetricsService', () => {
 
 			await prometheusMetricsService.init(app);
 
-			expect(promClient.Gauge).toHaveBeenCalledTimes(2); // version metric + active workflow count metric
+			expect(promClient.Gauge).toHaveBeenCalledTimes(3); // version metric + active workflow count metric + db_clock_skew_ms
 			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
 			expect(eventService.on).not.toHaveBeenCalled();
 		});
@@ -279,7 +283,7 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			// First call is n8n version metric
-			expect(promClient.Gauge).toHaveBeenCalledTimes(3);
+			expect(promClient.Gauge).toHaveBeenCalledTimes(4);
 
 			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
 				name: 'n8n_active_workflow_count',
@@ -569,8 +573,8 @@ describe('PrometheusMetricsService', () => {
 
 			await prometheusMetricsService.init(app);
 
-			// Only version and active workflow count metrics should be created
-			expect(promClient.Gauge).toHaveBeenCalledTimes(2);
+			// Only version, active workflow count, and db_clock_skew_ms metrics should be created
+			expect(promClient.Gauge).toHaveBeenCalledTimes(3);
 
 			// Verify instance role metric was not created
 			const calls = (promClient.Gauge as jest.Mock).mock.calls;
@@ -822,6 +826,44 @@ describe('PrometheusMetricsService', () => {
 			const mockSet = jest.fn();
 			expect(() => config.collect.call({ set: mockSet })).not.toThrow();
 			expect(mockSet).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('db_clock_skew_ms metric', () => {
+		const findClockSkewGaugeConfig = () => {
+			const calls = (promClient.Gauge as jest.Mock).mock.calls;
+			return calls.find(
+				(call: [{ name: string }]) => call[0]?.name === 'n8n_db_clock_skew_ms',
+			)?.[0];
+		};
+
+		it('should register the n8n_db_clock_skew_ms gauge on init', async () => {
+			await prometheusMetricsService.init(app);
+
+			const config = findClockSkewGaugeConfig();
+			expect(config).toMatchObject({
+				name: 'n8n_db_clock_skew_ms',
+				help: expect.stringContaining('Clock difference'),
+			});
+			expect(config.collect).toBeInstanceOf(Function);
+		});
+
+		it('should call getServerTime and set skew in collect callback', async () => {
+			await prometheusMetricsService.init(app);
+
+			const config = findClockSkewGaugeConfig();
+			const serverTime = new Date(Date.now() + 500);
+			(executionRepository.getServerTime as jest.Mock).mockResolvedValue(serverTime);
+
+			const mockSet = jest.fn();
+			await config.collect.call({ set: mockSet });
+
+			expect(executionRepository.getServerTime as jest.Mock).toHaveBeenCalled();
+			expect(mockSet).toHaveBeenCalledWith(expect.any(Number));
+			// Server is 500ms ahead of local clock — set value should be positive
+			const setValue = (mockSet.mock.calls[0] as [number])[0];
+			expect(setValue).toBeGreaterThan(0);
+			expect(setValue).toBeLessThan(1000); // within reasonable bounds
 		});
 	});
 });
