@@ -84,32 +84,8 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@biomejs/biome",
-      "@parcel/watcher",
-      "@sentry-internal/node-cpu-profiler",
-      "@sentry-internal/node-native-stacktrace",
-      "@sentry/cli",
-      "@swc/core",
-      "bufferutil",
-      "core-js",
-      "cpu-features",
-      "es5-ext",
-      "esbuild",
-      "eslint-plugin-n8n-nodes-base",
       "isolated-vm",
-      "lefthook",
-      "msgpackr-extract",
-      "oracledb",
-      "protobufjs",
-      "sharp",
-      "sqlite3",
-      "ssh2",
-      "tree-sitter",
-      "tree-sitter-bash",
-      "unrs-resolver",
-      "utf-8-validate",
-      "v-code-diff",
-      "vue-demi"
+      "sqlite3"
     ],
     "overrides": {
       "@isaacs/brace-expansion": "5.0.1",
