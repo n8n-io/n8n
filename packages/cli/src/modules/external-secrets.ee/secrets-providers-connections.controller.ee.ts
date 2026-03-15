@@ -107,7 +107,7 @@ export class SecretProvidersConnectionsController {
 		@Body body: UpdateSecretsProviderConnectionDto,
 	): Promise<SecretProviderConnection> {
 		this.logger.debug('Updating connection', { providerKey });
-		const connection = await this.connectionsService.updateConnection(
+		const connection = await this.connectionsService.updateGlobalConnection(
 			providerKey,
 			body,
 			req.user.id,

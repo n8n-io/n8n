@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 
 import { ProjectSecretsProviderAccess } from '../entities';
 import type { SecretsProviderAccessRole } from '../entities';
@@ -29,25 +29,27 @@ export class ProjectSecretsProviderAccessRepository extends Repository<ProjectSe
 		await this.delete({ secretsProviderConnectionId });
 	}
 
-	async setProjectAccess(
+	async updateProjectAccess(
 		secretsProviderConnectionId: number,
-		projectIds: string[],
-		role: SecretsProviderAccessRole,
+		projectIdsToRemove: string[],
+		entriesToAdd: Array<{
+			projectId: string;
+			role: SecretsProviderAccessRole;
+		}>,
 	): Promise<void> {
-		// Given we're deleting / re-adding we should probably do it in a single operation
 		await this.manager.transaction(async (tx) => {
-			await tx.delete(ProjectSecretsProviderAccess, { secretsProviderConnectionId });
+			if (projectIdsToRemove.length > 0) {
+				await tx.delete(ProjectSecretsProviderAccess, {
+					secretsProviderConnectionId,
+					projectId: In(projectIdsToRemove),
+				});
+			}
 
-			if (projectIds.length > 0) {
-				const entries = projectIds.map((projectId) =>
-					this.create({
-						secretsProviderConnectionId,
-						projectId,
-						role,
-					}),
+			if (entriesToAdd.length > 0) {
+				await tx.insert(
+					ProjectSecretsProviderAccess,
+					entriesToAdd.map((e) => this.create({ ...e, secretsProviderConnectionId })),
 				);
-
-				await tx.insert(ProjectSecretsProviderAccess, entries);
 			}
 		});
 	}
