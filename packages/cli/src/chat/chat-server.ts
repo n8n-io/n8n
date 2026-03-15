@@ -21,7 +21,10 @@ export class ChatServer {
 	constructor(private readonly chatService: ChatService) {}
 
 	setup(server: HttpServer, app: Application) {
+		console.log('Setting up chat server');
+
 		server.on('upgrade', (req: ChatRequest, socket, head) => {
+			console.log('Setting up chat server url', req.url);
 			const parsedUrl = parseUrl(req.url ?? '');
 
 			if (parsedUrl.pathname?.startsWith('/chat')) {
@@ -32,6 +35,7 @@ export class ChatServer {
 		});
 
 		app.use('/chat', async (req: ChatRequest) => {
+			console.log('Received chat request', req.url);
 			await this.chatService.startSession(req);
 		});
 	}
