@@ -598,7 +598,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await this.createQueryBuilder('e')
 			.select(['e.id', 'e.waitTill'])
 			.where(lookaheadCondition)
-			.andWhere('e.status != :status', { status: 'crashed' })
+			.andWhere('e.status = :status', { status: 'waiting' })
 			.orderBy('e.waitTill', 'ASC')
 			.getMany();
 	}
@@ -607,7 +607,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const dbType = this.globalConfig.database.type;
 		if (dbType === 'postgresdb') {
 			const [{ now }] = (await this.query('SELECT CURRENT_TIMESTAMP(3) AS now')) as [{ now: Date }];
-			return new Date(now);
+			return new Date(now.getTime());
 		}
 		// SQLite returns a string in 'YYYY-MM-DD HH:MM:SS.SSS' format
 		const [{ now }] = (await this.query("SELECT STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') AS now")) as [

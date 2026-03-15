@@ -52,6 +52,7 @@ export class PrometheusMetricsService {
 			workflowExecutionDuration:
 				this.globalConfig.endpoints.metrics.includeWorkflowExecutionDuration,
 			workflowStatistics: this.globalConfig.endpoints.metrics.includeWorkflowStatistics,
+			dbClockSkew: this.globalConfig.endpoints.metrics.includeDbClockSkewMetric,
 		},
 		labels: {
 			credentialsType: this.globalConfig.endpoints.metrics.includeCredentialTypeLabel,
@@ -422,6 +423,8 @@ export class PrometheusMetricsService {
 	}
 
 	private initDbClockSkewMetric() {
+		if (!this.includes.metrics.dbClockSkew) return;
+
 		const executionRepository = this.executionRepository;
 		new promClient.Gauge({
 			name: this.prefix + 'db_clock_skew_ms',
