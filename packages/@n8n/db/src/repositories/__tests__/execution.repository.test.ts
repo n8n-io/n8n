@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { In, LessThan, And, Not } from '@n8n/typeorm';
 
@@ -404,6 +405,49 @@ describe('ExecutionRepository', () => {
 			// Verify the execution was marked as canceled
 			expect(result.status).toBe('canceled');
 			expect(result.data.resultData.error?.message).toBe('The execution was cancelled manually');
+		});
+	});
+
+	describe('getServerTime()', () => {
+		const globalConfig = Container.get(GlobalConfig);
+		const originalDbType = globalConfig.database.type;
+
+		afterEach(() => {
+			globalConfig.database.type = originalDbType;
+		});
+
+		it('parses SQLite space-separated timestamp string into a UTC Date', async () => {
+			globalConfig.database.type = 'sqlite';
+			jest
+				.spyOn(executionRepository, 'query')
+				.mockResolvedValueOnce([{ now: '2024-01-15 12:30:45.123' }]);
+
+			const result = await executionRepository.getServerTime();
+
+			expect(result).toBeInstanceOf(Date);
+			expect(result.getUTCFullYear()).toBe(2024);
+			expect(result.getUTCMonth()).toBe(0); // January
+			expect(result.getUTCDate()).toBe(15);
+			expect(result.getUTCHours()).toBe(12);
+			expect(result.getUTCMinutes()).toBe(30);
+		});
+
+		it('wraps the PostgreSQL Date object in a new Date', async () => {
+			globalConfig.database.type = 'postgresdb';
+			const pgNow = new Date('2024-06-01T10:20:30.456Z');
+			jest.spyOn(executionRepository, 'query').mockResolvedValueOnce([{ now: pgNow }]);
+
+			const result = await executionRepository.getServerTime();
+
+			expect(result).toBeInstanceOf(Date);
+			expect(result.getTime()).toBe(pgNow.getTime());
+		});
+
+		it('throws UnexpectedError when SQLite returns an unparseable string', async () => {
+			globalConfig.database.type = 'sqlite';
+			jest.spyOn(executionRepository, 'query').mockResolvedValueOnce([{ now: 'not-a-date' }]);
+
+			await expect(executionRepository.getServerTime()).rejects.toThrow('Invalid DB server time');
 		});
 	});
 });
