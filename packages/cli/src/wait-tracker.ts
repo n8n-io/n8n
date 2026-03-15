@@ -25,10 +25,8 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
-	/** Cached DB server time to avoid querying on every 5s poll. Refreshed every 60s. */
+	/** Cached DB server time. Refreshed every 60s; intermediate values are interpolated. */
 	private serverTimeCache: { serverTime: Date; localTimeAtFetch: number } | null = null;
-
-	private readonly serverTimeCacheTtlMs = 60_000;
 
 	constructor(
 		private readonly logger: Logger,
@@ -51,7 +49,6 @@ export class WaitTracker {
 
 	@OnLeaderTakeover()
 	private startTracking() {
-		// Poll every 5 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
 		}, 5000);
@@ -65,20 +62,14 @@ export class WaitTracker {
 	 * Returns an approximation of the DB server's current time.
 	 * Fetches from the DB at most once every 60s and approximates intermediate
 	 * values by adding elapsed local wall-clock time since the last fetch.
-	 * This reduces DB load from 12 queries/min (one per 5s poll) to 1 query/min
-	 * while keeping triggerTime precision within the local clock drift rate.
 	 *
-	 * Side effect: the clock skew warning in getWaitingExecutions() is derived from
-	 * this value, so it reflects the skew measured at the last cache refresh rather
-	 * than the live skew. This is intentional — it detects structural clock drift
-	 * (e.g. broken NTP) rather than transient noise.
+	 * The clock skew warning reflects the skew at the last cache refresh rather
+	 * than live skew — intentional, to detect structural drift (e.g. broken NTP)
+	 * rather than transient noise.
 	 */
 	private async getApproximateServerTime(): Promise<Date> {
 		const nowMs = Date.now();
-		if (
-			this.serverTimeCache !== null &&
-			nowMs - this.serverTimeCache.localTimeAtFetch < this.serverTimeCacheTtlMs
-		) {
+		if (this.serverTimeCache !== null && nowMs - this.serverTimeCache.localTimeAtFetch < 60_000) {
 			const elapsed = nowMs - this.serverTimeCache.localTimeAtFetch;
 			return new Date(this.serverTimeCache.serverTime.getTime() + elapsed);
 		}
@@ -95,7 +86,6 @@ export class WaitTracker {
 			this.getApproximateServerTime(),
 		]);
 
-		// Warn if this instance's clock is significantly skewed from the DB server
 		const skewMs = serverTime.getTime() - Date.now();
 		if (Math.abs(skewMs) > 2000) {
 			this.logger.warn(
@@ -112,7 +102,6 @@ export class WaitTracker {
 			`Found ${executions.length} executions. Setting timer for IDs: ${executionIds}`,
 		);
 
-		// Add timers for each waiting execution that they get started at the correct time
 		for (const execution of executions) {
 			const executionId = execution.id;
 			if (this.waitingExecutions[executionId] !== undefined) continue;
@@ -143,7 +132,6 @@ export class WaitTracker {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
-		// Get the data to execute
 		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
@@ -172,7 +160,6 @@ export class WaitTracker {
 			startedAt: fullExecutionData.startedAt,
 		};
 
-		// Start the execution again
 		try {
 			await this.workflowRunner.run(data, false, false, executionId);
 		} catch (error) {
@@ -185,13 +172,11 @@ export class WaitTracker {
 				);
 				return;
 			}
-			// Rethrow any other errors
 			throw error;
 		}
 
 		const { parentExecution } = fullExecutionData.data;
 		if (shouldRestartParentExecution(parentExecution)) {
-			// on child execution completion, resume parent execution
 			void this.activeExecutions
 				.getPostExecutePromise(executionId)
 				.then(async (subworkflowResults) => {

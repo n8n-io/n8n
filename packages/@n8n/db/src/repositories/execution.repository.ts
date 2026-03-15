@@ -603,9 +603,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async getWaitingExecutions(): Promise<Pick<ExecutionEntity, 'id' | 'waitTill'>[]> {
-		// Find all executions whose waitTill falls within the next 15 seconds,
-		// using the DB server clock to avoid client-side clock skew.
-		// Poll interval is 5s; 15s window gives a 10s safety buffer if a single poll is delayed.
+		// DB-clock lookahead: 5s poll + 10s buffer = 15s window.
 		const dbType = this.globalConfig.database.type;
 
 		const lookaheadCondition =
@@ -613,9 +611,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				? "e.waitTill <= NOW() + INTERVAL '15 seconds'"
 				: "e.waitTill <= datetime('now', '+15 seconds')";
 
-		// Exclude crashed executions (they can't be resumed) but allow all other statuses.
-		// Cancelled executions are implicitly excluded because cancellation sets waitTill to null,
-		// which the lookahead condition filters out via NULL comparison.
 		return await this.createQueryBuilder('e')
 			.select(['e.id', 'e.waitTill'])
 			.where(lookaheadCondition)
