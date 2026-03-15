@@ -28,10 +28,11 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 	 * Validates that a column name is not reserved as a system column
 	 */
 	private validateNotSystemColumn(columnName: string): void {
-		if (DATA_TABLE_SYSTEM_COLUMNS.includes(columnName)) {
+		const lowerName = columnName.toLowerCase();
+		if (DATA_TABLE_SYSTEM_COLUMNS.some((sc) => sc.toLowerCase() === lowerName)) {
 			throw new DataTableSystemColumnNameConflictError(columnName);
 		}
-		if (columnName === DATA_TABLE_SYSTEM_TESTING_COLUMN) {
+		if (lowerName === DATA_TABLE_SYSTEM_TESTING_COLUMN.toLowerCase()) {
 			throw new DataTableSystemColumnNameConflictError(columnName, 'testing');
 		}
 	}
