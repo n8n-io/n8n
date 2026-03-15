@@ -37,10 +37,7 @@ require('reflect-metadata');
 // Also, do not use `inE2ETests` from constants here, because that'd end up code that might read from `process.env` before the values are loaded from an `.env` file.
 if (process.env.E2E_TESTS !== 'true') {
 	// Load .env from repo root (when running from monorepo), then cwd so local overrides take effect
-	const dotenv = require('dotenv');
-	const repoRootEnv = path.join(__dirname, '../../../.env');
-	dotenv.config({ path: repoRootEnv, quiet: true });
-	dotenv.config({ quiet: true });
+	require('dotenv').config({ quiet: true });
 }
 
 // Load config early to ensure `N8N_CONFIG_FILES` values are populated into `GlobalConfig`
