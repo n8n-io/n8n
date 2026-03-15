@@ -4,7 +4,7 @@
 
 volumes:
   postgres-data:
-  n8n-data:
+  # n8n-data:
 
 services:
   postgres:
@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: n8n
+      POSTGRES_DB: gtw
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     healthcheck:
@@ -22,21 +22,21 @@ services:
       timeout: 5s
       retries: 5
 
-  n8n:
-    image: docker.n8n.io/n8nio/n8n
-    restart: unless-stopped
-    ports:
-      - "5678:5678"
-    volumes:
-      - n8n-data:/home/node/.n8n
-    environment:
-      DB_TYPE: postgresdb
-      DB_POSTGRESDB_HOST: postgres
-      DB_POSTGRESDB_PORT: 5432
-      DB_POSTGRESDB_DATABASE: n8n
-      DB_POSTGRESDB_USER: postgres
-      DB_POSTGRESDB_PASSWORD: password
-      N8N_HOST: 0.0.0.0
-    depends_on:
-      postgres:
-        condition: service_healthy
+  # n8n:
+  #   image: docker.n8n.io/n8nio/n8n
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5678:5678"
+  #   volumes:
+  #     - n8n-data:/home/node/.n8n
+  #   environment:
+  #     DB_TYPE: postgresdb
+  #     DB_POSTGRESDB_HOST: postgres
+  #     DB_POSTGRESDB_PORT: 5432
+  #     DB_POSTGRESDB_DATABASE: n8n
+  #     DB_POSTGRESDB_USER: postgres
+  #     DB_POSTGRESDB_PASSWORD: password
+  #     N8N_HOST: 0.0.0.0
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
