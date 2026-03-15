@@ -28,6 +28,43 @@ export interface ChecklistResult {
 	reasoning: string;
 }
 
+export interface ExecutionNodeOutput {
+	items: unknown[];
+	outputIndex: number;
+}
+
+export interface ExecutionNodeInfo {
+	outputs: ExecutionNodeOutput[];
+	error?: string;
+}
+
+export type ExecutionAssertion =
+	| { type: 'succeeds' }
+	| { type: 'minExecutedNodes'; min: number }
+	| { type: 'outputMatches'; pattern: string; flags?: string }
+	| { type: 'nodeTypeExecuted'; nodeType: string };
+
+export interface ExecutionAssertionResult {
+	assertion: ExecutionAssertion;
+	passed: boolean;
+	detail?: string;
+}
+
+export interface ExecutionTest {
+	input?: unknown[];
+	assertions: ExecutionAssertion[];
+}
+
+export interface ExecutionData {
+	success: boolean;
+	error?: string;
+	errorNode?: string;
+	executedNodes: string[];
+	nodeOutputs: Record<string, ExecutionNodeInfo>;
+	durationMs: number;
+	assertionResults?: ExecutionAssertionResult[];
+}
+
 export interface AgentResult {
 	prompt: string;
 	complexity: PromptConfig['complexity'];
@@ -47,6 +84,8 @@ export interface AgentResult {
 	totalInputTokens: number;
 	totalOutputTokens: number;
 	linesOfCode: number;
+	/** Execution validation results (if workflow was executed) */
+	execution?: ExecutionData;
 }
 
 export interface PromptConfig {
@@ -54,6 +93,7 @@ export interface PromptConfig {
 	complexity: 'simple' | 'medium' | 'complex';
 	source: 'manual' | 'n8n-api' | 'synthetic';
 	tags?: string[];
+	executionTest?: ExecutionTest;
 }
 
 export type RunStatus = 'running' | 'completed' | 'failed';

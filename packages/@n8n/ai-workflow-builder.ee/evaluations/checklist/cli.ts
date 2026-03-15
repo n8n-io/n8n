@@ -19,6 +19,10 @@ interface CliArgs {
 	timeoutMs: number;
 	verbose: boolean;
 	simplified: boolean;
+	execute: boolean;
+	executeLive: boolean;
+	n8nBaseUrl: string;
+	complexity: string;
 }
 
 function parseArgs(args: string[]): CliArgs {
@@ -31,6 +35,10 @@ function parseArgs(args: string[]): CliArgs {
 		timeoutMs: 5 * 60 * 1000,
 		verbose: false,
 		simplified: false,
+		execute: false,
+		executeLive: false,
+		n8nBaseUrl: 'http://localhost:5678',
+		complexity: '',
 	};
 
 	for (let i = 0; i < args.length; i++) {
@@ -59,6 +67,19 @@ function parseArgs(args: string[]): CliArgs {
 			case '--simplified':
 				result.simplified = true;
 				break;
+			case '--execute':
+				result.execute = true;
+				break;
+			case '--execute-live':
+				result.execute = true;
+				result.executeLive = true;
+				break;
+			case '--n8n-url':
+				result.n8nBaseUrl = args[++i];
+				break;
+			case '--complexity':
+				result.complexity = args[++i];
+				break;
 		}
 	}
 
@@ -74,6 +95,10 @@ function filterPrompts(prompts: PromptConfig[], args: CliArgs): PromptConfig[] {
 
 	if (args.grep) {
 		filtered = filtered.filter((p) => p.text.toLowerCase().includes(args.grep.toLowerCase()));
+	}
+
+	if (args.complexity) {
+		filtered = filtered.filter((p) => p.complexity === args.complexity);
 	}
 
 	if (args.maxExamples > 0) {
@@ -126,6 +151,10 @@ async function runEval() {
 	console.log(`Concurrency: ${args.concurrency}`);
 	console.log(`Timeout: ${args.timeoutMs / 1000}s`);
 	console.log(`Simplified syntax: ${args.simplified}`);
+	console.log(
+		`Execute workflows: ${args.execute}${args.executeLive ? ' (live via ' + args.n8nBaseUrl + ')' : ''}`,
+	);
+	if (args.complexity) console.log(`Complexity: ${args.complexity}`);
 	if (args.tags.length > 0) console.log(`Tags: ${args.tags.join(', ')}`);
 	if (args.grep) console.log(`Grep: ${args.grep}`);
 	console.log('');
@@ -148,6 +177,9 @@ async function runEval() {
 		timeoutMs: args.timeoutMs,
 		verbose: args.verbose,
 		useSimplifiedSyntax: args.simplified,
+		executeWorkflows: args.execute,
+		executeLive: args.executeLive,
+		n8nBaseUrl: args.n8nBaseUrl,
 	};
 
 	const variant: RunVariant = args.simplified ? 'simplified' : 'default';
@@ -299,6 +331,10 @@ Options:
   --timeout <seconds>     Timeout per example in seconds (default: 300)
   --verbose               Enable verbose output
   --simplified            Use simplified JS syntax (onManual/http.*/Agent DSL)
+  --complexity <level>    Filter by complexity (simple, medium, complex)
+  --execute               Execute generated workflows with mock executor
+  --execute-live          Execute via live n8n instance (real expression evaluation)
+  --n8n-url <url>         Base URL for live n8n instance (default: http://localhost:5678)
   --help                  Show this help message`);
 }
 

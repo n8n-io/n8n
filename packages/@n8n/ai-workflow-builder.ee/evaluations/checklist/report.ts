@@ -1,6 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import type { Run, AgentResult, PromptConfig, RunVariant, ToolCallDetail } from './types';
+import type {
+	Run,
+	AgentResult,
+	PromptConfig,
+	RunVariant,
+	ToolCallDetail,
+	ExecutionData,
+} from './types';
 
 /** Backfill complexity and tags for old results that don't have them stored */
 function backfillFromPrompts(run: Run): void {
@@ -108,6 +115,79 @@ function renderToolCallDetail(tc: ToolCallDetail, idx: number, parentId: string)
 	</details>`;
 }
 
+function renderExecutionSection(execution: ExecutionData | undefined): string {
+	if (!execution) return '';
+
+	const statusBadge = execution.success
+		? '<span class="badge badge-completed">PASS</span>'
+		: '<span class="badge badge-failed">FAIL</span>';
+
+	const errorHtml = execution.error
+		? `<div class="tool-error">${escapeHtml(execution.error)}${execution.errorNode ? ` (node: ${escapeHtml(execution.errorNode)})` : ''}</div>`
+		: '';
+
+	const nodeList = execution.executedNodes
+		.map(
+			(n, i) =>
+				`<div style="display:flex;align-items:center;gap:8px;margin:2px 0;padding-left:16px;border-left:2px solid #30363d">
+					<span style="width:8px;height:8px;border-radius:50%;background:#a78bfa;flex-shrink:0"></span>
+					<span style="font-size:12px;color:#e6edf3">${i + 1}. ${escapeHtml(n)}</span>
+				</div>`,
+		)
+		.join('');
+
+	const outputDetails = Object.entries(execution.nodeOutputs)
+		.map(([name, info]) => {
+			const items = info.outputs.flatMap((o) => o.items);
+			const json = JSON.stringify(items, null, 2);
+			const truncated = json.length > 500 ? json.slice(0, 500) + '\n  ...' : json;
+			const nodeError = info.error ? `<div class="tool-error">${escapeHtml(info.error)}</div>` : '';
+			return `<details class="tool-call-detail">
+				<summary>${escapeHtml(name)} <span class="badge badge-tag">${items.length} item${items.length !== 1 ? 's' : ''}</span></summary>
+				<div class="tool-call-body">
+					<pre class="tool-json"><code>${escapeHtml(truncated)}</code></pre>
+					${nodeError}
+				</div>
+			</details>`;
+		})
+		.join('');
+
+	const assertionsHtml = execution.assertionResults
+		? `<div style="margin:8px 0">
+			${execution.assertionResults
+				.map((ar) => {
+					const icon = ar.passed ? '\u2713' : '\u2717';
+					const color = ar.passed ? '#3fb950' : '#f85149';
+					const label =
+						ar.assertion.type === 'outputMatches'
+							? `outputMatches(<code>/${escapeHtml(ar.assertion.pattern)}/${ar.assertion.flags ?? ''}</code>)`
+							: ar.assertion.type === 'minExecutedNodes'
+								? `minExecutedNodes(${ar.assertion.min})`
+								: ar.assertion.type === 'nodeTypeExecuted'
+									? `nodeTypeExecuted(${escapeHtml(ar.assertion.nodeType)})`
+									: ar.assertion.type;
+					return `<div style="display:flex;align-items:center;gap:8px;margin:2px 0;padding:2px 0">
+						<span style="color:${color};font-weight:bold;min-width:16px">${icon}</span>
+						<span style="font-size:13px;color:#e6edf3">${label}</span>
+						${ar.detail ? `<span style="font-size:12px;color:#8b949e">— ${escapeHtml(ar.detail)}</span>` : ''}
+					</div>`;
+				})
+				.join('')}
+		</div>`
+		: '';
+
+	return `<div class="detail-section">
+		<h4>Execution ${statusBadge} <span style="font-size:12px;color:#8b949e;font-weight:normal">${execution.executedNodes.length} nodes · ${formatDuration(execution.durationMs)}</span></h4>
+		${errorHtml}
+		${assertionsHtml}
+		<details class="iteration-detail">
+			<summary><span class="iter-num">Node Trace</span></summary>
+			<div style="padding:8px">${nodeList}</div>
+		</details>
+		${outputDetails ? `<details class="iteration-detail"><summary><span class="iter-num">Node Outputs</span></summary><div class="iteration-tools">${outputDetails}</div></details>` : ''}
+	</div>`;
+}
+
 function renderTags(tags: string[] | undefined): string {
 	if (!tags || tags.length === 0) return '';
 	return tags.map((tag) => `<span class="badge badge-tag">${escapeHtml(tag)}</span>`).join(' ');
@@ -136,9 +216,10 @@ function renderResultRow(result: AgentResult, index: number): string {
 			<td>${result.totalInputTokens.toLocaleString()}</td>
 			<td>${result.totalOutputTokens.toLocaleString()}</td>
 			<td>${result.linesOfCode}</td>
+			<td>${result.execution ? (result.execution.success ? '<span class="good">PASS</span>' : '<span class="bad">FAIL</span>') : '<span style="color:#8b949e">-</span>'}</td>
 		</tr>
 		<tr id="detail-${index}" class="detail-row" data-complexity="${result.complexity ?? 'medium'}" data-prompt-hash="${promptHash}" style="display:none">
-			<td colspan="12">
+			<td colspan="13">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -169,6 +250,7 @@ function renderResultRow(result: AgentResult, index: number): string {
 								.join('')}
 						</ul>
 					</div>
+					${renderExecutionSection(result.execution)}
 					<div class="detail-section">
 						<h4>Generated Code (${result.linesOfCode} lines)</h4>
 						<pre><code>${escapeHtml(result.generatedCode)}</code></pre>
@@ -257,6 +339,7 @@ function renderRunSection(run: Run, runIndex: number): string {
 							<th>In Tokens</th>
 							<th>Out Tokens</th>
 							<th>Lines of Code</th>
+							<th>Exec</th>
 						</tr>
 					</thead>
 					<tbody>

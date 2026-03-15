@@ -7,24 +7,47 @@ export const SYNTHETIC_PROMPTS: PromptConfig[] = [
 		complexity: 'simple',
 		source: 'synthetic',
 		tags: ['webhook', 'validation'],
+		executionTest: {
+			input: [{ email: 'test@example.com', name: 'Test' }],
+			assertions: [
+				{ type: 'succeeds' },
+				{ type: 'minExecutedNodes', min: 2 },
+				{ type: 'outputMatches', pattern: 'email|contact', flags: 'i' },
+			],
+		},
 	},
 	{
 		text: 'Create a workflow triggered by a cron schedule every day at 9am that fetches a list of users from an API endpoint and logs the count.',
 		complexity: 'simple',
 		source: 'synthetic',
 		tags: ['cron', 'api'],
+		executionTest: {
+			assertions: [{ type: 'succeeds' }, { type: 'minExecutedNodes', min: 3 }],
+		},
 	},
 	{
 		text: 'Create a workflow with an HTTP GET endpoint at /health that checks a database connection status and returns either "healthy" or "unhealthy" with the current timestamp.',
 		complexity: 'simple',
 		source: 'synthetic',
 		tags: ['api'],
+		executionTest: {
+			input: [{}],
+			assertions: [{ type: 'succeeds' }, { type: 'outputMatches', pattern: 'health', flags: 'i' }],
+		},
 	},
 	{
 		text: 'Create a workflow that receives a POST webhook at /transform with a JSON body containing a "text" field, converts it to uppercase, counts the words, and returns both the transformed text and word count.',
 		complexity: 'simple',
 		source: 'synthetic',
 		tags: ['webhook'],
+		executionTest: {
+			input: [{ text: 'hello world' }],
+			assertions: [
+				{ type: 'succeeds' },
+				{ type: 'outputMatches', pattern: 'HELLO WORLD' },
+				{ type: 'outputMatches', pattern: '2|two', flags: 'i' },
+			],
+		},
 	},
 
 	// Medium prompts (branches, conditionals, 5-10 nodes)
@@ -85,6 +108,9 @@ export const SYNTHETIC_PROMPTS: PromptConfig[] = [
 		complexity: 'simple',
 		source: 'synthetic',
 		tags: ['agent'],
+		executionTest: {
+			assertions: [{ type: 'succeeds' }, { type: 'minExecutedNodes', min: 2 }],
+		},
 	},
 	{
 		text: 'Create a nutrition AI assistant agent that helps users track their meals. It should have three tools: (1) an "analyze-food" tool that takes a food description and returns nutritional data including calories, protein, carbs, and fat, (2) a "log-meal" tool that records a meal entry with the food name, nutritional values, and meal type (breakfast/lunch/dinner/snack), and (3) a "get-daily-report" tool that takes a date string and returns a daily nutrition summary with total calories, protein, carbs, fat, and meal count. The agent should be instructed to analyze food when users describe what they ate, log meals after analysis, and provide daily reports when asked.',
@@ -149,18 +175,32 @@ export const SYNTHETIC_PROMPTS: PromptConfig[] = [
 		complexity: 'simple',
 		source: 'synthetic',
 		tags: ['form', 'data-table', 'html'],
+		executionTest: {
+			input: [{ name: 'Test', email: 't@t.com', rating: '5', comments: 'great' }],
+			assertions: [{ type: 'succeeds' }],
+		},
 	},
 	{
 		text: "Create a workflow triggered by a cron every hour that fetches new Slack messages using Slack OAuth credentials, filters messages containing 'urgent', and posts a summary to a different Slack channel.",
 		complexity: 'simple',
 		source: 'synthetic',
 		tags: ['credentials'],
+		executionTest: {
+			assertions: [{ type: 'succeeds' }, { type: 'outputMatches', pattern: 'urgent', flags: 'i' }],
+		},
 	},
 	{
 		text: "Create a workflow with a GET endpoint at /status that queries a 'services' data table for system health metrics and returns an HTML dashboard page showing service name, status, and last check time in a styled table.",
 		complexity: 'simple',
 		source: 'synthetic',
 		tags: ['data-table', 'html'],
+		executionTest: {
+			input: [{}],
+			assertions: [
+				{ type: 'succeeds' },
+				{ type: 'outputMatches', pattern: 'html|<table', flags: 'i' },
+			],
+		},
 	},
 	{
 		text: "Create a workflow with a POST endpoint at /api/data protected by basic auth that receives a JSON payload with name and value fields, validates both fields are present, stores the record in a 'records' data table, and returns the created record with an insertedCount.",
