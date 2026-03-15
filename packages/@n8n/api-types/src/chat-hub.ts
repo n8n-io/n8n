@@ -67,6 +67,9 @@ export const chatHubProviderSchema = z.enum([
 ] as const);
 export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
 
+export const chatHubSessionTypeSchema = z.enum(['production', 'manual']);
+export type ChatHubSessionType = z.infer<typeof chatHubSessionTypeSchema>;
+
 /**
  * Map of providers to their credential types
  * Only LLM providers (openai, anthropic, google) have credentials
@@ -347,6 +350,22 @@ export class ChatHubSendMessageRequest extends Z.class({
 	timeZone: TimeZoneSchema,
 }) {}
 
+/**
+ * Request schema for sending a message via the manual (draft) execution path.
+ * The workflowId comes from the URL param; model and credentials are not needed
+ * because the draft workflow provides its own configuration.
+ * Requires workflow:execute permission (not available to chat-only users).
+ */
+export class ChatHubManualSendMessageRequest extends Z.class({
+	messageId: z.string().uuid(),
+	sessionId: z.string().uuid(),
+	message: z.string(),
+	previousMessageId: z.string().uuid().nullable(),
+	attachments: z.array(chatAttachmentSchema),
+	agentName: z.string().optional(),
+	timeZone: TimeZoneSchema,
+}) {}
+
 export class ChatHubRegenerateMessageRequest extends Z.class({
 	model: chatHubConversationModelSchema,
 	credentials: z.record(
@@ -355,6 +374,13 @@ export class ChatHubRegenerateMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
+	timeZone: TimeZoneSchema,
+}) {}
+
+/**
+ * Manual (draft) regenerate — workflowId comes from the URL param.
+ */
+export class ChatHubManualRegenerateMessageRequest extends Z.class({
 	timeZone: TimeZoneSchema,
 }) {}
 
@@ -368,6 +394,17 @@ export class ChatHubEditMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
+	newAttachments: z.array(chatAttachmentSchema),
+	keepAttachmentIndices: z.array(z.number()),
+	timeZone: TimeZoneSchema,
+}) {}
+
+/**
+ * Manual (draft) edit — workflowId comes from the URL param.
+ */
+export class ChatHubManualEditMessageRequest extends Z.class({
+	message: z.string(),
+	messageId: z.string().uuid(),
 	newAttachments: z.array(chatAttachmentSchema),
 	keepAttachmentIndices: z.array(z.number()),
 	timeZone: TimeZoneSchema,
@@ -403,6 +440,7 @@ export interface ChatHubSessionDto {
 	agentId: string | null;
 	agentName: string;
 	agentIcon: AgentIconOrEmoji | null;
+	type: ChatHubSessionType;
 	createdAt: string;
 	updatedAt: string;
 	toolIds: string[];
@@ -455,6 +493,7 @@ export interface ChatHubMessageDto {
 export class ChatHubConversationsRequest extends Z.class({
 	limit: z.coerce.number().int().min(1).max(100),
 	cursor: z.string().uuid().optional(),
+	type: chatHubSessionTypeSchema.optional(),
 }) {}
 
 export interface ChatHubConversationsResponse {

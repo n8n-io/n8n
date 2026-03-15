@@ -392,6 +392,7 @@ export function createSessionFromStreamingState(
 		agentIcon: streaming.agent.icon,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
+		type: 'production',
 		toolIds,
 		...flattenModel(streaming.agent.model),
 	};
