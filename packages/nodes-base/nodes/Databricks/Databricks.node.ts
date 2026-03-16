@@ -2165,7 +2165,10 @@ export class Databricks implements INodeType {
 							},
 						});
 					} else {
-						throw new Error(`API Error: ${error.response.status} ${error.response.statusText}`);
+						const detail = error.response.data ? ` – ${JSON.stringify(error.response.data)}` : '';
+						throw new Error(
+							`API Error: ${error.response.status} ${error.response.statusText}${detail}`,
+						);
 					}
 				} else if (error.request) {
 					// Network Error
