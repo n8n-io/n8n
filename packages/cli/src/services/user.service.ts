@@ -414,11 +414,10 @@ export class UserService {
 	}
 
 	/**
-	 * Extract inviterId and inviteeId from either JWT token or legacy query parameters
-	 * Validates the format based on the feature flag for the inviter
-	 * @param payload - ResolveSignupTokenQueryDto containing either token or inviterId/inviteeId
+	 * Extract inviterId and inviteeId from JWT token
+	 * @param token - JWT token containing inviterId and inviteeId
 	 * @returns Object with inviterId and inviteeId
-	 * @throws BadRequestError if format doesn't match feature flag, JWT is invalid, or required parameters are missing
+	 * @throws BadRequestError if JWT is invalid or required parameters are missing
 	 */
 	private async processTokenBasedInvite(
 		token: string,
@@ -440,23 +439,15 @@ export class UserService {
 		}
 	}
 
-	private async processInviteeIdInviterIdBasedInvite(
-		inviterId: string,
-		inviteeId: string,
+	/**
+	 * Extract inviterId and inviteeId from JWT token
+	 * @param token - JWT token containing inviterId and inviteeId
+	 * @returns Object with inviterId and inviteeId
+	 * @throws BadRequestError if JWT is invalid or required parameters are missing
+	 */
+	async getInvitationIdsFromPayload(
+		token: string,
 	): Promise<{ inviterId: string; inviteeId: string }> {
-		return { inviterId, inviteeId };
-	}
-
-	async getInvitationIdsFromPayload(payload: {
-		token?: string;
-		inviterId?: string;
-		inviteeId?: string;
-	}): Promise<{ inviterId: string; inviteeId: string }> {
-		if (payload.token && (payload.inviteeId || payload.inviterId)) {
-			this.logger.error('Invalid invite url containing both token and inviterId / inviteeId');
-			throw new BadRequestError('Invalid invite URL');
-		}
-
 		const instanceOwner = await this.userRepository.findOne({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 		});
@@ -465,15 +456,7 @@ export class UserService {
 			throw new BadRequestError('Instance owner not found');
 		}
 
-		// Always prefer token-based invites (tamper-proof), but support legacy format for backward compatibility
-		if (payload.token) {
-			return await this.processTokenBasedInvite(payload.token);
-		}
-
-		if (payload.inviterId && payload.inviteeId) {
-			return await this.processInviteeIdInviterIdBasedInvite(payload.inviterId, payload.inviteeId);
-		}
-
-		throw new BadRequestError('Invalid invite URL');
+		// Only support token-based invites (tamper-proof)
+		return await this.processTokenBasedInvite(token);
 	}
 }
