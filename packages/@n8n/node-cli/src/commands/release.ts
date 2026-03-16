@@ -1,18 +1,18 @@
 import { intro, log } from '@clack/prompts';
-import { Command } from '@oclif/core';
+import { Command, Flags } from '@oclif/core';
 
 import { ChildProcessError, runCommand } from '../utils/child-process';
 import { detectPackageManager } from '../utils/package-manager';
 import { getCommandHeader } from '../utils/prompts';
 
 export default class Release extends Command {
-	static override description = `Publish your community node package to npm.
+	static override description = `Release your community node package.
+
+When running locally (default): Runs release-it to bump the version interactively, generate a changelog, commit, tag, push, and create a GitHub release. Does NOT publish to npm — use GitHub Actions for that.
+
+When running inside a GitHub Action: Detected automatically via the GITHUB_ACTIONS environment variable. Runs lint and build, then publishes with provenance enabled (NPM_CONFIG_PROVENANCE=true).
 
 Starting May 1 2026, n8n requires all community nodes to be published via GitHub Actions with npm provenance. Provenance lets anyone cryptographically verify that a package was built from a specific repository and commit.
-
-When this command is running locally: Runs release-it to bump the version interactively, generate a changelog, commit, tag, push, create a GitHub release, and publish to npm.
-
-When it's running inside a GitHub Action: Detected automatically via the GITHUB_ACTIONS environment variable. Runs lint and build, then publishes with provenance enabled (NPM_CONFIG_PROVENANCE=true).
 
 To set up GitHub Actions publishing:
   1. Add a publish.yml workflow that triggers on version tags (e.g. v*.*.*).
@@ -25,13 +25,22 @@ For npm Trusted Publishing (no long-lived secrets):
   Leave NPM_TOKEN unset; GitHub's OIDC token is used automatically.
 
 For token-based auth (fallback):
-  Add NPM_TOKEN to your repository secrets and pass it as NODE_AUTH_TOKEN.`;
+  Add NPM_TOKEN to your repository secrets and pass it as NODE_AUTH_TOKEN.
+
+Full documentation: https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/`;
 
 	static override examples = ['<%= config.bin %> <%= command.id %>'];
-	static override flags = {};
+
+	static override flags = {
+		publish: Flags.boolean({
+			description:
+				'Publish to npm from your local machine (not recommended). Packages published this way will not include npm provenance and cannot become verified community nodes.',
+			default: false,
+		}),
+	};
 
 	async run(): Promise<void> {
-		await this.parse(Release);
+		const { flags } = await this.parse(Release);
 
 		intro(await getCommandHeader('n8n-node release'));
 
@@ -52,9 +61,11 @@ For token-based auth (fallback):
 				return;
 			}
 
-			log.warning(
-				'Starting May 1 2026, n8n requires community nodes to be published via GitHub Actions with npm provenance.\nRun `n8n-node release --help` to learn how to set this up.',
-			);
+			if (flags.publish) {
+				log.warning(
+					'Publishing directly from your machine will not include npm provenance, which is required for n8n Cloud starting May 1 2026.\nConsider switching to GitHub Actions publishing. See: https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/',
+				);
+			}
 
 			await runCommand(
 				'release-it',
@@ -71,6 +82,7 @@ For token-based auth (fallback):
 					'--github.release',
 					`--hooks.before:init="${pm} run lint && ${pm} run build"`,
 					'--hooks.after:bump="npx auto-changelog -p"',
+					...(flags.publish ? [] : ['--npm.publish=false']),
 				],
 				{
 					stdio: 'inherit',
@@ -80,6 +92,12 @@ For token-based auth (fallback):
 					},
 				},
 			);
+
+			if (!flags.publish) {
+				log.info(
+					'The node was not published to NPM. Starting May 1 2026, n8n requires verified community nodes to be published via GitHub Actions with npm provenance. Learn more in our documentation: https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/',
+				);
+			}
 		} catch (error) {
 			if (error instanceof ChildProcessError) {
 				if (error.signal) {

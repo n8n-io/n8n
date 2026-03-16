@@ -514,7 +514,7 @@ defineExpose({ focus, blur, select });
 	outline: none;
 	font-family: inherit;
 	font-size: var(--input--font-size, var(--font-size--md));
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 }
 
 .input::placeholder {
@@ -561,7 +561,7 @@ defineExpose({ focus, blur, select });
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 	opacity: 0.7;
 
 	svg {

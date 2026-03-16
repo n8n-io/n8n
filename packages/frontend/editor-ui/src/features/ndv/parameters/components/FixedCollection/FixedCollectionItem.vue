@@ -166,6 +166,7 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 						class="n8n-button--highlightFill"
 						variant="subtle"
 						icon="plus"
+						size="small"
 						:label="addOptionalFieldButtonText"
 					/>
 				</template>

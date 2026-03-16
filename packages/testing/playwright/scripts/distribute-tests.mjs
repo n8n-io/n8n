@@ -46,10 +46,29 @@ function getRequiredImages(capabilities) {
 	return [...images].sort();
 }
 
+function hasExternalFiles(files) {
+	const externalFiles = files.split(',').filter((f) => !f.startsWith(PLAYWRIGHT_PREFIX));
+	if (externalFiles.length === 0) return false;
+
+	// Files outside the playwright project can't be traced by the impact analyzer
+	console.error(
+		`Impact: ${externalFiles.length} file(s) outside playwright project — running all tests`,
+	);
+	for (const f of externalFiles) console.error(`  - ${f}`);
+	return true;
+}
+
 function getOrchestration(numShards, options = {}) {
 	const cliArgs = ['orchestrate', `--shards=${numShards}`];
-	if (options.impact) cliArgs.push('--impact');
-	if (options.files) {
+	// Disable impact when explicit files include non-playwright paths the analyzer can't trace.
+	// When no files are provided, janitor auto-detects via git — impact stays enabled.
+	const useImpact = options.impact && !(options.files && hasExternalFiles(options.files));
+
+	if (useImpact) {
+		cliArgs.push('--impact');
+		if (options.base) cliArgs.push(`--base=${options.base}`);
+	}
+	if (useImpact && options.files) {
 		// Normalize repo-root-relative paths to playwright-root-relative
 		// git diff gives 'packages/testing/playwright/foo.ts', janitor expects 'foo.ts'
 		const normalized = options.files
@@ -71,6 +90,7 @@ const matrixMode = args.includes('--matrix');
 const orchestrateMode = args.includes('--orchestrate');
 const impactMode = args.includes('--impact');
 const filesArg = args.find((a) => a.startsWith('--files='))?.slice('--files='.length) || undefined;
+const baseArg = args.find((a) => a.startsWith('--base='))?.slice('--base='.length) || undefined;
 const shards = parseInt(args.find((a) => !a.startsWith('-')) ?? '');
 
 if (!shards || shards < 1) {
@@ -88,7 +108,7 @@ if (matrixMode) {
 		}));
 		console.log(JSON.stringify(matrix));
 	} else {
-		const result = getOrchestration(shards, { impact: impactMode, files: filesArg });
+		const result = getOrchestration(shards, { impact: impactMode, files: filesArg, base: baseArg });
 
 		if (result.shards.length === 0) {
 			console.error('\n⏭️  No specs to run — all filtered out by discovery/impact. Skipping.\n');
@@ -127,7 +147,7 @@ if (matrixMode) {
 		console.error(`Index must be between 0 and ${shards - 1}`);
 		process.exit(1);
 	}
-	const result = getOrchestration(shards, { impact: impactMode, files: filesArg });
+	const result = getOrchestration(shards, { impact: impactMode, files: filesArg, base: baseArg });
 	const shard = result.shards[index];
 	if (shard) {
 		console.log(shard.specs.join('\n'));

@@ -11,6 +11,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -81,6 +82,7 @@ const telemetry = useTelemetry();
 const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
+const workflowId = useInjectWorkflowId();
 const workflowState = injectWorkflowState();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
@@ -244,7 +246,7 @@ async function handleArchiveWorkflow() {
 
 	try {
 		const expectedChecksum =
-			props.id === workflowsStore.workflowId ? workflowDocumentStore?.value?.checksum : undefined;
+			props.id === workflowId.value ? workflowDocumentStore?.value?.checksum : undefined;
 		await workflowsStore.archiveWorkflow(props.id, expectedChecksum);
 		workflowDocumentStore?.value?.setActiveState({
 			activeVersionId: null,

@@ -56,7 +56,7 @@ describe('execute-workflow MCP tool', () => {
 			expect(tool.config).toBeDefined();
 			expect(typeof tool.config.description).toBe('string');
 			expect(tool.config.description).toBe(
-				'Execute a workflow by ID. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
+				'Execute a workflow by ID. Returns execution ID and status. To get the full execution results, use the get_execution tool with the returned execution ID. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
 			);
 			expect(tool.config.inputSchema).toBeDefined();
 			expect(tool.config.outputSchema).toBeDefined();
@@ -128,7 +128,7 @@ describe('execute-workflow MCP tool', () => {
 					'manual',
 				);
 
-				expect(result.success).toBe(true);
+				expect(result.status).toBe('success');
 				expect(result.executionId).toBe('execution-id');
 			});
 
@@ -166,7 +166,7 @@ describe('execute-workflow MCP tool', () => {
 					'manual',
 				);
 
-				expect(result.success).toBe(true);
+				expect(result.status).toBe('success');
 				expect(result.executionId).toBe('execution-id');
 				expect(workflowRunner.run).toHaveBeenCalledWith(
 					expect.objectContaining({
@@ -174,6 +174,102 @@ describe('execute-workflow MCP tool', () => {
 						startNodes: [{ name: 'Manual', sourceData: null }],
 					}),
 				);
+			});
+
+			test('includes workflow pinData for manual executions', async () => {
+				const workflowPinData = {
+					SomeNode: [{ json: { pinned: 'data' } }],
+					AnotherNode: [{ json: { more: 'pinned' } }],
+				};
+				const workflow = createWorkflow({
+					activeVersionId: null,
+					settings: { availableInMCP: true },
+					pinData: workflowPinData,
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'WebhookNode',
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as jest.Mock).mockResolvedValue('execution-id');
+				(activeExecutions.getPostExecutePromise as jest.Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: { runData: {} } },
+				});
+
+				await executeWorkflow(
+					user,
+					workflowFinderService,
+					activeExecutions,
+					workflowRunner,
+					mcpService,
+					'manual-workflow-with-pindata',
+					{ type: 'webhook', webhookData: { method: 'POST', body: { test: 'input' } } },
+					'manual',
+				);
+
+				const runCall = (workflowRunner.run as jest.Mock).mock
+					.calls[0][0] as IWorkflowExecutionDataProcess;
+
+				expect(runCall.pinData).toMatchObject({
+					WebhookNode: [{ json: { headers: {}, query: {}, body: { test: 'input' } } }], // Trigger pin data
+					SomeNode: [{ json: { pinned: 'data' } }], // Workflow pin data
+					AnotherNode: [{ json: { more: 'pinned' } }], // Workflow pin data
+				});
+			});
+
+			test('does not include workflow pinData for production executions', async () => {
+				const workflowPinData = {
+					SomeNode: [{ json: { pinned: 'data' } }],
+				};
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					settings: { availableInMCP: true },
+					pinData: workflowPinData,
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'WebhookNode',
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as jest.Mock).mockResolvedValue('execution-id');
+				(activeExecutions.getPostExecutePromise as jest.Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: { runData: {} } },
+				});
+
+				await executeWorkflow(
+					user,
+					workflowFinderService,
+					activeExecutions,
+					workflowRunner,
+					mcpService,
+					'production-workflow-with-pindata',
+					undefined,
+					'production',
+				);
+
+				const runCall = (workflowRunner.run as jest.Mock).mock
+					.calls[0][0] as IWorkflowExecutionDataProcess;
+
+				expect(runCall.pinData).toMatchObject({
+					WebhookNode: [{ json: { headers: {}, query: {}, body: {} } }],
+				});
+				expect(runCall.pinData).not.toHaveProperty('SomeNode');
 			});
 
 			test('throws error when workflow has unsupported trigger nodes', async () => {
@@ -329,11 +425,8 @@ describe('execute-workflow MCP tool', () => {
 				);
 
 				expect(result).toMatchObject({
-					success: true,
+					status: 'success',
 					executionId: 'exec-123',
-					result: expect.objectContaining({
-						runData: expect.any(Object),
-					}),
 				});
 
 				// Verify the runner was called with correct pin data
@@ -444,7 +537,7 @@ describe('execute-workflow MCP tool', () => {
 				);
 
 				expect(result).toMatchObject({
-					success: true,
+					status: 'success',
 					executionId: 'exec-789',
 				});
 
@@ -506,7 +599,7 @@ describe('execute-workflow MCP tool', () => {
 				);
 
 				expect(result).toMatchObject({
-					success: true,
+					status: 'success',
 					executionId: 'exec-101',
 				});
 
@@ -569,11 +662,8 @@ describe('execute-workflow MCP tool', () => {
 				);
 
 				expect(result).toMatchObject({
-					success: true,
+					status: 'success',
 					executionId: 'exec-success',
-					result: expect.objectContaining({
-						runData: expect.any(Object),
-					}),
 				});
 			});
 
@@ -617,12 +707,9 @@ describe('execute-workflow MCP tool', () => {
 				);
 
 				expect(result).toMatchObject({
-					success: false,
+					status: 'error',
 					executionId: 'exec-error',
-					error: {
-						message: 'Workflow execution failed',
-						name: 'ExecutionError',
-					},
+					error: 'Workflow execution failed',
 				});
 			});
 
@@ -666,12 +753,9 @@ describe('execute-workflow MCP tool', () => {
 				);
 
 				expect(result).toMatchObject({
-					success: false,
+					status: 'error',
 					executionId: 'exec-data-error',
-					error: {
-						message: 'Node execution failed',
-						name: 'NodeExecutionError',
-					},
+					error: 'Node execution failed',
 				});
 			});
 
@@ -825,6 +909,7 @@ describe('execute-workflow MCP tool', () => {
 							success: true,
 							data: {
 								executionId: 'exec-telemetry',
+								status: 'success',
 							},
 						},
 					}),
@@ -1016,7 +1101,7 @@ describe('execute-workflow MCP tool', () => {
 				expect(queueModeMcpService.createPendingResponse).toHaveBeenCalledWith('exec-queue');
 				expect(activeExecutions.getPostExecutePromise).not.toHaveBeenCalled();
 				expect(result).toMatchObject({
-					success: true,
+					status: 'success',
 					executionId: 'exec-queue',
 				});
 			});

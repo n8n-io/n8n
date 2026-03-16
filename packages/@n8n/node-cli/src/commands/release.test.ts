@@ -21,6 +21,8 @@ describe('release command', () => {
 		'--git.push',
 		'--git.changelog="npx auto-changelog --stdout --unreleased --commit-limit false -u --hide-credit"',
 		'--github.release',
+		'--hooks.before:init="pnpm run lint && pnpm run build"',
+		'--hooks.after:bump="npx auto-changelog -p"',
 	];
 
 	beforeEach(() => {
@@ -47,17 +49,29 @@ describe('release command', () => {
 		);
 		await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, '# pnpm lock file');
 
-		mockSpawn(
-			'pnpm',
-			[
-				...releaseItArgs,
-				'--hooks.before:init="pnpm run lint && pnpm run build"',
-				'--hooks.after:bump="npx auto-changelog -p"',
-			],
-			{ exitCode: 0 },
-		);
+		mockSpawn('pnpm', [...releaseItArgs, '--npm.publish=false'], { exitCode: 0 });
 
 		const result = await CommandTester.run('release');
+
+		expect(result).toBeDefined();
+	});
+
+	tmpdirTest('--publish flag - runs release-it with npm publish', async ({ tmpdir }) => {
+		await fs.writeFile(
+			`${tmpdir}/package.json`,
+			JSON.stringify({
+				name: 'test-node',
+				version: '1.0.0',
+				n8n: {
+					nodes: ['dist/nodes/TestNode.node.js'],
+				},
+			}),
+		);
+		await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, '# pnpm lock file');
+
+		mockSpawn('pnpm', releaseItArgs, { exitCode: 0 });
+
+		const result = await CommandTester.run('release --publish');
 
 		expect(result).toBeDefined();
 	});
