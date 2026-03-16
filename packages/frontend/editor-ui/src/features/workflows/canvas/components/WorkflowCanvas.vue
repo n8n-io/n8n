@@ -49,7 +49,7 @@ const workflowObject = toRef(props, 'workflowObject');
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const nodes = computed(() => {
-	const allNodes = workflowDocumentStore?.value?.allNodes ?? [];
+	const allNodes = workflowDocumentStore?.value?.allNodes ?? props.workflow.nodes;
 	return props.showFallbackNodes ? [...allNodes, ...props.fallbackNodes] : allNodes;
 });
 const connections = computed(() => props.workflow.connections);
