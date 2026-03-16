@@ -20,7 +20,7 @@ export class DbClock {
 			return new Date(this.cache.serverTime.getTime() + elapsed);
 		}
 		const serverTime = await this.clockRepository.getServerTime();
-		this.cache = { serverTime, localTimeAtFetch: nowMs };
+		this.cache = { serverTime, localTimeAtFetch: Date.now() };
 		return serverTime;
 	}
 
