@@ -36,8 +36,6 @@ import { OwnershipService } from './ownership.service';
 import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
 
-const TAMPER_PROOF_INVITE_LINKS_EXPERIMENT = '061_tamper_proof_invite_links';
-
 @Service()
 export class UserService {
 	constructor(
@@ -191,38 +189,19 @@ export class UserService {
 
 		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
 
-		// Check if tamper-proof invite links feature flag is enabled for the owner
-		let useTamperProofLinks = false;
-		try {
-			const featureFlags = await this.postHog.getFeatureFlags({
-				id: owner.id,
-				createdAt: owner.createdAt,
-			});
-			useTamperProofLinks = featureFlags[TAMPER_PROOF_INVITE_LINKS_EXPERIMENT] === true;
-		} catch (error) {
-			// If feature flag check fails, fall back to old mechanism
-			this.logger.debug('Failed to check feature flags for tamper-proof invite links', { error });
-		}
-
 		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				let inviteAcceptUrl: string;
-				if (useTamperProofLinks) {
-					// Use JWT-based tamper-proof invite links when feature flag is enabled
-					const token = this.jwtService.sign(
-						{
-							inviterId: owner.id,
-							inviteeId: id,
-						},
-						{
-							expiresIn: '90d',
-						},
-					);
-					inviteAcceptUrl = `${domain}/signup?token=${token}`;
-				} else {
-					// Use legacy invite links when feature flag is disabled
-					inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
-				}
+				// Always use JWT-based tamper-proof invite links
+				const token = this.jwtService.sign(
+					{
+						inviterId: owner.id,
+						inviteeId: id,
+					},
+					{
+						expiresIn: '90d',
+					},
+				);
+				const inviteAcceptUrl = `${domain}/signup?token=${token}`;
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,
@@ -486,18 +465,8 @@ export class UserService {
 			throw new BadRequestError('Instance owner not found');
 		}
 
-		let isTamperProofLinksEnabled = false;
-		try {
-			const featureFlags = await this.postHog.getFeatureFlags({
-				id: instanceOwner.id,
-				createdAt: instanceOwner.createdAt,
-			});
-			isTamperProofLinksEnabled = featureFlags[TAMPER_PROOF_INVITE_LINKS_EXPERIMENT] === true;
-		} catch (error) {
-			this.logger.debug('Failed to check feature flags for tamper-proof invite links', { error });
-		}
-
-		if (isTamperProofLinksEnabled && payload.token) {
+		// Always prefer token-based invites (tamper-proof), but support legacy format for backward compatibility
+		if (payload.token) {
 			return await this.processTokenBasedInvite(payload.token);
 		}
 
