@@ -170,7 +170,7 @@ describe('ProjectSettings', () => {
 		createTestingPinia();
 
 		projectsStore = mockedStore(useProjectsStore);
-		projectsStore.searchProjects.mockResolvedValue({ count: 0, data: [] });
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
 		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
 		rolesStore = mockedStore(useRolesStore);
