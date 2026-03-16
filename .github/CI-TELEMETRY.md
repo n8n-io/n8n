@@ -99,7 +99,7 @@ GROUP BY 1, 2 ORDER BY 1;
 
 **From a script:**
 ```javascript
-import { sendMetrics, metric } from './.github/scripts/send-metrics.mjs';
+import { sendMetrics, metric } from './send-metrics.mjs';
 
 await sendMetrics([
   metric('my-metric', 42.0, 'ms', { context: 'value' }),

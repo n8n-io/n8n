@@ -60,21 +60,28 @@ WHERE metric_name = 'exec-per-sec'
 GROUP BY nodes ORDER BY nodes;
 
 -- PR vs 30-day master baseline
+-- Note: dimensions is a JSON column; use JSON_VALUE() to extract fields for grouping/joining
 WITH pr AS (
-  SELECT metric_name, dimensions, AVG(value) AS value
+  SELECT metric_name,
+    JSON_VALUE(dimensions, '$.trigger') AS trigger,
+    JSON_VALUE(dimensions, '$.mode') AS mode,
+    AVG(value) AS value
   FROM qa_performance_metrics WHERE git_pr = @pr_number
-  GROUP BY metric_name, dimensions
+  GROUP BY metric_name, trigger, mode
 ),
 baseline AS (
-  SELECT metric_name, dimensions, AVG(value) AS value
+  SELECT metric_name,
+    JSON_VALUE(dimensions, '$.trigger') AS trigger,
+    JSON_VALUE(dimensions, '$.mode') AS mode,
+    AVG(value) AS value
   FROM qa_performance_metrics
   WHERE git_branch = 'master'
     AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)
-  GROUP BY metric_name, dimensions
+  GROUP BY metric_name, trigger, mode
 )
-SELECT pr.metric_name, pr.dimensions,
+SELECT pr.metric_name, pr.trigger, pr.mode,
   pr.value AS pr_value, baseline.value AS baseline_value,
   ROUND((pr.value - baseline.value) / baseline.value * 100, 1) AS delta_pct
-FROM pr JOIN baseline USING (metric_name, dimensions)
+FROM pr JOIN baseline USING (metric_name, trigger, mode)
 ORDER BY ABS(delta_pct) DESC;
 ```

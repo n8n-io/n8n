@@ -66,35 +66,38 @@ class MetricsReporter implements Reporter {
 
 		const auth = Buffer.from(`${this.webhookUser}:${this.webhookPassword}`).toString('base64');
 		const context = this.getContext();
-		let sent = 0;
 
-		for (const [benchmarkName, metrics] of byBenchmark) {
-			const payload = { ...context, benchmark_name: benchmarkName, metrics };
-			try {
-				const response = await fetch(this.webhookUrl, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: `Basic ${auth}`,
-					},
-					body: JSON.stringify(payload),
-					signal: AbortSignal.timeout(30000),
-				});
+		const counts = await Promise.all(
+			Array.from(byBenchmark, async ([benchmarkName, metrics]) => {
+				const payload = { ...context, benchmark_name: benchmarkName, metrics };
+				try {
+					const response = await fetch(this.webhookUrl, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							Authorization: `Basic ${auth}`,
+						},
+						body: JSON.stringify(payload),
+						signal: AbortSignal.timeout(30000),
+					});
 
-				if (!response.ok) {
+					if (!response.ok) {
+						console.warn(
+							`[MetricsReporter] Webhook failed (${response.status}) for "${benchmarkName}": ${metrics.length} metrics dropped`,
+						);
+						return 0;
+					}
+					return metrics.length;
+				} catch (e) {
 					console.warn(
-						`[MetricsReporter] Webhook failed (${response.status}) for "${benchmarkName}": ${metrics.length} metrics dropped`,
+						`[MetricsReporter] Failed to send metrics for "${benchmarkName}": ${(e as Error).message}`,
 					);
-				} else {
-					sent += metrics.length;
+					return 0;
 				}
-			} catch (e) {
-				console.warn(
-					`[MetricsReporter] Failed to send metrics for "${benchmarkName}": ${(e as Error).message}`,
-				);
-			}
-		}
+			}),
+		);
 
+		const sent = counts.reduce((total, n) => total + n, 0);
 		console.log(
 			`[MetricsReporter] Sent ${sent}/${this.collectedMetrics.length} metrics across ${byBenchmark.size} tests`,
 		);

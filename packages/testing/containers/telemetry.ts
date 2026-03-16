@@ -293,14 +293,15 @@ export class TelemetryRecorder {
 		const script = `
 			fetch(process.argv[2], {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', 'Authorization': process.argv[4] },
+				headers: { 'Content-Type': 'application/json', 'Authorization': process.env.WEBHOOK_AUTH },
 				body: process.argv[3]
 			}).catch(() => process.exit(1));
 		`;
 
-		const child = spawn(process.execPath, ['-e', script, webhookUrl, payload, authHeader], {
+		const child = spawn(process.execPath, ['-e', script, webhookUrl, payload], {
 			detached: true,
 			stdio: 'ignore',
+			env: { ...process.env, WEBHOOK_AUTH: authHeader },
 		});
 		child.unref();
 	}

@@ -32,7 +32,7 @@ export interface LoadTestOptions {
 	/** Trigger type recorded as a dimension in BigQuery */
 	trigger: TriggerType;
 	/** Node count recorded as a dimension in BigQuery */
-	nodeCount?: number;
+	nodeCount: number;
 	/** Node output size recorded as a dimension in BigQuery */
 	nodeOutputSize?: NodeOutputSize;
 	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */

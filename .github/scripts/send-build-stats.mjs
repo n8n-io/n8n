@@ -53,7 +53,7 @@ for (const task of summary.tasks ?? []) {
 	);
 }
 
-const totalMs = summary.execution?.durationMs ?? 0;
+const totalMs = summary.durationMs ?? 0;
 const totalTasks = summary.tasks?.length ?? 0;
 const cachedTasks = summary.tasks?.filter((t) => t.cache?.status === 'HIT').length ?? 0;
 
