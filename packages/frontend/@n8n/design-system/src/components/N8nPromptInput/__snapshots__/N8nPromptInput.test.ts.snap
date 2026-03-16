@@ -47,14 +47,6 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
           disabled=""
           type="button"
         >
-          <transition-stub
-            appear="false"
-            css="true"
-            name="n8n-button-fade"
-            persisted="false"
-          >
-            <!--v-if-->
-          </transition-stub>
           <div
             class="button-inner"
           >
@@ -140,14 +132,6 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
           data-test-id="send-message-button"
           type="button"
         >
-          <transition-stub
-            appear="false"
-            css="true"
-            name="n8n-button-fade"
-            persisted="false"
-          >
-            <!--v-if-->
-          </transition-stub>
           <div
             class="button-inner"
           >

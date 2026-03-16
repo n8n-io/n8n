@@ -44,7 +44,7 @@ describe('CanvasRunWorkflowButton', () => {
 			},
 		});
 
-		expect(wrapper.getAllByText('Executing workflow')[0]).toBeInTheDocument();
+		expect(wrapper.getByText('Executing workflow')).toBeInTheDocument();
 	});
 
 	it('should render different label when executing and waiting for webhook', () => {
@@ -55,7 +55,7 @@ describe('CanvasRunWorkflowButton', () => {
 			},
 		});
 
-		expect(wrapper.getAllByText('Waiting for trigger event')[0]).toBeInTheDocument();
+		expect(wrapper.getByText('Waiting for trigger event')).toBeInTheDocument();
 	});
 
 	it('should show tooltip when not executing', async () => {

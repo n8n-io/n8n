@@ -100,24 +100,15 @@ const handleClick = (event: MouseEvent) => {
 		aria-live="polite"
 		@click="handleClick"
 	>
-		<Transition name="n8n-button-fade">
-			<div v-if="loading" :class="$style['loading-container']">
-				<div :class="[$style['loading-spinner'], 'n8n-spinner']">
-					<N8nIcon icon="loader" :size="computedIconSize" transform-origin="center" />
-				</div>
-				<template v-if="!iconOnly">
-					<span v-if="label">{{ label }}</span>
-					<slot v-else />
-				</template>
+		<div :class="$style['button-inner']">
+			<div v-if="loading" :class="[$style['loading-spinner'], 'n8n-spinner']">
+				<N8nIcon icon="loader" :size="computedIconSize" transform-origin="center" />
 			</div>
-		</Transition>
-
-		<div :class="$style['button-inner']" :aria-hidden="loading || undefined">
-			<slot name="icon">
-				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
+			<slot v-else name="icon">
+				<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
 			</slot>
 
-			<template v-if="!loading">
+			<template v-if="!(iconOnly && loading)">
 				<span v-if="label">{{ label }}</span>
 				<slot v-else />
 			</template>
@@ -172,10 +163,6 @@ const handleClick = (event: MouseEvent) => {
 		inset var(--button--border--shadow),
 		var(--button--shadow);
 	border: none;
-
-	> * {
-		grid-area: 1 / 1;
-	}
 
 	&:hover {
 		background-color: var(--button--color--background-hover);
@@ -406,14 +393,6 @@ const handleClick = (event: MouseEvent) => {
 	}
 }
 
-.loading-container {
-	height: auto;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--spacing--2xs);
-}
-
 .button-inner {
 	display: flex;
 	align-items: center;
@@ -427,11 +406,6 @@ const handleClick = (event: MouseEvent) => {
 	}
 }
 
-.loading-container + .button-inner {
-	pointer-events: none;
-	opacity: 0;
-}
-
 .loading-spinner {
 	display: flex;
 	align-items: center;
@@ -440,31 +414,6 @@ const handleClick = (event: MouseEvent) => {
 
 	@media (prefers-reduced-motion: reduce) {
 		animation: none;
-	}
-}
-
-/* TODO: Move to global animations css library */
-:global(.n8n-button-fade-enter-active),
-:global(.n8n-button-fade-leave-active) {
-	--easing--ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
-	transition:
-		opacity 0.2s var(--easing--ease-out),
-		transform 0.2s var(--easing--ease-out);
-
-	@media (prefers-reduced-motion: reduce) {
-		transition: opacity 0.1s;
-	}
-}
-
-:global(.n8n-button-fade-enter-from),
-:global(.n8n-button-fade-leave-to) {
-	opacity: 0;
-	transform: translateY(4px);
-	filter: blur(2px);
-
-	@media (prefers-reduced-motion: reduce) {
-		transform: none;
-		filter: none;
 	}
 }
 

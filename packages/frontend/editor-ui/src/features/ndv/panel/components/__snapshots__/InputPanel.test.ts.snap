@@ -143,25 +143,15 @@ exports[`InputPanel > should render 1`] = `
             data-v-5b5900d0=""
             type="button"
           >
-            <transition-stub
-              appear="false"
-              css="true"
-              name="n8n-button-fade"
-              persisted="false"
-            >
-              <!--v-if-->
-            </transition-stub>
             <div
               class="button-inner"
             >
               
               <!--v-if-->
               
-              
               <span>
                 Cancel
               </span>
-              
             </div>
           </button>
           <button
@@ -170,25 +160,15 @@ exports[`InputPanel > should render 1`] = `
             data-v-5b5900d0=""
             type="button"
           >
-            <transition-stub
-              appear="false"
-              css="true"
-              name="n8n-button-fade"
-              persisted="false"
-            >
-              <!--v-if-->
-            </transition-stub>
             <div
               class="button-inner"
             >
               
               <!--v-if-->
               
-              
               <span>
                 Save
               </span>
-              
             </div>
           </button>
         </div>
@@ -277,25 +257,15 @@ exports[`InputPanel > should render 1`] = `
                     transparent-background="true"
                     type="submit"
                   >
-                    <transition-stub
-                      appear="false"
-                      css="true"
-                      name="n8n-button-fade"
-                      persisted="false"
-                    >
-                      <!--v-if-->
-                    </transition-stub>
                     <div
                       class="button-inner"
                     >
                       
                       <!--v-if-->
                       
-                      
                       <span>
                         Execute previous nodes
                       </span>
-                      
                     </div>
                   </button>
                   
