@@ -5,12 +5,14 @@ import { createTestingPinia } from '@pinia/testing';
 import SecretsProviderConnectionModal from './SecretsProviderConnectionModal.ee.vue';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
-import type { SecretProviderTypeResponse } from '@n8n/api-types';
+import type {
+	SecretProviderTypeResponse,
+	ConnectionProjectSummary,
+	SecretProviderConnection,
+} from '@n8n/api-types';
 import { vi } from 'vitest';
 import { nextTick } from 'vue';
-import type { SecretProviderConnection } from '@n8n/api-types';
 import { createProjectListItem } from '@/features/collaboration/projects/__tests__/utils';
-import type { ConnectionProjectSummary } from '../composables/useConnectionModal.ee';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import orderBy from 'lodash/orderBy';
 
