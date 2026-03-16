@@ -94,24 +94,27 @@ const handleClick = (event: MouseEvent) => {
 		:disabled="componentTag === 'button' ? isDisabled || undefined : undefined"
 		:aria-disabled="isDisabled || undefined"
 		:aria-busy="loading || undefined"
-		:data-icon-only="iconOnly || undefined"
 		:tabindex="componentTag === 'a' && isDisabled ? -1 : undefined"
 		:class="classes"
+		:data-icon-only="iconOnly ? 'true' : undefined"
 		aria-live="polite"
 		@click="handleClick"
 	>
-		<div :class="$style['button-inner']">
-			<div v-if="loading" :class="[$style['loading-spinner'], 'n8n-spinner']">
-				<N8nIcon icon="loader" :size="computedIconSize" transform-origin="center" />
+		<Transition name="n8n-button-fade">
+			<div v-if="loading" :class="$style['loading-container']">
+				<div :class="[$style['loading-spinner'], 'n8n-spinner']">
+					<N8nIcon icon="loader" :size="computedIconSize" transform-origin="center" />
+				</div>
 			</div>
-			<slot v-else name="icon">
-				<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
+		</Transition>
+
+		<div :class="$style['button-inner']">
+			<slot name="icon">
+				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
 			</slot>
 
-			<template v-if="!(iconOnly && loading)">
-				<span v-if="label">{{ label }}</span>
-				<slot v-else />
-			</template>
+			<span v-if="label">{{ label }}</span>
+			<slot v-else />
 		</div>
 	</component>
 </template>
@@ -163,6 +166,10 @@ const handleClick = (event: MouseEvent) => {
 		inset var(--button--border--shadow),
 		var(--button--shadow);
 	border: none;
+
+	> * {
+		grid-area: 1 / 1;
+	}
 
 	&:hover {
 		background-color: var(--button--color--background-hover);
@@ -384,13 +391,18 @@ const handleClick = (event: MouseEvent) => {
 	&.iconOnly {
 		width: var(--button--height);
 		padding: 0;
-		justify-content: center;
-		align-items: center;
 
 		> * {
 			width: var(--button--height);
 		}
 	}
+}
+
+.loading-container {
+	height: auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .button-inner {
@@ -406,6 +418,11 @@ const handleClick = (event: MouseEvent) => {
 	}
 }
 
+.loading-container + .button-inner {
+	pointer-events: none;
+	opacity: 0;
+}
+
 .loading-spinner {
 	display: flex;
 	align-items: center;
@@ -414,6 +431,31 @@ const handleClick = (event: MouseEvent) => {
 
 	@media (prefers-reduced-motion: reduce) {
 		animation: none;
+	}
+}
+
+/* TODO: Move to global animations css library */
+:global(.n8n-button-fade-enter-active),
+:global(.n8n-button-fade-leave-active) {
+	--easing--ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+	transition:
+		opacity 0.2s var(--easing--ease-out),
+		transform 0.2s var(--easing--ease-out);
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: opacity 0.1s;
+	}
+}
+
+:global(.n8n-button-fade-enter-from),
+:global(.n8n-button-fade-leave-to) {
+	opacity: 0;
+	transform: translateY(4px);
+	filter: blur(2px);
+
+	@media (prefers-reduced-motion: reduce) {
+		transform: none;
+		filter: none;
 	}
 }
 
