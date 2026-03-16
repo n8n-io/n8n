@@ -178,7 +178,6 @@ describe('AI Builder store', () => {
 		workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 		workflowsStore.workflow.nodes = [];
 		workflowsStore.workflow.connections = {};
-		workflowsStore.allNodes = [];
 		workflowsStore.nodesByName = {};
 		workflowsStore.workflowExecutionData = null;
 
@@ -1771,6 +1770,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+
 			workflowsStore.workflowValidationIssues = [];
 
 			const builderStore = useBuilderStore();
@@ -1797,6 +1797,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+
 			workflowsStore.workflowValidationIssues = [];
 
 			const builderStore = useBuilderStore();
@@ -3003,7 +3004,7 @@ describe('AI Builder store', () => {
 			// Add focused nodes
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3012,7 +3013,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			];
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3036,7 +3037,7 @@ describe('AI Builder store', () => {
 
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3045,7 +3046,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			];
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3081,7 +3082,7 @@ describe('AI Builder store', () => {
 
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3090,7 +3091,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			];
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3113,7 +3114,7 @@ describe('AI Builder store', () => {
 
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3122,7 +3123,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			];
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 
 			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
