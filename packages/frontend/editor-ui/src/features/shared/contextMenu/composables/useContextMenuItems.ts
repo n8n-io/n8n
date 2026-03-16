@@ -42,7 +42,11 @@ export type ContextMenuAction =
 	| 'extract_sub_workflow'
 	| 'focus_ai_on_selected';
 
-type Item = ActionDropdownItem<ContextMenuAction>;
+export type ContextMenuItem = ActionDropdownItem<ContextMenuAction> & {
+	children?: ContextMenuItem[];
+};
+
+type Item = ContextMenuItem;
 
 export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
