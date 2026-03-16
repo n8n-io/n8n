@@ -63,6 +63,7 @@ import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
 import '@/controllers/scenario-execution.controller';
+import '@/controllers/scenario-error-handling.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
