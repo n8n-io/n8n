@@ -38,6 +38,7 @@ const selectedIndex = ref<number | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
 
 const currentQuestion = computed(() => props.questions[currentIndex.value]);
+// const currentQuestion = computed(() => ({...props.questions[currentIndex.value], type: 'text'}));
 const isFirstQuestion = computed(() => currentIndex.value === 0);
 const isLastQuestion = computed(() => currentIndex.value === props.questions.length - 1);
 
@@ -118,7 +119,19 @@ watch(
 
 		// Auto-focus the container so keyboard navigation works right away
 		void nextTick(() => {
-			containerRef.value?.focus();
+			if (currentQuestion.value?.type === 'text') {
+				const textarea = containerRef.value?.querySelector('textarea');
+				if (textarea) {
+					textarea.focus();
+				} else {
+					// Textarea may not be in DOM yet due to fade transition — retry
+					requestAnimationFrame(() => {
+						containerRef.value?.querySelector('textarea')?.focus();
+					});
+				}
+			} else {
+				containerRef.value?.focus();
+			}
 		});
 	},
 	{ immediate: true },
@@ -412,8 +425,7 @@ function onOptionMouseEnter(idx: number) {
 								$style.optionRow,
 								{ [$style.highlighted]: highlightedIndex === idx },
 								{
-									[$style.activeSelected]:
-										selectedIndex === idx || currentAnswer.selectedOptions.includes(option),
+									[$style.activeSelected]: selectedIndex === idx,
 								},
 							]"
 							:data-option-index="idx"
@@ -433,7 +445,6 @@ function onOptionMouseEnter(idx: number) {
 							:class="[
 								$style.somethingElseRow,
 								{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
-								{ [$style.activeSelected]: currentAnswer.selectedOptions.includes(OTHER_SENTINEL) },
 							]"
 							:data-option-index="filteredOptions.length"
 							@mouseenter="onOptionMouseEnter(filteredOptions.length)"
@@ -479,7 +490,6 @@ function onOptionMouseEnter(idx: number) {
 							:class="[
 								$style.somethingElseRowMulti,
 								{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
-								{ [$style.activeSelected]: currentAnswer.selectedOptions.includes(OTHER_SENTINEL) },
 							]"
 							:data-option-index="filteredOptions.length"
 							@mouseenter="onOptionMouseEnter(filteredOptions.length)"
@@ -524,29 +534,33 @@ function onOptionMouseEnter(idx: number) {
 			<!-- Footer -->
 			<div :class="$style.footer">
 				<div :class="$style.pagination">
-					<button
-						:class="$style.paginationArrow"
+					<N8nButton
+						variant="ghost"
+						size="xsmall"
+						icon-only
 						:disabled="isFirstQuestion"
-						type="button"
 						data-test-id="plan-mode-pagination-back"
+						aria-label="Previous question"
 						@click="goToPrevious"
 					>
 						<N8nIcon icon="chevron-left" size="xsmall" />
-					</button>
+					</N8nButton>
 					<N8nText :class="$style.paginationText" size="small">
 						{{ currentIndex + 1 }}
 						{{ i18n.baseText('aiAssistant.builder.planMode.questions.paginationOf') }}
 						{{ questions.length }}
 					</N8nText>
-					<button
-						:class="$style.paginationArrow"
+					<N8nButton
+						variant="ghost"
+						size="xsmall"
+						icon-only
 						:disabled="isLastQuestion"
-						type="button"
 						data-test-id="plan-mode-pagination-forward"
+						aria-label="Next question"
 						@click="goToNextWithoutAnswer"
 					>
 						<N8nIcon icon="chevron-right" size="xsmall" />
-					</button>
+					</N8nButton>
 				</div>
 
 				<div :class="$style.navigation">
@@ -623,8 +637,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		/* stylelint-disable @n8n/css-var-naming */
-		background-color: var(--background--surface--hover);
+		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
 	}
 
 	&:hover .arrowIndicator,
@@ -696,7 +709,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: var(--background--surface--hover);
+		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
 	}
 }
 
@@ -712,7 +725,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: var(--background--surface--hover);
+		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
 	}
 
 	.somethingElseInput {
@@ -726,27 +739,6 @@ function onOptionMouseEnter(idx: number) {
 
 			&::placeholder {
 				color: var(--color--text);
-			}
-		}
-	}
-
-	&.activeSelected {
-		background-color: var(--color--primary);
-
-		.pencilIconContainer {
-			background-color: var(--color--orange-400);
-		}
-
-		.pencilIcon {
-			color: white;
-		}
-		.somethingElseInput {
-			background-color: var(--color--primary);
-
-			input {
-				background-color: var(--color--primary);
-				color: white;
-				outline: none;
 			}
 		}
 	}
@@ -764,7 +756,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: var(--background--surface--hover);
+		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
 	}
 }
 
@@ -796,27 +788,6 @@ function onOptionMouseEnter(idx: number) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-}
-
-.paginationArrow {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--spacing--4xs);
-	border: none;
-	border-radius: var(--radius);
-	background: none;
-	cursor: pointer;
-	color: var(--color--text);
-
-	&:hover:not(:disabled) {
-		background-color: var(--background--surface--hover);
-	}
-
-	&:disabled {
-		color: var(--color--text--tint-2);
-		cursor: not-allowed;
-	}
 }
 
 .paginationText {
