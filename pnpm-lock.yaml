@@ -676,6 +676,9 @@ importers:
       csv-parse:
         specifier: 5.5.0
         version: 5.5.0
+      flatted:
+        specifier: 'catalog:'
+        version: 3.2.7
       jsdom:
         specifier: 23.0.1
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -701,6 +704,9 @@ importers:
         specifier: 3.25.67
         version: 3.25.67
     devDependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.71.0
+        version: 0.71.0(zod@3.25.67)
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1621,12 +1627,18 @@ importers:
         specifier: npm:zod-from-json-schema@^0.0.5
         version: zod-from-json-schema@0.0.5
     devDependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.39.0
+        version: 0.39.0(encoding@0.1.13)
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@types/turndown':
         specifier: ^5.0.5
         version: 5.0.6
+      langsmith:
+        specifier: '>=0.4.6'
+        version: 0.4.12(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
 
   packages/@n8n/json-schema-to-zod:
     devDependencies:
@@ -4546,6 +4558,9 @@ packages:
 
   '@anthropic-ai/sdk@0.27.3':
     resolution: {integrity: sha512-IjLt0gd3L4jlOfilxVXTifn42FnVffMgDC04RJK1KDZpmkBWLv0XC92MVVmkxrFZNS/7l3xWgP/I3nqtX1sQHw==}
+
+  '@anthropic-ai/sdk@0.39.0':
+    resolution: {integrity: sha512-eMyDIPRZbt1CCLErRCi3exlAvNkBtRe+kW5vvJyef93PmNr/clstYgHhtvmkxN82nlKgzyGPCyGxrm0JQ1ZIdg==}
 
   '@anthropic-ai/sdk@0.71.0':
     resolution: {integrity: sha512-go1XeWXmpxuiTkosSXpb8tokLk2ZLkIRcXpbWVwJM6gH5OBtHOVsfPfGuqI1oW7RRt4qc59EmYbrXRZ0Ng06Jw==}
@@ -14234,12 +14249,12 @@ packages:
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@8.1.0:
     resolution: {integrity: sha512-r8hpEjiQEYlF2QU0df3dS+nxxSIreXQS1qRhMJM0Q5NDdR386C7jb7Hwwod8Fgiuex+k0GFjgft18yvxm5XoCQ==}
     engines: {node: '>=12'}
-    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@9.3.5:
     resolution: {integrity: sha512-e1LleDykUz2Iu+MTYdkSsuWX8lvAjAcs0Xef0lNIu0S2wOAzuTxCJtcd9S3cijlwYF18EsU3rzb8jPVobxDh9Q==}
@@ -21164,6 +21179,18 @@ snapshots:
   '@antfu/utils@0.7.10': {}
 
   '@anthropic-ai/sdk@0.27.3(encoding@0.1.13)':
+    dependencies:
+      '@types/node': 20.19.21
+      '@types/node-fetch': 2.6.13
+      abort-controller: 3.0.0
+      agentkeepalive: 4.6.0
+      form-data-encoder: 1.7.2
+      formdata-node: 4.4.1
+      node-fetch: 2.7.0(encoding@0.1.13)
+    transitivePeerDependencies:
+      - encoding
+
+  '@anthropic-ai/sdk@0.39.0(encoding@0.1.13)':
     dependencies:
       '@types/node': 20.19.21
       '@types/node-fetch': 2.6.13

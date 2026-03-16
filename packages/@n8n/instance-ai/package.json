@@ -9,7 +9,14 @@
     "format:check": "biome ci src",
     "test": "jest",
     "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "eval:checklist": "tsx evaluations/checklist/cli.ts",
+    "eval:checklist:langsmith": "tsx evaluations/checklist/cli.ts --langsmith",
+    "eval:checklist:langsmith:general": "tsx evaluations/checklist/cli.ts --langsmith --dataset instance-ai-general-agent",
+    "eval:checklist:langsmith:builder": "tsx evaluations/checklist/cli.ts --langsmith --dataset instance-ai-builder",
+    "eval:upload-datasets": "tsx evaluations/checklist/langsmith-datasets.ts",
+    "eval:generate-refs:general": "tsx evaluations/checklist/cli.ts generate-references --dataset instance-ai-general-agent",
+    "eval:generate-refs:builder": "tsx evaluations/checklist/cli.ts generate-references --dataset instance-ai-builder"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -45,7 +52,9 @@
     "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "@n8n/typescript-config": "workspace:*",
-    "@types/turndown": "^5.0.5"
+    "@types/turndown": "^5.0.5",
+    "langsmith": "^0.4.6"
   }
 }
