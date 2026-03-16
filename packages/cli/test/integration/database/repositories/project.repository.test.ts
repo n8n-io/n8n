@@ -283,20 +283,27 @@ describe('ProjectRepository', () => {
 			expect(projects[0].name).toBe('Alpha Project');
 		});
 
-		it('does not produce duplicate rows from multiple project relations', async () => {
+		it('does not produce duplicate rows when project matches multiple OR branches', async () => {
 			const owner = await createOwner();
 			const member = await createMember();
 
-			// Member has a relation to the team project (via linkUserToProject)
-			// This tests that the subquery deduplicates correctly
+			// Every user's personal project is visible via `p.type = 'personal'`.
+			// The member also has a projectRelation to their own personal project
+			// (as personal owner). Without DISTINCT, the LEFT JOIN + OR would
+			// produce the personal project twice: once via the type branch and
+			// once via the relation branch.
 			const team = await createTeamProject('Shared Team', owner);
 			await linkUserToProject(member, team, 'project:editor');
 
 			const repo = Container.get(ProjectRepository);
 			const [projects, count] = await repo.getAccessibleProjectsAndCount(member.id, {});
 
-			const teamOccurrences = projects.filter((p) => p.name === 'Shared Team');
-			expect(teamOccurrences).toHaveLength(1);
+			// member's personal project should appear exactly once despite
+			// matching both OR branches (type=personal AND pr.userId=member)
+			const memberPersonalProjects = projects.filter(
+				(p) => p.type === 'personal' && p.creatorId === member.id,
+			);
+			expect(memberPersonalProjects).toHaveLength(1);
 			expect(count).toBe(projects.length);
 		});
 
