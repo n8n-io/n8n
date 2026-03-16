@@ -7,9 +7,14 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState, VIEWS } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots } from 'vue';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useRoute, useRouter } from 'vue-router';
 import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
@@ -18,6 +23,8 @@ import { jsonParse } from 'n8n-workflow';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
 import ReviewChangesBanner from './ReviewChangesBanner.vue';
+import CreditsSettingsDropdown from './CreditsSettingsDropdown.vue';
+import CreditWarningBanner from './CreditWarningBanner.vue';
 import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
 import MessageFocusedNodesChips from '../FocusedNodes/MessageFocusedNodesChips.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -34,7 +41,6 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { useReviewChanges } from '@/features/ai/assistant/composables/useReviewChanges';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
@@ -42,12 +48,14 @@ import {
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
 	isPlanModeUserAnswersMessage,
+	isWebFetchApprovalCustomMessage,
 	type PlanMode,
 } from '../../assistant.types';
 import PlanDisplayMessage from './PlanDisplayMessage.vue';
 import PlanModeSelector from './PlanModeSelector.vue';
 import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
 import UserAnswersMessage from './UserAnswersMessage.vue';
+import WebFetchApprovalMessage from './WebFetchApprovalMessage.vue';
 
 const emit = defineEmits<{
 	close: [];
@@ -59,9 +67,15 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
 const workflowAutosaveStore = useWorkflowSaveStore();
+const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	workflowId.value
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
+		: undefined,
+);
 const assistantStore = useAssistantStore();
 const settingsStore = useSettingsStore();
 const chatPanelStateStore = useChatPanelStateStore();
@@ -91,6 +105,7 @@ const suggestionsInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const inputText = ref('');
 
 const notificationsPermissionsBannerTriggered = ref(false);
+const creditBannerDismissed = ref(false);
 
 watch(
 	() => builderStore.streaming,
@@ -100,6 +115,17 @@ watch(
 		}
 	},
 );
+
+watch(
+	() => builderStore.creditsRemaining,
+	() => {
+		creditBannerDismissed.value = false;
+	},
+);
+
+const showCreditBanner = computed(() => {
+	return builderStore.isLowCredits && !creditBannerDismissed.value;
+});
 
 const showUsabilityNotice = computed(
 	() =>
@@ -151,11 +177,12 @@ const showExecuteMessage = computed(() => {
 	const hasPendingInteraction =
 		lastAssistantMessage &&
 		(isPlanModeQuestionsMessage(lastAssistantMessage) ||
-			isPlanModePlanMessage(lastAssistantMessage));
+			isPlanModePlanMessage(lastAssistantMessage) ||
+			isWebFetchApprovalCustomMessage(lastAssistantMessage));
 
 	return (
 		!builderStore.streaming &&
-		workflowsStore.workflow.nodes.length > 0 &&
+		(workflowDocumentStore.value?.allNodes ?? []).length > 0 &&
 		builderUpdatedWorkflowMessageIndex > -1 &&
 		!hasErrorAfterUpdate &&
 		!hasTaskAbortedAfterUpdate &&
@@ -174,7 +201,7 @@ const thinkingCompletionMessage = computed(() =>
 );
 
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
-	if (builderStore.hasMessages || workflowsStore.workflow.nodes.length > 0) {
+	if (builderStore.hasMessages || (workflowDocumentStore.value?.allNodes ?? []).length > 0) {
 		return undefined;
 	}
 	return shuffle(WORKFLOW_SUGGESTIONS);
@@ -202,14 +229,12 @@ function onSelectChangedNode(nodeId: string) {
 	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
 }
 
-const codeDiffWorkflowState = injectWorkflowState();
-
 async function onCodeReplace(index: number) {
-	await builderStore.applyCodeDiff(codeDiffWorkflowState, index);
+	await builderStore.applyCodeDiff(workflowId.value, index);
 }
 
 async function onCodeUndo(index: number) {
-	await builderStore.undoCodeDiff(codeDiffWorkflowState, index);
+	await builderStore.undoCodeDiff(workflowId.value, index);
 }
 
 const disabledTooltip = computed(() => {
@@ -254,6 +279,34 @@ function isLastPlanMessage(message: PlanMode.PlanMessage): boolean {
 	return !messages.slice(idx + 1).some((m) => m.role === 'user');
 }
 
+async function onWebFetchDecision(payload: {
+	requestId: string;
+	url: string;
+	domain: string;
+	action: 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
+}) {
+	builderStore.trackWorkflowBuilderJourney('web_fetch_decision', {
+		domain: payload.domain,
+		url: payload.url,
+		decision: payload.action,
+	});
+
+	const textMap: Record<string, string> = {
+		deny: i18n.baseText('aiAssistant.builder.webFetch.deny'),
+		allow_once: i18n.baseText('aiAssistant.builder.webFetch.allowOnce'),
+		allow_domain: i18n.baseText('aiAssistant.builder.webFetch.allowDomain', {
+			interpolate: { domain: payload.domain },
+		}),
+		allow_all: i18n.baseText('aiAssistant.builder.webFetch.allowAll'),
+	};
+
+	await builderStore.sendChatMessage({
+		text: textMap[payload.action],
+		resumeData: payload,
+		skipUserMessage: true,
+	});
+}
+
 async function onUserMessage(content: string) {
 	// Record activity to maintain write lock while building
 	collaborationStore.requestWriteAccess();
@@ -262,7 +315,7 @@ async function onUserMessage(content: string) {
 	accumulatedNodeIdsToTidyUp.value = [];
 
 	// If the workflow is empty, set the initial generation flag
-	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
+	const isInitialGeneration = (workflowDocumentStore.value?.allNodes ?? []).length === 0;
 
 	await builderStore.sendChatMessage({
 		text: content,
@@ -288,14 +341,14 @@ function onFeedback(feedback: RatingFeedback) {
 	if (feedback.rating) {
 		telemetry.track('User rated workflow generation', {
 			helpful: feedback.rating === 'up',
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			session_id: builderStore.trackingSessionId,
 		});
 	}
 	if (feedback.feedback) {
 		telemetry.track('User submitted workflow generation feedback', {
 			feedback: feedback.feedback,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			session_id: builderStore.trackingSessionId,
 			user_message_id: builderStore.lastUserMessageId,
 		});
@@ -307,7 +360,7 @@ async function onWorkflowExecuted() {
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
 	const errorNodeType = errorNodeName
-		? workflowsStore.workflow.nodes.find((node) => node.name === errorNodeName)?.type
+		? workflowDocumentStore.value?.getNodeByName(errorNodeName)?.type
 		: undefined;
 
 	if (!executionData) {
@@ -424,7 +477,10 @@ watch(
 			return;
 		}
 
-		if (builderStore.initialGeneration && workflowsStore.workflow.nodes.length > 0) {
+		if (
+			builderStore.initialGeneration &&
+			(workflowDocumentStore.value?.allNodes ?? []).length > 0
+		) {
 			builderStore.initialGeneration = false;
 		}
 
@@ -485,7 +541,7 @@ function onShowVersion(versionId: string) {
 	const route = router.resolve({
 		name: VIEWS.WORKFLOW_HISTORY,
 		params: {
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowId.value,
 			versionId,
 		},
 	});
@@ -537,7 +593,7 @@ defineExpose({
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
 			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
-			:workflow-id="workflowsStore.workflowId"
+			:workflow-id="workflowId"
 			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 			:disabled="isChatInputDisabled"
 			:disabled-tooltip="disabledTooltip"
@@ -560,6 +616,14 @@ defineExpose({
 					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
 				</N8nInfoTip>
 			</template>
+			<template v-if="creditsQuota !== undefined && creditsRemaining !== undefined" #headerActions>
+				<CreditsSettingsDropdown
+					:credits-remaining="creditsRemaining"
+					:credits-quota="creditsQuota"
+					:is-low-credits="builderStore.isLowCredits"
+					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
+				/>
+			</template>
 			<template #inputHeader>
 				<ReviewChangesBanner
 					v-if="showReviewChanges"
@@ -568,6 +632,13 @@ defineExpose({
 					@toggle="toggleExpanded"
 					@open-diff="openDiffView"
 					@select-node="onSelectChangedNode"
+				/>
+				<CreditWarningBanner
+					v-else-if="showCreditBanner"
+					:credits-remaining="creditsRemaining"
+					:credits-quota="creditsQuota"
+					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
+					@dismiss="creditBannerDismissed = true"
 				/>
 				<Transition v-else name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
@@ -599,6 +670,12 @@ defineExpose({
 				<UserAnswersMessage
 					v-else-if="isPlanModeUserAnswersMessage(message)"
 					:answers="message.data.answers"
+				/>
+				<WebFetchApprovalMessage
+					v-else-if="isWebFetchApprovalCustomMessage(message)"
+					:data="message.data"
+					:disabled="builderStore.streaming"
+					@decision="onWebFetchDecision"
 				/>
 			</template>
 			<template

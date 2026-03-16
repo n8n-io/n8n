@@ -20,5 +20,5 @@ export class ExternalSecretsConfig {
 
 	/** Whether to enable role based access control to manage secret providers */
 	@Env('N8N_ENV_FEAT_EXTERNAL_SECRETS_ROLE_BASED_ACCESS')
-	externalSecretsRoleBasedAccess: boolean = false;
+	externalSecretsRoleBasedAccess: boolean = true;
 }

@@ -63,6 +63,52 @@ export class Telemetry {
 		private readonly errorReporter: ErrorReporter,
 	) {}
 
+	// PostHog groupIdentify only accepts flat objects with string or number values, function sanitizes objects to match that format.
+	sanitizeTelemetryProperties(
+		obj: Record<string, any>,
+		depth = 0,
+		maxDepth = 10,
+	): Record<string, string | number> {
+		try {
+			const result: Record<string, string | number> = {};
+
+			for (const [key, value] of Object.entries(obj)) {
+				if (value === null || value === undefined) {
+					continue;
+				} else if (typeof value === 'boolean') {
+					result[key] = value ? 'true' : 'false';
+				} else if (typeof value === 'number') {
+					result[key] = value;
+				} else if (typeof value === 'string') {
+					result[key] = value;
+				} else if (Array.isArray(value)) {
+					result[key] = JSON.stringify(value);
+				} else if (typeof value === 'object' && value.constructor === Object) {
+					if (depth >= maxDepth) {
+						result[key] = JSON.stringify(value);
+					} else {
+						// Recursively flatten nested objects
+						Object.assign(
+							result,
+							this.sanitizeTelemetryProperties(
+								value as Record<string, unknown>,
+								depth + 1,
+								maxDepth,
+							),
+						);
+					}
+				} else {
+					continue;
+				}
+			}
+
+			return result;
+		} catch (e) {
+			this.logger.error('Error sanitizing telemetry properties', { error: e, object: obj });
+			return {};
+		}
+	}
+
 	async init() {
 		const { enabled, backendConfig } = this.globalConfig.diagnostics;
 		if (enabled) {
@@ -202,21 +248,61 @@ export class Telemetry {
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 
-	identify(traits?: { [key: string]: string | number | boolean | object | undefined | null }) {
-		if (!this.rudderStack) {
-			return;
+	// Used for either adding properties to group (no userId provided), or attaching user to instance group (userId provided)
+	groupIdentify({
+		userId,
+		traits,
+	}: {
+		userId?: string;
+		traits?: Record<string, string | number>;
+	}): void {
+		const { instanceId } = this.instanceSettings;
+		if (!instanceId) return;
+
+		if (this.postHog) {
+			this.postHog.groupIdentify({
+				...(userId && { distinctId: `${instanceId}#${userId}` }),
+				instanceId,
+				properties: traits,
+			});
 		}
 
-		const { instanceId } = this.instanceSettings;
+		if (this.rudderStack) {
+			this.rudderStack.group({
+				groupId: instanceId,
+				userId: userId ? `${instanceId}#${userId}` : instanceId, // Rudderstack requires a userId for group calls, using instanceId as fallback
+				traits,
+				context: {
+					ip: '0.0.0.0',
+				},
+			});
+		}
+	}
 
-		this.rudderStack.identify({
-			userId: instanceId,
-			traits: { ...traits, instanceId },
-			context: {
-				// provide a fake IP address to instruct RudderStack to not use the user's IP address
-				ip: '0.0.0.0',
-			},
-		});
+	identify(
+		traits?: { [key: string]: string | number | boolean | object | undefined | null },
+		userId?: string,
+	): void {
+		const { instanceId } = this.instanceSettings;
+		if (!instanceId) return;
+
+		if (this.rudderStack) {
+			this.rudderStack.identify({
+				userId: userId ? `${instanceId}#${userId}` : instanceId, // If no userId provided, falling back to instanceId for cross-compatibility
+				traits: { ...traits, instanceId },
+				context: {
+					// provide a fake IP address to instruct RudderStack to not use the user's IP address
+					ip: '0.0.0.0',
+				},
+			});
+		}
+
+		if (this.postHog && userId) {
+			this.postHog.identify({
+				distinctId: `${instanceId}#${userId}`,
+				properties: traits,
+			});
+		}
 	}
 
 	track(eventName: string, properties: ITelemetryTrackProperties = {}) {

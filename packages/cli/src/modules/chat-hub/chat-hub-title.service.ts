@@ -131,7 +131,8 @@ export class ChatHubTitleService {
 
 		if (!execution.status || execution.status !== 'success') {
 			const message =
-				this.executionService.extractErrorMessage(execution) ?? 'Failed to generate a response';
+				this.executionService.extractErrorMessage(execution.data) ??
+				'Failed to generate a response';
 			throw new OperationalError(message);
 		}
 

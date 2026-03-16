@@ -88,6 +88,16 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		if (options.redactExecutionData === false) {
 			for (const execution of needsCheck) {
 				if (!revealableIds.has(execution.workflowId)) {
+					// Emit audit event before throwing error
+					this.eventService.emit('execution-data-reveal-failure', {
+						user: options.user,
+						executionId: execution.id ?? '',
+						workflowId: execution.workflowId,
+						ipAddress: options.ipAddress ?? '',
+						userAgent: options.userAgent ?? '',
+						redactionPolicy: this.resolvePolicy(execution),
+						rejectionReason: 'User lacks execution:reveal scope for this workflow',
+					});
 					throw new ForbiddenError();
 				}
 			}
