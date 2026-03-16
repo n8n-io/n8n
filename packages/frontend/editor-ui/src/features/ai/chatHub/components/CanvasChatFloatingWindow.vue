@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nFloatingWindow, N8nText } from '@n8n/design-system';
@@ -24,6 +24,8 @@ const chatHubPanelStore = useChatHubPanelStore();
 const isPoppedOut = computed(() => chatHubPanelStore.isPoppedOut);
 
 const canvasChatHubRef = ref<InstanceType<typeof CanvasChatHubPanel>>();
+const floatingWindowRef =
+	useTemplateRef<InstanceType<typeof N8nFloatingWindow>>('floatingWindowRef');
 const canPopOut = computed(() => window.parent === window);
 
 const floatingWindowState = useStorage<{
@@ -54,10 +56,13 @@ const floatingWindowPosition = computed(() => {
 });
 
 const CHAT_HUB_DEFAULT_WIDTH = 560;
+const CHAT_HUB_DEFAULT_HEIGHT = 700;
 const floatingWindowWidth = computed(
 	() => floatingWindowState.value.width ?? CHAT_HUB_DEFAULT_WIDTH,
 );
-const floatingWindowHeight = computed(() => floatingWindowState.value.height ?? 700);
+const floatingWindowHeight = computed(
+	() => floatingWindowState.value.height ?? CHAT_HUB_DEFAULT_HEIGHT,
+);
 
 function onFloatingWindowMove(pos: { x: number; y: number }) {
 	floatingWindowState.value = { ...floatingWindowState.value, x: pos.x, y: pos.y };
@@ -69,6 +74,17 @@ function onFloatingWindowResize(size: { width: number; height: number }) {
 		width: size.width,
 		height: size.height,
 	};
+}
+
+function onResetPosition() {
+	if (isPoppedOut.value) return;
+
+	floatingWindowState.value = {};
+	const origin = getCanvasOrigin();
+	floatingWindowRef.value?.resetPosition(
+		{ x: origin.x + CANVAS_MARGIN, y: origin.y + CANVAS_MARGIN },
+		{ width: CHAT_HUB_DEFAULT_WIDTH, height: CHAT_HUB_DEFAULT_HEIGHT },
+	);
 }
 
 // Focus input when mounted (no slide transition to trigger @after-enter)
@@ -91,6 +107,7 @@ defineExpose({ focusInput, canvasChatHubRef });
 
 <template>
 	<N8nFloatingWindow
+		ref="floatingWindowRef"
 		:width="floatingWindowWidth"
 		:height="floatingWindowHeight"
 		:min-width="400"
@@ -101,6 +118,7 @@ defineExpose({ focusInput, canvasChatHubRef });
 		@close="emit('close')"
 		@move="onFloatingWindowMove"
 		@resize="onFloatingWindowResize"
+		@header-double-click="onResetPosition"
 	>
 		<template #header-icon>
 			<ChatAgentAvatar :agent="null" size="sm" />

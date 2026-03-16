@@ -23,6 +23,7 @@ const emit = defineEmits<{
 	close: [];
 	resize: [{ width: number; height: number }];
 	move: [{ x: number; y: number }];
+	'header-double-click': [];
 }>();
 
 defineSlots<{
@@ -73,6 +74,25 @@ function centerInViewport() {
 	);
 	x.value = pos.x;
 	y.value = pos.y;
+}
+
+function resetPosition(
+	position: { x: number; y: number },
+	size: { width: number; height: number },
+) {
+	currentWidth.value = size.width;
+	currentHeight.value = size.height;
+
+	const pos = clampPosition(position.x, position.y, currentWidth.value, currentHeight.value);
+	x.value = pos.x;
+	y.value = pos.y;
+
+	emit('resize', { width: currentWidth.value, height: currentHeight.value });
+	emit('move', { x: x.value, y: y.value });
+}
+
+function onHeaderDoubleClick() {
+	emit('header-double-click');
 }
 
 // --- Drag handlers ---
@@ -219,6 +239,8 @@ onBeforeUnmount(() => {
 	document.removeEventListener('mousemove', onResizeMouseMove);
 	document.removeEventListener('mouseup', onResizeMouseUp);
 });
+
+defineExpose({ resetPosition });
 </script>
 
 <template>
@@ -268,7 +290,7 @@ onBeforeUnmount(() => {
 			@mousedown="onResizeMouseDown('sw', $event)"
 		/>
 
-		<div :class="$style.header" @mousedown="onHeaderMouseDown">
+		<div :class="$style.header" @mousedown="onHeaderMouseDown" @dblclick="onHeaderDoubleClick">
 			<div :class="$style.headerLeft">
 				<slot name="header-icon" />
 				<slot name="header" />
