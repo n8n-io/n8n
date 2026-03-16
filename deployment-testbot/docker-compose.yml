@@ -11,6 +11,11 @@ services:
       - 5432:5432
     tmpfs:
       - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   n8n:
     build:
@@ -18,7 +23,8 @@ services:
       dockerfile: deployment-testbot/Dockerfile
     container_name: testbot-n8n
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "5678:5678"
     environment:
