@@ -66,7 +66,7 @@
 			"groupName": "TypeScript"
 		},
 		{
-			"description": "Group Workflow script (.github/scripts) dependencies"
+			"description": "Group Workflow script (.github/scripts) dependencies",
 			"matchFileNames": [".github/scripts/package.json"],
 			"groupName": "Workflow script dependencies"
 		}
