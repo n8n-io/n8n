@@ -112,6 +112,7 @@ describe('WorkflowPreview', () => {
 					canOpenNDV: true,
 					hideNodeIssues: false,
 					projectId: 'test-project-id',
+					tidyUp: false,
 				}),
 				'*',
 			);
@@ -155,6 +156,7 @@ describe('WorkflowPreview', () => {
 					executionMode: '',
 					canOpenNDV: true,
 					projectId: 'test-project-id',
+					tidyUp: false,
 				}),
 				'*',
 			);
@@ -185,6 +187,7 @@ describe('WorkflowPreview', () => {
 					executionMode: '',
 					canOpenNDV: true,
 					projectId: 'test-project-id',
+					tidyUp: false,
 				}),
 				'*',
 			);
@@ -223,6 +226,7 @@ describe('WorkflowPreview', () => {
 					canOpenNDV: true,
 					hideNodeIssues: false,
 					projectId: 'test-project-id',
+					tidyUp: false,
 				}),
 				'*',
 			);
@@ -260,6 +264,7 @@ describe('WorkflowPreview', () => {
 					canOpenNDV: false,
 					hideNodeIssues: false,
 					projectId: 'test-project-id',
+					tidyUp: false,
 				}),
 				'*',
 			);

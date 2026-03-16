@@ -1,0 +1,88 @@
+import { Config, Env } from '../decorators';
+
+@Config
+export class InstanceAiConfig {
+	/** LLM model in provider/model format (e.g. "anthropic/claude-sonnet-4-5"). */
+	@Env('N8N_INSTANCE_AI_MODEL')
+	model: string = 'anthropic/claude-sonnet-4-5';
+
+	/** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:1234/v1" for LM Studio). */
+	@Env('N8N_INSTANCE_AI_MODEL_URL')
+	modelUrl: string = '';
+
+	/** API key for the custom model endpoint (optional — some local servers don't require one). */
+	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
+	modelApiKey: string = '';
+
+	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
+	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
+	mcpServers: string = '';
+
+	/** Number of recent messages to include in context. */
+	@Env('N8N_INSTANCE_AI_LAST_MESSAGES')
+	lastMessages: number = 20;
+
+	/** Embedder model for semantic recall (empty = disabled). */
+	@Env('N8N_INSTANCE_AI_EMBEDDER_MODEL')
+	embedderModel: string = '';
+
+	/** Number of semantically similar messages to retrieve. */
+	@Env('N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K')
+	semanticRecallTopK: number = 5;
+
+	/** Agent response timeout in milliseconds. */
+	@Env('N8N_INSTANCE_AI_TIMEOUT')
+	timeout: number = 120_000;
+
+	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
+	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
+	subAgentMaxSteps: number = 100;
+
+	/** Enable Chrome DevTools MCP for browser-assisted credential setup. */
+	@Env('N8N_INSTANCE_AI_BROWSER_MCP')
+	browserMcp: boolean = false;
+
+	/** Enable sandbox for code execution. When true, the agent can run shell commands and code. */
+	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
+	sandboxEnabled: boolean = false;
+
+	/** Sandbox provider: 'daytona' for isolated Docker containers, 'local' for direct host execution (dev only). */
+	@Env('N8N_INSTANCE_AI_SANDBOX_PROVIDER')
+	sandboxProvider: string = 'daytona';
+
+	/** Daytona API URL (e.g. "http://localhost:3000/api"). */
+	@Env('DAYTONA_API_URL')
+	daytonaApiUrl: string = '';
+
+	/** Daytona API key for authentication. */
+	@Env('DAYTONA_API_KEY')
+	daytonaApiKey: string = '';
+
+	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
+	@Env('N8N_INSTANCE_AI_SANDBOX_IMAGE')
+	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
+
+	/** Default command timeout in the sandbox (milliseconds). */
+	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
+	sandboxTimeout: number = 300_000;
+
+	/** Brave Search API key for web search. No key = search + research agent disabled. */
+	@Env('INSTANCE_AI_BRAVE_SEARCH_API_KEY')
+	braveSearchApiKey: string = '';
+
+	/** SearXNG instance URL for web search. Defaults to "http://searxng:8080" (standard Docker Compose service name). Set to empty string to disable. No API key needed. */
+	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
+	searxngUrl: string = 'http://searxng:8080';
+
+	/** Restrict filesystem access to this directory path. Empty = full filesystem access (reads any path the n8n process can access). */
+	@Env('N8N_INSTANCE_AI_FILESYSTEM_PATH')
+	filesystemPath: string = '';
+
+	/** API key for the filesystem gateway daemon. When set, enables the gateway endpoint for remote filesystem access. */
+	@Env('N8N_INSTANCE_AI_GATEWAY_API_KEY')
+	gatewayApiKey: string = '';
+
+	/** Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. */
+	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
+	threadTtlDays: number = 90;
+}

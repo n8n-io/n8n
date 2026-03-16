@@ -1,0 +1,687 @@
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
+import { v4 as uuidv4 } from 'uuid';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useToast } from '@/app/composables/useToast';
+import { ResponseError } from '@n8n/rest-api-client';
+import { instanceAiEventSchema, isSafeObjectKey } from '@n8n/api-types';
+import { postMessage, postCancel, postCancelTask, postConfirmation } from './instanceAi.api';
+import {
+	fetchThreads as fetchThreadsApi,
+	fetchThreadMessages as fetchThreadMessagesApi,
+	fetchThreadStatus as fetchThreadStatusApi,
+} from './instanceAi.memory.api';
+import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
+import { useResourceRegistry } from './useResourceRegistry';
+import { NEW_CONVERSATION_TITLE } from './constants';
+import type {
+	InstanceAiAttachment,
+	InstanceAiEvent,
+	InstanceAiMessage,
+	InstanceAiAgentNode,
+	InstanceAiThreadSummary,
+	InstanceAiSSEConnectionState,
+} from '@n8n/api-types';
+
+// Module-level EventSource reference — not in reactive state (not serializable,
+// not needed for rendering, wrapping in a reactive proxy causes issues).
+let eventSource: EventSource | null = null;
+
+// Module-level reducer state storage — kept outside Vue reactivity.
+import type { AgentRunState } from '@n8n/api-types';
+let runStateByGroupId: Record<string, AgentRunState> = {};
+let groupIdByRunId: Record<string, string> = {};
+
+// SSE connection generation — incremented on every connectSSE() call.
+// Stale EventSource instances from previous threads discard events.
+let sseGeneration = 0;
+
+export const useInstanceAiStore = defineStore('instanceAi', () => {
+	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
+	const toast = useToast();
+
+	// --- State ---
+	const currentThreadId = ref<string>(uuidv4());
+	const threads = ref<InstanceAiThreadSummary[]>([]);
+	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
+	const lastEventIdByThread = ref<Record<string, number>>({});
+	const activeRunId = ref<string | null>(null);
+	const messages = ref<InstanceAiMessage[]>([]);
+	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
+	const debugMode = ref(false);
+	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
+	const amendContext = ref<{ agentId: string; role: string } | null>(null);
+	const MAX_DEBUG_EVENTS = 1000;
+
+	// --- Computed ---
+	const isStreaming = computed(() => activeRunId.value !== null);
+	const hasMessages = computed(() => messages.value.length > 0);
+	const isLocalGatewayEnabled = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.localGateway === true,
+	);
+	const isGatewayConnected = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.gatewayConnected === true,
+	);
+	const gatewayDirectory = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.gatewayDirectory ?? null,
+	);
+	const localGatewayFallbackDirectory = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayFallbackDirectory ?? null,
+	);
+	const activeDirectory = computed(
+		() => gatewayDirectory.value ?? localGatewayFallbackDirectory.value,
+	);
+
+	// Resource registry — maps known resource names to their types & IDs
+	const { registry: resourceRegistry } = useResourceRegistry(() => messages.value);
+
+	/** The latest task list — scans all messages backwards since tasks persist across runs. */
+	const currentTasks = computed(() => {
+		for (let i = messages.value.length - 1; i >= 0; i--) {
+			const tasks = messages.value[i].agentTree?.tasks;
+			if (tasks) return tasks;
+		}
+		return null;
+	});
+
+	/**
+	 * Derive a single contextual follow-up suggestion from the last completed
+	 * assistant message. Shown as the input placeholder + Tab to autocomplete.
+	 */
+	const contextualSuggestion = computed((): string | null => {
+		if (isStreaming.value) return null;
+
+		// Find last assistant message
+		const lastAssistant = [...messages.value].reverse().find((m) => m.role === 'assistant');
+		if (!lastAssistant || lastAssistant.isStreaming) return null;
+
+		const tree = lastAssistant.agentTree;
+		if (!tree) return null;
+
+		// Workflow builder completed
+		const builderChild = tree.children.find((c) => c.role === 'workflow-builder');
+		if (builderChild) {
+			return builderChild.status === 'error' || builderChild.status === 'cancelled'
+				? 'Try building the workflow again with different settings'
+				: 'Add error handling to the workflow';
+		}
+
+		// Data table manager completed
+		const dataChild = tree.children.find((c) => c.role === 'data-table-manager');
+		if (dataChild) {
+			return 'Query the data table to show recent entries';
+		}
+
+		return null;
+	});
+
+	// --- Event reducer (delegated to pure module) ---
+
+	// --- SSE lifecycle ---
+
+	function onSSEMessage(sseEvent: MessageEvent): void {
+		// Track last event ID per thread (for reconnection)
+		if (sseEvent.lastEventId) {
+			lastEventIdByThread.value[currentThreadId.value] = Number(sseEvent.lastEventId);
+		}
+		try {
+			const parsed = instanceAiEventSchema.safeParse(JSON.parse(String(sseEvent.data)));
+			if (!parsed.success) {
+				console.warn('[InstanceAI] Invalid SSE event, skipping:', parsed.error.message);
+				return;
+			}
+			// Push to debug event buffer (capped)
+			debugEvents.value.push({
+				timestamp: new Date().toISOString(),
+				event: parsed.data,
+			});
+			if (debugEvents.value.length > MAX_DEBUG_EVENTS) {
+				debugEvents.value.splice(0, debugEvents.value.length - MAX_DEBUG_EVENTS);
+			}
+			const previousRunId = activeRunId.value;
+			activeRunId.value = reduceEvent(
+				{
+					messages: messages.value,
+					activeRunId: activeRunId.value,
+					runStateByGroupId,
+					groupIdByRunId,
+				},
+				parsed.data,
+			);
+			// When a run finishes, refresh thread list to pick up Mastra-generated titles
+			if (previousRunId && activeRunId.value === null) {
+				void loadThreads();
+			}
+		} catch {
+			// Malformed JSON — skip
+		}
+	}
+
+	/**
+	 * Handle run-sync control frames — full state snapshot from the backend.
+	 * Replaces the agent tree AND rebuilds the group-level run state so
+	 * subsequent live events have state to reduce into. Also restores the
+	 * runId → groupId mapping so late events from any run in the group route
+	 * to the correct message.
+	 */
+	function onRunSync(sseEvent: MessageEvent): void {
+		try {
+			const data = JSON.parse(String(sseEvent.data)) as {
+				runId: string;
+				messageGroupId?: string;
+				runIds?: string[];
+				agentTree: InstanceAiAgentNode;
+				status: string;
+			};
+
+			const groupId = data.messageGroupId ?? data.runId;
+			if (!isSafeObjectKey(data.runId) || !isSafeObjectKey(groupId)) return;
+			const rebuiltRunState = rebuildRunStateFromTree(data.agentTree);
+			if (!rebuiltRunState) return;
+
+			// Find the message to update — by messageGroupId first, then runId
+			let msg: InstanceAiMessage | undefined;
+			if (data.messageGroupId) {
+				msg = messages.value.find(
+					(m) => m.messageGroupId === data.messageGroupId && m.role === 'assistant',
+				);
+			}
+			if (!msg) {
+				msg = messages.value.find((m) => m.runId === data.runId);
+			}
+
+			if (msg) {
+				msg.agentTree = data.agentTree;
+				msg.runId = data.runId;
+				msg.messageGroupId = groupId;
+				const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
+				// For background-only groups, the orchestrator already finished.
+				// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
+				// computed correctly detects active children and shows the indicator.
+				msg.isStreaming = isOrchestratorLive;
+				// Only the active/suspended orchestrator run should claim activeRunId.
+				// Background-only groups update their message but don't override the
+				// global active run, which controls input state and cancel buttons.
+				if (isOrchestratorLive) {
+					activeRunId.value = data.runId;
+				}
+
+				// Rebuild normalized run state keyed by groupId
+				runStateByGroupId[groupId] = rebuiltRunState;
+
+				// Restore runId → groupId mappings for ALL runs in the group.
+				// This ensures late events from older follow-up runs still route
+				// to this message after reconnect.
+				if (data.runIds) {
+					for (const rid of data.runIds) {
+						if (!isSafeObjectKey(rid)) continue;
+						groupIdByRunId[rid] = groupId;
+					}
+				}
+				// Always register the current runId
+				groupIdByRunId[data.runId] = groupId;
+			}
+		} catch {
+			// Malformed run-sync — skip
+		}
+	}
+
+	function connectSSE(threadId?: string): void {
+		const tid = threadId ?? currentThreadId.value;
+		if (eventSource) {
+			closeSSE();
+		}
+		sseState.value = 'connecting';
+
+		// Increment generation — stale EventSource handlers will check this
+		const gen = ++sseGeneration;
+		const capturedThreadId = tid;
+
+		const lastEventId = lastEventIdByThread.value[tid];
+		const baseUrl = rootStore.restApiContext.baseUrl;
+		const url =
+			lastEventId !== null && lastEventId !== undefined
+				? `${baseUrl}/instance-ai/events/${tid}?lastEventId=${String(lastEventId)}`
+				: `${baseUrl}/instance-ai/events/${tid}`;
+
+		eventSource = new EventSource(url, { withCredentials: true });
+
+		eventSource.onopen = () => {
+			if (gen !== sseGeneration) return;
+			sseState.value = 'connected';
+		};
+
+		eventSource.onmessage = (ev: MessageEvent) => {
+			// Guard: discard events from stale connections or wrong threads
+			if (gen !== sseGeneration || capturedThreadId !== currentThreadId.value) return;
+			onSSEMessage(ev);
+		};
+
+		// Listen for run-sync control frames (named SSE event, no id: field)
+		eventSource.addEventListener('run-sync', (ev: MessageEvent) => {
+			if (gen !== sseGeneration || capturedThreadId !== currentThreadId.value) return;
+			onRunSync(ev);
+		});
+
+		eventSource.onerror = () => {
+			if (gen !== sseGeneration) return;
+			// EventSource auto-reconnects. Mark as reconnecting if not already closed.
+			if (eventSource?.readyState === EventSource.CONNECTING) {
+				sseState.value = 'reconnecting';
+			} else if (eventSource?.readyState === EventSource.CLOSED) {
+				sseState.value = 'disconnected';
+				eventSource = null;
+			}
+		};
+	}
+
+	function closeSSE(): void {
+		if (eventSource) {
+			eventSource.close();
+			eventSource = null;
+		}
+		sseState.value = 'disconnected';
+	}
+
+	function switchThread(threadId: string): void {
+		// 1. Close current SSE connection
+		closeSSE();
+		// 2. Clear store state
+		messages.value = [];
+		activeRunId.value = null;
+		debugEvents.value = [];
+		runStateByGroupId = {};
+		groupIdByRunId = {};
+		// 3. Switch thread
+		currentThreadId.value = threadId;
+		// 4. Load rich historical messages first, then connect SSE after.
+		//    loadHistoricalMessages sets the SSE cursor (nextEventId) so SSE
+		//    only receives events that arrived AFTER the historical snapshot.
+		delete lastEventIdByThread.value[threadId];
+		void loadHistoricalMessages(threadId).then(() => {
+			void loadThreadStatus(threadId);
+			connectSSE(threadId);
+		});
+	}
+
+	// --- Actions ---
+
+	function newThread(): string {
+		const newThreadId = uuidv4();
+		closeSSE();
+		messages.value = [];
+		activeRunId.value = null;
+		debugEvents.value = [];
+		runStateByGroupId = {};
+		groupIdByRunId = {};
+		currentThreadId.value = newThreadId;
+
+		threads.value.unshift({
+			id: newThreadId,
+			title: NEW_CONVERSATION_TITLE,
+			createdAt: new Date().toISOString(),
+		});
+
+		connectSSE(newThreadId);
+		return newThreadId;
+	}
+
+	function deleteThread(threadId: string): { currentThreadId: string; wasActive: boolean } {
+		const wasActive = threadId === currentThreadId.value;
+
+		// Remove thread from list
+		threads.value = threads.value.filter((t) => t.id !== threadId);
+
+		// Clean up event cursor
+		delete lastEventIdByThread.value[threadId];
+
+		if (wasActive) {
+			if (threads.value.length > 0) {
+				// Switch to first remaining thread
+				switchThread(threads.value[0].id);
+			} else {
+				// No threads left — create a new one
+				const freshId = uuidv4();
+				closeSSE();
+				messages.value = [];
+				activeRunId.value = null;
+				debugEvents.value = [];
+				runStateByGroupId = {};
+				groupIdByRunId = {};
+				currentThreadId.value = freshId;
+				threads.value.push({
+					id: freshId,
+					title: NEW_CONVERSATION_TITLE,
+					createdAt: new Date().toISOString(),
+				});
+				connectSSE(freshId);
+			}
+		}
+
+		return { currentThreadId: currentThreadId.value, wasActive };
+	}
+
+	async function loadThreads(): Promise<void> {
+		try {
+			const result = await fetchThreadsApi(rootStore.restApiContext);
+			// Merge server threads into local list, preserving any local-only threads
+			// (e.g. a freshly created thread that hasn't been persisted yet)
+			const serverIds = new Set(result.threads.map((t) => t.id));
+			const localOnly = threads.value.filter((t) => !serverIds.has(t.id));
+			const serverThreads: InstanceAiThreadSummary[] = result.threads.map((t) => ({
+				id: t.id,
+				title: t.title || NEW_CONVERSATION_TITLE,
+				createdAt: t.createdAt,
+			}));
+			threads.value = [...localOnly, ...serverThreads];
+		} catch {
+			// Silently ignore — threads will remain client-side only
+		}
+	}
+
+	async function loadHistoricalMessages(threadId: string): Promise<void> {
+		try {
+			const result = await fetchThreadMessagesApi(rootStore.restApiContext, threadId, 100);
+			// Only hydrate if we're still on the same thread and SSE hasn't delivered messages
+			if (currentThreadId.value !== threadId || messages.value.length > 0) return;
+			// Backend now returns InstanceAiMessage[] directly — no conversion needed
+			if (result.messages.length > 0) {
+				messages.value = result.messages;
+
+				// Rebuild reducer routing state from historical messages so SSE
+				// replay events (which arrive before run-sync) can reduce into
+				// existing run states instead of being dropped or creating phantoms.
+				for (const msg of result.messages) {
+					if (msg.role !== 'assistant' || !msg.agentTree) continue;
+					const groupId = msg.messageGroupId ?? msg.runId;
+					if (!groupId || !isSafeObjectKey(groupId)) continue;
+					const rebuiltRunState = rebuildRunStateFromTree(msg.agentTree);
+					if (!rebuiltRunState) continue;
+					runStateByGroupId[groupId] = rebuiltRunState;
+					// Register ALL runIds in the group — not just the latest one.
+					// This ensures late events from older runs in a merged A→B→C
+					// chain still route to the correct message after restore.
+					if (msg.runIds) {
+						for (const rid of msg.runIds) {
+							if (!isSafeObjectKey(rid)) continue;
+							groupIdByRunId[rid] = groupId;
+						}
+					}
+					if (msg.runId && isSafeObjectKey(msg.runId)) groupIdByRunId[msg.runId] = groupId;
+				}
+			}
+			// Set SSE cursor to skip past events already covered by historical messages.
+			// This prevents duplicate messages when SSE replays in-memory events.
+			if (result.nextEventId !== null && result.nextEventId !== undefined) {
+				lastEventIdByThread.value[threadId] = result.nextEventId - 1;
+			}
+		} catch {
+			// Silently ignore — messages will appear if SSE delivers them
+		}
+	}
+
+	async function loadThreadStatus(threadId: string): Promise<void> {
+		try {
+			const status = await fetchThreadStatusApi(rootStore.restApiContext, threadId);
+			if (currentThreadId.value !== threadId) return;
+
+			const hasActivity =
+				status.hasActiveRun || status.isSuspended || status.backgroundTasks.length > 0;
+			if (!hasActivity) return;
+
+			const lastAssistant = [...messages.value].reverse().find((m) => m.role === 'assistant');
+			if (!lastAssistant) return;
+
+			if (status.hasActiveRun || status.isSuspended) {
+				activeRunId.value = lastAssistant.runId ?? null;
+				lastAssistant.isStreaming = status.hasActiveRun;
+			}
+
+			// Background task visibility is handled by the run-sync control frame
+			// that is sent on SSE connect. No need to inject children directly here.
+		} catch {
+			// Silently ignore
+		}
+	}
+
+	async function sendMessage(message: string, attachments?: InstanceAiAttachment[]): Promise<void> {
+		// Clear amend context on new message
+		amendContext.value = null;
+
+		// 1. Add user message optimistically
+		const userMessage: InstanceAiMessage = {
+			id: uuidv4(),
+			role: 'user',
+			createdAt: new Date().toISOString(),
+			content: message,
+			reasoning: '',
+			isStreaming: false,
+			attachments: attachments && attachments.length > 0 ? attachments : undefined,
+		};
+		messages.value.push(userMessage);
+
+		// 2. POST to backend — returns { runId }
+		// Thread title is generated by Mastra asynchronously after the agent responds.
+		// activeRunId is set by the run-start event arriving over SSE, NOT by the POST response.
+		try {
+			await postMessage(
+				rootStore.restApiContext,
+				currentThreadId.value,
+				message,
+				researchMode.value || undefined,
+				attachments,
+			);
+		} catch (error: unknown) {
+			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
+			if (status === 409) {
+				toast.showError(
+					new Error('Agent is still working on your previous message'),
+					'Cannot send message',
+				);
+			} else if (status === 400) {
+				toast.showError(new Error('Message cannot be empty'), 'Invalid message');
+			} else {
+				toast.showError(new Error('Failed to send message. Try again.'), 'Send failed');
+			}
+			// Remove the optimistic user message on failure
+			const idx = messages.value.indexOf(userMessage);
+			if (idx !== -1) {
+				messages.value.splice(idx, 1);
+			}
+		}
+	}
+
+	async function cancelRun(): Promise<void> {
+		if (!activeRunId.value) return;
+		try {
+			await postCancel(rootStore.restApiContext, currentThreadId.value);
+			// Don't clear activeRunId here — wait for the run-finish event via SSE
+		} catch {
+			toast.showError(new Error('Failed to cancel. Try again.'), 'Cancel failed');
+		}
+	}
+
+	/** Cancel a specific background task. */
+	async function cancelBackgroundTask(taskId: string): Promise<void> {
+		try {
+			await postCancelTask(rootStore.restApiContext, currentThreadId.value, taskId);
+		} catch {
+			toast.showError(new Error('Failed to cancel task. Try again.'), 'Cancel failed');
+		}
+	}
+
+	/** Stop an agent and prime the input for amend instructions. */
+	function amendAgent(agentId: string, role: string, taskId?: string): void {
+		if (taskId) {
+			void cancelBackgroundTask(taskId);
+		} else {
+			void cancelRun();
+		}
+		amendContext.value = { agentId, role };
+	}
+
+	async function confirmAction(
+		requestId: string,
+		approved: boolean,
+		credentialId?: string,
+		credentials?: Record<string, string>,
+		autoSetup?: { credentialType: string },
+		userInput?: string,
+	): Promise<void> {
+		try {
+			await postConfirmation(
+				rootStore.restApiContext,
+				requestId,
+				approved,
+				credentialId,
+				credentials,
+				autoSetup,
+				userInput,
+			);
+		} catch {
+			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
+		}
+	}
+
+	function toggleResearchMode(): void {
+		researchMode.value = !researchMode.value;
+		localStorage.setItem('instanceAi.researchMode', String(researchMode.value));
+	}
+
+	function copyFullTrace(): string {
+		// Collapse consecutive text-delta / reasoning-delta events from the same agent
+		// into single entries so traces are compact and readable.
+		const collapsed: Array<{ timestamp: string; event: InstanceAiEvent }> = [];
+		let pendingText: { timestamp: string; event: InstanceAiEvent; buffer: string } | null = null;
+		let pendingReasoning: { timestamp: string; event: InstanceAiEvent; buffer: string } | null =
+			null;
+
+		for (const entry of debugEvents.value) {
+			const { event } = entry;
+
+			if (event.type === 'text-delta') {
+				if (pendingText && pendingText.event.agentId === event.agentId) {
+					pendingText.buffer += event.payload.text;
+				} else {
+					if (pendingText) {
+						(pendingText.event as InstanceAiEvent & { type: 'text-delta' }).payload.text =
+							pendingText.buffer;
+						collapsed.push(pendingText);
+					}
+					pendingText = {
+						timestamp: entry.timestamp,
+						event: { ...event, payload: { ...event.payload } },
+						buffer: event.payload.text,
+					};
+				}
+				continue;
+			}
+
+			if (event.type === 'reasoning-delta') {
+				if (pendingReasoning && pendingReasoning.event.agentId === event.agentId) {
+					pendingReasoning.buffer += event.payload.text;
+				} else {
+					if (pendingReasoning) {
+						(pendingReasoning.event as InstanceAiEvent & { type: 'reasoning-delta' }).payload.text =
+							pendingReasoning.buffer;
+						collapsed.push(pendingReasoning);
+					}
+					pendingReasoning = {
+						timestamp: entry.timestamp,
+						event: { ...event, payload: { ...event.payload } },
+						buffer: event.payload.text,
+					};
+				}
+				continue;
+			}
+
+			// Non-delta event — flush any pending buffers
+			if (pendingText) {
+				(pendingText.event as InstanceAiEvent & { type: 'text-delta' }).payload.text =
+					pendingText.buffer;
+				collapsed.push(pendingText);
+				pendingText = null;
+			}
+			if (pendingReasoning) {
+				(pendingReasoning.event as InstanceAiEvent & { type: 'reasoning-delta' }).payload.text =
+					pendingReasoning.buffer;
+				collapsed.push(pendingReasoning);
+				pendingReasoning = null;
+			}
+			collapsed.push(entry);
+		}
+		// Flush remaining
+		if (pendingText) {
+			(pendingText.event as InstanceAiEvent & { type: 'text-delta' }).payload.text =
+				pendingText.buffer;
+			collapsed.push(pendingText);
+		}
+		if (pendingReasoning) {
+			(pendingReasoning.event as InstanceAiEvent & { type: 'reasoning-delta' }).payload.text =
+				pendingReasoning.buffer;
+			collapsed.push(pendingReasoning);
+		}
+
+		return JSON.stringify(
+			{
+				threadId: currentThreadId.value,
+				exportedAt: new Date().toISOString(),
+				messages: messages.value,
+				events: collapsed,
+			},
+			null,
+			2,
+		);
+	}
+
+	function renameThread(threadId: string, title: string): void {
+		const thread = threads.value.find((t) => t.id === threadId);
+		if (thread) {
+			thread.title = title;
+		}
+	}
+
+	return {
+		// State
+		currentThreadId,
+		threads,
+		sseState,
+		lastEventIdByThread,
+		activeRunId,
+		messages,
+		debugEvents,
+		debugMode,
+		researchMode,
+		amendContext,
+		// Computed
+		isStreaming,
+		hasMessages,
+		isLocalGatewayEnabled,
+		isGatewayConnected,
+		gatewayDirectory,
+		localGatewayFallbackDirectory,
+		activeDirectory,
+		contextualSuggestion,
+		currentTasks,
+		resourceRegistry,
+		// Actions
+		newThread,
+		deleteThread,
+		renameThread,
+		switchThread,
+		loadThreads,
+		loadHistoricalMessages,
+		loadThreadStatus,
+		sendMessage,
+		cancelRun,
+		cancelBackgroundTask,
+		amendAgent,
+		toggleResearchMode,
+		confirmAction,
+		copyFullTrace,
+		connectSSE,
+		closeSSE,
+	};
+});

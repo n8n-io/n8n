@@ -1,0 +1,101 @@
+<script lang="ts" setup>
+import { N8nIcon, N8nInput, N8nInputNumber, N8nInputLabel } from '@n8n/design-system';
+import { ElSwitch } from 'element-plus';
+import { useI18n } from '@n8n/i18n';
+import { useSettingsField } from './useSettingsField';
+
+const i18n = useI18n();
+const { store, getString, getNumber, getBool } = useSettingsField();
+</script>
+
+<template>
+	<div :class="$style.section">
+		<div :class="$style.sectionHeader">
+			<N8nIcon icon="sliders-horizontal" size="small" />
+			{{ i18n.baseText('instanceAi.settings.section.advanced') }}
+		</div>
+
+		<N8nInputLabel
+			:label="i18n.baseText('instanceAi.settings.timeout.label')"
+			:bold="false"
+			size="small"
+		>
+			<N8nInputNumber
+				:model-value="getNumber('timeout') ?? 120000"
+				size="small"
+				:min="0"
+				:step="10000"
+				@update:model-value="store.setField('timeout', $event ?? 120000)"
+			/>
+		</N8nInputLabel>
+
+		<N8nInputLabel
+			:label="i18n.baseText('instanceAi.settings.subAgentMaxSteps.label')"
+			:bold="false"
+			size="small"
+		>
+			<N8nInputNumber
+				:model-value="getNumber('subAgentMaxSteps') ?? 100"
+				size="small"
+				:min="1"
+				@update:model-value="store.setField('subAgentMaxSteps', $event ?? 100)"
+			/>
+		</N8nInputLabel>
+
+		<div :class="$style.switchRow">
+			<span :class="$style.switchLabel">{{
+				i18n.baseText('instanceAi.settings.browserMcp.label')
+			}}</span>
+			<ElSwitch
+				:model-value="getBool('browserMcp')"
+				@update:model-value="store.setField('browserMcp', Boolean($event))"
+			/>
+		</div>
+
+		<N8nInputLabel
+			:label="i18n.baseText('instanceAi.settings.mcpServers.label')"
+			:bold="false"
+			size="small"
+		>
+			<N8nInput
+				:model-value="getString('mcpServers')"
+				size="small"
+				type="textarea"
+				:rows="3"
+				:placeholder="i18n.baseText('instanceAi.settings.mcpServers.placeholder')"
+				@update:model-value="store.setField('mcpServers', $event)"
+			/>
+		</N8nInputLabel>
+	</div>
+</template>
+
+<style lang="scss" module>
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.sectionHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+	padding-bottom: var(--spacing--4xs);
+	border-bottom: var(--border);
+}
+
+.switchRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing--4xs) 0;
+}
+
+.switchLabel {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+}
+</style>

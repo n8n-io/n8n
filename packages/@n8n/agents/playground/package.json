@@ -1,0 +1,25 @@
+{
+  "name": "@n8n/agents-playground",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @n8n/agents build && nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@n8n/agents": "file:..",
+    "esbuild": "^0.25.0",
+    "marked": "^15.0.0",
+    "monaco-editor": "^0.52.0",
+    "nuxt": "^3.17.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@nuxtjs/tailwindcss": "^6.12.0",
+    "@tailwindcss/typography": "^0.5.0",
+    "typescript": "^5.7.0"
+  }
+}

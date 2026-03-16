@@ -1,0 +1,54 @@
+# Performance testing compose — clean database + InfluxDB for k6 results
+#
+# Usage:
+#   pnpm dev:perf   # Start with observability
+#   pnpm perf       # Run k6 tests
+#   pnpm perf:down  # Tear down
+#
+# Grafana dashboard: http://localhost:3300/d/k6-perf (via docker-compose.o11y.yml)
+
+networks:
+  engine:
+    name: engine-network
+
+services:
+  postgres-perf:
+    image: postgres:16-alpine
+    networks: [engine]
+    environment:
+      POSTGRES_DB: engine_perf
+      POSTGRES_USER: engine
+      POSTGRES_PASSWORD: engine
+    ports:
+      - '5435:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U engine']
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  api-perf:
+    build:
+      context: ../../../
+      dockerfile: packages/@n8n/engine/Dockerfile
+      target: dev
+    networks: [engine]
+    ports:
+      - '3101:3101'
+    environment:
+      DATABASE_URL: postgres://engine:engine@postgres-perf:5432/engine_perf
+      PORT: '3101'
+      NODE_ENV: production
+    depends_on:
+      postgres-perf:
+        condition: service_healthy
+
+  influxdb:
+    image: influxdb:1.11
+    networks: [engine]
+    environment:
+      INFLUXDB_DB: k6
+    ports:
+      - '8086:8086'

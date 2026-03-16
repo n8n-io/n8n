@@ -1,0 +1,75 @@
+# Development compose — hot-reload for both backend and frontend
+#
+# Usage:
+#   docker compose up              # Start all services
+#   docker compose up -d postgres  # Just the database
+#
+# URLs:
+#   Frontend: http://localhost:3200
+#   API:      http://localhost:3100
+#   Database: postgres://engine:engine@localhost:5433/engine
+
+networks:
+  engine:
+    name: engine-network
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    networks: [engine]
+    environment:
+      POSTGRES_DB: engine
+      POSTGRES_USER: engine
+      POSTGRES_PASSWORD: engine
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U engine']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    networks: [engine]
+    build:
+      context: ../../../
+      dockerfile: packages/@n8n/engine/Dockerfile
+      target: dev
+    ports:
+      - '3100:3100'
+    environment:
+      DATABASE_URL: postgres://engine:engine@postgres:5432/engine
+      PORT: '3100'
+      NODE_ENV: development
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Mount source for hot-reload via tsx watch
+      - ./src:/app/packages/@n8n/engine/src
+      - ./examples:/app/packages/@n8n/engine/examples
+    restart: unless-stopped
+
+  web:
+    networks: [engine]
+    build:
+      context: ../../../
+      dockerfile: packages/@n8n/engine/Dockerfile
+      target: web
+    ports:
+      - '3200:3200'
+    environment:
+      VITE_API_URL: http://api:3100
+    depends_on:
+      - api
+    volumes:
+      # Mount source for Vite HMR
+      - ./src/web/src:/app/src
+      - ./src/web/index.html:/app/index.html
+      - ./src/web/vite.config.ts:/app/vite.config.ts
+
+volumes:
+  pgdata:

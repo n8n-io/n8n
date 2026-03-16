@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # Engine instances (scaling compose — named services)
+  - job_name: 'engine'
+    dns_sd_configs:
+      - names: ['engine-1', 'engine-2', 'engine-3']
+        type: A
+        port: 3100
+        refresh_interval: 10s
+
+  # Engine instance (dev compose — single 'api' service)
+  - job_name: 'engine-dev'
+    dns_sd_configs:
+      - names: ['api']
+        type: A
+        port: 3100
+        refresh_interval: 10s
+
+  # Redis metrics (only available when scaling compose provides Redis)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']

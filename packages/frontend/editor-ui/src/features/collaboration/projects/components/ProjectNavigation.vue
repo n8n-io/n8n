@@ -10,6 +10,7 @@ import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
 import { useProjectsStore } from '../projects.store';
 import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 
 import { N8nMenuItem, N8nText } from '@n8n/design-system';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -98,6 +99,16 @@ const chat = computed<IMenuItem>(() => ({
 	beta: true,
 }));
 
+const isInstanceAiAvailable = computed(() => settingsStore.isModuleActive('instance-ai'));
+
+const instanceAi = computed<IMenuItem>(() => ({
+	id: 'instance-ai',
+	icon: 'sparkles',
+	label: locale.baseText('projects.menu.instanceAi'),
+	position: 'bottom',
+	route: { to: { name: INSTANCE_AI_VIEW } },
+}));
+
 async function onSourceControlPull() {
 	// Update myProjects for the sidebar display
 	await projectsStore.getMyProjects();
@@ -145,6 +156,13 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'chat'"
 				data-test-id="project-chat-menu-item"
+			/>
+			<N8nMenuItem
+				v-if="isInstanceAiAvailable"
+				:item="instanceAi"
+				:compact="props.collapsed"
+				:active="activeTabId === 'instance-ai'"
+				data-test-id="project-instance-ai-menu-item"
 			/>
 		</div>
 		<N8nText

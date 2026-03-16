@@ -1035,8 +1035,12 @@ defineExpose({
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
 		:connection-radius="60"
-		:pan-on-drag="panningMouseButton"
-		pan-on-scroll
+		:pan-on-drag="suppressInteraction ? false : panningMouseButton"
+		:pan-on-scroll="!suppressInteraction"
+		:zoom-on-scroll="!suppressInteraction"
+		:zoom-on-pinch="!suppressInteraction"
+		:zoom-on-double-click="!suppressInteraction"
+		:prevent-scrolling="!suppressInteraction"
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
 		:min-zoom="0"

@@ -17,11 +17,13 @@ import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
+import { CodeEngineWebhooks } from '@/webhooks/code-engine-webhooks';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
+import type { WebhookRequest } from '@/webhooks/webhook.types';
 
 @Service()
 export abstract class AbstractServer {
@@ -258,6 +260,23 @@ export abstract class AbstractServer {
 
 			// Register a handler
 			this.app.all(`/${this.endpointFormTest}/*path`, testWebhooksRequestHandler);
+
+			// Code-engine test webhooks (checked before regular test webhooks)
+			const codeEngineWebhooks = Container.get(CodeEngineWebhooks);
+			const codeEngineHandler = createWebhookHandlerFor(codeEngineWebhooks);
+
+			this.app.all(
+				`/${this.endpointWebhookTest}/*path`,
+				(req: express.Request<{ path: string | string[] }>, res, next) => {
+					const path = Array.isArray(req.params.path) ? req.params.path.join('/') : req.params.path;
+					if (codeEngineWebhooks.hasPendingWebhook(path)) {
+						void codeEngineHandler(req as WebhookRequest, res);
+					} else {
+						next();
+					}
+				},
+			);
+
 			this.app.all(`/${this.endpointWebhookTest}/*path`, testWebhooksRequestHandler);
 
 			// Register a handler for test MCP servers

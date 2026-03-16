@@ -1,0 +1,84 @@
+{
+  "name": "@n8n/engine",
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "docker compose -f docker-compose.yml -f docker-compose.o11y.yml up -d",
+    "dev:web": "cd src/web && npx vite",
+    "dev:scaling": "docker compose -f docker-compose.scaling.yml -f docker-compose.o11y.yml up -d",
+    "dev:perf": "docker compose -f docker-compose.perf.yml -f docker-compose.o11y.yml up -d",
+    "dev:o11y": "docker compose -f docker-compose.o11y.yml up -d",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "DATABASE_URL=postgres://engine:engine@localhost:5434/engine_test vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "DATABASE_URL=postgres://engine:engine@localhost:5434/engine_test vitest",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "perf": "./perf/run.sh",
+    "perf:light": "k6 run perf/scaling-load.js",
+    "perf:stress": "WORKFLOW_NAME='Stress Test' k6 run perf/scaling-load.js",
+    "perf:scaling": "./perf/run.sh --scaling",
+    "perf:webhook": "k6 run perf/webhook-throughput.js",
+    "perf:latency": "k6 run perf/execution-latency.js",
+    "dev:up": "docker compose -f docker-compose.yml -f docker-compose.o11y.yml up -d --build",
+    "dev:down": "docker compose -f docker-compose.yml -f docker-compose.o11y.yml down",
+    "test:up": "docker compose -f docker-compose.test.yml up -d",
+    "test:down": "docker compose -f docker-compose.test.yml down",
+    "perf:up": "docker compose -f docker-compose.perf.yml -f docker-compose.o11y.yml up -d --build",
+    "perf:down": "docker compose -f docker-compose.perf.yml -f docker-compose.o11y.yml down -v",
+    "scaling:up": "docker compose -f docker-compose.scaling.yml -f docker-compose.o11y.yml up -d --build",
+    "scaling:down": "docker compose -f docker-compose.scaling.yml -f docker-compose.o11y.yml down -v",
+    "down:all": "docker compose -f docker-compose.yml -f docker-compose.o11y.yml down; docker compose -f docker-compose.scaling.yml down; docker compose -f docker-compose.perf.yml down; docker compose -f docker-compose.test.yml down",
+    "db:reset": "docker exec engine-postgres-1 psql -U engine -d engine -c 'TRUNCATE TABLE workflow_step_execution, workflow_execution, webhook, workflow CASCADE;' && docker compose -f docker-compose.scaling.yml restart engine-1 engine-2 engine-3 || docker compose restart api"
+  },
+  "bin": {
+    "engine": "./dist/cli/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk/index.d.ts",
+      "default": "./dist/sdk/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "sdk": [
+        "dist/sdk/index.d.ts"
+      ]
+    }
+  },
+  "dependencies": {
+    "@n8n/agents": "workspace:*",
+    "@n8n/typeorm": "catalog:",
+    "ajv": "^8.18.0",
+    "esbuild": "^0.24.0",
+    "express": "5.1.0",
+    "ioredis": "5.3.2",
+    "nanoid": "catalog:",
+    "pg": "catalog:",
+    "prom-client": "15.1.3",
+    "reflect-metadata": "catalog:",
+    "source-map-support": "^0.5.21",
+    "ts-morph": "catalog:",
+    "uuid": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/express": "catalog:",
+    "@types/source-map-support": "^0.5.10",
+    "@types/supertest": "^6.0.2",
+    "@types/uuid": "catalog:",
+    "rimraf": "catalog:",
+    "supertest": "^7.0.0",
+    "tsx": "catalog:",
+    "vitest": "catalog:"
+  }
+}

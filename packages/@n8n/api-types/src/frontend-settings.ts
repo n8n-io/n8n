@@ -275,6 +275,18 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for instance AI module.
+	 */
+	'instance-ai'?: {
+		enabled: boolean;
+		localGateway: boolean;
+		gatewayConnected: boolean;
+		gatewayDirectory: string | null;
+		localGatewayDisabled: boolean;
+		localGatewayFallbackDirectory: string | null;
+	};
+
+	/**
 	 * Client settings for external secrets module.
 	 */
 	'external-secrets'?: {
