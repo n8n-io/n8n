@@ -19,8 +19,6 @@ All telemetry uses the same format:
 }
 ```
 
-`benchmark_name` is the Playwright test title for Playwright runs, `null` for script-based telemetry.
-
 ## Standard Context Fields
 
 ```typescript
@@ -69,7 +67,7 @@ QA_METRICS_WEBHOOK_PASSWORD
 
 ```sql
 timestamp        TIMESTAMP NOT NULL
-benchmark_name   STRING               -- test title (Playwright) or null (scripts)
+benchmark_name   STRING
 metric_name      STRING NOT NULL
 value            FLOAT64 NOT NULL
 unit             STRING
