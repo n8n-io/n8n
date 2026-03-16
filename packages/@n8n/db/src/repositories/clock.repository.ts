@@ -12,16 +12,16 @@ export class ClockRepository {
 
 	async getServerTime(): Promise<Date> {
 		if (this.globalConfig.database.type === 'postgresdb') {
-			const [{ now }] = (await this.dataSource.query('SELECT CURRENT_TIMESTAMP(3) AS now')) as [
-				{ now: Date },
-			];
+			const [{ now }] = await this.dataSource.query<[{ now: Date }]>(
+				'SELECT CURRENT_TIMESTAMP(3) AS now',
+			);
 			return new Date(now.getTime());
 		}
 
 		// SQLite: use ISO-friendly format directly to avoid JS-side string manipulation
-		const [{ now }] = (await this.dataSource.query(
+		const [{ now }] = await this.dataSource.query<[{ now: string }]>(
 			"SELECT STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'NOW') AS now",
-		)) as [{ now: string }];
+		);
 		const date = new Date(now);
 		if (Number.isNaN(date.getTime())) {
 			throw new UnexpectedError(`Invalid DB server time: ${now}`);
