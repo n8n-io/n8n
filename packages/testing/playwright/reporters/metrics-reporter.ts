@@ -50,6 +50,10 @@ class MetricsReporter implements Reporter {
 
 	async onEnd(): Promise<void> {
 		if (!this.webhookUrl || this.collectedMetrics.length === 0) return;
+		if (!this.webhookUser || !this.webhookPassword) {
+			console.log('[MetricsReporter] QA_METRICS_WEBHOOK_USER/PASSWORD not set, skipping.');
+			return;
+		}
 
 		const payload = {
 			...this.getContext(),

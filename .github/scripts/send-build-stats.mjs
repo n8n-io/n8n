@@ -25,13 +25,15 @@ if (!existsSync(runsDir)) {
 	process.exit(0);
 }
 
-const files = readdirSync(runsDir).filter((f) => f.endsWith('.json'));
+const files = readdirSync(runsDir)
+	.filter((f) => f.endsWith('.json'))
+	.sort();
 if (files.length === 0) {
 	console.error('No summary file found in .turbo/runs/');
 	process.exit(1);
 }
 
-const summary = JSON.parse(readFileSync(join(runsDir, files[0]), 'utf-8'));
+const summary = JSON.parse(readFileSync(join(runsDir, files.at(-1)), 'utf-8'));
 
 const metrics = [];
 

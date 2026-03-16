@@ -291,10 +291,10 @@ export class TelemetryRecorder {
 		const payload = JSON.stringify(this.buildUnifiedPayload(record));
 		const authHeader = `Basic ${Buffer.from(`${webhookUser}:${webhookPassword}`).toString('base64')}`;
 		const script = `
-			fetch(process.argv[1], {
+			fetch(process.argv[2], {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', 'Authorization': process.argv[3] },
-				body: process.argv[2]
+				headers: { 'Content-Type': 'application/json', 'Authorization': process.argv[4] },
+				body: process.argv[3]
 			}).catch(() => process.exit(1));
 		`;
 
