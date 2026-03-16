@@ -1,9 +1,14 @@
 <!-- eslint-disable import-x/extensions -->
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle } from 'vue';
@@ -31,6 +36,12 @@ const emit = defineEmits<Emits>();
 // Initialize composables and stores
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
+const workflowDocumentStore = computed(() =>
+	workflowId.value
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
+		: undefined,
+);
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const i18n = useI18n();
@@ -78,7 +89,9 @@ const ensureExecutionWatcher = () => {
 
 const hasValidationIssues = computed(() => builderStore.workflowTodos.length > 0);
 const triggerNodes = computed(() =>
-	workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
+	(workflowDocumentStore.value?.allNodes ?? []).filter((node) =>
+		nodeTypesStore.isTriggerNode(node.type),
+	),
 );
 
 const issuesByType = computed(() => {
@@ -132,7 +145,7 @@ function formatIssueMessage(issue: string | string[]): string {
 
 // Helper to get node type
 function getNodeTypeByName(nodeName: string) {
-	const node = workflowsStore.workflow.nodes.find((n) => n.name === nodeName);
+	const node = workflowDocumentStore.value?.getNodeByName(nodeName);
 
 	if (!node) return null;
 	return nodeTypesStore.getNodeType(node.type);
@@ -174,7 +187,7 @@ async function onExecute() {
 	const selectedTriggerNode =
 		workflowsStore.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
 	const selectedTriggerNodeType = selectedTriggerNode
-		? workflowsStore.getNodeByName(selectedTriggerNode)
+		? workflowDocumentStore.value?.getNodeByName(selectedTriggerNode)
 		: null;
 
 	// If the selected trigger is a chat node, open logs panel instead of executing
@@ -207,7 +220,7 @@ function scrollIntoView() {
 
 function trackBuilderPlaceholders(issue: WorkflowValidationIssue) {
 	builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
-		node_type: workflowsStore.getNodeByName(issue.node)?.type,
+		node_type: workflowDocumentStore.value?.getNodeByName(issue.node)?.type,
 		type: issue.type,
 	});
 }

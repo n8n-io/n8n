@@ -828,6 +828,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				? mode
 				: (mode ?? (builderMode.value === 'plan' ? 'plan' : undefined));
 		const payload = await createBuilderPayload(text, userMessageId, {
+			workflowId: workflowsStore.workflowId,
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,

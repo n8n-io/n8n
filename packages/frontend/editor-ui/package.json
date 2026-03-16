@@ -83,6 +83,7 @@
     "jsonpath-plus": "^10.3.0",
     "lodash": "catalog:",
     "luxon": "catalog:",
+    "markdown-it-footnote": "^4.0.0",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
     "pinia": "catalog:frontend",

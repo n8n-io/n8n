@@ -10,6 +10,11 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { reactive, ref } from 'vue';
 import { createTestWorkflow } from '@/__tests__/mocks';
+import { telemetry } from '@/app/plugins/telemetry';
+
+vi.mock('@/app/plugins/telemetry', () => ({
+	telemetry: { track: vi.fn() },
+}));
 
 const eventBus = createEventBus();
 
@@ -160,6 +165,13 @@ describe('WorkflowDiffModal', () => {
 		// Component should render with the basic structure
 		expect(container.querySelector('.header')).toBeInTheDocument();
 		expect(container.querySelector('h4')).toBeInTheDocument();
+		await waitFor(() => {
+			expect(telemetry.track).toHaveBeenCalledWith('user_clicks_compare_workflows', {
+				instance_id: '',
+				workflow_id: 'test-workflow-id',
+				source: 'push_pull_modal',
+			});
+		});
 	});
 
 	it('should initialize with correct props', () => {
