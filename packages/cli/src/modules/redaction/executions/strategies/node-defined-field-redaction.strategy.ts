@@ -19,6 +19,11 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
+	wouldModify(execution: RedactableExecution, _context: RedactionContext): boolean {
+		const { sensitiveFields, unknownNodes } = this.buildSensitiveFieldsMap(execution);
+		return sensitiveFields.size > 0 || unknownNodes.size > 0;
+	}
+
 	async apply(execution: RedactableExecution, _context: RedactionContext): Promise<void> {
 		const { sensitiveFields, unknownNodes } = this.buildSensitiveFieldsMap(execution);
 		if (sensitiveFields.size === 0 && unknownNodes.size === 0) return;

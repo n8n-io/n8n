@@ -48,13 +48,19 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 	/**
 	 * Thin wrapper around `processExecutions` for single-execution callers.
+	 *
+	 * With `copyOnWrite: true`, the original execution is never mutated. Returns
+	 * either the original (if no redaction needed) or a structuredClone with
+	 * redaction applied. Callers can check referential equality to determine
+	 * whether redaction occurred.
 	 */
 	async processExecution(
 		execution: RedactableExecution,
 		options: ExecutionRedactionOptions,
 	): Promise<RedactableExecution> {
-		await this.processExecutions([execution], options);
-		return execution;
+		const executions = [execution];
+		await this.processExecutions(executions, options);
+		return executions[0];
 	}
 
 	/**
@@ -113,7 +119,8 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		// Unified pipeline execution. buildPipeline excludes FullItemRedactionStrategy on the
 		// reveal path (redactExecutionData === false). NodeDefinedFieldRedactionStrategy
 		// always runs — node-declared sensitive fields are never revealable.
-		for (const execution of executions) {
+		for (let i = 0; i < executions.length; i++) {
+			const execution = executions[i];
 			const hasDynCreds = this.hasDynamicCredentials(execution);
 			const policyAllowsReveal = this.policyAllowsReveal(execution);
 			// Dynamic credential executions can never be revealed regardless of permissions
@@ -127,14 +134,23 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				hasDynamicCredentials: hasDynCreds,
 			};
 			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal, hasDynCreds);
+
+			let target = execution;
+			if (options.copyOnWrite) {
+				const needsClone = pipeline.some((s) => s.wouldModify(execution, context));
+				if (!needsClone) continue;
+				target = structuredClone(execution);
+				executions[i] = target;
+			}
+
 			for (const strategy of pipeline) {
-				await strategy.apply(execution, context);
+				await strategy.apply(target, context);
 			}
 
 			// runtimeData.credentials contains encrypted credential context that
 			// must never be exposed in API responses
-			if (hasDynCreds && execution.data.executionData?.runtimeData) {
-				delete execution.data.executionData.runtimeData.credentials;
+			if (hasDynCreds && target.data.executionData?.runtimeData) {
+				delete target.data.executionData.runtimeData.credentials;
 			}
 		}
 

@@ -27,4 +27,7 @@ export interface RedactionContext {
 export interface IExecutionRedactionStrategy {
 	readonly name: string;
 	apply(execution: RedactableExecution, context: RedactionContext): Promise<void>;
+	/** Returns true if apply() would mutate the execution data. Used by the
+	 *  copy-on-write path to avoid unnecessary cloning. */
+	wouldModify(execution: RedactableExecution, context: RedactionContext): boolean;
 }
