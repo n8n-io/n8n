@@ -2,7 +2,7 @@
 import { useContextMenu } from '../composables/useContextMenu';
 import { type ContextMenuAction, type ContextMenuItem } from '../composables/useContextMenuItems';
 import { useStyles } from '@/app/composables/useStyles';
-import { ref, watch, reactive, nextTick, onBeforeUnmount } from 'vue';
+import { ref, watch, reactive, type Directive } from 'vue';
 import { type ComponentExposed } from 'vue-component-type-helpers';
 
 import { N8nActionDropdown } from '@n8n/design-system';
@@ -19,55 +19,48 @@ const submenuPosition = reactive({ x: 0, y: 0 });
 // Needed to keep the submenu open, otherwise the submenu closes when leaving the parent element
 let closeTimeout: ReturnType<typeof setTimeout> | null = null;
 
-// Track listeners attached to <li> elements so we can clean them up
-const attachedListeners = new Map<
-	HTMLElement,
-	{ enter: (e: MouseEvent) => void; leave: (e: MouseEvent) => void }
->();
+const SUBMENU_WIDTH = 200;
 
-function cleanupListeners() {
-	for (const [el, listeners] of attachedListeners) {
-		el.removeEventListener('mouseenter', listeners.enter);
-		el.removeEventListener('mouseleave', listeners.leave);
-	}
-	attachedListeners.clear();
-}
+/**
+ * Directive that attaches mouseenter/mouseleave listeners to the closest
+ * itemContainer ancestor. This ensures the full row triggers the submenu,
+ * not just the inner label span.
+ */
+const vParentHover: Directive<HTMLElement, ContextMenuItem> = {
+	mounted(el, binding) {
+		// Our element sits inside: <li> > <div.itemContainer> > <span.label> > el
+		const container = el.parentElement?.parentElement;
+		if (!container) return;
 
-onBeforeUnmount(cleanupListeners);
+		const item = binding.value;
+		const onEnter = () => onContainerEnter(container, item);
+		const onLeave = (e: MouseEvent) => onContainerLeave(e);
+
+		container.addEventListener('mouseenter', onEnter);
+		container.addEventListener('mouseleave', onLeave);
+
+		(el as HTMLElement & { _cleanup?: () => void })._cleanup = () => {
+			container.removeEventListener('mouseenter', onEnter);
+			container.removeEventListener('mouseleave', onLeave);
+		};
+	},
+	unmounted(el) {
+		(el as HTMLElement & { _cleanup?: () => void })._cleanup?.();
+	},
+};
 
 watch(
 	isOpen,
 	() => {
 		if (isOpen.value) {
 			dropdown.value?.open();
-			void nextTick(() => attachSubmenuListeners());
 		} else {
 			dropdown.value?.close();
 			openSubmenu.value = null;
-			cleanupListeners();
 		}
 	},
 	{ flush: 'post' },
 );
-
-function attachSubmenuListeners() {
-	cleanupListeners();
-	// Find all [data-submenu-trigger] elements and attach listeners to their parent <li>
-	const triggers = document.querySelectorAll('[data-submenu-trigger]');
-	for (const trigger of triggers) {
-		const li = trigger.closest('.el-dropdown-menu__item') as HTMLElement | null;
-		if (!li) continue;
-
-		const enter = (e: MouseEvent) => onLiEnter(e, trigger as HTMLElement);
-		const leave = (e: MouseEvent) => onLiLeave(e);
-
-		li.addEventListener('mouseenter', enter);
-		li.addEventListener('mouseleave', leave);
-		attachedListeners.set(li, { enter, leave });
-	}
-}
-
-const SUBMENU_WIDTH = 200;
 
 function cancelClose() {
 	if (closeTimeout) {
@@ -83,15 +76,11 @@ function scheduleClose() {
 	}, 100);
 }
 
-function onLiEnter(_event: MouseEvent, triggerEl: HTMLElement) {
+function onContainerEnter(container: HTMLElement, item: ContextMenuItem) {
 	cancelClose();
-	const li = triggerEl.closest('.el-dropdown-menu__item') as HTMLElement;
-	const rect = li.getBoundingClientRect();
+	if (!item.children?.length) return;
 
-	// Find the matching ContextMenuItem from the trigger's data attribute
-	const itemId = triggerEl.getAttribute('data-submenu-item-id');
-	const item = actions.value.find((a) => a.id === itemId);
-	if (!item?.children?.length) return;
+	const rect = container.getBoundingClientRect();
 
 	const fitsRight = rect.right + SUBMENU_WIDTH <= window.innerWidth;
 	submenuPosition.x = fitsRight ? rect.right : rect.left - SUBMENU_WIDTH;
@@ -99,7 +88,7 @@ function onLiEnter(_event: MouseEvent, triggerEl: HTMLElement) {
 	openSubmenu.value = item;
 }
 
-function onLiLeave(event: MouseEvent) {
+function onContainerLeave(event: MouseEvent) {
 	const related = event.relatedTarget as HTMLElement | null;
 	if (related?.closest('[data-context-submenu]')) return;
 	scheduleClose();
@@ -119,7 +108,7 @@ function onSubmenuEnter() {
 function onSubmenuLeave(event: MouseEvent) {
 	const related = event.relatedTarget as HTMLElement | null;
 	if (related?.closest('.el-dropdown-menu__item')) {
-		// Mouse went back to a menu item — let the li's mouseenter handle it
+		// Mouse went back to a menu item — let the container's mouseenter handle it
 		return;
 	}
 	scheduleClose();
@@ -165,9 +154,8 @@ function onVisibleChange(open: boolean) {
 				<template #menuItem="item">
 					<template v-if="(item as ContextMenuItem).children?.length">
 						<div
+							v-parent-hover="item as ContextMenuItem"
 							:class="$style.submenuTrigger"
-							data-submenu-trigger
-							:data-submenu-item-id="(item as ContextMenuItem).id"
 							@click.stop.prevent
 						>
 							<span>{{ item.label }}</span>
