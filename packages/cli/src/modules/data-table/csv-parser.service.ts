@@ -39,18 +39,16 @@ export class CsvParserService {
 
 	private readonly TYPE_INFERENCE_SAMPLE_SIZE = 100;
 
-	private createParserOptions(hasHeaders: boolean, onColumnNames: (names: string[]) => void) {
+	private createParserOptions(hasHeaders: boolean) {
 		return {
-			columns: hasHeaders
-				? (header: string[]) => {
-						const trimmed = header.map((h) => h.trim());
-						onColumnNames(trimmed);
-						return trimmed;
-					}
-				: (false as const),
+			columns: hasHeaders ? true : (false as const),
 			skip_empty_lines: true,
 			bom: true,
 		};
+	}
+
+	private trimColumnNames(columns: string[]): string[] {
+		return columns.map((h) => h.trim());
 	}
 
 	private normalizeRow(
@@ -92,43 +90,62 @@ export class CsvParserService {
 		});
 	}
 
-	/**
-	 * Parses a CSV file and returns metadata including row count, column count, and inferred column types.
-	 * Samples up to 100 rows to find the first non-empty value per column for type inference.
-	 */
-	async parseFile(fileId: string, hasHeaders: boolean = true): Promise<CsvMetadata> {
+	private async parseCsvFile<T>(
+		fileId: string,
+		hasHeaders: boolean,
+		onRow: (rowObject: Record<string, string>, columnNames: string[], rowNumber: number) => void,
+		onEnd: (columnNames: string[], totalRows: number) => T,
+	): Promise<T> {
 		const filePath = safeJoinPath(this.uploadDir, fileId);
-		let rowCount = 0;
 		let columnNames: string[] = [];
-		const firstNonEmptyValues = new Map<string, string>();
+		let rowCount = 0;
 
 		return await new Promise((resolve, reject) => {
-			const parser = parse(
-				this.createParserOptions(hasHeaders, (names) => {
-					columnNames = names;
+			const parser = parse({
+				...this.createParserOptions(hasHeaders),
+				...(hasHeaders && {
+					columns: (header: string[]) => {
+						columnNames = this.trimColumnNames(header);
+						return columnNames;
+					},
 				}),
-			)
+			})
 				.on('data', (row: Record<string, string> | string[]) => {
 					rowCount++;
-					// When there are no headers, generate column names from the first row
 					if (!hasHeaders && Array.isArray(row) && columnNames.length === 0) {
 						columnNames = this.generateColumnNames(row.length);
 					}
 					const rowObject = this.normalizeRow(row, hasHeaders, columnNames);
 					if (!rowObject) return;
-
-					if (rowCount <= this.TYPE_INFERENCE_SAMPLE_SIZE) {
-						this.collectTypeSamples(rowObject, columnNames, firstNonEmptyValues);
-					}
+					onRow(rowObject, columnNames, rowCount);
 				})
-				.on('end', () => {
-					const columns = this.buildColumnMetadata(columnNames, firstNonEmptyValues);
-					resolve({ rowCount, columnCount: columns.length, columns });
-				})
+				.on('end', () => resolve(onEnd(columnNames, rowCount)))
 				.on('error', reject);
 
 			createReadStream(filePath).on('error', reject).pipe(parser);
 		});
+	}
+
+	/**
+	 * Parses a CSV file and returns metadata including row count, column count, and inferred column types.
+	 * Samples up to 100 rows to find the first non-empty value per column for type inference.
+	 */
+	async parseFile(fileId: string, hasHeaders: boolean = true): Promise<CsvMetadata> {
+		const firstNonEmptyValues = new Map<string, string>();
+
+		return await this.parseCsvFile(
+			fileId,
+			hasHeaders,
+			(rowObject, colNames, rowNumber) => {
+				if (rowNumber <= this.TYPE_INFERENCE_SAMPLE_SIZE) {
+					this.collectTypeSamples(rowObject, colNames, firstNonEmptyValues);
+				}
+			},
+			(colNames, totalRows) => {
+				const columns = this.buildColumnMetadata(colNames, firstNonEmptyValues);
+				return { rowCount: totalRows, columnCount: columns.length, columns };
+			},
+		);
 	}
 
 	/**
@@ -138,32 +155,14 @@ export class CsvParserService {
 		fileId: string,
 		hasHeaders: boolean = true,
 	): Promise<Array<Record<string, string>>> {
-		const filePath = safeJoinPath(this.uploadDir, fileId);
 		const rows: Array<Record<string, string>> = [];
-		let columnNames: string[] = [];
 
-		return await new Promise((resolve, reject) => {
-			const parser = parse(
-				this.createParserOptions(hasHeaders, (names) => {
-					columnNames = names;
-				}),
-			)
-				.on('data', (row: Record<string, string> | string[]) => {
-					// When there are no headers, generate column names from the first row
-					if (!hasHeaders && Array.isArray(row) && columnNames.length === 0) {
-						columnNames = this.generateColumnNames(row.length);
-					}
-					const rowObject = this.normalizeRow(row, hasHeaders, columnNames);
-					if (!rowObject) return;
-					rows.push(rowObject);
-				})
-				.on('end', () => {
-					resolve(rows);
-				})
-				.on('error', reject);
-
-			createReadStream(filePath).on('error', reject).pipe(parser);
-		});
+		return await this.parseCsvFile(
+			fileId,
+			hasHeaders,
+			(rowObject) => rows.push(rowObject),
+			() => rows,
+		);
 	}
 
 	/**
@@ -174,36 +173,20 @@ export class CsvParserService {
 		fileId: string,
 		hasHeaders: boolean = true,
 	): Promise<{ metadata: CsvMetadata; rows: Array<Record<string, string>> }> {
-		const filePath = safeJoinPath(this.uploadDir, fileId);
-		let columnNames: string[] = [];
 		const rows: Array<Record<string, string>> = [];
 
-		return await new Promise((resolve, reject) => {
-			const parser = parse(
-				this.createParserOptions(hasHeaders, (names) => {
-					columnNames = names;
-				}),
-			)
-				.on('data', (row: Record<string, string> | string[]) => {
-					// When there are no headers, generate column names from the first row
-					if (!hasHeaders && Array.isArray(row) && columnNames.length === 0) {
-						columnNames = this.generateColumnNames(row.length);
-					}
-					const rowObject = this.normalizeRow(row, hasHeaders, columnNames);
-					if (!rowObject) return;
-					rows.push(rowObject);
-				})
-				.on('end', () => {
-					const columns = columnNames.map((name) => ({ name, type: 'string' as const }));
-					resolve({
-						metadata: { rowCount: rows.length, columnCount: columns.length, columns },
-						rows,
-					});
-				})
-				.on('error', reject);
-
-			createReadStream(filePath).on('error', reject).pipe(parser);
-		});
+		return await this.parseCsvFile(
+			fileId,
+			hasHeaders,
+			(rowObject) => rows.push(rowObject),
+			(colNames) => {
+				const columns = colNames.map((name) => ({ name, type: 'string' as const }));
+				return {
+					metadata: { rowCount: rows.length, columnCount: columns.length, columns },
+					rows,
+				};
+			},
+		);
 	}
 
 	/**
