@@ -327,6 +327,20 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 						disabled: !canOpenSubworkflow.value,
 					});
 				}
+
+				// TODO: Demo submenu item — remove before merging
+				if (!onlyStickies) {
+					singleNodeActions.push({
+						id: 'demo_submenu' as ContextMenuAction,
+						divided: true,
+						label: 'Demo submenu',
+						children: [
+							{ id: 'select_all', label: 'Child item 1' },
+							{ id: 'select_all', label: 'Child item 2' },
+							{ id: 'select_all', label: 'Child item 3' },
+						],
+					});
+				}
 				// Add actions only available for a single node
 				menuActions.unshift(...singleNodeActions);
 			}
