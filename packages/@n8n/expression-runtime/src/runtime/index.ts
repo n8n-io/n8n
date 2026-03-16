@@ -46,7 +46,7 @@ declare global {
 		var $itemIndex: number | undefined;
 		var $now: import('luxon').DateTime;
 		var $today: import('luxon').DateTime;
-		var $items: ((...args: unknown[]) => unknown) | unknown;
+		var $items: unknown;
 	}
 }
 
