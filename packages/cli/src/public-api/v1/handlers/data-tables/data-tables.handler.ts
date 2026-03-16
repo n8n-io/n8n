@@ -2,6 +2,7 @@ import {
 	PublicApiListDataTableQueryDto,
 	CreateDataTableDto,
 	UpdateDataTableDto,
+	TransferDataTableDto,
 } from '@n8n/api-types';
 import { ProjectRepository, ProjectRelationRepository } from '@n8n/db';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -221,6 +222,36 @@ export = {
 				const { project: _project, ...dataTable } = result;
 
 				return res.json(dataTable);
+			} catch (error) {
+				return handleError(error, res);
+			}
+		},
+	],
+
+	transferDataTable: [
+		apiKeyHasScope('dataTable:move'),
+		projectScope('dataTable:move', 'dataTable'),
+		async (req: DataTableRequest.Transfer, res: express.Response): Promise<express.Response> => {
+			try {
+				const { dataTableId } = req.params;
+
+				const payload = TransferDataTableDto.safeParse(req.body);
+				if (!payload.success) {
+					return res.status(400).json({
+						message: payload.error.errors[0]?.message || 'Invalid request body',
+					});
+				}
+
+				const projectId = await getProjectIdForDataTable(dataTableId);
+
+				await Container.get(DataTableService).transferDataTable(
+					req.user,
+					dataTableId,
+					projectId,
+					payload.data.destinationProjectId,
+				);
+
+				return res.status(204).send();
 			} catch (error) {
 				return handleError(error, res);
 			}

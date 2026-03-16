@@ -15,6 +15,7 @@ import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
+import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
 describe('DataTableService', () => {
@@ -25,6 +26,7 @@ describe('DataTableService', () => {
 	let mockLogger: jest.Mocked<Logger>;
 	let mockDataTableSizeValidator: jest.Mocked<DataTableSizeValidator>;
 	let mockProjectRelationRepository: jest.Mocked<ProjectRelationRepository>;
+	let mockProjectService: jest.Mocked<ProjectService>;
 	let mockRoleService: jest.Mocked<RoleService>;
 	let mockCsvParserService: jest.Mocked<CsvParserService>;
 	let mockFileCleanupService: jest.Mocked<DataTableFileCleanupService>;
@@ -40,6 +42,7 @@ describe('DataTableService', () => {
 		mockLogger = mockInstance(Logger);
 		mockDataTableSizeValidator = mockInstance(DataTableSizeValidator);
 		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
+		mockProjectService = mockInstance(ProjectService);
 		mockRoleService = mockInstance(RoleService);
 		mockCsvParserService = mockInstance(CsvParserService);
 		mockFileCleanupService = mockInstance(DataTableFileCleanupService);
@@ -54,6 +57,7 @@ describe('DataTableService', () => {
 			mockLogger,
 			mockDataTableSizeValidator,
 			mockProjectRelationRepository,
+			mockProjectService,
 			mockRoleService,
 			mockCsvParserService,
 			mockFileCleanupService,
