@@ -317,7 +317,7 @@ onMounted(() => {
 }
 
 .variantBtnActive {
-	background: var(--color--foreground--tint-2);
+	background: var(--color--background--light-3);
 	color: var(--color--text--shade-1);
 	font-weight: var(--font-weight--bold);
 }

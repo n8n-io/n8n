@@ -277,18 +277,18 @@ const typeIcon = computed(
 }
 
 .badgeTemplate {
-	background: var(--color--warning--tint-2);
-	color: var(--color--warning--shade-1);
+	background: color-mix(in srgb, var(--color--warning) 18%, transparent);
+	color: var(--color--warning);
 }
 
 .badgeVideo {
-	background: var(--color--primary--tint-3);
+	background: color-mix(in srgb, var(--color--primary) 18%, transparent);
 	color: var(--color--primary);
 }
 
 .badgeReadyToRun {
-	background: var(--color--success--tint-3);
-	color: var(--color--success--shade-1);
+	background: color-mix(in srgb, var(--color--success) 18%, transparent);
+	color: var(--color--success);
 }
 
 .separator {
@@ -308,7 +308,7 @@ const typeIcon = computed(
 	transition:
 		border-color 0.15s ease,
 		box-shadow 0.15s ease;
-	background: var(--color--foreground--tint-2);
+	background: var(--color--background--light-3);
 	overflow: hidden;
 
 	&:hover {
@@ -332,7 +332,7 @@ const typeIcon = computed(
 	gap: var(--spacing--xs);
 	padding: var(--spacing--md) var(--spacing--sm);
 	border-bottom: var(--border);
-	background: var(--color--primary--tint-3);
+	background: color-mix(in srgb, var(--color--primary) 12%, transparent);
 }
 
 .playCircle {
@@ -361,12 +361,12 @@ const typeIcon = computed(
 }
 
 .nodeIconsBg_template {
-	background: var(--color--warning--tint-2);
+	background: color-mix(in srgb, var(--color--warning) 12%, transparent);
 }
 
 // stylelint-disable-next-line selector-class-pattern
 .nodeIconsBg_ready-to-run {
-	background: var(--color--success--tint-3);
+	background: color-mix(in srgb, var(--color--success) 12%, transparent);
 }
 
 .body {
@@ -410,7 +410,7 @@ const typeIcon = computed(
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
 	cursor: pointer;
-	background: var(--color--foreground--tint-2);
+	background: var(--color--background--light-3);
 	border: var(--border);
 	border-left: 4px solid transparent;
 	transition:
@@ -494,7 +494,7 @@ const typeIcon = computed(
 	padding: var(--spacing--md);
 	border-radius: var(--radius--xl);
 	cursor: pointer;
-	background: var(--color--foreground--tint-2);
+	background: var(--color--background--light-3);
 	border: var(--border);
 	border-top: 3px solid transparent;
 	transition:
@@ -545,19 +545,19 @@ const typeIcon = computed(
 }
 
 .spotIconColor_template {
-	background: var(--color--warning--tint-2);
-	color: var(--color--warning--shade-1);
+	background: color-mix(in srgb, var(--color--warning) 18%, transparent);
+	color: var(--color--warning);
 }
 
 .spotIconColor_video {
-	background: var(--color--primary--tint-3);
+	background: color-mix(in srgb, var(--color--primary) 18%, transparent);
 	color: var(--color--primary);
 }
 
 // stylelint-disable-next-line selector-class-pattern
 .spotIconColor_ready-to-run {
-	background: var(--color--success--tint-3);
-	color: var(--color--success--shade-1);
+	background: color-mix(in srgb, var(--color--success) 18%, transparent);
+	color: var(--color--success);
 }
 
 .spotTitle {
