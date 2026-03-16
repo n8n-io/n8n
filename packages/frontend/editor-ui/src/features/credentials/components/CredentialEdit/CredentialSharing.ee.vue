@@ -10,10 +10,7 @@ import { useRolesStore } from '@/app/stores/roles.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import type {
-	ProjectListItem,
-	ProjectSharingData,
-} from '@/features/collaboration/projects/projects.types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -70,14 +67,6 @@ const credentialDataHomeProject = computed<ProjectSharingData | undefined>(() =>
 		: undefined;
 });
 
-const projects = computed<ProjectListItem[]>(() => {
-	return projectsStore.projects.filter(
-		(project) =>
-			project.id !== props.credential?.homeProject?.id &&
-			project.id !== credentialDataHomeProject.value?.id,
-	);
-});
-
 const homeProject = computed<ProjectSharingData | undefined>(
 	() => props.credential?.homeProject ?? credentialDataHomeProject.value,
 );
@@ -128,7 +117,7 @@ watch(
 );
 
 onMounted(async () => {
-	await projectsStore.getAllProjects();
+	// ProjectSharing handles its own data fetching in remote search mode
 });
 
 function goToUpgrade() {
@@ -174,7 +163,6 @@ function goToUpgrade() {
 			</N8nInfoTip>
 			<ProjectSharing
 				v-model="sharedWithProjects"
-				:projects="projects"
 				:roles="credentialRoles"
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"

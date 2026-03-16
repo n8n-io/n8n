@@ -3,8 +3,10 @@ import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N
 import type { SelectSize } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import type { AllRolesMap } from '@n8n/permissions';
-import orderBy from 'lodash/orderBy';
+import { useDebounceFn, useAsyncState } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
+import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { ProjectTypes, type ProjectListItem, type ProjectSharingData } from '../projects.types';
 import ProjectSharingInfo from './ProjectSharingInfo.vue';
 
@@ -19,9 +21,13 @@ import {
 } from '@n8n/design-system';
 
 const locale = useI18n();
+const projectsStore = useProjectsStore();
 
 type Props = {
-	projects: ProjectListItem[];
+	/** Client-side post-filter applied to results (e.g. permission checks). */
+	filterFn?: (project: ProjectListItem) => boolean;
+	/** When true, excludes personal projects of non-activated (pending) users. */
+	activated?: boolean;
 	homeProject?: ProjectSharingData;
 	roles?: AllRolesMap['workflow' | 'credential' | 'project'];
 	readonly?: boolean;
@@ -69,7 +75,6 @@ const selectedProjects = computed((): ProjectSharingData[] | null => {
 	return props.isSharedGlobally ? [GLOBAL_GROUP, ...model.value] : model.value;
 });
 
-const filter = ref('');
 const selectPlaceholder = computed(
 	() => props.placeholder ?? locale.baseText('projects.sharing.select.placeholder'),
 );
@@ -77,26 +82,58 @@ const noDataText = computed(
 	() => props.emptyOptionsText ?? locale.baseText('projects.sharing.noMatchingUsers'),
 );
 
-const filteredProjects = computed(() =>
-	props.projects.filter(
-		(project) =>
-			project.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
-			(Array.isArray(model.value) ? !model.value?.find((p) => p.id === project.id) : true),
-	),
+const excludedIds = computed(() => {
+	const selected = Array.isArray(model.value) ? model.value.map((p) => p.id) : [];
+	return new Set([...(props.homeProject?.id ? [props.homeProject.id] : []), ...selected]);
+});
+
+const TAKE = 50;
+
+const {
+	isLoading,
+	execute: fetchRemoteProjects,
+	state,
+} = useAsyncState<
+	{
+		count: number;
+		data: ProjectListItem[];
+	},
+	[string]
+>(
+	async (query: string) =>
+		await projectsStore.searchProjects({
+			search: query || undefined,
+			take: TAKE,
+			activated: props.activated,
+		}),
+	{
+		count: 0,
+		data: [],
+	},
+	{
+		immediate: true,
+	},
 );
 
-const sortedProjects = computed((): ProjectListItem[] => [
-	...(props.canShareGlobally && !props.isSharedGlobally ? [GLOBAL_GROUP] : []),
-	...orderBy(
-		filteredProjects.value,
-		['type', (project) => project.name?.toLowerCase()],
-		['desc', 'asc'],
-	),
-]);
+const filteredProjects = computed(() => {
+	const results = state.value.data.filter((project) => !excludedIds.value.has(project.id));
+	return props.filterFn ? results.filter(props.filterFn) : results;
+});
+
+const sortedProjects = computed((): ProjectListItem[] => {
+	return [
+		...(props.canShareGlobally && !props.isSharedGlobally ? [GLOBAL_GROUP] : []),
+		...filteredProjects.value,
+	];
+});
 
 const projectIcon = computed<IconOrEmoji>(() => {
 	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layers' };
-	const project = props.projects.find((p) => p.id === selectedProject.value);
+	const project =
+		state.value.data.find((p) => p.id === selectedProject.value) ??
+		(!Array.isArray(model.value) && model.value?.id === selectedProject.value
+			? model.value
+			: undefined);
 
 	if (project?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
@@ -107,9 +144,21 @@ const projectIcon = computed<IconOrEmoji>(() => {
 	return defaultIcon;
 });
 
-const setFilter = (query: string) => {
-	filter.value = query;
-};
+const hasMoreResults = computed(() => state.value.count > state.value.data.length);
+
+const moreResultsLabel = computed(() =>
+	locale.baseText('projects.sharing.moreResults', {
+		interpolate: {
+			shown: String(sortedProjects.value.length),
+			total: String(state.value.count),
+		},
+	}),
+);
+
+const debouncedRemoteSearch = useDebounceFn(
+	async (query: string) => await fetchRemoteProjects(0, query),
+	getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
+);
 
 const onProjectSelected = (projectId: string) => {
 	if (projectId === GLOBAL_GROUP.id) {
@@ -117,7 +166,7 @@ const onProjectSelected = (projectId: string) => {
 		return;
 	}
 
-	const project = props.projects.find((p) => p.id === projectId);
+	const project = state.value.data.find((p) => p.id === projectId);
 
 	if (!project) {
 		return;
@@ -139,11 +188,6 @@ const onRoleAction = (project: ProjectSharingData, role: string) => {
 	if (project.id === GLOBAL_GROUP.id && role === 'remove') {
 		emit('update:shareWithAllUsers', false);
 
-		return;
-	}
-
-	const index = model.value?.findIndex((p) => p.id === project.id) ?? -1;
-	if (index === -1) {
 		return;
 	}
 
@@ -174,7 +218,9 @@ watch(
 				:model-value="selectedProject"
 				data-test-id="project-sharing-select"
 				:filterable="true"
-				:filter-method="setFilter"
+				remote
+				:remote-method="debouncedRemoteSearch"
+				:loading="isLoading"
 				:placeholder="selectPlaceholder"
 				:default-first-option="true"
 				:no-data-text="noDataText"
@@ -202,6 +248,18 @@ watch(
 					:label="project.name ?? ''"
 				>
 					<ProjectSharingInfo :project="project" />
+				</N8nOption>
+				<N8nOption
+					v-if="hasMoreResults"
+					key="__more_results__"
+					value="__more_results__"
+					:label="moreResultsLabel"
+					disabled
+					:class="$style.moreResults"
+				>
+					<N8nText size="small" color="text-light">
+						{{ moreResultsLabel }}
+					</N8nText>
 				</N8nOption>
 			</N8nSelect>
 		</N8nTooltip>
@@ -240,9 +298,9 @@ watch(
 					/>
 				</N8nSelect>
 				<N8nButton
-					variant="subtle"
-					iconOnly
 					v-if="!props.static && !(project.id === GLOBAL_GROUP.id && !canShareGlobally)"
+					variant="subtle"
+					icon-only
 					native-type="button"
 					icon="trash-2"
 					:aria-label="locale.baseText('generic.delete')"
@@ -289,5 +347,11 @@ watch(
 
 .emoji {
 	font-size: var(--font-size--sm);
+}
+
+.moreResults {
+	cursor: default;
+	text-align: center;
+	border-top: var(--border);
 }
 </style>

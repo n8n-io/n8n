@@ -115,6 +115,15 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		}
 	};
 
+	const searchProjects = async (params: {
+		search?: string;
+		take?: number;
+		type?: 'personal' | 'team';
+		activated?: boolean;
+	}) => {
+		return await projectsApi.searchProjects(rootStore.restApiContext, params);
+	};
+
 	const fetchProject = async (id: string) =>
 		await projectsApi.getProject(rootStore.restApiContext, id);
 
@@ -333,6 +342,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		getMyProjects,
 		getPersonalProject,
 		getAvailableProjects,
+		searchProjects,
 		getProject,
 		fetchProject,
 		fetchAndSetProject,

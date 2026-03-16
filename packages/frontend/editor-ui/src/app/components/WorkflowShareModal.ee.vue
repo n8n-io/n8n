@@ -111,10 +111,6 @@ const workflowOwnerName = computed(() =>
 	workflowsEEStore.getWorkflowOwnerName(`${workflow.value.id}`),
 );
 
-const projects = computed(() =>
-	projectsStore.personalProjects.filter((project) => project.id !== workflow.value.homeProject?.id),
-);
-
 const numberOfMembersInHomeTeamProject = computed(() => teamProject.value?.relations.length ?? 0);
 
 const workflowRoleTranslations = computed(() => ({
@@ -225,8 +221,6 @@ const goToUpgrade = () => {
 
 const initialize = async () => {
 	if (isSharingEnabled.value) {
-		await projectsStore.getAllProjects();
-
 		// Fetch workflow if it exists and is not new
 		if (workflowsStore.isWorkflowSaved[workflow.value.id]) {
 			await workflowsListStore.fetchWorkflow(workflow.value.id);
@@ -290,7 +284,6 @@ watch(
 						<ProjectSharing
 							v-model="sharedWithProjects"
 							:home-project="workflow.homeProject"
-							:projects="projects"
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
 							:static="isHomeTeamProject || !workflowPermissions.share"

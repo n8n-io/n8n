@@ -135,12 +135,8 @@ onBeforeMount(() => {
 	void projectsStore.getAvailableProjects();
 });
 
-const projectsForFilters = computed(() => {
-	return projectsStore.availableProjects.filter(
-		// global admins role is empty...
-		(project) => !project.role || project.role === 'project:admin',
-	);
-});
+const projectAdminFilterFn = (project: ProjectListItem) =>
+	!project.role || project.role === 'project:admin';
 
 const concatenateWithAnd = (messages: string[]) =>
 	new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages);
@@ -972,7 +968,7 @@ onMounted(async () => {
 								v-model="filters.project"
 								data-test-id="source-control-push-modal-project-search"
 								clearable
-								:projects="projectsForFilters"
+								:filter-fn="projectAdminFilterFn"
 								:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 								:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 								@clear="clearProjectFilter"

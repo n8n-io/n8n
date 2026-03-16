@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, onBeforeMount } from 'vue';
+import { computed, watch, ref } from 'vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -44,16 +44,15 @@ const projectsStore = useProjectsStore();
 
 const i18n = useI18n();
 
-const selectedProject = computed<ProjectSharingData | null>({
-	get: () => {
-		return (
-			projectsStore.availableProjects.find(
-				(project) => project.id === props.modelValue.homeProject,
-			) ?? null
-		);
+const selectedProject = ref<ProjectSharingData | null>(null);
+
+// Sync with parent modelValue changes (e.g., filter reset)
+watch(
+	() => props.modelValue.homeProject,
+	(val) => {
+		if (!val) selectedProject.value = null;
 	},
-	set: (value) => setKeyValue('homeProject', value?.id ?? ''),
-});
+);
 
 const filtersLength = computed(() => {
 	let length = 0;
@@ -114,10 +113,6 @@ const shouldBeIconButton = computed(() => {
 watch(filtersLength, (value) => {
 	emit('update:filtersLength', value);
 });
-
-onBeforeMount(async () => {
-	await projectsStore.getAvailableProjects();
-});
 </script>
 
 <template>
@@ -170,7 +165,6 @@ onBeforeMount(async () => {
 					/>
 					<ProjectSharing
 						v-model="selectedProject"
-						:projects="projectsStore.availableProjects"
 						:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 						:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 						@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"

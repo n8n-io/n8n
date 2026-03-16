@@ -1,12 +1,14 @@
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
-import { getDropdownItems, getSelectedDropdownValue } from '@/__tests__/utils';
+import { getDropdownItems, getSelectedDropdownValue, mockedStore } from '@/__tests__/utils';
 import { createProjectListItem, createProjectSharingData } from '../__tests__/utils';
 import ProjectSharing from './ProjectSharing.vue';
 import type { AllRolesMap } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import type * as I18nModule from '@n8n/i18n';
+import { createTestingPinia } from '@pinia/testing';
+import { useProjectsStore } from '../projects.store';
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
 	const actual = await importOriginal<typeof I18nModule>();
@@ -31,15 +33,26 @@ const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team
 const homeProject = createProjectSharingData();
 
 describe('ProjectSharing', () => {
+	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
+
 	beforeEach(() => {
 		vi.mocked(useI18n).mockReturnValue({
 			baseText: mockBaseText,
 		} as unknown as ReturnType<typeof useI18n>);
+
+		createTestingPinia();
+		projectsStore = mockedStore(useProjectsStore);
+		projectsStore.searchProjects.mockResolvedValue({
+			count: personalProjects.length,
+			data: personalProjects,
+		});
 	});
-	it('should render empty select when projects is empty and no selected project existing', async () => {
+
+	it('should render empty select when no projects returned and no selected project existing', async () => {
+		projectsStore.searchProjects.mockResolvedValue({ count: 0, data: [] });
+
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
-				projects: [],
 				modelValue: [],
 			},
 		});
@@ -49,33 +62,29 @@ describe('ProjectSharing', () => {
 		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 	});
 
-	it('should filter, add and remove projects', async () => {
-		const { getByTestId, getAllByTestId, queryByTestId, queryAllByTestId, emitted } =
-			renderComponent({
-				props: {
-					projects: personalProjects,
-					modelValue: [personalProjects[0]],
-					roles: [
-						{
-							role: 'project:admin',
-							name: 'Admin',
-						},
-						{
-							role: 'project:editor',
-							name: 'Editor',
-						},
-					] as unknown as AllRolesMap['workflow' | 'credential' | 'project'],
-				},
-			});
+	it('should add and remove projects', async () => {
+		const { getByTestId, getAllByTestId, queryAllByTestId, emitted } = renderComponent({
+			props: {
+				modelValue: [personalProjects[0]],
+				roles: [
+					{
+						role: 'project:admin',
+						name: 'Admin',
+					},
+					{
+						role: 'project:editor',
+						name: 'Editor',
+					},
+				] as unknown as AllRolesMap['workflow' | 'credential' | 'project'],
+			},
+		});
 
-		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 		// Check the initial state (one selected project comes from the modelValue prop)
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(1);
 
 		const projectSelect = getByTestId('project-sharing-select');
-		const projectSelectInput = projectSelect.querySelector('input') as HTMLInputElement;
 
-		// Get the dropdown items
+		// Get the dropdown items (personalProjects[0] is excluded because it's already selected)
 		let projectSelectDropdownItems = await getDropdownItems(projectSelect);
 		expect(projectSelectDropdownItems).toHaveLength(2);
 
@@ -84,6 +93,7 @@ describe('ProjectSharing', () => {
 		expect(emitted()['update:modelValue']).toEqual([[[expect.any(Object), expect.any(Object)]]]);
 
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(2);
+		const projectSelectInput = projectSelect.querySelector('input') as HTMLInputElement;
 		expect(projectSelectInput.value).toBe('');
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
 		expect(projectSelectDropdownItems).toHaveLength(1);
@@ -127,12 +137,17 @@ describe('ProjectSharing', () => {
 	});
 
 	it('should work as a simple select when model is not an array', async () => {
+		projectsStore.searchProjects.mockResolvedValue({
+			count: teamProjects.length,
+			data: teamProjects,
+		});
+
 		const { getByTestId, queryByTestId, emitted } = renderComponent({
 			props: {
-				projects: teamProjects,
 				modelValue: null,
 			},
 		});
+
 		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 
 		const projectSelect = getByTestId('project-sharing-select');
@@ -176,7 +191,6 @@ describe('ProjectSharing', () => {
 	it('should render home project as owner when defined', async () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
-				projects: personalProjects,
 				modelValue: [],
 				homeProject,
 			},
@@ -187,11 +201,54 @@ describe('ProjectSharing', () => {
 		expect(getByTestId('project-sharing-owner')).toBeInTheDocument();
 	});
 
+	it('should show "more results" indicator when server has more results than displayed', async () => {
+		projectsStore.searchProjects.mockResolvedValue({
+			count: 200,
+			data: personalProjects,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: [],
+			},
+		});
+
+		const projectSelect = getByTestId('project-sharing-select');
+		const dropdownItems = await getDropdownItems(projectSelect);
+
+		// Last item should be the disabled "more results" indicator
+		const lastItem = dropdownItems[dropdownItems.length - 1];
+		expect(lastItem).toHaveClass('is-disabled');
+		expect(lastItem).toHaveTextContent('projects.sharing.moreResults');
+	});
+
+	it('should not show "more results" indicator when all results fit', async () => {
+		projectsStore.searchProjects.mockResolvedValue({
+			count: personalProjects.length,
+			data: personalProjects,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: [],
+			},
+		});
+
+		const projectSelect = getByTestId('project-sharing-select');
+		const dropdownItems = await getDropdownItems(projectSelect);
+
+		expect(dropdownItems).toHaveLength(personalProjects.length);
+		// No disabled items
+		const disabledItems = Array.from(dropdownItems).filter((item) =>
+			item.classList.contains('is-disabled'),
+		);
+		expect(disabledItems).toHaveLength(0);
+	});
+
 	describe('global sharing', () => {
 		it('should show "All Users" option when canShareGlobally is true', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
-					projects: personalProjects,
 					modelValue: [],
 					canShareGlobally: true,
 				},
@@ -209,7 +266,6 @@ describe('ProjectSharing', () => {
 		it('should not show "All Users" option when canShareGlobally is false', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
-					projects: personalProjects,
 					modelValue: [],
 					canShareGlobally: false,
 				},
@@ -226,7 +282,6 @@ describe('ProjectSharing', () => {
 		it('should not show "All Users" option when canShareGlobally is undefined', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
-					projects: personalProjects,
 					modelValue: [],
 				},
 			});
@@ -242,7 +297,6 @@ describe('ProjectSharing', () => {
 		it('should emit update:shareWithAllUsers when "All Users" is selected', async () => {
 			const { getByTestId, emitted } = renderComponent({
 				props: {
-					projects: personalProjects,
 					modelValue: [],
 					canShareGlobally: true,
 				},
@@ -258,10 +312,9 @@ describe('ProjectSharing', () => {
 			expect(emitted()['update:shareWithAllUsers']).toEqual([[true]]);
 		});
 
-		it('should show "All Users" in selected list when isSharedGlobally is true', () => {
+		it('should show "All Users" in selected list when isSharedGlobally is true', async () => {
 			const { getAllByTestId } = renderComponent({
 				props: {
-					projects: personalProjects,
 					modelValue: [],
 					canShareGlobally: true,
 					isSharedGlobally: true,
@@ -276,7 +329,6 @@ describe('ProjectSharing', () => {
 		it('should emit update:shareWithAllUsers with false when "All Users" is removed', async () => {
 			const { getAllByTestId, emitted } = renderComponent({
 				props: {
-					projects: personalProjects,
 					modelValue: [],
 					canShareGlobally: true,
 					isSharedGlobally: true,
@@ -298,10 +350,9 @@ describe('ProjectSharing', () => {
 			expect(emitted()['update:shareWithAllUsers']).toEqual([[false]]);
 		});
 
-		it('should not show remove button for "All Users" when canShareGlobally is false', () => {
+		it('should not show remove button for "All Users" when canShareGlobally is false', async () => {
 			const { getAllByTestId } = renderComponent({
 				props: {
-					projects: personalProjects,
 					modelValue: [],
 					canShareGlobally: false,
 					isSharedGlobally: true,
@@ -318,7 +369,6 @@ describe('ProjectSharing', () => {
 		it('should not show "All Users" in dropdown when already globally shared', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
-					projects: personalProjects,
 					modelValue: [],
 					canShareGlobally: true,
 					isSharedGlobally: true,

@@ -9,7 +9,6 @@ import { ElDialog, ElRadio } from 'element-plus';
 import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
 type Props = {
 	currentProject: Project | null;
-	projects: ProjectListItem[];
 	resourceCounts: ResourceCounts;
 };
 
@@ -88,7 +87,7 @@ const onDelete = () => {
 					<ProjectSharing
 						v-model="selectedProject"
 						class="pt-2xs"
-						:projects="props.projects"
+						:filter-fn="(p: ProjectListItem) => p.id !== props.currentProject?.id"
 						:empty-options-text="locale.baseText('projects.sharing.noMatchingProjects')"
 					/>
 				</div>
