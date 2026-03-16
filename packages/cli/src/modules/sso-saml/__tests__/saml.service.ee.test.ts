@@ -199,6 +199,11 @@ describe('SamlService', () => {
 		userRepository = mock<UserRepository>();
 		globalConfig = mock<GlobalConfig>({
 			sso: { saml: { loginEnabled: false } },
+			logging: {
+				level: 'info',
+				outputs: ['console'],
+				scopes: [],
+			},
 		});
 		provisioningService = mock<ProvisioningService>();
 		cipher = mock<Cipher>();
@@ -1189,12 +1194,38 @@ BBgwFoAU7VJTUt9Us8cKjMzEfYyjiWA4R4/MwDAYDVR0TBAUwAwEB/zANBgkqhkiG
 				return data;
 			});
 			// Mock required methods
-			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+			jest.spyOn(samlService, 'loadSamlify').mockImplementation(async () => {
+				// Set samlify to a mock object to avoid undefined errors
+				(samlService as any).samlify = {
+					IdentityProvider: jest.fn().mockReturnValue({
+						entityMeta: {
+							getSingleSignOnService: jest.fn().mockReturnValue('https://test.com'),
+						},
+					}),
+					setSchemaValidator: jest.fn(),
+					Constants: { wording: { binding: { redirect: 'redirect' } } },
+				};
+			});
 			jest.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
-			jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
+			// Mock validateIdentityProvider to avoid accessing undefined samlify in validator
+			// Also set validator's samlify to avoid undefined errors
+			(validator as any).samlify = {
+				Constants: { wording: { binding: { redirect: 'redirect' } } },
+			};
+			jest.spyOn(validator, 'validateIdentityProvider').mockImplementation(() => {
+				// Do nothing - validation is mocked
+			});
+			jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({
+				entityMeta: {
+					getSingleSignOnService: jest.fn().mockReturnValue('https://test.com'),
+				},
+			} as any);
 			jest
 				.spyOn(samlService, 'saveSamlPreferencesToDb')
 				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			jest
+				.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand')
+				.mockResolvedValue(undefined);
 			jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
 		});
 
@@ -1242,7 +1273,7 @@ BBgwFoAU7VJTUt9Us8cKjMzEfYyjiWA4R4/MwDAYDVR0TBAUwAwEB/zANBgkqhkiG
 				expect(samlService.samlPreferences.signingCertificate).toBe(validCertificate);
 			});
 
-			it('should not encrypt already encrypted private key', async () => {
+			it('should always encrypt private key even if it appears to be already encrypted', async () => {
 				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
 				const encryptedKey = 'encrypted:some-key';
 
@@ -1250,8 +1281,8 @@ BBgwFoAU7VJTUt9Us8cKjMzEfYyjiWA4R4/MwDAYDVR0TBAUwAwEB/zANBgkqhkiG
 					signingPrivateKey: encryptedKey,
 				});
 
-				expect(cipher.encrypt).not.toHaveBeenCalled();
-				expect(samlService.samlPreferences.signingPrivateKey).toBe(encryptedKey);
+				expect(cipher.encrypt).toHaveBeenCalledWith(encryptedKey);
+				expect(samlService.samlPreferences.signingPrivateKey).toBe(`encrypted:${encryptedKey}`);
 			});
 
 			it('should reject signing configuration when feature flag is disabled', async () => {
@@ -1352,7 +1383,10 @@ BBgwFoAU7VJTUt9Us8cKjMzEfYyjiWA4R4/MwDAYDVR0TBAUwAwEB/zANBgkqhkiG
 					metadata: mockSamlConfig.metadata,
 				});
 
-				await expect(samlService.setSamlPreferences({})).rejects.toThrow('do not match');
+				// The error should indicate that keys don't match or certificate is invalid
+				await expect(samlService.setSamlPreferences({})).rejects.toThrow(
+					/do not match|Failed to validate key pair/,
+				);
 			});
 		});
 

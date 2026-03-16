@@ -122,8 +122,12 @@ export class SamlService {
 				error instanceof InvalidSamlMetadataError ||
 				error instanceof SyntaxError
 			) {
+				const errorMessage =
+					error instanceof Error && error.message
+						? error.message
+						: String(error ?? 'Unknown error');
 				this.logger.warn(
-					`SAML initialization failed because of invalid metadata in database: ${error.message}. IMPORTANT: Disabling SAML and switching to email-based login for all users. Please review your configuration and re-enable SAML.`,
+					`SAML initialization failed because of invalid metadata in database: ${errorMessage}. IMPORTANT: Disabling SAML and switching to email-based login for all users. Please review your configuration and re-enable SAML.`,
 				);
 				await this.reset();
 			} else {
@@ -393,7 +397,14 @@ export class SamlService {
 					const decryptedPrivateKey = this.getDecryptedPrivateKey();
 					validateKeyPair(decryptedPrivateKey, this._samlPreferences.signingCertificate);
 				} catch (error) {
-					throw new BadRequestError(error instanceof Error ? error.message : String(error));
+					// Preserve the original error message, especially "do not match" for key pair validation
+					const errorMessage =
+						error instanceof Error && error.message
+							? error.message
+							: error !== null && error !== undefined
+								? String(error)
+								: 'Unknown error';
+					throw new BadRequestError(errorMessage);
 				}
 			} else {
 				throw new BadRequestError(
@@ -419,8 +430,9 @@ export class SamlService {
 		this._samlPreferences.acsBinding = prefs.acsBinding ?? this._samlPreferences.acsBinding;
 		this._samlPreferences.signatureConfig =
 			prefs.signatureConfig ?? this._samlPreferences.signatureConfig;
-		this._samlPreferences.authnRequestsSigned =
-			prefs.authnRequestsSigned ?? this._samlPreferences.authnRequestsSigned;
+		if (prefs.authnRequestsSigned !== undefined) {
+			this._samlPreferences.authnRequestsSigned = prefs.authnRequestsSigned;
+		}
 		this._samlPreferences.wantAssertionsSigned =
 			prefs.wantAssertionsSigned ?? this._samlPreferences.wantAssertionsSigned;
 		this._samlPreferences.wantMessageSigned =
@@ -560,9 +572,15 @@ export class SamlService {
 			);
 		} catch (error) {
 			// throw error;
+			const errorMessage =
+				error instanceof Error && error.message
+					? error.message
+					: error !== null && error !== undefined
+						? String(error)
+						: 'Unknown error';
 			throw new AuthError(
 				// INFO: The error can be a string. Samlify rejects promises with strings.
-				`SAML Authentication failed. Could not parse SAML response. ${error instanceof Error ? error.message : error}`,
+				`SAML Authentication failed. Could not parse SAML response. ${errorMessage}`,
 			);
 		}
 		const { attributes, missingAttributes } = getMappedSamlAttributesFromFlowResult(
@@ -612,9 +630,13 @@ export class SamlService {
 		try {
 			return this.cipher.decrypt(this._samlPreferences.signingPrivateKey);
 		} catch (error) {
-			throw new BadRequestError(
-				`Failed to decrypt signing private key: ${error instanceof Error ? error.message : String(error)}`,
-			);
+			const errorMessage =
+				error instanceof Error && error.message
+					? error.message
+					: error !== null && error !== undefined
+						? String(error)
+						: 'Unknown error';
+			throw new BadRequestError(`Failed to decrypt signing private key: ${errorMessage}`);
 		}
 	}
 }
