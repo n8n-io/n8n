@@ -284,6 +284,7 @@ describe('InsightsDashboard', () => {
 		// Mock projects store
 		projectsStore.availableProjects = projects;
 		projectsStore.getAvailableProjects = vi.fn().mockResolvedValue(projects);
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
 
 		// Mock async states
 		insightsStore.summary = {
