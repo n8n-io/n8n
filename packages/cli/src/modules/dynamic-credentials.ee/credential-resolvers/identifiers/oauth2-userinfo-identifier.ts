@@ -51,7 +51,21 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 
 	async validateOptions(identifierOptions: Record<string, unknown>): Promise<void> {
 		const options = this.parseOptions(identifierOptions);
-		const metadata = await this.fetchMetadata(options, true);
+		let metadata;
+		try {
+			metadata = await this.fetchMetadata(options, true);
+		} catch (error) {
+			if (error instanceof IdentifierValidationError) {
+				throw error;
+			}
+			this.logger.error(`Failed to reach OAuth2 metadata URL ${options.metadataUri}`, {
+				error,
+			});
+			throw new IdentifierValidationError(
+				`Could not reach metadata URL: ${error instanceof Error ? error.message : String(error)}`,
+				{ cause: error },
+			);
+		}
 		if (!metadata.userinfo_endpoint) {
 			this.logger.error('Metadata does not contain an userinfo endpoint');
 			throw new IdentifierValidationError('Metadata does not contain an userinfo endpoint');
@@ -112,21 +126,10 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 			}
 		}
 
-		let response;
-		try {
-			response = await axios.get(options.metadataUri, {
-				validateStatus: () => true,
-				timeout: 10 * Time.seconds.toMilliseconds,
-			});
-		} catch (error) {
-			this.logger.error(`Failed to reach OAuth2 metadata URL ${options.metadataUri}`, {
-				error,
-			});
-			throw new IdentifierValidationError(
-				`Could not reach metadata URL: ${error instanceof Error ? error.message : String(error)}`,
-				{ cause: error },
-			);
-		}
+		const response = await axios.get(options.metadataUri, {
+			validateStatus: () => true,
+			timeout: 10 * Time.seconds.toMilliseconds,
+		});
 
 		if (response.status !== 200) {
 			this.logger.error(
