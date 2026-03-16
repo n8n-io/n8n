@@ -351,7 +351,7 @@ watch(isExecuting, (executing, wasExecuting) => {
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 	padding: 0 var(--spacing--sm);
 }
 
