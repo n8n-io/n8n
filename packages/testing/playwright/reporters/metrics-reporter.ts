@@ -1,7 +1,6 @@
+import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 import { execSync } from 'node:child_process';
 import * as os from 'node:os';
-
-import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 import { z } from 'zod';
 
 const metricDataSchema = z.object({
