@@ -609,7 +609,7 @@ function onRenameNode(name: string) {
 }
 
 async function onOpenRenameNodeModal(id: string) {
-	const currentName = workflowsStore.getNodeById(id)?.name ?? '';
+	const currentName = workflowDocumentStore?.value?.getNodeById(id)?.name ?? '';
 
 	const activeElement = document.activeElement;
 
@@ -888,7 +888,7 @@ async function onRevertAddNode({ node }: { node: INodeUi }) {
 }
 
 function onSwitchActiveNode(nodeName: string) {
-	const node = workflowsStore.getNodeByName(nodeName);
+	const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
 	if (!node) return;
 
 	setNodeActiveByName(nodeName, 'other');
@@ -958,7 +958,7 @@ function onClickConnectionAdd(connection: Connection) {
 }
 
 function onClickReplaceNode(nodeId: string) {
-	const node = workflowsStore.getNodeById(nodeId);
+	const node = workflowDocumentStore?.value?.getNodeById(nodeId);
 	if (!node) return;
 	const nodeType = nodeTypesStore.getNodeType(node.type);
 	if (!nodeType) return;
@@ -1041,7 +1041,7 @@ const isStopWaitingForWebhookButtonVisible = computed(
 );
 
 async function onRunWorkflowToNode(id: string) {
-	const node = workflowsStore.getNodeById(id);
+	const node = workflowDocumentStore?.value?.getNodeById(id);
 	if (!node) return;
 
 	if (needsAgentInput(node) && nodeTypesStore.isToolNode(node.type)) {
@@ -1074,7 +1074,7 @@ async function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
 }
 
 async function onCopyTestUrl(id: string) {
-	const node = workflowsStore.getNodeById(id);
+	const node = workflowDocumentStore?.value?.getNodeById(id);
 	const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(node?.type ?? '');
 
 	if (isProductionOnly) {
