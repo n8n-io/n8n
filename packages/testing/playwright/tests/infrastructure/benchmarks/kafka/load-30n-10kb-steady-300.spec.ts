@@ -22,6 +22,7 @@ test.describe(
 				services,
 				testInfo,
 				load: { type: 'steady', ratePerSecond: 300, durationSeconds: 30 },
+				trigger: 'kafka',
 				timeoutMs: 300_000,
 			});
 		});

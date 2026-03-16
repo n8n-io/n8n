@@ -1,17 +1,20 @@
+import * as os from 'node:os';
+import { execSync } from 'node:child_process';
 import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
-import { strict as assert } from 'assert';
-import { execSync } from 'child_process';
 import { z } from 'zod';
 
 const metricDataSchema = z.object({
 	value: z.number(),
 	unit: z.string().optional(),
+	dimensions: z.record(z.union([z.string(), z.number()])).optional(),
 });
 
 interface Metric {
-	name: string;
+	benchmark_name: string;
+	metric_name: string;
 	value: number;
 	unit: string | null;
+	dimensions: Record<string, string | number> | null;
 }
 
 interface ReporterOptions {
@@ -22,123 +25,133 @@ interface ReporterOptions {
 
 /**
  * Automatically collect performance metrics from Playwright tests and send them to a Webhook.
- * If your test contains a testInfo.attach() call with a name starting with 'metric:', the metric will be collected and sent to the Webhook.
+ * If your test contains a testInfo.attach() call with a name starting with 'metric:', the metric
+ * will be collected and sent as a single batched payload at the end of the run.
+ *
+ * See utils/performance-helper.ts for the attachMetric() helper.
  */
 class MetricsReporter implements Reporter {
 	private webhookUrl: string | undefined;
 	private webhookUser: string | undefined;
 	private webhookPassword: string | undefined;
-	private pendingRequests: Array<Promise<void>> = [];
+	private collectedMetrics: Metric[] = [];
 
 	constructor(options: ReporterOptions = {}) {
-		this.webhookUrl = options.webhookUrl ?? process.env.QA_PERFORMANCE_METRICS_WEBHOOK_URL;
-		this.webhookUser = options.webhookUser ?? process.env.QA_PERFORMANCE_METRICS_WEBHOOK_USER;
-		this.webhookPassword =
-			options.webhookPassword ?? process.env.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD;
+		this.webhookUrl = options.webhookUrl ?? process.env.QA_METRICS_WEBHOOK_URL;
+		this.webhookUser = options.webhookUser ?? process.env.QA_METRICS_WEBHOOK_USER;
+		this.webhookPassword = options.webhookPassword ?? process.env.QA_METRICS_WEBHOOK_PASSWORD;
 	}
 
-	async onTestEnd(test: TestCase, result: TestResult): Promise<void> {
-		if (
-			!this.webhookUrl ||
-			!this.webhookUser ||
-			!this.webhookPassword ||
-			result.status === 'skipped'
-		) {
-			return;
-		}
-
-		const metrics = this.collectMetrics(result);
-		if (metrics.length > 0) {
-			const sendPromise = this.sendMetrics(test, metrics);
-			this.pendingRequests.push(sendPromise);
-			await sendPromise;
-		}
+	onTestEnd(test: TestCase, result: TestResult): void {
+		if (result.status === 'skipped') return;
+		const metrics = this.collectMetrics(test, result);
+		this.collectedMetrics.push(...metrics);
 	}
 
-	private collectMetrics(result: TestResult): Metric[] {
-		const metrics: Metric[] = [];
-
-		result.attachments.forEach((attachment) => {
-			if (attachment.name.startsWith('metric:')) {
-				const metricName = attachment.name.replace('metric:', '');
-				try {
-					const parsedData = JSON.parse(attachment.body?.toString() ?? '');
-					const data = metricDataSchema.parse(parsedData);
-					metrics.push({
-						name: metricName,
-						value: data.value,
-						unit: data.unit ?? null,
-					});
-				} catch (e) {
-					console.warn(
-						`[MetricsReporter] Failed to parse metric ${metricName}: ${(e as Error).message}`,
-					);
-				}
-			}
-		});
-
-		return metrics;
-	}
-
-	private async sendMetrics(test: TestCase, metrics: Metric[]): Promise<void> {
-		const gitInfo = this.getGitInfo();
-
-		assert(gitInfo.commit, 'Git commit must be defined');
-		assert(gitInfo.branch, 'Git branch must be defined');
-		assert(gitInfo.author, 'Git author must be defined');
+	async onEnd(): Promise<void> {
+		if (!this.webhookUrl || this.collectedMetrics.length === 0) return;
 
 		const payload = {
-			test_name: test.title,
-			git_commit: gitInfo.commit,
-			git_branch: gitInfo.branch,
-			git_author: gitInfo.author,
-			timestamp: new Date().toISOString(),
-			metrics: metrics.map((metric) => ({
-				metric_name: metric.name,
-				metric_value: metric.value,
-				metric_unit: metric.unit,
-			})),
+			...this.getContext(),
+			metrics: this.collectedMetrics,
 		};
 
 		try {
 			const auth = Buffer.from(`${this.webhookUser}:${this.webhookPassword}`).toString('base64');
-
-			const response = await fetch(this.webhookUrl!, {
+			const response = await fetch(this.webhookUrl, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: `Basic ${auth}`,
 				},
 				body: JSON.stringify(payload),
-				signal: AbortSignal.timeout(10000),
+				signal: AbortSignal.timeout(30000),
 			});
 
 			if (!response.ok) {
-				console.warn(`[MetricsReporter] Webhook failed (${response.status}): ${test.title}`);
+				console.warn(
+					`[MetricsReporter] Webhook failed (${response.status}): ${this.collectedMetrics.length} metrics dropped`,
+				);
+			} else {
+				console.log(`[MetricsReporter] Sent ${this.collectedMetrics.length} metrics`);
 			}
 		} catch (e) {
-			console.warn(
-				`[MetricsReporter] Failed to send metrics for test ${test.title}: ${(e as Error).message}`,
-			);
+			console.warn(`[MetricsReporter] Failed to send metrics: ${(e as Error).message}`);
 		}
 	}
 
-	async onEnd(): Promise<void> {
-		if (this.pendingRequests.length > 0) {
-			await Promise.allSettled(this.pendingRequests);
+	private collectMetrics(test: TestCase, result: TestResult): Metric[] {
+		const metrics: Metric[] = [];
+
+		for (const attachment of result.attachments) {
+			if (!attachment.name.startsWith('metric:')) continue;
+			const metricName = attachment.name.slice('metric:'.length);
+			try {
+				const parsed = metricDataSchema.parse(JSON.parse(attachment.body?.toString() ?? ''));
+				metrics.push({
+					benchmark_name: test.title,
+					metric_name: metricName,
+					value: parsed.value,
+					unit: parsed.unit ?? null,
+					dimensions: parsed.dimensions ?? null,
+				});
+			} catch (e) {
+				console.warn(
+					`[MetricsReporter] Failed to parse metric ${metricName}: ${(e as Error).message}`,
+				);
+			}
 		}
+
+		return metrics;
 	}
 
-	private getGitInfo(): { commit: string | null; branch: string | null; author: string | null } {
+	private getContext() {
+		const ref = process.env.GITHUB_REF ?? '';
+		const prMatch = ref.match(/refs\/pull\/(\d+)/);
+		const runId = process.env.GITHUB_RUN_ID ?? null;
+
+		return {
+			timestamp: new Date().toISOString(),
+			git: {
+				sha: (process.env.GITHUB_SHA ?? this.gitFallback('rev-parse HEAD'))?.slice(0, 8) ?? null,
+				branch:
+					process.env.GITHUB_HEAD_REF ??
+					process.env.GITHUB_REF_NAME ??
+					this.gitFallback('rev-parse --abbrev-ref HEAD'),
+				pr: prMatch ? parseInt(prMatch[1], 10) : null,
+			},
+			ci: {
+				runId,
+				runUrl:
+					runId && process.env.GITHUB_REPOSITORY
+						? `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${runId}`
+						: null,
+				workflow: process.env.GITHUB_WORKFLOW ?? null,
+				job: process.env.GITHUB_JOB ?? null,
+				attempt: process.env.GITHUB_RUN_ATTEMPT
+					? parseInt(process.env.GITHUB_RUN_ATTEMPT, 10)
+					: null,
+			},
+			runner: {
+				provider: !process.env.CI
+					? 'local'
+					: process.env.RUNNER_ENVIRONMENT === 'github-hosted'
+						? 'github'
+						: 'blacksmith',
+				cpuCores: os.cpus().length,
+				memoryGb: Math.round((os.totalmem() / 1024 ** 3) * 10) / 10,
+			},
+		};
+	}
+
+	private gitFallback(command: string): string | null {
 		try {
-			return {
-				commit: execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim(),
-				branch: execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim(),
-				author: execSync('git log -1 --pretty=format:"%an"', { encoding: 'utf8' }).trim(),
-			};
-		} catch (e) {
-			console.error(`[MetricsReporter] Failed to get Git info: ${(e as Error).message}`);
-			return { commit: null, branch: null, author: null };
+			return execSync(`git ${command}`, {
+				encoding: 'utf8',
+				stdio: ['pipe', 'pipe', 'ignore'],
+			}).trim();
+		} catch {
+			return null;
 		}
 	}
 }

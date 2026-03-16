@@ -172,7 +172,7 @@ export class TelemetryRecorder {
 	 * Flush telemetry - outputs based on environment configuration
 	 *
 	 * Output modes:
-	 * - CONTAINER_TELEMETRY_WEBHOOK: Send via detached process (non-blocking, survives parent exit)
+	 * - QA_METRICS_WEBHOOK_URL: Send via detached process (non-blocking, survives parent exit)
 	 * - CONTAINER_TELEMETRY_VERBOSE=1: Full breakdown + elapsed logs (via utils.ts)
 	 * - Default: One-liner summary only
 	 */
@@ -180,7 +180,7 @@ export class TelemetryRecorder {
 		const record = this.buildRecord(success, errorMessage);
 
 		const isVerbose = process.env.CONTAINER_TELEMETRY_VERBOSE === '1';
-		const webhookUrl = process.env.CONTAINER_TELEMETRY_WEBHOOK;
+		const webhookUrl = process.env.QA_METRICS_WEBHOOK_URL;
 
 		if (webhookUrl) {
 			this.sendToWebhook(record, webhookUrl);
