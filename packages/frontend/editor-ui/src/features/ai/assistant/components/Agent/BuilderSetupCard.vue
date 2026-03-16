@@ -82,6 +82,13 @@ const {
 
 const { webhookUrls } = useWebhookUrls(executableNode);
 
+// Combines executing and listening into a single "active" flag.
+// For non-schedule/non-manual triggers, isExecuting is always false because
+// isListeningForWorkflowEvents mirrors isNodeRunning, making the expression
+// isNodeRunning && !isNodeRunning === false.  Watching isActive instead
+// ensures we detect when a trigger finishes receiving its test event.
+const isActive = computed(() => isExecuting.value || isInListeningState.value);
+
 const isTestingCredential = computed(() => {
 	const id = props.state.selectedCredentialId;
 	return !!id && credentialsStore.isCredentialTestPending(id);
@@ -173,8 +180,10 @@ const onExecuteClick = async () => {
 // Notify parent when step execution finishes (for auto-advance / wizard dismissal).
 // Emit when the node ran successfully OR was not reached (e.g. on an inactive branch).
 // Only skip when the node actually errored.
-watch(isExecuting, (executing, wasExecuting) => {
-	if (wasExecuting && !executing) {
+// Uses isActive (executing OR listening) because for non-schedule/non-manual triggers
+// isExecuting stays false throughout the listening lifecycle.
+watch(isActive, (active, wasActive) => {
+	if (wasActive && !active) {
 		const runData = workflowsStore.getWorkflowResultDataByNodeName(props.state.node.name);
 		const lastRun = runData?.[runData.length - 1];
 		if (!lastRun?.error) {
