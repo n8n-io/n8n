@@ -94,24 +94,13 @@ const chatInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const suggestionsInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const inputText = ref('');
 
-const notificationsPermissionsBannerTriggered = ref(false);
-
-watch(
-	() => builderStore.streaming,
-	(isStreaming) => {
-		if (isStreaming && canPrompt.value) {
-			notificationsPermissionsBannerTriggered.value = true;
-		}
-	},
-);
-
 const showUsabilityNotice = computed(
 	() =>
 		assistantStore.canManageAISettings && !settingsStore.settings.ai.allowSendingParameterValues,
 );
 
 const shouldShowNotificationBanner = computed(() => {
-	return notificationsPermissionsBannerTriggered.value && canPrompt.value;
+	return builderStore.streaming && canPrompt.value;
 });
 
 watch(shouldShowNotificationBanner, (isShown) => {
@@ -314,7 +303,6 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	accumulatedNodeIdsToTidyUp.value = [];
-	notificationsPermissionsBannerTriggered.value = false;
 }
 
 function onFeedback(feedback: RatingFeedback) {
