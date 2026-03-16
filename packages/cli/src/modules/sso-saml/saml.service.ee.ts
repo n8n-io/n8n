@@ -86,7 +86,7 @@ export class SamlService {
 		};
 	}
 
-	isSignedSamlRequestsEnabled(): boolean {
+	public isSignedSamlRequestsEnabled(): boolean {
 		return process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS === 'true';
 	}
 
@@ -101,7 +101,7 @@ export class SamlService {
 		private readonly cipher: Cipher,
 	) {}
 
-	async init(): Promise<void> {
+	public async init(): Promise<void> {
 		try {
 			// load preferences first but do not apply so as to not load samlify unnecessarily
 			await this.loadFromDbAndApplySamlPreferences(false);
