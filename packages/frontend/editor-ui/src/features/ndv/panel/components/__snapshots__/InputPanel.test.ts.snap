@@ -149,9 +149,11 @@ exports[`InputPanel > should render 1`] = `
               
               <!--v-if-->
               
+              
               <span>
                 Cancel
               </span>
+              
             </div>
           </button>
           <button
@@ -166,9 +168,11 @@ exports[`InputPanel > should render 1`] = `
               
               <!--v-if-->
               
+              
               <span>
                 Save
               </span>
+              
             </div>
           </button>
         </div>
@@ -263,9 +267,11 @@ exports[`InputPanel > should render 1`] = `
                       
                       <!--v-if-->
                       
+                      
                       <span>
                         Execute previous nodes
                       </span>
+                      
                     </div>
                   </button>
                   
