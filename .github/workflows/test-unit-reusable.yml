@@ -17,15 +17,6 @@ on:
         required: false
         default: false
         type: boolean
-    secrets:
-      CODECOV_TOKEN:
-        required: false
-      QA_METRICS_WEBHOOK_URL:
-        required: false
-      QA_METRICS_WEBHOOK_USER:
-        required: false
-      QA_METRICS_WEBHOOK_PASSWORD:
-        required: false
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 
