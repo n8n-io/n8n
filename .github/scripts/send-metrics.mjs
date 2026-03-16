@@ -1,30 +1,13 @@
 #!/usr/bin/env node
 /**
  * Shared metrics sender for CI scripts.
- *
- * Provides buildContext(), metric(), and sendMetrics() so every script posts
- * the same payload shape as the Playwright metrics reporter.
- *
- * Payload shape:
- *   {
- *     timestamp, benchmark_name,
- *     git: { sha, branch, pr },
- *     ci:  { runId, runUrl, job, workflow, attempt },
- *     runner: { provider, cpuCores, memoryGb },
- *     metrics: [{ metric_name, value, unit, dimensions }]
- *   }
+ * See .github/CI-TELEMETRY.md for payload shape and BigQuery schema.
  *
  * Usage:
  *   import { sendMetrics, metric } from './send-metrics.mjs';
+ *   await sendMetrics([metric('build-duration', 45.2, 's', { package: '@n8n/cli' })]);
  *
- *   await sendMetrics([
- *     metric('build-duration', 45.2, 's', { package: '@n8n/cli', cache: 'hit' }),
- *   ]);
- *
- * Environment variables (required to send):
- *   QA_METRICS_WEBHOOK_URL
- *   QA_METRICS_WEBHOOK_USER
- *   QA_METRICS_WEBHOOK_PASSWORD
+ * Env: QA_METRICS_WEBHOOK_URL, QA_METRICS_WEBHOOK_USER, QA_METRICS_WEBHOOK_PASSWORD
  */
 
 import * as os from 'node:os';
@@ -72,11 +55,6 @@ export function buildContext(benchmarkName = null) {
 	};
 }
 
-/**
- * Send metrics to the unified webhook.
- * Reads QA_METRICS_WEBHOOK_URL/USER/PASSWORD from environment.
- * No-ops (with log) if the URL is not set.
- */
 export async function sendMetrics(metrics, benchmarkName = null) {
 	const webhookUrl = process.env.QA_METRICS_WEBHOOK_URL;
 	const webhookUser = process.env.QA_METRICS_WEBHOOK_USER;
