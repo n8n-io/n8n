@@ -18,6 +18,7 @@ import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
 
 import { NODE_NAMES } from '../chat-hub.constants';
+import type { SemanticSearchOptions } from '../chat-hub.types';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -88,6 +89,104 @@ describe('ChatHubWorkflowService', () => {
 	});
 
 	describe('createChatWorkflow', () => {
+		describe('vector store nodes', () => {
+			const VECTOR_STORE_SEARCH = {
+				agentId: 'agent-1',
+				options: {
+					embeddingModel: { provider: 'openai' as const, credentialId: 'embedding-cred' },
+					vectorStore: {
+						nodeType: 'vectorStore',
+						credentialType: 'pineconeApi',
+						credentialId: 'vs-cred',
+					},
+				},
+			};
+
+			it('should include vector store and embeddings nodes when vectorStoreSearch is provided', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					VECTOR_STORE_SEARCH,
+					defaultExecutionMetadata,
+				);
+
+				const vectorStoreNode = result.workflowData.nodes.find(
+					(node) => node.name === NODE_NAMES.VECTOR_STORE,
+				);
+				expect(vectorStoreNode).toBeDefined();
+				expect(vectorStoreNode?.type).toBe(VECTOR_STORE_SEARCH.options.vectorStore.nodeType);
+				expect(vectorStoreNode?.credentials).toEqual({
+					[VECTOR_STORE_SEARCH.options.vectorStore.credentialType]: {
+						id: VECTOR_STORE_SEARCH.options.vectorStore.credentialId,
+						name: '',
+					},
+				});
+
+				const embeddingsNode = result.workflowData.nodes.find(
+					(node) => node.name === NODE_NAMES.EMBEDDINGS_MODEL,
+				);
+				expect(embeddingsNode).toBeDefined();
+				expect(embeddingsNode?.type).toBe('@n8n/n8n-nodes-langchain.embeddingsOpenAi');
+			});
+
+			it('should wire vector store to agent and embeddings to vector store', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					VECTOR_STORE_SEARCH,
+					defaultExecutionMetadata,
+				);
+
+				const { connections } = result.workflowData;
+				expect(connections[NODE_NAMES.VECTOR_STORE]?.ai_tool?.[0]).toContainEqual(
+					expect.objectContaining({ node: NODE_NAMES.REPLY_AGENT }),
+				);
+				expect(connections[NODE_NAMES.EMBEDDINGS_MODEL]?.ai_embedding?.[0]).toContainEqual(
+					expect.objectContaining({ node: NODE_NAMES.VECTOR_STORE }),
+				);
+			});
+
+			it('should not include vector store nodes when vectorStoreSearch is null', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+				);
+
+				const nodeNames = result.workflowData.nodes.map((n) => n.name);
+				expect(nodeNames).not.toContain(NODE_NAMES.VECTOR_STORE);
+				expect(nodeNames).not.toContain(NODE_NAMES.EMBEDDINGS_MODEL);
+			});
+		});
+
 		describe('message history handling', () => {
 			it('should handle empty history', async () => {
 				const mockHistory: ChatHubMessage[] = [];
@@ -893,6 +992,75 @@ describe('ChatHubWorkflowService', () => {
 		});
 	});
 
+	describe('createEmbeddingsInsertionWorkflow', () => {
+		const SEMANTIC_SEARCH_OPTIONS: SemanticSearchOptions = {
+			embeddingModel: { provider: 'openai', credentialId: 'embedding-cred' },
+			vectorStore: {
+				nodeType: 'vectorStore',
+				credentialType: 'pineconeApi',
+				credentialId: 'vs-cred',
+			},
+		};
+
+		let trx: ReturnType<typeof mock<EntityManager>>;
+
+		beforeEach(() => {
+			trx = mock<EntityManager>();
+			trx.save.mockImplementation(async (entity) => entity as never);
+		});
+
+		const attachment = {
+			attachment: {
+				data: 'base64data',
+				mimeType: 'application/pdf',
+				fileName: 'doc.pdf',
+			} as IBinaryData,
+			knowledgeId: 'knowledge-1',
+		};
+
+		it('should include a vector store node with the configured node type and credentials', async () => {
+			const result = await service.createEmbeddingsInsertionWorkflow(
+				mock<User>({ id: 'user-1' }),
+				'project-1',
+				[attachment],
+				'agent-1',
+				SEMANTIC_SEARCH_OPTIONS,
+				trx,
+				'workflow-1',
+			);
+
+			const vectorStoreNode = result.workflowData.nodes.find(
+				(node) => node.name === NODE_NAMES.VECTOR_STORE,
+			);
+			expect(vectorStoreNode).toBeDefined();
+			expect(vectorStoreNode?.type).toBe(SEMANTIC_SEARCH_OPTIONS.vectorStore.nodeType);
+			expect(vectorStoreNode?.credentials).toEqual({
+				[SEMANTIC_SEARCH_OPTIONS.vectorStore.credentialType]: {
+					id: SEMANTIC_SEARCH_OPTIONS.vectorStore.credentialId,
+					name: '',
+				},
+			});
+		});
+
+		it('should include an embeddings model node with the provider node type', async () => {
+			const result = await service.createEmbeddingsInsertionWorkflow(
+				mock<User>({ id: 'user-1' }),
+				'project-1',
+				[attachment],
+				'agent-1',
+				SEMANTIC_SEARCH_OPTIONS,
+				trx,
+				'workflow-1',
+			);
+
+			const embeddingsNode = result.workflowData.nodes.find(
+				(node) => node.name === NODE_NAMES.EMBEDDINGS_MODEL,
+			);
+			expect(embeddingsNode).toBeDefined();
+			expect(embeddingsNode?.type).toBe('@n8n/n8n-nodes-langchain.embeddingsOpenAi');
+		});
+	});
+
 	describe('system message building', () => {
 		async function getAgentNodeSystemMessage(agent: ChatHubAgent): Promise<string> {
 			const serviceWithRepo = new ChatHubWorkflowService(
@@ -989,16 +1157,17 @@ __metadata__
 > - If unsure, say so explicitly
 > - Never invent information
 
-## Your Knowledge
+## Context Files
 
-You have access to the following files as a searchable knowledge base:
+You have access to the following user-uploaded files as a searchable context for the conversation:
 
 - technical-spec.pdf
 - product-roadmap.pdf
 - onboarding-guide.pdf
 
-Use the vector store tool to search the content of these files when answering questions that may be related to them.
-Do not proactively mention these files to the user."
+Use context_files_search tool to search these documents when answering questions that may be related to them.
+Do not proactively mention these files to the user.
+When you use information from these files, always cite the source using markdown footnote syntax (e.g. "Some fact.[^1]" with "[^1]: example.pdf, page 3" at the end of your response)."
 `);
 		});
 
