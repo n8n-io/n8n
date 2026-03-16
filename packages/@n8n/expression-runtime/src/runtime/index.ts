@@ -31,6 +31,22 @@ declare global {
 		var DateTime: typeof import('luxon').DateTime;
 		var extend: typeof import('../extensions/extend').extend;
 		var extendOptional: typeof import('../extensions/extend').extendOptional;
+
+		// Workflow data exposed for expression access
+		var $json: unknown;
+		var $binary: unknown;
+		var $input: unknown;
+		var $node: unknown;
+		var $parameter: unknown;
+		var $workflow: unknown;
+		var $prevNode: unknown;
+		var $data: unknown;
+		var $env: unknown;
+		var $runIndex: number | undefined;
+		var $itemIndex: number | undefined;
+		var $now: import('luxon').DateTime;
+		var $today: import('luxon').DateTime;
+		var $items: ((...args: unknown[]) => unknown) | unknown;
 	}
 }
 

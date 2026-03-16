@@ -18,6 +18,13 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+
+let mockAllNodes: INodeUi[] = [];
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: () => ({ allNodes: mockAllNodes }),
+	createWorkflowDocumentId: (id: string) => `${id}@latest`,
+}));
 
 describe('useActions', () => {
 	beforeAll(() => {
@@ -26,6 +33,7 @@ describe('useActions', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		mockAllNodes = [];
 	});
 
 	describe('getAddedNodesAndConnections', () => {
@@ -76,8 +84,9 @@ describe('useActions', () => {
 		test('should insert a ChatTrigger node when an AI Agent is added on an empty canvas', () => {
 			const workflowsStore = useWorkflowsStore();
 
+			vi.spyOn(workflowsStore, 'workflowId', 'get').mockReturnValue('test-id');
 			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([]);
-			vi.spyOn(workflowsStore, 'allNodes', 'get').mockReturnValue([]);
+			mockAllNodes = [];
 
 			const { getAddedNodesAndConnections } = useActions();
 
@@ -102,12 +111,11 @@ describe('useActions', () => {
 		test('should insert a ChatTrigger node when an AI Agent is added with only a Manual Trigger present', () => {
 			const workflowsStore = useWorkflowsStore();
 
+			vi.spyOn(workflowsStore, 'workflowId', 'get').mockReturnValue('test-id');
 			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([
 				{ type: MANUAL_TRIGGER_NODE_TYPE } as never,
 			]);
-			vi.spyOn(workflowsStore, 'allNodes', 'get').mockReturnValue([
-				{ type: MANUAL_TRIGGER_NODE_TYPE } as never,
-			]);
+			mockAllNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as INodeUi];
 
 			const { getAddedNodesAndConnections } = useActions();
 
@@ -132,14 +140,14 @@ describe('useActions', () => {
 		test('should not insert a ChatTrigger node when an AI Agent is added with a non-trigger node prseent', () => {
 			const workflowsStore = useWorkflowsStore();
 
+			vi.spyOn(workflowsStore, 'workflowId', 'get').mockReturnValue('test-id');
 			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([
 				{ type: GITHUB_TRIGGER_NODE_TYPE } as never,
 			]);
-
-			vi.spyOn(workflowsStore, 'allNodes', 'get').mockReturnValue([
-				{ type: GITHUB_TRIGGER_NODE_TYPE } as never,
-				{ type: HTTP_REQUEST_NODE_TYPE } as never,
-			]);
+			mockAllNodes = [
+				{ type: GITHUB_TRIGGER_NODE_TYPE } as INodeUi,
+				{ type: HTTP_REQUEST_NODE_TYPE } as INodeUi,
+			];
 
 			const { getAddedNodesAndConnections } = useActions();
 
@@ -152,12 +160,11 @@ describe('useActions', () => {
 		test('should not insert a ChatTrigger node when an AI Agent is added with a Chat Trigger already present', () => {
 			const workflowsStore = useWorkflowsStore();
 
+			vi.spyOn(workflowsStore, 'workflowId', 'get').mockReturnValue('test-id');
 			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([
 				{ type: CHAT_TRIGGER_NODE_TYPE } as never,
 			]);
-			vi.spyOn(workflowsStore, 'allNodes', 'get').mockReturnValue([
-				{ type: CHAT_TRIGGER_NODE_TYPE } as never,
-			]);
+			mockAllNodes = [{ type: CHAT_TRIGGER_NODE_TYPE } as INodeUi];
 
 			const { getAddedNodesAndConnections } = useActions();
 

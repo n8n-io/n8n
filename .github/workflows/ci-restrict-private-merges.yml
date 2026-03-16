@@ -19,9 +19,11 @@ jobs:
       - name: Validate head branch
         id: validate
         shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           set -euo pipefail
-          head="${{ github.head_ref }}"
+          head="$HEAD_REF"
           if [[ "$head" == bundle/* ]]; then
             echo "allowed=true" >> "$GITHUB_OUTPUT"
           else
@@ -30,7 +32,7 @@ jobs:
 
       - name: Comment on PR (blocked)
         if: ${{ steps.validate.outputs.allowed == 'false' }}
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const owner = context.repo.owner;
@@ -74,11 +76,16 @@ jobs:
 
       - name: Fail (blocked)
         if: ${{ steps.validate.outputs.allowed == 'false' }}
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
-          echo "::error::You can only merge to master from a bundle/* branch. Got '${{ github.head_ref }}'."
+          echo "::error::You can only merge to master from a bundle/* branch. Got '$HEAD_REF'."
           exit 1
 
       - name: Allowed
         if: ${{ steps.validate.outputs.allowed == 'true' }}
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          echo "OK: '${{ github.head_ref }}' can merge into '${{ github.base_ref }}'"
+          echo "OK: '$HEAD_REF' can merge into '$BASE_REF'"
