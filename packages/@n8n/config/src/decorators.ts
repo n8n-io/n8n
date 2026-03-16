@@ -9,9 +9,15 @@ import * as coerce from './coerce';
 type Class = Function;
 type Constructable<T = unknown> = new (rawValue: string) => T;
 type PropertyKey = string | symbol;
-type PropertyType = number | boolean | string | Class;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type InstanceTransform = (value: string, config: any) => unknown;
+type PropertyType =
+	| NumberConstructor
+	| BooleanConstructor
+	| StringConstructor
+	| DateConstructor
+	| Class;
+type InstanceTransform<TConfig = unknown, TValue = unknown> = {
+	bivarianceHack(value: string, config: TConfig): TValue;
+}['bivarianceHack'];
 interface PropertyMetadata {
 	type: PropertyType;
 	envName?: string;
@@ -20,6 +26,26 @@ interface PropertyMetadata {
 }
 
 const globalMetadata = new Map<Class, Map<PropertyKey, PropertyMetadata>>();
+
+const getTypeName = (type: PropertyType) => {
+	if (type === Number) return 'number';
+	if (type === Boolean) return 'boolean';
+	if (type === String) return 'string';
+	if (type === Date) return 'Date';
+	if (type === Array) return 'array';
+	if (type === Object) return 'object';
+	return type.name;
+};
+
+const isTransformedValueCompatible = (value: unknown, type: PropertyType) => {
+	if (type === Number) return typeof value === 'number' && !Number.isNaN(value);
+	if (type === Boolean) return typeof value === 'boolean';
+	if (type === String) return typeof value === 'string';
+	if (type === Date) return value instanceof Date && !Number.isNaN(value.getTime());
+	if (type === Array) return Array.isArray(value);
+	if (type === Object) return typeof value === 'object' && value !== null;
+	return value instanceof (type as Constructable);
+};
 
 const readEnv = (envName: string) => {
 	if (envName in process.env) return process.env[envName];
@@ -49,7 +75,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 			throw new Error('Invalid config class: ' + ConfigClass.name);
 		}
 
-		const deferred: Array<[PropertyKey, string, InstanceTransform]> = [];
+		const deferred: Array<[PropertyKey, string, PropertyType, InstanceTransform]> = [];
 
 		for (const [key, { type, envName, schema, instanceTransform }] of classMetadata) {
 			if (typeof type === 'function' && globalMetadata.has(type)) {
@@ -58,7 +84,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 				// Defer properties with instance transforms to a second pass,
 				// so they can reference other already-resolved properties
 				if (instanceTransform) {
-					deferred.push([key, envName, instanceTransform]);
+					deferred.push([key, envName, type, instanceTransform]);
 					continue;
 				}
 
@@ -104,10 +130,17 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 		}
 
 		// Second pass: process instance transforms with access to all resolved properties
-		for (const [key, envName, instanceTransform] of deferred) {
+		for (const [key, envName, type, instanceTransform] of deferred) {
 			const value = readEnv(envName);
 			if (value === undefined) continue;
-			config[key] = instanceTransform(value, config);
+			const transformed = instanceTransform(value, config);
+			if (!isTransformedValueCompatible(transformed, type)) {
+				console.warn(
+					`Invalid transformed value for ${envName}: expected ${getTypeName(type)}. Falling back to default value.`,
+				);
+				continue;
+			}
+			config[key] = transformed;
 		}
 
 		if (typeof config.sanitize === 'function') config.sanitize();
@@ -127,9 +160,9 @@ export const Nested: PropertyDecorator = (target: object, key: PropertyKey) => {
 };
 
 export const Env =
-	(
+	<TConfig = unknown, TValue = unknown>(
 		envName: string,
-		schemaOrTransform?: PropertyMetadata['schema'] | InstanceTransform,
+		schemaOrTransform?: PropertyMetadata['schema'] | InstanceTransform<TConfig, TValue>,
 	): PropertyDecorator =>
 	(target: object, key: PropertyKey) => {
 		const ConfigClass = target.constructor;
