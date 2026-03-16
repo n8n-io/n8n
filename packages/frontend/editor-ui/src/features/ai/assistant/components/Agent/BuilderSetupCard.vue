@@ -258,23 +258,31 @@ watch(isExecuting, (executing, wasExecuting) => {
 		<!-- Footer -->
 		<footer v-if="showFooter" :class="$style.footer">
 			<div :class="$style.footerNav">
-				<span
+				<N8nButton
 					v-if="showArrows"
+					variant="ghost"
+					size="xsmall"
+					icon-only
+					:disabled="isPrevDisabled"
 					data-test-id="builder-setup-card-prev"
-					:class="[$style.navArrow, { [$style.navArrowDisabled]: isPrevDisabled }]"
-					@click="!isPrevDisabled && emit('goToPrev')"
+					aria-label="Previous step"
+					@click="emit('goToPrev')"
 				>
-					<N8nIcon icon="chevron-left" size="small" />
-				</span>
-				<N8nText size="small" color="text-light"> {{ stepIndex + 1 }}/{{ totalCards }} </N8nText>
-				<span
+					<N8nIcon icon="chevron-left" size="xsmall" />
+				</N8nButton>
+				<N8nText size="small" color="text-light"> {{ stepIndex + 1 }} of {{ totalCards }} </N8nText>
+				<N8nButton
 					v-if="showArrows"
+					variant="ghost"
+					size="xsmall"
+					icon-only
+					:disabled="isNextDisabled"
 					data-test-id="builder-setup-card-next"
-					:class="[$style.navArrow, { [$style.navArrowDisabled]: isNextDisabled }]"
-					@click="!isNextDisabled && emit('goToNext')"
+					aria-label="Next step"
+					@click="emit('goToNext')"
 				>
-					<N8nIcon icon="chevron-right" size="small" />
-				</span>
+					<N8nIcon icon="chevron-right" size="xsmall" />
+				</N8nButton>
 			</div>
 
 			<div :class="$style.footerActions">
@@ -309,7 +317,7 @@ watch(isExecuting, (executing, wasExecuting) => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--xs);
+	padding: 0;
 	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius);
@@ -323,6 +331,7 @@ watch(isExecuting, (executing, wasExecuting) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--xs) 0;
 }
 
 .title {
@@ -342,6 +351,7 @@ watch(isExecuting, (executing, wasExecuting) => {
 .content {
 	display: flex;
 	flex-direction: column;
+	padding: 0 var(--spacing--xs);
 }
 
 .credentialContainer {
@@ -359,6 +369,8 @@ watch(isExecuting, (executing, wasExecuting) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+	border-top: var(--border);
+	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .footerNav {
@@ -366,26 +378,6 @@ watch(isExecuting, (executing, wasExecuting) => {
 	flex: 1;
 	align-items: center;
 	gap: var(--spacing--4xs);
-}
-
-.navArrow {
-	display: flex;
-	align-items: center;
-	cursor: pointer;
-	color: var(--color--text--tint-1);
-
-	&:hover {
-		color: var(--color--text);
-	}
-}
-
-.navArrowDisabled {
-	cursor: default;
-	color: var(--color--text--tint-3);
-
-	&:hover {
-		color: var(--color--text--tint-3);
-	}
 }
 
 .footerActions {
