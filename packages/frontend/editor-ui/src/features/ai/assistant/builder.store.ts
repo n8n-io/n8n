@@ -31,6 +31,7 @@ import {
 	extractRevertVersionIds,
 	fetchExistingVersionIds,
 	enrichMessagesWithRevertVersion,
+	truncateVersionTitle,
 } from './builder.utils';
 import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -47,7 +48,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
-import type { PlanMode } from '@/features/ai/assistant/assistant.types';
+import { isVersionCardMessage, type PlanMode } from '@/features/ai/assistant/assistant.types';
 import {
 	type ChatRequest,
 	isPlanModePlanMessage,
@@ -270,9 +271,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	const hasMessages = computed(() => chatMessages.value.length > 0);
 
+	/** All version card messages in chat order */
+	const versionCardMessages = computed(() => chatMessages.value.filter(isVersionCardMessage));
+
 	const latestRevertVersion = computed(() => {
-		const msg = chatMessages.value.findLast((m) => 'revertVersion' in m && m.revertVersion);
-		return msg && 'revertVersion' in msg ? msg.revertVersion : null;
+		const cards = versionCardMessages.value;
+		if (cards.length === 0) return null;
+		const last = cards[cards.length - 1];
+		return { id: last.data.versionId, createdAt: last.data.createdAt };
 	});
 
 	const isPlanModeAvailable = computed(() => {
@@ -490,12 +496,32 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const { revertVersion } = currentStreamingMessage.value ?? {};
 		currentStreamingMessage.value = undefined;
 
-		// Only show "Restore version" on user messages that triggered a workflow modification.
+		// Insert a version card after AI generation if a workflow modification happened.
 		// During planning or question phases no workflow changes happen, so skip it.
 		if (userMessageId && revertVersion && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
-			chatMessages.value = chatMessages.value.map((msg) =>
-				msg.id === userMessageId ? { ...msg, revertVersion } : msg,
-			);
+			// Extract the last assistant text message as the version title
+			const lastAssistantText = [...chatMessages.value]
+				.reverse()
+				.find((m) => m.type === 'text' && m.role === 'assistant');
+			const title =
+				lastAssistantText && 'content' in lastAssistantText
+					? truncateVersionTitle(String(lastAssistantText.content))
+					: undefined;
+
+			chatMessages.value = [
+				...chatMessages.value,
+				{
+					id: `version-card-${generateMessageId()}`,
+					role: 'assistant',
+					type: 'custom',
+					customType: 'version_card',
+					data: {
+						versionId: revertVersion.id,
+						createdAt: revertVersion.createdAt,
+						title,
+					},
+				},
+			];
 		}
 
 		const wasAborted = payload && 'aborted' in payload && payload.aborted;
@@ -1006,14 +1032,93 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					latestSession.messages,
 					versionMap,
 				);
-				const convertedMessages = enrichedMessages
-					.map((msg) => {
-						// Use messageId from backend if available, otherwise generate new one
-						const id = 'id' in msg && typeof msg.id === 'string' ? msg.id : generateMessageId();
-						return mapAssistantMessageToUI(msg, id);
-					})
-					// Do not include wf updated messages from session
-					.filter((msg) => msg.type !== 'workflow-updated');
+
+				// Two-pass conversion: first convert all messages, then insert version
+				// cards in the correct position.
+				// During a live session, stopStreaming() appends version cards AFTER
+				// the AI response. On reload we must reproduce the same ordering:
+				//   user msg → tools → AI response → VERSION CARD → next user msg …
+				// The revertVersionId lives on the user message that TRIGGERED the
+				// generation, so we defer its version card until just before the
+				// NEXT user message (or the end of the list for the last generation).
+
+				// Pass 1: convert messages, stripping revertVersion from user messages
+				type ConvertedItem = {
+					msg: ChatUI.AssistantMessage;
+					versionCard?: ChatUI.AssistantMessage;
+				};
+				const items: ConvertedItem[] = enrichedMessages.map((raw) => {
+					const id = 'id' in raw && typeof raw.id === 'string' ? raw.id : generateMessageId();
+					const uiMsg = mapAssistantMessageToUI(raw, id);
+
+					if (
+						uiMsg.type === 'text' &&
+						uiMsg.role === 'user' &&
+						'revertVersion' in uiMsg &&
+						uiMsg.revertVersion
+					) {
+						const { revertVersion, ...msgWithoutRevert } = uiMsg;
+						return {
+							msg: msgWithoutRevert,
+							versionCard: {
+								id: `version-card-${id}`,
+								role: 'assistant' as const,
+								type: 'custom' as const,
+								customType: 'version_card',
+								data: {
+									versionId: revertVersion.id,
+									createdAt: revertVersion.createdAt,
+								},
+							},
+						};
+					}
+
+					return { msg: uiMsg };
+				});
+
+				// Pass 2: build final list, placing each version card after the AI
+				// response (just before the next user message, or at the end).
+				// Also extract the AI summary text as the version card title.
+				const convertedMessages: ChatUI.AssistantMessage[] = [];
+				let pendingVersionCard: ChatUI.AssistantMessage | null = null;
+				let lastAssistantText: string | undefined;
+
+				for (const item of items) {
+					// When we reach a new user message, flush the pending card
+					// with the AI summary collected so far as its title.
+					if (item.msg.role === 'user' && item.msg.type === 'text' && pendingVersionCard) {
+						if (lastAssistantText && 'data' in pendingVersionCard) {
+							(pendingVersionCard.data as Record<string, unknown>).title =
+								truncateVersionTitle(lastAssistantText);
+						}
+						convertedMessages.push(pendingVersionCard);
+						pendingVersionCard = null;
+						lastAssistantText = undefined;
+					}
+
+					if (item.msg.type !== 'workflow-updated') {
+						convertedMessages.push(item.msg);
+					}
+
+					// Track the latest assistant text for the pending card's title
+					if (item.msg.role === 'assistant' && item.msg.type === 'text' && 'content' in item.msg) {
+						lastAssistantText = String(item.msg.content);
+					}
+
+					if (item.versionCard) {
+						pendingVersionCard = item.versionCard;
+						lastAssistantText = undefined;
+					}
+				}
+
+				// Flush the last pending version card (for the most recent generation)
+				if (pendingVersionCard) {
+					if (lastAssistantText && 'data' in pendingVersionCard) {
+						(pendingVersionCard.data as Record<string, unknown>).title =
+							truncateVersionTitle(lastAssistantText);
+					}
+					convertedMessages.push(pendingVersionCard);
+				}
 
 				chatMessages.value = convertedMessages;
 
@@ -1195,15 +1300,15 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	/**
 	 * Restores the workflow to a previous version and truncates chat messages.
-	 * Finds the user message with the matching messageId and removes it
-	 * along with all messages after it.
+	 * Finds the version card with the matching versionCardId, then removes
+	 * all messages after it (keeping the version card as the last message).
 	 *
 	 * @param versionId - The workflow version ID to restore to
-	 * @param messageId - The message ID to truncate from
+	 * @param versionCardId - The version card message ID to truncate after
 	 */
 	async function restoreToVersion(
 		versionId: string,
-		messageId: string,
+		versionCardId: string,
 	): Promise<IWorkflowDb | undefined> {
 		const workflowId = workflowsStore.workflowId;
 
@@ -1225,32 +1330,39 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		workflowDocumentStore.setUpdatedAt(updatedWorkflow.updatedAt);
 
-		// 2. Truncate messages in backend session (removes message with messageId and all after)
-		await truncateBuilderMessages(
-			rootStore.restApiContext,
-			workflowId,
-			messageId,
-			isCodeBuilder.value || undefined,
-		);
-
-		// 3. Truncate local chat messages - find user message with matching messageId
-		// and remove it along with all messages after it
-		const msgIndex = chatMessages.value.findIndex((msg) => msg.id === messageId);
-		const messagesBeingReverted =
-			msgIndex !== -1
+		// 2. Find the next user message after the version card to truncate backend session
+		const versionCardIndex = chatMessages.value.findIndex((msg) => msg.id === versionCardId);
+		const nextUserMsg =
+			versionCardIndex !== -1
 				? chatMessages.value
-						.slice(msgIndex)
-						.filter((msg) => 'revertVersion' in msg && msg.revertVersion).length
+						.slice(versionCardIndex + 1)
+						.find((msg) => msg.role === 'user' && msg.type === 'text')
+				: undefined;
+
+		if (nextUserMsg?.id) {
+			await truncateBuilderMessages(
+				rootStore.restApiContext,
+				workflowId,
+				nextUserMsg.id,
+				isCodeBuilder.value || undefined,
+			);
+		}
+
+		// 3. Truncate local chat messages - keep up to and including the version card
+		const messagesBeingReverted =
+			versionCardIndex !== -1
+				? chatMessages.value.slice(versionCardIndex + 1).filter((msg) => isVersionCardMessage(msg))
+						.length
 				: 0;
-		if (msgIndex !== -1) {
-			chatMessages.value = chatMessages.value.slice(0, msgIndex);
+		if (versionCardIndex !== -1) {
+			chatMessages.value = chatMessages.value.slice(0, versionCardIndex + 1);
 		}
 
 		builderMode.value = 'build';
 
 		// 4. Track telemetry event for version restore
 		trackWorkflowBuilderJourney('revert_version_from_builder', {
-			revert_user_message_id: messageId,
+			revert_user_message_id: versionCardId,
 			revert_version_id: versionId,
 			no_versions_reverted: messagesBeingReverted,
 		});
@@ -1294,6 +1406,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasNoCreditsRemaining,
 		hasMessages,
 		latestRevertVersion,
+		versionCardMessages,
 		workflowTodos,
 		hasTodosHiddenByPinnedData,
 		hasHadSuccessfulExecution,

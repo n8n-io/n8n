@@ -12,13 +12,17 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
-import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
+import type {
+	ChatUI,
+	RatingFeedback,
+	WorkflowSuggestion,
+} from '@n8n/design-system/types/assistant';
 import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { jsonParse } from 'n8n-workflow';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
-import ReviewChangesBanner from './ReviewChangesBanner.vue';
+import VersionCardV2 from './VersionCardV2.vue';
 import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
 import MessageFocusedNodesChips from '../FocusedNodes/MessageFocusedNodesChips.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -43,6 +47,7 @@ import {
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
 	isPlanModeUserAnswersMessage,
+	isVersionCardMessage,
 	isWebFetchApprovalCustomMessage,
 	type PlanMode,
 } from '../../assistant.types';
@@ -200,11 +205,16 @@ const isChatInputDisabled = computed(() => {
 	return isInputDisabled.value || builderStore.shouldDisableChatInput;
 });
 
-const { showReviewChanges, nodeChanges, isExpanded, toggleExpanded, openDiffView } =
-	useReviewChanges();
+const { nodeChanges, versionNodeChangesMap, openDiffView } = useReviewChanges();
 
 function onSelectChangedNode(nodeId: string) {
 	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
+}
+
+function isCurrentVersionCard(message: ChatUI.AssistantMessage): boolean {
+	if (!isVersionCardMessage(message)) return false;
+	const latest = builderStore.latestRevertVersion;
+	return latest !== null && message.data.versionId === latest.id;
 }
 
 const codeDiffWorkflowState = injectWorkflowState();
@@ -478,11 +488,11 @@ watch(
 );
 
 /**
- * Handle restore confirmation
+ * Handle restore confirmation from a version card
  */
-async function onRestoreConfirm(versionId: string, messageId: string) {
+async function onRestoreConfirm(versionId: string, versionCardId: string) {
 	try {
-		const updatedWorkflow = await builderStore.restoreToVersion(versionId, messageId);
+		const updatedWorkflow = await builderStore.restoreToVersion(versionId, versionCardId);
 		if (!updatedWorkflow) {
 			return;
 		}
@@ -571,7 +581,6 @@ defineExpose({
 			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			:workflow-id="workflowId"
-			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 			:disabled="isChatInputDisabled"
 			:disabled-tooltip="disabledTooltip"
 			@close="emit('close')"
@@ -579,8 +588,6 @@ defineExpose({
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			@feedback="onFeedback"
 			@stop="builderStore.abortStreaming"
-			@restore-confirm="onRestoreConfirm"
-			@show-version="onShowVersion"
 			@code-replace="onCodeReplace"
 			@code-undo="onCodeUndo"
 		>
@@ -594,15 +601,7 @@ defineExpose({
 				</N8nInfoTip>
 			</template>
 			<template #inputHeader>
-				<ReviewChangesBanner
-					v-if="showReviewChanges"
-					:node-changes="nodeChanges"
-					:expanded="isExpanded"
-					@toggle="toggleExpanded"
-					@open-diff="openDiffView"
-					@select-node="onSelectChangedNode"
-				/>
-				<Transition v-else name="slide">
+				<Transition name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
 				</Transition>
 			</template>
@@ -613,6 +612,19 @@ defineExpose({
 				<BuildModeEmptyState />
 			</template>
 			<template #custom-message="{ message }">
+				<VersionCardV2
+					v-if="isVersionCardMessage(message)"
+					:version-id="message.data.versionId"
+					:is-current="isCurrentVersionCard(message)"
+					:node-changes="versionNodeChangesMap.get(message.data.versionId) ?? nodeChanges"
+					:streaming="builderStore.streaming"
+					:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
+					:title="message.data.title"
+					@open-diff="openDiffView"
+					@restore="(versionId) => onRestoreConfirm(versionId, message.id!)"
+					@show-in-history="onShowVersion"
+					@select-node="onSelectChangedNode"
+				/>
 				<!-- Always render questions message; when answered, collapse to intro text only -->
 				<PlanQuestionsMessage
 					v-if="isPlanModeQuestionsMessage(message)"

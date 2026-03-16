@@ -5,6 +5,7 @@ import {
 	fetchExistingVersionIds,
 	enrichMessagesWithRevertVersion,
 	createBuilderPayload,
+	truncateVersionTitle,
 } from './builder.utils';
 import type { IWorkflowDb } from '@/Interface';
 import type { IRunExecutionData } from 'n8n-workflow';
@@ -458,6 +459,33 @@ describe('builder.utils', () => {
 				excludeParameterValues: true,
 			});
 			expect(result.workflowContext?.currentWorkflow).toBeDefined();
+		});
+	});
+
+	describe('truncateVersionTitle', () => {
+		it('should extract first sentence from plain text', () => {
+			expect(truncateVersionTitle('I created the workflow. Here are the details.')).toBe(
+				'I created the workflow',
+			);
+		});
+
+		it('should strip markdown bold and heading markers', () => {
+			expect(truncateVersionTitle('## **Created** the workflow!')).toBe('Created the workflow');
+		});
+
+		it('should truncate long first sentences', () => {
+			const long = 'A'.repeat(150);
+			const result = truncateVersionTitle(long);
+			expect(result.length).toBe(100);
+			expect(result.endsWith('…')).toBe(true);
+		});
+
+		it('should return short text as-is', () => {
+			expect(truncateVersionTitle('Done')).toBe('Done');
+		});
+
+		it('should handle text with bullet points', () => {
+			expect(truncateVersionTitle('- First item\n- Second item')).toBe('First item');
 		});
 	});
 });

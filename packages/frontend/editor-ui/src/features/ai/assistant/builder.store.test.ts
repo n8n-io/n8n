@@ -2284,7 +2284,7 @@ describe('AI Builder store', () => {
 		});
 
 		describe('fetchExistingVersionIds and message enrichment', () => {
-			it('should enrich messages with revertVersion when versions exist', async () => {
+			it('should convert revertVersion on user messages into version card messages', async () => {
 				const builderStore = useBuilderStore();
 
 				// Mark workflow as saved to allow loadSessions
@@ -2325,15 +2325,19 @@ describe('AI Builder store', () => {
 
 				await builderStore.loadSessions();
 
-				// Should have 2 messages
-				expect(builderStore.chatMessages).toHaveLength(2);
+				// Should have 3 messages: user message + assistant message + version card
+				expect(builderStore.chatMessages).toHaveLength(3);
 
-				// First message should have revertVersion object
-				const firstMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
-				expect(firstMessage).toHaveProperty('revertVersion');
-				expect(firstMessage.revertVersion).toEqual({
-					id: 'version-1',
+				// Version card should be at the end (after the AI response),
+				// matching live session ordering from stopStreaming()
+				const versionCard = builderStore.chatMessages[2];
+				expect(versionCard.type).toBe('custom');
+				expect(versionCard).toHaveProperty('customType', 'version_card');
+				expect(versionCard).toHaveProperty('data');
+				expect((versionCard as Record<string, unknown>).data).toEqual({
+					versionId: 'version-1',
 					createdAt: '2024-01-01T00:00:00Z',
+					title: 'Created workflow',
 				});
 			});
 
@@ -2595,7 +2599,7 @@ describe('AI Builder store', () => {
 			expect(userMessage.revertVersion).toBeUndefined();
 		});
 
-		it('should add revertVersion to user message after streaming when workflow was modified', async () => {
+		it('should insert a version card message after streaming when workflow was modified', async () => {
 			const builderStore = useBuilderStore();
 			workflowsStore.workflowId = 'test-workflow-123';
 			workflowsStore.isNewWorkflow = false;
@@ -2628,11 +2632,13 @@ describe('AI Builder store', () => {
 
 			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
 
-			// User message should now have revertVersion
-			const userMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
-			expect(userMessage.role).toBe('user');
-			expect(userMessage.revertVersion).toEqual({
-				id: 'version-1',
+			// A version card message should be appended
+			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+			expect(lastMessage.type).toBe('custom');
+			expect(lastMessage).toHaveProperty('customType', 'version_card');
+			expect(lastMessage).toHaveProperty('data');
+			expect((lastMessage as Record<string, unknown>).data).toEqual({
+				versionId: 'version-1',
 				createdAt: '2024-01-01T00:00:00Z',
 			});
 		});
@@ -3229,51 +3235,53 @@ describe('AI Builder store', () => {
 			expect(builderStore.latestRevertVersion).toBeNull();
 		});
 
-		it('returns the revertVersion when only one message has it', () => {
+		it('returns the revertVersion from a version card message', () => {
 			const builderStore = useBuilderStore();
-			const revertVersion = { id: 'version-1', createdAt: '2024-01-01T00:00:00Z' };
 			builderStore.$patch({
 				chatMessages: [
-					{
-						id: '1',
-						type: 'text',
-						role: 'user',
-						content: 'build a workflow',
-						read: true,
-						revertVersion,
-					},
+					{ id: '1', type: 'text', role: 'user', content: 'build a workflow', read: true },
 					{ id: '2', type: 'text', role: 'assistant', content: 'done', read: true },
+					{
+						id: 'vc-1',
+						type: 'custom',
+						role: 'assistant',
+						customType: 'version_card',
+						data: { versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' },
+					},
 				],
 			});
-			expect(builderStore.latestRevertVersion).toEqual(revertVersion);
+			expect(builderStore.latestRevertVersion).toEqual({
+				id: 'version-1',
+				createdAt: '2024-01-01T00:00:00Z',
+			});
 		});
 
-		it('returns the latest revertVersion when multiple messages have revertVersion', () => {
+		it('returns the latest version card when multiple exist', () => {
 			const builderStore = useBuilderStore();
-			const firstRevertVersion = { id: 'version-1', createdAt: '2024-01-01T00:00:00Z' };
-			const secondRevertVersion = { id: 'version-2', createdAt: '2024-01-02T00:00:00Z' };
 			builderStore.$patch({
 				chatMessages: [
+					{ id: '1', type: 'text', role: 'user', content: 'build a workflow', read: true },
 					{
-						id: '1',
-						type: 'text',
-						role: 'user',
-						content: 'build a workflow',
-						read: true,
-						revertVersion: firstRevertVersion,
+						id: 'vc-1',
+						type: 'custom',
+						role: 'assistant',
+						customType: 'version_card',
+						data: { versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' },
 					},
-					{ id: '2', type: 'text', role: 'assistant', content: 'done', read: true },
+					{ id: '2', type: 'text', role: 'user', content: 'modify it', read: true },
 					{
-						id: '3',
-						type: 'text',
-						role: 'user',
-						content: 'modify it',
-						read: true,
-						revertVersion: secondRevertVersion,
+						id: 'vc-2',
+						type: 'custom',
+						role: 'assistant',
+						customType: 'version_card',
+						data: { versionId: 'version-2', createdAt: '2024-01-02T00:00:00Z' },
 					},
 				],
 			});
-			expect(builderStore.latestRevertVersion).toEqual(secondRevertVersion);
+			expect(builderStore.latestRevertVersion).toEqual({
+				id: 'version-2',
+				createdAt: '2024-01-02T00:00:00Z',
+			});
 		});
 	});
 });

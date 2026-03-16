@@ -187,3 +187,27 @@ export function enrichMessagesWithRevertVersion(
 		return removeRevertVersionId(msg);
 	});
 }
+
+const VERSION_TITLE_MAX_LENGTH = 100;
+
+/**
+ * Extracts the first meaningful sentence from an AI response to use as a
+ * version card title. Strips markdown formatting and truncates.
+ */
+export function truncateVersionTitle(text: string): string {
+	// Strip markdown bold/italic, headings, and bullet markers
+	const plain = text
+		.replace(/#{1,6}\s+/g, '')
+		.replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
+		.replace(/^\s*[-*]\s+/gm, '')
+		.trim();
+
+	// Take the first sentence (up to first period, exclamation, or newline)
+	const firstSentence = plain.split(/[.!?\n]/)[0]?.trim() ?? plain;
+
+	if (firstSentence.length <= VERSION_TITLE_MAX_LENGTH) {
+		return firstSentence;
+	}
+
+	return firstSentence.slice(0, VERSION_TITLE_MAX_LENGTH - 1) + '…';
+}

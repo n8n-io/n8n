@@ -403,6 +403,26 @@ export namespace WebFetchApproval {
 	};
 }
 
+// ============================================================================
+// Version Card Types
+// ============================================================================
+
+export interface VersionCardMessageData {
+	versionId: string;
+	createdAt: string;
+	/** Truncated AI summary describing what changed in this generation */
+	title?: string;
+}
+
+export type VersionCardMessage = ChatUI.CustomMessage & {
+	customType: 'version_card';
+	data: VersionCardMessageData;
+};
+
+export function isVersionCardMessage(msg: ChatUI.AssistantMessage): msg is VersionCardMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'version_card';
+}
+
 // Type guards for Plan Mode custom messages
 export function isPlanModeQuestionsMessage(
 	msg: ChatUI.AssistantMessage,

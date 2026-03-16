@@ -40,7 +40,6 @@ interface Props {
 	maxCharacterLength?: number;
 	suggestions?: WorkflowSuggestion[];
 	workflowId?: string;
-	pruneTimeHours?: number;
 	/** Custom message to show when all tools complete (instead of default "Workflow generated") */
 	thinkingCompletionMessage?: string;
 }
@@ -53,10 +52,6 @@ const emit = defineEmits<{
 	codeUndo: [number];
 	feedback: [RatingFeedback];
 	'upgrade-click': [];
-	restore: [versionId: string];
-	restoreConfirm: [versionId: string, messageId: string];
-	restoreCancel: [];
-	showVersion: [versionId: string];
 }>();
 
 const onClose = () => emit('close');
@@ -515,17 +510,9 @@ defineExpose({
 									:class="getMessageStyles(message, i)"
 									:color="getMessageColor(message)"
 									:workflow-id="workflowId"
-									:prune-time-hours="pruneTimeHours"
 									@code-replace="() => emit('codeReplace', i)"
 									@code-undo="() => emit('codeUndo', i)"
 									@feedback="onRateMessage"
-									@restore="(versionId: string) => emit('restore', versionId)"
-									@restore-confirm="
-										(versionId: string, messageId: string) =>
-											emit('restoreConfirm', versionId, messageId)
-									"
-									@restore-cancel="emit('restoreCancel')"
-									@show-version="(versionId: string) => emit('showVersion', versionId)"
 								>
 									<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
 										<slot name="custom-message" v-bind="customMessageProps" />
