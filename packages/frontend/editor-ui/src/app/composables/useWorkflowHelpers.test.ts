@@ -249,7 +249,6 @@ describe('useWorkflowHelpers', () => {
 			const setWorkflowIdSpy = vi.spyOn(workflowState, 'setWorkflowId');
 			const setWorkflowNameSpy = vi.spyOn(workflowState, 'setWorkflowName');
 			const setWorkflowVersionDataSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionData');
-			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
@@ -266,7 +265,6 @@ describe('useWorkflowHelpers', () => {
 				name: null,
 				description: null,
 			});
-			expect(setUsedCredentialsSpy).toHaveBeenCalledWith([]);
 			expect(setWorkflowSharedWithSpy).toHaveBeenCalledWith({
 				workflowId: '1',
 				sharedWithProjects: [],
@@ -287,12 +285,10 @@ describe('useWorkflowHelpers', () => {
 				scopes: [],
 				tags: [],
 			});
-			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 
 			await initState(workflowData);
 
-			expect(setUsedCredentialsSpy).not.toHaveBeenCalled();
 			expect(setWorkflowSharedWithSpy).not.toHaveBeenCalled();
 		});
 
@@ -317,6 +313,39 @@ describe('useWorkflowHelpers', () => {
 	});
 
 	describe('getWorkflowDataToSave', () => {
+		it('should snapshot connections so later store mutations do not affect saved data', async () => {
+			const workflowId = 'test-workflow-id';
+			const initialConnections: IConnections = {
+				'Node A': {
+					main: [[{ node: 'Node B', index: 0, type: NodeConnectionTypes.Main }]],
+				},
+			};
+
+			workflowsStore.workflowId = workflowId;
+			workflowsStore.workflowName = 'Test Workflow';
+			workflowsStore.allNodes = [];
+			workflowsStore.allConnections = initialConnections;
+			workflowsStore.workflow.versionId = 'v1';
+
+			const documentId = createWorkflowDocumentId(workflowId);
+			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+			vi.mocked(workflowDocumentStore.getSettingsSnapshot).mockReturnValue({
+				executionOrder: 'v1',
+			});
+
+			const { getWorkflowDataToSave } = useWorkflowHelpers();
+			const workflowData = await getWorkflowDataToSave();
+
+			// Simulate a node + connection being added to the store after snapshot
+			// It should not mutate the connections in the saved workflow data (reference sharing)
+			initialConnections['New Node'] = {
+				main: [[{ node: 'Node B', index: 0, type: NodeConnectionTypes.Main }]],
+			};
+
+			// The saved data must not include the late-added connection
+			expect(workflowData.connections).not.toHaveProperty('New Node');
+		});
+
 		it('should read tags from workflowDocumentStore', async () => {
 			const workflowId = 'test-workflow-id';
 			const tagIds = ['tag1', 'tag2'];

@@ -115,6 +115,11 @@ application. These variables cover colors, spacing, typography, and borders.
 --border: var(--border-width) var(--border-style) var(--color--foreground)
 ```
 
+### Icons (N8nIcon)
+
+Available icon names are in `packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts`.
+Use keys from `updatedIconSet` only — `deprecatedIconSet` entries must not be used in new code.
+
 ### Debounce Timing
 
 Use centralized constants from `@/app/constants/durations` instead of hardcoding:

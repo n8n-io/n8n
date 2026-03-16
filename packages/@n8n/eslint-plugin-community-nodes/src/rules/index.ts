@@ -7,6 +7,7 @@ import { CredentialTestRequiredRule } from './credential-test-required.js';
 import { IconValidationRule } from './icon-validation.js';
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
 import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
+import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
@@ -23,6 +24,7 @@ export const rules = {
 	'package-name-convention': PackageNameConventionRule,
 	'credential-test-required': CredentialTestRequiredRule,
 	'no-credential-reuse': NoCredentialReuseRule,
+	'no-http-request-with-manual-auth': NoHttpRequestWithManualAuthRule,
 	'icon-validation': IconValidationRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,

@@ -16,7 +16,12 @@ import {
 	getVersionLabel,
 } from '@/features/workflows/workflowHistory/utils';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
+import type {
+	WorkflowHistoryAction,
+	WorkflowHistoryVersionStatus,
+} from '@/features/workflows/workflowHistory/types';
+import WorkflowVersionStatusIndicator from './WorkflowVersionStatusIndicator.vue';
+import WorkflowHistoryPublishedTooltip from './WorkflowHistoryPublishedTooltip.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -25,14 +30,14 @@ const props = withDefaults(
 		compareWith?: { name: string; versionId: WorkflowVersionId } | null;
 		actions: Array<UserAction<IUser>>;
 		isSelected?: boolean;
-		isVersionActive?: boolean;
+		isPublished?: boolean;
 		isGrouped?: boolean;
 		isWorkflowDiffsEnabled?: boolean;
 	}>(),
 	{
 		compareWith: null,
 		isSelected: false,
-		isVersionActive: false,
+		isPublished: false,
 		isGrouped: false,
 		isWorkflowDiffsEnabled: false,
 	},
@@ -67,19 +72,21 @@ const authorLabel = computed<string>(() => {
 });
 
 const versionName = computed(() => {
-	if (props.index === 0) {
-		return i18n.baseText('workflowHistory.item.currentChanges');
+	const currentVersionId = props.index === 0 ? props.item.versionId : undefined;
+
+	return getVersionLabel({
+		workflowHistory: props.item,
+		currentVersionId,
+	});
+});
+
+const versionStatus = computed<WorkflowHistoryVersionStatus>(() => {
+	if (props.isPublished) {
+		return 'published';
 	}
 
-	return getVersionLabel(props.item);
+	return props.index === 0 ? 'latest' : 'default';
 });
-
-const versionPublishInfo = computed(() => {
-	const publishInfo = getLastPublishedVersion(props.item.workflowPublishHistory);
-	return publishInfo;
-});
-
-const isPublishedVersion = computed(() => Boolean(versionPublishInfo.value));
 
 const getPublishedUserName = (userId: string | undefined | null) => {
 	if (!userId) {
@@ -89,35 +96,22 @@ const getPublishedUserName = (userId: string | undefined | null) => {
 	return user?.fullName ?? user?.email ?? null;
 };
 
-const mainTooltipInfo = computed<{
-	content: string | null;
-	date: string | null;
-	user: string | null;
-}>(() => {
-	if (props.isGrouped || !versionPublishInfo.value) {
-		return { content: null, date: null, user: null };
-	}
-
-	const user = getPublishedUserName(versionPublishInfo.value.userId);
-	return {
-		content: user
-			? i18n.baseText('workflowHistory.item.publishedBy')
-			: i18n.baseText('workflowHistory.item.active'),
-		date: versionPublishInfo.value.createdAt,
-		user,
-	};
-});
-
-const mainTooltipContent = computed(() => mainTooltipInfo.value.content);
-const mainTooltipUser = computed(() => mainTooltipInfo.value.user);
-const mainTooltipDate = computed(() => mainTooltipInfo.value.date);
-
-const mainTooltipFormattedDate = computed(() => {
-	if (!mainTooltipDate.value) {
+const wrapperProps = computed(() => {
+	const lastPublishedVersion = getLastPublishedVersion(props.item.workflowPublishHistory);
+	if (!lastPublishedVersion) {
 		return null;
 	}
-	const { date, time } = formatTimestamp(mainTooltipDate.value);
-	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
+
+	const publishedBy = getPublishedUserName(lastPublishedVersion.userId);
+	return {
+		label: versionName.value,
+		status: versionStatus.value,
+		publishInfo: {
+			publishedBy,
+			publishedAt: lastPublishedVersion.createdAt,
+			isCurrentlyPublished: props.isPublished,
+		},
+	};
 });
 
 const isCompareDisabled = computed(() => !props.compareWith?.versionId);
@@ -163,19 +157,10 @@ onMounted(() => {
 });
 </script>
 <template>
-	<N8nTooltip placement="left" :disabled="!mainTooltipContent" :show-after="300">
-		<template #content>
-			<div>
-				{{ mainTooltipContent }}
-				<template v-if="mainTooltipUser">
-					{{ mainTooltipUser }}
-				</template>
-				<template v-if="mainTooltipFormattedDate">
-					<template v-if="mainTooltipUser">, </template>
-					{{ mainTooltipFormattedDate }}
-				</template>
-			</div>
-		</template>
+	<component
+		:is="wrapperProps ? WorkflowHistoryPublishedTooltip : 'span'"
+		v-bind="wrapperProps ?? {}"
+	>
 		<li
 			ref="itemElement"
 			data-test-id="workflow-history-list-item"
@@ -192,15 +177,7 @@ onMounted(() => {
 			<!-- Timeline column -->
 			<span :class="$style.timelineColumn">
 				<template v-if="!props.isGrouped">
-					<span
-						v-if="props.isVersionActive"
-						:class="[$style.timelineDot, $style.timelineDotPublished]"
-					/>
-					<span
-						v-else-if="props.index === 0 && !props.isVersionActive"
-						:class="[$style.timelineDot, $style.timelineDotLatest]"
-					/>
-					<span v-else :class="[$style.timelineDot, $style.timelineDotDefault]" />
+					<WorkflowVersionStatusIndicator :status="versionStatus" />
 				</template>
 				<span v-else :class="$style.timelineLine" />
 			</span>
@@ -210,7 +187,7 @@ onMounted(() => {
 					<div :class="$style.mainRow">
 						<N8nText size="small" :bold="true" color="text-dark" :class="$style.mainLine">
 							{{ versionName }}
-							<template v-if="isPublishedVersion">
+							<template v-if="props.isPublished">
 								({{ i18n.baseText('workflowHistory.item.active') }})
 							</template>
 						</N8nText>
@@ -249,12 +226,11 @@ onMounted(() => {
 				/>
 			</div>
 		</li>
-	</N8nTooltip>
+	</component>
 </template>
 <style module lang="scss">
 @use './timeline' as *;
 
-$timelineDotSize: 8px;
 $hoverBackground: var(--color--background--light-1);
 $authorMaxWidth: 130px;
 
@@ -317,26 +293,6 @@ $authorMaxWidth: 130px;
 	min-width: var(--spacing--lg);
 	position: relative;
 	align-self: stretch;
-}
-
-.timelineDot {
-	height: $timelineDotSize;
-	width: $timelineDotSize;
-	border-radius: 50%;
-	display: inline-block;
-}
-
-.timelineDotPublished {
-	background-color: var(--color--mint-600);
-}
-
-.timelineDotLatest {
-	background-color: var(--color--yellow-500);
-}
-
-.timelineDotDefault {
-	border: var(--border);
-	border-color: var(--color--text--tint-2);
 }
 
 .timelineLine {

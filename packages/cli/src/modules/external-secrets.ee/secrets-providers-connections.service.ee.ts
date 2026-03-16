@@ -100,6 +100,7 @@ export class SecretsProvidersConnectionsService {
 			type?: string;
 			projectIds?: string[];
 			settings?: IDataObject;
+			isEnabled?: boolean;
 		},
 		userId: string,
 	): Promise<SecretsProviderConnection> {
@@ -121,6 +122,9 @@ export class SecretsProvidersConnectionsService {
 			const savedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
 			const unredactedSettings = this.redactionService.unredact(updates.settings, savedSettings);
 			connection.encryptedSettings = this.encryptConnectionSettings(unredactedSettings);
+		}
+		if (updates.isEnabled !== undefined) {
+			connection.isEnabled = updates.isEnabled;
 		}
 
 		await this.repository.save(connection);
@@ -186,7 +190,7 @@ export class SecretsProvidersConnectionsService {
 	async getGlobalCompletions(): Promise<SecretsProviderConnection[]> {
 		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
 
-		return await this.repository.findGlobalConnections({
+		return await this.repository.findEnabledGlobalConnections({
 			providerKeys: connectedProviderKeys,
 		});
 	}
@@ -194,7 +198,7 @@ export class SecretsProvidersConnectionsService {
 	async getProjectCompletions(projectId: string): Promise<SecretsProviderConnection[]> {
 		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
 
-		return await this.repository.findByProjectId(projectId, {
+		return await this.repository.findEnabledByProjectId(projectId, {
 			providerKeys: connectedProviderKeys,
 		});
 	}
@@ -222,6 +226,7 @@ export class SecretsProvidersConnectionsService {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
+			isEnabled: connection.isEnabled,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -246,6 +251,7 @@ export class SecretsProvidersConnectionsService {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
+			isEnabled: connection.isEnabled,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -319,42 +325,6 @@ export class SecretsProvidersConnectionsService {
 				name: access.project.name,
 			})),
 		};
-	}
-
-	async reloadProjectConnectionSecrets(
-		projectId: string,
-		userId: string,
-	): Promise<ReloadSecretProviderConnectionResponse> {
-		const projectConnections = await this.repository.findByProjectId(projectId);
-		const providers: Record<string, { success: boolean }> = {};
-
-		await Promise.allSettled(
-			projectConnections.map(async (c) => {
-				try {
-					await this.externalSecretsManager.updateProvider(c.providerKey);
-					providers[c.providerKey] = { success: true };
-
-					this.eventService.emit('external-secrets-connection-reloaded', {
-						userId,
-						providerKey: c.providerKey,
-						vaultType: c.type,
-						...this.extractProjectInfo(c),
-					});
-				} catch (error) {
-					providers[c.providerKey] = { success: false };
-					this.logger.warn(`Failed to reload provider ${c.providerKey}`, {
-						projectId,
-						providerKey: c.providerKey,
-					});
-				}
-			}),
-		);
-
-		const allSucceeded = Object.values(providers).every((p) => p.success);
-		return reloadSecretProviderConnectionResponseSchema.parse({
-			success: allSucceeded,
-			providers,
-		});
 	}
 
 	private encryptConnectionSettings(settings: IDataObject): string {
