@@ -3239,6 +3239,9 @@ importers:
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
+      markdown-it-footnote:
+        specifier: ^4.0.0
+        version: 4.0.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -14839,6 +14842,9 @@ packages:
 
   markdown-it-emoji@2.0.2:
     resolution: {integrity: sha512-zLftSaNrKuYl0kR5zm4gxXjHaOI3FAOEaloKmRA5hijmJZvSjmxcokOLlzycb/HXlUFWzXqpIEoyEMCE4i9MvQ==}
+
+  markdown-it-footnote@4.0.0:
+    resolution: {integrity: sha512-WYJ7urf+khJYl3DqofQpYfEYkZKbmXmwxQV8c8mO/hGIhgZ1wOe7R4HLFNwqx7TjILbnC98fuyeSsin19JdFcQ==}
 
   markdown-it-link-attributes@4.0.1:
     resolution: {integrity: sha512-pg5OK0jPLg62H4k7M9mRJLT61gUp9nvG0XveKYHMOOluASo9OEF13WlXrpAp2aj35LbedAy3QOCgQCw0tkLKAQ==}
@@ -33937,6 +33943,8 @@ snapshots:
   mark.js@8.11.1: {}
 
   markdown-it-emoji@2.0.2: {}
+
+  markdown-it-footnote@4.0.0: {}
 
   markdown-it-link-attributes@4.0.1: {}
 

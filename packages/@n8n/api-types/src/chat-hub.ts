@@ -37,12 +37,17 @@ export const chatHubVectorStoreProviderSchema = z.enum(['pgvector', 'qdrant', 'p
 
 export type ChatHubVectorStoreProvider = z.infer<typeof chatHubVectorStoreProviderSchema>;
 
+export type ChatHubAgentKnowledgeItemStatus = 'indexing' | 'indexed' | 'error';
+
 export interface ChatHubAgentKnowledgeItem {
 	id: string;
 	type: 'embedding';
 	provider: ChatHubLLMProvider;
 	fileName: string;
 	mimeType: string;
+	status?: ChatHubAgentKnowledgeItemStatus;
+	error?: string;
+	createdAt?: string;
 }
 
 /**
@@ -609,6 +614,8 @@ export class ChatHubSemanticSearchSettings extends Z.class({
 export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+	semanticSearch: ChatHubSemanticSearchSettings;
+	agentUploadMaxSizeMb: number;
 }
 
 /**
