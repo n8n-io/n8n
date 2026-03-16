@@ -1,4 +1,4 @@
-import { IANAZone, Settings } from 'luxon';
+import { DateTime, IANAZone, Settings } from 'luxon';
 
 import { extend, extendOptional } from '../extensions/extend';
 import { extendedFunctions } from '../extensions/function-extensions';
@@ -35,7 +35,7 @@ export function resetDataProxies(timezone?: string): void {
 
 	// __sanitize must be on __data because PrototypeSanitizer generates:
 	// obj[this.__sanitize(expr)] where 'this' is __data (via .call(__data) wrapping)
-	(globalThis.__data as any).__sanitize = __sanitize;
+	globalThis.__data.__sanitize = __sanitize;
 
 	// Verify callbacks are available
 	// Note: ivm.Reference may not be typeof 'function', check for existence
@@ -56,6 +56,16 @@ export function resetDataProxies(timezone?: string): void {
 	globalThis.__data.$prevNode = createDeepLazyProxy(['$prevNode']);
 	globalThis.__data.$data = createDeepLazyProxy(['$data']);
 	globalThis.__data.$env = createDeepLazyProxy(['$env']);
+
+	// -------------------------------------------------------------------------
+	// Create DateTime values inside the isolate (not lazy-loaded from host,
+	// because host-side DateTime objects lose their prototype crossing the
+	// boundary). The isolate has its own luxon with the correct timezone
+	// already set via Settings.defaultZone above.
+	// -------------------------------------------------------------------------
+
+	globalThis.__data.$now = DateTime.now();
+	globalThis.__data.$today = DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
 
 	// -------------------------------------------------------------------------
 	// Fetch primitives directly (no lazy loading needed for simple values)
@@ -85,17 +95,19 @@ export function resetDataProxies(timezone?: string): void {
 	// Expose workflow data to globalThis for expression access
 	// -------------------------------------------------------------------------
 
-	(globalThis as any).$json = globalThis.__data.$json;
-	(globalThis as any).$binary = globalThis.__data.$binary;
-	(globalThis as any).$input = globalThis.__data.$input;
-	(globalThis as any).$node = globalThis.__data.$node;
-	(globalThis as any).$parameter = globalThis.__data.$parameter;
-	(globalThis as any).$workflow = globalThis.__data.$workflow;
-	(globalThis as any).$prevNode = globalThis.__data.$prevNode;
-	(globalThis as any).$runIndex = globalThis.__data.$runIndex;
-	(globalThis as any).$itemIndex = globalThis.__data.$itemIndex;
-	(globalThis as any).$data = globalThis.__data.$data;
-	(globalThis as any).$env = globalThis.__data.$env;
+	globalThis.$json = globalThis.__data.$json;
+	globalThis.$binary = globalThis.__data.$binary;
+	globalThis.$input = globalThis.__data.$input;
+	globalThis.$node = globalThis.__data.$node;
+	globalThis.$parameter = globalThis.__data.$parameter;
+	globalThis.$workflow = globalThis.__data.$workflow;
+	globalThis.$prevNode = globalThis.__data.$prevNode;
+	globalThis.$runIndex = globalThis.__data.$runIndex as number | undefined;
+	globalThis.$itemIndex = globalThis.__data.$itemIndex as number | undefined;
+	globalThis.$data = globalThis.__data.$data;
+	globalThis.$env = globalThis.__data.$env;
+	globalThis.$now = globalThis.__data.$now as DateTime;
+	globalThis.$today = globalThis.__data.$today as DateTime;
 
 	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
 	Object.assign(globalThis.__data, extendedFunctions);
@@ -114,21 +126,21 @@ export function resetDataProxies(timezone?: string): void {
 
 			// If it's function metadata, create wrapper
 			if (itemsValue && typeof itemsValue === 'object' && itemsValue.__isFunction) {
-				(globalThis as any).$items = function (...args: any[]) {
+				globalThis.$items = function (...args: unknown[]) {
 					return globalThis.__callFunctionAtPath.applySync(null, [['$items'], ...args], {
 						arguments: { copy: true },
 						result: { copy: true },
 					});
 				};
-				globalThis.__data.$items = (globalThis as any).$items;
+				globalThis.__data.$items = globalThis.$items;
 			} else {
 				// Not a function - set to undefined or the value itself
-				(globalThis as any).$items = itemsValue;
+				globalThis.$items = itemsValue;
 				globalThis.__data.$items = itemsValue;
 			}
 		} catch (error) {
 			// Property doesn't exist
-			(globalThis as any).$items = undefined;
+			globalThis.$items = undefined;
 			globalThis.__data.$items = undefined;
 		}
 	}
@@ -138,12 +150,12 @@ export function resetDataProxies(timezone?: string): void {
 	// pattern resolves them correctly (tournament checks __data before global)
 	// -------------------------------------------------------------------------
 
-	(globalThis.__data as any).DateTime = globalThis.DateTime;
+	globalThis.__data.DateTime = globalThis.DateTime;
 
 	// Expose extend/extendOptional on __data so tournament's "x in this ? this.x : global.x"
 	// pattern resolves them correctly when the VM checks __data first
-	(globalThis.__data as any).extend = extend;
-	(globalThis.__data as any).extendOptional = extendOptional;
+	globalThis.__data.extend = extend;
+	globalThis.__data.extendOptional = extendOptional;
 
 	// TODO: Add other function properties as needed ($item, $vars, etc.)
 }
