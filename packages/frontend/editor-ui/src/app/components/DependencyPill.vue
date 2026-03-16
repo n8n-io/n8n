@@ -128,17 +128,24 @@ function onSelect(value: string) {
 	const dep = (resolvedDeps.value ?? []).find((d) => d.type === type && d.id === id);
 	if (!dep) return;
 
-	if (dep.type === 'credentialId') {
-		uiStore.openExistingCredential(dep.id);
-	} else if (dep.type === 'workflowCall' || dep.type === 'workflowParent') {
-		const href = router.resolve({ name: VIEWS.WORKFLOW, params: { name: dep.id } }).href;
-		window.open(href, '_blank');
-	} else if (dep.type === 'dataTableId' && dep.projectId) {
-		const href = router.resolve({
-			name: DATA_TABLE_DETAILS,
-			params: { projectId: dep.projectId, id: dep.id },
-		}).href;
-		window.open(href, '_blank');
+	switch (dep.type) {
+		case 'credentialId':
+			uiStore.openExistingCredential(dep.id);
+			break;
+		case 'workflowCall':
+		case 'workflowParent':
+			const href = router.resolve({ name: VIEWS.WORKFLOW, params: { name: dep.id } }).href;
+			window.open(href, '_blank');
+			break;
+		case 'dataTableId':
+			if (dep.projectId) {
+				const href = router.resolve({
+					name: DATA_TABLE_DETAILS,
+					params: { projectId: dep.projectId, id: dep.id },
+				}).href;
+				window.open(href, '_blank');
+			}
+			break;
 	}
 }
 

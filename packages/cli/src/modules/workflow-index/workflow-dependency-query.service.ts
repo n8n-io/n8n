@@ -63,6 +63,11 @@ export class WorkflowDependencyQueryService {
 		return result;
 	}
 
+	/**
+	 *	Return a map of dependencies for each input item in `resourceIds`
+	 *
+	 * @param enrichResources Make extra db queries to fetch e.g. names of the dependent resources
+	 */
 	async getResourceDependencies(
 		resourceIds: string[],
 		resourceType: DependencyResourceType,
