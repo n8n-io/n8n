@@ -12,6 +12,10 @@ export const RELEASE_TRACKS = /** @type { const } */ ([
 ]);
 
 /**
+ * @typedef { InstanceType<typeof import("@actions/github/lib/utils").GitHub> } GitHubInstance
+ * */
+
+/**
  * @typedef {typeof RELEASE_TRACKS[number]} ReleaseTrack
  * */
 
@@ -45,6 +49,15 @@ export function pickHighestReleaseTag(tags) {
 		.sort((a, b) => semver.rcompare(a.v, b.v));
 
 	return /** @type { ReleaseVersion } */ (versions[0]?.tag) ?? null;
+}
+
+/**
+ * @param {any} track
+ *
+ * @returns { track is ReleaseTrack }
+ * */
+export function isReleaseTrack(track) {
+	return RELEASE_TRACKS.includes(track);
 }
 
 /**
