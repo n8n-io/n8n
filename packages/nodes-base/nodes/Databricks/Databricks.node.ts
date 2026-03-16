@@ -2098,6 +2098,43 @@ export class Databricks implements INodeType {
 						json: response,
 						pairedItem: { item: i },
 					});
+				} else if (resource === 'vectorSearch' && operation === 'createIndex') {
+					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const host = credentials.host.replace(/\/$/, '');
+					const indexName = this.getNodeParameter('indexName', i) as string;
+					const endpointName = this.getNodeParameter('endpointName', i) as string;
+					const primaryKey = this.getNodeParameter('primaryKey', i) as string;
+					const indexType = this.getNodeParameter('indexType', i) as string;
+
+					const body: Record<string, unknown> = {
+						name: indexName,
+						endpoint_name: endpointName,
+						primary_key: primaryKey,
+						index_type: indexType,
+					};
+
+					if (indexType === 'DELTA_SYNC') {
+						const raw = this.getNodeParameter('deltaSyncIndexSpec', i) as string;
+						body.delta_sync_index_spec = typeof raw === 'string' ? JSON.parse(raw) : raw;
+					} else if (indexType === 'DIRECT_ACCESS') {
+						const raw = this.getNodeParameter('directAccessIndexSpec', i) as string;
+						body.direct_access_index_spec = typeof raw === 'string' ? JSON.parse(raw) : raw;
+					}
+
+					const response = await this.helpers.httpRequest({
+						method: 'POST',
+						url: `${host}/api/2.0/vector-search/indexes`,
+						headers: {
+							Authorization: `Bearer ${credentials.token}`,
+						},
+						body,
+						json: true,
+					});
+
+					returnData.push({
+						json: response,
+						pairedItem: { item: i },
+					});
 				} else if (resource === 'vectorSearch' && operation === 'getIndex') {
 					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
 					const host = credentials.host.replace(/\/$/, '');

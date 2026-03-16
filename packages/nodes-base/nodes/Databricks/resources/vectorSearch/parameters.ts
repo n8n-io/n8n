@@ -9,7 +9,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['vectorSearch'],
-				operation: ['getIndex', 'queryIndex'],
+				operation: ['getIndex', 'queryIndex', 'createIndex'],
 			},
 		},
 		default: '',
@@ -23,11 +23,90 @@ export const vectorSearchParameters: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['vectorSearch'],
-				operation: ['listIndexes'],
+				operation: ['listIndexes', 'createIndex'],
 			},
 		},
 		default: '',
 		description: 'Name of the vector search endpoint',
+	},
+	{
+		displayName: 'Primary Key',
+		name: 'primaryKey',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['vectorSearch'],
+				operation: ['createIndex'],
+			},
+		},
+		default: '',
+		placeholder: 'id',
+		description: 'Primary key column of the index',
+	},
+	{
+		displayName: 'Index Type',
+		name: 'indexType',
+		type: 'options',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['vectorSearch'],
+				operation: ['createIndex'],
+			},
+		},
+		options: [
+			{
+				name: 'Delta Sync',
+				value: 'DELTA_SYNC',
+				description: 'Automatically syncs with a source Delta Table',
+			},
+			{
+				name: 'Direct Access',
+				value: 'DIRECT_ACCESS',
+				description: 'Supports direct read and write of vectors and metadata',
+			},
+		],
+		default: 'DELTA_SYNC',
+		description: 'Type of vector search index to create',
+	},
+	{
+		displayName: 'Delta Sync Index Spec',
+		name: 'deltaSyncIndexSpec',
+		type: 'json',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['vectorSearch'],
+				operation: ['createIndex'],
+				indexType: ['DELTA_SYNC'],
+			},
+		},
+		default:
+			'{\n  "source_table": "catalog.schema.table",\n  "pipeline_type": "TRIGGERED",\n  "embedding_source_columns": [{\n    "name": "text",\n    "embedding_model_endpoint_name": "e5-small-v2"\n  }],\n  "columns_to_sync": ["id", "text"]\n}',
+		description: 'Specification for the Delta Sync index',
+		typeOptions: {
+			rows: 8,
+		},
+	},
+	{
+		displayName: 'Direct Access Index Spec',
+		name: 'directAccessIndexSpec',
+		type: 'json',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['vectorSearch'],
+				operation: ['createIndex'],
+				indexType: ['DIRECT_ACCESS'],
+			},
+		},
+		default:
+			'{\n  "embedding_vector_columns": [{\n    "name": "embedding",\n    "embedding_dimension": 1536\n  }],\n  "schema_json": "{}"\n}',
+		description: 'Specification for the Direct Access index',
+		typeOptions: {
+			rows: 6,
+		},
 	},
 	{
 		displayName: 'Query Type',

@@ -12,6 +12,26 @@ export const vectorSearchOperations: INodeProperties = {
 	},
 	options: [
 		{
+			name: 'Create Index',
+			value: 'createIndex',
+			description: 'Create a new vector search index',
+			action: 'Create a vector search index',
+			routing: {
+				request: {
+					method: 'POST',
+					url: '/api/2.0/vector-search/indexes',
+					body: {
+						name: '={{$parameter.indexName}}',
+						endpoint_name: '={{$parameter.endpointName}}',
+						primary_key: '={{$parameter.primaryKey}}',
+						index_type: '={{$parameter.indexType}}',
+						delta_sync_index_spec: '={{$parameter.deltaSyncIndexSpec}}',
+						direct_access_index_spec: '={{$parameter.directAccessIndexSpec}}',
+					},
+				},
+			},
+		},
+		{
 			name: 'Get Index',
 			value: 'getIndex',
 			description: 'Get details of a vector search index',
