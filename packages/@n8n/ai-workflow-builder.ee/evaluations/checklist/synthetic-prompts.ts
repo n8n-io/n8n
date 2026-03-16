@@ -195,7 +195,11 @@ export const SYNTHETIC_PROMPTS: PromptConfig[] = [
 		source: 'synthetic',
 		tags: ['data-table', 'html'],
 		executionTest: {
-			input: [{}],
+			input: [
+				{ name: 'API Gateway', status: 'healthy', last_check_time: '2026-03-15T10:00:00Z' },
+				{ name: 'Database', status: 'healthy', last_check_time: '2026-03-15T10:00:00Z' },
+				{ name: 'Cache', status: 'degraded', last_check_time: '2026-03-15T09:55:00Z' },
+			],
 			assertions: [
 				{ type: 'succeeds' },
 				{ type: 'outputMatches', pattern: 'html|<table', flags: 'i' },

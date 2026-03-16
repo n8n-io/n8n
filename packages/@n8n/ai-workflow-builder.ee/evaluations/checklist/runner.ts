@@ -1,4 +1,5 @@
 import { v4 as uuid } from 'uuid';
+import { parse as parseFlatted } from 'flatted';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type {
 	IConnections,
@@ -180,8 +181,11 @@ async function executeGeneratedWorkflow(
 				triggerTypePrefixes.some((t) => n.type.includes(t)),
 			);
 			if (triggerNode) {
+				const isWebhookTrigger = triggerNode.type.includes('webhook');
 				pinData[triggerNode.name] = executionTest.input.map((item) => ({
-					json: item as IDataObject,
+					json: (isWebhookTrigger
+						? { headers: {}, params: {}, query: {}, body: item }
+						: item) as IDataObject,
 				}));
 			}
 		}
@@ -283,7 +287,7 @@ async function n8nFetch(
 	// Capture auth cookie from login response
 	const setCookie = res.headers.get('set-cookie');
 	if (setCookie) {
-		const match = setCookie.match(/n8n-auth-token=[^;]+/);
+		const match = setCookie.match(/n8n-auth=[^;]+/);
 		if (match) {
 			n8nSessionCookie = match[0];
 		}
@@ -341,8 +345,9 @@ async function executeLiveWorkflow(
 		);
 
 		if (executionTest?.input && triggerNode) {
+			const isWebhookTrigger = triggerNode.type.includes('webhook');
 			pinData[triggerNode.name] = executionTest.input.map((item) => ({
-				json: item,
+				json: isWebhookTrigger ? { headers: {}, params: {}, query: {}, body: item } : item,
 			}));
 		}
 
@@ -350,6 +355,148 @@ async function executeLiveWorkflow(
 		for (const nd of workflowJson.nodes) {
 			if (nd.type === 'n8n-nodes-base.wait' && !pinData[nd.name]) {
 				pinData[nd.name] = [{ json: {} }];
+			}
+		}
+
+		// Provision data tables referenced by the workflow
+		const dataTableNodes = workflowJson.nodes.filter((n) => n.type === 'n8n-nodes-base.dataTable');
+		const dataTableNames = new Set<string>();
+		for (const dtNode of dataTableNodes) {
+			const dtId = dtNode.parameters?.dataTableId as { value?: string } | string | undefined;
+			const name = typeof dtId === 'string' ? dtId : dtId?.value;
+			if (name) dataTableNames.add(name);
+		}
+
+		// Collect all column names referenced by data table nodes
+		const tableColumnMap = new Map<string, Set<string>>();
+		for (const dtNode of dataTableNodes) {
+			const dtId = dtNode.parameters?.dataTableId as { value?: string } | string | undefined;
+			const name = typeof dtId === 'string' ? dtId : dtId?.value;
+			if (!name) continue;
+			if (!tableColumnMap.has(name)) tableColumnMap.set(name, new Set());
+			const cols = tableColumnMap.get(name)!;
+
+			// Extract from columns.value (insert/upsert operations use flat object: { colName: "=expr", ... })
+			const columnsParam = dtNode.parameters?.columns as
+				| { value?: Record<string, unknown> }
+				| undefined;
+			if (columnsParam?.value && typeof columnsParam.value === 'object') {
+				for (const key of Object.keys(columnsParam.value)) {
+					if (key !== 'mappingMode') cols.add(key);
+				}
+			}
+
+			// Extract from mappingColumns.values (alternative insert format)
+			const mappingCols = dtNode.parameters?.mappingColumns as
+				| { values?: Array<{ column?: string }> }
+				| undefined;
+			if (mappingCols?.values) {
+				for (const v of mappingCols.values) {
+					if (v.column) cols.add(v.column);
+				}
+			}
+
+			// Extract from fieldValues.values (another alternative format)
+			const fieldValues = dtNode.parameters?.fieldValues as
+				| { values?: Array<{ column?: string; fieldName?: string }> }
+				| undefined;
+			if (fieldValues?.values) {
+				for (const v of fieldValues.values) {
+					if (v.column) cols.add(v.column);
+					if (v.fieldName) cols.add(v.fieldName);
+				}
+			}
+
+			// Extract from orderByColumn (get operations)
+			const orderByCol = dtNode.parameters?.orderByColumn as string | undefined;
+			if (orderByCol) cols.add(orderByCol);
+
+			// Extract from filterByColumn (get/delete operations)
+			const filterByCol = dtNode.parameters?.filterByColumn as string | undefined;
+			if (filterByCol) cols.add(filterByCol);
+		}
+
+		// Also infer columns from test input data
+		if (executionTest?.input) {
+			for (const item of executionTest.input) {
+				if (item && typeof item === 'object') {
+					for (const key of Object.keys(item as Record<string, unknown>)) {
+						// Add to all tables since we don't know which table the data goes to
+						for (const cols of tableColumnMap.values()) {
+							cols.add(key);
+						}
+					}
+				}
+			}
+		}
+
+		// Get personal project ID for data table creation
+		let projectId: string | undefined;
+		const createdTableIds: string[] = [];
+		if (dataTableNames.size > 0) {
+			const projRes = (await n8nFetch(baseUrl, '/rest/projects')) as {
+				data: Array<{ id: string; type: string }>;
+			};
+			projectId = projRes.data.find((p) => p.type === 'personal')?.id;
+
+			if (projectId) {
+				for (const tableName of dataTableNames) {
+					try {
+						// Build columns from inferred names, fall back to generic defaults
+						const inferredCols = tableColumnMap.get(tableName);
+						const columns =
+							inferredCols && inferredCols.size > 0
+								? [...inferredCols].map((c) => ({ name: c, type: 'string' }))
+								: [
+										{ name: 'name', type: 'string' },
+										{ name: 'email', type: 'string' },
+										{ name: 'value', type: 'string' },
+										{ name: 'status', type: 'string' },
+									];
+
+						const tableRes = (await n8nFetch(baseUrl, `/rest/projects/${projectId}/data-tables`, {
+							method: 'POST',
+							body: { name: tableName, columns },
+						})) as { data: { id: string } };
+						createdTableIds.push(tableRes.data.id);
+
+						// Seed the table with test input data so queries return results
+						if (executionTest?.input && executionTest.input.length > 0) {
+							try {
+								await n8nFetch(
+									baseUrl,
+									`/rest/projects/${projectId}/data-tables/${tableRes.data.id}/insert`,
+									{
+										method: 'POST',
+										body: {
+											data: executionTest.input,
+											returnType: 'count',
+										},
+									},
+								);
+							} catch {
+								// Seed failure is non-fatal
+							}
+						}
+
+						// Patch workflow nodes to reference table by ID instead of name
+						for (const dtNode of dataTableNodes) {
+							const dtId = dtNode.parameters?.dataTableId as
+								| { value?: string; __rl?: boolean; mode?: string }
+								| undefined;
+							if (dtId && dtId.value === tableName) {
+								dtId.value = tableRes.data.id;
+								dtId.mode = 'list';
+							}
+						}
+
+						if (verbose) {
+							console.log(`    Created data table "${tableName}" (${tableRes.data.id})`);
+						}
+					} catch {
+						// Table may already exist, continue
+					}
+				}
 			}
 		}
 
@@ -379,31 +526,18 @@ async function executeLiveWorkflow(
 			const executionId = runRes.data.executionId;
 
 			// Poll for completion
-			let execResult: {
+			interface ExecResponse {
 				data: {
 					status: string;
-					data: {
-						resultData: {
-							runData: Record<
-								string,
-								Array<{
-									data?: { main?: Array<Array<{ json: IDataObject }> | null> };
-									error?: { message: string };
-								}>
-							>;
-							error?: { message: string };
-						};
-					};
+					data: string; // flatted-serialized JSON
 				};
-			};
+			}
 
 			const pollTimeout = 30_000;
 			const pollStart = Date.now();
+			let execResult: ExecResponse;
 			while (true) {
-				execResult = (await n8nFetch(
-					baseUrl,
-					`/rest/executions/${executionId}`,
-				)) as typeof execResult;
+				execResult = (await n8nFetch(baseUrl, `/rest/executions/${executionId}`)) as ExecResponse;
 				const status = execResult.data.status;
 				if (status !== 'running' && status !== 'new') break;
 				if (Date.now() - pollStart > pollTimeout) {
@@ -412,8 +546,22 @@ async function executeLiveWorkflow(
 				await new Promise((r) => setTimeout(r, 500));
 			}
 
+			// Parse flatted execution data
+			const execData = parseFlatted(execResult!.data.data) as {
+				resultData: {
+					runData: Record<
+						string,
+						Array<{
+							data?: { main?: Array<Array<{ json: IDataObject }> | null> };
+							error?: { message: string };
+						}>
+					>;
+					error?: { message: string };
+				};
+			};
+
 			// Extract results
-			const runData = execResult!.data.data.resultData.runData;
+			const runData = execData.resultData.runData;
 			const executedNodes: string[] = Object.keys(runData);
 			const nodeOutputs: Record<string, ExecutionNodeInfo> = {};
 
@@ -437,7 +585,7 @@ async function executeLiveWorkflow(
 			}
 
 			const success = execResult!.data.status === 'success';
-			const executionError = execResult!.data.data.resultData.error?.message;
+			const executionError = execData.resultData.error?.message;
 
 			const executionData: ExecutionData = {
 				success,
@@ -456,11 +604,20 @@ async function executeLiveWorkflow(
 
 			return executionData;
 		} finally {
-			// Clean up: delete the workflow
+			// Clean up: delete the workflow and provisioned data tables
 			try {
 				await n8nFetch(baseUrl, `/rest/workflows/${workflowId}`, { method: 'DELETE' });
 			} catch {
 				// Ignore cleanup errors
+			}
+			for (const tableId of createdTableIds) {
+				try {
+					await n8nFetch(baseUrl, `/rest/projects/${projectId}/data-tables/${tableId}`, {
+						method: 'DELETE',
+					});
+				} catch {
+					// Ignore cleanup errors
+				}
 			}
 		}
 	} catch (error) {
