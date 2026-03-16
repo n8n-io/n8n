@@ -174,7 +174,7 @@ jobs:
   chromatic:
     name: Chromatic
     needs: install-and-build
-    if: needs.install-and-build.outputs.design_system == 'true'
+    if: needs.install-and-build.outputs.design_system == 'true' && github.event_name == 'pull_request'
     uses: ./.github/workflows/test-visual-chromatic.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
