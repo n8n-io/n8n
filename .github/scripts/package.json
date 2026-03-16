@@ -1,4 +1,5 @@
 {
+  "name": "workflow-scripts",
   "scripts": {
     "test": "node --test --experimental-test-module-mocks ./*.test.mjs"
   },

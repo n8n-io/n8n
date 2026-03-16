@@ -30,7 +30,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: npm ci --prefix=.github/scripts
+          install-command: pnpm install --frozen-lockfile --prefix ./.github/scripts --ignore-workspace
 
       - name: Cleanup release branch if PR qualifies
         run: node .github/scripts/cleanup-release-branch.mjs

@@ -52,7 +52,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: npm ci --prefix=.github/scripts
+          install-command: pnpm install --frozen-lockfile --prefix ./.github/scripts --ignore-workspace
 
       - name: Configure git author
         run: |
