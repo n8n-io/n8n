@@ -156,6 +156,9 @@ describe('SourceControlPushModal', () => {
 
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.settings.enterprise = defaultSettings.enterprise;
+
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.searchProjects.mockResolvedValue({ count: 0, data: [] });
 	});
 
 	it('mounts', async () => {
@@ -1500,6 +1503,10 @@ describe('SourceControlPushModal', () => {
 		])('should filter %s by project', async (entity, name) => {
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.availableProjects = projects as unknown as ProjectListItem[];
+			projectsStore.searchProjects.mockResolvedValue({
+				count: projects.length,
+				data: projects as unknown as ProjectListItem[],
+			});
 
 			const status: SourceControlledFile[] = [
 				{
