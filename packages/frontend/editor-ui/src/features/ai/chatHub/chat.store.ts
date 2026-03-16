@@ -7,8 +7,11 @@ import { useI18n } from '@n8n/i18n';
 import {
 	fetchChatModelsApi,
 	sendMessageApi,
+	sendMessageManualApi,
 	editMessageApi,
+	editMessageManualApi,
 	regenerateMessageApi,
+	regenerateMessageManualApi,
 	reconnectToSessionApi,
 	fetchConversationsApi as fetchSessionsApi,
 	fetchSingleConversationApi as fetchMessagesApi,
@@ -34,6 +37,7 @@ import {
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	emptyChatModelsResponse,
 	type ChatHubConversationModel,
@@ -63,6 +67,8 @@ import {
 	type ChatMessageContentChunk,
 	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
+	type ChatHubN8nModel,
+	type ChatHubSessionType,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -86,7 +92,8 @@ import {
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { deepCopy, type INode } from 'n8n-workflow';
+import { createRunExecutionData, deepCopy, type INode } from 'n8n-workflow';
+import { IN_PROGRESS_EXECUTION_ID, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores/constants';
@@ -109,7 +116,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		ids: string[] | null;
 		hasMore: boolean;
 		nextCursor: string | null;
-	}>({ byId: {}, ids: null, hasMore: false, nextCursor: null });
+		lastFetchedType: ChatHubSessionType | undefined;
+	}>({ byId: {}, ids: null, hasMore: false, nextCursor: null, lastFetchedType: undefined });
 	const sessionsLoadingMore = ref(false);
 
 	const streaming = ref<ChatStreamingState>();
@@ -370,6 +378,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			return;
 		}
 
+		// Force reset when switching between session types (e.g. manual vs production)
+		const typeChanged =
+			options.type !== undefined && options.type !== sessions.value.lastFetchedType;
+		if (typeChanged) {
+			reset = true;
+		}
+
 		if (
 			!reset &&
 			sessions.value &&
@@ -386,7 +401,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		try {
 			const cursor = reset ? undefined : (sessions.value?.nextCursor ?? undefined);
 			const [response] = await Promise.all([
-				fetchSessionsApi(rootStore.restApiContext, CHAT_SESSIONS_PAGE_SIZE, cursor),
+				fetchSessionsApi(rootStore.restApiContext, CHAT_SESSIONS_PAGE_SIZE, cursor, options.type),
 				new Promise((resolve) => setTimeout(resolve, options.minLoadingTime ?? 0)),
 			]);
 
@@ -396,6 +411,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 			sessions.value.hasMore = response.hasMore;
 			sessions.value.nextCursor = response.nextCursor;
+			sessions.value.lastFetchedType = options.type;
 
 			for (const session of response.data) {
 				sessions.value.ids.push(session.id);
@@ -435,6 +451,10 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 	async function fetchConversationTitle(sessionId: ChatSessionId) {
 		const current = sessions.value.byId[sessionId];
+
+		// Manual (draft) executions don't generate titles server-side
+		if (current?.type === 'manual') return;
+
 		if (!current || current.title === 'New Chat') {
 			// wait up to 10 * 2 seconds until conversation title is generated
 			await retry(
@@ -508,6 +528,54 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		await fetchConversationTitle(sessionId);
 	}
 
+	/**
+	 * Check if the current canvas context allows manual execution.
+	 * Returns true when:
+	 * 1. The agent is an n8n workflow
+	 * 2. The workflow is currently open on the canvas
+	 * 3. The workflow has a chat trigger with availableInChat enabled
+	 */
+	function isCanvasManualExecution(model: ChatHubConversationModel): boolean {
+		if (model.provider !== 'n8n') return false;
+
+		const workflowsStore = useWorkflowsStore();
+		if (workflowsStore.workflowId !== model.workflowId) return false;
+
+		const chatTrigger = workflowsStore.allNodes.find(
+			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
+		);
+		if (!chatTrigger) return false;
+
+		const availableInChat = chatTrigger.parameters?.availableInChat;
+		return availableInChat === true;
+	}
+
+	/**
+	 * Initialize workflowExecutionData scaffold so canvas push handlers can write
+	 * node results (makes nodes turn green during manual execution).
+	 */
+	function initManualExecutionScaffold() {
+		const workflowsStore = useWorkflowsStore();
+
+		workflowsStore.workflowExecutionData = {
+			id: IN_PROGRESS_EXECUTION_ID,
+			finished: false,
+			mode: 'manual',
+			status: 'running',
+			createdAt: new Date(),
+			startedAt: new Date(),
+			stoppedAt: undefined,
+			workflowId: workflowsStore.workflowId,
+			data: createRunExecutionData({
+				resultData: { runData: {} },
+			}),
+			workflowData: workflowsStore.workflow,
+		};
+
+		// Signal canvas that an execution is pending (null = waiting for execution ID)
+		workflowsStore.private.setActiveExecutionId(null);
+	}
+
 	async function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
@@ -557,18 +625,40 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 		};
 
+		// Detect if this is a manual execution from the canvas.
+		// When the user is on a canvas with the same workflow as the selected n8n agent,
+		// use the manual endpoint to execute the draft version with canvas events.
+		const useManualMode = isCanvasManualExecution(agent.model);
+
 		try {
 			// Create session entry if new
 			if (!sessions.value.byId[sessionId]) {
 				sessions.value.byId[sessionId] = createSessionFromStreamingState(
 					streaming.value,
 					configuredTools.value.filter((t) => t.enabled).map((t) => t.definition.id),
+					useManualMode,
 				);
 				sessions.value.ids ??= [];
 				sessions.value.ids.unshift(sessionId);
 			}
 
-			await sendMessageApi(rootStore.restApiContext, payload);
+			if (useManualMode) {
+				initManualExecutionScaffold();
+
+				// model is guaranteed to be n8n type here (checked in isCanvasManualMode)
+				const { workflowId } = agent.model as ChatHubN8nModel;
+				await sendMessageManualApi(rootStore.restApiContext, workflowId, {
+					messageId,
+					sessionId,
+					message,
+					previousMessageId,
+					attachments,
+					agentName: agent.name,
+					timeZone: payload.timeZone,
+				});
+			} else {
+				await sendMessageApi(rootStore.restApiContext, payload);
+			}
 
 			// Note: Actual streaming content comes via Push events using pushConnection store.
 			// The push handler will call handleWebSocketStreamBegin, handleWebSocketStreamChunk, etc.
@@ -643,12 +733,31 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			chat_message_id: editId,
 		});
 
+		const useManualMode = isCanvasManualExecution(agent.model);
+
 		try {
-			await editMessageApi(rootStore.restApiContext, {
-				sessionId,
-				editId,
-				payload,
-			});
+			if (useManualMode) {
+				initManualExecutionScaffold();
+
+				await editMessageManualApi(rootStore.restApiContext, {
+					workflowId: (agent.model as ChatHubN8nModel).workflowId,
+					sessionId,
+					editId,
+					payload: {
+						messageId: payload.messageId,
+						message: payload.message,
+						newAttachments: payload.newAttachments,
+						keepAttachmentIndices: payload.keepAttachmentIndices,
+						timeZone: payload.timeZone,
+					},
+				});
+			} else {
+				await editMessageApi(rootStore.restApiContext, {
+					sessionId,
+					editId,
+					payload,
+				});
+			}
 
 			// Note: Actual streaming content comes via Push events
 			// The messageId for the AI response will be set by handleWebSocketStreamBegin
@@ -693,12 +802,27 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			chat_message_id: retryId,
 		});
 
+		const useManualMode = isCanvasManualExecution(agent.model);
+
 		try {
-			await regenerateMessageApi(rootStore.restApiContext, {
-				sessionId,
-				retryId,
-				payload,
-			});
+			if (useManualMode) {
+				initManualExecutionScaffold();
+
+				await regenerateMessageManualApi(rootStore.restApiContext, {
+					workflowId: (agent.model as ChatHubN8nModel).workflowId,
+					sessionId,
+					retryId,
+					payload: {
+						timeZone: payload.timeZone,
+					},
+				});
+			} else {
+				await regenerateMessageApi(rootStore.restApiContext, {
+					sessionId,
+					retryId,
+					payload,
+				});
+			}
 
 			// Note: Actual streaming content comes via Push events
 			// The messageId for the AI response will be set by handleWebSocketStreamBegin
@@ -1145,6 +1269,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 					updateMessage(sessionId, streaming.value.messageId, status);
 				}
 			}
+
+			// For manual mode (canvas execution), do NOT clear activeExecutionId here.
+			// The standard `executionFinished` push handler (sent via pushRef) will:
+			// 1. Fetch the complete execution data from the API
+			// 2. Update workflowExecutionData with full results
+			// 3. Clear activeExecutionId
+			// Clearing it here would cause executionFinished to skip processing.
 
 			streaming.value = undefined;
 

@@ -23,8 +23,10 @@ export {
 	type ChatHubModuleSettings,
 	chatHubProviderSchema,
 	chatHubLLMProviderSchema,
+	chatHubSessionTypeSchema,
 	type ChatHubProvider,
 	type ChatHubLLMProvider,
+	type ChatHubSessionType,
 	type ChatHubMessageType,
 	type ChatHubMessageStatus,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
@@ -35,8 +37,11 @@ export {
 	chatAttachmentSchema,
 	type ChatAttachment,
 	ChatHubSendMessageRequest,
+	ChatHubManualSendMessageRequest,
 	ChatHubRegenerateMessageRequest,
+	ChatHubManualRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
+	ChatHubManualEditMessageRequest,
 	ChatHubUpdateConversationRequest,
 	ChatHubConversationsRequest,
 	type ChatMessageId,
@@ -77,8 +82,6 @@ export {
 	chatHubVectorStoreProviderSchema,
 	type ChatHubVectorStoreProvider,
 	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
-	chatHubSessionTypeSchema,
-	type ChatHubSessionType,
 } from './chat-hub';
 
 export type {
