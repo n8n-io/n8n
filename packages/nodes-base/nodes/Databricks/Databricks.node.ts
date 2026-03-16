@@ -490,7 +490,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials('databricksApi');
+				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'warehouses');
 
@@ -543,7 +543,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials('databricksApi');
+				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'endpoints');
 
@@ -608,7 +608,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials('databricksApi');
+				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'catalogs');
 
@@ -660,7 +660,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials('databricksApi');
+				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 
 				// Try to get the currently selected catalog
@@ -757,7 +757,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials('databricksApi');
+				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'volumes');
 
@@ -853,7 +853,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials('databricksApi');
+				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'tables');
 
@@ -949,7 +949,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials('databricksApi');
+				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'functions');
 
@@ -1090,7 +1090,7 @@ export class Databricks implements INodeType {
 						filePath,
 					});
 
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host;
 					const binaryData = await this.helpers.getBinaryDataBuffer(i, dataFieldName);
 
@@ -1120,7 +1120,7 @@ export class Databricks implements INodeType {
 						},
 					});
 				} else if (resource === 'files' && operation === 'downloadFile') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const filePath = this.getNodeParameter('filePath', i);
@@ -1212,7 +1212,7 @@ export class Databricks implements INodeType {
 						}
 					}
 				} else if (resource === 'files' && operation === 'deleteFile') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const filePath = this.getNodeParameter('filePath', i);
@@ -1246,7 +1246,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'getFileInfo') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const filePath = this.getNodeParameter('filePath', i);
@@ -1282,7 +1282,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'listDirectory') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const directoryPath = this.getNodeParameter('directoryPath', i) as string;
@@ -1321,7 +1321,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'createDirectory') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const directoryPath = this.getNodeParameter('directoryPath', i) as string;
@@ -1355,7 +1355,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'deleteDirectory') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const directoryPath = this.getNodeParameter('directoryPath', i) as string;
@@ -1389,7 +1389,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'genie') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host;
 
 					let url: string;
@@ -1479,7 +1479,7 @@ export class Databricks implements INodeType {
 
 					returnData.push({ json: response });
 				} else if (resource === 'databricksSql' && operation === 'executeQuery') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const warehouseId = this.getNodeParameter('warehouseId', i) as {
 						mode: string;
@@ -1624,7 +1624,7 @@ export class Databricks implements INodeType {
 						});
 					});
 				} else if (resource === 'modelServing' && operation === 'queryEndpoint') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const endpointName = this.getNodeParameter('endpointName', i, '', {
 						extractValue: true,
@@ -1754,7 +1754,7 @@ export class Databricks implements INodeType {
 						throw apiError;
 					}
 				} else if (resource === 'unityCatalog') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 
 					// Helper function to extract value from resourceLocator
@@ -2059,7 +2059,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'vectorSearch' && operation === 'queryIndex') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const indexName = this.getNodeParameter('indexName', i) as string;
 					const queryType = this.getNodeParameter('queryType', i) as string;
@@ -2137,7 +2137,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'vectorSearch' && operation === 'createIndex') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const indexName = this.getNodeParameter('indexName', i) as string;
 					const endpointName = this.getNodeParameter('endpointName', i) as string;
@@ -2174,7 +2174,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'vectorSearch' && operation === 'getIndex') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const indexName = this.getNodeParameter('indexName', i) as string;
 
@@ -2192,7 +2192,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'vectorSearch' && operation === 'listIndexes') {
-					const credentials = await this.getCredentials('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const endpointName = this.getNodeParameter('endpointName', i) as string;
 
