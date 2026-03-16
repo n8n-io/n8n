@@ -38,7 +38,6 @@ const selectedIndex = ref<number | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
 
 const currentQuestion = computed(() => props.questions[currentIndex.value]);
-// const currentQuestion = computed(() => ({...props.questions[currentIndex.value], type: 'text'}));
 const isFirstQuestion = computed(() => currentIndex.value === 0);
 const isLastQuestion = computed(() => currentIndex.value === props.questions.length - 1);
 
@@ -286,96 +285,103 @@ function emitQuestionTelemetry(event: string, inputMethod: string) {
 	});
 }
 
-// Keyboard navigation
+// Keyboard navigation — input-focused handlers
+
+function handleInputEnter(event: KeyboardEvent, type: string) {
+	if (event.key !== 'Enter' || event.shiftKey) return false;
+	if (type === 'multi' && !event.metaKey && !event.ctrlKey) return true; // consumed but no action
+	event.preventDefault();
+	if (hasCustomText.value || isNextEnabled.value) {
+		emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
+		goToNextInternal();
+	}
+	return true;
+}
+
+function handleInputArrow(event: KeyboardEvent) {
+	if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return false;
+	event.preventDefault();
+	containerRef.value?.focus();
+	if (event.key === 'ArrowUp') {
+		highlightedIndex.value = Math.max(0, highlightedIndex.value - 1);
+	}
+	return true;
+}
+
+// Keyboard navigation — container handlers
+
+function handleArrowNavigation(event: KeyboardEvent, type: string, optionCount: number) {
+	if (event.key === 'ArrowUp') {
+		event.preventDefault();
+		highlightedIndex.value = Math.max(0, highlightedIndex.value - 1);
+		scrollHighlightedIntoView();
+		return true;
+	}
+	if (event.key === 'ArrowDown') {
+		event.preventDefault();
+		const maxIdx = type === 'text' ? 0 : optionCount;
+		highlightedIndex.value = Math.min(maxIdx, highlightedIndex.value + 1);
+		scrollHighlightedIntoView();
+		return true;
+	}
+	return false;
+}
+
+function handleEnterKey(event: KeyboardEvent, type: string, optionCount: number) {
+	if (event.key !== 'Enter') return false;
+	event.preventDefault();
+
+	if (type === 'single') {
+		if (highlightedIndex.value >= 0 && highlightedIndex.value < optionCount) {
+			onSingleSelectAndAdvance(filteredOptions.value[highlightedIndex.value], 'keyboard_enter');
+		}
+	} else if (type === 'multi') {
+		if (event.metaKey || event.ctrlKey) {
+			if (isNextEnabled.value) {
+				emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
+				goToNextInternal();
+			}
+		} else if (highlightedIndex.value >= 0 && highlightedIndex.value < optionCount) {
+			const option = filteredOptions.value[highlightedIndex.value];
+			const answer = currentAnswer.value;
+			if (answer) {
+				onMultiToggle(option, !answer.selectedOptions.includes(option));
+			}
+		}
+	} else if (type === 'text' && hasCustomText.value) {
+		emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
+		goToNextInternal();
+	}
+	return true;
+}
+
+function handleNumberShortcut(event: KeyboardEvent, type: string, optionCount: number) {
+	if (type !== 'single') return false;
+	const num = parseInt(event.key, 10);
+	if (num >= 1 && num <= optionCount) {
+		event.preventDefault();
+		onSingleSelectAndAdvance(filteredOptions.value[num - 1], 'keyboard_number');
+		return true;
+	}
+	return false;
+}
+
 function onKeydown(event: KeyboardEvent) {
 	const q = currentQuestion.value;
 	if (!q || props.disabled) return;
 
-	// Don't handle events from within inputs/textareas (except Enter with modifiers)
 	const target = event.target as HTMLElement;
 	const isInputFocused = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
 	if (isInputFocused) {
-		// Enter in input: for multi-select, require Cmd/Ctrl+Enter to advance
-		if (event.key === 'Enter' && !event.shiftKey) {
-			if (q.type === 'multi' && !event.metaKey && !event.ctrlKey) {
-				// Plain Enter in multi-select input does nothing (user must use Cmd/Ctrl+Enter)
-				return;
-			}
-			event.preventDefault();
-			if (hasCustomText.value || isNextEnabled.value) {
-				emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
-				goToNextInternal();
-			}
-			return;
-		}
-		// Arrow keys move focus back to the container for navigation
-		if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-			event.preventDefault();
-			containerRef.value?.focus();
-			if (event.key === 'ArrowUp') {
-				highlightedIndex.value = Math.max(0, highlightedIndex.value - 1);
-			}
-			return;
-		}
-		// Don't intercept other keys when input is focused
+		handleInputEnter(event, q.type) || handleInputArrow(event);
 		return;
 	}
 
 	const optionCount = filteredOptions.value.length;
-
-	switch (event.key) {
-		case 'ArrowUp':
-			event.preventDefault();
-			highlightedIndex.value = Math.max(0, highlightedIndex.value - 1);
-			scrollHighlightedIntoView();
-			break;
-		case 'ArrowDown':
-			event.preventDefault();
-			// +1 for the "Something else" row if applicable
-			{
-				const maxIdx = q.type === 'text' ? 0 : optionCount; // optionCount = last idx is "Something else"
-				highlightedIndex.value = Math.min(maxIdx, highlightedIndex.value + 1);
-			}
-			scrollHighlightedIntoView();
-			break;
-		case 'Enter':
-			event.preventDefault();
-			if (q.type === 'single') {
-				if (highlightedIndex.value >= 0 && highlightedIndex.value < optionCount) {
-					onSingleSelectAndAdvance(filteredOptions.value[highlightedIndex.value], 'keyboard_enter');
-				}
-			} else if (q.type === 'multi') {
-				if (event.metaKey || event.ctrlKey) {
-					if (isNextEnabled.value) {
-						emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
-						goToNextInternal();
-					}
-				} else if (highlightedIndex.value >= 0 && highlightedIndex.value < optionCount) {
-					const option = filteredOptions.value[highlightedIndex.value];
-					const answer = currentAnswer.value;
-					if (answer) {
-						const isChecked = answer.selectedOptions.includes(option);
-						onMultiToggle(option, !isChecked);
-					}
-				}
-			} else if (q.type === 'text') {
-				if (hasCustomText.value) {
-					emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
-					goToNextInternal();
-				}
-			}
-			break;
-		default:
-			// Number keys for single-select
-			if (q.type === 'single') {
-				const num = parseInt(event.key, 10);
-				if (num >= 1 && num <= optionCount) {
-					event.preventDefault();
-					onSingleSelectAndAdvance(filteredOptions.value[num - 1], 'keyboard_number');
-				}
-			}
-	}
+	handleArrowNavigation(event, q.type, optionCount) ||
+		handleEnterKey(event, q.type, optionCount) ||
+		handleNumberShortcut(event, q.type, optionCount);
 }
 
 function scrollHighlightedIntoView() {
