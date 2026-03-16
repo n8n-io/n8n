@@ -999,6 +999,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		} else if (accessibleWorkflowIds) {
 			// Array-based access control (backward compat)
 			qb.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
+		} else {
+			// No access control provided — deny all to prevent unscoped queries
+			qb.where('1 = 0');
 		}
 
 		if (query.kind === 'range') {
