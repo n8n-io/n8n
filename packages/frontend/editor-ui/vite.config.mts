@@ -203,7 +203,8 @@ const plugins: UserConfig['plugins'] = [
 				}),
 			]
 		: []),
-	...(process.env.CODECOV_TOKEN
+	// Only run on non-release builds to prevent double upload from @vitejs/plugin-legacy
+	...(process.env.CODECOV_TOKEN && !release
 		? [
 				codecovVitePlugin({
 					enableBundleAnalysis: true,
