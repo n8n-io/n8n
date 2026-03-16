@@ -7,7 +7,13 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import axios from 'axios';
 import type express from 'express';
-import { createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
+import {
+	createHttpProxyAgent,
+	createHttpsProxyAgent,
+	Cipher,
+	InstanceSettings,
+	validateKeyPair,
+} from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
@@ -80,6 +86,10 @@ export class SamlService {
 		};
 	}
 
+	isSignedSamlRequestsEnabled(): boolean {
+		return process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS === 'true';
+	}
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
@@ -88,6 +98,7 @@ export class SamlService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly provisioningService: ProvisioningService,
+		private readonly cipher: Cipher,
 	) {}
 
 	async init(): Promise<void> {
@@ -371,6 +382,22 @@ export class SamlService {
 				throw new InvalidSamlMetadataError();
 			}
 		}
+		// Validate signing key pair if authnRequestsSigned is enabled
+		if (this.isSignedSamlRequestsEnabled() && this._samlPreferences.authnRequestsSigned) {
+			if (this._samlPreferences.signingPrivateKey && this._samlPreferences.signingCertificate) {
+				try {
+					const decryptedPrivateKey = this.getDecryptedPrivateKey();
+					validateKeyPair(decryptedPrivateKey, this._samlPreferences.signingCertificate);
+				} catch (error) {
+					throw new BadRequestError(error instanceof Error ? error.message : String(error));
+				}
+			} else {
+				throw new BadRequestError(
+					'Both signingPrivateKey and signingCertificate are required when authnRequestsSigned is enabled.',
+				);
+			}
+		}
+
 		this.getIdentityProviderInstance(true);
 		const result = await this.saveSamlPreferencesToDb();
 
@@ -401,6 +428,28 @@ export class SamlService {
 			this._samlPreferences.metadataUrl = undefined;
 			this._samlPreferences.metadata = prefs.metadata;
 		}
+
+		// Handle signing keys - only process if feature flag is enabled
+		if (this.isSignedSamlRequestsEnabled()) {
+			// Certificate is stored in plaintext (public data)
+			if (prefs.signingCertificate !== undefined) {
+				this._samlPreferences.signingCertificate = prefs.signingCertificate;
+			}
+
+			// Private key must be encrypted before storing
+			// UI only sends keys when they need to be updated
+			if (prefs.signingPrivateKey !== undefined) {
+				this._samlPreferences.signingPrivateKey = this.cipher.encrypt(prefs.signingPrivateKey);
+			}
+		} else {
+			// Feature flag is disabled - reject attempts to set signing configuration
+			if (prefs.signingPrivateKey !== undefined || prefs.signingCertificate !== undefined) {
+				throw new BadRequestError(
+					'SAML request signing is not enabled. Set N8N_ENV_FEAT_SIGNED_SAML_REQUESTS=true to enable this feature.',
+				);
+			}
+		}
+
 		await setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
 		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
 	}
@@ -540,5 +589,28 @@ export class SamlService {
 	async reset() {
 		await setSamlLoginEnabled(false);
 		await this.settingsRepository.delete({ key: SAML_PREFERENCES_DB_KEY });
+	}
+
+	/**
+	 * Decrypts the stored private key for internal use only.
+	 * Only works if feature flag is enabled.
+	 * @throws BadRequestError if decryption fails or feature flag is disabled
+	 */
+	private getDecryptedPrivateKey(): string {
+		if (!this.isSignedSamlRequestsEnabled()) {
+			throw new BadRequestError('SAML request signing is not enabled.');
+		}
+
+		if (!this._samlPreferences.signingPrivateKey) {
+			throw new BadRequestError('No signing private key configured.');
+		}
+
+		try {
+			return this.cipher.decrypt(this._samlPreferences.signingPrivateKey);
+		} catch (error) {
+			throw new BadRequestError(
+				`Failed to decrypt signing private key: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 	}
 }

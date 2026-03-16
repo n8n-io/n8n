@@ -9,7 +9,7 @@ import type express from 'express';
 import type { HttpProxyAgent } from 'http-proxy-agent';
 import type { HttpsProxyAgent } from 'https-proxy-agent';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
+import type { Cipher, InstanceSettings } from 'n8n-core';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -153,6 +153,7 @@ describe('SamlService', () => {
 	let globalConfig: GlobalConfig;
 	let userRepository: UserRepository;
 	let provisioningService: ProvisioningService;
+	let cipher: Cipher;
 	const validator = new SamlValidator(mock());
 	const logger = mockLogger();
 
@@ -198,6 +199,7 @@ describe('SamlService', () => {
 			sso: { saml: { loginEnabled: false } },
 		});
 		provisioningService = mock<ProvisioningService>();
+		cipher = mock<Cipher>();
 
 		jest
 			.spyOn(ssoHelpers, 'reloadAuthenticationMethod')
@@ -212,6 +214,7 @@ describe('SamlService', () => {
 			settingsRepository,
 			instanceSettings,
 			provisioningService,
+			cipher,
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
@@ -1071,6 +1074,266 @@ describe('SamlService', () => {
 			// These should NOT have a proxy property
 			expect(httpAgent).not.toHaveProperty('proxy');
 			expect(httpsAgent).not.toHaveProperty('proxy');
+		});
+	});
+
+	describe('SAML Request Signing Key Fields', () => {
+		// Valid PEM-formatted private key (for format testing)
+		const validPrivateKey = `-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKj
+MzEfYyjiWA4R4/M2b01iU2K5y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+AgMBAAECggEBAK8kX5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+QKBgQDy5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+QKBgQDy5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+AwEAAQ==
+-----END PRIVATE KEY-----`;
+
+		const validCertificate = `-----BEGIN CERTIFICATE-----
+MIIDXTCCAkWgAwIBAgIJAKL2k4jJ8q5YMA0GCSqGSIb3DQEBCQUAMEUxCzAJBgNV
+BAYTAlVTMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
+aWRnaXRzIFB0eSBMdGQwHhcNMjIwMjI4MjE0NjM4WhcNMzIwMjI4MjE0NjM4WjBF
+MQswCQYDVQQGEwJVUzETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
+ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+CgKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOEePzNm9NYlNiucuV8t6dS/CuWOV8t6dS
+/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS
+/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS
+/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS
+/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS
+IDAQABo1AwTjAdBgNVHQ4EFgQU7VJTUt9Us8cKjMzEfYyjiWA4R4/MwHwYDVR0j
+BBgwFoAU7VJTUt9Us8cKjMzEfYyjiWA4R4/MwDAYDVR0TBAUwAwEB/zANBgkqhkiG
+9w0BAQUFAAOCAQEAK8kX5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+-----END CERTIFICATE-----`;
+
+		const mismatchedCertificate = `-----BEGIN CERTIFICATE-----
+MIIDXTCCAkWgAwIBAgIJAKL2k4jJ8q5YMA0GCSqGSIb3DQEBCQUAMEUxCzAJBgNV
+BAYTAlVTMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
+aWRnaXRzIFB0eSBMdGQwHhcNMjIwMjI4MjE0NjM4WhcNMzIwMjI4MjE0NjM4WjBF
+MQswCQYDVQQGEwJVUzETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
+ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+CgKCAQEAv1SU1LfVLPHCozMxH2Mo4lgOEePzNm9NYlNiucuV8t6dS/CuWOV8t6dS
+/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS
+/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS
+/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS
+/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS/CuWOV8t6dS
+IDAQABo1AwTjAdBgNVHQ4EFgQU7VJTUt9Us8cKjMzEfYyjiWA4R4/MwHwYDVR0j
+BBgwFoAU7VJTUt9Us8cKjMzEfYyjiWA4R4/MwDAYDVR0TBAUwAwEB/zANBgkqhkiG
+9w0BAQUFAAOCAQEAK8kX5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L8K5Y5Xy3p1L
+-----END CERTIFICATE-----`;
+
+		const originalEnv = process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+
+		beforeEach(() => {
+			jest.resetAllMocks();
+			// Mock cipher encrypt/decrypt
+			cipher.encrypt = jest.fn((data: string) => `encrypted:${data}`);
+			cipher.decrypt = jest.fn((data: string) => {
+				if (data.startsWith('encrypted:')) {
+					return data.replace('encrypted:', '');
+				}
+				return data;
+			});
+			// Mock required methods
+			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+			jest.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
+			jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
+			jest
+				.spyOn(samlService, 'saveSamlPreferencesToDb')
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
+		});
+
+		afterEach(() => {
+			if (originalEnv !== undefined) {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = originalEnv;
+			} else {
+				delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+			}
+		});
+
+		describe('isSignedSamlRequestsEnabled', () => {
+			it.each([
+				['not set', undefined],
+				['"false"', 'false'],
+				['empty string', ''],
+				['"0"', '0'],
+				['"no"', 'no'],
+			])('should return false when N8N_ENV_FEAT_SIGNED_SAML_REQUESTS is %s', (_, value) => {
+				if (value === undefined) {
+					delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+				} else {
+					process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = value;
+				}
+				expect(samlService.isSignedSamlRequestsEnabled()).toBe(false);
+			});
+
+			it('should return true when N8N_ENV_FEAT_SIGNED_SAML_REQUESTS is "true"', () => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+				expect(samlService.isSignedSamlRequestsEnabled()).toBe(true);
+			});
+		});
+
+		describe('loadPreferencesWithoutValidation - encryption', () => {
+			it('should encrypt plaintext private key when feature flag is enabled', async () => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+				await samlService.loadPreferencesWithoutValidation({
+					signingPrivateKey: validPrivateKey,
+					signingCertificate: validCertificate,
+				});
+
+				expect(cipher.encrypt).toHaveBeenCalledWith(validPrivateKey);
+				expect(samlService.samlPreferences.signingPrivateKey).toBe(`encrypted:${validPrivateKey}`);
+				expect(samlService.samlPreferences.signingCertificate).toBe(validCertificate);
+			});
+
+			it('should not encrypt already encrypted private key', async () => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+				const encryptedKey = 'encrypted:some-key';
+
+				await samlService.loadPreferencesWithoutValidation({
+					signingPrivateKey: encryptedKey,
+				});
+
+				expect(cipher.encrypt).not.toHaveBeenCalled();
+				expect(samlService.samlPreferences.signingPrivateKey).toBe(encryptedKey);
+			});
+
+			it('should reject signing configuration when feature flag is disabled', async () => {
+				delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+
+				await expect(
+					samlService.loadPreferencesWithoutValidation({
+						signingPrivateKey: validPrivateKey,
+					}),
+				).rejects.toThrow(BadRequestError);
+				await expect(
+					samlService.loadPreferencesWithoutValidation({
+						signingCertificate: validCertificate,
+					}),
+				).rejects.toThrow(BadRequestError);
+			});
+		});
+
+		describe('setSamlPreferences - validation', () => {
+			it('should skip validation when authnRequestsSigned is false', async () => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+				await samlService.loadPreferencesWithoutValidation({
+					signingPrivateKey: validPrivateKey,
+					signingCertificate: validCertificate,
+					authnRequestsSigned: false,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				await expect(samlService.setSamlPreferences({})).resolves.toBeDefined();
+			});
+
+			it('should throw error when authnRequestsSigned is true but private key is missing', async () => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+				await samlService.loadPreferencesWithoutValidation({
+					authnRequestsSigned: true,
+					signingCertificate: validCertificate,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				await expect(samlService.setSamlPreferences({})).rejects.toThrow(
+					'Both signingPrivateKey and signingCertificate are required',
+				);
+			});
+
+			it('should throw error when authnRequestsSigned is true but certificate is missing', async () => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+				await samlService.loadPreferencesWithoutValidation({
+					authnRequestsSigned: true,
+					signingPrivateKey: validPrivateKey,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				await expect(samlService.setSamlPreferences({})).rejects.toThrow(
+					'Both signingPrivateKey and signingCertificate are required',
+				);
+			});
+
+			it('should throw error for invalid PEM format private key', async () => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+				await samlService.loadPreferencesWithoutValidation({
+					authnRequestsSigned: true,
+					signingPrivateKey: 'not a valid PEM key',
+					signingCertificate: validCertificate,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				await expect(samlService.setSamlPreferences({})).rejects.toThrow(
+					'Invalid private key format',
+				);
+			});
+
+			it('should throw error for invalid PEM format certificate', async () => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+				await samlService.loadPreferencesWithoutValidation({
+					authnRequestsSigned: true,
+					signingPrivateKey: validPrivateKey,
+					signingCertificate: 'not a valid PEM certificate',
+					metadata: mockSamlConfig.metadata,
+				});
+
+				await expect(samlService.setSamlPreferences({})).rejects.toThrow(
+					'Invalid certificate format',
+				);
+			});
+
+			it('should throw error when private key and certificate do not match', async () => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+				await samlService.loadPreferencesWithoutValidation({
+					authnRequestsSigned: true,
+					signingPrivateKey: validPrivateKey,
+					signingCertificate: mismatchedCertificate,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				await expect(samlService.setSamlPreferences({})).rejects.toThrow('do not match');
+			});
+		});
+
+		describe('samlPreferences getter', () => {
+			it('should return encrypted private key, never plaintext', async () => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+				await samlService.loadPreferencesWithoutValidation({
+					signingPrivateKey: validPrivateKey,
+					signingCertificate: validCertificate,
+				});
+
+				const prefs = samlService.samlPreferences;
+				expect(prefs.signingPrivateKey).toBe(`encrypted:${validPrivateKey}`);
+				expect(prefs.signingPrivateKey).not.toBe(validPrivateKey);
+			});
 		});
 	});
 });

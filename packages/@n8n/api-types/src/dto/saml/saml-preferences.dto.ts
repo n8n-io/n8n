@@ -43,6 +43,10 @@ export class SamlPreferences extends Z.class({
 	loginLabel: z.string().optional(),
 
 	authnRequestsSigned: z.boolean().default(false),
+	/** Encrypted private key for signing SAML AuthnRequests. Only used when authnRequestsSigned is true. */
+	signingPrivateKey: z.string().optional(),
+	/** Certificate (public key) for signing SAML AuthnRequests. Only used when authnRequestsSigned is true. */
+	signingCertificate: z.string().optional(),
 	wantAssertionsSigned: z.boolean().default(true),
 	wantMessageSigned: z.boolean().default(true),
 
