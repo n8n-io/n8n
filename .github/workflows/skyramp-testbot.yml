@@ -30,12 +30,22 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Enable corepack
+        run: corepack enable
+
       - uses: skyramp/testbot@778afe16b1df04a7c6e3965fa0dd03a3eb2e20a1 # v0.3.2
         with:
           skyramp_license_file: ${{ secrets.SKYRAMP_LICENSE_FILE }}
           anthropic_api_key: ${{ secrets.SKYRAMP_TESTBOT_API_KEY }}
           github_token: ${{ steps.app-token.outputs.token }}
-          # auth_token_command: 'echo ${{ secrets.SKYRAMP_TEST_TOKEN }}'
           target_setup_command: "./deployment-testbot/setup.sh"
           target_ready_check_command: "curl -f http://localhost:5678/healthz"
           target_ready_check_timeout: 60
@@ -45,5 +55,5 @@ jobs:
           auto_commit: true
           post_pr_comment: true
           enable_debug: true
-          commit_message: "TestBot: update tests for Prefect"
+          commit_message: "TestBot: update tests for n8n"
           skyramp_mcp_version: next
