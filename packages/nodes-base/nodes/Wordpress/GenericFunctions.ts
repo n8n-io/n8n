@@ -18,7 +18,27 @@ export async function wordpressApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	const credentials = await this.getCredentials('wordpressApi');
+	const authType = this.getNodeParameter('authType', 0, 'basicAuth') as string;
+	const isOAuth2 = authType === 'oAuth2';
+
+	let baseUri: string;
+	let credentialType: string;
+	let rejectUnauthorized: boolean | undefined;
+
+	if (isOAuth2) {
+		const credentials = await this.getCredentials('wordpressOAuth2Api');
+		credentialType = 'wordpressOAuth2Api';
+		const sitePrefix =
+			credentials.customDomain && credentials.customDomainUrl
+				? `/sites/${credentials.customDomainUrl as string}`
+				: '';
+		baseUri = `https://public-api.wordpress.com/wp/v2${sitePrefix}`;
+	} else {
+		const credentials = await this.getCredentials('wordpressApi');
+		credentialType = 'wordpressApi';
+		baseUri = `${credentials.url as string}/wp-json/wp/v2`;
+		rejectUnauthorized = !(credentials.allowUnauthorizedCerts as boolean);
+	}
 
 	let options: IRequestOptions = {
 		headers: {
@@ -29,8 +49,8 @@ export async function wordpressApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `${credentials.url}/wp-json/wp/v2${resource}`,
-		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
+		uri: uri ?? `${baseUri}${resource}`,
+		...(rejectUnauthorized !== undefined ? { rejectUnauthorized } : {}),
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -38,7 +58,6 @@ export async function wordpressApiRequest(
 		delete options.body;
 	}
 	try {
-		const credentialType = 'wordpressApi';
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

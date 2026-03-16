@@ -12,10 +12,16 @@ describe('Wordpress > GenericFunctions', () => {
 			allowUnauthorizedCerts: false,
 		}),
 		getNode: jest.fn(),
+		getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
 	};
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockFunctions.getNodeParameter.mockReturnValue('basicAuth');
+		mockFunctions.getCredentials.mockResolvedValue({
+			url: 'http://example.com',
+			allowUnauthorizedCerts: false,
+		});
 	});
 
 	describe('wordpressApiRequest', () => {
@@ -26,11 +32,80 @@ describe('Wordpress > GenericFunctions', () => {
 			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalled();
 		});
 
+		it('should use wordpressApi credential for basic auth', async () => {
+			mockFunctions.helpers.requestWithAuthentication.mockResolvedValue({ data: 'testData' });
+			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
+
+			expect(mockFunctions.getCredentials).toHaveBeenCalledWith('wordpressApi');
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'wordpressApi',
+				expect.objectContaining({
+					uri: 'http://example.com/wp-json/wp/v2/posts',
+					rejectUnauthorized: true,
+				}),
+			);
+		});
+
 		it('should throw NodeApiError on failure', async () => {
 			mockFunctions.helpers.requestWithAuthentication.mockRejectedValue({ message: 'fail' });
 			await expect(
 				wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {}),
 			).rejects.toThrow(NodeApiError);
+		});
+	});
+
+	describe('wordpressApiRequest with OAuth2', () => {
+		beforeEach(() => {
+			mockFunctions.getNodeParameter.mockReturnValue('oAuth2');
+			mockFunctions.getCredentials.mockResolvedValue({
+				customDomain: false,
+				customDomainUrl: '',
+			});
+			mockFunctions.helpers.requestWithAuthentication.mockResolvedValue({ data: 'testData' });
+		});
+
+		it('should use wordpressOAuth2Api credential', async () => {
+			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
+
+			expect(mockFunctions.getCredentials).toHaveBeenCalledWith('wordpressOAuth2Api');
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'wordpressOAuth2Api',
+				expect.objectContaining({ method: 'GET' }),
+			);
+		});
+
+		it('should use public-api.wordpress.com base URL without custom domain', async () => {
+			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
+
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'wordpressOAuth2Api',
+				expect.objectContaining({
+					uri: 'https://public-api.wordpress.com/wp/v2/posts',
+				}),
+			);
+		});
+
+		it('should include site prefix when custom domain is set', async () => {
+			mockFunctions.getCredentials.mockResolvedValue({
+				customDomain: true,
+				customDomainUrl: 'myblog.com',
+			});
+
+			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
+
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'wordpressOAuth2Api',
+				expect.objectContaining({
+					uri: 'https://public-api.wordpress.com/wp/v2/sites/myblog.com/posts',
+				}),
+			);
+		});
+
+		it('should not set rejectUnauthorized for OAuth2 path', async () => {
+			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
+
+			const callArgs = mockFunctions.helpers.requestWithAuthentication.mock.calls[0][1];
+			expect(callArgs).not.toHaveProperty('rejectUnauthorized');
 		});
 	});
 
