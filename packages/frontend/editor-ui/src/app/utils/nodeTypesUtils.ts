@@ -173,6 +173,10 @@ const findAlternativeAuthField = (
 		}
 	});
 	const alternativeAuthField = fields.find((field) => {
+		// Only option-type fields (selectors) can be the main auth field
+		if (field.type !== 'options') {
+			return false;
+		}
 		let required = true;
 		field.options?.forEach((option) => {
 			if (

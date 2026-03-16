@@ -12,6 +12,7 @@ import { AiGatewayConfig } from './ai-gateway.config';
 import { AiGatewayModelService } from './ai-gateway-model.service';
 import { AiGatewayUsageService } from './ai-gateway-usage.service';
 import { AiGatewayService } from './ai-gateway.service';
+import { MODEL_CATEGORIES, MODEL_CATEGORY_MAP, type ModelCategory } from './ai-gateway.constants';
 
 @RestController('/ai-gateway')
 export class AiGatewayController {
@@ -27,9 +28,13 @@ export class AiGatewayController {
 		_req: AuthenticatedRequest,
 		_res: Response,
 	): Promise<AiGatewaySettingsResponse> {
+		const defaultCategory = MODEL_CATEGORIES.includes(this.config.defaultCategory as ModelCategory)
+			? (this.config.defaultCategory as ModelCategory)
+			: 'balanced';
 		return {
 			enabled: this.config.enabled,
-			defaultCategory: this.config.defaultCategory,
+			defaultCategory,
+			defaultModel: MODEL_CATEGORY_MAP[defaultCategory],
 		};
 	}
 
@@ -41,11 +46,16 @@ export class AiGatewayController {
 	): Promise<AiGatewaySettingsResponse> {
 		if (payload.defaultCategory !== undefined) {
 			this.config.defaultCategory = payload.defaultCategory;
+			await this.gatewayService.provisionCredential();
 		}
 
+		const defaultCategory = MODEL_CATEGORIES.includes(this.config.defaultCategory as ModelCategory)
+			? (this.config.defaultCategory as ModelCategory)
+			: 'balanced';
 		return {
 			enabled: this.config.enabled,
-			defaultCategory: this.config.defaultCategory,
+			defaultCategory,
+			defaultModel: MODEL_CATEGORY_MAP[defaultCategory],
 		};
 	}
 

@@ -11,10 +11,10 @@ export type AiGatewayModelCategory = (typeof AI_GATEWAY_MODEL_CATEGORIES)[number
 export const AI_GATEWAY_CREDENTIAL_TYPE = 'n8nAiGatewayApi';
 
 export const AI_GATEWAY_MODEL_CATEGORY_MAP: Record<AiGatewayModelCategory, string> = {
-	balanced: 'openai/gpt-4.1-mini',
+	balanced: 'openai/gpt-4.1-nano',
 	cheapest: 'openai/gpt-4.1-nano',
-	fastest: 'google/gemini-2.0-flash',
-	'best-quality': 'anthropic/claude-4-sonnet',
+	fastest: 'google/gemini-2.0-flash-001',
+	'best-quality': 'anthropic/claude-sonnet-4',
 	reasoning: 'openai/o4-mini',
 };
 
@@ -66,6 +66,7 @@ export function resolveAiGatewayModel(modelOrCategory: string): string {
 export interface AiGatewaySettingsResponse {
 	enabled: boolean;
 	defaultCategory: string;
+	defaultModel?: string;
 }
 
 export interface AiGatewayModelCategoryResponse {

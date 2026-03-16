@@ -59,7 +59,7 @@ all future executions without modifying the workflow.
 
 Provider-specific nodes (OpenAI, Anthropic, etc.) also accept the
 `n8nAiGatewayApi` credential via a hidden `useAiGateway` parameter, allowing
-power users to route specific provider nodes through the gateway.
+power users to route specific provider nodes through the gateway. 
 
 ---
 
@@ -153,12 +153,23 @@ configuration required.
 
 ## Usage in Workflows
 
-### Scenario 1: AI Agent Node (Primary Path — implemented)
+### Scenario 1: AI Agent Node (Primary Path)
+
+The AI Agent node gets a gateway model automatically:
 
 1. User creates a workflow with an AI Agent node
-2. Canvas auto-wires the `lmChatN8nAiGateway` sub-node
-3. Model is resolved at execution from workflow/global category setting
-4. No credential setup needed — auto-provisioned credential is used
+2. The canvas auto-creates an **n8n AI Gateway Model** (`lmChatN8nAiGateway`)
+   sub-node and connects it to the AI Agent's `ai_languageModel` input
+3. No credential setup needed — the gateway node uses the auto-provisioned
+   `n8nAiGatewayApi` credential
+4. At execution, the node resolves the model from the workflow category
+   override or global default (e.g., "Balanced" → `openai/gpt-4.1-nano`)
+5. Changing the global default category affects all future executions without
+   modifying existing workflows
+
+### Scenario 2: Provider-Specific Nodes (OpenAI, Gemini, etc.)
+
+Provider-specific nodes also support the gateway credential (secondary path):
 
 ### Scenario 2: Provider-Specific Nodes (implemented)
 
@@ -285,15 +296,38 @@ same credit pool — one balance that covers both building and running workflows
 
 ## Implementation TODO
 
-### Frontend: Canvas
+Detailed frontend checklist is in [mvp-ai-gateway-frontend.md](./mvp-ai-gateway-frontend.md).
 
-- [x] Auto-wire `lmChatN8nAiGateway` node when creating AI Agent
-- [x] Add "n8n AI Gateway" option to credentials picker
+### Dedicated Gateway Node
+
+- [x]  `LmChatN8nAiGateway` node at `packages/@n8n/nodes-langchain/nodes/llms/LmChatN8nAiGateway/`
+- [x]  Node registered in `packages/@n8n/nodes-langchain/package.json`
+- [x]  Node uses `n8nAiGatewayApi` credential, resolves model from category at execution time
+- [x]  Node supports workflow-level category override via workflow settings, falls back to global default
 
 ### Frontend: Settings
 
-- [x] AI Gateway settings page (model category, usage overview)
-- [x] Workflow settings override for model category
+- [x]  AI Gateway settings page at `/settings/ai-gateway` — model source selection
+- [x]  AI Gateway settings page at `/settings/ai-gateway` — category selection
+- [x]  AI Gateway settings page at `/settings/ai-gateway` — usage overview (total tokens, in/out tokens, models by usage)
+- [x]  Global Pinia store (`aiGateway.store.ts`) with category/model state fetched from backend API
+- [x]  i18n labels for all settings page text
+- [x]  Settings sidebar entry and route registration
+- [x]  Workflow settings override for model source / category
+
+### Frontend: Canvas
+
+- [x] Auto-wire `lmChatN8nAiGateway` node when creating AI Agent
+- [x]  Auto-create and connect `lmChatN8nAiGateway` node when AI Agent is created
+- [x] Add "n8n AI Gateway" option to credentials picker
+- [x]  `applyAIGatewayDefaultsToLlmNode` helper wired into `useCanvasOperations.addNode`
+- [x]  Simplify `useAIGatewayDefaults.ts`: `getGatewayLlmNodeData()` returns `lmChatN8nAiGateway` type directly
+- [x]  Simplify `aiGateway.store.ts`: remove `PROVIDER_NODE_MAP` and provider-to-node mapping logic
+
+### Frontend: Credentials / Provider Contracts
+
+- [x]  `N8nAiGatewayApi.credentials.ts` registered in `@n8n/nodes-langchain`
+- [x]  OpenAI Chat Model, OpenAI v1/v2 nodes accept `n8nAiGatewayApi` credential via hidden `useAiGateway` parameter, transport layer routes accordingly (kept for BYOK+gateway)
 
 ### Backend
 

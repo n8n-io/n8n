@@ -123,6 +123,10 @@ import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { isChatNode } from '@/app/utils/aiUtils';
+import {
+	applyAIGatewayDefaultsToLlmNode,
+	getGatewayLlmNodeData,
+} from '@/features/ai/gateway/useAIGatewayDefaults';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
@@ -844,6 +848,76 @@ export function useCanvasOperations() {
 		}
 	}
 
+	/**
+	 * When an AI Agent node is created, auto-create a matching LLM chat model
+	 * node using the current AI Gateway settings and connect it to the agent's
+	 * AiLanguageModel input.
+	 */
+	function getCurrentWorkflowSettings() {
+		if (!workflowsStore.workflowId) return undefined;
+		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
+		return docStore.settings;
+	}
+
+	function hasAiLanguageModelInput(nodeTypeDescription: INodeTypeDescription): boolean {
+		const { inputs, builderHint } = nodeTypeDescription;
+		if (builderHint?.inputs && 'ai_languageModel' in builderHint.inputs) {
+			return true;
+		}
+		if (Array.isArray(inputs)) {
+			return inputs.some(
+				(input) =>
+					input === NodeConnectionTypes.AiLanguageModel ||
+					(typeof input === 'object' && input.type === NodeConnectionTypes.AiLanguageModel),
+			);
+		}
+		return false;
+	}
+
+	async function autoCreateGatewayLlmNode(
+		node: INodeUi,
+		nodeTypeDescription: INodeTypeDescription,
+		options: AddNodeOptions,
+	) {
+		if (!hasAiLanguageModelInput(nodeTypeDescription)) return;
+
+		const llmData = await getGatewayLlmNodeData(getCurrentWorkflowSettings());
+		if (!llmData) return;
+
+		const llmTypeDescription = requireNodeTypeDescription(llmData.type);
+
+		const llmNode = addNode(
+			{
+				type: llmData.type,
+				typeVersion: resolveNodeVersion(llmTypeDescription),
+				parameters: llmData.parameters,
+				credentials: llmData.credentials,
+				position: [node.position[0], node.position[1] + PUSH_NODES_OFFSET],
+			},
+			llmTypeDescription,
+			{
+				...options,
+				openNDV: false,
+				isAutoAdd: true,
+			},
+		);
+
+		createConnection({
+			source: llmNode.id,
+			sourceHandle: createCanvasConnectionHandleString({
+				mode: CanvasConnectionMode.Output,
+				type: NodeConnectionTypes.AiLanguageModel,
+				index: 0,
+			}),
+			target: node.id,
+			targetHandle: createCanvasConnectionHandleString({
+				mode: CanvasConnectionMode.Input,
+				type: NodeConnectionTypes.AiLanguageModel,
+				index: 0,
+			}),
+		});
+	}
+
 	function addNode(
 		node: AddNodeDataWithTypeVersion,
 		nodeTypeDescription: INodeTypeDescription,
@@ -858,6 +932,8 @@ export function useCanvasOperations() {
 			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
 		}
 
+		applyAIGatewayDefaultsToLlmNode(nodeData, getCurrentWorkflowSettings());
+
 		workflowsStore.addNode(nodeData);
 		if (options.trackHistory) {
 			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData, Date.now()));
@@ -865,6 +941,10 @@ export function useCanvasOperations() {
 
 		if (!options.isAutoAdd) {
 			createConnectionToLastInteractedWithNode(nodeData, options);
+		}
+
+		if (!options.isAutoAdd) {
+			void autoCreateGatewayLlmNode(nodeData, nodeTypeDescription, options);
 		}
 
 		void nextTick(() => {

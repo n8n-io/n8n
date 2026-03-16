@@ -1,5 +1,6 @@
 import type { SafetySetting } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	NodeError,
@@ -58,6 +59,12 @@ export class LmChatGoogleGemini implements INodeType {
 			{
 				name: 'googlePalmApi',
 				required: true,
+				displayOptions: { hide: { useAiGateway: [true] } },
+			},
+			{
+				name: 'n8nAiGatewayApi',
+				required: true,
+				displayOptions: { show: { useAiGateway: [true] } },
 			},
 		],
 		requestDefaults: {
@@ -66,6 +73,13 @@ export class LmChatGoogleGemini implements INodeType {
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
+			{
+				displayName: 'Use AI Gateway',
+				name: 'useAiGateway',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+			},
 			{
 				displayName: 'Model',
 				name: 'modelName',
@@ -127,7 +141,7 @@ export class LmChatGoogleGemini implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('googlePalmApi');
+		const isGateway = !!this.getNode().credentials?.n8nAiGatewayApi;
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {
@@ -141,6 +155,31 @@ export class LmChatGoogleGemini implements INodeType {
 			topK: number;
 			topP: number;
 		};
+
+		if (isGateway) {
+			const gatewayCreds = await this.getCredentials<{ apiKey: string; url: string }>(
+				'n8nAiGatewayApi',
+			);
+
+			const clientOptions: ClientOptions = {
+				baseURL: gatewayCreds.url,
+			};
+
+			const model = new ChatOpenAI({
+				openAIApiKey: gatewayCreds.apiKey,
+				model: modelName,
+				maxTokens: options.maxOutputTokens,
+				temperature: options.temperature,
+				topP: options.topP,
+				callbacks: [new N8nLlmTracing(this)],
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+				configuration: clientOptions,
+			});
+
+			return { response: model };
+		}
+
+		const credentials = await this.getCredentials('googlePalmApi');
 
 		const safetySettings = this.getNodeParameter(
 			'options.safetySettings.values',

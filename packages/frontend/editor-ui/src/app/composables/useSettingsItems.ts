@@ -52,6 +52,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.AI_SETTINGS } },
 			},
 			{
+				id: 'settings-ai-gateway',
+				icon: 'bolt-filled',
+				label: i18n.baseText('settings.aiGateway'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
+				route: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
+			},
+			{
 				id: 'settings-project-roles',
 				icon: 'user-round',
 				label: i18n.baseText('settings.projectRoles'),

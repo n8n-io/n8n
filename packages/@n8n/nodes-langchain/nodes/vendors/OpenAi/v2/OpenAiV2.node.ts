@@ -48,7 +48,6 @@ export class OpenAiV2 implements INodeType {
 					type: 'boolean',
 					default: false,
 					noDataExpression: true,
-					typeOptions: { hidden: true },
 				},
 				{
 					displayName: 'Resource',
