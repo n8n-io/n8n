@@ -866,6 +866,7 @@ export class ChatHubService {
 			agentId: session.agentId,
 			agentName: agent?.name ?? session.agentName ?? session.model ?? '',
 			agentIcon: agent?.icon ?? null,
+			type: session.type,
 			createdAt: session.createdAt.toISOString(),
 			updatedAt: session.updatedAt.toISOString(),
 			toolIds,

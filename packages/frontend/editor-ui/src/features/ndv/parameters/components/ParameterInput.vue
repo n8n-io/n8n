@@ -1699,7 +1699,7 @@ onUpdated(async () => {
 					data-test-id="credential-json-overlay"
 				>
 					<JsonEditor
-						:model-value="'************\n* REDACTED *\n************'"
+						:model-value="'***\n***\n***'"
 						:is-read-only="true"
 						:rows="editorRows"
 						:class="$style.credentialJsonEditor"

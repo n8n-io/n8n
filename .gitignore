@@ -16,6 +16,7 @@ _START_PACKAGE
 .idea
 nodelinter.config.json
 **/package-lock.json
+!.github/scripts/package-lock.json
 packages/**/.turbo
 .turbo
 *.tsbuildinfo
