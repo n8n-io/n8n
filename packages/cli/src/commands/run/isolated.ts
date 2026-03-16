@@ -45,7 +45,7 @@ const flagsSchema = z.object({
 		.string()
 		.describe('JSON input data for the workflow trigger (array of {json: ...} objects)')
 		.optional(),
-	once: z.boolean().describe('Execute once and exit (default for now)').optional(),
+	once: z.boolean().describe('Execute once and exit').optional(),
 	rawOutput: z.boolean().describe('Output only JSON data, with no other text').optional(),
 });
 
@@ -59,10 +59,11 @@ interface CredentialFileEntry {
 	name: 'run:isolated',
 	description:
 		'Run workflows from a .n8np package in isolation with minimal dependencies.\n' +
-		'Uses an ephemeral in-process database — no external DB, editor, or server required.',
+		'Uses an ephemeral in-process database — no external DB, editor, or server required.\n' +
+		'Without --once, starts a long-running process with webhooks, crons, and triggers active.',
 	examples: [
-		'--package=workflow.n8np --once',
-		'--package=workflow.n8np --once --credentialsFile=creds.json',
+		'--package=workflow.n8np',
+		'--package=workflow.n8np --credentialsFile=creds.json',
 		'--package=workflow.n8np --once --workflow="Send Report"',
 		'--package=workflow.n8np --once --input=\'[{"json":{"date":"2026-03-10"}}]\'',
 		'--package=workflow.n8np --once --rawOutput',
@@ -111,21 +112,30 @@ export class IsolatedRunner extends BaseCommand<z.infer<typeof flagsSchema>> {
 			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
 			await Container.get(TaskRunnerModule).start();
 		}
+
+		// 5. Mark as leader so ActiveWorkflowManager works (single instance, no scaling)
+		const { InstanceSettings } = await import('n8n-core');
+		Container.get(InstanceSettings).markAsLeader();
 	}
 
 	async run() {
 		const { flags } = this;
 
-		// Phase 1: only --once mode is supported
-		if (!flags.once) {
-			if (!flags.rawOutput) {
-				this.logger.info(
-					'Long-running mode is not yet supported. Running in --once mode by default.',
-				);
-			}
-		}
+		// Common: read package, analyze, inject credentials, import
+		const { allWorkflows, personalProject, user } = await this.importPackage();
 
-		// 1. Read package
+		if (flags.once) {
+			await this.runOnce(allWorkflows);
+		} else {
+			await this.runLongLived(allWorkflows, personalProject.id);
+		}
+	}
+
+	/**
+	 * Import package into the ephemeral DB. Returns the imported workflows.
+	 */
+	private async importPackage() {
+		const { flags } = this;
 		const buffer = await readFile(flags.package);
 		const { ImportExportService } = await import(
 			'../../modules/import-export/import-export.service'
@@ -133,7 +143,6 @@ export class IsolatedRunner extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const service = Container.get(ImportExportService);
 		const user = await Container.get(OwnershipService).getInstanceOwner();
 
-		// 2. Analyze package to get requirements
 		const analysis = await service.analyzePackage(buffer);
 		if (!flags.rawOutput) {
 			this.logger.info(
@@ -141,13 +150,11 @@ export class IsolatedRunner extends BaseCommand<z.infer<typeof flagsSchema>> {
 			);
 		}
 
-		// 3. Inject real credentials if provided
 		let credentialBindings: Record<string, string> = {};
 		if (flags.credentialsFile) {
 			credentialBindings = await this.injectCredentials(flags.credentialsFile, analysis, user.id);
 		}
 
-		// 4. Import package into owner's personal project
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			user.id,
 		);
@@ -162,10 +169,7 @@ export class IsolatedRunner extends BaseCommand<z.infer<typeof flagsSchema>> {
 			overwriteVariableValues: true,
 		});
 
-		// 5. Find target workflow — query the DB directly.
-		// In the ephemeral DB, workflow IDs may change during import (new prefix added).
-		// Since this is a fresh DB with only the imported workflows, we can query all
-		// workflows belonging to the owner's personal project directly.
+		// Query DB directly — import may reassign workflow IDs
 		const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
 			where: { projectId: personalProject.id },
 			select: ['workflowId'],
@@ -177,6 +181,15 @@ export class IsolatedRunner extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (allWorkflows.length === 0) {
 			throw new UnexpectedError('No workflows found after importing package');
 		}
+
+		return { allWorkflows, personalProject, user };
+	}
+
+	/**
+	 * --once mode: execute a single workflow and exit.
+	 */
+	private async runOnce(allWorkflows: Awaited<ReturnType<WorkflowRepository['findByIds']>>) {
+		const { flags } = this;
 
 		let workflow;
 		if (flags.workflow) {
@@ -195,17 +208,15 @@ export class IsolatedRunner extends BaseCommand<z.infer<typeof flagsSchema>> {
 			this.logger.info(`  Nodes: ${workflow.nodes.map((n) => `${n.name} [${n.type}]`).join(', ')}`);
 		}
 
-		// 6. Execute workflow
 		const startingNode = findCliWorkflowStart(workflow.nodes);
 
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'cli',
 			startNodes: [{ name: startingNode.name, sourceData: null }],
 			workflowData: workflow,
-			userId: user.id,
+			userId: 'isolated',
 		};
 
-		// Inject input data if provided
 		if (flags.input) {
 			const inputData = jsonParse<INodeExecutionData[]>(flags.input);
 			runData.executionData = createRunExecutionData({
@@ -225,7 +236,6 @@ export class IsolatedRunner extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		const workflowRunner = Container.get(WorkflowRunner);
 		const executionId = await workflowRunner.run(runData);
-
 		const data = await Container.get(ActiveExecutions).getPostExecutePromise(executionId);
 
 		if (data === undefined) {
@@ -248,6 +258,134 @@ export class IsolatedRunner extends BaseCommand<z.infer<typeof flagsSchema>> {
 			this.logger.info('====================================');
 		}
 		this.logger.info(JSON.stringify(data, null, 2));
+	}
+
+	/**
+	 * Long-running mode: activate all workflows (webhooks, crons, triggers),
+	 * start a minimal HTTP server for webhooks, and stay alive.
+	 */
+	private async runLongLived(
+		allWorkflows: Awaited<ReturnType<WorkflowRepository['findByIds']>>,
+		projectId: string,
+	) {
+		// 1. Mark all imported workflows as active in DB.
+		//    ActiveWorkflowManager uses activeVersionId (not the deprecated `active` boolean)
+		//    and reads nodes/connections from the WorkflowHistory record via the activeVersion relation.
+		//    The import process already creates WorkflowHistory records, so we just set activeVersionId.
+		const workflowRepo = Container.get(WorkflowRepository);
+		for (const wf of allWorkflows) {
+			await workflowRepo.update(wf.id, { active: true, activeVersionId: wf.versionId });
+			this.logger.info(`Activating workflow: "${wf.name}" (${wf.id})`);
+		}
+
+		// 2. Start minimal webhook HTTP server
+		await this.startWebhookServer();
+
+		// 3. Break circular DI deps that prevent ActiveWorkflowManager resolution.
+		//    WorkflowExecutionService -> WorkflowRunner has a circular module import
+		//    (via execution-lifecycle-hooks -> execute-error-workflow -> WorkflowExecutionService)
+		//    causing TypeScript decorator metadata to resolve as undefined.
+		//    WaitTracker also has circular deps via ExecutionService.
+		//    Stub both — isolated mode uses its own webhook server, not these services.
+		const { WaitTracker } = await import('@/wait-tracker');
+		Container.set(WaitTracker, { init() {}, has: () => false, stopTracking() {} } as never);
+
+		const { WorkflowExecutionService } = await import('@/workflows/workflow-execution.service');
+		Container.set(WorkflowExecutionService, {} as never);
+
+		// 4. Activate all workflows — registers webhooks, crons, triggers
+		const { ActiveWorkflowManager } = await import('@/active-workflow-manager');
+		const activeWorkflowManager = Container.get(ActiveWorkflowManager);
+		await activeWorkflowManager.init();
+
+		// 4. Print registered webhook URLs
+		await this.printWebhookUrls();
+
+		// 5. Print activation summary
+		const activeIds = activeWorkflowManager.allActiveInMemory();
+		this.logger.info('');
+		this.logger.info(`${activeIds.length} workflow(s) active. Listening for triggers...`);
+		this.logger.info('Press Ctrl+C to stop.');
+
+		// 6. Stay alive — wait for SIGINT/SIGTERM
+		await new Promise<void>((resolve) => {
+			process.once('SIGINT', () => {
+				this.logger.info('Shutting down...');
+				resolve();
+			});
+			process.once('SIGTERM', () => {
+				this.logger.info('Shutting down...');
+				resolve();
+			});
+		});
+
+		await activeWorkflowManager.removeAll();
+	}
+
+	/**
+	 * Start a minimal Express server that handles only webhook requests.
+	 * No editor UI, no REST API, no push WebSocket.
+	 */
+	private async startWebhookServer() {
+		const express = (await import('express')).default;
+		const http = await import('node:http');
+		const { rawBodyReader, bodyParser } = await import('@/middlewares');
+		const { LiveWebhooks } = await import('@/webhooks/live-webhooks');
+		const { WaitingWebhooks } = await import('@/webhooks/waiting-webhooks');
+		const { createWebhookHandlerFor } = await import('@/webhooks/webhook-request-handler');
+
+		const app = express();
+		app.disable('x-powered-by');
+
+		// Health check
+		app.get('/health', (_req, res) => {
+			res.send({ status: 'ok' });
+		});
+
+		// Webhook handlers (before body parser — webhooks handle raw body themselves)
+		const { endpoints } = this.globalConfig;
+		const liveHandler = createWebhookHandlerFor(Container.get(LiveWebhooks));
+		app.all(`/${endpoints.webhook}/*path`, liveHandler);
+		app.all(`/${endpoints.form}/*path`, liveHandler);
+
+		const waitingHandler = createWebhookHandlerFor(Container.get(WaitingWebhooks));
+		app.all(`/${endpoints.webhookWaiting}/:path{/:suffix}`, waitingHandler);
+		app.all(`/${endpoints.formWaiting}/:path{/:suffix}`, waitingHandler);
+
+		// Body parser for everything else
+		app.use(rawBodyReader);
+		app.use(bodyParser);
+
+		const port = this.globalConfig.port;
+		const address = this.globalConfig.listen_address;
+
+		const server = http.createServer(app);
+		await new Promise<void>((resolve) => server.listen(port, address, () => resolve()));
+
+		this.logger.info(`Webhook server listening on ${address}:${port}`);
+	}
+
+	/**
+	 * Query registered webhooks from DB and print their full URLs.
+	 */
+	private async printWebhookUrls() {
+		const { WebhookRepository } = await import('@n8n/db');
+		const webhooks = await Container.get(WebhookRepository).find();
+		if (webhooks.length === 0) return;
+
+		const port = this.globalConfig.port;
+		const address = this.globalConfig.listen_address;
+		const protocol = this.globalConfig.protocol;
+		const host = address === '0.0.0.0' || address === '::' ? 'localhost' : address;
+		const baseUrl = `${protocol}://${host}:${port}`;
+		const { endpoints } = this.globalConfig;
+
+		this.logger.info('');
+		this.logger.info('Webhook URLs:');
+		for (const wh of webhooks) {
+			const url = `${baseUrl}/${endpoints.webhook}/${wh.webhookPath}`;
+			this.logger.info(`  ${wh.method.toUpperCase().padEnd(7)} ${url}`);
+		}
 	}
 
 	/**
