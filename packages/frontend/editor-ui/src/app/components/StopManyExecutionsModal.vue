@@ -183,8 +183,9 @@ function closeModal() {
 
 .container {
 	display: flex;
-	flex-direction: columns;
+	flex-direction: column;
 	gap: var(--spacing--2xs);
+	padding-left: var(--spacing--2xs);
 }
 
 .vertPadding {
