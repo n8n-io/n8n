@@ -21,7 +21,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --prefix ./.github/scripts --ignore-workspace
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Ensure release-candidate branches
         run: node ./.github/scripts/ensure-release-candidate-branches.mjs
