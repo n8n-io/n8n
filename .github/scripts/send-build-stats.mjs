@@ -62,4 +62,4 @@ metrics.push(
 	}),
 );
 
-await sendMetrics(metrics);
+await sendMetrics(metrics, 'build-stats');

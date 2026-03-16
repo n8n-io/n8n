@@ -71,4 +71,4 @@ if (metrics.length === 0) {
 	process.exit(0);
 }
 
-await sendMetrics(metrics);
+await sendMetrics(metrics, 'docker-stats');
