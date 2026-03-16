@@ -1,16 +1,15 @@
-import * as http from 'node:http';
-import { EventEmitter } from 'node:events';
-
 import type { ResolvedGatewayConfig } from '@n8n/fs-proxy/config';
 import { startDaemon } from '@n8n/fs-proxy/daemon';
 import { logger } from '@n8n/fs-proxy/logger';
+import { EventEmitter } from 'node:events';
+import type * as http from 'node:http';
 
 import type { DaemonStatus, StatusSnapshot } from '../shared/types';
 
 export type { DaemonStatus, StatusSnapshot };
 
 export interface DaemonControllerEvents {
-	'status-changed': [snapshot: StatusSnapshot];
+	statusChanged: [snapshot: StatusSnapshot];
 }
 
 export class DaemonController extends EventEmitter<DaemonControllerEvents> {
@@ -32,7 +31,7 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 		return this._status !== 'stopped';
 	}
 
-	start(config: ResolvedGatewayConfig, confirmConnect: (url: string) => Promise<boolean>): void {
+	start(config: ResolvedGatewayConfig, confirmConnect: (url: string) => boolean): void {
 		if (this.server) {
 			logger.debug('Daemon start requested but already running — ignoring');
 			return;
@@ -68,8 +67,8 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 			}
 		});
 
-		this.server.once('error', (err: Error) => {
-			logger.error('Daemon server error', { error: err.message });
+		this.server.once('error', (e: Error) => {
+			logger.error('Daemon server error', { error: e.message });
 			this.server = null;
 			this.setStatus('stopped');
 		});
@@ -116,6 +115,6 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 	private setStatus(status: DaemonStatus): void {
 		logger.debug('Daemon status changed', { from: this._status, to: status });
 		this._status = status;
-		this.emit('status-changed', this.getSnapshot());
+		this.emit('statusChanged', this.getSnapshot());
 	}
 }

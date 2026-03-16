@@ -1,9 +1,7 @@
+import { logger } from '@n8n/fs-proxy/logger';
+import { app, Menu, nativeImage, Tray } from 'electron';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-
-import { app, Menu, nativeImage, Tray } from 'electron';
-
-import { logger } from '@n8n/fs-proxy/logger';
 
 import type { DaemonController, DaemonStatus, StatusSnapshot } from './daemon-controller';
 
@@ -118,7 +116,7 @@ export function createTray(
 		);
 	};
 
-	controller.on('status-changed', update);
+	controller.on('statusChanged', update);
 
 	// Build initial menu
 	update(controller.getSnapshot());

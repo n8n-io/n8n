@@ -4,6 +4,8 @@
 		"rootDir": ".",
 		"types": ["node", "jest"],
 		"lib": ["es2021", "dom"],
+		"moduleResolution": "nodenext",
+		"module": "nodenext",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts"]

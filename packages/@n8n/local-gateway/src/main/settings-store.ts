@@ -1,12 +1,10 @@
-import * as os from 'node:os';
-import * as path from 'node:path';
-
-import { app } from 'electron';
-import Store from 'electron-store';
-
 import type { GatewayConfig, ResolvedGatewayConfig } from '@n8n/fs-proxy/config';
 import { gatewayConfigSchema } from '@n8n/fs-proxy/config';
 import { logger } from '@n8n/fs-proxy/logger';
+import { app } from 'electron';
+import Store from 'electron-store';
+import * as os from 'node:os';
+import * as path from 'node:path';
 
 import type { AppSettings } from '../shared/types';
 
@@ -54,10 +52,9 @@ export class SettingsStore {
 	}
 
 	set(partial: Partial<AppSettings>): void {
-		for (const [key, value] of Object.entries(partial) as [
-			keyof AppSettings,
-			AppSettings[keyof AppSettings],
-		][]) {
+		for (const [key, value] of Object.entries(partial) as Array<
+			[keyof AppSettings, AppSettings[keyof AppSettings]]
+		>) {
 			this.store.set(key, value);
 		}
 		logger.debug('Settings updated', { changes: partial });
