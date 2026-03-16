@@ -267,25 +267,42 @@ describe('axios-utils', () => {
 	});
 
 	describe('createFormDataObject', () => {
+		/** Collects all buffered entries from a FormData instance into a flat list. */
+		const getFormDataEntries = (formData: FormData) => {
+			// Access the internal _streams array that form-data uses to buffer appended values.
+			// Each append produces 3 consecutive entries: header string, value, and footer string.
+			const streams: unknown[] = (formData as any)._streams as unknown[];
+			const entries: Array<{ key: string; value: string | Buffer }> = [];
+			for (let i = 0; i < streams.length; i += 3) {
+				const header = String(streams[i]);
+				const nameMatch = header.match(/name="([^"]+)"/);
+				if (nameMatch) {
+					entries.push({ key: nameMatch[1], value: streams[i + 1] as string | Buffer });
+				}
+			}
+			return entries;
+		};
+
 		test('should create FormData with simple key-value pairs', () => {
 			const data = { key1: 'value1', key2: 'value2' };
 			const formData = createFormDataObject(data);
 
-			expect(formData).toBeInstanceOf(FormData);
-
-			const formDataEntries: string[] = [];
-			formData.getHeaders(); // Ensures form data is processed
-
-			formData.on('data', (chunk) => {
-				formDataEntries.push(chunk.toString());
-			});
+			const entries = getFormDataEntries(formData);
+			expect(entries).toEqual([
+				{ key: 'key1', value: 'value1' },
+				{ key: 'key2', value: 'value2' },
+			]);
 		});
 
 		test('should handle array values', () => {
 			const data = { files: ['file1.txt', 'file2.txt'] };
 			const formData = createFormDataObject(data);
 
-			expect(formData).toBeInstanceOf(FormData);
+			const entries = getFormDataEntries(formData);
+			expect(entries).toEqual([
+				{ key: 'files', value: 'file1.txt' },
+				{ key: 'files', value: 'file2.txt' },
+			]);
 		});
 
 		test('should handle complex form data with options', () => {
@@ -301,7 +318,17 @@ describe('axios-utils', () => {
 
 			const formData = createFormDataObject(data);
 
-			expect(formData).toBeInstanceOf(FormData);
+			const entries = getFormDataEntries(formData);
+			expect(entries).toHaveLength(1);
+			expect(entries[0].key).toBe('file');
+			expect(Buffer.isBuffer(entries[0].value)).toBe(true);
+			expect((entries[0].value as Buffer).toString()).toBe('test content');
+
+			// Verify the options were passed through (filename appears in the header)
+			const streams: unknown[] = (formData as any)._streams as unknown[];
+			const header = String(streams[0]);
+			expect(header).toContain('filename="test.txt"');
+			expect(header).toContain('Content-Type: text/plain');
 		});
 	});
 
