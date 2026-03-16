@@ -67,7 +67,7 @@ export const draftFields: INodeProperties[] = [
 		placeholder: 'Hello World!',
 	},
 	{
-		displayName: 'To reply to an existing thread, specify the Thread ID from the options below',
+		displayName: 'To reply to an existing thread, specify the Thread ID from the options below.',
 		name: 'threadNotice',
 		type: 'notice',
 		default: '',
