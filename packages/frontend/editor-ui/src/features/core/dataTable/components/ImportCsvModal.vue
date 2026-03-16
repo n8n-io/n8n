@@ -263,7 +263,7 @@ const onClose = () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					size="large"
 					:label="i18n.baseText('generic.cancel')"
 					data-test-id="import-csv-cancel"
