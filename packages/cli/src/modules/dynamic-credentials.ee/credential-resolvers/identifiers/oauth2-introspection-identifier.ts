@@ -20,8 +20,8 @@ const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour
 export const OAuth2IntrospectionOptionsSchema = z.object({
 	...OAuth2OptionsSchema.shape,
 	validation: z.literal('oauth2-introspection'),
-	clientId: z.string().min(1, 'Client ID is required'),
-	clientSecret: z.string().min(1, 'Client Secret is required'),
+	clientId: z.string().trim().min(1, 'Client ID is required'),
+	clientSecret: z.string().trim().min(1, 'Client Secret is required'),
 });
 
 type OAuth2IntrospectionOptions = z.infer<typeof OAuth2IntrospectionOptionsSchema>;
@@ -144,10 +144,21 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 			}
 		}
 
-		const response = await axios.get(options.metadataUri, {
-			validateStatus: () => true,
-			timeout: 10 * Time.seconds.toMilliseconds,
-		});
+		let response;
+		try {
+			response = await axios.get(options.metadataUri, {
+				validateStatus: () => true,
+				timeout: 10 * Time.seconds.toMilliseconds,
+			});
+		} catch (error) {
+			this.logger.error(`Failed to reach OAuth2 metadata URL ${options.metadataUri}`, {
+				error,
+			});
+			throw new IdentifierValidationError(
+				`Could not reach metadata URL: ${error instanceof Error ? error.message : String(error)}`,
+				{ cause: error },
+			);
+		}
 
 		if (response.status !== 200) {
 			this.logger.error(

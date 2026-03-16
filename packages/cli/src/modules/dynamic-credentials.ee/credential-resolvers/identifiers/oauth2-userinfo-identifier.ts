@@ -112,10 +112,21 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 			}
 		}
 
-		const response = await axios.get(options.metadataUri, {
-			validateStatus: () => true,
-			timeout: 10 * Time.seconds.toMilliseconds,
-		});
+		let response;
+		try {
+			response = await axios.get(options.metadataUri, {
+				validateStatus: () => true,
+				timeout: 10 * Time.seconds.toMilliseconds,
+			});
+		} catch (error) {
+			this.logger.error(`Failed to reach OAuth2 metadata URL ${options.metadataUri}`, {
+				error,
+			});
+			throw new IdentifierValidationError(
+				`Could not reach metadata URL: ${error instanceof Error ? error.message : String(error)}`,
+				{ cause: error },
+			);
+		}
 
 		if (response.status !== 200) {
 			this.logger.error(
