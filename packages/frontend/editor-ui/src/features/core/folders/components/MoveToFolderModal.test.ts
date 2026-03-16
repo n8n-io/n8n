@@ -186,6 +186,7 @@ describe('MoveToFolderModal', () => {
 
 		projectsStore = mockedStore(useProjectsStore);
 		projectsStore.moveResourceToProject = vi.fn().mockResolvedValue(undefined);
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
 
 		projectsStore.currentProject = personalProject as unknown as Project;
 		projectsStore.currentProjectId = personalProject.id;
