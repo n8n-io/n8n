@@ -7,6 +7,7 @@ import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflo
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { DbClock } from '@/services/db-clock.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import {
@@ -28,9 +29,6 @@ export class WaitTracker {
 	/** Guards against overlapping poll invocations when DB queries take longer than the poll interval. */
 	private isPolling = false;
 
-	/** Cached DB server time. Refreshed every 60s; intermediate values are interpolated. */
-	private serverTimeCache: { serverTime: Date; localTimeAtFetch: number } | null = null;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -38,6 +36,7 @@ export class WaitTracker {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly dbClock: DbClock,
 	) {
 		this.logger = this.logger.scoped('waiting-executions');
 	}
@@ -61,26 +60,6 @@ export class WaitTracker {
 		this.logger.debug('Started tracking waiting executions');
 	}
 
-	/**
-	 * Returns an approximation of the DB server's current time.
-	 * Fetches from the DB at most once every 60s and approximates intermediate
-	 * values by adding elapsed local wall-clock time since the last fetch.
-	 *
-	 * The clock skew warning reflects the skew at the last cache refresh rather
-	 * than live skew — intentional, to detect structural drift (e.g. broken NTP)
-	 * rather than transient noise.
-	 */
-	private async getApproximateServerTime(): Promise<Date> {
-		const nowMs = Date.now();
-		if (this.serverTimeCache !== null && nowMs - this.serverTimeCache.localTimeAtFetch < 60_000) {
-			const elapsed = nowMs - this.serverTimeCache.localTimeAtFetch;
-			return new Date(this.serverTimeCache.serverTime.getTime() + elapsed);
-		}
-		const serverTime = await this.executionRepository.getServerTime();
-		this.serverTimeCache = { serverTime, localTimeAtFetch: nowMs };
-		return serverTime;
-	}
-
 	async getWaitingExecutions() {
 		if (this.isPolling) {
 			this.logger.debug('Skipping poll — previous poll still in progress');
@@ -93,7 +72,7 @@ export class WaitTracker {
 
 			const [executions, serverTime] = await Promise.all([
 				this.executionRepository.getWaitingExecutions(),
-				this.getApproximateServerTime(),
+				this.dbClock.getApproximateServerTime(),
 			]);
 
 			const skewMs = serverTime.getTime() - Date.now();
@@ -220,7 +199,7 @@ export class WaitTracker {
 		Object.keys(this.waitingExecutions).forEach((executionId) => {
 			clearTimeout(this.waitingExecutions[executionId].timer);
 		});
-		this.serverTimeCache = null;
+		this.dbClock.resetCache();
 		this.isPolling = false;
 
 		this.logger.debug('Stopped tracking waiting executions');

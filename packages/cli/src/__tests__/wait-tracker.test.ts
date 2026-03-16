@@ -8,6 +8,7 @@ import { createDeferredPromise, createRunExecutionData, WAIT_INDEFINITELY } from
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
+import type { DbClock } from '@/services/db-clock.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -19,6 +20,7 @@ describe('WaitTracker', () => {
 	const ownershipService = mock<OwnershipService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const executionRepository = mock<ExecutionRepository>();
+	const dbClock = mock<DbClock>();
 	const multiMainSetup = mock<MultiMainSetup>();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true, isMultiMain: false });
 
@@ -40,7 +42,7 @@ describe('WaitTracker', () => {
 
 	let waitTracker: WaitTracker;
 	beforeEach(() => {
-		executionRepository.getServerTime.mockResolvedValue(new Date());
+		dbClock.getApproximateServerTime.mockResolvedValue(new Date());
 		waitTracker = new WaitTracker(
 			mockLogger(),
 			executionRepository,
@@ -48,6 +50,7 @@ describe('WaitTracker', () => {
 			activeExecutions,
 			workflowRunner,
 			instanceSettings,
+			dbClock,
 		);
 		multiMainSetup.on.mockReturnThis();
 	});
@@ -581,7 +584,7 @@ describe('WaitTracker', () => {
 		it('should use server time for triggerTime calculation', async () => {
 			// Server clock is 10s behind local clock
 			const serverTime = new Date(Date.now() - 10_000);
-			executionRepository.getServerTime.mockResolvedValue(serverTime);
+			dbClock.getApproximateServerTime.mockResolvedValue(serverTime);
 
 			const waitTill = new Date(Date.now() + 5_000);
 			const delayedExecution = mock<ExecutionEntity>({ id: 'delayed-exec', waitTill });
@@ -598,7 +601,7 @@ describe('WaitTracker', () => {
 		it('should fire immediately for past-due executions', async () => {
 			// Server clock 5s ahead — waitTill is already past from the DB's perspective
 			const serverTime = new Date(Date.now() + 5_000);
-			executionRepository.getServerTime.mockResolvedValue(serverTime);
+			dbClock.getApproximateServerTime.mockResolvedValue(serverTime);
 
 			const waitTill = new Date(Date.now() + 2_000);
 			const pastDueExecution = mock<ExecutionEntity>({ id: 'past-due-exec', waitTill });
@@ -632,10 +635,11 @@ describe('WaitTracker', () => {
 				activeExecutions,
 				workflowRunner,
 				instanceSettings,
+				dbClock,
 			);
 
 			// Server clock is 3s ahead — exceeds 2s threshold
-			executionRepository.getServerTime.mockResolvedValue(new Date(Date.now() + 3_000));
+			dbClock.getApproximateServerTime.mockResolvedValue(new Date(Date.now() + 3_000));
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 
 			await skewedWaitTracker.getWaitingExecutions();
@@ -643,63 +647,12 @@ describe('WaitTracker', () => {
 			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Clock skew detected'));
 		});
 
-		describe('getApproximateServerTime() cache', () => {
-			it('should reuse cached server time within TTL', async () => {
-				executionRepository.getWaitingExecutions.mockResolvedValue([]);
+		it('should delegate server time to DbClock', async () => {
+			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 
-				await waitTracker.getWaitingExecutions();
-				await waitTracker.getWaitingExecutions();
+			await waitTracker.getWaitingExecutions();
 
-				// DB queried only once — second call returned the cached value
-				expect(executionRepository.getServerTime).toHaveBeenCalledTimes(1);
-			});
-
-			it('should refresh server time after TTL expires', async () => {
-				executionRepository.getWaitingExecutions.mockResolvedValue([]);
-
-				await waitTracker.getWaitingExecutions(); // populates cache
-
-				// Advance past the 60s TTL
-				jest.advanceTimersByTime(60_001);
-
-				await waitTracker.getWaitingExecutions(); // TTL expired — must hit DB again
-
-				expect(executionRepository.getServerTime).toHaveBeenCalledTimes(2);
-			});
-
-			it('should interpolate server time between cache refreshes', async () => {
-				// Server is 5s behind local clock when cache is filled
-				const serverTimeAtFetch = new Date(Date.now() - 5_000);
-				executionRepository.getServerTime.mockResolvedValue(serverTimeAtFetch);
-				executionRepository.getWaitingExecutions.mockResolvedValue([]);
-
-				// Populate the cache
-				await waitTracker.getWaitingExecutions();
-
-				// Advance local clock by 10s (within the 60s TTL — cache still valid)
-				jest.advanceTimersByTime(10_000);
-
-				// Schedule an execution due 5s from now (at local T+15s)
-				const waitTill = new Date(Date.now() + 5_000);
-				executionRepository.getWaitingExecutions.mockResolvedValue([
-					mock<ExecutionEntity>({ id: 'interp-exec', waitTill }),
-				]);
-
-				const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
-				setTimeoutSpy.mockClear();
-
-				await waitTracker.getWaitingExecutions();
-
-				// Approximate server time = serverTimeAtFetch + 10s elapsed
-				// triggerTime = waitTill - approximateServerTime
-				//             = (localNow + 5s) - (serverTimeAtFetch + 10s)
-				//             = (localNow + 5s) - ((localNow - 5s) + 10s)  [serverTimeAtFetch = localNow - 5s at fetch time]
-				//             = 10_000ms
-				expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 10_000);
-
-				// Cache was reused — DB not queried again
-				expect(executionRepository.getServerTime).toHaveBeenCalledTimes(1);
-			});
+			expect(dbClock.getApproximateServerTime).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -767,7 +720,7 @@ describe('WaitTracker', () => {
 				const waitTill = new Date(Date.now() + 1_000);
 				const entity = mock<ExecutionEntity>({ id: raceExecId, waitTill });
 				executionRepository.getWaitingExecutions.mockResolvedValue([entity]);
-				executionRepository.getServerTime.mockResolvedValue(new Date());
+				dbClock.getApproximateServerTime.mockResolvedValue(new Date());
 
 				// Set up the timer via poll
 				await waitTracker.getWaitingExecutions();
@@ -811,7 +764,7 @@ describe('WaitTracker', () => {
 
 			it('should release guard even when workflowRunner.run() throws', async () => {
 				executionRepository.getWaitingExecutions.mockResolvedValue([]);
-				executionRepository.getServerTime.mockResolvedValue(new Date());
+				dbClock.getApproximateServerTime.mockResolvedValue(new Date());
 
 				// Set up a waiting execution via poll
 				const waitTill = new Date(Date.now() + 1_000);
@@ -850,6 +803,7 @@ describe('WaitTracker', () => {
 				activeExecutions,
 				workflowRunner,
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
+				dbClock,
 			);
 
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);

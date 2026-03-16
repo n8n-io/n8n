@@ -79,10 +79,6 @@ class PrometheusMetricsConfig {
 	/** How often (in seconds) to update workflow statistics metrics. */
 	@Env('N8N_METRICS_WORKFLOW_STATISTICS_INTERVAL')
 	workflowStatisticsInterval: number = 300;
-
-	/** Whether to expose a gauge for the clock difference between this instance and the database server. */
-	@Env('N8N_METRICS_INCLUDE_DB_CLOCK_SKEW_METRIC')
-	includeDbClockSkewMetric: boolean = false;
 }
 
 @Config

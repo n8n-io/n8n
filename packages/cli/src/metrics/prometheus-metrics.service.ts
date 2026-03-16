@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { ExecutionRepository, LicenseMetricsRepository, WorkflowRepository } from '@n8n/db';
+import { LicenseMetricsRepository, WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
@@ -31,7 +31,6 @@ export class PrometheusMetricsService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
-		private readonly executionRepository: ExecutionRepository,
 	) {}
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
@@ -52,7 +51,6 @@ export class PrometheusMetricsService {
 			workflowExecutionDuration:
 				this.globalConfig.endpoints.metrics.includeWorkflowExecutionDuration,
 			workflowStatistics: this.globalConfig.endpoints.metrics.includeWorkflowStatistics,
-			dbClockSkew: this.globalConfig.endpoints.metrics.includeDbClockSkewMetric,
 		},
 		labels: {
 			credentialsType: this.globalConfig.endpoints.metrics.includeCredentialTypeLabel,
@@ -77,7 +75,6 @@ export class PrometheusMetricsService {
 		this.initQueueMetrics();
 		this.initWorkflowExecutionDurationMetric();
 		this.initActiveWorkflowCountMetric();
-		this.initDbClockSkewMetric();
 		this.initWorkflowStatisticsMetrics();
 		this.mountMetricsEndpoint(app);
 	}
@@ -418,20 +415,6 @@ export class PrometheusMetricsService {
 
 					this.set(activeWorkflowCount);
 				}
-			},
-		});
-	}
-
-	private initDbClockSkewMetric() {
-		if (!this.includes.metrics.dbClockSkew) return;
-
-		const executionRepository = this.executionRepository;
-		new promClient.Gauge({
-			name: this.prefix + 'db_clock_skew_ms',
-			help: 'Clock difference between this instance and the database server in milliseconds. Positive means instance clock is behind DB.',
-			async collect() {
-				const serverTime = await executionRepository.getServerTime();
-				this.set(serverTime.getTime() - Date.now());
 			},
 		});
 	}
