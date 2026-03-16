@@ -1,4 +1,4 @@
-import { generateKeyPairSync, X509Certificate } from 'crypto';
+import { generateKeyPairSync } from 'crypto';
 
 import { isValidPemFormat, validateKeyPair } from '../validation';
 
