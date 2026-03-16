@@ -1010,7 +1010,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			subquery.andWhere('"sw"."workflowId" = execution."workflowId"');
 			qb.where(`EXISTS (${subquery.getQuery()})`);
 			qb.setParameters(subquery.getParameters());
-		} else if (accessibleWorkflowIds) {
+		} else if (accessibleWorkflowIds?.length) {
 			// Array-based access control (backward compat)
 			qb.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 		} else {
