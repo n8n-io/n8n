@@ -4,7 +4,9 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { generateUrlSignature, prepareUrlForSigning, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import type { IWorkflowBase, Workflow } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
@@ -831,6 +833,137 @@ describe('WaitingWebhooks', () => {
 
 			// Should have empty array after popping and not adding placeholder
 			expect(runDataArray).toHaveLength(0);
+		});
+
+		it('should throw ConflictError when execution is already being resumed', async () => {
+			/**
+			 * Arrange
+			 */
+			const executionId = 'test-execution-id';
+			const lastNodeExecuted = 'WaitNode';
+
+			const mockExecution = mock<IExecutionResponse>({
+				id: executionId,
+				status: 'waiting',
+				finished: false,
+				mode: 'manual',
+				data: {
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									name: lastNodeExecuted,
+									type: 'n8n-nodes-base.wait',
+									typeVersion: 1,
+									parameters: {},
+									id: 'node-id',
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						runData: {
+							[lastNodeExecuted]: [
+								{
+									startTime: 123,
+									executionTime: 456,
+									executionIndex: 0,
+									source: [],
+								},
+							],
+						},
+						lastNodeExecuted,
+					},
+				},
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: lastNodeExecuted,
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1,
+							parameters: {},
+							id: 'node-id',
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: true,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+
+			// Explicitly set error to undefined to avoid mock function
+			mockExecution.data.resultData.error = undefined;
+
+			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: executionId, suffix: undefined },
+				method: 'POST',
+			});
+			const mockRes = mock<express.Response>();
+
+			jest
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(
+					async (
+						_workflow,
+						_webhookData,
+						_workflowData,
+						_workflowStartNode,
+						_mode,
+						_pushRef,
+						_runExecutionData,
+						_executionId,
+						_req,
+						_res,
+						callback,
+					) => {
+						callback(
+							new OperationalError('There was a problem executing the workflow', {
+								cause: new ExecutionAlreadyResumingError(executionId),
+							}),
+							{},
+						);
+						return undefined;
+					},
+				);
+
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: '',
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+			/**
+			 * Act
+			 */
+			const promise = waitingWebhooks.executeWebhook(mockReq, mockRes);
+
+			/**
+			 * Assert
+			 */
+			await expect(promise).rejects.toThrowError(ConflictError);
 		});
 
 		it('should not set rewireOutputLogTo for non-HITL nodes', async () => {
