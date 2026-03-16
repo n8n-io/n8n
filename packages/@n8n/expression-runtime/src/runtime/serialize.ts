@@ -1,5 +1,11 @@
 import { DateTime, Duration, Interval } from 'luxon';
 
+/** Type guard: plain object with Object.prototype or null prototype. */
+function isPlainObject(value: object): value is Record<string, unknown> {
+	const proto = Object.getPrototypeOf(value);
+	return proto === Object.prototype || proto === null;
+}
+
 /**
  * Prepare a value for transfer across the V8 isolate boundary.
  *
@@ -36,13 +42,12 @@ export function __prepareForTransfer(value: unknown): unknown {
 
 	// Only walk plain objects — structured-cloneable types like Date, Map, Set,
 	// RegExp, Error, typed arrays survive copy:true with prototypes intact.
-	const proto = Object.getPrototypeOf(value);
-	if (proto !== Object.prototype && proto !== null) return value;
+	if (!isPlainObject(value)) return value;
 
 	// Plain object — walk values
 	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value)) {
-		result[key] = __prepareForTransfer((value as Record<string, unknown>)[key]);
+		result[key] = __prepareForTransfer(value[key]);
 	}
 	return result;
 }
