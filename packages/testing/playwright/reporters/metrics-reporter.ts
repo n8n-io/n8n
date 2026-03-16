@@ -55,33 +55,49 @@ class MetricsReporter implements Reporter {
 			return;
 		}
 
-		const payload = {
-			...this.getContext(),
-			metrics: this.collectedMetrics,
-		};
-
-		try {
-			const auth = Buffer.from(`${this.webhookUser}:${this.webhookPassword}`).toString('base64');
-			const response = await fetch(this.webhookUrl, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Basic ${auth}`,
-				},
-				body: JSON.stringify(payload),
-				signal: AbortSignal.timeout(30000),
-			});
-
-			if (!response.ok) {
-				console.warn(
-					`[MetricsReporter] Webhook failed (${response.status}): ${this.collectedMetrics.length} metrics dropped`,
-				);
-			} else {
-				console.log(`[MetricsReporter] Sent ${this.collectedMetrics.length} metrics`);
-			}
-		} catch (e) {
-			console.warn(`[MetricsReporter] Failed to send metrics: ${(e as Error).message}`);
+		// Group by benchmark_name so each POST has a single top-level benchmark_name,
+		// consistent with how script-based sources (build-stats, docker-stats, etc.) send.
+		const byBenchmark = new Map<string, Metric[]>();
+		for (const m of this.collectedMetrics) {
+			const group = byBenchmark.get(m.benchmark_name) ?? [];
+			group.push(m);
+			byBenchmark.set(m.benchmark_name, group);
 		}
+
+		const auth = Buffer.from(`${this.webhookUser}:${this.webhookPassword}`).toString('base64');
+		const context = this.getContext();
+		let sent = 0;
+
+		for (const [benchmarkName, metrics] of byBenchmark) {
+			const payload = { ...context, benchmark_name: benchmarkName, metrics };
+			try {
+				const response = await fetch(this.webhookUrl, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Basic ${auth}`,
+					},
+					body: JSON.stringify(payload),
+					signal: AbortSignal.timeout(30000),
+				});
+
+				if (!response.ok) {
+					console.warn(
+						`[MetricsReporter] Webhook failed (${response.status}) for "${benchmarkName}": ${metrics.length} metrics dropped`,
+					);
+				} else {
+					sent += metrics.length;
+				}
+			} catch (e) {
+				console.warn(
+					`[MetricsReporter] Failed to send metrics for "${benchmarkName}": ${(e as Error).message}`,
+				);
+			}
+		}
+
+		console.log(
+			`[MetricsReporter] Sent ${sent}/${this.collectedMetrics.length} metrics across ${byBenchmark.size} tests`,
+		);
 	}
 
 	private collectMetrics(test: TestCase, result: TestResult): Metric[] {
