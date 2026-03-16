@@ -28,12 +28,7 @@ const containerCssVars = computed(() => ({
 		:style="containerCssVars"
 		data-test-id="canvas-add-button"
 	>
-		<N8nTooltip
-			placement="top"
-			:visible="showTooltip"
-			:disabled="nodeCreatorStore.showScrim"
-			:show-after="700"
-		>
+		<N8nTooltip placement="top" :visible="showTooltip" :show-after="700">
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click="$emit('click')">
 				<N8nIcon icon="plus" size="large" />
 			</button>
