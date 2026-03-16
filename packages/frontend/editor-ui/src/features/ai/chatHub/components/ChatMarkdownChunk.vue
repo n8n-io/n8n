@@ -9,16 +9,22 @@ const {
 	source,
 	singlePre = false,
 	isButtonsDisabled = false,
+	footnoteStyle = 'pill',
 } = defineProps<{
 	source: ChatMessageContentChunk;
 	singlePre?: boolean;
 	isButtonsDisabled?: boolean;
+	footnoteStyle?: 'pill' | 'normal';
 }>();
 
 const emit = defineEmits<{ openArtifact: [title: string] }>();
 
 const styles = useCssModule();
-const markdown = useChatHubMarkdownOptions(styles.codeBlockActions, styles.tableContainer);
+const markdown = useChatHubMarkdownOptions(
+	styles.codeBlockActions,
+	styles.tableContainer,
+	footnoteStyle === 'pill' ? styles.footnoteRef : null,
+);
 const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 
 function getHoveredCodeBlockContent() {
@@ -333,6 +339,21 @@ defineExpose({
 		margin-top: var(--markdown--spacing);
 		margin-bottom: 0;
 		padding-left: calc(var(--markdown--spacing) * 3);
+	}
+
+	// Footnote pill
+	.footnoteRef {
+		display: inline-block;
+		font-size: var(--font-size--3xs);
+		line-height: 1;
+		color: var(--color--text);
+		background: var(--color--foreground--tint-1);
+		border-radius: var(--radius--xl);
+		padding: var(--spacing--4xs) var(--spacing--2xs);
+		margin-inline: var(--spacing--5xs);
+		vertical-align: middle;
+		white-space: nowrap;
+		font-weight: var(--font-weight--regular);
 	}
 
 	// Tables

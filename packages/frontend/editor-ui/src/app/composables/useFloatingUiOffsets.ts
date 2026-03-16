@@ -1,4 +1,5 @@
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { computed } from 'vue';
@@ -7,6 +8,7 @@ const ASSISTANT_FLOATING_BUTTON_SIZE = 42;
 
 export function useFloatingUiOffsets() {
 	const assistantStore = useAssistantStore();
+	const chatPanelStore = useChatPanelStore();
 	const ndvStore = useNDVStore();
 	const logsStore = useLogsStore();
 
@@ -23,5 +25,6 @@ export function useFloatingUiOffsets() {
 
 			return `${logsPanelOffset + assistantOffset}px`;
 		}),
+		toastRightOffset: computed(() => (chatPanelStore.isOpen ? `${chatPanelStore.width}px` : '0px')),
 	};
 }

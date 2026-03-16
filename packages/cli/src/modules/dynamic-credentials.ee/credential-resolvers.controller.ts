@@ -36,7 +36,8 @@ export class CredentialResolversController {
 	@GlobalScope('credentialResolver:list')
 	async listResolvers(_req: AuthenticatedRequest, _res: Response): Promise<CredentialResolver[]> {
 		try {
-			return credentialResolversSchema.parse(await this.service.findAll());
+			const resolvers = credentialResolversSchema.parse(await this.service.findAll());
+			return resolvers.map(({ decryptedConfig: _, ...rest }) => ({ ...rest, config: '' }));
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);

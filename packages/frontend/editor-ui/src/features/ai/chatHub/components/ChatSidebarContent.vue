@@ -45,7 +45,7 @@ const groupedConversations = computed(() =>
 		(chatStore.sessions.ids ?? []).reduce<ChatHubSessionDto[]>((acc, id) => {
 			const session = chatStore.sessions.byId[id];
 
-			if (session) {
+			if (session && session.type !== 'manual') {
 				acc.push(session);
 			}
 
@@ -136,9 +136,7 @@ function handleNewChatClick() {
 }
 
 onMounted(() => {
-	if (!chatStore.sessionsReady) {
-		void chatStore.fetchSessions(true, { minLoadingTime: 250 });
-	}
+	void chatStore.fetchSessions(true, { minLoadingTime: 250, type: 'production' });
 });
 </script>
 
