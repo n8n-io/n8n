@@ -1,10 +1,11 @@
-import { DateTime } from 'luxon';
+import { DateTime, Duration, Interval } from 'luxon';
 
 import { extend, extendOptional } from '../extensions/extend';
 
 import { SafeObject, SafeError, ExpressionError } from './safe-globals';
 import { createDeepLazyProxy } from './lazy-proxy';
 import { resetDataProxies } from './reset';
+import { __prepareForTransfer } from './serialize';
 
 // Augment globalThis with runtime properties
 declare global {
@@ -29,6 +30,9 @@ declare global {
 
 		// Expression engine globals
 		var DateTime: typeof import('luxon').DateTime;
+		var Duration: typeof import('luxon').Duration;
+		var Interval: typeof import('luxon').Interval;
+		var __prepareForTransfer: (value: unknown) => unknown;
 		var extend: typeof import('../extensions/extend').extend;
 		var extendOptional: typeof import('../extensions/extend').extendOptional;
 
@@ -58,6 +62,8 @@ declare global {
 globalThis.extend = extend;
 globalThis.extendOptional = extendOptional;
 globalThis.DateTime = DateTime;
+globalThis.Duration = Duration;
+globalThis.Interval = Interval;
 
 // ============================================================================
 // Expose security globals and runtime functions
@@ -69,6 +75,7 @@ globalThis.SafeError = SafeError;
 
 globalThis.createDeepLazyProxy = createDeepLazyProxy;
 globalThis.resetDataProxies = resetDataProxies;
+globalThis.__prepareForTransfer = __prepareForTransfer;
 
 // Initialize empty __data object (populated by resetDataProxies before each evaluation)
 globalThis.__data = {};
