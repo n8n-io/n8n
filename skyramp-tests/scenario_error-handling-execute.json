@@ -1,0 +1,28 @@
+[
+  {
+    "Source": "192.168.65.1:39998",
+    "Destination": "localhost",
+    "RequestBody": "{\"nodes\":[{\"name\":\"RetryNode\",\"shouldFail\":true,\"settings\":{\"continueOnFail\":false,\"retryOnFail\":true,\"maxTries\":3,\"waitBetweenTries\":1}}]}",
+    "ResponseBody": "{\"nodeResults\":[{\"nodeName\":\"RetryNode\",\"status\":\"error\",\"attempts\":3,\"error\":\"Node \\\"RetryNode\\\" failed on attempt 3\"}],\"workflowStatus\":\"error\",\"totalRetries\":2}",
+    "RequestHeaders": {
+      "Content-Type": [
+        "application/json"
+      ],
+      "Authorization": [
+        "Bearer SKYRAMP_PLACEHOLDER_TOKEN"
+      ]
+    },
+    "ResponseHeaders": {
+      "Content-Type": [
+        "application/json"
+      ]
+    },
+    "Method": "POST",
+    "Path": "/rest/scenario/error-handling/execute",
+    "QueryParams": {},
+    "StatusCode": 200,
+    "Port": 5678,
+    "Timestamp": "2026-03-16T21:07:25.461Z",
+    "Scheme": "http"
+  }
+]
