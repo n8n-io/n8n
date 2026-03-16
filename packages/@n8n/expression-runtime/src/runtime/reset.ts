@@ -244,4 +244,54 @@ function initializeBuiltins(data: Record<string, unknown>): void {
 	data.RangeError = SafeRangeError;
 	data.ReferenceError = SafeReferenceError;
 	data.URIError = SafeURIError;
+
+	// Arrays
+	data.Array = Array;
+	data.Int8Array = Int8Array;
+	data.Uint8Array = Uint8Array;
+	data.Uint8ClampedArray = Uint8ClampedArray;
+	data.Int16Array = Int16Array;
+	data.Uint16Array = Uint16Array;
+	data.Int32Array = Int32Array;
+	data.Uint32Array = Uint32Array;
+	data.Float32Array = Float32Array;
+	data.Float64Array = Float64Array;
+	data.BigInt64Array = typeof BigInt64Array !== 'undefined' ? BigInt64Array : {};
+	data.BigUint64Array = typeof BigUint64Array !== 'undefined' ? BigUint64Array : {};
+
+	// Collections
+	data.Map = Map;
+	data.WeakMap = WeakMap;
+	data.Set = Set;
+	data.WeakSet = WeakSet;
+
+	// Internationalization
+	data.Intl = typeof Intl !== 'undefined' ? Intl : {};
+
+	// Text
+	data.String = String;
+
+	// Numbers
+	data.Number = Number;
+	data.BigInt = typeof BigInt !== 'undefined' ? BigInt : {};
+	data.Infinity = Infinity;
+	data.parseFloat = parseFloat;
+	data.parseInt = parseInt;
+
+	// Structured data
+	data.JSON = JSON;
+	data.ArrayBuffer = typeof ArrayBuffer !== 'undefined' ? ArrayBuffer : {};
+	data.SharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined' ? SharedArrayBuffer : {};
+	data.Atomics = typeof Atomics !== 'undefined' ? Atomics : {};
+	data.DataView = typeof DataView !== 'undefined' ? DataView : {};
+
+	// Encoding
+	data.encodeURI = encodeURI;
+	data.encodeURIComponent = encodeURIComponent;
+	data.decodeURI = decodeURI;
+	data.decodeURIComponent = decodeURIComponent;
+
+	// Other
+	data.Boolean = Boolean;
+	data.Symbol = Symbol;
 }
