@@ -21,6 +21,7 @@ import type {
 	WorkflowExecutionStatus,
 	ChatHubUpdateToolRequest,
 	ChatHubToolDto,
+	ChatHubSemanticSearchSettings,
 } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 
@@ -167,11 +168,6 @@ export const fetchSingleConversationApi = async (
 	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'GET', apiEndpoint);
 };
 
-export const fetchAgentsApi = async (context: IRestApiContext): Promise<ChatHubAgentDto[]> => {
-	const apiEndpoint = '/chat/agents';
-	return await makeRestApiRequest<ChatHubAgentDto[]>(context, 'GET', apiEndpoint);
-};
-
 export const fetchAgentApi = async (
 	context: IRestApiContext,
 	agentId: string,
@@ -200,6 +196,35 @@ export const updateAgentApi = async (
 export const deleteAgentApi = async (context: IRestApiContext, agentId: string): Promise<void> => {
 	const apiEndpoint = `/chat/agents/${agentId}`;
 	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
+};
+
+export const uploadAgentFilesApi = async (
+	context: IRestApiContext,
+	agentId: string,
+	files: File[],
+): Promise<ChatHubAgentDto> => {
+	const formData = new FormData();
+	for (const file of files) {
+		formData.append('files', file);
+	}
+	return await makeRestApiRequest<ChatHubAgentDto>(
+		context,
+		'POST',
+		`/chat/agents/${agentId}/files`,
+		formData,
+	);
+};
+
+export const deleteAgentFileApi = async (
+	context: IRestApiContext,
+	agentId: string,
+	fileKnowledgeId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/chat/agents/${agentId}/files/${encodeURIComponent(fileKnowledgeId)}`,
+	);
 };
 
 export const fetchChatSettingsApi = async (
@@ -234,6 +259,13 @@ export const updateChatSettingsApi = async (
 	return await makeRestApiRequest<ChatProviderSettingsDto>(context, 'POST', apiEndpoint, {
 		payload: settings,
 	});
+};
+
+export const updateSemanticSearchSettingsApi = async (
+	context: IRestApiContext,
+	data: ChatHubSemanticSearchSettings,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'PUT', '/chat/semantic-search', data);
 };
 
 export function buildChatAttachmentUrl(

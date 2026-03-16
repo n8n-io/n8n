@@ -85,8 +85,22 @@ export function showImpactHelp(): void {
 	console.log(`
 Impact - Find affected tests for changed files
 
-Options: --file=<path>, --files=<p1,p2>, --json, --test-list, --verbose
-Example: playwright-janitor impact --test-list | xargs npx playwright test
+Uses AST diffing to detect which methods were added, modified, or removed.
+Files with only added methods are skipped (can't break existing tests).
+Files with modified/removed methods use method-level resolution for precision.
+
+Options:
+  --file=<path>        Analyze a specific file
+  --files=<p1,p2>      Analyze multiple files (comma-separated)
+  --base=<ref>         Git ref to diff against (default: HEAD — compares working tree to HEAD)
+  --json               Output as JSON (includes resolution strategies)
+  --test-list          Output affected test paths only (for piping to playwright)
+  --verbose, -v        Show dependency graph and resolution strategies
+
+Examples:
+  playwright-janitor impact                                    # Auto-detect from git status
+  playwright-janitor impact --files=pages/X.ts --base=main     # Diff against main branch
+  playwright-janitor impact --test-list | xargs npx playwright test
 `);
 }
 

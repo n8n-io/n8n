@@ -21,6 +21,7 @@ import type {
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	createEmptyRunExecutionData,
+	deepCopy,
 	FORM_TRIGGER_NODE_TYPE,
 	isHitlToolType,
 	NodeConnectionTypes,
@@ -591,6 +592,12 @@ export function useWorkflowHelpers() {
 			nodes.push(nodeData);
 		}
 
+		// Deep-copy connections to create an in-time snapshot consistent with nodes.
+		// Without this, connections is a reference to the reactive store object, so
+		// mutations between now and request serialization can include connections to
+		// nodes not present in the nodes snapshot, violating a BE invariant.
+		const connections = deepCopy(workflowConnections);
+
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
@@ -599,7 +606,7 @@ export function useWorkflowHelpers() {
 			name: workflowsStore.workflowName,
 			nodes,
 			pinData: workflowDocumentStore.getPinDataSnapshot(),
-			connections: workflowConnections,
+			connections,
 			active: workflowDocumentStore.active,
 			settings: workflowDocumentStore.settings,
 			tags: [...workflowDocumentStore.tags],
@@ -970,7 +977,6 @@ export function useWorkflowHelpers() {
 	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
 		const ws = overrideWorkflowState ?? workflowState;
 		workflowsListStore.addWorkflow(workflowData);
-		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setDescription(workflowData.description);
 		ws.setWorkflowId(workflowData.id);
 		ws.setWorkflowName({
@@ -1005,10 +1011,6 @@ export function useWorkflowHelpers() {
 			}
 		}
 
-		if (workflowData.usedCredentials) {
-			workflowsStore.setUsedCredentials(workflowData.usedCredentials);
-		}
-
 		if (workflowData.sharedWithProjects) {
 			workflowsEEStore.setWorkflowSharedWith({
 				workflowId: workflowData.id,
@@ -1041,7 +1043,10 @@ export function useWorkflowHelpers() {
 		if (workflowData.checksum) {
 			workflowDocumentStore.setChecksum(workflowData.checksum);
 		}
+		workflowDocumentStore.setIsArchived(workflowData.isArchived);
+		workflowDocumentStore.setUsedCredentials(workflowData.usedCredentials ?? []);
 		workflowDocumentStore.setMeta(workflowData.meta);
+		workflowDocumentStore.setParentFolder(workflowData.parentFolder ?? null);
 		workflowDocumentStore.setScopes(workflowData.scopes ?? []);
 		tagsStore.upsertTags(tags);
 

@@ -22,7 +22,6 @@ import type {
 	IExecutionsListResponse,
 	IExecutionFlattedResponse,
 } from '@/features/execution/executions/executions.types';
-import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
@@ -135,7 +134,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	);
 
 	const versionData = ref<WorkflowVersionData | null>(null);
-	const usedCredentials = ref<Record<string, IUsedCredential>>({});
 
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
@@ -199,6 +197,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const allConnections = computed(() => workflow.value.connections);
 
+	/** @deprecated Use `workflowDocumentStore.allNodes` instead. */
 	const allNodes = computed<INodeUi[]>(() => workflow.value.nodes);
 
 	const willNodeWait = (node: INodeUi): boolean => {
@@ -244,9 +243,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return false;
 	});
 
-	// Names of all nodes currently on canvas.
+	/** @deprecated Use `workflowDocumentStore.canvasNames` instead. */
 	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
 
+	/** @deprecated Use `workflowDocumentStore.nodesByName` instead. */
 	const nodesByName = computed(() => {
 		return workflow.value.nodes.reduce<Record<string, INodeUi>>((acc, node) => {
 			acc[node.name] = node;
@@ -432,10 +432,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.getNodeByName()` instead. */
 	function getNodeByName(nodeName: string): INodeUi | null {
 		return workflowUtils.getNodeByName(nodesByName.value, nodeName);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.getNodeById()` instead. */
 	function getNodeById(nodeId: string): INodeUi | undefined {
 		return workflow.value.nodes.find((node) => node.id === nodeId);
 	}
@@ -455,7 +457,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return null;
 	}
 
-	// Finds the full id for a given partial id for a node, relying on order for uniqueness in edge cases
+	/** @deprecated Use `workflowDocumentStore.findNodeByPartialId()` instead. */
 	function findNodeByPartialId(partialId: string): INodeUi | undefined {
 		return workflow.value.nodes.find((node) => node.id.startsWith(partialId));
 	}
@@ -471,6 +473,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return fullId;
 	}
 
+	/** @deprecated Use `workflowDocumentStore.getNodesByIds()` instead. */
 	function getNodesByIds(nodeIds: string[]): INodeUi[] {
 		return nodeIds.map(getNodeById).filter(isPresent);
 	}
@@ -525,10 +528,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return nodeTypes;
 	}
 
-	// Returns a shallow copy of the nodes which means that all the data on the lower
-	// levels still only gets referenced but the top level object is a different one.
-	// This has the advantage that it is very fast and does not cause problems with vuex
-	// when the workflow replaces the node-parameters.
+	/**
+	 * Returns a shallow copy of the nodes which means that all the data on the lower
+	 * levels still only gets referenced but the top level object is a different one.
+	 * This has the advantage that it is very fast and does not cause problems with vuex
+	 * when the workflow replaces the node-parameters.
+	 * @deprecated Use `workflowDocumentStore.getNodes()` instead.
+	 */
 	function getNodes(): INodeUi[] {
 		return workflow.value.nodes.map((node) => ({ ...node }));
 	}
@@ -605,12 +611,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const workflowPermissions = getResourcePermissions(workflowDocumentStore?.scopes).workflow;
 
 		try {
+			const wfId = workflow.value.id;
+			const workflowDocumentStore = wfId
+				? useWorkflowDocumentStore(createWorkflowDocumentId(wfId))
+				: undefined;
+
 			if (
 				isNewWorkflow.value ||
 				sourceControlStore.preferences.branchReadOnly ||
 				uiStore.isReadOnlyView ||
 				!workflowPermissions.update ||
-				workflow.value.isArchived
+				workflowDocumentStore?.isArchived
 			) {
 				return;
 			}
@@ -634,14 +645,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function resetWorkflow() {
 		workflow.value = createEmptyWorkflow();
-	}
-
-	function setUsedCredentials(data: IUsedCredential[]) {
-		workflow.value.usedCredentials = data;
-		usedCredentials.value = data.reduce<{ [name: string]: IUsedCredential }>((accu, credential) => {
-			accu[credential.id] = credential;
-			return accu;
-		}, {});
 	}
 
 	function setWorkflowActiveVersion(version: WorkflowHistory | null) {
@@ -742,13 +745,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowInactive(id);
 
 		if (id === workflow.value.id) {
-			setIsArchived(true);
 			setWorkflowVersionData({
 				versionId: updatedWorkflow.versionId,
 				name: versionData.value?.name ?? null,
 				description: versionData.value?.description ?? null,
 			});
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setIsArchived(true);
 			workflowDocumentStore.setChecksum(updatedWorkflow.checksum!);
 		}
 	}
@@ -757,7 +760,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const updatedWorkflow = await workflowsListStore.unarchiveWorkflowInList(id);
 
 		if (id === workflow.value.id) {
-			setIsArchived(false);
 			setWorkflowVersionData({
 				versionId: updatedWorkflow.versionId,
 				name: versionData.value?.name ?? null,
@@ -765,6 +767,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			});
 
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setIsArchived(false);
 			workflowDocumentStore.setChecksum(updatedWorkflow.checksum!);
 		}
 	}
@@ -783,10 +786,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setWorkflowInactive(targetWorkflowId: string) {
 		workflowsListStore.setWorkflowInactiveInCache(targetWorkflowId);
-	}
-
-	function setIsArchived(isArchived: boolean) {
-		workflow.value.isArchived = isArchived;
 	}
 
 	function setDescription(description: string | undefined | null) {
@@ -1057,10 +1056,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			});
 	}
 
-	function setParentFolder(folder: IWorkflowDb['parentFolder']) {
-		workflow.value.parentFolder = folder;
-	}
-
+	/** @deprecated Use `workflowDocumentStore.setNodes()` instead. */
 	function setNodes(nodes: INodeUi[]): void {
 		nodes.forEach((node) => {
 			if (!node.id) {
@@ -1089,6 +1085,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(value);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.addNode()` instead. */
 	function addNode(nodeData: INodeUi): void {
 		// @TODO(ckolb): Reminder to refactor useActions:setAddedNodeActionParameters
 		// which listens to this function being called, when this is moved to workflowState soon
@@ -1108,6 +1105,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	/** @deprecated Use `workflowDocumentStore.removeNode()` instead. */
 	function removeNode(node: INodeUi): void {
 		const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = nodeMetadata.value;
 		nodeMetadata.value = remainingNodeMetadata;
@@ -1597,6 +1595,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// Start Canvas V2 Functions
 	//
 
+	/** @deprecated Use `workflowDocumentStore.removeNodeById()` instead. */
 	function removeNodeById(nodeId: string): void {
 		const node = getNodeById(nodeId);
 		if (!node) {
@@ -1686,7 +1685,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	return {
 		workflow,
 		versionData,
-		usedCredentials,
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
@@ -1750,7 +1748,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getActivationError,
 		resetWorkflow,
 		addNodeExecutionStartedData,
-		setUsedCredentials,
 		setWorkflowActiveVersion,
 		setWorkflowVersionData,
 		replaceInvalidWorkflowCredentials,
@@ -1759,11 +1756,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		unarchiveWorkflow,
 		setWorkflowActive,
 		setWorkflowInactive,
-		setIsArchived,
 		setDescription,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
-		setParentFolder,
 		setWorkflow,
 		addConnection,
 		removeConnection,

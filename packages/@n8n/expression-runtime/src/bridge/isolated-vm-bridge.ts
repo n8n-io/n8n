@@ -1,13 +1,45 @@
-import ivm from 'isolated-vm';
+import type ivm from 'isolated-vm';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import type { RuntimeBridge, BridgeConfig } from '../types';
+import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 
-// Get __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
+// file is statically imported (e.g. for error classes). The native module is
+// only loaded when IsolatedVmBridge is actually constructed.
+type IsolatedVm = typeof import('isolated-vm');
+let _ivm: IsolatedVm | null = null;
+
+function getIvm(): IsolatedVm {
+	if (!_ivm) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_ivm = require('isolated-vm') as IsolatedVm;
+	}
+	return _ivm;
+}
+
+const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
+
+/**
+ * Read the runtime IIFE bundle by walking up from `__dirname` until
+ * `dist/bundle/runtime.iife.js` is found.
+ *
+ * This works regardless of where the compiled output lives:
+ *   - `src/bridge/`               (vitest running against source)
+ *   - `dist/cjs/bridge/`          (CJS build)
+ */
+async function readRuntimeBundle(): Promise<string> {
+	let dir = __dirname;
+	while (dir !== path.dirname(dir)) {
+		try {
+			return await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
+		} catch {}
+		dir = path.dirname(dir);
+	}
+	throw new Error(
+		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
+	);
+}
 
 /**
  * IsolatedVmBridge - Runtime bridge using isolated-vm for secure expression evaluation.
@@ -37,6 +69,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private arrayElementRef?: ivm.Reference;
 	private callFunctionRef?: ivm.Reference;
 
+	// Pre-resolved reference to resetDataProxies() inside the isolate.
+	// Using applySync on a stored reference avoids the per-call
+	// ScriptCompiler::Compile() cost that evalSync incurs.
+	private resetDataProxiesRef?: ivm.Reference;
+
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
 			...DEFAULT_BRIDGE_CONFIG,
@@ -45,7 +82,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Create isolate with memory limit
 		// Note: memoryLimit is in MB
-		this.isolate = new ivm.Isolate({ memoryLimit: this.config.memoryLimit });
+		this.isolate = new (getIvm().Isolate)({ memoryLimit: this.config.memoryLimit });
 	}
 
 	/**
@@ -84,6 +121,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Inject E() error handler needed by tournament-generated try-catch code
 		await this.injectErrorHandler();
 
+		// Store a reference to resetDataProxies for efficient per-call invocation
+		this.resetDataProxiesRef = await this.context.global.get('resetDataProxies', {
+			reference: true,
+		});
+
 		this.initialized = true;
 
 		if (this.config.debug) {
@@ -110,16 +152,14 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		try {
 			// Load runtime bundle (includes vendor libraries + proxy system)
-			// Path: dist/bundle/runtime.iife.js
-			const runtimeBundlePath = path.join(__dirname, '../../dist/bundle/runtime.iife.js');
-			const runtimeBundle = await readFile(runtimeBundlePath, 'utf-8');
+			const runtimeBundle = await readRuntimeBundle();
 
 			// Evaluate bundle in isolate context
 			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, resetDataProxies, __data)
 			await this.context.eval(runtimeBundle);
 
 			if (this.config.debug) {
-				console.log('[IsolatedVmBridge] Runtime bundle loaded from:', runtimeBundlePath);
+				console.log('[IsolatedVmBridge] Runtime bundle loaded');
 			}
 
 			// Verify vendor libraries loaded correctly
@@ -233,15 +273,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @private
 	 * @throws {Error} If context not initialized or reset fails
 	 */
-	private resetDataProxies(): void {
-		if (!this.context) {
+	private resetDataProxies(timezone?: string): void {
+		if (!this.resetDataProxiesRef) {
 			throw new Error('Context not initialized');
 		}
 
 		try {
-			// Call the resetDataProxies function in the isolate
-			// This function is loaded as part of the runtime bundle
-			this.context.evalSync('resetDataProxies()');
+			this.resetDataProxiesRef.applySync(null, [timezone ?? null], {
+				arguments: { copy: true },
+			});
 
 			if (this.config.debug) {
 				console.log('[IsolatedVmBridge] Data proxies reset successfully');
@@ -274,7 +314,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Callback 1: Get value/metadata at path
 		// Used by createDeepLazyProxy when accessing properties
-		const getValueAtPath = new ivm.Reference((path: string[]) => {
+		const getValueAtPath = new (getIvm().Reference)((path: string[]) => {
 			// Navigate to value
 			let value: unknown = data;
 			for (const key of path) {
@@ -317,7 +357,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Callback 2: Get array element at index
 		// Used by array proxy when accessing numeric indices
-		const getArrayElement = new ivm.Reference((path: string[], index: number) => {
+		const getArrayElement = new (getIvm().Reference)((path: string[], index: number) => {
 			// Navigate to array
 			let arr: unknown = data;
 			for (const key of path) {
@@ -354,7 +394,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Callback 3: Call function at path with arguments
 		// Used when expressions invoke functions from workflow data
-		const callFunctionAtPath = new ivm.Reference((path: string[], ...args: unknown[]) => {
+		const callFunctionAtPath = new (getIvm().Reference)((path: string[], ...args: unknown[]) => {
 			// Navigate to function, tracking parent to preserve `this` context
 			let fn: unknown = data;
 			let parent: unknown = undefined;
@@ -411,7 +451,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @returns Result of the expression
 	 * @throws {Error} If bridge not initialized or execution fails
 	 */
-	execute(code: string, data: Record<string, unknown>): unknown {
+	execute(code: string, data: Record<string, unknown>, options?: ExecuteOptions): unknown {
 		if (!this.initialized || !this.context) {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
@@ -422,7 +462,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 			// Step 2: Reset proxies for this evaluation
 			// This initializes $json, $binary, etc. as lazy proxies
-			this.resetDataProxies();
+			this.resetDataProxies(options?.timezone);
 
 			// Step 3: Wrap transformed code so 'this' === __data in the isolate.
 			// Tournament generates: this.$json.email, this.$items(), etc.

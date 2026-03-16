@@ -86,6 +86,10 @@ import type {
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
@@ -331,6 +335,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
 	const preferredSystemTheme = computed<AppliedThemeOption>(() =>
@@ -401,7 +410,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const lastInteractedWithNode = computed(() => {
 		if (lastInteractedWithNodeId.value) {
-			return workflowsStore.getNodeById(lastInteractedWithNodeId.value);
+			return workflowDocumentStore.value?.getNodeById(lastInteractedWithNodeId.value) ?? null;
 		}
 
 		return null;

@@ -5,12 +5,14 @@ import { createTestingPinia } from '@pinia/testing';
 import SecretsProviderConnectionModal from './SecretsProviderConnectionModal.ee.vue';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
-import type { SecretProviderTypeResponse } from '@n8n/api-types';
+import type {
+	SecretProviderTypeResponse,
+	ConnectionProjectSummary,
+	SecretProviderConnection,
+} from '@n8n/api-types';
 import { vi } from 'vitest';
 import { nextTick } from 'vue';
-import type { SecretProviderConnection } from '@n8n/api-types';
 import { createProjectListItem } from '@/features/collaboration/projects/__tests__/utils';
-import type { ConnectionProjectSummary } from '../composables/useConnectionModal.ee';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import orderBy from 'lodash/orderBy';
 
@@ -68,6 +70,7 @@ const mockConnectionModal = {
 	canDelete: { value: true },
 	canShareGlobally: { value: true },
 	isScopedMode: { value: false },
+	isReadOnly: { value: false },
 	projectIds: { value: [] as string[] },
 	sharedWithProjects: { value: [] as ProjectSharingData[] },
 	selectProviderType: vi.fn(),
@@ -178,6 +181,7 @@ describe('SecretsProviderConnectionModal', () => {
 		mockConnectionModal.connectionProjects.value = [];
 		mockConnectionModal.isSharedGlobally.value = false;
 		mockConnectionModal.isScopedMode.value = false;
+		mockConnectionModal.isReadOnly.value = false;
 	});
 
 	it('should load connection data', async () => {
@@ -536,6 +540,92 @@ describe('SecretsProviderConnectionModal', () => {
 
 			// Verify setScopeState was called with empty array and true for global sharing
 			expect(mockConnectionModal.setScopeState).toHaveBeenCalledWith([], true);
+		});
+	});
+
+	describe('read-only mode for global connections', () => {
+		it('should hide the save button when isReadOnly is true', async () => {
+			mockConnectionModal.isReadOnly.value = true;
+
+			const { container } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			const saveButton = container.querySelector(
+				'[data-test-id="secrets-provider-connection-save-button"]',
+			);
+			expect(saveButton).not.toBeInTheDocument();
+		});
+
+		it('should hide the delete button when isReadOnly is true', async () => {
+			mockConnectionModal.isReadOnly.value = true;
+
+			const { container } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			const deleteButton = container.querySelector(
+				'[data-test-id="secrets-provider-delete-button"]',
+			);
+			expect(deleteButton).not.toBeInTheDocument();
+		});
+
+		it('should show read-only notice when isReadOnly is true', async () => {
+			mockConnectionModal.isReadOnly.value = true;
+
+			const { container } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			const notice = container.querySelector('[data-test-id="secrets-provider-read-only-notice"]');
+			expect(notice).toBeInTheDocument();
+		});
+	});
+
+	describe('read-only mode for insufficient role', () => {
+		it('should show read-only notice when connection is not global but user lacks update permission', async () => {
+			mockConnectionModal.isReadOnly.value = true;
+			mockConnectionModal.isSharedGlobally.value = false;
+
+			const { container } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			const notice = container.querySelector('[data-test-id="secrets-provider-read-only-notice"]');
+			expect(notice).toBeInTheDocument();
+			expect(notice?.textContent).toContain('Contact your instance admin');
 		});
 	});
 });
