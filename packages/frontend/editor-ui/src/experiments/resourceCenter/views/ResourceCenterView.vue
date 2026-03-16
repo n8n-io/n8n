@@ -5,6 +5,7 @@ import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { onMounted, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import ResourceCard from '../components/ResourceCard.vue';
+import type { CardVariant } from '../components/ResourceCard.vue';
 import {
 	featuredTemplateIds,
 	inspirationVideos,
@@ -16,6 +17,22 @@ import type { ResourceItem } from '../data/resourceCenterData';
 import { quickStartWorkflows } from '../data/quickStartWorkflows';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+
+const VARIANT_STORAGE_KEY = 'n8n-resourceCenter-cardVariant';
+const CARD_VARIANTS: { value: CardVariant; label: string }[] = [
+	{ value: 'header', label: 'A: Header Strip' },
+	{ value: 'accent', label: 'B: Accent Border' },
+	{ value: 'spotlight', label: 'C: Spotlight' },
+];
+
+const cardVariant = ref<CardVariant>(
+	(localStorage.getItem(VARIANT_STORAGE_KEY) as CardVariant) || 'header',
+);
+
+const setVariant = (v: CardVariant) => {
+	cardVariant.value = v;
+	localStorage.setItem(VARIANT_STORAGE_KEY, v);
+};
 
 const i18n = useI18n();
 const router = useRouter();
@@ -174,9 +191,21 @@ onMounted(() => {
 <template>
 	<div :class="$style.container">
 		<div :class="$style.content">
-			<N8nHeading tag="h1" :bold="true" :class="$style.pageTitle">
-				{{ i18n.baseText('experiments.resourceCenter.title') }}
-			</N8nHeading>
+			<div :class="$style.topBar">
+				<N8nHeading tag="h1" :bold="true" :class="$style.pageTitle">
+					{{ i18n.baseText('experiments.resourceCenter.title') }}
+				</N8nHeading>
+				<div :class="$style.variantSwitcher">
+					<button
+						v-for="v in CARD_VARIANTS"
+						:key="v.value"
+						:class="[$style.variantBtn, { [$style.variantBtnActive]: cardVariant === v.value }]"
+						@click="setVariant(v.value)"
+					>
+						{{ v.label }}
+					</button>
+				</div>
+			</div>
 
 			<!-- Get Started -->
 			<section :class="$style.section">
@@ -188,6 +217,7 @@ onMounted(() => {
 						v-for="item in getStartedItems"
 						:key="item.id"
 						:item="item"
+						:variant="cardVariant"
 						@click="handleCardClick(item)"
 					/>
 				</div>
@@ -206,6 +236,7 @@ onMounted(() => {
 						v-for="item in getInspiredItems"
 						:key="item.id"
 						:item="item"
+						:variant="cardVariant"
 						@click="handleCardClick(item)"
 					/>
 				</div>
@@ -224,6 +255,7 @@ onMounted(() => {
 						v-for="item in learnItems"
 						:key="item.id"
 						:item="item"
+						:variant="cardVariant"
 						@click="handleCardClick(item)"
 					/>
 				</div>
@@ -244,10 +276,50 @@ onMounted(() => {
 	padding: 0 var(--spacing--2xl) var(--spacing--lg) var(--spacing--2xl);
 }
 
+.topBar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--spacing--xl);
+}
+
 .pageTitle {
 	font-size: var(--font-size--sm);
 	color: var(--color--text--shade-1);
-	margin: 0 0 var(--spacing--xl) 0;
+	margin: 0;
+}
+
+.variantSwitcher {
+	display: flex;
+	gap: 2px;
+	background: var(--color--foreground);
+	border-radius: var(--radius--lg);
+	padding: 2px;
+}
+
+.variantBtn {
+	padding: var(--spacing--4xs) var(--spacing--xs);
+	border: none;
+	border-radius: var(--radius);
+	background: transparent;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	cursor: pointer;
+	transition:
+		background 0.15s ease,
+		color 0.15s ease;
+	white-space: nowrap;
+
+	&:hover {
+		color: var(--color--text);
+	}
+}
+
+.variantBtnActive {
+	background: var(--color--foreground--tint-2);
+	color: var(--color--text--shade-1);
+	font-weight: var(--font-weight--bold);
 }
 
 .section {

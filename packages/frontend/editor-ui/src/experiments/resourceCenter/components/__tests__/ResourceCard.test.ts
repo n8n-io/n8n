@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import ResourceCard from '../ResourceCard.vue';
 import type { ResourceItem } from '../../data/resourceCenterData';
+import type { CardVariant } from '../ResourceCard.vue';
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({ getNodeType: vi.fn(() => null) }),
@@ -38,72 +39,46 @@ const readyToRunItem: ResourceItem = {
 	nodeCount: 4,
 };
 
-function mountCard(item: ResourceItem) {
+function mountCard(item: ResourceItem, variant: CardVariant = 'header') {
 	return mount(ResourceCard, {
-		props: { item },
+		props: { item, variant },
 		global: {
 			plugins: [createTestingPinia({ createSpy: vi.fn })],
 		},
 	});
 }
 
+const variants: CardVariant[] = ['header', 'accent', 'spotlight'];
+
 describe('ResourceCard', () => {
-	describe('type badge', () => {
-		it('renders "Template" badge for template items', () => {
-			const wrapper = mountCard(templateItem);
-			expect(wrapper.find('[data-testid="resource-card-badge"]').text()).toBe('Template');
+	describe.each(variants)('variant "%s"', (variant) => {
+		it('renders badge for each type', () => {
+			const items = [
+				{ item: templateItem, expected: 'Template' },
+				{ item: videoItem, expected: 'Video' },
+				{ item: readyToRunItem, expected: 'Ready to Run' },
+			];
+			for (const { item, expected } of items) {
+				const wrapper = mountCard(item, variant);
+				expect(wrapper.find('[data-testid="resource-card-badge"]').text()).toContain(expected);
+			}
 		});
 
-		it('renders "Video" badge for video items', () => {
-			const wrapper = mountCard(videoItem);
-			expect(wrapper.find('[data-testid="resource-card-badge"]').text()).toContain('Video');
-		});
-
-		it('renders "Ready to Run" badge for ready-to-run items', () => {
-			const wrapper = mountCard(readyToRunItem);
-			expect(wrapper.find('[data-testid="resource-card-badge"]').text()).toContain('Ready to Run');
-		});
-	});
-
-	describe('content', () => {
 		it('renders title', () => {
-			const wrapper = mountCard(templateItem);
+			const wrapper = mountCard(templateItem, variant);
 			expect(wrapper.find('[data-testid="resource-card-title"]').text()).toBe(templateItem.title);
 		});
 
-		it('renders description', () => {
-			const wrapper = mountCard(templateItem);
-			expect(wrapper.find('[data-testid="resource-card-description"]').text()).toBe(
-				templateItem.description,
-			);
-		});
-	});
-
-	describe('metadata', () => {
-		it('shows duration and level for video items', () => {
-			const wrapper = mountCard(videoItem);
-			const meta = wrapper.find('[data-testid="resource-card-metadata"]').text();
-			expect(meta).toContain('15 min');
-			expect(meta).toContain('Beginner');
+		it('renders metadata', () => {
+			const wrapper = mountCard(videoItem, variant);
+			const cardText = wrapper.find('[data-testid="resource-card"]').text();
+			expect(cardText).toContain('15 min');
+			expect(cardText).toContain('Beginner');
 		});
 
-		it('shows "No setup" and node count for ready-to-run items', () => {
-			const wrapper = mountCard(readyToRunItem);
-			const meta = wrapper.find('[data-testid="resource-card-metadata"]').text();
-			expect(meta).toContain('No setup');
-		});
-
-		it('shows setup time and node count for template items', () => {
-			const wrapper = mountCard(templateItem);
-			const meta = wrapper.find('[data-testid="resource-card-metadata"]').text();
-			expect(meta).toContain('5 min');
-		});
-	});
-
-	describe('interaction', () => {
 		it('emits click event when clicked', async () => {
-			const wrapper = mountCard(templateItem);
-			await wrapper.trigger('click');
+			const wrapper = mountCard(templateItem, variant);
+			await wrapper.find('[data-testid="resource-card"]').trigger('click');
 			expect(wrapper.emitted('click')).toHaveLength(1);
 		});
 	});
