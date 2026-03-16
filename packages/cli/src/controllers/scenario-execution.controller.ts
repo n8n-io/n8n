@@ -46,29 +46,31 @@ export class ScenarioExecutionController {
 
 	/** POST /workflows/{id}/execute - Execute workflow manually */
 	@Post('/workflows/:workflowId/execute', { skipAuth: true })
-	async executeWorkflow(req: Request, _res: Response, @Param('workflowId') workflowId: string) {
+	async executeWorkflow(req: Request, res: Response, @Param('workflowId') workflowId: string) {
 		const mode = (req.body?.mode as 'manual' | 'trigger' | 'webhook') || 'manual';
-		return await this.service.execute(workflowId, mode);
+		const result = await this.service.execute(workflowId, mode);
+		res.status(201).json(result);
 	}
 
 	/** GET /executions/{id} - Get execution details */
 	@Get('/:id', { skipAuth: true })
-	async getExecution(_req: Request, _res: Response, @Param('id') id: string) {
+	async getExecution(_req: Request, res: Response, @Param('id') id: string) {
 		const execution = await this.service.getById(Number(id));
 		if (!execution) {
-			_res.status(404);
-			return { message: 'Execution not found' };
+			res.status(404).json({ message: 'Execution not found' });
+			return;
 		}
-		return execution;
+		res.json(execution);
 	}
 
 	/** GET /workflows/{id}/executions - List all executions for workflow */
 	@Get('/workflows/:workflowId', { skipAuth: true })
 	async getWorkflowExecutions(
 		_req: Request,
-		_res: Response,
+		res: Response,
 		@Param('workflowId') workflowId: string,
 	) {
-		return await this.service.getByWorkflowId(workflowId);
+		const executions = await this.service.getByWorkflowId(workflowId);
+		res.json(executions);
 	}
 }
