@@ -1,0 +1,80 @@
+[
+  {
+    "Source": "192.168.65.1:39998",
+    "Destination": "localhost",
+    "RequestBody": "{\"mode\": \"manual\"}",
+    "ResponseBody": "{\"id\": 1, \"workflowId\": \"wf-test-001\", \"mode\": \"manual\", \"status\": \"success\", \"startedAt\": \"2026-03-16T00:00:00.000Z\", \"stoppedAt\": \"2026-03-16T00:00:01.000Z\", \"data\": {\"nodeOutputs\": {}, \"completedAt\": \"2026-03-16T00:00:01.000Z\"}}",
+    "RequestHeaders": {
+      "Content-Type": [
+        "application/json"
+      ],
+      "Authorization": [
+        "Bearer SKYRAMP_PLACEHOLDER_TOKEN"
+      ]
+    },
+    "ResponseHeaders": {
+      "Content-Type": [
+        "application/json"
+      ]
+    },
+    "Method": "POST",
+    "Path": "/scenario/executions/workflows/wf-test-001/execute",
+    "QueryParams": {},
+    "StatusCode": 201,
+    "Port": 5678,
+    "Timestamp": "2026-03-16T12:00:26.533Z",
+    "Scheme": "http"
+  },
+  {
+    "Source": "192.168.65.1:39998",
+    "Destination": "localhost",
+    "RequestBody": "",
+    "ResponseBody": "{\"id\": 1, \"workflowId\": \"wf-test-001\", \"mode\": \"manual\", \"status\": \"success\", \"startedAt\": \"2026-03-16T00:00:00.000Z\", \"stoppedAt\": \"2026-03-16T00:00:01.000Z\", \"data\": {\"nodeOutputs\": {}, \"completedAt\": \"2026-03-16T00:00:01.000Z\"}}",
+    "RequestHeaders": {
+      "Content-Type": [
+        "application/json"
+      ],
+      "Authorization": [
+        "Bearer SKYRAMP_PLACEHOLDER_TOKEN"
+      ]
+    },
+    "ResponseHeaders": {
+      "Content-Type": [
+        "application/json"
+      ]
+    },
+    "Method": "GET",
+    "Path": "/scenario/executions/1",
+    "QueryParams": {},
+    "StatusCode": 200,
+    "Port": 5678,
+    "Timestamp": "2026-03-16T12:00:32.145Z",
+    "Scheme": "http"
+  },
+  {
+    "Source": "192.168.65.1:39998",
+    "Destination": "localhost",
+    "RequestBody": "",
+    "ResponseBody": "[{\"id\": 1, \"workflowId\": \"wf-test-001\", \"mode\": \"manual\", \"status\": \"success\", \"startedAt\": \"2026-03-16T00:00:00.000Z\", \"stoppedAt\": \"2026-03-16T00:00:01.000Z\", \"data\": {\"nodeOutputs\": {}, \"completedAt\": \"2026-03-16T00:00:01.000Z\"}}]",
+    "RequestHeaders": {
+      "Content-Type": [
+        "application/json"
+      ],
+      "Authorization": [
+        "Bearer SKYRAMP_PLACEHOLDER_TOKEN"
+      ]
+    },
+    "ResponseHeaders": {
+      "Content-Type": [
+        "application/json"
+      ]
+    },
+    "Method": "GET",
+    "Path": "/scenario/executions/workflows/wf-test-001",
+    "QueryParams": {},
+    "StatusCode": 200,
+    "Port": 5678,
+    "Timestamp": "2026-03-16T12:00:41.797Z",
+    "Scheme": "http"
+  }
+]
