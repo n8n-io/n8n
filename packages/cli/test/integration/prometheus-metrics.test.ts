@@ -42,6 +42,7 @@ globalConfig.endpoints.metrics = {
 	activeWorkflowCountInterval: 60,
 	includeWorkflowStatistics: false,
 	workflowStatisticsInterval: 300,
+	includeDbClockSkewMetric: false,
 };
 
 const server = setupTestServer({ endpointGroups: ['metrics'] });
