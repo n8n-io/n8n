@@ -219,7 +219,6 @@ describe('GlobalConfig', () => {
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
-				includeDbClockSkewMetric: false,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,

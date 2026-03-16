@@ -603,23 +603,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.getMany();
 	}
 
-	async getServerTime(): Promise<Date> {
-		const dbType = this.globalConfig.database.type;
-		if (dbType === 'postgresdb') {
-			const [{ now }] = (await this.query('SELECT CURRENT_TIMESTAMP(3) AS now')) as [{ now: Date }];
-			return new Date(now.getTime());
-		}
-		// SQLite returns a string in 'YYYY-MM-DD HH:MM:SS.SSS' format
-		const [{ now }] = (await this.query("SELECT STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') AS now")) as [
-			{ now: string },
-		];
-		const date = new Date(now.replace(' ', 'T') + 'Z');
-		if (Number.isNaN(date.getTime())) {
-			throw new UnexpectedError(`Invalid DB server time: ${now}`);
-		}
-		return date;
-	}
-
 	async getExecutionsCountForPublicApi(params: {
 		limit: number;
 		lastId?: string;
