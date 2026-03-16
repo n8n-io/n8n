@@ -4,10 +4,14 @@ import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransfo
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { isExpression } from '@/app/utils/expressions';
 
+export const isHttpRequestNodeType = (nodeType: string): boolean =>
+	nodeType === HTTP_REQUEST_NODE_TYPE || nodeType === HTTP_REQUEST_TOOL_NODE_TYPE;
+
 import type {
 	CredentialTypeSetupState,
 	TriggerSetupState,
 } from '@/features/setupPanel/setupPanel.types';
+import { type INode, type INodeParameters, NodeHelpers } from 'n8n-workflow';
 
 /**
  * Collects all credential types that a node requires from three sources:
@@ -40,6 +44,59 @@ export function getNodeCredentialTypes(
 	return Array.from(credentialTypes);
 }
 
+export function getNodeParametersIssues(nodeTypesStore: NodeTypeProvider, node: INode) {
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	if (!nodeType) return {};
+
+	// Fill in default values for parameters not explicitly set on the node.
+	// Required parameters with valid defaults (e.g. binaryPropertyName: 'data')
+	// are not stored in node.parameters when the user hasn't changed them.
+	// Without this, the issue checker flags them as missing.
+	const paramsWithDefaults: INodeParameters = { ...node.parameters };
+	for (const prop of nodeType.properties) {
+		if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
+			paramsWithDefaults[prop.name] = prop.default;
+		}
+	}
+
+	const nodeWithDefaults: INode = { ...node, parameters: paramsWithDefaults };
+	const issues = NodeHelpers.getNodeParametersIssues(
+		nodeType.properties,
+		nodeWithDefaults,
+		nodeType,
+	);
+	const allIssues = issues?.parameters ?? {};
+
+	// Only keep issues for top-level parameters that the setup card can display
+	// AND that are actually visible given the current parameter values.
+	// Nested issues (e.g. a missing field inside a fixedCollection entry) use child
+	// property names as keys which don't match top-level properties and can't be
+	// configured in the setup card.
+	const topLevelProps = new Map(nodeType.properties.map((p) => [p.name, p]));
+	const filteredIssues: Record<string, string[]> = {};
+	for (const [key, value] of Object.entries(allIssues)) {
+		const prop = topLevelProps.get(key);
+		if (!prop) continue;
+
+		// Skip hidden parameters — they are never shown to the user
+		if (prop.type === 'hidden') continue;
+
+		// Skip parameters whose displayOptions evaluate to hidden.
+		// NodeHelpers.getParameterIssues already checks this internally, but it
+		// treats expression values in controlling parameters as "always show".
+		// This explicit check ensures consistency with the NDV's display logic.
+		if (
+			prop.displayOptions &&
+			!NodeHelpers.displayParameter(paramsWithDefaults, prop, nodeWithDefaults, nodeType)
+		) {
+			continue;
+		}
+
+		filteredIssues[key] = value;
+	}
+	return filteredIssues;
+}
+
 /**
  * Groups credential requirements across all nodes by credential type.
  * Returns one CredentialTypeSetupState per unique credential type.
@@ -63,8 +120,7 @@ export function groupCredentialsByType(
 			// target different APIs even when using the same credential type.
 			// Expression URLs are resolved when possible (e.g. static expressions or those
 			// using only environment variables). Unresolvable expressions get their own card.
-			const isHttpRequest =
-				node.type === HTTP_REQUEST_NODE_TYPE || node.type === HTTP_REQUEST_TOOL_NODE_TYPE;
+			const isHttpRequest = isHttpRequestNodeType(node.type);
 			const url = node.parameters.url;
 
 			let mapKey: string;

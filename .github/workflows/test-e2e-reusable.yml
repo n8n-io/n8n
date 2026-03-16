@@ -42,6 +42,11 @@ on:
         required: false
         default: false
         type: boolean
+      timeout-minutes:
+        description: 'Job timeout in minutes'
+        required: false
+        default: 30
+        type: number
       upload-failure-artifacts:
         description: 'Upload test failure artifacts (screenshots, traces, videos). Enable for community PRs without Currents access.'
         required: false
@@ -95,7 +100,7 @@ jobs:
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
@@ -113,7 +118,7 @@ jobs:
     needs: matrix
     if: ${{ !cancelled() }}
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
-    timeout-minutes: 30
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       packages: read
       contents: read
@@ -125,7 +130,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 1
           ref: ${{ inputs.branch || github.ref }}
@@ -167,7 +172,7 @@ jobs:
 
       - name: Upload Failure Artifacts
         if: ${{ failure() && inputs.upload-failure-artifacts }}
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: playwright-report-shard-${{ matrix.shard }}
           path: |

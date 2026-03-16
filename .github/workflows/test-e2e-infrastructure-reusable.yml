@@ -1,0 +1,35 @@
+name: 'Test: E2E Infrastructure'
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'packages/testing/playwright/tests/infrastructure/**'
+      - 'packages/testing/playwright/utils/benchmark/**'
+      - 'packages/testing/playwright/utils/performance-helper.ts'
+      - 'packages/testing/playwright/reporters/benchmark-summary-reporter.ts'
+      - 'packages/testing/containers/services/**'
+      - '.github/workflows/test-e2e-infrastructure-reusable.yml'
+
+jobs:
+  benchmark:
+    name: ${{ matrix.profile }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: benchmark-direct
+            runner: blacksmith-4vcpu-ubuntu-2204
+          - profile: benchmark-queue
+            runner: blacksmith-8vcpu-ubuntu-2204
+          - profile: benchmark-queue-tuned
+            runner: blacksmith-8vcpu-ubuntu-2204
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      test-mode: docker-build
+      test-command: pnpm --filter=n8n-playwright test:all --project='${{ matrix.profile }}:infrastructure' --workers=1
+      shards: 1
+      runner: ${{ matrix.runner }}
+      timeout-minutes: 60
+    secrets: inherit

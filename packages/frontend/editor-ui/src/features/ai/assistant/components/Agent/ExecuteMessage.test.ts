@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { reactive, ref, nextTick } from 'vue';
+import { computed, reactive, ref, nextTick } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -11,6 +11,7 @@ import type { INodeUi } from '@/Interface';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -67,7 +68,13 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
-const renderComponent = createComponentRenderer(ExecuteMessage);
+const renderComponent = createComponentRenderer(ExecuteMessage, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow'),
+		},
+	},
+});
 
 vi.mock('./NodeIssueItem.vue', () => ({
 	default: {
@@ -115,6 +122,7 @@ describe('ExecuteMessage', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflow.id = 'test-workflow';
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		logsStore = mockedStore(useLogsStore);
 		uiStore = mockedStore(useUIStore);
@@ -143,9 +151,6 @@ describe('ExecuteMessage', () => {
 		workflowsStore.setSelectedTriggerNodeName = vi.fn((name: string | undefined) => {
 			selectedTriggerNodeNameRef.value = name;
 		});
-		workflowsStore.getNodeByName = vi.fn(
-			(name: string) => workflowNodes.find((node) => node.name === name) ?? null,
-		);
 		logsStore.toggleOpen = vi.fn();
 		nodeTypesStore.isTriggerNode = vi
 			.fn()

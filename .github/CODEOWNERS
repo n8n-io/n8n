@@ -1,1 +1,6 @@
 packages/@n8n/db/src/migrations/ @n8n-io/migrations-review
+.github/workflows @n8n-io/ci-admins
+.github/scripts @n8n-io/ci-admins
+.github/actions @n8n-io/ci-admins
+.github/poutine-rules @n8n-io/ci-admins
+
