@@ -586,7 +586,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await this.delete({ id: In(executionIds) });
 	}
 
-	async getWaitingExecutions(): Promise<Pick<ExecutionEntity, 'id' | 'waitTill'>[]> {
+	async getWaitingExecutions(): Promise<Array<Pick<ExecutionEntity, 'id' | 'waitTill'>>> {
 		// DB-clock lookahead: 5s poll + 10s buffer = 15s window.
 		const dbType = this.globalConfig.database.type;
 
