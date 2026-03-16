@@ -3990,6 +3990,9 @@ importers:
       transliteration:
         specifier: 2.3.5
         version: 2.3.5
+      uuid:
+        specifier: 'catalog:'
+        version: 10.0.0
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
