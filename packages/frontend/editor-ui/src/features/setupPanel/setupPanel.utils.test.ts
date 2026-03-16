@@ -1,8 +1,10 @@
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import {
 	getNodeCredentialTypes,
+	getNodeParametersIssues,
 	groupCredentialsByType,
 	isCredentialCardComplete,
 	buildTriggerSetupState,
@@ -760,6 +762,103 @@ describe('setupPanel.utils', () => {
 			};
 
 			expect(isCredentialCardComplete(state, makeCtx())).toBe(true);
+		});
+	});
+
+	describe('getNodeParametersIssues', () => {
+		it('should detect issues for the active variant when a parameter name has multiple displayOptions', () => {
+			// Simulates node types like Google Drive Trigger that define multiple
+			// properties with the same name (e.g. "event") for different triggerOn values.
+			const nodeType = {
+				properties: [
+					createTestNodeProperties({
+						displayName: 'Trigger On',
+						name: 'triggerOn',
+						type: 'options',
+						required: true,
+						default: '',
+						options: [
+							{ name: 'Specific File', value: 'specificFile' },
+							{ name: 'Specific Folder', value: 'specificFolder' },
+							{ name: 'Any File/Folder', value: 'anyFileFolder' },
+						],
+					}),
+					createTestNodeProperties({
+						displayName: 'Watch For',
+						name: 'event',
+						type: 'options',
+						required: true,
+						default: 'fileUpdated',
+						displayOptions: { show: { triggerOn: ['specificFile'] } },
+					}),
+					createTestNodeProperties({
+						displayName: 'Watch For',
+						name: 'event',
+						type: 'options',
+						required: true,
+						default: '',
+						displayOptions: { show: { triggerOn: ['specificFolder'] } },
+					}),
+					createTestNodeProperties({
+						displayName: 'Watch For',
+						name: 'event',
+						type: 'options',
+						required: true,
+						default: 'fileCreated',
+						displayOptions: { show: { triggerOn: ['anyFileFolder'] } },
+					}),
+				],
+			} as unknown as INodeTypeDescription;
+
+			mockNodeTypeProvider.getNodeType.mockReturnValue(nodeType);
+
+			const node = createTestNode({
+				type: 'n8n-nodes-base.googleDriveTrigger',
+				parameters: {
+					triggerOn: 'specificFolder',
+					event: '',
+				},
+			});
+
+			const issues = getNodeParametersIssues(mockNodeTypeProvider, node);
+
+			expect(issues).toHaveProperty('event');
+		});
+
+		it('should not include issues for parameter variants that are not displayed', () => {
+			const nodeType = {
+				properties: [
+					createTestNodeProperties({
+						displayName: 'Trigger On',
+						name: 'triggerOn',
+						type: 'options',
+						required: true,
+						default: 'specificFolder',
+					}),
+					createTestNodeProperties({
+						displayName: 'Watch For',
+						name: 'event',
+						type: 'options',
+						required: true,
+						default: '',
+						displayOptions: { show: { triggerOn: ['specificFile'] } },
+					}),
+				],
+			} as unknown as INodeTypeDescription;
+
+			mockNodeTypeProvider.getNodeType.mockReturnValue(nodeType);
+
+			const node = createTestNode({
+				type: 'n8n-nodes-base.testTrigger',
+				parameters: {
+					triggerOn: 'specificFolder',
+					event: '',
+				},
+			});
+
+			const issues = getNodeParametersIssues(mockNodeTypeProvider, node);
+
+			expect(issues).not.toHaveProperty('event');
 		});
 	});
 
