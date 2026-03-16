@@ -33,6 +33,7 @@ import type {
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { BrokerClientService } from '@/credentials/broker-client.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
@@ -539,6 +540,16 @@ export async function getBase({
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
 			eventService.emit(eventName, payload),
 		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
+		...(Container.get(GlobalConfig).brokerAuth.url &&
+			Container.get(GlobalConfig).brokerAuth.enabled && {
+				refreshBrokerToken: async (provider: string, refreshToken: string, scopes?: string[]) => {
+					return await Container.get(BrokerClientService).refreshToken({
+						provider,
+						refreshToken,
+						scopes,
+					});
+				},
+			}),
 	};
 
 	const ssrfConfig = Container.get(SsrfProtectionConfig);

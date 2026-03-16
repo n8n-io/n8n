@@ -50,6 +50,12 @@ export async function googleApiRequest(
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.httpRequest(options);
+		} else if (authenticationMethod === 'oAuth2Managed') {
+			return await this.helpers.httpRequestWithAuthentication.call(
+				this,
+				'googleDriveBrokerOAuth2Api',
+				options,
+			);
 		} else {
 			return await this.helpers.httpRequestWithAuthentication.call(
 				this,

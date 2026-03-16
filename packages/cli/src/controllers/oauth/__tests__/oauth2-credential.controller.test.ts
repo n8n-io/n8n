@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { type CredentialsEntity, type User } from '@n8n/db';
+import { GlobalConfig, type BrokerAuthConfig } from '@n8n/config';
+import { type CredentialsEntity, type Settings, SettingsRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
@@ -8,6 +9,13 @@ import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credentia
 import type { OAuthRequest } from '@/requests';
 import { OauthService } from '@/oauth/oauth.service';
 import { ExternalHooks } from '@/external-hooks';
+import { CredentialTypes } from '@/credential-types';
+import {
+	BrokerClientService,
+	BrokerTokenExpiredError,
+	BrokerTokenNotReadyError,
+} from '@/credentials/broker-client.service';
+import { UrlService } from '@/services/url.service';
 
 jest.mock('axios');
 jest.mock('@n8n/client-oauth2');
@@ -16,8 +24,15 @@ jest.mock('pkce-challenge');
 describe('OAuth2CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
 	const externalHooks = mockInstance(ExternalHooks);
+	const credentialTypes = mockInstance(CredentialTypes);
+	const settingsRepository = mockInstance(SettingsRepository);
+	const brokerClientService = mockInstance(BrokerClientService);
+	const globalConfig = mockInstance(GlobalConfig);
+	const urlService = mockInstance(UrlService);
 
-	mockInstance(Logger);
+	// Configure scoped logger before controller instantiation so `brokerLogger` field is non-undefined
+	const loggerMock = mockInstance(Logger);
+	loggerMock.scoped.mockReturnValue(mock<Logger>());
 
 	const controller = Container.get(OAuth2CredentialController);
 
@@ -31,6 +46,7 @@ describe('OAuth2CredentialController', () => {
 
 	describe('getAuthUri', () => {
 		it('should return a valid auth URI', async () => {
+			credentialTypes.getByName.mockReturnValue({} as never);
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () =>
@@ -141,12 +157,12 @@ describe('OAuth2CredentialController', () => {
 			externalHooks.run.mockResolvedValue(undefined);
 
 			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: {
-					code: 'auth_code',
-					state: validState,
-				},
 				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
 			});
+			req.query = {
+				code: 'auth_code',
+				state: validState,
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
 
 			await controller.handleCallback(req, res);
 
@@ -451,12 +467,12 @@ describe('OAuth2CredentialController', () => {
 			externalHooks.run.mockResolvedValue(undefined);
 
 			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: {
-					code: 'auth_code',
-					state: undefinedOriginState,
-				},
 				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
 			});
+			req.query = {
+				code: 'auth_code',
+				state: undefinedOriginState,
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
 
 			await controller.handleCallback(req, res);
 
@@ -654,6 +670,312 @@ describe('OAuth2CredentialController', () => {
 				}),
 				['csrfSecret'],
 			);
+		});
+
+		describe('broker flow', () => {
+			const flowId = 'test-flow-uuid';
+			const retrievalCode = 'retrieval-code-abc';
+			const credentialId = 'cred-123';
+			const brokerRes = mock<Response>();
+
+			const brokerCredential = mock<CredentialsEntity>({
+				id: credentialId,
+				type: 'gmailBrokerOAuth2Api',
+			});
+
+			beforeEach(() => {
+				globalConfig.brokerAuth = {
+					url: 'https://broker.example.com',
+					enabled: true,
+				} as unknown as BrokerAuthConfig;
+				urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+				settingsRepository.findByKey.mockResolvedValue(mock<Settings>({ value: credentialId }));
+				settingsRepository.delete.mockResolvedValue(undefined as never);
+				oauthService.getCredentialForBrokerCallback.mockResolvedValue(brokerCredential);
+				oauthService.getRawDecryptedData.mockReturnValue({
+					pendingBrokerFlowId: flowId,
+					pendingBrokerFlowExpiresAt: timestamp + 10 * 60 * 1000,
+				});
+				credentialTypes.getByName.mockReturnValue({
+					managedAuth: { provider: 'gmailBrokerOAuth2Api' },
+					properties: [
+						{
+							name: 'scope',
+							default: 'https://mail.google.com/ https://www.googleapis.com/auth/gmail.modify',
+						},
+						{ name: 'authQueryParameters', default: 'access_type=offline&prompt=consent' },
+					],
+				} as never);
+				brokerClientService.retrieveTokens.mockResolvedValue({
+					access_token: 'at_abc',
+					refresh_token: 'rt_xyz',
+				});
+				brokerClientService.startFlow.mockResolvedValue('https://broker.example.com/auth?flow=1');
+			});
+
+			afterEach(() => {
+				globalConfig.brokerAuth = { url: '', enabled: true } as unknown as BrokerAuthConfig;
+			});
+
+			describe('getAuthUri', () => {
+				it('stores flow mapping and returns authUrl from broker', async () => {
+					const req = mock<OAuthRequest.OAuth2Credential.Auth>({
+						user: mock<User>({ id: '123' }),
+						query: { id: credentialId },
+					});
+					oauthService.getCredential.mockResolvedValue(brokerCredential);
+
+					const result = await controller.getAuthUri(req);
+
+					expect(settingsRepository.upsert).toHaveBeenCalledWith(
+						expect.objectContaining({ value: credentialId }),
+						['key'],
+					);
+					expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
+						brokerCredential,
+						expect.objectContaining({ pendingBrokerFlowId: expect.any(String) }),
+					);
+					expect(brokerClientService.startFlow).toHaveBeenCalledWith(
+						expect.objectContaining({
+							provider: 'gmailBrokerOAuth2Api',
+							scopes: ['https://mail.google.com/', 'https://www.googleapis.com/auth/gmail.modify'],
+							authQueryParameters: { access_type: 'offline', prompt: 'consent' },
+						}),
+					);
+					expect(result).toBe('https://broker.example.com/auth?flow=1');
+				});
+
+				it('throws BadRequestError when N8N_OAUTH_BROKER_URL is not set', async () => {
+					globalConfig.brokerAuth = { url: '', enabled: true } as unknown as BrokerAuthConfig;
+					oauthService.getCredential.mockResolvedValue(brokerCredential);
+
+					const req = mock<OAuthRequest.OAuth2Credential.Auth>({
+						user: mock<User>({ id: '123' }),
+						query: { id: credentialId },
+					});
+
+					await expect(controller.getAuthUri(req)).rejects.toThrow(
+						'N8N_OAUTH_BROKER_URL is not configured or broker auth is disabled',
+					);
+				});
+
+				it('throws BadRequestError when broker auth is disabled', async () => {
+					globalConfig.brokerAuth = {
+						url: 'https://broker.example.com',
+						enabled: false,
+					} as unknown as BrokerAuthConfig;
+					oauthService.getCredential.mockResolvedValue(brokerCredential);
+
+					const req = mock<OAuthRequest.OAuth2Credential.Auth>({
+						user: mock<User>({ id: '123' }),
+						query: { id: credentialId },
+					});
+
+					await expect(controller.getAuthUri(req)).rejects.toThrow(
+						'N8N_OAUTH_BROKER_URL is not configured or broker auth is disabled',
+					);
+				});
+			});
+
+			describe('handleCallback', () => {
+				it('retrieves tokens and renders success on first attempt', async () => {
+					const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+						query: {
+							flowId,
+							retrievalCode,
+						} as unknown as OAuthRequest.OAuth2Credential.Callback['query'],
+					});
+
+					await controller.handleCallback(req, brokerRes);
+
+					expect(brokerClientService.retrieveTokens).toHaveBeenCalledWith(retrievalCode);
+					expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
+						brokerCredential,
+						expect.objectContaining({
+							oauthTokenData: expect.objectContaining({ access_token: 'at_abc' }),
+							_brokerManaged: { provider: 'gmailBrokerOAuth2Api' },
+						}),
+						['pendingBrokerFlowId', 'pendingBrokerFlowExpiresAt'],
+					);
+					expect(brokerRes.render).toHaveBeenCalledWith('oauth-callback');
+				});
+
+				it('retries on BrokerTokenNotReadyError and succeeds on third attempt', async () => {
+					brokerClientService.retrieveTokens
+						.mockRejectedValueOnce(new BrokerTokenNotReadyError('not ready'))
+						.mockRejectedValueOnce(new BrokerTokenNotReadyError('not ready'))
+						.mockResolvedValueOnce({ access_token: 'at_late', refresh_token: 'rt_late' });
+
+					const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+						query: {
+							flowId,
+							retrievalCode,
+						} as unknown as OAuthRequest.OAuth2Credential.Callback['query'],
+					});
+
+					await controller.handleCallback(req, brokerRes);
+
+					expect(brokerClientService.retrieveTokens).toHaveBeenCalledTimes(3);
+					expect(brokerRes.render).toHaveBeenCalledWith('oauth-callback');
+				});
+
+				it('renders error on user denial (error query param)', async () => {
+					const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+						query: {
+							flowId,
+							error: 'access_denied',
+						} as unknown as OAuthRequest.OAuth2Credential.Callback['query'],
+					});
+
+					await controller.handleCallback(req, brokerRes);
+
+					expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+						brokerRes,
+						expect.stringContaining('access_denied'),
+					);
+					expect(brokerClientService.retrieveTokens).not.toHaveBeenCalled();
+				});
+
+				it('renders error when flow mapping not found in DB', async () => {
+					settingsRepository.findByKey.mockResolvedValue(null);
+
+					const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+						query: {
+							flowId,
+							retrievalCode,
+						} as unknown as OAuthRequest.OAuth2Credential.Callback['query'],
+					});
+
+					await controller.handleCallback(req, brokerRes);
+
+					expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+						brokerRes,
+						'Broker flow session not found or expired',
+					);
+				});
+
+				it('renders error when credential not found', async () => {
+					oauthService.getCredentialForBrokerCallback.mockResolvedValue(null);
+
+					const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+						query: {
+							flowId,
+							retrievalCode,
+						} as unknown as OAuthRequest.OAuth2Credential.Callback['query'],
+					});
+
+					await controller.handleCallback(req, brokerRes);
+
+					expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+						brokerRes,
+						'Credential not found for broker callback',
+					);
+				});
+
+				it('renders error when session is expired', async () => {
+					oauthService.getRawDecryptedData.mockReturnValue({
+						pendingBrokerFlowId: flowId,
+						pendingBrokerFlowExpiresAt: timestamp - 1,
+					});
+
+					const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+						query: {
+							flowId,
+							retrievalCode,
+						} as unknown as OAuthRequest.OAuth2Credential.Callback['query'],
+					});
+
+					await controller.handleCallback(req, brokerRes);
+
+					expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+						brokerRes,
+						expect.stringContaining('expired or is invalid'),
+					);
+				});
+
+				it('renders error when flowId in decrypted data does not match', async () => {
+					oauthService.getRawDecryptedData.mockReturnValue({
+						pendingBrokerFlowId: 'different-flow-id',
+						pendingBrokerFlowExpiresAt: timestamp + 60_000,
+					});
+
+					const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+						query: {
+							flowId,
+							retrievalCode,
+						} as unknown as OAuthRequest.OAuth2Credential.Callback['query'],
+					});
+
+					await controller.handleCallback(req, brokerRes);
+
+					expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+						brokerRes,
+						expect.stringContaining('expired or is invalid'),
+					);
+				});
+
+				it('renders error after exhausting all 10 retry attempts', async () => {
+					brokerClientService.retrieveTokens.mockRejectedValue(
+						new BrokerTokenNotReadyError('not ready'),
+					);
+
+					const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+						query: {
+							flowId,
+							retrievalCode,
+						} as unknown as OAuthRequest.OAuth2Credential.Callback['query'],
+					});
+
+					await controller.handleCallback(req, brokerRes);
+
+					expect(brokerClientService.retrieveTokens).toHaveBeenCalledTimes(10);
+					expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+						brokerRes,
+						expect.stringContaining('Timed out'),
+					);
+				});
+
+				it('renders error on BrokerTokenExpiredError', async () => {
+					brokerClientService.retrieveTokens.mockRejectedValue(
+						new BrokerTokenExpiredError('expired'),
+					);
+
+					const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+						query: {
+							flowId,
+							retrievalCode,
+						} as unknown as OAuthRequest.OAuth2Credential.Callback['query'],
+					});
+
+					await controller.handleCallback(req, brokerRes);
+
+					expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+						brokerRes,
+						expect.stringContaining('OAuth session expired'),
+					);
+				});
+
+				it('propagates unexpected errors to the outer catch (renders error page)', async () => {
+					brokerClientService.retrieveTokens.mockRejectedValue(
+						new Error('Unexpected network error'),
+					);
+
+					const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+						query: {
+							flowId,
+							retrievalCode,
+						} as unknown as OAuthRequest.OAuth2Credential.Callback['query'],
+					});
+
+					await controller.handleCallback(req, brokerRes);
+
+					expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+						brokerRes,
+						'Unexpected network error',
+						undefined,
+					);
+				});
+			});
 		});
 
 		it('should handle errors and render error page', async () => {

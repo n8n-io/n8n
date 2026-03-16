@@ -48,6 +48,15 @@ export class GithubTrigger implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'githubBrokerOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2Managed'],
+					},
+				},
+			},
 		],
 		webhooks: [
 			{
@@ -77,6 +86,11 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'OAuth2',
 						value: 'oAuth2',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (n8n-managed)',
+						value: 'oAuth2Managed',
 					},
 				],
 				default: 'accessToken',

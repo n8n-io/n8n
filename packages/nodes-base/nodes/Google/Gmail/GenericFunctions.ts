@@ -68,6 +68,8 @@ export async function googleApiRequest(
 			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'gmail');
 
 			(options.headers as IDataObject).Authorization = `Bearer ${access_token}`;
+		} else if (authentication === 'oAuth2Managed') {
+			credentialType = 'gmailBrokerOAuth2Api';
 		}
 
 		const response = await this.helpers.requestWithAuthentication.call(

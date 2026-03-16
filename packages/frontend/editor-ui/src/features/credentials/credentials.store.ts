@@ -63,9 +63,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	});
 
 	const allCredentialTypes = computed(() => {
-		return Object.values(state.value.credentialTypes).sort((a, b) =>
-			a.displayName.localeCompare(b.displayName),
-		);
+		const settingsStore = useSettingsStore();
+		return Object.values(state.value.credentialTypes)
+			.filter((type) => !type.managedAuth || settingsStore.isOAuthBrokerEnabled)
+			.sort((a, b) => a.displayName.localeCompare(b.displayName));
 	});
 
 	const allCredentials = computed(() => {

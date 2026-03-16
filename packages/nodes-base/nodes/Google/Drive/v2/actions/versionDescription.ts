@@ -39,6 +39,15 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			},
 		},
+		{
+			name: 'googleDriveBrokerOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2Managed'],
+				},
+			},
+		},
 	],
 	properties: [
 		{
@@ -54,6 +63,11 @@ export const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Service Account',
 					value: 'serviceAccount',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'OAuth2 (n8n-managed)',
+					value: 'oAuth2Managed',
 				},
 			],
 			default: 'oAuth2',

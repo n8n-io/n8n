@@ -50,6 +50,9 @@ export async function githubApiRequest(
 
 			const baseUrl = credentials.server || 'https://api.github.com';
 			options.uri = `${baseUrl}${endpoint}`;
+		} else if (authenticationMethod === 'oAuth2Managed') {
+			credentialType = 'githubBrokerOAuth2Api';
+			options.uri = `https://api.github.com${endpoint}`;
 		} else {
 			const credentials = await this.getCredentials('githubOAuth2Api');
 			credentialType = 'githubOAuth2Api';

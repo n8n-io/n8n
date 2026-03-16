@@ -70,6 +70,15 @@ const versionDescription: INodeTypeDescription = {
 				},
 			},
 		},
+		{
+			name: 'gmailBrokerOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2Managed'],
+				},
+			},
+		},
 	],
 	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
@@ -87,6 +96,11 @@ const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Service Account',
 					value: 'serviceAccount',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'OAuth2 (n8n-managed)',
+					value: 'oAuth2Managed',
 				},
 			],
 			default: 'oAuth2',

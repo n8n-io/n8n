@@ -55,6 +55,15 @@ export class GoogleDocs implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'googleDocsBrokerOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2Managed'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -69,6 +78,11 @@ export class GoogleDocs implements INodeType {
 					{
 						name: 'OAuth2',
 						value: 'oAuth2',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (n8n-managed)',
+						value: 'oAuth2Managed',
 					},
 				],
 				default: 'serviceAccount',
@@ -91,6 +105,11 @@ export class GoogleDocs implements INodeType {
 					{
 						name: 'Service Account',
 						value: 'serviceAccount',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (n8n-managed)',
+						value: 'oAuth2Managed',
 					},
 				],
 				default: 'oAuth2',

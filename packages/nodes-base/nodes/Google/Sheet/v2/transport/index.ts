@@ -56,6 +56,12 @@ export async function apiRequest(
 			return await this.helpers.request(options);
 		} else if (authenticationMethod === 'triggerOAuth2') {
 			return await this.helpers.requestOAuth2.call(this, 'googleSheetsTriggerOAuth2Api', options);
+		} else if (authenticationMethod === 'oAuth2Managed') {
+			return await this.helpers.requestWithAuthentication.call(
+				this,
+				'googleSheetsBrokerOAuth2Api',
+				options,
+			);
 		} else {
 			return await this.helpers.requestOAuth2.call(this, 'googleSheetsOAuth2Api', options);
 		}

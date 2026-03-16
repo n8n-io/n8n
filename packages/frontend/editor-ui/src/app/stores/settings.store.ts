@@ -110,6 +110,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
+	const isOAuthBrokerEnabled = computed(() => settings.value.oauthBrokerEnabled ?? false);
+
 	const isAiCreditsEnabled = computed(
 		() => settings.value.aiCredits?.enabled && settings.value.aiCredits?.setup,
 	);
@@ -424,5 +426,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
+		isOAuthBrokerEnabled,
 	};
 });

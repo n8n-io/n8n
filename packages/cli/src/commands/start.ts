@@ -34,6 +34,7 @@ import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
+import { BrokerClientService } from '@/credentials/broker-client.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -239,6 +240,14 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.logger.debug('Wait tracker init complete');
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
+		if (this.globalConfig.brokerAuth.url && this.globalConfig.brokerAuth.enabled) {
+			await Container.get(BrokerClientService).ensureRegistered(
+				this.instanceSettings.instanceId,
+				Container.get(UrlService).getInstanceBaseUrl(),
+				this.license.getConsumerId(),
+			);
+			this.logger.scoped('broker-auth').debug('Broker registration init complete');
+		}
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();

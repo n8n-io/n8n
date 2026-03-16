@@ -190,6 +190,20 @@ export class OauthService {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
+	/** Get a credential by ID for broker callback processing (no user permission check). */
+	async getCredentialForBrokerCallback(credentialId: string): Promise<CredentialsEntity | null> {
+		return await this.getCredentialWithoutUser(credentialId);
+	}
+
+	/**
+	 * Decrypt credential data without expression resolution.
+	 * Used in broker callbacks where workflow execution context is not available.
+	 */
+	getRawDecryptedData(credential: ICredentialsDb): ICredentialDataDecryptedObject {
+		const credentials = new Credentials(credential, credential.type, credential.data);
+		return credentials.getData();
+	}
+
 	createCsrfState(data: CreateCsrfStateData): [string, string] {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();

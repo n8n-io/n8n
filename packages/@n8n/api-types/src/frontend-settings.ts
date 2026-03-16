@@ -234,6 +234,8 @@ export interface FrontendSettings {
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];
 	envFeatureFlags: N8nEnvFeatFlags;
+	/** Whether a broker-managed OAuth service is configured (N8N_OAUTH_BROKER_URL is set). */
+	oauthBrokerEnabled: boolean;
 }
 
 export type FrontendModuleSettings = {

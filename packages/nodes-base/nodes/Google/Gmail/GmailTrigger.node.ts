@@ -59,6 +59,15 @@ export class GmailTrigger implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'gmailBrokerOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2Managed'],
+					},
+				},
+			},
 		],
 		polling: true,
 		inputs: [],
@@ -86,6 +95,11 @@ export class GmailTrigger implements INodeType {
 					{
 						name: 'Service Account',
 						value: 'serviceAccount',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (n8n-managed)',
+						value: 'oAuth2Managed',
 					},
 				],
 				default: 'oAuth2',

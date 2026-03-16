@@ -569,6 +569,7 @@ export class LoadNodesAndCredentials {
 			}
 		}
 
+		this.validateCredentialTypes();
 		createAiTools(this.types, this.known);
 		createHitlTools(this.types, this.known);
 
@@ -702,6 +703,19 @@ export class LoadNodesAndCredentials {
 				const ignore = ['**/node_modules/**/node_modules/**'];
 
 				await subscribe(watchPath, onFileEvent, { ignore });
+			}
+		}
+	}
+
+	private validateCredentialTypes(): void {
+		for (const credential of this.types.credentials) {
+			if (credential.managedAuth) {
+				const hasClientSecret = credential.properties.some((p) => p.name === 'clientSecret');
+				if (hasClientSecret) {
+					throw new UnexpectedError(
+						`Credential type "${credential.name}" defines both managedAuth and a clientSecret property. These are mutually exclusive.`,
+					);
+				}
 			}
 		}
 	}

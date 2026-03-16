@@ -382,6 +382,8 @@ export class FrontendService {
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			envFeatureFlags: this.collectEnvFeatureFlags(),
+			oauthBrokerEnabled:
+				!!this.globalConfig.brokerAuth.url && this.globalConfig.brokerAuth.enabled,
 		};
 	}
 

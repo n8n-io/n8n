@@ -19,6 +19,11 @@ export const authentication: INodeProperties = {
 			name: 'OAuth2 (recommended)',
 			value: 'oAuth2',
 		},
+		{
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+			name: 'OAuth2 (n8n-managed)',
+			value: 'oAuth2Managed',
+		},
 	],
 	default: 'oAuth2',
 };
@@ -89,6 +94,15 @@ export const versionDescription: INodeTypeDescription = {
 			displayOptions: {
 				show: {
 					authentication: ['oAuth2'],
+				},
+			},
+		},
+		{
+			name: 'googleSheetsBrokerOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2Managed'],
 				},
 			},
 		},

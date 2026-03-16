@@ -369,6 +369,10 @@ export interface ICredentialType {
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];
+	managedAuth?: {
+		type: 'broker';
+		provider: string;
+	};
 }
 
 export interface ICredentialTypes {
@@ -2996,6 +3000,15 @@ export interface IWorkflowExecuteAdditionalData {
 	 * dynamically. Reset to false by the execution engine before each node runs.
 	 */
 	currentNodeUsedDynamicCredentials?: boolean;
+	/**
+	 * Optional callback for refreshing tokens via a managed OAuth broker.
+	 * Injected by the CLI layer; absent when the broker is not configured.
+	 */
+	refreshBrokerToken?: (
+		provider: string,
+		refreshToken: string,
+		scopes?: string[],
+	) => Promise<IDataObject>;
 }
 
 export type WorkflowActivateMode =

@@ -31,6 +31,7 @@ import {
 	NodeApiError,
 	NodeOperationError,
 	NodeSslError,
+	OperationalError,
 	UserError,
 	isObjectEmpty,
 	ExecutionBaseError,
@@ -1015,6 +1016,61 @@ interface RefreshOAuth2TokenContext {
 
 async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {
 	const { credentials, token, credentialsType, node, additionalData, oAuth2Options, logger } = ctx;
+
+	// Broker-managed OAuth refresh: delegate to the broker instead of the standard OAuth flow
+	const brokerMeta = (credentials as unknown as IDataObject)._brokerManaged as
+		| { provider: string }
+		| undefined;
+	if (brokerMeta?.provider && additionalData.refreshBrokerToken) {
+		logger.debug(
+			`[BROKER] [request-helper-functions] - Refreshing broker-managed token for "${credentialsType}" used by node "${node.name}"`,
+		);
+
+		const existingTokenData = credentials.oauthTokenData as ClientOAuth2TokenData | undefined;
+		const existingRefreshToken = existingTokenData?.refreshToken;
+		if (!existingRefreshToken) {
+			throw new UserError(
+				'No refresh token available for broker-managed credential — please reconnect the credential',
+			);
+		}
+
+		const scopeStr = typeof credentials.scope === 'string' ? credentials.scope : undefined;
+		const scopes = scopeStr ? scopeStr.split(/[\s,]+/).filter(Boolean) : undefined;
+		const newTokenData = await additionalData.refreshBrokerToken(
+			brokerMeta.provider,
+			existingRefreshToken,
+			scopes,
+		);
+
+		// Preserve the existing refresh_token if the broker does not return a new one
+		const mergedTokenData: IDataObject = {
+			...(existingTokenData as IDataObject),
+			...newTokenData,
+			...(!newTokenData.refresh_token && { refresh_token: existingRefreshToken }),
+		};
+
+		credentials.oauthTokenData = mergedTokenData as ClientOAuth2TokenData;
+
+		if (!node.credentials?.[credentialsType]) {
+			throw new OperationalError('Node does not have credential type', {
+				extra: { nodeName: node.name, credentialType: credentialsType },
+			});
+		}
+
+		await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
+			node.credentials[credentialsType],
+			credentialsType,
+			credentials as unknown as ICredentialDataDecryptedObject,
+			additionalData,
+		);
+
+		logger.debug(
+			`Broker OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
+		);
+
+		return token.client.createToken(mergedTokenData as ClientOAuth2TokenData, '');
+	}
+
 	const tokenRefreshOptions: IDataObject = {};
 	if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 		const body: IDataObject = {

@@ -33,6 +33,7 @@ export const LOG_SCOPES = [
 	'dynamic-credentials',
 	'workflow-history-compaction',
 	'ssrf-protection',
+	'broker-auth',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
@@ -127,6 +128,7 @@ export class LoggingConfig {
 	 * - `workflow-activation`
 	 * - `insights`
 	 * - `chat-hub`
+	 * - `broker-auth`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`

@@ -4,6 +4,7 @@ import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
+import { BrokerAuthConfig } from './configs/broker-auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
 import { CredentialsConfig } from './configs/credentials.config';
@@ -43,6 +44,7 @@ import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
 export { AiConfig } from './configs/ai.config';
+export { BrokerAuthConfig } from './configs/broker-auth.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export { sampleRateSchema } from './configs/sentry.config';
@@ -75,6 +77,9 @@ export type Protocol = z.infer<typeof protocolSchema>;
 export class GlobalConfig {
 	@Nested
 	auth: AuthConfig;
+
+	@Nested
+	brokerAuth: BrokerAuthConfig;
 
 	@Nested
 	database: DatabaseConfig;

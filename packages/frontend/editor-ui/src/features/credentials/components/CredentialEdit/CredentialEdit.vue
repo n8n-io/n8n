@@ -249,6 +249,8 @@ const isOAuthType = computed(() => {
 });
 
 const managedOAuthAvailable = computed(() => {
+	// Broker-managed credentials don't need a redirect URL either
+	if (credentialType.value?.managedAuth) return true;
 	return (
 		activeNodeType.value?.credentials?.some((type) => hasManagedOAuthCredentials(type.name)) ??
 		false
@@ -262,7 +264,12 @@ const credentialProperties = computed(() => {
 		return [];
 	}
 
+	const brokerManagedFields = ['clientId', 'clientSecret'];
 	const properties = type.properties.filter((propertyData: INodeProperties) => {
+		// Hide clientId/clientSecret for broker-managed credentials – the broker holds them
+		if (type.managedAuth && brokerManagedFields.includes(propertyData.name)) {
+			return false;
+		}
 		if (!displayCredentialParameter(propertyData)) {
 			return false;
 		}
@@ -1165,9 +1172,17 @@ async function oAuthCredentialAuthorize() {
 		return;
 	}
 
-	const params =
-		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
-	const oauthPopup = window.open(url, 'OAuth Authorization', params);
+	const isBrokerManaged = !!credentialType.value?.managedAuth;
+
+	let oauthPopup: Window | null;
+	if (isBrokerManaged) {
+		// Broker-managed flow: open in a new tab (no popup restrictions)
+		oauthPopup = window.open(url, '_blank');
+	} else {
+		const params =
+			'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
+		oauthPopup = window.open(url, 'OAuth Authorization', params);
+	}
 
 	credentialData.value = {
 		...credentialData.value,

@@ -46,6 +46,12 @@ export async function googleApiRequest(
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request(options);
+		} else if (authenticationMethod === 'oAuth2Managed') {
+			return await this.helpers.requestWithAuthentication.call(
+				this,
+				'googleDocsBrokerOAuth2Api',
+				options,
+			);
 		} else {
 			return await this.helpers.requestOAuth2.call(this, 'googleDocsOAuth2Api', options);
 		}
