@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useBuilderStore } from '../../builder.store';
+import { useBuilderStore, type WorkflowBuilderJourneyEventType } from '../../builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -265,6 +265,17 @@ function isQuestionsAnswered(questionsMessage: { id?: string }): boolean {
 	}
 	return false;
 }
+
+/**
+ * The last unanswered questions message (if any) — to render in the input slot.
+ */
+const activeQuestionsMessage = computed(() => {
+	const messages = builderStore.chatMessages;
+	const lastQuestions = messages.findLast((m) => isPlanModeQuestionsMessage(m));
+	if (!lastQuestions || !isPlanModeQuestionsMessage(lastQuestions)) return undefined;
+	if (isQuestionsAnswered(lastQuestions)) return undefined;
+	return lastQuestions;
+});
 
 /**
  * Check if this plan message is the last one and nothing has been sent after it.
@@ -641,7 +652,9 @@ defineExpose({
 					@dismiss="creditBannerDismissed = true"
 				/>
 				<Transition v-else name="slide">
-					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
+					<NotificationPermissionBanner
+						v-if="shouldShowNotificationBanner && !activeQuestionsMessage"
+					/>
 				</Transition>
 			</template>
 			<template #messagesFooter>
@@ -651,14 +664,13 @@ defineExpose({
 				<BuildModeEmptyState />
 			</template>
 			<template #custom-message="{ message }">
-				<!-- Always render questions message; when answered, collapse to intro text only -->
+				<!-- Questions intro text only — interactive Q&A is rendered in the input slot -->
 				<PlanQuestionsMessage
 					v-if="isPlanModeQuestionsMessage(message)"
 					:questions="message.data.questions"
 					:intro-message="message.data.introMessage"
-					:disabled="builderStore.streaming"
-					:answered="isQuestionsAnswered(message)"
-					@submit="builderStore.resumeWithQuestionsAnswers"
+					:disabled="true"
+					:answered="true"
 				/>
 				<PlanDisplayMessage
 					v-else-if="isPlanModePlanMessage(message)"
@@ -720,7 +732,22 @@ defineExpose({
 				</ChatInputWithMention>
 			</template>
 			<template #inputPlaceholder>
+				<PlanQuestionsMessage
+					v-if="activeQuestionsMessage"
+					:questions="activeQuestionsMessage.data.questions"
+					:disabled="builderStore.streaming"
+					:answered="false"
+					@submit="builderStore.resumeWithQuestionsAnswers"
+					@telemetry="
+						(event, properties) =>
+							builderStore.trackWorkflowBuilderJourney(
+								event as WorkflowBuilderJourneyEventType,
+								properties,
+							)
+					"
+				/>
 				<ChatInputWithMention
+					v-else
 					ref="chatInputRef"
 					v-model="inputText"
 					:placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"

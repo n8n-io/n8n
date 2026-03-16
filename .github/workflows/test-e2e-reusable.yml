@@ -42,6 +42,11 @@ on:
         required: false
         default: false
         type: boolean
+      timeout-minutes:
+        description: 'Job timeout in minutes'
+        required: false
+        default: 30
+        type: number
       upload-failure-artifacts:
         description: 'Upload test failure artifacts (screenshots, traces, videos). Enable for community PRs without Currents access.'
         required: false
@@ -113,7 +118,7 @@ jobs:
     needs: matrix
     if: ${{ !cancelled() }}
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
-    timeout-minutes: 30
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       packages: read
       contents: read
