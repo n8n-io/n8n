@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionRepository, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import {
 	BinaryDataService,
@@ -24,6 +24,7 @@ import type {
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
@@ -55,6 +56,8 @@ describe('Execution Lifecycle Hooks', () => {
 	const binaryDataService = mockInstance(BinaryDataService);
 	const ownershipService = mockInstance(OwnershipService);
 	const workflowExecutionService = mockInstance(WorkflowExecutionService);
+	mockInstance(UserRepository);
+	mockInstance(ExecutionRedactionServiceProxy);
 
 	const nodeName = 'Test Node';
 	const nodeType = 'n8n-nodes-base.testNode';

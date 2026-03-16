@@ -6,6 +6,10 @@ export type ExecutionRedactionOptions = {
 	user: User;
 	ipAddress?: string;
 	userAgent?: string;
+	/** When true, the original execution is never mutated. If redaction is needed,
+	 *  a structuredClone is created and returned. If no redaction is needed, the
+	 *  original is returned as-is (caller can check referential equality). */
+	copyOnWrite?: boolean;
 } & Pick<ExecutionRedactionQueryDto, 'redactExecutionData'>;
 
 export interface ExecutionRedaction {
