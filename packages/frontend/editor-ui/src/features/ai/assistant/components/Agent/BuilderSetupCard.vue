@@ -170,12 +170,14 @@ const onExecuteClick = async () => {
 	await execute();
 };
 
-// Notify parent when step execution finishes successfully (for auto-advance)
+// Notify parent when step execution finishes (for auto-advance / wizard dismissal).
+// Emit when the node ran successfully OR was not reached (e.g. on an inactive branch).
+// Only skip when the node actually errored.
 watch(isExecuting, (executing, wasExecuting) => {
 	if (wasExecuting && !executing) {
 		const runData = workflowsStore.getWorkflowResultDataByNodeName(props.state.node.name);
 		const lastRun = runData?.[runData.length - 1];
-		if (lastRun && !lastRun.error) {
+		if (!lastRun?.error) {
 			emit('stepExecuted');
 		}
 	}
