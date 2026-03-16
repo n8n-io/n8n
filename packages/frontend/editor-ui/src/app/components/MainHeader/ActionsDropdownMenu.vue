@@ -21,8 +21,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useUIStore } from '@/app/stores/ui.store';
-import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
-import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { IWorkflowToShare, IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/app/plugins/telemetry';
 import router from '@/app/router';
@@ -65,7 +63,7 @@ const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const workflowHelpers = useWorkflowHelpers();
-const changeOwnerEventBus = createEventBus();
+const moveWorkflowEventBus = createEventBus();
 const workflowTelemetry = useTelemetry();
 
 const onWorkflowPage = computed(() => {
@@ -359,20 +357,23 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			if (!workflowId) {
 				return;
 			}
-			changeOwnerEventBus.once(
-				'resource-moved',
-				async () => await router.push({ name: VIEWS.WORKFLOWS }),
-			);
+			const workflow = workflowsListStore.workflowsById[workflowId];
 
-			uiStore.openModalWithData({
-				name: PROJECT_MOVE_RESOURCE_MODAL,
-				data: {
-					resource: workflowsListStore.workflowsById[workflowId],
-					resourceType: ResourceType.Workflow,
-					resourceTypeLabel: locale.baseText('generic.workflow').toLowerCase(),
-					eventBus: changeOwnerEventBus,
+			const navigateAway = async () => await router.push({ name: VIEWS.WORKFLOWS });
+			moveWorkflowEventBus.once('workflow-transferred', navigateAway);
+			moveWorkflowEventBus.once('workflow-moved', navigateAway);
+
+			uiStore.openMoveToFolderModal(
+				'workflow',
+				{
+					id: workflow.id,
+					name: workflow.name,
+					parentFolderId: props.currentFolder?.id,
+					sharedWithProjects: workflow.sharedWithProjects,
+					homeProjectId: workflow.homeProject?.id,
 				},
-			});
+				moveWorkflowEventBus,
+			);
 			break;
 		}
 		default:
