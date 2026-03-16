@@ -48,6 +48,7 @@ export {
 	type ChatHubConversationsResponse,
 	type ChatHubAgentDto,
 	type ChatHubAgentKnowledgeItem,
+	type ChatHubAgentKnowledgeItemStatus,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
 	type AgentIconOrEmoji,
@@ -76,6 +77,8 @@ export {
 	chatHubVectorStoreProviderSchema,
 	type ChatHubVectorStoreProvider,
 	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
+	chatHubSessionTypeSchema,
+	type ChatHubSessionType,
 } from './chat-hub';
 
 export type {
@@ -203,6 +206,8 @@ export type {
 	SecretsProviderType,
 	SecretsProviderState,
 	SecretsProviderConnectionTestState,
+	SecretsProviderAccessRole,
+	ConnectionProjectSummary,
 	SecretProviderConnectionListItem,
 	SecretProviderConnection,
 	SecretProviderTypeResponse,

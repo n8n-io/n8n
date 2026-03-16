@@ -11,12 +11,11 @@ import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import {
+	CREDENTIAL_BLANKING_VALUE,
 	CREDENTIAL_EMPTY_VALUE,
 	type ICredentialDataDecryptedObject,
 	type ICredentialType,
 } from 'n8n-workflow';
-
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -428,6 +427,94 @@ describe('CredentialsService', () => {
 				headers: {
 					values2: { name: 'Authorization', value: CREDENTIAL_BLANKING_VALUE },
 				},
+			});
+		});
+
+		it('should redact json field for httpCustomAuth credential type', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'httpCustomAuth',
+			});
+
+			const decryptedData = {
+				json: '{"key": "value"}',
+				otherField: 'not-redacted',
+			};
+
+			const httpCustomAuthCredType = {
+				properties: [
+					{
+						name: 'otherField',
+						type: 'string',
+					},
+				],
+			} as unknown as ICredentialType;
+
+			credentialTypes.getByName
+				.calledWith(credential.type)
+				.mockReturnValueOnce(httpCustomAuthCredType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				json: CREDENTIAL_BLANKING_VALUE,
+				otherField: 'not-redacted',
+			});
+		});
+
+		it('should redact empty json field for httpCustomAuth credential type', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'httpCustomAuth',
+			});
+
+			const decryptedData = {
+				json: '',
+				otherField: 'not-redacted',
+			};
+
+			const httpCustomAuthCredType = {
+				properties: [
+					{
+						name: 'otherField',
+						type: 'string',
+					},
+				],
+			} as unknown as ICredentialType;
+
+			credentialTypes.getByName
+				.calledWith(credential.type)
+				.mockReturnValueOnce(httpCustomAuthCredType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				json: CREDENTIAL_EMPTY_VALUE,
+				otherField: 'not-redacted',
+			});
+		});
+
+		it('should not redact json field for non-httpCustomAuth credential types', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+
+			const decryptedData = {
+				json: '{"key": "value"}',
+				clientSecret: 'sensitiveSecret',
+			};
+
+			credentialTypes.getByName.calledWith(credential.type).mockReturnValueOnce(credType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				json: '{"key": "value"}',
+				clientSecret: CREDENTIAL_BLANKING_VALUE,
 			});
 		});
 	});
