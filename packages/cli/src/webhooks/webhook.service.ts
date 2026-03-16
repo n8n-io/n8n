@@ -126,18 +126,18 @@ export class WebhookService {
 	}
 
 	async storeWebhook(webhook: WebhookEntity, em?: EntityManager) {
+		if (em) {
+			await em.upsert(WebhookEntity, webhook, ['method', 'webhookPath']);
+		} else {
+			await this.webhookRepository.upsert(webhook, ['method', 'webhookPath']);
+		}
+
 		try {
 			await this.cacheService.set(webhook.cacheKey, webhook);
 		} catch (error) {
 			this.logger.warn('Failed to cache webhook', {
 				error: ensureError(error).message,
 			});
-		}
-
-		if (em) {
-			await em.upsert(WebhookEntity, webhook, ['method', 'webhookPath']);
-		} else {
-			await this.webhookRepository.upsert(webhook, ['method', 'webhookPath']);
 		}
 	}
 
