@@ -117,8 +117,10 @@ const handleClick = (event: MouseEvent) => {
 				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
 			</slot>
 
-			<span v-if="label">{{ label }}</span>
-			<slot v-else />
+			<template v-if="!loading">
+				<span v-if="label">{{ label }}</span>
+				<slot v-else />
+			</template>
 		</div>
 	</component>
 </template>

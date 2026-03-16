@@ -82,6 +82,8 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
             
             
             
+            
+            
           </div>
         </button>
       </div>
@@ -170,6 +172,8 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
                 width="10"
               />
             </svg>
+            
+            
             
             
             
