@@ -43,11 +43,6 @@ export class BuilderSetupWizardPage {
 		return this.page.getByTestId('trigger-execute-button');
 	}
 
-	/** The main "Execute and refine" workflow button below the card */
-	getExecuteWorkflowButton(): Locator {
-		return this.getWizard().getByTestId('execute-workflow-button');
-	}
-
 	/** Green check mark shown when a card is complete */
 	getCompleteCheck(): Locator {
 		return this.getCard().getByTestId('builder-setup-card-check');

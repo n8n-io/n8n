@@ -37,19 +37,12 @@ const wizardWorkflowNodes = {
 				messageType: 'text',
 				text: 'Hello from n8n!',
 			},
-			credentials: {
-				slackApi: { id: '', name: '' },
-			},
 		},
 	],
 	connections: {
 		'Schedule Trigger': {
 			main: [[{ node: 'Slack', type: 'main', index: 0 }]],
 		},
-	},
-	pinData: {
-		'Schedule Trigger': [{ json: { timestamp: '2024-01-01T00:00:00Z' } }],
-		Slack: [{ json: { ok: true, ts: '1234567890.123456' } }],
 	},
 };
 
@@ -79,17 +72,11 @@ export function createBuilderStreamingResponse(
 }
 
 /**
- * Builder response that creates the workflow WITHOUT pinned data on the trigger.
- * Used for tests that need to execute the trigger step (pinned data triggers a confirmation dialog).
+ * Builder response with the default wizard workflow (Schedule Trigger + Slack).
+ * Used for tests that need to execute the trigger step.
  */
 export function createBuilderResponseWithoutTriggerPinData(): string {
-	const workflow = {
-		...wizardWorkflowNodes,
-		pinData: {
-			Slack: wizardWorkflowNodes.pinData.Slack,
-		},
-	};
-	return createBuilderStreamingResponse(workflow);
+	return createBuilderStreamingResponse(wizardWorkflowNodes);
 }
 
 /**
@@ -134,7 +121,7 @@ export function createBuilderFollowUpResponse(): string {
  * Builder response with a placeholder value in the Slack node's text parameter.
  * The placeholder format (<__PLACEHOLDER_VALUE__...>) is detected by the wizard
  * and creates a credential+parameter card (requires BOTH credential and text to be filled).
- * No Slack pinned data so that placeholder detection works correctly.
+ * Requires BOTH credential and text to be filled.
  */
 export function createBuilderResponseWithPlaceholder(): string {
 	const workflow = {
@@ -158,9 +145,6 @@ export function createBuilderResponseWithPlaceholder(): string {
 					}
 				: node,
 		),
-		pinData: {
-			'Schedule Trigger': wizardWorkflowNodes.pinData['Schedule Trigger'],
-		},
 	};
 	return createBuilderStreamingResponse(workflow);
 }
@@ -186,9 +170,6 @@ export function createBuilderResponseWithPlaceholderAndTelegram(): string {
 					chatId: '123456789',
 					text: 'Hello from n8n!',
 				},
-				credentials: {
-					telegramApi: { id: '', name: '' },
-				},
 			},
 			{
 				...wizardWorkflowNodes.nodes[1], // Slack (after Telegram in execution order)
@@ -211,9 +192,6 @@ export function createBuilderResponseWithPlaceholderAndTelegram(): string {
 				main: [[{ node: 'Slack', type: 'main', index: 0 }]],
 			},
 		},
-		pinData: {
-			'Schedule Trigger': wizardWorkflowNodes.pinData['Schedule Trigger'],
-		},
 	};
 	return createBuilderStreamingResponse(workflow);
 }
@@ -233,9 +211,6 @@ const telegramNode = {
 		chatId: '123456789',
 		text: 'Hello from n8n!',
 	},
-	credentials: {
-		telegramApi: { id: '', name: '' },
-	},
 };
 
 /**
@@ -254,17 +229,13 @@ export function createBuilderResponseThreeCards(): string {
 				main: [[{ node: 'Telegram', type: 'main', index: 0 }]],
 			},
 		},
-		pinData: {
-			...wizardWorkflowNodes.pinData,
-			Telegram: [{ json: { ok: true, result: { message_id: 123 } } }],
-		},
 	};
 	return createBuilderStreamingResponse(workflow);
 }
 
 /**
- * 3-card workflow WITHOUT trigger pinned data: Schedule Trigger → Slack → Telegram.
- * Used for tests that need to execute the trigger step without an unpin confirmation dialog.
+ * 3-card workflow: Schedule Trigger → Slack → Telegram (same as ThreeCards).
+ * Used for tests that need to execute the trigger step.
  */
 export function createBuilderResponseThreeCardsNoTriggerPin(): string {
 	const workflow = {
@@ -276,10 +247,6 @@ export function createBuilderResponseThreeCardsNoTriggerPin(): string {
 			Slack: {
 				main: [[{ node: 'Telegram', type: 'main', index: 0 }]],
 			},
-		},
-		pinData: {
-			Slack: wizardWorkflowNodes.pinData.Slack,
-			Telegram: [{ json: { ok: true, result: { message_id: 123 } } }],
 		},
 	};
 	return createBuilderStreamingResponse(workflow);
@@ -305,10 +272,6 @@ export function createBuilderFollowUpWithInsertedNode(): string {
 			Telegram: {
 				main: [[{ node: 'Slack', type: 'main', index: 0 }]],
 			},
-		},
-		pinData: {
-			...wizardWorkflowNodes.pinData,
-			Telegram: [{ json: { ok: true, result: { message_id: 123 } } }],
 		},
 	};
 
@@ -362,9 +325,6 @@ export function createBuilderResponseMultipleTriggers(): string {
 					messageType: 'text',
 					text: 'Good morning!',
 				},
-				credentials: {
-					slackApi: { id: '', name: '' },
-				},
 			},
 			{
 				id: 'telegram-trigger-1',
@@ -375,9 +335,6 @@ export function createBuilderResponseMultipleTriggers(): string {
 				parameters: {
 					updates: ['message'],
 				},
-				credentials: {
-					telegramApi: { id: '', name: '' },
-				},
 			},
 		],
 		connections: {
@@ -385,7 +342,6 @@ export function createBuilderResponseMultipleTriggers(): string {
 				main: [[{ node: 'Slack', type: 'main', index: 0 }]],
 			},
 		},
-		pinData: {},
 	};
 	return createBuilderStreamingResponse(workflow);
 }
@@ -422,9 +378,6 @@ export function createBuilderResponseSharedCredential(): string {
 					messageType: 'text',
 					text: 'Alert!',
 				},
-				credentials: {
-					slackApi: { id: '', name: '' },
-				},
 			},
 			{
 				id: 'slack-reports',
@@ -439,9 +392,6 @@ export function createBuilderResponseSharedCredential(): string {
 					messageType: 'text',
 					text: 'Daily report',
 				},
-				credentials: {
-					slackApi: { id: '', name: '' },
-				},
 			},
 		],
 		connections: {
@@ -452,7 +402,6 @@ export function createBuilderResponseSharedCredential(): string {
 				main: [[{ node: 'Slack Reports', type: 'main', index: 0 }]],
 			},
 		},
-		pinData: {},
 	};
 	return createBuilderStreamingResponse(workflow);
 }
@@ -508,9 +457,6 @@ export function createBuilderResponseBranchingWorkflow(): string {
 					messageType: 'text',
 					text: 'Condition met!',
 				},
-				credentials: {
-					slackApi: { id: '', name: '' },
-				},
 			},
 			{
 				id: 'telegram-1',
@@ -523,9 +469,6 @@ export function createBuilderResponseBranchingWorkflow(): string {
 					operation: 'sendMessage',
 					chatId: '123456789',
 					text: 'Condition not met',
-				},
-				credentials: {
-					telegramApi: { id: '', name: '' },
 				},
 			},
 		],
@@ -540,7 +483,6 @@ export function createBuilderResponseBranchingWorkflow(): string {
 				],
 			},
 		},
-		pinData: {},
 	};
 	return createBuilderStreamingResponse(workflow);
 }
@@ -577,9 +519,6 @@ export function createBuilderResponsePlaceholderMiddleCard(): string {
 					chatId: '123456789',
 					text: 'Hello!',
 				},
-				credentials: {
-					telegramApi: { id: '', name: '' },
-				},
 			},
 			{
 				id: 'slack-1',
@@ -595,9 +534,6 @@ export function createBuilderResponsePlaceholderMiddleCard(): string {
 					messageType: 'text',
 					text: '<__PLACEHOLDER_VALUE__notification message__>',
 				},
-				credentials: {
-					slackApi: { id: '', name: '' },
-				},
 			},
 			{
 				id: 'notion-1',
@@ -609,9 +545,6 @@ export function createBuilderResponsePlaceholderMiddleCard(): string {
 					resource: 'page',
 					operation: 'create',
 					title: 'Log entry',
-				},
-				credentials: {
-					notionApi: { id: '', name: '' },
 				},
 			},
 		],
@@ -626,7 +559,6 @@ export function createBuilderResponsePlaceholderMiddleCard(): string {
 				main: [[{ node: 'Notion', type: 'main', index: 0 }]],
 			},
 		},
-		pinData: {},
 	};
 	return createBuilderStreamingResponse(workflow);
 }

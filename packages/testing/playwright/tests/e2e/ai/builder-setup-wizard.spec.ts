@@ -54,7 +54,7 @@ test.describe.serial(
 		// Default fixture (Schedule Trigger + Slack) produces 1 visible card (Slack only).
 		// The trigger-only card is filtered by the wizard because it has no credentials or parameters.
 
-		test('should block execution until all setup cards are complete', async ({ n8n }) => {
+		test('should disable per-card execute button when credentials are missing', async ({ n8n }) => {
 			const { builderWizardComposer: bw } = n8n;
 			const wiz = n8n.aiBuilder.wizard;
 
@@ -64,7 +64,7 @@ test.describe.serial(
 
 			await expect(wiz.getWizard()).toBeVisible();
 			await expect(wiz.getCard()).toBeVisible();
-			await expect(wiz.getExecuteWorkflowButton()).toBeDisabled();
+			await expect(wiz.getExecuteStepButton()).toBeDisabled();
 		});
 
 		test('should allow stepping through cards in both directions', async ({ n8n }) => {
@@ -132,10 +132,6 @@ test.describe.serial(
 			await bw.triggerWorkflowGeneration();
 			await workflowSaved;
 			await bw.mockAutosave();
-
-			// Execute step on the Slack card
-			await wiz.getExecuteStepButton().click();
-			await wiz.getCredentialLabel().waitFor({ state: 'visible', timeout: BACKEND_TIMEOUT });
 
 			// Follow-up inserts Telegram between trigger and Slack.
 			// After filter: Telegram + Slack = 2 cards.
@@ -251,8 +247,14 @@ test.describe.serial(
 
 		test('should not complete a card with credential alone when parameters are required', async ({
 			n8n,
+			api,
 		}) => {
-			// Previous test already created a Slack credential that will be auto-applied.
+			await api.credentials.createCredential({
+				name: `Slack Test ${nanoid()}`,
+				type: 'slackApi',
+				data: { accessToken: 'xoxb-test-token' },
+			});
+
 			const { builderWizardComposer: bw } = n8n;
 			const wiz = n8n.aiBuilder.wizard;
 
@@ -292,10 +294,10 @@ test.describe.serial(
 			await workflowSaved;
 
 			// Wait for execute button to become enabled (all cards complete from auto-applied credential)
-			await expect(wiz.getExecuteWorkflowButton()).toBeEnabled({ timeout: BACKEND_TIMEOUT });
+			await expect(wiz.getExecuteStepButton()).toBeEnabled({ timeout: BACKEND_TIMEOUT });
 
-			// Click "Execute and refine" → wizard should dismiss after execution
-			await wiz.getExecuteWorkflowButton().click();
+			// Click per-card execute → wizard should dismiss after execution
+			await wiz.getExecuteStepButton().click();
 			await expect(wiz.getWizard()).not.toBeVisible({ timeout: BACKEND_TIMEOUT });
 		});
 	},

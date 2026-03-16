@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref, watchEffect } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
 import {
@@ -141,6 +141,17 @@ export const useWorkflowSetupState = (
 
 		if (options?.additionalParametersByNode?.value) {
 			mergeInto(options.additionalParametersByNode.value);
+		}
+
+		// Merge sticky issue param names so parameters persist after issues are resolved
+		for (const [nodeName, paramNames] of stickyIssueParamNames.value) {
+			const existing = merged.get(nodeName);
+			if (existing) {
+				const combined = new Set([...existing, ...paramNames]);
+				merged.set(nodeName, Array.from(combined));
+			} else {
+				merged.set(nodeName, Array.from(paramNames));
+			}
 		}
 
 		return merged;
@@ -286,9 +297,14 @@ export const useWorkflowSetupState = (
 	const stickyNodeCredentials = ref(new Set<string>());
 	const stickyCredTypesWithParams = ref(new Set<string>());
 
-	watchEffect(() => {
-		console.log('stickyParamNodeIds', stickyParamNodeIds.value);
-	});
+	/**
+	 * Tracks parameter names that have appeared in parameterIssues per node (keyed by node name).
+	 * Once a parameter name is recorded, it persists even after the user fills it in
+	 * (which resolves the issue). Merged into `templateParametersByNode` so the existing
+	 * infrastructure (nodeHasTemplateParams, hasUnfilledTemplateParams, additionalParameterNames)
+	 * all work consistently.
+	 */
+	const stickyIssueParamNames = ref(new Map<string, Set<string>>());
 
 	/**
 	 * Get nodes that require setup:
@@ -322,12 +338,22 @@ export const useWorkflowSetupState = (
 		);
 	});
 
-	// Persist node IDs once shown so cards don't disappear
+	// Persist node IDs and parameter issue names once shown so cards don't disappear
 	watch(
 		nodesRequiringSetup,
 		(entries) => {
-			for (const { node } of entries) {
+			for (const { node, parameterIssues } of entries) {
 				stickyNodeIds.value.add(node.id);
+
+				const issueNames = Object.keys(parameterIssues);
+				if (issueNames.length > 0) {
+					const existing = stickyIssueParamNames.value.get(node.name);
+					if (existing) {
+						for (const name of issueNames) existing.add(name);
+					} else {
+						stickyIssueParamNames.value.set(node.name, new Set(issueNames));
+					}
+				}
 			}
 		},
 		{ immediate: true },

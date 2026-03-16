@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watch, watchEffect } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
@@ -76,10 +76,6 @@ export function useBuilderSetupCards() {
 		unsetCredential,
 	} = useWorkflowSetupState(undefined, {
 		additionalParametersByNode: placeholderParamsByNode,
-	});
-
-	watchEffect(() => {
-		console.log('cards', baseCards.value);
 	});
 
 	// Step index is persisted in builder store
@@ -183,7 +179,7 @@ export function useBuilderSetupCards() {
 	 */
 	function onStepExecuted() {
 		if (!currentCard.value?.state.isComplete) return;
-		if (isAllComplete.value) {
+		if (isAllComplete.value && currentStepIndex.value === totalCards.value - 1) {
 			builderStore.wizardHasExecutedWorkflow = true;
 		} else {
 			goToNext();
