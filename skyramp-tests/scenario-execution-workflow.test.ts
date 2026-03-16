@@ -48,8 +48,8 @@ test('testIntegration', async () => {
     });
 
     // Generated Assertions
-    expect(executePostResponse.statusCode, 'status code').toBe(200);
-    expect(getResponseValue(executePostResponse, 'data.id'), 'id').toBeDefined();
+    expect(executePostResponse.statusCode, 'status code').toBe(201);
+    expect(getResponseValue(executePostResponse, 'id'), 'id').toBeDefined();
 
     // Execute Request
     let executionsGetResponse = await client.sendRequest({
@@ -57,12 +57,12 @@ test('testIntegration', async () => {
         path:"/scenario/executions/{executions}",
         method:"GET",
         headers:headers,
-        pathParams:{"executions": getResponseValue(executePostResponse, "data.id")}
+        pathParams:{"executions": getResponseValue(executePostResponse, "id")}
     });
 
     // Generated Assertions
     expect(executionsGetResponse.statusCode, 'status code').toBe(200);
-    expect(getResponseValue(executionsGetResponse, 'data.id'), 'id').toBe(getResponseValue(executePostResponse, 'data.id'));
+    expect(getResponseValue(executionsGetResponse, 'id'), 'id').toBe(getResponseValue(executePostResponse, 'id'));
 
     // Execute Request
     let workflowsGetResponse = await client.sendRequest({
@@ -70,7 +70,7 @@ test('testIntegration', async () => {
         path:"/scenario/executions/workflows/{workflows}",
         method:"GET",
         headers:headers,
-        pathParams:{"workflows": getResponseValue(executePostResponse, "data.workflowId")}
+        pathParams:{"workflows": getResponseValue(executePostResponse, "workflowId")}
     });
 
     // Generated Assertions
