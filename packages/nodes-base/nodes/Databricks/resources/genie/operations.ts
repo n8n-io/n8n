@@ -27,6 +27,18 @@ export const genieOperations: INodeProperties = {
 			},
 		},
 		{
+			name: 'Execute Message SQL Query',
+			value: 'executeMessageQuery',
+			description: 'Execute a SQL query from a message attachment',
+			action: 'Execute a message SQL query',
+			routing: {
+				request: {
+					method: 'POST',
+					url: '=/api/2.0/genie/spaces/{{$parameter.spaceId}}/conversations/{{$parameter.conversationId}}/messages/{{$parameter.messageId}}/attachments/{{$parameter.attachmentId}}/execute-query',
+				},
+			},
+		},
+		{
 			name: 'Get Conversation Message',
 			value: 'getMessage',
 			description: 'Get a conversation message by ID',
@@ -39,29 +51,14 @@ export const genieOperations: INodeProperties = {
 			},
 		},
 		{
-			name: 'Start Conversation',
-			value: 'startConversation',
-			description: 'Start a new conversation',
-			action: 'Start a conversation',
+			name: 'Get Genie Space',
+			value: 'getSpace',
+			description: 'Get details of a Genie space',
+			action: 'Get a Genie space',
 			routing: {
 				request: {
-					method: 'POST',
-					url: '=/api/2.0/genie/spaces/{{$parameter.spaceId}}/conversations',
-					body: {
-						initial_message: '={{$parameter.initialMessage}}',
-					},
-				},
-			},
-		},
-		{
-			name: 'Execute Message SQL Query',
-			value: 'executeMessageQuery',
-			description: 'Execute a SQL query from a message attachment',
-			action: 'Execute a message SQL query',
-			routing: {
-				request: {
-					method: 'POST',
-					url: '=/api/2.0/genie/spaces/{{$parameter.spaceId}}/conversations/{{$parameter.conversationId}}/messages/{{$parameter.messageId}}/attachments/{{$parameter.attachmentId}}/execute-query',
+					method: 'GET',
+					url: '=/api/2.0/genie/spaces/{{$parameter.spaceId}}',
 				},
 			},
 		},
@@ -78,14 +75,17 @@ export const genieOperations: INodeProperties = {
 			},
 		},
 		{
-			name: 'Get Genie Space',
-			value: 'getSpace',
-			description: 'Get details of a Genie space',
-			action: 'Get a Genie space',
+			name: 'Start Conversation',
+			value: 'startConversation',
+			description: 'Start a new conversation',
+			action: 'Start a conversation',
 			routing: {
 				request: {
-					method: 'GET',
-					url: '=/api/2.0/genie/spaces/{{$parameter.spaceId}}',
+					method: 'POST',
+					url: '=/api/2.0/genie/spaces/{{$parameter.spaceId}}/conversations',
+					body: {
+						initial_message: '={{$parameter.initialMessage}}',
+					},
 				},
 			},
 		},

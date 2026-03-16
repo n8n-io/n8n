@@ -12,21 +12,14 @@ export const filesOperations: INodeProperties = {
 	},
 	options: [
 		{
-			name: 'Upload File',
-			value: 'uploadFile',
-			description: 'Upload a file to Databricks workspace',
-			action: 'Upload a file',
+			name: 'Delete File',
+			value: 'deleteFile',
+			description: 'Delete a file from Databricks workspace',
+			action: 'Delete a file',
 			routing: {
 				request: {
-					method: 'PUT',
+					method: 'DELETE',
 					url: '=/api/2.0/fs/files/{{$parameter.path}}',
-					body: '={{$parameter.fileContents}}', // TODO: Fix this to use binary data
-					headers: {
-						'Content-Type': 'application/octet-stream',
-					},
-					qs: {
-						overwrite: '={{$parameter.overwrite}}',
-					},
 				},
 			},
 		},
@@ -38,18 +31,6 @@ export const filesOperations: INodeProperties = {
 			routing: {
 				request: {
 					method: 'GET',
-					url: '=/api/2.0/fs/files/{{$parameter.path}}',
-				},
-			},
-		},
-		{
-			name: 'Delete File',
-			value: 'deleteFile',
-			description: 'Delete a file from Databricks workspace',
-			action: 'Delete a file',
-			routing: {
-				request: {
-					method: 'DELETE',
 					url: '=/api/2.0/fs/files/{{$parameter.path}}',
 				},
 			},
@@ -78,6 +59,25 @@ export const filesOperations: INodeProperties = {
 					qs: {
 						page_size: '={{$parameter.additionalFields?.pageSize}}',
 						page_token: '={{$parameter.additionalFields?.pageToken}}',
+					},
+				},
+			},
+		},
+		{
+			name: 'Upload File',
+			value: 'uploadFile',
+			description: 'Upload a file to Databricks workspace',
+			action: 'Upload a file',
+			routing: {
+				request: {
+					method: 'PUT',
+					url: '=/api/2.0/fs/files/{{$parameter.path}}',
+					body: '={{$parameter.fileContents}}', // TODO: Fix this to use binary data
+					headers: {
+						'Content-Type': 'application/octet-stream',
+					},
+					qs: {
+						overwrite: '={{$parameter.overwrite}}',
 					},
 				},
 			},
@@ -145,6 +145,7 @@ export const filesParameters: INodeProperties[] = [
 				displayName: 'Page Token',
 				name: 'pageToken',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'Token for the next page of results',
 				displayOptions: {

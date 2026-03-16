@@ -1151,7 +1151,7 @@ describe('Databricks', () => {
 			expect(result.results[0]).toMatchObject({
 				name: 'my-llm',
 				value: 'my-llm',
-				description: 'gpt-4',
+				description: 'Gpt-4',
 			});
 		});
 

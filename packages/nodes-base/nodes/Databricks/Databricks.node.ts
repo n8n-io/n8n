@@ -1,13 +1,17 @@
+import mime from 'mime-types';
 import {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+	ApplicationError,
 	NodeConnectionTypes,
-	IHttpRequestMethods,
-	ILoadOptionsFunctions,
-	INodeListSearchResult,
+	NodeOperationError,
+	type IExecuteFunctions,
+	type IHttpRequestMethods,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeListSearchResult,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
+
 import {
 	filesOperations,
 	filesParameters,
@@ -22,7 +26,6 @@ import {
 	vectorSearchOperations,
 	vectorSearchParameters,
 } from './resources';
-import mime from 'mime-types';
 
 interface DatabricksCredentials {
 	host: string;
@@ -113,12 +116,12 @@ function detectInputFormat(openApiSchema: OpenAPISchema): {
 	// The server URL is the actual invocation endpoint
 	const invocationUrl = openApiSchema.servers?.[0]?.url;
 	if (!invocationUrl) {
-		throw new Error('No server URL found in OpenAPI schema');
+		throw new ApplicationError('No server URL found in OpenAPI schema');
 	}
 
 	const pathKeys = Object.keys(openApiSchema.paths);
 	if (!pathKeys.length) {
-		throw new Error('No paths found in OpenAPI schema');
+		throw new ApplicationError('No paths found in OpenAPI schema');
 	}
 
 	// Get the first POST path to extract the schema (not for the URL)
@@ -126,7 +129,7 @@ function detectInputFormat(openApiSchema: OpenAPISchema): {
 	const postOperation = openApiSchema.paths[invocationPath]?.post;
 
 	if (!postOperation?.requestBody?.content?.['application/json']?.schema) {
-		throw new Error('No request schema found');
+		throw new ApplicationError('No request schema found');
 	}
 
 	const schema = postOperation.requestBody.content['application/json'].schema;
@@ -250,18 +253,18 @@ function detectInputFormat(openApiSchema: OpenAPISchema): {
 		};
 
 	// Default to generic JSON
-	return { format: 'generic', schema: schema, requiredFields: [], invocationUrl };
+	return { format: 'generic', schema, requiredFields: [], invocationUrl };
 }
 
 // Helper function to generate example request body from schema
 function generateExampleFromSchema(schema: any, format: string): string {
 	// Try to generate a specific example from the actual schema properties
-	if (schema && schema.properties) {
+	if (schema?.properties) {
 		try {
 			const exampleObj: any = {};
 
 			// Generate example for each property based on its type
-			for (const [key, propValue] of Object.entries(schema.properties as any)) {
+			for (const [key, propValue] of Object.entries(schema.properties)) {
 				const prop = propValue as any;
 				const propType = prop.type;
 
@@ -351,37 +354,41 @@ function validateRequestBody(requestBody: any, detectedFormat: string): void {
 	switch (detectedFormat) {
 		case 'chat':
 			if (!requestBody.messages || !Array.isArray(requestBody.messages)) {
-				throw new Error('Invalid chat format: "messages" array is required');
+				throw new ApplicationError('Invalid chat format: "messages" array is required');
 			}
 			break;
 		case 'completions':
 			if (!requestBody.prompt) {
-				throw new Error('Invalid completions format: "prompt" is required');
+				throw new ApplicationError('Invalid completions format: "prompt" is required');
 			}
 			break;
 		case 'embeddings':
 			if (!requestBody.input) {
-				throw new Error('Invalid embeddings format: "input" is required');
+				throw new ApplicationError('Invalid embeddings format: "input" is required');
 			}
 			break;
 		case 'dataframe_split':
-			if (!requestBody.dataframe_split || !requestBody.dataframe_split.data) {
-				throw new Error('Invalid dataframe_split format: "dataframe_split.data" is required');
+			if (!requestBody.dataframe_split?.data) {
+				throw new ApplicationError(
+					'Invalid dataframe_split format: "dataframe_split.data" is required',
+				);
 			}
 			break;
 		case 'dataframe_records':
 			if (!requestBody.dataframe_records || !Array.isArray(requestBody.dataframe_records)) {
-				throw new Error('Invalid dataframe_records format: "dataframe_records" array is required');
+				throw new ApplicationError(
+					'Invalid dataframe_records format: "dataframe_records" array is required',
+				);
 			}
 			break;
 		case 'inputs':
 			if (!requestBody.inputs) {
-				throw new Error('Invalid inputs format: "inputs" is required');
+				throw new ApplicationError('Invalid inputs format: "inputs" is required');
 			}
 			break;
 		case 'instances':
 			if (!requestBody.instances || !Array.isArray(requestBody.instances)) {
-				throw new Error('Invalid instances format: "instances" array is required');
+				throw new ApplicationError('Invalid instances format: "instances" array is required');
 			}
 			break;
 	}
@@ -424,40 +431,40 @@ export class Databricks implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Genie',
-						value: 'genie',
-						description:
-							'AI-powered data assistant. <a href="https://docs.databricks.com/genie/index.html" target="_blank">Learn more</a>',
-					},
-					{
 						name: 'Databricks SQL',
 						value: 'databricksSql',
 						description:
-							'Execute SQL queries on data warehouses. <a href="https://docs.databricks.com/sql/index.html" target="_blank">Learn more</a>',
+							'Execute SQL queries on data warehouses. <a href="https://docs.databricks.com/sql/index.html" target="_blank">Learn more</a>.',
 					},
 					{
-						name: 'Unity Catalog',
-						value: 'unityCatalog',
+						name: 'File',
+						value: 'files',
 						description:
-							'Unified governance for data and AI. <a href="https://docs.databricks.com/data-governance/unity-catalog/index.html" target="_blank">Learn more</a>',
+							'Manage files in Unity Catalog volumes. <a href="https://docs.databricks.com/api/workspace/files" target="_blank">Learn more</a>.',
+					},
+					{
+						name: 'Genie',
+						value: 'genie',
+						description:
+							'AI-powered data assistant. <a href="https://docs.databricks.com/genie/index.html" target="_blank">Learn more</a>.',
 					},
 					{
 						name: 'Model Serving',
 						value: 'modelServing',
 						description:
-							'Deploy and query ML models. <a href="https://docs.databricks.com/machine-learning/model-serving/index.html" target="_blank">Learn more</a>',
+							'Deploy and query ML models. <a href="https://docs.databricks.com/machine-learning/model-serving/index.html" target="_blank">Learn more</a>.',
 					},
 					{
-						name: 'Files',
-						value: 'files',
+						name: 'Unity Catalog',
+						value: 'unityCatalog',
 						description:
-							'Manage files in Unity Catalog volumes. <a href="https://docs.databricks.com/api/workspace/files" target="_blank">Learn more</a>',
+							'Unified governance for data and AI. <a href="https://docs.databricks.com/data-governance/unity-catalog/index.html" target="_blank">Learn more</a>.',
 					},
 					{
 						name: 'Vector Search',
 						value: 'vectorSearch',
 						description:
-							'Semantic search with vector embeddings. <a href="https://docs.databricks.com/generative-ai/vector-search.html" target="_blank">Learn more</a>',
+							'Semantic search with vector embeddings. <a href="https://docs.databricks.com/generative-ai/vector-search.html" target="_blank">Learn more</a>.',
 					},
 				],
 				default: 'databricksSql',
@@ -483,7 +490,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+				const credentials = await this.getCredentials('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'warehouses');
 
@@ -536,7 +543,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+				const credentials = await this.getCredentials('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'endpoints');
 
@@ -589,7 +596,7 @@ export class Databricks implements INodeType {
 					const filteredResults = allResults.filter((result) => {
 						return (
 							result.name.toLowerCase().includes(filterLower) ||
-							(result.description && result.description.toLowerCase().includes(filterLower))
+							result.description?.toLowerCase().includes(filterLower)
 						);
 					});
 					return { results: filteredResults };
@@ -601,7 +608,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+				const credentials = await this.getCredentials('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'catalogs');
 
@@ -653,7 +660,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+				const credentials = await this.getCredentials('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 
 				// Try to get the currently selected catalog
@@ -728,7 +735,7 @@ export class Databricks implements INodeType {
 					return {
 						results: [
 							{
-								name: 'Please select a catalog first',
+								name: 'Please Select a Catalog First',
 								value: '',
 							},
 						],
@@ -750,7 +757,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+				const credentials = await this.getCredentials('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'volumes');
 
@@ -846,7 +853,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+				const credentials = await this.getCredentials('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'tables');
 
@@ -942,7 +949,7 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+				const credentials = await this.getCredentials('databricksApi');
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'functions');
 
@@ -1050,8 +1057,8 @@ export class Databricks implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				this.logger.debug(`Processing item ${i + 1}/${items.length}`);
-				const resource = this.getNodeParameter('resource', i) as string;
-				const operation = this.getNodeParameter('operation', i) as string;
+				const resource = this.getNodeParameter('resource', i);
+				const operation = this.getNodeParameter('operation', i);
 
 				this.logger.debug('Node parameters', {
 					resource,
@@ -1062,12 +1069,13 @@ export class Databricks implements INodeType {
 				if (resource === 'files' && operation === 'uploadFile') {
 					const dataFieldName = this.getNodeParameter('dataFieldName', i) as string;
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
-					const filePath = this.getNodeParameter('filePath', i) as string;
+					const filePath = this.getNodeParameter('filePath', i);
 
 					// Parse volume path
 					const parts = volumePath.split('.');
 					if (parts.length !== 3) {
-						throw new Error(
+						throw new NodeOperationError(
+							this.getNode(),
 							'Volume path must be in format: catalog.schema.volume (e.g., main.default.my_volume)',
 						);
 					}
@@ -1082,7 +1090,7 @@ export class Databricks implements INodeType {
 						filePath,
 					});
 
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host;
 					const binaryData = await this.helpers.getBinaryDataBuffer(i, dataFieldName);
 
@@ -1112,15 +1120,16 @@ export class Databricks implements INodeType {
 						},
 					});
 				} else if (resource === 'files' && operation === 'downloadFile') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
-					const filePath = this.getNodeParameter('filePath', i) as string;
+					const filePath = this.getNodeParameter('filePath', i);
 
 					// Parse volume path
 					const parts = volumePath.split('.');
 					if (parts.length !== 3) {
-						throw new Error(
+						throw new NodeOperationError(
+							this.getNode(),
 							'Volume path must be in format: catalog.schema.volume (e.g., main.default.my_volume)',
 						);
 					}
@@ -1203,15 +1212,16 @@ export class Databricks implements INodeType {
 						}
 					}
 				} else if (resource === 'files' && operation === 'deleteFile') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
-					const filePath = this.getNodeParameter('filePath', i) as string;
+					const filePath = this.getNodeParameter('filePath', i);
 
 					// Parse volume path
 					const parts = volumePath.split('.');
 					if (parts.length !== 3) {
-						throw new Error(
+						throw new NodeOperationError(
+							this.getNode(),
 							'Volume path must be in format: catalog.schema.volume (e.g., main.default.my_volume)',
 						);
 					}
@@ -1236,15 +1246,16 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'getFileInfo') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
-					const filePath = this.getNodeParameter('filePath', i) as string;
+					const filePath = this.getNodeParameter('filePath', i);
 
 					// Parse volume path
 					const parts = volumePath.split('.');
 					if (parts.length !== 3) {
-						throw new Error(
+						throw new NodeOperationError(
+							this.getNode(),
 							'Volume path must be in format: catalog.schema.volume (e.g., main.default.my_volume)',
 						);
 					}
@@ -1271,7 +1282,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'listDirectory') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const directoryPath = this.getNodeParameter('directoryPath', i) as string;
@@ -1280,7 +1291,8 @@ export class Databricks implements INodeType {
 					// Parse volume path
 					const parts = volumePath.split('.');
 					if (parts.length !== 3) {
-						throw new Error(
+						throw new NodeOperationError(
+							this.getNode(),
 							'Volume path must be in format: catalog.schema.volume (e.g., main.default.my_volume)',
 						);
 					}
@@ -1309,7 +1321,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'createDirectory') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const directoryPath = this.getNodeParameter('directoryPath', i) as string;
@@ -1317,7 +1329,8 @@ export class Databricks implements INodeType {
 					// Parse volume path
 					const parts = volumePath.split('.');
 					if (parts.length !== 3) {
-						throw new Error(
+						throw new NodeOperationError(
+							this.getNode(),
 							'Volume path must be in format: catalog.schema.volume (e.g., main.default.my_volume)',
 						);
 					}
@@ -1342,7 +1355,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'deleteDirectory') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const directoryPath = this.getNodeParameter('directoryPath', i) as string;
@@ -1350,7 +1363,8 @@ export class Databricks implements INodeType {
 					// Parse volume path
 					const parts = volumePath.split('.');
 					if (parts.length !== 3) {
-						throw new Error(
+						throw new NodeOperationError(
+							this.getNode(),
 							'Volume path must be in format: catalog.schema.volume (e.g., main.default.my_volume)',
 						);
 					}
@@ -1375,7 +1389,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'genie') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host;
 
 					let url: string;
@@ -1435,7 +1449,10 @@ export class Databricks implements INodeType {
 							break;
 
 						default:
-							throw new Error(`Unsupported Genie operation: ${operation}`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`Unsupported Genie operation: ${operation}`,
+							);
 					}
 
 					this.logger.debug('Making Genie API request', {
@@ -1462,7 +1479,7 @@ export class Databricks implements INodeType {
 
 					returnData.push({ json: response });
 				} else if (resource === 'databricksSql' && operation === 'executeQuery') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const warehouseId = this.getNodeParameter('warehouseId', i) as {
 						mode: string;
@@ -1528,11 +1545,17 @@ export class Databricks implements INodeType {
 					}
 
 					if (status === 'FAILED' || status === 'CANCELED') {
-						throw new Error(`Query ${status.toLowerCase()}: ${JSON.stringify(queryResult.status)}`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`Query ${status.toLowerCase()}: ${JSON.stringify(queryResult.status)}`,
+						);
 					}
 
 					if (retries >= maxRetries) {
-						throw new Error('Query execution timeout - exceeded maximum wait time');
+						throw new NodeOperationError(
+							this.getNode(),
+							'Query execution timeout - exceeded maximum wait time',
+						);
 					}
 
 					// Step 3: Collect all chunks
@@ -1547,7 +1570,7 @@ export class Databricks implements INodeType {
 
 					// First chunk might be in the initial response
 					if (queryResult.result?.data_array) {
-						allRows.push(...queryResult.result.data_array);
+						allRows.push.apply(allRows, queryResult.result.data_array);
 						chunkIndex = 1;
 					}
 
@@ -1564,7 +1587,7 @@ export class Databricks implements INodeType {
 						})) as { data_array?: any[][] };
 
 						if (chunkResponse.data_array) {
-							allRows.push(...chunkResponse.data_array);
+							allRows.push.apply(allRows, chunkResponse.data_array);
 						}
 
 						chunkIndex++;
@@ -1601,7 +1624,7 @@ export class Databricks implements INodeType {
 						});
 					});
 				} else if (resource === 'modelServing' && operation === 'queryEndpoint') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const endpointName = this.getNodeParameter('endpointName', i, '', {
 						extractValue: true,
@@ -1647,11 +1670,9 @@ export class Databricks implements INodeType {
 								validateRequestBody(requestBody, detectedFormat);
 							} catch (validationError) {
 								// Provide helpful error with example
-								throw new Error(
-									`${validationError.message}\n\n` +
-										`Detected format: ${detectedFormat}\n\n` +
-										`Example request body:\n${exampleRequestBody}\n\n` +
-										`Your request body:\n${JSON.stringify(requestBody, null, 2)}`,
+								throw new NodeOperationError(
+									this.getNode(),
+									`${(validationError as Error).message}\n\nDetected format: ${detectedFormat}\n\nExample request body:\n${exampleRequestBody}\n\nYour request body:\n${JSON.stringify(requestBody, null, 2)}`,
 								);
 							}
 
@@ -1662,7 +1683,7 @@ export class Databricks implements INodeType {
 						}
 					} catch (error) {
 						// If it's a validation error with example, re-throw it
-						if (error.message && error.message.includes('Detected format:')) {
+						if (error.message?.includes('Detected format:')) {
 							throw error;
 						}
 
@@ -1725,19 +1746,15 @@ export class Databricks implements INodeType {
 							}
 
 							const errorDetails = apiError.response?.body || apiError.message || 'Bad Request';
-							throw new Error(
-								`API Error: 400 Bad Request\n\n` +
-									`The endpoint rejected your request. This usually means the request body format is incorrect.\n\n` +
-									`Error details: ${JSON.stringify(errorDetails, null, 2)}\n\n` +
-									`Detected format: ${detectedFormat}\n\n` +
-									`Expected request body format:\n${exampleRequestBody}\n\n` +
-									`Your request body:\n${JSON.stringify(requestBody, null, 2)}`,
+							throw new NodeOperationError(
+								this.getNode(),
+								`API Error: 400 Bad Request\n\nThe endpoint rejected your request. This usually means the request body format is incorrect.\n\nError details: ${JSON.stringify(errorDetails, null, 2)}\n\nDetected format: ${detectedFormat}\n\nExpected request body format:\n${exampleRequestBody}\n\nYour request body:\n${JSON.stringify(requestBody, null, 2)}`,
 							);
 						}
 						throw apiError;
 					}
 				} else if (resource === 'unityCatalog') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 
 					// Helper function to extract value from resourceLocator
@@ -2024,7 +2041,7 @@ export class Databricks implements INodeType {
 						response = {
 							success: true,
 							message: 'Catalog deleted successfully',
-							catalogName: catalogName,
+							catalogName,
 						};
 					} else if (operation === 'listCatalogs') {
 						response = await this.helpers.httpRequest({
@@ -2042,7 +2059,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'vectorSearch' && operation === 'queryIndex') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const indexName = this.getNodeParameter('indexName', i) as string;
 					const queryType = this.getNodeParameter('queryType', i) as string;
@@ -2120,7 +2137,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'vectorSearch' && operation === 'createIndex') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const indexName = this.getNodeParameter('indexName', i) as string;
 					const endpointName = this.getNodeParameter('endpointName', i) as string;
@@ -2157,7 +2174,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'vectorSearch' && operation === 'getIndex') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const indexName = this.getNodeParameter('indexName', i) as string;
 
@@ -2175,7 +2192,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'vectorSearch' && operation === 'listIndexes') {
-					const credentials = (await this.getCredentials('databricksApi')) as DatabricksCredentials;
+					const credentials = await this.getCredentials('databricksApi');
 					const host = credentials.host.replace(/\/$/, '');
 					const endpointName = this.getNodeParameter('endpointName', i) as string;
 
@@ -2197,8 +2214,8 @@ export class Databricks implements INodeType {
 					});
 				}
 			} catch (error) {
-				const currentResource = this.getNodeParameter('resource', i) as string;
-				const currentOperation = this.getNodeParameter('operation', i) as string;
+				const currentResource = this.getNodeParameter('resource', i);
+				const currentOperation = this.getNodeParameter('operation', i);
 
 				this.logger.error(`Error processing item ${i + 1}`, {
 					error: error.message,
@@ -2224,7 +2241,8 @@ export class Databricks implements INodeType {
 						});
 					} else {
 						const detail = error.response.data ? ` – ${JSON.stringify(error.response.data)}` : '';
-						throw new Error(
+						throw new NodeOperationError(
+							this.getNode(),
 							`API Error: ${error.response.status} ${error.response.statusText}${detail}`,
 						);
 					}
@@ -2241,7 +2259,10 @@ export class Databricks implements INodeType {
 							},
 						});
 					} else {
-						throw new Error('Network Error: No response received from server');
+						throw new NodeOperationError(
+							this.getNode(),
+							'Network Error: No response received from server',
+						);
 					}
 				} else {
 					// Other Error

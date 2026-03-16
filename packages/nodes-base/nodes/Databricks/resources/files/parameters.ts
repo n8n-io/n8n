@@ -88,6 +88,7 @@ export const filesParameters: INodeProperties[] = [
 				displayName: 'Page Token',
 				name: 'pageToken',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'Token for the next page of results',
 				displayOptions: {

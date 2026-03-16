@@ -131,7 +131,6 @@ export const unityCatalogParameters: INodeProperties[] = [
 		name: 'catalogName',
 		type: 'resourceLocator',
 		default: { mode: 'string', value: '' },
-		required: false,
 		description: 'Filter by catalog (optional)',
 		displayOptions: {
 			show: {
@@ -197,7 +196,6 @@ export const unityCatalogParameters: INodeProperties[] = [
 		name: 'schemaName',
 		type: 'resourceLocator',
 		default: { mode: 'string', value: '' },
-		required: false,
 		description: 'Filter by schema (optional, requires catalog)',
 		displayOptions: {
 			show: {
@@ -355,7 +353,6 @@ export const unityCatalogParameters: INodeProperties[] = [
 		displayName: 'Comment',
 		name: 'comment',
 		type: 'string',
-		required: false,
 		default: '',
 		placeholder: 'Catalog description',
 		description: 'Optional comment or description',

@@ -41,7 +41,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 			},
 		},
 		default: '',
-		placeholder: 'id',
+		placeholder: 'ID',
 		description: 'Primary key column of the index',
 	},
 	{
@@ -204,7 +204,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Comma-separated list of column names to return in results (e.g., "content,url,title")',
+			'Comma-separated list of column names to return in results (e.g., "content,URL,title")',
 		placeholder: 'content, url',
 	},
 	{
