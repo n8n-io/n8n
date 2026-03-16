@@ -85,8 +85,6 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
         </button>
       </div>
     </div>
-    <!-- Credits bar below input -->
-    <!--v-if-->
   </div>
   
 </div>
@@ -175,8 +173,6 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
         </button>
       </div>
     </div>
-    <!-- Credits bar below input -->
-    <!--v-if-->
   </div>
   
 </div>
