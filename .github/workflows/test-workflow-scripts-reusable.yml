@@ -30,7 +30,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: npm install --prefix=.github/scripts --no-package-lock
+          install-command: npm ci --prefix=.github/scripts
 
       - name: Run tests
         id: run-tests
