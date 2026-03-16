@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { DataSource } from '@n8n/typeorm';
+import { mock } from 'jest-mock-extended';
 
 import { ClockRepository } from '../clock.repository';
 

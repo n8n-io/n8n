@@ -727,8 +727,8 @@ describe('WaitTracker', () => {
 				expect(waitTracker.has(raceExecId)).toBe(true);
 
 				// Make workflowRunner.run() hang so we can observe the guard
-				let resolveRun!: () => void;
-				const runPromise = new Promise<void>((resolve) => {
+				let resolveRun!: (value: string) => void;
+				const runPromise = new Promise<string>((resolve) => {
 					resolveRun = resolve;
 				});
 				workflowRunner.run.mockReturnValueOnce(runPromise);
@@ -755,7 +755,7 @@ describe('WaitTracker', () => {
 				expect(newTimerCalls).toHaveLength(0);
 
 				// Clean up
-				resolveRun();
+				resolveRun('exec-id');
 				await startPromise;
 
 				// Now the guard should be released
