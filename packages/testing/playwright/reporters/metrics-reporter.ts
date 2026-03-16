@@ -49,7 +49,8 @@ class MetricsReporter implements Reporter {
 	}
 
 	async onEnd(): Promise<void> {
-		if (!this.webhookUrl || this.collectedMetrics.length === 0) return;
+		const webhookUrl = this.webhookUrl;
+		if (!webhookUrl || this.collectedMetrics.length === 0) return;
 		if (!this.webhookUser || !this.webhookPassword) {
 			console.log('[MetricsReporter] QA_METRICS_WEBHOOK_USER/PASSWORD not set, skipping.');
 			return;
@@ -71,7 +72,7 @@ class MetricsReporter implements Reporter {
 			Array.from(byBenchmark, async ([benchmarkName, metrics]) => {
 				const payload = { ...context, benchmark_name: benchmarkName, metrics };
 				try {
-					const response = await fetch(this.webhookUrl, {
+					const response = await fetch(webhookUrl, {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json',
