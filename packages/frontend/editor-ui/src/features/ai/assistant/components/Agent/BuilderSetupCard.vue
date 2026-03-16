@@ -14,6 +14,7 @@ import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import type { INodeProperties } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
@@ -41,6 +42,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
 const workflowState = injectWorkflowState();
@@ -168,10 +170,14 @@ const onExecuteClick = async () => {
 	await execute();
 };
 
-// Notify parent when step execution finishes (for auto-advance)
+// Notify parent when step execution finishes successfully (for auto-advance)
 watch(isExecuting, (executing, wasExecuting) => {
 	if (wasExecuting && !executing) {
-		emit('stepExecuted');
+		const runData = workflowsStore.getWorkflowResultDataByNodeName(props.state.node.name);
+		const lastRun = runData?.[runData.length - 1];
+		if (lastRun && !lastRun.error) {
+			emit('stepExecuted');
+		}
 	}
 });
 </script>
