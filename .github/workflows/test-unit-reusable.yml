@@ -17,20 +17,6 @@ on:
         required: false
         default: false
         type: boolean
-    secrets:
-      CODECOV_TOKEN:
-        description: 'Codecov upload token.'
-        required: false
-      QA_METRICS_WEBHOOK_URL:
-        description: 'Webhook URL for QA metrics.'
-        required: false
-      QA_METRICS_WEBHOOK_USER:
-        description: 'Basic auth username for QA metrics webhook.'
-        required: false
-      QA_METRICS_WEBHOOK_PASSWORD:
-        description: 'Basic auth password for QA metrics webhook.'
-        required: false
-
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 

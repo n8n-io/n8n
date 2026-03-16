@@ -63,23 +63,6 @@ on:
         default: ''
         type: string
 
-    secrets:
-      CURRENTS_RECORD_KEY:
-        required: false
-      CURRENTS_API_KEY:
-        required: false
-      QA_METRICS_WEBHOOK_URL:
-        required: false
-      QA_METRICS_WEBHOOK_USER:
-        required: false
-      QA_METRICS_WEBHOOK_PASSWORD:
-        required: false
-      N8N_LICENSE_ACTIVATION_KEY:
-        required: false
-      N8N_LICENSE_CERT:
-        required: false
-      N8N_ENCRYPTION_KEY:
-        required: false
 
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
