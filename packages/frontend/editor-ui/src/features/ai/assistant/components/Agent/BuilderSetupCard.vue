@@ -316,7 +316,7 @@ watch(isExecuting, (executing, wasExecuting) => {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 	padding: 0;
 	background-color: var(--color--background--light-3);
 	border: var(--border);
@@ -331,7 +331,7 @@ watch(isExecuting, (executing, wasExecuting) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--xs) 0;
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
 }
 
 .title {
@@ -351,12 +351,17 @@ watch(isExecuting, (executing, wasExecuting) => {
 .content {
 	display: flex;
 	flex-direction: column;
-	padding: 0 var(--spacing--xs);
+	gap: var(--spacing--xs);
+	padding: 0 var(--spacing--sm);
 }
 
 .credentialContainer {
 	display: flex;
 	flex-direction: column;
+
+	:global(.node-credentials) {
+		margin-top: 0;
+	}
 }
 
 .nodesHint {
