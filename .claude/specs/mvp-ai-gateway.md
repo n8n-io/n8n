@@ -368,11 +368,11 @@ Detailed frontend checklist is in [mvp-ai-gateway-frontend.md](./mvp-ai-gateway-
 
 - [x]  AI Gateway settings page at `/settings/ai-gateway` — model source selection
 - [x]  AI Gateway settings page at `/settings/ai-gateway` — category selection
-- [ ]  AI Gateway settings page at `/settings/ai-gateway` — usage overview (credits remaining, credits used, trend)
+- [x]  AI Gateway settings page at `/settings/ai-gateway` — usage overview (total tokens, in/out tokens, models by usage)
 - [x]  Global Pinia store (`aiGateway.store.ts`) with category/model state fetched from backend API
 - [x]  i18n labels for all settings page text
 - [x]  Settings sidebar entry and route registration
-- [ ]  Workflow settings override for model source / category
+- [x]  Workflow settings override for model source / category
 
 ### Frontend: Canvas
 
