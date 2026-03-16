@@ -1,14 +1,15 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import type { User } from '@n8n/db';
 import {
+	type User,
 	Project,
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	type ProjectListOptions,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
@@ -212,6 +213,16 @@ export class ProjectService {
 			return await this.projectRepository.find();
 		}
 		return await this.projectRepository.getAccessibleProjects(user.id);
+	}
+
+	async getAccessibleProjectsAndCount(
+		user: User,
+		options: ProjectListOptions,
+	): Promise<[Project[], number]> {
+		if (hasGlobalScope(user, 'project:read')) {
+			return await this.projectRepository.findAllProjectsAndCount(options);
+		}
+		return await this.projectRepository.getAccessibleProjectsAndCount(user.id, options);
 	}
 
 	async getPersonalProjectOwners(projectIds: string[]): Promise<ProjectRelation[]> {
