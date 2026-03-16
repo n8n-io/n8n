@@ -73,9 +73,9 @@ export class BuilderSetupWizardPage {
 		return this.page.getByTestId('builder-setup-card-nodes-hint');
 	}
 
-	/** Step indicator text, e.g. "1/2" */
+	/** Step indicator text, e.g. "1 of 2" */
 	getStepIndicator(current: number, total: number): Locator {
-		return this.getCard().getByText(`${current}/${total}`);
+		return this.getCard().getByText(`${current} of ${total}`);
 	}
 
 	/** Card title (node name) */
