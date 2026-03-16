@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const agentOperations: INodeProperties[] = [
+export const chatAgentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,75 +8,61 @@ export const agentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create an agent',
-				action: 'Create an agent',
+				description: 'Create a chat agent',
+				action: 'Create a chat agent',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an agent',
-				action: 'Delete an agent',
+				description: 'Delete a chat agent',
+				action: 'Delete a chat agent',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get an agent by ID',
-				action: 'Get an agent',
+				description: 'Get a chat agent by ID',
+				action: 'Get a chat agent',
 			},
 			{
 				name: 'Get Many',
 				value: 'getMany',
-				description: 'Get many agents',
-				action: 'Get many agents',
+				description: 'Get many chat agents',
+				action: 'Get many chat agents',
 			},
 			{
 				name: 'Get Versions',
 				value: 'getVersions',
-				description: 'Get all versions of an agent',
-				action: 'Get versions of an agent',
+				description: 'Get all versions of a chat agent',
+				action: 'Get chat agent versions',
 			},
 			{
 				name: 'Publish',
 				value: 'publish',
-				description: 'Publish the latest draft version of an agent',
-				action: 'Publish an agent',
+				description: 'Publish the latest version of a chat agent',
+				action: 'Publish a chat agent',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an agent',
-				action: 'Update an agent',
+				description: 'Update a chat agent',
+				action: 'Update a chat agent',
 			},
 		],
 		default: 'create',
 	},
 ];
 
-export const agentFields: INodeProperties[] = [
+export const chatAgentFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                              agent:create                                   */
+	/*                           chatAgent:create                                  */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Voice ID',
-		name: 'voiceId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['agent'],
-				operation: ['create'],
-			},
-		},
-		default: '',
-		description: 'The voice ID to use for the agent (from Retell AI voice library)',
-	},
 	{
 		displayName: 'Response Engine Type',
 		name: 'responseEngineType',
@@ -84,7 +70,7 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['create'],
 			},
 		},
@@ -103,7 +89,7 @@ export const agentFields: INodeProperties[] = [
 			},
 		],
 		default: 'retell-llm',
-		description: 'The type of response engine to use for the agent',
+		description: 'The type of response engine to use for the chat agent',
 	},
 	{
 		displayName: 'LLM ID',
@@ -112,7 +98,7 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['create'],
 				responseEngineType: ['retell-llm'],
 			},
@@ -127,7 +113,7 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['create'],
 				responseEngineType: ['custom-llm'],
 			},
@@ -143,7 +129,7 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['create'],
 				responseEngineType: ['conversation-flow'],
 			},
@@ -159,7 +145,7 @@ export const agentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['create'],
 			},
 		},
@@ -169,30 +155,22 @@ export const agentFields: INodeProperties[] = [
 				name: 'agentName',
 				type: 'string',
 				default: '',
-				description: 'The name of the agent',
+				description: 'A reference name for the chat agent',
 			},
 			{
-				displayName: 'Begin Message',
-				name: 'beginMessage',
+				displayName: 'Auto Close Message',
+				name: 'autoCloseMessage',
 				type: 'string',
 				default: '',
-				description:
-					'The initial message the agent speaks when a call starts. If empty, the agent waits for the user to speak first.',
+				description: 'Message displayed when the chat is automatically closed',
 			},
 			{
-				displayName: 'Enable Voicemail Detection',
-				name: 'enableVoicemailDetection',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to enable voicemail detection for the agent',
-			},
-			{
-				displayName: 'End Call After Silence (ms)',
-				name: 'endCallAfterSilenceMs',
+				displayName: 'End Chat After Silence (ms)',
+				name: 'endChatAfterSilenceMs',
 				type: 'number',
-				default: 30000,
+				default: 3600000,
 				description:
-					'Duration of silence in milliseconds before the call is automatically ended',
+					'Silence duration in milliseconds before the chat is automatically closed. Min: 120000, Max: 259200000.',
 			},
 			{
 				displayName: 'Language',
@@ -200,35 +178,47 @@ export const agentFields: INodeProperties[] = [
 				type: 'options',
 				default: 'en-US',
 				options: [
-					{ name: 'Chinese (Mandarin)', value: 'zh-CN' },
-					{ name: 'Dutch', value: 'nl-NL' },
+					{ name: 'Bulgarian', value: 'bg-BG' },
+					{ name: 'Catalan', value: 'ca-ES' },
+					{ name: 'Chinese (Simplified)', value: 'zh-CN' },
+					{ name: 'Czech', value: 'cs-CZ' },
+					{ name: 'Danish', value: 'da-DK' },
+					{ name: 'Dutch (Belgium)', value: 'nl-BE' },
+					{ name: 'Dutch (Netherlands)', value: 'nl-NL' },
 					{ name: 'English (Australia)', value: 'en-AU' },
 					{ name: 'English (India)', value: 'en-IN' },
+					{ name: 'English (New Zealand)', value: 'en-NZ' },
 					{ name: 'English (UK)', value: 'en-GB' },
 					{ name: 'English (US)', value: 'en-US' },
-					{ name: 'French', value: 'fr-FR' },
+					{ name: 'Finnish', value: 'fi-FI' },
+					{ name: 'French (Canada)', value: 'fr-CA' },
+					{ name: 'French (France)', value: 'fr-FR' },
 					{ name: 'German', value: 'de-DE' },
+					{ name: 'Greek', value: 'el-GR' },
 					{ name: 'Hindi', value: 'hi-IN' },
+					{ name: 'Hungarian', value: 'hu-HU' },
+					{ name: 'Indonesian', value: 'id-ID' },
 					{ name: 'Italian', value: 'it-IT' },
 					{ name: 'Japanese', value: 'ja-JP' },
 					{ name: 'Korean', value: 'ko-KR' },
+					{ name: 'Latvian', value: 'lv-LV' },
+					{ name: 'Lithuanian', value: 'lt-LT' },
+					{ name: 'Multi-Language', value: 'multi' },
+					{ name: 'Norwegian', value: 'no-NO' },
 					{ name: 'Polish', value: 'pl-PL' },
 					{ name: 'Portuguese (Brazil)', value: 'pt-BR' },
 					{ name: 'Portuguese (Portugal)', value: 'pt-PT' },
+					{ name: 'Romanian', value: 'ro-RO' },
 					{ name: 'Russian', value: 'ru-RU' },
-					{ name: 'Spanish', value: 'es-ES' },
+					{ name: 'Slovak', value: 'sk-SK' },
 					{ name: 'Spanish (Latin America)', value: 'es-419' },
+					{ name: 'Spanish (Spain)', value: 'es-ES' },
 					{ name: 'Swedish', value: 'sv-SE' },
+					{ name: 'Thai', value: 'th-TH' },
 					{ name: 'Turkish', value: 'tr-TR' },
+					{ name: 'Vietnamese', value: 'vi-VN' },
 				],
-				description: 'The language for the agent',
-			},
-			{
-				displayName: 'Max Call Duration (ms)',
-				name: 'maxCallDurationMs',
-				type: 'number',
-				default: 3600000,
-				description: 'Maximum duration of a call in milliseconds',
+				description: 'The language for the chat agent',
 			},
 			{
 				displayName: 'Webhook URL',
@@ -236,13 +226,13 @@ export const agentFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'https://your-server.com/webhook',
-				description: 'URL to receive call event webhooks',
+				description: 'URL to receive chat event webhooks',
 			},
 		],
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                agent:get                                    */
+	/*                            chatAgent:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Agent ID',
@@ -251,16 +241,16 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['get'],
 			},
 		},
 		default: '',
-		description: 'The ID of the agent to retrieve',
+		description: 'The ID of the chat agent to retrieve',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                              agent:getMany                                  */
+	/*                          chatAgent:getMany                                  */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -268,7 +258,7 @@ export const agentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['getMany'],
 			},
 		},
@@ -281,7 +271,7 @@ export const agentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['getMany'],
 				returnAll: [false],
 			},
@@ -295,7 +285,7 @@ export const agentFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                              agent:update                                   */
+	/*                          chatAgent:update                                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Agent ID',
@@ -304,12 +294,12 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['update'],
 			},
 		},
 		default: '',
-		description: 'The ID of the agent to update',
+		description: 'The ID of the chat agent to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -319,7 +309,7 @@ export const agentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['update'],
 			},
 		},
@@ -329,30 +319,22 @@ export const agentFields: INodeProperties[] = [
 				name: 'agentName',
 				type: 'string',
 				default: '',
-				description: 'The name of the agent',
+				description: 'A reference name for the chat agent',
 			},
 			{
-				displayName: 'Begin Message',
-				name: 'beginMessage',
+				displayName: 'Auto Close Message',
+				name: 'autoCloseMessage',
 				type: 'string',
 				default: '',
-				description:
-					'The initial message the agent speaks when a call starts. If empty, the agent waits for the user to speak first.',
+				description: 'Message displayed when the chat is automatically closed',
 			},
 			{
-				displayName: 'Enable Voicemail Detection',
-				name: 'enableVoicemailDetection',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to enable voicemail detection for the agent',
-			},
-			{
-				displayName: 'End Call After Silence (ms)',
-				name: 'endCallAfterSilenceMs',
+				displayName: 'End Chat After Silence (ms)',
+				name: 'endChatAfterSilenceMs',
 				type: 'number',
-				default: 30000,
+				default: 3600000,
 				description:
-					'Duration of silence in milliseconds before the call is automatically ended',
+					'Silence duration in milliseconds before the chat is automatically closed. Min: 120000, Max: 259200000.',
 			},
 			{
 				displayName: 'Language',
@@ -360,42 +342,47 @@ export const agentFields: INodeProperties[] = [
 				type: 'options',
 				default: 'en-US',
 				options: [
-					{ name: 'Chinese (Mandarin)', value: 'zh-CN' },
-					{ name: 'Dutch', value: 'nl-NL' },
+					{ name: 'Bulgarian', value: 'bg-BG' },
+					{ name: 'Catalan', value: 'ca-ES' },
+					{ name: 'Chinese (Simplified)', value: 'zh-CN' },
+					{ name: 'Czech', value: 'cs-CZ' },
+					{ name: 'Danish', value: 'da-DK' },
+					{ name: 'Dutch (Belgium)', value: 'nl-BE' },
+					{ name: 'Dutch (Netherlands)', value: 'nl-NL' },
 					{ name: 'English (Australia)', value: 'en-AU' },
 					{ name: 'English (India)', value: 'en-IN' },
+					{ name: 'English (New Zealand)', value: 'en-NZ' },
 					{ name: 'English (UK)', value: 'en-GB' },
 					{ name: 'English (US)', value: 'en-US' },
-					{ name: 'French', value: 'fr-FR' },
+					{ name: 'Finnish', value: 'fi-FI' },
+					{ name: 'French (Canada)', value: 'fr-CA' },
+					{ name: 'French (France)', value: 'fr-FR' },
 					{ name: 'German', value: 'de-DE' },
+					{ name: 'Greek', value: 'el-GR' },
 					{ name: 'Hindi', value: 'hi-IN' },
+					{ name: 'Hungarian', value: 'hu-HU' },
+					{ name: 'Indonesian', value: 'id-ID' },
 					{ name: 'Italian', value: 'it-IT' },
 					{ name: 'Japanese', value: 'ja-JP' },
 					{ name: 'Korean', value: 'ko-KR' },
+					{ name: 'Latvian', value: 'lv-LV' },
+					{ name: 'Lithuanian', value: 'lt-LT' },
+					{ name: 'Multi-Language', value: 'multi' },
+					{ name: 'Norwegian', value: 'no-NO' },
 					{ name: 'Polish', value: 'pl-PL' },
 					{ name: 'Portuguese (Brazil)', value: 'pt-BR' },
 					{ name: 'Portuguese (Portugal)', value: 'pt-PT' },
+					{ name: 'Romanian', value: 'ro-RO' },
 					{ name: 'Russian', value: 'ru-RU' },
-					{ name: 'Spanish', value: 'es-ES' },
+					{ name: 'Slovak', value: 'sk-SK' },
 					{ name: 'Spanish (Latin America)', value: 'es-419' },
+					{ name: 'Spanish (Spain)', value: 'es-ES' },
 					{ name: 'Swedish', value: 'sv-SE' },
+					{ name: 'Thai', value: 'th-TH' },
 					{ name: 'Turkish', value: 'tr-TR' },
+					{ name: 'Vietnamese', value: 'vi-VN' },
 				],
-				description: 'The language for the agent',
-			},
-			{
-				displayName: 'Max Call Duration (ms)',
-				name: 'maxCallDurationMs',
-				type: 'number',
-				default: 3600000,
-				description: 'Maximum duration of a call in milliseconds',
-			},
-			{
-				displayName: 'Voice ID',
-				name: 'voiceId',
-				type: 'string',
-				default: '',
-				description: 'The voice ID to use for the agent',
+				description: 'The language for the chat agent',
 			},
 			{
 				displayName: 'Webhook URL',
@@ -403,13 +390,13 @@ export const agentFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'https://your-server.com/webhook',
-				description: 'URL to receive call event webhooks',
+				description: 'URL to receive chat event webhooks',
 			},
 		],
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                              agent:delete                                   */
+	/*                          chatAgent:delete                                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Agent ID',
@@ -418,16 +405,16 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['delete'],
 			},
 		},
 		default: '',
-		description: 'The ID of the agent to delete',
+		description: 'The ID of the chat agent to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                             agent:publish                                   */
+	/*                          chatAgent:publish                                  */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Agent ID',
@@ -436,16 +423,16 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['publish'],
 			},
 		},
 		default: '',
-		description: 'The ID of the agent to publish',
+		description: 'The ID of the chat agent to publish',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                           agent:getVersions                                 */
+	/*                        chatAgent:getVersions                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Agent ID',
@@ -454,11 +441,11 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['agent'],
+				resource: ['chatAgent'],
 				operation: ['getVersions'],
 			},
 		},
 		default: '',
-		description: 'The ID of the agent to retrieve versions for',
+		description: 'The ID of the chat agent to get versions for',
 	},
 ];

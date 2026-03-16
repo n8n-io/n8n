@@ -11,7 +11,7 @@ export class RetellAi extends VersionedNodeType {
 			icon: 'file:retellai.svg',
 			group: ['output'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-			description: 'Interact with Retell AI for voice calls, agents, and phone numbers',
+			description: 'Interact with Retell AI for voice calls, agents, phone numbers, chat, knowledge bases, LLMs, and more',
 			defaultVersion: 1,
 		};
 

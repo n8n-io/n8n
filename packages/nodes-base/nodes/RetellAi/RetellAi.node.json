@@ -10,5 +10,5 @@
 			}
 		]
 	},
-	"alias": ["Voice", "AI Call", "Phone", "Retell", "Sara"]
+	"alias": ["Voice", "AI Call", "Phone", "Retell", "Sara", "Chat", "LLM", "Knowledge Base", "Conversation Flow", "Batch Call"]
 }
