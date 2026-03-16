@@ -1,0 +1,84 @@
+{
+	"name": "Large Execution Performance Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "perf-trigger",
+			"name": "Manual Trigger"
+		},
+		{
+			"parameters": {
+				"jsCode": "const items = [];\nfor (let i = 0; i < 1000; i++) {\n  items.push({ json: { id: i, name: `item_${i}`, value: Math.random(), nested: { a: i, b: [1, 2, 3] } } });\n}\nreturn items;"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"id": "perf-code-1",
+			"name": "Generate 1K Items"
+		},
+		{
+			"parameters": {
+				"jsCode": "return $input.all().map(item => ({ json: { ...item.json, processed: true, timestamp: Date.now() } }));"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [440, 0],
+			"id": "perf-code-2",
+			"name": "Transform Items"
+		},
+		{
+			"parameters": {
+				"jsCode": "return $input.all().map(item => ({ json: { ...item.json, validated: true } }));"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [660, 0],
+			"id": "perf-code-3",
+			"name": "Validate Items"
+		},
+		{
+			"parameters": {
+				"jsCode": "return $input.all().map(item => ({ json: { ...item.json, enriched: true, extra: { foo: 'bar', baz: [1,2,3,4,5] } } }));"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [880, 0],
+			"id": "perf-code-4",
+			"name": "Enrich Items"
+		},
+		{
+			"parameters": {
+				"jsCode": "return $input.all().map(item => ({ json: { ...item.json, finalized: true } }));"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1100, 0],
+			"id": "perf-code-5",
+			"name": "Finalize Items"
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "Generate 1K Items", "type": "main", "index": 0 }]]
+		},
+		"Generate 1K Items": {
+			"main": [[{ "node": "Transform Items", "type": "main", "index": 0 }]]
+		},
+		"Transform Items": {
+			"main": [[{ "node": "Validate Items", "type": "main", "index": 0 }]]
+		},
+		"Validate Items": {
+			"main": [[{ "node": "Enrich Items", "type": "main", "index": 0 }]]
+		},
+		"Enrich Items": {
+			"main": [[{ "node": "Finalize Items", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
