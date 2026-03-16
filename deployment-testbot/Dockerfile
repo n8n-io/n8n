@@ -1,6 +1,6 @@
 FROM node:24-alpine
 
-RUN apk add --no-cache tini wget
+RUN apk add --no-cache tini wget python3 make g++
 
 WORKDIR /home/node
 
