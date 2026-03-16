@@ -3,11 +3,14 @@
     "test": "node --test --experimental-test-module-mocks ./*.test.mjs"
   },
   "dependencies": {
+    "@actions/github": "9.0.0",
     "conventional-changelog": "7.2.0",
     "debug": "4.4.3",
     "glob": "13.0.6",
     "semver": "7.7.4",
-    "tempfile": "6.0.1",
-    "@actions/github": "9.0.0"
+    "tempfile": "6.0.1"
+  },
+  "devDependencies": {
+    "conventional-changelog-angular": "^8.3.0"
   }
 }
