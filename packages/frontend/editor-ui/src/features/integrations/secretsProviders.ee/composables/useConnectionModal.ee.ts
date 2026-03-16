@@ -1,6 +1,6 @@
 import { computed, ref, watch, type Ref, type ComponentPublicInstance } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
-import type { SecretProviderTypeResponse } from '@n8n/api-types';
+import type { SecretProviderTypeResponse, ConnectionProjectSummary } from '@n8n/api-types';
 import type { INodeProperties } from 'n8n-workflow';
 import { useSecretsProviderConnection } from './useSecretsProviderConnection.ee';
 import { useRBACStore } from '@/app/stores/rbac.store';
@@ -12,8 +12,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
 import { useSettingsStore } from '@/app/stores/settings.store';
-
-export type ConnectionProjectSummary = { id: string; name: string; role?: string };
 
 const CONNECTION_NAME_REGEX = /^[a-zA-Z][a-zA-Z0-9]*$/;
 interface UseConnectionModalOptions {

@@ -143,7 +143,7 @@ export class SecretsProvidersConnectionsService {
 				.filter((id) => !existingProjectIds.has(id))
 				.map((projectId) => ({
 					projectId,
-					role: 'secretsProviderConnection:user' as SecretsProviderAccessRole,
+					role: 'secretsProviderConnection:user' as const,
 				}));
 
 			await this.projectAccessRepository.updateProjectAccess(
