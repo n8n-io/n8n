@@ -703,6 +703,136 @@ describe('WaitTracker', () => {
 		});
 	});
 
+	describe('race condition guards', () => {
+		describe('overlapping poll guard', () => {
+			it('should skip poll when previous poll is still in progress', async () => {
+				// Make getWaitingExecutions hang on the first call by returning a never-resolving promise
+				let resolveFirstPoll!: (value: unknown[]) => void;
+				const slowPoll = new Promise<unknown[]>((resolve) => {
+					resolveFirstPoll = resolve;
+				});
+				executionRepository.getWaitingExecutions.mockReturnValueOnce(slowPoll as Promise<never>);
+
+				// Start first poll — it will block on the slow DB query
+				const firstPoll = waitTracker.getWaitingExecutions();
+
+				// Second poll should bail out immediately
+				executionRepository.getWaitingExecutions.mockResolvedValue([]);
+				await waitTracker.getWaitingExecutions();
+
+				// Only the first call to getWaitingExecutions should have reached the DB
+				expect(executionRepository.getWaitingExecutions).toHaveBeenCalledTimes(1);
+
+				// Unblock and clean up
+				resolveFirstPoll([]);
+				await firstPoll;
+			});
+
+			it('should allow polling again after previous poll completes', async () => {
+				executionRepository.getWaitingExecutions.mockResolvedValue([]);
+
+				await waitTracker.getWaitingExecutions();
+				await waitTracker.getWaitingExecutions();
+
+				expect(executionRepository.getWaitingExecutions).toHaveBeenCalledTimes(2);
+			});
+
+			it('should allow polling again after previous poll errors', async () => {
+				executionRepository.getWaitingExecutions.mockRejectedValueOnce(
+					new Error('DB connection lost'),
+				);
+
+				await expect(waitTracker.getWaitingExecutions()).rejects.toThrow('DB connection lost');
+
+				executionRepository.getWaitingExecutions.mockResolvedValue([]);
+				await waitTracker.getWaitingExecutions();
+
+				expect(executionRepository.getWaitingExecutions).toHaveBeenCalledTimes(2);
+			});
+		});
+
+		describe('execution stays guarded until workflowRunner.run() settles', () => {
+			const raceExecId = 'race-exec';
+			const raceExecution = mock<IExecutionResponse>({
+				id: raceExecId,
+				finished: false,
+				waitTill: new Date(Date.now() + 1_000),
+				mode: 'manual',
+				data: mock({ pushRef: 'push_ref', parentExecution: undefined }),
+				startedAt: undefined,
+			});
+			raceExecution.workflowData = mock<IWorkflowBase>({ id: 'race-wf' });
+
+			it('should keep execution in waitingExecutions during async startExecution work', async () => {
+				const waitTill = new Date(Date.now() + 1_000);
+				const entity = mock<ExecutionEntity>({ id: raceExecId, waitTill });
+				executionRepository.getWaitingExecutions.mockResolvedValue([entity]);
+				executionRepository.getServerTime.mockResolvedValue(new Date());
+
+				// Set up the timer via poll
+				await waitTracker.getWaitingExecutions();
+				expect(waitTracker.has(raceExecId)).toBe(true);
+
+				// Make workflowRunner.run() hang so we can observe the guard
+				let resolveRun!: () => void;
+				const runPromise = new Promise<void>((resolve) => {
+					resolveRun = resolve;
+				});
+				workflowRunner.run.mockReturnValueOnce(runPromise);
+				executionRepository.findSingleExecution
+					.calledWith(raceExecId)
+					.mockResolvedValue(raceExecution);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
+
+				// Fire the timer — startExecution begins but blocks on workflowRunner.run()
+				const startPromise = waitTracker.startExecution(raceExecId);
+
+				// Execution should STILL be in waitingExecutions (guard active)
+				expect(waitTracker.has(raceExecId)).toBe(true);
+
+				// A second poll should skip this execution because the guard is still active
+				executionRepository.getWaitingExecutions.mockResolvedValue([entity]);
+				const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+				const callCountBefore = setTimeoutSpy.mock.calls.length;
+
+				await waitTracker.getWaitingExecutions();
+
+				// No new timer should have been set for 'race-exec'
+				const newTimerCalls = setTimeoutSpy.mock.calls.slice(callCountBefore);
+				expect(newTimerCalls).toHaveLength(0);
+
+				// Clean up
+				resolveRun();
+				await startPromise;
+
+				// Now the guard should be released
+				expect(waitTracker.has(raceExecId)).toBe(false);
+			});
+
+			it('should release guard even when workflowRunner.run() throws', async () => {
+				executionRepository.getWaitingExecutions.mockResolvedValue([]);
+				executionRepository.getServerTime.mockResolvedValue(new Date());
+
+				// Set up a waiting execution via poll
+				const waitTill = new Date(Date.now() + 1_000);
+				const entity = mock<ExecutionEntity>({ id: raceExecId, waitTill });
+				executionRepository.getWaitingExecutions.mockResolvedValue([entity]);
+				await waitTracker.getWaitingExecutions();
+
+				executionRepository.findSingleExecution
+					.calledWith(raceExecId)
+					.mockResolvedValue(raceExecution);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
+				workflowRunner.run.mockRejectedValueOnce(new Error('Runner crashed'));
+
+				await expect(waitTracker.startExecution(raceExecId)).rejects.toThrow('Runner crashed');
+
+				// Guard should be released so future polls can re-schedule it
+				expect(waitTracker.has(raceExecId)).toBe(false);
+			});
+		});
+	});
+
 	describe('multi-main setup', () => {
 		it('should start tracking if leader', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
