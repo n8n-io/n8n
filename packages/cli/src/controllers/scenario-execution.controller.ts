@@ -1,4 +1,4 @@
-import { Get, Post, RestController, Param } from '@n8n/decorators';
+import { Get, Post, RootLevelController, Param } from '@n8n/decorators';
 import { ScenarioExecutionEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Request, Response } from 'express';
@@ -40,7 +40,7 @@ class ScenarioExecutionService {
 	}
 }
 
-@RestController('/scenario/executions')
+@RootLevelController('/scenario/executions')
 export class ScenarioExecutionController {
 	constructor(private readonly service: ScenarioExecutionService) {}
 
