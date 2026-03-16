@@ -334,6 +334,7 @@
 	"aiAssistant.builder.setupWizard.skip": "Skip",
 	"aiAssistant.builder.setupWizard.continue": "Continue",
 	"aiAssistant.builder.setupWizard.complete": "Complete",
+	"aiAssistant.builder.setupWizard.checkingCredentials": "Checking credentials",
 	"aiAssistant.builder.toast.title": "Send chat message to start the execution",
 	"aiAssistant.builder.toast.description": "Please send a message in the chat panel to start the execution of your workflow",
 	"aiAssistant.builder.restoreError.title": "Failed to restore version",

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, computed, ref, watch } from 'vue';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { N8nIcon } from '@n8n/design-system';
 
 import BuilderSetupCard from './BuilderSetupCard.vue';
 import { useBuilderSetupCards } from '@/features/ai/assistant/composables/useBuilderSetupCards';
@@ -15,6 +16,7 @@ const {
 	currentStepIndex,
 	currentCard,
 	isAllComplete,
+	isInitialCredentialTestingDone,
 	totalCards,
 	firstTriggerName,
 	setCredential,
@@ -29,7 +31,13 @@ const wizardDismissed = computed(
 	() => isAllComplete.value && builderStore.wizardHasExecutedWorkflow,
 );
 
-const showCard = computed(() => currentCard.value && !wizardDismissed.value);
+const isCheckingCredentials = computed(
+	() => !isInitialCredentialTestingDone.value && !wizardDismissed.value,
+);
+
+const showCard = computed(
+	() => currentCard.value && !wizardDismissed.value && isInitialCredentialTestingDone.value,
+);
 
 const showWizard = computed(() => !wizardDismissed.value);
 
@@ -125,24 +133,30 @@ onMounted(() => {
 		@mouseenter="onMouseEnter"
 		@mouseleave="onMouseLeave"
 	>
-		<p :class="$style.description">
-			{{ descriptionText }}
+		<p v-if="isCheckingCredentials" :class="$style.checkingCredentials">
+			{{ i18n.baseText('aiAssistant.builder.setupWizard.checkingCredentials' as BaseTextKey) }}
+			<N8nIcon icon="chevron-right" size="small" />
 		</p>
+		<template v-else>
+			<p :class="$style.description">
+				{{ descriptionText }}
+			</p>
 
-		<BuilderSetupCard
-			v-if="showCard"
-			:key="currentStepIndex"
-			:state="currentCard!.state"
-			:step-index="currentStepIndex"
-			:total-cards="totalCards"
-			:first-trigger-name="firstTriggerName"
-			@go-to-next="onGoToNext"
-			@go-to-prev="onGoToPrev"
-			@step-executed="handleStepExecuted"
-			@continue-current="continueCurrent"
-			@credential-selected="onCredentialSelected"
-			@credential-deselected="onCredentialDeselected"
-		/>
+			<BuilderSetupCard
+				v-if="showCard"
+				:key="currentStepIndex"
+				:state="currentCard!.state"
+				:step-index="currentStepIndex"
+				:total-cards="totalCards"
+				:first-trigger-name="firstTriggerName"
+				@go-to-next="onGoToNext"
+				@go-to-prev="onGoToPrev"
+				@step-executed="handleStepExecuted"
+				@continue-current="continueCurrent"
+				@credential-selected="onCredentialSelected"
+				@credential-deselected="onCredentialDeselected"
+			/>
+		</template>
 	</div>
 </template>
 
@@ -159,6 +173,16 @@ onMounted(() => {
 .description {
 	margin: 0;
 	color: var(--color--text--shade-1);
+	line-height: var(--line-height--md);
+}
+
+.checkingCredentials {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	margin: 0;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--md);
 }
 </style>

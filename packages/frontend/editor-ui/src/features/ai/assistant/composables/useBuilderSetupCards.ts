@@ -72,6 +72,7 @@ export function useBuilderSetupCards() {
 	const {
 		setupCards: baseCards,
 		firstTriggerName,
+		isInitialCredentialTestingDone,
 		setCredential,
 		unsetCredential,
 	} = useWorkflowSetupState(undefined, {
@@ -195,6 +196,17 @@ export function useBuilderSetupCards() {
 		}
 	});
 
+	// When initial credential tests finish, re-evaluate: skip past any cards that
+	// turned out to be complete, or dismiss the wizard entirely.
+	watch(isInitialCredentialTestingDone, (done) => {
+		if (!done) return;
+		if (isAllComplete.value) {
+			builderStore.wizardHasExecutedWorkflow = true;
+		} else {
+			skipToFirstIncomplete();
+		}
+	});
+
 	onMounted(() => {
 		if (isAllComplete.value) {
 			// if all cards are completed on mount most likely the builder had made an iteration and there's no more work for the wizard
@@ -207,6 +219,7 @@ export function useBuilderSetupCards() {
 		currentStepIndex,
 		currentCard,
 		isAllComplete,
+		isInitialCredentialTestingDone,
 		totalCards,
 		firstTriggerName,
 		setCredential,

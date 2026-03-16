@@ -891,6 +891,7 @@ export const useWorkflowSetupState = (
 	 * Runs once when nodes become available so checkmarks reflect actual validity.
 	 * Deduplicates by credential ID so shared credentials are only tested once.
 	 */
+	const isInitialCredentialTestingDone = ref(false);
 	let initialSetupDone = false;
 	watch(
 		nodesRequiringSetup,
@@ -916,8 +917,17 @@ export const useWorkflowSetupState = (
 				}
 			}
 
+			const testPromises: Array<Promise<void>> = [];
 			for (const [id, { name, type }] of credentialsToTest) {
-				void testCredentialInBackground(id, name, type);
+				testPromises.push(testCredentialInBackground(id, name, type));
+			}
+
+			if (testPromises.length === 0) {
+				isInitialCredentialTestingDone.value = true;
+			} else {
+				void Promise.allSettled(testPromises).then(() => {
+					isInitialCredentialTestingDone.value = true;
+				});
 			}
 		},
 		{ immediate: true },
@@ -951,6 +961,7 @@ export const useWorkflowSetupState = (
 		totalCredentialsMissing,
 		totalCardsRequiringSetup,
 		isAllComplete,
+		isInitialCredentialTestingDone,
 		nodesWithMissingParameters,
 		autoAppliedCredentialIds,
 		setCredential,

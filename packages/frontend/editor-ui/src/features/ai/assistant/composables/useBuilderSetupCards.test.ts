@@ -8,10 +8,13 @@ const mockFirstTriggerName = ref<string | null>(null);
 const mockSetCredential = vi.fn();
 const mockUnsetCredential = vi.fn();
 
+const mockIsInitialCredentialTestingDone = ref(true);
+
 vi.mock('@/features/setupPanel/composables/useWorkflowSetupState', () => ({
 	useWorkflowSetupState: () => ({
 		setupCards: mockSetupCards,
 		firstTriggerName: mockFirstTriggerName,
+		isInitialCredentialTestingDone: mockIsInitialCredentialTestingDone,
 		setCredential: mockSetCredential,
 		unsetCredential: mockUnsetCredential,
 	}),
@@ -115,6 +118,7 @@ async function getComposable() {
 		useWorkflowSetupState: () => ({
 			setupCards: mockSetupCards,
 			firstTriggerName: mockFirstTriggerName,
+			isInitialCredentialTestingDone: mockIsInitialCredentialTestingDone,
 			setCredential: mockSetCredential,
 			unsetCredential: mockUnsetCredential,
 		}),
@@ -171,6 +175,7 @@ describe('useBuilderSetupCards', () => {
 		mockBuilderStoreState.wizardCurrentStep = 0;
 		mockBuilderStoreState.wizardHasExecutedWorkflow = false;
 		mockCredentialTestResults.clear();
+		mockIsInitialCredentialTestingDone.value = true;
 	});
 
 	it('passes through cards from useWorkflowSetupState', async () => {
@@ -461,6 +466,8 @@ describe('useBuilderSetupCards', () => {
 				isComplete: true,
 			}),
 		];
+		// Start on the last card — onStepExecuted only dismisses from the last step
+		mockBuilderStoreState.wizardCurrentStep = 1;
 
 		const { onStepExecuted } = await getComposable();
 		onStepExecuted();
@@ -523,5 +530,81 @@ describe('useBuilderSetupCards', () => {
 		await nextTick();
 
 		expect(currentStepIndex.value).toBe(0);
+	});
+
+	it('exposes isInitialCredentialTestingDone from useWorkflowSetupState', async () => {
+		mockIsInitialCredentialTestingDone.value = false;
+		const { isInitialCredentialTestingDone } = await getComposable();
+		expect(isInitialCredentialTestingDone.value).toBe(false);
+
+		mockIsInitialCredentialTestingDone.value = true;
+		await nextTick();
+		expect(isInitialCredentialTestingDone.value).toBe(true);
+	});
+
+	it('skips to first incomplete card when initial credential testing completes', async () => {
+		mockIsInitialCredentialTestingDone.value = false;
+		// First card complete, second incomplete — but both have isComplete: false initially
+		// because credential test hasn't resolved yet
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'openAiApi',
+				isComplete: false,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: false,
+			}),
+		];
+
+		const { currentStepIndex } = await getComposable();
+		// While testing is in progress, stays on step 0 (card appears incomplete)
+		expect(currentStepIndex.value).toBe(0);
+
+		// Simulate credential test resolving — first card becomes complete
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'openAiApi',
+				isComplete: true,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: false,
+			}),
+		];
+		mockIsInitialCredentialTestingDone.value = true;
+		await nextTick();
+
+		// Should now skip to the first incomplete card
+		expect(currentStepIndex.value).toBe(1);
+	});
+
+	it('dismisses wizard when initial credential testing reveals all cards complete', async () => {
+		mockIsInitialCredentialTestingDone.value = false;
+		mockSetupCards.value = [
+			createCard({
+				node: createNode({ name: 'Node 1', id: 'n1' }),
+				credentialType: 'openAiApi',
+				isComplete: true,
+			}),
+			createCard({
+				node: createNode({ name: 'Node 2', id: 'n2' }),
+				credentialType: 'slackApi',
+				isComplete: true,
+			}),
+		];
+
+		await getComposable();
+		expect(mockBuilderStoreState.wizardHasExecutedWorkflow).toBe(false);
+
+		// Simulate credential tests finishing — all cards are complete
+		mockIsInitialCredentialTestingDone.value = true;
+		await nextTick();
+
+		expect(mockBuilderStoreState.wizardHasExecutedWorkflow).toBe(true);
 	});
 });
