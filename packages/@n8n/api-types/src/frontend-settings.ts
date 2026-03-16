@@ -265,6 +265,7 @@ export type FrontendModuleSettings = {
 		enabled: boolean;
 		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
 		semanticSearch: ChatHubSemanticSearchSettings;
+		agentUploadMaxSizeMb: number;
 	};
 
 	/**

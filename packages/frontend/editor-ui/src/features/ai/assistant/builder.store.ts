@@ -268,6 +268,22 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
 	});
 
+	const creditsPercentageRemaining = computed(() => {
+		if (
+			creditsQuota.value === undefined ||
+			creditsQuota.value === INFINITE_CREDITS ||
+			creditsRemaining.value === undefined
+		) {
+			return undefined;
+		}
+		if (creditsQuota.value === 0) return 0;
+		return (creditsRemaining.value / creditsQuota.value) * 100;
+	});
+
+	const isLowCredits = computed(() => {
+		return creditsPercentageRemaining.value !== undefined && creditsPercentageRemaining.value <= 10;
+	});
+
 	const hasMessages = computed(() => chatMessages.value.length > 0);
 
 	const latestRevertVersion = computed(() => {
@@ -828,6 +844,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				? mode
 				: (mode ?? (builderMode.value === 'plan' ? 'plan' : undefined));
 		const payload = await createBuilderPayload(text, userMessageId, {
+			workflowId: workflowsStore.workflowId,
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
@@ -1292,6 +1309,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
 		hasNoCreditsRemaining,
+		creditsPercentageRemaining,
+		isLowCredits,
 		hasMessages,
 		latestRevertVersion,
 		workflowTodos,

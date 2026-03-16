@@ -300,14 +300,20 @@ export class ChatHubWorkflowService {
 		model: ChatHubConversationModel,
 		user: User,
 		trx: EntityManager,
+		manual?: boolean,
 	): Promise<{ allowFileUploads: boolean; allowedFilesMimeTypes: string }> {
 		if (model.provider === 'n8n') {
 			const workflow = await this.workflowFinderService.findWorkflowForUser(
 				model.workflowId,
 				user,
-				['workflow:execute-chat'],
-				{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
+				manual ? ['workflow:execute'] : ['workflow:execute-chat'],
+				{ includeTags: false, includeParentFolder: false, includeActiveVersion: !manual, em: trx },
 			);
+
+			if (manual) {
+				if (!workflow) throw new BadRequestError('Workflow not found');
+				return this.resolveWorkflowAttachmentPolicy(workflow.nodes);
+			}
 
 			if (!workflow?.activeVersion) {
 				throw new BadRequestError('Workflow not found');
@@ -1181,6 +1187,7 @@ Respond the title only:`,
 		timeZone: string,
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
+		manual?: boolean,
 	): Promise<PreparedChatWorkflow> {
 		if (model.provider === 'n8n') {
 			return await this.prepareWorkflowAgentWorkflow(
@@ -1191,6 +1198,7 @@ Respond the title only:`,
 				attachments,
 				trx,
 				executionMetadata,
+				manual,
 			);
 		}
 
@@ -1340,21 +1348,29 @@ Respond the title only:`,
 		attachments: IBinaryData[],
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
+		manual?: boolean,
 	) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
-			['workflow:execute-chat'],
-			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
+			manual ? ['workflow:execute'] : ['workflow:execute-chat'],
+			{ includeTags: false, includeParentFolder: false, includeActiveVersion: !manual, em: trx },
 		);
 
-		if (!workflow?.activeVersion) {
+		if (!workflow) {
 			throw new BadRequestError('Workflow not found');
 		}
 
-		const chatTriggers = workflow.activeVersion.nodes.filter(
-			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
-		);
+		// In manual mode, use draft nodes/connections directly from the workflow.
+		// In normal mode, use the published activeVersion.
+		if (!manual && !workflow.activeVersion) {
+			throw new BadRequestError('Workflow not found');
+		}
+
+		const workflowNodes = manual ? workflow.nodes : workflow.activeVersion!.nodes;
+		const workflowConnections = manual ? workflow.connections : workflow.activeVersion!.connections;
+
+		const chatTriggers = workflowNodes.filter((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
 
 		if (chatTriggers.length !== 1) {
 			throw new BadRequestError('Workflow must have exactly one chat trigger');
@@ -1384,9 +1400,7 @@ Respond the title only:`,
 			);
 		}
 
-		const chatResponseNodes = workflow.activeVersion.nodes.filter(
-			(node) => node.type === CHAT_NODE_TYPE,
-		);
+		const chatResponseNodes = workflowNodes.filter((node) => node.type === CHAT_NODE_TYPE);
 
 		if (chatResponseNodes.length > 0 && responseMode !== 'responseNodes') {
 			throw new BadRequestError(
@@ -1394,9 +1408,7 @@ Respond the title only:`,
 			);
 		}
 
-		const agentNodes = workflow.activeVersion.nodes?.filter(
-			(node) => node.type === AGENT_LANGCHAIN_NODE_TYPE,
-		);
+		const agentNodes = workflowNodes.filter((node) => node.type === AGENT_LANGCHAIN_NODE_TYPE);
 
 		// Agents older than this can't do streaming
 		if (agentNodes.some((node) => node.typeVersion < TOOLS_AGENT_NODE_MIN_VERSION)) {
@@ -1424,8 +1436,9 @@ Respond the title only:`,
 
 		const workflowData: IWorkflowBase = {
 			...workflow,
-			nodes: workflow.activeVersion.nodes,
-			connections: workflow.activeVersion.connections,
+			nodes: workflowNodes,
+			connections: workflowConnections,
+			pinData: manual ? (workflow.pinData ?? undefined) : undefined,
 			// Force saving data on successful executions for custom agent workflows
 			// to be able to read the results after execution.
 			settings: {
@@ -1461,14 +1474,15 @@ ${systemPrompt
 
 		const fileList = knowledgeItems.map((f) => `- ${f.fileName}`).join('\n');
 
-		return `## Your Knowledge
+		return `## Context Files
 
-You have access to the following files as a searchable knowledge base:
+You have access to the following user-uploaded files as a searchable context for the conversation:
 
 ${fileList}
 
-Use the vector store tool to search the content of these files when answering questions that may be related to them.
-Do not proactively mention these files to the user.`;
+Use context_files_search tool to search these documents when answering questions that may be related to them.
+Do not proactively mention these files to the user.
+When you use information from these files, always cite the source using markdown footnote syntax (e.g. "Some fact.[^1]" with "[^1]: example.pdf, page 3" at the end of your response).`;
 	}
 
 	private buildArtifactContext(history: ChatHubMessage[]): string {
@@ -1538,7 +1552,7 @@ You can update the most recent document using the commands described above, or c
 		return {
 			parameters: {
 				mode: 'retrieve-as-tool',
-				toolName: 'file_knowledge',
+				toolName: 'context_files_search',
 				toolDescription: 'Use this tool to query context files',
 				options: {
 					metadata: {
@@ -1615,6 +1629,7 @@ You can update the most recent document using the commands described above, or c
 				parameters: {
 					dataType: 'binary',
 					options: {
+						splitPages: true,
 						metadata: {
 							metadataValues: [
 								{
