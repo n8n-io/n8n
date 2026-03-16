@@ -76,7 +76,6 @@ describe('validateKeyPair', () => {
 	// Generate real key pairs for testing
 	let validPrivateKey: string;
 	let validCertificate: string;
-	let mismatchedPrivateKey: string;
 	let mismatchedCertificate: string;
 
 	beforeAll(() => {
@@ -109,7 +108,6 @@ ${formattedContent}
 			publicKeyEncoding: { type: 'spki', format: 'pem' },
 			privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
 		});
-		mismatchedPrivateKey = keyPair2.privateKey;
 
 		const mismatchedPublicKeyContent = keyPair2.publicKey
 			.replace(/-----BEGIN PUBLIC KEY-----/g, '')
