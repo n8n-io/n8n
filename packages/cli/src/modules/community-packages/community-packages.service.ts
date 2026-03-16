@@ -13,7 +13,7 @@ import {
 	type PublicInstalledPackage,
 } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
-import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, constants, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { valid } from 'semver';
@@ -106,6 +106,27 @@ export class CommunityPackagesService {
 			const error = toError(maybeError);
 
 			this.logger.error('Failed to save installed packages and nodes', {
+				error,
+				packageName: packageLoader.packageJson.name,
+			});
+
+			throw error;
+		}
+	}
+
+	private async replaceInstalledPackage(
+		previousInstalledPackage: InstalledPackages,
+		packageLoader: PackageDirectoryLoader,
+	) {
+		try {
+			return await this.installedPackageRepository.replaceInstalledPackageWithNodes(
+				previousInstalledPackage,
+				packageLoader,
+			);
+		} catch (maybeError) {
+			const error = toError(maybeError);
+
+			this.logger.error('Failed to replace installed package and nodes', {
 				error,
 				packageName: packageLoader.packageJson.name,
 			});
@@ -399,9 +420,19 @@ export class CommunityPackagesService {
 
 		await checkIfVersionExistsOrThrow(packageName, packageVersion, this.getNpmRegistry());
 
+		const backupDirectory =
+			isUpdate && (await this.packageDirectoryExists(packageName))
+				? await this.backupPackageDirectory(packageName)
+				: undefined;
+
 		try {
 			await this.downloadPackage(packageName, packageVersion);
 		} catch (error) {
+			await this.restoreFailedPackageInstallation(packageName, {
+				backupDirectory,
+				previousVersion: isUpdate ? options.installedPackage.installedVersion : undefined,
+			});
+
 			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 				throw new UserError('npm package not found', { extra: { packageName } });
 			}
@@ -413,22 +444,24 @@ export class CommunityPackagesService {
 			await this.loadNodesAndCredentials.unloadPackage(packageName);
 			loader = await this.loadNodesAndCredentials.loadPackage(packageName);
 		} catch (error) {
-			// Remove this package since loading it failed
-			try {
-				await this.deletePackageDirectory(packageName);
-			} catch {
-				// Ignore cleanup errors
-			}
+			await this.restoreFailedPackageInstallation(packageName, {
+				backupDirectory,
+				previousVersion: isUpdate ? options.installedPackage.installedVersion : undefined,
+				reloadPackage: isUpdate,
+			});
+
 			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
 		}
 
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
-				if (isUpdate) {
-					await this.removePackageFromDatabase(options.installedPackage);
+				const installedPackage = isUpdate
+					? await this.replaceInstalledPackage(options.installedPackage, loader)
+					: await this.persistInstalledPackage(loader);
+				if (backupDirectory) {
+					await rm(backupDirectory, { recursive: true, force: true });
 				}
-				const installedPackage = await this.persistInstalledPackage(loader);
 				void this.publisher.publishCommand({
 					command: isUpdate ? 'community-package-update' : 'community-package-install',
 					payload: { packageName, packageVersion },
@@ -438,18 +471,24 @@ export class CommunityPackagesService {
 				this.logger.info(`Community package installed: ${packageName}`);
 				return installedPackage;
 			} catch (error) {
+				await this.restoreFailedPackageInstallation(packageName, {
+					backupDirectory,
+					previousVersion: isUpdate ? options.installedPackage.installedVersion : undefined,
+					reloadPackage: isUpdate,
+				});
+
 				throw new UnexpectedError('Failed to save installed package', {
 					extra: { packageName },
 					cause: error,
 				});
 			}
 		} else {
-			// Remove this package since it contains no loadable nodes
-			try {
-				await this.deletePackageDirectory(packageName);
-			} catch {
-				// Ignore cleanup errors
-			}
+			await this.restoreFailedPackageInstallation(packageName, {
+				backupDirectory,
+				previousVersion: isUpdate ? options.installedPackage.installedVersion : undefined,
+				reloadPackage: isUpdate,
+			});
+
 			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
 	}
@@ -487,6 +526,61 @@ export class CommunityPackagesService {
 
 	private resolvePackageDirectory(packageName: string) {
 		return `${this.downloadFolder}/node_modules/${packageName}`;
+	}
+
+	private async packageDirectoryExists(packageName: string) {
+		try {
+			await access(this.resolvePackageDirectory(packageName), constants.F_OK);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	private async backupPackageDirectory(packageName: string) {
+		const packageDirectory = this.resolvePackageDirectory(packageName);
+		const backupDirectory = `${packageDirectory}.backup-${Date.now()}`;
+
+		await rename(packageDirectory, backupDirectory);
+
+		return backupDirectory;
+	}
+
+	private async restoreFailedPackageInstallation(
+		packageName: string,
+		options: {
+			backupDirectory?: string;
+			previousVersion?: string;
+			reloadPackage?: boolean;
+		},
+	) {
+		const { backupDirectory, previousVersion, reloadPackage = false } = options;
+
+		try {
+			await this.deletePackageDirectory(packageName);
+
+			if (previousVersion) {
+				await this.updatePackageJsonDependency(packageName, previousVersion);
+			} else {
+				await this.removePackageJsonDependency(packageName);
+			}
+
+			if (!backupDirectory) return;
+
+			await rename(backupDirectory, this.resolvePackageDirectory(packageName));
+
+			if (!reloadPackage) return;
+
+			await this.loadNodesAndCredentials.unloadPackage(packageName);
+			await this.loadNodesAndCredentials.loadPackage(packageName);
+			await this.loadNodesAndCredentials.postProcessLoaders();
+			this.loadNodesAndCredentials.releaseTypes();
+		} catch (cleanupError) {
+			this.logger.warn('Failed to restore community package after failed installation', {
+				error: ensureError(cleanupError),
+				packageName,
+			});
+		}
 	}
 
 	private async downloadPackage(packageName: string, packageVersion: string): Promise<string> {
@@ -550,6 +644,13 @@ export class CommunityPackagesService {
 		const existingContent = await readFile(this.packageJsonPath, 'utf-8');
 		const packageJson = jsonParse<PackageJson>(existingContent);
 		packageJson.dependencies[packageName] = version;
+		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
+	}
+
+	private async removePackageJsonDependency(packageName: string) {
+		const existingContent = await readFile(this.packageJsonPath, 'utf-8');
+		const packageJson = jsonParse<PackageJson>(existingContent);
+		delete packageJson.dependencies[packageName];
 		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 	}
 }

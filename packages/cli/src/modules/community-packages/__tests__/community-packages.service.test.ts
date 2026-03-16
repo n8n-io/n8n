@@ -7,7 +7,7 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
-import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, constants, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
 
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD } from '@/constants';
@@ -334,6 +334,7 @@ describe('CommunityPackagesService', () => {
 		const PACKAGE_NAME = 'n8n-nodes-test';
 		const installedPackageForUpdateTest = mock<InstalledPackages>({
 			packageName: PACKAGE_NAME,
+			installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
 		});
 
 		const packageDirectoryLoader = mock<PackageDirectoryLoader>({
@@ -368,6 +369,9 @@ describe('CommunityPackagesService', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
+			jest.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
+			mocked(access).mockResolvedValue(undefined);
+			mocked(rename).mockResolvedValue(undefined);
 
 			mocked(execFile).mockImplementation(execMockForThisBlock);
 			mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
@@ -397,13 +401,21 @@ describe('CommunityPackagesService', () => {
 			installedPackageRepository.saveInstalledPackageWithNodes.mockResolvedValue(
 				installedPackageForUpdateTest,
 			);
+			installedPackageRepository.replaceInstalledPackageWithNodes.mockResolvedValue(
+				installedPackageForUpdateTest,
+			);
 
 			publisher.publishCommand.mockResolvedValue(undefined);
+		});
+
+		afterEach(() => {
+			jest.restoreAllMocks();
 		});
 
 		test('should call `exec` with the correct sequence of commands, handle file ops, and interact with services', async () => {
 			// ARRANGE
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
 
 			// ACT
 			await communityPackagesService.updatePackage(
@@ -412,12 +424,17 @@ describe('CommunityPackagesService', () => {
 			);
 
 			// ASSERT:
-			expect(rm).toHaveBeenCalledTimes(2);
+			expect(rm).toHaveBeenCalledTimes(3);
 			expect(rm).toHaveBeenNthCalledWith(1, testBlockPackageDir, { recursive: true, force: true });
 			expect(rm).toHaveBeenNthCalledWith(
 				2,
 				path.join(nodesDownloadDir, 'n8n-nodes-test-latest.tgz'),
 			);
+			expect(rm).toHaveBeenNthCalledWith(3, backupDirectory, {
+				recursive: true,
+				force: true,
+			});
+			expect(rename).toHaveBeenCalledWith(testBlockPackageDir, backupDirectory);
 
 			// Check executeNpmCommand was called for npm commands
 			expect(executeNpmCommand).toHaveBeenCalledTimes(2);
@@ -462,8 +479,8 @@ describe('CommunityPackagesService', () => {
 			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
 			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalledTimes(1);
 
-			expect(installedPackageRepository.remove).toHaveBeenCalledWith(installedPackageForUpdateTest);
-			expect(installedPackageRepository.saveInstalledPackageWithNodes).toHaveBeenCalledWith(
+			expect(installedPackageRepository.replaceInstalledPackageWithNodes).toHaveBeenCalledWith(
+				installedPackageForUpdateTest,
 				packageDirectoryLoader,
 			);
 
@@ -471,6 +488,64 @@ describe('CommunityPackagesService', () => {
 				command: 'community-package-update',
 				payload: { packageName: PACKAGE_NAME, packageVersion: 'latest' },
 			});
+		});
+
+		test('should restore the previous package when loading the updated package fails', async () => {
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
+
+			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
+			mocked(readFile)
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: PACKAGE_NAME,
+						version: '2.0.0',
+						dependencies: { 'some-actual-dep': '1.2.3' },
+						devDependencies: {},
+						peerDependencies: {},
+						optionalDependencies: {},
+					}) as never,
+				)
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: 'installed-nodes',
+						private: true,
+						dependencies: { [PACKAGE_NAME]: '2.0.0' },
+					}) as never,
+				)
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: 'installed-nodes',
+						private: true,
+						dependencies: { [PACKAGE_NAME]: '2.0.0' },
+					}) as never,
+				);
+
+			await expect(
+				communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				),
+			).rejects.toThrow('The specified package could not be loaded');
+
+			expect(rename).toHaveBeenNthCalledWith(1, testBlockPackageDir, backupDirectory);
+			expect(rename).toHaveBeenNthCalledWith(2, backupDirectory, testBlockPackageDir);
+			expect(writeFile).toHaveBeenNthCalledWith(
+				3,
+				path.join(nodesDownloadDir, 'package.json'),
+				JSON.stringify(
+					{
+						name: 'installed-nodes',
+						private: true,
+						dependencies: { [PACKAGE_NAME]: COMMUNITY_PACKAGE_VERSION.CURRENT },
+					},
+					null,
+					2,
+				),
+				'utf-8',
+			);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(2);
+			expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
 		});
 
 		test('should throw when not licensed for custom registry if custom registry is different from default', async () => {

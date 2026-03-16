@@ -146,5 +146,29 @@ describe('CommunityPackagesController', () => {
 				await expect(controller.updatePackage(req)).rejects.toThrow(`Invalid version: ${version}`);
 			},
 		);
+
+		it('should report update failures as update errors', async () => {
+			const req = {
+				body: { name: 'n8n-nodes-test', version: undefined, checksum: undefined },
+			} as NodeRequest.Update;
+
+			const previouslyInstalledPackage = mock<InstalledPackages>({
+				installedNodes: [],
+				installedVersion: '1.0.0',
+			});
+
+			communityPackagesService.findInstalledPackage.mockResolvedValue(previouslyInstalledPackage);
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test',
+				packageName: 'n8n-nodes-test',
+			});
+			communityPackagesService.updatePackage.mockRejectedValue(
+				new Error('The specified package could not be loaded'),
+			);
+
+			await expect(controller.updatePackage(req)).rejects.toThrow(
+				'Error updating package "n8n-nodes-test":The specified package could not be loaded',
+			);
+		});
 	});
 });
