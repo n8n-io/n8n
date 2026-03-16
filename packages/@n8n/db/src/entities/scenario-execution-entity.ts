@@ -22,7 +22,7 @@ export class ScenarioExecutionEntity {
 	@CreateDateColumn()
 	startedAt: Date;
 
-	@Column('datetime', { nullable: true })
+	@Column('timestamp', { nullable: true })
 	stoppedAt: Date;
 
 	@Column('simple-json', { nullable: true })
