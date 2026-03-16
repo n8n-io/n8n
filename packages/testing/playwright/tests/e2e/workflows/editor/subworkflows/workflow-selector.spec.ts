@@ -98,5 +98,77 @@ test.describe(
 			await expect(secondPage.canvas.nodeByName('Replace me with your logic')).toBeVisible();
 			await expect(secondPage.page).toHaveURL(/\/workflow\/.+/);
 		});
+
+		test('should not show unpublished workflows in selector', async ({ n8n }) => {
+			// Create an unpublished workflow (active: false, never activated)
+			await n8n.api.workflows.createWorkflow({
+				name: 'Unpublished_Workflow',
+				nodes: [
+					{
+						id: 'execute-workflow-trigger',
+						name: 'When Executed by Another Workflow',
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						position: [0, 0] as [number, number],
+						parameters: {},
+						typeVersion: 1,
+					},
+				],
+				connections: {},
+				settings: {},
+				active: false,
+			});
+
+			// Open the workflow selector
+			await n8n.ndv.openResourceLocator('workflowId');
+
+			const items = n8n.ndv.getResourceLocatorItems();
+
+			// The unpublished workflow should NOT appear in the list
+			await expect(items.filter({ hasText: 'Unpublished_Workflow' })).toHaveCount(0);
+
+			// Verify that published workflows ARE still visible
+			await expect(items.filter({ hasText: 'Get_Weather' })).toHaveCount(1);
+			await expect(items.filter({ hasText: 'Search_DB' })).toHaveCount(1);
+		});
+
+		test('should show inactive badge for deactivated workflows', async ({ n8n }) => {
+			// Create a workflow and activate it, then deactivate it
+			const workflow = await n8n.api.workflows.createWorkflow({
+				name: 'Test_Inactive_Workflow',
+				nodes: [
+					{
+						id: 'execute-workflow-trigger',
+						name: 'When Executed by Another Workflow',
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						position: [0, 0] as [number, number],
+						parameters: {},
+						typeVersion: 1,
+					},
+				],
+				connections: {},
+				settings: {},
+				active: false,
+			});
+
+			// Activate then deactivate to simulate a previously published workflow
+			await n8n.api.workflows.activate(workflow.id, workflow.versionId);
+			await n8n.api.workflows.deactivate(workflow.id);
+
+			// Open the workflow selector
+			await n8n.ndv.openResourceLocator('workflowId');
+
+			const items = n8n.ndv.getResourceLocatorItems();
+
+			// The workflow should be visible (currently buggy behavior)
+			const inactiveWorkflow = items.filter({ hasText: 'Test_Inactive_Workflow' });
+			await expect(inactiveWorkflow).toHaveCount(1);
+
+			// Hover over it to show the inactive badge
+			await inactiveWorkflow.hover();
+
+			// The inactive badge should be visible
+			const inactiveBadge = n8n.page.getByTestId('workflow-inactive-icon');
+			await expect(inactiveBadge).toBeVisible();
+		});
 	},
 );
