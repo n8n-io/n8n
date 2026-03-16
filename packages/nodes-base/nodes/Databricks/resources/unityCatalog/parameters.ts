@@ -290,8 +290,9 @@ export const unityCatalogParameters: INodeProperties[] = [
 		type: 'json',
 		required: true,
 		default: '[]',
-		placeholder: '[{"name": "param1", "type_name": "STRING"}]',
-		description: 'Array of input parameters for the function',
+		placeholder: '[{"name": "param1", "type_name": "STRING", "type_text": "STRING"}]',
+		description:
+			'Array of input parameters. Each parameter requires name, type_name, and type_text.',
 		displayOptions: {
 			show: {
 				operation: ['createFunction'],
@@ -323,6 +324,25 @@ export const unityCatalogParameters: INodeProperties[] = [
 		required: true,
 		default: 'SQL',
 		description: 'The language of the function body',
+		displayOptions: {
+			show: {
+				operation: ['createFunction'],
+			},
+		},
+	},
+
+	// Routine Definition - for create function
+	{
+		displayName: 'Routine Definition',
+		name: 'routineDefinition',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'RETURN x + 1',
+		description: 'The function body (SQL expression)',
+		typeOptions: {
+			rows: 4,
+		},
 		displayOptions: {
 			show: {
 				operation: ['createFunction'],

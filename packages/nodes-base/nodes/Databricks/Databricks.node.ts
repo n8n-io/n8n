@@ -1873,17 +1873,38 @@ export class Databricks implements INodeType {
 						const inputParams = this.getNodeParameter('inputParams', i) as any;
 						const returnType = this.getNodeParameter('returnType', i) as string;
 						const routineBody = this.getNodeParameter('routineBody', i) as string;
+						const routineDefinition = this.getNodeParameter('routineDefinition', i) as string;
 
 						response = await this.helpers.httpRequest({
 							method: 'POST',
 							url: `${host}/api/2.1/unity-catalog/functions`,
 							body: {
-								name: functionName,
-								catalog_name: catalogName,
-								schema_name: schemaName,
-								input_params: inputParams,
-								data_type: returnType,
-								routine_body: routineBody,
+								function_info: {
+									name: functionName,
+									catalog_name: catalogName,
+									schema_name: schemaName,
+									input_params: (() => {
+										const p =
+											typeof inputParams === 'string' ? JSON.parse(inputParams) : inputParams;
+										const params = Array.isArray(p) ? p : (p?.parameters ?? []);
+										const normalized = params.map((param: Record<string, unknown>) => ({
+											...param,
+											type_text: param.type_text ?? param.type_name,
+											type_json: param.type_json ?? JSON.stringify({ name: param.type_name }),
+										}));
+										return { parameters: normalized };
+									})(),
+									data_type: returnType,
+									full_data_type: returnType,
+									specific_name: functionName,
+									parameter_style: 'S',
+									security_type: 'DEFINER',
+									sql_data_access: 'CONTAINS_SQL',
+									is_deterministic: false,
+									is_null_call: true,
+									routine_body: routineBody,
+									routine_definition: routineDefinition,
+								},
 							},
 							headers: {
 								Authorization: `Bearer ${credentials.token}`,
