@@ -21,7 +21,7 @@ export class WorkflowsConfig {
 
 	/** Whether to build and maintain workflow dependency indexes (for example, for subworkflow callers). */
 	@Env('N8N_WORKFLOWS_INDEXING_ENABLED')
-	indexingEnabled: boolean = false;
+	indexingEnabled: boolean = true;
 
 	/** Number of workflows to process per batch during dependency indexing on startup. Defaults to 10. */
 	@Env('N8N_WORKFLOW_INDEX_BATCH_SIZE')
