@@ -63,7 +63,7 @@ describe('setupPanel.utils', () => {
 			expect(result).toContain('httpHeaderAuth');
 		});
 
-		it('should exclude credential types from node issues when not displayable', () => {
+		it('should include credential types from node issues even when not in displayable list', () => {
 			const node = createNode({
 				issues: {
 					credentials: {
@@ -74,7 +74,7 @@ describe('setupPanel.utils', () => {
 
 			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
 
-			expect(result).not.toContain('httpHeaderAuth');
+			expect(result).toContain('httpHeaderAuth');
 		});
 
 		it('should include credential types from assigned credentials when displayable', () => {
@@ -90,7 +90,7 @@ describe('setupPanel.utils', () => {
 			expect(result).toContain('slackApi');
 		});
 
-		it('should exclude credential types from assigned credentials when not displayable', () => {
+		it('should include credential types from assigned credentials even when not in displayable list', () => {
 			const node = createNode({
 				credentials: {
 					slackApi: { id: 'cred-1', name: 'My Slack' },
@@ -99,7 +99,7 @@ describe('setupPanel.utils', () => {
 
 			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
 
-			expect(result).not.toContain('slackApi');
+			expect(result).toContain('slackApi');
 		});
 
 		it('should deduplicate credential types from all sources', () => {
