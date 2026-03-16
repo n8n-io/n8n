@@ -189,14 +189,37 @@ export class ActiveWorkflowManager {
 			webhookEntities.push(webhook);
 		}
 
-		// Phase 2: Store all webhooks to DB in a single transaction
+		// Phase 2: Store webhooks to DB and create external webhooks in a single transaction.
+		// If external webhook creation fails, the transaction rolls back DB records automatically.
+		const createdWebhookIndices: number[] = [];
 		try {
 			await withTransaction(this.workflowRepository.manager, undefined, async (em) => {
 				for (const webhook of webhookEntities) {
 					await this.webhookService.storeWebhook(webhook, em);
 				}
+
+				for (let i = 0; i < webhooks.length; i++) {
+					await this.webhookService.createWebhookIfNotExists(
+						workflow,
+						webhooks[i],
+						mode,
+						activation,
+					);
+					createdWebhookIndices.push(i);
+				}
 			});
 		} catch (error) {
+			// Best-effort rollback of already-created external webhooks (side effects outside DB)
+			for (const idx of createdWebhookIndices) {
+				try {
+					await this.webhookService.deleteWebhook(workflow, webhooks[idx], mode, activation);
+				} catch (rollbackError) {
+					this.logger.warn(`Failed to rollback external webhook for workflow "${workflow.id}"`, {
+						error: rollbackError,
+					});
+				}
+			}
+
 			if (['init', 'leadershipChange'].includes(activation) && error.name === 'QueryFailedError') {
 				// n8n does not remove the registered webhooks on exit.
 				// This means that further initializations will always fail
@@ -208,28 +231,6 @@ export class ActiveWorkflowManager {
 			if (error instanceof Error && error.name === 'QueryFailedError') {
 				throw new WebhookPathTakenError(webhookEntities[0]?.node ?? '', error);
 			}
-
-			throw error;
-		}
-
-		// Phase 3: Create external webhooks (non-transactional)
-		const createdIndices: number[] = [];
-		try {
-			for (let i = 0; i < webhooks.length; i++) {
-				await this.webhookService.createWebhookIfNotExists(workflow, webhooks[i], mode, activation);
-				createdIndices.push(i);
-			}
-		} catch (error) {
-			// Rollback: delete already-created external webhooks (best-effort)
-			for (const idx of createdIndices) {
-				try {
-					await this.webhookService.deleteWebhook(workflow, webhooks[idx], mode, activation);
-				} catch {
-					// best effort
-				}
-			}
-			// Rollback DB records
-			await this.webhookService.deleteWorkflowWebhooks(workflow.id);
 
 			if (error.detail) {
 				// it's an error running the webhook methods (checkExists, create)
