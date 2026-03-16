@@ -4,8 +4,8 @@ import {
 	UpdateProjectDto,
 	AddUsersToProjectDto,
 	ChangeUserRoleInProject,
+	ListProjectsQueryDto,
 } from '@n8n/api-types';
-import type { Project } from '@n8n/db';
 import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
 import {
 	Get,
@@ -47,8 +47,22 @@ export class ProjectController {
 	) {}
 
 	@Get('/')
-	async getAllProjects(req: AuthenticatedRequest): Promise<Project[]> {
-		return await this.projectsService.getAccessibleProjects(req.user);
+	async getAllProjects(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Query payload: ListProjectsQueryDto,
+	) {
+		const [data, count] = await this.projectsService.getAccessibleProjectsAndCount(
+			req.user,
+			payload,
+		);
+
+		// When pagination params are provided, return { count, data } envelope.
+		// Otherwise return a bare array for backward compatibility with existing callers.
+		if (payload.take !== undefined || payload.skip !== undefined) {
+			return res.json({ count, data });
+		}
+		return data;
 	}
 
 	@Get('/count')

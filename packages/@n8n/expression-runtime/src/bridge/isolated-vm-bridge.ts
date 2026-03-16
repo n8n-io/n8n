@@ -1,8 +1,22 @@
-import ivm from 'isolated-vm';
+import type ivm from 'isolated-vm';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
+
+// Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
+// file is statically imported (e.g. for error classes). The native module is
+// only loaded when IsolatedVmBridge is actually constructed.
+type IsolatedVm = typeof import('isolated-vm');
+let _ivm: IsolatedVm | null = null;
+
+function getIvm(): IsolatedVm {
+	if (!_ivm) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_ivm = require('isolated-vm') as IsolatedVm;
+	}
+	return _ivm;
+}
 
 const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 
@@ -68,7 +82,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Create isolate with memory limit
 		// Note: memoryLimit is in MB
-		this.isolate = new ivm.Isolate({ memoryLimit: this.config.memoryLimit });
+		this.isolate = new (getIvm().Isolate)({ memoryLimit: this.config.memoryLimit });
 	}
 
 	/**
@@ -300,7 +314,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Callback 1: Get value/metadata at path
 		// Used by createDeepLazyProxy when accessing properties
-		const getValueAtPath = new ivm.Reference((path: string[]) => {
+		const getValueAtPath = new (getIvm().Reference)((path: string[]) => {
 			// Navigate to value
 			let value: unknown = data;
 			for (const key of path) {
@@ -343,7 +357,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Callback 2: Get array element at index
 		// Used by array proxy when accessing numeric indices
-		const getArrayElement = new ivm.Reference((path: string[], index: number) => {
+		const getArrayElement = new (getIvm().Reference)((path: string[], index: number) => {
 			// Navigate to array
 			let arr: unknown = data;
 			for (const key of path) {
@@ -380,7 +394,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Callback 3: Call function at path with arguments
 		// Used when expressions invoke functions from workflow data
-		const callFunctionAtPath = new ivm.Reference((path: string[], ...args: unknown[]) => {
+		const callFunctionAtPath = new (getIvm().Reference)((path: string[], ...args: unknown[]) => {
 			// Navigate to function, tracking parent to preserve `this` context
 			let fn: unknown = data;
 			let parent: unknown = undefined;

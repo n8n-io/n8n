@@ -1,16 +1,16 @@
 import {
 	type CreateSecretsProviderConnectionDto,
 	type ReloadSecretProviderConnectionResponse,
-	type TestSecretProviderConnectionResponse,
+	reloadSecretProviderConnectionResponseSchema,
 	type SecretCompletionsResponse,
 	type SecretProviderConnection,
 	type SecretProviderConnectionListItem,
 	type SecretsProviderType,
+	type TestSecretProviderConnectionResponse,
 	testSecretProviderConnectionResponseSchema,
-	reloadSecretProviderConnectionResponseSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { SecretsProviderConnection } from '@n8n/db';
+import type { SecretsProviderAccessRole, SecretsProviderConnection } from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
@@ -47,6 +47,7 @@ export class SecretsProvidersConnectionsService {
 	async createConnection(
 		proposedConnection: CreateSecretsProviderConnectionDto,
 		userId: string,
+		projectRole: SecretsProviderAccessRole,
 	): Promise<SecretsProviderConnection> {
 		const existing = await this.repository.findOne({
 			where: { providerKey: proposedConnection.providerKey },
@@ -72,6 +73,7 @@ export class SecretsProvidersConnectionsService {
 				this.projectAccessRepository.create({
 					secretsProviderConnectionId: savedConnection.id,
 					projectId,
+					role: projectRole,
 				}),
 			);
 			await this.projectAccessRepository.save(entries);
@@ -94,7 +96,23 @@ export class SecretsProvidersConnectionsService {
 		return result;
 	}
 
-	async updateConnection(
+	async updateProjectConnection(
+		providerKey: string,
+		updates: {
+			type?: string;
+			settings?: IDataObject;
+			isEnabled?: boolean;
+		},
+		userId: string,
+	): Promise<SecretsProviderConnection> {
+		const connection = await this.findConnectionOrFail(providerKey);
+		this.applyConnectionUpdates(connection, updates);
+		await this.repository.save(connection);
+
+		return await this.syncAndEmitUpdate(providerKey, userId);
+	}
+
+	async updateGlobalConnection(
 		providerKey: string,
 		updates: {
 			type?: string;
@@ -104,11 +122,43 @@ export class SecretsProvidersConnectionsService {
 		},
 		userId: string,
 	): Promise<SecretsProviderConnection> {
-		const connection = await this.repository.findOne({ where: { providerKey } });
+		const connection = await this.findConnectionOrFail(providerKey);
+		this.applyConnectionUpdates(connection, updates);
+		await this.repository.save(connection);
 
-		if (!connection) {
-			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
+		if (updates.projectIds !== undefined) {
+			const existing = await this.projectAccessRepository.findByConnectionId(connection.id);
+			const existingProjectIds = new Set(existing.map((e) => e.projectId));
+			const desiredProjectIds = new Set(updates.projectIds);
+
+			// Remove access for projects no longer in the list
+			const projectIdsToRemove = existing
+				.filter((e) => !desiredProjectIds.has(e.projectId))
+				.map((e) => e.projectId);
+
+			// Add access for newly added projects with user role
+			// Existing projects keep their current role (e.g. owner)
+			const entriesToAdd = updates.projectIds
+				.filter((id) => !existingProjectIds.has(id))
+				.map((projectId) => ({
+					projectId,
+					role: 'secretsProviderConnection:user' as const,
+				}));
+
+			await this.projectAccessRepository.updateProjectAccess(
+				connection.id,
+				projectIdsToRemove,
+				entriesToAdd,
+			);
 		}
+
+		return await this.syncAndEmitUpdate(providerKey, userId);
+	}
+
+	private applyConnectionUpdates(
+		connection: SecretsProviderConnection,
+		updates: { type?: string; settings?: IDataObject; isEnabled?: boolean },
+	): void {
 		if (updates.type !== undefined) {
 			connection.type = updates.type;
 			if (!updates.settings) {
@@ -118,7 +168,6 @@ export class SecretsProvidersConnectionsService {
 			}
 		}
 		if (updates.settings !== undefined) {
-			// Unredact incoming settings before encrypting
 			const savedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
 			const unredactedSettings = this.redactionService.unredact(updates.settings, savedSettings);
 			connection.encryptedSettings = this.encryptConnectionSettings(unredactedSettings);
@@ -126,13 +175,12 @@ export class SecretsProvidersConnectionsService {
 		if (updates.isEnabled !== undefined) {
 			connection.isEnabled = updates.isEnabled;
 		}
+	}
 
-		await this.repository.save(connection);
-
-		if (updates.projectIds !== undefined) {
-			await this.projectAccessRepository.setProjectAccess(connection.id, updates.projectIds);
-		}
-
+	private async syncAndEmitUpdate(
+		providerKey: string,
+		userId: string,
+	): Promise<SecretsProviderConnection> {
 		await this.externalSecretsManager.syncProviderConnection(providerKey);
 
 		const result = (await this.repository.findOne({
@@ -150,12 +198,7 @@ export class SecretsProvidersConnectionsService {
 	}
 
 	async deleteConnection(providerKey: string, userId: string): Promise<SecretsProviderConnection> {
-		const connection = await this.repository.findOne({ where: { providerKey } });
-
-		if (!connection) {
-			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
-		}
-
+		const connection = await this.findConnectionOrFail(providerKey);
 		const projectInfo = this.extractProjectInfo(connection);
 
 		await this.projectAccessRepository.deleteByConnectionId(connection.id);
@@ -170,6 +213,14 @@ export class SecretsProvidersConnectionsService {
 			...projectInfo,
 		});
 
+		return connection;
+	}
+
+	private async findConnectionOrFail(providerKey: string): Promise<SecretsProviderConnection> {
+		const connection = await this.repository.findOne({ where: { providerKey } });
+		if (!connection) {
+			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
+		}
 		return connection;
 	}
 
@@ -234,6 +285,7 @@ export class SecretsProvidersConnectionsService {
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
+				role: access.role,
 			})),
 			createdAt: connection.createdAt.toISOString(),
 			updatedAt: connection.updatedAt.toISOString(),
@@ -260,6 +312,7 @@ export class SecretsProvidersConnectionsService {
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
+				role: access.role,
 			})),
 			settings: redactedSettings,
 			createdAt: connection.createdAt.toISOString(),

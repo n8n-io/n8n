@@ -86,6 +86,10 @@ export class SamlService {
 		};
 	}
 
+	/**
+	 * Checks if SAML request signing is enabled via feature flag.
+	 * @returns true if N8N_ENV_FEAT_SIGNED_SAML_REQUESTS is set to 'true', false otherwise
+	 */
 	public isSignedSamlRequestsEnabled(): boolean {
 		return process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS === 'true';
 	}

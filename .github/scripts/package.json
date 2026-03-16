@@ -1,16 +1,17 @@
 {
+  "name": "workflow-scripts",
   "scripts": {
     "test": "node --test --experimental-test-module-mocks ./*.test.mjs"
   },
   "dependencies": {
-    "cacheable-lookup": "6.1.0",
-    "conventional-changelog": "^4.0.0",
-    "debug": "4.3.4",
-    "glob": "10.5.0",
-    "p-limit": "3.1.0",
-    "picocolors": "1.0.1",
-    "semver": "7.5.4",
-    "tempfile": "5.0.0",
-    "@actions/github": "9.0.0"
+    "@actions/github": "9.0.0",
+    "conventional-changelog": "7.2.0",
+    "debug": "4.4.3",
+    "glob": "13.0.6",
+    "semver": "7.7.4",
+    "tempfile": "6.0.1"
+  },
+  "devDependencies": {
+    "conventional-changelog-angular": "^8.3.0"
   }
 }
