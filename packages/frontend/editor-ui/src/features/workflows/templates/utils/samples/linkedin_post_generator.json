@@ -1,0 +1,233 @@
+{
+	"name": "LinkedIn Post Generator Agent",
+	"meta": {
+		"templateId": "linkedin-post-generator-agent",
+		"templateCredsSetupCompleted": false
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"content": "## LinkedIn Post Generator Agent\n\nThis agent researches trending topics from the last 4 days, analyzes their impact on LinkedIn and X, and generates professional LinkedIn posts.\n\n### Setup\n1. Configure **Azure OpenAI** credentials (API Key, Resource Name, API Version)\n2. Click **Open Chat** and describe the topic or ask for trending topic suggestions\n3. The agent will research, analyze impact, and draft a post\n\n### Features\n- Trending topic research via RSS feeds and news APIs\n- LinkedIn and X impact analysis\n- Persona-based content generation\n- Hashtag recommendations",
+				"height": 380,
+				"width": 440,
+				"color": 4
+			},
+			"id": "a1b2c3d4-1111-4aaa-8888-000000000001",
+			"name": "Readme",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-760, -280]
+		},
+		{
+			"parameters": {
+				"content": "### 🔍 Research & Analysis Flow\nThe agent uses tools to fetch trending topics, analyze their impact, and generate content.",
+				"height": 520,
+				"width": 900,
+				"color": 7
+			},
+			"id": "a1b2c3d4-1111-4aaa-8888-000000000002",
+			"name": "Flow Overview",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-200, -280]
+		},
+		{
+			"parameters": {
+				"public": true,
+				"options": {
+					"title": "LinkedIn Post Generator 📝",
+					"subtitle": "Research trending topics and generate professional LinkedIn posts",
+					"responseMode": "lastNode",
+					"inputPlaceholder": "Describe a topic or ask me to find trending topics...",
+					"showWelcomeScreen": false
+				},
+				"initialMessages": "Hi! 👋 I'm your LinkedIn Post Generator Agent. I can:\n\n1. **Research trending topics** from the last 4 days\n2. **Analyze topic impact** on LinkedIn and X\n3. **Generate professional posts** in your preferred persona\n\nTry asking: \"What are the trending topics in AI this week?\" or \"Write a LinkedIn post about cloud security trends\""
+			},
+			"id": "a1b2c3d4-1111-4aaa-8888-000000000010",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.1,
+			"position": [-160, -180],
+			"webhookId": "b2c3d4e5-2222-4bbb-9999-111111111111"
+		},
+		{
+			"parameters": {
+				"options": {
+					"systemMessage": "=You are a professional LinkedIn Post Generator Agent. Your role is to research trending topics, analyze their impact on professional social media platforms, and create engaging LinkedIn posts.\n\n## Your Capabilities\n1. **Topic Research**: Use your tools to fetch the latest news and trending topics from the last 4 days\n2. **Impact Analysis**: Analyze how topics are trending on LinkedIn and X (Twitter) based on engagement patterns\n3. **Content Creation**: Generate professional, engaging LinkedIn posts with proper formatting\n\n## Content Guidelines\n- Write in a professional yet conversational tone\n- Use line breaks for readability (LinkedIn favors short paragraphs)\n- Include a compelling hook in the first line\n- Add relevant emojis sparingly for visual appeal\n- Include 3-5 relevant hashtags at the end\n- Keep posts between 150-300 words for optimal engagement\n- Use bullet points or numbered lists when presenting multiple ideas\n- End with a question or call-to-action to drive engagement\n\n## Post Structure\n1. **Hook** — Attention-grabbing first line\n2. **Context** — Why this topic matters now\n3. **Insight** — Your unique perspective or data point\n4. **Value** — Actionable takeaway for the reader\n5. **CTA** — Question or call-to-action\n6. **Hashtags** — 3-5 relevant tags\n\n## Persona Handling\nWhen the user specifies a persona (e.g., \"CTO\", \"Tech Lead\", \"Startup Founder\"), adapt the tone, vocabulary, and perspective accordingly. If no persona is specified, use a general thought leader persona.\n\n## Research Process\n1. First, use the news and tech feed tools to find recent trending topics\n2. Analyze the topics for LinkedIn relevance and engagement potential\n3. Draft the post with proper formatting\n4. Suggest posting time and engagement strategies\n\n## Current Date & Time\n{{ $now }}\n\nAlways research before writing. Never fabricate statistics or quotes."
+				}
+			},
+			"id": "a1b2c3d4-1111-4aaa-8888-000000000011",
+			"name": "LinkedIn Post Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [180, -180]
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o"
+				},
+				"options": {
+					"temperature": 0.7
+				}
+			},
+			"id": "a1b2c3d4-1111-4aaa-8888-000000000012",
+			"name": "Azure OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+			"typeVersion": 1,
+			"position": [-160, 60]
+		},
+		{
+			"parameters": {
+				"contextWindowLength": 20
+			},
+			"id": "a1b2c3d4-1111-4aaa-8888-000000000013",
+			"name": "Conversation Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [60, 60]
+		},
+		{
+			"parameters": {
+				"url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', `Choose the most relevant RSS feed based on the user topic:\n- https://feeds.bbci.co.uk/news/technology/rss.xml (BBC Technology)\n- https://techcrunch.com/feed/ (TechCrunch - tech & startups)\n- http://news.ycombinator.com/rss (Hacker News - tech community)\n- https://feeds.bbci.co.uk/news/business/rss.xml (BBC Business)\n- https://www.wired.com/feed/rss (Wired - technology & science)\n- https://feeds.bbci.co.uk/news/world/rss.xml (BBC World News)\n- https://www.aljazeera.com/xml/rss/all.xml (Al Jazeera - global news)`, 'string') }}",
+				"options": {},
+				"toolDescription": "Fetches the latest news articles and trending topics from RSS feeds. Use this to research what topics are currently trending in the last 4 days across technology, business, and world news."
+			},
+			"id": "a1b2c3d4-1111-4aaa-8888-000000000014",
+			"name": "Fetch Trending News",
+			"type": "n8n-nodes-base.rssFeedReadTool",
+			"typeVersion": 1.2,
+			"position": [300, 60]
+		},
+		{
+			"parameters": {
+				"url": "https://api.open-meteo.com/v1/forecast",
+				"options": {},
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "latitude",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('latitude', 'Latitude for location context', 'string') }}"
+						},
+						{
+							"name": "longitude",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('longitude', 'Longitude for location context', 'string') }}"
+						},
+						{
+							"name": "current",
+							"value": "temperature_2m"
+						}
+					]
+				},
+				"toolDescription": "Get current weather data for location-specific content context. Use when the post topic is related to weather, climate, or location-specific events."
+			},
+			"id": "a1b2c3d4-1111-4aaa-8888-000000000015",
+			"name": "Get Location Context",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.2,
+			"position": [460, 60]
+		},
+		{
+			"parameters": {
+				"url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('search_url', `Construct a Google News search URL to find trending topics. Use this format:\nhttps://news.google.com/rss/search?q={topic}&hl=en-US&gl=US&ceid=US:en\nReplace {topic} with the URL-encoded search term related to the user request.`, 'string') }}",
+				"options": {},
+				"toolDescription": "Search Google News RSS for specific topic trends and recent articles from the last 4 days. Use this to find how a specific topic is trending and what the latest developments are."
+			},
+			"id": "a1b2c3d4-1111-4aaa-8888-000000000016",
+			"name": "Search Topic Trends",
+			"type": "n8n-nodes-base.rssFeedReadTool",
+			"typeVersion": 1.2,
+			"position": [620, 60]
+		},
+		{
+			"parameters": {
+				"content": "### 🤖 Azure OpenAI\nConfigure your Azure OpenAI credentials:\n1. Set your **API Key**\n2. Set your **Resource Name**\n3. Set the **API Version**\n4. Set the **Deployment Name** as the model",
+				"height": 220,
+				"width": 300,
+				"color": 3
+			},
+			"id": "a1b2c3d4-1111-4aaa-8888-000000000017",
+			"name": "Azure Setup Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-260, 20]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "LinkedIn Post Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Azure OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "LinkedIn Post Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Conversation Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "LinkedIn Post Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Trending News": {
+			"ai_tool": [
+				[
+					{
+						"node": "LinkedIn Post Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Location Context": {
+			"ai_tool": [
+				[
+					{
+						"node": "LinkedIn Post Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search Topic Trends": {
+			"ai_tool": [
+				[
+					{
+						"node": "LinkedIn Post Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"tags": []
+}

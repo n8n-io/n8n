@@ -175,3 +175,109 @@ When implementing features:
 - Always reference the Linear ticket in the PR description,
   use `https://linear.app/n8n/issue/[TICKET-ID]`
 - always link to the github issue if mentioned in the linear ticket.
+
+## Agentic AI Best Practices
+
+### Agent Workflow Template Design
+
+n8n supports AI agent workflows using LangChain nodes. When designing or
+reviewing agent workflow templates, follow these principles:
+
+#### Architecture Pattern
+
+```mermaid
+graph TD
+    A[Chat Trigger / Webhook] --> B[AI Agent Node]
+    C[LLM Model] -->|ai_languageModel| B
+    D[Memory Node] -->|ai_memory| B
+    E[Tool 1] -->|ai_tool| B
+    F[Tool 2] -->|ai_tool| B
+    G[Tool N] -->|ai_tool| B
+```
+
+- **Trigger**: Use `chatTrigger` for interactive agents or `webhook` for
+  event-driven agents. Never claim both unless both triggers exist in the
+  workflow.
+- **LLM**: Use `lmChatAzureOpenAi`, `lmChatOpenAi`, or other LLM nodes.
+  Set temperature based on use case:
+  - Creative tasks (content generation): 0.7
+  - Operational tasks (IT Ops, ticketing): 0.2–0.3
+- **Memory**: Use `memoryBufferWindow` for conversation context retention.
+- **Tools**: Use `httpRequestTool`, `rssFeedReadTool`, or `toolCode` nodes.
+  Keep tool count under 10–15 per agent for reliability.
+
+#### System Message Guidelines
+
+- Clearly define the agent's role, capabilities, and constraints
+- Only describe capabilities that the workflow's tools actually support
+- Include current date/time via `{{ $now }}` for time-aware responses
+- Add response format templates for consistent output
+- Include escalation rules and error handling guidance
+- Never instruct the agent to fabricate data — always use tools
+
+#### Template JSON Structure
+
+Every workflow template must include:
+
+```json
+{
+  "name": "Descriptive Name",
+  "meta": {
+    "templateId": "kebab-case-unique-id",
+    "templateCredsSetupCompleted": false
+  },
+  "nodes": [],
+  "connections": {},
+  "pinData": {},
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": []
+}
+```
+
+#### Naming Conventions
+
+- `SampleTemplates` keys must end with `Template` suffix (e.g.,
+  `RagStarterTemplate`, `LinkedinPostGeneratorTemplate`)
+- Template IDs use kebab-case (e.g., `linkedin-post-generator-agent`)
+- Node names should be descriptive of their function
+
+#### Consistency Rules
+
+- Documentation (sticky notes, SKILL.md, README.md) must match actual
+  workflow capabilities — never claim features that aren't implemented
+- Connection targets must reference valid node names
+- All nodes must have `id`, `name`, `type`, and `typeVersion` fields
+- Credential references should use placeholder patterns for user
+  configuration
+
+### Agent Skill Documentation
+
+Agent skills live in `agents/<agent-name>/` with this structure:
+
+```
+agents/<agent-name>/
+├── SKILL.md    # YAML frontmatter (name, description, model, color) +
+│               # detailed instructions
+└── README.md   # Human-readable setup guide and usage examples
+```
+
+Register new agents in `agents/README.md` table and new workflow templates
+in `workflowSamples.ts`.
+
+### Available Agent Templates
+
+| Agent | Template ID | LLM | Tools |
+|---|---|---|---|
+| LinkedIn Post Generator | `linkedin-post-generator-agent` | Azure OpenAI (0.7) | RSS feeds, Google News, HTTP |
+| IT Ops | `it-ops-agent` | Azure OpenAI (0.3) | Health checks, Metrics, Logs, Runbooks |
+| ServiceNow Ticket Agent | `servicenow-ticket-agent` | Azure OpenAI (0.2) | CRUD + Reports via Table API |
+
+### Testing Agent Templates
+
+- Validate JSON structure: `meta.templateId` exists and is a string
+- Verify all `connections` reference valid `nodes` by name
+- Confirm system message scope matches available tools
+- Ensure sticky note documentation matches actual capabilities
+- Run `pnpm typecheck` in `packages/frontend/editor-ui` after changes
+- See [SKILLS.md](./SKILLS.md) for reusable validation and testing tasks

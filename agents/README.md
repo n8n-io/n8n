@@ -11,6 +11,9 @@ This directory contains Claude Code agent skills and plugins tailored for n8n de
 | [workflow-automation](./workflow-automation/) | Design, debug, and optimise n8n workflows | Building or troubleshooting workflows |
 | [node-development](./node-development/) | Scaffold and implement custom n8n nodes | Creating new integrations |
 | [integration-helper](./integration-helper/) | Map external APIs to n8n node operations | Connecting third-party services |
+| [linkedin-post-generator](./linkedin-post-generator/) | Research trending topics and generate LinkedIn posts | Social media content creation |
+| [it-ops](./it-ops/) | Monitor infrastructure and manage incidents | IT operations and incident response |
+| [servicenow-ticket](./servicenow-ticket/) | End-to-end ServiceNow ticket lifecycle management | ITSM ticket operations |
 
 ---
 

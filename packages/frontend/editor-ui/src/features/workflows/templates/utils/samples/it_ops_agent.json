@@ -1,0 +1,290 @@
+{
+	"name": "IT Ops Agent",
+	"meta": {
+		"templateId": "it-ops-agent",
+		"templateCredsSetupCompleted": false
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"content": "## IT Ops Agent\n\nAn AI-powered IT Operations agent that monitors infrastructure, diagnoses issues, executes runbooks, and manages incidents.\n\n### Setup\n1. Configure **Azure OpenAI** credentials\n2. Update HTTP Request tool URLs to point to your monitoring endpoints\n\n### Capabilities\n- Infrastructure health monitoring\n- Incident triage and diagnosis\n- Automated runbook execution\n- Status reporting and escalation",
+				"height": 360,
+				"width": 440,
+				"color": 4
+			},
+			"id": "b1c2d3e4-2222-4bbb-9999-000000000001",
+			"name": "Readme",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-760, -280]
+		},
+		{
+			"parameters": {
+				"content": "### 🔧 IT Operations Flow\nThe agent receives chat messages, diagnoses issues, and takes automated action.",
+				"height": 640,
+				"width": 1100,
+				"color": 7
+			},
+			"id": "b1c2d3e4-2222-4bbb-9999-000000000002",
+			"name": "Flow Overview",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-200, -280]
+		},
+		{
+			"parameters": {
+				"public": true,
+				"options": {
+					"title": "IT Ops Agent 🔧",
+					"subtitle": "Infrastructure monitoring, incident diagnosis, and automated operations",
+					"responseMode": "lastNode",
+					"inputPlaceholder": "Describe an IT issue or ask for infrastructure status...",
+					"showWelcomeScreen": false
+				},
+				"initialMessages": "Hi! 🔧 I'm your IT Ops Agent. I can help with:\n\n1. **Infrastructure Monitoring** — Check system health and status\n2. **Incident Diagnosis** — Analyze alerts and identify root causes\n3. **Runbook Execution** — Execute standard operating procedures\n4. **Status Reports** — Generate infrastructure status summaries\n\nTry: \"Check the health of our web servers\" or \"Diagnose high CPU alert on prod-server-01\""
+			},
+			"id": "b1c2d3e4-2222-4bbb-9999-000000000010",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.1,
+			"position": [-160, -180],
+			"webhookId": "c3d4e5f6-3333-4ccc-aaaa-222222222222"
+		},
+		{
+			"parameters": {
+				"options": {
+					"systemMessage": "=You are an expert IT Operations Agent with deep knowledge of infrastructure management, incident response, and DevOps practices.\n\n## Your Role\nYou are a Level 2/3 IT Operations engineer who can:\n1. **Monitor Infrastructure** — Check system health, resource utilization, and service status\n2. **Diagnose Issues** — Analyze alerts, correlate events, and identify root causes\n3. **Execute Runbooks** — Follow standard operating procedures for common issues\n4. **Report Status** — Generate clear status reports and incident summaries\n5. **Recommend Actions** — Suggest remediation steps and preventive measures\n\n## Incident Response Process\nWhen handling an incident, follow this process:\n1. **Acknowledge** — Confirm receipt of the alert/issue\n2. **Assess** — Determine severity (P1-Critical, P2-High, P3-Medium, P4-Low)\n3. **Diagnose** — Use monitoring tools to gather data and identify root cause\n4. **Remediate** — Execute appropriate runbook or recommend manual steps\n5. **Verify** — Confirm the issue is resolved\n6. **Document** — Provide a summary of the incident and resolution\n\n## Severity Classification\n- **P1 (Critical)**: Service outage affecting all users, data loss risk\n- **P2 (High)**: Major feature unavailable, significant performance degradation\n- **P3 (Medium)**: Minor feature issues, workaround available\n- **P4 (Low)**: Cosmetic issues, documentation updates needed\n\n## Common Runbooks\n- **High CPU**: Check top processes, identify runaway processes, restart if needed\n- **High Memory**: Check memory consumers, clear caches, restart services\n- **Disk Full**: Identify large files/logs, clean old data, expand if needed\n- **Service Down**: Check service status, review logs, attempt restart\n- **Network Issues**: Check connectivity, DNS resolution, firewall rules\n- **SSL Certificate Expiry**: Check certificate dates, initiate renewal\n- **Database Issues**: Check connections, query performance, replication status\n\n## Response Format\nFor incident reports, use this structure:\n```\n🔴/🟡/🟢 [Severity] - [Brief Description]\n\nAffected Systems: [list]\nImpact: [description]\nRoot Cause: [if identified]\nStatus: [Investigating/Mitigating/Resolved]\nActions Taken: [list]\nNext Steps: [recommendations]\n```\n\n## Current Date & Time\n{{ $now }}\n\nAlways use your tools to gather real data before making recommendations. Never guess at system status — always verify."
+				}
+			},
+			"id": "b1c2d3e4-2222-4bbb-9999-000000000011",
+			"name": "IT Ops Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [240, -180]
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o"
+				},
+				"options": {
+					"temperature": 0.3
+				}
+			},
+			"id": "b1c2d3e4-2222-4bbb-9999-000000000012",
+			"name": "Azure OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+			"typeVersion": 1,
+			"position": [-160, 80]
+		},
+		{
+			"parameters": {
+				"contextWindowLength": 30
+			},
+			"id": "b1c2d3e4-2222-4bbb-9999-000000000013",
+			"name": "Conversation Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [60, 80]
+		},
+		{
+			"parameters": {
+				"url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('health_check_url', `The URL to check infrastructure health. Use one of these example endpoints based on what the user asks:\n- https://httpstat.us/200 (simulate healthy service)\n- https://httpstat.us/500 (simulate unhealthy service)\n- https://httpstat.us/503 (simulate service unavailable)\nIn production, replace with your actual monitoring endpoint URLs.`, 'string') }}",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				},
+				"toolDescription": "Check the health status of infrastructure services and endpoints. Returns HTTP status code and response details. Use this to verify if services are running correctly. In production, configure with your actual monitoring endpoints (e.g., Prometheus, Datadog, Nagios API)."
+			},
+			"id": "b1c2d3e4-2222-4bbb-9999-000000000014",
+			"name": "Check Service Health",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.2,
+			"position": [300, 80]
+		},
+		{
+			"parameters": {
+				"url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('metrics_url', `The URL to fetch system metrics. Use this example endpoint:\nhttps://jsonplaceholder.typicode.com/posts/1\nIn production, replace with your monitoring API (e.g., Prometheus query API, Datadog metrics API, CloudWatch API).`, 'string') }}",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				},
+				"toolDescription": "Fetch system metrics and performance data from monitoring systems. Use this to get CPU usage, memory utilization, disk space, network stats, and other infrastructure metrics. In production, configure with your monitoring API endpoints."
+			},
+			"id": "b1c2d3e4-2222-4bbb-9999-000000000015",
+			"name": "Get System Metrics",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.2,
+			"position": [460, 80]
+		},
+		{
+			"parameters": {
+				"url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('logs_url', `The URL to fetch application or system logs. Use this example endpoint:\nhttps://jsonplaceholder.typicode.com/comments?postId=1\nIn production, replace with your log aggregation API (e.g., Elasticsearch, Splunk, CloudWatch Logs, Loki API).`, 'string') }}",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				},
+				"toolDescription": "Fetch application and system logs for troubleshooting and diagnosis. Use this to review error logs, access logs, and system events. In production, configure with your log aggregation system API endpoints."
+			},
+			"id": "b1c2d3e4-2222-4bbb-9999-000000000016",
+			"name": "Fetch Logs",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.2,
+			"position": [620, 80]
+		},
+		{
+			"parameters": {
+				"url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('runbook_url', `The URL to execute a runbook action or restart a service. Use this example endpoint:\nhttps://httpstat.us/200\nIn production, replace with your automation API (e.g., Ansible Tower API, Rundeck API, AWS SSM, or custom automation endpoints).`, 'string') }}",
+				"method": "POST",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				},
+				"sendBody": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "action",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('action', 'The runbook action to execute (e.g., restart_service, clear_cache, scale_up, check_disk)', 'string') }}"
+						},
+						{
+							"name": "target",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('target', 'The target system or service (e.g., web-server-01, api-gateway, database-primary)', 'string') }}"
+						}
+					]
+				},
+				"toolDescription": "Execute automated runbook actions such as service restarts, cache clearing, scaling operations, and other remediation steps. In production, configure with your automation platform API (Ansible Tower, Rundeck, AWS Systems Manager, etc.)."
+			},
+			"id": "b1c2d3e4-2222-4bbb-9999-000000000017",
+			"name": "Execute Runbook Action",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.2,
+			"position": [300, 260]
+		},
+		{
+			"parameters": {
+				"content": "### 🤖 Azure OpenAI\nConfigure your Azure OpenAI credentials:\n1. Set your **API Key**\n2. Set your **Resource Name**\n3. Set the **API Version**\n4. Set the **Deployment Name** as the model",
+				"height": 220,
+				"width": 300,
+				"color": 3
+			},
+			"id": "b1c2d3e4-2222-4bbb-9999-000000000018",
+			"name": "Azure Setup Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-260, 40]
+		},
+		{
+			"parameters": {
+				"content": "### ⚙️ Production Configuration\nReplace the example URLs in the HTTP Request tools with your actual monitoring and automation endpoints:\n- **Check Service Health** → Your health check endpoints\n- **Get System Metrics** → Prometheus/Datadog/CloudWatch API\n- **Fetch Logs** → Elasticsearch/Splunk/Loki API\n- **Execute Runbook** → Ansible Tower/Rundeck/SSM API",
+				"height": 220,
+				"width": 380,
+				"color": 3
+			},
+			"id": "b1c2d3e4-2222-4bbb-9999-000000000019",
+			"name": "Production Config Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [460, 220]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "IT Ops Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Azure OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "IT Ops Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Conversation Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "IT Ops Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Service Health": {
+			"ai_tool": [
+				[
+					{
+						"node": "IT Ops Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get System Metrics": {
+			"ai_tool": [
+				[
+					{
+						"node": "IT Ops Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Logs": {
+			"ai_tool": [
+				[
+					{
+						"node": "IT Ops Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Execute Runbook Action": {
+			"ai_tool": [
+				[
+					{
+						"node": "IT Ops Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"tags": []
+}

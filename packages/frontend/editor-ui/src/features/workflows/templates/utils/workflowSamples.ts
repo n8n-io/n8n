@@ -4,6 +4,9 @@ import { isWorkflowDataWithTemplateId } from './typeGuards';
 /* eslint-disable import-x/extensions */
 import easyAiStarterJson from './samples/easy_ai_starter.json';
 import ragStarterJson from './samples/rag_starter.json';
+import linkedinPostGeneratorJson from './samples/linkedin_post_generator.json';
+import itOpsAgentJson from './samples/it_ops_agent.json';
+import servicenowTicketAgentJson from './samples/servicenow_ticket_agent.json';
 import buildYourFirstAiAgentJson from './samples/tutorial/build_your_first_ai_agent.json';
 import jsonBasicsJson from './samples/tutorial/json_basics.json';
 import expressionsTutorialJson from './samples/tutorial/expressions_tutorial.json';
@@ -27,9 +30,24 @@ export const getRagStarterWorkflowJson = (): WorkflowDataWithTemplateId => {
 	return getWorkflowJson(ragStarterJson);
 };
 
+export const getLinkedinPostGeneratorWorkflowJson = (): WorkflowDataWithTemplateId => {
+	return getWorkflowJson(linkedinPostGeneratorJson);
+};
+
+export const getItOpsAgentWorkflowJson = (): WorkflowDataWithTemplateId => {
+	return getWorkflowJson(itOpsAgentJson);
+};
+
+export const getServicenowTicketAgentWorkflowJson = (): WorkflowDataWithTemplateId => {
+	return getWorkflowJson(servicenowTicketAgentJson);
+};
+
 export const SampleTemplates = {
 	RagStarterTemplate: getRagStarterWorkflowJson().meta.templateId,
 	EasyAiTemplate: getEasyAiWorkflowJson().meta.templateId,
+	LinkedinPostGeneratorTemplate: getLinkedinPostGeneratorWorkflowJson().meta.templateId,
+	ItOpsAgentTemplate: getItOpsAgentWorkflowJson().meta.templateId,
+	ServicenowTicketAgentTemplate: getServicenowTicketAgentWorkflowJson().meta.templateId,
 } as const;
 
 export const TutorialTemplates = {
@@ -97,6 +115,9 @@ export const getSampleWorkflowByTemplateId = (
 	const workflows = [
 		getEasyAiWorkflowJson(),
 		getRagStarterWorkflowJson(),
+		getLinkedinPostGeneratorWorkflowJson(),
+		getItOpsAgentWorkflowJson(),
+		getServicenowTicketAgentWorkflowJson(),
 		...getTutorialTemplates().map((tutorial) => tutorial.template),
 	];
 

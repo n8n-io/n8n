@@ -1,0 +1,365 @@
+{
+	"name": "ServiceNow Ticket Agent",
+	"meta": {
+		"templateId": "servicenow-ticket-agent",
+		"templateCredsSetupCompleted": false
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"content": "## ServiceNow Ticket Agent\n\nEnd-to-end ticket lifecycle management agent powered by Azure OpenAI. Handles ticket creation, assignment, updates, and closure.\n\n### Setup\n1. Configure **Azure OpenAI** credentials\n2. Update the HTTP Request tools with your **ServiceNow instance URL**\n3. Configure ServiceNow authentication (Basic Auth or OAuth)\n\n### Capabilities\n- Create new incidents and service requests\n- Auto-classify and prioritize tickets\n- Assign tickets based on category and team\n- Update ticket status and add work notes\n- Resolve and close tickets\n- Generate ticket summaries and reports",
+				"height": 400,
+				"width": 440,
+				"color": 4
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000001",
+			"name": "Readme",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-760, -280]
+		},
+		{
+			"parameters": {
+				"content": "### 🎫 Ticket Lifecycle Flow\nThe agent manages the complete ticket lifecycle: Create → Assign → Update → Resolve → Close",
+				"height": 720,
+				"width": 1200,
+				"color": 7
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000002",
+			"name": "Flow Overview",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-200, -280]
+		},
+		{
+			"parameters": {
+				"public": true,
+				"options": {
+					"title": "ServiceNow Ticket Agent 🎫",
+					"subtitle": "End-to-end ticket lifecycle management",
+					"responseMode": "lastNode",
+					"inputPlaceholder": "Describe your issue or ask about ticket status...",
+					"showWelcomeScreen": false
+				},
+				"initialMessages": "Hi! 🎫 I'm your ServiceNow Ticket Agent. I can help with:\n\n1. **Create Incidents** — Log new incident tickets\n2. **Check Status** — Query incident status and details\n3. **Update Incidents** — Add notes, change priority, reassign\n4. **Resolve & Close** — Complete the incident lifecycle\n5. **Reports** — Generate incident summaries\n\nTry: \"Create a P2 incident for email server outage\" or \"What's the status of INC0012345?\""
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000010",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.1,
+			"position": [-160, -180],
+			"webhookId": "d4e5f6a7-4444-4ddd-bbbb-333333333333"
+		},
+		{
+			"parameters": {
+				"options": {
+					"systemMessage": "=You are an expert ServiceNow Incident Management Agent. You handle the complete incident lifecycle from creation to closure with precision and best practices.\n\n## Your Role\nYou are a ServiceNow administrator and ITSM expert who can:\n1. **Create Incidents** — Log incidents with proper classification and prioritization\n2. **Classify & Prioritize** — Auto-categorize based on description and set appropriate priority\n3. **Assign Incidents** — Route to the correct assignment group based on category\n4. **Update Incidents** — Add work notes, change status, update fields\n5. **Resolve & Close** — Document resolution and close incidents\n6. **Report** — Generate incident summaries and status reports\n\n## Incident Type\n- **Incident (INC)**: Unplanned interruption or quality reduction of an IT service\n\n## Priority Matrix\n| Impact \\ Urgency | High | Medium | Low |\n|---|---|---|---|\n| High | P1 - Critical | P2 - High | P3 - Medium |\n| Medium | P2 - High | P3 - Medium | P4 - Low |\n| Low | P3 - Medium | P4 - Low | P5 - Planning |\n\n## Assignment Rules\n- **Network Issues** → Network Operations Team\n- **Server/Infrastructure** → Infrastructure Team\n- **Application Issues** → Application Support Team\n- **Security Issues** → Security Operations Team\n- **Database Issues** → Database Administration Team\n- **End User/Desktop** → Service Desk / Desktop Support\n- **Cloud/DevOps** → Cloud Operations Team\n\n## Incident Lifecycle States\n1. **New** → Incident created, awaiting triage\n2. **Assigned** → Routed to assignment group\n3. **In Progress** → Work has begun\n4. **Pending** → Waiting on user/vendor/change\n5. **Resolved** → Fix applied, awaiting confirmation\n6. **Closed** → Confirmed resolved, incident closed\n\n## Required Fields for Incident Creation\n- **Short Description**: Brief summary of the issue\n- **Description**: Detailed description\n- **Category**: The service category\n- **Priority**: Based on impact and urgency\n- **Assignment Group**: Team responsible\n- **Caller/Requested For**: The affected user\n\n## Response Format for Incident Operations\n\n### Creating an incident:\n```\n🎫 Incident Created Successfully\n\nNumber: INC00XXXXX\nShort Description: [summary]\nPriority: [P1-P5]\nCategory: [category]\nAssignment Group: [team]\nStatus: New\n```\n\n### Updating an incident:\n```\n✏️ Incident Updated\n\nNumber: [incident number]\nField Changed: [field] → [new value]\nWork Note Added: [note summary]\n```\n\n### Closing an incident:\n```\n✅ Incident Resolved & Closed\n\nNumber: [incident number]\nResolution: [resolution summary]\nResolution Code: [code]\nClosed At: [timestamp]\n```\n\n## Current Date & Time\n{{ $now }}\n\nAlways use the tools to interact with ServiceNow. Never fabricate incident numbers or statuses. If a ServiceNow API call fails, report the error clearly and suggest alternative actions."
+				}
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000011",
+			"name": "ServiceNow Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [300, -180]
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o"
+				},
+				"options": {
+					"temperature": 0.2
+				}
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000012",
+			"name": "Azure OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+			"typeVersion": 1,
+			"position": [-160, 100]
+		},
+		{
+			"parameters": {
+				"contextWindowLength": 30
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000013",
+			"name": "Conversation Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [60, 100]
+		},
+		{
+			"parameters": {
+				"url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('instance_url', 'Your ServiceNow instance URL', 'string') }}/api/now/table/incident",
+				"method": "POST",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBasicAuth",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('ticket_body', `JSON body for creating a ServiceNow incident. Include these fields:\n{\n  \"short_description\": \"Brief summary of the issue\",\n  \"description\": \"Detailed description of the issue\",\n  \"category\": \"One of: Network, Hardware, Software, Database, Security, Inquiry\",\n  \"priority\": \"1-5 (1=Critical, 5=Planning)\",\n  \"impact\": \"1-3 (1=High, 3=Low)\",\n  \"urgency\": \"1-3 (1=High, 3=Low)\",\n  \"assignment_group\": \"The team to assign to\",\n  \"caller_id\": \"The user reporting the issue\"\n}`, 'string') }}",
+				"toolDescription": "Create a new incident ticket in ServiceNow. Provide the ticket details including short description, category, priority, and assignment group. In production, configure with your ServiceNow instance URL and authentication credentials."
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000014",
+			"name": "Create Ticket",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.2,
+			"position": [300, 100]
+		},
+		{
+			"parameters": {
+				"url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('instance_url', 'Your ServiceNow instance URL', 'string') }}/api/now/table/incident",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBasicAuth",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				},
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "sysparm_query",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('query', `ServiceNow query string. Examples:\n- number=INC0012345 (find specific ticket)\n- state=1^priority=1 (all new P1 tickets)\n- assignment_group=Network Operations^state!=7 (open network tickets)\n- short_descriptionLIKEemail (search by keyword)`, 'string') }}"
+						},
+						{
+							"name": "sysparm_limit",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('limit', 'Number of records to return (default: 10)', 'string') }}"
+						},
+						{
+							"name": "sysparm_display_value",
+							"value": "true"
+						}
+					]
+				},
+				"toolDescription": "Query and retrieve incident tickets from ServiceNow. Search by ticket number, status, priority, assignment group, or keywords. Returns ticket details including status, priority, and assignment information."
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000015",
+			"name": "Query Tickets",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.2,
+			"position": [460, 100]
+		},
+		{
+			"parameters": {
+				"url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('instance_url', 'Your ServiceNow instance URL', 'string') }}/api/now/table/incident/{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('sys_id', 'The sys_id of the ticket to update. First query the ticket to get the sys_id.', 'string') }}",
+				"method": "PATCH",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBasicAuth",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('update_body', `JSON body with fields to update. Common updates:\n{\n  \"state\": \"2\",  // 1=New, 2=In Progress, 3=On Hold, 6=Resolved, 7=Closed\n  \"work_notes\": \"Description of work performed\",\n  \"assigned_to\": \"user_sys_id\",\n  \"priority\": \"2\",\n  \"close_code\": \"Solved (Permanently)\",\n  \"close_notes\": \"Resolution description\"\n}`, 'string') }}",
+				"toolDescription": "Update an existing incident ticket in ServiceNow. Can change status, add work notes, reassign, update priority, or resolve/close the ticket. Requires the ticket sys_id (query the ticket first to get it)."
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000016",
+			"name": "Update Ticket",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.2,
+			"position": [620, 100]
+		},
+		{
+			"parameters": {
+				"url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('instance_url', 'Your ServiceNow instance URL', 'string') }}/api/now/table/incident/{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('sys_id', 'The sys_id of the ticket to resolve and close', 'string') }}",
+				"method": "PATCH",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBasicAuth",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('close_body', `JSON body to resolve and close the ticket:\n{\n  \"state\": \"6\",\n  \"close_code\": \"Solved (Permanently)\",\n  \"close_notes\": \"Detailed resolution description\",\n  \"resolved_by\": \"ServiceNow Ticket Agent\",\n  \"work_notes\": \"Ticket resolved and closed by ServiceNow Ticket Agent\"\n}`, 'string') }}",
+				"toolDescription": "Resolve and close a ServiceNow incident ticket. Sets the state to Resolved (6) with resolution details including close code, close notes, and resolution summary. Use after the issue has been confirmed as fixed."
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000017",
+			"name": "Resolve and Close Ticket",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.2,
+			"position": [300, 300]
+		},
+		{
+			"parameters": {
+				"url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('instance_url', 'Your ServiceNow instance URL', 'string') }}/api/now/table/incident",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBasicAuth",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				},
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "sysparm_query",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('report_query', `Query for generating ticket reports. Examples:\n- state!=7^sys_created_on>=javascript:gs.daysAgoStart(7) (all open tickets created in last 7 days)\n- priority=1^state!=7 (all open P1 tickets)\n- assignment_group=Infrastructure Team^state=2 (in-progress infrastructure tickets)`, 'string') }}"
+						},
+						{
+							"name": "sysparm_limit",
+							"value": "100"
+						},
+						{
+							"name": "sysparm_display_value",
+							"value": "true"
+						},
+						{
+							"name": "sysparm_fields",
+							"value": "number,short_description,priority,state,assignment_group,sys_created_on,resolved_at"
+						}
+					]
+				},
+				"toolDescription": "Generate reports and summaries of ServiceNow tickets. Query tickets by various criteria to create status reports, ticket counts by priority, open ticket summaries, and team workload reports."
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000018",
+			"name": "Generate Report",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.2,
+			"position": [460, 300]
+		},
+		{
+			"parameters": {
+				"content": "### 🤖 Azure OpenAI\nConfigure your Azure OpenAI credentials:\n1. Set your **API Key**\n2. Set your **Resource Name**\n3. Set the **API Version**\n4. Set the **Deployment Name** as the model",
+				"height": 220,
+				"width": 300,
+				"color": 3
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000019",
+			"name": "Azure Setup Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-260, 60]
+		},
+		{
+			"parameters": {
+				"content": "### 🔗 ServiceNow Configuration\nReplace the instance URL in each HTTP Request tool with your ServiceNow instance:\n- **Format**: `https://your-instance.service-now.com`\n- **Auth**: Configure HTTP Basic Auth with ServiceNow credentials\n- For OAuth, update the authentication type in each tool node",
+				"height": 200,
+				"width": 400,
+				"color": 3
+			},
+			"id": "c1d2e3f4-3333-4ccc-aaaa-000000000020",
+			"name": "ServiceNow Config Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [620, 260]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "ServiceNow Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Azure OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "ServiceNow Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Conversation Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "ServiceNow Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Ticket": {
+			"ai_tool": [
+				[
+					{
+						"node": "ServiceNow Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Query Tickets": {
+			"ai_tool": [
+				[
+					{
+						"node": "ServiceNow Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Ticket": {
+			"ai_tool": [
+				[
+					{
+						"node": "ServiceNow Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Resolve and Close Ticket": {
+			"ai_tool": [
+				[
+					{
+						"node": "ServiceNow Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Report": {
+			"ai_tool": [
+				[
+					{
+						"node": "ServiceNow Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"tags": []
+}
