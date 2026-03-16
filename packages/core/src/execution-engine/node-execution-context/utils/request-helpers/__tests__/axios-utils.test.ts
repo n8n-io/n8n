@@ -271,7 +271,8 @@ describe('axios-utils', () => {
 		const getFormDataEntries = (formData: FormData) => {
 			// Access the internal _streams array that form-data uses to buffer appended values.
 			// Each append produces 3 consecutive entries: header string, value, and footer string.
-			const streams: unknown[] = (formData as any)._streams as unknown[];
+			// @ts-expect-error accessing internal field
+			const streams: unknown[] = formData._streams as unknown[];
 			const entries: Array<{ key: string; value: string | Buffer }> = [];
 			for (let i = 0; i < streams.length; i += 3) {
 				const header = String(streams[i]);
@@ -325,7 +326,8 @@ describe('axios-utils', () => {
 			expect((entries[0].value as Buffer).toString()).toBe('test content');
 
 			// Verify the options were passed through (filename appears in the header)
-			const streams: unknown[] = (formData as any)._streams as unknown[];
+			// @ts-expect-error accessing internal field
+			const streams: unknown[] = formData._streams as unknown[];
 			const header = String(streams[0]);
 			expect(header).toContain('filename="test.txt"');
 			expect(header).toContain('Content-Type: text/plain');
