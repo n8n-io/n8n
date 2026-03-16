@@ -518,7 +518,7 @@ defineExpose({ focus, blur, select });
 }
 
 .input::placeholder {
-	color: var(--color--text--subtler);
+	color: var(--color--text--tint-2);
 }
 
 .input:read-only {
@@ -527,7 +527,7 @@ defineExpose({ focus, blur, select });
 
 .input:disabled {
 	cursor: not-allowed;
-	color: var(--color--text--subtler);
+	color: var(--color--text--tint-2);
 }
 
 .textarea {
@@ -544,7 +544,7 @@ defineExpose({ focus, blur, select });
 }
 
 .textarea::placeholder {
-	color: var(--color--text--subtler);
+	color: var(--color--text--tint-2);
 }
 
 .textarea:read-only {
@@ -553,7 +553,7 @@ defineExpose({ focus, blur, select });
 
 .textarea:disabled {
 	cursor: not-allowed;
-	color: var(--color--text--subtler);
+	color: var(--color--text--tint-2);
 }
 
 .prefix,
