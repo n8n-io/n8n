@@ -108,16 +108,6 @@ describe('Project deletion with external secrets', () => {
 			providerKey: 'ownerRoleConnection',
 		});
 
-		await projectAccessRepository.update(
-			{
-				projectId: project.id,
-				secretsProviderConnectionId: connection.id,
-			},
-			{
-				role: 'secretsProviderConnection:owner',
-			},
-		);
-
 		const ownerAccess = await projectAccessRepository.findOneByOrFail({
 			projectId: project.id,
 			secretsProviderConnectionId: connection.id,
@@ -170,22 +160,9 @@ describe('Project deletion with external secrets', () => {
 		await createProjectConnection(owner, project.id, 'mixedOwnerConnection');
 		await createGlobalSharedConnection(owner, project.id, 'mixedUserConnection');
 
-		const ownerConnection = await connectionRepository.findOneByOrFail({
-			providerKey: 'mixedOwnerConnection',
-		});
 		const userConnection = await connectionRepository.findOneByOrFail({
 			providerKey: 'mixedUserConnection',
 		});
-
-		await projectAccessRepository.update(
-			{
-				projectId: project.id,
-				secretsProviderConnectionId: ownerConnection.id,
-			},
-			{
-				role: 'secretsProviderConnection:owner',
-			},
-		);
 
 		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
 
@@ -212,16 +189,6 @@ describe('Project deletion with external secrets', () => {
 		const connection = await connectionRepository.findOneByOrFail({
 			providerKey: 'rollbackOwnerConnection',
 		});
-
-		await projectAccessRepository.update(
-			{
-				projectId: project.id,
-				secretsProviderConnectionId: connection.id,
-			},
-			{
-				role: 'secretsProviderConnection:owner',
-			},
-		);
 
 		const originalConnectionTarget = connectionRepository.target;
 		Object.defineProperty(connectionRepository, 'target', {
@@ -259,22 +226,14 @@ describe('Project deletion with external secrets', () => {
 		await createProjectConnection(owner, project.id, 'rollbackOwnerConnection2');
 		await createGlobalSharedConnection(owner, project.id, 'rollbackUserConnection2');
 
-		const ownerConnection = await connectionRepository.findOneByOrFail({
-			providerKey: 'rollbackOwnerConnection2',
-		});
-		const userConnection = await connectionRepository.findOneByOrFail({
-			providerKey: 'rollbackUserConnection2',
-		});
-
-		await projectAccessRepository.update(
-			{
-				projectId: project.id,
-				secretsProviderConnectionId: ownerConnection.id,
-			},
-			{
-				role: 'secretsProviderConnection:owner',
-			},
-		);
+		const [ownerConnection, userConnection] = await Promise.all([
+			connectionRepository.findOneByOrFail({
+				providerKey: 'rollbackOwnerConnection2',
+			}),
+			connectionRepository.findOneByOrFail({
+				providerKey: 'rollbackUserConnection2',
+			}),
+		]);
 
 		const originalProjectAccessTarget = projectAccessRepository.target;
 		Object.defineProperty(projectAccessRepository, 'target', {
