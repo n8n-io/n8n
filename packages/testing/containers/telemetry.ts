@@ -206,22 +206,99 @@ export class TelemetryRecorder {
 		}
 	}
 
+	private buildUnifiedPayload(record: StackTelemetryRecord): object {
+		const runId = record.ci.runId ?? null;
+		const repo = process.env.GITHUB_REPOSITORY ?? null;
+
+		const metrics: Array<{
+			metric_name: string;
+			value: number;
+			unit: string;
+			dimensions: Record<string, string | number>;
+		}> = [
+			{
+				metric_name: 'stack-startup-total',
+				value: record.timing.total,
+				unit: 'ms',
+				dimensions: {
+					stack_type: record.stack.type,
+					mains: record.stack.mains,
+					workers: record.stack.workers,
+					postgres: record.stack.postgres ? 'true' : 'false',
+					success: record.success ? 'true' : 'false',
+				},
+			},
+			{
+				metric_name: 'stack-startup-network',
+				value: record.timing.network,
+				unit: 'ms',
+				dimensions: { stack_type: record.stack.type },
+			},
+			{
+				metric_name: 'stack-startup-n8n',
+				value: record.timing.n8nStartup,
+				unit: 'ms',
+				dimensions: { stack_type: record.stack.type },
+			},
+			...Object.entries(record.timing.services).map(([service, duration]) => ({
+				metric_name: 'stack-startup-service',
+				value: duration,
+				unit: 'ms',
+				dimensions: { service, stack_type: record.stack.type },
+			})),
+			{
+				metric_name: 'container-count',
+				value: record.containers.total,
+				unit: 'count',
+				dimensions: { stack_type: record.stack.type },
+			},
+		];
+
+		return {
+			timestamp: record.timestamp,
+			benchmark_name: 'container-telemetry',
+			git: {
+				sha: record.git.sha,
+				branch: record.git.branch,
+				pr: record.git.pr ?? null,
+			},
+			ci: {
+				runId,
+				runUrl: runId && repo ? `https://github.com/${repo}/actions/runs/${runId}` : null,
+				job: record.ci.job ?? null,
+				workflow: record.ci.workflow ?? null,
+				attempt: record.ci.attempt ?? null,
+			},
+			runner: record.runner,
+			metrics,
+		};
+	}
+
 	/**
 	 * Send telemetry via a detached child process.
 	 * The process runs independently and survives parent exit, ensuring delivery
 	 * even when the main process throws/exits immediately after flush().
 	 */
 	private sendToWebhook(record: StackTelemetryRecord, webhookUrl: string): void {
-		const payload = JSON.stringify(record);
+		const webhookUser = process.env.QA_METRICS_WEBHOOK_USER;
+		const webhookPassword = process.env.QA_METRICS_WEBHOOK_PASSWORD;
+
+		if (!webhookUser || !webhookPassword) {
+			console.log('QA_METRICS_WEBHOOK_USER/PASSWORD not set, skipping telemetry.');
+			return;
+		}
+
+		const payload = JSON.stringify(this.buildUnifiedPayload(record));
+		const authHeader = `Basic ${Buffer.from(`${webhookUser}:${webhookPassword}`).toString('base64')}`;
 		const script = `
 			fetch(process.argv[1], {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', 'Authorization': process.argv[3] },
 				body: process.argv[2]
 			}).catch(() => process.exit(1));
 		`;
 
-		const child = spawn(process.execPath, ['-e', script, webhookUrl, payload], {
+		const child = spawn(process.execPath, ['-e', script, webhookUrl, payload, authHeader], {
 			detached: true,
 			stdio: 'ignore',
 		});

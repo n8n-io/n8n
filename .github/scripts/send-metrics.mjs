@@ -65,6 +65,11 @@ export async function sendMetrics(metrics, benchmarkName = null) {
 		return;
 	}
 
+	if (!webhookUser || !webhookPassword) {
+		console.log('QA_METRICS_WEBHOOK_USER/PASSWORD not set, skipping.');
+		return;
+	}
+
 	const payload = { ...buildContext(benchmarkName), metrics };
 	const basicAuth = Buffer.from(`${webhookUser}:${webhookPassword}`).toString('base64');
 
@@ -80,10 +85,9 @@ export async function sendMetrics(metrics, benchmarkName = null) {
 
 	if (!response.ok) {
 		const body = await response.text().catch(() => '');
-		console.error(
+		throw new Error(
 			`Webhook failed: ${response.status} ${response.statusText}${body ? `\n${body}` : ''}`,
 		);
-		process.exit(1);
 	}
 
 	console.log(`Sent ${metrics.length} metric(s): ${response.status}`);
