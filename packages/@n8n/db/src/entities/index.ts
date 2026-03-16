@@ -35,6 +35,7 @@ import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowStatistics } from './workflow-statistics';
+import { ScenarioExecutionEntity } from './scenario-execution-entity';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
@@ -75,6 +76,7 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ScenarioExecutionEntity,
 	ProjectSecretsProviderAccess,
 	type SecretsProviderAccessRole,
 	SecretsProviderConnection,
@@ -114,6 +116,7 @@ export const entities = {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ScenarioExecutionEntity,
 	Role,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
