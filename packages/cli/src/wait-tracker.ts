@@ -25,6 +25,9 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
+	/** Guards against overlapping poll invocations when DB queries take longer than the poll interval. */
+	private isPolling = false;
+
 	/** Cached DB server time. Refreshed every 60s; intermediate values are interpolated. */
 	private serverTimeCache: { serverTime: Date; localTimeAtFetch: number } | null = null;
 
@@ -79,44 +82,54 @@ export class WaitTracker {
 	}
 
 	async getWaitingExecutions() {
-		this.logger.debug('Querying database for waiting executions');
-
-		const [executions, serverTime] = await Promise.all([
-			this.executionRepository.getWaitingExecutions(),
-			this.getApproximateServerTime(),
-		]);
-
-		const skewMs = serverTime.getTime() - Date.now();
-		if (Math.abs(skewMs) > 2000) {
-			this.logger.warn(
-				`Clock skew detected: this instance is ${Math.abs(skewMs)}ms ${skewMs > 0 ? 'behind' : 'ahead of'} the database server`,
-			);
-		}
-
-		if (executions.length === 0) {
+		if (this.isPolling) {
+			this.logger.debug('Skipping poll — previous poll still in progress');
 			return;
 		}
 
-		const executionIds = executions.map((execution) => execution.id).join(', ');
-		this.logger.debug(
-			`Found ${executions.length} executions. Setting timer for IDs: ${executionIds}`,
-		);
+		this.isPolling = true;
+		try {
+			this.logger.debug('Querying database for waiting executions');
 
-		for (const execution of executions) {
-			const executionId = execution.id;
-			if (this.waitingExecutions[executionId] !== undefined) continue;
-			if (execution.waitTill === null) continue; // row without a waitTill should never be returned, skip defensively
+			const [executions, serverTime] = await Promise.all([
+				this.executionRepository.getWaitingExecutions(),
+				this.getApproximateServerTime(),
+			]);
 
-			const triggerTime = execution.waitTill.getTime() - serverTime.getTime();
-			this.waitingExecutions[executionId] = {
-				executionId,
-				timer: setTimeout(
-					() => {
-						void this.startExecution(executionId);
-					},
-					Math.max(triggerTime, 0),
-				),
-			};
+			const skewMs = serverTime.getTime() - Date.now();
+			if (Math.abs(skewMs) > 2000) {
+				this.logger.warn(
+					`Clock skew detected: this instance is ${Math.abs(skewMs)}ms ${skewMs > 0 ? 'behind' : 'ahead of'} the database server`,
+				);
+			}
+
+			if (executions.length === 0) {
+				return;
+			}
+
+			const executionIds = executions.map((execution) => execution.id).join(', ');
+			this.logger.debug(
+				`Found ${executions.length} executions. Setting timer for IDs: ${executionIds}`,
+			);
+
+			for (const execution of executions) {
+				const executionId = execution.id;
+				if (this.waitingExecutions[executionId] !== undefined) continue;
+				if (execution.waitTill === null) continue; // row without a waitTill should never be returned, skip defensively
+
+				const triggerTime = execution.waitTill.getTime() - serverTime.getTime();
+				this.waitingExecutions[executionId] = {
+					executionId,
+					timer: setTimeout(
+						() => {
+							void this.startExecution(executionId);
+						},
+						Math.max(triggerTime, 0),
+					),
+				};
+			}
+		} finally {
+			this.isPolling = false;
 		}
 	}
 
@@ -130,7 +143,6 @@ export class WaitTracker {
 
 	async startExecution(executionId: string) {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
-		delete this.waitingExecutions[executionId];
 
 		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
@@ -138,13 +150,16 @@ export class WaitTracker {
 		});
 
 		if (!fullExecutionData) {
+			delete this.waitingExecutions[executionId];
 			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
 		}
 		if (fullExecutionData.finished) {
+			delete this.waitingExecutions[executionId];
 			throw new UnexpectedError('The execution did succeed and can so not be started again.');
 		}
 
 		if (!fullExecutionData.workflowData.id) {
+			delete this.waitingExecutions[executionId];
 			throw new UnexpectedError('Only saved workflows can be resumed.');
 		}
 
@@ -164,8 +179,6 @@ export class WaitTracker {
 			await this.workflowRunner.run(data, false, false, executionId);
 		} catch (error) {
 			if (error instanceof ExecutionAlreadyResumingError) {
-				// This execution is already being resumed by another child execution
-				// This is expected in "run once for each item" mode when multiple children complete
 				this.logger.debug(
 					`Execution ${executionId} is already being resumed, skipping duplicate resume`,
 					{ executionId },
@@ -173,6 +186,8 @@ export class WaitTracker {
 				return;
 			}
 			throw error;
+		} finally {
+			delete this.waitingExecutions[executionId];
 		}
 
 		const { parentExecution } = fullExecutionData.data;
@@ -206,6 +221,7 @@ export class WaitTracker {
 			clearTimeout(this.waitingExecutions[executionId].timer);
 		});
 		this.serverTimeCache = null;
+		this.isPolling = false;
 
 		this.logger.debug('Stopped tracking waiting executions');
 	}
