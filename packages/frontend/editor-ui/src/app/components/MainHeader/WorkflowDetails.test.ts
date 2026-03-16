@@ -235,6 +235,7 @@ describe('WorkflowDetails', () => {
 	it('opens share modal on share button click', async () => {
 		const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 
+		workflowDocumentStoreRef.value?.setScopes(['workflow:share']);
 		const { getByTestId } = renderComponent({
 			props: {
 				...defaultProps,
@@ -297,7 +298,7 @@ describe('WorkflowDetails', () => {
 		});
 
 		it('should have workflow duplicate and import options if permission update is true', async () => {
-			workflowDocumentStoreRef.value?.setScopes(['workflow:update']);
+			workflowDocumentStoreRef.value?.setScopes(['workflow:update', 'workflow:share']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
