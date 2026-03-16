@@ -97,6 +97,12 @@ export class ProjectService {
 		);
 	}
 
+	private get secretsProvidersConnectionsService() {
+		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee').then(
+			({ SecretsProvidersConnectionsService }) => Container.get(SecretsProvidersConnectionsService),
+		);
+	}
+
 	async deleteProject(
 		user: User,
 		projectId: string,
@@ -192,10 +198,16 @@ export class ProjectService {
 			}
 		}
 
-		// 7. delete project
+		// 7. delete secrets providers connections that are owned by this project
+		if (this.moduleRegistry.isActive('external-secrets')) {
+			const secretsProvidersConnectionsService = await this.secretsProvidersConnectionsService;
+			await secretsProvidersConnectionsService.cleanupConnectionsForProjectDeletion(project.id);
+		}
+
+		// 8. delete project
 		await this.projectRepository.remove(project);
 
-		// 8. delete project relations
+		// 9. delete project relations
 		// Cascading deletes take care of this.
 	}
 

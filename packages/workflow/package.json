@@ -69,6 +69,7 @@
     "transliteration": "2.3.5",
     "xml2js": "catalog:",
     "zod": "catalog:",
-    "jsonrepair": "catalog:"
+    "jsonrepair": "catalog:",
+    "uuid": "catalog:"
   }
 }

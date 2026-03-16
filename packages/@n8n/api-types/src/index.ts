@@ -209,6 +209,8 @@ export type {
 	SecretsProviderType,
 	SecretsProviderState,
 	SecretsProviderConnectionTestState,
+	SecretsProviderAccessRole,
+	ConnectionProjectSummary,
 	SecretProviderConnectionListItem,
 	SecretProviderConnection,
 	SecretProviderTypeResponse,

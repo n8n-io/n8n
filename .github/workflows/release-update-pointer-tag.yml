@@ -51,8 +51,8 @@ jobs:
       - name: Setup NodeJS
         uses: ./.github/actions/setup-nodejs
         with:
-          install-command: npm install --prefix=.github/scripts --no-package-lock
           build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Configure git author
         run: |

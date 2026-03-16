@@ -217,6 +217,26 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		);
 	});
 
+	it('should create $now with the provided timezone', async () => {
+		const data = { $json: {} };
+
+		const zone = evaluator.evaluate('{{ $now.zoneName }}', data, {
+			timezone: 'America/New_York',
+		});
+
+		expect(zone).toBe('America/New_York');
+	});
+
+	it('should create $today with the provided timezone', async () => {
+		const data = { $json: {} };
+
+		const zone = evaluator.evaluate('{{ $today.zoneName }}', data, {
+			timezone: 'Asia/Tokyo',
+		});
+
+		expect(zone).toBe('Asia/Tokyo');
+	});
+
 	it('should reset to system timezone when no timezone is provided after one was set', async () => {
 		const data = {
 			$json: { ts: 1704067200000 }, // 2024-01-01T00:00:00Z
