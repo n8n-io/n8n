@@ -10,6 +10,7 @@ import {
 } from './executionFinished';
 import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { Router } from 'vue-router';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
@@ -614,7 +615,7 @@ describe('manual execution stats tracking', () => {
 						},
 					},
 				},
-			} as unknown as ReturnType<typeof workflowsStore.getWorkflowExecution>);
+			} as unknown as IExecutionResponse);
 
 			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
 				mock<INodeUi>({ type: 'n8n-nodes-base.telegram', typeVersion: 1 }),
@@ -642,7 +643,7 @@ describe('manual execution stats tracking', () => {
 						runData: {},
 					},
 				},
-			} as unknown as ReturnType<typeof workflowsStore.getWorkflowExecution>);
+			} as unknown as IExecutionResponse);
 
 			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
 				mock<INodeUi>({ type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
@@ -670,7 +671,7 @@ describe('manual execution stats tracking', () => {
 						runData: {},
 					},
 				},
-			} as unknown as ReturnType<typeof workflowsStore.getWorkflowExecution>);
+			} as unknown as IExecutionResponse);
 
 			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
 				mock<INodeUi>({ type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
