@@ -8,6 +8,7 @@ import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useActionsGenerator } from '../composables/useActionsGeneration';
+import { useMergeDevIntegrations } from '../composables/useMergeDevIntegrations';
 import NodesListPanel from './Panel/NodesListPanel.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
@@ -42,6 +43,7 @@ const chatPanelStore = useChatPanelStore();
 
 const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
+const { fetchIntegrations: fetchMergeDevIntegrations } = useMergeDevIntegrations();
 
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
@@ -136,19 +138,30 @@ registerKeyHook('NodeCreatorCloseEscape', {
 	handler: () => emit('closeNodeCreator'),
 });
 
+function regenerateNodes() {
+	const nodeTypes = useNodeTypesStore().visibleNodeTypes;
+	const httpOnlyCredentials = useCredentialsStore().httpOnlyCredentialTypes;
+	const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
+
+	// Inject Merge.dev virtual nodes (only into the main node list, not community nodes)
+	const { getMergeDevVirtualNodes } = useMergeDevIntegrations();
+	mergedNodes.push(...getMergeDevVirtualNodes());
+
+	setActions(actions);
+	setMergeNodes(mergedNodes);
+}
+
 watch(
 	() => ({
 		httpOnlyCredentials: useCredentialsStore().httpOnlyCredentialTypes,
 		nodeTypes: useNodeTypesStore().visibleNodeTypes,
 	}),
-	({ nodeTypes, httpOnlyCredentials }) => {
-		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
-
-		setActions(actions);
-		setMergeNodes(mergedNodes);
-	},
+	() => regenerateNodes(),
 	{ immediate: true },
 );
+
+// Fetch Merge.dev integrations and regenerate nodes when ready
+void fetchMergeDevIntegrations().then(() => regenerateNodes());
 const { nodeCreator } = toRefs(state);
 
 onBeforeUnmount(() => {

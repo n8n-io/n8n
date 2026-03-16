@@ -154,6 +154,7 @@ export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
 	notes?: string;
+	iconUrl?: string;
 	issues?: INodeIssues;
 	name: string;
 	pinData?: IDataObject;
@@ -600,6 +601,7 @@ export type NodeTypeSelectedPayload = {
 		language?: string;
 	};
 	actionName?: string;
+	iconUrl?: string;
 };
 
 export interface SubcategorizedNodeTypes {

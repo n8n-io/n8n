@@ -56,6 +56,7 @@ import { useElementSize } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
 import {
+	N8nButton,
 	N8nIcon,
 	N8nIconButton,
 	N8nInlineTextEdit,
@@ -64,6 +65,7 @@ import {
 	N8nText,
 	type IMenuItem,
 } from '@n8n/design-system';
+import * as pluginsSettingsApi from '@n8n/rest-api-client/api/plugins-settings';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
@@ -353,6 +355,107 @@ const showSaveButton = computed(() => {
 	return true;
 });
 
+const mergeDevPluginEnabled = ref(false);
+
+watch(
+	credentialTypeName,
+	async (type) => {
+		if (type !== 'mergeDevApi') {
+			mergeDevPluginEnabled.value = false;
+			return;
+		}
+		const settings = await pluginsSettingsApi.getPluginsSettings(rootStore.restApiContext);
+		const plugin = settings.plugins.find((p) => p.credentialType === 'mergeDevApi');
+		mergeDevPluginEnabled.value = plugin?.enabled ?? false;
+		if (mergeDevPluginEnabled.value && !credentialId.value) {
+			onDataChange({ name: 'useManagedApiKey', value: true });
+		}
+	},
+	{ immediate: true },
+);
+
+const showMergeLinkButton = computed(() => {
+	if (credentialTypeName.value !== 'mergeDevApi') return false;
+	if (!mergeDevPluginEnabled.value) return false;
+	if (!credentialData.value.useManagedApiKey) return false;
+	return !credentialData.value.accountToken;
+});
+
+const mergeLinkCategory = computed(() => {
+	// linkCategory is set from the nodes panel and is never overwritten by getMergeDevCategory
+	const linkCategory = ndvStore.activeNode?.parameters?.linkCategory;
+	if (typeof linkCategory === 'string' && linkCategory) return linkCategory;
+	const category = ndvStore.activeNode?.parameters?.category;
+	return typeof category === 'string' ? category : '';
+});
+
+const mergeLinkIntegrationSlug = computed(() => {
+	const slug = ndvStore.activeNode?.parameters?.integrationSlug;
+	return typeof slug === 'string' ? slug : undefined;
+});
+
+const isMergeLinkLoading = ref(false);
+
+function loadMergeLinkScript(): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const src = 'https://cdn.merge.dev/initialize.js';
+		if (document.querySelector(`script[src="${src}"]`)) {
+			resolve();
+			return;
+		}
+		const el = document.createElement('script');
+		el.async = true;
+		el.src = src;
+		el.addEventListener('load', () => resolve());
+		el.addEventListener('error', reject);
+		document.head.appendChild(el);
+	});
+}
+
+type MergeLinkWindow = Window & {
+	MergeLink?: {
+		initialize: (opts: object) => void;
+		openLink: () => void;
+	};
+};
+
+async function setupMergeLink() {
+	if (!mergeLinkCategory.value) return;
+	isMergeLinkLoading.value = true;
+	try {
+		const { linkToken } = await pluginsSettingsApi.createMergeDevLinkToken(
+			rootStore.restApiContext,
+			mergeLinkCategory.value,
+			mergeLinkIntegrationSlug.value,
+		);
+		await loadMergeLinkScript();
+		(window as MergeLinkWindow).MergeLink?.initialize({
+			linkToken,
+			onSuccess: async (publicToken: string) => {
+				try {
+					const { accountToken } = await pluginsSettingsApi.getMergeDevAccountToken(
+						rootStore.restApiContext,
+						publicToken,
+					);
+					onDataChange({ name: 'accountToken', value: accountToken });
+					await saveCredential();
+				} catch (e) {
+					toast.showError(e, i18n.baseText('credentialEdit.credentialEdit.mergeLinkError'));
+				} finally {
+					isMergeLinkLoading.value = false;
+				}
+			},
+			onExit: () => {
+				isMergeLinkLoading.value = false;
+			},
+		});
+		(window as MergeLinkWindow).MergeLink?.openLink();
+	} catch (e) {
+		isMergeLinkLoading.value = false;
+		toast.showError(e, i18n.baseText('credentialEdit.credentialEdit.mergeLinkError'));
+	}
+}
+
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
 const homeProject = computed(() => {
@@ -600,6 +703,7 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 		}
 
 		credentialName.value = currentCredentials.name;
+		void credentialsStore.fetchCredentialTagline(id);
 		isSharedGlobally.value =
 			'isGlobal' in currentCredentials && typeof currentCredentials.isGlobal === 'boolean'
 				? currentCredentials.isGlobal
@@ -768,6 +872,9 @@ async function testCredential(credentialDetails: ICredentialsDecrypted) {
 	} else {
 		authError.value = '';
 		testedSuccessfully.value = true;
+		if (credentialId.value) {
+			void credentialsStore.fetchCredentialTagline(credentialId.value, { force: true });
+		}
 	}
 
 	scrollToTop();
@@ -1361,6 +1468,7 @@ const { width } = useElementSize(credNameRef);
 							</N8nTag>
 						</div>
 						<N8nText v-if="credentialType" size="small" tag="p" color="text-light">{{
+							(credentialId && credentialsStore.credentialTaglines.get(credentialId)) ||
 							credentialType.displayName
 						}}</N8nText>
 					</div>
@@ -1426,20 +1534,32 @@ const { width } = useElementSize(credNameRef);
 						@auth-type-changed="onAuthTypeChanged"
 						@update:is-resolvable="onResolvableChange"
 					/>
-					<SaveButton
-						v-if="showSaveButton"
-						:class="$style.saveButton"
-						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
-						:is-saving="isSaving || isTesting"
-						:saved="false"
-						:saving-label="
-							isTesting
-								? i18n.baseText('credentialEdit.credentialEdit.testing')
-								: i18n.baseText('credentialEdit.credentialEdit.saving')
-						"
-						data-test-id="credential-save-button"
-						@click="saveCredential"
-					/>
+					<div :class="$style.actionButtons">
+						<SaveButton
+							v-if="showSaveButton"
+							:class="$style.saveButton"
+							:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
+							:is-saving="isSaving || isTesting"
+							:saved="false"
+							:saving-label="
+								isTesting
+									? i18n.baseText('credentialEdit.credentialEdit.testing')
+									: i18n.baseText('credentialEdit.credentialEdit.saving')
+							"
+							data-test-id="credential-save-button"
+							@click="saveCredential"
+						/>
+						<N8nButton
+							v-if="showMergeLinkButton"
+							variant="subtle"
+							:class="$style.mergeLinkButton"
+							:label="i18n.baseText('credentialEdit.credentialEdit.setupMergeLink')"
+							:loading="isMergeLinkLoading"
+							:disabled="!mergeLinkCategory || isMergeLinkLoading"
+							data-test-id="credential-merge-link-button"
+							@click="setupMergeLink"
+						/>
+					</div>
 				</div>
 				<div v-else-if="showSharingContent" :class="$style.mainContent">
 					<CredentialSharing
@@ -1567,5 +1687,16 @@ const { width } = useElementSize(credNameRef);
 
 .saveButton {
 	margin-left: 1px;
+}
+
+.actionButtons {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.mergeLinkButton {
+	--button--color: var(--color--primary);
+	--button--border-color: var(--color--primary--tint-2);
 }
 </style>

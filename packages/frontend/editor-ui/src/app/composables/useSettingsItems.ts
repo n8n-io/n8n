@@ -109,6 +109,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SECURITY_SETTINGS } },
 			},
 			{
+				id: 'settings-plugins',
+				icon: 'plug-zap',
+				label: i18n.baseText('settings.plugins'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.PLUGINS_SETTINGS),
+				route: { to: { name: VIEWS.PLUGINS_SETTINGS } },
+			},
+			{
 				id: 'settings-ldap',
 				icon: 'network',
 				label: i18n.baseText('settings.ldap'),

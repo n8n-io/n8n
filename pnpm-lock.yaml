@@ -3469,6 +3469,9 @@ importers:
       '@kafkajs/confluent-schema-registry':
         specifier: 3.8.0
         version: 3.8.0
+      '@mergeapi/merge-node-client':
+        specifier: ^3.0.1
+        version: 3.0.1(encoding@0.1.13)
       '@mozilla/readability':
         specifier: 0.6.0
         version: 0.6.0
@@ -6817,6 +6820,10 @@ packages:
     peerDependencies:
       '@types/react': '>=16'
       react: '>=16'
+
+  '@mergeapi/merge-node-client@3.0.1':
+    resolution: {integrity: sha512-xW43O62rst0kAKjaeUWKQOdTvHx8ajb5euAIgb84jft/MCD2tT7MmaJtjBALodtOMFAISXggzMQH5Rse/m3QXA==}
+    engines: {node: '>=18.0.0'}
 
   '@microsoft/agents-a365-notifications@0.1.0-preview.113':
     resolution: {integrity: sha512-f/KXvZCsFmBqvX3xzILL90RGuofjzoRD/m3YUVVyuxWa+hRGFaOgRq0+My3R+VMsjE/PnAY7uso1mAfgZ4ACeA==}
@@ -23900,6 +23907,15 @@ snapshots:
       '@types/mdx': 2.0.3
       '@types/react': 18.0.27
       react: 18.2.0
+
+  '@mergeapi/merge-node-client@3.0.1(encoding@0.1.13)':
+    dependencies:
+      form-data: 4.0.4
+      formdata-node: 6.0.3
+      node-fetch: 2.7.0(encoding@0.1.13)
+      readable-stream: 4.5.2
+    transitivePeerDependencies:
+      - encoding
 
   '@microsoft/agents-a365-notifications@0.1.0-preview.113':
     dependencies:

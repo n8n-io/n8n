@@ -152,3 +152,15 @@ export async function testCredential(
 		data as unknown as IDataObject,
 	);
 }
+
+export async function getCredentialTagline(
+	context: IRestApiContext,
+	credentialId: string,
+): Promise<string | null> {
+	const response = await makeRestApiRequest<{ tagline: string } | null>(
+		context,
+		'GET',
+		`/credentials/${credentialId}/tagline`,
+	);
+	return response?.tagline ?? null;
+}

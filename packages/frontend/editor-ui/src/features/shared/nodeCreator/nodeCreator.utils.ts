@@ -22,6 +22,7 @@ import {
 	DEFAULT_SUBCATEGORY,
 	DISCORD_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	MERGE_DEV_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
 } from '@/app/constants';
@@ -70,6 +71,7 @@ export function subcategorizeItems(items: SimplifiedNodeType[]) {
 		CORE_NODES_CATEGORY,
 		AI_SUBCATEGORY,
 		HUMAN_IN_THE_LOOP_CATEGORY,
+		MERGE_DEV_CATEGORY,
 	];
 	return items.reduce((acc: SubcategorizedNodeTypes, item) => {
 		// Only some subcategories are allowed

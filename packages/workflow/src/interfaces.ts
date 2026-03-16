@@ -332,6 +332,11 @@ export interface ICredentialTestRequest {
 	rules?: IAuthenticateRuleResponseCode[] | IAuthenticateRuleResponseSuccessBody[];
 }
 
+export interface ICredentialTaglineRequest {
+	request: DeclarativeRestApiSettings.HttpRequestOptions;
+	result: (data: IDataObject) => string;
+}
+
 export interface ICredentialTestRequestData {
 	nodeType?: INodeType;
 	testRequest: ICredentialTestRequest;
@@ -366,6 +371,7 @@ export interface ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 	) => Promise<IDataObject>;
 	test?: ICredentialTestRequest;
+	tagline?: ICredentialTaglineRequest;
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];
@@ -1311,6 +1317,7 @@ export interface INode {
 	executeOnce?: boolean;
 	onError?: OnError;
 	continueOnFail?: boolean;
+	iconUrl?: string;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
@@ -1571,6 +1578,8 @@ export interface INodePropertyTypeOptions {
 	editor?: EditorType; // Supported by: string
 	editorIsReadOnly?: boolean; // Supported by: string
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
+	computeMethod?: string; // Supported by: <All> - auto-computes value, field is read-only
+	computeMethodDependsOn?: string[]; // Supported with computeMethod
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
 	loadOptions?: ILoadOptions; // Supported by: options
@@ -1949,6 +1958,9 @@ export interface INodeType {
 				this: ILoadOptionsFunctions,
 				payload: IDataObject | string | undefined,
 			) => Promise<NodeParameterValueType>;
+		};
+		computeMethod?: {
+			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<NodeParameterValueType>;
 		};
 	};
 	webhookMethods?: {

@@ -34,10 +34,13 @@ import {
 	createEmptyRunExecutionData,
 } from 'n8n-workflow';
 
+import { randomUUID } from 'crypto';
+
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsHelper } from '../credentials-helper';
 
 import { CredentialTypes } from '@/credential-types';
+import { PluginsSettingsService } from '@/services/plugins-settings.service';
 import { NodeTypes } from '@/node-types';
 import { getAllKeyPaths } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -78,6 +81,7 @@ export class CredentialsTester {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsHelper: CredentialsHelper,
+		private readonly pluginsSettingsService: PluginsSettingsService,
 	) {}
 
 	private static hasAccessToken(credentialsDecrypted: ICredentialsDecrypted) {
@@ -222,6 +226,11 @@ export class CredentialsTester {
 					undefined,
 					undefined,
 				);
+				credentialsDecrypted.data =
+					await this.pluginsSettingsService.injectPluginManagedCredentials(
+						credentialType,
+						credentialsDecrypted.data,
+					);
 			} catch (error) {
 				this.logger.debug('Credential test failed', error);
 				return {
@@ -420,5 +429,111 @@ export class CredentialsTester {
 			status: 'OK',
 			message: 'Connection successful!',
 		};
+	}
+
+	async getTagline(
+		userId: User['id'],
+		credentialType: string,
+		credentialsDecrypted: ICredentialsDecrypted,
+	): Promise<string | null> {
+		const type = this.credentialTypes.getByName(credentialType);
+		if (!type.tagline) {
+			return null;
+		}
+
+		const { tagline } = type;
+
+		const nodeType = this.nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp');
+
+		const node: INode = {
+			id: 'temp',
+			parameters: {},
+			name: 'Temp-Node',
+			type: nodeType.description.name,
+			typeVersion: Array.isArray(nodeType.description.version)
+				? nodeType.description.version.slice(-1)[0]
+				: nodeType.description.version,
+			position: [0, 0],
+			credentials: {
+				[credentialType]: {
+					id: credentialsDecrypted.id,
+					name: credentialsDecrypted.name,
+				},
+			},
+		};
+
+		const tempNodeName = `n8n-nodes-base.tagline-${randomUUID()}`;
+		const nodeTypeCopy: INodeType = {
+			description: {
+				...nodeType.description,
+				name: tempNodeName,
+				credentials: [{ name: credentialType, required: true }],
+				properties: [
+					{
+						displayName: 'Temp',
+						name: 'temp',
+						type: 'string',
+						routing: { request: tagline.request },
+						default: '',
+					},
+				],
+			},
+		};
+
+		node.type = tempNodeName;
+		mockNodesData[tempNodeName] = { sourcePath: '', type: nodeTypeCopy };
+
+		const workflow = new Workflow({
+			nodes: [node],
+			connections: {},
+			active: false,
+			nodeTypes: mockNodeTypes,
+		});
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			userId,
+			projectId: credentialsDecrypted.homeProject?.id,
+			currentNodeParameters: node.parameters,
+		});
+
+		const runExecutionData = createEmptyRunExecutionData();
+		const inputData: ITaskDataConnections = { main: [[{ json: {} }]] };
+		const executeData: IExecuteData = { node, data: {}, source: null };
+		const executeFunctions = new ExecuteContext(
+			workflow,
+			node,
+			additionalData,
+			'internal' as WorkflowExecuteMode,
+			runExecutionData,
+			0,
+			[],
+			inputData,
+			executeData,
+			[],
+		);
+		if (credentialsDecrypted.data) {
+			try {
+				credentialsDecrypted.data =
+					await this.pluginsSettingsService.injectPluginManagedCredentials(
+						credentialType,
+						credentialsDecrypted.data,
+					);
+			} catch {
+				delete mockNodesData[tempNodeName];
+				return null;
+			}
+		}
+
+		const routingNode = new RoutingNode(executeFunctions, nodeTypeCopy, credentialsDecrypted);
+
+		try {
+			const response = await routingNode.runNode();
+			if (!response?.[0]?.[0]) return null;
+			return tagline.result(response[0][0].json);
+		} catch {
+			return null;
+		} finally {
+			delete mockNodesData[tempNodeName];
+		}
 	}
 }

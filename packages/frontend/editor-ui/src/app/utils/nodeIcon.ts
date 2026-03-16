@@ -103,7 +103,10 @@ const getNodeIconColor = (nodeType: IconNodeType): string | undefined => {
 	return typeof defaultColor === 'string' ? defaultColor : undefined;
 };
 
-const prefixBaseUrl = (url: string): string => useRootStore().baseUrl + url;
+const isAbsoluteUrl = (url: string): boolean => /^https?:\/\//.test(url);
+
+const prefixBaseUrl = (url: string): string =>
+	isAbsoluteUrl(url) ? url : useRootStore().baseUrl + url;
 
 const getNodeBadgeIconSource = (nodeType: IconNodeType): BaseNodeIconSource | undefined => {
 	if (!('badgeIconUrl' in nodeType) || !nodeType.badgeIconUrl) return undefined;
@@ -139,7 +142,7 @@ const getIconFromNodeTypeString = (nodeTypeName: string): NodeIconSource | undef
 	return iconUrl ? { type: 'file', src: iconUrl } : undefined;
 };
 
-export function getNodeIconSource(
+function getDefaultNodeIconSource(
 	nodeType: IconNodeType | string | null | undefined,
 	node?: INode | null,
 ): NodeIconSource | undefined {
@@ -186,4 +189,14 @@ export function getNodeIconSource(
 	}
 
 	return undefined;
+}
+
+export function getNodeIconSource(
+	nodeType: IconNodeType | string | null | undefined,
+	node?: INode | null,
+): NodeIconSource | undefined {
+	if (node?.iconUrl) {
+		return { type: 'file', src: node.iconUrl };
+	}
+	return getDefaultNodeIconSource(nodeType, node);
 }

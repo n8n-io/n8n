@@ -25,6 +25,7 @@ import {
 
 export interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
+	tagline?: string;
 }
 
 export function useNodeCredentialOptions(
@@ -54,12 +55,15 @@ export function useNodeCredentialOptions(
 
 	function getCredentialOptions(types: string[]): CredentialDropdownOption[] {
 		let options: CredentialDropdownOption[] = [];
+		// Access credentialTaglines to establish reactive dependency
+		const taglines = credentialsStore.credentialTaglines;
 		types.forEach((type) => {
 			options = options.concat(
 				credentialsStore.allUsableCredentialsByType[type]?.map<CredentialDropdownOption>(
 					(option: ICredentialsResponse) => ({
 						...option,
 						typeDisplayName: credentialsStore.getCredentialTypeByName(type)?.displayName ?? '',
+						tagline: taglines.get(option.id),
 					}),
 				) ?? [],
 			);

@@ -23,6 +23,7 @@ export { OptionsRequestDto } from './dynamic-node-parameters/options-request.dto
 export { ResourceLocatorRequestDto } from './dynamic-node-parameters/resource-locator-request.dto';
 export { ResourceMapperFieldsRequestDto } from './dynamic-node-parameters/resource-mapper-fields-request.dto';
 export { ActionResultRequestDto } from './dynamic-node-parameters/action-result-request.dto';
+export { ComputeValueRequestDto } from './dynamic-node-parameters/compute-value-request.dto';
 
 export { InviteUsersRequestDto } from './invitation/invite-users-request.dto';
 export { AcceptInvitationRequestDto } from './invitation/accept-invitation-request.dto';
@@ -159,6 +160,25 @@ export {
 	SecuritySettingsDto,
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
+
+export {
+	PluginsSettingsDto,
+	UpdatePluginSettingsDto,
+	type PluginDto,
+	type PluginFieldDto,
+} from './plugins-settings/plugins-settings.dto';
+
+export {
+	type MergeDevIntegrationDto,
+	type MergeDevIntegrationsResponseDto,
+} from './plugins-settings/merge-dev-integration.dto';
+
+export {
+	MergeDevLinkTokenRequestDto,
+	MergeDevAccountTokenRequestDto,
+	type MergeDevLinkTokenResponseDto,
+	type MergeDevAccountTokenResponseDto,
+} from './plugins-settings/merge-dev-link.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';

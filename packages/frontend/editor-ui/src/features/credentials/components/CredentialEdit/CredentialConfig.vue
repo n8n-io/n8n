@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeMount, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import type {
@@ -33,6 +33,7 @@ import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import * as pluginsSettingsApi from '@n8n/rest-api-client/api/plugins-settings';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
 import {
@@ -272,6 +273,31 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 		emit('scrollToTop');
 	}
 });
+
+const managingPlugin = ref<{
+	displayName: string;
+	enabled: boolean;
+	managedToggleField: string;
+} | null>(null);
+
+watch(
+	credentialTypeName,
+	async (type) => {
+		if (!type) {
+			managingPlugin.value = null;
+			return;
+		}
+		const settings = await pluginsSettingsApi.getPluginsSettings(rootStore.restApiContext);
+		managingPlugin.value = settings.plugins.find((p) => p.credentialType === type) ?? null;
+	},
+	{ immediate: true },
+);
+
+const showPluginDisabledWarning = computed(() => {
+	if (!managingPlugin.value) return false;
+	const toggleField = managingPlugin.value.managedToggleField;
+	return props.credentialData[toggleField] === true && !managingPlugin.value.enabled;
+});
 </script>
 
 <template>
@@ -327,6 +353,16 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							}`,
 							{ interpolate: { owner: credentialOwnerName } },
 						)
+					"
+				/>
+
+				<Banner
+					v-if="showPluginDisabledWarning"
+					theme="danger"
+					:message="
+						i18n.baseText('credentialEdit.pluginDisabled', {
+							interpolate: { pluginName: managingPlugin?.displayName ?? '' },
+						})
 					"
 				/>
 

@@ -299,6 +299,19 @@ onBeforeUnmount(() => {
 	cancelConnect();
 });
 
+const credentialIds = computed(() =>
+	credentialTypesNodeDescriptionDisplayed.value.flatMap(({ options }) => options.map((o) => o.id)),
+);
+
+function fetchTaglines() {
+	for (const id of credentialIds.value) {
+		void credentialsStore.fetchCredentialTagline(id);
+	}
+}
+
+onMounted(fetchTaglines);
+watch(credentialIds, fetchTaglines, { deep: true });
+
 function getSelectedId(type: INodeCredentialDescription) {
 	if (isCredentialExisting(type)) {
 		return selected.value[type.name].id;
@@ -708,7 +721,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 											/>
 										</N8nTooltip>
 									</div>
-									<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
+									<N8nText size="small">{{ item.tagline ?? item.typeDisplayName }}</N8nText>
 								</div>
 							</N8nOption>
 							<template #empty> </template>
