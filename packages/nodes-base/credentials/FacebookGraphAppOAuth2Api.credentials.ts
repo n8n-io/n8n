@@ -17,7 +17,7 @@ export class FacebookGraphAppOAuth2Api implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 			description:
-				'(Optional) When set, the node will sign API calls and verify incoming webhook payloads for added security',
+				'(Optional) When set, the node will verify incoming webhook payloads for added security',
 		},
 	];
 }

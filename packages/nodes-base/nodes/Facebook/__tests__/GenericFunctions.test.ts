@@ -212,7 +212,7 @@ describe('Facebook GenericFunctions', () => {
 				);
 			});
 
-			it('should not compute appsecret_proof when using OAuth2 without a stored access token', async () => {
+			it('should not compute appsecret_proof when using OAuth2', async () => {
 				mockExecuteFunctions.getNode.mockReturnValue({ name: 'Facebook Trigger' });
 				mockExecuteFunctions.getCredentials.mockResolvedValue({ appSecret: 'some-secret' });
 
@@ -224,35 +224,6 @@ describe('Facebook GenericFunctions', () => {
 						qs: expect.not.objectContaining({ appsecret_proof: expect.anything() }),
 					}),
 				);
-			});
-
-			it('should compute appsecret_proof when using OAuth2 with appSecret and stored access token', async () => {
-				const fixedTime = 1700000000;
-				jest.spyOn(Date, 'now').mockReturnValue(fixedTime * 1000);
-
-				mockExecuteFunctions.getNode.mockReturnValue({ name: 'Facebook Trigger' });
-				mockExecuteFunctions.getCredentials.mockResolvedValue({
-					appSecret: 'test-app-secret',
-					oauthTokenData: { access_token: 'oauth-access-token' },
-				});
-
-				await utils.facebookApiRequest.call(mockExecuteFunctions, 'GET', '/app', {}, {});
-
-				const expectedProof = createHmac('sha256', 'test-app-secret')
-					.update(`oauth-access-token|${fixedTime}`)
-					.digest('hex');
-
-				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
-					'facebookGraphAppOAuth2Api',
-					expect.objectContaining({
-						qs: expect.objectContaining({
-							appsecret_proof: expectedProof,
-							appsecret_time: fixedTime,
-						}),
-					}),
-				);
-
-				jest.restoreAllMocks();
 			});
 		});
 	});
