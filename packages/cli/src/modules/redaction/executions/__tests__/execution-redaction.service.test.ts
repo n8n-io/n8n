@@ -193,7 +193,7 @@ describe('ExecutionRedactionService', () => {
 		});
 	});
 
-	describe('copyOnWrite mode', () => {
+	describe('keepOriginal mode', () => {
 		it('clones only executions that need redaction, preserving original references for others', async () => {
 			const noneExecution = makeExecution({
 				policy: 'none',
@@ -217,7 +217,7 @@ describe('ExecutionRedactionService', () => {
 			nodeDefinedFieldRedactionStrategy.wouldModify.mockReturnValue(false);
 
 			const executions = [noneExecution, allExecution, nonManualManual];
-			const options: ExecutionRedactionOptions = { user: mockUser, copyOnWrite: true };
+			const options: ExecutionRedactionOptions = { user: mockUser, keepOriginal: true };
 
 			await service.processExecutions(executions, options);
 

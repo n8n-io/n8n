@@ -49,7 +49,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	/**
 	 * Thin wrapper around `processExecutions` for single-execution callers.
 	 *
-	 * With `copyOnWrite: true`, the original execution is never mutated. Returns
+	 * With `keepOriginal: true`, the original execution is never mutated. Returns
 	 * either the original (if no redaction needed) or a structuredClone with
 	 * redaction applied. Callers can check referential equality to determine
 	 * whether redaction occurred.
@@ -126,7 +126,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal);
 
 			let target = execution;
-			if (options.copyOnWrite) {
+			if (options.keepOriginal) {
 				const needsClone = pipeline.some((s) => s.wouldModify(execution, context));
 				if (!needsClone) continue;
 				target = structuredClone(execution);

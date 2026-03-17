@@ -477,7 +477,7 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(redactionProxy.processExecution).toHaveBeenCalledTimes(1);
 				const [redactableExec, options] = redactionProxy.processExecution.mock.calls[0];
 				expect(redactableExec).toHaveProperty('workflowId', workflowId);
-				expect(options.copyOnWrite).toBe(true);
+				expect(options.keepOriginal).toBe(true);
 				expect(options.user).toBeDefined();
 
 				// nodeExecuteAfter (metadata-only) is unaffected
@@ -626,7 +626,7 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(redactionProxy.processExecution).toHaveBeenCalledTimes(1);
 				const [redactableExec, options] = redactionProxy.processExecution.mock.calls[0];
 				expect(redactableExec).toHaveProperty('workflowId', workflowId);
-				expect(options.copyOnWrite).toBe(true);
+				expect(options.keepOriginal).toBe(true);
 				expect(options.user).toBeDefined();
 
 				expect(push.send).toHaveBeenCalledWith(

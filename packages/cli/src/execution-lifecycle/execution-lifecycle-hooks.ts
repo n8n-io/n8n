@@ -291,7 +291,7 @@ function hookFunctionsPush(
 			const dummy = buildRedactableExecution(this, { [nodeName]: [data] }, executionData);
 			const result = await redactionProxy.processExecution(dummy, {
 				user,
-				copyOnWrite: true,
+				keepOriginal: true,
 			});
 			if (result !== dummy) {
 				dataToSend = result.data.resultData.runData[nodeName][0];
@@ -342,7 +342,7 @@ function hookFunctionsPush(
 				const dummy = buildRedactableExecution(this, data.resultData.runData, data);
 				const result = await redactionProxy.processExecution(dummy, {
 					user,
-					copyOnWrite: true,
+					keepOriginal: true,
 				});
 				runDataToStringify =
 					result !== dummy ? result.data.resultData.runData : data.resultData.runData;
