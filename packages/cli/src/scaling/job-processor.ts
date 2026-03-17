@@ -97,8 +97,8 @@ export class JobProcessor {
 			workflowId,
 			workflowName: execution.workflowData.name,
 			jobId: job.id,
-			projectId: job.data.projectId,
-			projectName: job.data.projectName,
+			...(job.data.projectId && { projectId: job.data.projectId }),
+			...(job.data.projectName && { projectName: job.data.projectName }),
 		});
 
 		const startedAt = await this.executionRepository.setRunning(executionId);
@@ -218,8 +218,8 @@ export class JobProcessor {
 					workflowId,
 					workflowName: execution.workflowData.name,
 					jobId: job.id,
-					projectId: job.data.projectId,
-					projectName: job.data.projectName,
+					...(job.data.projectId && { projectId: job.data.projectId }),
+					...(job.data.projectName && { projectName: job.data.projectName }),
 				},
 			);
 		};
@@ -302,8 +302,8 @@ export class JobProcessor {
 			workflowName: execution.workflowData.name,
 			jobId: job.id,
 			success: props.success,
-			projectId: job.data.projectId,
-			projectName: job.data.projectName,
+			...(job.data.projectId && { projectId: job.data.projectId }),
+			...(job.data.projectName && { projectName: job.data.projectName }),
 		});
 
 		const msg: JobFinishedMessage = {

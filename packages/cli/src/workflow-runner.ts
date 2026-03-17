@@ -146,16 +146,7 @@ export class WorkflowRunner {
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 
-		const { id: workflowId, name: workflowName, nodes } = data.workflowData;
-
-		this.logger.info(`Execution ${executionId} started for workflow "${workflowId}"`, {
-			executionId,
-			executionMode: data.executionMode,
-			workflowId,
-			workflowName,
-			projectId: data.projectId,
-			projectName: data.projectName,
-		});
+		const { id: workflowId, nodes } = data.workflowData;
 
 		try {
 			await this.credentialsPermissionChecker.check(workflowId, nodes);
@@ -216,8 +207,8 @@ export class WorkflowRunner {
 					executionId,
 					workflowId,
 					workflowName: data.workflowData.name,
-					projectId: data.projectId,
-					projectName: data.projectName,
+					...(data.projectId && { projectId: data.projectId }),
+					...(data.projectName && { projectName: data.projectName }),
 				});
 			});
 		}

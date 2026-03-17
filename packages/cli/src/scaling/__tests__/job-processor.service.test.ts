@@ -989,7 +989,7 @@ describe('JobProcessor', () => {
 			);
 		});
 
-		it('should omit project info from log metadata when absent from job data', async () => {
+		it('should not include project info in log metadata when absent from job data', async () => {
 			const executionRepository = mock<ExecutionRepository>();
 			executionRepository.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
@@ -1028,15 +1028,15 @@ describe('JobProcessor', () => {
 
 			await jobProcessor.processJob(job);
 
-			// "Worker started" log should have undefined project fields
-			expect(logger.info).toHaveBeenCalledWith(
-				expect.stringContaining('Worker started execution'),
-				expect.objectContaining({
-					workflowId: 'wf-1',
-					projectId: undefined,
-					projectName: undefined,
-				}),
-			);
+			// "Worker started" log should not include project fields
+			const startedCall = (logger.info as jest.Mock).mock.calls.find(
+				(call: unknown[]) =>
+					typeof call[0] === 'string' && call[0].includes('Worker started execution'),
+			) as [string, Record<string, unknown>] | undefined;
+			expect(startedCall).toBeDefined();
+			expect(startedCall![1].workflowId).toBe('wf-1');
+			expect(startedCall![1]).not.toHaveProperty('projectId');
+			expect(startedCall![1]).not.toHaveProperty('projectName');
 		});
 	});
 });
