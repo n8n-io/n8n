@@ -26,8 +26,7 @@ jobs:
             migration-cmd: pnpm test:sqlite:migrations
           - name: Postgres 16
             runner: blacksmith-4vcpu-ubuntu-2204
-            test-cmd: pnpm test:postgres:integration:tc
-            migration-cmd: pnpm test:postgres:migrations:tc
+            test-cmd: pnpm test:postgres
             TEST_IMAGE_POSTGRES: 'postgres:16'
     env:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
@@ -45,7 +44,3 @@ jobs:
       - name: Run Tests
         working-directory: packages/cli
         run: ${{ matrix.test-cmd }}
-
-      - name: Run Migration Tests
-        working-directory: packages/cli
-        run: ${{ matrix.migration-cmd }}
