@@ -493,6 +493,12 @@ export const useWorkflowSetupState = (
 			credentialTypes.length > 0 && credentialTypes.some((ct) => perNodeCredTypes.value.has(ct));
 		if (hasPerNodeCreds || hasParams) return [];
 
+		// Skip triggers that don't wait for external input (e.g. Manual, Schedule).
+		// Only show a standalone trigger card when the trigger listens for webhooks,
+		// polls an external source, or has a triggerPanel (event-listening triggers).
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		if (!nodeType?.webhooks?.length && !nodeType?.polling && !nodeType?.triggerPanel) return [];
+
 		return [
 			buildTriggerSetupState(
 				node,

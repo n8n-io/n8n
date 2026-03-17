@@ -134,6 +134,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 
 			const { setupCards } = useWorkflowSetupState();
 
@@ -275,11 +276,12 @@ describe('useWorkflowSetupState', () => {
 
 		it('should produce only trigger card for trigger without credentials', () => {
 			const triggerNode = createNode({
-				name: 'ScheduleTrigger',
-				type: 'n8n-nodes-base.scheduleTrigger',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 
 			const { setupCards } = useWorkflowSetupState();
 
@@ -291,8 +293,8 @@ describe('useWorkflowSetupState', () => {
 		it('should sort cards by primary node execution order, interleaving credential and trigger cards', () => {
 			// Trigger comes before regular node in execution order
 			const triggerNode = createNode({
-				name: 'ScheduleTrigger',
-				type: 'n8n-nodes-base.scheduleTrigger',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
 				position: [0, 0],
 			});
 			const regularNode = createNode({
@@ -301,9 +303,8 @@ describe('useWorkflowSetupState', () => {
 				position: [100, 0],
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode, regularNode];
-			nodeTypesStore.isTriggerNode = vi.fn(
-				(type: string) => type === 'n8n-nodes-base.scheduleTrigger',
-			);
+			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.webhook');
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
 				if ((node as INodeUi).name === 'Regular') return [{ name: 'testApi' }];
 				return [];
@@ -313,13 +314,13 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'Regular') return regularNode;
-				if (name === 'ScheduleTrigger') return triggerNode;
+				if (name === 'Webhook') return triggerNode;
 				return null;
 			});
 
 			const { setupCards } = useWorkflowSetupState();
 
-			// Trigger card first (ScheduleTrigger at index 0 in execution order),
+			// Trigger card first (Webhook at index 0 in execution order),
 			// then credential card (Regular at index 1)
 			expect(setupCards.value).toHaveLength(2);
 			expect(setupCards.value[0].state.isTrigger).toBe(true);
@@ -520,11 +521,12 @@ describe('useWorkflowSetupState', () => {
 	describe('triggerStates', () => {
 		it('should mark trigger without credentials as complete after execution', () => {
 			const triggerNode = createNode({
-				name: 'ScheduleTrigger',
-				type: 'n8n-nodes-base.scheduleTrigger',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
 
 			const { triggerStates } = useWorkflowSetupState();
@@ -554,16 +556,64 @@ describe('useWorkflowSetupState', () => {
 
 		it('should mark trigger without credentials and no execution as incomplete', () => {
 			const triggerNode = createNode({
-				name: 'ScheduleTrigger',
-				type: 'n8n-nodes-base.scheduleTrigger',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
 			const { triggerStates } = useWorkflowSetupState();
 
 			expect(triggerStates.value[0].isComplete).toBe(false);
+		});
+
+		it('should not create standalone card for trigger that does not wait for external input', () => {
+			const triggerNode = createNode({
+				name: 'ScheduleTrigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
+			});
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({});
+			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+
+			const { triggerStates } = useWorkflowSetupState();
+
+			expect(triggerStates.value).toHaveLength(0);
+		});
+
+		it('should create standalone card for polling trigger', () => {
+			const triggerNode = createNode({
+				name: 'RssFeedTrigger',
+				type: 'n8n-nodes-base.rssFeedReadTrigger',
+			});
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ polling: true });
+			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+
+			const { triggerStates } = useWorkflowSetupState();
+
+			expect(triggerStates.value).toHaveLength(1);
+		});
+
+		it('should create standalone card for trigger with triggerPanel', () => {
+			const triggerNode = createNode({
+				name: 'LocalFileTrigger',
+				type: 'n8n-nodes-base.localFileTrigger',
+			});
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockReturnValue({ triggerPanel: { header: 'Listening' } });
+			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+
+			const { triggerStates } = useWorkflowSetupState();
+
+			expect(triggerStates.value).toHaveLength(1);
 		});
 	});
 
@@ -1080,8 +1130,8 @@ describe('useWorkflowSetupState', () => {
 
 		it('should return total number of setup cards', () => {
 			const triggerNode = createNode({
-				name: 'ScheduleTrigger',
-				type: 'n8n-nodes-base.scheduleTrigger',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
 				position: [0, 0],
 			});
 			const regularNode = createNode({
@@ -1090,9 +1140,8 @@ describe('useWorkflowSetupState', () => {
 				position: [100, 0],
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode, regularNode];
-			nodeTypesStore.isTriggerNode = vi.fn(
-				(type: string) => type === 'n8n-nodes-base.scheduleTrigger',
-			);
+			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.webhook');
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
 				if ((node as INodeUi).name === 'Regular') return [{ name: 'testApi' }];
 				return [];
@@ -1101,14 +1150,14 @@ describe('useWorkflowSetupState', () => {
 				displayName: 'Test',
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
-				if (name === 'ManualTrigger') return triggerNode;
+				if (name === 'Webhook') return triggerNode;
 				if (name === 'Regular') return regularNode;
 				return null;
 			});
 
 			const { totalCardsRequiringSetup } = useWorkflowSetupState();
 
-			// 1 standalone trigger card (no credentials) + 1 credential card
+			// 1 standalone trigger card (webhook, no credentials) + 1 credential card
 			expect(totalCardsRequiringSetup.value).toBe(2);
 		});
 
@@ -1792,6 +1841,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
 				properties: [{ name: 'url', required: true }],
+				webhooks: [{}],
 			});
 			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.webhook');
 
