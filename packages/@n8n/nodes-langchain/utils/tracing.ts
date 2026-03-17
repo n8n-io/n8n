@@ -90,7 +90,7 @@ export function getTracingConfig(
 			: undefined;
 
 	return {
-		runName: `[${context.getWorkflow().name}] ${context.getNode().name}`,
+		runName: context.getNode().name,
 		metadata: {
 			execution_id: context.getExecutionId(),
 			workflow: context.getWorkflow(),

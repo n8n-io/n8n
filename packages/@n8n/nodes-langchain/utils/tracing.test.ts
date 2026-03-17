@@ -18,7 +18,7 @@ describe('getTracingConfig', () => {
 	};
 
 	describe('with IExecuteFunctions context', () => {
-		it('should return correct runName format', () => {
+		it('should use node name as runName', () => {
 			const mockContext = mock<IExecuteFunctions>();
 			mockContext.getWorkflow.mockReturnValue(mockWorkflow);
 			mockContext.getNode.mockReturnValue(mockNode as ReturnType<IExecuteFunctions['getNode']>);
@@ -26,7 +26,7 @@ describe('getTracingConfig', () => {
 
 			const result = getTracingConfig(mockContext);
 
-			expect(result.runName).toBe('[Test Workflow] AI Agent');
+			expect(result.runName).toBe('AI Agent');
 		});
 
 		it('should return correct metadata', () => {
@@ -118,7 +118,7 @@ describe('getTracingConfig', () => {
 
 			const result = getTracingConfig(mockContext);
 
-			expect(result.runName).toBe('[Test Workflow] AI Agent');
+			expect(result.runName).toBe('AI Agent');
 			expect(result.metadata).toEqual({
 				execution_id: 'exec-789',
 				workflow: mockWorkflow,
@@ -129,7 +129,7 @@ describe('getTracingConfig', () => {
 	});
 
 	describe('edge cases', () => {
-		it('should handle workflow names with special characters', () => {
+		it('should use only the node name regardless of workflow name', () => {
 			const specialWorkflow = {
 				...mockWorkflow,
 				name: 'Workflow [with] special (chars)',
@@ -141,7 +141,7 @@ describe('getTracingConfig', () => {
 
 			const result = getTracingConfig(mockContext);
 
-			expect(result.runName).toBe('[Workflow [with] special (chars)] AI Agent');
+			expect(result.runName).toBe('AI Agent');
 		});
 
 		it('should handle node names with special characters', () => {
@@ -156,7 +156,7 @@ describe('getTracingConfig', () => {
 
 			const result = getTracingConfig(mockContext);
 
-			expect(result.runName).toBe('[Test Workflow] Node "with" quotes');
+			expect(result.runName).toBe('Node "with" quotes');
 		});
 
 		it('should use default empty config when none provided', () => {
