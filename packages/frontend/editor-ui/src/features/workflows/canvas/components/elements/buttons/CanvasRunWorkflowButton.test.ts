@@ -47,6 +47,17 @@ describe('CanvasRunWorkflowButton', () => {
 		expect(wrapper.getByText('Executing workflow')).toBeInTheDocument();
 	});
 
+	it('should render custom label when provided', () => {
+		const wrapper = renderComponent({
+			props: {
+				label: 'Start',
+			},
+		});
+
+		expect(wrapper.getByText('Start')).toBeInTheDocument();
+		expect(wrapper.getByRole('button', { name: 'Start' })).toBeInTheDocument();
+	});
+
 	it('should render different label when executing and waiting for webhook', () => {
 		const wrapper = renderComponent({
 			props: {
