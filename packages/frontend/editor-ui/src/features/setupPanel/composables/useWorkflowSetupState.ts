@@ -31,7 +31,10 @@ import {
 	getNodeParametersIssues,
 	type CompletionContext,
 } from '@/features/setupPanel/setupPanel.utils';
-import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
+import {
+	isPlaceholderValue,
+	findPlaceholderDetails,
+} from '@/features/ai/assistant/composables/useBuilderTodos';
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
@@ -174,7 +177,7 @@ export const useWorkflowSetupState = (
 			for (const [key, value] of Object.entries(obj)) {
 				if (paramNamesToCheck.has(key)) {
 					if (isResourceLocatorValue(value)) {
-						if (!value.value) return true;
+						if (!value.value || isPlaceholderValue(value.value)) return true;
 					} else if (
 						value === '' ||
 						value === null ||
@@ -182,6 +185,8 @@ export const useWorkflowSetupState = (
 						isPlaceholderValue(value)
 					) {
 						return true;
+					} else if (typeof value === 'object' && value !== null) {
+						if (findPlaceholderDetails(value).length > 0) return true;
 					}
 				}
 				if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
