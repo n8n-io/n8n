@@ -185,6 +185,38 @@ describe('WorkflowSettingsVue', () => {
 			);
 		});
 
+		it('should generate unique viewer input keys after removal', async () => {
+			const { getByTestId, getAllByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const addButton = getByTestId('workflow-settings-viewer-input-add');
+			await userEvent.click(addButton);
+			await userEvent.click(addButton);
+
+			let keyInputs = getAllByTestId('workflow-settings-viewer-input-key');
+
+			const getKeyInputValue = (el: Element) => {
+				const input =
+					el instanceof HTMLInputElement ? el : (el.querySelector('input') as HTMLInputElement | null);
+				if (!input) {
+					throw new Error('Viewer input key control was not rendered');
+				}
+				return input.value;
+			};
+
+			expect(keyInputs.map(getKeyInputValue)).toEqual(['input_1', 'input_2']);
+
+			const removeButtons = getAllByTestId('workflow-settings-viewer-input-remove');
+			await userEvent.click(removeButtons[0]);
+			await userEvent.click(addButton);
+
+			keyInputs = getAllByTestId('workflow-settings-viewer-input-key');
+			const values = keyInputs.map(getKeyInputValue);
+
+			expect(values).toHaveLength(2);
+			expect(values).toEqual(expect.arrayContaining(['input_2', 'input_3']));
+		});
+
 		it('should block saving when viewer input fields are invalid', async () => {
 			const { getByRole, getByTestId, getAllByTestId } = createComponent({ pinia });
 			await flushPromises();

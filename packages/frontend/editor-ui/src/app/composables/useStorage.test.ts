@@ -45,4 +45,27 @@ describe('useStorage', () => {
 
 		expect(localStorage.getItem(key)).toBeNull();
 	});
+
+	it('should fall back when localStorage access throws', () => {
+		const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+
+		try {
+			Object.defineProperty(globalThis, 'localStorage', {
+				configurable: true,
+				get() {
+					throw new Error('blocked');
+				},
+			});
+
+			const data = useStorage('test-key');
+			expect(data.value).toBeNull();
+		} finally {
+			if (originalDescriptor) {
+				Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+			} else {
+				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+				delete (globalThis as typeof globalThis & { localStorage?: Storage }).localStorage;
+			}
+		}
+	});
 });
