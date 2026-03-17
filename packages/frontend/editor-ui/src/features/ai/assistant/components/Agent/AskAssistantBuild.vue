@@ -150,7 +150,7 @@ const showExecuteMessage = computed(() => {
 	return (
 		!builderStore.streaming &&
 		workflowsStore.workflow.nodes.length > 0 &&
-		builderUpdatedWorkflowMessageIndex > -1 &&
+		builderStore.hasMessages &&
 		!hasErrorAfterUpdate &&
 		!hasTaskAbortedAfterUpdate &&
 		!hasPendingInteraction
