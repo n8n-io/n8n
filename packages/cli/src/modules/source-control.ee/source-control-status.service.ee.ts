@@ -671,12 +671,16 @@ export class SourceControlStatusService {
 		const dataTablesLocal =
 			(await this.sourceControlImportService.getLocalDataTablesFromDb()) ?? [];
 
+		const localById = new Map(dataTablesLocal.map((dt) => [dt.id, dt]));
+		const remoteById = new Map(dataTablesRemote.map((dt) => [dt.id, dt]));
+		const remoteByName = new Map(dataTablesRemote.map((dt) => [dt.name, dt]));
+
 		const dtMissingInLocal: ExportableDataTable[] = [];
 		const dtMissingInRemote: StatusExportableDataTable[] = [];
 		const dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable> = [];
 
 		for (const remote of dataTablesRemote) {
-			if (dataTablesLocal.findIndex((local) => local.id === remote.id) === -1) {
+			if (!localById.has(remote.id)) {
 				if (collectVerbose) {
 					dtMissingInLocal.push(remote);
 				}
@@ -695,7 +699,7 @@ export class SourceControlStatusService {
 		}
 
 		for (const local of dataTablesLocal) {
-			const remote = dataTablesRemote.find((r) => r.id === local.id);
+			const remote = remoteById.get(local.id);
 
 			if (!remote) {
 				if (collectVerbose) {
@@ -714,9 +718,9 @@ export class SourceControlStatusService {
 				});
 
 				// Check for cross-ID name collision (different tables sharing the same name)
-				const nameCollision = dataTablesRemote.find(
-					(r) => r.id !== local.id && r.name === local.name,
-				);
+				const nameCandidate = remoteByName.get(local.name);
+				const nameCollision =
+					nameCandidate && nameCandidate.id !== local.id ? nameCandidate : undefined;
 				if (nameCollision) {
 					const modified = options.preferLocalVersion ? local : nameCollision;
 					if (collectVerbose) {
