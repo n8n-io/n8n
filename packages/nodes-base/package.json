@@ -87,6 +87,7 @@
       "dist/credentials/CurrentsApi.credentials.js",
       "dist/credentials/CustomerIoApi.credentials.js",
       "dist/credentials/DatabricksApi.credentials.js",
+      "dist/credentials/DatabricksOAuth2Api.credentials.js",
       "dist/credentials/DatadogApi.credentials.js",
       "dist/credentials/DeepLApi.credentials.js",
       "dist/credentials/DemioApi.credentials.js",

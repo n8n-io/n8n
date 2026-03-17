@@ -27,6 +27,18 @@ import {
 	vectorSearchParameters,
 } from './resources';
 
+function getActiveCredentialType(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	itemIndex = 0,
+): 'databricksApi' | 'databricksOAuth2Api' {
+	const authentication = context.getNodeParameter(
+		'authentication',
+		itemIndex,
+		'accessToken',
+	) as string;
+	return authentication === 'oAuth2' ? 'databricksOAuth2Api' : 'databricksApi';
+}
+
 interface DatabricksCredentials {
 	host: string;
 }
@@ -414,9 +426,39 @@ export class Databricks implements INodeType {
 			{
 				name: 'databricksApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['accessToken'],
+					},
+				},
+			},
+			{
+				name: 'databricksOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -483,7 +525,8 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+				const credentialType = getActiveCredentialType(this);
+				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'warehouses');
 
@@ -498,7 +541,7 @@ export class Databricks implements INodeType {
 					// Fetch from API
 					const response = (await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'GET',
 							url: `${host}/api/2.0/sql/warehouses`,
@@ -539,7 +582,8 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+				const credentialType = getActiveCredentialType(this);
+				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'endpoints');
 
@@ -554,7 +598,7 @@ export class Databricks implements INodeType {
 					// Fetch from API
 					const response = (await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'GET',
 							url: `${host}/api/2.0/serving-endpoints`,
@@ -607,7 +651,8 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+				const credentialType = getActiveCredentialType(this);
+				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'catalogs');
 
@@ -621,7 +666,7 @@ export class Databricks implements INodeType {
 					// Fetch from API
 					const response = (await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'GET',
 							url: `${host}/api/2.1/unity-catalog/catalogs`,
@@ -662,7 +707,8 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+				const credentialType = getActiveCredentialType(this);
+				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
 
 				// Try to get the currently selected catalog
@@ -697,7 +743,7 @@ export class Databricks implements INodeType {
 						try {
 							const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
 								this,
-								'databricksApi',
+								credentialType,
 								{
 									method: 'GET',
 									url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${selectedCatalog}`,
@@ -762,7 +808,8 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+				const credentialType = getActiveCredentialType(this);
+				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'volumes');
 
@@ -777,7 +824,7 @@ export class Databricks implements INodeType {
 					// Fetch all catalogs first
 					const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'GET',
 							url: `${host}/api/2.1/unity-catalog/catalogs`,
@@ -795,7 +842,7 @@ export class Databricks implements INodeType {
 						try {
 							const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
 								this,
-								'databricksApi',
+								credentialType,
 								{
 									method: 'GET',
 									url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
@@ -812,7 +859,7 @@ export class Databricks implements INodeType {
 								try {
 									const volumesResponse = (await this.helpers.httpRequestWithAuthentication.call(
 										this,
-										'databricksApi',
+										credentialType,
 										{
 											method: 'GET',
 											url: `${host}/api/2.1/unity-catalog/volumes?catalog_name=${catalog.name}&schema_name=${schema.name}`,
@@ -867,7 +914,8 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+				const credentialType = getActiveCredentialType(this);
+				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'tables');
 
@@ -882,7 +930,7 @@ export class Databricks implements INodeType {
 					// Fetch all catalogs first
 					const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'GET',
 							url: `${host}/api/2.1/unity-catalog/catalogs`,
@@ -900,7 +948,7 @@ export class Databricks implements INodeType {
 						try {
 							const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
 								this,
-								'databricksApi',
+								credentialType,
 								{
 									method: 'GET',
 									url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
@@ -917,7 +965,7 @@ export class Databricks implements INodeType {
 								try {
 									const tablesResponse = (await this.helpers.httpRequestWithAuthentication.call(
 										this,
-										'databricksApi',
+										credentialType,
 										{
 											method: 'GET',
 											url: `${host}/api/2.1/unity-catalog/tables?catalog_name=${catalog.name}&schema_name=${schema.name}`,
@@ -972,7 +1020,8 @@ export class Databricks implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+				const credentialType = getActiveCredentialType(this);
+				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
 				const cacheKey = getCacheKey(host, 'functions');
 
@@ -991,7 +1040,7 @@ export class Databricks implements INodeType {
 					// Fetch all catalogs first
 					const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'GET',
 							url: `${host}/api/2.1/unity-catalog/catalogs`,
@@ -1009,7 +1058,7 @@ export class Databricks implements INodeType {
 						try {
 							const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
 								this,
-								'databricksApi',
+								credentialType,
 								{
 									method: 'GET',
 									url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
@@ -1026,7 +1075,7 @@ export class Databricks implements INodeType {
 								try {
 									const functionsResponse = (await this.helpers.httpRequestWithAuthentication.call(
 										this,
-										'databricksApi',
+										credentialType,
 										{
 											method: 'GET',
 											url: `${host}/api/2.1/unity-catalog/functions?catalog_name=${catalog.name}&schema_name=${schema.name}`,
@@ -1091,6 +1140,7 @@ export class Databricks implements INodeType {
 				this.logger.debug(`Processing item ${i + 1}/${items.length}`);
 				const resource = this.getNodeParameter('resource', i);
 				const operation = this.getNodeParameter('operation', i);
+				const credentialType = getActiveCredentialType(this, i);
 
 				this.logger.debug('Node parameters', {
 					resource,
@@ -1122,7 +1172,7 @@ export class Databricks implements INodeType {
 						filePath,
 					});
 
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host;
 					const binaryData = await this.helpers.getBinaryDataBuffer(i, dataFieldName);
 
@@ -1132,7 +1182,7 @@ export class Databricks implements INodeType {
 						dataSize: binaryData.length,
 					});
 
-					await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
+					await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
 						method: 'PUT',
 						url: `${host}/api/2.0/fs/files/Volumes/${catalog}/${schema}/${volume}/${filePath}`,
 						body: binaryData,
@@ -1151,7 +1201,7 @@ export class Databricks implements INodeType {
 						},
 					});
 				} else if (resource === 'files' && operation === 'downloadFile') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const filePath = this.getNodeParameter('filePath', i);
@@ -1179,7 +1229,7 @@ export class Databricks implements INodeType {
 					try {
 						const response = await this.helpers.httpRequestWithAuthentication.call(
 							this,
-							'databricksApi',
+							credentialType,
 							{
 								method: 'GET',
 								url: downloadUrl,
@@ -1244,7 +1294,7 @@ export class Databricks implements INodeType {
 						}
 					}
 				} else if (resource === 'files' && operation === 'deleteFile') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const filePath = this.getNodeParameter('filePath', i);
@@ -1259,7 +1309,7 @@ export class Databricks implements INodeType {
 					}
 					const [catalog, schema, volume] = parts;
 
-					await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
+					await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
 						method: 'DELETE',
 						url: `${host}/api/2.0/fs/files/Volumes/${catalog}/${schema}/${volume}/${filePath}`,
 
@@ -1276,7 +1326,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'getFileInfo') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const filePath = this.getNodeParameter('filePath', i);
@@ -1293,7 +1343,7 @@ export class Databricks implements INodeType {
 
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'HEAD',
 							url: `${host}/api/2.0/fs/files/Volumes/${catalog}/${schema}/${volume}/${filePath}`,
@@ -1314,7 +1364,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'listDirectory') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const directoryPath = this.getNodeParameter('directoryPath', i) as string;
@@ -1340,7 +1390,7 @@ export class Databricks implements INodeType {
 
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'GET',
 							url: `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}/${directoryPath}`,
@@ -1355,7 +1405,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'createDirectory') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const directoryPath = this.getNodeParameter('directoryPath', i) as string;
@@ -1370,7 +1420,7 @@ export class Databricks implements INodeType {
 					}
 					const [catalog, schema, volume] = parts;
 
-					await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
+					await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
 						method: 'PUT',
 						url: `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}/${directoryPath}`,
 
@@ -1387,7 +1437,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'deleteDirectory') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 					const volumePath = this.getNodeParameter('volumePath', i) as string;
 					const directoryPath = this.getNodeParameter('directoryPath', i) as string;
@@ -1402,7 +1452,7 @@ export class Databricks implements INodeType {
 					}
 					const [catalog, schema, volume] = parts;
 
-					await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
+					await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
 						method: 'DELETE',
 						url: `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}/${directoryPath}`,
 
@@ -1419,7 +1469,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'genie') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host;
 
 					let url: string;
@@ -1493,7 +1543,7 @@ export class Databricks implements INodeType {
 
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method,
 							url,
@@ -1512,7 +1562,7 @@ export class Databricks implements INodeType {
 
 					returnData.push({ json: response });
 				} else if (resource === 'databricksSql' && operation === 'executeQuery') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 					const warehouseId = this.getNodeParameter('warehouseId', i) as {
 						mode: string;
@@ -1528,7 +1578,7 @@ export class Databricks implements INodeType {
 					// Step 1: Execute the query
 					const executeResponse = (await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'POST',
 							url: `${host}/api/2.0/sql/statements`,
@@ -1562,7 +1612,7 @@ export class Databricks implements INodeType {
 
 						queryResult = (await this.helpers.httpRequestWithAuthentication.call(
 							this,
-							'databricksApi',
+							credentialType,
 							{
 								method: 'GET',
 								url: `${host}/api/2.0/sql/statements/${statementId}`,
@@ -1617,7 +1667,7 @@ export class Databricks implements INodeType {
 					while (chunkIndex < totalChunks) {
 						const chunkResponse = (await this.helpers.httpRequestWithAuthentication.call(
 							this,
-							'databricksApi',
+							credentialType,
 							{
 								method: 'GET',
 								url: `${host}/api/2.0/sql/statements/${statementId}/result/chunks/${chunkIndex}`,
@@ -1666,7 +1716,7 @@ export class Databricks implements INodeType {
 						});
 					});
 				} else if (resource === 'modelServing' && operation === 'queryEndpoint') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 					const endpointName = this.getNodeParameter('endpointName', i, '', {
 						extractValue: true,
@@ -1683,7 +1733,7 @@ export class Databricks implements INodeType {
 					try {
 						const openApiResponse = (await this.helpers.httpRequestWithAuthentication.call(
 							this,
-							'databricksApi',
+							credentialType,
 							{
 								method: 'GET',
 								url: `${host}/api/2.0/serving-endpoints/${endpointName}/openapi`,
@@ -1756,7 +1806,7 @@ export class Databricks implements INodeType {
 					try {
 						const response = await this.helpers.httpRequestWithAuthentication.call(
 							this,
-							'databricksApi',
+							credentialType,
 							{
 								method: 'POST',
 								url: invocationUrl,
@@ -1802,7 +1852,7 @@ export class Databricks implements INodeType {
 						throw apiError;
 					}
 				} else if (resource === 'unityCatalog') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 
 					// Helper function to extract value from resourceLocator
@@ -1837,26 +1887,22 @@ export class Databricks implements INodeType {
 							body.storage_location = additionalFields.storage_location;
 						}
 
-						response = await this.helpers.httpRequestWithAuthentication.call(
-							this,
-							'databricksApi',
-							{
-								method: 'POST',
-								url: `${host}/api/2.1/unity-catalog/volumes`,
-								body,
-								headers: {
-									'Content-Type': 'application/json',
-								},
-								json: true,
+						response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+							method: 'POST',
+							url: `${host}/api/2.1/unity-catalog/volumes`,
+							body,
+							headers: {
+								'Content-Type': 'application/json',
 							},
-						);
+							json: true,
+						});
 					} else if (operation === 'deleteVolume') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i));
 						const schemaName = extractValue(this.getNodeParameter('schemaName', i));
 						const volumeName = this.getNodeParameter('volumeName', i) as string;
 						const fullName = `${catalogName}.${schemaName}.${volumeName}`;
 
-						await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
+						await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
 							method: 'DELETE',
 							url: `${host}/api/2.1/unity-catalog/volumes/${fullName}`,
 							json: true,
@@ -1874,15 +1920,11 @@ export class Databricks implements INodeType {
 						const volumeName = this.getNodeParameter('volumeName', i) as string;
 						const fullName = `${catalogName}.${schemaName}.${volumeName}`;
 
-						response = await this.helpers.httpRequestWithAuthentication.call(
-							this,
-							'databricksApi',
-							{
-								method: 'GET',
-								url: `${host}/api/2.1/unity-catalog/volumes/${fullName}`,
-								json: true,
-							},
-						);
+						response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+							method: 'GET',
+							url: `${host}/api/2.1/unity-catalog/volumes/${fullName}`,
+							json: true,
+						});
 					} else if (operation === 'listVolumes') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i, ''));
 						const schemaName = extractValue(this.getNodeParameter('schemaName', i, ''));
@@ -1891,32 +1933,24 @@ export class Databricks implements INodeType {
 						if (catalogName) qs.catalog_name = catalogName;
 						if (schemaName) qs.schema_name = schemaName;
 
-						response = await this.helpers.httpRequestWithAuthentication.call(
-							this,
-							'databricksApi',
-							{
-								method: 'GET',
-								url: `${host}/api/2.1/unity-catalog/volumes`,
-								qs,
+						response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+							method: 'GET',
+							url: `${host}/api/2.1/unity-catalog/volumes`,
+							qs,
 
-								json: true,
-							},
-						);
+							json: true,
+						});
 					}
 					// Table Operations
 					else if (operation === 'getTable') {
 						const fullName = extractValue(this.getNodeParameter('fullName', i));
 
-						response = await this.helpers.httpRequestWithAuthentication.call(
-							this,
-							'databricksApi',
-							{
-								method: 'GET',
-								url: `${host}/api/2.1/unity-catalog/tables/${fullName}`,
+						response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+							method: 'GET',
+							url: `${host}/api/2.1/unity-catalog/tables/${fullName}`,
 
-								json: true,
-							},
-						);
+							json: true,
+						});
 					} else if (operation === 'listTables') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i, ''));
 						const schemaName = extractValue(this.getNodeParameter('schemaName', i, ''));
@@ -1925,17 +1959,13 @@ export class Databricks implements INodeType {
 						if (catalogName) qs.catalog_name = catalogName;
 						if (schemaName) qs.schema_name = schemaName;
 
-						response = await this.helpers.httpRequestWithAuthentication.call(
-							this,
-							'databricksApi',
-							{
-								method: 'GET',
-								url: `${host}/api/2.1/unity-catalog/tables`,
-								qs,
+						response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+							method: 'GET',
+							url: `${host}/api/2.1/unity-catalog/tables`,
+							qs,
 
-								json: true,
-							},
-						);
+							json: true,
+						});
 					}
 					// Function Operations
 					else if (operation === 'createFunction') {
@@ -1947,50 +1977,46 @@ export class Databricks implements INodeType {
 						const routineBody = this.getNodeParameter('routineBody', i) as string;
 						const routineDefinition = this.getNodeParameter('routineDefinition', i) as string;
 
-						response = await this.helpers.httpRequestWithAuthentication.call(
-							this,
-							'databricksApi',
-							{
-								method: 'POST',
-								url: `${host}/api/2.1/unity-catalog/functions`,
-								body: {
-									function_info: {
-										name: functionName,
-										catalog_name: catalogName,
-										schema_name: schemaName,
-										input_params: (() => {
-											const p =
-												typeof inputParams === 'string' ? JSON.parse(inputParams) : inputParams;
-											const params = Array.isArray(p) ? p : (p?.parameters ?? []);
-											const normalized = params.map((param: Record<string, unknown>) => ({
-												...param,
-												type_text: param.type_text ?? param.type_name,
-												type_json: param.type_json ?? JSON.stringify({ name: param.type_name }),
-											}));
-											return { parameters: normalized };
-										})(),
-										data_type: returnType,
-										full_data_type: returnType,
-										specific_name: functionName,
-										parameter_style: 'S',
-										security_type: 'DEFINER',
-										sql_data_access: 'CONTAINS_SQL',
-										is_deterministic: false,
-										is_null_call: true,
-										routine_body: routineBody,
-										routine_definition: routineDefinition,
-									},
+						response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+							method: 'POST',
+							url: `${host}/api/2.1/unity-catalog/functions`,
+							body: {
+								function_info: {
+									name: functionName,
+									catalog_name: catalogName,
+									schema_name: schemaName,
+									input_params: (() => {
+										const p =
+											typeof inputParams === 'string' ? JSON.parse(inputParams) : inputParams;
+										const params = Array.isArray(p) ? p : (p?.parameters ?? []);
+										const normalized = params.map((param: Record<string, unknown>) => ({
+											...param,
+											type_text: param.type_text ?? param.type_name,
+											type_json: param.type_json ?? JSON.stringify({ name: param.type_name }),
+										}));
+										return { parameters: normalized };
+									})(),
+									data_type: returnType,
+									full_data_type: returnType,
+									specific_name: functionName,
+									parameter_style: 'S',
+									security_type: 'DEFINER',
+									sql_data_access: 'CONTAINS_SQL',
+									is_deterministic: false,
+									is_null_call: true,
+									routine_body: routineBody,
+									routine_definition: routineDefinition,
 								},
-								headers: {
-									'Content-Type': 'application/json',
-								},
-								json: true,
 							},
-						);
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							json: true,
+						});
 					} else if (operation === 'deleteFunction') {
 						const fullName = extractValue(this.getNodeParameter('fullName', i));
 
-						await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
+						await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
 							method: 'DELETE',
 							url: `${host}/api/2.1/unity-catalog/functions/${fullName}`,
 
@@ -2006,16 +2032,12 @@ export class Databricks implements INodeType {
 					} else if (operation === 'getFunction') {
 						const fullName = extractValue(this.getNodeParameter('fullName', i));
 
-						response = await this.helpers.httpRequestWithAuthentication.call(
-							this,
-							'databricksApi',
-							{
-								method: 'GET',
-								url: `${host}/api/2.1/unity-catalog/functions/${fullName}`,
+						response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+							method: 'GET',
+							url: `${host}/api/2.1/unity-catalog/functions/${fullName}`,
 
-								json: true,
-							},
-						);
+							json: true,
+						});
 					} else if (operation === 'listFunctions') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i, ''));
 						const schemaName = extractValue(this.getNodeParameter('schemaName', i, ''));
@@ -2024,17 +2046,13 @@ export class Databricks implements INodeType {
 						if (catalogName) qs.catalog_name = catalogName;
 						if (schemaName) qs.schema_name = schemaName;
 
-						response = await this.helpers.httpRequestWithAuthentication.call(
-							this,
-							'databricksApi',
-							{
-								method: 'GET',
-								url: `${host}/api/2.1/unity-catalog/functions`,
-								qs,
+						response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+							method: 'GET',
+							url: `${host}/api/2.1/unity-catalog/functions`,
+							qs,
 
-								json: true,
-							},
-						);
+							json: true,
+						});
 					}
 					// Catalog Operations
 					else if (operation === 'createCatalog') {
@@ -2048,55 +2066,43 @@ export class Databricks implements INodeType {
 							body.comment = comment;
 						}
 
-						response = await this.helpers.httpRequestWithAuthentication.call(
-							this,
-							'databricksApi',
-							{
-								method: 'POST',
-								url: `${host}/api/2.1/unity-catalog/catalogs`,
-								body,
-								headers: {
-									'Content-Type': 'application/json',
-								},
-								json: true,
+						response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+							method: 'POST',
+							url: `${host}/api/2.1/unity-catalog/catalogs`,
+							body,
+							headers: {
+								'Content-Type': 'application/json',
 							},
-						);
+							json: true,
+						});
 					} else if (operation === 'getCatalog') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i));
 
-						response = await this.helpers.httpRequestWithAuthentication.call(
-							this,
-							'databricksApi',
-							{
-								method: 'GET',
-								url: `${host}/api/2.1/unity-catalog/catalogs/${catalogName}`,
+						response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+							method: 'GET',
+							url: `${host}/api/2.1/unity-catalog/catalogs/${catalogName}`,
 
-								json: true,
-							},
-						);
+							json: true,
+						});
 					} else if (operation === 'updateCatalog') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i));
 						const comment = this.getNodeParameter('comment', i, '') as string;
 
-						response = await this.helpers.httpRequestWithAuthentication.call(
-							this,
-							'databricksApi',
-							{
-								method: 'PATCH',
-								url: `${host}/api/2.1/unity-catalog/catalogs/${catalogName}`,
-								body: {
-									comment,
-								},
-								headers: {
-									'Content-Type': 'application/json',
-								},
-								json: true,
+						response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+							method: 'PATCH',
+							url: `${host}/api/2.1/unity-catalog/catalogs/${catalogName}`,
+							body: {
+								comment,
 							},
-						);
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							json: true,
+						});
 					} else if (operation === 'deleteCatalog') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i));
 
-						await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
+						await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
 							method: 'DELETE',
 							url: `${host}/api/2.1/unity-catalog/catalogs/${catalogName}`,
 
@@ -2110,15 +2116,11 @@ export class Databricks implements INodeType {
 							catalogName,
 						};
 					} else if (operation === 'listCatalogs') {
-						response = await this.helpers.httpRequestWithAuthentication.call(
-							this,
-							'databricksApi',
-							{
-								method: 'GET',
-								url: `${host}/api/2.1/unity-catalog/catalogs`,
-								json: true,
-							},
-						);
+						response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+							method: 'GET',
+							url: `${host}/api/2.1/unity-catalog/catalogs`,
+							json: true,
+						});
 					}
 
 					returnData.push({
@@ -2126,7 +2128,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'vectorSearch' && operation === 'queryIndex') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 					const indexName = this.getNodeParameter('indexName', i) as string;
 					const queryType = this.getNodeParameter('queryType', i) as string;
@@ -2190,7 +2192,7 @@ export class Databricks implements INodeType {
 
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'POST',
 							url: `${host}/api/2.0/vector-search/indexes/${indexName}/query`,
@@ -2207,7 +2209,7 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'vectorSearch' && operation === 'createIndex') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 					const indexName = this.getNodeParameter('indexName', i) as string;
 					const endpointName = this.getNodeParameter('endpointName', i) as string;
@@ -2231,7 +2233,7 @@ export class Databricks implements INodeType {
 
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'POST',
 							url: `${host}/api/2.0/vector-search/indexes`,
@@ -2246,13 +2248,13 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'vectorSearch' && operation === 'getIndex') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 					const indexName = this.getNodeParameter('indexName', i) as string;
 
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'GET',
 							url: `${host}/api/2.0/vector-search/indexes/${indexName}`,
@@ -2266,13 +2268,13 @@ export class Databricks implements INodeType {
 						pairedItem: { item: i },
 					});
 				} else if (resource === 'vectorSearch' && operation === 'listIndexes') {
-					const credentials = await this.getCredentials<DatabricksCredentials>('databricksApi');
+					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
 					const endpointName = this.getNodeParameter('endpointName', i) as string;
 
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'databricksApi',
+						credentialType,
 						{
 							method: 'GET',
 							url: `${host}/api/2.0/vector-search/indexes`,
