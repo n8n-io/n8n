@@ -919,4 +919,121 @@ describe('JobProcessor', () => {
 			expect(lastResponse.response).toBe('supply data tool result');
 		});
 	});
+
+	describe('project info in log metadata', () => {
+		it('should include project info in log metadata when present in job data', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: { id: 'wf-1', name: 'Test Workflow', nodes: [] },
+					data: mock<IRunExecutionData>({
+						executionData: undefined,
+					}),
+				}),
+			);
+			// Second call for checking errors
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					status: 'success',
+					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+				}),
+			);
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-1',
+				loadStaticData: false,
+				projectId: 'proj-123',
+				projectName: 'My Project',
+			};
+
+			await jobProcessor.processJob(job);
+
+			// "Worker started" log should include project info
+			expect(logger.info).toHaveBeenCalledWith(
+				expect.stringContaining('Worker started execution'),
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					workflowName: 'Test Workflow',
+					projectId: 'proj-123',
+					projectName: 'My Project',
+				}),
+			);
+
+			// "Worker finished" log should include project info
+			expect(logger.info).toHaveBeenCalledWith(
+				expect.stringContaining('Worker finished execution'),
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					workflowName: 'Test Workflow',
+					projectId: 'proj-123',
+					projectName: 'My Project',
+				}),
+			);
+		});
+
+		it('should omit project info from log metadata when absent from job data', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: { id: 'wf-1', name: 'Test Workflow', nodes: [] },
+					data: mock<IRunExecutionData>({
+						executionData: undefined,
+					}),
+				}),
+			);
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					status: 'success',
+					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+				}),
+			);
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-1',
+				loadStaticData: false,
+			};
+
+			await jobProcessor.processJob(job);
+
+			// "Worker started" log should have undefined project fields
+			expect(logger.info).toHaveBeenCalledWith(
+				expect.stringContaining('Worker started execution'),
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					projectId: undefined,
+					projectName: undefined,
+				}),
+			);
+		});
+	});
 });

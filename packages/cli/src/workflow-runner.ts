@@ -205,6 +205,9 @@ export class WorkflowRunner {
 					error,
 					executionId,
 					workflowId,
+					workflowName: data.workflowData.name,
+					projectId: data.projectId,
+					projectName: data.projectName,
 				});
 			});
 		}
@@ -390,6 +393,8 @@ export class WorkflowRunner {
 			pushRef: data.pushRef,
 			streamingEnabled: data.streamingEnabled,
 			restartExecutionId,
+			projectId: data.projectId,
+			projectName: data.projectName,
 			// MCP-specific fields for queue mode support
 			isMcpExecution: data.isMcpExecution,
 			mcpType: data.mcpType,

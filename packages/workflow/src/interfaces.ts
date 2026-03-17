@@ -2862,6 +2862,7 @@ export interface IWorkflowExecutionDataProcess {
 	workflowData: IWorkflowBase;
 	userId?: string;
 	projectId?: string;
+	projectName?: string;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;

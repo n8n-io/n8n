@@ -95,7 +95,10 @@ export class JobProcessor {
 		this.logger.info(`Worker started execution ${executionId} (job ${job.id})`, {
 			executionId,
 			workflowId,
+			workflowName: execution.workflowData.name,
 			jobId: job.id,
+			projectId: job.data.projectId,
+			projectName: job.data.projectName,
 		});
 
 		const startedAt = await this.executionRepository.setRunning(executionId);
@@ -213,7 +216,10 @@ export class JobProcessor {
 				{
 					executionId,
 					workflowId,
+					workflowName: execution.workflowData.name,
 					jobId: job.id,
+					projectId: job.data.projectId,
+					projectName: job.data.projectName,
 				},
 			);
 		};
@@ -293,8 +299,11 @@ export class JobProcessor {
 		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
 			executionId,
 			workflowId,
+			workflowName: execution.workflowData.name,
 			jobId: job.id,
 			success: props.success,
+			projectId: job.data.projectId,
+			projectName: job.data.projectName,
 		});
 
 		const msg: JobFinishedMessage = {

@@ -432,6 +432,7 @@ export class WorkflowExecutionService {
 				executionData: runExecutionData,
 				workflowData,
 				projectId: runningProject.id,
+				projectName: runningProject.name,
 			};
 
 			const executionId = await this.workflowRunner.run(runData);
