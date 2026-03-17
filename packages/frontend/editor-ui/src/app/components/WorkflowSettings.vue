@@ -199,7 +199,6 @@ const viewerInputTypeOptions = computed(
 		},
 	],
 );
-
 const viewerManual = computed({
 	get: () => workflowSettings.value.viewerMode?.manual ?? '',
 	set: (value: string) => {

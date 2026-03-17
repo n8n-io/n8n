@@ -2443,6 +2443,65 @@ onBeforeUnmount(() => {
 	white-space: pre-wrap;
 }
 
+.viewerInputsPanel {
+	position: absolute;
+	top: calc(var(--spacing--sm) + 56px);
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	width: min(680px, calc(100% - (var(--spacing--2xl) * 2)));
+	max-height: min(38vh, 360px);
+	overflow: auto;
+	padding: var(--spacing--xs);
+	border-radius: var(--border-radius-base);
+	background: var(--color--background--light-3);
+	border: var(--border);
+	box-shadow: var(--shadow--light);
+}
+
+.viewerInputsTitle {
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+}
+
+.viewerInputField {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.viewerInputLabel {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
+}
+
+.viewerInputRequired {
+	color: var(--color--danger);
+}
+
+.viewerInputHelp {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+}
+
+.viewerCheckboxLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
+}
+
+.viewerCheckbox {
+	margin: 0;
+}
+
+.viewerFileInput {
+	font-size: var(--font-size--2xs);
+}
+
 .readOnlyEnvironmentNotification {
 	position: absolute;
 	bottom: 16px;
