@@ -306,6 +306,26 @@ const canExecuteOnCanvas = computed(() => {
 	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
 });
 
+const runWorkflowButtonLabel = computed(() => {
+	const canUpdate = !!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update);
+	const canExecute = !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
+
+	// Viewer-style run mode: allow running while keeping canvas strictly read-only.
+	if (canExecute && !canUpdate) {
+		return i18n.baseText('nodeView.runButtonText.startWorkflow');
+	}
+
+	return i18n.baseText('nodeView.runButtonText.executeWorkflow');
+});
+
+const viewerManual = computed(() => (workflowsStore.workflow.description ?? '').trim());
+
+const showViewerManual = computed(() => {
+	const canUpdate = !!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update);
+	const canExecute = !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
+	return canExecute && !canUpdate && viewerManual.value.length > 0;
+});
+
 const isWriterAnotherTab = computed(() => {
 	return collaborationStore.isCurrentUserWriter && !collaborationStore.isCurrentTabWriter;
 });
@@ -1826,12 +1846,20 @@ onBeforeUnmount(() => {
 			<Suspense v-if="!isCanvasReadOnly">
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
 			</Suspense>
+			<N8nCallout v-if="showViewerManual" icon="info" theme="secondary" :class="$style.viewerManual">
+				{{
+					i18n.baseText('nodeView.viewerMode.manual', {
+						interpolate: { manual: viewerManual },
+					})
+				}}
+			</N8nCallout>
 			<div v-if="!isCanvasReadOnly || canExecuteOnCanvas" :class="$style.executionButtons">
 				<CanvasRunWorkflowButton
 					v-if="isRunWorkflowButtonVisible"
 					:waiting-for-webhook="isExecutionWaitingForWebhook"
 					:disabled="isExecutionDisabled"
 					:executing="isWorkflowRunning"
+					:label="runWorkflowButtonLabel"
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
 					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
@@ -1976,6 +2004,14 @@ onBeforeUnmount(() => {
 	position: absolute;
 	left: var(--spacing--sm);
 	top: var(--spacing--sm);
+}
+
+.viewerManual {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: 50%;
+	transform: translateX(-50%);
+	max-width: min(880px, calc(100% - (var(--spacing--2xl) * 2)));
 }
 
 .readOnlyEnvironmentNotification {
