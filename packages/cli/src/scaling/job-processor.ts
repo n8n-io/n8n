@@ -97,8 +97,8 @@ export class JobProcessor {
 			workflowId,
 			workflowName: execution.workflowData.name,
 			jobId: job.id,
-			...(job.data.projectId && { projectId: job.data.projectId }),
-			...(job.data.projectName && { projectName: job.data.projectName }),
+			...(job.data.projectId !== undefined && { projectId: job.data.projectId }),
+			...(job.data.projectName !== undefined && { projectName: job.data.projectName }),
 		});
 
 		const startedAt = await this.executionRepository.setRunning(executionId);
