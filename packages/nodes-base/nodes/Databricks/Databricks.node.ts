@@ -44,35 +44,6 @@ interface DatabricksCredentials {
 	host: string;
 }
 
-interface CacheEntry {
-	data: any;
-	timestamp: number;
-}
-
-// In-memory caches for dropdown options
-const endpointCache: Map<string, CacheEntry> = new Map();
-const warehouseCache: Map<string, CacheEntry> = new Map();
-const catalogCache: Map<string, CacheEntry> = new Map();
-const schemaCache: Map<string, CacheEntry> = new Map();
-const volumeCache: Map<string, CacheEntry> = new Map();
-const tableCache: Map<string, CacheEntry> = new Map();
-const functionCache: Map<string, CacheEntry> = new Map();
-const CACHE_TTL = 1 * 60 * 1000; // 1 minute in milliseconds
-
-// Helper function to get cache key (includes host to handle multiple accounts)
-function getCacheKey(
-	host: string,
-	type: 'warehouses' | 'endpoints' | 'catalogs' | 'schemas' | 'volumes' | 'tables' | 'functions',
-): string {
-	return `${host}:${type}`;
-}
-
-// Helper function to check if cache is valid
-function isCacheValid(entry: CacheEntry | undefined): boolean {
-	if (!entry) return false;
-	return Date.now() - entry.timestamp < CACHE_TTL;
-}
-
 interface DatabricksStatementResponse {
 	statement_id: string;
 	status: {
@@ -528,38 +499,23 @@ export class Databricks implements INodeType {
 				const credentialType = getActiveCredentialType(this);
 				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
-				const cacheKey = getCacheKey(host, 'warehouses');
 
-				// Check cache first
 				let warehouses: Array<{ id: string; name: string; size?: string }> = [];
-				const cachedEntry = warehouseCache.get(cacheKey);
 
-				if (isCacheValid(cachedEntry)) {
-					// Use cached data - no API call needed!
-					warehouses = cachedEntry!.data;
-				} else {
-					// Fetch from API
-					const response = (await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						credentialType,
-						{
-							method: 'GET',
-							url: `${host}/api/2.0/sql/warehouses`,
-							headers: {
-								Accept: 'application/json',
-							},
-							json: true,
+				const response = (await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					credentialType,
+					{
+						method: 'GET',
+						url: `${host}/api/2.0/sql/warehouses`,
+						headers: {
+							Accept: 'application/json',
 						},
-					)) as { warehouses?: Array<{ id: string; name: string; size?: string }> };
+						json: true,
+					},
+				)) as { warehouses?: Array<{ id: string; name: string; size?: string }> };
 
-					warehouses = response.warehouses ?? [];
-
-					// Store in cache
-					warehouseCache.set(cacheKey, {
-						data: warehouses,
-						timestamp: Date.now(),
-					});
-				}
+				warehouses = response.warehouses ?? [];
 
 				const allResults = warehouses.map((warehouse) => ({
 					name: warehouse.name,
@@ -585,38 +541,23 @@ export class Databricks implements INodeType {
 				const credentialType = getActiveCredentialType(this);
 				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
-				const cacheKey = getCacheKey(host, 'endpoints');
 
-				// Check cache first
 				let endpoints: Array<{ name: string; config?: any }> = [];
-				const cachedEntry = endpointCache.get(cacheKey);
 
-				if (isCacheValid(cachedEntry)) {
-					// Use cached data - no API call needed!
-					endpoints = cachedEntry!.data;
-				} else {
-					// Fetch from API
-					const response = (await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						credentialType,
-						{
-							method: 'GET',
-							url: `${host}/api/2.0/serving-endpoints`,
-							headers: {
-								Accept: 'application/json',
-							},
-							json: true,
+				const response = (await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					credentialType,
+					{
+						method: 'GET',
+						url: `${host}/api/2.0/serving-endpoints`,
+						headers: {
+							Accept: 'application/json',
 						},
-					)) as { endpoints?: Array<{ name: string; config?: any }> };
+						json: true,
+					},
+				)) as { endpoints?: Array<{ name: string; config?: any }> };
 
-					endpoints = response.endpoints ?? [];
-
-					// Store in cache
-					endpointCache.set(cacheKey, {
-						data: endpoints,
-						timestamp: Date.now(),
-					});
-				}
+				endpoints = response.endpoints ?? [];
 
 				const allResults = endpoints.map((endpoint) => {
 					// Extract model names from served entities for the description
@@ -654,37 +595,23 @@ export class Databricks implements INodeType {
 				const credentialType = getActiveCredentialType(this);
 				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
-				const cacheKey = getCacheKey(host, 'catalogs');
 
-				// Check cache first
 				let catalogs: Array<{ name: string; comment?: string }> = [];
-				const cachedEntry = catalogCache.get(cacheKey);
 
-				if (isCacheValid(cachedEntry)) {
-					catalogs = cachedEntry!.data;
-				} else {
-					// Fetch from API
-					const response = (await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						credentialType,
-						{
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/catalogs`,
-							headers: {
-								Accept: 'application/json',
-							},
-							json: true,
+				const response = (await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					credentialType,
+					{
+						method: 'GET',
+						url: `${host}/api/2.1/unity-catalog/catalogs`,
+						headers: {
+							Accept: 'application/json',
 						},
-					)) as { catalogs?: Array<{ name: string; comment?: string }> };
+						json: true,
+					},
+				)) as { catalogs?: Array<{ name: string; comment?: string }> };
 
-					catalogs = response.catalogs ?? [];
-
-					// Store in cache
-					catalogCache.set(cacheKey, {
-						data: catalogs,
-						timestamp: Date.now(),
-					});
-				}
+				catalogs = response.catalogs ?? [];
 
 				const allResults = catalogs.map((catalog) => ({
 					name: catalog.name,
@@ -730,56 +657,43 @@ export class Databricks implements INodeType {
 					selectedCatalog = undefined;
 				}
 
-				let allSchemas: Array<{ name: string; value: string; url?: string }> = [];
+				const allSchemas: Array<{ name: string; value: string; url?: string }> = [];
 
 				if (selectedCatalog) {
 					// Catalog is selected - fetch only schemas for this catalog (fast!)
-					const cacheKey = `${getCacheKey(host, 'schemas')}:${selectedCatalog}`;
-					const cachedEntry = schemaCache.get(cacheKey);
-
-					if (isCacheValid(cachedEntry)) {
-						allSchemas = cachedEntry!.data;
-					} else {
-						try {
-							const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
-								this,
-								credentialType,
-								{
-									method: 'GET',
-									url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${selectedCatalog}`,
-									headers: {
-										Accept: 'application/json',
-									},
-									json: true,
+					try {
+						const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							credentialType,
+							{
+								method: 'GET',
+								url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${selectedCatalog}`,
+								headers: {
+									Accept: 'application/json',
 								},
-							)) as { schemas?: Array<{ name: string }> };
+								json: true,
+							},
+						)) as { schemas?: Array<{ name: string }> };
 
-							const schemas = schemasResponse.schemas ?? [];
+						const schemas = schemasResponse.schemas ?? [];
 
-							schemas.forEach((schema) => {
-								allSchemas.push({
-									name: schema.name,
-									value: schema.name,
-									url: `${host}/explore/data/${selectedCatalog}/${schema.name}`,
-								});
+						schemas.forEach((schema) => {
+							allSchemas.push({
+								name: schema.name,
+								value: schema.name,
+								url: `${host}/explore/data/${selectedCatalog}/${schema.name}`,
 							});
-
-							// Cache per catalog for 1 minute
-							schemaCache.set(cacheKey, {
-								data: allSchemas,
-								timestamp: Date.now(),
-							});
-						} catch (e) {
-							// If error fetching schemas for this catalog, return empty
-							return {
-								results: [
-									{
-										name: `Error loading schemas for catalog: ${selectedCatalog}`,
-										value: '',
-									},
-								],
-							};
-						}
+						});
+					} catch (e) {
+						// If error fetching schemas for this catalog, return empty
+						return {
+							results: [
+								{
+									name: `Error loading schemas for catalog: ${selectedCatalog}`,
+									value: '',
+								},
+							],
+						};
 					}
 				} else {
 					// No catalog selected yet - show helpful message
@@ -811,90 +725,81 @@ export class Databricks implements INodeType {
 				const credentialType = getActiveCredentialType(this);
 				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
-				const cacheKey = getCacheKey(host, 'volumes');
 
-				// Check cache first
-				let allVolumes: Array<{ name: string; value: string; description: string; url?: string }> =
-					[];
-				const cachedEntry = volumeCache.get(cacheKey);
+				const allVolumes: Array<{
+					name: string;
+					value: string;
+					description: string;
+					url?: string;
+				}> = [];
 
-				if (isCacheValid(cachedEntry)) {
-					allVolumes = cachedEntry!.data;
-				} else {
-					// Fetch all catalogs first
-					const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						credentialType,
-						{
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/catalogs`,
-							headers: {
-								Accept: 'application/json',
-							},
-							json: true,
+				// Fetch all catalogs first
+				const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					credentialType,
+					{
+						method: 'GET',
+						url: `${host}/api/2.1/unity-catalog/catalogs`,
+						headers: {
+							Accept: 'application/json',
 						},
-					)) as { catalogs?: Array<{ name: string }> };
+						json: true,
+					},
+				)) as { catalogs?: Array<{ name: string }> };
 
-					const catalogs = catalogsResponse.catalogs ?? [];
+				const catalogs = catalogsResponse.catalogs ?? [];
 
-					// For each catalog, fetch schemas and volumes
-					for (const catalog of catalogs) {
-						try {
-							const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
-								this,
-								credentialType,
-								{
-									method: 'GET',
-									url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
-									headers: {
-										Accept: 'application/json',
-									},
-									json: true,
+				// For each catalog, fetch schemas and volumes
+				for (const catalog of catalogs) {
+					try {
+						const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							credentialType,
+							{
+								method: 'GET',
+								url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
+								headers: {
+									Accept: 'application/json',
 								},
-							)) as { schemas?: Array<{ name: string }> };
+								json: true,
+							},
+						)) as { schemas?: Array<{ name: string }> };
 
-							const schemas = schemasResponse.schemas ?? [];
+						const schemas = schemasResponse.schemas ?? [];
 
-							for (const schema of schemas) {
-								try {
-									const volumesResponse = (await this.helpers.httpRequestWithAuthentication.call(
-										this,
-										credentialType,
-										{
-											method: 'GET',
-											url: `${host}/api/2.1/unity-catalog/volumes?catalog_name=${catalog.name}&schema_name=${schema.name}`,
-											headers: {
-												Accept: 'application/json',
-											},
-											json: true,
+						for (const schema of schemas) {
+							try {
+								const volumesResponse = (await this.helpers.httpRequestWithAuthentication.call(
+									this,
+									credentialType,
+									{
+										method: 'GET',
+										url: `${host}/api/2.1/unity-catalog/volumes?catalog_name=${catalog.name}&schema_name=${schema.name}`,
+										headers: {
+											Accept: 'application/json',
 										},
-									)) as { volumes?: Array<{ name: string; volume_type?: string }> };
+										json: true,
+									},
+								)) as { volumes?: Array<{ name: string; volume_type?: string }> };
 
-									const volumes = volumesResponse.volumes ?? [];
+								const volumes = volumesResponse.volumes ?? [];
 
-									volumes.forEach((volume) => {
-										const fullPath = `${catalog.name}.${schema.name}.${volume.name}`;
-										allVolumes.push({
-											name: fullPath,
-											value: fullPath,
-											description: `${catalog.name} / ${schema.name}${volume.volume_type ? ` (${volume.volume_type})` : ''}`,
-											url: `${host}/explore/data/${catalog.name}/${schema.name}/${volume.name}`,
-										});
+								volumes.forEach((volume) => {
+									const fullPath = `${catalog.name}.${schema.name}.${volume.name}`;
+									allVolumes.push({
+										name: fullPath,
+										value: fullPath,
+										description: `${catalog.name} / ${schema.name}${volume.volume_type ? ` (${volume.volume_type})` : ''}`,
+										url: `${host}/explore/data/${catalog.name}/${schema.name}/${volume.name}`,
 									});
-								} catch (e) {
-									// Skip if can't access volumes in this schema
-								}
+								});
+							} catch (e) {
+								// Skip if can't access volumes in this schema
 							}
-						} catch (e) {
-							// Skip if can't access schemas in this catalog
 						}
+					} catch (e) {
+						// Skip if can't access schemas in this catalog
 					}
-
-					// Cache the results
-					volumeCache.set(cacheKey, {
-						data: allVolumes,
-						timestamp: Date.now(),
-					});
 				}
 
 				// Apply filter if provided
@@ -917,90 +822,77 @@ export class Databricks implements INodeType {
 				const credentialType = getActiveCredentialType(this);
 				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
-				const cacheKey = getCacheKey(host, 'tables');
 
-				// Check cache first
-				let allTables: Array<{ name: string; value: string; description: string; url?: string }> =
+				const allTables: Array<{ name: string; value: string; description: string; url?: string }> =
 					[];
-				const cachedEntry = tableCache.get(cacheKey);
 
-				if (isCacheValid(cachedEntry)) {
-					allTables = cachedEntry!.data;
-				} else {
-					// Fetch all catalogs first
-					const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						credentialType,
-						{
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/catalogs`,
-							headers: {
-								Accept: 'application/json',
-							},
-							json: true,
+				// Fetch all catalogs first
+				const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					credentialType,
+					{
+						method: 'GET',
+						url: `${host}/api/2.1/unity-catalog/catalogs`,
+						headers: {
+							Accept: 'application/json',
 						},
-					)) as { catalogs?: Array<{ name: string }> };
+						json: true,
+					},
+				)) as { catalogs?: Array<{ name: string }> };
 
-					const catalogs = catalogsResponse.catalogs ?? [];
+				const catalogs = catalogsResponse.catalogs ?? [];
 
-					// For each catalog, fetch schemas and tables
-					for (const catalog of catalogs) {
-						try {
-							const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
-								this,
-								credentialType,
-								{
-									method: 'GET',
-									url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
-									headers: {
-										Accept: 'application/json',
-									},
-									json: true,
+				// For each catalog, fetch schemas and tables
+				for (const catalog of catalogs) {
+					try {
+						const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							credentialType,
+							{
+								method: 'GET',
+								url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
+								headers: {
+									Accept: 'application/json',
 								},
-							)) as { schemas?: Array<{ name: string }> };
+								json: true,
+							},
+						)) as { schemas?: Array<{ name: string }> };
 
-							const schemas = schemasResponse.schemas ?? [];
+						const schemas = schemasResponse.schemas ?? [];
 
-							for (const schema of schemas) {
-								try {
-									const tablesResponse = (await this.helpers.httpRequestWithAuthentication.call(
-										this,
-										credentialType,
-										{
-											method: 'GET',
-											url: `${host}/api/2.1/unity-catalog/tables?catalog_name=${catalog.name}&schema_name=${schema.name}`,
-											headers: {
-												Accept: 'application/json',
-											},
-											json: true,
+						for (const schema of schemas) {
+							try {
+								const tablesResponse = (await this.helpers.httpRequestWithAuthentication.call(
+									this,
+									credentialType,
+									{
+										method: 'GET',
+										url: `${host}/api/2.1/unity-catalog/tables?catalog_name=${catalog.name}&schema_name=${schema.name}`,
+										headers: {
+											Accept: 'application/json',
 										},
-									)) as { tables?: Array<{ name: string; table_type?: string }> };
+										json: true,
+									},
+								)) as { tables?: Array<{ name: string; table_type?: string }> };
 
-									const tables = tablesResponse.tables ?? [];
+								const tables = tablesResponse.tables ?? [];
 
-									tables.forEach((table) => {
-										const fullPath = `${catalog.name}.${schema.name}.${table.name}`;
-										allTables.push({
-											name: fullPath,
-											value: fullPath,
-											description: `${catalog.name} / ${schema.name}${table.table_type ? ` (${table.table_type})` : ''}`,
-											url: `${host}/explore/data/${catalog.name}/${schema.name}/${table.name}`,
-										});
+								tables.forEach((table) => {
+									const fullPath = `${catalog.name}.${schema.name}.${table.name}`;
+									allTables.push({
+										name: fullPath,
+										value: fullPath,
+										description: `${catalog.name} / ${schema.name}${table.table_type ? ` (${table.table_type})` : ''}`,
+										url: `${host}/explore/data/${catalog.name}/${schema.name}/${table.name}`,
 									});
-								} catch (e) {
-									// Skip if can't access tables in this schema
-								}
+								});
+							} catch (e) {
+								// Skip if can't access tables in this schema
 							}
-						} catch (e) {
-							// Skip if can't access schemas in this catalog
 						}
+					} catch (e) {
+						// Skip if can't access schemas in this catalog
 					}
-
-					// Cache the results
-					tableCache.set(cacheKey, {
-						data: allTables,
-						timestamp: Date.now(),
-					});
 				}
 
 				// Apply filter if provided
@@ -1023,94 +915,81 @@ export class Databricks implements INodeType {
 				const credentialType = getActiveCredentialType(this);
 				const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 				const host = credentials.host.replace(/\/$/, '');
-				const cacheKey = getCacheKey(host, 'functions');
 
-				// Check cache first
-				let allFunctions: Array<{
+				const allFunctions: Array<{
 					name: string;
 					value: string;
 					description: string;
 					url?: string;
 				}> = [];
-				const cachedEntry = functionCache.get(cacheKey);
 
-				if (isCacheValid(cachedEntry)) {
-					allFunctions = cachedEntry!.data;
-				} else {
-					// Fetch all catalogs first
-					const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						credentialType,
-						{
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/catalogs`,
-							headers: {
-								Accept: 'application/json',
-							},
-							json: true,
+				// Fetch all catalogs first
+				const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					credentialType,
+					{
+						method: 'GET',
+						url: `${host}/api/2.1/unity-catalog/catalogs`,
+						headers: {
+							Accept: 'application/json',
 						},
-					)) as { catalogs?: Array<{ name: string }> };
+						json: true,
+					},
+				)) as { catalogs?: Array<{ name: string }> };
 
-					const catalogs = catalogsResponse.catalogs ?? [];
+				const catalogs = catalogsResponse.catalogs ?? [];
 
-					// For each catalog, fetch schemas and functions
-					for (const catalog of catalogs) {
-						try {
-							const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
-								this,
-								credentialType,
-								{
-									method: 'GET',
-									url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
-									headers: {
-										Accept: 'application/json',
-									},
-									json: true,
+				// For each catalog, fetch schemas and functions
+				for (const catalog of catalogs) {
+					try {
+						const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							credentialType,
+							{
+								method: 'GET',
+								url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
+								headers: {
+									Accept: 'application/json',
 								},
-							)) as { schemas?: Array<{ name: string }> };
+								json: true,
+							},
+						)) as { schemas?: Array<{ name: string }> };
 
-							const schemas = schemasResponse.schemas ?? [];
+						const schemas = schemasResponse.schemas ?? [];
 
-							for (const schema of schemas) {
-								try {
-									const functionsResponse = (await this.helpers.httpRequestWithAuthentication.call(
-										this,
-										credentialType,
-										{
-											method: 'GET',
-											url: `${host}/api/2.1/unity-catalog/functions?catalog_name=${catalog.name}&schema_name=${schema.name}`,
-											headers: {
-												Accept: 'application/json',
-											},
-											json: true,
+						for (const schema of schemas) {
+							try {
+								const functionsResponse = (await this.helpers.httpRequestWithAuthentication.call(
+									this,
+									credentialType,
+									{
+										method: 'GET',
+										url: `${host}/api/2.1/unity-catalog/functions?catalog_name=${catalog.name}&schema_name=${schema.name}`,
+										headers: {
+											Accept: 'application/json',
 										},
-									)) as { functions?: Array<{ name: string; data_type?: string }> };
+										json: true,
+									},
+								)) as { functions?: Array<{ name: string; data_type?: string }> };
 
-									const functions = functionsResponse.functions ?? [];
+								const functions = functionsResponse.functions ?? [];
 
-									functions.forEach((func) => {
-										const fullPath = `${catalog.name}.${schema.name}.${func.name}`;
-										allFunctions.push({
-											name: fullPath,
-											value: fullPath,
-											description: `${catalog.name} / ${schema.name}${func.data_type ? ` → ${func.data_type}` : ''}`,
-											url: `${host}/explore/data/${catalog.name}/${schema.name}/${func.name}`,
-										});
+								functions.forEach((func) => {
+									const fullPath = `${catalog.name}.${schema.name}.${func.name}`;
+									allFunctions.push({
+										name: fullPath,
+										value: fullPath,
+										description: `${catalog.name} / ${schema.name}${func.data_type ? ` → ${func.data_type}` : ''}`,
+										url: `${host}/explore/data/${catalog.name}/${schema.name}/${func.name}`,
 									});
-								} catch (e) {
-									// Skip if can't access functions in this schema
-								}
+								});
+							} catch (e) {
+								// Skip if can't access functions in this schema
 							}
-						} catch (e) {
-							// Skip if can't access schemas in this catalog
 						}
+					} catch (e) {
+						// Skip if can't access schemas in this catalog
 					}
-
-					// Cache the results
-					functionCache.set(cacheKey, {
-						data: allFunctions,
-						timestamp: Date.now(),
-					});
 				}
 
 				// Apply filter if provided
@@ -1155,7 +1034,7 @@ export class Databricks implements INodeType {
 					const [catalog, schema, volume] = parts;
 
 					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
-					const host = credentials.host;
+					const host = credentials.host.replace(/\/$/, '');
 					const binaryData = await this.helpers.getBinaryDataBuffer(i, dataFieldName);
 
 					await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
@@ -1789,6 +1668,13 @@ export class Databricks implements INodeType {
 							volume_type: volumeType,
 						};
 
+						if (volumeType === 'EXTERNAL' && !additionalFields.storage_location) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Storage Location is required for EXTERNAL volumes',
+								{ itemIndex: i },
+							);
+						}
 						if (additionalFields.comment) {
 							body.comment = additionalFields.comment;
 						}

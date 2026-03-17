@@ -76,7 +76,7 @@
 				"queryText": "machine learning",
 				"searchMode": "HYBRID",
 				"numResults": 5,
-				"columns": "id, content",
+				"columns": "id, text",
 				"enableReranking": false,
 				"options": {}
 			},
@@ -140,7 +140,7 @@
 							["2", "Deep learning fundamentals", "0.88"]
 						],
 						"manifest": {
-							"columns": [{ "name": "id" }, { "name": "content" }, { "name": "score" }]
+							"columns": [{ "name": "id" }, { "name": "text" }, { "name": "score" }]
 						}
 					},
 					"next_page_token": null

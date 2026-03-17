@@ -1,5 +1,15 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import type * as nWorkflow from 'n8n-workflow';
 import nock from 'nock';
+
+// Mock sleep from n8n-workflow so polling tests run without real delays
+jest.mock('n8n-workflow', () => {
+	const actual = jest.requireActual<typeof nWorkflow>('n8n-workflow');
+	return {
+		...actual,
+		sleep: jest.fn().mockResolvedValue(undefined),
+	};
+});
 
 const HOST = 'https://adb-1234567890.1.azuredatabricks.net';
 
@@ -46,6 +56,61 @@ describe('Databricks', () => {
 		new NodeTestHarness().setupTests({
 			credentials,
 			workflowFiles: ['databricks-sql.workflow.json'],
+		});
+	});
+
+	describe('Databricks SQL -> Execute Query (async polling)', () => {
+		// This test exercises the PENDING → RUNNING → SUCCEEDED polling path.
+		// The initial POST returns PENDING, the first poll returns RUNNING, and
+		// the second poll returns the completed result with manifest and data.
+		beforeAll(() => {
+			nock(HOST)
+				.post('/api/2.0/sql/statements', {
+					warehouse_id: 'warehouse123',
+					statement: 'SELECT id, name FROM test_table',
+					wait_timeout: '50s',
+					on_wait_timeout: 'CONTINUE',
+				})
+				.reply(200, {
+					statement_id: 'stmt-001',
+					status: { state: 'PENDING' },
+				});
+
+			nock(HOST)
+				.get('/api/2.0/sql/statements/stmt-001')
+				.reply(200, {
+					statement_id: 'stmt-001',
+					status: { state: 'RUNNING' },
+				});
+
+			nock(HOST)
+				.get('/api/2.0/sql/statements/stmt-001')
+				.reply(200, {
+					statement_id: 'stmt-001',
+					status: { state: 'SUCCEEDED' },
+					manifest: {
+						total_chunk_count: 1,
+						schema: {
+							columns: [
+								{ name: 'id', type: 'INT' },
+								{ name: 'name', type: 'STRING' },
+							],
+						},
+					},
+					result: {
+						data_array: [
+							['1', 'Alice'],
+							['2', 'Bob'],
+						],
+					},
+				});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['databricks-sql-polling.workflow.json'],
 		});
 	});
 
@@ -161,6 +226,80 @@ describe('Databricks', () => {
 		new NodeTestHarness().setupTests({
 			credentials,
 			workflowFiles: ['model-serving.workflow.json'],
+		});
+	});
+
+	describe('Model Serving -> Query Endpoint (chat format detection)', () => {
+		// This test verifies that the node correctly identifies the 'chat' format when
+		// the OpenAPI schema contains a requestBody with a 'messages' property, and
+		// that _metadata.detectedFormat reflects the detected format in the output.
+		beforeAll(() => {
+			const databricksNock = nock(HOST);
+
+			// Return a realistic chat-format OpenAPI schema so the format-detection
+			// logic runs and identifies the 'messages' property as 'chat'.
+			databricksNock.get('/api/2.0/serving-endpoints/my-chat-endpoint/openapi').reply(200, [
+				{
+					servers: [
+						{
+							url: `${HOST}/serving-endpoints/my-chat-endpoint/invocations`,
+						},
+					],
+					paths: {
+						'/serving-endpoints/my-chat-endpoint/invocations': {
+							post: {
+								requestBody: {
+									content: {
+										'application/json': {
+											schema: {
+												oneOf: [
+													{
+														type: 'object',
+														properties: {
+															messages: {
+																type: 'array',
+																items: {
+																	type: 'object',
+																	properties: {
+																		role: { type: 'string' },
+																		content: { type: 'string' },
+																	},
+																},
+															},
+															max_tokens: { type: 'integer' },
+															temperature: { type: 'number' },
+														},
+													},
+												],
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			]);
+
+			databricksNock.post('/serving-endpoints/my-chat-endpoint/invocations').reply(200, {
+				id: 'chatcmpl-456',
+				choices: [
+					{
+						message: { role: 'assistant', content: 'Hi there! How can I assist you?' },
+						finish_reason: 'stop',
+						index: 0,
+					},
+				],
+				model: 'my-chat-endpoint',
+				usage: { prompt_tokens: 8, completion_tokens: 12, total_tokens: 20 },
+			});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['model-serving-chat.workflow.json'],
 		});
 	});
 
@@ -304,7 +443,7 @@ describe('Databricks', () => {
 					num_results: 5,
 					query_type: 'HYBRID',
 					query_text: 'machine learning',
-					columns: ['id', 'content'],
+					columns: ['id', 'text'],
 				})
 				.reply(200, {
 					result: {
@@ -314,7 +453,7 @@ describe('Databricks', () => {
 							['2', 'Deep learning fundamentals', '0.88'],
 						],
 						manifest: {
-							columns: [{ name: 'id' }, { name: 'content' }, { name: 'score' }],
+							columns: [{ name: 'id' }, { name: 'text' }, { name: 'score' }],
 						},
 					},
 					next_page_token: null,

@@ -1,5 +1,5 @@
 {
-	"name": "Databricks SQL Test Workflow",
+	"name": "Databricks SQL Polling Test Workflow",
 	"nodes": [
 		{
 			"parameters": {},
@@ -11,8 +11,6 @@
 		},
 		{
 			"parameters": {
-				"resource": "databricksSql",
-				"operation": "executeQuery",
 				"warehouseId": {
 					"mode": "id",
 					"value": "warehouse123"
@@ -22,8 +20,8 @@
 			"type": "n8n-nodes-base.databricks",
 			"typeVersion": 1,
 			"position": [220, 0],
-			"id": "sql-execute-001",
-			"name": "Execute SQL",
+			"id": "sql-execute-002",
+			"name": "Execute SQL Polling",
 			"credentials": {
 				"databricksApi": {
 					"id": "cred-001",
@@ -33,7 +31,7 @@
 		}
 	],
 	"pinData": {
-		"Execute SQL": [
+		"Execute SQL Polling": [
 			{ "json": { "id": "1", "name": "Alice" } },
 			{ "json": { "id": "2", "name": "Bob" } }
 		]
@@ -43,7 +41,7 @@
 			"main": [
 				[
 					{
-						"node": "Execute SQL",
+						"node": "Execute SQL Polling",
 						"type": "main",
 						"index": 0
 					}

@@ -126,17 +126,4 @@ export const databricksSqlParameters: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Query ID',
-		name: 'queryId',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The ID of the query to update',
-		displayOptions: {
-			show: {
-				operation: ['updateQuery', 'deleteQuery'],
-			},
-		},
-	},
 ];
