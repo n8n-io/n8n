@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
+import IconTextButton from '../IconTextButton/IconTextButton.vue';
 import N8nButton from './Button.vue';
+import N8nIconButton from '../N8nIconButton/IconButton.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
 
 const meta = {
@@ -36,6 +38,9 @@ const meta = {
 	},
 	parameters: {
 		docs: {
+			description: {
+				component: 'A clickable element that triggers an action in multiple variants and sizes.',
+			},
 			source: { type: 'dynamic' },
 		},
 	},
@@ -261,6 +266,40 @@ export const TypeToVariantMapping: Story = {
 				<code>variant="ghost"</code>
 				<N8nButton variant="ghost">Ghost</N8nButton>
 			</div>
+		</div>
+		`,
+	}),
+	args: {},
+};
+
+export const IconButtonPatterns: Story = {
+	render: () => ({
+		components: { N8nIconButton },
+		template: `
+		<div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+			<N8nIconButton icon="plus" title="Create" type="primary" size="xlarge" />
+			<N8nIconButton icon="plus" title="Create" type="primary" size="large" />
+			<N8nIconButton icon="plus" title="Create" type="primary" size="medium" />
+			<N8nIconButton icon="plus" title="Create" type="secondary" size="medium" />
+			<N8nIconButton icon="plus" title="Create" type="tertiary" size="medium" />
+			<N8nIconButton icon="plus" title="Create" type="primary" :outline="true" size="medium" />
+			<N8nIconButton icon="plus" title="Create" type="primary" :loading="true" size="medium" />
+			<N8nIconButton icon="plus" title="Create" type="primary" :disabled="true" size="medium" />
+		</div>
+		`,
+	}),
+	args: {},
+};
+
+export const IconTextPatterns: Story = {
+	render: () => ({
+		components: { IconTextButton },
+		template: `
+		<div style="display: flex; flex-direction: column; gap: 16px;">
+			<IconTextButton icon="undo-2">Restore version</IconTextButton>
+			<IconTextButton icon="arrow-up-right" icon-position="right">Show version</IconTextButton>
+			<IconTextButton icon="undo-2" :active="true">Restore version</IconTextButton>
+			<IconTextButton icon="undo-2" :disabled="true">Restore version</IconTextButton>
 		</div>
 		`,
 	}),
