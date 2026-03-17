@@ -132,7 +132,7 @@ export const createGetExecutionTool = (
 
 			if (includeData) {
 				let data = execution.data;
-				if (data && (nodeNames?.length ?? truncateData)) {
+				if (data && (nodeNames?.length || truncateData)) {
 					data = filterExecutionData(data, nodeNames, truncateData);
 				}
 				output.data = data;
@@ -195,7 +195,7 @@ function filterExecutionData(
 ): IRunExecutionData {
 	const filtered = { ...data, resultData: { ...data.resultData } };
 
-	let runData = filtered.resultData.runData;
+	let runData = filtered.resultData.runData ?? {};
 
 	if (nodeNames?.length) {
 		const filteredRunData: IRunData = {};
