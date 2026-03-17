@@ -183,14 +183,17 @@ describe('SignupView', () => {
 		await userEvent.click(acceptButton);
 
 		expect(toast.showError).not.toHaveBeenCalled();
-		expect(usersStore.acceptInvitation).toHaveBeenCalledWith(
-			expect.objectContaining({
-				token: mockToken,
-				firstName: 'Jane',
-				lastName: 'Doe',
-				password: '324R435gfg5fgj!',
-			}),
-		);
+		expect(usersStore.acceptInvitation).toHaveBeenCalledTimes(1);
+		const payload = usersStore.acceptInvitation.mock.calls[0][0];
+		expect(payload).toMatchObject({
+			token: mockToken,
+			firstName: 'Jane',
+			lastName: 'Doe',
+			password: '324R435gfg5fgj!',
+		});
+		// IAM-403: invite acceptance is token-only; must not send legacy params
+		expect(payload).not.toHaveProperty('inviterId');
+		expect(payload).not.toHaveProperty('inviteeId');
 	});
 
 	it('should show error and redirect when URL has inviterId but no token', async () => {

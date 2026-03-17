@@ -250,8 +250,12 @@ describe('InvitationController', () => {
 
 			const inviteUrl = new URL(user.inviteAcceptUrl);
 
-			expect(inviteUrl.searchParams.get('token')).toBeDefined();
-			expect(inviteUrl.searchParams.get('token')).not.toBe('');
+			const token = inviteUrl.searchParams.get('token');
+			expect(typeof token).toBe('string');
+			expect(token!.length).toBeGreaterThan(0);
+			// IAM-403: invite links are token-only; legacy params must not be present
+			expect(inviteUrl.searchParams.get('inviterId')).toBeNull();
+			expect(inviteUrl.searchParams.get('inviteeId')).toBeNull();
 		});
 
 		test('should create member shell', async () => {
