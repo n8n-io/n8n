@@ -210,18 +210,19 @@ function calculateThroughput(
 
 export async function attachThroughputResults(
 	testInfo: TestInfo,
-	label: string,
+	dimensions: Record<string, string | number>,
 	result: ThroughputResult,
 ): Promise<void> {
-	await attachMetric(testInfo, `${label}-exec-per-sec`, result.avgExecPerSec, 'exec/s');
-	await attachMetric(testInfo, `${label}-actions-per-sec`, result.actionsPerSec, 'actions/s');
-	await attachMetric(testInfo, `${label}-peak-exec-per-sec`, result.peakExecPerSec, 'exec/s');
+	await attachMetric(testInfo, 'exec-per-sec', result.avgExecPerSec, 'exec/s', dimensions);
+	await attachMetric(testInfo, 'actions-per-sec', result.actionsPerSec, 'actions/s', dimensions);
+	await attachMetric(testInfo, 'peak-exec-per-sec', result.peakExecPerSec, 'exec/s', dimensions);
 	await attachMetric(
 		testInfo,
-		`${label}-peak-actions-per-sec`,
+		'peak-actions-per-sec',
 		result.peakActionsPerSec,
 		'actions/s',
+		dimensions,
 	);
-	await attachMetric(testInfo, `${label}-total-completed`, result.totalCompleted, 'count');
-	await attachMetric(testInfo, `${label}-duration`, result.durationMs, 'ms');
+	await attachMetric(testInfo, 'total-completed', result.totalCompleted, 'count', dimensions);
+	await attachMetric(testInfo, 'duration', result.durationMs, 'ms', dimensions);
 }

@@ -4,17 +4,17 @@ import type { ServiceHelpers } from 'n8n-containers/services/types';
 
 import type { ApiHelpers } from '../../../../services/api-helper';
 import {
-	waitForThroughput,
-	getBaselineCounter,
-	attachThroughputResults,
 	sampleExecutionDurations,
 	buildMetrics,
+	attachThroughputResults,
+	waitForThroughput,
+	getBaselineCounter,
 	collectDiagnostics,
 	attachDiagnostics,
 	formatDiagnosticValue,
 	resolveMetricQuery,
 } from '../../../../utils/benchmark';
-import type { TriggerHandle, NodeOutputSize } from '../../../../utils/benchmark';
+import type { TriggerHandle, NodeOutputSize, TriggerType } from '../../../../utils/benchmark';
 import { attachMetric } from '../../../../utils/performance-helper';
 
 export interface ThroughputTestOptions {
@@ -26,36 +26,16 @@ export interface ThroughputTestOptions {
 	nodeCount: number;
 	nodeOutputSize: NodeOutputSize;
 	timeoutMs: number;
-	pollIntervalMs?: number;
+	/** Trigger type recorded as a dimension in BigQuery */
+	trigger: TriggerType;
 	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
 	metricQuery?: string;
 	plan?: { memory: number; cpu: number };
 	workerPlan?: { memory: number; cpu: number };
 }
 
-function deriveProfile(
-	testInfo: TestInfo,
-	plan?: { memory: number; cpu: number },
-	workerPlan?: { memory: number; cpu: number },
-) {
-	const name = testInfo.project.name.replace(':infrastructure', '').replace('benchmark-', '');
-	const workers =
-		(testInfo.project.use as { containerConfig?: { workers?: number } }).containerConfig?.workers ??
-		0;
-
-	const wp = workerPlan ?? plan;
-	let resourceSummary = '';
-	if (plan && wp) {
-		resourceSummary =
-			workers > 0
-				? `  Mode: queue (1 main + ${workers} workers)\n` +
-					`  Main: ${plan.memory}GB RAM, ${plan.cpu} CPU\n` +
-					`  Workers: ${wp.memory}GB RAM, ${wp.cpu} CPU each\n` +
-					`  Total: ${(plan.memory + wp.memory * workers).toFixed(1)}GB RAM, ${plan.cpu + wp.cpu * workers} CPU`
-				: `  Resources: ${plan.memory}GB RAM, ${plan.cpu} CPU`;
-	}
-
-	return { name, workers, resourceSummary };
+function deriveMode(testInfo: TestInfo): string {
+	return testInfo.project.name.replace(':infrastructure', '').replace('benchmark-', '');
 }
 
 /**
@@ -74,7 +54,7 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 		nodeCount,
 		nodeOutputSize,
 		timeoutMs,
-		pollIntervalMs,
+		trigger,
 		plan,
 		workerPlan,
 	} = options;
@@ -82,7 +62,31 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 
 	testInfo.setTimeout(timeoutMs + 120_000);
 
-	const profile = deriveProfile(testInfo, plan, workerPlan);
+	const mode = deriveMode(testInfo);
+	const workers =
+		(testInfo.project.use as { containerConfig?: { workers?: number } }).containerConfig?.workers ??
+		0;
+
+	const dimensions = {
+		trigger,
+		nodes: nodeCount,
+		output: nodeOutputSize,
+		messages: messageCount,
+		mode,
+	};
+
+	let resourceSummary = '';
+	const wp = workerPlan ?? plan;
+	if (plan && wp) {
+		resourceSummary =
+			workers > 0
+				? `  Mode: queue (1 main + ${workers} workers)\n` +
+					`  Main: ${plan.memory}GB RAM, ${plan.cpu} CPU\n` +
+					`  Workers: ${wp.memory}GB RAM, ${wp.cpu} CPU each\n` +
+					`  Total: ${(plan.memory + wp.memory * workers).toFixed(1)}GB RAM, ${plan.cpu + wp.cpu * workers} CPU`
+				: `  Resources: ${plan.memory}GB RAM, ${plan.cpu} CPU`;
+	}
+
 	const obs = services.observability;
 
 	const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
@@ -93,7 +97,7 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 	// Preload queue
 	const publishResult = await handle.preload(messageCount);
 	console.log(
-		`[BENCH-${profile.name}] Preloaded ${publishResult.totalPublished} messages in ${publishResult.publishDurationMs}ms`,
+		`[BENCH-${mode}] Preloaded ${publishResult.totalPublished} messages in ${publishResult.publishDurationMs}ms`,
 	);
 
 	// Wait for VictoriaMetrics, then record baseline
@@ -110,7 +114,7 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 
 	// Measure throughput
 	console.log(
-		`[BENCH-${profile.name}] Draining ${messageCount} messages through ${nodeCount}-node (${nodeOutputSize}) workflow (timeout: ${timeoutMs}ms)`,
+		`[BENCH-${mode}] Draining ${messageCount} messages through ${nodeCount}-node (${nodeOutputSize}) workflow (timeout: ${timeoutMs}ms)`,
 	);
 	const result = await waitForThroughput(obs.metrics, {
 		expectedCount: messageCount,
@@ -118,49 +122,28 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 		timeoutMs,
 		baselineValue: baselineCounter,
 		metricQuery,
-		pollIntervalMs,
 	});
 
-	// Attach results
-	await attachThroughputResults(testInfo, testInfo.title, result);
+	// Attach throughput results
+	await attachThroughputResults(testInfo, dimensions, result);
 
 	// Execution duration sampling — provides p50/p95/p99 latency percentiles.
 	// May be empty when EXECUTIONS_DATA_SAVE_ON_SUCCESS=none.
 	const durations = await sampleExecutionDurations(api.workflows, workflowId);
 	if (durations.length > 0) {
 		const durationMetrics = buildMetrics(result.totalCompleted, 0, result.durationMs, durations);
-		await attachMetric(
-			testInfo,
-			`${testInfo.title}-duration-avg`,
-			durationMetrics.avgDurationMs,
-			'ms',
-		);
-		await attachMetric(
-			testInfo,
-			`${testInfo.title}-duration-p50`,
-			durationMetrics.p50DurationMs,
-			'ms',
-		);
-		await attachMetric(
-			testInfo,
-			`${testInfo.title}-duration-p95`,
-			durationMetrics.p95DurationMs,
-			'ms',
-		);
-		await attachMetric(
-			testInfo,
-			`${testInfo.title}-duration-p99`,
-			durationMetrics.p99DurationMs,
-			'ms',
-		);
+		await attachMetric(testInfo, 'duration-avg', durationMetrics.avgDurationMs, 'ms', dimensions);
+		await attachMetric(testInfo, 'duration-p50', durationMetrics.p50DurationMs, 'ms', dimensions);
+		await attachMetric(testInfo, 'duration-p95', durationMetrics.p95DurationMs, 'ms', dimensions);
+		await attachMetric(testInfo, 'duration-p99', durationMetrics.p99DurationMs, 'ms', dimensions);
 	}
 
 	// Diagnostics
 	const diagnostics = await collectDiagnostics(obs.metrics, result.durationMs);
-	await attachDiagnostics(testInfo, testInfo.title, diagnostics);
+	await attachDiagnostics(testInfo, dimensions, diagnostics);
 	const fmt = formatDiagnosticValue;
 	console.log(
-		`[DIAG-${profile.name}] ${testInfo.title}\n` +
+		`[DIAG-${mode}] ${testInfo.title}\n` +
 			`  Event Loop Lag: ${fmt(diagnostics.eventLoopLag, 's')}\n` +
 			`  PG Transactions/s: ${fmt(diagnostics.pgTxRate, ' tx/s')}\n` +
 			`  PG Rows Inserted/s: ${fmt(diagnostics.pgInsertRate, ' rows/s')}\n` +
@@ -173,9 +156,9 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 
 	// Summary
 	console.log(
-		`[BENCH-${profile.name} RESULT] ${testInfo.title}\n` +
-			`  Profile: ${profile.name}\n` +
-			`${profile.resourceSummary}\n` +
+		`[BENCH-${mode} RESULT] ${testInfo.title}\n` +
+			`  Profile: ${mode}\n` +
+			`${resourceSummary}\n` +
 			`  Nodes: ${nodeCount} (${nodeOutputSize}) | Messages: ${messageCount}\n` +
 			`  Completed: ${result.totalCompleted}/${messageCount}\n` +
 			`  Throughput: ${result.avgExecPerSec.toFixed(1)} exec/s | ${result.actionsPerSec.toFixed(1)} actions/s\n` +
