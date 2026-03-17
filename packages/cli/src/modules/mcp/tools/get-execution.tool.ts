@@ -95,10 +95,10 @@ export const createGetExecutionTool = (
 		try {
 			await getMcpWorkflow(workflowId, user, ['workflow:read'], workflowFinderService);
 
-			// Retrieve the execution with full data
-			const execution = await executionRepository.findWithUnflattenedData(executionId, [
-				workflowId,
-			]);
+			// Use lightweight metadata query when data isn't needed
+			const execution = includeData
+				? await executionRepository.findWithUnflattenedData(executionId, [workflowId])
+				: await executionRepository.findIfAccessible(executionId, [workflowId]);
 
 			if (!execution) {
 				// Check if execution exists at all
@@ -116,27 +116,30 @@ export const createGetExecutionTool = (
 				);
 			}
 
-			const output: Record<string, unknown> = {
-				execution: {
-					id: execution.id,
-					workflowId: execution.workflowId,
-					mode: execution.mode,
-					status: execution.status,
-					startedAt: execution.startedAt?.toISOString() ?? null,
-					stoppedAt: execution.stoppedAt?.toISOString() ?? null,
-					retryOf: execution.retryOf ?? null,
-					retrySuccessId: execution.retrySuccessId ?? null,
-					waitTill: execution.waitTill?.toISOString() ?? null,
-				},
+			const executionMeta = {
+				id: execution.id,
+				workflowId: execution.workflowId,
+				mode: execution.mode,
+				status: execution.status,
+				startedAt: execution.startedAt?.toISOString() ?? null,
+				stoppedAt: execution.stoppedAt?.toISOString() ?? null,
+				retryOf: execution.retryOf ?? null,
+				retrySuccessId: execution.retrySuccessId ?? null,
+				waitTill: execution.waitTill?.toISOString() ?? null,
 			};
 
-			if (includeData) {
-				let data = execution.data;
-				if (data && (nodeNames?.length || truncateData)) {
-					data = filterExecutionData(data, nodeNames, truncateData);
+			let filteredData: IRunExecutionData | undefined;
+			if (includeData && 'data' in execution) {
+				filteredData = execution.data;
+				if (filteredData && (nodeNames?.length || truncateData)) {
+					filteredData = filterExecutionData(filteredData, nodeNames, truncateData);
 				}
-				output.data = data;
 			}
+
+			const output =
+				filteredData !== undefined
+					? { execution: executionMeta, data: filteredData }
+					: { execution: executionMeta };
 
 			telemetryPayload.results = {
 				success: true,
@@ -193,6 +196,7 @@ function filterExecutionData(
 	nodeNames?: string[],
 	truncateData?: number,
 ): IRunExecutionData {
+	// Shallow clone is sufficient — the result is serialized immediately and never mutated
 	const filtered = { ...data, resultData: { ...data.resultData } };
 
 	let runData = filtered.resultData.runData ?? {};

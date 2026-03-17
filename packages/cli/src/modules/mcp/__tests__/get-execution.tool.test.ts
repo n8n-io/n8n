@@ -59,7 +59,7 @@ describe('get-execution MCP tool', () => {
 				);
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(null);
+				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(null);
 				(executionRepository.existsBy as jest.Mock).mockResolvedValue(false);
 
 				const result = await tool.handler(
@@ -73,10 +73,9 @@ describe('get-execution MCP tool', () => {
 					{} as never,
 				);
 
-				expect(executionRepository.findWithUnflattenedData).toHaveBeenCalledWith(
-					'missing-execution',
-					['workflow-1'],
-				);
+				expect(executionRepository.findIfAccessible).toHaveBeenCalledWith('missing-execution', [
+					'workflow-1',
+				]);
 				expect(result.structuredContent).toMatchObject({
 					execution: null,
 					error: "Execution with ID 'missing-execution' does not exist",
@@ -92,7 +91,7 @@ describe('get-execution MCP tool', () => {
 				);
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(null);
+				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(null);
 				(executionRepository.existsBy as jest.Mock).mockResolvedValue(true);
 
 				const result = await tool.handler(
@@ -120,8 +119,6 @@ describe('get-execution MCP tool', () => {
 					telemetry,
 				);
 
-				const mockExecutionData = createEmptyRunExecutionData();
-
 				const mockExecution = {
 					id: 'execution-1',
 					workflowId: 'workflow-1',
@@ -132,11 +129,10 @@ describe('get-execution MCP tool', () => {
 					retryOf: null,
 					retrySuccessId: null,
 					waitTill: null,
-					data: mockExecutionData,
 				};
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(mockExecution);
+				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -479,6 +475,87 @@ describe('get-execution MCP tool', () => {
 				expect(Object.keys(data.resultData.runData)).toEqual([]);
 			});
 
+			test('handles null execution data with includeData: true', async () => {
+				const tool = createGetExecutionTool(
+					user,
+					executionRepository,
+					workflowFinderService,
+					telemetry,
+				);
+
+				const mockExecution = {
+					id: 'execution-1',
+					workflowId: 'workflow-1',
+					mode: 'manual',
+					status: 'crashed',
+					startedAt: new Date('2025-01-01T00:00:00.000Z'),
+					stoppedAt: new Date('2025-01-01T00:01:00.000Z'),
+					retryOf: null,
+					retrySuccessId: null,
+					waitTill: null,
+					data: null,
+				};
+
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
+				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(mockExecution);
+
+				const result = await tool.handler(
+					{
+						workflowId: 'workflow-1',
+						executionId: 'execution-1',
+						includeData: true,
+						nodeNames: ['Node1'],
+						truncateData: 2,
+					},
+					{} as never,
+				);
+
+				expect(result.structuredContent).toMatchObject({
+					execution: { id: 'execution-1', status: 'crashed' },
+					data: null,
+				});
+			});
+
+			test('ignores nodeNames and truncateData when includeData is false', async () => {
+				const tool = createGetExecutionTool(
+					user,
+					executionRepository,
+					workflowFinderService,
+					telemetry,
+				);
+
+				const mockExecution = {
+					id: 'execution-1',
+					workflowId: 'workflow-1',
+					mode: 'manual',
+					status: 'success',
+					startedAt: new Date('2025-01-01T00:00:00.000Z'),
+					stoppedAt: new Date('2025-01-01T00:01:00.000Z'),
+					retryOf: null,
+					retrySuccessId: null,
+					waitTill: null,
+				};
+
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
+				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(mockExecution);
+
+				const result = await tool.handler(
+					{
+						workflowId: 'workflow-1',
+						executionId: 'execution-1',
+						includeData: false,
+						nodeNames: ['Node1'],
+						truncateData: 2,
+					},
+					{} as never,
+				);
+
+				expect(result.structuredContent).toMatchObject({
+					execution: { id: 'execution-1' },
+				});
+				expect(result.structuredContent).not.toHaveProperty('data');
+			});
+
 			test('handles execution with retry information', async () => {
 				const tool = createGetExecutionTool(
 					user,
@@ -497,11 +574,10 @@ describe('get-execution MCP tool', () => {
 					retryOf: 'execution-1',
 					retrySuccessId: 'execution-2',
 					waitTill: null,
-					data: createEmptyRunExecutionData(),
 				};
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(mockExecution);
+				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
@@ -542,11 +618,10 @@ describe('get-execution MCP tool', () => {
 					retryOf: null,
 					retrySuccessId: null,
 					waitTill: waitTillDate,
-					data: createEmptyRunExecutionData(),
 				};
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(mockExecution);
+				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(mockExecution);
 
 				const result = await tool.handler(
 					{
