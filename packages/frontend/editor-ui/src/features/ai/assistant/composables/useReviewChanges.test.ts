@@ -51,6 +51,7 @@ const mockBuilderStore = reactive({
 	streaming: false,
 	latestRevertVersion: null as { id: string } | null,
 	trackWorkflowBuilderJourney: vi.fn() as ReturnType<typeof vi.fn>,
+	versionCardMessages: [] as Array<{ data: { versionId: string } }>,
 });
 
 const mockWorkflowsStore = reactive({
@@ -144,6 +145,7 @@ describe('useReviewChanges', () => {
 		mockBuilderStore.streaming = false;
 		mockBuilderStore.latestRevertVersion = null;
 		mockBuilderStore.trackWorkflowBuilderJourney = vi.fn();
+		mockBuilderStore.versionCardMessages = [];
 
 		mockWorkflowsStore.workflowId = 'wf-1';
 		mockWorkflowsStore.workflow = { id: 'wf-1', nodes: [], connections: {} };
@@ -174,6 +176,7 @@ describe('useReviewChanges', () => {
 
 		it('should return empty array when streaming is true', async () => {
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [makeNode()],
 				connections: {},
@@ -196,6 +199,7 @@ describe('useReviewChanges', () => {
 			const currentNode = makeNode({ id: 'n1', name: 'Modified' });
 
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [oldNode],
 				connections: {},
@@ -230,6 +234,7 @@ describe('useReviewChanges', () => {
 			const deletedNode = makeNode({ id: 'n-del', name: 'Deleted' });
 
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [deletedNode],
 				connections: {},
@@ -253,6 +258,7 @@ describe('useReviewChanges', () => {
 	describe('editedNodesCount', () => {
 		it('should match nodeChanges length', async () => {
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [makeNode()],
 				connections: {},
@@ -279,6 +285,7 @@ describe('useReviewChanges', () => {
 	describe('showReviewChanges', () => {
 		function setupWithChanges() {
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockBuilderStore.streaming = false;
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [makeNode()],
@@ -336,6 +343,7 @@ describe('useReviewChanges', () => {
 
 		it('should return false when no changes', async () => {
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [],
 				connections: {},
@@ -383,6 +391,7 @@ describe('useReviewChanges', () => {
 			const modifiedNode = makeNode({ id: 'n-modified' });
 
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [modifiedNode],
 				connections: {},
@@ -436,6 +445,7 @@ describe('useReviewChanges', () => {
 			const deletedNode = makeNode({ id: 'n-del' });
 
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [deletedNode],
 				connections: {},
@@ -467,6 +477,7 @@ describe('useReviewChanges', () => {
 	describe('auto-collapse watchers', () => {
 		it('should auto-collapse and clear highlights when streaming starts', async () => {
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [makeNode()],
 				connections: {},
@@ -519,6 +530,7 @@ describe('useReviewChanges', () => {
 
 		it('should auto-collapse and clear highlights when builder panel is closed', async () => {
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [makeNode()],
 				connections: {},
@@ -557,6 +569,7 @@ describe('useReviewChanges', () => {
 
 		it('should auto-collapse and clear highlights when revert version changes', async () => {
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [makeNode()],
 				connections: {},
@@ -591,6 +604,7 @@ describe('useReviewChanges', () => {
 	describe('unmount cleanup', () => {
 		it('should clear canvas highlights on unmount', async () => {
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [makeNode()],
 				connections: {},
@@ -631,6 +645,7 @@ describe('useReviewChanges', () => {
 			};
 
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: cachedNodes,
 				connections: cachedConnections,
@@ -671,6 +686,7 @@ describe('useReviewChanges', () => {
 
 		it('should be a no-op when version not yet loaded', async () => {
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			// Never resolve the version fetch
 			mockWorkflowHistoryStore.getWorkflowVersion.mockReturnValue(new Promise(() => {}));
 
@@ -691,6 +707,7 @@ describe('useReviewChanges', () => {
 				connections: {},
 			});
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 
 			const { unmount } = withSetup();
 			await flushPromises();
@@ -701,6 +718,7 @@ describe('useReviewChanges', () => {
 
 		it('should clear cached data when version becomes null', async () => {
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
 				nodes: [makeNode({ id: 'v-node' })],
 				connections: {},
@@ -731,6 +749,7 @@ describe('useReviewChanges', () => {
 
 		it('should handle fetch errors gracefully', async () => {
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion.mockRejectedValue(new Error('fetch failed'));
 			mockWorkflowsStore.workflow = {
 				id: 'wf-1',
@@ -754,6 +773,7 @@ describe('useReviewChanges', () => {
 			});
 
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowsStore.workflow = {
 				id: 'wf-1',
 				nodes: [makeNode()],
@@ -777,6 +797,10 @@ describe('useReviewChanges', () => {
 
 			// Change version before first resolves
 			mockBuilderStore.latestRevertVersion = { id: 'v-2' };
+			mockBuilderStore.versionCardMessages = [
+				{ data: { versionId: 'v-1' } },
+				{ data: { versionId: 'v-2' } },
+			];
 			await nextTick();
 			await flushPromises();
 
@@ -801,6 +825,7 @@ describe('useReviewChanges', () => {
 			getNodeParametersMock.mockReturnValue(resolvedParams);
 
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion = vi.fn().mockResolvedValue({
 				nodes: [node],
 				connections: {},
@@ -836,6 +861,7 @@ describe('useReviewChanges', () => {
 			mockNodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
 
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
 			mockWorkflowHistoryStore.getWorkflowVersion = vi.fn().mockResolvedValue({
 				nodes: [node],
 				connections: {},

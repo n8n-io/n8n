@@ -217,6 +217,17 @@ function isCurrentVersionCard(message: ChatUI.AssistantMessage): boolean {
 	return latest !== null && message.data.versionId === latest.id;
 }
 
+function getVersionIndex(message: ChatUI.AssistantMessage): number {
+	let count = 0;
+	for (const msg of builderStore.chatMessages) {
+		if (isVersionCardMessage(msg)) {
+			count++;
+			if (msg.id === message.id) return count;
+		}
+	}
+	return count + 1;
+}
+
 const codeDiffWorkflowState = injectWorkflowState();
 
 async function onCodeReplace(index: number) {
@@ -620,6 +631,7 @@ defineExpose({
 					:streaming="builderStore.streaming"
 					:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 					:title="message.data.title"
+					:version-index="getVersionIndex(message)"
 					@open-diff="openDiffView"
 					@restore="(versionId) => onRestoreConfirm(versionId, message.id!)"
 					@show-in-history="onShowVersion"

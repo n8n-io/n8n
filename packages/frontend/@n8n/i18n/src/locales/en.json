@@ -302,6 +302,7 @@
 	"aiAssistant.builder.reviewChanges.currentVersion": "Current version",
 	"aiAssistant.builder.reviewChanges.error": "Could not load the previous version of the workflow. The version history may no longer be available.",
 	"aiAssistant.versionCard.version": "Version",
+	"aiAssistant.versionCard.versionNumber": "Version #{number}",
 	"aiAssistant.versionCard.menu.openDiff": "Open diff",
 	"aiAssistant.versionCard.menu.restore": "Restore",
 	"aiAssistant.versionCard.menu.showInHistory": "Show in history",

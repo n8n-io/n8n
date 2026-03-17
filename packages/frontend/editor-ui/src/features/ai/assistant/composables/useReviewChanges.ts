@@ -54,6 +54,7 @@ export function useReviewChanges() {
 	watch(
 		() => builderStore.versionCardMessages,
 		async (cards) => {
+			if (!cards?.length) return;
 			const workflowId = workflowsStore.workflowId;
 			for (const card of cards) {
 				const vid = card.data.versionId;

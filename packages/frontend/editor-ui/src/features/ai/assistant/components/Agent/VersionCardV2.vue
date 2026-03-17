@@ -18,6 +18,7 @@ const props = defineProps<{
 	streaming?: boolean;
 	pruneTimeHours?: number;
 	title?: string;
+	versionIndex: number;
 }>();
 
 const emit = defineEmits<{
@@ -125,7 +126,12 @@ function onShowVersion(versionId: string) {
 					:class="[$style.chevron, isExpanded && $style.chevronExpanded]"
 				/>
 				<span :class="$style.label">
-					{{ title || i18n.baseText('aiAssistant.versionCard.version') }}
+					{{
+						title ||
+						i18n.baseText('aiAssistant.versionCard.versionNumber', {
+							interpolate: { number: String(versionIndex) },
+						})
+					}}
 				</span>
 			</div>
 			<N8nActionDropdown

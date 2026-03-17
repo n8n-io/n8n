@@ -209,6 +209,8 @@ export namespace ChatRequest {
 			id: string;
 			createdAt: string;
 		};
+		/** Short AI-generated title summarising the user's prompt (5-7 words) */
+		versionTitle?: string;
 	}
 
 	export interface SummaryMessage {

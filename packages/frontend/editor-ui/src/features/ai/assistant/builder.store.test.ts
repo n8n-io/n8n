@@ -2308,6 +2308,11 @@ describe('AI Builder store', () => {
 									revertVersionId: 'version-1',
 								} as unknown as ChatRequest.MessageResponse,
 								{
+									type: 'workflow-updated',
+									id: 'msg-1-workflow-updated',
+									codeSnippet: '{}',
+								} as unknown as ChatRequest.MessageResponse,
+								{
 									type: 'message',
 									role: 'assistant',
 									text: 'Created workflow',
@@ -2326,6 +2331,7 @@ describe('AI Builder store', () => {
 				await builderStore.loadSessions();
 
 				// Should have 3 messages: user message + assistant message + version card
+				// (workflow-updated messages are filtered out of the UI)
 				expect(builderStore.chatMessages).toHaveLength(3);
 
 				// Version card should be at the end (after the AI response),
@@ -2337,7 +2343,187 @@ describe('AI Builder store', () => {
 				expect((versionCard as Record<string, unknown>).data).toEqual({
 					versionId: 'version-1',
 					createdAt: '2024-01-01T00:00:00Z',
-					title: 'Created workflow',
+				});
+			});
+
+			it('should create version cards from tool messages in session API (no workflow-updated)', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				// Mock API to return messages matching real backend format:
+				// tool messages (add_nodes, connect_nodes) instead of workflow-updated
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Create workflow',
+									id: 'msg-1',
+									revertVersionId: 'version-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'tool',
+									role: 'assistant',
+									toolName: 'add_nodes',
+									toolCallId: 'tool-1',
+									status: 'completed',
+									updates: [],
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'tool',
+									role: 'assistant',
+									toolName: 'connect_nodes',
+									toolCallId: 'tool-2',
+									status: 'completed',
+									updates: [],
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Created workflow',
+									id: 'msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
+
+				await builderStore.loadSessions();
+
+				// Should have: user + tool + tool + assistant + version card = 5 messages
+				expect(builderStore.chatMessages).toHaveLength(5);
+
+				const versionCard = builderStore.chatMessages[4];
+				expect(versionCard.type).toBe('custom');
+				expect(versionCard).toHaveProperty('customType', 'version_card');
+				expect((versionCard as Record<string, unknown>).data).toEqual({
+					versionId: 'version-1',
+					createdAt: '2024-01-01T00:00:00Z',
+				});
+			});
+
+			it('should NOT create version cards when only non-modifying tools exist', async () => {
+				const builderStore = useBuilderStore();
+
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				// Mock with only non-modifying tools (search_nodes, validate_structure)
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'What can you do?',
+									id: 'msg-1',
+									revertVersionId: 'version-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'tool',
+									role: 'assistant',
+									toolName: 'search_nodes',
+									toolCallId: 'tool-1',
+									status: 'completed',
+									updates: [],
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Here is a plan',
+									id: 'msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
+
+				await builderStore.loadSessions();
+
+				// No version card should be created
+				const versionCards = builderStore.chatMessages.filter(
+					(msg) =>
+						msg.type === 'custom' && 'customType' in msg && msg.customType === 'version_card',
+				);
+				expect(versionCards).toHaveLength(0);
+			});
+
+			it('should create version cards even when version has been pruned from history', async () => {
+				const builderStore = useBuilderStore();
+
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				// Session with revertVersionId on user message + tool messages
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Build it',
+									id: 'msg-1',
+									revertVersionId: 'pruned-version',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'tool',
+									role: 'assistant',
+									toolName: 'add_nodes',
+									toolCallId: 'tool-1',
+									status: 'completed',
+									updates: [],
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Done',
+									id: 'msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				// Version does NOT exist (pruned) — API returns empty
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValueOnce({
+					versions: [],
+				});
+
+				await builderStore.loadSessions();
+
+				// Version card should still be created even though version is pruned
+				const versionCards = builderStore.chatMessages.filter(
+					(msg) =>
+						msg.type === 'custom' && 'customType' in msg && msg.customType === 'version_card',
+				);
+				expect(versionCards).toHaveLength(1);
+				expect((versionCards[0] as Record<string, unknown>).data).toEqual({
+					versionId: 'pruned-version',
+					// No createdAt since version was pruned
 				});
 			});
 

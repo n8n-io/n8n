@@ -31,7 +31,6 @@ import {
 	extractRevertVersionIds,
 	fetchExistingVersionIds,
 	enrichMessagesWithRevertVersion,
-	truncateVersionTitle,
 } from './builder.utils';
 import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -499,15 +498,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Insert a version card after AI generation if a workflow modification happened.
 		// During planning or question phases no workflow changes happen, so skip it.
 		if (userMessageId && revertVersion && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
-			// Extract the last assistant text message as the version title
-			const lastAssistantText = [...chatMessages.value]
-				.reverse()
-				.find((m) => m.type === 'text' && m.role === 'assistant');
-			const title =
-				lastAssistantText && 'content' in lastAssistantText
-					? truncateVersionTitle(String(lastAssistantText.content))
-					: undefined;
-
 			chatMessages.value = [
 				...chatMessages.value,
 				{
@@ -518,7 +508,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					data: {
 						versionId: revertVersion.id,
 						createdAt: revertVersion.createdAt,
-						title,
 					},
 				},
 			];
@@ -1047,29 +1036,68 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					msg: ChatUI.AssistantMessage;
 					versionCard?: ChatUI.AssistantMessage;
 				};
-				const items: ConvertedItem[] = enrichedMessages.map((raw) => {
+				// Tool names that indicate the AI modified the workflow
+				const WORKFLOW_MODIFYING_TOOLS = new Set([
+					'add_nodes',
+					'remove_nodes',
+					'connect_nodes',
+					'disconnect_nodes',
+					'update_node_parameters',
+					'generate_workflow',
+				]);
+
+				const items: ConvertedItem[] = enrichedMessages.map((raw, idx) => {
 					const id = 'id' in raw && typeof raw.id === 'string' ? raw.id : generateMessageId();
 					const uiMsg = mapAssistantMessageToUI(raw, id);
 
-					if (
-						uiMsg.type === 'text' &&
-						uiMsg.role === 'user' &&
-						'revertVersion' in uiMsg &&
-						uiMsg.revertVersion
-					) {
-						const { revertVersion, ...msgWithoutRevert } = uiMsg;
+					// Use the ORIGINAL raw message to get revertVersionId.
+					// enrichMessagesWithRevertVersion strips revertVersionId when the
+					// version no longer exists in history (pruned), but we still need
+					// to create version cards for those messages.
+					const originalMsg = latestSession.messages[idx];
+					const revertVersionId =
+						'revertVersionId' in originalMsg && typeof originalMsg.revertVersionId === 'string'
+							? originalMsg.revertVersionId
+							: undefined;
+
+					if (uiMsg.type === 'text' && uiMsg.role === 'user' && revertVersionId) {
+						// Only create a version card if there is a workflow-modifying
+						// message in this batch (between this user msg and the next).
+						// Plan/question phases have revertVersion but no workflow update.
+						// During live streaming, these are 'workflow-updated' messages.
+						// In session history from the API, these are tool messages with
+						// workflow-modifying tool names (add_nodes, connect_nodes, etc.).
+						let hasWorkflowUpdate = false;
+						for (let j = idx + 1; j < enrichedMessages.length; j++) {
+							const m = enrichedMessages[j];
+							if ('role' in m && m.role === 'user') break;
+							if ('type' in m && m.type === 'workflow-updated') {
+								hasWorkflowUpdate = true;
+								break;
+							}
+							if (isApiToolMessage(m) && WORKFLOW_MODIFYING_TOOLS.has(m.toolName)) {
+								hasWorkflowUpdate = true;
+								break;
+							}
+						}
+
+						// Strip revertVersion from the UI message (it's now on the card)
+						const { revertVersion: _, ...msgWithoutRevert } = uiMsg;
+						const createdAt = versionMap.get(revertVersionId);
 						return {
 							msg: msgWithoutRevert,
-							versionCard: {
-								id: `version-card-${id}`,
-								role: 'assistant' as const,
-								type: 'custom' as const,
-								customType: 'version_card',
-								data: {
-									versionId: revertVersion.id,
-									createdAt: revertVersion.createdAt,
+							...(hasWorkflowUpdate && {
+								versionCard: {
+									id: `version-card-${id}`,
+									role: 'assistant' as const,
+									type: 'custom' as const,
+									customType: 'version_card',
+									data: {
+										versionId: revertVersionId,
+										...(createdAt && { createdAt }),
+									},
 								},
-							},
+							}),
 						};
 					}
 
@@ -1078,45 +1106,28 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 				// Pass 2: build final list, placing each version card after the AI
 				// response (just before the next user message, or at the end).
-				// Also extract the AI summary text as the version card title.
+				// Title is left undefined — VersionCardV2 computes a "Version #N" fallback.
 				const convertedMessages: ChatUI.AssistantMessage[] = [];
 				let pendingVersionCard: ChatUI.AssistantMessage | null = null;
-				let lastAssistantText: string | undefined;
 
 				for (const item of items) {
-					// When we reach a new user message, flush the pending card
-					// with the AI summary collected so far as its title.
+					// When we reach a new user message, flush the pending card.
 					if (item.msg.role === 'user' && item.msg.type === 'text' && pendingVersionCard) {
-						if (lastAssistantText && 'data' in pendingVersionCard) {
-							(pendingVersionCard.data as Record<string, unknown>).title =
-								truncateVersionTitle(lastAssistantText);
-						}
 						convertedMessages.push(pendingVersionCard);
 						pendingVersionCard = null;
-						lastAssistantText = undefined;
 					}
 
 					if (item.msg.type !== 'workflow-updated') {
 						convertedMessages.push(item.msg);
 					}
 
-					// Track the latest assistant text for the pending card's title
-					if (item.msg.role === 'assistant' && item.msg.type === 'text' && 'content' in item.msg) {
-						lastAssistantText = String(item.msg.content);
-					}
-
 					if (item.versionCard) {
 						pendingVersionCard = item.versionCard;
-						lastAssistantText = undefined;
 					}
 				}
 
 				// Flush the last pending version card (for the most recent generation)
 				if (pendingVersionCard) {
-					if (lastAssistantText && 'data' in pendingVersionCard) {
-						(pendingVersionCard.data as Record<string, unknown>).title =
-							truncateVersionTitle(lastAssistantText);
-					}
 					convertedMessages.push(pendingVersionCard);
 				}
 
