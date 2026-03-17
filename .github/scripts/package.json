@@ -13,6 +13,6 @@
     "tempfile": "6.0.1"
   },
   "devDependencies": {
-    "conventional-changelog-angular": "^8.3.0"
+    "conventional-changelog-angular": "8.3.0"
   }
 }

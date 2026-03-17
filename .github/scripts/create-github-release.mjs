@@ -1,10 +1,35 @@
-import { ensureEnvVar, initGithub, isReleaseTrack, writeGithubOutput } from './github-helpers.mjs';
+import {
+	deleteRelease,
+	ensureEnvVar,
+	getExistingRelease,
+	initGithub,
+	isReleaseTrack,
+	writeGithubOutput,
+} from './github-helpers.mjs';
 
+/**
+ * Creates release in GitHub.
+ *
+ * Required env variables:
+ *	- RELEASE_TAG	 - Release tag on git e.g. n8n@2.13.0
+ *	- BODY - Body of the release. Contains release notes etc.
+ *	- IS_PRE_RELEASE - If releasing in pre-release. Currently only for beta track.
+ *	- MAKE_LATEST - If released version should be marked as latest on GitHub
+ *	- COMMIT	- Commitish for release to point to
+ *
+ * Optional env variables:
+ *	- ADDITIONAL_TAGS	-	Comma-separated list of additional tags to release under e.g. beta
+ *
+ * GitHub variables
+ *	- GITHUB_TOKEN	-	 Used to authenticate to octokit - Can be overwritten for privileged access
+ *	- GITHUB_REPOSITORY	-	 Used to determine target repository
+ * */
 async function createGitHubRelease() {
 	const RELEASE_TAG = ensureEnvVar('RELEASE_TAG');
 	const ADDITIONAL_TAGS = process.env.ADDITIONAL_TAGS ?? '';
 	const BODY = ensureEnvVar('BODY');
 	const IS_PRE_RELEASE = ensureEnvVar('IS_PRE_RELEASE');
+	const MAKE_LATEST = ensureEnvVar('MAKE_LATEST');
 	const COMMIT = ensureEnvVar('COMMIT');
 
 	const { octokit, owner, repo } = initGithub();
@@ -18,13 +43,13 @@ async function createGitHubRelease() {
 	const releases = [];
 
 	for (const tag of allTags) {
-		const existingRelease = await getExistingRelease(octokit, owner, repo, tag);
+		const existingRelease = await getExistingRelease(tag);
 		const isReleaseTrackTag = isReleaseTrack(tag);
 
 		// If we have an existing track release, we want to
 		// delete the old release before pushing a new one.
 		if (isReleaseTrackTag && existingRelease) {
-			await deleteRelease(octokit, owner, repo, existingRelease);
+			await deleteRelease(existingRelease.id);
 		}
 
 		const releaseResponse = await octokit.rest.repos.createRelease({
@@ -33,6 +58,7 @@ async function createGitHubRelease() {
 			body: BODY,
 			draft: false,
 			prerelease: IS_PRE_RELEASE === 'true',
+			make_latest: MAKE_LATEST === 'true' ? 'true' : 'false',
 			target_commitish: COMMIT,
 			owner,
 			repo,
@@ -46,40 +72,6 @@ async function createGitHubRelease() {
 
 	writeGithubOutput({
 		release_urls: releases.map((release) => release.html_url).join(', '),
-	});
-}
-
-/**
- * @param {import('./github-helpers.mjs').GitHubInstance} octokit
- * @param {string} owner
- * @param {string} repo
- * @param {string} tag
- */
-async function getExistingRelease(octokit, owner, repo, tag) {
-	try {
-		const releaseRequest = await octokit.rest.repos.getReleaseByTag({
-			owner,
-			repo,
-			tag,
-		});
-
-		return releaseRequest.data;
-	} catch (ex) {
-		return undefined;
-	}
-}
-
-/**
- * @param {import('./github-helpers.mjs').GitHubInstance} octokit
- * @param {string} owner
- * @param {string} repo
- * @param {{id: number}} release
- */
-async function deleteRelease(octokit, owner, repo, release) {
-	await octokit.rest.repos.deleteRelease({
-		owner,
-		repo,
-		release_id: release.id,
 	});
 }
 

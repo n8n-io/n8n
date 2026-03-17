@@ -327,3 +327,34 @@ export async function getPullRequestById(pullRequestId) {
 
 	return pullRequest.data;
 }
+
+/**
+ * @param {string} tag
+ */
+export async function getExistingRelease(tag) {
+	const { octokit, owner, repo } = initGithub();
+
+	try {
+		const releaseRequest = await octokit.rest.repos.getReleaseByTag({
+			owner,
+			repo,
+			tag,
+		});
+
+		return releaseRequest.data;
+	} catch (ex) {
+		return undefined;
+	}
+}
+
+/**
+ * @param {number} releaseId
+ */
+export async function deleteRelease(releaseId) {
+	const { octokit, owner, repo } = initGithub();
+	await octokit.rest.repos.deleteRelease({
+		owner,
+		repo,
+		release_id: releaseId,
+	});
+}
