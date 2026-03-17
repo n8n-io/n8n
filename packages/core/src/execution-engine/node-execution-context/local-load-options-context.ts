@@ -34,12 +34,10 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 
 		const dbWorkflow = await this.workflowLoader.get(workflowId);
 
-		if (useActiveVersion && !dbWorkflow.activeVersion) {
-			throw new ApplicationError(`No active version found for workflow "${workflowId}"!`);
-		}
-
 		const selectedWorkflowNode = (
-			useActiveVersion ? dbWorkflow.activeVersion!.nodes : dbWorkflow.nodes
+			useActiveVersion && dbWorkflow.activeVersion
+				? dbWorkflow.activeVersion.nodes
+				: dbWorkflow.nodes
 		).find((node) => node.type === nodeType);
 
 		if (selectedWorkflowNode) {
