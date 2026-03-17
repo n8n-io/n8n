@@ -1,9 +1,11 @@
 import { computed, toValue, type MaybeRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { INodeUi } from '@/Interface';
 import { useNodeExecution } from '@/app/composables/useNodeExecution';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 
 /**
@@ -14,6 +16,7 @@ import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 export function useTriggerExecution(node: MaybeRef<INodeUi | null>) {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
+	const workflowsStore = useWorkflowsStore();
 
 	const {
 		isExecuting,
@@ -58,23 +61,40 @@ export function useTriggerExecution(node: MaybeRef<INodeUi | null>) {
 		return buttonLabel.value;
 	});
 
+	const hasUpstreamIssues = computed(() => {
+		if (!nodeValue.value) return false;
+		const parentNames = workflowsStore.workflowObject.getParentNodes(
+			nodeValue.value.name,
+			NodeConnectionTypes.Main,
+		);
+		return parentNames.some((name) => {
+			const parentNode = workflowsStore.getNodeByName(name);
+			return parentNode?.issues?.parameters || parentNode?.issues?.credentials;
+		});
+	});
+
 	const isButtonDisabled = computed(
-		() => isExecuting.value || hasIssues.value || !!disabledReason.value,
+		() => isExecuting.value || hasIssues.value || hasUpstreamIssues.value || !!disabledReason.value,
 	);
 
 	const tooltipItems = computed<string[]>(() => {
-		if (!hasIssues.value) {
+		if (!hasIssues.value && !hasUpstreamIssues.value) {
 			return disabledReason.value ? [disabledReason.value] : [];
 		}
 
+		const messages: string[] = [];
+
 		const issues = nodeValue.value?.issues;
-		if (!issues) {
-			return [i18n.baseText('ndv.execute.requiredFieldsMissing')];
+		if (issues) {
+			messages.push(
+				...Object.values(issues.credentials ?? {}).flat(),
+				...Object.values(issues.parameters ?? {}).flat(),
+			);
 		}
 
-		const credentialErrors = Object.values(issues.credentials ?? {}).flat();
-		const parameterErrors = Object.values(issues.parameters ?? {}).flat();
-		const messages = [...credentialErrors, ...parameterErrors];
+		if (hasUpstreamIssues.value) {
+			messages.push(i18n.baseText('ndv.execute.upstreamNodeHasIssues'));
+		}
 
 		return messages.length > 0 ? messages : [i18n.baseText('ndv.execute.requiredFieldsMissing')];
 	});

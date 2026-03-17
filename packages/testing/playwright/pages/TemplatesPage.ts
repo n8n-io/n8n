@@ -27,6 +27,10 @@ export class TemplatesPage extends BasePage {
 		return this.page.getByTestId('template-description');
 	}
 
+	getDescriptionImages(): Locator {
+		return this.getDescription().locator('img');
+	}
+
 	getSearchInput(): Locator {
 		return this.page.getByTestId('template-search-input');
 	}

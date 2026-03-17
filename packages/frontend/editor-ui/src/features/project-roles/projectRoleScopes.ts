@@ -23,7 +23,6 @@ const UI_OPERATIONS = {
 		'update',
 		'create',
 		'publish',
-		'unpublish',
 		'move',
 		'delete',
 		'updateRedactionSetting',
@@ -64,8 +63,37 @@ export const SCOPES: Record<ProjectResource, ProjectRoleScope[]> = Object.fromEn
 	]),
 ) as Record<ProjectResource, ProjectRoleScope[]>;
 
+/**
+ * Scopes that are coupled to a visible scope but hidden from the checkbox UI.
+ * These are counted in permission totals so roles carrying them (e.g.
+ * PERSONAL_PROJECT_OWNER_SCOPES with workflow:unpublish but no workflow:publish)
+ * are not undercounted.
+ */
+export const COUPLED_HIDDEN_SCOPES: ReadonlySet<string> = new Set(['workflow:unpublish']);
+
 /** All UI-visible scopes as a flat set, for permission counting */
-export const UI_VISIBLE_SCOPES: Set<string> = new Set(Object.values(SCOPES).flat());
+export const UI_VISIBLE_SCOPES: Set<string> = new Set([
+	...Object.values(SCOPES).flat(),
+	...COUPLED_HIDDEN_SCOPES,
+]);
 
 /** Total number of UI-visible permissions */
 export const TOTAL_PROJECT_PERMISSIONS = UI_VISIBLE_SCOPES.size;
+
+/**
+ * Normalize coupled scopes so that publish ↔ unpublish are always paired.
+ * Prevents legacy roles with only one of the two from being saved in that
+ * state when an admin edits unrelated permissions.
+ */
+export function normalizeCoupledScopes(scopes: string[]): string[] {
+	const hasPublish = scopes.includes('workflow:publish');
+	const hasUnpublish = scopes.includes('workflow:unpublish');
+
+	if (hasPublish && !hasUnpublish) {
+		return [...scopes, 'workflow:unpublish'];
+	}
+	if (hasUnpublish && !hasPublish) {
+		return [...scopes, 'workflow:publish'];
+	}
+	return scopes;
+}

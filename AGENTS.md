@@ -126,6 +126,9 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - **NEVER use `any` type** - use proper types or `unknown`
 - **Avoid type casting with `as`** - use type guards or type predicates instead (except in test code where `as` is acceptable)
 - **Define shared interfaces in `@n8n/api-types`** package for FE/BE communication
+- **Lazy-load heavy modules** — if a module is only used in a specific code
+  path (not every request), use `await import()` at point of use instead of
+  top-level `import`. Applies especially to native modules and large parsers.
 
 ### Error Handling
 - Don't use `ApplicationError` class in CLI and nodes for throwing errors,

@@ -12,7 +12,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -45,7 +44,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const environmentsStore = useEnvironmentsStore();
-	const externalSecretsStore = useExternalSecretsStore();
 	const settingsStore = useSettingsStore();
 	const projectsStore = useProjectsStore();
 	const historyStore = useHistoryStore();
@@ -61,7 +59,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		openWorkflowTemplate,
 		openWorkflowTemplateFromJSON,
 	} = useCanvasOperations();
-	const { fetchAndSetParentFolder } = useParentFolder();
 	// Pass workflowState to useExecutionDebugging since we're in the same component
 	// that provides WorkflowStateKey (WorkflowLayout), so inject won't work
 	const { applyExecutionData } = useExecutionDebugging(workflowState);
@@ -73,6 +70,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const currentWorkflowDocumentStore = shallowRef<ReturnType<
 		typeof useWorkflowDocumentStore
 	> | null>(null);
+
+	const { fetchParentFolder } = useParentFolder();
 
 	function disposeCurrentWorkflowDocumentStore() {
 		if (currentWorkflowDocumentStore.value) {
@@ -204,15 +203,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 				promises.push(environmentsStore.fetchAllVariables());
 			}
 
-			if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
-				promises.push(externalSecretsStore.fetchGlobalSecrets());
-				const shouldFetchProjectSecrets =
-					projectsStore.currentProjectId !== projectsStore.personalProject?.id;
-				if (shouldFetchProjectSecrets && typeof projectsStore.currentProjectId === 'string') {
-					promises.push(externalSecretsStore.fetchProjectSecrets(projectsStore.currentProjectId));
-				}
-			}
-
 			return promises;
 		})();
 
@@ -286,7 +276,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			currentProject?.scopes ?? personalProject?.scopes ?? [],
 		);
 
-		await fetchAndSetParentFolder(parentFolderId);
+		const parentFolder = await fetchParentFolder(parentFolderId);
+		currentWorkflowDocumentStore.value?.setParentFolder(parentFolder);
 
 		uiStore.nodeViewInitialized = true;
 		initializedWorkflowId.value = workflowId.value;
@@ -299,10 +290,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			const workflowData = await workflowsListStore.fetchWorkflow(id);
 
 			await openWorkflow(workflowData);
-
-			if (workflowData.parentFolder) {
-				workflowsStore.setParentFolder(workflowData.parentFolder);
-			}
 
 			// Track telemetry for onboarding and experiment workflows
 			if (workflowData.meta?.onboardingId) {

@@ -112,6 +112,7 @@ beforeEach(async () => {
 	anotherMember = await createMember();
 
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 
 	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
@@ -1206,6 +1207,7 @@ describe('GET /workflows', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -1225,6 +1227,7 @@ describe('GET /workflows', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -2384,6 +2387,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -2403,6 +2407,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
