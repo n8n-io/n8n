@@ -789,6 +789,7 @@ export class SourceControlImportService {
 				didPublish = true;
 			}
 		} catch (e) {
+			// TODO: this operation failing should be told to the user in the app, rather than just being logged
 			const error = ensureError(e);
 			this.logger.error(`Failed to activate workflow ${workflowId}`, { error });
 		} finally {
