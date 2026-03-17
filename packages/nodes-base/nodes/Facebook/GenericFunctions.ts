@@ -48,6 +48,17 @@ export async function facebookApiRequest(
 		qs.appsecret_time = appsecretTime;
 	}
 
+	if (isOAuth2 && credentials.appSecret) {
+		const oauthData = credentials.oauthTokenData as { access_token?: string } | undefined;
+		if (oauthData?.access_token) {
+			const appsecretTime = Math.floor(Date.now() / 1000);
+			qs.appsecret_proof = createHmac('sha256', credentials.appSecret as string)
+				.update(`${oauthData.access_token}|${appsecretTime}`)
+				.digest('hex');
+			qs.appsecret_time = appsecretTime;
+		}
+	}
+
 	const options: IRequestOptions = {
 		headers: {
 			accept: 'application/json,text/*;q=0.99',
