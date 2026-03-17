@@ -41,6 +41,9 @@ export class WorkflowPublishedDataService {
 		const record =
 			await this.workflowPublishedVersionRepository.getPublishedVersionWithRelations(workflowId);
 
+		// This can happen legitimately: e.g. a workflow activated before the
+		// publication service flag was enabled won't have a record yet, or
+		// a workflow was just deactivated and the record was deleted.
 		if (!record?.publishedVersion || !record.workflow) {
 			this.logger.warn(`Published version record not found for workflow "${workflowId}"`);
 			return null;

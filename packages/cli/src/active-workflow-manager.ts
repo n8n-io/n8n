@@ -240,42 +240,8 @@ export class ActiveWorkflowManager {
 	 * deregister those webhooks from external services.
 	 */
 	async clearWebhooks(workflowId: WorkflowId) {
-		let nodes: INode[];
-		let connections: IWorkflowBase['connections'];
-		let name: string;
-		let staticData: IWorkflowBase['staticData'];
-		let settings: IWorkflowBase['settings'];
-
-		if (this.workflowsConfig.useWorkflowPublicationService) {
-			const publishedData =
-				await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
-			if (!publishedData) {
-				throw new UnexpectedError('Published version not found for workflow', {
-					extra: { workflowId },
-				});
-			}
-			({ nodes, connections } = publishedData);
-			name = publishedData.name;
-			staticData = publishedData.staticData;
-			settings = publishedData.settings;
-		} else {
-			const workflowData = await this.workflowRepository.findOne({
-				where: { id: workflowId },
-				relations: { activeVersion: true },
-			});
-			if (workflowData === null) {
-				throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
-			}
-			if (!workflowData.activeVersion) {
-				throw new UnexpectedError('Active version not found for workflow', {
-					extra: { workflowId },
-				});
-			}
-			({ nodes, connections } = workflowData.activeVersion);
-			name = workflowData.name;
-			staticData = workflowData.staticData;
-			settings = workflowData.settings;
-		}
+		const { nodes, connections, name, staticData, settings } =
+			await this.loadWorkflowDataForCleanup(workflowId);
 
 		const workflow = new Workflow({
 			id: workflowId,
@@ -532,6 +498,80 @@ export class ActiveWorkflowManager {
 		};
 	}
 
+	/**
+	 * Load all workflow fields needed by `clearWebhooks` to tear down webhooks.
+	 * Reads from the published data service (flag on) or the active version
+	 * relation (flag off).
+	 */
+	private async loadWorkflowDataForCleanup(workflowId: WorkflowId): Promise<{
+		nodes: INode[];
+		connections: IWorkflowBase['connections'];
+		name: string;
+		staticData: IWorkflowBase['staticData'];
+		settings: IWorkflowBase['settings'];
+	}> {
+		if (this.workflowsConfig.useWorkflowPublicationService) {
+			const publishedData =
+				await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+			if (!publishedData) {
+				throw new UnexpectedError('Published version not found for workflow', {
+					extra: { workflowId },
+				});
+			}
+			return {
+				nodes: publishedData.nodes,
+				connections: publishedData.connections,
+				name: publishedData.name,
+				staticData: publishedData.staticData,
+				settings: publishedData.settings,
+			};
+		}
+
+		const workflowData = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			relations: { activeVersion: true },
+		});
+		if (workflowData === null) {
+			throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
+		}
+		if (!workflowData.activeVersion) {
+			throw new UnexpectedError('Active version not found for workflow', {
+				extra: { workflowId },
+			});
+		}
+		return {
+			nodes: workflowData.activeVersion.nodes,
+			connections: workflowData.activeVersion.connections,
+			name: workflowData.name,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
+		};
+	}
+
+	/**
+	 * Resolve the active nodes and connections for a workflow.
+	 * Returns `null` when no published data / no active version exists
+	 * (i.e. the workflow was deactivated between the DB query and now).
+	 * Callers decide how to handle `null` -- skip or throw.
+	 */
+	private async resolveActiveNodesAndConnections(
+		dbWorkflow: WorkflowEntity,
+	): Promise<{ nodes: INode[]; connections: IWorkflowBase['connections'] } | null> {
+		if (this.workflowsConfig.useWorkflowPublicationService) {
+			const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
+				dbWorkflow.id,
+			);
+			if (!publishedData) return null;
+			return { nodes: publishedData.nodes, connections: publishedData.connections };
+		}
+
+		if (!dbWorkflow.activeVersion) return null;
+		return {
+			nodes: dbWorkflow.activeVersion.nodes,
+			connections: dbWorkflow.activeVersion.connections,
+		};
+	}
+
 	private isActivationInProgress = false;
 
 	/**
@@ -599,34 +639,18 @@ export class ActiveWorkflowManager {
 				},
 			);
 
-			let errorNodes: INode[];
-			let errorConnections: IWorkflowBase['connections'];
+			const resolved = await this.resolveActiveNodesAndConnections(dbWorkflow);
 
-			if (this.workflowsConfig.useWorkflowPublicationService) {
-				const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
-					dbWorkflow.id,
-				);
-				if (!publishedData) {
-					throw new UnexpectedError('Published version not found for workflow', {
-						extra: { workflowId: dbWorkflow.id },
-					});
-				}
-				errorNodes = publishedData.nodes;
-				errorConnections = publishedData.connections;
-			} else {
-				if (!dbWorkflow.activeVersion) {
-					throw new UnexpectedError('Active version not found for workflow', {
-						extra: { workflowId: dbWorkflow.id },
-					});
-				}
-				errorNodes = dbWorkflow.activeVersion.nodes;
-				errorConnections = dbWorkflow.activeVersion.connections;
+			if (!resolved) {
+				throw new UnexpectedError('Active version not found for workflow', {
+					extra: { workflowId: dbWorkflow.id },
+				});
 			}
 
 			const workflowForError = {
 				...dbWorkflow,
-				nodes: errorNodes,
-				connections: errorConnections,
+				nodes: resolved.nodes,
+				connections: resolved.connections,
 			};
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -715,46 +739,23 @@ export class ActiveWorkflowManager {
 		const shouldAddTriggersAndPollers = this.shouldAddTriggersAndPollers();
 
 		try {
-			let nodes: INode[];
-			let connections: IWorkflowBase['connections'];
+			const resolved = await this.resolveActiveNodesAndConnections(dbWorkflow);
 
-			if (this.workflowsConfig.useWorkflowPublicationService) {
-				const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
-					dbWorkflow.id,
+			if (['init', 'leadershipChange'].includes(activationMode) && !resolved) {
+				this.logger.debug(
+					`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
+					{ workflowId: dbWorkflow.id },
 				);
-
-				if (['init', 'leadershipChange'].includes(activationMode) && !publishedData) {
-					this.logger.debug(
-						`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
-						{ workflowId: dbWorkflow.id },
-					);
-					return added;
-				}
-
-				if (!publishedData) {
-					throw new UnexpectedError('Published version not found for workflow', {
-						extra: { workflowId: dbWorkflow.id },
-					});
-				}
-
-				({ nodes, connections } = publishedData);
-			} else {
-				if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
-					this.logger.debug(
-						`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
-						{ workflowId: dbWorkflow.id },
-					);
-					return added;
-				}
-
-				if (!dbWorkflow.activeVersion) {
-					throw new UnexpectedError('Active version not found for workflow', {
-						extra: { workflowId: dbWorkflow.id },
-					});
-				}
-
-				({ nodes, connections } = dbWorkflow.activeVersion);
+				return added;
 			}
+
+			if (!resolved) {
+				throw new UnexpectedError('Active version not found for workflow', {
+					extra: { workflowId: dbWorkflow.id },
+				});
+			}
+
+			const { nodes, connections } = resolved;
 
 			dbWorkflow.nodes = nodes;
 			dbWorkflow.connections = connections;
@@ -800,6 +801,12 @@ export class ActiveWorkflowManager {
 			// When the flag is on, trigger/poller emit callbacks re-read the published
 			// version from the DB so they pick up updates without deactivate/reactivate.
 			// When the flag is off, they use the in-memory workflowData (same as before).
+			//
+			// Note: we intentionally load the _latest_ published version at trigger/poll
+			// time rather than pinning to a specific version. The outbox consumer (future
+			// PR) atomically updates the published version and reconciles triggers, so
+			// by the time a trigger fires with a new version, the old triggers have
+			// already been removed.
 			const resolveWorkflowData = this.workflowsConfig.useWorkflowPublicationService
 				? async () => await this.loadPublishedWorkflowData(dbWorkflow)
 				: async () => dbWorkflow as IWorkflowBase;
