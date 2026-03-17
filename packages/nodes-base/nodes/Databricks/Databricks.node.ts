@@ -29,7 +29,6 @@ import {
 
 interface DatabricksCredentials {
 	host: string;
-	token: string;
 }
 
 interface CacheEntry {
@@ -497,15 +496,18 @@ export class Databricks implements INodeType {
 					warehouses = cachedEntry!.data;
 				} else {
 					// Fetch from API
-					const response = (await this.helpers.httpRequest({
-						method: 'GET',
-						url: `${host}/api/2.0/sql/warehouses`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-							Accept: 'application/json',
+					const response = (await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'GET',
+							url: `${host}/api/2.0/sql/warehouses`,
+							headers: {
+								Accept: 'application/json',
+							},
+							json: true,
 						},
-						json: true,
-					})) as { warehouses?: Array<{ id: string; name: string; size?: string }> };
+					)) as { warehouses?: Array<{ id: string; name: string; size?: string }> };
 
 					warehouses = response.warehouses ?? [];
 
@@ -550,15 +552,18 @@ export class Databricks implements INodeType {
 					endpoints = cachedEntry!.data;
 				} else {
 					// Fetch from API
-					const response = (await this.helpers.httpRequest({
-						method: 'GET',
-						url: `${host}/api/2.0/serving-endpoints`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-							Accept: 'application/json',
+					const response = (await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'GET',
+							url: `${host}/api/2.0/serving-endpoints`,
+							headers: {
+								Accept: 'application/json',
+							},
+							json: true,
 						},
-						json: true,
-					})) as { endpoints?: Array<{ name: string; config?: any }> };
+					)) as { endpoints?: Array<{ name: string; config?: any }> };
 
 					endpoints = response.endpoints ?? [];
 
@@ -614,15 +619,18 @@ export class Databricks implements INodeType {
 					catalogs = cachedEntry!.data;
 				} else {
 					// Fetch from API
-					const response = (await this.helpers.httpRequest({
-						method: 'GET',
-						url: `${host}/api/2.1/unity-catalog/catalogs`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-							Accept: 'application/json',
+					const response = (await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'GET',
+							url: `${host}/api/2.1/unity-catalog/catalogs`,
+							headers: {
+								Accept: 'application/json',
+							},
+							json: true,
 						},
-						json: true,
-					})) as { catalogs?: Array<{ name: string; comment?: string }> };
+					)) as { catalogs?: Array<{ name: string; comment?: string }> };
 
 					catalogs = response.catalogs ?? [];
 
@@ -687,15 +695,18 @@ export class Databricks implements INodeType {
 						allSchemas = cachedEntry!.data;
 					} else {
 						try {
-							const schemasResponse = (await this.helpers.httpRequest({
-								method: 'GET',
-								url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${selectedCatalog}`,
-								headers: {
-									Authorization: `Bearer ${credentials.token}`,
-									Accept: 'application/json',
+							const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
+								this,
+								'databricksApi',
+								{
+									method: 'GET',
+									url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${selectedCatalog}`,
+									headers: {
+										Accept: 'application/json',
+									},
+									json: true,
 								},
-								json: true,
-							})) as { schemas?: Array<{ name: string }> };
+							)) as { schemas?: Array<{ name: string }> };
 
 							const schemas = schemasResponse.schemas ?? [];
 
@@ -764,44 +775,53 @@ export class Databricks implements INodeType {
 					allVolumes = cachedEntry!.data;
 				} else {
 					// Fetch all catalogs first
-					const catalogsResponse = (await this.helpers.httpRequest({
-						method: 'GET',
-						url: `${host}/api/2.1/unity-catalog/catalogs`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-							Accept: 'application/json',
+					const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'GET',
+							url: `${host}/api/2.1/unity-catalog/catalogs`,
+							headers: {
+								Accept: 'application/json',
+							},
+							json: true,
 						},
-						json: true,
-					})) as { catalogs?: Array<{ name: string }> };
+					)) as { catalogs?: Array<{ name: string }> };
 
 					const catalogs = catalogsResponse.catalogs ?? [];
 
 					// For each catalog, fetch schemas and volumes
 					for (const catalog of catalogs) {
 						try {
-							const schemasResponse = (await this.helpers.httpRequest({
-								method: 'GET',
-								url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
-								headers: {
-									Authorization: `Bearer ${credentials.token}`,
-									Accept: 'application/json',
+							const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
+								this,
+								'databricksApi',
+								{
+									method: 'GET',
+									url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
+									headers: {
+										Accept: 'application/json',
+									},
+									json: true,
 								},
-								json: true,
-							})) as { schemas?: Array<{ name: string }> };
+							)) as { schemas?: Array<{ name: string }> };
 
 							const schemas = schemasResponse.schemas ?? [];
 
 							for (const schema of schemas) {
 								try {
-									const volumesResponse = (await this.helpers.httpRequest({
-										method: 'GET',
-										url: `${host}/api/2.1/unity-catalog/volumes?catalog_name=${catalog.name}&schema_name=${schema.name}`,
-										headers: {
-											Authorization: `Bearer ${credentials.token}`,
-											Accept: 'application/json',
+									const volumesResponse = (await this.helpers.httpRequestWithAuthentication.call(
+										this,
+										'databricksApi',
+										{
+											method: 'GET',
+											url: `${host}/api/2.1/unity-catalog/volumes?catalog_name=${catalog.name}&schema_name=${schema.name}`,
+											headers: {
+												Accept: 'application/json',
+											},
+											json: true,
 										},
-										json: true,
-									})) as { volumes?: Array<{ name: string; volume_type?: string }> };
+									)) as { volumes?: Array<{ name: string; volume_type?: string }> };
 
 									const volumes = volumesResponse.volumes ?? [];
 
@@ -860,44 +880,53 @@ export class Databricks implements INodeType {
 					allTables = cachedEntry!.data;
 				} else {
 					// Fetch all catalogs first
-					const catalogsResponse = (await this.helpers.httpRequest({
-						method: 'GET',
-						url: `${host}/api/2.1/unity-catalog/catalogs`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-							Accept: 'application/json',
+					const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'GET',
+							url: `${host}/api/2.1/unity-catalog/catalogs`,
+							headers: {
+								Accept: 'application/json',
+							},
+							json: true,
 						},
-						json: true,
-					})) as { catalogs?: Array<{ name: string }> };
+					)) as { catalogs?: Array<{ name: string }> };
 
 					const catalogs = catalogsResponse.catalogs ?? [];
 
 					// For each catalog, fetch schemas and tables
 					for (const catalog of catalogs) {
 						try {
-							const schemasResponse = (await this.helpers.httpRequest({
-								method: 'GET',
-								url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
-								headers: {
-									Authorization: `Bearer ${credentials.token}`,
-									Accept: 'application/json',
+							const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
+								this,
+								'databricksApi',
+								{
+									method: 'GET',
+									url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
+									headers: {
+										Accept: 'application/json',
+									},
+									json: true,
 								},
-								json: true,
-							})) as { schemas?: Array<{ name: string }> };
+							)) as { schemas?: Array<{ name: string }> };
 
 							const schemas = schemasResponse.schemas ?? [];
 
 							for (const schema of schemas) {
 								try {
-									const tablesResponse = (await this.helpers.httpRequest({
-										method: 'GET',
-										url: `${host}/api/2.1/unity-catalog/tables?catalog_name=${catalog.name}&schema_name=${schema.name}`,
-										headers: {
-											Authorization: `Bearer ${credentials.token}`,
-											Accept: 'application/json',
+									const tablesResponse = (await this.helpers.httpRequestWithAuthentication.call(
+										this,
+										'databricksApi',
+										{
+											method: 'GET',
+											url: `${host}/api/2.1/unity-catalog/tables?catalog_name=${catalog.name}&schema_name=${schema.name}`,
+											headers: {
+												Accept: 'application/json',
+											},
+											json: true,
 										},
-										json: true,
-									})) as { tables?: Array<{ name: string; table_type?: string }> };
+									)) as { tables?: Array<{ name: string; table_type?: string }> };
 
 									const tables = tablesResponse.tables ?? [];
 
@@ -960,44 +989,53 @@ export class Databricks implements INodeType {
 					allFunctions = cachedEntry!.data;
 				} else {
 					// Fetch all catalogs first
-					const catalogsResponse = (await this.helpers.httpRequest({
-						method: 'GET',
-						url: `${host}/api/2.1/unity-catalog/catalogs`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-							Accept: 'application/json',
+					const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'GET',
+							url: `${host}/api/2.1/unity-catalog/catalogs`,
+							headers: {
+								Accept: 'application/json',
+							},
+							json: true,
 						},
-						json: true,
-					})) as { catalogs?: Array<{ name: string }> };
+					)) as { catalogs?: Array<{ name: string }> };
 
 					const catalogs = catalogsResponse.catalogs ?? [];
 
 					// For each catalog, fetch schemas and functions
 					for (const catalog of catalogs) {
 						try {
-							const schemasResponse = (await this.helpers.httpRequest({
-								method: 'GET',
-								url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
-								headers: {
-									Authorization: `Bearer ${credentials.token}`,
-									Accept: 'application/json',
+							const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
+								this,
+								'databricksApi',
+								{
+									method: 'GET',
+									url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
+									headers: {
+										Accept: 'application/json',
+									},
+									json: true,
 								},
-								json: true,
-							})) as { schemas?: Array<{ name: string }> };
+							)) as { schemas?: Array<{ name: string }> };
 
 							const schemas = schemasResponse.schemas ?? [];
 
 							for (const schema of schemas) {
 								try {
-									const functionsResponse = (await this.helpers.httpRequest({
-										method: 'GET',
-										url: `${host}/api/2.1/unity-catalog/functions?catalog_name=${catalog.name}&schema_name=${schema.name}`,
-										headers: {
-											Authorization: `Bearer ${credentials.token}`,
-											Accept: 'application/json',
+									const functionsResponse = (await this.helpers.httpRequestWithAuthentication.call(
+										this,
+										'databricksApi',
+										{
+											method: 'GET',
+											url: `${host}/api/2.1/unity-catalog/functions?catalog_name=${catalog.name}&schema_name=${schema.name}`,
+											headers: {
+												Accept: 'application/json',
+											},
+											json: true,
 										},
-										json: true,
-									})) as { functions?: Array<{ name: string; data_type?: string }> };
+									)) as { functions?: Array<{ name: string; data_type?: string }> };
 
 									const functions = functionsResponse.functions ?? [];
 
@@ -1094,12 +1132,11 @@ export class Databricks implements INodeType {
 						dataSize: binaryData.length,
 					});
 
-					await this.helpers.httpRequest({
+					await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
 						method: 'PUT',
 						url: `${host}/api/2.0/fs/files/Volumes/${catalog}/${schema}/${volume}/${filePath}`,
 						body: binaryData,
 						headers: {
-							Authorization: `Bearer ${credentials.token}`,
 							'Content-Type':
 								items[i].binary?.[dataFieldName]?.mimeType || 'application/octet-stream',
 						},
@@ -1140,15 +1177,16 @@ export class Databricks implements INodeType {
 					const downloadUrl = `${host}/api/2.0/fs/files/Volumes/${catalog}/${schema}/${volume}/${filePath}`;
 
 					try {
-						const response = await this.helpers.httpRequest({
-							method: 'GET',
-							url: downloadUrl,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
+						const response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'GET',
+								url: downloadUrl,
+								encoding: 'arraybuffer',
+								returnFullResponse: true,
 							},
-							encoding: 'arraybuffer',
-							returnFullResponse: true,
-						});
+						);
 
 						// Extract filename from filePath
 						const fileName = filePath.split('/').pop() || 'downloaded-file';
@@ -1221,12 +1259,10 @@ export class Databricks implements INodeType {
 					}
 					const [catalog, schema, volume] = parts;
 
-					await this.helpers.httpRequest({
+					await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
 						method: 'DELETE',
 						url: `${host}/api/2.0/fs/files/Volumes/${catalog}/${schema}/${volume}/${filePath}`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-						},
+
 						json: true,
 					});
 
@@ -1255,14 +1291,16 @@ export class Databricks implements INodeType {
 					}
 					const [catalog, schema, volume] = parts;
 
-					const response = await this.helpers.httpRequest({
-						method: 'HEAD',
-						url: `${host}/api/2.0/fs/files/Volumes/${catalog}/${schema}/${volume}/${filePath}`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'HEAD',
+							url: `${host}/api/2.0/fs/files/Volumes/${catalog}/${schema}/${volume}/${filePath}`,
+
+							returnFullResponse: true,
 						},
-						returnFullResponse: true,
-					});
+					);
 
 					returnData.push({
 						json: {
@@ -1300,15 +1338,17 @@ export class Databricks implements INodeType {
 						queryParams.page_token = additionalFields.pageToken;
 					}
 
-					const response = await this.helpers.httpRequest({
-						method: 'GET',
-						url: `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}/${directoryPath}`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'GET',
+							url: `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}/${directoryPath}`,
+
+							qs: queryParams,
+							json: true,
 						},
-						qs: queryParams,
-						json: true,
-					});
+					);
 
 					returnData.push({
 						json: response,
@@ -1330,12 +1370,10 @@ export class Databricks implements INodeType {
 					}
 					const [catalog, schema, volume] = parts;
 
-					await this.helpers.httpRequest({
+					await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
 						method: 'PUT',
 						url: `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}/${directoryPath}`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-						},
+
 						json: true,
 					});
 
@@ -1364,12 +1402,10 @@ export class Databricks implements INodeType {
 					}
 					const [catalog, schema, volume] = parts;
 
-					await this.helpers.httpRequest({
+					await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
 						method: 'DELETE',
 						url: `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}/${directoryPath}`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-						},
+
 						json: true,
 					});
 
@@ -1455,16 +1491,19 @@ export class Databricks implements INodeType {
 						body: JSON.stringify(body, null, 2),
 					});
 
-					const response = await this.helpers.httpRequest({
-						method,
-						url,
-						body,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-							'Content-Type': 'application/json',
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method,
+							url,
+							body,
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							json: true,
 						},
-						json: true,
-					});
+					);
 
 					this.logger.debug('Genie API response received', {
 						statusCode: response.statusCode,
@@ -1487,19 +1526,22 @@ export class Databricks implements INodeType {
 					});
 
 					// Step 1: Execute the query
-					const executeResponse = (await this.helpers.httpRequest({
-						method: 'POST',
-						url: `${host}/api/2.0/sql/statements`,
-						body: {
-							warehouse_id: warehouseId.value,
-							statement: query,
+					const executeResponse = (await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'POST',
+							url: `${host}/api/2.0/sql/statements`,
+							body: {
+								warehouse_id: warehouseId.value,
+								statement: query,
+							},
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							json: true,
 						},
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-							'Content-Type': 'application/json',
-						},
-						json: true,
-					})) as DatabricksStatementResponse;
+					)) as DatabricksStatementResponse;
 
 					const statementId = executeResponse.statement_id;
 					this.logger.debug('Query submitted', { statementId });
@@ -1518,15 +1560,18 @@ export class Databricks implements INodeType {
 					) {
 						await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds
 
-						queryResult = (await this.helpers.httpRequest({
-							method: 'GET',
-							url: `${host}/api/2.0/sql/statements/${statementId}`,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
-								Accept: 'application/json',
+						queryResult = (await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'GET',
+								url: `${host}/api/2.0/sql/statements/${statementId}`,
+								headers: {
+									Accept: 'application/json',
+								},
+								json: true,
 							},
-							json: true,
-						})) as DatabricksStatementResponse;
+						)) as DatabricksStatementResponse;
 
 						status = queryResult.status.state;
 						retries++;
@@ -1570,15 +1615,18 @@ export class Databricks implements INodeType {
 
 					// Fetch remaining chunks
 					while (chunkIndex < totalChunks) {
-						const chunkResponse = (await this.helpers.httpRequest({
-							method: 'GET',
-							url: `${host}/api/2.0/sql/statements/${statementId}/result/chunks/${chunkIndex}`,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
-								Accept: 'application/json',
+						const chunkResponse = (await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'GET',
+								url: `${host}/api/2.0/sql/statements/${statementId}/result/chunks/${chunkIndex}`,
+								headers: {
+									Accept: 'application/json',
+								},
+								json: true,
 							},
-							json: true,
-						})) as { data_array?: any[][] };
+						)) as { data_array?: any[][] };
 
 						if (chunkResponse.data_array) {
 							allRows.push.apply(allRows, chunkResponse.data_array);
@@ -1633,15 +1681,18 @@ export class Databricks implements INodeType {
 					let exampleRequestBody = '';
 
 					try {
-						const openApiResponse = (await this.helpers.httpRequest({
-							method: 'GET',
-							url: `${host}/api/2.0/serving-endpoints/${endpointName}/openapi`,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
-								Accept: 'application/json',
+						const openApiResponse = (await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'GET',
+								url: `${host}/api/2.0/serving-endpoints/${endpointName}/openapi`,
+								headers: {
+									Accept: 'application/json',
+								},
+								json: true,
 							},
-							json: true,
-						})) as OpenAPISchema[];
+						)) as OpenAPISchema[];
 
 						if (openApiResponse && openApiResponse.length > 0) {
 							const schemaInfo = detectInputFormat(openApiResponse[0]);
@@ -1703,16 +1754,19 @@ export class Databricks implements INodeType {
 
 					// Step 2: Make the request using the URL from schema
 					try {
-						const response = await this.helpers.httpRequest({
-							method: 'POST',
-							url: invocationUrl,
-							body: requestBody,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
-								'Content-Type': 'application/json',
+						const response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'POST',
+								url: invocationUrl,
+								body: requestBody,
+								headers: {
+									'Content-Type': 'application/json',
+								},
+								json: true,
 							},
-							json: true,
-						});
+						);
 
 						this.logger.debug('Model serving response received', {
 							endpointName,
@@ -1783,28 +1837,28 @@ export class Databricks implements INodeType {
 							body.storage_location = additionalFields.storage_location;
 						}
 
-						response = await this.helpers.httpRequest({
-							method: 'POST',
-							url: `${host}/api/2.1/unity-catalog/volumes`,
-							body,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
-								'Content-Type': 'application/json',
+						response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'POST',
+								url: `${host}/api/2.1/unity-catalog/volumes`,
+								body,
+								headers: {
+									'Content-Type': 'application/json',
+								},
+								json: true,
 							},
-							json: true,
-						});
+						);
 					} else if (operation === 'deleteVolume') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i));
 						const schemaName = extractValue(this.getNodeParameter('schemaName', i));
 						const volumeName = this.getNodeParameter('volumeName', i) as string;
 						const fullName = `${catalogName}.${schemaName}.${volumeName}`;
 
-						await this.helpers.httpRequest({
+						await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
 							method: 'DELETE',
 							url: `${host}/api/2.1/unity-catalog/volumes/${fullName}`,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
-							},
 							json: true,
 						});
 
@@ -1820,14 +1874,15 @@ export class Databricks implements INodeType {
 						const volumeName = this.getNodeParameter('volumeName', i) as string;
 						const fullName = `${catalogName}.${schemaName}.${volumeName}`;
 
-						response = await this.helpers.httpRequest({
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/volumes/${fullName}`,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
+						response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'GET',
+								url: `${host}/api/2.1/unity-catalog/volumes/${fullName}`,
+								json: true,
 							},
-							json: true,
-						});
+						);
 					} else if (operation === 'listVolumes') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i, ''));
 						const schemaName = extractValue(this.getNodeParameter('schemaName', i, ''));
@@ -1836,28 +1891,32 @@ export class Databricks implements INodeType {
 						if (catalogName) qs.catalog_name = catalogName;
 						if (schemaName) qs.schema_name = schemaName;
 
-						response = await this.helpers.httpRequest({
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/volumes`,
-							qs,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
+						response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'GET',
+								url: `${host}/api/2.1/unity-catalog/volumes`,
+								qs,
+
+								json: true,
 							},
-							json: true,
-						});
+						);
 					}
 					// Table Operations
 					else if (operation === 'getTable') {
 						const fullName = extractValue(this.getNodeParameter('fullName', i));
 
-						response = await this.helpers.httpRequest({
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/tables/${fullName}`,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
+						response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'GET',
+								url: `${host}/api/2.1/unity-catalog/tables/${fullName}`,
+
+								json: true,
 							},
-							json: true,
-						});
+						);
 					} else if (operation === 'listTables') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i, ''));
 						const schemaName = extractValue(this.getNodeParameter('schemaName', i, ''));
@@ -1866,15 +1925,17 @@ export class Databricks implements INodeType {
 						if (catalogName) qs.catalog_name = catalogName;
 						if (schemaName) qs.schema_name = schemaName;
 
-						response = await this.helpers.httpRequest({
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/tables`,
-							qs,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
+						response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'GET',
+								url: `${host}/api/2.1/unity-catalog/tables`,
+								qs,
+
+								json: true,
 							},
-							json: true,
-						});
+						);
 					}
 					// Function Operations
 					else if (operation === 'createFunction') {
@@ -1886,52 +1947,53 @@ export class Databricks implements INodeType {
 						const routineBody = this.getNodeParameter('routineBody', i) as string;
 						const routineDefinition = this.getNodeParameter('routineDefinition', i) as string;
 
-						response = await this.helpers.httpRequest({
-							method: 'POST',
-							url: `${host}/api/2.1/unity-catalog/functions`,
-							body: {
-								function_info: {
-									name: functionName,
-									catalog_name: catalogName,
-									schema_name: schemaName,
-									input_params: (() => {
-										const p =
-											typeof inputParams === 'string' ? JSON.parse(inputParams) : inputParams;
-										const params = Array.isArray(p) ? p : (p?.parameters ?? []);
-										const normalized = params.map((param: Record<string, unknown>) => ({
-											...param,
-											type_text: param.type_text ?? param.type_name,
-											type_json: param.type_json ?? JSON.stringify({ name: param.type_name }),
-										}));
-										return { parameters: normalized };
-									})(),
-									data_type: returnType,
-									full_data_type: returnType,
-									specific_name: functionName,
-									parameter_style: 'S',
-									security_type: 'DEFINER',
-									sql_data_access: 'CONTAINS_SQL',
-									is_deterministic: false,
-									is_null_call: true,
-									routine_body: routineBody,
-									routine_definition: routineDefinition,
+						response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'POST',
+								url: `${host}/api/2.1/unity-catalog/functions`,
+								body: {
+									function_info: {
+										name: functionName,
+										catalog_name: catalogName,
+										schema_name: schemaName,
+										input_params: (() => {
+											const p =
+												typeof inputParams === 'string' ? JSON.parse(inputParams) : inputParams;
+											const params = Array.isArray(p) ? p : (p?.parameters ?? []);
+											const normalized = params.map((param: Record<string, unknown>) => ({
+												...param,
+												type_text: param.type_text ?? param.type_name,
+												type_json: param.type_json ?? JSON.stringify({ name: param.type_name }),
+											}));
+											return { parameters: normalized };
+										})(),
+										data_type: returnType,
+										full_data_type: returnType,
+										specific_name: functionName,
+										parameter_style: 'S',
+										security_type: 'DEFINER',
+										sql_data_access: 'CONTAINS_SQL',
+										is_deterministic: false,
+										is_null_call: true,
+										routine_body: routineBody,
+										routine_definition: routineDefinition,
+									},
 								},
+								headers: {
+									'Content-Type': 'application/json',
+								},
+								json: true,
 							},
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
-								'Content-Type': 'application/json',
-							},
-							json: true,
-						});
+						);
 					} else if (operation === 'deleteFunction') {
 						const fullName = extractValue(this.getNodeParameter('fullName', i));
 
-						await this.helpers.httpRequest({
+						await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
 							method: 'DELETE',
 							url: `${host}/api/2.1/unity-catalog/functions/${fullName}`,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
-							},
+
 							json: true,
 						});
 
@@ -1944,14 +2006,16 @@ export class Databricks implements INodeType {
 					} else if (operation === 'getFunction') {
 						const fullName = extractValue(this.getNodeParameter('fullName', i));
 
-						response = await this.helpers.httpRequest({
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/functions/${fullName}`,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
+						response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'GET',
+								url: `${host}/api/2.1/unity-catalog/functions/${fullName}`,
+
+								json: true,
 							},
-							json: true,
-						});
+						);
 					} else if (operation === 'listFunctions') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i, ''));
 						const schemaName = extractValue(this.getNodeParameter('schemaName', i, ''));
@@ -1960,15 +2024,17 @@ export class Databricks implements INodeType {
 						if (catalogName) qs.catalog_name = catalogName;
 						if (schemaName) qs.schema_name = schemaName;
 
-						response = await this.helpers.httpRequest({
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/functions`,
-							qs,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
+						response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'GET',
+								url: `${host}/api/2.1/unity-catalog/functions`,
+								qs,
+
+								json: true,
 							},
-							json: true,
-						});
+						);
 					}
 					// Catalog Operations
 					else if (operation === 'createCatalog') {
@@ -1982,52 +2048,58 @@ export class Databricks implements INodeType {
 							body.comment = comment;
 						}
 
-						response = await this.helpers.httpRequest({
-							method: 'POST',
-							url: `${host}/api/2.1/unity-catalog/catalogs`,
-							body,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
-								'Content-Type': 'application/json',
+						response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'POST',
+								url: `${host}/api/2.1/unity-catalog/catalogs`,
+								body,
+								headers: {
+									'Content-Type': 'application/json',
+								},
+								json: true,
 							},
-							json: true,
-						});
+						);
 					} else if (operation === 'getCatalog') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i));
 
-						response = await this.helpers.httpRequest({
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/catalogs/${catalogName}`,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
+						response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'GET',
+								url: `${host}/api/2.1/unity-catalog/catalogs/${catalogName}`,
+
+								json: true,
 							},
-							json: true,
-						});
+						);
 					} else if (operation === 'updateCatalog') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i));
 						const comment = this.getNodeParameter('comment', i, '') as string;
 
-						response = await this.helpers.httpRequest({
-							method: 'PATCH',
-							url: `${host}/api/2.1/unity-catalog/catalogs/${catalogName}`,
-							body: {
-								comment,
+						response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'PATCH',
+								url: `${host}/api/2.1/unity-catalog/catalogs/${catalogName}`,
+								body: {
+									comment,
+								},
+								headers: {
+									'Content-Type': 'application/json',
+								},
+								json: true,
 							},
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
-								'Content-Type': 'application/json',
-							},
-							json: true,
-						});
+						);
 					} else if (operation === 'deleteCatalog') {
 						const catalogName = extractValue(this.getNodeParameter('catalogName', i));
 
-						await this.helpers.httpRequest({
+						await this.helpers.httpRequestWithAuthentication.call(this, 'databricksApi', {
 							method: 'DELETE',
 							url: `${host}/api/2.1/unity-catalog/catalogs/${catalogName}`,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
-							},
+
 							json: true,
 						});
 
@@ -2038,14 +2110,15 @@ export class Databricks implements INodeType {
 							catalogName,
 						};
 					} else if (operation === 'listCatalogs') {
-						response = await this.helpers.httpRequest({
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/catalogs`,
-							headers: {
-								Authorization: `Bearer ${credentials.token}`,
+						response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'databricksApi',
+							{
+								method: 'GET',
+								url: `${host}/api/2.1/unity-catalog/catalogs`,
+								json: true,
 							},
-							json: true,
-						});
+						);
 					}
 
 					returnData.push({
@@ -2115,16 +2188,19 @@ export class Databricks implements INodeType {
 						body: JSON.stringify(body, null, 2),
 					});
 
-					const response = await this.helpers.httpRequest({
-						method: 'POST',
-						url: `${host}/api/2.0/vector-search/indexes/${indexName}/query`,
-						body,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-							'Content-Type': 'application/json',
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'POST',
+							url: `${host}/api/2.0/vector-search/indexes/${indexName}/query`,
+							body,
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							json: true,
 						},
-						json: true,
-					});
+					);
 
 					returnData.push({
 						json: response,
@@ -2153,15 +2229,17 @@ export class Databricks implements INodeType {
 						body.direct_access_index_spec = typeof raw === 'string' ? JSON.parse(raw) : raw;
 					}
 
-					const response = await this.helpers.httpRequest({
-						method: 'POST',
-						url: `${host}/api/2.0/vector-search/indexes`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'POST',
+							url: `${host}/api/2.0/vector-search/indexes`,
+
+							body,
+							json: true,
 						},
-						body,
-						json: true,
-					});
+					);
 
 					returnData.push({
 						json: response,
@@ -2172,14 +2250,16 @@ export class Databricks implements INodeType {
 					const host = credentials.host.replace(/\/$/, '');
 					const indexName = this.getNodeParameter('indexName', i) as string;
 
-					const response = await this.helpers.httpRequest({
-						method: 'GET',
-						url: `${host}/api/2.0/vector-search/indexes/${indexName}`,
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'GET',
+							url: `${host}/api/2.0/vector-search/indexes/${indexName}`,
+
+							json: true,
 						},
-						json: true,
-					});
+					);
 
 					returnData.push({
 						json: response,
@@ -2190,17 +2270,19 @@ export class Databricks implements INodeType {
 					const host = credentials.host.replace(/\/$/, '');
 					const endpointName = this.getNodeParameter('endpointName', i) as string;
 
-					const response = await this.helpers.httpRequest({
-						method: 'GET',
-						url: `${host}/api/2.0/vector-search/indexes`,
-						qs: {
-							endpoint_name: endpointName,
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'databricksApi',
+						{
+							method: 'GET',
+							url: `${host}/api/2.0/vector-search/indexes`,
+							qs: {
+								endpoint_name: endpointName,
+							},
+
+							json: true,
 						},
-						headers: {
-							Authorization: `Bearer ${credentials.token}`,
-						},
-						json: true,
-					});
+					);
 
 					returnData.push({
 						json: response,
