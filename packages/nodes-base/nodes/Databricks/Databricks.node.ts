@@ -1133,20 +1133,11 @@ export class Databricks implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		this.logger.debug(`Starting execution with ${items.length} items`);
-
 		for (let i = 0; i < items.length; i++) {
 			try {
-				this.logger.debug(`Processing item ${i + 1}/${items.length}`);
 				const resource = this.getNodeParameter('resource', i);
 				const operation = this.getNodeParameter('operation', i);
 				const credentialType = getActiveCredentialType(this, i);
-
-				this.logger.debug('Node parameters', {
-					resource,
-					operation,
-					itemIndex: i,
-				});
 
 				if (resource === 'files' && operation === 'uploadFile') {
 					const dataFieldName = this.getNodeParameter('dataFieldName', i) as string;
@@ -1163,24 +1154,9 @@ export class Databricks implements INodeType {
 					}
 					const [catalog, schema, volume] = parts;
 
-					this.logger.debug('File upload parameters', {
-						dataFieldName,
-						volumePath,
-						catalog,
-						schema,
-						volume,
-						filePath,
-					});
-
 					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host;
 					const binaryData = await this.helpers.getBinaryDataBuffer(i, dataFieldName);
-
-					this.logger.debug('Starting file upload', {
-						host,
-						filePath,
-						dataSize: binaryData.length,
-					});
 
 					await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
 						method: 'PUT',
@@ -1193,7 +1169,6 @@ export class Databricks implements INodeType {
 						encoding: 'arraybuffer',
 					});
 
-					this.logger.debug('File upload successful', { filePath });
 					returnData.push({
 						json: {
 							success: true,
@@ -1215,14 +1190,6 @@ export class Databricks implements INodeType {
 						);
 					}
 					const [catalog, schema, volume] = parts;
-
-					this.logger.debug('Downloading file', {
-						volumePath,
-						catalog,
-						schema,
-						volume,
-						filePath,
-					});
 
 					const downloadUrl = `${host}/api/2.0/fs/files/Volumes/${catalog}/${schema}/${volume}/${filePath}`;
 
@@ -1251,12 +1218,6 @@ export class Databricks implements INodeType {
 
 						// Convert arraybuffer to buffer
 						const buffer = Buffer.from(response.body as ArrayBuffer);
-
-						this.logger.debug('File downloaded successfully', {
-							fileName,
-							size: buffer.length,
-							contentType,
-						});
 
 						returnData.push({
 							json: {
@@ -1535,12 +1496,6 @@ export class Databricks implements INodeType {
 							);
 					}
 
-					this.logger.debug('Making Genie API request', {
-						url,
-						method,
-						body: JSON.stringify(body, null, 2),
-					});
-
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						credentialType,
@@ -1555,11 +1510,6 @@ export class Databricks implements INodeType {
 						},
 					);
 
-					this.logger.debug('Genie API response received', {
-						statusCode: response.statusCode,
-						response: JSON.stringify(response, null, 2),
-					});
-
 					returnData.push({ json: response });
 				} else if (resource === 'databricksSql' && operation === 'executeQuery') {
 					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
@@ -1569,11 +1519,6 @@ export class Databricks implements INodeType {
 						value: string;
 					};
 					const query = this.getNodeParameter('query', i) as string;
-
-					this.logger.debug('Executing SQL query', {
-						warehouseId: warehouseId.value,
-						query: query.substring(0, 100), // Log first 100 chars
-					});
 
 					// Step 1: Execute the query.
 					// wait_timeout is set to the API maximum (50s) so that short queries return
@@ -1601,7 +1546,6 @@ export class Databricks implements INodeType {
 					)) as DatabricksStatementResponse;
 
 					const statementId = executeResponse.statement_id;
-					this.logger.debug('Query submitted', { statementId });
 
 					// Step 2: Poll for completion (if in async mode)
 					let status = executeResponse.status.state;
@@ -1632,12 +1576,6 @@ export class Databricks implements INodeType {
 
 						status = queryResult.status.state;
 						retries++;
-
-						this.logger.debug('Polling query status', {
-							statementId,
-							status,
-							attempt: retries,
-						});
 					}
 
 					if (status === 'FAILED' || status === 'CANCELED') {
@@ -1658,11 +1596,6 @@ export class Databricks implements INodeType {
 					const allRows: any[] = [];
 					let chunkIndex = 0;
 					const totalChunks = queryResult.manifest?.total_chunk_count || 0;
-
-					this.logger.debug('Starting chunk collection', {
-						statementId,
-						totalChunks,
-					});
 
 					// First chunk might be in the initial response
 					if (queryResult.result?.data_array) {
@@ -1690,13 +1623,6 @@ export class Databricks implements INodeType {
 						}
 
 						chunkIndex++;
-
-						this.logger.debug('Fetched chunk', {
-							statementId,
-							chunkIndex,
-							totalChunks,
-							rowsCollected: allRows.length,
-						});
 					}
 
 					// Step 4: Transform rows into objects using column names
@@ -1707,12 +1633,6 @@ export class Databricks implements INodeType {
 							obj[col.name] = row[idx];
 						});
 						return obj;
-					});
-
-					this.logger.debug('Query execution complete', {
-						statementId,
-						totalRows: formattedResults.length,
-						totalChunks,
 					});
 
 					// Return each row as a separate item (n8n convention)
@@ -1729,8 +1649,6 @@ export class Databricks implements INodeType {
 						extractValue: true,
 					}) as string;
 					const requestBody = this.getNodeParameter('requestBody', i) as any;
-
-					this.logger.debug('Fetching endpoint schema for auto-detection', { endpointName });
 
 					// Step 1: Fetch the OpenAPI schema for this endpoint
 					let detectedFormat = 'generic';
@@ -1759,14 +1677,6 @@ export class Databricks implements INodeType {
 							// Generate example request body from schema
 							exampleRequestBody = generateExampleFromSchema(schemaInfo.schema, detectedFormat);
 
-							this.logger.debug('Auto-detected input format and URL', {
-								endpointName,
-								format: detectedFormat,
-								requiredFields: schemaInfo.requiredFields,
-								invocationUrl,
-								exampleRequestBody,
-							});
-
 							// Validate the request body against detected schema
 							try {
 								validateRequestBody(requestBody, detectedFormat);
@@ -1777,11 +1687,6 @@ export class Databricks implements INodeType {
 									`${(validationError as Error).message}\n\nDetected format: ${detectedFormat}\n\nExample request body:\n${exampleRequestBody}\n\nYour request body:\n${JSON.stringify(requestBody, null, 2)}`,
 								);
 							}
-
-							this.logger.debug('Request body validated successfully', {
-								endpointName,
-								format: detectedFormat,
-							});
 						}
 					} catch (error) {
 						// If it's a validation error with example, re-throw it
@@ -1802,13 +1707,6 @@ export class Databricks implements INodeType {
 						// Continue with default URL if schema fetch fails
 					}
 
-					this.logger.debug('Querying model serving endpoint', {
-						endpointName,
-						detectedFormat,
-						invocationUrl,
-						requestBody: JSON.stringify(requestBody, null, 2),
-					});
-
 					// Step 2: Make the request using the URL from schema
 					try {
 						const response = await this.helpers.httpRequestWithAuthentication.call(
@@ -1824,12 +1722,6 @@ export class Databricks implements INodeType {
 								json: true,
 							},
 						);
-
-						this.logger.debug('Model serving response received', {
-							endpointName,
-							detectedFormat,
-							invocationUrl,
-						});
 
 						returnData.push({
 							json: {
@@ -2190,13 +2082,6 @@ export class Databricks implements INodeType {
 						};
 					}
 
-					this.logger.debug('Querying vector search index', {
-						indexName,
-						queryType,
-						searchMode,
-						body: JSON.stringify(body, null, 2),
-					});
-
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						credentialType,
@@ -2302,21 +2187,8 @@ export class Databricks implements INodeType {
 				const currentResource = this.getNodeParameter('resource', i);
 				const currentOperation = this.getNodeParameter('operation', i);
 
-				this.logger.error(`Error processing item ${i + 1}`, {
-					error: error.message,
-					stack: error.stack,
-					itemIndex: i,
-					resource: currentResource,
-					operation: currentOperation,
-				});
-
 				if (error.response) {
 					// API Error
-					this.logger.error('API Error', {
-						status: error.response.status,
-						statusText: error.response.statusText,
-						data: error.response.data,
-					});
 					if (this.continueOnFail()) {
 						returnData.push({
 							json: {
@@ -2333,9 +2205,6 @@ export class Databricks implements INodeType {
 					}
 				} else if (error.request) {
 					// Network Error
-					this.logger.error('Network Error', {
-						request: error.request,
-					});
 					if (this.continueOnFail()) {
 						returnData.push({
 							json: {
@@ -2365,7 +2234,6 @@ export class Databricks implements INodeType {
 			}
 		}
 
-		this.logger.debug('Execution completed successfully');
 		return [returnData];
 	}
 }
