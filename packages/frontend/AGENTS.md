@@ -2,6 +2,11 @@
 
 Extra information, specific to the frontend codebase.
 
+### Style Review Rules
+
+For CSS/SCSS/Vue style changes and updates touching `@n8n/design-system`,
+follow `.agents/design-system-style-rules.md`.
+
 ### CSS Variables Reference
 
 Use the following CSS variables to maintain consistency across the
