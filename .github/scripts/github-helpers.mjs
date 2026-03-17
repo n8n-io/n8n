@@ -4,6 +4,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import semver from 'semver';
 
+export const CURRENT_MAJOR_VERSION = 2;
+export const RELEASE_CANDIDATE_BRANCH_PREFIX = 'release-candidate/';
+
 export const RELEASE_TRACKS = /** @type { const } */ ([
 	//
 	'stable',
@@ -24,7 +27,7 @@ export const RELEASE_TRACKS = /** @type { const } */ ([
  * */
 
 /**
- * @typedef {{ tag: ReleaseVersion, version: SemVer}} TagVersionInfo
+ * @typedef {{ tag: ReleaseVersion, version: SemVer }} TagVersionInfo
  * */
 
 export const RELEASE_PREFIX = 'n8n@';
@@ -113,6 +116,25 @@ export function resolveRcBranchForTrack(track) {
 }
 
 /**
+ * Takes a TagVersionInfo object and returns a rc-branch name.
+ *
+ * e.g. release-candidate/2.8.x or 1.x
+ *
+ * @param {import('./github-helpers.mjs').TagVersionInfo} tagVersionInfo
+ *
+ * @returns { `${RELEASE_CANDIDATE_BRANCH_PREFIX}${number}.${number}.x` | `${number}.x` }
+ * */
+export function tagVersionInfoToReleaseCandidateBranchName(tagVersionInfo) {
+	const version = tagVersionInfo.version;
+	const majorVersion = semver.major(version);
+	if (majorVersion < CURRENT_MAJOR_VERSION) {
+		return `${majorVersion}.x`;
+	}
+
+	return `${RELEASE_CANDIDATE_BRANCH_PREFIX}${majorVersion}.${semver.minor(version)}.x`;
+}
+
+/**
  * @param {string} tag
  *
  * @returns { SemVer }
@@ -150,8 +172,9 @@ export function readPrLabels(pullRequest) {
 /**
  * Ensures git tag exists.
  *
- * @throws { Error } if no tag was found
- * */
+ * @param {string} tag
+ * @throws {Error} if no tag was found
+ */
 export function ensureTagExists(tag) {
 	sh('git', ['fetch', '--force', '--no-tags', 'origin', `refs/tags/${tag}:refs/tags/${tag}`]);
 }
