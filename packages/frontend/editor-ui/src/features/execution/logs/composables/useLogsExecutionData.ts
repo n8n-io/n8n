@@ -13,7 +13,8 @@ import { parse } from 'flatted';
 import { useToast } from '@/app/composables/useToast';
 import type { LatestNodeInfo, LogEntry, LogTreeFilter } from '../logs.types';
 import { isChatNode } from '@/app/utils/aiUtils';
-import { LOGS_EXECUTION_DATA_THROTTLE_DURATION } from '@/app/constants';
+import { CHAT_TRIGGER_NODE_TYPE, LOGS_EXECUTION_DATA_THROTTLE_DURATION } from '@/app/constants';
+import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useThrottleFn } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
@@ -64,11 +65,21 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 			{},
 		),
 	);
-	const hasChat = computed(() =>
-		[Object.values(workflow.value?.nodes ?? {}), workflowsStore.workflow.nodes].some((nodes) =>
-			nodes.some(isChatNode),
-		),
-	);
+	const chatHubPanelStore = useChatHubPanelStore();
+	const hasChat = computed(() => {
+		// When the floating chat panel experiment is enabled and the ChatTrigger has
+		// availableInChat enabled, the floating chat hub handles chat instead of the bottom panel
+		if (chatHubPanelStore.isFloatingChatEnabled) {
+			const isChatHubActive = workflowsStore.workflow.nodes.some(
+				(node) => node.type === CHAT_TRIGGER_NODE_TYPE && node.parameters?.availableInChat === true,
+			);
+			if (isChatHubActive) return false;
+		}
+
+		return [Object.values(workflow.value?.nodes ?? {}), workflowsStore.workflow.nodes].some(
+			(nodes) => nodes.some(isChatNode),
+		);
+	});
 
 	const entries = computed<LogEntry[]>(() => {
 		if ((isEnabled !== undefined && !isEnabled.value) || !throttledState.value || !workflow.value) {
