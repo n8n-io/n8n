@@ -8,10 +8,7 @@ import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants'
 import { DEBUG_PAYWALL_MODAL_KEY } from '../executions.constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -33,6 +30,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 	const message = useMessage();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
@@ -46,7 +44,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
 		const execution = await workflowsStore.getExecution(executionId);
 		const workflowObject = workflowsStore.workflowObject;
-		const workflowNodes = workflowsStore.getNodes();
+		const workflowNodes = workflowDocumentStore?.value?.getNodes() ?? [];
 
 		if (!execution?.data?.resultData) {
 			return;
@@ -61,10 +59,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 		// Using the pinned data of the workflow to check if the node is pinned
 		// because workflowsStore.getCurrentWorkflow() returns a cached workflow without the updated pinned data
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
-		const workflowPinnedNodeNames = Object.keys(workflowDocumentStore?.pinData ?? {});
+		const workflowPinnedNodeNames = Object.keys(workflowDocumentStore?.value?.pinData ?? {});
 		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
 			workflowPinnedNodeNames.includes(name),
 		);
@@ -93,7 +88,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 			if (overWritePinnedDataConfirm === MODAL_CONFIRM) {
 				matchingPinnedNodeNames.forEach((name) => {
-					workflowDocumentStore?.unpinNodeData(name);
+					workflowDocumentStore?.value?.unpinNodeData(name);
 				});
 			} else {
 				await router.push({
@@ -105,7 +100,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 		}
 
 		// Set execution data
-		workflowState.resetAllNodesIssues();
+		workflowDocumentStore?.value?.resetAllNodesIssues();
 		workflowState.setWorkflowExecutionData(execution);
 
 		// Pin data of all nodes which do not have a parent node
@@ -122,7 +117,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 				const nodeData = taskData.data.main.find((output) => output && output.length > 0);
 				if (nodeData) {
 					pinnings++;
-					workflowDocumentStore?.pinNodeData(node.name, nodeData);
+					workflowDocumentStore?.value?.pinNodeData(node.name, nodeData);
 
 					// Clear dirtiness timestamps so nodes don't appear dirty after restoration.
 					// The old pinData({ isRestoration: true }) handled this internally.
