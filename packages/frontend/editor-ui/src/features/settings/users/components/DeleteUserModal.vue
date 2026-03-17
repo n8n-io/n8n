@@ -5,10 +5,10 @@ import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useUsersStore } from '../users.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type {
-	ProjectListItem,
-	ProjectSharingData,
-} from '@/features/collaboration/projects/projects.types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { createRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import { useI18n } from '@n8n/i18n';
 
 import { ElRadio } from 'element-plus';
@@ -29,6 +29,7 @@ const selectedProject = ref<ProjectSharingData | null>(null);
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
+const projectsStore = useProjectsStore();
 
 const userToDelete = computed(() => {
 	if (!props.data?.userId) return null;
@@ -62,7 +63,8 @@ const enabled = computed(() => {
 	return !!(operation.value === 'transfer' && selectedProject.value);
 });
 
-const projectFilterFn = (project: ProjectListItem) =>
+const searchFn = createRemoteProjectSearch(projectsStore);
+const filterFn = (project: ProjectListItem) =>
 	project.name !==
 	`${userToDelete.value?.firstName} ${userToDelete.value?.lastName} <${userToDelete.value?.email}>`;
 
@@ -144,7 +146,8 @@ async function onSubmit() {
 						<ProjectSharing
 							v-model="selectedProject"
 							class="pt-2xs"
-							:filter-fn="projectFilterFn"
+							:search-fn="searchFn"
+							:filter-fn="filterFn"
 							:placeholder="
 								i18n.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
 							"

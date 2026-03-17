@@ -95,6 +95,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		currentProject.value = project;
 	};
 
+	const searchProjects = async (params: { search?: string; take?: number; skip?: number }) => {
+		return await projectsApi.searchProjects(rootStore.restApiContext, params);
+	};
+
 	const getAllProjects = async () => {
 		projects.value = await projectsApi.getAllProjects(rootStore.restApiContext);
 	};
@@ -336,8 +340,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		canViewProjects,
 		hasPermissionToCreateProjects,
 		isTeamProjectFeatureEnabled,
+		globalProjectPermissions,
 		projectNavActiveId,
 		setCurrentProject,
+		searchProjects,
 		getAllProjects,
 		getMyProjects,
 		getPersonalProject,

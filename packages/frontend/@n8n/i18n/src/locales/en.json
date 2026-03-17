@@ -4344,6 +4344,7 @@
 	"projects.sharing.allUsers": "All users and projects",
 	"projects.sharing.moreResults": "Showing {shown} of {total}. Search to narrow down.",
 	"projects.sharing.noMatchingProjects": "There are no available projects",
+	"projects.sharing.moreResults": "{count} more results — refine your search",
 	"projects.sharing.noMatchingUsers": "No matching users or projects",
 	"projects.sharing.select.placeholder": "Select project or user",
 	"projects.sharing.select.placeholder.user": "Share with user(s)",

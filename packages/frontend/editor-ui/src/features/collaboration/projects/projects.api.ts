@@ -10,7 +10,13 @@ export const getAllProjects = async (context: IRestApiContext): Promise<ProjectL
 
 export const searchProjects = async (
 	context: IRestApiContext,
-	params: { search?: string; take?: number; type?: 'personal' | 'team'; activated?: boolean },
+	params: {
+		search?: string;
+		take?: number;
+		skip?: number;
+		type?: 'personal' | 'team';
+		activated?: boolean;
+	},
 ): Promise<{ count: number; data: ProjectListItem[] }> => {
 	return await getFullApiResponse<ProjectListItem[]>(context, 'GET', '/projects', params);
 };

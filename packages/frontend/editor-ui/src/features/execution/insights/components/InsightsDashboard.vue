@@ -2,13 +2,24 @@
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { createAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { DateValue } from '@internationalized/date';
 import { getLocalTimeZone, today } from '@internationalized/date';
 import type { InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { computed, defineAsyncComponent, onMounted, ref, shallowRef, watch } from 'vue';
+import {
+	computed,
+	defineAsyncComponent,
+	onBeforeMount,
+	onMounted,
+	ref,
+	shallowRef,
+	watch,
+} from 'vue';
 import { useRoute } from 'vue-router';
 import { INSIGHT_TYPES } from '../insights.constants';
 import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
@@ -51,6 +62,7 @@ const route = useRoute();
 const i18n = useI18n();
 
 const insightsStore = useInsightsStore();
+const projectsStore = useProjectsStore();
 const isTimeSavedRoute = computed(() => route.params.insightType === INSIGHT_TYPES.TIME_SAVED);
 
 const chartComponents = computed(() => ({
@@ -180,6 +192,17 @@ watch(
 onMounted(() => {
 	useDocumentTitle().set(i18n.baseText('insights.heading'));
 });
+// Must be *only* <email> — no extra text before or after
+const emailPattern = /^<([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})>$/;
+
+const searchFn = createAvailableProjectSearch(projectsStore);
+const filterFn = (project: ProjectListItem) =>
+	!!project.name && !emailPattern.test(project.name.trim());
+
+onBeforeMount(async () => {
+	// Load myProjects for members so createAvailableProjectSearch can filter locally
+	await projectsStore.getAvailableProjects();
+});
 </script>
 
 <template>
@@ -192,7 +215,8 @@ onMounted(() => {
 			<div class="mt-s" style="display: flex; gap: 12px; align-items: center">
 				<ProjectSharing
 					v-model="selectedProject"
-					:activated="true"
+					:search-fn="searchFn"
+					:filter-fn="filterFn"
 					:placeholder="i18n.baseText('insights.dashboard.search.placeholder')"
 					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 					size="mini"

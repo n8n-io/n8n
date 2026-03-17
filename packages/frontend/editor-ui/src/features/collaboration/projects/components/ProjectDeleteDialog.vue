@@ -2,6 +2,9 @@
 import { ref, computed } from 'vue';
 import type { Project, ProjectListItem, ProjectSharingData } from '../projects.types';
 import ProjectSharing from './ProjectSharing.vue';
+import { createAvailableProjectSearch } from '../projects.utils';
+import type { ProjectSearchFn } from '../projects.utils';
+import { useProjectsStore } from '../projects.store';
 import { useI18n } from '@n8n/i18n';
 import type { ResourceCounts } from '../projects.store';
 
@@ -9,11 +12,18 @@ import { ElDialog, ElRadio } from 'element-plus';
 import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
 type Props = {
 	currentProject: Project | null;
+	searchFn?: ProjectSearchFn;
 	resourceCounts: ResourceCounts;
 };
 
 const props = defineProps<Props>();
 const visible = defineModel<boolean>();
+const projectsStore = useProjectsStore();
+
+const resolvedSearchFn = computed(
+	() => props.searchFn ?? createAvailableProjectSearch(projectsStore),
+);
+const filterFn = (project: ProjectListItem) => project.id !== props.currentProject?.id;
 const emit = defineEmits<{
 	confirmDelete: [value?: string];
 }>();
@@ -87,7 +97,8 @@ const onDelete = () => {
 					<ProjectSharing
 						v-model="selectedProject"
 						class="pt-2xs"
-						:filter-fn="(p: ProjectListItem) => p.id !== props.currentProject?.id"
+						:search-fn="resolvedSearchFn"
+						:filter-fn="filterFn"
 						:empty-options-text="locale.baseText('projects.sharing.noMatchingProjects')"
 					/>
 				</div>

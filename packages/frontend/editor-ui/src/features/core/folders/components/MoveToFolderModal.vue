@@ -30,6 +30,7 @@ import {
 	ResourceType,
 	getTruncatedProjectName,
 	splitName,
+	createAvailableProjectSearch,
 } from '@/features/collaboration/projects/projects.utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useToast } from '@/app/composables/useToast';
@@ -122,8 +123,9 @@ const unShareableCredentials = computed(() =>
 	),
 );
 
-const projectFilterFn = (p: ProjectListItem): boolean =>
-	!p.scopes || !!getResourcePermissions(p.scopes)[props.data.resourceType].create;
+const searchFn = createAvailableProjectSearch(projectsStore);
+const filterFn = (p: ProjectListItem) =>
+	!p.scopes || getResourcePermissions(p.scopes)[props.data.resourceType].create;
 
 const resourceTypeLabel = computed(() => {
 	return i18n.baseText(`generic.${props.data.resourceType}`).toLowerCase();
@@ -431,7 +433,8 @@ onMounted(async () => {
 					<ProjectSharing
 						v-model="selectedProject"
 						class="pt-2xs"
-						:filter-fn="projectFilterFn"
+						:search-fn="searchFn"
+						:filter-fn="filterFn"
 						:placeholder="i18n.baseText('folders.move.modal.project.placeholder')"
 					/>
 				</div>

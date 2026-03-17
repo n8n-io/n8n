@@ -3,12 +3,13 @@ import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N
 import type { SelectSize } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import type { AllRolesMap } from '@n8n/permissions';
-import { useDebounceFn, useAsyncState } from '@vueuse/core';
-import { computed, ref, watch } from 'vue';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import orderBy from 'lodash/orderBy';
+import { useDebounceFn } from '@vueuse/core';
+import { computed, ref, watch, onMounted } from 'vue';
 import { ProjectTypes, type ProjectListItem, type ProjectSharingData } from '../projects.types';
+import type { ProjectSearchFn } from '../projects.utils';
 import ProjectSharingInfo from './ProjectSharingInfo.vue';
+import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 
 import {
 	N8nBadge,
@@ -21,13 +22,10 @@ import {
 } from '@n8n/design-system';
 
 const locale = useI18n();
-const projectsStore = useProjectsStore();
 
 type Props = {
-	/** Client-side post-filter applied to results (e.g. permission checks). */
+	searchFn: ProjectSearchFn;
 	filterFn?: (project: ProjectListItem) => boolean;
-	/** When true, excludes personal projects of non-activated (pending) users. */
-	activated?: boolean;
 	homeProject?: ProjectSharingData;
 	roles?: AllRolesMap['workflow' | 'credential' | 'project'];
 	readonly?: boolean;
@@ -82,42 +80,25 @@ const noDataText = computed(
 	() => props.emptyOptionsText ?? locale.baseText('projects.sharing.noMatchingUsers'),
 );
 
-const excludedIds = computed(() => {
-	const selected = Array.isArray(model.value) ? model.value.map((p) => p.id) : [];
-	return new Set([...(props.homeProject?.id ? [props.homeProject.id] : []), ...selected]);
-});
-
-const TAKE = 50;
-
-const {
-	isLoading,
-	execute: fetchRemoteProjects,
-	state,
-} = useAsyncState<
-	{
-		count: number;
-		data: ProjectListItem[];
-	},
-	[string]
->(
-	async (query: string) =>
-		await projectsStore.searchProjects({
-			search: query || undefined,
-			take: TAKE,
-			activated: props.activated,
-		}),
-	{
-		count: 0,
-		data: [],
-	},
-	{
-		immediate: true,
-	},
-);
+// ── Search state ──
+const searchResults = ref<ProjectListItem[]>([]);
+const searchCount = ref(0);
+const filter = ref('');
 
 const filteredProjects = computed(() => {
-	const results = state.value.data.filter((project) => !excludedIds.value.has(project.id));
-	return props.filterFn ? results.filter(props.filterFn) : results;
+	let list = searchResults.value;
+
+	// Apply consumer's filterFn
+	if (props.filterFn) {
+		list = list.filter(props.filterFn);
+	}
+
+	// Exclude already-selected projects (multi-select mode)
+	if (Array.isArray(model.value)) {
+		list = list.filter((p) => !model.value?.find((s: ProjectSharingData) => s.id === p.id));
+	}
+
+	return list;
 });
 
 const sortedProjects = computed((): ProjectListItem[] => {
@@ -127,13 +108,13 @@ const sortedProjects = computed((): ProjectListItem[] => {
 	];
 });
 
+const moreResultsCount = computed(() => {
+	return Math.max(0, searchCount.value - searchResults.value.length);
+});
+
 const projectIcon = computed<IconOrEmoji>(() => {
 	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layers' };
-	const project =
-		state.value.data.find((p) => p.id === selectedProject.value) ??
-		(!Array.isArray(model.value) && model.value?.id === selectedProject.value
-			? model.value
-			: undefined);
+	const project = searchResults.value.find((p) => p.id === selectedProject.value);
 
 	if (project?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
@@ -144,21 +125,29 @@ const projectIcon = computed<IconOrEmoji>(() => {
 	return defaultIcon;
 });
 
-const hasMoreResults = computed(() => state.value.count > state.value.data.length);
+// ── Search logic ──
+const executeSearch = async (query: string) => {
+	try {
+		const result = await props.searchFn(query);
+		searchResults.value = result.data ?? [];
+		searchCount.value = result.count ?? 0;
+	} catch {
+		searchResults.value = [];
+		searchCount.value = 0;
+	}
+};
 
-const moreResultsLabel = computed(() =>
-	locale.baseText('projects.sharing.moreResults', {
-		interpolate: {
-			shown: String(sortedProjects.value.length),
-			total: String(state.value.count),
-		},
-	}),
-);
+const debouncedSearch = useDebounceFn(executeSearch, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
-const debouncedRemoteSearch = useDebounceFn(
-	async (query: string) => await fetchRemoteProjects(0, query),
-	getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
-);
+const setFilter = (query: string) => {
+	filter.value = query;
+	void debouncedSearch(query);
+};
+
+// Load initial results
+onMounted(() => {
+	void executeSearch('');
+});
 
 const onProjectSelected = (projectId: string) => {
 	if (projectId === GLOBAL_GROUP.id) {
@@ -166,7 +155,7 @@ const onProjectSelected = (projectId: string) => {
 		return;
 	}
 
-	const project = state.value.data.find((p) => p.id === projectId);
+	const project = searchResults.value.find((p) => p.id === projectId);
 
 	if (!project) {
 		return;
@@ -217,10 +206,9 @@ watch(
 				v-if="!props.static || props.disabledTooltip"
 				:model-value="selectedProject"
 				data-test-id="project-sharing-select"
-				:filterable="true"
+				filterable
 				remote
-				:remote-method="debouncedRemoteSearch"
-				:loading="isLoading"
+				:remote-method="setFilter"
 				:placeholder="selectPlaceholder"
 				:default-first-option="true"
 				:no-data-text="noDataText"
@@ -250,15 +238,19 @@ watch(
 					<ProjectSharingInfo :project="project" />
 				</N8nOption>
 				<N8nOption
-					v-if="hasMoreResults"
-					key="__more_results__"
-					value="__more_results__"
-					:label="moreResultsLabel"
+					v-if="moreResultsCount > 0"
+					:key="'more-results'"
+					:value="''"
+					:label="''"
 					disabled
 					:class="$style.moreResults"
 				>
 					<N8nText size="small" color="text-light">
-						{{ moreResultsLabel }}
+						{{
+							locale.baseText('projects.sharing.moreResults', {
+								interpolate: { count: moreResultsCount },
+							})
+						}}
 					</N8nText>
 				</N8nOption>
 			</N8nSelect>

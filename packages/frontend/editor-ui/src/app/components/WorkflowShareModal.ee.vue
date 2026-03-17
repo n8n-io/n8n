@@ -19,6 +19,8 @@ import ProjectSharing from '@/features/collaboration/projects/components/Project
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData, Project } from '@/features/collaboration/projects/projects.types';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { createRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
@@ -110,6 +112,10 @@ const isPersonalSpaceRestricted = computed(
 const workflowOwnerName = computed(() =>
 	workflowsEEStore.getWorkflowOwnerName(`${workflow.value.id}`),
 );
+
+const searchFn = createRemoteProjectSearch(projectsStore);
+const filterFn = (project: ProjectListItem) =>
+	project.type === 'personal' && project.id !== workflow.value.homeProject?.id;
 
 const numberOfMembersInHomeTeamProject = computed(() => teamProject.value?.relations.length ?? 0);
 
@@ -284,6 +290,8 @@ watch(
 						<ProjectSharing
 							v-model="sharedWithProjects"
 							:home-project="workflow.homeProject"
+							:search-fn="searchFn"
+							:filter-fn="filterFn"
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
 							:static="isHomeTeamProject || !workflowPermissions.share"
