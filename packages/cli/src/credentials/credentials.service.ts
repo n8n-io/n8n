@@ -2,12 +2,15 @@ import type { CreateCredentialDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
 import {
+	CredentialDependencyRepository,
 	CredentialsEntity,
 	SharedCredentials,
 	CredentialsRepository,
 	ProjectRepository,
+	SecretsProviderConnectionRepository,
 	SharedCredentialsRepository,
 	UserRepository,
+	VariablesRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
@@ -52,11 +55,12 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { getAllKeyPaths } from '@/utils';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 import {
 	validateAccessToReferencedSecretProviders,
+	extractExternalSecretProviderKeys,
+	extractVariableReferenceKeys,
 	validateExternalSecretsPermissions,
 } from './validation';
 
@@ -68,10 +72,16 @@ type CreateCredentialOptions = CreateCredentialDto & {
 	isManaged: boolean;
 };
 
+const EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE = 'externalSecretProvider' as const;
+const VARIABLE_DEPENDENCY_TYPE = 'variable' as const;
+
 @Service()
 export class CredentialsService {
 	constructor(
 		private readonly credentialsRepository: CredentialsRepository,
+		private readonly credentialDependencyRepository: CredentialDependencyRepository,
+		private readonly secretsProviderConnectionRepository: SecretsProviderConnectionRepository,
+		private readonly variablesRepository: VariablesRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
@@ -92,9 +102,14 @@ export class CredentialsService {
 	private async addGlobalCredentials(
 		credentials: CredentialsEntity[],
 		includeData: boolean,
+		allowedCredentialIds?: Set<string>,
 	): Promise<CredentialsEntity[]> {
-		const globalCredentials =
-			await this.credentialsRepository.findAllGlobalCredentials(includeData);
+		let globalCredentials = await this.credentialsRepository.findAllGlobalCredentials(includeData);
+		if (allowedCredentialIds) {
+			globalCredentials = globalCredentials.filter((credential) =>
+				allowedCredentialIds.has(credential.id),
+			);
+		}
 
 		// Merge and deduplicate based on credential ID
 		const credentialIds = new Set(credentials.map((c) => c.id));
@@ -145,6 +160,13 @@ export class CredentialsService {
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
 		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
+		const credentialIdsByExternalSecretsStore = externalSecretsStore
+			? await this.findCredentialIdsByExternalSecretsStore(externalSecretsStore)
+			: undefined;
+
+		if (credentialIdsByExternalSecretsStore?.length === 0) {
+			return [];
+		}
 
 		// Auto-enable includeScopes when includeData is requested
 		if (includeData) {
@@ -161,6 +183,7 @@ export class CredentialsService {
 				includeGlobal,
 				includeData,
 				onlySharedWithMe,
+				credentialIdsByExternalSecretsStore,
 			);
 		} else {
 			credentials = await this.getManyForMemberUser(
@@ -169,11 +192,8 @@ export class CredentialsService {
 				includeGlobal,
 				includeData,
 				onlySharedWithMe,
+				credentialIdsByExternalSecretsStore,
 			);
-		}
-
-		if (externalSecretsStore) {
-			credentials = this.filterByExternalSecretsStore(credentials, externalSecretsStore);
 		}
 
 		return await this.enrichCredentials(
@@ -187,41 +207,13 @@ export class CredentialsService {
 		);
 	}
 
-	private filterByExternalSecretsStore(
-		credentials: CredentialsEntity[],
-		externalSecretsStore: string,
-	): CredentialsEntity[] {
-		// matches either dot notation ($secrets.providerKey) or square bracket notation ($secrets['providerKey'])
-		const providerRegex = /\$secrets(?:\.([A-Za-z0-9_-]+)|\[['"]([^'"]+)['"]\])/g;
-		credentials = credentials.filter((credential) => {
-			const decryptedData = this.decrypt(credential, true);
-			const matchingSecretPaths = getAllKeyPaths(decryptedData, '', [], (value) => {
-				if (!value.includes('$secrets')) {
-					return false;
-				}
-
-				let match: RegExpExecArray | null;
-				while ((match = providerRegex.exec(value)) !== null) {
-					const providerKey = match[1] ?? match[2];
-					if (providerKey === externalSecretsStore) {
-						return true;
-					}
-				}
-
-				return false;
-			});
-
-			return matchingSecretPaths.length > 0;
-		});
-		return credentials;
-	}
-
 	private async getManyForAdminUser(
 		user: User,
 		listQueryOptions: ListQuery.Options & { includeData?: boolean },
 		includeGlobal: boolean,
 		includeData: boolean,
 		onlySharedWithMe: boolean,
+		credentialIds?: string[],
 	): Promise<CredentialsEntity[]> {
 		// If onlySharedWithMe is requested, use the subquery approach even for admin users
 		if (onlySharedWithMe) {
@@ -232,10 +224,15 @@ export class CredentialsService {
 				user,
 				sharingOptions,
 				listQueryOptions,
+				credentialIds,
 			);
 
 			if (includeGlobal) {
-				return await this.addGlobalCredentials(credentials, includeData);
+				return await this.addGlobalCredentials(
+					credentials,
+					includeData,
+					credentialIds ? new Set(credentialIds) : undefined,
+				);
 			}
 
 			return credentials;
@@ -243,10 +240,14 @@ export class CredentialsService {
 
 		await this.applyPersonalProjectFilter(listQueryOptions);
 
-		let credentials = await this.credentialsRepository.findMany(listQueryOptions);
+		let credentials = await this.credentialsRepository.findMany(listQueryOptions, credentialIds);
 
 		if (includeGlobal) {
-			credentials = await this.addGlobalCredentials(credentials, includeData);
+			credentials = await this.addGlobalCredentials(
+				credentials,
+				includeData,
+				credentialIds ? new Set(credentialIds) : undefined,
+			);
 		}
 
 		return credentials;
@@ -258,6 +259,7 @@ export class CredentialsService {
 		includeGlobal: boolean,
 		includeData: boolean,
 		onlySharedWithMe: boolean,
+		credentialIds?: string[],
 	): Promise<CredentialsEntity[]> {
 		let isPersonalProject = false;
 		let personalProjectOwnerId: string | null = null;
@@ -309,10 +311,15 @@ export class CredentialsService {
 			user,
 			sharingOptions,
 			listQueryOptions,
+			credentialIds,
 		);
 
 		if (includeGlobal) {
-			return await this.addGlobalCredentials(credentials, includeData);
+			return await this.addGlobalCredentials(
+				credentials,
+				includeData,
+				credentialIds ? new Set(credentialIds) : undefined,
+			);
 		}
 
 		return credentials;
@@ -655,15 +662,47 @@ export class CredentialsService {
 		}
 	}
 
-	async update(credentialId: string, newCredentialData: ICredentialsDb) {
+	async update(
+		credentialId: string,
+		newCredentialData: ICredentialsDb,
+		decryptedCredentialData?: ICredentialDataDecryptedObject,
+		projectId?: string,
+	) {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
+		const nextProviderIds = decryptedCredentialData
+			? await this.resolveProviderIdsFromCredentialData(decryptedCredentialData)
+			: undefined;
+		const nextVariableIds =
+			decryptedCredentialData && projectId
+				? await this.resolveVariableIdsFromCredentialData(decryptedCredentialData, projectId)
+				: undefined;
 
-		// Update the credentials in DB
-		await this.credentialsRepository.update(credentialId, newCredentialData);
+		return await this.credentialsRepository.manager.transaction(async (transactionManager) => {
+			// Update the credentials in DB
+			await transactionManager.update(CredentialsEntity, credentialId, newCredentialData);
 
-		// We sadly get nothing back from "update". Neither if it updated a record
-		// nor the new value. So query now the updated entry.
-		return await this.credentialsRepository.findOneBy({ id: credentialId });
+			if (nextProviderIds) {
+				await this.credentialDependencyRepository.syncDependenciesForCredential({
+					credentialId,
+					dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+					dependencyIds: nextProviderIds,
+					entityManager: transactionManager,
+				});
+			}
+
+			if (nextVariableIds) {
+				await this.credentialDependencyRepository.syncDependenciesForCredential({
+					credentialId,
+					dependencyType: VARIABLE_DEPENDENCY_TYPE,
+					dependencyIds: nextVariableIds,
+					entityManager: transactionManager,
+				});
+			}
+
+			// We sadly get nothing back from "update". Neither if it updated a record
+			// nor the new value. So query now the updated entry.
+			return await transactionManager.findOneBy(CredentialsEntity, { id: credentialId });
+		});
 	}
 
 	async save(
@@ -671,6 +710,7 @@ export class CredentialsService {
 		encryptedData: ICredentialsDb,
 		user: User,
 		projectId?: string,
+		decryptedData?: ICredentialDataDecryptedObject,
 	) {
 		// To avoid side effects
 		const newCredential = new CredentialsEntity();
@@ -714,6 +754,21 @@ export class CredentialsService {
 			});
 
 			await transactionManager.save<SharedCredentials>(newSharedCredential);
+
+			if (decryptedData) {
+				await this.credentialDependencyRepository.upsertDependenciesForCredential({
+					credentialId: savedCredential.id,
+					dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+					dependencyIds: await this.resolveProviderIdsFromCredentialData(decryptedData),
+					entityManager: transactionManager,
+				});
+				await this.credentialDependencyRepository.upsertDependenciesForCredential({
+					credentialId: savedCredential.id,
+					dependencyType: VARIABLE_DEPENDENCY_TYPE,
+					dependencyIds: await this.resolveVariableIdsFromCredentialData(decryptedData, project.id),
+					entityManager: transactionManager,
+				});
+			}
 
 			return savedCredential;
 		});
@@ -1142,10 +1197,41 @@ export class CredentialsService {
 			encryptedCredential,
 			user,
 			opts.projectId,
+			opts.data as ICredentialDataDecryptedObject,
 		);
 
 		const scopes = await this.getCredentialScopes(user, credential.id);
 
 		return { ...credential, scopes };
+	}
+
+	private async findCredentialIdsByExternalSecretsStore(
+		externalSecretsStoreProviderKey: string,
+	): Promise<string[]> {
+		const providerId = await this.secretsProviderConnectionRepository.findIdByProviderKey(
+			externalSecretsStoreProviderKey,
+		);
+
+		if (providerId === null) return [];
+
+		return await this.credentialDependencyRepository.findCredentialIdsByDependencyId(
+			EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+			providerId.toString(),
+		);
+	}
+
+	private async resolveProviderIdsFromCredentialData(
+		decryptedCredentialData: ICredentialDataDecryptedObject,
+	): Promise<string[]> {
+		const providerKeys = [...extractExternalSecretProviderKeys(decryptedCredentialData)];
+		return await this.secretsProviderConnectionRepository.findIdsByProviderKeys(providerKeys);
+	}
+
+	private async resolveVariableIdsFromCredentialData(
+		decryptedCredentialData: ICredentialDataDecryptedObject,
+		projectId: string,
+	): Promise<string[]> {
+		const variableKeys = [...extractVariableReferenceKeys(decryptedCredentialData)];
+		return await this.variablesRepository.findIdsByKeysForProject(variableKeys, projectId);
 	}
 }

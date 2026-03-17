@@ -1,11 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
+	CredentialDependencyRepository,
 	CredentialsEntity,
 	CredentialsRepository,
+	SecretsProviderConnectionRepository,
 	SharedCredentialsRepository,
 	ProjectRepository,
 	UserRepository,
 	User,
+	VariablesRepository,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -57,6 +60,9 @@ describe('CredentialsService', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const credentialTypes = mock<CredentialTypes>();
 	const credentialsRepository = mock<CredentialsRepository>();
+	const credentialDependencyRepository = mock<CredentialDependencyRepository>();
+	const secretsProviderConnectionRepository = mock<SecretsProviderConnectionRepository>();
+	const variablesRepository = mock<VariablesRepository>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const ownershipService = mock<OwnershipService>();
 	const logger = mock<Logger>();
@@ -73,6 +79,9 @@ describe('CredentialsService', () => {
 
 	const service = new CredentialsService(
 		credentialsRepository,
+		credentialDependencyRepository,
+		secretsProviderConnectionRepository,
+		variablesRepository,
 		sharedCredentialsRepository,
 		ownershipService,
 		logger,
@@ -92,6 +101,11 @@ describe('CredentialsService', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		credentialDependencyRepository.findCredentialIdsByDependencyId.mockResolvedValue([]);
+		secretsProviderConnectionRepository.findIdByProviderKey.mockResolvedValue(null);
+		secretsProviderConnectionRepository.findIdsByProviderKeys.mockResolvedValue([]);
+		variablesRepository.findIdsByKeysForProject.mockResolvedValue([]);
+		ownershipService.addOwnedByAndSharedWith.mockImplementation((credential: any) => credential);
 		// Mock the subquery method used by member users and admin users with onlySharedWithMe
 		credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
 			credentials: [],
@@ -639,6 +653,7 @@ describe('CredentialsService', () => {
 								projectId: 'personal-proj',
 							}),
 						}),
+						undefined,
 					);
 					expect(result).toHaveLength(1);
 				});
@@ -664,6 +679,7 @@ describe('CredentialsService', () => {
 								withRole: 'credential:owner',
 							}),
 						}),
+						undefined,
 					);
 				});
 
@@ -686,6 +702,7 @@ describe('CredentialsService', () => {
 								withRole: 'credential:owner',
 							}),
 						}),
+						undefined,
 					);
 				});
 			});
@@ -829,6 +846,7 @@ describe('CredentialsService', () => {
 						expect.objectContaining({
 							includeData: true,
 						}),
+						undefined,
 					);
 				});
 			});
@@ -957,6 +975,7 @@ describe('CredentialsService', () => {
 						credentialRoles: expect.any(Array),
 					}),
 					{},
+					undefined,
 				);
 			});
 
@@ -1137,6 +1156,7 @@ describe('CredentialsService', () => {
 						onlySharedWithMe: true,
 					}),
 					{},
+					undefined,
 				);
 				expect(sharedCredentialsRepository.getAllRelationsForCredentials).toHaveBeenCalledWith([
 					'cred-1',
@@ -1174,6 +1194,7 @@ describe('CredentialsService', () => {
 							type: 'apiKey',
 						}),
 					}),
+					undefined,
 				);
 			});
 		});
@@ -1312,34 +1333,83 @@ describe('CredentialsService', () => {
 		});
 
 		describe('with externalSecretsStore', () => {
-			const createCredentialWithEncryptedData = (id: string, apiKey: string) =>
-				mock<CredentialsEntity>({
-					id,
-					data: service.createEncryptedData({ ...regularCredential, data: { apiKey } }).data,
-				});
-
 			it('should filter credentials by external secrets store using dot notation', async () => {
 				// ARRANGE
-				const credentialWithExternalSecret1 = createCredentialWithEncryptedData(
-					'cred-with-external-secret-1',
-					'{{ $secrets.myProvider.apiKey }}',
+				ownershipService.addOwnedByAndSharedWith.mockImplementation(
+					(credential: any) => credential,
 				);
-				const credentialWithExternalSecret2 = createCredentialWithEncryptedData(
-					'cred-with-external-secret-2',
-					'{{ $secrets.anotherProvider.apiKey }}',
-				);
+				const credentialWithExternalSecret1 = {
+					id: 'cred-with-external-secret-1',
+					name: 'Credential with secret 1',
+					type: 'apiKey',
+					isGlobal: false,
+					shared: [],
+				} as Partial<CredentialsEntity> as CredentialsEntity;
+				const credentialWithExternalSecret2 = {
+					id: 'cred-with-external-secret-2',
+					name: 'Credential with secret 2',
+					type: 'apiKey',
+					isGlobal: false,
+					shared: [],
+				} as Partial<CredentialsEntity> as CredentialsEntity;
+				secretsProviderConnectionRepository.findIdByProviderKey.mockResolvedValue(123);
+				credentialDependencyRepository.findCredentialIdsByDependencyId.mockResolvedValue([
+					credentialWithExternalSecret1.id,
+				]);
 				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
-					credentials: [
-						regularCredential,
-						credentialWithExternalSecret1,
-						credentialWithExternalSecret2,
-					],
-					count: 3,
+					credentials: [credentialWithExternalSecret1],
+					count: 1,
 				});
 
 				// ACT
 				const result = await service.getMany(memberUser, {
 					externalSecretsStore: 'myProvider',
+					listQueryOptions: { select: { id: true } } as any,
+				});
+
+				// ASSERT
+				expect(result).toHaveLength(1);
+				expect(result[0].id).toBe(credentialWithExternalSecret1.id);
+				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+					memberUser,
+					expect.any(Object),
+					{ select: { id: true } },
+					[credentialWithExternalSecret1.id],
+				);
+			});
+
+			it('should filter credentials by external secrets store using square bracket notation', async () => {
+				// ARRANGE
+				ownershipService.addOwnedByAndSharedWith.mockImplementation(
+					(credential: any) => credential,
+				);
+				const credentialWithExternalSecret1 = {
+					id: 'cred-with-external-secret-1',
+					name: 'Credential with secret 1',
+					type: 'apiKey',
+					isGlobal: false,
+					shared: [],
+				} as Partial<CredentialsEntity> as CredentialsEntity;
+				const credentialWithExternalSecret2 = {
+					id: 'cred-with-external-secret-2',
+					name: 'Credential with secret 2',
+					type: 'apiKey',
+					isGlobal: false,
+					shared: [],
+				} as Partial<CredentialsEntity> as CredentialsEntity;
+				secretsProviderConnectionRepository.findIdByProviderKey.mockResolvedValue(123);
+				credentialDependencyRepository.findCredentialIdsByDependencyId.mockResolvedValue([
+					credentialWithExternalSecret1.id,
+				]);
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [credentialWithExternalSecret1],
+					count: 1,
+				});
+
+				// ACT
+				const result = await service.getMany(memberUser, {
+					externalSecretsStore: 'myProvider',
+					listQueryOptions: { select: { id: true } } as any,
 				});
 
 				// ASSERT
@@ -1347,33 +1417,15 @@ describe('CredentialsService', () => {
 				expect(result[0].id).toBe(credentialWithExternalSecret1.id);
 			});
 
-			it('should filter credentials by external secrets store using square bracket notation', async () => {
-				// ARRANGE
-				const credentialWithExternalSecret1 = createCredentialWithEncryptedData(
-					'cred-with-external-secret-1',
-					'{{ $secrets["myProvider"]["apiKey"] }}',
-				);
-				const credentialWithExternalSecret2 = createCredentialWithEncryptedData(
-					'cred-with-external-secret-2',
-					'{{ $secrets["anotherProvider"]["apiKey"] }}',
-				);
-				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
-					credentials: [
-						regularCredential,
-						credentialWithExternalSecret1,
-						credentialWithExternalSecret2,
-					],
-					count: 3,
-				});
+			it('should return early when no credential dependencies match the external secrets store', async () => {
+				secretsProviderConnectionRepository.findIdByProviderKey.mockResolvedValue(null);
 
-				// ACT
 				const result = await service.getMany(memberUser, {
 					externalSecretsStore: 'myProvider',
 				});
 
-				// ASSERT
-				expect(result).toHaveLength(1);
-				expect(result[0].id).toBe(credentialWithExternalSecret1.id);
+				expect(result).toEqual([]);
+				expect(credentialsRepository.getManyAndCountWithSharingSubquery).not.toHaveBeenCalled();
 			});
 		});
 	});
@@ -1834,6 +1886,35 @@ describe('CredentialsService', () => {
 
 				await service.createUnmanagedCredential(payload, ownerUser);
 			});
+
+			it('should persist variable dependencies referenced in credential expressions', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				variablesRepository.findIdsByKeysForProject.mockResolvedValue(['var-id']);
+
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $vars.MY_VAR }}',
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+				mockTransactionManager();
+
+				await service.createUnmanagedCredential(payload, ownerUser);
+
+				expect(credentialDependencyRepository.upsertDependenciesForCredential).toHaveBeenCalledWith(
+					expect.objectContaining({
+						credentialId: 'new-cred-id',
+						dependencyType: 'variable',
+						dependencyIds: ['var-id'],
+						entityManager: expect.any(Object),
+					}),
+				);
+			});
 		});
 	});
 
@@ -2016,6 +2097,39 @@ describe('CredentialsService', () => {
 
 				await service.prepareUpdateData(ownerUser, payload, existingCredential);
 			});
+		});
+	});
+
+	describe('update', () => {
+		it('should sync variable dependencies when updating credential data with $vars expression', async () => {
+			const txManager = {
+				update: jest.fn().mockResolvedValue(undefined),
+				findOneBy: jest.fn().mockResolvedValue({ id: 'cred-1' }),
+			};
+			// @ts-expect-error Mocking transaction manager
+			credentialsRepository.manager = {
+				transaction: jest.fn(async (cb) => await cb(txManager)),
+			};
+
+			externalHooks.run.mockResolvedValue(undefined);
+			secretsProviderConnectionRepository.findIdsByProviderKeys.mockResolvedValue([]);
+			variablesRepository.findIdsByKeysForProject.mockResolvedValue(['var-id']);
+
+			await service.update(
+				'cred-1',
+				{} as ICredentialsDb,
+				{ token: '={{ $vars.MY_VAR }}' } as ICredentialDataDecryptedObject,
+				'project-1',
+			);
+
+			expect(credentialDependencyRepository.syncDependenciesForCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					credentialId: 'cred-1',
+					dependencyType: 'variable',
+					dependencyIds: ['var-id'],
+					entityManager: expect.any(Object),
+				}),
+			);
 		});
 	});
 

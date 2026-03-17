@@ -5,9 +5,12 @@ jest.mock('@/generic-helpers', () => ({
 import type { LicenseState } from '@n8n/backend-common';
 import type {
 	AuthenticatedRequest,
+	CredentialDependencyRepository,
 	SharedCredentialsRepository,
 	CredentialsEntity,
 	CredentialsRepository,
+	SecretsProviderConnectionRepository,
+	VariablesRepository,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -35,6 +38,9 @@ describe('CredentialsController', () => {
 	// real CredentialsService instance with mocked dependencies
 	const credentialsService = new CredentialsService(
 		credentialsRepository,
+		mock<CredentialDependencyRepository>(),
+		mock<SecretsProviderConnectionRepository>(),
+		mock<VariablesRepository>(),
 		mock(), // sharedCredentialsRepository
 		mock(), // ownershipService
 		mock(), // logger
@@ -233,6 +239,8 @@ describe('CredentialsController', () => {
 				expect.objectContaining({
 					isGlobal: true,
 				}),
+				expect.any(Object),
+				expect.any(String),
 			);
 			expect(eventService.emit).toHaveBeenCalledWith('credentials-updated', {
 				user: ownerReq.user,
@@ -276,6 +284,8 @@ describe('CredentialsController', () => {
 				expect.objectContaining({
 					isGlobal: false,
 				}),
+				expect.any(Object),
+				expect.any(String),
 			);
 		});
 
@@ -363,6 +373,8 @@ describe('CredentialsController', () => {
 				expect.not.objectContaining({
 					isGlobal: expect.anything(),
 				}),
+				expect.any(Object),
+				expect.any(String),
 			);
 		});
 
@@ -411,6 +423,8 @@ describe('CredentialsController', () => {
 				expect.objectContaining({
 					isResolvable: true,
 				}),
+				expect.any(Object),
+				expect.any(String),
 			);
 		});
 
@@ -458,6 +472,8 @@ describe('CredentialsController', () => {
 				expect.objectContaining({
 					isResolvable: true, // Should keep the existing value
 				}),
+				expect.any(Object),
+				expect.any(String),
 			);
 		});
 

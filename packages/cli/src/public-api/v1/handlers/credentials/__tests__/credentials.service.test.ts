@@ -1,4 +1,12 @@
-import type { CredentialsEntity, Project, SharedCredentials, User } from '@n8n/db';
+import type {
+	CredentialDependencyRepository,
+	CredentialsEntity,
+	Project,
+	SecretsProviderConnectionRepository,
+	SharedCredentials,
+	User,
+	VariablesRepository,
+} from '@n8n/db';
 import { CredentialsRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -417,6 +425,9 @@ describe('CredentialsService', () => {
 
 		const credentialsService = new CredentialsService(
 			mock(), // credentialsRepository
+			mock<CredentialDependencyRepository>(),
+			mock<SecretsProviderConnectionRepository>(),
+			mock<VariablesRepository>(),
 			mock(), // sharedCredentialsRepository
 			mock(), // ownershipService
 			mock(), // logger

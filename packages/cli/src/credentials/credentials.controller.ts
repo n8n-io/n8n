@@ -239,6 +239,9 @@ export class CredentialsController {
 			req.body,
 			credential,
 		);
+		const projectOwningCredential = credential.shared.find(
+			(shared) => shared.role === 'credential:owner',
+		);
 		const newCredentialData = this.credentialsService.createEncryptedData({
 			id: credential.id,
 			name: preparedCredentialData.name,
@@ -263,7 +266,12 @@ export class CredentialsController {
 		}
 
 		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
-		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
+		const responseData = await this.credentialsService.update(
+			credentialId,
+			newCredentialData,
+			body.data ? (preparedCredentialData.data as ICredentialDataDecryptedObject) : undefined,
+			projectOwningCredential?.projectId,
+		);
 
 		if (responseData === null) {
 			throw new NotFoundError(`Credential ID "${credentialId}" could not be found to be updated.`);

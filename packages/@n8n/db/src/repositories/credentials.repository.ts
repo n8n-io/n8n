@@ -241,19 +241,30 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			includeData?: boolean;
 			order?: FindManyOptions<CredentialsEntity>['order'];
 		} = {},
+		credentialIds?: string[],
 	) {
-		const query = this.getManyQueryWithSharingSubquery(user, sharingOptions, options);
+		const query = this.getManyQueryWithSharingSubquery(
+			user,
+			sharingOptions,
+			options,
+			credentialIds,
+		);
 
 		// Get credentials with pagination
 		const credentials = await query.getMany();
 
 		// Build count query without pagination and relations
-		const countQuery = this.getManyQueryWithSharingSubquery(user, sharingOptions, {
-			...options,
-			take: undefined,
-			skip: undefined,
-			select: undefined,
-		});
+		const countQuery = this.getManyQueryWithSharingSubquery(
+			user,
+			sharingOptions,
+			{
+				...options,
+				take: undefined,
+				skip: undefined,
+				select: undefined,
+			},
+			credentialIds,
+		);
 
 		// Remove relations and select for count
 		const count = await countQuery.select('credential.id').getCount();
@@ -278,8 +289,17 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			includeData?: boolean;
 			order?: FindManyOptions<CredentialsEntity>['order'];
 		} = {},
+		credentialIds?: string[],
 	): SelectQueryBuilder<CredentialsEntity> {
 		const qb = this.createQueryBuilder('credential');
+
+		if (credentialIds) {
+			if (credentialIds.length === 0) {
+				qb.andWhere('1 = 0');
+			} else {
+				qb.andWhere('credential.id IN (:...credentialIds)', { credentialIds });
+			}
+		}
 
 		// Pass projectId from options to sharing options
 		const projectId =
