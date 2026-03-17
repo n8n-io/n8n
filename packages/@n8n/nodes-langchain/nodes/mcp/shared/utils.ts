@@ -142,7 +142,7 @@ export async function connectMcpClient({
 					await authFetch(url, {
 						...init,
 						headers: {
-							...init?.headers,
+							...headersToRecord(init?.headers),
 							Accept: 'text/event-stream',
 						},
 					}),
