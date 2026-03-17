@@ -161,12 +161,13 @@ const onCredentialSelected = (updateInfo: INodeUpdatePropertiesInformation) => {
 };
 
 const onValueChanged = (parameterData: IUpdateInformation) => {
+	const paramName = parameterData.name.replace(/^parameters\./, '');
 	workflowState.updateNodeProperties({
 		name: props.state.node.name,
 		properties: {
 			parameters: {
 				...props.state.node.parameters,
-				[parameterData.name]: parameterData.value,
+				[paramName]: parameterData.value,
 			},
 		},
 	});
@@ -263,6 +264,7 @@ watch(isActive, (active, wasActive) => {
 				:remove-first-parameter-margin="true"
 				:node="state.node"
 				:hide-delete="true"
+				path="parameters"
 				:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
 				@value-changed="onValueChanged"
 			/>
