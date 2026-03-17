@@ -1174,6 +1174,7 @@ export class Databricks implements INodeType {
 							success: true,
 							message: `File uploaded successfully to ${filePath}`,
 						},
+						pairedItem: { item: i },
 					});
 				} else if (resource === 'files' && operation === 'downloadFile') {
 					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
@@ -1510,7 +1511,7 @@ export class Databricks implements INodeType {
 						},
 					);
 
-					returnData.push({ json: response });
+					returnData.push({ json: response, pairedItem: { item: i } });
 				} else if (resource === 'databricksSql' && operation === 'executeQuery') {
 					const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
 					const host = credentials.host.replace(/\/$/, '');
@@ -2201,6 +2202,7 @@ export class Databricks implements INodeType {
 								error: `API Error: ${error.response.status} ${error.response.statusText}`,
 								details: error.response.data,
 							},
+							pairedItem: { item: i },
 						});
 					} else {
 						const detail = error.response.data ? ` – ${JSON.stringify(error.response.data)}` : '';
@@ -2217,6 +2219,7 @@ export class Databricks implements INodeType {
 								error: 'Network Error: No response received from server',
 								details: error.message,
 							},
+							pairedItem: { item: i },
 						});
 					} else {
 						throw new NodeOperationError(
@@ -2232,6 +2235,7 @@ export class Databricks implements INodeType {
 								error: error.message,
 								details: error.stack,
 							},
+							pairedItem: { item: i },
 						});
 					} else {
 						throw error;
