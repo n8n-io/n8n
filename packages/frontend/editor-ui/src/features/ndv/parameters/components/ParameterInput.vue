@@ -758,16 +758,20 @@ async function loadRemoteParameterOptions() {
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
+			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters;
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
 		const loadOptions = getTypeOption('loadOptions');
 
+		const optionsPath = props.path.startsWith('parameters.')
+			? props.path
+			: `parameters.${props.path}`;
 		const options = await nodeTypesStore.getNodeParameterOptions({
 			nodeTypeAndVersion: {
 				name: node.value.type,
 				version: node.value.typeVersion,
 			},
-			path: props.path,
+			path: optionsPath,
 			methodName: loadOptionsMethod,
 			loadOptions,
 			currentNodeParameters: resolvedNodeParameters,
