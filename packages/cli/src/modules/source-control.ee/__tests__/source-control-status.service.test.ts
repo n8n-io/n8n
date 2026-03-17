@@ -959,21 +959,22 @@ describe('getStatus', () => {
 					],
 				});
 
-				folderRepository.find
-					.mockResolvedValueOnce([
-						{
-							id: 'local-child',
-							name: 'Local Child',
-							parentFolder: { id: 'local-parent' },
-						} as any,
-					])
-					.mockResolvedValueOnce([
-						{
-							id: 'local-parent',
-							name: 'Local Parent',
-							parentFolder: null,
-						} as any,
-					]);
+				const folderData = new Map([
+					[
+						'local-child',
+						{ id: 'local-child', name: 'Local Child', parentFolder: { id: 'local-parent' } },
+					],
+					['local-parent', { id: 'local-parent', name: 'Local Parent', parentFolder: null }],
+				]);
+				folderRepository.find.mockImplementation(async (options: any) => {
+					// populateMissingLocalFolderPathNodes calls with where.id (In(...))
+					if (options?.where?.id?._value) {
+						const ids = options.where.id._value as string[];
+						return ids.map((id: string) => folderData.get(id)).filter(Boolean) as any;
+					}
+					// Default: return empty for other calls (lastUpdatedFolder, etc.)
+					return [];
+				});
 
 				const result = await sourceControlStatusService.getStatus(user, {
 					direction: 'push',

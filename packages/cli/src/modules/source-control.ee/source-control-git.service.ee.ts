@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { execSync } from 'child_process';
 import { UnexpectedError } from 'n8n-workflow';
 import * as path from 'path';
@@ -27,6 +28,8 @@ import {
 import { sourceControlFoldersExistCheck } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { SourceControlPreferences } from './types/source-control-preferences';
+
+const tracer = trace.getTracer('source-control-git');
 
 /**
  * Service for interacting with locally cloned git repositories.
@@ -404,23 +407,41 @@ export class SourceControlGitService {
 	}
 
 	async fetch(): Promise<FetchResult> {
-		if (!this.git) {
-			throw new UnexpectedError('Git is not initialized (fetch)');
-		}
-		await this.setGitCommand();
-		return await this.git.fetch();
+		return tracer.startActiveSpan('GitService.fetch', async (span) => {
+			try {
+				if (!this.git) {
+					throw new UnexpectedError('Git is not initialized (fetch)');
+				}
+				await this.setGitCommand();
+				return await this.git.fetch();
+			} catch (e) {
+				span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+				throw e;
+			} finally {
+				span.end();
+			}
+		});
 	}
 
 	async pull(options: { ffOnly: boolean } = { ffOnly: true }): Promise<PullResult> {
-		if (!this.git) {
-			throw new UnexpectedError('Git is not initialized (pull)');
-		}
-		await this.setGitCommand();
-		const params = {};
-		if (options.ffOnly) {
-			Object.assign(params, { '--ff-only': true });
-		}
-		return await this.git.pull(params);
+		return tracer.startActiveSpan('GitService.pull', async (span) => {
+			try {
+				if (!this.git) {
+					throw new UnexpectedError('Git is not initialized (pull)');
+				}
+				await this.setGitCommand();
+				const params = {};
+				if (options.ffOnly) {
+					Object.assign(params, { '--ff-only': true });
+				}
+				return await this.git.pull(params);
+			} catch (e) {
+				span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+				throw e;
+			} finally {
+				span.end();
+			}
+		});
 	}
 
 	async push(
@@ -457,15 +478,22 @@ export class SourceControlGitService {
 	async resetBranch(
 		options: { hard: boolean; target: string } = { hard: true, target: 'HEAD' },
 	): Promise<string> {
-		if (!this.git) {
-			throw new UnexpectedError('Git is not initialized (Promise)');
-		}
-		if (options?.hard) {
-			return await this.git.raw(['reset', '--hard', options.target]);
-		}
-		return await this.git.raw(['reset', options.target]);
-		// built-in reset method does not work
-		// return this.git.reset();
+		return tracer.startActiveSpan('GitService.resetBranch', async (span) => {
+			try {
+				if (!this.git) {
+					throw new UnexpectedError('Git is not initialized (Promise)');
+				}
+				if (options?.hard) {
+					return await this.git.raw(['reset', '--hard', options.target]);
+				}
+				return await this.git.raw(['reset', options.target]);
+			} catch (e) {
+				span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+				throw e;
+			} finally {
+				span.end();
+			}
+		});
 	}
 
 	async commit(message: string): Promise<CommitResult> {
@@ -483,19 +511,80 @@ export class SourceControlGitService {
 		return statusResult;
 	}
 
+	/**
+	 * Returns the remote ref string (e.g. `origin/main`) for the current branch.
+	 */
+	getRemoteRef(): string {
+		return `${SOURCE_CONTROL_ORIGIN}/${this.sourceControlPreferencesService.getBranchName()}`;
+	}
+
+	/**
+	 * Lists files in a directory from a specific git ref using `git ls-tree`.
+	 * Does not require files to be materialized on disk.
+	 */
+	async listRemoteFiles(directory: string, ref: string): Promise<string[]> {
+		return tracer.startActiveSpan(
+			'GitService.listRemoteFiles',
+			{ attributes: { 'git.directory': directory, 'git.ref': ref } },
+			async (span) => {
+				try {
+					if (!this.git) {
+						throw new UnexpectedError('Git is not initialized (listRemoteFiles)');
+					}
+					const output = await this.git.raw(['ls-tree', '--name-only', ref, `${directory}/`]);
+					const files = output
+						.trim()
+						.split('\n')
+						.filter((line) => line.length > 0)
+						.map((line) => {
+							const parts = line.split('/');
+							return parts[parts.length - 1];
+						});
+					span.setAttribute('git.fileCount', files.length);
+					return files;
+				} catch (error) {
+					if (
+						error instanceof Error &&
+						(error.message.includes('Not a valid object name') ||
+							error.message.includes('not a tree object'))
+					) {
+						span.setAttribute('git.fileCount', 0);
+						return [];
+					}
+					span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
+					throw new UnexpectedError(
+						`Could not list files in ${directory} at ${ref}: ${(error as Error)?.message}`,
+						{ cause: error },
+					);
+				} finally {
+					span.end();
+				}
+			},
+		);
+	}
+
 	async getFileContent(filePath: string, commit: string = 'HEAD'): Promise<string> {
-		if (!this.git) {
-			throw new UnexpectedError('Git is not initialized (getFileContent)');
-		}
-		try {
-			const content = await this.git.show([`${commit}:${filePath}`]);
-			return content;
-		} catch (error) {
-			this.logger.error('Failed to get file content', { filePath, error });
-			throw new UnexpectedError(
-				`Could not get content for file: ${filePath}: ${(error as Error)?.message}`,
-				{ cause: error },
-			);
-		}
+		return tracer.startActiveSpan(
+			'GitService.getFileContent',
+			{ attributes: { 'git.filePath': filePath, 'git.commit': commit } },
+			async (span) => {
+				try {
+					if (!this.git) {
+						throw new UnexpectedError('Git is not initialized (getFileContent)');
+					}
+					const content = await this.git.show([`${commit}:${filePath}`]);
+					return content;
+				} catch (error) {
+					span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
+					this.logger.error('Failed to get file content', { filePath, error });
+					throw new UnexpectedError(
+						`Could not get content for file: ${filePath}: ${(error as Error)?.message}`,
+						{ cause: error },
+					);
+				} finally {
+					span.end();
+				}
+			},
+		);
 	}
 }
