@@ -75,7 +75,12 @@ import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
 // Imported for side effects: sets axios defaults and registers the request interceptor
 import './request-helpers/axios-config';
-import { buildTargetUrl, getUrlFromProxyConfig, setAxiosAgents } from './request-helpers/utils';
+import {
+	buildTargetUrl,
+	getUrlFromProxyConfig,
+	setAxiosAgents,
+	tryParseUrl,
+} from './request-helpers/utils';
 
 function validateUrl(url?: string): boolean {
 	if (!url) return false;
@@ -805,14 +810,6 @@ export function convertN8nRequestToAxios(
 	}
 
 	return axiosRequest;
-}
-
-function tryParseUrl(url: string): URL | null {
-	try {
-		return new URL(url);
-	} catch {
-		return null;
-	}
 }
 
 /** Validates a URL against SSRF protection rules. Throws UserError if blocked. */

@@ -5,13 +5,12 @@ import type { IHttpRequestOptions } from 'n8n-workflow';
 import type { SsrfBridge } from '@/execution-engine';
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 
-function isValidUrl(url?: string): boolean {
-	if (!url) return false;
+/** Attempts to parse a string as a URL. Returns the parsed `URL` or `null` on failure. */
+export function tryParseUrl(url: string): URL | null {
 	try {
-		new URL(url);
-		return true;
+		return new URL(url);
 	} catch {
-		return false;
+		return null;
 	}
 }
 
@@ -20,7 +19,8 @@ export function getUrlFromProxyConfig(
 	proxyConfig: IHttpRequestOptions['proxy'] | string,
 ): string | null {
 	if (typeof proxyConfig === 'string') {
-		return isValidUrl(proxyConfig) ? proxyConfig : null;
+		const isValidUrl = !!tryParseUrl(proxyConfig);
+		return isValidUrl ? proxyConfig : null;
 	}
 
 	if (!proxyConfig?.host) return null;

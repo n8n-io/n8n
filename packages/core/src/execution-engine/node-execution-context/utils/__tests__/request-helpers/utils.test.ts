@@ -2,12 +2,33 @@ import type { AxiosRequestConfig } from 'axios';
 
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 
-import { buildTargetUrl, getUrlFromProxyConfig, setAxiosAgents } from '../../request-helpers/utils';
+import {
+	buildTargetUrl,
+	getUrlFromProxyConfig,
+	setAxiosAgents,
+	tryParseUrl,
+} from '../../request-helpers/utils';
 
 jest.mock('@/http-proxy', () => ({
 	createHttpProxyAgent: jest.fn().mockReturnValue('http-agent'),
 	createHttpsProxyAgent: jest.fn().mockReturnValue('https-agent'),
 }));
+
+describe('tryParseUrl', () => {
+	it('should return URL object for valid URL', () => {
+		const result = tryParseUrl('https://example.com/path');
+		expect(result).toBeInstanceOf(URL);
+		expect(result?.href).toBe('https://example.com/path');
+	});
+
+	it('should return null for invalid URL', () => {
+		expect(tryParseUrl('not-a-url')).toBeNull();
+	});
+
+	it('should return null for empty string', () => {
+		expect(tryParseUrl('')).toBeNull();
+	});
+});
 
 describe('getUrlFromProxyConfig', () => {
 	it('should return valid string proxy as-is', () => {
