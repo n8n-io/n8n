@@ -10,7 +10,6 @@ import {
 	flattenModel,
 	isLlmProvider,
 	unflattenModel,
-	isWaitingForApproval,
 } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
@@ -27,23 +26,14 @@ import {
 	type ChatHubLLMProvider,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubConversationModel,
-	type ChatMessageId,
 	type ChatHubSendMessageRequest,
 	type ChatModelDto,
 	chatHubConversationModelSchema,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nResizeWrapper, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useElementSize, useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
+import { useElementSize, useLocalStorage, useMediaQuery } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import {
-	computed,
-	nextTick,
-	onBeforeMount,
-	onBeforeUnmount,
-	ref,
-	useTemplateRef,
-	watch,
-} from 'vue';
+import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -55,7 +45,6 @@ import {
 	type ChatHubConversationModelWithCachedDisplayName,
 	chatHubConversationModelWithCachedDisplayNameSchema,
 	type ChatMessage as ChatMessageType,
-	type MessagingState,
 } from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
@@ -64,7 +53,7 @@ import { hasRole } from '@/app/utils/rbac/checks';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import ChatGreetings from './components/ChatGreetings.vue';
-import { useChatPushHandler } from './composables/useChatPushHandler';
+import { useChatSession } from './composables/useChatSession';
 import ChatArtifactViewer from './components/ChatArtifactViewer.vue';
 import DynamicCredentialsDrawer from './components/DynamicCredentialsDrawer.vue';
 import { useChatArtifacts } from './composables/useChatArtifacts';
@@ -84,16 +73,8 @@ const uiStore = useUIStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
-// Initialize WebSocket push handler for chat streaming
-const chatPushHandler = useChatPushHandler();
-
 onBeforeMount(async () => {
-	chatPushHandler.initialize();
 	await chatStore.fetchConfiguredTools();
-});
-
-onBeforeUnmount(() => {
-	chatPushHandler.terminate();
 });
 
 const headerRef = useTemplateRef('headerRef');
@@ -110,10 +91,8 @@ const { userCanClaimOpenAiCredits, aiCreditsQuota, claimCredits } = useFreeAiCre
 const sessionId = computed<string>(() =>
 	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
 );
-const isResponding = computed(() => chatStore.isResponding(sessionId.value));
-const isNewSession = computed(() => sessionId.value !== route.params.id);
-const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
-const scrollContainerSize = useElementSize(scrollContainerRef);
+const isNewSessionOverride = computed(() => sessionId.value !== route.params.id);
+const shouldSkipNextScrollTrigger = ref(false);
 const currentConversation = computed(() =>
 	sessionId.value ? chatStore.sessions.byId[sessionId.value] : undefined,
 );
@@ -145,11 +124,6 @@ const showWelcomeScreen = computed<boolean | undefined>(() => {
 	);
 });
 
-const { arrivedState, measure } = useScroll(scrollContainerRef, {
-	throttle: 100,
-	offset: { bottom: 100 },
-});
-
 const defaultModel = useLocalStorage<ChatHubConversationModelWithCachedDisplayName | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
@@ -173,15 +147,13 @@ const defaultAgent = computed(() =>
 	defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined,
 );
 
-const shouldSkipNextScrollTrigger = ref(false);
-
 const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
 	const workflowId = route.query.workflowId;
 	const provider = route.query.provider;
 	const model = route.query.model;
 
-	if (!isNewSession.value) {
+	if (!isNewSessionOverride.value) {
 		return null;
 	}
 
@@ -208,7 +180,7 @@ const modelFromQuery = computed<ChatModelDto | null>(() => {
 });
 
 const selectedModel = computed<ChatModelDto | null>(() => {
-	if (!isNewSession.value) {
+	if (!isNewSessionOverride.value) {
 		const model = currentConversation.value ? unflattenModel(currentConversation.value) : null;
 
 		if (!model) {
@@ -292,11 +264,6 @@ watch(
 	},
 );
 
-const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
-const artifacts = useChatArtifacts(chatLayoutElement, chatMessages);
-
-const isMainPanelNarrow = computed(() => scrollContainerSize.width.value < 600);
-
 const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['credentials'] | null>(
 	() => {
 		const provider = selectedModel.value?.model.provider;
@@ -324,30 +291,48 @@ const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['crede
 	},
 );
 const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvider.value);
-const messagingState = computed<MessagingState>(() => {
-	if (chatStore.streaming?.sessionId === sessionId.value) {
-		return chatStore.streaming.messageId ? 'receiving' : 'waitingFirstChunk';
-	}
 
-	// Check if waiting for approval (button click)
-	if (isWaitingForApproval(chatStore.lastMessage(sessionId.value))) {
-		return 'waitingForApproval';
-	}
+const {
+	chatMessages,
+	isResponding,
+	isNewSession,
+	messagingState,
+	scrollContainerRef,
+	arrivedState,
+	scrollToBottom,
+	loadSession,
+} = useChatSession({
+	sessionId,
+	scrollableRef,
+	isNewSession: isNewSessionOverride,
+	extendMessagingState: () => {
+		if (chatStore.agentsReady && !selectedModel.value) {
+			return 'missingAgent';
+		}
 
-	if (chatStore.agentsReady && !selectedModel.value) {
-		return 'missingAgent';
-	}
+		if (chatStore.agentsReady && isMissingSelectedCredential.value) {
+			return 'missingCredentials';
+		}
 
-	if (chatStore.agentsReady && isMissingSelectedCredential.value) {
-		return 'missingCredentials';
-	}
+		if (dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value) {
+			return 'missingDynamicCredentials';
+		}
 
-	if (dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value) {
-		return 'missingDynamicCredentials';
-	}
-
-	return 'idle';
+		return null;
+	},
+	shouldSkipScroll: () => {
+		if (shouldSkipNextScrollTrigger.value) {
+			shouldSkipNextScrollTrigger.value = false;
+			return true;
+		}
+		return false;
+	},
 });
+
+const scrollContainerSize = useElementSize(scrollContainerRef);
+const artifacts = useChatArtifacts(chatLayoutElement, chatMessages);
+
+const isMainPanelNarrow = computed(() => scrollContainerSize.width.value < 600);
 
 const editingMessageId = ref<string>();
 const messageElementsRef = useTemplateRef('messages');
@@ -374,46 +359,6 @@ useChatInputFocus(inputRef, {
 	disabled: computed(() => showWelcomeScreen.value === true || messagingState.value !== 'idle'),
 });
 
-function scrollToBottom(smooth: boolean) {
-	scrollContainerRef.value?.scrollTo({
-		top: scrollableRef.value?.scrollHeight,
-		behavior: smooth ? 'smooth' : 'instant',
-	});
-}
-
-function scrollToMessage(messageId: ChatMessageId) {
-	scrollableRef.value?.querySelector(`[data-message-id="${messageId}"]`)?.scrollIntoView({
-		behavior: 'smooth',
-	});
-}
-
-// Scroll to the bottom when a new message is added
-watch(
-	() => chatMessages.value[chatMessages.value.length - 1]?.id,
-	(lastMessageId) => {
-		if (!lastMessageId) {
-			return;
-		}
-
-		if (shouldSkipNextScrollTrigger.value) {
-			shouldSkipNextScrollTrigger.value = false;
-			return;
-		}
-
-		// Prevent "scroll to bottom" button from appearing when not necessary
-		void nextTick(measure);
-
-		if (chatStore.streaming?.sessionId === sessionId.value) {
-			// Scroll to user's prompt when the message is being generated
-			scrollToMessage(chatStore.streaming.promptId);
-			return;
-		}
-
-		scrollToBottom(false);
-	},
-	{ immediate: true, flush: 'post' },
-);
-
 // Preselect a model
 watch(
 	() => chatStore.agents,
@@ -438,21 +383,9 @@ watch(
 		didSubmitInCurrentSession.value = false;
 		editingMessageId.value = undefined;
 
-		if (!isNew && !chatStore.getConversation(id)) {
+		if (!isNew) {
 			try {
-				await chatStore.fetchMessages(id);
-
-				// Check for active stream after loading messages (handles page refresh during streaming)
-				const reconnectResult = await chatStore.reconnectToStream(id, 0);
-				if (reconnectResult?.hasActiveStream && reconnectResult.currentMessageId) {
-					// Initialize push handler to receive future chunks
-					chatPushHandler.initializeStreamState(
-						id,
-						reconnectResult.currentMessageId,
-						reconnectResult.lastSequenceNumber,
-					);
-					// Pending chunks are already replayed by reconnectToStream()
-				}
+				await loadSession(id);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('chatHub.error.fetchConversationFailed'));
 				await router.push({ name: CHAT_VIEW });
@@ -712,7 +645,6 @@ function handleSelectPrompt(prompt: string) {
 	if (selectedModel.value) {
 		telemetry.track('User clicked chat hub suggested prompt', {
 			...flattenModel(selectedModel.value.model),
-			prompt_text: prompt,
 		});
 	}
 

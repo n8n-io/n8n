@@ -260,6 +260,7 @@ export class WorkflowExecutionService {
 		httpResponse?: Response,
 		streamingEnabled?: boolean,
 		executionMode: WorkflowExecuteMode = 'chat',
+		pushRef?: string,
 	) {
 		const data: IWorkflowExecutionDataProcess = {
 			userId: user.id,
@@ -268,6 +269,7 @@ export class WorkflowExecutionService {
 			executionData,
 			streamingEnabled,
 			httpResponse,
+			pushRef,
 		};
 
 		const executionId = await this.workflowRunner.run(data, undefined, true);
