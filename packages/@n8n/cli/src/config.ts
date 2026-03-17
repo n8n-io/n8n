@@ -32,12 +32,14 @@ export function writeConfig(config: CliConfig): void {
 	});
 }
 
-/** Resolve the n8n instance URL from flag > env > config file */
-export function resolveUrl(flag?: string): string | undefined {
-	return flag ?? process.env.N8N_URL ?? readConfig().url;
-}
-
-/** Resolve the API key from flag > env > config file */
-export function resolveApiKey(flag?: string): string | undefined {
-	return flag ?? process.env.N8N_API_KEY ?? readConfig().apiKey;
+/** Resolve URL and API key from flags > env > config file */
+export function resolveConnection(flags: {
+	url?: string;
+	apiKey?: string;
+}): { url?: string; apiKey?: string } {
+	const config = flags.url && flags.apiKey ? {} : readConfig();
+	return {
+		url: flags.url ?? process.env.N8N_URL ?? config.url,
+		apiKey: flags.apiKey ?? process.env.N8N_API_KEY ?? config.apiKey,
+	};
 }

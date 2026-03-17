@@ -2,7 +2,7 @@ import { Command, Flags } from '@oclif/core';
 import * as fs from 'node:fs';
 
 import { N8nClient, ApiError } from './client';
-import { resolveUrl, resolveApiKey } from './config';
+import { resolveConnection } from './config';
 import { formatOutput, applyJqFilter, type OutputFormat, type OutputOptions } from './output';
 
 /** Exit codes following the RFC spec. */
@@ -68,8 +68,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected getClient(flags: { url?: string; apiKey?: string; debug?: boolean }): N8nClient {
-		const url = resolveUrl(flags.url);
-		const apiKey = resolveApiKey(flags.apiKey);
+		const { url, apiKey } = resolveConnection(flags);
 
 		if (!url) {
 			this.error(
