@@ -11,7 +11,13 @@ const fallbackStorage: Storage = {
 };
 
 function getSafeStorage(): Storage {
-	const storage = globalThis.localStorage;
+	let storage: Storage | undefined;
+	try {
+		storage = globalThis.localStorage;
+	} catch {
+		return fallbackStorage;
+	}
+
 	if (
 		storage &&
 		typeof storage.getItem === 'function' &&

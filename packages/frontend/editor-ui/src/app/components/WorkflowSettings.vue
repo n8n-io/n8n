@@ -695,7 +695,14 @@ const onExecutionLogicModeChange = (value: string) => {
 };
 
 const addViewerInputField = () => {
-	const index = viewerInputFields.value.length + 1;
+	const index =
+		Math.max(
+			0,
+			...viewerInputFields.value.map((field) => {
+				const match = /^input_(\d+)$/.exec(field.key);
+				return match ? Number(match[1]) : 0;
+			}),
+		) + 1;
 	viewerInputFields.value.push({
 		key: `input_${index}`,
 		label: `Input ${index}`,
