@@ -188,7 +188,7 @@ export const vectorSearchParameters: INodeProperties[] = [
 				description: 'Pure vector similarity search',
 			},
 		],
-		default: 'HYBRID',
+		default: 'ANN',
 		description: 'Search algorithm to use',
 	},
 	{
