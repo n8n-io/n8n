@@ -4342,7 +4342,6 @@
 	"projects.settings.externalSecrets.expand": "Expand external secrets vault",
 	"projects.settings.externalSecrets.collapse": "Collapse external secrets vault",
 	"projects.sharing.allUsers": "All users and projects",
-	"projects.sharing.moreResults": "Showing {shown} of {total}. Search to narrow down.",
 	"projects.sharing.noMatchingProjects": "There are no available projects",
 	"projects.sharing.moreResults": "{count} more results — refine your search",
 	"projects.sharing.noMatchingUsers": "No matching users or projects",
