@@ -52,17 +52,6 @@ export const filesOperations: INodeProperties = {
 			value: 'uploadFile',
 			description: 'Upload a file (up to 5 GiB) to Databricks volumes',
 			action: 'Upload a file',
-			routing: {
-				request: {
-					method: 'PUT',
-					url: '=/api/2.0/fs/files/Volumes/{{$parameter.catalog}}/{{$parameter.schema}}/{{$parameter.volume}}/{{$parameter.path}}',
-					body: '={{$binary[$parameter.dataFieldName].data}}',
-					headers: {
-						'Content-Type': 'application/octet-stream',
-					},
-					encoding: 'arraybuffer',
-				},
-			},
 		},
 	],
 	default: 'listDirectory',
