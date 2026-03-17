@@ -483,6 +483,35 @@ export class SourceControlGitService {
 		return statusResult;
 	}
 
+	/**
+	 * Returns all file paths that have ever been committed under the given directory.
+	 * Useful for determining whether a resource was previously synced via source control.
+	 */
+	async getHistoricallyTrackedFiles(directory: string): Promise<Set<string>> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (getHistoricallyTrackedFiles)');
+		}
+		try {
+			const output = await this.git.raw([
+				'log',
+				'--all',
+				'--pretty=format:',
+				'--name-only',
+				'--',
+				`${directory}/`,
+			]);
+			const files = new Set(
+				output
+					.split('\n')
+					.map((line) => line.trim())
+					.filter((line) => line.length > 0),
+			);
+			return files;
+		} catch {
+			return new Set();
+		}
+	}
+
 	async getFileContent(filePath: string, commit: string = 'HEAD'): Promise<string> {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (getFileContent)');

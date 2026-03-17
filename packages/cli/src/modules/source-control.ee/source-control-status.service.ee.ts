@@ -704,19 +704,17 @@ export class SourceControlStatusService {
 		const remoteById = new Map(dataTablesRemote.map((dt) => [dt.id, dt]));
 		const remoteByName = new Map(dataTablesRemote.map((dt) => [dt.name, dt]));
 
-		// Build sets of project IDs represented on each side.
-		// Tables whose project has no counterpart on the other side were never synced
-		// and should not be marked as "deleted" in either direction.
-		const remoteProjectIds = new Set<string>();
-		for (const dt of dataTablesRemote) {
-			if (dt.ownedBy?.type === 'team') {
-				remoteProjectIds.add(dt.ownedBy.teamId);
-			}
-		}
-		const localProjectIds = new Set<string>();
-		for (const dt of dataTablesLocal) {
-			if (dt.ownedBy?.type === 'team') {
-				localProjectIds.add(dt.ownedBy.projectId);
+		// Query git history to find data table IDs that were previously synced.
+		// This lets us distinguish "deleted from remote" (should delete locally on pull)
+		// from "never pushed" (should preserve locally on pull), and vice versa for push.
+		const historicallyTrackedFiles = await this.gitService.getHistoricallyTrackedFiles(
+			SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
+		);
+		const previouslySyncedIds = new Set<string>();
+		for (const filePath of historicallyTrackedFiles) {
+			const match = filePath.match(/([^/]+)\.json$/);
+			if (match) {
+				previouslySyncedIds.add(match[1]);
 			}
 		}
 
@@ -727,13 +725,10 @@ export class SourceControlStatusService {
 		for (const remote of dataTablesRemote) {
 			if (!localById.has(remote.id)) {
 				// During push, a remote-only table would be marked as "deleted" from remote.
-				// Skip if the remote table's project has no local representation — it was
-				// never synced to this instance and should not be deleted.
-				if (options.direction === 'push') {
-					const remoteTeamId = remote.ownedBy?.type === 'team' ? remote.ownedBy.teamId : null;
-					if (remoteTeamId && !localProjectIds.has(remoteTeamId)) {
-						continue;
-					}
+				// Skip if this table was never synced from this instance (it was pushed by
+				// another instance and should not be deleted).
+				if (options.direction === 'push' && !previouslySyncedIds.has(remote.id)) {
+					continue;
 				}
 
 				if (collectVerbose) {
@@ -758,13 +753,10 @@ export class SourceControlStatusService {
 
 			if (!remote) {
 				// During pull, a local-only table would be marked as "deleted" locally.
-				// Skip if the local table's project has no remote representation — it was
-				// never synced and should not be deleted.
-				if (options.direction === 'pull') {
-					const localTeamId = local.ownedBy?.type === 'team' ? local.ownedBy.projectId : null;
-					if (localTeamId && !remoteProjectIds.has(localTeamId)) {
-						continue;
-					}
+				// Skip if this table was never synced — it was created locally and not yet
+				// pushed, so it should not be deleted.
+				if (options.direction === 'pull' && !previouslySyncedIds.has(local.id)) {
+					continue;
 				}
 
 				if (collectVerbose) {
