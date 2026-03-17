@@ -19,7 +19,7 @@ export interface DaemonOptions {
 	 * Called before a new connection. Return false to reject with HTTP 403.
 	 * If omitted, falls back to a CLI readline prompt.
 	 */
-	confirmConnect?: (url: string) => Promise<boolean>;
+	confirmConnect?: (url: string) => Promise<boolean> | boolean;
 	/** Called after connect/disconnect for status propagation (e.g. Electron tray). */
 	onStatusChange?: (status: 'connected' | 'disconnected', url?: string) => void;
 	/**
