@@ -3,6 +3,23 @@ import type { IWorkflowBase } from 'n8n-workflow';
 
 import type { ApiHelpers } from '../../services/api-helper';
 
+// --- Benchmark dimensions ---
+
+/**
+ * Structured dimensions attached to every benchmark metric.
+ * Stored as JSON in BigQuery — enables slicing by node count, payload, mode, etc.
+ * without encoding config into the metric name.
+ */
+export type BenchmarkDimensions = Record<string, string | number>;
+
+/** Known trigger types. Must be set explicitly — no default to avoid silently wrong data. */
+export type TriggerType = 'kafka' | 'webhook';
+
+/** Load profile for steady-rate or preloaded burst tests. */
+export type LoadProfile =
+	| { type: 'steady'; ratePerSecond: number; durationSeconds: number }
+	| { type: 'preloaded'; count: number };
+
 // --- Payload sizes ---
 
 export const PAYLOAD_PROFILES = {

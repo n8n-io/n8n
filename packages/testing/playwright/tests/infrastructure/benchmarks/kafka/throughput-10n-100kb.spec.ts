@@ -38,6 +38,7 @@ test.describe(
 				messageCount: envMessages || 5_000,
 				nodeCount: 10,
 				nodeOutputSize: '100KB',
+				trigger: 'kafka',
 				timeoutMs: 600_000,
 				plan: BENCHMARK_MAIN_RESOURCES,
 				workerPlan: BENCHMARK_WORKER_RESOURCES,
