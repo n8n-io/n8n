@@ -101,6 +101,30 @@ describe('Wordpress > GenericFunctions', () => {
 			);
 		});
 
+		it.each([
+			['https://myblog.com/', 'myblog.com'],
+			['https://myblog.com', 'myblog.com'],
+			['http://myblog.com/', 'myblog.com'],
+			['myblog.com/', 'myblog.com'],
+		])(
+			'should normalize custom domain input "%s" to "%s" in site prefix',
+			async (input, expected) => {
+				mockFunctions.getCredentials.mockResolvedValue({
+					customDomain: true,
+					customDomainUrl: input,
+				});
+
+				await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
+
+				expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+					'wordpressOAuth2Api',
+					expect.objectContaining({
+						uri: `https://public-api.wordpress.com/wp/v2/sites/${expected}/posts`,
+					}),
+				);
+			},
+		);
+
 		it('should not set rejectUnauthorized for OAuth2 path', async () => {
 			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
 
