@@ -67,6 +67,7 @@ export class WordpressOAuth2Api implements ICredentialType {
 				},
 			},
 			default: '',
+			required: true,
 			placeholder: 'myblog.com',
 			description:
 				"Your WordPress.com site's custom domain. Used as the site identifier in API requests — calls still route through public-api.wordpress.com.",
