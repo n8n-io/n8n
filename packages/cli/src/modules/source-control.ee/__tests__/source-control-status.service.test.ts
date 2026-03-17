@@ -886,6 +886,109 @@ describe('getStatus', () => {
 			});
 		});
 
+		describe('folder paths', () => {
+			it('includes folderPath for remote-only workflow', async () => {
+				const remote = createWorkflow({
+					id: 'wf-remote-foldered',
+					filename: 'workflows/wf-remote-foldered.json',
+					parentFolderId: 'child-folder',
+				});
+
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remote]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([]);
+				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+					folders: [
+						{
+							id: 'root-folder',
+							name: 'Root',
+							parentFolderId: null,
+							homeProjectId: 'project1',
+							createdAt: '2023-01-01T00:00:00.000Z',
+							updatedAt: '2023-01-01T00:00:00.000Z',
+						},
+						{
+							id: 'child-folder',
+							name: 'Child',
+							parentFolderId: 'root-folder',
+							homeProjectId: 'project1',
+							createdAt: '2023-01-01T00:00:00.000Z',
+							updatedAt: '2023-01-01T00:00:00.000Z',
+						},
+					],
+				});
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				const workflow = result.find((f) => f.id === 'wf-remote-foldered');
+				expect(workflow).toBeDefined();
+				expect(workflow?.parentFolderId).toBe('child-folder');
+				expect(workflow?.folderPath).toEqual(['Root', 'Child']);
+			});
+
+			it('uses local folder path for modified workflow when preferLocalVersion is true', async () => {
+				const local = createWorkflow({
+					id: 'wf-modified-foldered',
+					versionId: 'local-v1',
+					parentFolderId: 'local-child',
+				});
+				const remote = createWorkflow({
+					id: 'wf-modified-foldered',
+					versionId: 'remote-v2',
+					parentFolderId: 'remote-child',
+				});
+
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([local]);
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remote]);
+				sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+					folders: [],
+				});
+				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+					folders: [
+						{
+							id: 'remote-child',
+							name: 'Remote Child',
+							parentFolderId: null,
+							homeProjectId: 'project1',
+							createdAt: '2023-01-01T00:00:00.000Z',
+							updatedAt: '2023-01-01T00:00:00.000Z',
+						},
+					],
+				});
+
+				folderRepository.find
+					.mockResolvedValueOnce([
+						{
+							id: 'local-child',
+							name: 'Local Child',
+							parentFolder: { id: 'local-parent' },
+						} as any,
+					])
+					.mockResolvedValueOnce([
+						{
+							id: 'local-parent',
+							name: 'Local Parent',
+							parentFolder: null,
+						} as any,
+					]);
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: false,
+					preferLocalVersion: true,
+				});
+
+				const workflow = result.find((f) => f.id === 'wf-modified-foldered');
+				expect(workflow).toBeDefined();
+				expect(workflow?.status).toBe('modified');
+				expect(workflow?.parentFolderId).toBe('local-child');
+				expect(workflow?.folderPath).toEqual(['Local Parent', 'Local Child']);
+			});
+		});
+
 		describe('owner changes', () => {
 			describe('team project ownership changes (detected)', () => {
 				it('should detect when team project changes', async () => {
