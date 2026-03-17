@@ -1,6 +1,5 @@
 import { CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Logger } from '@n8n/backend-common';
 import type {
 	CredentialCheckResult,
 	CredentialCheckStatus,
@@ -21,7 +20,6 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 		private readonly executionContextService: ExecutionContextService,
 		private readonly oauthService: OauthService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
-		private readonly logger: Logger,
 	) {}
 
 	async checkCredentialStatus(

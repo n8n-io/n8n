@@ -3,7 +3,6 @@ import type { IExecutionContext, PlaintextExecutionContext } from 'n8n-workflow'
 import type { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { ExecutionContextService } from 'n8n-core';
-import type { Logger } from '@n8n/backend-common';
 import { CredentialsEntity } from '@n8n/db';
 
 import type { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service';
@@ -35,7 +34,6 @@ describe('CredentialCheckProxyService', () => {
 	let mockExecutionContextService: jest.Mocked<ExecutionContextService>;
 	let mockOauthService: jest.Mocked<OauthService>;
 	let mockEnterpriseCredentialsService: jest.Mocked<EnterpriseCredentialsService>;
-	let mockLogger: jest.Mocked<Logger>;
 
 	const executionContext: IExecutionContext = {
 		version: 1,
@@ -75,16 +73,11 @@ describe('CredentialCheckProxyService', () => {
 			getOne: jest.fn(),
 		} as unknown as jest.Mocked<EnterpriseCredentialsService>;
 
-		mockLogger = {
-			debug: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
-
 		service = new CredentialCheckProxyService(
 			mockCredentialResolverWorkflowService,
 			mockExecutionContextService,
 			mockOauthService,
 			mockEnterpriseCredentialsService,
-			mockLogger,
 		);
 	});
 
@@ -234,6 +227,60 @@ describe('CredentialCheckProxyService', () => {
 
 			expect(result.readyToExecute).toBe(false);
 			expect(result.credentials[0].authorizationUrl).toBeUndefined();
+		});
+
+		it('should pass empty authorizationHeader when identity is missing', async () => {
+			mockExecutionContextService.decryptExecutionContext.mockReturnValue({
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+				credentials: {
+					version: 1,
+					metadata: {},
+				},
+			} as PlaintextExecutionContext);
+
+			mockCredentialResolverWorkflowService.getWorkflowStatus.mockResolvedValue([
+				{
+					credentialId: 'cred-1',
+					credentialName: 'OAuth2 API',
+					credentialType: 'oauth2Api',
+					resolverId: 'resolver-1',
+					status: 'missing',
+				},
+			]);
+
+			const mockCredential = createMockCredentialEntity({ id: 'cred-1', type: 'oauth2Api' });
+			mockEnterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			mockOauthService.generateAOauth2AuthUri.mockResolvedValue('https://auth.example.com');
+
+			await service.checkCredentialStatus('workflow-1', executionContext);
+
+			expect(mockOauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
+				mockCredential,
+				expect.objectContaining({ authorizationHeader: '' }),
+			);
+		});
+
+		it('should not generate authorizationUrl for non-OAuth credential types', async () => {
+			mockCredentialResolverWorkflowService.getWorkflowStatus.mockResolvedValue([
+				{
+					credentialId: 'cred-1',
+					credentialName: 'API Key',
+					credentialType: 'apiKeyApi',
+					resolverId: 'resolver-1',
+					status: 'missing',
+				},
+			]);
+
+			const mockCredential = createMockCredentialEntity({ id: 'cred-1', type: 'apiKeyApi' });
+			mockEnterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+
+			const result = await service.checkCredentialStatus('workflow-1', executionContext);
+
+			expect(result.credentials[0].authorizationUrl).toBeUndefined();
+			expect(mockOauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+			expect(mockOauthService.generateAOauth1AuthUri).not.toHaveBeenCalled();
 		});
 
 		it('should return readyToExecute:true for empty credentials list', async () => {
