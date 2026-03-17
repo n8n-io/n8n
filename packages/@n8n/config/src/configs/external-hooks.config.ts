@@ -1,3 +1,4 @@
+import { ColonSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
 
 @Config
@@ -6,9 +7,16 @@ export class ExternalHooksConfig {
 	@Env('EXTERNAL_HOOK_FILES_SEPARATOR')
 	separator: string = ':';
 
-	/** Paths to files that define external lifecycle hooks. */
-	@Env('EXTERNAL_HOOK_FILES', (value: string, self: ExternalHooksConfig) =>
-		value ? value.split(self.separator).filter((f) => f.length > 0) : [],
-	)
-	files: string[] = [];
+	/** Paths to files that define external lifecycle hooks. Colon-separated for multiple files. */
+	@Env('EXTERNAL_HOOK_FILES')
+	files: ColonSeparatedStringArray = [];
+
+	sanitize() {
+		if (this.separator === ':') return;
+
+		const joined = this.files.join(':');
+		this.files = joined
+			.split(this.separator)
+			.filter((f) => f.length > 0) as ColonSeparatedStringArray;
+	}
 }

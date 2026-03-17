@@ -64,21 +64,4 @@ describe('UserManagementConfig', () => {
 
 		consoleWarnSpy.mockRestore();
 	});
-
-	test('with invalid refresh timeout, sets refresh timeout to `0` and warns', () => {
-		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-
-		process.env = {
-			N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS: 'abcd',
-		};
-
-		const config = Container.get(UserManagementConfig);
-
-		expect(config.jwtRefreshTimeoutHours).toBe(0);
-		expect(consoleWarnSpy).toHaveBeenCalledWith(
-			'Invalid number value for N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS: abcd',
-		);
-
-		consoleWarnSpy.mockRestore();
-	});
 });

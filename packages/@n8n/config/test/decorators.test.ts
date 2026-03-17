@@ -83,22 +83,4 @@ describe('decorators', () => {
 		expect(config.value).toBe('direct-value');
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
-
-	it('should fall back to default when transformed value type mismatches property type', () => {
-		process.env.TEST_VALUE = '123';
-		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-
-		@Config
-		class TestConfig {
-			@Env('TEST_VALUE', () => 'not-a-number')
-			value: number = 42;
-		}
-
-		const config = Container.get(TestConfig);
-		expect(config.value).toBe(42);
-		expect(consoleWarnSpy).toHaveBeenCalledWith(
-			'Invalid transformed value for TEST_VALUE: expected number. Falling back to default value.',
-		);
-		consoleWarnSpy.mockRestore();
-	});
 });
