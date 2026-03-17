@@ -23,6 +23,7 @@ import type {
 	IUsedCredential,
 } from '@/features/credentials/credentials.types';
 import type { ChangeLocationSearchResult } from '../folders.types';
+import { getTruncatedProjectName } from '@/features/collaboration/projects/projects.utils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -828,26 +829,29 @@ describe('MoveToFolderModal', () => {
 				undefined,
 			);
 		});
-		expect(mockEventBus.emit).toHaveBeenCalledWith(
-			'workflow-transferred',
-			expect.objectContaining({
-				source: {
-					projectId: personalProject.id,
-					workflow: {
-						id: TEST_WORKFLOW_RESOURCE.id,
-						name: TEST_WORKFLOW_RESOURCE.name,
-					},
+		expect(mockEventBus.emit).toHaveBeenCalledWith('workflow-transferred', {
+			source: {
+				projectId: personalProject.id,
+				workflow: {
+					id: TEST_WORKFLOW_RESOURCE.id,
+					name: TEST_WORKFLOW_RESOURCE.name,
 				},
-				destination: {
-					projectId: teamProjects[0].id,
-					parentFolder: {
-						id: folder.id,
-						name: folder.name,
-					},
-					canAccess: true,
+			},
+			destination: {
+				projectId: teamProjects[0].id,
+				parentFolder: {
+					id: folder.id,
+					name: folder.name,
 				},
-			}),
-		);
+				canAccess: true,
+			},
+			toast: {
+				targetProject: teamProjects[0],
+				targetProjectName: getTruncatedProjectName(teamProjects[0].name),
+				shareUsedCredentials: false,
+				areAllUsedCredentialsShareable: true,
+			},
+		});
 	});
 
 	it('should transfer selected workflow to personal project on submit', async () => {
@@ -888,25 +892,28 @@ describe('MoveToFolderModal', () => {
 				undefined,
 			);
 		});
-		expect(mockEventBus.emit).toHaveBeenCalledWith(
-			'workflow-transferred',
-			expect.objectContaining({
-				source: {
-					projectId: personalProject.id,
-					workflow: {
-						id: TEST_WORKFLOW_RESOURCE.id,
-						name: TEST_WORKFLOW_RESOURCE.name,
-					},
+		expect(mockEventBus.emit).toHaveBeenCalledWith('workflow-transferred', {
+			source: {
+				projectId: personalProject.id,
+				workflow: {
+					id: TEST_WORKFLOW_RESOURCE.id,
+					name: TEST_WORKFLOW_RESOURCE.name,
 				},
-				destination: {
-					projectId: anotherUser.id,
-					parentFolder: {
-						id: undefined,
-						name: `${anotherUser.name} (Personal space)`,
-					},
-					canAccess: false,
+			},
+			destination: {
+				projectId: anotherUser.id,
+				parentFolder: {
+					id: undefined,
+					name: `${anotherUser.name} (Personal space)`,
 				},
-			}),
-		);
+				canAccess: false,
+			},
+			toast: {
+				targetProject: anotherUser,
+				targetProjectName: `${anotherUser.name} (Personal space)`,
+				shareUsedCredentials: false,
+				areAllUsedCredentialsShareable: true,
+			},
+		});
 	});
 });

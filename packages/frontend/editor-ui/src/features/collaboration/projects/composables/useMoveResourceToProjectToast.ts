@@ -13,6 +13,7 @@ interface ShowMoveToProjectToastOptions {
 	resourceName: string;
 	targetProject: ProjectListItem;
 	targetProjectName: string;
+	destinationFolderId?: string;
 	shareUsedCredentials: boolean;
 	areAllUsedCredentialsShareable: boolean;
 }
@@ -44,10 +45,20 @@ export function useMoveResourceToProjectToast() {
 			onClick: (event: MouseEvent | undefined) => {
 				if (event?.target instanceof HTMLAnchorElement) {
 					event.preventDefault();
-					void router.push({
-						name: viewName,
-						params: { projectId: options.targetProject.id },
-					});
+					void router.push(
+						options.destinationFolderId
+							? {
+									name: VIEWS.PROJECTS_FOLDERS,
+									params: {
+										projectId: options.targetProject.id,
+										folderId: options.destinationFolderId,
+									},
+								}
+							: {
+									name: viewName,
+									params: { projectId: options.targetProject.id },
+								},
+					);
 				}
 			},
 			type: 'success',

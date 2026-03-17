@@ -362,14 +362,16 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			}
 			const workflow = workflowsListStore.workflowsById[workflowId];
 
+			const navigateAway = async () => await router.push({ name: VIEWS.WORKFLOWS });
 			moveWorkflowEventBus.once('workflow-transferred', async (event) => {
-				await router.push({ name: VIEWS.WORKFLOWS });
+				await navigateAway();
 				showMoveToProjectToast({
 					resourceType: ResourceType.Workflow,
 					resourceTypeLabel: locale.baseText('generic.workflow').toLowerCase(),
 					resourceName: event.source.workflow.name,
 					targetProject: event.toast.targetProject,
 					targetProjectName: event.toast.targetProjectName,
+					destinationFolderId: event.destination.parentFolder.id,
 					shareUsedCredentials: event.toast.shareUsedCredentials,
 					areAllUsedCredentialsShareable: event.toast.areAllUsedCredentialsShareable,
 				});
