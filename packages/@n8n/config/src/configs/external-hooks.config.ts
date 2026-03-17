@@ -15,8 +15,6 @@ export class ExternalHooksConfig {
 		if (this.separator === ':') return;
 
 		const joined = this.files.join(':');
-		this.files = joined
-			.split(this.separator)
-			.filter((f) => f.length > 0) as ColonSeparatedStringArray;
+		this.files = joined.split(this.separator).filter((f) => f.length > 0);
 	}
 }
