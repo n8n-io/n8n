@@ -58,7 +58,7 @@ describe('MultiMainSetup', () => {
 			expect(emit).toHaveBeenCalledWith('leader-takeover');
 		});
 
-		it('should not emit leader-takeover when already leader', async () => {
+		it('should not emit `leader-takeover` when already leader', async () => {
 			publisher.get.mockResolvedValue(hostId);
 			Object.defineProperty(instanceSettings, 'isLeader', { get: () => true });
 			const emit = jest.spyOn(multiMainSetup, 'emit');
@@ -71,7 +71,7 @@ describe('MultiMainSetup', () => {
 			expect(publisher.setExpiration).toHaveBeenCalled();
 		});
 
-		it('should emit leader-stepdown when another instance is leader', async () => {
+		it('should emit `leader-stepdown` when another instance is leader', async () => {
 			publisher.get.mockResolvedValue('main-n8n-main-1');
 			Object.defineProperty(instanceSettings, 'isLeader', { get: () => true });
 			const emit = jest.spyOn(multiMainSetup, 'emit');
