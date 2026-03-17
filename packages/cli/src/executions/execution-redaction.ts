@@ -36,6 +36,6 @@ export type RedactableExecution = {
 	id?: string;
 	mode: WorkflowExecuteMode;
 	workflowId: string;
-	data: IRunExecutionData;
+	data: Pick<IRunExecutionData, 'resultData' | 'executionData' | 'redactionInfo'>;
 	workflowData: Pick<IWorkflowBase, 'settings' | 'nodes'>;
 };

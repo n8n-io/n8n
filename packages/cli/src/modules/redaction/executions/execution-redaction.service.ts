@@ -121,6 +121,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				user: options.user,
 				redactExecutionData: options.redactExecutionData,
 				userCanReveal,
+				memo: new Map(),
 			};
 			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal);
 

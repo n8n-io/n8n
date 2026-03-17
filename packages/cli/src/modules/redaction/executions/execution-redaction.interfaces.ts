@@ -12,6 +12,10 @@ export interface RedactionContext {
 	readonly redactExecutionData: boolean | undefined;
 	/** Pre-resolved by the orchestrator — true if the user can see unredacted data. */
 	readonly userCanReveal: boolean;
+	/** Generic memo store — strategies may cache intermediate results here
+	 *  to avoid redundant computation across wouldModify/apply calls.
+	 *  Keyed by strategy name. */
+	readonly memo: Map<string, unknown>;
 }
 
 /**

@@ -202,7 +202,7 @@ function buildRedactableExecution(
 		data: {
 			resultData: { runData },
 			executionData: executionData?.executionData,
-		} as IRunExecutionData,
+		},
 		workflowData: {
 			settings: hooks.workflowData.settings,
 			nodes: hooks.workflowData.nodes,
@@ -269,20 +269,29 @@ function hookFunctionsPush(
 			pushRef,
 		);
 
+		// Fail-closed redaction: if user cannot be resolved, skip the data push
+		// entirely rather than sending unredacted data to the client.
+		const user = await getUser();
+		if (!user) {
+			logger.warn('Skipping execution data push: unable to resolve user for redaction', {
+				executionId,
+				nodeName,
+				userId,
+			});
+			return;
+		}
+
 		// Apply copy-on-write redaction before sending binary data.
 		// Returns the original data if no redaction is needed (zero-copy),
 		// or a structuredClone with redaction applied.
 		let dataToSend = data;
-		const user = await getUser();
-		if (user) {
-			const dummy = buildRedactableExecution(this, { [nodeName]: [data] }, executionData);
-			const result = await redactionProxy.processExecution(dummy, {
-				user,
-				copyOnWrite: true,
-			});
-			if (result !== dummy) {
-				dataToSend = result.data.resultData.runData[nodeName][0];
-			}
+		const dummy = buildRedactableExecution(this, { [nodeName]: [data] }, executionData);
+		const result = await redactionProxy.processExecution(dummy, {
+			user,
+			copyOnWrite: true,
+		});
+		if (result !== dummy) {
+			dataToSend = result.data.resultData.runData[nodeName][0];
 		}
 
 		// We send the node execution data as a WS binary message to the FE. Not
@@ -310,10 +319,21 @@ function hookFunctionsPush(
 			workflowId,
 		});
 
+		// Fail-closed redaction: if user cannot be resolved, skip the push
+		// entirely rather than sending unredacted run data to the client.
+		const user = await getUser();
+		if (!user) {
+			logger.warn('Skipping execution start push: unable to resolve user for redaction', {
+				executionId,
+				workflowId,
+				userId,
+			});
+			return;
+		}
+
 		// Apply copy-on-write redaction to flattedRunData when retrying/resuming
 		let runDataToStringify = data?.resultData.runData ?? {};
-		const user = await getUser();
-		if (user && data?.resultData.runData && Object.keys(data.resultData.runData).length > 0) {
+		if (data?.resultData.runData && Object.keys(data.resultData.runData).length > 0) {
 			const dummy = buildRedactableExecution(this, data.resultData.runData, data);
 			const result = await redactionProxy.processExecution(dummy, {
 				user,
