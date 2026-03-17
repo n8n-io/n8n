@@ -1292,7 +1292,7 @@ export class SourceControlImportService {
 	): Promise<void> {
 		if (!importedWorkflow.versionId || !importedWorkflow.nodes || !importedWorkflow.connections) {
 			this.logger.debug('Skipping workflow history - missing versionId, nodes, or connections');
-			return undefined;
+			return;
 		}
 
 		// Fetch user for author info
