@@ -171,6 +171,7 @@ describe('ProjectSettings', () => {
 
 		projectsStore = mockedStore(useProjectsStore);
 		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
+		projectsStore.globalProjectPermissions = { list: true } as any;
 		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
 		rolesStore = mockedStore(useRolesStore);

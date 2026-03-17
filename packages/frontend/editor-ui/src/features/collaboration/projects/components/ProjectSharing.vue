@@ -92,6 +92,11 @@ const filteredProjects = computed(() => {
 		list = list.filter(props.filterFn);
 	}
 
+	// Exclude homeProject from the dropdown (it's shown separately as "owner")
+	if (props.homeProject) {
+		list = list.filter((p) => p.id !== props.homeProject!.id);
+	}
+
 	// Exclude already-selected projects (multi-select mode)
 	if (Array.isArray(model.value)) {
 		const selected = model.value;
