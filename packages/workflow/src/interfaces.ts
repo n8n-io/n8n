@@ -39,6 +39,11 @@ import type { ExecutionStatus } from './execution-status';
 import type { Result } from './result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
+import type {
+	ViewerInputField as WorkflowSettingsViewerInputField,
+	ViewerInputType as WorkflowSettingsViewerInputType,
+	ViewerMode as WorkflowSettingsViewerMode,
+} from './workflow-settings-viewer-mode';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 
 export type { WorkflowExecuteModeValues as WorkflowExecuteMode } from './execution-context';
@@ -3010,22 +3015,9 @@ export namespace WorkflowSettings {
 	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
 	export type RedactionPolicy = 'none' | 'all' | 'non-manual';
-	export type ViewerInputType = 'text' | 'textarea' | 'number' | 'boolean' | 'file';
-
-	export interface ViewerInputField {
-		key: string;
-		label: string;
-		type: ViewerInputType;
-		required?: boolean;
-		placeholder?: string;
-		helpText?: string;
-		accept?: string;
-	}
-
-	export interface ViewerMode {
-		manual?: string;
-		inputs?: ViewerInputField[];
-	}
+	export type ViewerInputType = WorkflowSettingsViewerInputType;
+	export type ViewerInputField = WorkflowSettingsViewerInputField;
+	export type ViewerMode = WorkflowSettingsViewerMode;
 }
 
 export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
