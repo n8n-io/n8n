@@ -178,7 +178,14 @@ export function resetDataProxies(timezone?: string): void {
 	// Wire builtins so tournament's VariablePolyfill resolves them from __data
 	initializeBuiltins(globalThis.__data as Record<string, unknown>);
 
-	// TODO: Add other function properties as needed ($item, $vars, etc.)
+	// $item(itemIndex) returns a sub-proxy for the specified item (legacy syntax)
+	globalThis.__data.$item = function (itemIndex: number) {
+		const indexStr = String(itemIndex);
+		return {
+			$json: createDeepLazyProxy(['$item', indexStr, '$json']),
+			$binary: createDeepLazyProxy(['$item', indexStr, '$binary']),
+		};
+	};
 }
 
 // Matches initializeGlobalContext() lines 262-318 in packages/workflow/src/expression.ts
