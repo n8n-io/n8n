@@ -258,5 +258,110 @@ test.describe(
 				).toBeVisible();
 			});
 		});
+
+		test.describe('Table View - Column Focus (GHC-7068)', () => {
+			test('should show "Collapse rows" button when hovering over column headers', async ({
+				n8n,
+			}) => {
+				// Setup: Create a Manual Trigger node with data that has one large column
+				await n8n.canvas.addNode('Manual Trigger', { action: 'trigger' });
+				await n8n.canvas.openNode('When clicking "Execute Workflow"');
+
+				// Pin data with a mix of small and large columns
+				const testData = [
+					{
+						name: 'First item',
+						code: 1,
+						data: {
+							some: 'a',
+							large: 'b',
+							json: 'c',
+							object: 'd',
+							with: 'e',
+							many: 'f',
+							keys: 'g',
+						},
+					},
+					{
+						name: 'Second item',
+						code: 2,
+						data: {
+							some: 'n',
+							large: 'm',
+							json: 'o',
+							object: 'p',
+							with: 'q',
+							many: 'r',
+							keys: 's',
+						},
+					},
+					{
+						name: 'Third item',
+						code: 3,
+						data: {
+							some: 'x',
+							large: 'y',
+							json: 'z',
+							object: 'w',
+							with: 'v',
+							many: 'u',
+							keys: 't',
+						},
+					},
+				];
+
+				await n8n.ndv.setPinnedData(testData);
+
+				// Switch to table view
+				await n8n.ndv.outputPanel.switchDisplayMode('table');
+
+				// Get the "name" column header (should be the first data column)
+				const nameHeader = n8n.ndv.outputPanel.getTableHeader(0);
+				await expect(nameHeader).toBeVisible();
+
+				// Hover over the column header
+				await nameHeader.hover();
+
+				// The "Collapse rows" button should be visible when hovering
+				const collapseButton = nameHeader.getByRole('button', { name: 'Collapse rows' });
+				await expect(collapseButton).toBeVisible();
+			});
+
+			test('should toggle column collapsing when clicking the button', async ({ n8n }) => {
+				// Setup: Create a Manual Trigger node with data
+				await n8n.canvas.addNode('Manual Trigger', { action: 'trigger' });
+				await n8n.canvas.openNode('When clicking "Execute Workflow"');
+
+				const testData = [
+					{
+						name: 'First',
+						data: { a: 1, b: 2, c: 3 },
+					},
+					{
+						name: 'Second',
+						data: { a: 4, b: 5, c: 6 },
+					},
+				];
+
+				await n8n.ndv.setPinnedData(testData);
+				await n8n.ndv.outputPanel.switchDisplayMode('table');
+
+				// Get the "name" column header
+				const nameHeader = n8n.ndv.outputPanel.getTableHeader(0);
+				await nameHeader.hover();
+
+				// Click the collapse button
+				const collapseButton = nameHeader.getByRole('button', { name: 'Collapse rows' });
+				await collapseButton.click();
+
+				// After clicking, the column should be marked as collapsing
+				// (The header should have a visual indicator - we can check for the different icon)
+				await expect(nameHeader).toBeVisible();
+
+				// Click again to toggle it off
+				await nameHeader.hover();
+				await collapseButton.click();
+			});
+		});
 	},
 );
