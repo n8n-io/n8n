@@ -209,10 +209,13 @@ export class OauthService {
 	): CsrfState & CreateCsrfStateData {
 		const errorMessage = 'Invalid state format';
 		const decodedState = Buffer.from(encodedState, 'base64').toString();
-		const decoded = jsonParse<CsrfState>(decodedState, { errorMessage });
+		const decoded = jsonParse<CsrfState>(decodedState, {
+			errorMessage,
+		});
 
-		const decryptedRaw = this.cipher.decrypt(decoded.data);
-		const decryptedState = jsonParse<CreateCsrfStateData>(decryptedRaw, { errorMessage });
+		const decryptedState = jsonParse<CreateCsrfStateData>(this.cipher.decrypt(decoded.data), {
+			errorMessage,
+		});
 
 		if (typeof decryptedState.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new UnexpectedError(errorMessage);
