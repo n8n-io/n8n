@@ -31,7 +31,9 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 		const plaintext = this.executionContextService.decryptExecutionContext(executionContext);
 
 		if (!plaintext.credentials) {
-			throw new Error('No credential context found in execution context');
+			throw new Error(
+				'Execution context is present but contains no credential context. Ensure credential context establishment hooks are configured for this workflow.',
+			);
 		}
 
 		const statuses = await this.credentialResolverWorkflowService.getWorkflowStatus(

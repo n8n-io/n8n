@@ -4,15 +4,14 @@ import type {
 	IExecutionContext,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
-import { CredentialCheck } from '../CredentialCheck.node';
+import { DynamicCredentialCheck } from '../DynamicCredentialCheck.node';
 
-describe('CredentialCheck Node', () => {
-	let node: CredentialCheck;
+describe('DynamicCredentialCheck Node', () => {
+	let node: DynamicCredentialCheck;
 
 	beforeEach(() => {
-		node = new CredentialCheck();
+		node = new DynamicCredentialCheck();
 	});
 
 	const inputItems: INodeExecutionData[] = [{ json: { data: 'test' } }];
@@ -41,7 +40,10 @@ describe('CredentialCheck Node', () => {
 			getExecutionContext: () =>
 				opts.hasExecutionContext === false ? undefined : executionContext,
 			getWorkflow: () => ({ id: opts.workflowId }),
-			getNode: () => ({ name: 'Credential Check', type: 'n8n-nodes-base.credentialCheck' }),
+			getNode: () => ({
+				name: 'Dynamic Credential Check',
+				type: 'n8n-nodes-base.dynamicCredentialCheck',
+			}),
 			helpers,
 		} as unknown as IExecuteFunctions;
 	};
@@ -72,7 +74,7 @@ describe('CredentialCheck Node', () => {
 			expect(output[1]).toEqual([]);
 		});
 
-		it('should route items to Not Ready output with check result data when credentials are missing', async () => {
+		it('should route items to Not Ready output with check result when credentials are missing', async () => {
 			const mockResult: CredentialCheckResult = {
 				readyToExecute: false,
 				credentials: [
@@ -96,36 +98,42 @@ describe('CredentialCheck Node', () => {
 
 			expect(output[0]).toEqual([]);
 			expect(output[1]).toHaveLength(1);
-			expect(output[1][0].json).toEqual({
-				data: 'test',
-				credentialCheckResult: mockResult,
-			});
+			expect(output[1][0].json).toEqual(mockResult);
 		});
 
-		it('should throw when no execution context is available', async () => {
+		it('should route to Ready when no execution context is available', async () => {
 			const fns = createMockExecuteFunctions({
 				hasExecutionContext: false,
 				workflowId: 'workflow-1',
 			});
 
-			await expect(node.execute.call(fns)).rejects.toThrow(NodeOperationError);
+			const output = await node.execute.call(fns);
+
+			expect(output[0]).toEqual(inputItems);
+			expect(output[1]).toEqual([]);
 		});
 
-		it('should throw when workflow ID is not available', async () => {
+		it('should route to Ready when workflow ID is not available', async () => {
 			const fns = createMockExecuteFunctions({
 				workflowId: undefined,
 			});
 
-			await expect(node.execute.call(fns)).rejects.toThrow(NodeOperationError);
+			const output = await node.execute.call(fns);
+
+			expect(output[0]).toEqual(inputItems);
+			expect(output[1]).toEqual([]);
 		});
 
-		it('should throw when checkCredentialStatus helper is not available', async () => {
+		it('should route to Ready when checkCredentialStatus helper is not available', async () => {
 			const fns = createMockExecuteFunctions({
 				workflowId: 'workflow-1',
 				checkCredentialStatus: null,
 			});
 
-			await expect(node.execute.call(fns)).rejects.toThrow(NodeOperationError);
+			const output = await node.execute.call(fns);
+
+			expect(output[0]).toEqual(inputItems);
+			expect(output[1]).toEqual([]);
 		});
 	});
 });

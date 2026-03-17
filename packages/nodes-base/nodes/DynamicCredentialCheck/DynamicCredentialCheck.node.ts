@@ -4,19 +4,19 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-export class CredentialCheck implements INodeType {
+export class DynamicCredentialCheck implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Credential Check',
-		name: 'credentialCheck',
+		displayName: 'Dynamic Credential Check',
+		name: 'dynamicCredentialCheck',
 		icon: 'fa:key',
 		group: ['transform'],
 		version: 1,
 		description:
 			'Checks dynamic credential status and routes to Ready or Not Ready based on availability',
 		defaults: {
-			name: 'Credential Check',
+			name: 'Dynamic Credential Check',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
@@ -29,22 +29,9 @@ export class CredentialCheck implements INodeType {
 		const executionContext = this.getExecutionContext();
 		const workflowId = this.getWorkflow().id;
 
-		if (!executionContext) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'No execution context available. This node requires dynamic credentials to be configured.',
-			);
-		}
-
-		if (!workflowId) {
-			throw new NodeOperationError(this.getNode(), 'Could not determine the workflow ID.');
-		}
-
-		if (!this.helpers.checkCredentialStatus) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Credential check functionality is not available. Ensure the dynamic credentials module is enabled.',
-			);
+		// No dynamic credentials context — nothing to check, route to Ready
+		if (!executionContext || !workflowId || !this.helpers.checkCredentialStatus) {
+			return [items, []];
 		}
 
 		const result = await this.helpers.checkCredentialStatus(workflowId, executionContext);
