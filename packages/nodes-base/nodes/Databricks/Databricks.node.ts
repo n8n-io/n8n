@@ -3,6 +3,7 @@ import {
 	ApplicationError,
 	NodeConnectionTypes,
 	NodeOperationError,
+	sleep,
 	type IExecuteFunctions,
 	type IHttpRequestMethods,
 	type ILoadOptionsFunctions,
@@ -1575,7 +1576,12 @@ export class Databricks implements INodeType {
 						query: query.substring(0, 100), // Log first 100 chars
 					});
 
-					// Step 1: Execute the query
+					// Step 1: Execute the query.
+					// wait_timeout is set to the API maximum (50s) so that short queries return
+					// results synchronously in this single request — no polling required.
+					// For queries that exceed 50s, on_wait_timeout=CONTINUE puts the statement
+					// in async mode and Step 2 polls until it finishes.
+					// See: https://docs.databricks.com/api/workspace/statementexecution/executestatement#wait_timeout
 					const executeResponse = (await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						credentialType,
@@ -1585,6 +1591,8 @@ export class Databricks implements INodeType {
 							body: {
 								warehouse_id: warehouseId.value,
 								statement: query,
+								wait_timeout: '50s',
+								on_wait_timeout: 'CONTINUE',
 							},
 							headers: {
 								'Content-Type': 'application/json',
@@ -1596,7 +1604,7 @@ export class Databricks implements INodeType {
 					const statementId = executeResponse.statement_id;
 					this.logger.debug('Query submitted', { statementId });
 
-					// Step 2: Poll for completion
+					// Step 2: Poll for completion (if in async mode)
 					let status = executeResponse.status.state;
 					let queryResult = executeResponse;
 					const maxRetries = 60; // Max 5 minutes (60 * 5 seconds)
@@ -1608,7 +1616,7 @@ export class Databricks implements INodeType {
 						status !== 'CANCELED' &&
 						retries < maxRetries
 					) {
-						await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds
+						await sleep(5000);
 
 						queryResult = (await this.helpers.httpRequestWithAuthentication.call(
 							this,
