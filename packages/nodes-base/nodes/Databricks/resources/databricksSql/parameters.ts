@@ -72,6 +72,61 @@ export const databricksSqlParameters: INodeProperties[] = [
 		description: 'SQL query to execute',
 	},
 	{
+		displayName: 'Query Parameters',
+		name: 'queryParameters',
+		type: 'fixedCollection',
+		typeOptions: { multipleValues: true },
+		displayOptions: {
+			show: {
+				operation: ['executeQuery'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Parameter',
+		description:
+			'Named parameters for the query. Reference them in your SQL as <code>:name</code>, e.g. <code>WHERE ID = :user_id</code>.',
+		options: [
+			{
+				name: 'parameters',
+				displayName: 'Parameter',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. user_id',
+						description: 'Parameter name, referenced in the query as :name',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						default: '',
+						description: 'Leave unset to treat the value as a string',
+						options: [
+							{ name: '(Default)', value: '' },
+							{ name: 'Boolean', value: 'BOOLEAN' },
+							{ name: 'Date', value: 'DATE' },
+							{ name: 'Double', value: 'DOUBLE' },
+							{ name: 'Float', value: 'FLOAT' },
+							{ name: 'Integer', value: 'INT' },
+							{ name: 'Long', value: 'LONG' },
+							{ name: 'String', value: 'STRING' },
+							{ name: 'Timestamp', value: 'TIMESTAMP' },
+						],
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Query ID',
 		name: 'queryId',
 		type: 'string',

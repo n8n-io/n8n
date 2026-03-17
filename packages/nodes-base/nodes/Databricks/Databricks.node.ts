@@ -1519,6 +1519,14 @@ export class Databricks implements INodeType {
 						value: string;
 					};
 					const query = this.getNodeParameter('query', i) as string;
+					const rawParams = this.getNodeParameter('queryParameters.parameters', i, []) as Array<{
+						name: string;
+						value: string;
+						type: string;
+					}>;
+					const parameters = rawParams.map(({ name, value, type }) =>
+						type ? { name, value, type } : { name, value },
+					);
 
 					// Step 1: Execute the query.
 					// wait_timeout is set to the API maximum (50s) so that short queries return
@@ -1537,6 +1545,7 @@ export class Databricks implements INodeType {
 								statement: query,
 								wait_timeout: '50s',
 								on_wait_timeout: 'CONTINUE',
+								...(parameters.length > 0 && { parameters }),
 							},
 							headers: {
 								'Content-Type': 'application/json',
@@ -2184,9 +2193,6 @@ export class Databricks implements INodeType {
 					});
 				}
 			} catch (error) {
-				const currentResource = this.getNodeParameter('resource', i);
-				const currentOperation = this.getNodeParameter('operation', i);
-
 				if (error.response) {
 					// API Error
 					if (this.continueOnFail()) {
