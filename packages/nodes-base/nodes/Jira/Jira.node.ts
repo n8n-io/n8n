@@ -1310,9 +1310,7 @@ export class Jira implements INodeType {
 							);
 						} catch (error) {
 							if (this.continueOnFail()) {
-								returnData[index] = {
-									json: { error: error.message },
-								};
+								returnData[index].json = { error: error.message };
 								continue;
 							}
 							throw error;
@@ -1382,9 +1380,7 @@ export class Jira implements INodeType {
 							);
 						} catch (error) {
 							if (this.continueOnFail()) {
-								returnData[index] = {
-									json: { error: error.message },
-								};
+								returnData[index].json = { error: error.message };
 								continue;
 							}
 							throw error;

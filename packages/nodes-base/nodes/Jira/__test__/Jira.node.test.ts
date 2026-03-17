@@ -315,7 +315,7 @@ describe('Jira Node', () => {
 			);
 		});
 
-		it('should return error item when attachment download fails and continueOnFail is true', async () => {
+		it('should return error item with preserved paired-item metadata when attachment download fails', async () => {
 			const attachmentMeta = {
 				id: '10001',
 				filename: 'file.txt',
@@ -332,8 +332,11 @@ describe('Jira Node', () => {
 					[{ json: data as IDataObject }] as INodeExecutionData[],
 			);
 			executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
-				(items) =>
-					items as unknown as ReturnType<
+				(items, { itemData }) =>
+					items.map((item) => ({
+						...item,
+						pairedItem: itemData,
+					})) as unknown as ReturnType<
 						typeof executeFunctionsMock.helpers.constructExecutionMetaData
 					>,
 			);
@@ -365,7 +368,7 @@ describe('Jira Node', () => {
 
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].json).toEqual({ error: 'Download failed' });
-			expect(result[0][0].binary).toBeUndefined();
+			expect(result[0][0].pairedItem).toEqual({ item: 0 });
 		});
 
 		it('should return error items for failed items and success items for passing items', async () => {
