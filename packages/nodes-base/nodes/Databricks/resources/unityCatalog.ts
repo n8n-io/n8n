@@ -16,146 +16,60 @@ export const unityCatalogOperations: INodeProperties = {
 			value: 'createFunction',
 			description: 'Create a new function',
 			action: 'Create a function',
-			routing: {
-				request: {
-					method: 'POST',
-					url: '/api/2.1/unity-catalog/functions',
-					body: {
-						name: '={{$parameter.functionName}}',
-						catalog_name: '={{$parameter.catalogName}}',
-						schema_name: '={{$parameter.schemaName}}',
-						input_params: '={{$parameter.inputParams}}',
-						data_type: '={{$parameter.returnType}}',
-						routine_body: '={{$parameter.routineBody}}',
-					},
-				},
-			},
 		},
 		{
 			name: 'Create Volume',
 			value: 'createVolume',
 			description: 'Create a new volume',
 			action: 'Create a volume',
-			routing: {
-				request: {
-					method: 'POST',
-					url: '/api/2.1/unity-catalog/volumes',
-					body: {
-						catalog_name: '={{$parameter.catalog}}',
-						schema_name: '={{$parameter.schema}}',
-						name: '={{$parameter.volumeName}}',
-						volume_type: '={{$parameter.volumeType}}',
-					},
-				},
-			},
 		},
 		{
 			name: 'Delete Function',
 			value: 'deleteFunction',
 			description: 'Delete a function',
 			action: 'Delete a function',
-			routing: {
-				request: {
-					method: 'DELETE',
-					url: '/api/2.1/unity-catalog/functions/{{$parameter.fullName}}',
-				},
-			},
 		},
 		{
 			name: 'Delete Volume',
 			value: 'deleteVolume',
 			description: 'Delete a volume',
 			action: 'Delete a volume',
-			routing: {
-				request: {
-					method: 'DELETE',
-					url: '=/api/2.1/unity-catalog/volumes/{{$parameter.catalog}}.{{$parameter.schema}}.{{$parameter.volumeName}}',
-				},
-			},
 		},
 		{
 			name: 'Get Function',
 			value: 'getFunction',
 			description: 'Get function information',
 			action: 'Get a function',
-			routing: {
-				request: {
-					method: 'GET',
-					url: '/api/2.1/unity-catalog/functions/{{$parameter.fullName}}',
-				},
-			},
 		},
 		{
 			name: 'Get Table',
 			value: 'getTable',
 			description: 'Get table information',
 			action: 'Get a table',
-			routing: {
-				request: {
-					method: 'GET',
-					url: '/api/2.1/unity-catalog/tables/{{$parameter.fullName}}',
-				},
-			},
 		},
 		{
 			name: 'Get Volume',
 			value: 'getVolume',
 			description: 'Get volume information',
 			action: 'Get a volume',
-			routing: {
-				request: {
-					method: 'GET',
-					url: '/api/2.1/unity-catalog/volumes/{{$parameter.fullName}}',
-				},
-			},
 		},
 		{
 			name: 'List Functions',
 			value: 'listFunctions',
 			description: 'List functions in schema',
 			action: 'List functions',
-			routing: {
-				request: {
-					method: 'GET',
-					url: '/api/2.1/unity-catalog/functions',
-					qs: {
-						catalog_name: '={{$parameter.catalog}}',
-						schema_name: '={{$parameter.schema}}',
-					},
-				},
-			},
 		},
 		{
 			name: 'List Tables',
 			value: 'listTables',
 			description: 'List tables in schema',
 			action: 'List tables',
-			routing: {
-				request: {
-					method: 'GET',
-					url: '/api/2.1/unity-catalog/tables',
-					qs: {
-						catalog_name: '={{$parameter.catalog}}',
-						schema_name: '={{$parameter.schema}}',
-					},
-				},
-			},
 		},
 		{
 			name: 'List Volumes',
 			value: 'listVolumes',
 			description: 'List volumes in schema',
 			action: 'List volumes',
-			routing: {
-				request: {
-					method: 'GET',
-					url: '/api/2.1/unity-catalog/volumes',
-					qs: {
-						catalog_name: '={{$parameter.catalogName}}',
-						schema_name: '={{$parameter.schemaName}}',
-					},
-				},
-			},
 		},
 	],
 	default: 'listTables',
