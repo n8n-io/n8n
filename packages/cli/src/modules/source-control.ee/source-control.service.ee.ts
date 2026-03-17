@@ -7,7 +7,6 @@ import { Logger } from '@n8n/backend-common';
 import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { writeFileSync } from 'fs';
 import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
 import * as path from 'path';
@@ -46,8 +45,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { IWorkflowToImport } from '@/interfaces';
-
-const tracer = trace.getTracer('source-control');
 
 @Service()
 export class SourceControlService {
@@ -147,38 +144,33 @@ export class SourceControlService {
 	}
 
 	async sanityCheck(): Promise<void> {
-		return tracer.startActiveSpan('SourceControlService.sanityCheck', async (span) => {
-			try {
-				const foldersExisted = sourceControlFoldersExistCheck(
-					[this.gitFolder, this.sshFolder],
-					false,
-				);
+		try {
+			const foldersExisted = sourceControlFoldersExistCheck(
+				[this.gitFolder, this.sshFolder],
+				false,
+			);
 
-				if (!foldersExisted) {
-					throw new UserError('No folders exist');
-				}
-
-				if (!this.gitService.git) {
-					await this.initGitService();
-				}
-
-				const branches = await this.gitService.getCurrentBranch();
-				if (
-					branches.current === '' ||
-					branches.current !==
-						this.sourceControlPreferencesService.sourceControlPreferences.branchName
-				) {
-					throw new UserError('Branch is not set up correctly');
-				}
-			} catch (error) {
-				span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
-				throw new BadRequestError(
-					'Source control is not properly set up, please disconnect and reconnect.',
-				);
-			} finally {
-				span.end();
+			if (!foldersExisted) {
+				throw new UserError('No folders exist');
 			}
-		});
+
+			if (!this.gitService.git) {
+				await this.initGitService();
+			}
+
+			const branches = await this.gitService.getCurrentBranch();
+			if (
+				branches.current === '' ||
+				branches.current !==
+					this.sourceControlPreferencesService.sourceControlPreferences.branchName
+			) {
+				throw new UserError('Branch is not set up correctly');
+			}
+		} catch (error) {
+			throw new BadRequestError(
+				'Source control is not properly set up, please disconnect and reconnect.',
+			);
+		}
 	}
 
 	async disconnect(options: { keepKeyPair?: boolean } = {}) {
@@ -599,17 +591,8 @@ export class SourceControlService {
 	}
 
 	async getStatus(user: User, options: SourceControlGetStatus) {
-		return tracer.startActiveSpan('SourceControlService.getStatus', async (span) => {
-			try {
-				await this.sanityCheck();
-				return await this.sourceControlStatusService.getStatus(user, options);
-			} catch (e) {
-				span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
-				throw e;
-			} finally {
-				span.end();
-			}
-		});
+		await this.sanityCheck();
+		return await this.sourceControlStatusService.getStatus(user, options);
 	}
 
 	async setGitUserDetails(
