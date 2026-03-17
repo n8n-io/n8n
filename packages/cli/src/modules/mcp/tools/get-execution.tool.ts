@@ -96,9 +96,11 @@ export const createGetExecutionTool = (
 			await getMcpWorkflow(workflowId, user, ['workflow:read'], workflowFinderService);
 
 			// Use lightweight metadata query when data isn't needed
-			const execution = includeData
+			const fullExecution = includeData
 				? await executionRepository.findWithUnflattenedData(executionId, [workflowId])
-				: await executionRepository.findIfAccessible(executionId, [workflowId]);
+				: undefined;
+			const execution =
+				fullExecution ?? (await executionRepository.findIfAccessible(executionId, [workflowId]));
 
 			if (!execution) {
 				// Check if execution exists at all
@@ -129,8 +131,8 @@ export const createGetExecutionTool = (
 			};
 
 			let filteredData: IRunExecutionData | undefined;
-			if (includeData && 'data' in execution) {
-				filteredData = execution.data;
+			if (fullExecution) {
+				filteredData = fullExecution.data;
 				if (filteredData && (nodeNames?.length || truncateData)) {
 					filteredData = filterExecutionData(filteredData, nodeNames, truncateData);
 				}
