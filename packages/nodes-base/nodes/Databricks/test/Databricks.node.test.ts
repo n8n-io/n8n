@@ -203,9 +203,50 @@ describe('Databricks', () => {
 		beforeAll(() => {
 			const databricksNock = nock(HOST);
 
-			// Return empty array so no schema detection/validation happens - avoids
-			// issues with requestBody being a raw JSON string vs parsed object
-			databricksNock.get('/api/2.0/serving-endpoints/my-llm-endpoint/openapi').reply(200, []);
+			// Return a realistic chat-format OpenAPI schema so the format-detection
+			// and validation logic is exercised (detects 'messages' → 'chat' format).
+			databricksNock.get('/api/2.0/serving-endpoints/my-llm-endpoint/openapi').reply(200, [
+				{
+					servers: [
+						{
+							url: `${HOST}/serving-endpoints/my-llm-endpoint/invocations`,
+						},
+					],
+					paths: {
+						'/serving-endpoints/my-llm-endpoint/invocations': {
+							post: {
+								requestBody: {
+									content: {
+										'application/json': {
+											schema: {
+												oneOf: [
+													{
+														type: 'object',
+														properties: {
+															messages: {
+																type: 'array',
+																items: {
+																	type: 'object',
+																	properties: {
+																		role: { type: 'string' },
+																		content: { type: 'string' },
+																	},
+																},
+															},
+															max_tokens: { type: 'integer' },
+															temperature: { type: 'number' },
+														},
+													},
+												],
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			]);
 
 			databricksNock.post('/serving-endpoints/my-llm-endpoint/invocations').reply(200, {
 				id: 'chatcmpl-123',
