@@ -640,14 +640,19 @@ describe('Execution Lifecycle Hooks', () => {
 				);
 			});
 
-			it('should skip executionStarted push when user cannot be resolved (fail-closed)', async () => {
+			it('should send executionStarted with empty runData when user cannot be resolved (fail-closed)', async () => {
 				userRepository.findOne.mockResolvedValue(null);
 				lifecycleHooks = createHooks();
 
 				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
 
-				expect(push.send).not.toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'executionStarted' }),
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'executionStarted',
+						data: expect.objectContaining({
+							flattedRunData: '[{}]',
+						}),
+					}),
 					pushRef,
 				);
 				expect(redactionProxy.processExecution).not.toHaveBeenCalled();

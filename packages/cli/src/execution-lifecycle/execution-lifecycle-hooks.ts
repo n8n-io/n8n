@@ -284,14 +284,25 @@ function hookFunctionsPush(
 		// Apply copy-on-write redaction before sending binary data.
 		// Returns the original data if no redaction is needed (zero-copy),
 		// or a structuredClone with redaction applied.
+		// Fail-closed: if redaction throws, skip the data push rather than
+		// sending unredacted data. The metadata-only push above already fired.
 		let dataToSend = data;
-		const dummy = buildRedactableExecution(this, { [nodeName]: [data] }, executionData);
-		const result = await redactionProxy.processExecution(dummy, {
-			user,
-			copyOnWrite: true,
-		});
-		if (result !== dummy) {
-			dataToSend = result.data.resultData.runData[nodeName][0];
+		try {
+			const dummy = buildRedactableExecution(this, { [nodeName]: [data] }, executionData);
+			const result = await redactionProxy.processExecution(dummy, {
+				user,
+				copyOnWrite: true,
+			});
+			if (result !== dummy) {
+				dataToSend = result.data.resultData.runData[nodeName][0];
+			}
+		} catch (error) {
+			logger.error('Failed to redact push data, skipping nodeExecuteAfterData', {
+				executionId,
+				nodeName,
+				error,
+			});
+			return;
 		}
 
 		// We send the node execution data as a WS binary message to the FE. Not
@@ -319,32 +330,40 @@ function hookFunctionsPush(
 			workflowId,
 		});
 
-		// Fail-closed redaction: if user cannot be resolved, skip the push
-		// entirely rather than sending unredacted run data to the client.
+		// Apply copy-on-write redaction to flattedRunData when retrying/resuming.
+		// Fail-closed: if user cannot be resolved or redaction throws, send
+		// empty runData rather than skipping the push or leaking unredacted data.
 		const user = await getUser();
-		if (!user) {
-			logger.warn('Skipping execution start push: unable to resolve user for redaction', {
+		let runDataToStringify: IRunData = {};
+		const hasRunData = data?.resultData.runData && Object.keys(data.resultData.runData).length > 0;
+
+		if (hasRunData && user) {
+			try {
+				const dummy = buildRedactableExecution(this, data.resultData.runData, data);
+				const result = await redactionProxy.processExecution(dummy, {
+					user,
+					copyOnWrite: true,
+				});
+				runDataToStringify =
+					result !== dummy ? result.data.resultData.runData : data.resultData.runData;
+			} catch (error) {
+				logger.error('Failed to redact execution start data, sending empty runData', {
+					executionId,
+					workflowId,
+					error,
+				});
+				// runDataToStringify stays {} — fail closed
+			}
+		} else if (hasRunData && !user) {
+			logger.warn('Cannot redact execution start data: unable to resolve user', {
 				executionId,
 				workflowId,
 				userId,
 			});
-			return;
+			// runDataToStringify stays {} — fail closed
 		}
 
-		// Apply copy-on-write redaction to flattedRunData when retrying/resuming
-		let runDataToStringify = data?.resultData.runData ?? {};
-		if (data?.resultData.runData && Object.keys(data.resultData.runData).length > 0) {
-			const dummy = buildRedactableExecution(this, data.resultData.runData, data);
-			const result = await redactionProxy.processExecution(dummy, {
-				user,
-				copyOnWrite: true,
-			});
-			if (result !== dummy) {
-				runDataToStringify = result.data.resultData.runData;
-			}
-		}
-
-		// Push data to session which started the workflow
+		// Always send executionStarted so the editor can initialise the execution UI
 		pushInstance.send(
 			{
 				type: 'executionStarted',
