@@ -493,7 +493,7 @@ describe('ResourceLocator', () => {
 			.mockResolvedValueOnce({ results: TEST_ITEMS, paginationToken: null })
 			.mockResolvedValueOnce({ results: TEST_ITEMS_UPDATED, paginationToken: null });
 
-		const { getByTestId, getByText, queryByText } = renderComponent({
+		const { getByTestId, getByText } = renderComponent({
 			props: {
 				modelValue: { __rl: true, value: '', mode: 'list' },
 				parameter: TEST_PARAMETER_URL_REDIRECT,
