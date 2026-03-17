@@ -20,7 +20,7 @@ import {
 	type AssignableGlobalRole,
 } from '@n8n/permissions';
 import type { IUserSettings } from 'n8n-workflow';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -103,8 +103,6 @@ export class UserService {
 	async toPublic(
 		user: User,
 		options?: {
-			withInviteUrl?: boolean;
-			inviterId?: string;
 			posthog?: PostHogClient;
 			withScopes?: boolean;
 			mfaAuthenticated?: boolean;
@@ -122,21 +120,6 @@ export class UserService {
 			isOwner: user.role.slug === 'global:owner',
 		};
 
-		if (options?.withInviteUrl && !options?.inviterId) {
-			throw new UnexpectedError('Inviter ID is required to generate invite URL');
-		}
-
-		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
-
-		if (
-			!inviteLinksEmailOnly &&
-			options?.withInviteUrl &&
-			options?.inviterId &&
-			publicUser.isPending
-		) {
-			publicUser = this.addInviteUrl(options.inviterId, publicUser);
-		}
-
 		if (options?.posthog) {
 			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
 		}
@@ -149,17 +132,6 @@ export class UserService {
 		publicUser.mfaAuthenticated = options?.mfaAuthenticated ?? false;
 
 		return publicUser;
-	}
-
-	private addInviteUrl(inviterId: string, invitee: PublicUser) {
-		const url = new URL(this.urlService.getInstanceBaseUrl());
-		url.pathname = '/signup';
-		url.searchParams.set('inviterId', inviterId);
-		url.searchParams.set('inviteeId', invitee.id);
-
-		invitee.inviteAcceptUrl = url.toString();
-
-		return invitee;
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
