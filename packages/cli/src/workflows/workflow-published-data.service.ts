@@ -50,7 +50,7 @@ export class WorkflowPublishedDataService {
 
 		return {
 			id: workflowId,
-			name: publishedVersion.name ?? workflow.name,
+			name: workflow.name,
 			nodes: publishedVersion.nodes,
 			connections: publishedVersion.connections,
 			staticData: workflow.staticData,

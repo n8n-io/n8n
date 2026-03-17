@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
-import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ActiveWorkflows, InstanceSettings } from 'n8n-core';
 import type {
@@ -141,7 +141,19 @@ describe('ActiveWorkflowManager', () => {
 			Object.assign(instanceSettings, { isLeader: true });
 		});
 
-		test('should use activeVersion nodes when calling executeErrorWorkflow on activation failure', async () => {
+		test('should use active version when calling executeErrorWorkflow on activation failure', async () => {
+			// Create different nodes for draft vs active version
+			const draftNodes = [
+				{
+					id: 'draft-node-1',
+					name: 'Draft Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			];
+
 			const activeNodes = [
 				{
 					id: 'active-node-1',
@@ -153,11 +165,24 @@ describe('ActiveWorkflowManager', () => {
 				},
 			];
 
+			const activeVersion = mock<WorkflowHistory>({
+				versionId: 'v1',
+				workflowId: 'workflow-1',
+				nodes: activeNodes,
+				connections: {},
+				authors: 'test-user',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
 			const workflowEntity = mock<WorkflowEntity>({
 				id: 'workflow-1',
 				name: 'Test Workflow',
 				active: true,
-				activeVersion: { nodes: activeNodes, connections: {} },
+				activeVersionId: activeVersion.versionId,
+				nodes: draftNodes,
+				connections: {},
+				activeVersion,
 			});
 
 			workflowRepository.findById.mockResolvedValue(workflowEntity);
@@ -246,7 +271,8 @@ describe('ActiveWorkflowManager', () => {
 
 				context.emit(triggerData);
 
-				// emit is now async (loads fresh workflow data), so wait for promises to settle
+				// Even with the flag off, emit goes through resolveWorkflowData().then(...)
+				// which adds one microtask tick before runWorkflow is called.
 				await new Promise((resolve) => setTimeout(resolve, 0));
 
 				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);

@@ -13,6 +13,7 @@ describe('WorkflowPublishedDataService', () => {
 		service = new WorkflowPublishedDataService(mockLogger(), workflowPublishedVersionRepository);
 	});
 
+	// Verifies that we hit the repository and return the data it provides.
 	test('should return published data when record exists', async () => {
 		const nodes = [
 			{
@@ -28,7 +29,7 @@ describe('WorkflowPublishedDataService', () => {
 
 		const record = mock<WorkflowPublishedVersion>();
 		Object.defineProperty(record, 'publishedVersion', {
-			value: { nodes, connections, name: 'Published Name' },
+			value: { nodes, connections, name: 'v1' },
 		});
 		Object.defineProperty(record, 'workflow', {
 			value: { name: 'Workflow Name', staticData: undefined, settings: {}, shared: [] },
@@ -39,24 +40,9 @@ describe('WorkflowPublishedDataService', () => {
 
 		expect(result).not.toBeNull();
 		expect(result!.id).toBe('wf-1');
-		expect(result!.name).toBe('Published Name');
+		expect(result!.name).toBe('Workflow Name');
 		expect(result!.nodes).toBe(nodes);
 		expect(result!.connections).toBe(connections);
-	});
-
-	test('should use workflow name when published version has no name', async () => {
-		const record = mock<WorkflowPublishedVersion>();
-		Object.defineProperty(record, 'publishedVersion', {
-			value: { nodes: [], connections: {}, name: null },
-		});
-		Object.defineProperty(record, 'workflow', {
-			value: { name: 'Workflow Name', staticData: undefined, settings: {}, shared: [] },
-		});
-		workflowPublishedVersionRepository.getPublishedVersionWithRelations.mockResolvedValue(record);
-
-		const result = await service.getPublishedWorkflowData('wf-1');
-
-		expect(result!.name).toBe('Workflow Name');
 	});
 
 	test('should return null when no record exists', async () => {

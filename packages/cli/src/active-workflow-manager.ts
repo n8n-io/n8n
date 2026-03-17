@@ -315,6 +315,10 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
+		// Temporary: this callback lets us switch between reading from
+		// the in-memory workflowData (flag off) and the workflow published data
+		// service (flag on). Once the feature flag is removed, we'll call the
+		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
@@ -326,6 +330,9 @@ export class ActiveWorkflowManager {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
+				// Temporary indirection: resolves workflow data via callback so we
+				// can feature-flag between in-memory data and the published data
+				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData().then(
 					async (freshWorkflowData) =>
 						await this.workflowExecutionService.runWorkflow(
@@ -371,6 +378,10 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
+		// Temporary: this callback lets us switch between reading from
+		// the in-memory workflowData (flag off) and the workflow published data
+		// service (flag on). Once the feature flag is removed, we'll call the
+		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecuteTriggerFunctions {
 		return (workflow: Workflow, node: INode) => {
@@ -382,6 +393,9 @@ export class ActiveWorkflowManager {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
+				// Temporary indirection: resolves workflow data via callback so we
+				// can feature-flag between in-memory data and the published data
+				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData().then(
 					async (freshWorkflowData) =>
 						await this.workflowExecutionService.runWorkflow(
@@ -513,7 +527,6 @@ export class ActiveWorkflowManager {
 
 		return {
 			...initialWorkflowData,
-			name: publishedData.name,
 			nodes: publishedData.nodes,
 			connections: publishedData.connections,
 		};
