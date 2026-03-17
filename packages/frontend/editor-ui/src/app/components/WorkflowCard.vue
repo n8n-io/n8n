@@ -182,11 +182,14 @@ const actions = computed(() => {
 			label: locale.baseText('workflows.item.open'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
 		},
-		{
+	];
+
+	if (workflowPermissions.value.share) {
+		items.push({
 			label: locale.baseText('workflows.item.share'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
-		},
-	];
+		});
+	}
 
 	if (
 		workflowPermissions.value.read &&
@@ -234,7 +237,7 @@ const actions = computed(() => {
 
 	if (
 		isWorkflowPublished.value &&
-		workflowPermissions.value.update &&
+		workflowPermissions.value.unpublish &&
 		!props.readOnly &&
 		!props.data.isArchived
 	) {

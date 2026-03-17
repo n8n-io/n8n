@@ -69,6 +69,7 @@ describe('create-workflow-from-code MCP tool', () => {
 	let createWorkflowMock: jest.Mock;
 	let urlService: UrlService;
 	let telemetry: Telemetry;
+	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -87,12 +88,12 @@ describe('create-workflow-from-code MCP tool', () => {
 		telemetry = mockInstance(Telemetry, {
 			track: jest.fn(),
 		});
+		nodeTypes = mockInstance(NodeTypes);
 
 		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson });
 		mockStripImportStatements.mockImplementation((code: string) => code);
 	});
 
-	const nodeTypes = mockInstance(NodeTypes);
 	const credentialsService = mockInstance(CredentialsService, {
 		getCredentialsAUserCanUseInAWorkflow: jest.fn().mockResolvedValue([]),
 	});
@@ -274,6 +275,27 @@ describe('create-workflow-from-code MCP tool', () => {
 					}),
 				}),
 			);
+		});
+
+		test('assigns webhookId to webhook nodes before saving', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return { description: { webhooks: [{ httpMethod: 'GET', path: '' }] } };
+				}
+				return { description: {} };
+			}) as typeof nodeTypes.getByNameAndVersion);
+
+			await callHandler({ code: 'const wf = ...' });
+
+			const savedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+			const webhookNode = savedWorkflow.nodes.find(
+				(n: INode) => n.type === 'n8n-nodes-base.webhook',
+			);
+			const setNode = savedWorkflow.nodes.find((n: INode) => n.type === 'n8n-nodes-base.set');
+
+			expect(webhookNode!.webhookId).toBeDefined();
+			expect(typeof webhookNode!.webhookId).toBe('string');
+			expect(setNode!.webhookId).toBeUndefined();
 		});
 
 		test('tracks telemetry on failure', async () => {

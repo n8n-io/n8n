@@ -19,6 +19,7 @@ import { storeToRefs } from 'pinia';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { updateSemanticSearchSettingsApi } from './chat.api';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { providerDisplayNames, vectorStoreProviderDisplayNames } from './constants';
 import { DEFAULT_SEMANTIC_SEARCH_SETTINGS, EMBEDDINGS_NODE_TYPE_MAP } from '@n8n/chat-hub';
 import { deepCopy } from 'n8n-workflow';
@@ -28,11 +29,28 @@ const message = useMessage();
 const rootStore = useRootStore();
 const chatStore = useChatStore();
 const toast = useToast();
+const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
 
 const { semanticSearchReadiness } = storeToRefs(chatStore);
 
 const settings = ref<ChatHubSemanticSearchSettings>(deepCopy(DEFAULT_SEMANTIC_SEARCH_SETTINGS));
+
+function trackSettingsUpdate(newSettings: ChatHubSemanticSearchSettings) {
+	const vsCredEntered = !!newSettings.vectorStore.credentialId;
+	const emCredEntered = !!newSettings.embeddingModel.credentialId;
+
+	telemetry.track('User updated semantic search settings', {
+		vector_store_provider: newSettings.vectorStore.provider,
+		embedding_provider: newSettings.embeddingModel.provider,
+		vector_store_credential_entered: vsCredEntered,
+		embedding_credential_entered: emCredEntered,
+		vector_store_credential_shared:
+			vsCredEntered && semanticSearchReadiness.value.vectorStoreIssue !== 'notShared',
+		embedding_credential_shared:
+			emCredEntered && semanticSearchReadiness.value.embeddingIssue !== 'notShared',
+	});
+}
 
 const vectorStoreCredentialType = computed(() => {
 	const provider = settings.value.vectorStore.provider;
@@ -85,12 +103,14 @@ async function onVectorStoreProviderChange(provider: ChatHubVectorStoreProvider)
 		}
 	}
 
+	const newSettings: ChatHubSemanticSearchSettings = {
+		...settings.value,
+		vectorStore: { provider, credentialId: null },
+	};
 	try {
-		await updateSemanticSearchSettingsApi(rootStore.restApiContext, {
-			...settings.value,
-			vectorStore: { provider, credentialId: null },
-		});
+		await updateSemanticSearchSettingsApi(rootStore.restApiContext, newSettings);
 		await settingsStore.getModuleSettings();
+		trackSettingsUpdate(newSettings);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('settings.chatHub.semanticSearch.save.success'),
@@ -105,12 +125,14 @@ async function onVectorStoreCredentialSelected(credentialId: string | null) {
 		return;
 	}
 
+	const newSettings: ChatHubSemanticSearchSettings = {
+		...settings.value,
+		vectorStore: { ...settings.value.vectorStore, credentialId },
+	};
 	try {
-		await updateSemanticSearchSettingsApi(rootStore.restApiContext, {
-			...settings.value,
-			vectorStore: { ...settings.value.vectorStore, credentialId },
-		});
+		await updateSemanticSearchSettingsApi(rootStore.restApiContext, newSettings);
 		await settingsStore.getModuleSettings();
+		trackSettingsUpdate(newSettings);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('settings.chatHub.semanticSearch.save.success'),
@@ -143,12 +165,14 @@ async function onEmbeddingModelProviderChange(provider: ChatHubLLMProvider) {
 		}
 	}
 
+	const newSettings: ChatHubSemanticSearchSettings = {
+		...settings.value,
+		embeddingModel: { provider, credentialId: null },
+	};
 	try {
-		await updateSemanticSearchSettingsApi(rootStore.restApiContext, {
-			...settings.value,
-			embeddingModel: { provider, credentialId: null },
-		});
+		await updateSemanticSearchSettingsApi(rootStore.restApiContext, newSettings);
 		await settingsStore.getModuleSettings();
+		trackSettingsUpdate(newSettings);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('settings.chatHub.semanticSearch.save.success'),
@@ -163,12 +187,14 @@ async function onEmbeddingCredentialSelected(credentialId: string | null) {
 		return;
 	}
 
+	const newSettings: ChatHubSemanticSearchSettings = {
+		...settings.value,
+		embeddingModel: { ...settings.value.embeddingModel, credentialId },
+	};
 	try {
-		await updateSemanticSearchSettingsApi(rootStore.restApiContext, {
-			...settings.value,
-			embeddingModel: { ...settings.value.embeddingModel, credentialId },
-		});
+		await updateSemanticSearchSettingsApi(rootStore.restApiContext, newSettings);
 		await settingsStore.getModuleSettings();
+		trackSettingsUpdate(newSettings);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('settings.chatHub.semanticSearch.save.success'),
