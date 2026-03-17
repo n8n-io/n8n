@@ -921,6 +921,9 @@ describe('JobProcessor', () => {
 	});
 
 	describe('project info in log metadata', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
 		it('should include project info in log metadata when present in job data', async () => {
 			const executionRepository = mock<ExecutionRepository>();
 			executionRepository.findSingleExecution.mockResolvedValueOnce(
