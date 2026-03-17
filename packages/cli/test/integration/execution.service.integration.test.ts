@@ -66,7 +66,7 @@ describe('ExecutionService', () => {
 
 	describe('findRangeWithCount', () => {
 		test('should return execution summaries', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ status: 'success' }, workflow),
@@ -77,7 +77,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -106,7 +106,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should limit executions', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ status: 'success' }, workflow),
@@ -118,7 +118,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 2 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -129,7 +129,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should retrieve executions before `lastId`, excluding it', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ status: 'success' }, workflow),
@@ -143,7 +143,7 @@ describe('ExecutionService', () => {
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20, lastId: secondId },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -156,7 +156,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should retrieve executions after `firstId`, excluding it', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ status: 'success' }, workflow),
@@ -170,7 +170,7 @@ describe('ExecutionService', () => {
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20, firstId },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -187,7 +187,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should filter executions by `status`', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ status: 'success' }, workflow),
@@ -200,7 +200,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -214,8 +214,8 @@ describe('ExecutionService', () => {
 		});
 
 		test('should filter executions by `workflowId`', async () => {
-			const firstWorkflow = await createWorkflow();
-			const secondWorkflow = await createWorkflow();
+			const firstWorkflow = await createWorkflow({}, owner);
+			const secondWorkflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ status: 'success' }, firstWorkflow),
@@ -228,7 +228,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				range: { limit: 20 },
 				workflowId: firstWorkflow.id,
-				accessibleWorkflowIds: [firstWorkflow.id, secondWorkflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -241,7 +241,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should filter executions by `startedBefore`', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ startedAt: new Date('2020-06-01') }, workflow),
@@ -252,7 +252,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				range: { limit: 20 },
 				startedBefore: '2020-07-01',
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -265,7 +265,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should filter executions by `startedAfter`', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ startedAt: new Date('2020-06-01') }, workflow),
@@ -276,7 +276,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				range: { limit: 20 },
 				startedAfter: '2020-07-01',
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -289,7 +289,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should filter executions by `metadata` with an exact match by default', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			const key = 'myKey';
 			const value = 'myValue';
@@ -302,7 +302,7 @@ describe('ExecutionService', () => {
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 				metadata: [{ key, value, exactMatch: true }],
 			};
 
@@ -316,7 +316,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should filter executions by `metadata` with a partial match', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			const key = 'myKey';
 
@@ -329,7 +329,7 @@ describe('ExecutionService', () => {
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 				metadata: [{ key, value: 'val', exactMatch: false }],
 			};
 
@@ -359,7 +359,7 @@ describe('ExecutionService', () => {
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
-				accessibleWorkflowIds: [firstWorkflow.id],
+				user: owner,
 				projectId: firstProject.id,
 			};
 
@@ -390,7 +390,7 @@ describe('ExecutionService', () => {
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
-				accessibleWorkflowIds: [firstWorkflow.id],
+				user: owner,
 				projectId: firstProject.id,
 				status: ['error'],
 			};
@@ -448,7 +448,7 @@ describe('ExecutionService', () => {
 				const query: ExecutionSummaries.RangeQuery = {
 					kind: 'range',
 					range: { limit: 20 },
-					accessibleWorkflowIds: [firstWorkflow.id],
+					user: owner,
 					projectId: firstProject.id,
 					...filter,
 				};
@@ -466,8 +466,8 @@ describe('ExecutionService', () => {
 		);
 
 		test('should exclude executions by inaccessible `workflowId`', async () => {
-			const accessibleWorkflow = await createWorkflow();
-			const inaccessibleWorkflow = await createWorkflow();
+			const accessibleWorkflow = await createWorkflow({}, member);
+			const inaccessibleWorkflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ status: 'success' }, accessibleWorkflow),
@@ -480,7 +480,11 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				range: { limit: 20 },
 				workflowId: inaccessibleWorkflow.id,
-				accessibleWorkflowIds: [accessibleWorkflow.id],
+				user: member,
+				sharingOptions: {
+					workflowRoles: ['workflow:owner'],
+					projectRoles: ['project:personalOwner'],
+				},
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -491,7 +495,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should support advanced filters', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			await Promise.all([createExecution({}, workflow), createExecution({}, workflow)]);
 
@@ -515,7 +519,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				range: { limit: 20 },
 				metadata: [{ key: 'key1', value: 'value1' }],
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -527,7 +531,7 @@ describe('ExecutionService', () => {
 	});
 
 	describe('findRangeWithCount — subquery approach', () => {
-		test('should return same results as array approach', async () => {
+		test('should scope results to user accessible workflows', async () => {
 			const workflow1 = await createWorkflow({}, member);
 			const workflow2 = await createWorkflow({}, member);
 			const inaccessibleWorkflow = await createWorkflow({}, owner);
@@ -539,13 +543,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'success' }, inaccessibleWorkflow),
 			]);
 
-			const arrayQuery: ExecutionSummaries.RangeQuery = {
-				kind: 'range',
-				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow1.id, workflow2.id],
-			};
-
-			const subqueryQuery: ExecutionSummaries.RangeQuery = {
+			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				user: member,
@@ -555,15 +553,14 @@ describe('ExecutionService', () => {
 				},
 			};
 
-			const [arrayResult, subqueryResult] = await Promise.all([
-				executionService.findRangeWithCount(arrayQuery),
-				executionService.findRangeWithCount(subqueryQuery),
-			]);
+			const result = await executionService.findRangeWithCount(query);
 
-			expect(arrayResult.count).toBe(3);
-			expect(subqueryResult.count).toBe(3);
-			expect(subqueryResult.results).toHaveLength(arrayResult.results.length);
-			expect(subqueryResult.results.map((r) => r.id)).toEqual(arrayResult.results.map((r) => r.id));
+			// member owns workflow1 and workflow2 → sees 3 executions, not the inaccessible one
+			expect(result.count).toBe(3);
+			const workflowIds = result.results.map((r) => r.workflowId);
+			expect(workflowIds).toContain(workflow1.id);
+			expect(workflowIds).toContain(workflow2.id);
+			expect(workflowIds).not.toContain(inaccessibleWorkflow.id);
 		});
 
 		test('should filter by status correctly', async () => {
@@ -579,7 +576,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				range: { limit: 20 },
 				status: ['success'],
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const subqueryQuery: ExecutionSummaries.RangeQuery = {
@@ -617,7 +614,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				range: { limit: 20 },
 				workflowId: workflow1.id,
-				accessibleWorkflowIds: [workflow1.id, workflow2.id],
+				user: owner,
 			};
 
 			const subqueryQuery: ExecutionSummaries.RangeQuery = {
@@ -654,7 +651,7 @@ describe('ExecutionService', () => {
 			const arrayQuery: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
-				accessibleWorkflowIds: [personalWorkflow.id, teamWorkflow.id],
+				user: owner,
 			};
 
 			const arrayResult = await executionService.findRangeWithCount(arrayQuery);
@@ -745,7 +742,7 @@ describe('ExecutionService', () => {
 			const arrayQuery: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const subqueryQuery: ExecutionSummaries.RangeQuery = {
@@ -776,7 +773,7 @@ describe('ExecutionService', () => {
 		test('should return concurrentExecutionsCount when concurrency is enabled', async () => {
 			globalConfig.executions.concurrency.productionLimit = 4;
 
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 			const concurrentExecutionsData = await Promise.all([
 				createExecution({ status: 'running', mode: 'webhook' }, workflow),
 				createExecution({ status: 'running', mode: 'trigger' }, workflow),
@@ -796,7 +793,7 @@ describe('ExecutionService', () => {
 		test('should set concurrentExecutionsCount to -1 when concurrency is disabled', async () => {
 			globalConfig.executions.concurrency.productionLimit = -1;
 
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ status: 'running', mode: 'webhook' }, workflow),
@@ -816,7 +813,7 @@ describe('ExecutionService', () => {
 			globalConfig.executions.mode = 'queue';
 			globalConfig.executions.concurrency.productionLimit = 4;
 
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ status: 'running', mode: 'webhook' }, workflow),
@@ -835,7 +832,7 @@ describe('ExecutionService', () => {
 
 	describe('findLatestCurrentAndCompleted', () => {
 		test('should return latest current and completed executions', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			const totalCompleted = 21;
 
@@ -851,7 +848,7 @@ describe('ExecutionService', () => {
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findLatestCurrentAndCompleted(query);
@@ -862,7 +859,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should handle zero current executions', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			const totalFinished = 5;
 
@@ -875,7 +872,7 @@ describe('ExecutionService', () => {
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findLatestCurrentAndCompleted(query);
@@ -886,7 +883,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should handle zero completed executions', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ status: 'running' }, workflow),
@@ -897,7 +894,7 @@ describe('ExecutionService', () => {
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findLatestCurrentAndCompleted(query);
@@ -908,12 +905,10 @@ describe('ExecutionService', () => {
 		});
 
 		test('should handle zero executions', async () => {
-			const workflow = await createWorkflow();
-
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findLatestCurrentAndCompleted(query);
@@ -924,7 +919,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should prioritize `running` over `new` executions', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			await Promise.all([
 				createExecution({ status: 'new' }, workflow),
@@ -938,7 +933,7 @@ describe('ExecutionService', () => {
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 2 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const { results } = await executionService.findLatestCurrentAndCompleted(query);
@@ -969,7 +964,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should add and retrieve annotation', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			const execution1 = await createExecution({ status: 'success' }, workflow);
 			const execution2 = await createExecution({ status: 'success' }, workflow);
@@ -989,7 +984,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -1020,7 +1015,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should update annotation', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			const execution = await createExecution({ status: 'success' }, workflow);
 
@@ -1038,7 +1033,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 			};
 
 			const output = await executionService.findRangeWithCount(query);
@@ -1057,7 +1052,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should filter by annotation tags', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			const executions = await Promise.all([
 				createExecution({ status: 'success' }, workflow),
@@ -1079,7 +1074,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 				annotationTags: [annotationTags[0].id],
 			};
 
@@ -1102,7 +1097,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should filter by annotation vote', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 
 			const executions = await Promise.all([
 				createExecution({ status: 'success' }, workflow),
@@ -1124,7 +1119,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 				vote: 'up',
 			};
 

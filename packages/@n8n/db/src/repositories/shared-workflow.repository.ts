@@ -247,11 +247,6 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				.where('sw.role = :ownerRole', { ownerRole: 'workflow:owner' })
 				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: ownerUserId })
 				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
-
-			// Filter by the specific project ID when specified
-			if (projectId && typeof projectId === 'string' && projectId !== '') {
-				subquery.andWhere('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
-			}
 		} else if (onlySharedWithMe) {
 			// Shared with me - workflows shared (as editor) to user's personal project
 			subquery
@@ -260,13 +255,8 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				.where('sw.role = :editorRole', { editorRole: 'workflow:editor' })
 				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
 				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
-		} else if (hasGlobalScope(user, 'workflow:read')) {
-			// User has global scope - return all workflow IDs in the specified project (if any)
-			if (projectId && typeof projectId === 'string' && projectId !== '') {
-				subquery.where('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
-			}
-		} else {
-			// Standard sharing based on roles
+		} else if (!hasGlobalScope(user, 'workflow:read')) {
+			// Standard sharing based on roles (global-scope users need no additional filtering)
 			if (!workflowRoles || !projectRoles) {
 				throw new Error('workflowRoles and projectRoles are required when not using special cases');
 			}
@@ -277,10 +267,11 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				.where('sw.role IN (:...workflowRoles)', { workflowRoles })
 				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
 				.andWhere('pr.role IN (:...projectRoles)', { projectRoles });
+		}
 
-			if (projectId && typeof projectId === 'string' && projectId !== '') {
-				subquery.andWhere('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
-			}
+		// Apply project filter across all branches (except onlySharedWithMe which is personal-project scoped)
+		if (!onlySharedWithMe && projectId) {
+			subquery.andWhere('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
 		}
 
 		return subquery;

@@ -1005,10 +1005,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			subquery.andWhere('"sw"."workflowId" = execution."workflowId"');
 			qb.where(`EXISTS (${subquery.getQuery()})`);
 			qb.setParameters(subquery.getParameters());
-		} else {
+		} else if (!user) {
 			// No access control provided — deny all to prevent unscoped queries
 			qb.where('1 = 0');
 		}
+		// When user is provided without sharingOptions (e.g. global-scope admin),
+		// no access-control filter is applied — the user can see all executions.
 
 		if (query.kind === 'range') {
 			const { limit, firstId, lastId } = query.range;
