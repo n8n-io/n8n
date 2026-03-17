@@ -417,12 +417,6 @@ export class Databricks implements INodeType {
 				required: true,
 			},
 		],
-		requestDefaults: {
-			baseURL: '={{$credentials.host}}',
-			headers: {
-				Authorization: '=Bearer {{$credentials.token}}',
-			},
-		},
 		properties: [
 			{
 				displayName: 'Resource',
