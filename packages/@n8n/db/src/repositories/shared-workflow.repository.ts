@@ -277,6 +277,10 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				.where('sw.role IN (:...workflowRoles)', { workflowRoles })
 				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
 				.andWhere('pr.role IN (:...projectRoles)', { projectRoles });
+
+			if (projectId && typeof projectId === 'string' && projectId !== '') {
+				subquery.andWhere('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
+			}
 		}
 
 		return subquery;
