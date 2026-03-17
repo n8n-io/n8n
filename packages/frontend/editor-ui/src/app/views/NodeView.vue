@@ -964,7 +964,7 @@ function onClickReplaceNode(nodeId: string) {
 	if (!nodeType) return;
 
 	nodeCreatorReplaceTargetId.value = nodeId;
-	nodeCreatorStore.oppeningContext = 'replacement';
+	nodeCreatorStore.openingContext = 'replacement';
 	if (isTriggerNode(nodeType)) {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.REPLACE_NODE_ACTION);
 	} else {

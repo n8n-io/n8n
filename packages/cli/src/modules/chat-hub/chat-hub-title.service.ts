@@ -30,6 +30,7 @@ import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { ChatHubExecutionService } from './chat-hub-execution.service';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
 import { ChatHubSessionRepository } from './chat-session.repository';
 
 @Service()
@@ -43,6 +44,7 @@ export class ChatHubTitleService {
 		private readonly sessionRepository: ChatHubSessionRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly chatHubAgentService: ChatHubAgentService,
+		private readonly chatHubSettingsService: ChatHubSettingsService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -99,6 +101,11 @@ export class ChatHubTitleService {
 				`Using credential ID ${credentialId} for title generation in project ${projectId}, model ${jsonStringify(resolvedModel)}`,
 			);
 
+			const providerSettings =
+				resolvedModel.provider !== 'n8n' && resolvedModel.provider !== 'custom-agent'
+					? await this.chatHubSettingsService.getProviderSettings(resolvedModel.provider, trx)
+					: undefined;
+
 			return await this.chatHubWorkflowService.createTitleGenerationWorkflow(
 				user.id,
 				sessionId,
@@ -108,6 +115,7 @@ export class ChatHubTitleService {
 				resolvedCredentials,
 				resolvedModel,
 				trx,
+				providerSettings,
 			);
 		});
 	}
