@@ -171,13 +171,10 @@ export const IconOnly: Story = {
 		template: `
 		<div style="display: grid; place-items: center;">
 			<div style="display: flex; gap: 12px; align-items: center;">
-				<N8nButton variant="solid" size="xsmall" icon-only aria-label="Add">
-					<N8nIcon icon="plus" size="xsmall" />
-				</N8nButton>
-				<N8nButton variant="solid" size="small" icon-only aria-label="Add">
-					<N8nIcon icon="plus" size="small" />
-				</N8nButton>
-				<N8nButton variant="solid" size="medium" icon-only aria-label="Add">
+				<N8nButton variant="solid" size="xsmall" icon="plus" icon-only aria-label="Add" />
+				<N8nButton variant="solid" size="small" icon="plus" icon-only aria-label="Add" />
+				<N8nButton variant="solid" size="medium" icon="plus" icon-only aria-label="Add" />
+				<N8nButton loading variant="solid" size="medium" icon-only aria-label="Add">
 					<N8nIcon icon="plus" size="medium" />
 				</N8nButton>
 			</div>

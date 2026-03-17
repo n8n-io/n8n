@@ -1,4 +1,5 @@
 name: 'Release: Create Patch Release PR'
+run-name: 'Release: Create Patch Release PR for track ${{ inputs.track }}'
 
 on:
   workflow_dispatch:
@@ -26,7 +27,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: npm install --prefix=.github/scripts --no-package-lock
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Determine release candidate branch from track
         id: determine-branch

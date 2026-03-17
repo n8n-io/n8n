@@ -182,6 +182,64 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		});
 	});
 
+	describe('Validation', () => {
+		test('should reject empty clientId', async () => {
+			const optionsWithEmptyClientId = { ...validOptions, clientId: '' };
+
+			await expect(identifier.resolve(mockContext, optionsWithEmptyClientId)).rejects.toThrow(
+				IdentifierValidationError,
+			);
+		});
+
+		test('should reject whitespace-only clientId', async () => {
+			const optionsWithWhitespaceClientId = { ...validOptions, clientId: '   ' };
+
+			await expect(identifier.resolve(mockContext, optionsWithWhitespaceClientId)).rejects.toThrow(
+				IdentifierValidationError,
+			);
+		});
+
+		test('should reject empty clientSecret', async () => {
+			const optionsWithEmptyClientSecret = { ...validOptions, clientSecret: '' };
+
+			await expect(identifier.resolve(mockContext, optionsWithEmptyClientSecret)).rejects.toThrow(
+				IdentifierValidationError,
+			);
+		});
+
+		test('should reject whitespace-only clientSecret', async () => {
+			const optionsWithWhitespaceClientSecret = { ...validOptions, clientSecret: '   ' };
+
+			await expect(
+				identifier.resolve(mockContext, optionsWithWhitespaceClientSecret),
+			).rejects.toThrow(IdentifierValidationError);
+		});
+
+		test('should throw IdentifierValidationError when metadata URL is unreachable', async () => {
+			mockedAxios.get.mockRejectedValue(new Error('connect ECONNREFUSED 127.0.0.1:443'));
+
+			const error = await identifier.validateOptions(validOptions).catch((e) => e);
+			expect(error).toBeInstanceOf(IdentifierValidationError);
+			expect(error.message).toContain('Could not reach metadata URL');
+		});
+
+		test('should throw IdentifierValidationError on DNS resolution failure', async () => {
+			mockedAxios.get.mockRejectedValue(new Error('getaddrinfo ENOTFOUND auth.example.com'));
+
+			const error = await identifier.validateOptions(validOptions).catch((e) => e);
+			expect(error).toBeInstanceOf(IdentifierValidationError);
+			expect(error.message).toContain('Could not reach metadata URL');
+		});
+
+		test('should throw IdentifierValidationError on request timeout', async () => {
+			mockedAxios.get.mockRejectedValue(new Error('timeout of 10000ms exceeded'));
+
+			const error = await identifier.validateOptions(validOptions).catch((e) => e);
+			expect(error).toBeInstanceOf(IdentifierValidationError);
+			expect(error.message).toContain('Could not reach metadata URL');
+		});
+	});
+
 	describe('Edge Cases', () => {
 		test('should default to client_secret_basic when auth methods not specified', async () => {
 			const metadataWithoutAuthMethods = {

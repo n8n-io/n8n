@@ -109,7 +109,7 @@ export class PublicApiHelper {
 	 *
 	 * n8n's Public API doesn't have a direct "create user" endpoint. Users must be invited first,
 	 * then accept the invitation to complete registration. The invitation acceptance endpoint
-	 * (`/rest/invitations/:id/accept`) automatically logs in the new user by setting session cookies.
+	 * (`/rest/invitations/accept`) expects a JWT token from the invite link and sets session cookies.
 	 *
 	 * To prevent this from hijacking the current browser session (which would log out the owner),
 	 * we use an isolated request context for the acceptance step. This ensures the owner's session
@@ -133,15 +133,17 @@ export class PublicApiHelper {
 		const invited = await this.inviteUser(email, role);
 
 		const url = new URL(invited.inviteAcceptUrl);
-		const inviterId = url.searchParams.get('inviterId');
-		const inviteeId = url.searchParams.get('inviteeId');
+		const token = url.searchParams.get('token');
+		if (!token) {
+			throw new TestError(`Invite URL has no token: ${invited.inviteAcceptUrl}`);
+		}
 
 		// Use an isolated request context to prevent session cookie contamination.
 		// The accept endpoint sets cookies that would otherwise override the current user's session.
 		const isolatedContext = await request.newContext({ baseURL: url.origin });
 		try {
-			const acceptResponse = await isolatedContext.post(`/rest/invitations/${inviteeId}/accept`, {
-				data: { inviterId, firstName, lastName, password },
+			const acceptResponse = await isolatedContext.post('/rest/invitations/accept', {
+				data: { token, firstName, lastName, password },
 			});
 
 			if (!acceptResponse.ok()) {

@@ -92,6 +92,14 @@ describe('Test Notion', () => {
 				expect(result).toBe(testId);
 			}
 		});
+
+		test('should return the id when page slug contains underscores', () => {
+			for (const testId of testIds) {
+				const page = `https://www.notion.so/url_with-underscore-${testId}`;
+				const result = extractPageId(extractIdFromUrl(page));
+				expect(result).toBe(testId);
+			}
+		});
 	});
 });
 

@@ -6,13 +6,24 @@ import { test, expect } from '../../../fixtures/base';
  * E2E tests for the Internal MCP Service (/mcp-server/http).
  *
  * This tests the built-in MCP server that exposes n8n workflows to external
- * MCP clients (like Claude AI). It provides 6 tools:
+ * MCP clients (like Claude AI). It provides 6 core tools and 7 builder tools:
+ *
+ * Core tools:
  * - search_workflows: Search for workflows available in MCP
  * - get_workflow_details: Get detailed information about a workflow
  * - execute_workflow: Execute a workflow and get results
  * - get_execution: Get full execution details by ID
  * - publish_workflow: Publish (activate) a workflow
  * - unpublish_workflow: Unpublish (deactivate) a workflow
+ *
+ * Builder tools (enabled via N8N_MCP_BUILDER_ENABLED):
+ * - search_nodes: Search for n8n nodes by service name/trigger type
+ * - get_node_types: Get TypeScript type definitions for nodes
+ * - get_suggested_nodes: Get curated node recommendations by category
+ * - validate_workflow: Validate n8n Workflow SDK code
+ * - create_workflow_from_code: Create a workflow from validated SDK code
+ * - archive_workflow: Archive a workflow by ID
+ * - update_workflow: Update a workflow with new SDK code
  *
  * Authentication is via Bearer token (MCP API key).
  *
@@ -98,20 +109,27 @@ test.describe(
 		});
 
 		test.describe('tools/list', () => {
-			test('should return all 6 built-in tools', async ({ api }) => {
+			test('should return all built-in tools including builder tools', async ({ api }) => {
 				const { apiKey } = await api.rotateMcpApiKey();
 				const tools = await api.mcp.internalMcpListTools(apiKey);
 
-				expect(tools).toHaveLength(6);
+				expect(tools).toHaveLength(13);
 
 				const toolNames = tools.map((t) => t.name).sort();
 				expect(toolNames).toEqual([
+					'archive_workflow',
+					'create_workflow_from_code',
 					'execute_workflow',
 					'get_execution',
+					'get_node_types',
+					'get_suggested_nodes',
 					'get_workflow_details',
 					'publish_workflow',
+					'search_nodes',
 					'search_workflows',
 					'unpublish_workflow',
+					'update_workflow',
+					'validate_workflow',
 				]);
 			});
 
