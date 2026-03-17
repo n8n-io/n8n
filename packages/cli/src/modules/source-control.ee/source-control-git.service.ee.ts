@@ -464,6 +464,8 @@ export class SourceControlGitService {
 			return await this.git.raw(['reset', '--hard', options.target]);
 		}
 		return await this.git.raw(['reset', options.target]);
+		// built-in reset method does not work
+		// return this.git.reset();
 	}
 
 	async commit(message: string): Promise<CommitResult> {
@@ -479,47 +481,6 @@ export class SourceControlGitService {
 		}
 		const statusResult = await this.git.status();
 		return statusResult;
-	}
-
-	/**
-	 * Returns the remote ref string (e.g. `origin/main`) for the current branch.
-	 */
-	getRemoteRef(): string {
-		return `${SOURCE_CONTROL_ORIGIN}/${this.sourceControlPreferencesService.getBranchName()}`;
-	}
-
-	/**
-	 * Lists files in a directory from a specific git ref using `git ls-tree`.
-	 * Does not require files to be materialized on disk.
-	 */
-	async listRemoteFiles(directory: string, ref: string): Promise<string[]> {
-		try {
-			if (!this.git) {
-				throw new UnexpectedError('Git is not initialized (listRemoteFiles)');
-			}
-			const output = await this.git.raw(['ls-tree', '--name-only', ref, `${directory}/`]);
-			const files = output
-				.trim()
-				.split('\n')
-				.filter((line) => line.length > 0)
-				.map((line) => {
-					const parts = line.split('/');
-					return parts[parts.length - 1];
-				});
-			return files;
-		} catch (error) {
-			if (
-				error instanceof Error &&
-				(error.message.includes('Not a valid object name') ||
-					error.message.includes('not a tree object'))
-			) {
-				return [];
-			}
-			throw new UnexpectedError(
-				`Could not list files in ${directory} at ${ref}: ${(error as Error)?.message}`,
-				{ cause: error },
-			);
-		}
 	}
 
 	async getFileContent(filePath: string, commit: string = 'HEAD'): Promise<string> {

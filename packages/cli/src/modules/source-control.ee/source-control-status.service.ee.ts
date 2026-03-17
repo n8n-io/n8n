@@ -456,7 +456,7 @@ export class SourceControlStatusService {
 			});
 		}
 
-		const result = {
+		return {
 			files: sourceControlledFiles,
 			verbose: {
 				wfRemoteVersionIds,
@@ -466,7 +466,6 @@ export class SourceControlStatusService {
 				wfModifiedInEither,
 			},
 		};
-		return result;
 	}
 
 	private async getStatusCredentials(
@@ -549,7 +548,7 @@ export class SourceControlStatusService {
 			}
 		}
 
-		const result = {
+		return {
 			files: sourceControlledFiles,
 			verbose: {
 				credMissingInLocal,
@@ -557,7 +556,6 @@ export class SourceControlStatusService {
 				credModifiedInEither,
 			},
 		};
-		return result;
 	}
 
 	private async getStatusVariables(options: SourceControlGetStatus, collectVerbose: boolean) {
@@ -636,7 +634,7 @@ export class SourceControlStatusService {
 			});
 		}
 
-		const result = {
+		return {
 			files: sourceControlledFiles,
 			verbose: {
 				varMissingInLocal,
@@ -644,7 +642,6 @@ export class SourceControlStatusService {
 				varModifiedInEither,
 			},
 		};
-		return result;
 	}
 
 	private async getStatusDataTables(options: SourceControlGetStatus, collectVerbose: boolean) {
@@ -723,7 +720,7 @@ export class SourceControlStatusService {
 			}
 		}
 
-		const result = {
+		return {
 			files: sourceControlledFiles,
 			verbose: {
 				dtMissingInLocal,
@@ -731,7 +728,6 @@ export class SourceControlStatusService {
 				dtModifiedInEither,
 			},
 		};
-		return result;
 	}
 
 	private async getStatusTagsMappings(
@@ -876,7 +872,7 @@ export class SourceControlStatusService {
 			});
 		}
 
-		const result = {
+		return {
 			files: sourceControlledFiles,
 			verbose: {
 				tagsMissingInLocal,
@@ -886,7 +882,6 @@ export class SourceControlStatusService {
 				mappingsMissingInRemote,
 			},
 		};
-		return result;
 	}
 
 	private async getStatusFoldersMapping(
@@ -1006,7 +1001,7 @@ export class SourceControlStatusService {
 			});
 		}
 
-		const result = {
+		return {
 			files: sourceControlledFiles,
 			verbose: {
 				foldersMissingInLocal,
@@ -1014,7 +1009,6 @@ export class SourceControlStatusService {
 				foldersModifiedInEither,
 			},
 		};
-		return result;
 	}
 
 	private async getStatusProjects(
@@ -1157,7 +1151,7 @@ export class SourceControlStatusService {
 			}
 		});
 
-		const result = {
+		return {
 			files: sourceControlledFiles,
 			verbose: {
 				projectsRemote,
@@ -1167,7 +1161,6 @@ export class SourceControlStatusService {
 				projectsModifiedInEither,
 			},
 		};
-		return result;
 	}
 
 	private areVariablesEqual(
