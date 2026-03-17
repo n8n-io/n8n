@@ -1184,6 +1184,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should add node error event and track errored executions', async () => {
+			workflowsStore.workflow.id = 'test-workflow';
 			workflowsStore.workflow.pinData = {};
 			useWorkflowState().setWorkflowExecutionData(executionResponse);
 			workflowsStore.addNode({
