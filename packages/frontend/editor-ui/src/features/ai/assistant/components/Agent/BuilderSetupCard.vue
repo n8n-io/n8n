@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, provide, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nButton, N8nCallout, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
@@ -21,8 +21,17 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
+
+const NESTED_PARAM_TYPES = new Set([
+	'collection',
+	'fixedCollection',
+	'resourceMapper',
+	'filter',
+	'assignmentCollection',
+]);
 
 const props = defineProps<{
 	state: NodeSetupState;
@@ -46,6 +55,7 @@ const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
 const workflowState = injectWorkflowState();
+const ndvStore = useNDVStore();
 
 // Expression context for ParameterInputList
 const node = computed<INodeUi | null>(() => props.state.node);
@@ -94,7 +104,7 @@ const isTestingCredential = computed(() => {
 	return !!id && credentialsStore.isCredentialTestPending(id);
 });
 
-const parameters = computed<INodeProperties[]>(() => {
+const allParameters = computed<INodeProperties[]>(() => {
 	if (!nodeType.value?.properties) return [];
 
 	const issueParamNames = Object.keys(props.state.parameterIssues);
@@ -104,7 +114,18 @@ const parameters = computed<INodeProperties[]>(() => {
 	return nodeType.value.properties.filter((prop) => allParamNames.has(prop.name));
 });
 
-const hasShownParameters = computed(() => parameters.value.length > 0);
+const isNestedParam = (p: INodeProperties) =>
+	NESTED_PARAM_TYPES.has(p.type) ||
+	(p.typeOptions?.multipleValues === true && p.type !== 'fixedCollection');
+
+const simpleParameters = computed(() => allParameters.value.filter((p) => !isNestedParam(p)));
+const nestedParameterCount = computed(() => allParameters.value.filter(isNestedParam).length);
+
+const hasShownParameters = computed(() => allParameters.value.length > 0);
+
+const openNdv = () => {
+	ndvStore.setActiveNodeName(props.state.node.name, 'other');
+};
 
 const isTriggerOnly = computed(
 	() => props.state.isTrigger && !hasCredential.value && !hasShownParameters.value,
@@ -258,8 +279,8 @@ watch(isActive, (active, wasActive) => {
 			</div>
 
 			<ParameterInputList
-				v-if="parameters.length > 0"
-				:parameters="parameters"
+				v-if="simpleParameters.length > 0"
+				:parameters="simpleParameters"
 				:node-values="state.node.parameters"
 				:remove-first-parameter-margin="true"
 				:node="state.node"
@@ -268,6 +289,21 @@ watch(isActive, (active, wasActive) => {
 				:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
 				@value-changed="onValueChanged"
 			/>
+
+			<N8nLink
+				v-if="nestedParameterCount > 0"
+				data-test-id="builder-setup-card-configure-link"
+				:underline="true"
+				theme="text"
+				size="medium"
+				@click="openNdv"
+			>
+				{{
+					i18n.baseText('aiAssistant.builder.setupWizard.configureParameters' as BaseTextKey, {
+						interpolate: { count: String(nestedParameterCount) },
+					})
+				}}
+			</N8nLink>
 		</div>
 
 		<!-- Footer -->
