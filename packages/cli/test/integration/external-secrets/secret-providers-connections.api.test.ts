@@ -132,6 +132,7 @@ describe('Secret Providers Connections API', () => {
 				id: expect.any(String),
 				name: 'awsProd',
 				type: 'awsSecretsManager',
+				isEnabled: true,
 				secretsCount: 2,
 				state: 'connected',
 				secrets: [{ name: 'test1' }, { name: 'test2' }],
@@ -176,8 +177,8 @@ describe('Secret Providers Connections API', () => {
 			expect(response.body.data.projects).toHaveLength(2);
 			expect(response.body.data.projects).toEqual(
 				expect.arrayContaining([
-					{ id: teamProject1.id, name: 'Engineering' },
-					{ id: teamProject2.id, name: 'Marketing' },
+					{ id: teamProject1.id, name: 'Engineering', role: 'secretsProviderConnection:user' },
+					{ id: teamProject2.id, name: 'Marketing', role: 'secretsProviderConnection:user' },
 				]),
 			);
 
@@ -292,7 +293,9 @@ describe('Secret Providers Connections API', () => {
 				.send({ projectIds: [teamProject2.id] })
 				.expect(200);
 
-			expect(response.body.data.projects).toEqual([{ id: teamProject2.id, name: 'Marketing' }]);
+			expect(response.body.data.projects).toEqual([
+				{ id: teamProject2.id, name: 'Marketing', role: 'secretsProviderConnection:user' },
+			]);
 
 			const getResponse = await ownerAgent
 				.get('/secret-providers/connections/updateProjectsTest')
@@ -417,6 +420,7 @@ describe('Secret Providers Connections API', () => {
 					id: expect.any(String),
 					name: expect.any(String),
 					type: expect.any(String),
+					isEnabled: true,
 					state: expect.any(String),
 					projects: expect.any(Array),
 					createdAt: expect.any(String),
@@ -461,6 +465,7 @@ describe('Secret Providers Connections API', () => {
 				id: expect.any(String),
 				name: 'getTest',
 				type: 'awsSecretsManager',
+				isEnabled: true,
 				state: expect.any(String),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),

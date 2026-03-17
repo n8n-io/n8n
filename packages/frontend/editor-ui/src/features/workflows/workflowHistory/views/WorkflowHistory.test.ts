@@ -266,6 +266,11 @@ describe('WorkflowHistory', () => {
 				diffWith: versionId,
 			},
 		});
+		expect(telemetry.track).toHaveBeenCalledWith('user_clicks_compare_workflows', {
+			instance_id: '',
+			workflow_id: workflowId,
+			source: 'version_history',
+		});
 	});
 
 	it('should not open compare view when workflow diffs are not licensed', async () => {

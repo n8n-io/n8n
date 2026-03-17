@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, h, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import {
+	computed,
+	ref,
+	h,
+	onMounted,
+	onBeforeUnmount,
+	useTemplateRef,
+	type DeepReadonly,
+} from 'vue';
 import type { VNode } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
@@ -21,7 +29,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { generateVersionNameFromId } from '@/features/workflows/workflowHistory/utils';
+import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
@@ -95,7 +103,7 @@ onMounted(() => {
 		if (versionData?.name) {
 			versionName.value = versionData.name;
 		} else {
-			versionName.value = generateVersionNameFromId(workflowsStore.workflow.versionId);
+			versionName.value = generateVersionLabelFromId(workflowsStore.workflow.versionId);
 		}
 	}
 
@@ -111,7 +119,7 @@ onBeforeUnmount(() => {
 });
 
 function findManagedOpenAiCredentialId(
-	usedCredentials: Record<string, IUsedCredential>,
+	usedCredentials: DeepReadonly<Record<string, IUsedCredential>>,
 ): string | undefined {
 	return Object.keys(usedCredentials).find((credentialId) => {
 		const credential = credentialsStore.state.credentials[credentialId];
@@ -136,13 +144,16 @@ function hasActiveNodeUsingCredential(nodes: INodeUi[], credentialId: string): b
  *
  */
 const shouldShowFreeAiCreditsWarning = computed((): boolean => {
-	const usedCredentials = workflowsStore?.usedCredentials;
+	const usedCredentials = workflowDocumentStore.value?.usedCredentials;
 	if (!usedCredentials) return false;
 
 	const managedOpenAiCredentialId = findManagedOpenAiCredentialId(usedCredentials);
 	if (!managedOpenAiCredentialId) return false;
 
-	return hasActiveNodeUsingCredential(workflowsStore.allNodes, managedOpenAiCredentialId);
+	return hasActiveNodeUsingCredential(
+		workflowDocumentStore.value?.allNodes ?? [],
+		managedOpenAiCredentialId,
+	);
 });
 
 async function displayActivationError() {

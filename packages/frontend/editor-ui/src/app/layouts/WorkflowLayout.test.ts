@@ -33,13 +33,17 @@ vi.mock('@/features/ai/assistant/assistant.store', () => ({
 	})),
 }));
 
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	useWorkflowState: vi.fn(() => ({
-		getNewWorkflowDataAndMakeShareable: vi.fn(),
+vi.mock('@/app/composables/useWorkflowState', () => {
+	const mockState = () => ({
+		getNewWorkflowData: vi.fn(),
 		setWorkflowId: vi.fn(),
 		resetState: vi.fn(),
-	})),
-}));
+	});
+	return {
+		useWorkflowState: vi.fn(mockState),
+		injectWorkflowState: vi.fn(mockState),
+	};
+});
 
 vi.mock('@/app/composables/useWorkflowInitialization', () => ({
 	useWorkflowInitialization: vi.fn(() => ({
@@ -63,6 +67,15 @@ vi.mock('@/app/composables/usePostMessageHandler', () => ({
 	})),
 }));
 
+const mockPushConnect = vi.fn();
+const mockPushDisconnect = vi.fn();
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn(() => ({
+		pushConnect: mockPushConnect,
+		pushDisconnect: mockPushDisconnect,
+	})),
+}));
+
 const defaultStubs = {
 	AppHeader: {
 		template: '<div data-test-id="app-header">App Header</div>',
@@ -75,6 +88,9 @@ const defaultStubs = {
 	},
 	AskAssistantFloatingButton: {
 		template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
+	},
+	CanvasChatOverlay: {
+		template: '<div data-test-id="canvas-chat-overlay" />',
 	},
 	AppChatPanel: {
 		template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
@@ -182,5 +198,16 @@ describe('WorkflowLayout', () => {
 		expect(getByTestId('app-header')).toBeInTheDocument();
 		expect(getByTestId('app-sidebar')).toBeInTheDocument();
 		expect(getByText('Workflow Content')).toBeInTheDocument();
+	});
+
+	it('should call pushConnect on mount', () => {
+		renderComponent();
+		expect(mockPushConnect).toHaveBeenCalledOnce();
+	});
+
+	it('should call pushDisconnect on unmount', () => {
+		const { unmount } = renderComponent();
+		unmount();
+		expect(mockPushDisconnect).toHaveBeenCalledOnce();
 	});
 });

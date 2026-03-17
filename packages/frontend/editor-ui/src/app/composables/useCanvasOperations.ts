@@ -112,8 +112,9 @@ import {
 	TelemetryHelpers,
 	isCommunityPackageName,
 	isHitlToolType,
+	resolveNodeWebhookId,
 } from 'n8n-workflow';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
@@ -131,8 +132,9 @@ import type { TelemetryNdvSource, TelemetryNdvType } from '@/app/types/telemetry
 import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
-import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useClipboard } from '@vueuse/core';
 import {
@@ -188,6 +190,7 @@ export function useCanvasOperations() {
 	const experimentalNdvStore = useExperimentalNdvStore();
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
+	const setupPanelStore = useSetupPanelStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -197,7 +200,6 @@ export function useCanvasOperations() {
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
 	const { uniqueNodeName } = useUniqueNodeName();
-	const { fetchAndSetParentFolder } = useParentFolder();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -1474,9 +1476,7 @@ export function useCanvasOperations() {
 	}
 
 	function resolveNodeWebhook(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		if (nodeTypeDescription.webhooks?.length && !node.webhookId) {
-			nodeHelpers.assignWebhookId(node);
-		}
+		resolveNodeWebhookId(node, nodeTypeDescription);
 
 		// if it's a webhook and the path is empty set the UUID as the default path
 		if (
@@ -2788,7 +2788,7 @@ export function useCanvasOperations() {
 			) {
 				nodeSaveData.credentials = filterAllowedCredentials(
 					nodeSaveData.credentials,
-					workflowsStore.usedCredentials,
+					workflowDocumentStore?.usedCredentials ?? {},
 				);
 			}
 
@@ -2805,7 +2805,7 @@ export function useCanvasOperations() {
 
 	function filterAllowedCredentials(
 		credentials: INodeCredentials,
-		usedCredentials: Record<string, IUsedCredential>,
+		usedCredentials: DeepReadonly<Record<string, IUsedCredential>>,
 	): INodeCredentials {
 		return Object.fromEntries(
 			Object.entries(credentials).filter(([, credential]) => {
@@ -2969,13 +2969,17 @@ export function useCanvasOperations() {
 		name?: string;
 		workflow: IWorkflowTemplate['workflow'] | WorkflowDataWithTemplateId;
 	}) {
-		const convertedNodes = workflow.nodes?.map(workflowsStore.convertTemplateNodeToNodeUi);
+		let convertedNodes = workflow.nodes?.map(workflowsStore.convertTemplateNodeToNodeUi);
+
+		if (setupPanelStore.isFeatureEnabled && convertedNodes) {
+			convertedNodes = clearAllNodeResourceLocatorValues(convertedNodes);
+		}
 
 		if (workflow.connections) {
 			workflowsStore.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
-		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
+		await workflowState.getNewWorkflowData(name, projectsStore.currentProjectId);
 	}
 
 	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
@@ -3103,6 +3107,13 @@ export function useCanvasOperations() {
 		});
 	}
 
+	function openSetupPanelIfEnabled() {
+		if (setupPanelStore.isFeatureEnabled) {
+			focusPanelStore.openFocusPanel();
+			focusPanelStore.setSelectedTab('setup');
+		}
+	}
+
 	async function openWorkflowTemplate(templateId: string) {
 		resetWorkspace();
 
@@ -3147,6 +3158,8 @@ export function useCanvasOperations() {
 		);
 		workflowDocumentStore.addToMeta({ templateId: `${templateId}` });
 
+		openSetupPanelIfEnabled();
+
 		canvasStore.stopLoading();
 
 		void externalHooks.run('template.open', {
@@ -3180,7 +3193,6 @@ export function useCanvasOperations() {
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
 		await projectsStore.refreshCurrentProject();
-		await fetchAndSetParentFolder(parentFolderId);
 
 		await router.replace({
 			name: VIEWS.NEW_WORKFLOW,
@@ -3196,6 +3208,8 @@ export function useCanvasOperations() {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.addToMeta({ templateId: `${templateId}` });
+
+		openSetupPanelIfEnabled();
 
 		canvasStore.stopLoading();
 
