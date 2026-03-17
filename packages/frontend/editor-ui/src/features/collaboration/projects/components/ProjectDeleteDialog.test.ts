@@ -22,6 +22,7 @@ describe('ProjectDeleteDialog', () => {
 		createTestingPinia();
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.searchProjects.mockResolvedValue({ count: 0, data: [] });
+		projectsStore.globalProjectPermissions = { list: true };
 	});
 
 	it('should render the dialog with correct title and content when project is empty', async () => {

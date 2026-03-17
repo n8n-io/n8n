@@ -159,6 +159,7 @@ describe('SourceControlPushModal', () => {
 
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.searchProjects.mockResolvedValue({ count: 0, data: [] });
+		projectsStore.globalProjectPermissions = { list: true };
 	});
 
 	it('mounts', async () => {
