@@ -156,6 +156,59 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy-workflow-ids')).toBeVisible();
 	});
 
+	describe('Viewer mode settings', () => {
+		it('should load and save viewer manual and inputs', async () => {
+			workflowDocumentStore.setSettings({
+				executionOrder: 'v1',
+				viewerMode: {
+					manual: 'Upload the invoice and add context',
+					inputs: [{ key: 'document', label: 'Document', type: 'file', required: true }],
+				},
+			});
+
+			const { getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						viewerMode: {
+							manual: 'Upload the invoice and add context',
+							inputs: [{ key: 'document', label: 'Document', type: 'file', required: true }],
+						},
+					}),
+				}),
+			);
+		});
+
+		it('should block saving when viewer input JSON is invalid', async () => {
+			const { getByRole, getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const inputContainer = getByTestId('workflow-settings-viewer-inputs-json');
+			const input =
+				inputContainer instanceof HTMLInputElement || inputContainer instanceof HTMLTextAreaElement
+					? inputContainer
+					: (inputContainer.querySelector('input, textarea') as
+							| HTMLInputElement
+							| HTMLTextAreaElement
+							| null);
+			if (!input) {
+				throw new Error('Viewer input schema control was not rendered');
+			}
+
+			await userEvent.clear(input);
+			await userEvent.type(input, 'invalid json');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(toast.showError).toHaveBeenCalled();
+			expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('Error Workflow', () => {
 		it('should fetch all workflows and render them in the error workflows dropdown', async () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
