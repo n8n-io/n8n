@@ -49,7 +49,7 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 					status: status.status,
 				};
 
-				if (status.status === 'missing') {
+				if (status.status === 'missing' && status.resolverId) {
 					checkStatus.authorizationUrl = await this.generateAuthorizationUrl(
 						status.credentialId,
 						status.resolverId,
@@ -91,15 +91,6 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 		} else if (credential.type.toLowerCase().includes('oauth1')) {
 			authorizationUrl = await this.oauthService.generateAOauth1AuthUri(...callerData);
 		}
-
-		this.logger.debug('Credential check generated authorization URL', {
-			credentialId,
-			credentialType: credential.type,
-			resolverId,
-			hasUrl: !!authorizationUrl,
-			// Log URL with state stripped for comparison with controller-generated URLs
-			urlWithoutState: authorizationUrl ? authorizationUrl.replace(/&?state=[^&]+/, '') : undefined,
-		});
 
 		return authorizationUrl;
 	}

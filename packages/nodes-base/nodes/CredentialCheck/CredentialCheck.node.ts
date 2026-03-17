@@ -54,10 +54,7 @@ export class CredentialCheck implements INodeType {
 		}
 
 		const notReadyItems: INodeExecutionData[] = items.map((item) => ({
-			json: {
-				...item.json,
-				credentialCheckResult: result,
-			},
+			json: result,
 			pairedItem: item.pairedItem,
 		}));
 

@@ -1018,8 +1018,8 @@ export type CredentialCheckStatus = {
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;
-	resolverId: string;
-	status: 'missing' | 'configured';
+	resolverId?: string;
+	status: 'missing' | 'configured' | 'resolver_missing';
 	authorizationUrl?: string;
 	revokeUrl?: string;
 };
