@@ -84,6 +84,10 @@ export class NodeMailer {
 	private htmlToPlainText(html: string): string {
 		return (
 			html
+				// Remove non-visible content
+				.replace(/<head[\s\S]*?<\/head>/gi, '')
+				.replace(/<script[\s\S]*?<\/script>/gi, '')
+				.replace(/<style[\s\S]*?<\/style>/gi, '')
 				// Convert links and buttons to "text (url)" format
 				.replace(/<a\s[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, '$2 ($1)')
 				.replace(/<mj-button\s[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/mj-button>/gi, '$2 ($1)')

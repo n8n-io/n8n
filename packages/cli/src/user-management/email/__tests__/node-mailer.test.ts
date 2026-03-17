@@ -83,7 +83,6 @@ describe('NodeMailer', () => {
 			});
 
 			const sentText = mockTransport.sendMail.mock.calls[0][0].text as string;
-			console.log('\n--- user-invited ---\n' + sentText + '\n--- end ---');
 			expect(sentText).toContain('Welcome to n8n!');
 			expect(sentText).toContain('example.com');
 			expect(sentText).toContain('Set up your n8n account (https://n8n.example.com/invite/abc123)');
@@ -104,7 +103,6 @@ describe('NodeMailer', () => {
 			});
 
 			const sentText = mockTransport.sendMail.mock.calls[0][0].text as string;
-			console.log('\n--- password-reset-requested ---\n' + sentText + '\n--- end ---');
 			expect(sentText).toContain('Reset your n8n password');
 			expect(sentText).toContain('Hi John,');
 			expect(sentText).toContain('example.com');
@@ -127,7 +125,6 @@ describe('NodeMailer', () => {
 			});
 
 			const sentText = mockTransport.sendMail.mock.calls[0][0].text as string;
-			console.log('\n--- workflow-shared ---\n' + sentText + '\n--- end ---');
 			expect(sentText).toContain('A workflow has been shared with you');
 			expect(sentText).toContain('"My Workflow"');
 			expect(sentText).toContain('Open Workflow (https://n8n.example.com/workflow/123)');
@@ -148,7 +145,6 @@ describe('NodeMailer', () => {
 			});
 
 			const sentText = mockTransport.sendMail.mock.calls[0][0].text as string;
-			console.log('\n--- credentials-shared ---\n' + sentText + '\n--- end ---');
 			expect(sentText).toContain('A credential has been shared with you');
 			expect(sentText).toContain('"My API Key"');
 			expect(sentText).toContain('Open credential (https://n8n.example.com/home/credentials)');
@@ -170,7 +166,6 @@ describe('NodeMailer', () => {
 			});
 
 			const sentText = mockTransport.sendMail.mock.calls[0][0].text as string;
-			console.log('\n--- project-shared ---\n' + sentText + '\n--- end ---');
 			expect(sentText).toContain('My Project');
 			expect(sentText).toContain('editor');
 			expect(sentText).toContain('View project (https://n8n.example.com/projects/123)');
@@ -191,7 +186,6 @@ describe('NodeMailer', () => {
 			});
 
 			const sentText = mockTransport.sendMail.mock.calls[0][0].text as string;
-			console.log('\n--- workflow-deactivated ---\n' + sentText + '\n--- end ---');
 			expect(sentText).toContain('Workflow automatically deactivated');
 			expect(sentText).toContain('"My Workflow"');
 			expect(sentText).toContain('View Workflow (https://n8n.example.com/workflow/123)');
@@ -215,7 +209,6 @@ describe('NodeMailer', () => {
 			});
 
 			const sentText = mockTransport.sendMail.mock.calls[0][0].text as string;
-			console.log('\n--- workflow-failure ---\n' + sentText + '\n--- end ---');
 			expect(sentText).toContain('Hi John,');
 			expect(sentText).toContain('"My Workflow"');
 			expect(sentText).toContain(
@@ -274,6 +267,18 @@ describe('NodeMailer', () => {
 			expect(sentText).not.toMatch(/\n{3,}/);
 			expect(sentText).toContain('First');
 			expect(sentText).toContain('Second');
+		});
+
+		it('should strip head, script, and style content', async () => {
+			await nodeMailer.sendMail({
+				emailRecipients: 'user@test.com',
+				subject: 'Test',
+				body: '<head><style>body{color:red}</style></head><body><p>Visible content</p></body>',
+			});
+
+			const sentText = mockTransport.sendMail.mock.calls[0][0].text as string;
+			expect(sentText).toBe('Visible content');
+			expect(sentText).not.toContain('color:red');
 		});
 
 		it('should convert br tags to newlines', async () => {
