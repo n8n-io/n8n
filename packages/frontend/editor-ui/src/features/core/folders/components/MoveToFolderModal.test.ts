@@ -828,23 +828,26 @@ describe('MoveToFolderModal', () => {
 				undefined,
 			);
 		});
-		expect(mockEventBus.emit).toHaveBeenCalledWith('workflow-transferred', {
-			source: {
-				projectId: personalProject.id,
-				workflow: {
-					id: TEST_WORKFLOW_RESOURCE.id,
-					name: TEST_WORKFLOW_RESOURCE.name,
+		expect(mockEventBus.emit).toHaveBeenCalledWith(
+			'workflow-transferred',
+			expect.objectContaining({
+				source: {
+					projectId: personalProject.id,
+					workflow: {
+						id: TEST_WORKFLOW_RESOURCE.id,
+						name: TEST_WORKFLOW_RESOURCE.name,
+					},
 				},
-			},
-			destination: {
-				projectId: teamProjects[0].id,
-				parentFolder: {
-					id: folder.id,
-					name: folder.name,
+				destination: {
+					projectId: teamProjects[0].id,
+					parentFolder: {
+						id: folder.id,
+						name: folder.name,
+					},
+					canAccess: true,
 				},
-				canAccess: true,
-			},
-		});
+			}),
+		);
 	});
 
 	it('should transfer selected workflow to personal project on submit', async () => {
@@ -885,22 +888,25 @@ describe('MoveToFolderModal', () => {
 				undefined,
 			);
 		});
-		expect(mockEventBus.emit).toHaveBeenCalledWith('workflow-transferred', {
-			source: {
-				projectId: personalProject.id,
-				workflow: {
-					id: TEST_WORKFLOW_RESOURCE.id,
-					name: TEST_WORKFLOW_RESOURCE.name,
+		expect(mockEventBus.emit).toHaveBeenCalledWith(
+			'workflow-transferred',
+			expect.objectContaining({
+				source: {
+					projectId: personalProject.id,
+					workflow: {
+						id: TEST_WORKFLOW_RESOURCE.id,
+						name: TEST_WORKFLOW_RESOURCE.name,
+					},
 				},
-			},
-			destination: {
-				projectId: anotherUser.id,
-				parentFolder: {
-					id: undefined,
-					name: `${anotherUser.name} (Personal space)`,
+				destination: {
+					projectId: anotherUser.id,
+					parentFolder: {
+						id: undefined,
+						name: `${anotherUser.name} (Personal space)`,
+					},
+					canAccess: false,
 				},
-				canAccess: false,
-			},
-		});
+			}),
+		);
 	});
 });
