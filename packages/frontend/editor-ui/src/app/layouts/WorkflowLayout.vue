@@ -7,7 +7,9 @@ import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitiali
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
+import CanvasChatOverlay from '@/features/ai/chatHub/components/CanvasChatOverlay.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import AppHeader from '@/app/components/app/AppHeader.vue';
 import AppSidebar from '@/app/components/app/AppSidebar.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
@@ -17,6 +19,7 @@ import { useProvideWorkflowId } from '@/app/composables/useProvideWorkflowId';
 
 const { layoutProps } = useLayoutProps();
 const assistantStore = useAssistantStore();
+const chatHubPanelStore = useChatHubPanelStore();
 const pushConnectionStore = usePushConnectionStore();
 
 const workflowState = useWorkflowState();
@@ -93,6 +96,7 @@ onBeforeUnmount(() => {
 		</template>
 		<template #overlays>
 			<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
+			<CanvasChatOverlay v-if="chatHubPanelStore.isFloatingChatEnabled" />
 		</template>
 	</BaseLayout>
 </template>

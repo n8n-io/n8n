@@ -5,6 +5,8 @@ import {
 	type ChatHubSemanticSearchSettings,
 } from '@n8n/api-types';
 
+export const DEFAULT_CONTEXT_WINDOW_LENGTH = 20;
+
 export type NodeTypeNameVersion = { name: string; version: number };
 
 export const EMBEDDINGS_NODE_TYPE_MAP: Partial<Record<ChatHubLLMProvider, NodeTypeNameVersion>> = {

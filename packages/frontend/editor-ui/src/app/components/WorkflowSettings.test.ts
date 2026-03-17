@@ -885,6 +885,13 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	describe('Redaction Policy', () => {
+		it('should not render redaction policy when env feature flag is missing', async () => {
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
+		});
+
 		it('should not render redaction policy when redaction module is inactive', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
 				(name: string) => name !== 'redaction',
@@ -916,6 +923,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should render redaction policy when module is active and user has scope', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			settingsStore.settings.envFeatureFlags.N8N_ENV_FEAT_REDACTION_POLICY = true;
 
 			const workflowWithRedactionScope = createTestWorkflow({
 				id: '1',
