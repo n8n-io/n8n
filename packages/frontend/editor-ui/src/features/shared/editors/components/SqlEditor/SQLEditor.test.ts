@@ -9,6 +9,10 @@ import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { INodeUi } from '@/Interface';
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';
@@ -66,6 +70,7 @@ describe('SqlEditor.vue', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: {
+						id: 'test',
 						nodes,
 						connections: {},
 					},
@@ -76,6 +81,9 @@ describe('SqlEditor.vue', () => {
 
 		const workflowsStore = useWorkflowsStore();
 		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(nodes[0]);
+
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test'));
+		vi.mocked(workflowDocumentStore).getNodeByName.mockReturnValue(nodes[0]);
 	});
 
 	afterAll(() => {
