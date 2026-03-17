@@ -3910,7 +3910,6 @@ describe('useCanvasOperations', () => {
 			const resetStateSpy = vi.spyOn(workflowState, 'resetState');
 
 			nodeCreatorStore.setNodeCreatorState = vi.fn();
-			nodeCreatorStore.setShowScrim = vi.fn();
 			workflowsStore.removeTestWebhook = vi.fn();
 			workflowsStore.resetWorkflow = vi.fn();
 			workflowsStore.resetState = vi.fn();
@@ -3947,7 +3946,6 @@ describe('useCanvasOperations', () => {
 			expect(nodeCreatorStore.setNodeCreatorState).toHaveBeenCalledWith({
 				createNodeActive: false,
 			});
-			expect(nodeCreatorStore.setShowScrim).toHaveBeenCalledWith(false);
 			expect(workflowsStore.removeTestWebhook).toHaveBeenCalledWith('workflow-id');
 			expect(workflowsStore.resetWorkflow).toHaveBeenCalled();
 			expect(resetStateSpy).toHaveBeenCalled();
@@ -3966,7 +3964,6 @@ describe('useCanvasOperations', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 
 			nodeCreatorStore.setNodeCreatorState = vi.fn();
-			nodeCreatorStore.setShowScrim = vi.fn();
 			workflowsStore.removeTestWebhook = vi.fn();
 
 			workflowsStore.executionWaitingForWebhook = false;

@@ -8,7 +8,7 @@ import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
-import { jsonParse, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { jsonParse, sleep, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
@@ -226,8 +226,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.initLicense();
 
-		if (isMultiMainEnabled && !this.license.isMultiMainLicensed()) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		if (isMultiMainEnabled) {
+			await this.ensureMultiMainLicensed();
 		}
 
 		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
@@ -310,6 +310,30 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		} else {
 			this.instanceSettings.markAsLeader();
 		}
+	}
+
+	/**
+	 * Ensures the multi-main license entitlement is present. Followers retry with
+	 * exponential backoff because the leader may not have written the cert to the
+	 * database yet when the follower starts up.
+	 */
+	private async ensureMultiMainLicensed() {
+		if (this.license.isMultiMainLicensed()) return;
+
+		if (!this.instanceSettings.isLeader) {
+			const maxRetries = 5;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				const delayMs = 2 ** attempt * 1000; // 2s, 4s, 8s, 16s, 32s (~62s total)
+				this.logger.warn(
+					`Instance not licensed for multi-main — retrying license check in ${delayMs / 1000}s (attempt ${attempt}/${maxRetries})`,
+				);
+				await sleep(delayMs);
+				await this.license.reload();
+				if (this.license.isMultiMainLicensed()) return;
+			}
+		}
+
+		throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 	}
 
 	async run() {

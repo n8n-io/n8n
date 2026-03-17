@@ -167,6 +167,11 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 		border-top-right-radius: 0;
 		border-bottom-right-radius: 0;
 	}
+
+	.split &[data-icon-only] {
+		padding-inline-start: 0;
+		width: var(--spacing--2xl);
+	}
 }
 
 .divider {

@@ -17,20 +17,6 @@ on:
         required: false
         default: false
         type: boolean
-    secrets:
-      CODECOV_TOKEN:
-        description: 'Codecov upload token.'
-        required: false
-      BUILD_STATS_WEBHOOK_URL:
-        description: 'Webhook URL for test stats.'
-        required: false
-      BUILD_STATS_WEBHOOK_USER:
-        description: 'Basic auth username for test stats webhook.'
-        required: false
-      BUILD_STATS_WEBHOOK_PASSWORD:
-        description: 'Basic auth password for test stats webhook.'
-        required: false
-
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 
@@ -57,9 +43,9 @@ jobs:
         if: ${{ !cancelled() }}
         run: node .github/scripts/send-build-stats.mjs || true
         env:
-          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -99,9 +85,9 @@ jobs:
         if: ${{ !cancelled() }}
         run: node .github/scripts/send-build-stats.mjs || true
         env:
-          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -140,9 +126,9 @@ jobs:
         if: ${{ !cancelled() }}
         run: node .github/scripts/send-build-stats.mjs || true
         env:
-          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -187,9 +173,9 @@ jobs:
         if: ${{ !cancelled() }}
         run: node .github/scripts/send-build-stats.mjs || true
         env:
-          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
