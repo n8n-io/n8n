@@ -260,7 +260,7 @@ describe('Logger', () => {
 				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
 			}
 
-			const parsedOutput = JSON.parse(output);
+			const parsedOutput = JSON.parse(output) as { metadata: Record<string, unknown> };
 			expect(parsedOutput.metadata).toMatchObject({
 				workflowId: 'wf-1',
 				projectId: 'proj-1',
@@ -288,7 +288,7 @@ describe('Logger', () => {
 				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
 			}
 
-			const parsedOutput = JSON.parse(output);
+			const parsedOutput = JSON.parse(output) as { metadata: Record<string, unknown> };
 			expect(parsedOutput.metadata.workflowId).toBe('wf-1');
 			expect(parsedOutput.metadata).not.toHaveProperty('projectId');
 			expect(parsedOutput.metadata).not.toHaveProperty('projectName');
