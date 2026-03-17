@@ -215,6 +215,7 @@ watch(isActive, (active, wasActive) => {
 		<!-- Trigger listening callout -->
 		<N8nCallout
 			v-if="showTriggerCallout"
+			:class="$style.callout"
 			data-test-id="trigger-listening-callout"
 			theme="secondary"
 		>
@@ -224,6 +225,7 @@ watch(isActive, (active, wasActive) => {
 		<!-- Webhook URL preview -->
 		<WebhookUrlPreview
 			v-if="state.isTrigger && isInListeningState && webhookUrls.length > 0"
+			:class="$style.callout"
 			:urls="webhookUrls"
 		/>
 
@@ -357,6 +359,10 @@ watch(isActive, (active, wasActive) => {
 	color: var(--color--success);
 	font-size: var(--font-size--sm);
 	white-space: nowrap;
+}
+
+.callout {
+	margin: 0 var(--spacing--sm);
 }
 
 .content {
