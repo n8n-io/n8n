@@ -24,10 +24,12 @@ export const DATA_TABLE_CARD_ACTIONS = {
 	DELETE: 'delete',
 	CLEAR: 'clear',
 	DOWNLOAD_CSV: 'download-csv',
+	IMPORT_CSV: 'import-csv',
 };
 
 export const ADD_DATA_TABLE_MODAL_KEY = 'addDataTableModal';
 export const DOWNLOAD_DATA_TABLE_MODAL_KEY = 'downloadDataTableModal';
+export const IMPORT_CSV_MODAL_KEY = 'importCsvModal';
 
 export const DEFAULT_ID_COLUMN_NAME = 'id';
 
