@@ -32,11 +32,6 @@ async function promoteGitHubRelease() {
 		make_latest: 'true',
 	});
 
-	if (releaseResponse.status !== 200) {
-		console.warn(`Updating release failed. HTTP ${releaseResponse.status}`);
-		process.exit(1);
-	}
-
 	console.log(`Successfully updated release ${releaseResponse.data.html_url}`);
 
 	writeGithubOutput({

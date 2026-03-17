@@ -57,7 +57,7 @@ jobs:
     uses: ./.github/workflows/release-promote-github-release.yml
     secrets: inherit
     with:
-      version-tag: ${{ inputs.new_stable_version }}
+      version-tag: 'n8n@${{ inputs.new_stable_version }}'
 
   ensure-release-candidate-branches:
     name: 'Ensure release candidate branches'
