@@ -2360,6 +2360,8 @@
 	"personalizationModal.registerEmailForTrial.success.button": "Start using n8n",
 	"personalizationModal.registerEmailForTrial.error": "Error while registering for enterprise trial",
 	"pushConnection.nodeExecutedSuccessfully": "Node executed successfully",
+	"pushConnection.nodeNotExecuted": "Node was not executed",
+	"pushConnection.nodeNotExecuted.message": "The execution took a different path and didn't reach this node. This typically happens with conditional nodes like If or Switch.",
 	"pushConnection.workflowExecutedSuccessfully": "Workflow executed successfully",
 	"pushConnection.error.message": "Connection lost",
 	"pushConnection.error.tooltip": "You have a connection issue or the server is down. <br />n8n should reconnect automatically once the issue is resolved.",
