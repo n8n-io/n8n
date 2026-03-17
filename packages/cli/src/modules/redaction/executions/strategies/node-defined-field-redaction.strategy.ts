@@ -35,7 +35,7 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
-	wouldModify(execution: RedactableExecution, context: RedactionContext): boolean {
+	requiresRedaction(execution: RedactableExecution, context: RedactionContext): boolean {
 		if (!execution.data.resultData.runData) return false;
 		const { sensitiveFields, unknownNodes } = this.getSensitiveFieldsMap(execution, context);
 		return sensitiveFields.size > 0 || unknownNodes.size > 0;

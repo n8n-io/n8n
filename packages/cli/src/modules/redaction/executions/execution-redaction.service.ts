@@ -127,7 +127,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 			let target = execution;
 			if (options.keepOriginal) {
-				const needsClone = pipeline.some((s) => s.wouldModify(execution, context));
+				const needsClone = pipeline.some((s) => s.requiresRedaction(execution, context));
 				if (!needsClone) continue;
 				target = structuredClone(execution);
 				executions[i] = target;

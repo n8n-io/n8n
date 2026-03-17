@@ -17,7 +17,7 @@ import type {
 export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 	readonly name = 'full-item-redaction';
 
-	wouldModify(_execution: RedactableExecution, _context: RedactionContext): boolean {
+	requiresRedaction(_execution: RedactableExecution, _context: RedactionContext): boolean {
 		// If this strategy is in the pipeline, it always modifies (clears all items).
 		return true;
 	}

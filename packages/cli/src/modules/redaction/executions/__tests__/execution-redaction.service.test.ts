@@ -211,20 +211,20 @@ describe('ExecutionRedactionService', () => {
 				workflowId: 'wf-nm',
 			});
 
-			// FullItemRedactionStrategy.wouldModify always returns true when in the pipeline
-			fullItemRedactionStrategy.wouldModify.mockReturnValue(true);
-			// NodeDefinedFieldRedactionStrategy.wouldModify returns false (no sensitive fields)
-			nodeDefinedFieldRedactionStrategy.wouldModify.mockReturnValue(false);
+			// FullItemRedactionStrategy.requiresRedaction always returns true when in the pipeline
+			fullItemRedactionStrategy.requiresRedaction.mockReturnValue(true);
+			// NodeDefinedFieldRedactionStrategy.requiresRedaction returns false (no sensitive fields)
+			nodeDefinedFieldRedactionStrategy.requiresRedaction.mockReturnValue(false);
 
 			const executions = [noneExecution, allExecution, nonManualManual];
 			const options: ExecutionRedactionOptions = { user: mockUser, keepOriginal: true };
 
 			await service.processExecutions(executions, options);
 
-			// policy=none → FullItemRedaction not in pipeline → no wouldModify=true → same reference
+			// policy=none → FullItemRedaction not in pipeline → no requiresRedaction=true → same reference
 			expect(executions[0]).toBe(noneExecution);
 
-			// policy=all → FullItemRedaction in pipeline → wouldModify=true → cloned
+			// policy=all → FullItemRedaction in pipeline → requiresRedaction=true → cloned
 			expect(executions[1]).not.toBe(allExecution);
 
 			// policy=non-manual + mode=manual → FullItemRedaction not in pipeline → same reference
