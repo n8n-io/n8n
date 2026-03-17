@@ -1,6 +1,7 @@
 import { Logger, parseFlatted } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import type {
 	FindManyOptions,
 	FindOneOptions,
@@ -1005,12 +1006,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			subquery.andWhere('"sw"."workflowId" = execution."workflowId"');
 			qb.where(`EXISTS (${subquery.getQuery()})`);
 			qb.setParameters(subquery.getParameters());
-		} else if (!user) {
-			// No access control provided — deny all to prevent unscoped queries
+		} else if (user && hasGlobalScope(user, 'workflow:read')) {
+			// Global-scope admin without sharingOptions — no access-control filter needed
+		} else {
+			// No user or insufficient scope — deny all to prevent unscoped queries
 			qb.where('1 = 0');
 		}
-		// When user is provided without sharingOptions (e.g. global-scope admin),
-		// no access-control filter is applied — the user can see all executions.
 
 		if (query.kind === 'range') {
 			const { limit, firstId, lastId } = query.range;
