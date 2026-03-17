@@ -27,7 +27,7 @@ import router from '@/app/router';
 import { sanitizeFilename } from '@n8n/utils';
 import saveAs from 'file-saver';
 import { nodeViewEventBus } from '@/app/event-bus';
-import type { FolderShortInfo } from '@/features/core/folders/folders.types';
+import type { FolderShortInfo, WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
@@ -37,6 +37,8 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { ResourceType } from '@/features/collaboration/projects/projects.utils';
+import { useMoveResourceToProjectToast } from '@/features/collaboration/projects/composables/useMoveResourceToProjectToast';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -63,7 +65,8 @@ const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const workflowHelpers = useWorkflowHelpers();
-const moveWorkflowEventBus = createEventBus();
+const moveWorkflowEventBus = createEventBus<WorkflowListEventMap>();
+const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 const workflowTelemetry = useTelemetry();
 
 const onWorkflowPage = computed(() => {
@@ -359,9 +362,18 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			}
 			const workflow = workflowsListStore.workflowsById[workflowId];
 
-			const navigateAway = async () => await router.push({ name: VIEWS.WORKFLOWS });
-			moveWorkflowEventBus.once('workflow-transferred', navigateAway);
-			moveWorkflowEventBus.once('workflow-moved', navigateAway);
+			moveWorkflowEventBus.once('workflow-transferred', async (event) => {
+				await router.push({ name: VIEWS.WORKFLOWS });
+				showMoveToProjectToast({
+					resourceType: ResourceType.Workflow,
+					resourceTypeLabel: locale.baseText('generic.workflow').toLowerCase(),
+					resourceName: event.source.workflow.name,
+					targetProject: event.toast.targetProject,
+					targetProjectName: event.toast.targetProjectName,
+					shareUsedCredentials: event.toast.shareUsedCredentials,
+					areAllUsedCredentialsShareable: event.toast.areAllUsedCredentialsShareable,
+				});
+			});
 
 			uiStore.openMoveToFolderModal(
 				'workflow',

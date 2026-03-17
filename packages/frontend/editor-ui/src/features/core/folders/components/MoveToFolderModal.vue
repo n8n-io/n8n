@@ -15,7 +15,7 @@ import type {
 	ProjectListItem,
 	ProjectSharingData,
 } from '@/features/collaboration/projects/projects.types';
-import type { ChangeLocationSearchResult } from '../folders.types';
+import type { ChangeLocationSearchResult, WorkflowListEventMap } from '../folders.types';
 import type {
 	ICredentialsResponse,
 	IUsedCredential,
@@ -51,7 +51,7 @@ type Props = {
 			sharedWithProjects?: ProjectSharingData[];
 			homeProjectId?: string;
 		};
-		workflowListEventBus: EventBus;
+		workflowListEventBus: EventBus<WorkflowListEventMap>;
 	};
 };
 
@@ -206,7 +206,7 @@ const onSubmit = async () => {
 		return;
 	}
 
-	const newParent = selectedFolder.value
+	const newParent: { id: string; name: string; type: 'folder' | 'project' } = selectedFolder.value
 		? {
 				id: selectedFolder.value.id,
 				name: selectedFolder.value.name,
@@ -315,6 +315,13 @@ const onSubmit = async () => {
 									: targetProjectName.value,
 						},
 						canAccess: isFolderSelectable.value,
+					},
+					toast: {
+						targetProject: selectedProject.value as ProjectListItem,
+						targetProjectName: targetProjectName.value,
+						shareUsedCredentials: shareUsedCredentials.value,
+						areAllUsedCredentialsShareable:
+							shareableCredentials.value.length === usedCredentials.value.length,
 					},
 				});
 			} else {
