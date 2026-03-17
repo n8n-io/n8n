@@ -278,6 +278,7 @@ describe('useWorkflowSetupState', () => {
 			const triggerNode = createNode({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
+
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
@@ -295,6 +296,7 @@ describe('useWorkflowSetupState', () => {
 			const triggerNode = createNode({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
+
 				position: [0, 0],
 			});
 			const regularNode = createNode({
@@ -305,6 +307,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.allNodes = [triggerNode, regularNode];
 			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.webhook');
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
+
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
 				if ((node as INodeUi).name === 'Regular') return [{ name: 'testApi' }];
 				return [];
@@ -315,12 +318,14 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'Regular') return regularNode;
 				if (name === 'Webhook') return triggerNode;
+
 				return null;
 			});
 
 			const { setupCards } = useWorkflowSetupState();
 
 			// Trigger card first (Webhook at index 0 in execution order),
+
 			// then credential card (Regular at index 1)
 			expect(setupCards.value).toHaveLength(2);
 			expect(setupCards.value[0].state.isTrigger).toBe(true);
@@ -523,6 +528,7 @@ describe('useWorkflowSetupState', () => {
 			const triggerNode = createNode({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
+
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
@@ -558,6 +564,7 @@ describe('useWorkflowSetupState', () => {
 			const triggerNode = createNode({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
+
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
@@ -1132,6 +1139,7 @@ describe('useWorkflowSetupState', () => {
 			const triggerNode = createNode({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
+
 				position: [0, 0],
 			});
 			const regularNode = createNode({
@@ -1142,6 +1150,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.allNodes = [triggerNode, regularNode];
 			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.webhook');
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
+
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
 				if ((node as INodeUi).name === 'Regular') return [{ name: 'testApi' }];
 				return [];
@@ -1842,6 +1851,7 @@ describe('useWorkflowSetupState', () => {
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
 				properties: [{ name: 'url', required: true }],
 				webhooks: [{}],
+
 			});
 			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.webhook');
 

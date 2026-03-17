@@ -89,7 +89,10 @@ export type WorkflowBuilderJourneyEventType =
 	| 'setup_wizard_node_unpinned'
 	| 'web_fetch_approval_prompted'
 	| 'web_fetch_decision'
-	| 'web_fetch_completed';
+	| 'web_fetch_completed'
+	| 'qa_question_answered'
+	| 'qa_question_skipped'
+	| 'qa_answers_submitted';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -110,6 +113,11 @@ interface WorkflowBuilderJourneyEventProperties {
 	url?: string;
 	decision?: 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
 	status?: string;
+	question_type?: 'single' | 'multi' | 'text';
+	question_index?: number;
+	total_questions?: number;
+	input_method?: 'click' | 'keyboard_number' | 'keyboard_enter';
+	custom_answer_used?: boolean;
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -282,6 +290,22 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	const hasNoCreditsRemaining = computed(() => {
 		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
+	});
+
+	const creditsPercentageRemaining = computed(() => {
+		if (
+			creditsQuota.value === undefined ||
+			creditsQuota.value === INFINITE_CREDITS ||
+			creditsRemaining.value === undefined
+		) {
+			return undefined;
+		}
+		if (creditsQuota.value === 0) return 0;
+		return (creditsRemaining.value / creditsQuota.value) * 100;
+	});
+
+	const isLowCredits = computed(() => {
+		return creditsPercentageRemaining.value !== undefined && creditsPercentageRemaining.value <= 10;
 	});
 
 	const hasMessages = computed(() => chatMessages.value.length > 0);
@@ -854,6 +878,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				? mode
 				: (mode ?? (builderMode.value === 'plan' ? 'plan' : undefined));
 		const payload = await createBuilderPayload(text, userMessageId, {
+			workflowId: workflowsStore.workflowId,
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
@@ -1318,6 +1343,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
 		hasNoCreditsRemaining,
+		creditsPercentageRemaining,
+		isLowCredits,
 		hasMessages,
 		latestRevertVersion,
 		workflowTodos,

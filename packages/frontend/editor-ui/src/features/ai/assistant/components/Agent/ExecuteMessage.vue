@@ -1,9 +1,14 @@
 <!-- eslint-disable import-x/extensions -->
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 
@@ -27,6 +32,12 @@ interface Emits {
 const emit = defineEmits<Emits>();
 
 const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
+const workflowDocumentStore = computed(() =>
+	workflowId.value
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
+		: undefined,
+);
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const i18n = useI18n();
@@ -96,7 +107,8 @@ function formatIssueMessage(issue: string | string[]): string {
 }
 
 function getNodeTypeByName(nodeName: string) {
-	const node = workflowsStore.workflow.nodes.find((n) => n.name === nodeName);
+	const node = workflowDocumentStore.value?.getNodeByName(nodeName);
+
 	if (!node) return null;
 	return nodeTypesStore.getNodeType(node.type);
 }
@@ -127,7 +139,7 @@ function scrollIntoView() {
 
 function trackBuilderPlaceholders(issue: WorkflowValidationIssue) {
 	builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
-		node_type: workflowsStore.getNodeByName(issue.node)?.type,
+		node_type: workflowDocumentStore.value?.getNodeByName(issue.node)?.type,
 		type: issue.type,
 	});
 }
