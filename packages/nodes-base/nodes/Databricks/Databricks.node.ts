@@ -414,8 +414,7 @@ export class Databricks implements INodeType {
 		group: ['transform'],
 		version: 1,
 		usableAsTool: true,
-		//   subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		subtitle: '',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Interact with Databricks API',
 		documentationUrl: 'https://docs.databricks.com/aws/en',
 		defaults: {
