@@ -293,6 +293,7 @@ const currentRequestParams = computed(() => {
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
 		projectId: projectsStore.currentProjectId,
+		workflowId: workflowsStore.workflow.id,
 	};
 });
 
@@ -827,6 +828,7 @@ async function loadResources() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
 			projectId: projectsStore.currentProjectId,
+			workflowId: workflowsStore.workflow.id,
 		};
 
 		if (params.filter) {

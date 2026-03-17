@@ -471,6 +471,16 @@ export type RelayEventMap = {
 		redactionPolicy: WorkflowSettings.RedactionPolicy;
 	};
 
+	'execution-data-reveal-failure': {
+		user: UserLike;
+		executionId: string;
+		workflowId: string;
+		ipAddress: string;
+		userAgent: string;
+		redactionPolicy: WorkflowSettings.RedactionPolicy;
+		rejectionReason: string;
+	};
+
 	// #endregion
 
 	// #region Project

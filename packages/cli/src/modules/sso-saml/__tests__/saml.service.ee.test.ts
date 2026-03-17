@@ -184,6 +184,8 @@ describe('SamlService', () => {
 		await validator.init();
 	});
 
+	const originalEnv = process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+
 	beforeEach(async () => {
 		jest.resetAllMocks();
 		Container.reset();
@@ -215,6 +217,39 @@ describe('SamlService', () => {
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
+	});
+
+	afterEach(() => {
+		// Restore original environment variable
+		if (originalEnv !== undefined) {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = originalEnv;
+		} else {
+			delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+		}
+	});
+
+	describe('isSignedSamlRequestsEnabled', () => {
+		it.each([
+			['not set', undefined],
+			['"false"', 'false'],
+			['empty string', ''],
+			['"0"', '0'],
+			['"no"', 'no'],
+		])('should return false when N8N_ENV_FEAT_SIGNED_SAML_REQUESTS is %s', (_, value) => {
+			if (value === undefined) {
+				delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+			} else {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = value;
+			}
+
+			expect(samlService.isSignedSamlRequestsEnabled()).toBe(false);
+		});
+
+		it('should return true when N8N_ENV_FEAT_SIGNED_SAML_REQUESTS is "true"', () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			expect(samlService.isSignedSamlRequestsEnabled()).toBe(true);
+		});
 	});
 
 	describe('getAttributesFromLoginResponse', () => {

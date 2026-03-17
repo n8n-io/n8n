@@ -100,6 +100,21 @@ export function usePopOutWindow({
 	// Copy over dynamic styles to child window to support lazily imported modules
 	observer.observe(document.head, { childList: true, subtree: true });
 
+	// Sync theme changes from the main window to the pop-out window
+	const themeObserver = new MutationObserver(() => {
+		if (popOutWindow.value) {
+			const theme = document.body.getAttribute('data-theme');
+			if (theme) {
+				popOutWindow.value.document.body.setAttribute('data-theme', theme);
+			} else {
+				popOutWindow.value.document.body.removeAttribute('data-theme');
+			}
+			popOutWindow.value.document.documentElement.style.colorScheme =
+				theme === 'dark' ? 'dark' : 'light';
+		}
+	});
+	themeObserver.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] });
+
 	provide(PopOutWindowKey, popOutWindow);
 	useProvideTooltipAppendTo(tooltipContainer);
 
@@ -139,18 +154,26 @@ export function usePopOutWindow({
 			}
 		}
 
+		// Copy the theme attribute so the pop-out window matches the main window
+		const theme = document.body.getAttribute('data-theme');
+		if (theme) {
+			popOutWindow.value.document.body.setAttribute('data-theme', theme);
+		}
+		// Hint the browser to use matching chrome (title bar, scrollbars, etc.)
+		popOutWindow.value.document.documentElement.style.colorScheme =
+			theme === 'dark' ? 'dark' : 'light';
+
 		// Move the content to child window.
 		popOutWindow.value.document.body.append(content.value);
 		popOutWindow.value.addEventListener('pagehide', () => !isUnmounting.value && onRequestClose());
 	}
 
 	function hidePopOut() {
+		if (content.value && container.value?.isConnected) {
+			container.value.appendChild(content.value);
+		}
 		popOutWindow.value?.close();
 		popOutWindow.value = undefined;
-
-		if (content.value) {
-			container.value?.appendChild(content.value);
-		}
 	}
 
 	// `requestAnimationFrame()` to make sure the content is already rendered
@@ -170,6 +193,7 @@ export function usePopOutWindow({
 
 	onScopeDispose(() => {
 		observer.disconnect();
+		themeObserver.disconnect();
 	});
 
 	onBeforeUnmount(() => {

@@ -139,6 +139,38 @@ describe('ClientOAuth2', () => {
 			expect(result.message).toEqual(`Unsupported content type: ${contentType}`);
 		});
 
+		it('should throw ResponseError when application/json response contains invalid JSON', async () => {
+			const htmlBody = '<!DOCTYPE html><html><body>Service Unavailable</body></html>';
+			mockTokenResponse({
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+				body: htmlBody,
+			});
+
+			const result = await makeTokenCall().catch((err) => err);
+			expect(result).toBeInstanceOf(ResponseError);
+			expect(result.status).toBe(200);
+			expect(result.body).toBe(htmlBody);
+			expect(result.message).toContain(
+				'Expected JSON response from OAuth2 token endpoint but received:',
+			);
+			expect(result.message).toContain('<!DOCTYPE html>');
+		});
+
+		it('should truncate long invalid JSON response bodies in the error message', async () => {
+			const longBody = 'x'.repeat(200);
+			mockTokenResponse({
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+				body: longBody,
+			});
+
+			const result = await makeTokenCall().catch((err) => err);
+			expect(result).toBeInstanceOf(ResponseError);
+			expect(result.status).toBe(200);
+			expect(result.message).toContain('x'.repeat(100) + '...');
+		});
+
 		it('should reject 4xx responses with auth errors', async () => {
 			mockTokenResponse({
 				status: 401,
