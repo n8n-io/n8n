@@ -1,6 +1,7 @@
 import { Command } from '@oclif/core';
 import * as readline from 'node:readline';
 
+import { N8nClient, ApiError } from '../client';
 import { readConfig, writeConfig } from '../config';
 
 async function prompt(question: string): Promise<string> {
@@ -38,29 +39,15 @@ export default class Login extends Command {
 			this.error('API key is required.');
 		}
 
-		// Validate connection by hitting the users endpoint
-		let baseUrl = url.replace(/\/+$/, '');
-		if (!baseUrl.endsWith('/api/v1')) {
-			baseUrl = `${baseUrl}/api/v1`;
-		}
-
 		this.log('Verifying connection...');
 
 		try {
-			const response = await fetch(`${baseUrl}/users`, {
-				headers: new Headers({ 'X-N8N-API-KEY': apiKey, Accept: 'application/json' }),
-			});
-
-			if (response.status === 401) {
-				this.error('Authentication failed. Check your API key.');
-			}
-
-			if (!response.ok) {
-				this.error(
-					`Connection failed (${response.status}). Check the URL and ensure the instance is running.`,
-				);
-			}
+			const client = new N8nClient({ baseUrl: url, apiKey });
+			await client.listUsers();
 		} catch (error) {
+			if (error instanceof ApiError) {
+				this.error(error.hint ? `${error.message}\nHint: ${error.hint}` : error.message);
+			}
 			const msg = error instanceof Error ? error.message : String(error);
 			this.error(`Could not connect to ${url}: ${msg}`);
 		}
