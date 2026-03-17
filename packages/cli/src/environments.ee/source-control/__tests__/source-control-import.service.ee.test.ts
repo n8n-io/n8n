@@ -503,7 +503,7 @@ describe('SourceControlImportService', () => {
 			expect(result).toEqual([{ id: 'workflow1', name: mockWorkflowFile }]);
 		});
 
-		it('should update publish newly pulled version when importing an active workflow', async () => {
+		it('should publish newly pulled version when importing an active workflow', async () => {
 			const mockUserId = 'user-id-123';
 			const mockWorkflowFile = '/mock/workflow1.json';
 			const mockWorkflowData = {
