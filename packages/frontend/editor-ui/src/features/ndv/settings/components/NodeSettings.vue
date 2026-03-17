@@ -280,7 +280,7 @@ const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(no
 const packageName = computed(() => node.value?.type.split('.')[0] ?? '');
 
 const usedCredentials = computed(() =>
-	Object.values(workflowDocumentStore.value?.usedCredentials ?? {}).filter((credential) =>
+	Object.values(workflowDocumentStore?.value?.usedCredentials ?? {}).filter((credential) =>
 		Object.values(node.value?.credentials || []).find(
 			(nodeCredential) => nodeCredential.id === credential.id,
 		),
