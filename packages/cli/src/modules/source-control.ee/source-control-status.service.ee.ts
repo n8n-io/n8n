@@ -95,6 +95,35 @@ export class SourceControlStatusService {
 		return;
 	}
 
+	/**
+	 * Checks whether a local and remote data table belong to the same project.
+	 * For team projects, compares the project/team ID.
+	 * Returns true when both owners are null (unowned) or when neither is a team
+	 * (conservative match to avoid suppressing real collisions).
+	 */
+	private isSameDataTableProject(
+		localOwner: StatusResourceOwner | null,
+		remoteOwner: DataTableResourceOwner | null,
+	): boolean {
+		if (!localOwner && !remoteOwner) {
+			return true;
+		}
+
+		if (localOwner?.type === 'team' && remoteOwner?.type === 'team') {
+			return localOwner.projectId === remoteOwner.teamId;
+		}
+
+		// Personal projects don't have stable IDs across instances,
+		// so we can't reliably determine if they're the same project.
+		// Return false to avoid false-positive collision flags.
+		if (localOwner?.type === 'personal' || remoteOwner?.type === 'personal') {
+			return false;
+		}
+
+		// Mixed (one null, one not) — different projects
+		return false;
+	}
+
 	private buildFolderPath(
 		parentFolderId: string | null | undefined,
 		foldersById: Map<string, FolderPathNode>,
@@ -675,12 +704,38 @@ export class SourceControlStatusService {
 		const remoteById = new Map(dataTablesRemote.map((dt) => [dt.id, dt]));
 		const remoteByName = new Map(dataTablesRemote.map((dt) => [dt.name, dt]));
 
+		// Build sets of project IDs represented on each side.
+		// Tables whose project has no counterpart on the other side were never synced
+		// and should not be marked as "deleted" in either direction.
+		const remoteProjectIds = new Set<string>();
+		for (const dt of dataTablesRemote) {
+			if (dt.ownedBy?.type === 'team') {
+				remoteProjectIds.add(dt.ownedBy.teamId);
+			}
+		}
+		const localProjectIds = new Set<string>();
+		for (const dt of dataTablesLocal) {
+			if (dt.ownedBy?.type === 'team') {
+				localProjectIds.add(dt.ownedBy.projectId);
+			}
+		}
+
 		const dtMissingInLocal: ExportableDataTable[] = [];
 		const dtMissingInRemote: StatusExportableDataTable[] = [];
 		const dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable> = [];
 
 		for (const remote of dataTablesRemote) {
 			if (!localById.has(remote.id)) {
+				// During push, a remote-only table would be marked as "deleted" from remote.
+				// Skip if the remote table's project has no local representation — it was
+				// never synced to this instance and should not be deleted.
+				if (options.direction === 'push') {
+					const remoteTeamId = remote.ownedBy?.type === 'team' ? remote.ownedBy.teamId : null;
+					if (remoteTeamId && !localProjectIds.has(remoteTeamId)) {
+						continue;
+					}
+				}
+
 				if (collectVerbose) {
 					dtMissingInLocal.push(remote);
 				}
@@ -702,6 +757,16 @@ export class SourceControlStatusService {
 			const remote = remoteById.get(local.id);
 
 			if (!remote) {
+				// During pull, a local-only table would be marked as "deleted" locally.
+				// Skip if the local table's project has no remote representation — it was
+				// never synced and should not be deleted.
+				if (options.direction === 'pull') {
+					const localTeamId = local.ownedBy?.type === 'team' ? local.ownedBy.projectId : null;
+					if (localTeamId && !remoteProjectIds.has(localTeamId)) {
+						continue;
+					}
+				}
+
 				if (collectVerbose) {
 					dtMissingInRemote.push(local);
 				}
@@ -717,10 +782,14 @@ export class SourceControlStatusService {
 					owner: local.ownedBy ?? undefined,
 				});
 
-				// Check for cross-ID name collision (different tables sharing the same name)
+				// Check for cross-ID name collision (different tables sharing the same name in the same project)
 				const nameCandidate = remoteByName.get(local.name);
 				const nameCollision =
-					nameCandidate && nameCandidate.id !== local.id ? nameCandidate : undefined;
+					nameCandidate &&
+					nameCandidate.id !== local.id &&
+					this.isSameDataTableProject(local.ownedBy, nameCandidate.ownedBy)
+						? nameCandidate
+						: undefined;
 				if (nameCollision) {
 					const modified = options.preferLocalVersion ? local : nameCollision;
 					if (collectVerbose) {
