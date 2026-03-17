@@ -1,4 +1,5 @@
 import type { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
+import { ListProjectsQueryDto } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
@@ -7,7 +8,7 @@ import { ProjectController } from '@/controllers/project.controller';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UserManagementMailer } from '@/user-management/email';
 
-describe('ProjectController (members endpoints)', () => {
+describe('ProjectController', () => {
 	const eventService = mock<EventService>();
 	const projectsService = mock<ProjectService>();
 	const projectRepository = mock<ProjectRepository>();
@@ -35,6 +36,41 @@ describe('ProjectController (members endpoints)', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+	});
+
+	describe('getAllProjects', () => {
+		it('calls service with query options and returns { count, data }', async () => {
+			const projects = [
+				{ id: 'p1', name: 'Project 1' },
+				{ id: 'p2', name: 'Project 2' },
+			];
+			(projectsService.getAccessibleProjectsAndCount as jest.Mock).mockResolvedValue([projects, 2]);
+
+			const res = makeRes();
+			const query = { skip: 0, take: 10, search: 'test', type: 'team' as const };
+
+			await controller.getAllProjects(req, res, query as any);
+
+			expect(projectsService.getAccessibleProjectsAndCount).toHaveBeenCalledWith(req.user, query);
+			expect(res.json).toHaveBeenCalledWith({ count: 2, data: projects });
+		});
+
+		it('returns bare array when no pagination params given', async () => {
+			const projects = [{ id: 'p1', name: 'Project 1' }];
+			(projectsService.getAccessibleProjectsAndCount as jest.Mock).mockResolvedValue([projects, 1]);
+
+			const res = makeRes();
+			// Simulate DTO-parsed output: when no query params are provided,
+			// both skip and take must default to undefined for backward compat.
+			const parsed = ListProjectsQueryDto.safeParse({});
+			expect(parsed.success).toBe(true);
+			const query = parsed.data!;
+
+			const result = await controller.getAllProjects(req, res, query);
+
+			expect(res.json).not.toHaveBeenCalled();
+			expect(result).toEqual(projects);
+		});
 	});
 
 	it('emits team-project-updated with full members list on addProjectUsers', async () => {
