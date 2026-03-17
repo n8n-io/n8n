@@ -7,6 +7,7 @@ import {
 	generateContentLengthHeader,
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
+	getUrlFromProxyConfig,
 	isIgnoreStatusErrorConfig,
 	searchForHeader,
 	validateUrl,
@@ -29,6 +30,61 @@ describe('axios-utils', () => {
 			['', false],
 		])('should return %s for %p', (url, expected) => {
 			expect(validateUrl(url)).toBe(expected);
+		});
+	});
+
+	describe('getUrlFromProxyConfig', () => {
+		test('should return the string directly when it is a valid URL', () => {
+			expect(getUrlFromProxyConfig('http://proxy.example.com:8080')).toBe(
+				'http://proxy.example.com:8080',
+			);
+		});
+
+		test('should return null for an invalid string URL', () => {
+			expect(getUrlFromProxyConfig('not-a-url')).toBeNull();
+		});
+
+		test('should build URL from proxy config object with host only', () => {
+			expect(getUrlFromProxyConfig({ host: 'proxy.local' })).toBe('http://proxy.local/');
+		});
+
+		test('should include port when specified', () => {
+			expect(getUrlFromProxyConfig({ host: 'proxy.local', port: 3128 })).toBe(
+				'http://proxy.local:3128/',
+			);
+		});
+
+		test('should use specified protocol', () => {
+			expect(getUrlFromProxyConfig({ host: 'proxy.local', protocol: 'https' })).toBe(
+				'https://proxy.local/',
+			);
+		});
+
+		test('should strip trailing colon from protocol', () => {
+			expect(getUrlFromProxyConfig({ host: 'proxy.local', protocol: 'https:' })).toBe(
+				'https://proxy.local/',
+			);
+		});
+
+		test('should include auth credentials when provided', () => {
+			const result = getUrlFromProxyConfig({
+				host: 'proxy.local',
+				auth: { username: 'user', password: 'pass' },
+			});
+			expect(result).toBe('http://user:pass@proxy.local/');
+		});
+
+		test('should handle auth with empty password', () => {
+			const result = getUrlFromProxyConfig({
+				host: 'proxy.local',
+				auth: { username: 'user', password: '' },
+			});
+			// URL constructor omits the colon when password is empty
+			expect(result).toBe('http://user@proxy.local/');
+		});
+
+		test('should return null when host is missing from config object', () => {
+			expect(getUrlFromProxyConfig({ host: '' })).toBeNull();
 		});
 	});
 
@@ -173,15 +229,18 @@ describe('axios-utils', () => {
 			expect(ssrfBridge.validateRedirectSync).toHaveBeenCalledWith('https://example.com/other');
 		});
 
-		test('should use resolveProxyUrl when provided', () => {
-			const resolveProxyUrl = jest.fn().mockReturnValue('http://proxy:8080');
+		test('should resolve proxy URL from proxyConfig and pass it to agent factories', () => {
+			const httpProxy = jest.requireMock<typeof import('@/http-proxy')>('@/http-proxy');
+			const httpSpy = jest.spyOn(httpProxy, 'createHttpProxyAgent');
+			const httpsSpy = jest.spyOn(httpProxy, 'createHttpsProxyAgent');
+			httpSpy.mockClear();
+			httpsSpy.mockClear();
+
 			const beforeRedirect = getBeforeRedirectFn(
 				agentOptions,
 				axiosConfig,
 				'http://proxy:8080',
 				false,
-				undefined,
-				resolveProxyUrl,
 			);
 			const redirectedRequest: Record<string, unknown> = {
 				href: 'https://example.com/other',
@@ -192,7 +251,16 @@ describe('axios-utils', () => {
 
 			beforeRedirect(redirectedRequest);
 
-			expect(resolveProxyUrl).toHaveBeenCalledWith('http://proxy:8080');
+			expect(httpSpy).toHaveBeenCalledWith(
+				'http://proxy:8080',
+				'https://example.com/other',
+				expect.objectContaining({ servername: 'example.com' }),
+			);
+			expect(httpsSpy).toHaveBeenCalledWith(
+				'http://proxy:8080',
+				'https://example.com/other',
+				expect.objectContaining({ servername: 'example.com' }),
+			);
 		});
 
 		test('should set https agent for https redirects', () => {

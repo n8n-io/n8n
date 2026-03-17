@@ -79,6 +79,7 @@ import {
 	generateContentLengthHeader,
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
+	getUrlFromProxyConfig,
 	isIgnoreStatusErrorConfig,
 	searchForHeader,
 	validateUrl,
@@ -98,31 +99,6 @@ axios.defaults.paramsSerializer = (params) => {
 // Disable axios proxy, we handle it ourselves
 // Axios proxy option has problems: https://github.com/axios/axios/issues/4531
 axios.defaults.proxy = false;
-
-export function getUrlFromProxyConfig(
-	proxyConfig: IHttpRequestOptions['proxy'] | string,
-): string | null {
-	if (typeof proxyConfig === 'string') {
-		return validateUrl(proxyConfig) ? proxyConfig : null;
-	}
-
-	if (!proxyConfig?.host) return null;
-
-	const { protocol, host, port, auth } = proxyConfig;
-	const safeProtocol = protocol?.endsWith(':') ? protocol.slice(0, -1) : (protocol ?? 'http');
-
-	try {
-		const url = new URL(`${safeProtocol}://${host}`);
-		if (port !== undefined) url.port = String(port);
-		if (auth?.username) {
-			url.username = auth.username;
-			url.password = auth.password ?? '';
-		}
-		return url.href;
-	} catch {
-		return null;
-	}
-}
 
 function buildTargetUrl(url?: string, baseURL?: string): string | undefined {
 	if (!url) return undefined;
@@ -451,7 +427,6 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 		requestObject.proxy,
 		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
 		ssrfBridge,
-		getUrlFromProxyConfig,
 	);
 
 	if (requestObject.useStream) {
@@ -646,7 +621,6 @@ export function convertN8nRequestToAxios(
 		n8nRequest.proxy,
 		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
 		ssrfBridge,
-		getUrlFromProxyConfig,
 	);
 
 	if (n8nRequest.arrayFormat !== undefined) {

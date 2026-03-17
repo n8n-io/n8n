@@ -4,6 +4,7 @@ export {
 	generateContentLengthHeader,
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
+	getUrlFromProxyConfig,
 	isIgnoreStatusErrorConfig,
 	searchForHeader,
 	validateUrl,

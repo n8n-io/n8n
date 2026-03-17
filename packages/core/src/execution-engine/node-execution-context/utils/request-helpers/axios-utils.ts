@@ -10,6 +10,32 @@ import type { IHttpRequestOptions, IgnoreStatusErrorConfig } from 'n8n-workflow'
 import type { SsrfBridge } from '@/execution-engine';
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 
+/** Builds a full proxy URL string from a proxy config object or string. Returns `null` if invalid. */
+export function getUrlFromProxyConfig(
+	proxyConfig: IHttpRequestOptions['proxy'] | string,
+): string | null {
+	if (typeof proxyConfig === 'string') {
+		return validateUrl(proxyConfig) ? proxyConfig : null;
+	}
+
+	if (!proxyConfig?.host) return null;
+
+	const { protocol, host, port, auth } = proxyConfig;
+	const safeProtocol = protocol?.endsWith(':') ? protocol.slice(0, -1) : (protocol ?? 'http');
+
+	try {
+		const url = new URL(`${safeProtocol}://${host}`);
+		if (port !== undefined) url.port = String(port);
+		if (auth?.username) {
+			url.username = auth.username;
+			url.password = auth.password ?? '';
+		}
+		return url.href;
+	} catch {
+		return null;
+	}
+}
+
 /** Checks whether a string is a valid, parseable URL. */
 export function validateUrl(url?: string): boolean {
 	if (!url) return false;
@@ -71,7 +97,6 @@ export const getBeforeRedirectFn =
 		proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
 		sendCredentialsOnCrossOriginRedirect: boolean,
 		ssrfBridge?: SsrfBridge,
-		resolveProxyUrl?: (config: IHttpRequestOptions['proxy'] | string | undefined) => string | null,
 	) =>
 	(redirectedRequest: Record<string, any>) => {
 		// SSRF: validate redirect target synchronously for direct-IP URIs.
@@ -84,7 +109,7 @@ export const getBeforeRedirectFn =
 			...agentOptions,
 			servername: redirectedRequest.hostname,
 		};
-		const customProxyUrl = resolveProxyUrl?.(proxyConfig) ?? null;
+		const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
 
 		// Inject secureLookup into redirect agents for non-proxy paths
 		const effectiveRedirectOptions =
