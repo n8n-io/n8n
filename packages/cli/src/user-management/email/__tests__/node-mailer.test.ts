@@ -273,12 +273,13 @@ describe('NodeMailer', () => {
 			await nodeMailer.sendMail({
 				emailRecipients: 'user@test.com',
 				subject: 'Test',
-				body: '<head><style>body{color:red}</style></head><body><p>Visible content</p></body>',
+				body: '<head><style>body{color:red}</style></head><script>alert("x")</script><body><p>Visible content</p></body>',
 			});
 
 			const sentText = mockTransport.sendMail.mock.calls[0][0].text as string;
 			expect(sentText).toBe('Visible content');
 			expect(sentText).not.toContain('color:red');
+			expect(sentText).not.toContain('alert');
 		});
 
 		it('should convert br tags to newlines', async () => {
