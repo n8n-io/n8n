@@ -19,11 +19,17 @@ const browserOpenSchema = z.object({
 	mode: sessionModeSchema
 		.optional()
 		.describe(
-			'Session mode: "ephemeral" (fresh, destroyed on close), "persistent" (named profile survives), "local" (user\'s real browser)',
+			'Session mode: "ephemeral" (default, recommended — fresh temporary browser, no setup required), ' +
+				'"persistent" (named profile that survives across sessions), ' +
+				'"local" (connect to user\'s real Chrome via n8n Browser Bridge extension — ' +
+				'REQUIRES extension installed in Chrome first, only works with browser: "chrome")',
 		),
 	browser: browserNameSchema
 		.optional()
-		.describe('Browser to use: chromium, chrome, brave, edge, firefox, safari, webkit'),
+		.describe(
+			'Browser to use: chromium, chrome, brave, edge, firefox, safari, webkit. ' +
+				'For local mode, only "chrome" is supported (requires n8n Browser Bridge extension).',
+		),
 	headless: z.boolean().optional().describe('Run in headless mode'),
 	viewport: viewportSchema.optional().describe('Viewport size { width, height }'),
 	profileName: z
@@ -50,7 +56,13 @@ function browserOpen(sessionManager: SessionManager): ToolDefinition<typeof brow
 	return {
 		name: 'browser_open',
 		description:
-			"Create a new browser session. Returns a sessionId for use in all other browser tools. Supports ephemeral (throwaway), persistent (named profile), and local (user's real browser) modes.",
+			'Create a new browser session. Returns a sessionId for use in all other browser tools.\n\n' +
+			'Modes:\n' +
+			'- ephemeral (default): Fresh temporary browser, no setup required. Best for most tasks.\n' +
+			'- persistent: Named profile that persists across sessions. Good for maintaining login state.\n' +
+			"- local: Connect to user's real Chrome browser. REQUIRES the n8n Browser Bridge extension " +
+			'to be installed in Chrome first. Only works with browser="chrome". ' +
+			'If the extension is not installed, recommend ephemeral mode instead.',
 		inputSchema: browserOpenSchema,
 		outputSchema: browserOpenOutputSchema,
 		async execute(args, _context: ToolContext) {

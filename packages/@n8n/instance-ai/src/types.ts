@@ -621,6 +621,9 @@ export interface OrchestrationContext {
 	}>;
 	/** Chrome DevTools MCP config — only present when browser automation is enabled */
 	browserMcpConfig?: McpServerConfig;
+	/** Local MCP server (fs-proxy daemon) — when connected and advertising browser_* tools,
+	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
+	localMcpServer?: LocalMcpServer;
 	/** MCP tools loaded from external servers — available for delegation to sub-agents */
 	mcpTools?: ToolsInput;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */

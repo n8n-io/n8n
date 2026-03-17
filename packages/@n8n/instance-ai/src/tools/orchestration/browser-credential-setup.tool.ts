@@ -9,6 +9,7 @@ import { registerWithMastra } from '../../agent/register-with-mastra';
 import { mapMastraChunkToEvent } from '../../stream/map-chunk';
 import type { OrchestrationContext } from '../../types';
 import { parseSuspension, asResumable } from '../../utils/stream-helpers';
+import { createToolsFromLocalMcpServer } from '../filesystem/create-tools-from-mcp-server';
 
 const BROWSER_AGENT_MAX_STEPS = 300;
 
@@ -74,6 +75,88 @@ Use \`take_snapshot\` — but ONLY when you've identified what to click and need
 - Be economical with snapshots — only take_snapshot when you need element UIDs to click/fill.
 - **CRITICAL: NEVER end your turn after navigate_page without a follow-up action.** After every navigation, you MUST either take_snapshot or evaluate_script to see what loaded, then continue working. Your turn should only end after calling pause-for-user.`;
 
+const GATEWAY_BROWSER_AGENT_PROMPT = `You are a browser automation agent helping a user set up an n8n credential.
+
+## Your Goal
+Help the user obtain ALL required credential values (listed in the briefing). Your job is NOT done until the user has a Client ID, Client Secret, API Key, or whatever the credential requires — visible on screen and ready to copy.
+
+## CRITICAL: When to stop
+You may ONLY stop when ONE of these is true:
+- You have called pause-for-user telling the user to copy the ACTUAL credential values (Client ID, Client Secret, API Key, etc.) that are VISIBLE on screen
+- An unrecoverable error occurred (e.g., the service is down)
+
+**If you have NOT yet called pause-for-user with the credential values, you are NOT done. Keep going.**
+
+You must NOT stop just because you:
+- Read the docs
+- Navigated to the console
+- Checked that an API is enabled
+- Saw that an OAuth consent screen exists
+- Clicked a menu item
+- Navigated to the credentials page
+- Enabled an API
+These are ALL intermediate steps — keep going until the credential values are on screen.
+
+## Browser Tools
+You control the user's real Chrome browser via the browser_* tools. **Every browser_* call requires a sessionId.**
+
+### Session lifecycle
+1. First call \`browser_open\` with \`{ "mode": "local", "browser": "chrome" }\` — this returns a \`sessionId\`.
+2. Pass that \`sessionId\` to EVERY subsequent browser_* call.
+3. When finished, call \`browser_close\` with the \`sessionId\`.
+
+### Key tools
+- \`browser_navigate\` — go to a URL
+- \`browser_snapshot\` — get the accessibility tree (for finding element UIDs to click/fill)
+- \`browser_text\` — get visible text content of the page (efficient, use for reading docs/content)
+- \`browser_evaluate\` — run JavaScript in the page
+- \`browser_click\` — click an element by UID (from snapshot)
+- \`browser_type\` — type text into an input by UID (from snapshot)
+- \`browser_wait\` — wait for a condition (navigation, selector, timeout)
+
+## Process
+1. Call \`browser_open\` with \`{ "mode": "local", "browser": "chrome" }\` to start a session.
+2. Navigate to the n8n documentation URL and read it using \`browser_text\` (NOT browser_snapshot — docs pages have 250KB accessibility trees that fill up context).
+3. Follow the documentation step by step on the service's website.
+4. On service pages, first use \`browser_text\` to understand the page, then \`browser_snapshot\` ONLY when you need UIDs for click/type.
+5. For each required credential field, navigate to where the user can create/find that value.
+6. When the user needs to interact (sign in, complete 2FA, click buttons, copy values), call pause-for-user with a clear message.
+7. After each pause, take a snapshot to verify the action was completed.
+8. Continue until the credential values are visible on screen.
+9. Your FINAL action must be pause-for-user telling the user to copy the values.
+10. Call \`browser_close\` to end the session.
+
+## Resilience
+- Documentation may be outdated or the UI may have changed. Use your best judgment.
+- If a button or link from the docs doesn't exist, look at what IS on the page and adapt.
+- If something is already configured (e.g., consent screen exists, API is enabled), skip that step and move to the NEXT one.
+- If you see the values you need are already on screen, skip ahead to telling the user to copy them.
+- Always use \`browser_snapshot\` after clicking to see what actually loaded.
+
+## Reading pages vs interacting
+
+**To READ a page** (docs, instructions, any content page):
+Use \`browser_text\` to get the visible text content (~5KB). This is 50x smaller than browser_snapshot on docs pages.
+
+**To CLICK or TYPE** (need element UIDs):
+Use \`browser_snapshot\` — but ONLY when you've identified what to click and need the uid. Never snapshot docs pages.
+
+**NEVER use \`browser_screenshot\`** — screenshots are base64 images that consume enormous context.
+
+## Rules
+- The browser is the user's real Chrome browser (their profile, cookies, sessions).
+- Use pause-for-user EVERY time the user needs to do something (sign in, click, copy values).
+- Do NOT narrate what you plan to do — just DO it. Take action, check the result.
+- Do NOT try to read or extract secret values. Tell the user to copy them.
+- Be economical with snapshots — only browser_snapshot when you need element UIDs to click/type.
+- **CRITICAL: NEVER end your turn after browser_navigate without a follow-up action.** After every navigation, you MUST either browser_snapshot or browser_text to see what loaded, then continue working. Your turn should only end after calling pause-for-user.`;
+
+type BrowserToolSource = 'gateway' | 'chrome-devtools-mcp';
+
+function getBrowserAgentPrompt(source: BrowserToolSource): string {
+	return source === 'gateway' ? GATEWAY_BROWSER_AGENT_PROMPT : BROWSER_AGENT_PROMPT;
+}
+
 function createPauseForUserTool() {
 	return createTool({
 		id: 'pause-for-user',
@@ -138,23 +221,43 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 			result: z.string(),
 		}),
 		execute: async (input) => {
-			if (!context.browserMcpConfig) {
-				return {
-					result: 'Browser automation is not configured. Set N8N_INSTANCE_AI_BROWSER_MCP=true.',
-				};
-			}
+			// Determine tool source: prefer local gateway browser tools over chrome-devtools-mcp
+			let browserTools: ToolsInput = {};
+			let toolSource: BrowserToolSource;
 
-			// Collect browser MCP tools from the orchestration context
-			const browserTools: ToolsInput = {};
-			const mcpTools = context.mcpTools ?? {};
-			for (const [name, tool] of Object.entries(mcpTools)) {
-				// Include all MCP tools — browser agent may need them all
-				browserTools[name] = tool;
+			const gatewayHasBrowser =
+				context.localMcpServer?.getAvailableTools().some((t) => t.name.startsWith('browser_')) ??
+				false;
+
+			if (gatewayHasBrowser && context.localMcpServer) {
+				// Gateway path: create Mastra tools from gateway, keep only browser_* tools
+				const allGatewayTools = createToolsFromLocalMcpServer(context.localMcpServer);
+				for (const [name, tool] of Object.entries(allGatewayTools)) {
+					if (name.startsWith('browser_')) {
+						browserTools[name] = tool;
+					}
+				}
+				toolSource = 'gateway';
+			} else if (context.browserMcpConfig) {
+				// Chrome DevTools MCP path: use tools from context.mcpTools
+				const mcpTools = context.mcpTools ?? {};
+				for (const [name, tool] of Object.entries(mcpTools)) {
+					browserTools[name] = tool;
+				}
+				toolSource = 'chrome-devtools-mcp';
+			} else {
+				return {
+					result:
+						'Browser automation is not available. Either connect a local gateway with browser tools or set N8N_INSTANCE_AI_BROWSER_MCP=true.',
+				};
 			}
 
 			if (Object.keys(browserTools).length === 0) {
 				return {
-					result: 'No browser MCP tools available. Chrome DevTools MCP may not be connected.',
+					result:
+						toolSource === 'gateway'
+							? 'Local gateway is connected but no browser_* tools are available. Ensure the browser module is enabled in the gateway.'
+							: 'No browser MCP tools available. Chrome DevTools MCP may not be connected.',
 				};
 			}
 
@@ -181,7 +284,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					name: 'Browser Credential Setup Agent',
 					instructions: {
 						role: 'system' as const,
-						content: BROWSER_AGENT_PROMPT,
+						content: getBrowserAgentPrompt(toolSource),
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},

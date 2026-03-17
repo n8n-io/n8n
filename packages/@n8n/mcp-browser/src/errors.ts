@@ -68,6 +68,16 @@ export class BrowserNotAvailableError extends McpBrowserError {
 	}
 }
 
+export class LocalModeUnsupportedBrowserError extends McpBrowserError {
+	constructor(readonly browser: string) {
+		super(
+			`Local mode only supports Chrome (got: ${browser})`,
+			"Local mode connects to the user's real browser via the n8n Browser Bridge Chrome extension. " +
+				'Use browser: "chrome" with mode: "local", or use mode: "ephemeral" for any browser without setup.',
+		);
+	}
+}
+
 export class ProfileLockedError extends McpBrowserError {
 	constructor() {
 		super(

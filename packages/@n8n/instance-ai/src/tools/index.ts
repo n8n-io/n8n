@@ -176,7 +176,7 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 		...(context.sendCorrectionToTask
 			? { 'correct-background-task': createCorrectBackgroundTaskTool(context) }
 			: {}),
-		...(context.browserMcpConfig
+		...(context.browserMcpConfig || hasGatewayBrowserTools(context)
 			? {
 					'browser-credential-setup': createBrowserCredentialSetupTool(context),
 				}
@@ -199,4 +199,10 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 				}
 			: {}),
 	};
+}
+
+function hasGatewayBrowserTools(context: OrchestrationContext): boolean {
+	return (
+		context.localMcpServer?.getAvailableTools().some((t) => t.name.startsWith('browser_')) ?? false
+	);
 }

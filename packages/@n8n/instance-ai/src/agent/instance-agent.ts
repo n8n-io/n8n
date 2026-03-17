@@ -229,8 +229,16 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	// ── Tool search: split tools into always-loaded core vs deferred ────────
 	// Anthropic guidance: "Keep your 3-5 most-used tools always loaded, defer the rest."
 	// Tool selection accuracy degrades past 10+ tools; tool search improves it significantly.
+	// Orchestrator gets local MCP tools EXCEPT browser_* — those are accessed via
+	// browser-credential-setup (which creates its own sub-agent). This prevents the
+	// orchestrator from calling browser_screenshot/browser_snapshot directly, which
+	// would add 200KB+ images to the orchestrator's context.
 	const localMcpTools = context.localMcpServer
-		? createToolsFromLocalMcpServer(context.localMcpServer)
+		? Object.fromEntries(
+				Object.entries(createToolsFromLocalMcpServer(context.localMcpServer)).filter(
+					([name]) => !name.startsWith('browser_'),
+				),
+			)
 		: {};
 
 	const allOrchestratorTools: ToolsInput = {

@@ -758,6 +758,7 @@ export class InstanceAiService {
 				browserMcpConfig: this.instanceAiConfig.browserMcp
 					? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
 					: undefined,
+				localMcpServer: context.localMcpServer,
 				oauth2CallbackUrl: this.oauth2CallbackUrl,
 				webhookBaseUrl: this.webhookBaseUrl,
 				waitForConfirmation: async (requestId: string) => {

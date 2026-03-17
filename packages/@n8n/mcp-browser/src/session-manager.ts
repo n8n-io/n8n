@@ -1,6 +1,11 @@
 import type { BrowserAdapter } from './adapters/adapter';
 import { getDefaultDiscovery } from './browser-discovery';
-import { BrowserNotAvailableError, MaxSessionsError, SessionNotFoundError } from './errors';
+import {
+	BrowserNotAvailableError,
+	LocalModeUnsupportedBrowserError,
+	MaxSessionsError,
+	SessionNotFoundError,
+} from './errors';
 import type {
 	BrowserName,
 	BrowserSession,
@@ -11,7 +16,7 @@ import type {
 	SessionConfig,
 	SessionOpenResult,
 } from './types';
-import { configSchema, isChromiumBased, openSessionSchema } from './types';
+import { configSchema, openSessionSchema } from './types';
 import { expandHome, generateId } from './utils';
 
 const REAPER_INTERVAL_MS = 60_000;
@@ -174,32 +179,13 @@ export class SessionManager {
 			return await this.createPlaywrightAdapter();
 		}
 
-		// Local mode — adapter depends on browser
+		// Local mode — only Chrome is supported (requires n8n Browser Bridge extension)
 		if (mode === 'local') {
-			if (isChromiumBased(browser)) {
-				// Verify browser is available for local mode
-				this.requireBrowserAvailable(browser);
-				return await this.createPlaywrightAdapter();
+			if (browser !== 'chrome') {
+				throw new LocalModeUnsupportedBrowserError(browser);
 			}
-
-			if (browser === 'firefox') {
-				this.requireBrowserAvailable('firefox');
-				return await this.createWebDriverBiDiAdapter();
-			}
-
-			if (browser === 'safari') {
-				if (process.platform !== 'darwin') {
-					throw new BrowserNotAvailableError('safari (macOS only)');
-				}
-				return await this.createSafariDriverAdapter();
-			}
-
-			// webkit in local mode isn't supported — webkit is Playwright-only
-			if (browser === 'webkit') {
-				throw new BrowserNotAvailableError(
-					'webkit in local mode (use ephemeral or persistent mode for WebKit)',
-				);
-			}
+			this.requireBrowserAvailable('chrome');
+			return await this.createPlaywrightAdapter();
 		}
 
 		throw new BrowserNotAvailableError(browser);
@@ -213,16 +199,6 @@ export class SessionManager {
 	private async createPlaywrightAdapter(): Promise<BrowserAdapter> {
 		const { PlaywrightAdapter } = await import('./adapters/playwright');
 		return new PlaywrightAdapter(this.config);
-	}
-
-	private async createWebDriverBiDiAdapter(): Promise<BrowserAdapter> {
-		const { WebDriverBiDiAdapter } = await import('./adapters/webdriver-bidi');
-		return new WebDriverBiDiAdapter(this.config);
-	}
-
-	private async createSafariDriverAdapter(): Promise<BrowserAdapter> {
-		const { SafariDriverAdapter } = await import('./adapters/safaridriver');
-		return new SafariDriverAdapter(this.config);
 	}
 
 	// -------------------------------------------------------------------------
