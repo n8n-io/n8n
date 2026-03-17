@@ -8,15 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/app/constants';
-import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
-
-export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
-	node: {
-		name: string;
-	};
-	description: string;
-}
 
 const stickyNotificationQueue: NotificationHandle[] = [];
 
@@ -153,20 +145,15 @@ export function useToast() {
 		title: string,
 		options?: { message?: string; description?: string },
 	) {
-		const error = e as NotificationErrorWithNodeAndDescription;
+		const error = e as Error & { description?: string };
 		const message = options?.message;
 		const description = options?.description ?? error.description;
-		const nodeLine =
-			!message && error.node?.name
-				? `${i18n.baseText('workflowActivator.showError.nodeError', { interpolate: { nodeName: error.node.name } })}<br/>`
-				: '';
 		const messageLine = message ? `${message}<br/>` : '';
 		showMessage(
 			{
 				title,
 				message: `
 					${messageLine}
-					${nodeLine}
 					<i>${error.message}</i>
 					${description ? collapsableDetails(description) : ''}`,
 				type: 'error',
