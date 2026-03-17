@@ -68,6 +68,10 @@ class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_NAME_LABEL')
 	includeWorkflowNameLabel: boolean = false;
 
+	/** Whether to include a label for execution mode (e.g. manual, trigger, webhook) on workflow metrics. */
+	@Env('N8N_METRICS_INCLUDE_EXECUTION_MODE_LABEL')
+	includeExecutionModeLabel: boolean = false;
+
 	/** Whether to include workflow execution statistics as metrics. */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_STATISTICS')
 	includeWorkflowStatistics: boolean = false;
