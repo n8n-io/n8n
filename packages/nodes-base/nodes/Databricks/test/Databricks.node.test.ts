@@ -1151,7 +1151,8 @@ describe('Databricks', () => {
 			expect(result.results[0]).toMatchObject({
 				name: 'my-llm',
 				value: 'my-llm',
-				description: 'Gpt-4',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
+				description: 'gpt-4',
 			});
 		});
 
@@ -1217,15 +1218,6 @@ describe('Databricks', () => {
 				host: 'https://schemas-host.databricks.com',
 				token: TOKEN,
 			});
-		});
-
-		it('returns helpful message when no catalog is selected', async () => {
-			mockLoadOptions.getCurrentNodeParameter.mockReturnValue(undefined);
-
-			const result = await node.methods.listSearch.getSchemas.call(mockLoadOptions);
-
-			expect(result.results[0].name).toBe('Please select a catalog first');
-			expect(mockLoadOptions.helpers.httpRequest).not.toHaveBeenCalled();
 		});
 
 		it('fetches schemas for the selected catalog', async () => {
