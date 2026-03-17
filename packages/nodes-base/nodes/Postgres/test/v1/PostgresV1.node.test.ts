@@ -8,7 +8,7 @@ import { PostgresV1 } from '../../v1/PostgresV1.node';
 const pgp = pgPromise();
 const multiSpy = jest.fn(() => [[{ id: 2, name: 'test' }]]);
 
-jest.mock('../transport', () => ({
+jest.mock('../../transport', () => ({
 	configurePostgres: jest.fn(() => ({ db: { multi: multiSpy }, pgp })),
 }));
 
