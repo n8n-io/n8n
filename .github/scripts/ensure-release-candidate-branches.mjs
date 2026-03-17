@@ -2,13 +2,13 @@ import semver from 'semver';
 import {
 	getCommitForRef,
 	localRefExists,
+	RELEASE_CANDIDATE_BRANCH_PREFIX,
 	remoteBranchExists,
 	resolveReleaseTagForTrack,
 	sh,
+	tagVersionInfoToReleaseCandidateBranchName,
 	writeGithubOutput,
 } from './github-helpers.mjs';
-
-const RELEASE_CANDIDATE_BRANCH_PREFIX = 'release-candidate/';
 
 /**
  * @typedef BranchChanges
@@ -49,20 +49,6 @@ export function determineBranchChanges() {
 		branchesToEnsure,
 		branchesToDeprecate,
 	};
-}
-
-/**
- * Takes a TagVersionInfo object and returns a rc-branch name.
- *
- * e.g. release-candidate/2.8.x
- *
- * @param {import('./github-helpers.mjs').TagVersionInfo} tagVersionInfo
- *
- * @returns { `${RELEASE_CANDIDATE_BRANCH_PREFIX}${number}.${number}.x` }
- * */
-export function tagVersionInfoToReleaseCandidateBranchName(tagVersionInfo) {
-	const version = tagVersionInfo.version;
-	return `${RELEASE_CANDIDATE_BRANCH_PREFIX}${semver.major(version)}.${semver.minor(version)}.x`;
 }
 
 /**
