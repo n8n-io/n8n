@@ -25,7 +25,8 @@ import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { send } from '@/response-helper';
+import { send, sendErrorResponse } from '@/response-helper';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { CorsService } from './services/cors-service';
 import { inProduction } from '@n8n/backend-common';
 
@@ -211,7 +212,7 @@ export class ControllerRegistry {
 	private createLicenseMiddleware(feature: BooleanLicenseFeature): RequestHandler {
 		return (_req, res, next) => {
 			if (!this.license.isLicensed(feature)) {
-				res.status(403).json({ status: 'error', message: 'Plan lacks license for this feature' });
+				sendErrorResponse(res, new ForbiddenError('Plan lacks license for this feature'));
 				return;
 			}
 			next();
@@ -230,15 +231,12 @@ export class ControllerRegistry {
 
 			try {
 				if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {
-					res.status(403).json({
-						status: 'error',
-						message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
-					});
+					sendErrorResponse(res, new ForbiddenError(RESPONSE_ERROR_MESSAGES.MISSING_SCOPE));
 					return;
 				}
 			} catch (error) {
 				if (error instanceof NotFoundError) {
-					res.status(404).json({ status: 'error', message: error.message });
+					sendErrorResponse(res, error);
 					return;
 				}
 				throw error;
