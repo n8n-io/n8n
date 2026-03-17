@@ -20,6 +20,7 @@ import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import NDVEmptyState from './NDVEmptyState.vue';
+import RedactedDataState from './RedactedDataState.vue';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import WireMeUp from './WireMeUp.vue';
 import { type IRunDataDisplayMode } from '@/Interface';
@@ -28,14 +29,7 @@ import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 
-import {
-	N8nButton,
-	N8nIcon,
-	N8nLink,
-	N8nRadioButtons,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 type MappingMode = 'debugging' | 'mapping';
 
@@ -670,33 +664,13 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		</template>
 
 		<template #data-redacted>
-			<NDVEmptyState
-				icon="lock"
+			<RedactedDataState
 				:title="i18n.baseText('ndv.input.redacted.title')"
-				data-test-id="ndv-data-redacted"
-			>
-				<template v-if="isDynamicCredentials">
-					{{ i18n.baseText('ndv.redacted.dynamicCredentials.description') }}
-				</template>
-				<template v-else>
-					<I18nT keypath="ndv.redacted.description" tag="span" scope="global">
-						<template #link>
-							<N8nLink size="small" @click="openSettings">{{
-								i18n.baseText('ndv.redacted.description.link')
-							}}</N8nLink>
-						</template>
-					</I18nT>
-				</template>
-				<template v-if="canReveal" #actions>
-					<N8nButton
-						:label="i18n.baseText('ndv.redacted.revealButton')"
-						type="secondary"
-						size="small"
-						data-test-id="ndv-reveal-redacted-data"
-						@click="revealData"
-					/>
-				</template>
-			</NDVEmptyState>
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openSettings"
+				@reveal="revealData"
+			/>
 		</template>
 	</RunData>
 </template>

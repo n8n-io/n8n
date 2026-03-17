@@ -1270,6 +1270,31 @@ describe('RunData', () => {
 			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
 			expect(getByTestId('node-error-view')).toBeInTheDocument();
 		});
+
+		it('should show redacted error state when redactedError is present but error is absent', () => {
+			const { queryByTestId, getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: {
+							main: [[{ json: {} }]],
+						},
+						source: [null],
+						redactedError: { type: 'NodeApiError', httpCode: '500' },
+					},
+				],
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			// Redacted error shows error state, not generic redacted state
+			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
+			expect(queryByTestId('node-error-view')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-redacted-error')).toBeInTheDocument();
+		});
 	});
 
 	// Default values for the render function

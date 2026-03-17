@@ -393,8 +393,17 @@ const workflowRunErrorAsNodeError = computed(() => {
 	return selfTaskData?.error as NodeError;
 });
 
+const hasRedactedError = computed(() => {
+	if (!node.value) return false;
+	const selfTaskData = workflowRunData.value?.[node.value.name]?.[props.runIndex];
+	return !!selfTaskData?.redactedError;
+});
+
 const hasRunError = computed(
-	() => node.value && !isPaneTypeInput.value && !!workflowRunErrorAsNodeError.value,
+	() =>
+		node.value &&
+		!isPaneTypeInput.value &&
+		(!!workflowRunErrorAsNodeError.value || hasRedactedError.value),
 );
 
 const executionHints = computed(() => {
@@ -1806,6 +1815,15 @@ defineExpose({ enterEditMode });
 					:compact="compact"
 					show-details
 				/>
+				<NDVEmptyState
+					v-else-if="hasRedactedError"
+					:class="$style.center"
+					icon="triangle-alert"
+					:title="i18n.baseText('ndv.redacted.error.title')"
+					data-test-id="ndv-redacted-error"
+				>
+					{{ i18n.baseText('ndv.redacted.error.description') }}
+				</NDVEmptyState>
 			</div>
 
 			<div v-else-if="hasNodeRun && isExecutionRedacted" :class="$style.center">
