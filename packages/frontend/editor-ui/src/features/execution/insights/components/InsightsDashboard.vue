@@ -200,8 +200,11 @@ const filterFn = (project: ProjectListItem) =>
 	!!project.name && !emailPattern.test(project.name.trim());
 
 onBeforeMount(async () => {
-	// Load myProjects for members so createAvailableProjectSearch can filter locally
-	await projectsStore.getAvailableProjects();
+	// Members filter locally over myProjects — preload them.
+	// Admins use remote search, so skip the unpaginated GET /projects call.
+	if (!projectsStore.globalProjectPermissions.list) {
+		await projectsStore.getAvailableProjects();
+	}
 });
 </script>
 
