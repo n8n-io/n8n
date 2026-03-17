@@ -1290,23 +1290,33 @@ export class Jira implements INodeType {
 					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0);
 					for (const [index, attachment] of returnData.entries()) {
 						if (attachment.json.error) continue;
-						returnData[index].binary = {};
+						try {
+							returnData[index].binary = {};
 
-						const buffer = await jiraSoftwareCloudApiRequest.call(
-							this,
-							'',
-							'GET',
-							{},
-							{},
-							attachment?.json.content as string,
-							{ json: false, encoding: null, useStream: true },
-						);
+							const buffer = await jiraSoftwareCloudApiRequest.call(
+								this,
+								'',
+								'GET',
+								{},
+								{},
+								attachment?.json.content as string,
+								{ json: false, encoding: null, useStream: true },
+							);
 
-						returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
-							buffer as Buffer,
-							attachment.json.filename as string,
-							attachment.json.mimeType as string,
-						);
+							returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
+								buffer as Buffer,
+								attachment.json.filename as string,
+								attachment.json.mimeType as string,
+							);
+						} catch (error) {
+							if (this.continueOnFail()) {
+								returnData[index] = {
+									json: { error: error.message },
+								};
+								continue;
+							}
+							throw error;
+						}
 					}
 				}
 			}
@@ -1354,21 +1364,31 @@ export class Jira implements INodeType {
 					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0);
 					for (const [index, attachment] of returnData.entries()) {
 						if (attachment.json.error) continue;
-						returnData[index].binary = {};
-						const buffer = await jiraSoftwareCloudApiRequest.call(
-							this,
-							'',
-							'GET',
-							{},
-							{},
-							attachment.json.content as string,
-							{ json: false, encoding: null, useStream: true },
-						);
-						returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
-							buffer as Buffer,
-							attachment.json.filename as string,
-							attachment.json.mimeType as string,
-						);
+						try {
+							returnData[index].binary = {};
+							const buffer = await jiraSoftwareCloudApiRequest.call(
+								this,
+								'',
+								'GET',
+								{},
+								{},
+								attachment.json.content as string,
+								{ json: false, encoding: null, useStream: true },
+							);
+							returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
+								buffer as Buffer,
+								attachment.json.filename as string,
+								attachment.json.mimeType as string,
+							);
+						} catch (error) {
+							if (this.continueOnFail()) {
+								returnData[index] = {
+									json: { error: error.message },
+								};
+								continue;
+							}
+							throw error;
+						}
 					}
 				}
 			}

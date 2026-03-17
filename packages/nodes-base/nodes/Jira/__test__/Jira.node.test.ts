@@ -315,6 +315,59 @@ describe('Jira Node', () => {
 			);
 		});
 
+		it('should return error item when attachment download fails and continueOnFail is true', async () => {
+			const attachmentMeta = {
+				id: '10001',
+				filename: 'file.txt',
+				mimeType: 'text/plain',
+				content: 'https://jira.example.com/attachments/10001',
+			};
+			jiraSoftwareCloudApiRequestMock
+				.mockResolvedValueOnce(attachmentMeta)
+				.mockRejectedValueOnce(new Error('Download failed'));
+
+			executeFunctionsMock.continueOnFail.mockReturnValue(true);
+			executeFunctionsMock.helpers.returnJsonArray.mockImplementation(
+				(data: IDataObject | IDataObject[]) =>
+					[{ json: data as IDataObject }] as INodeExecutionData[],
+			);
+			executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
+				(items) =>
+					items as unknown as ReturnType<
+						typeof executeFunctionsMock.helpers.constructExecutionMetaData
+					>,
+			);
+
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameterName: string) => {
+				switch (parameterName) {
+					case 'resource':
+						return 'issueAttachment';
+					case 'operation':
+						return 'get';
+					case 'jiraVersion':
+						return 'cloud';
+					case 'attachmentId':
+						return '10001';
+					case 'download':
+						return true;
+					case 'binaryProperty':
+						return 'data';
+					default:
+						return null;
+				}
+			});
+			executeFunctionsMock.helpers.assertBinaryData.mockReturnValue({
+				mimeType: 'text/plain',
+				data: '',
+			});
+
+			const result = await jiraNode.execute.call(executeFunctionsMock);
+
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json).toEqual({ error: 'Download failed' });
+			expect(result[0][0].binary).toBeUndefined();
+		});
+
 		it('should return error items for failed items and success items for passing items', async () => {
 			const errorMessage = 'Issue does not exist';
 			jiraSoftwareCloudApiRequestMock
