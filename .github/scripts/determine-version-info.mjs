@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { RELEASE_TRACKS, resolveReleaseTagForTrack, writeGithubOutput } from './github-helpers.mjs';
-import { tagVersionInfoToReleaseCandidateBranchName } from './ensure-release-candidate-branches.mjs';
+import {
+	RELEASE_TRACKS,
+	resolveReleaseTagForTrack,
+	tagVersionInfoToReleaseCandidateBranchName,
+	writeGithubOutput,
+} from './github-helpers.mjs';
 import semver from 'semver';
 
 /**

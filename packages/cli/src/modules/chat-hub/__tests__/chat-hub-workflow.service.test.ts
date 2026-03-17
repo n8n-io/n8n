@@ -89,6 +89,152 @@ describe('ChatHubWorkflowService', () => {
 	});
 
 	describe('createChatWorkflow', () => {
+		describe('provider settings', () => {
+			it('should set responsesApiEnabled to false on OpenAI model node when provider settings disable it', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+					undefined,
+					{
+						provider: 'openai',
+						enabled: true,
+						credentialId: 'cred-123',
+						allowedModels: [],
+						responsesApiEnabled: false,
+						createdAt: new Date().toISOString(),
+						updatedAt: null,
+					},
+				);
+
+				const modelNode = result.workflowData.nodes.find((node) => node.name === 'Chat Model');
+				expect(modelNode?.parameters).toHaveProperty('responsesApiEnabled', false);
+			});
+
+			it('should not set responsesApiEnabled when provider settings do not explicitly disable it', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+					undefined,
+					{
+						provider: 'openai',
+						enabled: true,
+						credentialId: 'cred-123',
+						allowedModels: [],
+						createdAt: new Date().toISOString(),
+						updatedAt: null,
+					},
+				);
+
+				const modelNode = result.workflowData.nodes.find((node) => node.name === 'Chat Model');
+				expect(modelNode?.parameters).not.toHaveProperty('responsesApiEnabled');
+			});
+
+			it('should not set responsesApiEnabled when provider settings explicitly enable it', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+					undefined,
+					{
+						provider: 'openai',
+						enabled: true,
+						credentialId: 'cred-123',
+						allowedModels: [],
+						responsesApiEnabled: true,
+						createdAt: new Date().toISOString(),
+						updatedAt: null,
+					},
+				);
+
+				const modelNode = result.workflowData.nodes.find((node) => node.name === 'Chat Model');
+				expect(modelNode?.parameters).not.toHaveProperty('responsesApiEnabled');
+			});
+
+			it('should use custom contextWindowLength from provider settings', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+					undefined,
+					{
+						provider: 'openai',
+						enabled: true,
+						credentialId: 'cred-123',
+						allowedModels: [],
+						contextWindowLength: 50,
+						createdAt: new Date().toISOString(),
+						updatedAt: null,
+					},
+				);
+
+				const memoryNode = result.workflowData.nodes.find((node) => node.name === 'Memory');
+				expect(memoryNode?.parameters).toHaveProperty('contextWindowLength', 50);
+			});
+
+			it('should default contextWindowLength to 20 when not set in provider settings', async () => {
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4-turbo' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+				);
+
+				const memoryNode = result.workflowData.nodes.find((node) => node.name === 'Memory');
+				expect(memoryNode?.parameters).toHaveProperty('contextWindowLength', 20);
+			});
+		});
+
 		describe('vector store nodes', () => {
 			const VECTOR_STORE_SEARCH = {
 				agentId: 'agent-1',

@@ -688,7 +688,6 @@ export type NodeCreatorOpenSource =
 
 export interface INodeCreatorState {
 	itemsFilter: string;
-	showScrim: boolean;
 	rootViewHistory: NodeFilterType[];
 	selectedView: NodeFilterType;
 	openSource: NodeCreatorOpenSource;
