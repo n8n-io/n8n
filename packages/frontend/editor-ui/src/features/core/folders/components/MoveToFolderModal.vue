@@ -125,7 +125,7 @@ const unShareableCredentials = computed(() =>
 
 const searchFn = createAvailableProjectSearch(projectsStore);
 const filterFn = (p: ProjectListItem) =>
-	!p.scopes || getResourcePermissions(p.scopes)[props.data.resourceType].create;
+	!p.scopes || !!getResourcePermissions(p.scopes)[props.data.resourceType].create;
 
 const resourceTypeLabel = computed(() => {
 	return i18n.baseText(`generic.${props.data.resourceType}`).toLowerCase();

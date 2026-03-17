@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, ref } from 'vue';
+import { computed, watch } from 'vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -54,6 +54,9 @@ const selectedProject = computed<ProjectSharingData | null>({
 				(project) => project.id === props.modelValue.homeProject,
 			) ?? null
 		);
+	},
+	set: (value) => {
+		setKeyValue('homeProject', value?.id ?? '');
 	},
 });
 

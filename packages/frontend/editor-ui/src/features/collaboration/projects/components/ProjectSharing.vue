@@ -3,7 +3,6 @@ import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N
 import type { SelectSize } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import type { AllRolesMap } from '@n8n/permissions';
-import orderBy from 'lodash/orderBy';
 import { useDebounceFn } from '@vueuse/core';
 import { computed, ref, watch, onMounted } from 'vue';
 import { ProjectTypes, type ProjectListItem, type ProjectSharingData } from '../projects.types';
@@ -95,7 +94,8 @@ const filteredProjects = computed(() => {
 
 	// Exclude already-selected projects (multi-select mode)
 	if (Array.isArray(model.value)) {
-		list = list.filter((p) => !model.value?.find((s: ProjectSharingData) => s.id === p.id));
+		const selected = model.value;
+		list = list.filter((p) => !selected.find((s) => s.id === p.id));
 	}
 
 	return list;

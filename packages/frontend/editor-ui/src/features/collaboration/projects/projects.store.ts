@@ -345,7 +345,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		getMyProjects,
 		getPersonalProject,
 		getAvailableProjects,
-		searchProjects,
 		getProject,
 		fetchProject,
 		fetchAndSetProject,

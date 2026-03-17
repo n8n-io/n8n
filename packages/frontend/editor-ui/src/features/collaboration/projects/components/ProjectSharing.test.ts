@@ -78,23 +78,22 @@ describe('ProjectSharing', () => {
 	});
 
 	it('should filter, add and remove projects', async () => {
-		const { getByTestId, getAllByTestId, queryByTestId, queryAllByTestId, emitted } =
-			renderComponent({
-				props: {
-					searchFn: createTestSearchFn(personalProjects),
-					modelValue: [personalProjects[0]],
-					roles: [
-						{
-							role: 'project:admin',
-							name: 'Admin',
-						},
-						{
-							role: 'project:editor',
-							name: 'Editor',
-						},
-					] as unknown as AllRolesMap['workflow' | 'credential' | 'project'],
-				},
-			});
+		const { getByTestId, getAllByTestId, queryAllByTestId, emitted } = renderComponent({
+			props: {
+				searchFn: createTestSearchFn(personalProjects),
+				modelValue: [personalProjects[0]],
+				roles: [
+					{
+						role: 'project:admin',
+						name: 'Admin',
+					},
+					{
+						role: 'project:editor',
+						name: 'Editor',
+					},
+				] as unknown as AllRolesMap['workflow' | 'credential' | 'project'],
+			},
+		});
 
 		// Check the initial state (one selected project comes from the modelValue prop)
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(1);

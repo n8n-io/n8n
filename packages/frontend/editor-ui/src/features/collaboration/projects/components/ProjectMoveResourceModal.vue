@@ -21,6 +21,7 @@ import type { ProjectListItem, ProjectSharingData } from '../projects.types';
 // ProjectListItem extends ProjectSharingData with `role` - the toast component types
 // expect ProjectListItem but only uses fields from ProjectSharingData (name, type).
 import {
+	createAvailableProjectSearch,
 	getTruncatedProjectName,
 	MAX_NAME_LENGTH,
 	ResourceType,
@@ -56,6 +57,7 @@ const uiStore = useUIStore();
 const toast = useToast();
 const router = useRouter();
 const projectsStore = useProjectsStore();
+const searchFn = createAvailableProjectSearch(projectsStore);
 const workflowsListStore = useWorkflowsListStore();
 const credentialsStore = useCredentialsStore();
 const telemetry = useTelemetry();
@@ -244,6 +246,7 @@ onMounted(async () => {
 				<ProjectSharing
 					v-model="selectedProject"
 					class="mr-2xs mb-xs"
+					:search-fn="searchFn"
 					:home-project="props.data.resource.homeProject"
 					:filter-fn="projectFilterFn"
 					:placeholder="i18n.baseText('projects.move.resource.modal.selectPlaceholder')"
