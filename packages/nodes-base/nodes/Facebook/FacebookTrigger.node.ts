@@ -298,7 +298,7 @@ export class FacebookTrigger implements INodeType {
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
-		const authType = this.getNodeParameter('authType', 0, 'accessToken') as string;
+		const authType = this.getNodeParameter('authType', 0) as string;
 		const credentials = await this.getCredentials(
 			authType === 'oAuth2' ? 'facebookGraphAppOAuth2Api' : 'facebookGraphAppApi',
 		);
