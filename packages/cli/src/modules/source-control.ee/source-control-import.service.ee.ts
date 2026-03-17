@@ -27,6 +27,7 @@ import { DataTableColumnRepository } from '@/modules/data-table/data-table-colum
 import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import { Service } from '@n8n/di';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -89,6 +90,43 @@ import type {
 import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
+
+const tracer = trace.getTracer('source-control-import');
+
+/**
+ * Pre-built indexes for O(1) project lookups instead of O(n) scans per resource.
+ */
+class ProjectIndex {
+	private byTeamId = new Map<string, Project>();
+
+	private byOwnerEmail = new Map<string, Project>();
+
+	constructor(accessibleProjects: Project[]) {
+		for (const project of accessibleProjects) {
+			if (project.type === 'team') {
+				this.byTeamId.set(project.id, project);
+			}
+			if (project.type === 'personal') {
+				const ownerEmail = project.projectRelations?.find(
+					(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG,
+				)?.user?.email;
+				if (ownerEmail) {
+					this.byOwnerEmail.set(ownerEmail, project);
+				}
+			}
+		}
+	}
+
+	findByOwner(owner: RemoteResourceOwner): Project | undefined {
+		if (typeof owner === 'string') {
+			return this.byOwnerEmail.get(owner);
+		}
+		if (owner.type === 'personal') {
+			return this.byOwnerEmail.get(owner.personalEmail);
+		}
+		return this.byTeamId.get(owner.teamId);
+	}
+}
 
 const findOwnerProject = (
 	owner: RemoteResourceOwner,
@@ -197,6 +235,7 @@ export class SourceControlImportService {
 
 		const accessibleProjects =
 			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+		const projectIndex = new ProjectIndex(accessibleProjects);
 
 		const remoteWorkflowsRead = await Promise.all(
 			remoteWorkflowFiles.map(async (file) => await this.parseWorkflowFromFile(file)),
@@ -209,13 +248,11 @@ export class SourceControlImportService {
 				}
 				return (
 					context.hasAccessToAllProjects() ||
-					(remote.owner && findOwnerProject(remote.owner, accessibleProjects))
+					(remote.owner && projectIndex.findByOwner(remote.owner))
 				);
 			})
 			.map((remote) => {
-				const project = remote.owner
-					? findOwnerProject(remote.owner, accessibleProjects)
-					: undefined;
+				const project = remote.owner ? projectIndex.findByOwner(remote.owner) : undefined;
 				return {
 					id: remote.id,
 					versionId: remote.versionId ?? '',
@@ -232,114 +269,129 @@ export class SourceControlImportService {
 	}
 
 	async getAllLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
-		const localWorkflows = await this.workflowRepository.find({
-			relations: ['parentFolder'],
-			select: {
-				id: true,
-				versionId: true,
-				name: true,
-				updatedAt: true,
-				parentFolder: {
-					id: true,
-				},
-			},
-		});
-		return localWorkflows.map((local) => {
-			let updatedAt: Date;
-			if (local.updatedAt instanceof Date) {
-				updatedAt = local.updatedAt;
-			} else {
-				this.errorReporter.warn('updatedAt is not a Date', {
-					extra: {
-						type: typeof local.updatedAt,
-						value: local.updatedAt,
+		return tracer.startActiveSpan('ImportService.getAllLocalVersionIdsFromDb', async (span) => {
+			try {
+				const localWorkflows = await this.workflowRepository.find({
+					relations: ['parentFolder'],
+					select: {
+						id: true,
+						versionId: true,
+						name: true,
+						updatedAt: true,
+						parentFolder: {
+							id: true,
+						},
 					},
 				});
-				updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
+				return localWorkflows.map((local) => {
+					let updatedAt: Date;
+					if (local.updatedAt instanceof Date) {
+						updatedAt = local.updatedAt;
+					} else {
+						this.errorReporter.warn('updatedAt is not a Date', {
+							extra: {
+								type: typeof local.updatedAt,
+								value: local.updatedAt,
+							},
+						});
+						updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
+					}
+					return {
+						id: local.id,
+						versionId: local.versionId,
+						name: local.name,
+						localId: local.id,
+						parentFolderId: local.parentFolder?.id ?? null,
+						filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
+						updatedAt: updatedAt.toISOString(),
+					};
+				}) as SourceControlWorkflowVersionId[];
+			} catch (e) {
+				span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+				throw e;
+			} finally {
+				span.end();
 			}
-			return {
-				id: local.id,
-				versionId: local.versionId,
-				name: local.name,
-				localId: local.id,
-				parentFolderId: local.parentFolder?.id ?? null,
-				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
-				updatedAt: updatedAt.toISOString(),
-			};
-		}) as SourceControlWorkflowVersionId[];
+		});
 	}
 
 	async getLocalVersionIdsFromDb(
 		context: SourceControlContext,
 	): Promise<SourceControlWorkflowVersionId[]> {
-		const localWorkflows = await this.workflowRepository.find({
-			relations: {
-				parentFolder: true,
-				shared: {
-					project: {
-						projectRelations: {
-							user: true,
+		return tracer.startActiveSpan('ImportService.getLocalVersionIdsFromDb', async (span) => {
+			try {
+				const localWorkflows = await this.workflowRepository.find({
+					relations: {
+						parentFolder: true,
+						shared: {
+							project: true,
+						},
+					},
+					select: {
+						id: true,
+						versionId: true,
+						name: true,
+						updatedAt: true,
+						parentFolder: {
+							id: true,
+						},
+						shared: {
+							project: {
+								id: true,
+								name: true,
+								type: true,
+							},
 							role: true,
 						},
 					},
-				},
-			},
-			select: {
-				id: true,
-				versionId: true,
-				name: true,
-				updatedAt: true,
-				parentFolder: {
-					id: true,
-				},
-				shared: {
-					project: {
-						id: true,
-						name: true,
-						type: true,
-						projectRelations: {
-							// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
-							userId: true,
-							role: {
-								slug: true,
-							},
-							user: {
-								email: true,
-							},
-						},
-					},
-					role: true,
-				},
-			},
-			where: this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
-		});
-
-		return localWorkflows.map((local) => {
-			let updatedAt: Date;
-			if (local.updatedAt instanceof Date) {
-				updatedAt = local.updatedAt;
-			} else {
-				this.errorReporter.warn('updatedAt is not a Date', {
-					extra: {
-						type: typeof local.updatedAt,
-						value: local.updatedAt,
-					},
+					where:
+						this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
 				});
-				updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
+
+				return localWorkflows.map((local) => {
+					let updatedAt: Date;
+					if (local.updatedAt instanceof Date) {
+						updatedAt = local.updatedAt;
+					} else {
+						this.errorReporter.warn('updatedAt is not a Date', {
+							extra: {
+								type: typeof local.updatedAt,
+								value: local.updatedAt,
+							},
+						});
+						updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
+					}
+
+					const ownerProject = local.shared?.find((s) => s.role === 'workflow:owner')?.project;
+
+					let owner: StatusResourceOwner | undefined;
+					if (ownerProject?.type === 'team') {
+						owner = { type: 'team', projectId: ownerProject.id, projectName: ownerProject.name };
+					} else if (ownerProject?.type === 'personal') {
+						owner = {
+							type: 'personal',
+							projectId: ownerProject.id,
+							projectName: ownerProject.name,
+						};
+					}
+
+					return {
+						id: local.id,
+						versionId: local.versionId,
+						name: local.name,
+						localId: local.id,
+						parentFolderId: local.parentFolder?.id ?? null,
+						filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
+						updatedAt: updatedAt.toISOString(),
+						owner,
+					};
+				});
+			} catch (e) {
+				span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+				throw e;
+			} finally {
+				span.end();
 			}
-
-			const remoteOwnerProject = local.shared?.find((s) => s.role === 'workflow:owner')?.project;
-
-			return {
-				id: local.id,
-				versionId: local.versionId,
-				name: local.name,
-				localId: local.id,
-				parentFolderId: local.parentFolder?.id ?? null,
-				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
-				updatedAt: updatedAt.toISOString(),
-				owner: remoteOwnerProject ? getOwnerFromProject(remoteOwnerProject) : undefined,
-			};
 		});
 	}
 
@@ -353,6 +405,7 @@ export class SourceControlImportService {
 
 		const accessibleProjects =
 			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+		const projectIndex = new ProjectIndex(accessibleProjects);
 
 		const remoteCredentialFilesRead = await Promise.all(
 			remoteCredentialFiles.map(async (file) => {
@@ -370,15 +423,10 @@ export class SourceControlImportService {
 					return false;
 				}
 				const owner = remote.ownedBy;
-				// The credential `remote` belongs not to a project, that the context has access to
-				return (
-					!owner || context.hasAccessToAllProjects() || findOwnerProject(owner, accessibleProjects)
-				);
+				return !owner || context.hasAccessToAllProjects() || projectIndex.findByOwner(owner);
 			})
 			.map((remote) => {
-				const project = remote.ownedBy
-					? findOwnerProject(remote.ownedBy, accessibleProjects)
-					: null;
+				const project = remote.ownedBy ? projectIndex.findByOwner(remote.ownedBy) : null;
 				return {
 					...remote,
 					ownedBy: project
@@ -400,71 +448,75 @@ export class SourceControlImportService {
 	async getLocalCredentialsFromDb(
 		context: SourceControlContext,
 	): Promise<StatusExportableCredential[]> {
-		const localCredentials = await this.credentialsRepository.find({
-			relations: {
-				shared: {
-					project: {
-						projectRelations: {
-							user: true,
-							role: true,
+		return tracer.startActiveSpan('ImportService.getLocalCredentialsFromDb', async (span) => {
+			try {
+				const localCredentials = await this.credentialsRepository.find({
+					relations: {
+						shared: {
+							project: true,
 						},
 					},
-				},
-			},
-			select: {
-				id: true,
-				name: true,
-				type: true,
-				data: true,
-				isGlobal: true,
-				shared: {
-					project: {
+					select: {
 						id: true,
 						name: true,
 						type: true,
-						projectRelations: {
-							// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
-							userId: true,
-							role: {
-								slug: true,
+						data: true,
+						isGlobal: true,
+						shared: {
+							project: {
+								id: true,
+								name: true,
+								type: true,
 							},
-							user: {
-								email: true,
-							},
+							role: true,
 						},
 					},
-					role: true,
-				},
-			},
-			where:
-				this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
-		});
+					where:
+						this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
+				});
 
-		return localCredentials.map((local) => {
-			const remoteOwnerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
+				return localCredentials.map((local) => {
+					const ownerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
+					let ownedBy: StatusResourceOwner | undefined;
+					if (ownerProject?.type === 'team') {
+						ownedBy = { type: 'team', projectId: ownerProject.id, projectName: ownerProject.name };
+					} else if (ownerProject?.type === 'personal') {
+						ownedBy = {
+							type: 'personal',
+							projectId: ownerProject.id,
+							projectName: ownerProject.name,
+						};
+					}
 
-			let data: Record<string, unknown> = {};
-			try {
-				const credentials = new Credentials(
-					{ id: local.id, name: local.name },
-					local.type,
-					local.data,
-				);
-				data = sanitizeCredentialData(credentials.getData());
-			} catch {
-				// Credential data may not be decryptable (e.g. empty or corrupted data)
+					let data: Record<string, unknown> = {};
+					try {
+						const credentials = new Credentials(
+							{ id: local.id, name: local.name },
+							local.type,
+							local.data,
+						);
+						data = sanitizeCredentialData(credentials.getData());
+					} catch {
+						// Credential data may not be decryptable (e.g. empty or corrupted data)
+					}
+
+					return {
+						id: local.id,
+						name: local.name,
+						type: local.type,
+						data,
+						filename: getCredentialExportPath(local.id, this.credentialExportFolder),
+						ownedBy,
+						isGlobal: local.isGlobal,
+					};
+				}) as StatusExportableCredential[];
+			} catch (e) {
+				span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+				throw e;
+			} finally {
+				span.end();
 			}
-
-			return {
-				id: local.id,
-				name: local.name,
-				type: local.type,
-				data,
-				filename: getCredentialExportPath(local.id, this.credentialExportFolder),
-				ownedBy: remoteOwnerProject ? getOwnerFromProject(remoteOwnerProject) : undefined,
-				isGlobal: local.isGlobal,
-			};
-		}) as StatusExportableCredential[];
+		});
 	}
 
 	async getRemoteVariablesFromFile(): Promise<ExportableVariable[]> {
@@ -485,7 +537,16 @@ export class SourceControlImportService {
 	}
 
 	async getLocalGlobalVariablesFromDb(): Promise<Variables[]> {
-		return await this.variablesService.getAllCached({ globalOnly: true });
+		return tracer.startActiveSpan('ImportService.getLocalGlobalVariablesFromDb', async (span) => {
+			try {
+				return await this.variablesService.getAllCached({ globalOnly: true });
+			} catch (e) {
+				span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+				throw e;
+			} finally {
+				span.end();
+			}
+		});
 	}
 
 	async getRemoteDataTablesFromFiles(): Promise<ExportableDataTable[]> {
@@ -516,60 +577,64 @@ export class SourceControlImportService {
 	}
 
 	async getLocalDataTablesFromDb(): Promise<StatusExportableDataTable[]> {
-		try {
-			const dataTables = await this.dataTableRepository.find({
-				relations: [
-					'columns',
-					'project',
-					'project.projectRelations',
-					'project.projectRelations.role',
-				],
-			});
-			return dataTables.map((table) => {
-				let ownedBy: StatusResourceOwner | null = null;
-				if (table.project?.type === 'personal') {
-					const ownerRelation = table.project.projectRelations?.find(
-						(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
-					);
-					if (ownerRelation) {
+		return tracer.startActiveSpan('ImportService.getLocalDataTablesFromDb', async (span) => {
+			try {
+				const dataTables = await this.dataTableRepository.find({
+					relations: [
+						'columns',
+						'project',
+						'project.projectRelations',
+						'project.projectRelations.role',
+					],
+				});
+				return dataTables.map((table) => {
+					let ownedBy: StatusResourceOwner | null = null;
+					if (table.project?.type === 'personal') {
+						const ownerRelation = table.project.projectRelations?.find(
+							(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
+						);
+						if (ownerRelation) {
+							ownedBy = {
+								type: 'personal',
+								projectId: table.project.id,
+								projectName: table.project.name,
+							};
+						}
+					} else if (table.project?.type === 'team') {
 						ownedBy = {
-							type: 'personal',
+							type: 'team',
 							projectId: table.project.id,
 							projectName: table.project.name,
 						};
 					}
-				} else if (table.project?.type === 'team') {
-					ownedBy = {
-						type: 'team',
-						projectId: table.project.id,
-						projectName: table.project.name,
-					};
-				}
 
-				return {
-					id: table.id,
-					name: table.name,
-					columns: (table.columns || [])
-						.sort((a, b) => a.index - b.index)
-						.map((col) => ({
-							id: col.id,
-							name: col.name,
-							type: col.type,
-							index: col.index,
-						})),
-					ownedBy,
-					filename: getDataTableExportPath(table.id, this.dataTableExportFolder),
-					createdAt: table.createdAt.toISOString(),
-					updatedAt: table.updatedAt.toISOString(),
-				};
-			});
-		} catch (error) {
-			// Return empty array if DataTable entity is not registered (e.g., in test environments)
-			if (error instanceof Error && error.message.includes('No metadata for "DataTable"')) {
-				return [];
+					return {
+						id: table.id,
+						name: table.name,
+						columns: (table.columns || [])
+							.sort((a, b) => a.index - b.index)
+							.map((col) => ({
+								id: col.id,
+								name: col.name,
+								type: col.type,
+								index: col.index,
+							})),
+						ownedBy,
+						filename: getDataTableExportPath(table.id, this.dataTableExportFolder),
+						createdAt: table.createdAt.toISOString(),
+						updatedAt: table.updatedAt.toISOString(),
+					};
+				});
+			} catch (error) {
+				// Return empty array if DataTable entity is not registered (e.g., in test environments)
+				if (error instanceof Error && error.message.includes('No metadata for "DataTable"')) {
+					return [];
+				}
+				throw error;
+			} finally {
+				span.end();
 			}
-			throw error;
-		}
+		});
 	}
 
 	async getRemoteFoldersAndMappingsFromFile(context: SourceControlContext): Promise<{
@@ -587,14 +652,15 @@ export class SourceControlImportService {
 				fallbackValue: { folders: [] },
 			});
 
-			const accessibleProjects =
-				await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+			if (!context.hasAccessToAllProjects()) {
+				const accessibleProjects =
+					await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+				const accessibleProjectIds = new Set(accessibleProjects.map((p) => p.id));
 
-			mappedFolders.folders = mappedFolders.folders.filter(
-				(folder) =>
-					context.hasAccessToAllProjects() ||
-					accessibleProjects.some((project) => project.id === folder.homeProjectId),
-			);
+				mappedFolders.folders = mappedFolders.folders.filter((folder) =>
+					accessibleProjectIds.has(folder.homeProjectId),
+				);
+			}
 
 			return mappedFolders;
 		}
@@ -604,29 +670,42 @@ export class SourceControlImportService {
 	async getLocalFoldersAndMappingsFromDb(context: SourceControlContext): Promise<{
 		folders: ExportableFolder[];
 	}> {
-		const localFolders = await this.folderRepository.find({
-			relations: ['parentFolder', 'homeProject'],
-			select: {
-				id: true,
-				name: true,
-				createdAt: true,
-				updatedAt: true,
-				parentFolder: { id: true },
-				homeProject: { id: true },
-			},
-			where: this.sourceControlScopedService.getFoldersInAdminProjectsFromContextFilter(context),
-		});
+		return tracer.startActiveSpan(
+			'ImportService.getLocalFoldersAndMappingsFromDb',
+			async (span) => {
+				try {
+					const localFolders = await this.folderRepository.find({
+						relations: ['parentFolder', 'homeProject'],
+						select: {
+							id: true,
+							name: true,
+							createdAt: true,
+							updatedAt: true,
+							parentFolder: { id: true },
+							homeProject: { id: true },
+						},
+						where:
+							this.sourceControlScopedService.getFoldersInAdminProjectsFromContextFilter(context),
+					});
 
-		return {
-			folders: localFolders.map((f) => ({
-				id: f.id,
-				name: f.name,
-				parentFolderId: f.parentFolder?.id ?? null,
-				homeProjectId: f.homeProject.id,
-				createdAt: f.createdAt.toISOString(),
-				updatedAt: f.updatedAt.toISOString(),
-			})),
-		};
+					return {
+						folders: localFolders.map((f) => ({
+							id: f.id,
+							name: f.name,
+							parentFolderId: f.parentFolder?.id ?? null,
+							homeProjectId: f.homeProject.id,
+							createdAt: f.createdAt.toISOString(),
+							updatedAt: f.updatedAt.toISOString(),
+						})),
+					};
+				} catch (e) {
+					span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+					throw e;
+				} finally {
+					span.end();
+				}
+			},
+		);
 	}
 
 	async getRemoteTagsAndMappingsFromFile(context: SourceControlContext): Promise<ExportableTags> {
@@ -656,17 +735,24 @@ export class SourceControlImportService {
 	}
 
 	async getLocalTagsAndMappingsFromDb(context: SourceControlContext): Promise<ExportableTags> {
-		const localTags = await this.tagRepository.find({
-			select: ['id', 'name'],
+		return tracer.startActiveSpan('ImportService.getLocalTagsAndMappingsFromDb', async (span) => {
+			try {
+				const localTags = await this.tagRepository.find({ select: ['id', 'name'] });
+				const localMappings = await this.workflowTagMappingRepository.find({
+					select: ['workflowId', 'tagId'],
+					where:
+						this.sourceControlScopedService.getWorkflowTagMappingInAdminProjectsFromContextFilter(
+							context,
+						),
+				});
+				return { tags: localTags, mappings: localMappings };
+			} catch (e) {
+				span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+				throw e;
+			} finally {
+				span.end();
+			}
 		});
-		const localMappings = await this.workflowTagMappingRepository.find({
-			select: ['workflowId', 'tagId'],
-			where:
-				this.sourceControlScopedService.getWorkflowTagMappingInAdminProjectsFromContextFilter(
-					context,
-				),
-		});
-		return { tags: localTags, mappings: localMappings };
 	}
 
 	/**
@@ -712,24 +798,34 @@ export class SourceControlImportService {
 	async getLocalTeamProjectsFromDb(
 		context?: SourceControlContext,
 	): Promise<ExportableProjectWithFileName[]> {
-		let where: FindOptionsWhere<Project> = { type: 'team' };
+		return tracer.startActiveSpan('ImportService.getLocalTeamProjectsFromDb', async (span) => {
+			try {
+				let where: FindOptionsWhere<Project> = { type: 'team' };
 
-		if (context) {
-			where = {
-				type: 'team',
-				...(this.sourceControlScopedService.getProjectsWithPushScopeByContextFilter(context) ?? {}),
-			};
-		}
+				if (context) {
+					where = {
+						type: 'team',
+						...(this.sourceControlScopedService.getProjectsWithPushScopeByContextFilter(context) ??
+							{}),
+					};
+				}
 
-		const localProjects = await this.projectRepository.find({
-			select: ['id', 'name', 'description', 'icon', 'type'],
-			relations: ['variables'],
-			where,
+				const localProjects = await this.projectRepository.find({
+					select: ['id', 'name', 'description', 'icon', 'type'],
+					relations: ['variables'],
+					where,
+				});
+
+				return localProjects.map((local) =>
+					this.mapProjectEntityToExportableProjectWithFileName(local),
+				);
+			} catch (e) {
+				span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+				throw e;
+			} finally {
+				span.end();
+			}
 		});
-
-		return localProjects.map((local) =>
-			this.mapProjectEntityToExportableProjectWithFileName(local),
-		);
 	}
 
 	private mapProjectEntityToExportableProjectWithFileName(

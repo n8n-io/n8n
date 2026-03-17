@@ -7,6 +7,7 @@ import {
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
 import * as express from 'express';
 import type { PullResult } from 'simple-git';
 
@@ -24,6 +25,8 @@ import type { SourceControlPreferences } from './types/source-control-preference
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+
+const tracer = trace.getTracer('source-control');
 
 @RestController('/source-control')
 export class SourceControlController {
@@ -233,15 +236,20 @@ export class SourceControlController {
 
 	@Get('/get-status', { middlewares: [sourceControlEnabledMiddleware] })
 	async getStatus(req: SourceControlRequest.GetStatus) {
-		try {
-			const result = await this.sourceControlService.getStatus(
-				req.user,
-				new SourceControlGetStatus(req.query),
-			);
-			return result;
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
+		return tracer.startActiveSpan('GET /source-control/get-status', async (span) => {
+			try {
+				const result = await this.sourceControlService.getStatus(
+					req.user,
+					new SourceControlGetStatus(req.query),
+				);
+				return result;
+			} catch (error) {
+				span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
+				throw new BadRequestError((error as { message: string }).message);
+			} finally {
+				span.end();
+			}
+		});
 	}
 
 	@Get('/status')
