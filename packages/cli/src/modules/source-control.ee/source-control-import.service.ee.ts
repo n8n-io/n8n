@@ -125,54 +125,11 @@ class ProjectIndex {
 	}
 }
 
-const findOwnerProject = (
-	owner: RemoteResourceOwner,
-	accessibleProjects: Project[],
-): Project | undefined => {
-	if (typeof owner === 'string') {
-		return accessibleProjects.find((project) =>
-			project.projectRelations.some(
-				(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG && r.user.email === owner,
-			),
-		);
+const toStatusOwner = (project: Project | undefined): StatusResourceOwner | undefined => {
+	if (project?.type === 'team' || project?.type === 'personal') {
+		return { type: project.type, projectId: project.id, projectName: project.name };
 	}
-	if (owner.type === 'personal') {
-		return accessibleProjects.find(
-			(project) =>
-				project.type === 'personal' &&
-				project.projectRelations.some(
-					(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG && r.user.email === owner.personalEmail,
-				),
-		);
-	}
-	return accessibleProjects.find(
-		(project) => project.type === 'team' && project.id === owner.teamId,
-	);
-};
-
-const getOwnerFromProject = (remoteOwnerProject: Project): StatusResourceOwner | undefined => {
-	let owner: StatusResourceOwner | undefined = undefined;
-
-	if (remoteOwnerProject?.type === 'personal') {
-		const personalEmail = remoteOwnerProject.projectRelations?.find(
-			(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG,
-		)?.user?.email;
-
-		if (personalEmail) {
-			owner = {
-				type: 'personal',
-				projectId: remoteOwnerProject.id,
-				projectName: remoteOwnerProject.name,
-			};
-		}
-	} else if (remoteOwnerProject?.type === 'team') {
-		owner = {
-			type: 'team',
-			projectId: remoteOwnerProject.id,
-			projectName: remoteOwnerProject.name,
-		};
-	}
-	return owner;
+	return undefined;
 };
 
 @Service()
@@ -257,7 +214,7 @@ export class SourceControlImportService {
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
-					owner: project ? getOwnerFromProject(project) : undefined,
+					owner: toStatusOwner(project ?? undefined),
 					isRemoteArchived: remote.isArchived,
 				};
 			});
@@ -349,17 +306,6 @@ export class SourceControlImportService {
 
 			const ownerProject = local.shared?.find((s) => s.role === 'workflow:owner')?.project;
 
-			let owner: StatusResourceOwner | undefined;
-			if (ownerProject?.type === 'team') {
-				owner = { type: 'team', projectId: ownerProject.id, projectName: ownerProject.name };
-			} else if (ownerProject?.type === 'personal') {
-				owner = {
-					type: 'personal',
-					projectId: ownerProject.id,
-					projectName: ownerProject.name,
-				};
-			}
-
 			return {
 				id: local.id,
 				versionId: local.versionId,
@@ -368,7 +314,7 @@ export class SourceControlImportService {
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
-				owner,
+				owner: toStatusOwner(ownerProject),
 			};
 		});
 	}
@@ -453,16 +399,6 @@ export class SourceControlImportService {
 
 		return localCredentials.map((local) => {
 			const ownerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
-			let ownedBy: StatusResourceOwner | undefined;
-			if (ownerProject?.type === 'team') {
-				ownedBy = { type: 'team', projectId: ownerProject.id, projectName: ownerProject.name };
-			} else if (ownerProject?.type === 'personal') {
-				ownedBy = {
-					type: 'personal',
-					projectId: ownerProject.id,
-					projectName: ownerProject.name,
-				};
-			}
 
 			let data: Record<string, unknown> = {};
 			try {
@@ -482,7 +418,7 @@ export class SourceControlImportService {
 				type: local.type,
 				data,
 				filename: getCredentialExportPath(local.id, this.credentialExportFolder),
-				ownedBy,
+				ownedBy: toStatusOwner(ownerProject),
 				isGlobal: local.isGlobal,
 			};
 		}) as StatusExportableCredential[];
@@ -719,9 +655,10 @@ export class SourceControlImportService {
 
 		const accessibleProjects =
 			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+		const projectIndex = new ProjectIndex(accessibleProjects);
 
 		return remoteProjects.filter((remoteProject) => {
-			return findOwnerProject(remoteProject.owner, accessibleProjects);
+			return projectIndex.findByOwner(remoteProject.owner);
 		});
 	}
 
