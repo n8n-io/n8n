@@ -17,6 +17,8 @@ describe('Databricks', () => {
 				.post('/api/2.0/sql/statements', {
 					warehouse_id: 'warehouse123',
 					statement: 'SELECT id, name FROM test_table',
+					wait_timeout: '50s',
+					on_wait_timeout: 'CONTINUE',
 				})
 				.reply(200, {
 					statement_id: 'stmt-abc123',
