@@ -411,7 +411,8 @@ export namespace WebFetchApproval {
 
 export interface VersionCardMessageData {
 	versionId: string;
-	createdAt: string;
+	/** Absent when the version has been pruned from history */
+	createdAt?: string;
 	/** Truncated AI summary describing what changed in this generation */
 	title?: string;
 }

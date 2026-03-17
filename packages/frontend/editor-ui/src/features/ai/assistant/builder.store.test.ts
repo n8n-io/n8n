@@ -2795,6 +2795,12 @@ describe('AI Builder store', () => {
 			);
 			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
 
+			// Mock the workflow history API to return the version as existing
+			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValueOnce({
+				versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+			});
+
 			await builderStore.sendChatMessage({ text: 'Build a workflow' });
 
 			// Simulate a workflow-updated message

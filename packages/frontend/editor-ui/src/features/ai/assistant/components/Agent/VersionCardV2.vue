@@ -19,6 +19,8 @@ const props = defineProps<{
 	pruneTimeHours?: number;
 	title?: string;
 	versionIndex: number;
+	/** Whether the version still exists in workflow history (false when pruned) */
+	versionExists?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -57,6 +59,9 @@ const confirmModalStyle = computed(() => {
 });
 
 const menuItems = computed<Array<ActionDropdownItem<VersionCardAction>>>(() => {
+	// When version has been pruned from history, no menu actions are available
+	if (props.versionExists === false) return [];
+
 	const items: Array<ActionDropdownItem<VersionCardAction>> = [
 		{
 			id: 'openDiff',
@@ -135,6 +140,7 @@ function onShowVersion(versionId: string) {
 				</span>
 			</div>
 			<N8nActionDropdown
+				v-if="menuItems.length > 0"
 				ref="menuButtonRef"
 				:items="menuItems"
 				activator-icon="ellipsis"

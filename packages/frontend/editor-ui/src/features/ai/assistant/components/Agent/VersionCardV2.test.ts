@@ -48,6 +48,8 @@ function render(
 		nodeChanges: NodeChangeEntry[];
 		streaming: boolean;
 		pruneTimeHours: number;
+		versionIndex: number;
+		versionExists: boolean;
 	}> = {},
 ) {
 	return renderComponent(VersionCardV2, {
@@ -57,6 +59,8 @@ function render(
 			nodeChanges: overrides.nodeChanges ?? sampleNodeChanges,
 			streaming: overrides.streaming,
 			pruneTimeHours: overrides.pruneTimeHours,
+			versionIndex: overrides.versionIndex ?? 1,
+			versionExists: overrides.versionExists ?? true,
 		},
 		global: {
 			stubs: {
@@ -94,7 +98,7 @@ describe('VersionCardV2', () => {
 
 		it('should render the version label', () => {
 			const { getByText } = render();
-			expect(getByText('Version')).toBeTruthy();
+			expect(getByText('Version #1')).toBeTruthy();
 		});
 
 		it('should not show changes list when collapsed', () => {

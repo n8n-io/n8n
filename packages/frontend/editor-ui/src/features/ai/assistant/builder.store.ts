@@ -720,16 +720,22 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const versionId = workflowsStore.workflowVersionId;
 		if (!versionId) return undefined;
 
-		// Use workflow updatedAt as version timestamp
-		// might not be the same as "version.createdAt" but close enough
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-		const updatedAt = workflowDocumentStore.updatedAt;
-		return {
-			id: versionId,
-			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
-		};
+		// Verify the versionId actually exists in workflow history.
+		// The backend only creates history entries when nodes/connections change,
+		// so the current versionId may not have a history entry (e.g., the initial
+		// workflow creation doesn't create one). Without a history entry, we can't
+		// restore to this version.
+		const workflowId = workflowsStore.workflowId;
+		const existingVersions = await fetchExistingVersionIds(rootStore.restApiContext, workflowId, [
+			versionId,
+		]);
+
+		if (!existingVersions.has(versionId)) {
+			return undefined;
+		}
+
+		const createdAt = existingVersions.get(versionId)!;
+		return { id: versionId, createdAt };
 	}
 
 	// Core API functions

@@ -63,7 +63,7 @@ export function useReviewChanges() {
 				try {
 					const v = await workflowHistoryStore.getWorkflowVersion(workflowId, vid);
 					versionDataCache.value.set(vid, { nodes: v.nodes, connections: v.connections });
-				} catch {
+				} catch (err) {
 					versionDataCache.value.set(vid, { nodes: [], connections: {} });
 				}
 			}

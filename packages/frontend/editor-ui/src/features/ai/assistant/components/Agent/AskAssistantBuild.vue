@@ -632,6 +632,7 @@ defineExpose({
 					:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 					:title="message.data.title"
 					:version-index="getVersionIndex(message)"
+					:version-exists="!!message.data.createdAt"
 					@open-diff="openDiffView"
 					@restore="(versionId) => onRestoreConfirm(versionId, message.id!)"
 					@show-in-history="onShowVersion"
