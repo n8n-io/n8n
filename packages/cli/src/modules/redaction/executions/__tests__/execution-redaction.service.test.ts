@@ -430,7 +430,7 @@ describe('ExecutionRedactionService', () => {
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
 		});
 
-		it('throws ForbiddenError if any execution in batch is not allowed and emits reveal-failure event', async () => {
+		it('throws ScopeForbiddenError if any execution in batch is not allowed and emits reveal-failure event', async () => {
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
 
 			const executions = [
