@@ -500,11 +500,10 @@ describe('SourceControlImportService', () => {
 				'Failed to activate workflow workflow1',
 				expect.any(Object),
 			);
-			expect(workflowRepository.update).toHaveBeenCalled();
 			expect(result).toEqual([{ id: 'workflow1', name: mockWorkflowFile }]);
 		});
 
-		it('should update activeVersionId to the pulled versionId when importing an active workflow', async () => {
+		it('should update publish newly pulled version when importing an active workflow', async () => {
 			const mockUserId = 'user-id-123';
 			const mockWorkflowFile = '/mock/workflow1.json';
 			const mockWorkflowData = {
@@ -533,10 +532,21 @@ describe('SourceControlImportService', () => {
 
 			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
 
-			expect(workflowRepository.update).toHaveBeenCalledWith(
-				{ id: 'workflow1' },
-				expect.objectContaining({ activeVersionId: 'new-version-id' }),
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				{
+					active: true,
+					activeVersionId: 'old-version-id',
+					connections: {},
+					id: 'workflow1',
+					name: 'Active Workflow',
+					nodes: [],
+					parentFolder: null,
+					parentFolderId: null,
+					versionId: 'new-version-id', // this is important, because updateActiveState will copy the versionId from the workflow entity to the activeVersionId column
+				},
+				['id'],
 			);
+			expect(workflowRepository.updateActiveState).toHaveBeenCalledWith('workflow1', true);
 		});
 
 		it('should record workflowPublishHistory with the new versionId when reactivating a pulled workflow', async () => {
@@ -571,8 +581,6 @@ describe('SourceControlImportService', () => {
 				expect.objectContaining({ versionId: 'new-version-id', event: 'activated' }),
 			);
 		});
-
-		// TODO: add test for new "Failed to create workflow history entry for new active version" error
 	});
 
 	describe('getRemoteCredentialsFromFiles', () => {
