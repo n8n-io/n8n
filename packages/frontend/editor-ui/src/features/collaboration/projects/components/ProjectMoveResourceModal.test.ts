@@ -42,7 +42,7 @@ describe('ProjectMoveResourceModal', () => {
 
 		// Default: no results
 		projectsStore.searchProjects.mockResolvedValue({ count: 0, data: [] });
-		projectsStore.globalProjectPermissions = { list: true } as any;
+		projectsStore.globalProjectPermissions = { list: true };
 	});
 
 	it('should send telemetry when mounted', async () => {
