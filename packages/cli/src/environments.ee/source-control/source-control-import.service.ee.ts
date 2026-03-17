@@ -1345,6 +1345,7 @@ export class SourceControlImportService {
 				);
 			}
 		} catch (error) {
+			// TODO: this error should be communicated to the user directly, rather than just being logged
 			this.logger.error(
 				`Failed to save/update workflow history for workflow ${importedWorkflow.id}`,
 				{ error: ensureError(error) },
