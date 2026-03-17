@@ -20,6 +20,7 @@ mock.module('./github-helpers.mjs', {
 		RELEASE_TRACKS: ['stable', 'beta', 'v1'],
 		RELEASE_PREFIX: 'n8n@',
 		RELEASE_CANDIDATE_BRANCH_PREFIX: RELEASE_CANDIDATE_BRANCH_PREFIX,
+		tagVersionInfoToReleaseCandidateBranchName,
 		resolveReleaseTagForTrack: (track) => {
 			// Always return deterministic data
 			if (track === 'stable') return { version: '2.9.2', tag: 'n8n@2.9.2' };
