@@ -334,8 +334,12 @@ const isViewerExecutionMode = computed(() => {
 	return canExecute && !canUpdate;
 });
 
+const viewerModeSettings = computed(() => {
+	return workflowDocumentStore?.value?.settings?.viewerMode;
+});
+
 const viewerInputFields = computed(() => {
-	return sanitizeViewerInputs(workflowsStore.workflow.settings?.viewerMode?.inputs);
+	return sanitizeViewerInputs(viewerModeSettings.value?.inputs);
 });
 
 const hasViewerInputs = computed(() => isViewerExecutionMode.value && viewerInputFields.value.length > 0);
@@ -344,7 +348,7 @@ const viewerFormValues = ref<Record<string, string | boolean>>({});
 const viewerFiles = ref<Record<string, File | null>>({});
 
 const viewerManual = computed(() => {
-	const manualFromSettings = workflowsStore.workflow.settings?.viewerMode?.manual?.trim();
+	const manualFromSettings = viewerModeSettings.value?.manual?.trim();
 	if (manualFromSettings) return manualFromSettings;
 	return (workflowsStore.workflow.description ?? '').trim();
 });
@@ -2430,7 +2434,7 @@ onBeforeUnmount(() => {
 	margin: 0;
 	padding: var(--spacing--2xs);
 	border: var(--border);
-	border-radius: var(--radius-base);
+	border-radius: var(--radius);
 	background: var(--color--background--base);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--md);
