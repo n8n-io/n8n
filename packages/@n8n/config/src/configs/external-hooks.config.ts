@@ -7,7 +7,7 @@ export class ExternalHooksConfig {
 	@Env('EXTERNAL_HOOK_FILES_SEPARATOR')
 	separator: string = ':';
 
-	/** Paths to files that define external lifecycle hooks. Colon-separated for multiple files. */
+	/** Paths to files that define external lifecycle hooks. Separated by EXTERNAL_HOOK_FILES_SEPARATOR. */
 	@Env('EXTERNAL_HOOK_FILES')
 	files: ColonSeparatedStringArray = [];
 
