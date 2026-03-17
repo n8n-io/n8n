@@ -186,8 +186,7 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 		const wasAlreadyFocused =
 			lastFocusedCell.value &&
 			lastFocusedCell.value.rowIndex === clickedCellRow &&
-			lastFocusedCell.value.colId === clickedCellColumn &&
-			lastFocusedCell.value.rowPinned === null;
+			lastFocusedCell.value.colId === clickedCellColumn;
 
 		if (wasAlreadyFocused && params.column.getColDef()?.editable) {
 			// Cell was already selected, start editing
