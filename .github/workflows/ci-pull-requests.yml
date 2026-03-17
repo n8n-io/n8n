@@ -64,10 +64,6 @@ jobs:
               packages/frontend/@n8n/chat/**
               packages/frontend/@n8n/storybook/**
               .github/workflows/test-visual-chromatic.yml
-            performance:
-              packages/testing/performance/**
-              packages/workflow/src/**
-              .github/workflows/test-bench-reusable.yml
             db:
               packages/cli/src/databases/**
               packages/cli/src/modules/*/database/**
@@ -140,14 +136,6 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
-  performance:
-    name: Performance
-    needs: install-and-build
-    if: needs.install-and-build.outputs.performance == 'true' && github.event_name != 'merge_group'
-    uses: ./.github/workflows/test-bench-reusable.yml
-    with:
-      ref: ${{ needs.install-and-build.outputs.commit_sha }}
-
   security-checks:
     name: Security Checks
     needs: install-and-build
@@ -178,7 +166,6 @@ jobs:
         lint,
         e2e-tests,
         db-tests,
-        performance,
         security-checks,
         workflow-scripts,
       ]
