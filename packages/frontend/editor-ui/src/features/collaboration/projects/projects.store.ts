@@ -95,10 +95,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		currentProject.value = project;
 	};
 
-	const searchProjects = async (params: { search?: string; take?: number; skip?: number }) => {
-		return await projectsApi.searchProjects(rootStore.restApiContext, params);
-	};
-
 	const getAllProjects = async () => {
 		projects.value = await projectsApi.getAllProjects(rootStore.restApiContext);
 	};
@@ -122,6 +118,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const searchProjects = async (params: {
 		search?: string;
 		take?: number;
+		skip?: number;
 		type?: 'personal' | 'team';
 		activated?: boolean;
 	}) => {
