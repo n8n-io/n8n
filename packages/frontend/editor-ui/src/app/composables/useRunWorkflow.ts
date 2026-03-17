@@ -211,7 +211,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			if (options.triggerNode) {
 				triggerToStartFrom = {
 					name: options.triggerNode,
-					data: options.nodeData,
+					// Inject the pinned data directly into the execution payload
+					data: options.nodeData ?? workflowData.pinData?.[options.triggerNode],
 				};
 			}
 
