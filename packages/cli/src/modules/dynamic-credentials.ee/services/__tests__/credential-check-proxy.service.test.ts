@@ -181,7 +181,7 @@ describe('CredentialCheckProxyService', () => {
 			} as PlaintextExecutionContext);
 
 			await expect(service.checkCredentialStatus('workflow-1', executionContext)).rejects.toThrow(
-				'No credential context found in execution context',
+				'Execution context is present but contains no credential context. Ensure credential context establishment hooks are configured for this workflow.',
 			);
 		});
 
