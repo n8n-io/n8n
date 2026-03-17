@@ -87,19 +87,7 @@ export function useBuilderSetupCards() {
 		},
 	});
 
-	// Filter out trigger-only cards that don't need any configuration.
-	// These cards only require execution to be "complete", which is unnecessary
-	// in the builder wizard — the user has nothing to set up on them.
-	const cards = computed<SetupCardItem[]>(() =>
-		baseCards.value.filter((card) => {
-			if (!card.state.isTrigger) return true;
-			const hasCredentials = !!card.state.credentialType;
-			const hasParameters =
-				Object.keys(card.state.parameterIssues).length > 0 ||
-				(card.state.additionalParameterNames?.length ?? 0) > 0;
-			return hasCredentials || hasParameters;
-		}),
-	);
+	const cards = computed(() => baseCards.value);
 
 	const totalCards = computed(() => cards.value.length);
 

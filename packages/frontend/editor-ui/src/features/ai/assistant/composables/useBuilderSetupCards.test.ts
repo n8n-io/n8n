@@ -345,13 +345,13 @@ describe('useBuilderSetupCards', () => {
 		expect(currentStepIndex.value).toBe(0);
 	});
 
-	it('filters out trigger-only cards that require no setup', async () => {
+	it('passes through trigger cards from useWorkflowSetupState without additional filtering', async () => {
 		mockSetupCards.value = [
 			createCard({
 				node: createNode({
-					name: 'Schedule Trigger',
+					name: 'Webhook',
 					id: 'trigger-1',
-					type: 'n8n-nodes-base.scheduleTrigger',
+					type: 'n8n-nodes-base.webhook',
 				}),
 				isTrigger: true,
 				isComplete: false,
@@ -363,47 +363,10 @@ describe('useBuilderSetupCards', () => {
 			}),
 		];
 
-		const { cards, isAllComplete } = await getComposable();
-		expect(cards.value).toHaveLength(1);
-		expect(cards.value[0].state.node.name).toBe('HTTP Request');
-		expect(isAllComplete.value).toBe(true);
-	});
-
-	it('keeps trigger cards that have credentials', async () => {
-		mockSetupCards.value = [
-			createCard({
-				node: createNode({
-					name: 'Telegram Trigger',
-					id: 'trigger-1',
-					type: 'n8n-nodes-base.telegramTrigger',
-				}),
-				isTrigger: true,
-				isComplete: false,
-				credentialType: 'telegramApi',
-			}),
-		];
-
 		const { cards } = await getComposable();
-		expect(cards.value).toHaveLength(1);
-		expect(cards.value[0].state.node.name).toBe('Telegram Trigger');
-	});
-
-	it('keeps trigger cards that have parameter issues', async () => {
-		mockSetupCards.value = [
-			createCard({
-				node: createNode({
-					name: 'Webhook Trigger',
-					id: 'trigger-1',
-					type: 'n8n-nodes-base.webhook',
-				}),
-				isTrigger: true,
-				isComplete: false,
-				parameterIssues: { path: ['Parameter "path" is required'] },
-			}),
-		];
-
-		const { cards } = await getComposable();
-		expect(cards.value).toHaveLength(1);
+		expect(cards.value).toHaveLength(2);
+		expect(cards.value[0].state.node.name).toBe('Webhook');
+		expect(cards.value[1].state.node.name).toBe('HTTP Request');
 	});
 
 	it('treats cards with pending credential tests as effectively complete', async () => {
