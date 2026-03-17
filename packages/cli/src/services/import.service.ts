@@ -44,8 +44,8 @@ export class ImportService {
 			sqlite: 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-pooled': 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-memory': 'PRAGMA defer_foreign_keys = OFF;',
-			postgres: 'SET session_replication_role = DEFAULT;',
-			postgresql: 'SET session_replication_role = DEFAULT;',
+			postgres: 'SET session_replication_role = ORIGIN;',
+			postgresql: 'SET session_replication_role = ORIGIN;',
 		},
 	};
 
@@ -372,6 +372,7 @@ export class ImportService {
 		truncateTables: boolean,
 		keyFilePath?: string,
 		skipMigrationChecks = false,
+		skipTogglingForeignKeyConstraints = false,
 	) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
@@ -397,7 +398,9 @@ export class ImportService {
 		}
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
-			await this.disableForeignKeyConstraints(transactionManager);
+			if (!skipTogglingForeignKeyConstraints) {
+				await this.disableForeignKeyConstraints(transactionManager);
+			}
 
 			// Get import metadata after migration validation
 			const importMetadata = await this.getImportMetadata(inputDir);
@@ -434,7 +437,9 @@ export class ImportService {
 				customEncryptionKey,
 			);
 
-			await this.enableForeignKeyConstraints(transactionManager);
+			if (!skipTogglingForeignKeyConstraints) {
+				await this.enableForeignKeyConstraints(transactionManager);
+			}
 		});
 
 		// Cleanup decompressed files after import

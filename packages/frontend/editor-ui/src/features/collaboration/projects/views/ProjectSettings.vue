@@ -26,6 +26,7 @@ import { isProjectRole } from '@/app/utils/typeGuards';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import { N8nAlert } from '@n8n/design-system';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
+import { getResourcePermissions } from '@n8n/permissions';
 
 import {
 	N8nButton,
@@ -54,6 +55,10 @@ const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
+
+const canUpdateProject = computed(
+	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.update,
+);
 
 const showSaveError = (error: Error) => {
 	toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
@@ -524,7 +529,7 @@ const searchUsers = async (query: string) => {
 const debouncedUserSearch = useDebounceFn(searchUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 onBeforeMount(async () => {
-	// Load initial set of users for dropdown
+	if (!canUpdateProject.value) return;
 	await searchUsers('');
 });
 
@@ -534,8 +539,10 @@ const isProjectRoleProvisioningEnabled = computed(
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
-	selectProjectNameIfMatchesDefault();
 
+	if (!canUpdateProject.value) return;
+
+	selectProjectNameIfMatchesDefault();
 	await Promise.all([userRoleProvisioningStore.getProvisioningConfig(), rolesStore.fetchRoles()]);
 });
 </script>
@@ -544,7 +551,7 @@ onMounted(async () => {
 	<div :class="$style.projectSettings" data-test-id="project-settings-container">
 		<div :class="$style.header">
 			<ProjectHeader />
-			<div :class="$style.headerRow">
+			<div v-if="canUpdateProject" :class="$style.headerRow">
 				<N8nText tag="h1" size="xlarge" class="pt-xs pb-m">
 					{{ i18n.baseText('projects.settings.info') }}
 				</N8nText>
@@ -569,126 +576,132 @@ onMounted(async () => {
 			</div>
 		</div>
 		<form @submit.prevent="onSubmit">
-			<fieldset>
-				<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
-				<div :class="$style.projectName">
-					<N8nIconPicker
-						v-model="projectIcon"
-						:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
-						@update:model-value="onIconUpdated"
-					/>
+			<template v-if="canUpdateProject">
+				<fieldset>
+					<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
+					<div :class="$style.projectName">
+						<N8nIconPicker
+							v-model="projectIcon"
+							:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
+							@update:model-value="onIconUpdated"
+						/>
+						<N8nFormInput
+							id="projectName"
+							ref="nameInput"
+							v-model="formData.name"
+							label=""
+							type="text"
+							name="name"
+							required
+							data-test-id="project-settings-name-input"
+							:class="$style.projectNameInput"
+							@enter="onSubmit"
+							@input="onTextInput"
+							@validate="isValid = $event"
+						/>
+					</div>
+				</fieldset>
+				<fieldset>
+					<label for="projectDescription">{{
+						i18n.baseText('projects.settings.description')
+					}}</label>
 					<N8nFormInput
-						id="projectName"
-						ref="nameInput"
-						v-model="formData.name"
+						id="projectDescription"
+						v-model="formData.description"
 						label=""
-						type="text"
-						name="name"
-						required
-						data-test-id="project-settings-name-input"
-						:class="$style.projectNameInput"
+						name="description"
+						type="textarea"
+						:maxlength="512"
+						:autosize="true"
+						data-test-id="project-settings-description-input"
+						:class="$style.projectDescriptionInput"
 						@enter="onSubmit"
 						@input="onTextInput"
 						@validate="isValid = $event"
 					/>
-				</div>
-			</fieldset>
-			<fieldset>
-				<label for="projectDescription">{{ i18n.baseText('projects.settings.description') }}</label>
-				<N8nFormInput
-					id="projectDescription"
-					v-model="formData.description"
-					label=""
-					name="description"
-					type="textarea"
-					:maxlength="512"
-					:autosize="true"
-					data-test-id="project-settings-description-input"
-					:class="$style.projectDescriptionInput"
-					@enter="onSubmit"
-					@input="onTextInput"
-					@validate="isValid = $event"
-				/>
-			</fieldset>
+				</fieldset>
+			</template>
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
 
-			<fieldset id="projectMembers">
-				<h3>
-					<label for="projectMembers">{{
-						i18n.baseText('projects.settings.projectMembers')
-					}}</label>
-				</h3>
-				<div :class="[$style.membersInputRow, 'mb-s']">
-					<N8nUserSelect
-						id="projectMembers"
-						:class="$style.userSelect"
+			<template v-if="canUpdateProject">
+				<fieldset id="projectMembers">
+					<h3>
+						<label for="projectMembers">{{
+							i18n.baseText('projects.settings.projectMembers')
+						}}</label>
+					</h3>
+					<div :class="[$style.membersInputRow, 'mb-s']">
+						<N8nUserSelect
+							id="projectMembers"
+							:class="$style.userSelect"
+							size="large"
+							:users="usersList"
+							:current-user-id="usersStore.currentUser?.id"
+							:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
+							data-test-id="project-members-select"
+							remote
+							:remote-method="debouncedUserSearch"
+							:loading="isLoadingUsers"
+							@update:model-value="onAddMember"
+							:disabled="isProjectRoleProvisioningEnabled"
+						>
+							<template #prefix>
+								<N8nIcon icon="search" />
+							</template>
+						</N8nUserSelect>
+						<N8nInput
+							v-if="shouldShowSearch"
+							:class="$style.search"
+							:model-value="search"
+							:placeholder="i18n.baseText('projects.settings.members.search.placeholder')"
+							clearable
+							data-test-id="project-members-search"
+							@update:model-value="onSearch"
+						>
+							<template #prefix>
+								<N8nIcon icon="search" />
+							</template>
+						</N8nInput>
+					</div>
+					<div v-if="isProjectRoleProvisioningEnabled" class="mb-m">
+						<N8nAlert
+							type="info"
+							:title="
+								i18n.baseText('settings.provisioningProjectRolesHandledBySsoProvider.description')
+							"
+						/>
+					</div>
+					<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
+						<ProjectMembersTable
+							v-model:table-options="membersTableState"
+							data-test-id="project-members-table"
+							:data="filteredMembersData"
+							:current-user-id="usersStore.currentUser?.id"
+							:project-roles="rolesStore.processedProjectRoles"
+							:actions="projectMembersActions"
+							:can-edit-role="!isProjectRoleProvisioningEnabled"
+							@update:options="onUpdateMembersTableOptions"
+							@update:role="onUpdateMemberRole"
+							@action="onMembersListAction"
+						/>
+					</div>
+				</fieldset>
+				<fieldset>
+					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
+					<small :class="$style.danger">{{
+						i18n.baseText('projects.settings.danger.message')
+					}}</small>
+					<N8nButton
+						variant="subtle"
 						size="large"
-						:users="usersList"
-						:current-user-id="usersStore.currentUser?.id"
-						:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
-						data-test-id="project-members-select"
-						remote
-						:remote-method="debouncedUserSearch"
-						:loading="isLoadingUsers"
-						@update:model-value="onAddMember"
-						:disabled="isProjectRoleProvisioningEnabled"
+						native-type="button"
+						data-test-id="project-settings-delete-button"
+						@click.stop.prevent="onDelete"
+						>{{ i18n.baseText('projects.settings.danger.deleteProject') }}</N8nButton
 					>
-						<template #prefix>
-							<N8nIcon icon="search" />
-						</template>
-					</N8nUserSelect>
-					<N8nInput
-						v-if="shouldShowSearch"
-						:class="$style.search"
-						:model-value="search"
-						:placeholder="i18n.baseText('projects.settings.members.search.placeholder')"
-						clearable
-						data-test-id="project-members-search"
-						@update:model-value="onSearch"
-					>
-						<template #prefix>
-							<N8nIcon icon="search" />
-						</template>
-					</N8nInput>
-				</div>
-				<div v-if="isProjectRoleProvisioningEnabled" class="mb-m">
-					<N8nAlert
-						type="info"
-						:title="
-							i18n.baseText('settings.provisioningProjectRolesHandledBySsoProvider.description')
-						"
-					/>
-				</div>
-				<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
-					<ProjectMembersTable
-						v-model:table-options="membersTableState"
-						data-test-id="project-members-table"
-						:data="filteredMembersData"
-						:current-user-id="usersStore.currentUser?.id"
-						:project-roles="rolesStore.processedProjectRoles"
-						:actions="projectMembersActions"
-						:can-edit-role="!isProjectRoleProvisioningEnabled"
-						@update:options="onUpdateMembersTableOptions"
-						@update:role="onUpdateMemberRole"
-						@action="onMembersListAction"
-					/>
-				</div>
-			</fieldset>
-			<fieldset>
-				<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
-				<small :class="$style.danger">{{
-					i18n.baseText('projects.settings.danger.message')
-				}}</small>
-				<N8nButton
-					variant="subtle"
-					size="large"
-					native-type="button"
-					data-test-id="project-settings-delete-button"
-					@click.stop.prevent="onDelete"
-					>{{ i18n.baseText('projects.settings.danger.deleteProject') }}</N8nButton
-				>
-			</fieldset>
+				</fieldset>
+			</template>
 		</form>
 		<ProjectDeleteDialog
 			v-model="dialogVisible"

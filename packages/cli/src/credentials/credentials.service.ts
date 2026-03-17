@@ -28,6 +28,7 @@ import type {
 	INodePropertyCollection,
 } from 'n8n-workflow';
 import {
+	CREDENTIAL_BLANKING_VALUE,
 	CREDENTIAL_EMPTY_VALUE,
 	deepCopy,
 	displayParameter,
@@ -35,7 +36,6 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -561,12 +561,18 @@ export class CredentialsService {
 		existingCredential: CredentialsEntity,
 	): Promise<CredentialsEntity> {
 		const decryptedData = this.decrypt(existingCredential, true);
-		validateExternalSecretsPermissions(user, data.data, decryptedData);
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
 		const projectOwningCredential = existingCredential.shared?.find(
 			(shared) => shared.role === 'credential:owner',
 		)!;
+
+		await validateExternalSecretsPermissions({
+			user,
+			projectId: projectOwningCredential.projectId,
+			dataToSave: data.data,
+			decryptedExistingData: decryptedData,
+		});
 
 		if (this.externalSecretsConfig.externalSecretsForProjects && data.data) {
 			await validateAccessToReferencedSecretProviders(
@@ -771,10 +777,15 @@ export class CredentialsService {
 			return props;
 		};
 		const properties = getExtendedProps(credType);
-		return this.redactValues(copiedData, properties);
+		const redacted = this.redactValues(copiedData, properties, credential.type);
+		return redacted;
 	}
 
-	private redactValues(data: ICredentialDataDecryptedObject, props: INodeProperties[]) {
+	private redactValues(
+		data: ICredentialDataDecryptedObject,
+		props: INodeProperties[],
+		credentialType?: string,
+	) {
 		for (const dataKey of Object.keys(data)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
@@ -812,6 +823,14 @@ export class CredentialsService {
 			}
 		}
 
+		// Custom Auth: mask JSON after save (not marked as secret; redacted by type + field)
+		if (credentialType === 'httpCustomAuth' && 'json' in data) {
+			data.json =
+				data.json && String(data.json).length > 0
+					? CREDENTIAL_BLANKING_VALUE
+					: CREDENTIAL_EMPTY_VALUE;
+		}
+
 		return data;
 	}
 
@@ -820,12 +839,17 @@ export class CredentialsService {
 		const values = data?.[collectionValuesKey];
 		if (Array.isArray(values)) {
 			for (let i = 0; i < values.length; i++) {
-				values[i] = this.redactValues(values[i] as ICredentialDataDecryptedObject, option.values);
+				values[i] = this.redactValues(
+					values[i] as ICredentialDataDecryptedObject,
+					option.values,
+					undefined,
+				);
 			}
 		} else if (typeof values === 'object' && values !== null) {
 			data[collectionValuesKey] = this.redactValues(
 				values as ICredentialDataDecryptedObject,
 				option.values,
+				undefined,
 			);
 		}
 	}
@@ -1003,7 +1027,12 @@ export class CredentialsService {
 	 * TODO: consider refactoring enable using this for both creating and updating, right now only used for creation
 	 * (likely only affects the validateExternalSecretsPermissions call)
 	 */
-	checkCredentialData(type: string, data: ICredentialDataDecryptedObject, user: User) {
+	async checkCredentialData(
+		type: string,
+		data: ICredentialDataDecryptedObject,
+		user: User,
+		projectId: string,
+	): Promise<void> {
 		// check mandatory fields are present
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
@@ -1028,7 +1057,7 @@ export class CredentialsService {
 				}
 			}
 		}
-		validateExternalSecretsPermissions(user, data);
+		await validateExternalSecretsPermissions({ user, projectId, dataToSave: data });
 		this.validateOAuthCredentialUrls(type, data);
 	}
 
@@ -1069,7 +1098,12 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
-		this.checkCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject, user);
+		await this.checkCredentialData(
+			opts.type,
+			opts.data as ICredentialDataDecryptedObject,
+			user,
+			opts.projectId ?? '',
+		);
 		if (this.externalSecretsConfig.externalSecretsForProjects && opts.projectId) {
 			await validateAccessToReferencedSecretProviders(
 				opts.projectId,
