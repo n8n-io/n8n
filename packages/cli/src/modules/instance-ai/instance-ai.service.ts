@@ -789,6 +789,20 @@ export class InstanceAiService {
 							: tcId;
 					if (reqId && tcId) {
 						lastSuspension = { toolCallId: tcId, requestId: reqId };
+						// Store suspension state BEFORE publishing the event to prevent
+						// race conditions when fast clients (eval auto-approve) call
+						// confirmAction() immediately upon receiving the SSE event.
+						this.activeRuns.delete(threadId);
+						this.suspendedRuns.set(threadId, {
+							runId,
+							mastraRunId,
+							agent,
+							threadId,
+							user,
+							toolCallId: tcId,
+							requestId: reqId,
+							abortController,
+						});
 					}
 				}
 
@@ -798,7 +812,9 @@ export class InstanceAiService {
 				}
 			}
 
-			// Stream ended due to tool suspension — save state and exit without run-finish
+			// Stream ended due to tool suspension — state was already stored inside the
+			// loop (before event publication). The re-set here is idempotent and serves
+			// as a safety net.
 			if (lastSuspension && !signal.aborted) {
 				this.activeRuns.delete(threadId);
 				this.suspendedRuns.set(threadId, {
@@ -982,6 +998,19 @@ export class InstanceAiService {
 							: tcId;
 					if (reqId && tcId) {
 						lastSuspension = { toolCallId: tcId, requestId: reqId };
+						// Store suspension state BEFORE publishing the event (same
+						// race-condition fix as processStream).
+						this.activeRuns.delete(opts.threadId);
+						this.suspendedRuns.set(opts.threadId, {
+							runId: opts.runId,
+							mastraRunId: resumedMastraRunId,
+							agent,
+							threadId: opts.threadId,
+							user: opts.user,
+							toolCallId: tcId,
+							requestId: reqId,
+							abortController: opts.abortController,
+						});
 					}
 				}
 
