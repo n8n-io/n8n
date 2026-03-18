@@ -5,6 +5,7 @@ import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
 	CredentialsEntity,
+	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -16,8 +17,6 @@ import {
 import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { mockInstance } from '@n8n/backend-test-utils';
-
-import { createTestUser } from '@test/mock-objects';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { RoleService } from '../role.service';
@@ -64,8 +63,8 @@ describe('CredentialsFinderService', () => {
 		const credentialsId = 'cred_123';
 		const sharedCredential = mock<SharedCredentials>();
 		sharedCredential.credentials = mock<CredentialsEntity>({ id: credentialsId });
-		const owner = createTestUser({ role: GLOBAL_OWNER_ROLE });
-		const member = createTestUser({ role: GLOBAL_MEMBER_ROLE, id: 'test' });
+		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
+		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'test' });
 
 		test('should allow instance owner access to all credentials', async () => {
 			sharedCredentialsRepository.findOne.mockResolvedValueOnce(sharedCredential);
@@ -269,8 +268,8 @@ describe('CredentialsFinderService', () => {
 			mock<CredentialsEntity>({ id: 'cred1', shared: [] }),
 			mock<CredentialsEntity>({ id: 'cred2', shared: [] }),
 		];
-		const owner = createTestUser({ role: GLOBAL_OWNER_ROLE });
-		const member = createTestUser({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
+		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
+		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
 
 		beforeEach(() => {
 			jest.clearAllMocks();
@@ -454,8 +453,8 @@ describe('CredentialsFinderService', () => {
 				role: 'credential:user',
 			}),
 		];
-		const owner = createTestUser({ role: GLOBAL_OWNER_ROLE });
-		const member = createTestUser({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
+		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
+		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
 
 		beforeEach(() => {
 			jest.clearAllMocks();
@@ -810,7 +809,7 @@ describe('CredentialsFinderService', () => {
 	});
 
 	describe('RoleService integration edge cases', () => {
-		const member = createTestUser({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
+		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
 
 		beforeEach(() => {
 			jest.clearAllMocks();

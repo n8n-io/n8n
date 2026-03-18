@@ -4,8 +4,6 @@ import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, User, type WorkflowEntity } from
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-
-import { createTestUser } from '@test/mock-objects';
 import type { PushResult } from 'simple-git';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
@@ -33,6 +31,11 @@ jest.mock('../source-control-helper.ee', () => ({
 	...jest.requireActual('../source-control-helper.ee'),
 	sourceControlFoldersExistCheck: jest.fn(() => true),
 }));
+
+const globalAdminUser = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+const globalAdminUserWithId = mock<User>({ id: 'user-id', role: GLOBAL_ADMIN_ROLE });
+const globalMemberUser = mock<User>({ role: GLOBAL_MEMBER_ROLE });
+const globalMemberUserWithId = mock<User>({ id: 'user-id', role: GLOBAL_MEMBER_ROLE });
 
 describe('SourceControlService', () => {
 	const preferencesService = new SourceControlPreferencesService(
@@ -551,7 +554,7 @@ describe('SourceControlService', () => {
 	describe('getStatus', () => {
 		it('ensure updatedAt field for last deleted tag', async () => {
 			// ARRANGE
-			const user = createTestUser({ role: GLOBAL_ADMIN_ROLE });
+			const user = globalAdminUser;
 
 			const mockResult = [
 				{
@@ -593,7 +596,7 @@ describe('SourceControlService', () => {
 
 		it('ensure updatedAt field for last deleted folder', async () => {
 			// ARRANGE
-			const user = createTestUser({ role: GLOBAL_ADMIN_ROLE });
+			const user = globalAdminUser;
 
 			const mockResult = [
 				{
@@ -635,7 +638,7 @@ describe('SourceControlService', () => {
 
 		it('conflict depends on the value of `direction`', async () => {
 			// ARRANGE
-			const user = createTestUser({ role: GLOBAL_ADMIN_ROLE });
+			const user = globalAdminUser;
 
 			const mockPullResult = [
 				{ type: 'workflow', conflict: true },
@@ -711,7 +714,7 @@ describe('SourceControlService', () => {
 
 		it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
 			// ARRANGE
-			const user = createTestUser({ role: GLOBAL_MEMBER_ROLE });
+			const user = globalMemberUser;
 
 			mockStatusService.getStatus.mockRejectedValue(
 				new ForbiddenError('You do not have permission to pull from source control'),
@@ -740,7 +743,7 @@ describe('SourceControlService', () => {
 			'should return file content for $type',
 			async ({ type, id, content }) => {
 				jest.spyOn(gitService, 'getFileContent').mockResolvedValue(content);
-				const user = createTestUser({ id: 'user-id', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 
 				const result = await sourceControlService.getRemoteFileEntity({ user, type, id });
 
@@ -751,7 +754,7 @@ describe('SourceControlService', () => {
 		it.each<SourceControlledFile['type']>(['folders', 'credential', 'tags', 'variables'])(
 			'should throw an error if the file type is not handled',
 			async (type) => {
-				const user = createTestUser({ id: 'user-id', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 				await expect(
 					sourceControlService.getRemoteFileEntity({ user, type, id: 'unknown' }),
 				).rejects.toThrow(`Unsupported file type: ${type}`);
@@ -760,7 +763,7 @@ describe('SourceControlService', () => {
 
 		it('should fail if the git service fails to get the file content', async () => {
 			jest.spyOn(gitService, 'getFileContent').mockRejectedValue(new Error('Git service error'));
-			const user = createTestUser({ id: 'user-id', role: GLOBAL_ADMIN_ROLE });
+			const user = globalAdminUserWithId;
 
 			await expect(
 				sourceControlService.getRemoteFileEntity({ user, type: 'workflow', id: '1234' }),
@@ -768,7 +771,7 @@ describe('SourceControlService', () => {
 		});
 
 		it('should throw an error if the user does not have access to the project', async () => {
-			const user = createTestUser({ id: 'user-id', role: GLOBAL_MEMBER_ROLE });
+			const user = globalMemberUserWithId;
 			jest
 				.spyOn(sourceControlScopedService, 'getWorkflowsInAdminProjectsFromContext')
 				.mockResolvedValue([]);
@@ -779,7 +782,7 @@ describe('SourceControlService', () => {
 		});
 
 		it('should return content for an authorized workflow', async () => {
-			const user = createTestUser({ id: 'user-id', role: GLOBAL_MEMBER_ROLE });
+			const user = globalMemberUserWithId;
 			jest
 				.spyOn(sourceControlScopedService, 'getWorkflowsInAdminProjectsFromContext')
 				.mockResolvedValue([{ id: '1234' } as WorkflowEntity]);

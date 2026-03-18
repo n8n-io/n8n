@@ -18,15 +18,6 @@ export const mockUser = (): User =>
 		lastName: randomName(),
 	});
 
-/**
- * Creates a lightweight User object for tests that only need specific properties (e.g. `role`).
- *
- * Prefer this over `mock<User>({ role: SOME_ROLE })` if you just need a user object,
- * without any assertions or spying on it because excessive mock objects greatly slow down tests.
- */
-export const createTestUser = (overrides: Partial<User> = {}): User =>
-	({ ...overrides }) as unknown as User;
-
 export const mockProject = (): Project =>
 	Object.assign(new Project(), {
 		id: uniqueId(),
