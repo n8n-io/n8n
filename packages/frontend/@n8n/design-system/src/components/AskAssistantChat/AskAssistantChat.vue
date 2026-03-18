@@ -334,16 +334,29 @@ const showFooterRating = computed(() => {
 		return false;
 	}
 
-	// Check if there's a workflow-updated message in the original messages
+	// Find the last workflow-updated message index.
 	// (workflow-updated is filtered out of normalizedMessages since it's not rendered visually)
-	// and check the last visible message (from normalizedMessages)
-	const hasWorkflowUpdate = props.messages.some((msg) => msg.type === 'workflow-updated');
-	if (!hasWorkflowUpdate || !normalizedMessages.value.length) {
+	const lastWorkflowUpdateIdx = props.messages.findLastIndex(
+		(msg) => msg.type === 'workflow-updated',
+	);
+	if (lastWorkflowUpdateIdx === -1 || !normalizedMessages.value.length) {
 		return false;
 	}
 
+	// Don't show rating if the user has responded since the last workflow update
+	const hasUserAfterWorkflowUpdate = props.messages
+		.slice(lastWorkflowUpdateIdx + 1)
+		.some((msg) => msg.role === 'user');
+	if (hasUserAfterWorkflowUpdate) {
+		return false;
+	}
+
+	// Show rating when the last visible message is from the assistant.
+	// This handles both the multi-agent builder (last visible message is a text response after
+	// workflow-updated) and the code builder (workflow-updated is the last real message and gets
+	// filtered from normalizedMessages, leaving a thinking-group with role 'assistant' as last).
 	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
-	return lastMsg.role !== 'user' && lastMsg.type !== 'thinking-group';
+	return lastMsg.role !== 'user';
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
