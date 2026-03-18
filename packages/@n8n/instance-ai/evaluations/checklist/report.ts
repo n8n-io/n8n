@@ -200,7 +200,7 @@ function renderExecutionsSection(result: InstanceAiResult, n8nBaseUrl: string): 
 	if (result.outcome.executionsRun.length === 0) return '';
 
 	const items = result.outcome.executionsRun
-		.map((exec, idx) => {
+		.map((exec) => {
 			const statusBadge =
 				exec.status === 'success'
 					? '<span class="badge badge-completed">success</span>'

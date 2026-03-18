@@ -145,7 +145,8 @@ export async function runLangsmithEval(config: LangsmithConfig): Promise<void> {
 	};
 
 	// Reference comparison evaluator: compares against golden snapshot (if available)
-	const referenceComparator = (run: Run, example: Example): EvaluationResult[] => {
+	const referenceComparator = (run: Run, example?: Example): EvaluationResult[] => {
+		if (!example) return [];
 		const outputs = (run.outputs ?? {}) as Record<string, unknown>;
 		const reference = example.outputs as Record<string, unknown> | undefined;
 		if (!reference || Object.keys(reference).length === 0) return [];

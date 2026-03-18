@@ -10,7 +10,7 @@
 import { Client } from 'langsmith/client';
 
 import { SYNTHETIC_PROMPTS } from './synthetic-prompts';
-import type { PromptConfig, PromptDataset } from './types';
+import type { PromptConfig } from './types';
 
 const GENERAL_DATASET_NAME = 'instance-ai-general-agent';
 const BUILDER_DATASET_NAME = 'instance-ai-builder';
