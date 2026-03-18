@@ -318,12 +318,17 @@ export class WorkflowExecutionService {
 			}
 
 			const executionMode = 'error';
+
+			// Use published nodes/connections for execution, not the draft.
+			workflowData.nodes = workflowData.activeVersion.nodes;
+			workflowData.connections = workflowData.activeVersion.connections;
+
 			const workflowInstance = new Workflow({
 				id: workflowId,
 				name: workflowData.name,
 				nodeTypes: this.nodeTypes,
-				nodes: workflowData.activeVersion.nodes,
-				connections: workflowData.activeVersion.connections,
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
 				active: true,
 				staticData: workflowData.staticData,
 				settings: workflowData.settings,

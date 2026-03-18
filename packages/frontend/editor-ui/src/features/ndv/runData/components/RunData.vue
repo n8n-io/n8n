@@ -94,7 +94,6 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDataTable.vue'));
@@ -228,7 +227,6 @@ const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
@@ -645,7 +643,7 @@ const hasPreviewSchema = asyncComputed(async () => {
 	if (!isSchemaPreviewEnabled.value || props.nodes.length === 0) return false;
 	const nodes = props.nodes
 		.filter((n) => n.depth === 1)
-		.map((n) => workflowsStore.getNodeByName(n.name))
+		.map((n) => workflowDocumentStore?.value?.getNodeByName(n.name) ?? null)
 		.filter(isPresent);
 
 	for (const connectedNode of nodes) {
@@ -1395,7 +1393,7 @@ function enableNode() {
 			},
 		};
 
-		workflowState.updateNodeProperties(updateInformation);
+		workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
 	}
 }
 
