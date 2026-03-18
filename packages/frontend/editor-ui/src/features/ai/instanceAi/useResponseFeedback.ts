@@ -2,6 +2,7 @@ import { ref, computed, type Ref } from 'vue';
 import { isSafeObjectKey } from '@n8n/api-types';
 import type { InstanceAiMessage, InstanceAiAgentNode } from '@n8n/api-types';
 import type { RatingFeedback } from '@n8n/design-system';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 // ---------------------------------------------------------------------------
 // Tree traversal helpers (pure functions)
@@ -30,7 +31,7 @@ function hasPendingConfirmation(node: InstanceAiAgentNode): boolean {
 interface UseResponseFeedbackOptions {
 	messages: Ref<InstanceAiMessage[]>;
 	currentThreadId: Ref<string>;
-	telemetry: { track: (event: string, props: Record<string, unknown>) => void };
+	telemetry: { track: (event: string, props?: ITelemetryTrackProperties) => void };
 }
 
 export function useResponseFeedback({
