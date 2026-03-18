@@ -26,19 +26,19 @@ export const filesOperations: INodeProperties = {
 		{
 			name: 'Delete File',
 			value: 'deleteFile',
-			description: 'Delete a file from Databricks workspace',
+			description: 'Delete a file from a volume',
 			action: 'Delete a file',
 		},
 		{
 			name: 'Download File',
 			value: 'downloadFile',
-			description: 'Download file content from Databricks workspace',
+			description: 'Download file content from a volume',
 			action: 'Download a file',
 		},
 		{
 			name: 'Get File Metadata',
 			value: 'getFileInfo',
-			description: 'Get file metadata from Databricks workspace',
+			description: 'Get file metadata from a volume',
 			action: 'Get file info',
 		},
 		{
