@@ -7,7 +7,7 @@ import type {
 	ExecutionRedactionOptions,
 	RedactableExecution,
 } from '@/executions/execution-redaction';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
 import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -104,7 +104,11 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						redactionPolicy: this.resolvePolicy(execution),
 						rejectionReason: 'User lacks execution:reveal scope for this workflow',
 					});
-					throw new ForbiddenError();
+					throw new ScopeForbiddenError(
+						"You do not have permission to reveal execution data. The 'execution:reveal' scope is required.",
+						{ errorCode: 'EXECUTION_REVEAL_FORBIDDEN', requiredScope: 'execution:reveal' },
+						'Contact a project admin to request the required scope.',
+					);
 				}
 			}
 		}
