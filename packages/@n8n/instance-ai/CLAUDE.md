@@ -1,4 +1,6 @@
-# Instance AI — Development Guidelines
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Linear Tickets
 
@@ -38,3 +40,7 @@ Read these docs before starting any implementation:
 - **Run lifecycle**: `run-start` (first) → events → `run-finish` (last, carries status)
 - **Sub-agents**: stateless, native domain tools only, no MCP, no recursive delegation
 - **Memory**: working memory = user-scoped, observational memory = thread-scoped
+
+## Checklist Evaluations
+
+See `evaluations/checklist/CLAUDE.md` for the checklist evaluation system docs.
