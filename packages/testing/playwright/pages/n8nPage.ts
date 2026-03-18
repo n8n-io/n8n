@@ -6,6 +6,7 @@ import { CanvasPage } from './CanvasPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
+import { CommandBar } from './components/CommandBar';
 import { DeleteSecretsProviderModal } from './components/DeleteSecretsProviderModal';
 import { ProjectTabsComponent } from './components/ProjectTabsComponent';
 import { ResourceMoveModal } from './components/ResourceMoveModal';
@@ -97,6 +98,7 @@ export class n8nPage {
 
 	// Components
 	readonly projectTabs: ProjectTabsComponent;
+	readonly commandBar: CommandBar;
 
 	readonly settingsEnvironment: SettingsEnvironmentPage;
 	readonly secretsProviderSettings: SecretsProviderSettingsPage;
@@ -173,6 +175,7 @@ export class n8nPage {
 
 		// Components
 		this.projectTabs = new ProjectTabsComponent(page);
+		this.commandBar = new CommandBar(page);
 
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
