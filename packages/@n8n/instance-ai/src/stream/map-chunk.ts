@@ -166,7 +166,7 @@ export function mapMastraChunkToEvent(
 			}
 		}
 
-		// Extract optional projectId for credential scoping
+		// Extract optional projectId for project-scoped actions
 		const projectId =
 			typeof suspendPayload.projectId === 'string' ? suspendPayload.projectId : undefined;
 
