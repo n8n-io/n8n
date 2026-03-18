@@ -434,7 +434,7 @@ Supports domain filtering via native `site:` query syntax.
 
 **Search providers** (in priority order):
 1. **Brave Search** — used when `INSTANCE_AI_BRAVE_SEARCH_API_KEY` is set
-2. **SearXNG** — used when `N8N_INSTANCE_AI_SEARXNG_URL` is set (default: `http://searxng:8080`)
+2. **SearXNG** — used when `N8N_INSTANCE_AI_SEARXNG_URL` is set
 3. **Disabled** — when neither is available
 
 | Field | Type | Required | Default | Description |

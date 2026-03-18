@@ -272,7 +272,7 @@ describe('GlobalConfig', () => {
 			daytonaApiKey: '',
 			sandboxTimeout: 300000,
 			braveSearchApiKey: '',
-			searxngUrl: 'http://searxng:8080',
+			searxngUrl: '',
 			filesystemPath: '',
 			gatewayApiKey: '',
 			threadTtlDays: 90,
