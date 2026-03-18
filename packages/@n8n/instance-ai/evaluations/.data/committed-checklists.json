@@ -1,0 +1,912 @@
+{
+  "fcce83a9391885ab": {
+    "prompt": "Create a simple webhook workflow that returns 'Hello World' when called",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a Webhook (HTTP) trigger node"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a node to construct and return a response"
+      },
+      {
+        "id": 3,
+        "category": "data",
+        "item": "Response body contains the text 'Hello World'"
+      },
+      {
+        "id": 4,
+        "category": "behavior",
+        "item": "Creates the workflow in n8n"
+      },
+      {
+        "id": 5,
+        "category": "behavior",
+        "item": "Activates the workflow so the webhook is live and callable"
+      },
+      {
+        "id": 6,
+        "category": "behavior",
+        "item": "Reports the webhook URL to the user so they can call it"
+      }
+    ]
+  },
+  "047adb4d0cac62fd": {
+    "prompt": "Create a manual trigger workflow with a Set node that outputs { greeting: 'hello' }",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a Manual trigger node"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a Set node connected to the Manual trigger"
+      },
+      {
+        "id": 3,
+        "category": "data",
+        "item": "Set node outputs a field named 'greeting' with the value 'hello'"
+      },
+      {
+        "id": 4,
+        "category": "behavior",
+        "item": "Creates the workflow successfully"
+      }
+    ]
+  },
+  "5fc2203913e11fb6": {
+    "prompt": "Build a workflow that receives POST data at /contacts, validates the email field exists, and stores valid contacts in a data table",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with an HTTP POST trigger on the /contacts path"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a validation step that checks whether the email field exists in the POST body"
+      },
+      {
+        "id": 3,
+        "category": "structure",
+        "item": "Workflow branches based on whether the email field is present (valid vs invalid path)"
+      },
+      {
+        "id": 4,
+        "category": "data",
+        "item": "Validation checks specifically for the 'email' field in the incoming POST data"
+      },
+      {
+        "id": 5,
+        "category": "structure",
+        "item": "Valid contacts are routed to a storage step that inserts them into a data table"
+      },
+      {
+        "id": 6,
+        "category": "behavior",
+        "item": "Creates a persistent data table to store valid contact records"
+      },
+      {
+        "id": 7,
+        "category": "data",
+        "item": "Data table includes at minimum an email column to store the validated contact data"
+      },
+      {
+        "id": 8,
+        "category": "data",
+        "item": "Only contacts with a present email field are inserted into the data table"
+      },
+      {
+        "id": 9,
+        "category": "behavior",
+        "item": "Responds with a summary of what was built, including the trigger path and validation logic"
+      }
+    ]
+  },
+  "50079592c3b64d5c": {
+    "prompt": "Create a cron workflow that runs every hour and logs a timestamp to a data table called 'heartbeats'",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a Cron/Schedule trigger set to run every hour"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a node that inserts a record into a data table"
+      },
+      {
+        "id": 3,
+        "category": "data",
+        "item": "Data table is named 'heartbeats'"
+      },
+      {
+        "id": 4,
+        "category": "data",
+        "item": "Record inserted into the 'heartbeats' table includes a timestamp field"
+      },
+      {
+        "id": 5,
+        "category": "behavior",
+        "item": "Creates the 'heartbeats' data table if it does not already exist"
+      },
+      {
+        "id": 6,
+        "category": "behavior",
+        "item": "Activates the workflow so the cron schedule takes effect"
+      },
+      {
+        "id": 7,
+        "category": "behavior",
+        "item": "Responds with a summary confirming the workflow and data table were created"
+      }
+    ]
+  },
+  "49d728fec5c165a7": {
+    "prompt": "Build a webhook workflow that accepts JSON with a 'text' field and returns the text converted to uppercase",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a Webhook (HTTP) trigger"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a node to transform the input text to uppercase"
+      },
+      {
+        "id": 3,
+        "category": "structure",
+        "item": "Workflow includes a node to return a response to the caller"
+      },
+      {
+        "id": 4,
+        "category": "data",
+        "item": "Webhook accepts a JSON body containing a 'text' field"
+      },
+      {
+        "id": 5,
+        "category": "data",
+        "item": "Transformation converts the value of the 'text' field to uppercase"
+      },
+      {
+        "id": 6,
+        "category": "data",
+        "item": "Response body contains the uppercase version of the input text"
+      },
+      {
+        "id": 7,
+        "category": "behavior",
+        "item": "Responds with the constructed workflow details including the webhook URL"
+      }
+    ]
+  },
+  "e6ab21d91c1cf8b2": {
+    "prompt": "Create a workflow with a form trigger that collects name and email, then stores submissions in a data table",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a Form trigger node"
+      },
+      {
+        "id": 2,
+        "category": "data",
+        "item": "Form collects a 'name' field from the user"
+      },
+      {
+        "id": 3,
+        "category": "data",
+        "item": "Form collects an 'email' field from the user"
+      },
+      {
+        "id": 4,
+        "category": "structure",
+        "item": "Workflow connects the form trigger to a node that stores data in a data table"
+      },
+      {
+        "id": 5,
+        "category": "behavior",
+        "item": "Creates a persistent data table to store form submissions"
+      },
+      {
+        "id": 6,
+        "category": "data",
+        "item": "Data table includes columns for name and email"
+      },
+      {
+        "id": 7,
+        "category": "data",
+        "item": "Submitted name and email values are mapped and inserted into the data table"
+      },
+      {
+        "id": 8,
+        "category": "behavior",
+        "item": "Responds with a summary of what was created, including the form URL and table details"
+      }
+    ]
+  },
+  "bca628cb33fd3922": {
+    "prompt": "Build a webhook workflow with an IF node that routes requests to different response nodes based on a 'type' field in the body",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a Webhook trigger node"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes an IF node that evaluates the 'type' field from the request body"
+      },
+      {
+        "id": 3,
+        "category": "structure",
+        "item": "Workflow has at least two branches from the IF node — one for the true/matching condition and one for the false/non-matching condition"
+      },
+      {
+        "id": 4,
+        "category": "structure",
+        "item": "Each branch leads to a distinct Respond to Webhook (or equivalent response) node"
+      },
+      {
+        "id": 5,
+        "category": "data",
+        "item": "IF node condition references the 'type' field from the incoming request body"
+      },
+      {
+        "id": 6,
+        "category": "data",
+        "item": "Each response node returns a different response payload or message corresponding to its branch"
+      },
+      {
+        "id": 7,
+        "category": "behavior",
+        "item": "Responds with a summary of the workflow structure explaining how routing works based on the 'type' field"
+      }
+    ]
+  },
+  "bb7e2254c4228dd7": {
+    "prompt": "Create a workflow that fetches data from a data table, filters rows where status is 'active', and returns them via webhook response",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a webhook trigger"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a node to fetch data from a data table"
+      },
+      {
+        "id": 3,
+        "category": "structure",
+        "item": "Workflow includes a filtering step after fetching data"
+      },
+      {
+        "id": 4,
+        "category": "structure",
+        "item": "Workflow ends with a webhook response node that returns the filtered data"
+      },
+      {
+        "id": 5,
+        "category": "data",
+        "item": "Filtering condition checks that the 'status' field equals 'active'"
+      },
+      {
+        "id": 6,
+        "category": "data",
+        "item": "Only rows where status is 'active' are included in the webhook response"
+      },
+      {
+        "id": 7,
+        "category": "behavior",
+        "item": "Creates the workflow with all nodes properly connected in sequence"
+      },
+      {
+        "id": 8,
+        "category": "behavior",
+        "item": "Responds to the user with a summary of the created workflow"
+      }
+    ]
+  },
+  "bb63c13eeb609f59": {
+    "prompt": "Build a workflow with a manual trigger that uses a Code node to generate 5 sample items and stores them in a data table",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a manual trigger"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a Code node connected to the manual trigger"
+      },
+      {
+        "id": 3,
+        "category": "data",
+        "item": "Code node generates exactly 5 sample items"
+      },
+      {
+        "id": 4,
+        "category": "behavior",
+        "item": "Creates a persistent data table to store the generated items"
+      },
+      {
+        "id": 5,
+        "category": "structure",
+        "item": "Workflow includes a node that inserts data into the data table, connected after the Code node"
+      },
+      {
+        "id": 6,
+        "category": "data",
+        "item": "Each of the 5 generated items is inserted as a row in the data table"
+      },
+      {
+        "id": 7,
+        "category": "behavior",
+        "item": "Executes the workflow after creating it"
+      },
+      {
+        "id": 8,
+        "category": "behavior",
+        "item": "Responds with a summary describing what was created, including the workflow and data table details"
+      }
+    ]
+  },
+  "b0afbd41f620b67a": {
+    "prompt": "Create a webhook API endpoint that accepts a search query parameter and returns matching rows from a 'products' data table",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a Webhook/HTTP trigger that accepts incoming requests"
+      },
+      {
+        "id": 2,
+        "category": "data",
+        "item": "Webhook endpoint accepts a search query parameter from the request"
+      },
+      {
+        "id": 3,
+        "category": "behavior",
+        "item": "Creates or verifies the existence of a 'products' data table to query against"
+      },
+      {
+        "id": 4,
+        "category": "structure",
+        "item": "Workflow includes a step to query the 'products' data table using the provided search parameter"
+      },
+      {
+        "id": 5,
+        "category": "data",
+        "item": "Query filters rows from the 'products' table based on the search query value"
+      },
+      {
+        "id": 6,
+        "category": "structure",
+        "item": "Workflow includes a step to return the matching rows as the HTTP response"
+      },
+      {
+        "id": 7,
+        "category": "data",
+        "item": "Response contains the matching rows from the 'products' data table"
+      },
+      {
+        "id": 8,
+        "category": "behavior",
+        "item": "Activates the workflow so the webhook endpoint is live and accessible"
+      },
+      {
+        "id": 9,
+        "category": "behavior",
+        "item": "Responds to the user with the webhook URL and instructions on how to use the search query parameter"
+      }
+    ]
+  },
+  "f8d2532e86245f2f": {
+    "prompt": "Build a workflow with a manual trigger that sends a message to a Slack channel called #general saying \"Hello from n8n\"",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a manual trigger"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a Slack node connected to the manual trigger"
+      },
+      {
+        "id": 3,
+        "category": "data",
+        "item": "Slack message is sent to the #general channel"
+      },
+      {
+        "id": 4,
+        "category": "data",
+        "item": "Slack message text is exactly 'Hello from n8n'"
+      },
+      {
+        "id": 5,
+        "category": "behavior",
+        "item": "Creates or reuses Slack credentials for the integration"
+      },
+      {
+        "id": 6,
+        "category": "behavior",
+        "item": "Creates the workflow in n8n"
+      },
+      {
+        "id": 7,
+        "category": "behavior",
+        "item": "Responds with a summary of what was created"
+      }
+    ]
+  },
+  "059de0ed343d7882": {
+    "prompt": "Create a workflow that fetches all pages from a Notion database and stores the titles in a data table",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a trigger node to initiate execution"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a node to fetch all pages from a Notion database"
+      },
+      {
+        "id": 3,
+        "category": "structure",
+        "item": "Workflow includes a node to write data to a persistent data table"
+      },
+      {
+        "id": 4,
+        "category": "behavior",
+        "item": "Creates a data table to store the Notion page titles"
+      },
+      {
+        "id": 5,
+        "category": "data",
+        "item": "Data table includes a column for page titles"
+      },
+      {
+        "id": 6,
+        "category": "data",
+        "item": "Extracts the title field from each Notion page returned by the database query"
+      },
+      {
+        "id": 7,
+        "category": "data",
+        "item": "Inserts one row per Notion page title into the data table"
+      },
+      {
+        "id": 8,
+        "category": "behavior",
+        "item": "Sets up or uses existing Notion credentials to authenticate the database request"
+      },
+      {
+        "id": 9,
+        "category": "behavior",
+        "item": "Handles pagination to ensure all pages from the Notion database are fetched"
+      },
+      {
+        "id": 10,
+        "category": "behavior",
+        "item": "Executes the workflow after creating it"
+      },
+      {
+        "id": 11,
+        "category": "behavior",
+        "item": "Reports back to the user with a summary of what was created and how many titles were stored"
+      }
+    ]
+  },
+  "e1bd0860f59af9fb": {
+    "prompt": "Build a workflow with a manual trigger that creates a new GitHub issue in a repository with title \"Test Issue\" and body \"Created by n8n\"",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a manual trigger"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a GitHub node to create a new issue"
+      },
+      {
+        "id": 3,
+        "category": "data",
+        "item": "GitHub issue title is set to 'Test Issue'"
+      },
+      {
+        "id": 4,
+        "category": "data",
+        "item": "GitHub issue body is set to 'Created by n8n'"
+      },
+      {
+        "id": 5,
+        "category": "behavior",
+        "item": "Creates or uses existing GitHub credentials for authentication"
+      },
+      {
+        "id": 6,
+        "category": "data",
+        "item": "GitHub node is configured with a target repository owner and name"
+      },
+      {
+        "id": 7,
+        "category": "behavior",
+        "item": "Responds to the user with a summary of the workflow that was created"
+      }
+    ]
+  },
+  "83340da679bf6d7b": {
+    "prompt": "Build a lead scoring system: create a data table called 'leads' with columns name, email, company, score. Build a webhook workflow that receives lead data, calculates a score based on whether company and email are provided, and stores the result. Execute the workflow with test data to verify it works.",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "behavior",
+        "item": "Creates a data table named 'leads'"
+      },
+      {
+        "id": 2,
+        "category": "data",
+        "item": "The 'leads' table has columns: name, email, company, score"
+      },
+      {
+        "id": 3,
+        "category": "structure",
+        "item": "Creates a workflow with a Webhook trigger to receive lead data"
+      },
+      {
+        "id": 4,
+        "category": "structure",
+        "item": "Workflow includes a scoring step that calculates a score based on whether company and email fields are provided"
+      },
+      {
+        "id": 5,
+        "category": "data",
+        "item": "Score calculation logic accounts for presence/absence of both the email and company fields"
+      },
+      {
+        "id": 6,
+        "category": "structure",
+        "item": "Workflow includes a step that stores the lead result (name, email, company, score) into the 'leads' data table"
+      },
+      {
+        "id": 7,
+        "category": "data",
+        "item": "All four fields (name, email, company, score) are written to the 'leads' table row"
+      },
+      {
+        "id": 8,
+        "category": "behavior",
+        "item": "Executes the workflow with test lead data after creating it"
+      },
+      {
+        "id": 9,
+        "category": "behavior",
+        "item": "Verifies that the test execution succeeded and a record was stored in the 'leads' table"
+      },
+      {
+        "id": 10,
+        "category": "behavior",
+        "item": "Reports the execution result and stored score to the user"
+      }
+    ]
+  },
+  "e093d74a91f0250b": {
+    "prompt": "Set up a feedback collection system: create a 'feedback' data table with columns user, rating, comment, created_at. Build a form-based workflow that collects feedback and stores it. Then build a second webhook workflow that returns average ratings from the data table.",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "behavior",
+        "item": "Creates a data table named 'feedback'"
+      },
+      {
+        "id": 2,
+        "category": "data",
+        "item": "The 'feedback' data table has columns: user, rating, comment, created_at"
+      },
+      {
+        "id": 3,
+        "category": "structure",
+        "item": "Creates a first workflow with a form-based trigger to collect feedback"
+      },
+      {
+        "id": 4,
+        "category": "data",
+        "item": "Form collects fields corresponding to: user, rating, and comment"
+      },
+      {
+        "id": 5,
+        "category": "data",
+        "item": "Stores submitted form data into the 'feedback' data table, including a created_at timestamp"
+      },
+      {
+        "id": 6,
+        "category": "structure",
+        "item": "Creates a second workflow with a webhook (HTTP) trigger that returns average ratings"
+      },
+      {
+        "id": 7,
+        "category": "data",
+        "item": "Second workflow queries the 'feedback' data table to compute the average of the rating column"
+      },
+      {
+        "id": 8,
+        "category": "data",
+        "item": "Second workflow returns the computed average rating in its HTTP response"
+      },
+      {
+        "id": 9,
+        "category": "behavior",
+        "item": "Responds with a summary of what was created, including the form workflow, the webhook workflow, and the feedback data table"
+      }
+    ]
+  },
+  "b27518d8668a3df3": {
+    "prompt": "Create an event registration workflow: make a 'registrations' data table with name, email, event, registered_at columns. Build a webhook workflow at /register that validates required fields (name, email, event), checks for duplicate emails in the data table, and only stores new registrations.",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "behavior",
+        "item": "Creates a data table named 'registrations'"
+      },
+      {
+        "id": 2,
+        "category": "data",
+        "item": "The 'registrations' table has columns: name, email, event, registered_at"
+      },
+      {
+        "id": 3,
+        "category": "structure",
+        "item": "Creates a workflow with a webhook trigger at the path /register"
+      },
+      {
+        "id": 4,
+        "category": "structure",
+        "item": "Workflow validates that name, email, and event fields are all present in the incoming request"
+      },
+      {
+        "id": 5,
+        "category": "structure",
+        "item": "Workflow branches based on whether required fields are missing"
+      },
+      {
+        "id": 6,
+        "category": "behavior",
+        "item": "Returns an error response when any required field (name, email, or event) is missing"
+      },
+      {
+        "id": 7,
+        "category": "structure",
+        "item": "Workflow queries the 'registrations' data table to check for an existing record with the same email"
+      },
+      {
+        "id": 8,
+        "category": "structure",
+        "item": "Workflow branches based on whether a duplicate email is found in the data table"
+      },
+      {
+        "id": 9,
+        "category": "behavior",
+        "item": "Returns an error or rejection response when the email already exists in the registrations table"
+      },
+      {
+        "id": 10,
+        "category": "data",
+        "item": "Stores name, email, and event from the request payload, and sets registered_at to the current timestamp"
+      },
+      {
+        "id": 11,
+        "category": "behavior",
+        "item": "Only inserts a new row into the 'registrations' table when the email is not a duplicate and all required fields are present"
+      },
+      {
+        "id": 12,
+        "category": "behavior",
+        "item": "Returns a success response when a new registration is successfully stored"
+      }
+    ]
+  },
+  "49bd55d1afbcbb76": {
+    "prompt": "Build a task management API: create a 'tasks' data table with title, description, status, priority columns. Build three webhook endpoints: POST /tasks to create tasks, GET /tasks to list all tasks, and a workflow that queries tasks by status.",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "behavior",
+        "item": "Creates a data table named 'tasks'"
+      },
+      {
+        "id": 2,
+        "category": "data",
+        "item": "The 'tasks' table has columns: title, description, status, priority"
+      },
+      {
+        "id": 3,
+        "category": "structure",
+        "item": "Creates a workflow with a POST /tasks webhook endpoint to create tasks"
+      },
+      {
+        "id": 4,
+        "category": "structure",
+        "item": "Creates a workflow with a GET /tasks webhook endpoint to list all tasks"
+      },
+      {
+        "id": 5,
+        "category": "structure",
+        "item": "Creates a workflow that queries tasks filtered by status"
+      },
+      {
+        "id": 6,
+        "category": "data",
+        "item": "POST /tasks workflow inserts a new task record using title, description, status, and priority fields from the request body"
+      },
+      {
+        "id": 7,
+        "category": "data",
+        "item": "GET /tasks workflow retrieves and returns all rows from the 'tasks' table"
+      },
+      {
+        "id": 8,
+        "category": "data",
+        "item": "Query-by-status workflow filters tasks from the 'tasks' table where the status matches a provided input value"
+      },
+      {
+        "id": 9,
+        "category": "behavior",
+        "item": "POST /tasks workflow returns a response confirming the created task"
+      },
+      {
+        "id": 10,
+        "category": "behavior",
+        "item": "GET /tasks workflow returns the list of tasks as a response"
+      },
+      {
+        "id": 11,
+        "category": "behavior",
+        "item": "Query-by-status workflow returns the filtered list of matching tasks as a response"
+      },
+      {
+        "id": 12,
+        "category": "behavior",
+        "item": "Responds to the user with a summary of what was created, including the data table and all three workflows"
+      }
+    ]
+  },
+  "a08c3a65f22c9fbf": {
+    "prompt": "Create a content moderation pipeline: build a webhook workflow that receives text content, uses a Code node to check for banned words (define a list of 5 banned words), flags inappropriate content by adding a 'flagged' field, and stores all submissions in a 'content_reviews' data table.",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a Webhook trigger to receive incoming text content"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a Code node that performs banned word checking logic"
+      },
+      {
+        "id": 3,
+        "category": "structure",
+        "item": "Workflow stores submissions in a persistent data table named 'content_reviews'"
+      },
+      {
+        "id": 4,
+        "category": "data",
+        "item": "Code node defines a hardcoded list of exactly 5 banned words"
+      },
+      {
+        "id": 5,
+        "category": "data",
+        "item": "Code node checks the incoming text content against the banned words list"
+      },
+      {
+        "id": 6,
+        "category": "data",
+        "item": "Code node adds a 'flagged' boolean or indicator field to the item based on whether banned words were found"
+      },
+      {
+        "id": 7,
+        "category": "data",
+        "item": "Data table 'content_reviews' stores the submitted text content along with the 'flagged' field"
+      },
+      {
+        "id": 8,
+        "category": "behavior",
+        "item": "Creates the 'content_reviews' data table before or during workflow setup"
+      },
+      {
+        "id": 9,
+        "category": "behavior",
+        "item": "Creates and saves the complete workflow with all nodes connected in sequence"
+      },
+      {
+        "id": 10,
+        "category": "behavior",
+        "item": "Responds with a summary of what was built, including the webhook URL, banned words list, and data table details"
+      }
+    ]
+  },
+  "22edc20c1961fdd5": {
+    "prompt": "Set up an inventory tracker: create an 'inventory' data table with item_name, quantity, min_stock, last_updated columns. Seed it with 3 sample items. Build a webhook workflow that receives stock updates (item_name, quantity_change) and updates the inventory. Execute it with test data to verify.",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "behavior",
+        "item": "Creates a data table named 'inventory'"
+      },
+      {
+        "id": 2,
+        "category": "data",
+        "item": "The 'inventory' table has columns: item_name, quantity, min_stock, last_updated"
+      },
+      {
+        "id": 3,
+        "category": "behavior",
+        "item": "Seeds the 'inventory' table with 3 sample items"
+      },
+      {
+        "id": 4,
+        "category": "data",
+        "item": "Each seeded item includes values for item_name, quantity, min_stock, and last_updated"
+      },
+      {
+        "id": 5,
+        "category": "structure",
+        "item": "Creates a workflow with a webhook trigger that receives stock update payloads"
+      },
+      {
+        "id": 6,
+        "category": "data",
+        "item": "Webhook payload includes item_name and quantity_change fields"
+      },
+      {
+        "id": 7,
+        "category": "structure",
+        "item": "Workflow looks up the existing inventory record by item_name"
+      },
+      {
+        "id": 8,
+        "category": "structure",
+        "item": "Workflow updates the matched inventory record's quantity by applying the quantity_change"
+      },
+      {
+        "id": 9,
+        "category": "data",
+        "item": "Workflow updates the last_updated field with the current timestamp when a stock update is applied"
+      },
+      {
+        "id": 10,
+        "category": "behavior",
+        "item": "Executes the workflow with test data containing a sample item_name and quantity_change"
+      },
+      {
+        "id": 11,
+        "category": "behavior",
+        "item": "Verifies the inventory table reflects the correct updated quantity after execution"
+      },
+      {
+        "id": 12,
+        "category": "behavior",
+        "item": "Reports the execution result and confirms the inventory was updated correctly"
+      }
+    ]
+  }
+}
