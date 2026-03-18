@@ -72,6 +72,7 @@ vi.mock('@/app/composables/useToast', () => ({
 }));
 
 let telemetry: ReturnType<typeof useTelemetry>;
+const scrollToItemMock = vi.fn();
 
 const DynamicScrollerStub = {
 	props: {
@@ -83,7 +84,7 @@ const DynamicScrollerStub = {
 	template:
 		'<div><template v-for="(item, index) in items" :key="index"><slot v-bind="{ item, index, active: false }"></slot></template></div>',
 	methods: {
-		scrollToItem: vi.fn(),
+		scrollToItem: scrollToItemMock,
 	},
 };
 
@@ -140,6 +141,7 @@ describe('SourceControlPushModal', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		scrollToItemMock.mockClear();
 		telemetry = useTelemetry();
 
 		// Reset route mock to default values
@@ -271,6 +273,154 @@ describe('SourceControlPushModal', () => {
 		expect(files[1]).not.toBeChecked();
 	});
 
+	it('should toggle folder checkbox and select nested workflows', async () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'wf-root',
+				name: 'Root workflow',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/wf-root.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'wf-child-1',
+				name: 'Child workflow 1',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/wf-child-1.json',
+				updatedAt: '2024-09-20T10:32:40.000Z',
+				folderPath: ['Prod'],
+			},
+			{
+				id: 'wf-child-2',
+				name: 'Child workflow 2',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/wf-child-2.json',
+				updatedAt: '2024-09-20T10:33:40.000Z',
+				folderPath: ['Prod'],
+			},
+		];
+
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+		const { getAllByTestId, getByText, getByRole } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(3);
+			expect(getAllByTestId('source-control-push-modal-folder-checkbox')).toHaveLength(1);
+		});
+
+		const folderCheckbox = getAllByTestId('source-control-push-modal-folder-checkbox')[0];
+
+		expect(getByRole('checkbox', { name: /Root workflow/i })).not.toBeChecked();
+		expect(getByRole('checkbox', { name: /Child workflow 1/i })).not.toBeChecked();
+		expect(getByRole('checkbox', { name: /Child workflow 2/i })).not.toBeChecked();
+
+		await userEvent.click(folderCheckbox);
+
+		expect(getByRole('checkbox', { name: /Root workflow/i })).not.toBeChecked();
+		expect(getByRole('checkbox', { name: /Child workflow 1/i })).toBeChecked();
+		expect(getByRole('checkbox', { name: /Child workflow 2/i })).toBeChecked();
+
+		await userEvent.click(folderCheckbox);
+
+		expect(getByRole('checkbox', { name: /Root workflow/i })).not.toBeChecked();
+		expect(getByRole('checkbox', { name: /Child workflow 1/i })).not.toBeChecked();
+		expect(getByRole('checkbox', { name: /Child workflow 2/i })).not.toBeChecked();
+	});
+
+	it('should collapse and expand nested folder workflows', async () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'wf-root',
+				name: 'Root workflow',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/wf-root.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'wf-child-1',
+				name: 'Child workflow 1',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/wf-child-1.json',
+				updatedAt: '2024-09-20T10:32:40.000Z',
+				folderPath: ['Prod'],
+			},
+			{
+				id: 'wf-child-2',
+				name: 'Child workflow 2',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/wf-child-2.json',
+				updatedAt: '2024-09-20T10:33:40.000Z',
+				folderPath: ['Prod'],
+			},
+		];
+
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+		const { getByText, getByTestId, getAllByTestId } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		let folderToggle: HTMLElement;
+
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(3);
+			folderToggle = getByTestId('source-control-push-modal-folder-toggle');
+			expect(folderToggle).toBeInTheDocument();
+			expect(getAllByTestId('source-control-push-modal-folder-checkbox')[0]).not.toBeChecked();
+		});
+
+		await userEvent.click(folderToggle!);
+
+		await waitFor(() => {
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			expect(getAllByTestId('source-control-push-modal-folder-checkbox')[0]).not.toBeChecked();
+		});
+
+		await userEvent.click(folderToggle!);
+
+		await waitFor(() => {
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(3);
+		});
+	});
+
 	it('should push all entities besides workflows and credentials', async () => {
 		const status: SourceControlledFile[] = [
 			{
@@ -363,10 +513,10 @@ describe('SourceControlPushModal', () => {
 		expect(getByRole('alert').textContent).toContain(
 			[
 				'Changes to variables, tags, folders and projects',
-				'Variables : at least one new or modified.',
-				'Tags : at least one new or modified.',
-				'Folders : at least one new or modified.',
-				'Projects : at least one new or modified.',
+				'Variables: at least one new or modified.',
+				'Tags: at least one new or modified.',
+				'Folders: at least one new or modified.',
+				'Projects: at least one new or modified.',
 			].join(' '),
 		);
 
@@ -414,7 +564,7 @@ describe('SourceControlPushModal', () => {
 		mockRoute.name = VIEWS.WORKFLOW;
 		mockRoute.params = { name: 'gTbbBkkYTnNyX1jD' };
 
-		const { getByTestId, getAllByTestId, getByText } = renderModal({
+		const { getByTestId, getAllByTestId, getByText, getByRole } = renderModal({
 			pinia,
 			props: {
 				data: {
@@ -434,11 +584,14 @@ describe('SourceControlPushModal', () => {
 			expect(files).toHaveLength(2);
 		});
 
-		const files = getAllByTestId('source-control-push-modal-file-checkbox');
-
-		// The current workflow should be auto-selected now that we fixed the regression
-		expect(files[0]).toBeChecked();
-		expect(files[1]).not.toBeChecked();
+		// The current workflow should be auto-selected regardless of rendered order
+		await waitFor(() => {
+			expect(getByRole('checkbox', { name: /My workflow 1/i })).toBeChecked();
+			expect(getByRole('checkbox', { name: /My workflow 2/i })).not.toBeChecked();
+		});
+		await waitFor(() => {
+			expect(scrollToItemMock).toHaveBeenCalled();
+		});
 
 		await userEvent.type(getByTestId('source-control-push-modal-commit'), 'message');
 		const submitButton = getByTestId('source-control-push-modal-submit');
@@ -1249,6 +1402,96 @@ describe('SourceControlPushModal', () => {
 					status: 'created',
 				});
 			});
+		});
+
+		it('should build folder filter options in hierarchical sorted order', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-alpha',
+					name: 'Alpha workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-alpha.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+					folderPath: ['Alpha'],
+				},
+				{
+					id: 'wf-prod-root',
+					name: 'Prod root workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-prod-root.json',
+					updatedAt: '2024-09-20T10:32:40.000Z',
+					folderPath: ['Prod'],
+				},
+				{
+					id: 'wf-prod-billing',
+					name: 'Prod billing workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-prod-billing.json',
+					updatedAt: '2024-09-20T10:33:40.000Z',
+					folderPath: ['Prod', 'Billing'],
+				},
+				{
+					id: 'wf-prod-analytics',
+					name: 'Prod analytics workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-prod-analytics.json',
+					updatedAt: '2024-09-20T10:34:40.000Z',
+					folderPath: ['Prod', 'Analytics'],
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('source-control-filter-dropdown')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('source-control-filter-dropdown'));
+			const folderSelect = getByTestId('source-control-folder-filter');
+			const folderCombobox = within(folderSelect).getByRole('combobox');
+			await userEvent.click(folderCombobox);
+
+			const dropdownId = folderCombobox.getAttribute('aria-controls');
+			expect(dropdownId).toBeTruthy();
+
+			await waitFor(() => {
+				const dropdown = document.getElementById(dropdownId as string);
+				expect(dropdown).toBeInTheDocument();
+				expect(within(dropdown as HTMLElement).getByText('Alpha')).toBeInTheDocument();
+			});
+
+			const dropdown = document.getElementById(dropdownId as string) as HTMLElement;
+			const optionLabels = Array.from(dropdown.querySelectorAll('[role="option"]'))
+				.map((option) => option.textContent?.trim() ?? '')
+				.filter(Boolean);
+
+			expect(optionLabels).toEqual(['Alpha', 'Prod', 'Prod / Analytics', 'Prod / Billing']);
 		});
 
 		test.each([

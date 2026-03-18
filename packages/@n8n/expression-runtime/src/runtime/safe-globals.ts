@@ -34,6 +34,11 @@ export const SafeObject = new Proxy(Object, {
 			throw new Error('Object.getPrototypeOf is not allowed');
 		}
 
+		// Wrap Object.create to accept only one argument (blocks property descriptor injection)
+		if (prop === 'create') {
+			return (proto: object | null) => Object.create(proto);
+		}
+
 		// Allow other Object methods
 		const value = (target as any)[prop];
 		if (typeof value === 'function') {
@@ -45,25 +50,27 @@ export const SafeObject = new Proxy(Object, {
 });
 
 /**
- * SafeError - Blocks stack manipulation methods
- *
- * Blocked properties:
- * - stackTraceLimit, captureStackTrace, prepareStackTrace: Prevent stack manipulation attacks
+ * Properties blocked on Error and all Error subclasses.
+ * These can be exploited for sandbox escape via V8's stack trace API.
+ */
+const blockedErrorProperties = new Set([
+	'captureStackTrace',
+	'prepareStackTrace',
+	'stackTraceLimit',
+	'__defineGetter__',
+	'__defineSetter__',
+	'__lookupGetter__',
+	'__lookupSetter__',
+]);
+
+/**
+ * SafeError - Blocks stack manipulation methods on Error constructor.
  */
 export const SafeError = new Proxy(Error, {
 	get(target, prop) {
-		// Block stack manipulation (return undefined)
-		const blockedProps = ['stackTraceLimit', 'captureStackTrace', 'prepareStackTrace'];
-		if (blockedProps.includes(prop as string)) {
+		if (blockedErrorProperties.has(prop as string)) {
 			return undefined;
 		}
-
-		// Block dangerous methods
-		const blockedMethods = ['__defineGetter__', '__defineSetter__'];
-		if (blockedMethods.includes(prop as string)) {
-			return undefined;
-		}
-
 		const value = (target as any)[prop];
 		if (typeof value === 'function') {
 			return (...args: any[]) => value.apply(target, args);
@@ -78,7 +85,35 @@ export const SafeError = new Proxy(Error, {
 		(target as any)[prop] = value;
 		return true;
 	},
+	defineProperty() {
+		return false;
+	},
 });
+
+/**
+ * Creates a safe wrapper for Error subclasses (TypeError, SyntaxError, etc.)
+ * Blocks the same dangerous properties as SafeError for defense in depth.
+ */
+export function createSafeErrorSubclass<T extends ErrorConstructor>(ErrorClass: T): T {
+	return new Proxy(ErrorClass, {
+		get(target, prop) {
+			if (blockedErrorProperties.has(prop as string)) {
+				return undefined;
+			}
+			const value = (target as any)[prop];
+			if (typeof value === 'function') {
+				return (...args: any[]) => value.apply(target, args);
+			}
+			return value;
+		},
+		set() {
+			return false;
+		},
+		defineProperty() {
+			return false;
+		},
+	}) as T;
+}
 
 // ============================================================================
 // ExpressionError - used by tournament-generated error handlers
