@@ -104,17 +104,7 @@ const chatInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const suggestionsInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const inputText = ref('');
 
-const notificationsPermissionsBannerTriggered = ref(false);
 const creditBannerDismissed = ref(false);
-
-watch(
-	() => builderStore.streaming,
-	(isStreaming) => {
-		if (isStreaming && canPrompt.value) {
-			notificationsPermissionsBannerTriggered.value = true;
-		}
-	},
-);
 
 watch(
 	() => builderStore.creditsRemaining,

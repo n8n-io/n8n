@@ -50,7 +50,7 @@ export class BuilderSetupWizardPage {
 
 	/** Credential dropdown select inside the card */
 	getCredentialSelect(): Locator {
-		return this.page.getByTestId('node-credentials-select');
+		return this.getCard().getByTestId('node-credentials-select');
 	}
 
 	/** Parameter input for a specific parameter name */

@@ -126,6 +126,7 @@ const renderComponent = createComponentRenderer(BuilderSetupCard);
 describe('BuilderSetupCard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockIsNodeExecutable.mockReturnValue(false);
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 	});
