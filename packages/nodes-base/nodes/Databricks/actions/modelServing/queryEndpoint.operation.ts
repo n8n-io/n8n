@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
@@ -19,7 +19,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const requestBodyRaw = this.getNodeParameter('requestBody', i);
 	const requestBody =
 		typeof requestBodyRaw === 'string'
-			? (JSON.parse(requestBodyRaw) as Record<string, unknown>)
+			? jsonParse<Record<string, unknown>>(requestBodyRaw)
 			: (requestBodyRaw as Record<string, unknown>);
 
 	// Step 1: Fetch the OpenAPI schema for this endpoint

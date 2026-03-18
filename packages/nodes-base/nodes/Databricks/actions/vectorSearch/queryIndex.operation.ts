@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { jsonParse, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
 import { getActiveCredentialType, getHost } from '../helpers';
 
@@ -32,7 +32,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	} else {
 		const queryVectorRaw = this.getNodeParameter('queryVector', i);
 		body.query_vector =
-			typeof queryVectorRaw === 'string' ? JSON.parse(queryVectorRaw) : queryVectorRaw;
+			typeof queryVectorRaw === 'string' ? jsonParse(queryVectorRaw) : queryVectorRaw;
 	}
 
 	body.columns = columnsStr

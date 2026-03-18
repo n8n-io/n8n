@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { jsonParse, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
 import { extractResourceLocatorValue, getActiveCredentialType, getHost } from '../helpers';
 
@@ -13,7 +13,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const routineBody = this.getNodeParameter('routineBody', i) as string;
 	const routineDefinition = this.getNodeParameter('routineDefinition', i) as string;
 
-	const p = typeof inputParams === 'string' ? JSON.parse(inputParams) : inputParams;
+	const p = typeof inputParams === 'string' ? jsonParse(inputParams) : inputParams;
 	const params = Array.isArray(p) ? p : ((p as { parameters?: unknown[] })?.parameters ?? []);
 	const normalizedParams = (params as Array<Record<string, unknown>>).map((param) => ({
 		...param,

@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { jsonParse, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
 import { extractResourceLocatorValue, getActiveCredentialType, getHost } from '../helpers';
 
@@ -25,7 +25,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (tableAdditionalFields.columns) {
 		const raw = tableAdditionalFields.columns;
-		body.columns = typeof raw === 'string' ? JSON.parse(raw) : raw;
+		body.columns = typeof raw === 'string' ? jsonParse(raw) : raw;
 	}
 	if (tableAdditionalFields.comment) body.comment = tableAdditionalFields.comment;
 

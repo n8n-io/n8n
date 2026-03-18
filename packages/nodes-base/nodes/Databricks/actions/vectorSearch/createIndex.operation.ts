@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { jsonParse, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
 import { getActiveCredentialType, getHost } from '../helpers';
 
@@ -19,10 +19,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (indexType === 'DELTA_SYNC') {
 		const raw = this.getNodeParameter('deltaSyncIndexSpec', i) as string;
-		body.delta_sync_index_spec = typeof raw === 'string' ? JSON.parse(raw) : raw;
+		body.delta_sync_index_spec = typeof raw === 'string' ? jsonParse(raw) : raw;
 	} else if (indexType === 'DIRECT_ACCESS') {
 		const raw = this.getNodeParameter('directAccessIndexSpec', i) as string;
-		body.direct_access_index_spec = typeof raw === 'string' ? JSON.parse(raw) : raw;
+		body.direct_access_index_spec = typeof raw === 'string' ? jsonParse(raw) : raw;
 	}
 
 	const response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
