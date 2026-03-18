@@ -1,8 +1,15 @@
+import type {
+	InstanceAiAttachment,
+	InstanceAiEvent,
+	InstanceAiThreadStatusResponse,
+	InstanceAiGatewayCapabilities,
+	McpToolCallResult,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
-import { Service } from '@n8n/di';
 import type { User } from '@n8n/db';
+import { Service } from '@n8n/di';
 import {
 	createInstanceAgent,
 	createAllTools,
@@ -34,22 +41,14 @@ import type {
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
-import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
-
-import type {
-	InstanceAiAttachment,
-	InstanceAiEvent,
-	InstanceAiThreadStatusResponse,
-	InstanceAiGatewayCapabilities,
-	McpToolCallResult,
-} from '@n8n/api-types';
-
-import { LocalGateway, LocalFilesystemProvider } from './filesystem';
 import { buildAgentTreeFromEvents } from './agent-tree-builder';
 import { AgentTreeSnapshotStorage } from './agent-tree-snapshot';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
-import { InstanceAiAdapterService } from './instance-ai.adapter.service';
+import type { LocalGateway } from './filesystem';
+import { LocalGatewayRegistry, LocalFilesystemProvider } from './filesystem';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiAdapterService } from './instance-ai.adapter.service';
+import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import { MastraIterationLogStorage } from './iteration-log-storage';
 import { MastraTaskStorage } from './task-storage';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
@@ -153,27 +152,8 @@ export class InstanceAiService {
 	/** Singleton local filesystem provider — created lazily when filesystem config is enabled. */
 	private localFsProvider?: LocalFilesystemProvider;
 
-	/** Singleton local gateway — proxies MCP tool calls to the connected local client (e.g. fs-proxy). */
-	private readonly localGateway = new LocalGateway();
-
-	/** Timer for graceful gateway disconnect (allows brief SSE reconnects). */
-	private disconnectTimer: ReturnType<typeof setTimeout> | null = null;
-
-	/** How many consecutive SSE disconnects without a successful reconnect. */
-	private reconnectCount = 0;
-
-	private readonly INITIAL_GRACE_MS = 10_000;
-
-	private readonly MAX_GRACE_MS = 120_000;
-
-	/** One-time pairing token generated via the UI — consumed on gateway/init. */
-	private pairingToken: { token: string; createdAt: number } | null = null;
-
-	/** Pairing tokens expire after 5 minutes. */
-	private readonly PAIRING_TOKEN_TTL_MS = 5 * 60 * 1000;
-
-	/** Server-issued session key — replaces the pairing token after init. */
-	private activeSessionKey: string | null = null;
+	/** Per-user Local Gateway connections. Handles pairing tokens, session keys, and tool dispatch. */
+	private readonly gatewayRegistry = new LocalGatewayRegistry();
 
 	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
@@ -484,115 +464,74 @@ export class InstanceAiService {
 		this.backgroundTasks.delete(taskId);
 	}
 
-	// ── Gateway lifecycle ─────────────────────────────────────────────────
+	// ── Gateway lifecycle (delegated to LocalGatewayRegistry) ───────────────
 
-	/** Generate a one-time pairing token for UI-initiated connections. */
-	generatePairingToken(): string {
-		// If there's an active session key, return it so the daemon can reconnect
-		// without losing its authenticated session (e.g. after a page reload).
-		if (this.activeSessionKey) {
-			return this.activeSessionKey;
-		}
-		// Reuse existing valid token (prevents race conditions between concurrent callers)
-		const existing = this.getPairingToken();
-		if (existing) return existing;
-
-		const token = `gw_${nanoid(32)}`;
-		this.pairingToken = { token, createdAt: Date.now() };
-		return token;
+	getUserIdForApiKey(key: string): string | undefined {
+		return this.gatewayRegistry.getUserIdForApiKey(key);
 	}
 
-	/** Get the current pairing token (for auth validation during init). Returns null if expired/consumed. */
-	getPairingToken(): string | null {
-		if (!this.pairingToken) return null;
-		if (Date.now() - this.pairingToken.createdAt > this.PAIRING_TOKEN_TTL_MS) {
-			this.pairingToken = null;
-			return null;
-		}
-		return this.pairingToken.token;
+	generatePairingToken(userId: string): string {
+		return this.gatewayRegistry.generatePairingToken(userId);
 	}
 
-	/**
-	 * Consume the pairing token and issue a session key.
-	 * Returns the session key on success, or null if the token is invalid/expired.
-	 */
-	consumePairingToken(token: string): string | null {
-		const valid = this.getPairingToken();
-		if (!valid || valid !== token) return null;
-
-		this.pairingToken = null; // Consumed — cannot be reused
-		this.activeSessionKey = `sess_${nanoid(32)}`;
-		return this.activeSessionKey;
+	getPairingToken(userId: string): string | null {
+		return this.gatewayRegistry.getPairingToken(userId);
 	}
 
-	/** Get the active session key (for SSE + response auth). */
-	getActiveSessionKey(): string | null {
-		return this.activeSessionKey;
+	consumePairingToken(userId: string, token: string): string | null {
+		return this.gatewayRegistry.consumePairingToken(userId, token);
 	}
 
-	/** Clear the active session key (e.g. after explicit disconnect). */
-	clearActiveSessionKey(): void {
-		this.activeSessionKey = null;
+	getActiveSessionKey(userId: string): string | null {
+		return this.gatewayRegistry.getActiveSessionKey(userId);
 	}
 
-	/** Return the filesystem gateway (used by the controller for SSE subscription). */
-	getLocalGateway(): LocalGateway {
-		return this.localGateway;
+	clearActiveSessionKey(userId: string): void {
+		this.gatewayRegistry.clearActiveSessionKey(userId);
 	}
 
-	/** Initialize gateway from a daemon's MCP capabilities upload. */
-	initGateway(data: InstanceAiGatewayCapabilities): void {
-		this.clearDisconnectTimer();
-		this.reconnectCount = 0;
-		this.localGateway.init(data);
+	getLocalGateway(userId: string): LocalGateway {
+		return this.gatewayRegistry.getGateway(userId);
 	}
 
-	/** Resolve a pending gateway filesystem request. */
-	resolveGatewayRequest(requestId: string, result?: McpToolCallResult, error?: string): boolean {
-		return this.localGateway.resolveRequest(requestId, result, error);
+	initGateway(userId: string, data: InstanceAiGatewayCapabilities): void {
+		this.gatewayRegistry.initGateway(userId, data);
 	}
 
-	/** Disconnect the gateway (called when daemon SSE disconnects). */
-	disconnectGateway(): void {
-		this.localGateway.disconnect();
+	resolveGatewayRequest(
+		userId: string,
+		requestId: string,
+		result?: McpToolCallResult,
+		error?: string,
+	): boolean {
+		return this.gatewayRegistry.resolveGatewayRequest(userId, requestId, result, error);
+	}
+
+	disconnectGateway(userId: string): void {
+		this.gatewayRegistry.disconnectGateway(userId);
 	}
 
 	isLocalGatewayDisabled(): boolean {
 		return this.settingsService.isFilesystemDisabled();
 	}
 
-	/** Return gateway connection status for the frontend. */
-	getGatewayStatus(): { connected: boolean; connectedAt: string | null; directory: string | null } {
-		return this.localGateway.getStatus();
+	getGatewayStatus(userId: string): {
+		connected: boolean;
+		connectedAt: string | null;
+		directory: string | null;
+	} {
+		return this.gatewayRegistry.getGatewayStatus(userId);
 	}
 
-	/** Start a grace-period timer. If the daemon doesn't reconnect, fully disconnect the gateway. */
-	startDisconnectTimer(onDisconnect: () => void): void {
-		this.clearDisconnectTimer();
-		const graceMs = Math.min(
-			this.INITIAL_GRACE_MS * Math.pow(2, this.reconnectCount),
-			this.MAX_GRACE_MS,
-		);
-		this.reconnectCount++;
-		this.disconnectTimer = setTimeout(() => {
-			this.disconnectTimer = null;
-			this.disconnectGateway();
-			// Keep activeSessionKey alive so the client can re-authenticate on reconnect.
-			// Session key is only cleared on explicit /gateway/disconnect.
-			onDisconnect();
-		}, graceMs);
+	startDisconnectTimer(userId: string, onDisconnect: () => void): void {
+		this.gatewayRegistry.startDisconnectTimer(userId, onDisconnect);
 	}
 
-	/** Cancel a pending disconnect timer (e.g. daemon reconnected in time). */
-	clearDisconnectTimer(): void {
-		if (this.disconnectTimer) {
-			clearTimeout(this.disconnectTimer);
-			this.disconnectTimer = null;
-		}
+	clearDisconnectTimer(userId: string): void {
+		this.gatewayRegistry.clearDisconnectTimer(userId);
 	}
 
 	async shutdown(): Promise<void> {
-		this.clearDisconnectTimer();
 		for (const [, run] of this.activeRuns) run.abortController.abort();
 		this.activeRuns.clear();
 
@@ -602,7 +541,7 @@ export class InstanceAiService {
 		for (const [, task] of this.backgroundTasks) task.abortController.abort();
 		this.backgroundTasks.clear();
 
-		this.localGateway.disconnect();
+		this.gatewayRegistry.disconnectAll();
 
 		for (const [, pending] of this.pendingSubAgentConfirmations) {
 			pending.resolve({ approved: false });
@@ -655,13 +594,14 @@ export class InstanceAiService {
 			}
 
 			const localGatewayDisabled = this.settingsService.isFilesystemDisabled();
+			const userGateway = this.gatewayRegistry.findGateway(user.id);
 			const localFilesystemService =
-				!localGatewayDisabled && !this.localGateway.isConnected && this.isLocalFilesystemAvailable()
+				!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
 					? this.getLocalFsProvider()
 					: undefined;
 			const context = this.adapterService.createContext(user, localFilesystemService);
-			if (!localGatewayDisabled && this.localGateway.isConnected) {
-				context.localMcpServer = this.localGateway;
+			if (!localGatewayDisabled && userGateway?.isConnected) {
+				context.localMcpServer = userGateway;
 			}
 			context.permissions = this.settingsService.getPermissions();
 

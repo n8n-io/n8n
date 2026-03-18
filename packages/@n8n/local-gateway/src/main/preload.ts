@@ -1,25 +1,27 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { AppSettings } from './settings-store';
 import type { StatusSnapshot } from './daemon-controller';
+import type { AppSettings } from './settings-store';
 
 contextBridge.exposeInMainWorld('electronAPI', {
-	getSettings: (): Promise<AppSettings> =>
-		ipcRenderer.invoke('settings:get') as Promise<AppSettings>,
+	getSettings: async (): Promise<AppSettings> =>
+		await (ipcRenderer.invoke('settings:get') as Promise<AppSettings>),
 
-	setSettings: (partial: Partial<AppSettings>): Promise<{ ok: boolean; error?: string }> =>
-		ipcRenderer.invoke('settings:set', partial) as Promise<{ ok: boolean; error?: string }>,
+	setSettings: async (partial: Partial<AppSettings>): Promise<{ ok: boolean; error?: string }> =>
+		await (ipcRenderer.invoke('settings:set', partial) as Promise<{ ok: boolean; error?: string }>),
 
-	getDaemonStatus: (): Promise<StatusSnapshot> =>
-		ipcRenderer.invoke('daemon:status') as Promise<StatusSnapshot>,
+	getDaemonStatus: async (): Promise<StatusSnapshot> =>
+		await (ipcRenderer.invoke('daemon:status') as Promise<StatusSnapshot>),
 
-	startDaemon: (): Promise<{ ok: boolean }> =>
-		ipcRenderer.invoke('daemon:start') as Promise<{ ok: boolean }>,
+	startDaemon: async (): Promise<{ ok: boolean }> =>
+		await (ipcRenderer.invoke('daemon:start') as Promise<{ ok: boolean }>),
 
-	stopDaemon: (): Promise<{ ok: boolean }> =>
-		ipcRenderer.invoke('daemon:stop') as Promise<{ ok: boolean }>,
+	stopDaemon: async (): Promise<{ ok: boolean }> =>
+		await (ipcRenderer.invoke('daemon:stop') as Promise<{ ok: boolean }>),
 
-	onStatusChanged: (callback: (snapshot: StatusSnapshot) => void): void => {
-		ipcRenderer.on('status-changed', (_event, snapshot: StatusSnapshot) => callback(snapshot));
+	onStatusChanged: (onChangeCallback: (snapshot: StatusSnapshot) => void): void => {
+		ipcRenderer.on('statusChanged', (_event, snapshot: StatusSnapshot) =>
+			onChangeCallback(snapshot),
+		);
 	},
 });
