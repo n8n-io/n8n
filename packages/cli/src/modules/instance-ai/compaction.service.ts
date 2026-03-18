@@ -4,7 +4,7 @@ import { generateCompactionSummary } from '@n8n/instance-ai';
 import type { ModelConfig } from '@n8n/instance-ai';
 import type { Memory } from '@mastra/memory';
 import type { MastraMessageContentV2 } from '@mastra/core/agent';
-import type { MastraDBMessage } from '@mastra/core/storage';
+import type { MastraDBMessage } from '@mastra/core/memory';
 
 import { TypeORMMemoryStorage } from './storage/typeorm-memory-storage';
 
@@ -85,7 +85,7 @@ export class InstanceAiCompactionService {
 			});
 
 			if (allMessages.length <= recentTail) {
-				return this.getCachedSummaryBlock(threadId, memory);
+				return await this.getCachedSummaryBlock(threadId, memory);
 			}
 
 			// Estimate total token usage across all messages
@@ -98,7 +98,7 @@ export class InstanceAiCompactionService {
 
 			// Only compact when context usage exceeds the threshold
 			if (totalTokens < threshold) {
-				return this.getCachedSummaryBlock(threadId, memory);
+				return await this.getCachedSummaryBlock(threadId, memory);
 			}
 
 			// Split into prefix (older messages) and tail (recent)
@@ -126,14 +126,14 @@ export class InstanceAiCompactionService {
 				0,
 			);
 			if (unsummarizedTokens < 500) {
-				return this.getCachedSummaryBlock(threadId, memory);
+				return await this.getCachedSummaryBlock(threadId, memory);
 			}
 
 			// Extract high-signal content from the unsummarized slice
 			const messageBatch = this.extractHighSignalContent(unsummarizedSlice);
 
 			if (messageBatch.length === 0) {
-				return this.getCachedSummaryBlock(threadId, memory);
+				return await this.getCachedSummaryBlock(threadId, memory);
 			}
 
 			// Generate the updated summary
@@ -177,8 +177,9 @@ export class InstanceAiCompactionService {
 
 	/** Get the full serialized text of a message (for token estimation). */
 	private extractRawText(msg: MastraDBMessage): string {
-		if (typeof msg.content === 'string') return msg.content;
-		return JSON.stringify(msg.content);
+		const content: unknown = msg.content;
+		if (typeof content === 'string') return content;
+		return JSON.stringify(content);
 	}
 
 	/**
