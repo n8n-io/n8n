@@ -152,7 +152,7 @@ describe('Discover Handler', () => {
 		});
 	});
 
-	it('should pass resource and op query params to service', async () => {
+	it('should pass resource and operation query params to service', async () => {
 		const scopes = ['workflow:create'] as any[];
 		mockApiKeyRepository.findOne.mockResolvedValue({ scopes } as any);
 
@@ -165,7 +165,7 @@ describe('Discover Handler', () => {
 
 		const req = {
 			headers: { 'x-n8n-api-key': 'valid-key' },
-			query: { resource: 'workflow', op: 'create' },
+			query: { resource: 'workflow', operation: 'create' },
 		} as unknown as AuthenticatedRequest;
 
 		const handlerFn = handler.getDiscover[0];

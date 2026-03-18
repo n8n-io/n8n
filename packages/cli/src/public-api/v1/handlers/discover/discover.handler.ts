@@ -18,7 +18,12 @@ function firstString(value: unknown): string | undefined {
 export = {
 	getDiscover: [
 		async (
-			req: AuthenticatedRequest<{}, {}, {}, { include?: string; resource?: string; op?: string }>,
+			req: AuthenticatedRequest<
+				{},
+				{},
+				{},
+				{ include?: string; resource?: string; operation?: string }
+			>,
 			res: express.Response,
 		): Promise<express.Response> => {
 			const apiKey = firstString(req.headers['x-n8n-api-key']);
@@ -41,7 +46,7 @@ export = {
 				includeSchemas,
 				scopesEnabled,
 				resource: firstString(req.query.resource),
-				operation: firstString(req.query.op),
+				operation: firstString(req.query.operation),
 			});
 			return res.json({ data: response });
 		},
