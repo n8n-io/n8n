@@ -1,5 +1,6 @@
 node_modules
 .DS_Store
+.eval-remote.env
 .tmp
 tmp
 dist

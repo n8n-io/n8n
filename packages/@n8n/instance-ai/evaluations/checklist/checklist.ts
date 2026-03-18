@@ -9,6 +9,54 @@ import type { ChecklistItem, ChecklistResult, ExecutionChecklist } from './types
 
 const EVAL_MODEL = 'claude-sonnet-4-6';
 const CACHE_DIR = path.join(__dirname, '..', '.data', 'checklist-cache');
+const COMMITTED_CHECKLISTS_PATH = path.join(__dirname, '..', '.data', 'committed-checklists.json');
+
+// ---------------------------------------------------------------------------
+// Committed checklists — checked into git for consistency across runs
+// ---------------------------------------------------------------------------
+
+interface CommittedEntry {
+	prompt: string;
+	checklist: ChecklistItem[];
+}
+
+type CommittedChecklistsMap = Record<string, CommittedEntry>;
+
+function loadCommittedChecklists(): CommittedChecklistsMap {
+	if (!fs.existsSync(COMMITTED_CHECKLISTS_PATH)) return {};
+	try {
+		const content = fs.readFileSync(COMMITTED_CHECKLISTS_PATH, 'utf-8');
+		return JSON.parse(content) as CommittedChecklistsMap;
+	} catch {
+		return {};
+	}
+}
+
+function getCommittedChecklist(prompt: string): ChecklistItem[] | null {
+	const map = loadCommittedChecklists();
+	const hash = promptHash(prompt);
+	const entry = map[hash];
+	if (!entry || entry.prompt !== prompt) return null;
+	return entry.checklist;
+}
+
+export function saveCommittedChecklists(
+	entries: Array<{ prompt: string; checklist: ChecklistItem[] }>,
+): void {
+	const dataDir = path.dirname(COMMITTED_CHECKLISTS_PATH);
+	if (!fs.existsSync(dataDir)) {
+		fs.mkdirSync(dataDir, { recursive: true });
+	}
+
+	const existing = loadCommittedChecklists();
+
+	for (const entry of entries) {
+		const hash = promptHash(entry.prompt);
+		existing[hash] = { prompt: entry.prompt, checklist: entry.checklist };
+	}
+
+	fs.writeFileSync(COMMITTED_CHECKLISTS_PATH, JSON.stringify(existing, null, 2));
+}
 
 function promptHash(prompt: string): string {
 	return crypto.createHash('sha256').update(prompt).digest('hex').slice(0, 16);
@@ -56,6 +104,11 @@ function parseJsonArray<T>(text: string): T[] {
 }
 
 export async function extractChecklist(promptText: string): Promise<ChecklistItem[]> {
+	// 1. Check committed checklists (checked into git)
+	const committed = getCommittedChecklist(promptText);
+	if (committed) return committed;
+
+	// 2. Check disk cache
 	const cached = getCached(promptText);
 	if (cached) return cached;
 
