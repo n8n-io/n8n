@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { nextTick, reactive, ref, effectScope, type EffectScope } from 'vue';
+import { createTestNode } from '@/__tests__/mocks';
 import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
 
@@ -76,15 +77,11 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 }));
 
 function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
-	return {
-		id: 'node-1',
+	return createTestNode({
 		name: 'Test Node',
 		type: 'n8n-nodes-base.httpRequest',
-		position: [0, 0],
-		parameters: {},
-		typeVersion: 1,
 		...overrides,
-	} as INodeUi;
+	}) as INodeUi;
 }
 
 function createCardState(overrides: Partial<NodeSetupState> = {}): NodeSetupState {

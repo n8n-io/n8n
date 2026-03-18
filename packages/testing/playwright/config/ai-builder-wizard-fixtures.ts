@@ -22,21 +22,26 @@ const telegramNode = {
 };
 
 /**
+ * Schedule Trigger node definition reused across multi-node fixtures.
+ */
+const scheduleTriggerNode = {
+	id: 'schedule-trigger-1',
+	name: 'Schedule Trigger',
+	type: 'n8n-nodes-base.scheduleTrigger',
+	typeVersion: 1.2,
+	position: [0, 0],
+	parameters: {
+		rule: { interval: [{ field: 'hours', hoursInterval: 1 }] },
+	},
+};
+
+/**
  * Workflow with a Schedule Trigger (no credentials) and a Slack node (requires slackApi credential).
  * The Slack node uses concrete parameter values so that selecting a credential alone completes the card.
  */
 const wizardWorkflowNodes = {
 	nodes: [
-		{
-			id: 'schedule-trigger-1',
-			name: 'Schedule Trigger',
-			type: 'n8n-nodes-base.scheduleTrigger',
-			typeVersion: 1.2,
-			position: [0, 0],
-			parameters: {
-				rule: { interval: [{ field: 'hours', hoursInterval: 1 }] },
-			},
-		},
+		scheduleTriggerNode,
 		{
 			id: 'slack-1',
 			name: 'Slack',
@@ -176,11 +181,8 @@ export function createBuilderResponseMultipleTriggers(): string {
 	const workflow = {
 		nodes: [
 			{
-				id: 'schedule-trigger-1',
+				...scheduleTriggerNode,
 				name: 'Morning Schedule',
-				type: 'n8n-nodes-base.scheduleTrigger',
-				typeVersion: 1.2,
-				position: [0, 0],
 				parameters: {
 					rule: { interval: [{ field: 'hours', hoursInterval: 8 }] },
 				},
@@ -228,16 +230,7 @@ export function createBuilderResponseMultipleTriggers(): string {
 export function createBuilderResponseSharedCredential(): string {
 	const workflow = {
 		nodes: [
-			{
-				id: 'schedule-trigger-1',
-				name: 'Schedule Trigger',
-				type: 'n8n-nodes-base.scheduleTrigger',
-				typeVersion: 1.2,
-				position: [0, 0],
-				parameters: {
-					rule: { interval: [{ field: 'hours', hoursInterval: 1 }] },
-				},
-			},
+			scheduleTriggerNode,
 			{
 				id: 'slack-alerts',
 				name: 'Slack Alerts',
@@ -287,16 +280,7 @@ export function createBuilderResponseSharedCredential(): string {
 export function createBuilderResponseBranchingWorkflow(): string {
 	const workflow = {
 		nodes: [
-			{
-				id: 'schedule-trigger-1',
-				name: 'Schedule Trigger',
-				type: 'n8n-nodes-base.scheduleTrigger',
-				typeVersion: 1.2,
-				position: [0, 0],
-				parameters: {
-					rule: { interval: [{ field: 'hours', hoursInterval: 1 }] },
-				},
-			},
+			scheduleTriggerNode,
 			{
 				id: 'if-1',
 				name: 'Check Condition',

@@ -33,11 +33,6 @@ export class BuilderSetupWizardPage {
 		return this.page.getByTestId('builder-setup-card-next');
 	}
 
-	/** "Continue" button for parameter cards */
-	getContinueButton(): Locator {
-		return this.page.getByTestId('builder-setup-card-continue');
-	}
-
 	/** The trigger / node execute button inside the card */
 	getExecuteStepButton(): Locator {
 		return this.page.getByTestId('trigger-execute-button');
@@ -63,11 +58,6 @@ export class BuilderSetupWizardPage {
 		return this.page.getByTestId(`parameter-input-${paramName}`);
 	}
 
-	/** The inner input/textarea inside a parameter input */
-	getParameterInputField(paramName: string): Locator {
-		return this.getParameterInput(paramName).locator('textarea, input').first();
-	}
-
 	/** "Used in X nodes" hint shown on grouped credential cards */
 	getNodesHint(): Locator {
 		return this.page.getByTestId('builder-setup-card-nodes-hint');
@@ -81,11 +71,6 @@ export class BuilderSetupWizardPage {
 	/** Card title (node name) */
 	getCardTitle(name: string): Locator {
 		return this.getCard().getByText(name, { exact: true });
-	}
-
-	/** Credential option in the dropdown overlay */
-	getCredentialOption(name: string): Locator {
-		return this.page.getByText(name);
 	}
 
 	// #endregion

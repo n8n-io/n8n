@@ -4,6 +4,7 @@ import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestNode } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import BuilderSetupWizard from './BuilderSetupWizard.vue';
@@ -33,7 +34,6 @@ vi.mock('@/features/ai/assistant/composables/useBuilderSetupCards', () => ({
 		goToNext: vi.fn(),
 		goToPrev: vi.fn(),
 		goToStep: vi.fn(),
-		skipCurrent: vi.fn(),
 		continueCurrent: vi.fn(),
 		onStepExecuted: mockOnStepExecuted,
 	}),
@@ -67,14 +67,11 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-const triggerNode: INodeUi = {
+const triggerNode = createTestNode({
 	id: '1',
 	name: 'Trigger',
 	type: 'n8n-nodes-base.manualTrigger',
-	position: [0, 0],
-	parameters: {},
-	typeVersion: 1,
-} as INodeUi;
+}) as INodeUi;
 
 const renderComponent = createComponentRenderer(BuilderSetupWizard);
 
@@ -113,6 +110,17 @@ describe('BuilderSetupWizard', () => {
 		return renderComponent({ pinia });
 	}
 
+	function setCurrentCard(overrides: { isComplete?: boolean } = {}) {
+		mockCurrentCard.value = {
+			state: {
+				node: triggerNode,
+				parameterIssues: {},
+				isTrigger: true,
+				isComplete: overrides.isComplete ?? false,
+			},
+		};
+	}
+
 	it('renders wizard container', () => {
 		const { getByTestId } = render();
 		expect(getByTestId('builder-setup-wizard')).toBeInTheDocument();
@@ -131,14 +139,7 @@ describe('BuilderSetupWizard', () => {
 	});
 
 	it('shows setup card when currentCard exists', () => {
-		mockCurrentCard.value = {
-			state: {
-				node: triggerNode,
-				parameterIssues: {},
-				isTrigger: true,
-				isComplete: false,
-			},
-		};
+		setCurrentCard();
 		mockTotalCards.value = 1;
 
 		const { getByTestId } = render();
@@ -152,23 +153,19 @@ describe('BuilderSetupWizard', () => {
 		expect(queryByTestId('builder-setup-card')).not.toBeInTheDocument();
 	});
 
-	it('tracks setup_wizard_shown on mount', () => {
+	it('tracks setup_wizard_shown when card becomes visible', () => {
+		setCurrentCard();
+		mockTotalCards.value = 1;
+
 		render();
 		expect(builderStore.trackWorkflowBuilderJourney).toHaveBeenCalledWith(
 			'setup_wizard_shown',
-			expect.objectContaining({ total: 0 }),
+			expect.objectContaining({ total: 1 }),
 		);
 	});
 
 	it('shows card when all complete but workflow not executed yet', () => {
-		mockCurrentCard.value = {
-			state: {
-				node: triggerNode,
-				parameterIssues: {},
-				isTrigger: true,
-				isComplete: true,
-			},
-		};
+		setCurrentCard({ isComplete: true });
 		mockTotalCards.value = 1;
 		mockIsAllComplete.value = true;
 		builderStore.wizardHasExecutedWorkflow = false;
@@ -178,14 +175,7 @@ describe('BuilderSetupWizard', () => {
 	});
 
 	it('hides card when all complete and workflow has been executed', () => {
-		mockCurrentCard.value = {
-			state: {
-				node: triggerNode,
-				parameterIssues: {},
-				isTrigger: true,
-				isComplete: true,
-			},
-		};
+		setCurrentCard({ isComplete: true });
 		mockTotalCards.value = 1;
 		mockIsAllComplete.value = true;
 		builderStore.wizardHasExecutedWorkflow = true;
@@ -195,14 +185,7 @@ describe('BuilderSetupWizard', () => {
 	});
 
 	it('dismisses wizard when last step is executed successfully', async () => {
-		mockCurrentCard.value = {
-			state: {
-				node: triggerNode,
-				parameterIssues: {},
-				isTrigger: true,
-				isComplete: true,
-			},
-		};
+		setCurrentCard({ isComplete: true });
 		mockTotalCards.value = 1;
 		mockCurrentStepIndex.value = 0;
 		mockIsAllComplete.value = true;
@@ -222,14 +205,7 @@ describe('BuilderSetupWizard', () => {
 	});
 
 	it('does not dismiss wizard when a non-last step is executed', async () => {
-		mockCurrentCard.value = {
-			state: {
-				node: triggerNode,
-				parameterIssues: {},
-				isTrigger: true,
-				isComplete: true,
-			},
-		};
+		setCurrentCard({ isComplete: true });
 		mockTotalCards.value = 3;
 		mockCurrentStepIndex.value = 0;
 

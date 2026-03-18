@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestNode } from '@/__tests__/mocks';
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -103,15 +104,11 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 }));
 
 function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
-	return {
-		id: 'node-1',
+	return createTestNode({
 		name: 'Test Node',
 		type: 'n8n-nodes-base.httpRequest',
-		position: [0, 0],
-		parameters: {},
-		typeVersion: 1,
 		...overrides,
-	} as INodeUi;
+	}) as INodeUi;
 }
 
 function createState(overrides: Partial<NodeSetupState> = {}): NodeSetupState {
