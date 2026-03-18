@@ -190,20 +190,23 @@ export class DynamicCredentialResolverService {
 
 		this.logger.debug(`Deleted credential resolver "${existing.name}" (${id})`);
 
-		// Reactivate affected active workflows so they pick up the cleared settings
-		await Promise.all(
-			affectedWorkflows.map(async (workflowId) => {
-				try {
-					await this.activeWorkflowManager.remove(workflowId);
-					await this.activeWorkflowManager.add(workflowId, 'update');
-				} catch (error) {
-					this.logger.warn(
-						`Failed to reactivate workflow "${workflowId}" after resolver deletion`,
-						{ error },
-					);
-				}
-			}),
-		);
+		// Reactivate affected active workflows sequentially so they pick up the cleared settings
+		for (const workflowId of affectedWorkflows) {
+			try {
+				await this.activeWorkflowManager.remove(workflowId);
+				await this.activeWorkflowManager.add(workflowId, 'update');
+			} catch (error) {
+				this.logger.warn(
+					`Failed to reactivate workflow "${workflowId}" after resolver deletion, deactivating it`,
+					{ error },
+				);
+				// Deactivate the workflow so UI state reflects reality
+				await this.workflowRepository.update(workflowId, {
+					active: false,
+					activeVersionId: null,
+				});
+			}
+		}
 	}
 
 	/**
