@@ -27,10 +27,75 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
-		test.fixme();
-
 		test.beforeEach(async ({ n8n }) => {
 			await n8n.start.fromBlankCanvas();
+		});
+
+		test('should display archived workflow in read-only mode on canvas', async ({ n8n }) => {
+			// Create and save a workflow
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+			const workflowId = await getWorkflowIdAfterSave(n8n);
+
+			// Archive the workflow
+			await n8n.workflowSettingsModal.getWorkflowMenu().click();
+			await n8n.workflowSettingsModal.clickArchiveMenuItem();
+			await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+			await expect(n8n.page).toHaveURL(/\/workflows$/);
+
+			// Open the archived workflow
+			await goToWorkflow(n8n, workflowId);
+
+			// Verify archived tag is visible
+			await expect(n8n.canvas.getArchivedTag()).toBeVisible();
+
+			// Verify canvas is in read-only mode - node creator should not be available
+			await expect(n8n.canvas.getNodeCreatorPlusButton()).not.toBeAttached();
+
+			// Try to click on the canvas where plus button would be - should not open node creator
+			const canvasPlusButtonArea = n8n.page.getByTestId('node-creator-plus-button');
+			await expect(canvasPlusButtonArea).not.toBeAttached();
+
+			// Try to interact with a node - clicking should not allow editing
+			const scheduleNode = n8n.canvas.nodeByName('Schedule Trigger');
+			await expect(scheduleNode).toBeVisible();
+
+			// Click the node - in read-only mode, this should not trigger edit mode
+			await scheduleNode.click();
+
+			// Node toolbar (with delete, disable buttons) should not appear in read-only mode
+			const nodeToolbar = n8n.canvas.nodeToolbar('Schedule Trigger');
+			await expect(nodeToolbar).not.toBeVisible();
+
+			// Try to drag a node - this should not work in read-only mode
+			// Get the node's initial position
+			const nodeBox = await scheduleNode.boundingBox();
+			if (nodeBox) {
+				// Try to drag the node
+				await scheduleNode.hover();
+				await n8n.page.mouse.down();
+				await n8n.page.mouse.move(nodeBox.x + 100, nodeBox.y + 100);
+				await n8n.page.mouse.up();
+
+				// Verify the node hasn't moved (should still be at the same position)
+				const newNodeBox = await scheduleNode.boundingBox();
+				expect(newNodeBox?.x).toBe(nodeBox.x);
+				expect(newNodeBox?.y).toBe(nodeBox.y);
+			}
+
+			// Verify that autosave does NOT trigger when attempting to edit
+			// Listen for save requests - there should be none
+			let saveRequestDetected = false;
+			n8n.page.on('request', (request) => {
+				if (request.url().includes('/rest/workflows/') && request.method() === 'PATCH') {
+					saveRequestDetected = true;
+				}
+			});
+
+			// Wait a bit to ensure no autosave is triggered
+			await n8n.page.waitForTimeout(2000);
+
+			// Verify no save request was made
+			expect(saveRequestDetected).toBe(false);
 		});
 
 		test('should not be able to archive or delete unsaved workflow', async ({ n8n }) => {
