@@ -89,16 +89,23 @@ function localePatternToRegex(localeKey: BaseTextKey): RegExp {
 const credentialsNotSetPattern = localePatternToRegex('nodeIssues.credentials.notSet');
 const parameterRequiredPattern = /Parameter\s+".+"\s+is\s+required/i;
 
+/**
+ * Custom formatter for issue messages in the execute panel.
+ * Transforms verbose validation messages into user-friendly action prompts.
+ */
 function formatIssueMessage(issue: string | string[]): string {
 	const baseMessage = workflowsStore.formatIssueMessage(issue);
 
+	// Transform "Parameter "X" is required" → "Choose model" (for Model) or keep original
 	if (parameterRequiredPattern.test(baseMessage)) {
+		// Extract parameter name and check if it's "Model"
 		const match = baseMessage.match(/Parameter\s+"(.+)"\s+is\s+required/i);
 		if (match?.[1]?.toLowerCase() === 'model') {
 			return i18n.baseText('aiAssistant.builder.executeMessage.chooseModel' as BaseTextKey);
 		}
 	}
 
+	// Transform "Credentials for '...' are not set" → "Choose credentials"
 	if (credentialsNotSetPattern.test(baseMessage)) {
 		return i18n.baseText('aiAssistant.builder.executeMessage.chooseCredentials' as BaseTextKey);
 	}
@@ -106,6 +113,7 @@ function formatIssueMessage(issue: string | string[]): string {
 	return baseMessage;
 }
 
+// Helper to get node type
 function getNodeTypeByName(nodeName: string) {
 	const node = workflowDocumentStore.value?.getNodeByName(nodeName);
 
@@ -155,6 +163,7 @@ function openCredentialsModal() {
 
 onMounted(scrollIntoView);
 
+// Track when all todos are resolved while the component is visible
 watch(hasValidationIssues, (hasIssues, hadIssues) => {
 	if (hadIssues && !hasIssues) {
 		builderStore.trackWorkflowBuilderJourney('no_placeholder_values_left');
@@ -163,10 +172,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 </script>
 
 <template>
-	<!-- Wizard variant -->
 	<BuilderSetupWizard v-if="isWizardVariant" />
-
-	<!-- Control variant (existing behavior) -->
 	<div
 		v-else
 		ref="containerRef"

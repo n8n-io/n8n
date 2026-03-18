@@ -122,16 +122,6 @@ export function isPlaceholderValue(value: unknown): boolean {
 }
 
 /**
- * Checks if a string value is entirely a single placeholder (not embedded in other content).
- * Returns true for "<__PLACEHOLDER_VALUE__label__>" but false for
- * "some code <__PLACEHOLDER_VALUE__label__> more code".
- */
-export function isFullPlaceholderValue(value: unknown): boolean {
-	if (typeof value !== 'string') return false;
-	return value.trim().startsWith(PLACEHOLDER_PREFIX) && value.trim().endsWith(PLACEHOLDER_SUFFIX);
-}
-
-/**
  * Composable for managing workflow todos (validation issues and placeholders)
  * used by the AI builder.
  */

@@ -83,10 +83,8 @@ export type WorkflowBuilderJourneyEventType =
 	| 'user_collapsed_review_changes'
 	| 'setup_wizard_shown'
 	| 'setup_wizard_step_navigated'
-	| 'setup_wizard_step_skipped'
 	| 'setup_wizard_step_completed'
 	| 'setup_wizard_all_complete'
-	| 'setup_wizard_node_unpinned'
 	| 'web_fetch_approval_prompted'
 	| 'web_fetch_decision'
 	| 'web_fetch_completed'
@@ -106,9 +104,7 @@ interface WorkflowBuilderJourneyEventProperties {
 	mode?: 'plan' | 'build';
 	step?: number;
 	total?: number;
-	card_type?: 'credential' | 'parameter' | 'both' | 'trigger';
 	direction?: 'next' | 'prev';
-	unpinned_nodes?: string[];
 	domain?: string;
 	url?: string;
 	decision?: 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';

@@ -38,7 +38,9 @@ vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
 		workflowId: 'test-workflow-id',
 		nodeMetadata: {} as Record<string, { pinnedDataLastRemovedAt?: number }>,
-		allNodes: mockAllNodes.value,
+		get allNodes() {
+			return mockAllNodes.value;
+		},
 	}),
 }));
 
@@ -69,13 +71,8 @@ vi.mock('@/app/composables/useNodeHelpers', () => ({
 	}),
 }));
 
-// Pinia unwraps refs, so the store exposes the raw Map (not a Ref).
-// Use reactive() so changes are tracked by Vue's reactivity system.
-const mockCredentialTestResults = reactive(new Map<string, string>());
 vi.mock('@/features/credentials/credentials.store', () => ({
-	useCredentialsStore: () => ({
-		credentialTestResults: mockCredentialTestResults,
-	}),
+	useCredentialsStore: () => ({}),
 }));
 
 function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
@@ -104,64 +101,14 @@ function createCard(stateOverrides: Partial<NodeSetupState> = {}): SetupCardItem
 	return { state: createCardState(stateOverrides) };
 }
 
+import { useBuilderSetupCards } from './useBuilderSetupCards';
+
 let currentScope: EffectScope | undefined;
 
-// We need a fresh import for each test to avoid stale module state
-async function getComposable() {
-	// Stop previous scope to clean up watchers from prior calls
+function getComposable() {
 	currentScope?.stop();
-
-	// Clear module cache to get fresh composable
-	vi.resetModules();
-	// Re-register mocks after reset
-	vi.doMock('@/features/setupPanel/composables/useWorkflowSetupState', () => ({
-		useWorkflowSetupState: () => ({
-			setupCards: mockSetupCards,
-			firstTriggerName: mockFirstTriggerName,
-			isInitialCredentialTestingDone: mockIsInitialCredentialTestingDone,
-			setCredential: mockSetCredential,
-			unsetCredential: mockUnsetCredential,
-		}),
-	}));
-	vi.doMock('@/features/ai/assistant/builder.store', () => ({
-		useBuilderStore: () => mockBuilderStoreState,
-	}));
-	vi.doMock('@/app/stores/workflows.store', () => ({
-		useWorkflowsStore: () => ({
-			workflowId: 'test-workflow-id',
-			nodeMetadata: {},
-			allNodes: mockAllNodes.value,
-		}),
-	}));
-	vi.doMock('@/app/stores/workflowDocument.store', () => ({
-		useWorkflowDocumentStore: () => ({
-			pinData: {},
-			unpinNodeData: mockUnpinNodeData,
-		}),
-		createWorkflowDocumentId: (id: string) => id,
-	}));
-	vi.doMock('@/app/stores/ui.store', () => ({
-		useUIStore: () => ({
-			markStateDirty: vi.fn(),
-		}),
-	}));
-	vi.doMock('@/app/composables/useWorkflowState', () => ({
-		injectWorkflowState: () => ({
-			updateNodeProperties: mockUpdateNodeProperties,
-		}),
-	}));
-	vi.doMock('@/app/composables/useNodeHelpers', () => ({
-		useNodeHelpers: () => ({
-			updateNodesParameterIssues: vi.fn(),
-		}),
-	}));
-	vi.doMock('@/features/credentials/credentials.store', () => ({
-		useCredentialsStore: () => ({ credentialTestResults: mockCredentialTestResults }),
-	}));
-
-	const mod = await import('./useBuilderSetupCards');
 	currentScope = effectScope();
-	return currentScope.run(() => mod.useBuilderSetupCards())!;
+	return currentScope.run(() => useBuilderSetupCards())!;
 }
 
 describe('useBuilderSetupCards', () => {
@@ -174,11 +121,10 @@ describe('useBuilderSetupCards', () => {
 		mockFirstTriggerName.value = null;
 		mockBuilderStoreState.wizardCurrentStep = 0;
 		mockBuilderStoreState.wizardHasExecutedWorkflow = false;
-		mockCredentialTestResults.clear();
 		mockIsInitialCredentialTestingDone.value = true;
 	});
 
-	it('passes through cards from useWorkflowSetupState', async () => {
+	it('passes through cards from useWorkflowSetupState', () => {
 		// Manual trigger filtering is now handled upstream by useWorkflowSetupState
 		mockSetupCards.value = [
 			createCard({
@@ -186,7 +132,7 @@ describe('useBuilderSetupCards', () => {
 			}),
 		];
 
-		const { cards } = await getComposable();
+		const { cards } = getComposable();
 		expect(cards.value).toHaveLength(1);
 		expect(cards.value[0].state.node.name).toBe('HTTP Request');
 	});
@@ -211,7 +157,7 @@ describe('useBuilderSetupCards', () => {
 		];
 
 		const { currentStepIndex, currentCard, totalCards, goToNext, goToPrev, goToStep } =
-			await getComposable();
+			getComposable();
 
 		expect(totalCards.value).toBe(3);
 		expect(currentStepIndex.value).toBe(0);
@@ -237,7 +183,7 @@ describe('useBuilderSetupCards', () => {
 			createCard({ node: createNode({ name: 'Node 3', id: 'n3' }) }),
 		];
 
-		const { currentStepIndex, goToStep } = await getComposable();
+		const { currentStepIndex, goToStep } = getComposable();
 		goToStep(2);
 		await nextTick();
 		expect(currentStepIndex.value).toBe(2);
@@ -259,7 +205,7 @@ describe('useBuilderSetupCards', () => {
 			}),
 		];
 
-		const { isAllComplete } = await getComposable();
+		const { isAllComplete } = getComposable();
 		expect(isAllComplete.value).toBe(false);
 
 		mockSetupCards.value = [
@@ -271,13 +217,13 @@ describe('useBuilderSetupCards', () => {
 		expect(isAllComplete.value).toBe(true);
 	});
 
-	it('tracks continue telemetry', async () => {
+	it('tracks continue telemetry', () => {
 		mockSetupCards.value = [
 			createCard({ node: createNode({ name: 'Node 1', id: 'n1' }) }),
 			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }) }),
 		];
 
-		const { continueCurrent } = await getComposable();
+		const { continueCurrent } = getComposable();
 		continueCurrent();
 
 		expect(mockTrackJourney).toHaveBeenCalledWith(
@@ -289,19 +235,19 @@ describe('useBuilderSetupCards', () => {
 		);
 	});
 
-	it('returns empty cards when no setup cards exist', async () => {
+	it('returns empty cards when no setup cards exist', () => {
 		mockSetupCards.value = [];
 
-		const { cards, isAllComplete, totalCards } = await getComposable();
+		const { cards, isAllComplete, totalCards } = getComposable();
 		expect(cards.value).toHaveLength(0);
 		expect(totalCards.value).toBe(0);
 		expect(isAllComplete.value).toBe(true);
 	});
 
-	it('passes through setCredential and unsetCredential', async () => {
+	it('passes through setCredential and unsetCredential', () => {
 		mockSetupCards.value = [createCard()];
 
-		const { setCredential, unsetCredential } = await getComposable();
+		const { setCredential, unsetCredential } = getComposable();
 		setCredential('testType', 'testId', 'testNode');
 		unsetCredential('testType', 'testNode');
 
@@ -309,43 +255,43 @@ describe('useBuilderSetupCards', () => {
 		expect(mockUnsetCredential).toHaveBeenCalledWith('testType', 'testNode');
 	});
 
-	it('skips to first incomplete card on mount when current card is already complete', async () => {
+	it('skips to first incomplete card on mount when current card is already complete', () => {
 		mockSetupCards.value = [
 			createCard({ node: createNode({ name: 'Node 1', id: 'n1' }), isComplete: true }),
 			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: true }),
 			createCard({ node: createNode({ name: 'Node 3', id: 'n3' }), isComplete: false }),
 		];
 
-		const { currentStepIndex } = await getComposable();
+		const { currentStepIndex } = getComposable();
 
 		// Should skip past completed cards to the first incomplete one
 		expect(currentStepIndex.value).toBe(2);
 	});
 
-	it('stays on step 0 on mount when first card is incomplete', async () => {
+	it('stays on step 0 on mount when first card is incomplete', () => {
 		mockSetupCards.value = [
 			createCard({ node: createNode({ name: 'Node 1', id: 'n1' }), isComplete: false }),
 			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: true }),
 		];
 
-		const { currentStepIndex } = await getComposable();
+		const { currentStepIndex } = getComposable();
 
 		expect(currentStepIndex.value).toBe(0);
 	});
 
-	it('stays on step 0 on mount when all cards are complete', async () => {
+	it('stays on step 0 on mount when all cards are complete', () => {
 		mockSetupCards.value = [
 			createCard({ node: createNode({ name: 'Node 1', id: 'n1' }), isComplete: true }),
 			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: true }),
 		];
 
-		const { currentStepIndex } = await getComposable();
+		const { currentStepIndex } = getComposable();
 
 		// All complete — no incomplete card to skip to, stays at 0
 		expect(currentStepIndex.value).toBe(0);
 	});
 
-	it('passes through trigger cards from useWorkflowSetupState without additional filtering', async () => {
+	it('passes through trigger cards from useWorkflowSetupState without additional filtering', () => {
 		mockSetupCards.value = [
 			createCard({
 				node: createNode({
@@ -363,30 +309,13 @@ describe('useBuilderSetupCards', () => {
 			}),
 		];
 
-		const { cards } = await getComposable();
+		const { cards } = getComposable();
 		expect(cards.value).toHaveLength(2);
 		expect(cards.value[0].state.node.name).toBe('Webhook');
 		expect(cards.value[1].state.node.name).toBe('HTTP Request');
 	});
 
-	it('treats cards with pending credential tests as effectively complete', async () => {
-		mockCredentialTestResults.set('cred-1', 'pending');
-		mockSetupCards.value = [
-			createCard({
-				node: createNode({ name: 'Node 1', id: 'n1' }),
-				credentialType: 'telegramApi',
-				selectedCredentialId: 'cred-1',
-				issues: [],
-				isComplete: false, // pending test makes upstream mark it incomplete
-			}),
-		];
-
-		const { isAllComplete } = await getComposable();
-		expect(isAllComplete.value).toBe(true);
-	});
-
-	it('treats cards with failed credential tests as genuinely incomplete', async () => {
-		mockCredentialTestResults.set('cred-1', 'error');
+	it('treats incomplete cards as genuinely incomplete', () => {
 		mockSetupCards.value = [
 			createCard({
 				node: createNode({ name: 'Node 1', id: 'n1' }),
@@ -397,11 +326,11 @@ describe('useBuilderSetupCards', () => {
 			}),
 		];
 
-		const { isAllComplete } = await getComposable();
+		const { isAllComplete } = getComposable();
 		expect(isAllComplete.value).toBe(false);
 	});
 
-	it('treats cards with no credential selected as genuinely incomplete', async () => {
+	it('treats cards with no credential selected as genuinely incomplete', () => {
 		mockSetupCards.value = [
 			createCard({
 				node: createNode({ name: 'Node 1', id: 'n1' }),
@@ -412,7 +341,7 @@ describe('useBuilderSetupCards', () => {
 			}),
 		];
 
-		const { isAllComplete } = await getComposable();
+		const { isAllComplete } = getComposable();
 		expect(isAllComplete.value).toBe(false);
 	});
 
@@ -432,7 +361,7 @@ describe('useBuilderSetupCards', () => {
 		// Start on the last card — onStepExecuted only dismisses from the last step
 		mockBuilderStoreState.wizardCurrentStep = 1;
 
-		const { onStepExecuted } = await getComposable();
+		const { onStepExecuted } = getComposable();
 		onStepExecuted();
 		await nextTick();
 
@@ -453,7 +382,7 @@ describe('useBuilderSetupCards', () => {
 			}),
 		];
 
-		const { onStepExecuted } = await getComposable();
+		const { onStepExecuted } = getComposable();
 		onStepExecuted();
 		await nextTick();
 
@@ -474,7 +403,7 @@ describe('useBuilderSetupCards', () => {
 			}),
 		];
 
-		const { currentStepIndex } = await getComposable();
+		const { currentStepIndex } = getComposable();
 		expect(currentStepIndex.value).toBe(0);
 
 		// Simulate card completing — should stay on the same card
@@ -497,7 +426,7 @@ describe('useBuilderSetupCards', () => {
 
 	it('exposes isInitialCredentialTestingDone from useWorkflowSetupState', async () => {
 		mockIsInitialCredentialTestingDone.value = false;
-		const { isInitialCredentialTestingDone } = await getComposable();
+		const { isInitialCredentialTestingDone } = getComposable();
 		expect(isInitialCredentialTestingDone.value).toBe(false);
 
 		mockIsInitialCredentialTestingDone.value = true;
@@ -522,7 +451,7 @@ describe('useBuilderSetupCards', () => {
 			}),
 		];
 
-		const { currentStepIndex } = await getComposable();
+		const { currentStepIndex } = getComposable();
 		// While testing is in progress, stays on step 0 (card appears incomplete)
 		expect(currentStepIndex.value).toBe(0);
 
@@ -561,7 +490,7 @@ describe('useBuilderSetupCards', () => {
 			}),
 		];
 
-		await getComposable();
+		getComposable();
 		expect(mockBuilderStoreState.wizardHasExecutedWorkflow).toBe(false);
 
 		// Simulate credential tests finishing — all cards are complete

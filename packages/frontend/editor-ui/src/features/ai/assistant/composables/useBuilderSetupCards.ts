@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
@@ -9,18 +9,10 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { findPlaceholderDetails } from '@/features/ai/assistant/composables/useBuilderTodos';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 
-/**
- * Composable for managing builder setup wizard cards.
- * Feeds placeholder parameter names into useWorkflowSetupState so it creates
- * proper cards, then adds wizard navigation on top.
- */
 export function useBuilderSetupCards() {
 	const builderStore = useBuilderStore();
 	const workflowsStore = useWorkflowsStore();
-	const credentialsStore = useCredentialsStore();
 	const workflowDocumentStore = computed(() =>
 		workflowsStore.workflowId
 			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
@@ -37,7 +29,6 @@ export function useBuilderSetupCards() {
 	const detectedPlaceholders = computed(() => {
 		const result = new Map<string, string[]>();
 		for (const node of workflowDocumentStore.value?.allNodes ?? []) {
-			if (node.type === MANUAL_TRIGGER_NODE_TYPE || node.disabled) continue;
 			const placeholders = findPlaceholderDetails(node.parameters);
 			if (placeholders.length > 0) {
 				result.set(node.name, [...new Set(placeholders.map((p) => p.path[0]).filter(Boolean))]);
@@ -85,19 +76,10 @@ export function useBuilderSetupCards() {
 		() => baseCards.value[currentStepIndex.value],
 	);
 
-	// Credential tests are async — treat pending tests as effectively complete
-	// to prevent card flickering while waiting for test results.
-	function isCardCompleteForWizard(card: SetupCardItem): boolean {
-		if (card.state.isComplete) return true;
-		const credId = card.state.selectedCredentialId;
-		if (credId && credentialsStore.credentialTestResults.get(credId) === 'pending') {
-			return true;
-		}
-		return false;
-	}
-
 	const isAllComplete = computed(
-		() => baseCards.value.length === 0 || baseCards.value.every(isCardCompleteForWizard),
+		() =>
+			isInitialCredentialTestingDone.value &&
+			(baseCards.value.length === 0 || baseCards.value.every((card) => card.state.isComplete)),
 	);
 
 	function skipToFirstIncomplete() {
@@ -176,21 +158,19 @@ export function useBuilderSetupCards() {
 
 	// When initial credential tests finish, re-evaluate: skip past any cards that
 	// turned out to be complete, or dismiss the wizard entirely.
-	watch(isInitialCredentialTestingDone, (done) => {
-		if (!done) return;
-		if (isAllComplete.value) {
-			builderStore.wizardHasExecutedWorkflow = true;
-		} else {
-			skipToFirstIncomplete();
-		}
-	});
-
-	onMounted(() => {
-		if (isAllComplete.value) {
-			// if all cards are completed on mount most likely the builder had made an iteration and there's no more work for the wizard
-			builderStore.wizardHasExecutedWorkflow = true;
-		}
-	});
+	// immediate: true covers the no-credentials case where the value is already true at setup.
+	watch(
+		isInitialCredentialTestingDone,
+		(done) => {
+			if (!done) return;
+			if (isAllComplete.value) {
+				builderStore.wizardHasExecutedWorkflow = true;
+			} else {
+				skipToFirstIncomplete();
+			}
+		},
+		{ immediate: true },
+	);
 
 	return {
 		cards: baseCards,

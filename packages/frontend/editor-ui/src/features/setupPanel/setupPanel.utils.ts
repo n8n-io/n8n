@@ -27,21 +27,15 @@ export function getNodeCredentialTypes(
 	const credentialTypes = new Set<string>();
 
 	const displayableCredentials = getNodeTypeDisplayableCredentials(nodeTypeProvider, node);
-	const displayableNames = new Set(displayableCredentials.map((c) => c.name));
-	for (const name of displayableNames) {
-		credentialTypes.add(name);
+	for (const cred of displayableCredentials) {
+		credentialTypes.add(cred.name);
 	}
 
-	// Include credential types from node issues — these reflect the current
-	// node configuration including dynamically selected credentials
-	// (e.g. httpQueryAuth on the HTTP Request node via credentialsSelect).
 	const credentialIssues = node.issues?.credentials ?? {};
 	for (const credType of Object.keys(credentialIssues)) {
 		credentialTypes.add(credType);
 	}
 
-	// Include all assigned credentials — if a credential is set on the node
-	// it is actively in use (covers both static and dynamic credential types).
 	if (node.credentials) {
 		for (const credType of Object.keys(node.credentials)) {
 			credentialTypes.add(credType);

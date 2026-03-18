@@ -11,8 +11,6 @@ import type { n8nPage } from '../pages/n8nPage';
 export class BuilderWizardComposer {
 	constructor(private readonly n8n: n8nPage) {}
 
-	// #region Stream mocking
-
 	/**
 	 * Intercept the builder streaming endpoint and respond with mock workflow data.
 	 */
@@ -34,10 +32,6 @@ export class BuilderWizardComposer {
 		await this.mockBuilderStream(responseBody);
 	}
 
-	// #endregion
-
-	// #region Workflow lifecycle
-
 	/**
 	 * Open the builder chat and send a prompt to trigger workflow generation.
 	 */
@@ -49,22 +43,7 @@ export class BuilderWizardComposer {
 	}
 
 	/**
-	 * Wait for the workflow to be fully saved to the backend (the first PATCH after generation).
-	 * Register this BEFORE triggerWorkflowGeneration, then await the returned promise.
-	 */
-	waitForWorkflowSaved() {
-		return this.n8n.page.waitForResponse(
-			(resp) =>
-				/\/rest\/workflows\/[^/]+$/.test(resp.url()) &&
-				resp.request().method() === 'PATCH' &&
-				resp.status() < 400,
-			{ timeout: 15000 },
-		);
-	}
-
-	/**
 	 * Mock workflow autosave (PATCH) so it completes instantly with a checksum.
-	 * Must be installed AFTER waitForWorkflowSaved resolves so the first real PATCH
 	 * with builder-generated nodes reaches the backend.
 	 */
 	async mockAutosave() {
@@ -87,10 +66,6 @@ export class BuilderWizardComposer {
 		});
 	}
 
-	// #endregion
-
-	// #region Follow-up messages
-
 	/**
 	 * Send a follow-up message to the builder after executing a workflow step.
 	 * Handles autosave timing and focus management that can interfere after execution.
@@ -107,23 +82,6 @@ export class BuilderWizardComposer {
 		await expect(this.n8n.aiAssistant.getSendMessageButton()).toBeEnabled({ timeout: 5000 });
 		await this.n8n.aiAssistant.getSendMessageButton().click();
 	}
-
-	// #endregion
-
-	// #region Credential selection
-
-	/**
-	 * Select a credential by name from the credential dropdown on the current card.
-	 */
-	async selectCredential(credName: string) {
-		const wiz = this.n8n.aiBuilder.wizard;
-		await wiz.getCredentialSelect().click();
-		await wiz.getCredentialOption(credName).click();
-	}
-
-	// #endregion
-
-	// #region Card navigation
 
 	/**
 	 * Navigate to the card showing the given node name.
@@ -146,6 +104,4 @@ export class BuilderWizardComposer {
 
 		throw new Error(`Could not navigate to card "${nodeName}"`);
 	}
-
-	// #endregion
 }

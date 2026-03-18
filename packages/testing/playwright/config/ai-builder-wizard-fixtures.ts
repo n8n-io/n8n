@@ -5,6 +5,23 @@ import type { TestRequirements } from '../Types';
 const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';
 
 /**
+ * Telegram node definition reused across multi-node fixtures.
+ */
+const telegramNode = {
+	id: 'telegram-1',
+	name: 'Telegram',
+	type: 'n8n-nodes-base.telegram',
+	typeVersion: 1.2,
+	position: [440, 0],
+	parameters: {
+		resource: 'message',
+		operation: 'sendMessage',
+		chatId: '123456789',
+		text: 'Hello from n8n!',
+	},
+};
+
+/**
  * Workflow with a Schedule Trigger (no credentials) and a Slack node (requires slackApi credential).
  * The Slack node uses concrete parameter values so that selecting a credential alone completes the card.
  */
@@ -72,14 +89,6 @@ export function createBuilderStreamingResponse(
 }
 
 /**
- * Builder response with the default wizard workflow (Schedule Trigger + Slack).
- * Used for tests that need to execute the trigger step.
- */
-export function createBuilderResponseWithoutTriggerPinData(): string {
-	return createBuilderStreamingResponse(wizardWorkflowNodes);
-}
-
-/**
  * Builder response with a placeholder value in the Slack node + a Telegram node.
  * Produces 2 visible cards after trigger-only filter: Slack (with placeholder) + Telegram.
  * Navigating to the Slack card triggers lazy placeholder clearing.
@@ -88,26 +97,13 @@ export function createBuilderResponseWithPlaceholderAndTelegram(): string {
 	const workflow = {
 		nodes: [
 			wizardWorkflowNodes.nodes[0], // Schedule Trigger
-			{
-				id: 'telegram-1',
-				name: 'Telegram',
-				type: 'n8n-nodes-base.telegram',
-				typeVersion: 1.2,
-				position: [220, 0] as [number, number],
-				parameters: {
-					resource: 'message',
-					operation: 'sendMessage',
-					chatId: '123456789',
-					text: 'Hello from n8n!',
-				},
-			},
+			{ ...telegramNode, position: [220, 0] as [number, number] },
 			{
 				...wizardWorkflowNodes.nodes[1], // Slack (after Telegram in execution order)
 				position: [440, 0] as [number, number],
 				parameters: {
 					resource: 'message',
-					operation: 'post',
-					select: 'channel',
+					operation: 'send',
 					channelId: { __rl: true, mode: 'id', value: 'C01234567' },
 					messageType: 'text',
 					text: '<__PLACEHOLDER_VALUE__notification message__>',
@@ -127,27 +123,10 @@ export function createBuilderResponseWithPlaceholderAndTelegram(): string {
 }
 
 /**
- * Telegram node definition reused across multi-node fixtures.
- */
-const telegramNode = {
-	id: 'telegram-1',
-	name: 'Telegram',
-	type: 'n8n-nodes-base.telegram',
-	typeVersion: 1.2,
-	position: [440, 0],
-	parameters: {
-		resource: 'message',
-		operation: 'sendMessage',
-		chatId: '123456789',
-		text: 'Hello from n8n!',
-	},
-};
-
-/**
  * 3-node workflow: Schedule Trigger → Slack → Telegram.
  * After trigger filter: 2 visible cards (Slack + Telegram).
  */
-export function createBuilderResponseThreeCardsNoTriggerPin(): string {
+export function createBuilderResponseTwoCards(): string {
 	const workflow = {
 		nodes: [...wizardWorkflowNodes.nodes, telegramNode],
 		connections: {
@@ -184,30 +163,14 @@ export function createBuilderFollowUpWithInsertedNode(): string {
 			},
 		},
 	};
-
-	const chunk = {
-		sessionId: 'test-wizard-session',
-		messages: [
-			{
-				type: 'message',
-				role: 'assistant',
-				text: "I've added a Telegram notification before the Slack message.",
-			},
-			{
-				type: 'workflow-updated',
-				role: 'assistant',
-				codeSnippet: JSON.stringify(workflow),
-			},
-		],
-	};
-	return JSON.stringify(chunk) + STREAM_SEPARATOR;
+	return createBuilderStreamingResponse(workflow);
 }
 
 /**
  * Multi-trigger workflow: Morning Schedule → Slack, plus a standalone Telegram Trigger.
- * Execution order: Morning Schedule → Slack → Telegram Listener.
- * Creates 3 cards: trigger-only (first trigger), credential (slackApi), credential (telegramApi).
- * Only the first trigger is executable; the Telegram Trigger card has no execute button.
+ * After trigger filter: 2 visible cards (Slack + Telegram Listener).
+ * The Morning Schedule trigger card is filtered out as trigger-only.
+ * Only non-trigger nodes get an execute button; Telegram Listener (a trigger) does not.
  */
 export function createBuilderResponseMultipleTriggers(): string {
 	const workflow = {

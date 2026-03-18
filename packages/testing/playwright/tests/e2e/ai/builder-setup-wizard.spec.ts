@@ -2,11 +2,11 @@ import { nanoid } from 'nanoid';
 
 import {
 	builderWizardRequirements,
-	createBuilderResponseWithoutTriggerPinData,
+	createBuilderStreamingResponse,
 	createBuilderResponseWithPlaceholderAndTelegram,
 	createBuilderFollowUpWithInsertedNode,
 	createBuilderResponseMultipleTriggers,
-	createBuilderResponseThreeCardsNoTriggerPin,
+	createBuilderResponseTwoCards,
 	createBuilderResponseSharedCredential,
 	createBuilderResponseBranchingWorkflow,
 } from '../../../config/ai-builder-wizard-fixtures';
@@ -68,7 +68,7 @@ test.describe(
 			const wiz = n8n.aiBuilder.wizard;
 
 			// 3-node fixture → 2 visible cards after trigger filter (Slack + Telegram)
-			await bw.mockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
+			await bw.mockBuilderStream(createBuilderResponseTwoCards());
 			await bw.triggerWorkflowGeneration();
 
 			// Should start on Slack (card 1/2)
@@ -93,7 +93,7 @@ test.describe(
 			const wiz = n8n.aiBuilder.wizard;
 
 			// 2 visible cards: Slack (card 1) + Telegram (card 2)
-			await bw.mockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
+			await bw.mockBuilderStream(createBuilderResponseTwoCards());
 			await bw.mockAutosave();
 			await bw.triggerWorkflowGeneration();
 
@@ -103,7 +103,7 @@ test.describe(
 			await expect(wiz.getStepIndicator(2, 2)).toBeVisible();
 
 			// Send follow-up with the same structure (both cards still incomplete)
-			await bw.remockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
+			await bw.remockBuilderStream(createBuilderResponseTwoCards());
 			await bw.sendFollowUpMessage('Adjust the workflow');
 			await n8n.aiAssistant.waitForStreamingComplete();
 
@@ -116,7 +116,7 @@ test.describe(
 			const { builderWizardComposer: bw } = n8n;
 			const wiz = n8n.aiBuilder.wizard;
 
-			await bw.mockBuilderStream(createBuilderResponseWithoutTriggerPinData());
+			await bw.mockBuilderStream(createBuilderStreamingResponse());
 			await bw.mockAutosave();
 			await bw.triggerWorkflowGeneration();
 
