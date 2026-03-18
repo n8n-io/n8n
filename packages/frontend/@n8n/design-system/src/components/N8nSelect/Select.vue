@@ -160,7 +160,7 @@ defineExpose({
 .container {
 	display: inline-flex;
 	width: 100%;
-	--input--color--background: light-dark(var(--color--neutral-100), var(--color--neutral-950));
+	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 }
 
 .withPrepend {

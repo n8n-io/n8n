@@ -45,6 +45,6 @@ const resolvedSize = computed(() => (props.size ? sizeMap[props.size] : undefine
 
 <style lang="scss" module>
 .inputNumber {
-	--input--color--background: light-dark(var(--color--neutral-100), var(--color--neutral-950));
+	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 }
 </style>
