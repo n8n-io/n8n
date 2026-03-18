@@ -17,6 +17,11 @@ import type {
 export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 	readonly name = 'full-item-redaction';
 
+	requiresRedaction(_execution: RedactableExecution, _context: RedactionContext): boolean {
+		// If this strategy is in the pipeline, it always modifies (clears all items).
+		return true;
+	}
+
 	async apply(execution: RedactableExecution, context: RedactionContext): Promise<void> {
 		const runData = execution.data.resultData.runData;
 		if (!runData) return;

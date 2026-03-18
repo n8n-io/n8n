@@ -12,6 +12,10 @@ on:
       - 'packages/testing/containers/services/**'
       - '.github/workflows/test-e2e-infrastructure-reusable.yml'
 
+concurrency:
+  group: e2e-infrastructure-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   benchmark:
     name: ${{ matrix.profile }}

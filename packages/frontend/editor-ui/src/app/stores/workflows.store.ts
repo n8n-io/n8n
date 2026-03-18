@@ -1591,6 +1591,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return !!matchedChatNode;
 	}
 
+	/**
+	 * Checks if a tool node is connected (via ai_tool) to an AI agent that has a Chat Trigger
+	 * in its main-connection ancestry. This covers partial execution scenarios where the
+	 * destination node is a tool node rather than a direct descendant of the Chat Trigger.
+	 */
+	function checkIfToolNodeHasChatParent(nodeName: string): boolean {
+		const agentNodes = workflowObject.value.getChildNodes(nodeName, NodeConnectionTypes.AiTool);
+		return agentNodes.some((agentNode) => checkIfNodeHasChatParent(agentNode));
+	}
+
 	//
 	// Start Canvas V2 Functions
 	//
@@ -1788,6 +1798,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetChatMessages,
 		appendChatMessage,
 		checkIfNodeHasChatParent,
+		checkIfToolNodeHasChatParent,
 		removeNodeById,
 		removeNodeConnectionsById,
 		removeNodeExecutionDataById,
