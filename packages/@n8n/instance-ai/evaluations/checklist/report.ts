@@ -74,7 +74,27 @@ function renderTags(tags: string[] | undefined): string {
 // Chat conversation rendering (from rich messages endpoint)
 // ---------------------------------------------------------------------------
 
-function renderChatToolCall(tc: ChatToolCall, idx: number): string {
+const WORKFLOW_TOOL_NAMES = new Set([
+	'build-workflow',
+	'submit-workflow',
+	'patch-workflow',
+	'build-workflow-with-agent',
+]);
+
+function getWorkflowIdFromResult(result: unknown): string | undefined {
+	if (typeof result === 'object' && result !== null) {
+		const rec = result as Record<string, unknown>;
+		if (typeof rec.workflowId === 'string') return rec.workflowId;
+		if (typeof rec.id === 'string') return rec.id;
+	}
+	return undefined;
+}
+
+function renderChatToolCall(
+	tc: ChatToolCall,
+	idx: number,
+	workflowJsonMap: Map<string, Record<string, unknown>>,
+): string {
 	const statusBadge = tc.error
 		? '<span class="badge badge-failed">ERROR</span>'
 		: '<span class="badge badge-completed">OK</span>';
@@ -96,25 +116,55 @@ function renderChatToolCall(tc: ChatToolCall, idx: number): string {
 		resultHtml += `<div class="tool-error">${escapeHtml(tc.error)}</div>`;
 	}
 
+	// Workflow preview for build-workflow tool calls
+	let previewHtml = '';
+	if (WORKFLOW_TOOL_NAMES.has(tc.toolName) && tc.result) {
+		const wfId = getWorkflowIdFromResult(tc.result);
+		const wfJson = wfId ? workflowJsonMap.get(wfId) : undefined;
+		if (wfJson) {
+			const wfJsonStr = JSON.stringify(wfJson);
+			previewHtml = `<div class="tool-section"><n8n-demo tidyup="true" workflow='${escapeHtml(wfJsonStr)}'></n8n-demo></div>`;
+		}
+	}
+
 	return `<details class="tool-call-detail" id="chat-tc-${String(idx)}">
 		<summary>${escapeHtml(tc.toolName)} ${statusBadge}</summary>
 		<div class="tool-call-body">
 			${argsHtml ? `<div class="tool-section"><div class="tool-section-label">Input</div>${argsHtml}</div>` : ''}
 			${resultHtml ? `<div class="tool-section">${resultHtml}</div>` : ''}
+			${previewHtml}
 		</div>
 	</details>`;
 }
 
-function renderChatEntry(entry: ChatEntry, tcIdx: number): string {
+function renderChatEntry(
+	entry: ChatEntry,
+	tcIdx: number,
+	workflowJsonMap: Map<string, Record<string, unknown>>,
+): string {
 	if (entry.type === 'text') {
 		return `<div style="margin:8px 0;padding:8px;background:#161b22;border:1px solid #30363d;border-radius:4px;font-size:12px;color:#c9d1d9;white-space:pre-wrap">${escapeHtml(entry.content)}</div>`;
 	}
-	return renderChatToolCall(entry.toolCall, tcIdx);
+	return renderChatToolCall(entry.toolCall, tcIdx, workflowJsonMap);
 }
 
-function renderChatMessagesSection(messages: ChatMessage[] | undefined): string {
+function buildWorkflowJsonMap(result: InstanceAiResult): Map<string, Record<string, unknown>> {
+	const map = new Map<string, Record<string, unknown>>();
+	for (const wfJson of result.outcome.workflowJsons) {
+		if (typeof wfJson.id === 'string') {
+			map.set(wfJson.id, wfJson);
+		}
+	}
+	return map;
+}
+
+function renderChatMessagesSection(
+	messages: ChatMessage[] | undefined,
+	result: InstanceAiResult,
+): string {
 	if (!messages || messages.length === 0) return '';
 
+	const workflowJsonMap = buildWorkflowJsonMap(result);
 	let html = '<div class="detail-section"><h4>Chat Conversation</h4>';
 	let tcIdx = 0;
 
@@ -124,7 +174,7 @@ function renderChatMessagesSection(messages: ChatMessage[] | undefined): string 
 		}
 
 		for (const entry of msg.entries) {
-			html += renderChatEntry(entry, tcIdx++);
+			html += renderChatEntry(entry, tcIdx++, workflowJsonMap);
 		}
 	}
 
@@ -304,7 +354,7 @@ function renderResultRow(result: InstanceAiResult, index: number, n8nBaseUrl: st
 					</div>`
 							: ''
 					}
-					${renderChatMessagesSection(result.chatMessages)}
+					${renderChatMessagesSection(result.chatMessages, result)}
 					${renderWorkflowsSection(result)}
 					${renderExecutionsSection(result, n8nBaseUrl)}
 					${
