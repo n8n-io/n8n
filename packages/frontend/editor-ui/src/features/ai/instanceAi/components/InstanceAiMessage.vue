@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nMessageRating } from '@n8n/design-system';
+import type { RatingFeedback } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -61,6 +62,24 @@ const hasActiveBackgroundTasks = computed(() => {
 	if (!props.message.agentTree || props.message.isStreaming) return false;
 	return props.message.agentTree.children.some((c) => c.status === 'active');
 });
+
+// --- Feedback ---
+const responseId = computed(() => props.message.messageGroupId ?? props.message.id);
+
+const isRateable = computed(
+	() =>
+		!isUser.value &&
+		store.rateableResponseId === responseId.value &&
+		!(responseId.value in store.feedbackByResponseId),
+);
+
+const hasSubmittedFeedback = computed(
+	() => !isUser.value && responseId.value in store.feedbackByResponseId,
+);
+
+function onFeedback(payload: RatingFeedback) {
+	store.submitFeedback(responseId.value, payload);
+}
 
 function formatJson(value: unknown): string {
 	try {
@@ -137,6 +156,21 @@ function formatJson(value: unknown): string {
 					</div>
 				</div>
 			</CollapsibleMessage>
+
+			<!-- Response feedback -->
+			<N8nMessageRating
+				v-if="isRateable"
+				minimal
+				data-test-id="instance-ai-message-rating"
+				@feedback="onFeedback"
+			/>
+			<p
+				v-else-if="hasSubmittedFeedback"
+				:class="$style.feedbackSuccess"
+				data-test-id="instance-ai-feedback-success"
+			>
+				{{ i18n.baseText('instanceAi.feedback.success') }}
+			</p>
 
 			<div :class="$style.actionButtons">
 				<N8nIconButton
@@ -222,6 +256,12 @@ function formatJson(value: unknown): string {
 	@media (hover: none) {
 		opacity: 1;
 	}
+}
+
+.feedbackSuccess {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	margin: var(--spacing--2xs) 0 0;
 }
 
 .backgroundStatus {

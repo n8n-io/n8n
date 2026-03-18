@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { ResponseError } from '@n8n/rest-api-client';
 import { instanceAiEventSchema, isSafeObjectKey } from '@n8n/api-types';
 import {
@@ -20,6 +21,7 @@ import {
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
 import { useResourceRegistry } from './useResourceRegistry';
+import { useResponseFeedback } from './useResponseFeedback';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import type {
 	InstanceAiAttachment,
@@ -47,6 +49,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const toast = useToast();
+	const telemetry = useTelemetry();
 	const persistedThreadIds = new Set<string>();
 
 	// --- State ---
@@ -83,6 +86,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	// Resource registry — maps known resource names to their types & IDs
 	const { registry: resourceRegistry } = useResourceRegistry(() => messages.value);
+
+	// Response feedback — rateability selector + submission
+	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
+		useResponseFeedback({ messages, currentThreadId, telemetry });
 
 	/** The latest task list — scans all messages backwards since tasks persist across runs. */
 	const currentTasks = computed(() => {
@@ -299,6 +306,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		messages.value = [];
 		activeRunId.value = null;
 		debugEvents.value = [];
+		resetFeedback();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		// 3. Switch thread
@@ -321,6 +329,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		messages.value = [];
 		activeRunId.value = null;
 		debugEvents.value = [];
+		resetFeedback();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		currentThreadId.value = newThreadId;
@@ -355,6 +364,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				messages.value = [];
 				activeRunId.value = null;
 				debugEvents.value = [];
+				resetFeedback();
 				runStateByGroupId = {};
 				groupIdByRunId = {};
 				currentThreadId.value = freshId;
@@ -696,6 +706,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		debugMode,
 		researchMode,
 		amendContext,
+		feedbackByResponseId,
 		// Computed
 		isStreaming,
 		hasMessages,
@@ -707,6 +718,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		contextualSuggestion,
 		currentTasks,
 		resourceRegistry,
+		rateableResponseId,
 		// Actions
 		newThread,
 		deleteThread,
@@ -722,6 +734,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		toggleResearchMode,
 		confirmAction,
 		copyFullTrace,
+		submitFeedback,
 		connectSSE,
 		closeSSE,
 	};
