@@ -364,7 +364,10 @@ describe('POST /workflow-dependencies/details', () => {
 
 		expect(resp.statusCode).toBe(200);
 		expect(resp.body.data).toHaveProperty(sharedWorkflow.id);
-		expect(resp.body.data[sharedWorkflow.id].dependencies).toHaveLength(1);
+		// Member can access the shared workflow but not the owner's credential,
+		// so the credential shows up as inaccessible rather than a resolved dependency
+		expect(resp.body.data[sharedWorkflow.id].dependencies).toHaveLength(0);
+		expect(resp.body.data[sharedWorkflow.id].inaccessibleCount).toBe(1);
 	});
 
 	it('should require resourceType in the request body', async () => {
