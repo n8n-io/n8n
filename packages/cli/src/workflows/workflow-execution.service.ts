@@ -320,9 +320,6 @@ export class WorkflowExecutionService {
 			const executionMode = 'error';
 
 			// Use published nodes/connections for execution, not the draft.
-			// The workflowData entity contains draft nodes, but the activeVersion
-			// relation holds the published state. We must override the entity's
-			// nodes/connections so the WorkflowRunner uses the published version.
 			workflowData.nodes = workflowData.activeVersion.nodes;
 			workflowData.connections = workflowData.activeVersion.connections;
 
