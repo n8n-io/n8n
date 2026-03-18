@@ -15,12 +15,14 @@ import { test, expect } from '../../../fixtures/base';
 /** Timeout for operations that hit the real backend (trigger execution, workflow save). */
 const BACKEND_TIMEOUT = 15_000;
 
-test.describe.serial(
+test.describe(
 	'Builder Setup Wizard @auth:owner @ai',
 	{
 		annotation: [{ type: 'owner', description: 'AI' }],
 	},
 	() => {
+		let projectId: string;
+
 		test.beforeEach(async ({ n8n, setupRequirements }) => {
 			await setupRequirements(builderWizardRequirements);
 
@@ -48,18 +50,15 @@ test.describe.serial(
 					await route.continue();
 				}
 			});
-		});
 
-		// --- Core wizard behavior ---
-		// Default fixture (Schedule Trigger + Slack) produces 1 visible card (Slack only).
-		// The trigger-only card is filtered by the wizard because it has no credentials or parameters.
+			projectId = await n8n.start.fromNewProjectBlankCanvas();
+		});
 
 		test('should disable per-card execute button when credentials are missing', async ({ n8n }) => {
 			const { builderWizardComposer: bw } = n8n;
 			const wiz = n8n.aiBuilder.wizard;
 
 			await bw.mockBuilderStream();
-			await n8n.page.goto('/workflow/new');
 			await bw.triggerWorkflowGeneration();
 
 			await expect(wiz.getWizard()).toBeVisible();
@@ -73,7 +72,6 @@ test.describe.serial(
 
 			// 3-node fixture → 2 visible cards after trigger filter (Slack + Telegram)
 			await bw.mockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
-			await n8n.page.goto('/workflow/new');
 			await bw.triggerWorkflowGeneration();
 
 			// Should start on Slack (card 1/2)
@@ -99,8 +97,6 @@ test.describe.serial(
 
 			// 2 visible cards: Slack (card 1) + Telegram (card 2)
 			await bw.mockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
-			await n8n.page.goto('/workflow/new');
-
 			const workflowSaved = bw.waitForWorkflowSaved();
 			await bw.triggerWorkflowGeneration();
 			await workflowSaved;
@@ -126,8 +122,6 @@ test.describe.serial(
 			const wiz = n8n.aiBuilder.wizard;
 
 			await bw.mockBuilderStream(createBuilderResponseWithoutTriggerPinData());
-			await n8n.page.goto('/workflow/new');
-
 			const workflowSaved = bw.waitForWorkflowSaved();
 			await bw.triggerWorkflowGeneration();
 			await workflowSaved;
@@ -155,7 +149,7 @@ test.describe.serial(
 			// Multi-trigger: Morning Schedule (trigger-only, filtered) + Slack + Telegram Listener
 			// After filter: 2 visible cards (Slack + Telegram Listener)
 			await bw.mockBuilderStream(createBuilderResponseMultipleTriggers());
-			await n8n.page.goto('/workflow/new');
+
 			await bw.triggerWorkflowGeneration();
 
 			// Card 1: Slack — has credential picker and execute button (non-trigger, executable)
@@ -180,7 +174,7 @@ test.describe.serial(
 
 			// Two Slack nodes (Slack Alerts + Slack Reports) both need slackApi → one grouped card
 			await bw.mockBuilderStream(createBuilderResponseSharedCredential());
-			await n8n.page.goto('/workflow/new');
+
 			await bw.triggerWorkflowGeneration();
 
 			// Only 1 card should exist (both Slack nodes grouped under slackApi)
@@ -204,7 +198,7 @@ test.describe.serial(
 			// If node with Slack (true branch) and Telegram (false branch)
 			// After filter: 2 cards for the two credential-requiring nodes
 			await bw.mockBuilderStream(createBuilderResponseBranchingWorkflow());
-			await n8n.page.goto('/workflow/new');
+
 			await bw.triggerWorkflowGeneration();
 
 			// Card 1: Slack Notification (true branch)
@@ -229,7 +223,7 @@ test.describe.serial(
 
 			// 2-card fixture: Telegram (card 1) + Slack with placeholder (card 2).
 			await bw.mockBuilderStream(createBuilderResponseWithPlaceholderAndTelegram());
-			await n8n.page.goto('/workflow/new');
+
 			await bw.triggerWorkflowGeneration();
 
 			// Navigate to Slack card
@@ -242,9 +236,6 @@ test.describe.serial(
 			await expect(wiz.getCompleteCheck()).not.toBeVisible();
 		});
 
-		// --- Tests below create credentials and must run after non-credential tests ---
-		// (serial mode + shared DB means credentials from earlier tests leak into later ones)
-
 		test('should not complete a card with credential alone when parameters are required', async ({
 			n8n,
 			api,
@@ -253,6 +244,7 @@ test.describe.serial(
 				name: `Slack Test ${nanoid()}`,
 				type: 'slackApi',
 				data: { accessToken: 'xoxb-test-token' },
+				projectId,
 			});
 
 			const { builderWizardComposer: bw } = n8n;
@@ -261,7 +253,7 @@ test.describe.serial(
 			// 2-card fixture with placeholder so navigating triggers clearing.
 			// Execution order: Telegram (card 1) → Slack with placeholder (card 2).
 			await bw.mockBuilderStream(createBuilderResponseWithPlaceholderAndTelegram());
-			await n8n.page.goto('/workflow/new');
+
 			await bw.triggerWorkflowGeneration();
 
 			// Navigate to Slack card (triggers placeholder clearing)
@@ -280,6 +272,7 @@ test.describe.serial(
 				name: `Slack Test ${nanoid()}`,
 				type: 'slackApi',
 				data: { accessToken: 'xoxb-test-token' },
+				projectId,
 			});
 
 			const { builderWizardComposer: bw } = n8n;
@@ -287,8 +280,6 @@ test.describe.serial(
 
 			// Credential auto-applies to Slack → Slack card completes immediately
 			await bw.mockBuilderStream(createBuilderResponseWithoutTriggerPinData());
-			await n8n.page.goto('/workflow/new');
-
 			const workflowSaved = bw.waitForWorkflowSaved();
 			await bw.triggerWorkflowGeneration();
 			await workflowSaved;

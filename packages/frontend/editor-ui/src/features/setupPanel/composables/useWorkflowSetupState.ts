@@ -226,132 +226,6 @@ export const useWorkflowSetupState = (
 
 	void loadTemplateMissingParameters();
 
-	/**
-	 * Synchronous: detects resource locator parameters from the current workflow
-	 * nodes using node type definitions and current parameter values.
-	 * Only active for template-based workflows (templateId is set).
-	 */
-	const resourceLocatorsByNode = computed(() => {
-		if (!workflowDocumentStore?.value?.meta?.templateId) return new Map<string, string[]>();
-
-		const paramMap = new Map<string, string[]>();
-		for (const node of sourceNodes.value) {
-			const paramNames = new Set<string>();
-
-			// From node type definition
-			const nodeTypeInfo = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			if (nodeTypeInfo) {
-				for (const prop of nodeTypeInfo.properties) {
-					if (prop.type === 'resourceLocator') {
-						paramNames.add(prop.name);
-					}
-				}
-			}
-
-			// From current parameter values (catches dynamic/nested parameters not in the type definition)
-			const findResourceLocators = (obj: Record<string, unknown>) => {
-				for (const [key, value] of Object.entries(obj)) {
-					if (isResourceLocatorValue(value)) {
-						paramNames.add(key);
-					} else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-						findResourceLocators(value as Record<string, unknown>);
-					}
-				}
-			};
-			findResourceLocators(node.parameters);
-
-			if (paramNames.size > 0) {
-				paramMap.set(node.name, Array.from(paramNames));
-			}
-		}
-		return paramMap;
-	});
-
-	/**
-	 * Async supplement: additional parameter names from the upstream template
-	 * (required parameters that were missing in the template).
-	 */
-	const templateMissingParams = ref(new Map<string, string[]>());
-
-	/**
-	 * Combined map of node name → parameter names that should always be shown.
-	 * Merges synchronous resource locator detection with async template results.
-	 */
-	const templateParametersByNode = computed(() => {
-		const merged = new Map<string, string[]>();
-
-		for (const [nodeName, params] of resourceLocatorsByNode.value) {
-			merged.set(nodeName, [...params]);
-		}
-
-		for (const [nodeName, params] of templateMissingParams.value) {
-			const existing = merged.get(nodeName);
-			if (existing) {
-				const combined = new Set([...existing, ...params]);
-				merged.set(nodeName, Array.from(combined));
-			} else {
-				merged.set(nodeName, [...params]);
-			}
-		}
-
-		return merged;
-	});
-
-	const nodeHasTemplateParams = (nodeName: string) =>
-		(templateParametersByNode.value.get(nodeName)?.length ?? 0) > 0;
-
-	/**
-	 * Checks if a node has any unfilled resource locator template parameters.
-	 * Recursively searches the node's parameters for resource locators matching
-	 * the template parameter names and returns true if any have empty values.
-	 */
-	const hasUnfilledTemplateParams = (node: INodeUi): boolean => {
-		const templateParams = templateParametersByNode.value.get(node.name);
-		if (!templateParams || templateParams.length === 0) return false;
-
-		const paramNamesToCheck = new Set(templateParams);
-		const findUnfilled = (obj: Record<string, unknown>): boolean => {
-			for (const [key, value] of Object.entries(obj)) {
-				if (paramNamesToCheck.has(key) && isResourceLocatorValue(value) && !value.value) {
-					return true;
-				}
-				if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-					if (findUnfilled(value as Record<string, unknown>)) return true;
-				}
-			}
-			return false;
-		};
-		return findUnfilled(node.parameters);
-	};
-
-	async function loadTemplateMissingParameters() {
-		const templateId = workflowDocumentStore?.value?.meta?.templateId;
-		if (!templateId) return;
-
-		try {
-			const template =
-				templatesStore.getFullTemplateById(templateId) ??
-				(await templatesStore.fetchTemplateById(templateId));
-
-			if (!template?.workflow?.nodes) return;
-
-			const paramMap = new Map<string, string[]>();
-			for (const templateNode of template.workflow.nodes) {
-				// Required parameters that are missing in the template
-				const issues = getNodeParametersIssues(nodeTypesStore, templateNode as unknown as INode);
-				const paramNames = Object.keys(issues);
-				if (paramNames.length > 0) {
-					paramMap.set(templateNode.name, paramNames);
-				}
-			}
-			templateMissingParams.value = paramMap;
-		} catch {
-			// Template fetch failed — resource locators still detected synchronously
-		}
-	}
-
-	void loadTemplateMissingParameters();
-
 	const getCredentialDisplayName = (credentialType: string): string => {
 		const credentialTypeInfo = credentialsStore.getCredentialTypeByName(credentialType);
 		return credentialTypeInfo?.displayName ?? credentialType;
@@ -438,12 +312,6 @@ export const useWorkflowSetupState = (
 	const stickyIssueParamNames = ref(new Map<string, Set<string>>());
 
 	/**
-	 * Tracks node IDs that have been shown in setup cards at least once.
-	 * Prevents cards from disappearing when nodes are temporarily valid.
-	 */
-	const seenNodes = new Set<string>();
-
-	/**
 	 * Get nodes that require setup:
 	 * - Nodes with credential requirements
 	 * - Trigger nodes (regardless of credentials)
@@ -468,10 +336,6 @@ export const useWorkflowSetupState = (
 					nodeHasTemplateParams(node.name),
 			);
 
-		// Never remove entries once we show them
-		for (const { node } of nodesForSetup) {
-			seenNodes.add(node.id);
-		}
 		return sortNodesByExecutionOrder(
 			nodesForSetup,
 			workflowsStore.connectionsBySourceNode,
@@ -565,6 +429,21 @@ export const useWorkflowSetupState = (
 	);
 
 	/**
+	 * Builds a CompletionContext. When credentialType is provided and testable,
+	 * includes the credential test check; otherwise omits it.
+	 */
+	const buildCompletionContext = (credentialType?: string): CompletionContext => ({
+		firstTriggerName: firstTriggerName.value,
+		hasTriggerExecuted: hasTriggerExecutedSuccessfully,
+		isTriggerNode: (nodeType: string) => nodeTypesStore.isTriggerNode(nodeType),
+		isCredentialTestedOk:
+			credentialType && isCredentialTypeTestable(credentialType)
+				? credentialsStore.isCredentialTestedOk
+				: undefined,
+		hasUnfilledTemplateParams,
+	});
+
+	/**
 	 * Credential type states — one entry per unique credential type.
 	 * Only includes credential types where NONE of the nodes have parameter issues.
 	 * When nodes have both credentials and parameters, they're handled by nodeStates instead.
@@ -574,7 +453,6 @@ export const useWorkflowSetupState = (
 		const nodesWithoutParameters = nodesWithCredentials.value.filter(
 			({ credentialTypes }) =>
 				!credentialTypes.some((credType) => perNodeCredTypes.value.has(credType)),
-
 		);
 
 		const grouped = groupCredentialsByType(
@@ -587,23 +465,13 @@ export const useWorkflowSetupState = (
 		);
 
 		return grouped.map((state) => {
-			const ctx: CompletionContext = {
-				firstTriggerName: firstTriggerName.value,
-				hasTriggerExecuted: hasTriggerExecutedSuccessfully,
-				isTriggerNode: (nodeType: string) => nodeTypesStore.isTriggerNode(nodeType),
-				isCredentialTestedOk: isCredentialTypeTestable(state.credentialType)
-					? credentialsStore.isCredentialTestedOk
-					: undefined,
-				hasUnfilledTemplateParams,
-			};
-
 			const isAutoApplied =
 				!!state.selectedCredentialId &&
 				autoAppliedCredentialIds.value.has(state.selectedCredentialId);
 
 			return {
 				...state,
-				isComplete: isCredentialCardComplete(state, ctx),
+				isComplete: isCredentialCardComplete(state, buildCompletionContext(state.credentialType)),
 
 				isAutoApplied,
 			};
@@ -628,7 +496,6 @@ export const useWorkflowSetupState = (
 			credState.nodes.some((node) => isTriggerNode(node) && node.name === firstTriggerName.value),
 		);
 		if (isInCredentialCards) return [];
-
 
 		// Check if covered by a per-node card (has creds in a per-node cred type, or has params)
 		const { credentialTypes, parameterIssues, node } = triggerEntry;
@@ -676,12 +543,7 @@ export const useWorkflowSetupState = (
 				isTrigger,
 				isComplete: false,
 			};
-			state.isComplete = isNodeSetupComplete(state, {
-				firstTriggerName: firstTriggerName.value,
-				hasTriggerExecuted: hasTriggerExecutedSuccessfully,
-				isTriggerNode: (nodeType: string) => nodeTypesStore.isTriggerNode(nodeType),
-				hasUnfilledTemplateParams,
-			});
+			state.isComplete = isNodeSetupComplete(state, buildCompletionContext());
 			result.push(state);
 		}
 
@@ -689,7 +551,6 @@ export const useWorkflowSetupState = (
 		// Build maps: all nodes per cred type + nodes with params per cred type
 		const credTypeToAllNodes = new Map<string, INodeUi[]>();
 		const credTypeToEntries = new Map<
-
 			string,
 			Array<{
 				node: INodeUi;
@@ -720,7 +581,6 @@ export const useWorkflowSetupState = (
 				if (hasParameters || hasTemplateParams || alreadySeen) {
 					if (!credTypeToEntries.has(credType)) credTypeToEntries.set(credType, []);
 					credTypeToEntries.get(credType)!.push(entry);
-
 				}
 			}
 		}
@@ -728,7 +588,6 @@ export const useWorkflowSetupState = (
 		const seenCombinations = new Set<string>();
 
 		for (const [credType, entries] of credTypeToEntries) {
-
 			let isFirstNode = true;
 			const allNodesUsingCredential = credTypeToAllNodes.get(credType) ?? [];
 
@@ -738,7 +597,6 @@ export const useWorkflowSetupState = (
 
 				if (seenCombinations.has(combinationKey)) continue;
 				seenCombinations.add(combinationKey);
-
 
 				const credValue = node.credentials?.[credType];
 				const selectedCredentialId =
@@ -752,7 +610,6 @@ export const useWorkflowSetupState = (
 					!!selectedCredentialId && autoAppliedCredentialIds.value.has(selectedCredentialId);
 
 				const state: NodeSetupState = {
-
 					node,
 					credentialType: credType,
 					credentialDisplayName: getCredentialDisplayName(credType),
@@ -767,15 +624,7 @@ export const useWorkflowSetupState = (
 					isAutoApplied,
 				};
 
-				state.isComplete = isNodeSetupComplete(state, {
-					firstTriggerName: firstTriggerName.value,
-					hasTriggerExecuted: hasTriggerExecutedSuccessfully,
-					isTriggerNode: (nodeType: string) => nodeTypesStore.isTriggerNode(nodeType),
-					isCredentialTestedOk: isCredentialTypeTestable(credType)
-						? credentialsStore.isCredentialTestedOk
-						: undefined,
-					hasUnfilledTemplateParams,
-				});
+				state.isComplete = isNodeSetupComplete(state, buildCompletionContext(credType));
 
 				result.push(state);
 
@@ -798,7 +647,6 @@ export const useWorkflowSetupState = (
 		},
 		{ immediate: true },
 	);
-
 
 	/**
 	 * Ordered list of all setup cards, sorted by the position of each card's

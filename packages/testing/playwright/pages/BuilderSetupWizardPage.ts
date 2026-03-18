@@ -83,5 +83,10 @@ export class BuilderSetupWizardPage {
 		return this.getCard().getByText(name, { exact: true });
 	}
 
+	/** Credential option in the dropdown overlay */
+	getCredentialOption(name: string): Locator {
+		return this.page.getByText(name);
+	}
+
 	// #endregion
 }

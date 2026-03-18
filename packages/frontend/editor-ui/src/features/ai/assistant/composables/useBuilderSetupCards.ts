@@ -57,17 +57,9 @@ export function useBuilderSetupCards() {
 		{ immediate: true },
 	);
 
-	// Merge sticky entries with current detections so cards survive after user fills placeholders
-	const placeholderParamsByNode = computed(() => {
-		// Access detectedPlaceholders to trigger recompute when new placeholders appear
-		const current = detectedPlaceholders.value;
-		const result = new Map(stickyPlaceholderParams.value);
-		// Overlay current detections (they may have updated param names)
-		for (const [name, params] of current) {
-			result.set(name, params);
-		}
-		return result;
-	});
+	// Sticky map already accumulates all detected placeholders via the watcher above.
+	// Wrapping in a computed ensures downstream consumers react to watcher updates.
+	const placeholderParamsByNode = computed(() => stickyPlaceholderParams.value);
 
 	const {
 		setupCards: baseCards,
@@ -87,12 +79,10 @@ export function useBuilderSetupCards() {
 		},
 	});
 
-	const cards = computed(() => baseCards.value);
-
-	const totalCards = computed(() => cards.value.length);
+	const totalCards = computed(() => baseCards.value.length);
 
 	const currentCard = computed<SetupCardItem | undefined>(
-		() => cards.value[currentStepIndex.value],
+		() => baseCards.value[currentStepIndex.value],
 	);
 
 	// Credential tests are async — treat pending tests as effectively complete
@@ -107,13 +97,13 @@ export function useBuilderSetupCards() {
 	}
 
 	const isAllComplete = computed(
-		() => cards.value.length === 0 || cards.value.every(isCardCompleteForWizard),
+		() => baseCards.value.length === 0 || baseCards.value.every(isCardCompleteForWizard),
 	);
 
 	function skipToFirstIncomplete() {
-		const current = cards.value[currentStepIndex.value];
+		const current = baseCards.value[currentStepIndex.value];
 		if (!current?.state.isComplete) return;
-		const firstIncomplete = cards.value.findIndex((c) => !c.state.isComplete);
+		const firstIncomplete = baseCards.value.findIndex((c) => !c.state.isComplete);
 		if (firstIncomplete !== -1) {
 			currentStepIndex.value = firstIncomplete;
 		}
@@ -123,7 +113,7 @@ export function useBuilderSetupCards() {
 	// the first incomplete card (handles wizard remounting after AI update
 	// with some cards already complete).
 	watch(
-		() => cards.value.length,
+		() => baseCards.value.length,
 		(newLength) => {
 			if (newLength === 0) {
 				currentStepIndex.value = 0;
@@ -138,7 +128,7 @@ export function useBuilderSetupCards() {
 	);
 
 	function goToNext() {
-		if (currentStepIndex.value < cards.value.length - 1) {
+		if (currentStepIndex.value < baseCards.value.length - 1) {
 			currentStepIndex.value++;
 		}
 	}
@@ -150,7 +140,7 @@ export function useBuilderSetupCards() {
 	}
 
 	function goToStep(index: number) {
-		currentStepIndex.value = Math.max(0, Math.min(index, cards.value.length - 1));
+		currentStepIndex.value = Math.max(0, Math.min(index, baseCards.value.length - 1));
 	}
 
 	function continueCurrent() {
@@ -203,7 +193,7 @@ export function useBuilderSetupCards() {
 	});
 
 	return {
-		cards,
+		cards: baseCards,
 		currentStepIndex,
 		currentCard,
 		isAllComplete,

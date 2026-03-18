@@ -12,7 +12,7 @@ import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPrevie
 
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
-import type { INodeProperties } from 'n8n-workflow';
+import { type INodeProperties, NodeHelpers } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -111,7 +111,16 @@ const allParameters = computed<INodeProperties[]>(() => {
 	const additionalParamNames = props.state.additionalParameterNames ?? [];
 	const allParamNames = new Set([...issueParamNames, ...additionalParamNames]);
 
-	return nodeType.value.properties.filter((prop) => allParamNames.has(prop.name));
+	return nodeType.value.properties.filter(
+		(prop) =>
+			allParamNames.has(prop.name) &&
+			NodeHelpers.displayParameter(
+				props.state.node.parameters,
+				prop,
+				props.state.node,
+				nodeType.value,
+			),
+	);
 });
 
 const isNestedParam = (p: INodeProperties) =>
@@ -192,10 +201,6 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 		},
 	});
 	nodeHelpers.updateNodesParameterIssues();
-};
-
-const onExecuteClick = async () => {
-	await execute();
 };
 
 // Notify parent when step execution finishes (for auto-advance / wizard dismissal).
@@ -298,6 +303,7 @@ watch(isActive, (active, wasActive) => {
 			>
 				{{
 					i18n.baseText('aiAssistant.builder.setupWizard.configureParameters' as BaseTextKey, {
+						adjustToNumber: nestedParameterCount,
 						interpolate: { count: String(nestedParameterCount) },
 					})
 				}}
@@ -353,7 +359,7 @@ watch(isActive, (active, wasActive) => {
 					:disabled="isButtonDisabled || isTestingCredential"
 					:loading="isExecuting"
 					:tooltip-items="executeTooltipItems"
-					@click="onExecuteClick"
+					@click="execute"
 				/>
 			</div>
 		</footer>

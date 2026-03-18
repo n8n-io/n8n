@@ -118,7 +118,7 @@ export class BuilderWizardComposer {
 	async selectCredential(credName: string) {
 		const wiz = this.n8n.aiBuilder.wizard;
 		await wiz.getCredentialSelect().click();
-		await this.n8n.page.getByText(credName).click();
+		await wiz.getCredentialOption(credName).click();
 	}
 
 	// #endregion

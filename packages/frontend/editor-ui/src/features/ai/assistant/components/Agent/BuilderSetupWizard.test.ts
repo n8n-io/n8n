@@ -17,6 +17,7 @@ const mockTotalCards = ref(0);
 const mockCurrentStepIndex = ref(0);
 
 const mockOnStepExecuted = vi.fn();
+const mockIsInitialCredentialTestingDone = ref(true);
 
 vi.mock('@/features/ai/assistant/composables/useBuilderSetupCards', () => ({
 	useBuilderSetupCards: () => ({
@@ -24,6 +25,7 @@ vi.mock('@/features/ai/assistant/composables/useBuilderSetupCards', () => ({
 		currentStepIndex: mockCurrentStepIndex,
 		currentCard: mockCurrentCard,
 		isAllComplete: mockIsAllComplete,
+		isInitialCredentialTestingDone: mockIsInitialCredentialTestingDone,
 		totalCards: mockTotalCards,
 		firstTriggerName: ref(null),
 		setCredential: vi.fn(),
@@ -88,6 +90,7 @@ describe('BuilderSetupWizard', () => {
 		mockIsAllComplete.value = false;
 		mockTotalCards.value = 0;
 		mockCurrentStepIndex.value = 0;
+		mockIsInitialCredentialTestingDone.value = true;
 
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);

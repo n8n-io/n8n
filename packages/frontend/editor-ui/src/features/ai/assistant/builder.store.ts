@@ -180,6 +180,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const wizardClearedPlaceholders = ref(new Set<string>());
 	const wizardHasExecutedWorkflow = ref(false);
 
+	function resetWizardState() {
+		wizardCurrentStep.value = 0;
+		wizardClearedPlaceholders.value.clear();
+		wizardHasExecutedWorkflow.value = false;
+	}
+
 	// Track whether AI Builder made edits since last save (resets after each save)
 	const aiBuilderMadeEdits = ref(false);
 
@@ -377,9 +383,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		loadedSessionsForWorkflowId.value = undefined;
 		hasHadSuccessfulExecution.value = false;
 		builderMode.value = 'build';
-		wizardCurrentStep.value = 0;
-		wizardClearedPlaceholders.value.clear();
-		wizardHasExecutedWorkflow.value = false;
+		resetWizardState();
 	}
 
 	/**
@@ -535,9 +539,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Reset wizard state when streaming ends with a workflow update (AI changed the workflow)
 		if (userMessageId && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
-			wizardCurrentStep.value = 0;
-			wizardClearedPlaceholders.value.clear();
-			wizardHasExecutedWorkflow.value = false;
+			resetWizardState();
 		}
 
 		// Only show "Restore version" on user messages that triggered a workflow modification.

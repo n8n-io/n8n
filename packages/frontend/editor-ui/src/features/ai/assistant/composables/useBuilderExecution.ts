@@ -9,6 +9,8 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useToast } from '@/app/composables/useToast';
 import { isChatNode } from '@/app/utils/aiUtils';
 
+const RUNNING_STATES: string[] = ['running', 'waiting'];
+
 /**
  * Shared execution logic for the builder setup wizard and control variant.
  * Handles trigger selection, chat-node detection, execution watcher, and cleanup.
@@ -51,8 +53,6 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 
 	const ensureExecutionWatcher = (onExecutionComplete: () => void) => {
 		if (executionWatcherStop) return;
-
-		const RUNNING_STATES = ['running', 'waiting'];
 
 		executionWatcherStop = watch(
 			() => workflowsStore.workflowExecutionData?.status,

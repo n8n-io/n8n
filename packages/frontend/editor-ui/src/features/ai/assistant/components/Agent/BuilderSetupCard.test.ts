@@ -186,18 +186,14 @@ describe('BuilderSetupCard', () => {
 
 		it('disables prev arrow at first step but shows next arrow enabled', () => {
 			const { getByTestId } = render({}, { totalCards: 3, stepIndex: 0 });
-			expect(getByTestId('builder-setup-card-prev')).toBeInTheDocument();
-			expect(getByTestId('builder-setup-card-prev').className).toContain('navArrowDisabled');
-			expect(getByTestId('builder-setup-card-next')).toBeInTheDocument();
-			expect(getByTestId('builder-setup-card-next').className).not.toContain('navArrowDisabled');
+			expect(getByTestId('builder-setup-card-prev')).toBeDisabled();
+			expect(getByTestId('builder-setup-card-next')).not.toBeDisabled();
 		});
 
 		it('disables next arrow at last step but shows prev arrow enabled', () => {
 			const { getByTestId } = render({}, { totalCards: 3, stepIndex: 2 });
-			expect(getByTestId('builder-setup-card-next')).toBeInTheDocument();
-			expect(getByTestId('builder-setup-card-next').className).toContain('navArrowDisabled');
-			expect(getByTestId('builder-setup-card-prev')).toBeInTheDocument();
-			expect(getByTestId('builder-setup-card-prev').className).not.toContain('navArrowDisabled');
+			expect(getByTestId('builder-setup-card-next')).toBeDisabled();
+			expect(getByTestId('builder-setup-card-prev')).not.toBeDisabled();
 		});
 	});
 
@@ -240,7 +236,7 @@ describe('BuilderSetupCard', () => {
 	describe('step indicator', () => {
 		it('shows step indicator in footer', () => {
 			const { getByText } = render({}, { totalCards: 4, stepIndex: 1 });
-			expect(getByText('2/4')).toBeInTheDocument();
+			expect(getByText('2 of 4')).toBeInTheDocument();
 		});
 	});
 
