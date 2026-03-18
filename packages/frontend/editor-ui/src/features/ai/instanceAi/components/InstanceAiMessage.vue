@@ -260,7 +260,7 @@ function formatJson(value: unknown): string {
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
-	background: var(--color--primary);
+	background: var(--background--brand);
 	animation: pulse 1.5s ease-in-out infinite;
 }
 
