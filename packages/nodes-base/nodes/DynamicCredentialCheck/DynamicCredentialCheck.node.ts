@@ -42,7 +42,7 @@ export class DynamicCredentialCheck implements INodeType {
 		}
 
 		const notReadyItems: INodeExecutionData[] = items.map((item, itemIndex) => ({
-			json: result,
+			json: structuredClone(result),
 			pairedItem: item.pairedItem ?? { item: itemIndex },
 		}));
 
