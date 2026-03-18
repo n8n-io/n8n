@@ -1,3 +1,4 @@
+import type { ChatHubLLMProvider } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { generateCompactionSummary } from '@n8n/instance-ai';
@@ -6,9 +7,13 @@ import type { Memory } from '@mastra/memory';
 import type { MastraMessageContentV2 } from '@mastra/core/agent';
 import type { MastraDBMessage } from '@mastra/core/memory';
 
+import { maxContextWindowTokens } from '@/modules/chat-hub/context-limits';
+
 import { TypeORMMemoryStorage } from './storage/typeorm-memory-storage';
 
 const METADATA_KEY = 'instanceAiConversationSummary';
+
+const DEFAULT_CONTEXT_WINDOW = 128_000;
 
 /**
  * Rough token estimate: ~4 chars per token for English text.
@@ -18,15 +23,32 @@ function estimateTokens(text: string): number {
 	return Math.ceil(text.length / 4);
 }
 
-/** Look up context window size (in tokens) for known model families. */
+/**
+ * Look up context window size (in tokens) using the Chat Hub model registry.
+ * Tries exact match first, then prefix match (e.g. "claude-sonnet-4-5" matches
+ * "claude-sonnet-4-5-20250929"), falling back to a conservative default.
+ */
 function getContextWindowForModel(modelId: ModelConfig): number {
-	const id = typeof modelId === 'string' ? modelId : modelId.id;
-	if (id.includes('claude')) return 200_000;
-	if (id.includes('gpt-4o')) return 128_000;
-	if (id.includes('gpt-4')) return 128_000;
-	if (id.includes('gpt-3.5')) return 16_000;
-	// Conservative default for unknown models
-	return 128_000;
+	const raw = typeof modelId === 'string' ? modelId : modelId.id;
+	const slashIndex = raw.indexOf('/');
+	if (slashIndex < 0) return DEFAULT_CONTEXT_WINDOW;
+
+	const provider = raw.slice(0, slashIndex) as ChatHubLLMProvider;
+	const model = raw.slice(slashIndex + 1);
+
+	const providerModels = maxContextWindowTokens[provider];
+	if (!providerModels) return DEFAULT_CONTEXT_WINDOW;
+
+	// Exact match
+	if (providerModels[model]) return providerModels[model];
+
+	// Prefix match: instance-ai may use short aliases (e.g. "claude-sonnet-4-5")
+	// while the registry stores full API IDs (e.g. "claude-sonnet-4-5-20250929")
+	for (const [registryModel, tokens] of Object.entries(providerModels)) {
+		if (tokens > 0 && registryModel.startsWith(model)) return tokens;
+	}
+
+	return DEFAULT_CONTEXT_WINDOW;
 }
 
 /** Estimate tokens consumed by system prompt, tools, and working memory overhead. */
