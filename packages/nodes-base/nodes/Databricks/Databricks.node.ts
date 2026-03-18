@@ -1222,7 +1222,7 @@ export class Databricks implements INodeType {
 					const [catalog, schema, volume] = parts;
 
 					const queryParams: any = {};
-					if (additionalFields.pageSize) {
+					if (additionalFields.pageSize !== undefined) {
 						queryParams.page_size = additionalFields.pageSize;
 					}
 					if (additionalFields.pageToken) {
@@ -1234,7 +1234,9 @@ export class Databricks implements INodeType {
 						credentialType,
 						{
 							method: 'GET',
-							url: `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}/${directoryPath}`,
+							url: directoryPath
+								? `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}/${directoryPath}`
+								: `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}`,
 
 							qs: queryParams,
 							json: true,

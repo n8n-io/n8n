@@ -53,11 +53,25 @@ export const filesParameters: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: ['createDirectory', 'deleteDirectory', 'listDirectory'],
+				operation: ['createDirectory', 'deleteDirectory'],
 			},
 		},
 		description:
 			'Path to directory within the volume (e.g. "folder1" or "folder1/subfolder"). Do not include leading slash.',
+		placeholder: 'folder1',
+	},
+	{
+		displayName: 'Directory Path',
+		name: 'directoryPath',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['listDirectory'],
+			},
+		},
+		description:
+			'Path to directory within the volume (e.g. "folder1" or "folder1/subfolder"). Leave empty to list the volume root. Do not include leading slash.',
 		placeholder: 'folder1',
 	},
 	{
