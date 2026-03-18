@@ -1,16 +1,11 @@
-import type {
-	ILoadOptionsFunctions,
-	INodeListSearchResult,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { agent } from './descriptions';
 import { chat } from './descriptions';
 import { embeddings } from './descriptions';
 import { search } from './descriptions';
-import { getModels } from './GenericFunctions';
+import { getAgentModels } from './GenericFunctions';
 
 export class Perplexity implements INodeType {
 	description: INodeTypeDescription = {
@@ -107,9 +102,7 @@ export class Perplexity implements INodeType {
 
 	methods = {
 		listSearch: {
-			async getAgentModels(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-				return await getModels.call(this);
-			},
+			getAgentModels,
 		},
 	};
 }

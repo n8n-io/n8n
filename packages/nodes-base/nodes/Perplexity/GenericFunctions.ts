@@ -73,9 +73,10 @@ export const embeddingsErrorPostReceive = createErrorHandler(
 	'Refer to the Embeddings API documentation at https://docs.perplexity.ai/api-reference/embeddings-post for valid parameters.',
 );
 
-export async function getModels(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const filter = (this.getFilterValue?.('search', '') ?? '') as string;
-
+export async function getAgentModels(
+	this: ILoadOptionsFunctions,
+	filter: string = '',
+): Promise<INodeListSearchResult> {
 	const response = (await this.helpers.requestWithAuthentication.call(this, 'perplexityApi', {
 		method: 'GET',
 		url: 'https://api.perplexity.ai/v1/models',
