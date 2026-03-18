@@ -39,6 +39,7 @@ describe('eligibleModules', () => {
 			'redaction',
 			'instance-registry',
 			'otel',
+			'instance-ai', 2a16ae1ee5 (fix: update module-registry test to include instance-ai)
 		]);
 	});
 
@@ -64,6 +65,7 @@ describe('eligibleModules', () => {
 			'redaction',
 			'instance-registry',
 			'otel',
+			'instance-ai', 2a16ae1ee5 (fix: update module-registry test to include instance-ai)
 		]);
 	});
 
