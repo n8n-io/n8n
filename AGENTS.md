@@ -173,6 +173,23 @@ When implementing features:
 5. Write tests with proper mocks
 6. Run `pnpm typecheck` to verify types
 
+## Design Principles
+
+### Security Must Not Degrade the Building Experience
+
+Security improvements, whether driven by enterprise requirements or internal
+standards, must NEVER add friction to the common-case building experience. When
+designing security-related features (defaults, behaviors, flows, error
+handling), apply these checks:
+
+- **No friction for the common case:** A community builder's workflow should
+  remain intuitive. Security should be invisible when it can be.
+- **Migration and upgrade paths:** Existing users must have a clear,
+  non-disruptive path forward when defaults or behaviors change.
+- **Security layers on top, not in competition:** Great UX and strong security
+  are not trade-offs. They're both required. If a design forces a choice
+  between them, the design needs more work.
+
 ## Github Guidelines
 - When creating a PR, use the conventions in
   `.github/pull_request_template.md` and
