@@ -143,6 +143,8 @@ export function unflattenModel(messageOrSession: FlattenedModel): ChatHubConvers
 				provider: 'n8n',
 				workflowId: messageOrSession.workflowId,
 			};
+		case 'instance-ai':
+			return { provider: 'instance-ai' };
 		default:
 			if (messageOrSession.model === null) {
 				return null;

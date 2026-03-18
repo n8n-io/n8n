@@ -3,7 +3,10 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatSidebarLink from '@/features/ai/chatHub/components/ChatSidebarLink.vue';
-import { CHAT_CONVERSATION_VIEW } from '@/features/ai/chatHub/constants';
+import {
+	CHAT_CONVERSATION_VIEW,
+	CHAT_INSTANCE_AI_THREAD_VIEW,
+} from '@/features/ai/chatHub/constants';
 import { type ChatModelDto, type ChatHubSessionDto } from '@n8n/api-types';
 import { N8nInput } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
@@ -30,6 +33,14 @@ const chatStore = useChatStore();
 const i18n = useI18n();
 
 type SessionAction = 'rename' | 'delete';
+
+const isInstanceAi = computed(() => session.provider === 'instance-ai');
+
+const sessionRoute = computed(() =>
+	isInstanceAi.value
+		? { name: CHAT_INSTANCE_AI_THREAD_VIEW, params: { threadId: session.id } }
+		: { name: CHAT_CONVERSATION_VIEW, params: { id: session.id } },
+);
 
 const agent = computed<ChatModelDto | null>(() => {
 	const model = unflattenModel(session);
@@ -102,10 +113,10 @@ watch(
 
 <template>
 	<ChatSidebarLink
-		:to="{ name: CHAT_CONVERSATION_VIEW, params: { id: session.id } }"
+		:to="sessionRoute"
 		:active="active"
 		:compact="compact"
-		:menu-items="dropdownItems"
+		:menu-items="isInstanceAi ? [] : dropdownItems"
 		:label="session.agentName"
 		:title="session.title"
 		@action-select="handleActionSelect"

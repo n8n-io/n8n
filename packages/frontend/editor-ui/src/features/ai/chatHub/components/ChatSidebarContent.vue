@@ -42,23 +42,50 @@ const i18n = useI18n();
 
 const renamingSessionId = ref<string>();
 
-const currentSessionId = computed(() =>
-	typeof route.params.id === 'string' ? route.params.id : undefined,
-);
+const currentSessionId = computed(() => {
+	if (typeof route.params.id === 'string') return route.params.id;
+	if (typeof route.params.threadId === 'string') return route.params.threadId;
+	return undefined;
+});
 
-const groupedConversations = computed(() =>
-	groupConversationsByDate(
-		(chatStore.sessions.ids ?? []).reduce<ChatHubSessionDto[]>((acc, id) => {
-			const session = chatStore.sessions.byId[id];
+const instanceAiSessionsFromThreads = computed<ChatHubSessionDto[]>(() => {
+	if (!isInstanceAiAvailable.value) return [];
+	const instanceAiStore = useInstanceAiStore();
+	return instanceAiStore.threads.map(
+		(thread): ChatHubSessionDto => ({
+			id: thread.id,
+			title: thread.title || 'New conversation',
+			ownerId: '',
+			lastMessageAt: thread.createdAt,
+			credentialId: null,
+			provider: 'instance-ai',
+			model: null,
+			workflowId: null,
+			agentId: null,
+			agentName: 'Instance AI',
+			agentIcon: { type: 'icon', value: 'sparkles' },
+			type: 'production',
+			createdAt: thread.createdAt,
+			updatedAt: thread.createdAt,
+			toolIds: [],
+		}),
+	);
+});
 
-			if (session && session.type !== 'manual') {
-				acc.push(session);
-			}
+const groupedConversations = computed(() => {
+	const chatHubSessions = (chatStore.sessions.ids ?? []).reduce<ChatHubSessionDto[]>((acc, id) => {
+		const session = chatStore.sessions.byId[id];
 
-			return acc;
-		}, []),
-	),
-);
+		if (session && session.type !== 'manual') {
+			acc.push(session);
+		}
+
+		return acc;
+	}, []);
+
+	const allSessions = [...chatHubSessions, ...instanceAiSessionsFromThreads.value];
+	return groupConversationsByDate(allSessions);
+});
 
 const newChat = computed<IMenuItem>(() => ({
 	id: 'new-chat',
@@ -152,17 +179,6 @@ function handleNewChatClick() {
 	telemetry.track('User clicked new chat button', { source: 'chat_hub' });
 }
 
-// Instance AI threads
-const instanceAiThreads = computed(() => {
-	if (!isInstanceAiAvailable.value) return [];
-	const instanceAiStore = useInstanceAiStore();
-	return instanceAiStore.threads;
-});
-
-const currentInstanceAiThreadId = computed(() =>
-	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
-);
-
 const isInstanceAiRoute = computed(
 	() => route.name === CHAT_INSTANCE_AI_VIEW || route.name === CHAT_INSTANCE_AI_THREAD_VIEW,
 );
@@ -219,35 +235,6 @@ onMounted(() => {
 				:class="[$style.historySections, { [$style.collapsed]: isCollapsed }]"
 				data-test-id="chat-conversation-list"
 			>
-				<!-- Instance AI threads -->
-				<div v-if="isInstanceAiAvailable && instanceAiThreads.length > 0" :class="$style.group">
-					<N8nText
-						v-if="!isCollapsed"
-						:class="$style.groupHeader"
-						size="small"
-						bold
-						color="text-light"
-					>
-						Instance AI
-					</N8nText>
-					<N8nMenuItem
-						v-for="thread in instanceAiThreads"
-						:key="thread.id"
-						:item="{
-							id: `instance-ai-${thread.id}`,
-							label: thread.title || 'New conversation',
-							icon: 'sparkles',
-							route: {
-								to: {
-									name: CHAT_INSTANCE_AI_THREAD_VIEW,
-									params: { threadId: thread.id },
-								},
-							},
-						}"
-						:compact="isCollapsed"
-						:active="isInstanceAiRoute && currentInstanceAiThreadId === thread.id"
-					/>
-				</div>
 				<div v-if="!readyToShowSessions" :class="$style.group">
 					<SkeletonMenuItem v-for="i in 10" :key="`loading-${i}`" />
 				</div>
