@@ -752,29 +752,10 @@ export class SourceControlStatusService {
 			const remote = remoteById.get(local.id);
 
 			if (!remote) {
-				// During pull, a local-only table would be marked as "deleted" locally.
-				// Skip if this table was never synced — it was created locally and not yet
-				// pushed, so it should not be deleted.
-				if (options.direction === 'pull' && !previouslySyncedIds.has(local.id)) {
-					continue;
-				}
-
-				if (collectVerbose) {
-					dtMissingInRemote.push(local);
-				}
-				sourceControlledFiles.push({
-					id: local.id,
-					name: local.name,
-					type: 'datatable',
-					status: options.direction === 'push' ? 'created' : 'deleted',
-					location: options.direction === 'push' ? 'local' : 'remote',
-					conflict: options.direction !== 'push',
-					file: getDataTableExportPath(local.id, this.dataTableExportFolder),
-					updatedAt: new Date().toISOString(),
-					owner: local.ownedBy ?? undefined,
-				});
-
-				// Check for cross-ID name collision (different tables sharing the same name in the same project)
+				// Check for cross-ID name collision (different tables sharing the same name
+				// in the same project). This must run before the never-synced early-continue
+				// below, otherwise a pull would silently create a remote table that collides
+				// with an unsynced local one.
 				const nameCandidate = remoteByName.get(local.name);
 				const nameCollision =
 					nameCandidate &&
@@ -799,6 +780,28 @@ export class SourceControlStatusService {
 						owner: this.convertToStatusResourceOwner(modified.ownedBy),
 					});
 				}
+
+				// During pull, a local-only table would be marked as "deleted" locally.
+				// Skip if this table was never synced — it was created locally and not yet
+				// pushed, so it should not be deleted.
+				if (options.direction === 'pull' && !previouslySyncedIds.has(local.id)) {
+					continue;
+				}
+
+				if (collectVerbose) {
+					dtMissingInRemote.push(local);
+				}
+				sourceControlledFiles.push({
+					id: local.id,
+					name: local.name,
+					type: 'datatable',
+					status: options.direction === 'push' ? 'created' : 'deleted',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: options.direction !== 'push',
+					file: getDataTableExportPath(local.id, this.dataTableExportFolder),
+					updatedAt: new Date().toISOString(),
+					owner: local.ownedBy ?? undefined,
+				});
 
 				continue;
 			}
