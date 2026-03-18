@@ -10,6 +10,28 @@ import { TypeORMMemoryStorage } from './storage/typeorm-memory-storage';
 
 const METADATA_KEY = 'instanceAiConversationSummary';
 
+/**
+ * Rough token estimate: ~4 chars per token for English text.
+ * Good enough for triggering decisions — not used for billing.
+ */
+function estimateTokens(text: string): number {
+	return Math.ceil(text.length / 4);
+}
+
+/** Look up context window size (in tokens) for known model families. */
+function getContextWindowForModel(modelId: ModelConfig): number {
+	const id = typeof modelId === 'string' ? modelId : modelId.id;
+	if (id.includes('claude')) return 200_000;
+	if (id.includes('gpt-4o')) return 128_000;
+	if (id.includes('gpt-4')) return 128_000;
+	if (id.includes('gpt-3.5')) return 16_000;
+	// Conservative default for unknown models
+	return 128_000;
+}
+
+/** Estimate tokens consumed by system prompt, tools, and working memory overhead. */
+const FIXED_CONTEXT_OVERHEAD_TOKENS = 8_000;
+
 interface ConversationSummaryMetadata {
 	version: number;
 	upToMessageId: string;
@@ -20,6 +42,10 @@ interface ConversationSummaryMetadata {
 /**
  * Manages rolling compaction of older thread messages into a summary.
  * Stores compaction state in thread metadata — no DB migration needed.
+ *
+ * Trigger: compacts when estimated total thread tokens exceed a percentage
+ * of the model's context window (default 80%), matching the pattern used
+ * by Claude Code and OpenAI's auto-compaction.
  *
  * Design:
  *   - recent tail (lastMessages) is never compacted
@@ -38,16 +64,18 @@ export class InstanceAiCompactionService {
 	 * If compaction is needed, generate a summary and return a formatted
 	 * `<conversation-summary>` block for prompt injection. Returns null if
 	 * compaction is not needed or if a cached summary is still valid.
+	 *
+	 * @param compactionThreshold — fraction of context window that triggers compaction (0-1, default 0.8)
 	 */
 	async prepareCompactedContext(
 		threadId: string,
 		memory: Memory,
 		modelId: ModelConfig,
 		lastMessages: number,
+		compactionThreshold = 0.8,
 	): Promise<string | null> {
 		try {
 			const recentTail = lastMessages;
-			const compactBatch = Math.max(6, Math.floor(recentTail / 2));
 
 			// Load all messages for the thread, ordered chronologically
 			const { messages: allMessages } = await this.memoryStorage.listMessages({
@@ -57,7 +85,19 @@ export class InstanceAiCompactionService {
 			});
 
 			if (allMessages.length <= recentTail) {
-				// Thread is short enough — no compaction needed
+				return this.getCachedSummaryBlock(threadId, memory);
+			}
+
+			// Estimate total token usage across all messages
+			const totalTokens =
+				FIXED_CONTEXT_OVERHEAD_TOKENS +
+				allMessages.reduce((sum, m) => sum + estimateTokens(this.extractRawText(m)), 0);
+
+			const contextWindow = getContextWindowForModel(modelId);
+			const threshold = contextWindow * compactionThreshold;
+
+			// Only compact when context usage exceeds the threshold
+			if (totalTokens < threshold) {
 				return this.getCachedSummaryBlock(threadId, memory);
 			}
 
@@ -80,8 +120,12 @@ export class InstanceAiCompactionService {
 
 			const unsummarizedSlice = prefix.slice(unsummarizedStart);
 
-			// Only compact when there are enough unsummarized messages
-			if (unsummarizedSlice.length < compactBatch) {
+			// Need at least some unsummarized content to justify a compaction call
+			const unsummarizedTokens = unsummarizedSlice.reduce(
+				(sum, m) => sum + estimateTokens(this.extractRawText(m)),
+				0,
+			);
+			if (unsummarizedTokens < 500) {
 				return this.getCachedSummaryBlock(threadId, memory);
 			}
 
@@ -131,6 +175,12 @@ export class InstanceAiCompactionService {
 		return null;
 	}
 
+	/** Get the full serialized text of a message (for token estimation). */
+	private extractRawText(msg: MastraDBMessage): string {
+		if (typeof msg.content === 'string') return msg.content;
+		return JSON.stringify(msg.content);
+	}
+
 	/**
 	 * Extract user/assistant text content from messages, skipping tool calls,
 	 * tool results, and system messages.
@@ -157,10 +207,8 @@ export class InstanceAiCompactionService {
 	 * Handles both string content and structured content arrays.
 	 */
 	private extractTextFromContent(content: MastraMessageContentV2): string {
-		// Direct string content
 		if (typeof content === 'string') return content;
 
-		// Mastra wraps content in { content: [...parts] }
 		const inner = (content as Record<string, unknown>)?.content;
 		if (typeof inner === 'string') return inner;
 
@@ -172,7 +220,6 @@ export class InstanceAiCompactionService {
 				} else if (isTextPart(part)) {
 					textParts.push(part.text);
 				}
-				// Skip tool-call, tool-result, image, and file parts
 			}
 			return textParts.join('\n');
 		}
