@@ -765,4 +765,160 @@ describe('ResourceLocator', () => {
 			});
 		});
 	});
+
+	describe('Cache pollution bug (GHC-5576)', () => {
+		it(
+			'should not cache in-flight response to wrong key when search changes',
+			async () => {
+			vi.useFakeTimers();
+
+			// Results for empty search (initial load)
+			const EMPTY_SEARCH_RESULTS = [
+				{ name: 'gpt-4', value: 'gpt-4', url: 'https://openai.com/gpt-4' },
+				{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo', url: 'https://openai.com/gpt-3.5-turbo' },
+				{ name: 'claude-3', value: 'claude-3', url: 'https://anthropic.com/claude-3' },
+			];
+
+			// Results for "turbo" search
+			const TURBO_SEARCH_RESULTS = [
+				{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo', url: 'https://openai.com/gpt-3.5-turbo' },
+			];
+
+			// Control promise resolution manually
+			let resolveEmptySearch: ((value: INodeListSearchResult) => void) | undefined;
+			let resolveTurboSearch: ((value: INodeListSearchResult) => void) | undefined;
+
+			nodeTypesStore.getResourceLocatorResults.mockImplementation((params) => {
+				if (!params.filter) {
+					return new Promise((resolve) => {
+						resolveEmptySearch = resolve;
+					});
+				} else if (params.filter === 'turbo') {
+					return new Promise((resolve) => {
+						resolveTurboSearch = resolve;
+					});
+				}
+				return Promise.resolve({ results: [], paginationToken: null });
+			});
+
+			const { getByTestId, queryByText } = renderComponent();
+
+			// Step 1: Focus input to trigger initial load (empty search)
+			await fireEvent.focus(getByTestId('rlc-input'));
+			await vi.advanceTimersByTimeAsync(100);
+
+			// Verify empty search request was made (filter is omitted when empty)
+			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
+			const firstCall = nodeTypesStore.getResourceLocatorResults.mock.calls[0][0];
+			expect(firstCall.filter).toBeUndefined();
+
+			// Step 2: User types "turbo" before initial load completes
+			const searchInput = getByTestId('rlc-search');
+			await userEvent.type(searchInput, 'turbo');
+
+			// Advance timers to trigger debounced search (1000ms debounce)
+			await vi.advanceTimersByTimeAsync(1100);
+
+			// Verify "turbo" search request was made
+			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalledWith(
+				expect.objectContaining({
+					filter: 'turbo',
+				}),
+			);
+
+			// Step 3: Now resolve the empty search request (which is still in-flight)
+			if (resolveEmptySearch) {
+				resolveEmptySearch({ results: EMPTY_SEARCH_RESULTS, paginationToken: null });
+			}
+			await vi.advanceTimersByTimeAsync(100);
+
+			// Step 4: Verify that empty search results are NOT shown for "turbo" query
+			// The bug would show all 3 results (gpt-4, gpt-3.5-turbo, claude-3)
+			// Expected: Only results for "turbo" should be shown, but they haven't loaded yet
+			expect(queryByText('gpt-4')).not.toBeInTheDocument();
+			expect(queryByText('claude-3')).not.toBeInTheDocument();
+
+			// Step 5: Resolve the turbo search with correct results
+			if (resolveTurboSearch) {
+				resolveTurboSearch({ results: TURBO_SEARCH_RESULTS, paginationToken: null });
+			}
+			await vi.advanceTimersByTimeAsync(100);
+
+			// Now only turbo results should be visible
+			expect(queryByText('gpt-3.5-turbo')).toBeInTheDocument();
+			expect(queryByText('gpt-4')).not.toBeInTheDocument();
+			expect(queryByText('claude-3')).not.toBeInTheDocument();
+
+			vi.useRealTimers();
+		},
+		10000,
+	); // Increase timeout for this test
+
+		it(
+			'should not cache error response to wrong key when search changes',
+			async () => {
+				vi.useFakeTimers();
+
+				const AUTH_ERROR = {
+					message: 'Authentication failed',
+					httpCode: '401',
+					description: 'Invalid credentials',
+				};
+
+				// Control promise resolution manually
+				let rejectEmptySearch: ((error: unknown) => void) | undefined;
+				let resolveTurboSearch: ((value: INodeListSearchResult) => void) | undefined;
+
+				nodeTypesStore.getResourceLocatorResults.mockImplementation((params) => {
+					if (!params.filter) {
+						return new Promise((_, reject) => {
+							rejectEmptySearch = reject;
+						});
+					} else if (params.filter === 'turbo') {
+						return new Promise((resolve) => {
+							resolveTurboSearch = resolve;
+						});
+					}
+					return Promise.resolve({ results: [], paginationToken: null });
+				});
+
+				const { getByTestId, queryByTestId, queryByText } = renderComponent();
+
+				// Step 1: Focus input to trigger initial load
+				await fireEvent.focus(getByTestId('rlc-input'));
+				await vi.advanceTimersByTimeAsync(100);
+
+				// Step 2: Type "turbo" before initial load completes
+				const searchInput = getByTestId('rlc-search');
+				await userEvent.type(searchInput, 'turbo');
+				await vi.advanceTimersByTimeAsync(1100);
+
+				// Step 3: Reject the empty search with auth error
+				if (rejectEmptySearch) {
+					rejectEmptySearch(AUTH_ERROR);
+				}
+				await vi.advanceTimersByTimeAsync(100);
+
+				// Step 4: Verify error is NOT shown for "turbo" query
+				// The bug would show the auth error even though "turbo" request is still loading
+				expect(queryByTestId('rlc-error-container')).not.toBeInTheDocument();
+
+				// Step 5: Resolve turbo search successfully
+				if (resolveTurboSearch) {
+					resolveTurboSearch({
+						results: [{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo' }],
+						paginationToken: null,
+					});
+				}
+				await vi.advanceTimersByTimeAsync(100);
+
+				// Should show results, not error
+				expect(queryByText('gpt-3.5-turbo')).toBeInTheDocument();
+				expect(queryByTestId('rlc-error-container')).not.toBeInTheDocument();
+
+				vi.useRealTimers();
+			},
+			10000,
+		); // Increase timeout for this test
+	});
 });
