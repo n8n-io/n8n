@@ -67,9 +67,8 @@ const properties: INodeProperties[] = [
 				displayName: 'Encoding Format',
 				name: 'encoding_format',
 				type: 'options',
-				default: 'float',
+				default: 'base64_int8',
 				options: [
-					{ name: 'Float', value: 'float' },
 					{ name: 'Base64 Int8', value: 'base64_int8' },
 					{ name: 'Base64 Binary', value: 'base64_binary' },
 				],
