@@ -42,71 +42,36 @@ export async function sendErrorPostReceive(
 	return data;
 }
 
-export async function agentErrorPostReceive(
-	this: IExecuteSingleFunctions,
-	data: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
-		const errorBody = response.body as JsonObject;
-		const error = (errorBody?.error ?? errorBody) as JsonObject;
-		const errorMessage =
-			typeof error.message === 'string'
-				? error.message
-				: (response.statusMessage ?? 'An unexpected issue occurred');
+const createErrorHandler = (description: string) =>
+	async function (
+		this: IExecuteSingleFunctions,
+		data: INodeExecutionData[],
+		{ statusCode, body, statusMessage }: IN8nHttpFullResponse,
+	): Promise<INodeExecutionData[]> {
+		if (statusCode >= 400 && statusCode <= 599) {
+			const errorBody = body as JsonObject;
+			const error = (errorBody?.error ?? errorBody) as JsonObject;
+			const errorMessage =
+				typeof error.message === 'string'
+					? error.message
+					: (statusMessage ?? 'An unexpected issue occurred');
 
-		throw new NodeApiError(this.getNode(), errorBody, {
-			message: errorMessage,
-			description:
-				'Refer to the Agent API documentation at https://docs.perplexity.ai/api-reference/responses-post for valid parameters.',
-		});
-	}
-	return data;
-}
+			throw new NodeApiError(this.getNode(), errorBody, { message: errorMessage, description });
+		}
+		return data;
+	};
 
-export async function searchErrorPostReceive(
-	this: IExecuteSingleFunctions,
-	data: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
-		const errorBody = response.body as JsonObject;
-		const error = (errorBody?.error ?? errorBody) as JsonObject;
-		const errorMessage =
-			typeof error.message === 'string'
-				? error.message
-				: (response.statusMessage ?? 'An unexpected issue occurred');
+export const agentErrorPostReceive = createErrorHandler(
+	'Refer to the Agent API documentation at https://docs.perplexity.ai/api-reference/agent-post for valid parameters.',
+);
 
-		throw new NodeApiError(this.getNode(), errorBody, {
-			message: errorMessage,
-			description:
-				'Refer to the Search API documentation at https://docs.perplexity.ai/api-reference/search-post for valid parameters.',
-		});
-	}
-	return data;
-}
+export const searchErrorPostReceive = createErrorHandler(
+	'Refer to the Search API documentation at https://docs.perplexity.ai/api-reference/search-post for valid parameters.',
+);
 
-export async function embeddingsErrorPostReceive(
-	this: IExecuteSingleFunctions,
-	data: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
-		const errorBody = response.body as JsonObject;
-		const error = (errorBody?.error ?? errorBody) as JsonObject;
-		const errorMessage =
-			typeof error.message === 'string'
-				? error.message
-				: (response.statusMessage ?? 'An unexpected issue occurred');
-
-		throw new NodeApiError(this.getNode(), errorBody, {
-			message: errorMessage,
-			description:
-				'Refer to the Embeddings API documentation at https://docs.perplexity.ai/api-reference/embeddings-post for valid parameters.',
-		});
-	}
-	return data;
-}
+export const embeddingsErrorPostReceive = createErrorHandler(
+	'Refer to the Embeddings API documentation at https://docs.perplexity.ai/api-reference/embeddings-post for valid parameters.',
+);
 
 export async function getModels(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const filter = (this.getFilterValue?.('search', '') ?? '') as string;

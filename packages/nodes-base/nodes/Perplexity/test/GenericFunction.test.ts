@@ -266,7 +266,7 @@ describe('Generic Functions', () => {
 			).rejects.toThrowError(
 				expect.objectContaining({
 					description: expect.stringContaining(
-						'https://docs.perplexity.ai/api-reference/responses-post',
+						'https://docs.perplexity.ai/api-reference/agent-post',
 					),
 				}),
 			);
