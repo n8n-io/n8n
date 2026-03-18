@@ -15,7 +15,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			component: InstanceAiView,
 			meta: {
 				layout: 'default',
-				middleware: ['authenticated'],
+				middleware: ['authenticated', 'custom'],
 			},
 		},
 		{
@@ -24,7 +24,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			component: InstanceAiView,
 			meta: {
 				layout: 'default',
-				middleware: ['authenticated'],
+				middleware: ['authenticated', 'custom'],
 			},
 		},
 	],
