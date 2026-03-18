@@ -235,6 +235,32 @@ for (const backend of ['memory', 'redis'] as const) {
 			});
 		});
 
+		describe('getHash', () => {
+			const createHashRefreshFn = () =>
+				jest.fn(async (_key: string) => await Promise.resolve({ field: 'refreshValue' }));
+
+			test('should treat hash as cache hit when key is present', async () => {
+				const refreshFn = createHashRefreshFn();
+				await cacheService.setHash('testHash', { field: 'value' });
+
+				const value = await cacheService.getHash('testHash', { refreshFn });
+				expect(value).toEqual({ field: 'value' });
+				expect(refreshFn).not.toHaveBeenCalled();
+			});
+
+			if (backend === 'redis') {
+				describe('when backend is redis', () => {
+					test('should treat empty hash placeholder as cache miss when key is missing', async () => {
+						const refreshFn = createHashRefreshFn();
+						await expect(cacheService.getHash('testHash', { refreshFn })).resolves.toEqual({
+							field: 'refreshValue',
+						});
+						expect(refreshFn).toHaveBeenCalledTimes(1);
+					});
+				});
+			}
+		});
+
 		describe('delete', () => {
 			test('should handle non-ASCII key', async () => {
 				const nonAsciiKey = 'ԱԲԳ';

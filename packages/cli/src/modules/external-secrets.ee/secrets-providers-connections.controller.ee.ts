@@ -87,7 +87,14 @@ export class SecretProvidersConnectionsController {
 			providerKey: body.providerKey,
 			type: body.type,
 		});
-		const savedConnection = await this.connectionsService.createConnection(body, req.user.id);
+		const savedConnection = await this.connectionsService.createConnection(
+			body,
+			req.user.id,
+			// For connections created at the instance level,
+			// shared with projects will be able to use the connection secrets
+			// but they do not own the connection and can't modify it
+			'secretsProviderConnection:user',
+		);
 		return this.connectionsService.toPublicConnection(savedConnection);
 	}
 
@@ -100,7 +107,7 @@ export class SecretProvidersConnectionsController {
 		@Body body: UpdateSecretsProviderConnectionDto,
 	): Promise<SecretProviderConnection> {
 		this.logger.debug('Updating connection', { providerKey });
-		const connection = await this.connectionsService.updateConnection(
+		const connection = await this.connectionsService.updateGlobalConnection(
 			providerKey,
 			body,
 			req.user.id,
