@@ -256,6 +256,7 @@ export interface SearchableNodeDescription {
 export interface DataTableSummary {
 	id: string;
 	name: string;
+	projectId: string;
 	columns: Array<{ id: string; name: string; type: string }>;
 	createdAt: string;
 	updatedAt: string;

@@ -13,6 +13,7 @@ export function createListDataTablesTool(context: InstanceAiContext) {
 				z.object({
 					id: z.string(),
 					name: z.string(),
+					projectId: z.string(),
 					columns: z.array(z.object({ id: z.string(), name: z.string(), type: z.string() })),
 					createdAt: z.string(),
 					updatedAt: z.string(),

@@ -705,6 +705,7 @@ export class InstanceAiAdapterService {
 					(t): DataTableSummary => ({
 						id: t.id,
 						name: t.name,
+						projectId,
 						columns: t.columns.map((c) => ({ id: c.id, name: c.name, type: c.type })),
 						createdAt: t.createdAt.toISOString(),
 						updatedAt: t.updatedAt.toISOString(),
@@ -719,6 +720,7 @@ export class InstanceAiAdapterService {
 				return {
 					id: result.id,
 					name: result.name,
+					projectId,
 					columns: result.columns.map((c) => ({ id: c.id, name: c.name, type: c.type })),
 					createdAt: result.createdAt.toISOString(),
 					updatedAt: result.updatedAt.toISOString(),
