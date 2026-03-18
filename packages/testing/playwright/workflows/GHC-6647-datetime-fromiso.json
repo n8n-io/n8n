@@ -1,0 +1,67 @@
+{
+	"name": "GHC-6647 DateTime.fromISO Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger-node",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "timestamp-field",
+							"name": "timestamp",
+							"value": "={{ DateTime.fromISO($json.updatedAt).toFormat('dd/MM/yyyy HH:mm:ss') }}",
+							"type": "string"
+						},
+						{
+							"id": "datetime-helper-field",
+							"name": "timestampWithHelper",
+							"value": "={{ $json.updatedAt.toDateTime().toFormat('dd/MM/yyyy HH:mm:ss') }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			},
+			"id": "set-node",
+			"name": "Set Timestamp",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 0]
+		}
+	],
+	"pinData": {
+		"Manual Trigger": [
+			{
+				"json": {
+					"id": "test-id-1",
+					"name": "Test Row",
+					"updatedAt": "2025-10-23T22:07:38.544Z"
+				}
+			}
+		]
+	},
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Set Timestamp",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"meta": {
+		"instanceId": "test-instance-id"
+	}
+}
