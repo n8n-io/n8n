@@ -121,11 +121,14 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 
 			case 'tool-result': {
 				const payload = getRecord(data, 'payload') ?? data;
-				const toolName = getString(payload, 'toolName') ?? '';
 				const toolCallId = getString(payload, 'toolCallId') ?? getString(data, 'toolCallId') ?? '';
+
+				const startEntry = toolCallStarts.get(toolCallId);
+				// tool-result events may not include toolName; fall back to the
+				// name captured from the corresponding tool-call event.
+				const toolName = getString(payload, 'toolName') ?? startEntry?.toolName ?? '';
 				const result = payload.result ?? data.result;
 
-				const startEntry = toolCallStarts.get(toolCallId || `${event.timestamp}-${toolName}`);
 				const durationMs = startEntry ? event.timestamp - startEntry.timestamp : 0;
 				const args = startEntry?.args ?? {};
 
@@ -145,11 +148,11 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 
 			case 'tool-error': {
 				const payload = getRecord(data, 'payload') ?? data;
-				const toolName = getString(payload, 'toolName') ?? '';
 				const toolCallId = getString(payload, 'toolCallId') ?? getString(data, 'toolCallId') ?? '';
 				const errorMsg = getString(payload, 'error') ?? getString(data, 'error') ?? 'Unknown error';
 
-				const startEntry = toolCallStarts.get(toolCallId || `${event.timestamp}-${toolName}`);
+				const startEntry = toolCallStarts.get(toolCallId);
+				const toolName = getString(payload, 'toolName') ?? startEntry?.toolName ?? '';
 				const durationMs = startEntry ? event.timestamp - startEntry.timestamp : 0;
 				const args = startEntry?.args ?? {};
 
@@ -606,7 +609,8 @@ function collectTimelineEntries(node: InstanceAiAgentNode, out: ChatEntry[]): vo
 // ---------------------------------------------------------------------------
 // extractWorkflowIdsFromMessages
 //
-// Extracts workflow IDs from agent tree targetResource fields.
+// Extracts workflow IDs from agent tree targetResource fields AND from
+// tool call results (build-workflow, submit-workflow, etc.).
 // Thread-scoped — avoids cross-run workflow attribution.
 // ---------------------------------------------------------------------------
 
@@ -626,6 +630,15 @@ function collectWorkflowIds(node: InstanceAiAgentNode, ids: Set<string>): void {
 	if (node.targetResource?.type === 'workflow' && node.targetResource.id) {
 		ids.add(node.targetResource.id);
 	}
+
+	// Extract workflow IDs from tool call results
+	for (const tc of node.toolCalls) {
+		if (WORKFLOW_TOOLS.has(tc.toolName)) {
+			const id = extractIdFromResult(tc.result, 'workflowId', 'id');
+			if (id) ids.add(id);
+		}
+	}
+
 	for (const child of node.children) {
 		collectWorkflowIds(child, ids);
 	}

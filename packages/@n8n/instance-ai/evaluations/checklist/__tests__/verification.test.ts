@@ -362,6 +362,56 @@ describe('extractWorkflowIdsFromMessages', () => {
 		expect(extractWorkflowIdsFromMessages(messages)).toEqual([]);
 	});
 
+	test('extracts workflow IDs from build-workflow tool call results', () => {
+		const messages: InstanceAiMessage[] = [
+			makeMessage({
+				role: 'assistant',
+				agentTree: makeAgentNode({
+					children: [
+						makeAgentNode({
+							agentId: 'builder-1',
+							toolCalls: [
+								makeToolCall({
+									toolName: 'build-workflow',
+									result: { success: true, workflowId: 'wf-built' },
+								}),
+							],
+						}),
+					],
+				}),
+			}),
+		];
+
+		expect(extractWorkflowIdsFromMessages(messages)).toEqual(['wf-built']);
+	});
+
+	test('extracts workflow IDs from both targetResource and tool calls', () => {
+		const messages: InstanceAiMessage[] = [
+			makeMessage({
+				role: 'assistant',
+				agentTree: makeAgentNode({
+					targetResource: { type: 'workflow', id: 'wf-target', name: 'Target WF' },
+					children: [
+						makeAgentNode({
+							agentId: 'builder-1',
+							toolCalls: [
+								makeToolCall({
+									toolName: 'build-workflow',
+									result: { success: true, workflowId: 'wf-built' },
+								}),
+							],
+						}),
+					],
+				}),
+			}),
+		];
+
+		const ids = extractWorkflowIdsFromMessages(messages);
+		expect(ids).toContain('wf-target');
+		expect(ids).toContain('wf-built');
+		expect(ids).toHaveLength(2);
+	});
+
 	test('deduplicates workflow IDs', () => {
 		const messages: InstanceAiMessage[] = [
 			makeMessage({
