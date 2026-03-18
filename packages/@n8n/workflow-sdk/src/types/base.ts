@@ -71,6 +71,7 @@ export interface CredentialReference {
 export interface NewCredentialValue {
 	readonly __newCredential: true;
 	readonly name: string;
+	readonly id?: string;
 }
 
 // =============================================================================
@@ -233,6 +234,7 @@ export interface NodeJSON {
 	position: [number, number];
 	parameters?: IDataObject;
 	credentials?: Record<string, { id?: string; name: string }>;
+	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;
 	notesInFlow?: boolean;
@@ -352,6 +354,7 @@ export interface NodeConfig<TParams = IDataObject> {
 	credentials?: Record<string, CredentialReference | NewCredentialValue>;
 	name?: string;
 	position?: [number, number];
+	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;
 	notesInFlow?: boolean;
@@ -1069,7 +1072,7 @@ export type StickyFn = (
 
 export type PlaceholderFn = (hint: string) => PlaceholderValue;
 
-export type NewCredentialFn = (name: string) => NewCredentialValue;
+export type NewCredentialFn = (name: string, id?: string) => NewCredentialValue;
 
 export type IfElseFn = (
 	branches: [

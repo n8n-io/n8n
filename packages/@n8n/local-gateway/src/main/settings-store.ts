@@ -1,0 +1,95 @@
+import * as os from 'node:os';
+import * as path from 'node:path';
+
+import { app } from 'electron';
+import Store from 'electron-store';
+
+import type { GatewayConfig, ResolvedGatewayConfig } from '@n8n/fs-proxy/config';
+import { gatewayConfigSchema } from '@n8n/fs-proxy/config';
+import { logger } from '@n8n/fs-proxy/logger';
+
+import type { AppSettings } from '../shared/types';
+
+export type { AppSettings };
+
+const DEFAULTS: AppSettings = {
+	port: 7655,
+	filesystemDir: os.homedir(),
+	filesystemEnabled: true,
+	shellEnabled: false, // disabled by default for security
+	screenshotEnabled: true,
+	mouseKeyboardEnabled: true,
+	browserEnabled: true,
+	allowedOrigins: [],
+	logLevel: 'info',
+};
+
+/** Full shape of what's persisted — includes internal state not exposed as AppSettings. */
+interface StoredData extends AppSettings {
+	lastConnectedUrl: string | null;
+}
+
+export class SettingsStore {
+	private readonly store: Store<StoredData>;
+
+	constructor() {
+		this.store = new Store<StoredData>({
+			name: 'settings',
+			defaults: { ...DEFAULTS, lastConnectedUrl: null },
+		});
+	}
+
+	get(): AppSettings {
+		return {
+			port: this.store.get('port'),
+			filesystemDir: this.store.get('filesystemDir'),
+			filesystemEnabled: this.store.get('filesystemEnabled'),
+			shellEnabled: this.store.get('shellEnabled'),
+			screenshotEnabled: this.store.get('screenshotEnabled'),
+			mouseKeyboardEnabled: this.store.get('mouseKeyboardEnabled'),
+			browserEnabled: this.store.get('browserEnabled'),
+			allowedOrigins: this.store.get('allowedOrigins'),
+			logLevel: this.store.get('logLevel'),
+		};
+	}
+
+	set(partial: Partial<AppSettings>): void {
+		for (const [key, value] of Object.entries(partial) as [
+			keyof AppSettings,
+			AppSettings[keyof AppSettings],
+		][]) {
+			this.store.set(key, value);
+		}
+		logger.debug('Settings updated', { changes: partial });
+	}
+
+	getLastConnectedUrl(): string | null {
+		return this.store.get('lastConnectedUrl');
+	}
+
+	setLastConnectedUrl(url: string | null): void {
+		this.store.set('lastConnectedUrl', url);
+		logger.debug('Last connected URL updated', { url });
+	}
+
+	toGatewayConfig(): ResolvedGatewayConfig {
+		const s = this.get();
+		const raw: GatewayConfig = {
+			port: s.port,
+			allowedOrigins: s.allowedOrigins,
+			filesystem: s.filesystemEnabled ? { dir: s.filesystemDir } : false,
+			computer: {
+				shell: s.shellEnabled ? {} : false,
+				screenshot: s.screenshotEnabled ? {} : false,
+				mouseKeyboard: s.mouseKeyboardEnabled ? {} : false,
+			},
+			browser: s.browserEnabled ? {} : false,
+			logLevel: s.logLevel,
+		};
+		return gatewayConfigSchema.parse(raw);
+	}
+
+	getStorePath(): string {
+		return path.join(app.getPath('userData'), 'settings.json');
+	}
+}
