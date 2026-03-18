@@ -68,13 +68,9 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.generate_token.outputs.token }}
 
-      # Setting up NodeJS needs to be BEFORE switching to base branch to make sure the
-      # version of the .github/scripts/ dependencies are up to date with master and not target branch
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+      # Save the master commit SHA before switching branches so we can restore .github/scripts
+      - name: Save master ref
+        run: echo "MASTER_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       # Checkout base branch via separate step to prevent unsafe actions/checkout ref usage.
       # poutine: untrusted_checkout_exec
@@ -82,6 +78,17 @@ jobs:
         env:
           BASE_BRANCH: ${{ inputs.base-branch }}
         run: git checkout "$BASE_BRANCH"
+
+      # Restore .github/scripts from master so we always use the latest release scripts
+      # regardless of what version the base branch has.
+      - name: Restore .github/scripts from master
+        run: git checkout "$MASTER_SHA" -- .github/scripts
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Bump package versions
         run: |
