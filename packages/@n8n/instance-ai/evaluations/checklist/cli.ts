@@ -10,6 +10,7 @@ import {
 	verifyCredentialSupport,
 	seedEvalCredentials,
 	cleanupEvalCredentials,
+	snapshotWorkflowIds,
 } from './verification';
 import type { Run, PromptConfig, ChecklistItem, InstanceAiResult } from './types';
 
@@ -283,12 +284,24 @@ async function runEval() {
 			const totalBatches = Math.ceil(tasks.length / args.concurrency);
 			console.log(`\n  Batch ${String(batchNum)}/${String(totalBatches)}:`);
 
+			// Take a single snapshot before each batch so concurrent runs share the
+			// same baseline. A shared "claimed" set prevents one run from attributing
+			// workflows created by another concurrent run.
+			const batchSnapshot = await snapshotWorkflowIds(n8nClient);
+			const batchClaimedIds = new Set<string>();
+
+			const batchRunnerConfig: RunnerConfig = {
+				...runnerConfig,
+				preRunWorkflowIds: batchSnapshot,
+				claimedWorkflowIds: batchClaimedIds,
+			};
+
 			const batchResults = await Promise.allSettled(
 				batch.map(async ({ prompt, checklist }) => {
 					const label = `"${prompt.text.slice(0, 50)}..."`;
 					console.log(`    Starting: ${label}`);
 
-					const result = await runSingleExample(runnerConfig, prompt, checklist);
+					const result = await runSingleExample(batchRunnerConfig, prompt, checklist);
 
 					const scoreStr = `${(result.checklistScore * 100).toFixed(0)}%`;
 					const successStr = result.success ? 'PASS' : 'FAIL';

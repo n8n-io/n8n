@@ -41,6 +41,18 @@ export interface RunnerConfig {
 	skipCleanup?: boolean;
 	/** Skip execution-based evaluation (faster runs, only verify build checklist) */
 	skipExecutionEval?: boolean;
+	/**
+	 * Pre-run workflow snapshot (shared across concurrent runs in a batch).
+	 * When provided, the runner skips taking its own snapshot and uses this instead.
+	 * This prevents concurrent runs from claiming each other's workflows.
+	 */
+	preRunWorkflowIds?: Set<string>;
+	/**
+	 * Shared set of workflow IDs already claimed by other concurrent runs.
+	 * When a run discovers workflows via snapshot diff, it adds them here so
+	 * other concurrent runs in the same batch won't claim them too.
+	 */
+	claimedWorkflowIds?: Set<string>;
 }
 
 const DEFAULT_TIMEOUT_MS = 600_000;
@@ -69,7 +81,10 @@ export async function runSingleExample(
 
 	try {
 		// 0. Snapshot existing workflows so we can diff after the run
-		const preRunWorkflowIds = await snapshotWorkflowIds(config.n8nClient);
+		//    When a shared snapshot is provided (concurrent batch), use it instead
+		//    of taking a per-run snapshot to avoid cross-run workflow attribution.
+		const preRunWorkflowIds =
+			config.preRunWorkflowIds ?? (await snapshotWorkflowIds(config.n8nClient));
 
 		// 1. Start SSE connection in the background
 		if (config.verbose) {
@@ -109,7 +124,12 @@ export async function runSingleExample(
 		// 7. Build metrics and outcome (diff workflows against pre-run snapshot)
 		const metrics = buildMetrics(events, startTime);
 		const eventOutcome = extractOutcomeFromEvents(events);
-		const outcome = await buildAgentOutcome(config.n8nClient, eventOutcome, preRunWorkflowIds);
+		const outcome = await buildAgentOutcome(
+			config.n8nClient,
+			eventOutcome,
+			preRunWorkflowIds,
+			config.claimedWorkflowIds,
+		);
 
 		if (config.verbose && outcome.workflowsCreated.length > 0) {
 			log(

@@ -261,6 +261,7 @@ export async function buildAgentOutcome(
 	client: N8nClient,
 	eventOutcome: EventOutcome,
 	preRunWorkflowIds?: Set<string>,
+	claimedWorkflowIds?: Set<string>,
 ): Promise<AgentOutcome> {
 	const workflowsCreated: WorkflowSummary[] = [];
 	const workflowJsons: Record<string, unknown>[] = [];
@@ -269,14 +270,27 @@ export async function buildAgentOutcome(
 	// Collect workflow IDs from events
 	const knownWfIds = new Set(eventOutcome.workflowIds);
 
+	// Mark event-based workflow IDs as claimed so concurrent runs skip them
+	if (claimedWorkflowIds) {
+		for (const id of knownWfIds) {
+			claimedWorkflowIds.add(id);
+		}
+	}
+
 	// Diff against pre-run snapshot to find workflows created by background tasks
-	// that didn't surface in the SSE events we parsed
+	// that didn't surface in the SSE events we parsed.
+	// When running concurrently, skip workflows already claimed by another run.
 	if (preRunWorkflowIds) {
 		try {
 			const currentWorkflows = await client.listWorkflows();
 			for (const wf of currentWorkflows) {
-				if (!preRunWorkflowIds.has(wf.id) && !knownWfIds.has(wf.id)) {
+				if (
+					!preRunWorkflowIds.has(wf.id) &&
+					!knownWfIds.has(wf.id) &&
+					(!claimedWorkflowIds || !claimedWorkflowIds.has(wf.id))
+				) {
 					knownWfIds.add(wf.id);
+					claimedWorkflowIds?.add(wf.id);
 				}
 			}
 		} catch {
