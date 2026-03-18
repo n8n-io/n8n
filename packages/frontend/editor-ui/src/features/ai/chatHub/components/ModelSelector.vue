@@ -99,6 +99,7 @@ const menu = computed(() =>
 		i18n,
 		settings: settingStore.moduleSettings?.['chat-hub']?.providers ?? {},
 		credentials,
+		isInstanceAiAvailable: settingStore.isModuleActive('instance-ai'),
 	}),
 );
 

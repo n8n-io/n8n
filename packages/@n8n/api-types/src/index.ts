@@ -19,6 +19,7 @@ export {
 	type ChatHubBaseLLMModel,
 	type ChatHubN8nModel,
 	type ChatHubCustomAgentModel,
+	type ChatHubInstanceAiModel,
 	type ChatHubConversationModel,
 	type ChatHubModuleSettings,
 	chatHubProviderSchema,
@@ -71,6 +72,8 @@ export {
 	type ChatArtifactCreateCommand,
 	type ChatArtifactEditCommand,
 	type ChatMessageContentChunk,
+	type InstanceAiAgentTreeNode,
+	type InstanceAiToolCallSummary,
 	type ChatHubMessageButton,
 	chatHubMessageWithButtonsSchema,
 	type ChatHubMessageWithButtons,
@@ -98,6 +101,11 @@ export type {
 	ChatHubHumanMessageCreated,
 	ChatHubMessageEdited,
 	ChatHubAttachmentInfo,
+	ChatHubInstanceAiEvent,
+	ChatHubInstanceAiAgentSpawned,
+	ChatHubInstanceAiToolCall,
+	ChatHubInstanceAiToolResult,
+	ChatHubInstanceAiAgentCompleted,
 } from './push/chat-hub';
 
 export type { Collaborator } from './push/collaboration';

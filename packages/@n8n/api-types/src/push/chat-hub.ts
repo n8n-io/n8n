@@ -142,6 +142,73 @@ export type ChatHubExecutionEnd = {
 };
 
 /**
+ * Sent when an Instance AI sub-agent is spawned during a conversation
+ */
+export type ChatHubInstanceAiAgentSpawned = {
+	type: 'chatHubInstanceAiAgentSpawned';
+	data: ChatHubStreamMetadata & {
+		/** Unique identifier for the spawned agent */
+		agentId: string;
+		/** Role/purpose of the agent */
+		role: string;
+		/** Parent agent ID, null for root agent */
+		parentAgentId: string | null;
+	};
+};
+
+/**
+ * Sent when an Instance AI agent invokes a tool
+ */
+export type ChatHubInstanceAiToolCall = {
+	type: 'chatHubInstanceAiToolCall';
+	data: ChatHubStreamMetadata & {
+		/** Agent that invoked the tool */
+		agentId: string;
+		/** Name of the tool being called */
+		toolName: string;
+		/** Unique call identifier */
+		toolCallId: string;
+	};
+};
+
+/**
+ * Sent when an Instance AI tool call returns a result
+ */
+export type ChatHubInstanceAiToolResult = {
+	type: 'chatHubInstanceAiToolResult';
+	data: ChatHubStreamMetadata & {
+		/** Matching tool call identifier */
+		toolCallId: string;
+		/** Result status */
+		status: 'completed' | 'error';
+		/** Result summary (may be truncated) */
+		result?: string;
+	};
+};
+
+/**
+ * Sent when an Instance AI sub-agent finishes execution
+ */
+export type ChatHubInstanceAiAgentCompleted = {
+	type: 'chatHubInstanceAiAgentCompleted';
+	data: ChatHubStreamMetadata & {
+		/** Agent that completed */
+		agentId: string;
+		/** Final status */
+		status: 'completed' | 'error';
+	};
+};
+
+/**
+ * Union type of Instance AI agent tree push messages
+ */
+export type ChatHubInstanceAiEvent =
+	| ChatHubInstanceAiAgentSpawned
+	| ChatHubInstanceAiToolCall
+	| ChatHubInstanceAiToolResult
+	| ChatHubInstanceAiAgentCompleted;
+
+/**
  * Union type of AI stream-related push messages (message level)
  */
 export type ChatHubStreamEvent =
@@ -161,5 +228,6 @@ export type ChatHubExecutionEvent = ChatHubExecutionBegin | ChatHubExecutionEnd;
 export type ChatHubPushMessage =
 	| ChatHubStreamEvent
 	| ChatHubExecutionEvent
+	| ChatHubInstanceAiEvent
 	| ChatHubHumanMessageCreated
 	| ChatHubMessageEdited;

@@ -54,7 +54,7 @@ export class ChatHubModelsService {
 				async (provider: ChatHubProvider) => {
 					const credentials: INodeCredentials = {};
 
-					if (provider !== 'n8n' && provider !== 'custom-agent') {
+					if (provider !== 'n8n' && provider !== 'custom-agent' && provider !== 'instance-ai') {
 						const credentialId = credentialIds[provider];
 						if (!credentialId) {
 							return [provider, { models: [] }];
@@ -162,6 +162,8 @@ export class ChatHubModelsService {
 				return { models: await this.fetchAgentWorkflowsAsModels(user) };
 			case 'custom-agent':
 				return { models: await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id) };
+			case 'instance-ai':
+				return { models: [] };
 		}
 	}
 

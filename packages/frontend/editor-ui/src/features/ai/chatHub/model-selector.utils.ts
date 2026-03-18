@@ -36,6 +36,7 @@ export interface BuildMenuItemsOptions {
 	i18n: I18nClass;
 	settings: Partial<Record<ChatHubLLMProvider, ChatProviderSettingsDto>>;
 	credentials: Partial<Record<ChatHubLLMProvider, string | null>> | null;
+	isInstanceAiAvailable?: boolean;
 }
 
 /**
@@ -365,6 +366,21 @@ export function applySearch(menuItems: MenuItem[], query: string, i18n: I18nClas
 	}, []);
 }
 
+const instanceAiIcon: IconOrEmoji = { type: 'icon', value: 'sparkles' };
+
+function buildInstanceAiMenuItem(options: BuildMenuItemsOptions): MenuItem | null {
+	if (!options.isInstanceAiAvailable) {
+		return null;
+	}
+
+	return {
+		id: 'instance-ai',
+		label: providerDisplayNames['instance-ai'],
+		icon: instanceAiIcon,
+		data: { provider: 'instance-ai' },
+	};
+}
+
 /**
  * Builds the menu items for the model selector dropdown
  */
@@ -373,6 +389,12 @@ export function buildModelSelectorMenuItems(
 	options: BuildMenuItemsOptions,
 ): MenuItem[] {
 	const menuItems: MenuItem[] = [];
+
+	const instanceAiItem = buildInstanceAiMenuItem(options);
+	if (instanceAiItem) {
+		menuItems.push(instanceAiItem);
+	}
+
 	const personalAgentsItem = buildPersonalAgentsMenuItem(agents['custom-agent'].models, options);
 	const n8nAgentsItem = buildWorkflowAgentsMenuItem(agents.n8n.models, options);
 

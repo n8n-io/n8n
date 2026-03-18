@@ -19,6 +19,7 @@ import {
 	AGENT_EDITOR_MODAL_KEY,
 	CHAT_CONVERSATION_VIEW,
 	CHAT_VIEW,
+	CHAT_INSTANCE_AI_VIEW,
 	MOBILE_MEDIA_QUERY,
 } from '@/features/ai/chatHub/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -359,13 +360,19 @@ useChatInputFocus(inputRef, {
 	disabled: computed(() => showWelcomeScreen.value === true || messagingState.value !== 'idle'),
 });
 
-// Preselect a model
+// Preselect a model — prefer Instance AI when available and no saved default
 watch(
 	() => chatStore.agents,
 	(models) => {
 		const settings = settingsStore.moduleSettings?.['chat-hub'];
 
 		if (!models || !!selectedModel.value || !isNewSession.value || !settings) {
+			return;
+		}
+
+		// When Instance AI is available, always default to it
+		if (settingsStore.isModuleActive('instance-ai')) {
+			void router.replace({ name: CHAT_INSTANCE_AI_VIEW });
 			return;
 		}
 
@@ -577,6 +584,12 @@ async function handleSelectModel(
 	selection: ChatHubConversationModel,
 	selectedAgent?: ChatModelDto,
 ) {
+	// Navigate to Instance AI view when selected from the model picker
+	if (selection.provider === 'instance-ai') {
+		await router.push({ name: CHAT_INSTANCE_AI_VIEW });
+		return;
+	}
+
 	const agent = selectedAgent ?? chatStore.getAgent(selection);
 
 	if (currentConversation.value) {

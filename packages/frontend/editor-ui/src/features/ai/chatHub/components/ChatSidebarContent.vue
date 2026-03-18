@@ -9,6 +9,8 @@ import {
 	CHAT_VIEW,
 	CHAT_WORKFLOW_AGENTS_VIEW,
 	CHAT_PERSONAL_AGENTS_VIEW,
+	CHAT_INSTANCE_AI_VIEW,
+	CHAT_INSTANCE_AI_THREAD_VIEW,
 } from '@/features/ai/chatHub/constants';
 import { type IMenuItem, N8nMenuItem, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
@@ -19,6 +21,8 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { type ChatHubSessionDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 
 defineProps<{ isCollapsed: boolean }>();
 
@@ -29,6 +33,8 @@ const toast = useToast();
 const message = useMessage();
 const credentialsStore = useCredentialsStore();
 const telemetry = useTelemetry();
+const settingsStore = useSettingsStore();
+const isInstanceAiAvailable = computed(() => settingsStore.isModuleActive('instance-ai'));
 const readyToShowSessions = computed(
 	() => chatStore.sessionsReady && credentialsStore.allCredentialTypes.length > 0,
 );
@@ -88,6 +94,17 @@ const workflowAgents = computed<IMenuItem>(() => ({
 	},
 }));
 
+const instanceAi = computed<IMenuItem>(() => ({
+	id: 'instance-ai',
+	label: 'Instance AI',
+	icon: 'sparkles',
+	route: {
+		to: {
+			name: CHAT_INSTANCE_AI_VIEW,
+		},
+	},
+}));
+
 function handleStartRename(sessionId: string) {
 	renamingSessionId.value = sessionId;
 }
@@ -135,8 +152,27 @@ function handleNewChatClick() {
 	telemetry.track('User clicked new chat button', { source: 'chat_hub' });
 }
 
+// Instance AI threads
+const instanceAiThreads = computed(() => {
+	if (!isInstanceAiAvailable.value) return [];
+	const instanceAiStore = useInstanceAiStore();
+	return instanceAiStore.threads;
+});
+
+const currentInstanceAiThreadId = computed(() =>
+	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
+);
+
+const isInstanceAiRoute = computed(
+	() => route.name === CHAT_INSTANCE_AI_VIEW || route.name === CHAT_INSTANCE_AI_THREAD_VIEW,
+);
+
 onMounted(() => {
 	void chatStore.fetchSessions(true, { minLoadingTime: 250, type: 'production' });
+	if (isInstanceAiAvailable.value) {
+		const instanceAiStore = useInstanceAiStore();
+		void instanceAiStore.loadThreads();
+	}
 });
 </script>
 
@@ -162,6 +198,12 @@ onMounted(() => {
 				/>
 			</KeyboardShortcutTooltip>
 			<N8nMenuItem
+				v-if="isInstanceAiAvailable"
+				:item="instanceAi"
+				:compact="isCollapsed"
+				:active="isInstanceAiRoute"
+			/>
+			<N8nMenuItem
 				:item="personalAgents"
 				:compact="isCollapsed"
 				:active="route.name === CHAT_PERSONAL_AGENTS_VIEW"
@@ -177,6 +219,35 @@ onMounted(() => {
 				:class="[$style.historySections, { [$style.collapsed]: isCollapsed }]"
 				data-test-id="chat-conversation-list"
 			>
+				<!-- Instance AI threads -->
+				<div v-if="isInstanceAiAvailable && instanceAiThreads.length > 0" :class="$style.group">
+					<N8nText
+						v-if="!isCollapsed"
+						:class="$style.groupHeader"
+						size="small"
+						bold
+						color="text-light"
+					>
+						Instance AI
+					</N8nText>
+					<N8nMenuItem
+						v-for="thread in instanceAiThreads"
+						:key="thread.id"
+						:item="{
+							id: `instance-ai-${thread.id}`,
+							label: thread.title || 'New conversation',
+							icon: 'sparkles',
+							route: {
+								to: {
+									name: CHAT_INSTANCE_AI_THREAD_VIEW,
+									params: { threadId: thread.id },
+								},
+							},
+						}"
+						:compact="isCollapsed"
+						:active="isInstanceAiRoute && currentInstanceAiThreadId === thread.id"
+					/>
+				</div>
 				<div v-if="!readyToShowSessions" :class="$style.group">
 					<SkeletonMenuItem v-for="i in 10" :key="`loading-${i}`" />
 				</div>

@@ -10,6 +10,8 @@ export const CHAT_CONVERSATION_VIEW = 'chat-conversation';
 export const CHAT_WORKFLOW_AGENTS_VIEW = 'chat-workflow-agents';
 export const CHAT_PERSONAL_AGENTS_VIEW = 'chat-personal-agents';
 export const CHAT_SETTINGS_VIEW = 'chat-settings';
+export const CHAT_INSTANCE_AI_VIEW = 'chat-instance-ai';
+export const CHAT_INSTANCE_AI_THREAD_VIEW = 'chat-instance-ai-thread';
 
 export const CHAT_SESSIONS_PAGE_SIZE = 18;
 export const MAX_AGENT_NAME_CHARS_MENU = 45;
@@ -34,6 +36,7 @@ export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	mistralCloud: 'Mistral Cloud',
 	n8n: 'Workflow agent',
 	'custom-agent': 'Personal agent',
+	'instance-ai': 'Instance AI',
 };
 
 export const vectorStoreProviderDisplayNames: Record<ChatHubVectorStoreProvider, string> = {

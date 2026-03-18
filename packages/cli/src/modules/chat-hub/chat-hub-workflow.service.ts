@@ -346,6 +346,10 @@ export class ChatHubWorkflowService {
 			};
 		}
 
+		if (model.provider === 'instance-ai') {
+			return { allowFileUploads: false, allowedFilesMimeTypes: '*' };
+		}
+
 		const metadata = getModelMetadata(model.provider, model.model);
 		return {
 			allowFileUploads: metadata.allowFileUploads,
@@ -724,7 +728,9 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 				options: {
 					enableStreaming,
 					maxTokensFromMemory:
-						model.provider !== 'n8n' && model.provider !== 'custom-agent'
+						model.provider !== 'n8n' &&
+						model.provider !== 'custom-agent' &&
+						model.provider !== 'instance-ai'
 							? getMaxContextWindowTokens(model.provider, model.model)
 							: undefined,
 					systemMessage,
@@ -743,7 +749,11 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 		conversationModel: ChatHubConversationModel,
 		providerSettings?: ChatProviderSettingsDto,
 	): INode {
-		if (conversationModel.provider === 'n8n' || conversationModel.provider === 'custom-agent') {
+		if (
+			conversationModel.provider === 'n8n' ||
+			conversationModel.provider === 'custom-agent' ||
+			conversationModel.provider === 'instance-ai'
+		) {
 			throw new OperationalError('Custom agent workflows do not require a model node');
 		}
 
@@ -1232,6 +1242,12 @@ Respond the title only:`,
 				timeZone,
 				trx,
 				executionMetadata,
+			);
+		}
+
+		if (model.provider === 'instance-ai') {
+			throw new OperationalError(
+				'Instance AI conversations should not be prepared as chat workflows',
 			);
 		}
 

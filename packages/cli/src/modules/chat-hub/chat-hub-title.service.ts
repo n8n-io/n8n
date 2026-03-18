@@ -102,7 +102,9 @@ export class ChatHubTitleService {
 			);
 
 			const providerSettings =
-				resolvedModel.provider !== 'n8n' && resolvedModel.provider !== 'custom-agent'
+				resolvedModel.provider !== 'n8n' &&
+				resolvedModel.provider !== 'custom-agent' &&
+				resolvedModel.provider !== 'instance-ai'
 					? await this.chatHubSettingsService.getProviderSettings(resolvedModel.provider, trx)
 					: undefined;
 
@@ -165,6 +167,10 @@ export class ChatHubTitleService {
 
 		if (model.provider === 'custom-agent') {
 			return await this.resolveFromCustomAgent(user, model, trx);
+		}
+
+		if (model.provider === 'instance-ai') {
+			throw new BadRequestError('Title generation is not supported for Instance AI conversations');
 		}
 
 		const credentialId = this.chatHubCredentialsService.findProviderCredential(

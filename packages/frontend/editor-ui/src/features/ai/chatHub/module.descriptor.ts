@@ -11,6 +11,8 @@ import {
 	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
 	CHAT_SETTINGS_VIEW,
 	CHAT_PROVIDER_SETTINGS_MODAL_KEY,
+	CHAT_INSTANCE_AI_VIEW,
+	CHAT_INSTANCE_AI_THREAD_VIEW,
 } from '@/features/ai/chatHub/constants';
 import { i18n } from '@n8n/i18n';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -22,6 +24,7 @@ const ChatPersonalAgentsView = async () =>
 	await import('@/features/ai/chatHub/ChatPersonalAgentsView.vue');
 const SettingsChatHubView = async () =>
 	await import('@/features/ai/chatHub/SettingsChatHubView.vue');
+const InstanceAiChatView = async () => await import('@/features/ai/chatHub/InstanceAiChatView.vue');
 
 export const ChatModule: FrontendModuleDescription = {
 	id: 'chat-hub',
@@ -155,6 +158,34 @@ export const ChatModule: FrontendModuleDescription = {
 				getProperties() {
 					return {
 						feature: 'chat-hub',
+					};
+				},
+			},
+		},
+		{
+			name: CHAT_INSTANCE_AI_VIEW,
+			path: '/home/chat/instance-ai',
+			component: InstanceAiChatView,
+			meta: {
+				layout: 'chat',
+				middleware: ['authenticated', 'custom'],
+				getProperties() {
+					return {
+						feature: 'instance-ai',
+					};
+				},
+			},
+		},
+		{
+			name: CHAT_INSTANCE_AI_THREAD_VIEW,
+			path: '/home/chat/instance-ai/:threadId',
+			component: InstanceAiChatView,
+			meta: {
+				layout: 'chat',
+				middleware: ['authenticated', 'custom'],
+				getProperties() {
+					return {
+						feature: 'instance-ai',
 					};
 				},
 			},

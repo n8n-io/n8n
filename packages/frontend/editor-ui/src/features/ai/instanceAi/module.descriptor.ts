@@ -1,7 +1,5 @@
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from './constants';
-
-const InstanceAiView = async () => await import('./InstanceAiView.vue');
+import { CHAT_INSTANCE_AI_VIEW, CHAT_INSTANCE_AI_THREAD_VIEW } from '../chatHub/constants';
 
 export const InstanceAiModule: FrontendModuleDescription = {
 	id: 'instance-ai',
@@ -10,21 +8,24 @@ export const InstanceAiModule: FrontendModuleDescription = {
 	icon: 'sparkles',
 	routes: [
 		{
-			name: INSTANCE_AI_VIEW,
+			name: 'instance-ai-redirect',
 			path: '/instance-ai',
-			component: InstanceAiView,
+			redirect: { name: CHAT_INSTANCE_AI_VIEW },
 			meta: {
 				layout: 'default',
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated'],
 			},
 		},
 		{
-			name: INSTANCE_AI_THREAD_VIEW,
+			name: 'instance-ai-thread-redirect',
 			path: '/instance-ai/:threadId',
-			component: InstanceAiView,
+			redirect: (to) => ({
+				name: CHAT_INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: to.params.threadId },
+			}),
 			meta: {
 				layout: 'default',
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated'],
 			},
 		},
 	],

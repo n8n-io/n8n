@@ -194,10 +194,13 @@ export function filterAndSortAgents(
 }
 
 export function stringifyModel(model: ChatHubConversationModel): string {
+	if (model.provider === 'instance-ai') return 'instance-ai';
 	return `${model.provider}::${model.provider === 'custom-agent' ? model.agentId : model.provider === 'n8n' ? model.workflowId : model.model}`;
 }
 
 export function fromStringToModel(value: string): ChatHubConversationModel | undefined {
+	if (value === 'instance-ai') return { provider: 'instance-ai' };
+
 	const [provider, identifier] = value.split('::');
 	const parsedProvider = chatHubProviderSchema.safeParse(provider).data;
 
@@ -209,7 +212,9 @@ export function fromStringToModel(value: string): ChatHubConversationModel | und
 		? { provider: 'n8n', workflowId: identifier }
 		: parsedProvider === 'custom-agent'
 			? { provider: 'custom-agent', agentId: identifier }
-			: { provider: parsedProvider, model: identifier };
+			: parsedProvider === 'instance-ai'
+				? { provider: 'instance-ai' }
+				: { provider: parsedProvider, model: identifier };
 }
 
 export function isMatchedAgent(agent: ChatModelDto, model: ChatHubConversationModel): boolean {
@@ -329,7 +334,7 @@ export function buildUiMessages(
 }
 
 export function isLlmProvider(provider?: ChatHubProvider): provider is ChatHubLLMProvider {
-	return provider !== 'n8n' && provider !== 'custom-agent';
+	return provider !== 'n8n' && provider !== 'custom-agent' && provider !== 'instance-ai';
 }
 
 export function isLlmProviderModel(

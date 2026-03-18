@@ -69,6 +69,7 @@ export const chatHubProviderSchema = z.enum([
 	...chatHubLLMProviderSchema.options,
 	'n8n',
 	'custom-agent',
+	'instance-ai',
 ] as const);
 export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
 
@@ -186,6 +187,10 @@ const chatAgentSchema = z.object({
 	agentId: z.string(),
 });
 
+const instanceAiModelSchema = z.object({
+	provider: z.literal('instance-ai'),
+});
+
 export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	openAIModelSchema,
 	anthropicModelSchema,
@@ -203,6 +208,7 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	mistralCloudModelSchema,
 	n8nModelSchema,
 	chatAgentSchema,
+	instanceAiModelSchema,
 ]);
 
 export type ChatHubOpenAIModel = z.infer<typeof openAIModelSchema>;
@@ -237,6 +243,7 @@ export type ChatHubBaseLLMModel =
 
 export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
 export type ChatHubCustomAgentModel = z.infer<typeof chatAgentSchema>;
+export type ChatHubInstanceAiModel = z.infer<typeof instanceAiModelSchema>;
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;
 
 /**
@@ -302,6 +309,8 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	n8n: { models: [] },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'custom-agent': { models: [] },
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'instance-ai': { models: [] },
 };
 
 /**
@@ -493,6 +502,27 @@ export interface ChatHubMessageDto {
 	revisionOfMessageId: ChatMessageId | null;
 
 	attachments: Array<{ fileName?: string; mimeType?: string }>;
+
+	/** Instance AI agent activity tree for history replay (only present for instance-ai messages) */
+	agentTree?: InstanceAiAgentTreeNode[];
+}
+
+/**
+ * A node in the Instance AI agent activity tree, used for
+ * replaying agent execution history in persisted messages.
+ */
+export interface InstanceAiAgentTreeNode {
+	agentId: string;
+	role: string;
+	status: 'running' | 'completed' | 'error';
+	children: InstanceAiAgentTreeNode[];
+	toolCalls: InstanceAiToolCallSummary[];
+}
+
+export interface InstanceAiToolCallSummary {
+	toolName: string;
+	status: 'running' | 'completed' | 'error';
+	result?: string;
 }
 
 export class ChatHubConversationsRequest extends Z.class({

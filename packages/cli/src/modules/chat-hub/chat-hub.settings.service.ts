@@ -49,8 +49,12 @@ export class ChatHubSettingsService {
 	}
 
 	async ensureModelIsAllowed(model: ChatHubConversationModel, trx?: EntityManager): Promise<void> {
-		if (model.provider === 'custom-agent' || model.provider === 'n8n') {
-			// Custom agents and n8n models are always allowed, for now
+		if (
+			model.provider === 'custom-agent' ||
+			model.provider === 'n8n' ||
+			model.provider === 'instance-ai'
+		) {
+			// Custom agents, n8n models, and instance-ai are always allowed, for now
 			return;
 		}
 

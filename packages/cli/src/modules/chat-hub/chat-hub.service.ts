@@ -76,11 +76,56 @@ export class ChatHubService {
 		provider: ChatHubProvider,
 		credentials: INodeCredentials,
 	): string | null {
-		if (provider === 'n8n' || provider === 'custom-agent') {
+		if (provider === 'n8n' || provider === 'custom-agent' || provider === 'instance-ai') {
 			return null;
 		}
 
 		return credentials[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]?.id ?? null;
+	}
+
+	/**
+	 * Delegate a message to Instance AI instead of building a workflow.
+	 * Ensures the thread exists, starts the run, and activates the stream bridge
+	 * so Chat Hub push events are emitted for the unified frontend.
+	 *
+	 * Uses lazy imports to avoid hard dependency on the instance-ai module
+	 * (which may not be installed in all environments).
+	 */
+	private async delegateToInstanceAi(
+		user: User,
+		sessionId: string,
+		messageId: string,
+		message: string,
+	): Promise<void> {
+		const { InstanceAiService } = await import('../instance-ai/instance-ai.service');
+		const { InstanceAiStreamBridgeService } = await import(
+			'../instance-ai/instance-ai-stream-bridge.service'
+		);
+		const { InstanceAiMemoryService } = await import('../instance-ai/instance-ai-memory.service');
+
+		const { Container } = await import('@n8n/di');
+		const instanceAiService = Container.get(InstanceAiService);
+		const streamBridge = Container.get(InstanceAiStreamBridgeService);
+		const memoryService = Container.get(InstanceAiMemoryService);
+
+		if (!instanceAiService.isEnabled()) {
+			throw new BadRequestError('Instance AI module is not enabled');
+		}
+
+		// Use sessionId as the Instance AI threadId for simplicity
+		const threadId = sessionId;
+
+		await memoryService.ensureThread(user.id, threadId);
+
+		// Start the stream bridge before starting the run
+		streamBridge.startBridge(threadId, user.id, sessionId, messageId);
+
+		try {
+			instanceAiService.startRun(user, threadId, message);
+		} catch (error) {
+			streamBridge.stopBridge(threadId);
+			throw error;
+		}
 	}
 
 	private async ensurePreviousMessage(
@@ -353,7 +398,7 @@ export class ChatHubService {
 				sessionUpdates.workflowId = updates.agent.model.workflowId;
 			} else if (updates.agent.model.provider === 'custom-agent') {
 				sessionUpdates.agentId = updates.agent.model.agentId;
-			} else {
+			} else if (updates.agent.model.provider !== 'instance-ai') {
 				sessionUpdates.model = updates.agent.model.model;
 			}
 		}
@@ -447,6 +492,13 @@ export class ChatHubService {
 			attachments,
 			timeZone,
 		} = payload;
+
+		// Route to Instance AI when the provider is 'instance-ai'
+		if (model.provider === 'instance-ai') {
+			await this.delegateToInstanceAi(user, sessionId, messageId, message);
+			return;
+		}
+
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
 		const credentialId = this.getModelCredential(model, credentials);
