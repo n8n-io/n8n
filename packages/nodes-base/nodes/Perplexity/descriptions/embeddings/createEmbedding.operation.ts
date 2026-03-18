@@ -49,6 +49,10 @@ const properties: INodeProperties[] = [
 				name: 'dimensions',
 				type: 'number',
 				default: 0,
+				typeOptions: {
+					minValue: 0,
+					numberPrecision: 0,
+				},
 				description:
 					'Number of dimensions for the output embedding. If 0 or unset, the full model dimensions are used.',
 				routing: {
