@@ -10,7 +10,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 		description: 'The table to access',
 		displayOptions: {
 			show: {
-				operation: ['getTable'],
+				operation: ['getTable', 'deleteTable'],
 			},
 		},
 		modes: [
@@ -102,6 +102,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 					'getVolume',
 					'deleteVolume',
 					'createFunction',
+					'createTable',
 				],
 			},
 		},
@@ -167,7 +168,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 		description: 'The schema to use',
 		displayOptions: {
 			show: {
-				operation: ['createVolume', 'getVolume', 'deleteVolume', 'createFunction'],
+				operation: ['createVolume', 'getVolume', 'deleteVolume', 'createFunction', 'createTable'],
 			},
 		},
 		modes: [
@@ -389,6 +390,70 @@ export const unityCatalogParameters: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'External storage location (required for EXTERNAL volumes)',
+			},
+		],
+	},
+
+	// Table Name - for createTable
+	{
+		displayName: 'Table Name',
+		name: 'tableName',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'my_table',
+		description: 'Name of the table to create',
+		displayOptions: {
+			show: {
+				operation: ['createTable'],
+			},
+		},
+	},
+
+	// Storage Location - for createTable (required; API only supports EXTERNAL tables)
+	{
+		displayName: 'Storage Location',
+		name: 'storageLocation',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 's3://my-bucket/path/to/table',
+		description:
+			'External storage root URL for the table. The Create Table API only supports external Delta tables.',
+		displayOptions: {
+			show: {
+				operation: ['createTable'],
+			},
+		},
+	},
+
+	// Additional Fields for createTable
+	{
+		displayName: 'Additional Fields',
+		name: 'tableAdditionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['createTable'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Columns',
+				name: 'columns',
+				type: 'json',
+				default: '[]',
+				description:
+					'Array of column definitions. Each column requires name and type_name (e.g. STRING, LONG, DOUBLE, BOOLEAN, DATE, TIMESTAMP).',
+			},
+			{
+				displayName: 'Comment',
+				name: 'comment',
+				type: 'string',
+				default: '',
+				description: 'Optional comment or description for the table',
 			},
 		],
 	},

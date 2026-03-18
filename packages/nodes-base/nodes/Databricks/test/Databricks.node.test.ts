@@ -442,6 +442,65 @@ describe('Databricks', () => {
 		});
 	});
 
+	describe('Unity Catalog -> Table Operations', () => {
+		beforeAll(() => {
+			const databricksNock = nock(HOST);
+
+			databricksNock
+				.get('/api/2.1/unity-catalog/tables')
+				.query({ catalog_name: 'main', schema_name: 'default' })
+				.reply(200, {
+					tables: [
+						{
+							name: 'my_table',
+							table_type: 'EXTERNAL',
+							catalog_name: 'main',
+							schema_name: 'default',
+							full_name: 'main.default.my_table',
+						},
+					],
+				});
+
+			databricksNock.get('/api/2.1/unity-catalog/tables/main.default.my_table').reply(200, {
+				name: 'my_table',
+				table_type: 'EXTERNAL',
+				catalog_name: 'main',
+				schema_name: 'default',
+				full_name: 'main.default.my_table',
+				created_at: 1704067200000,
+			});
+
+			databricksNock
+				.post('/api/2.1/unity-catalog/tables', {
+					catalog_name: 'main',
+					schema_name: 'default',
+					name: 'new_table',
+					table_type: 'EXTERNAL',
+					data_source_format: 'DELTA',
+					storage_location: 's3://my-bucket/main/default/new_table',
+				})
+				.reply(200, {
+					name: 'new_table',
+					table_type: 'EXTERNAL',
+					data_source_format: 'DELTA',
+					catalog_name: 'main',
+					schema_name: 'default',
+					full_name: 'main.default.new_table',
+					storage_location: 's3://my-bucket/main/default/new_table',
+					created_at: 1704067200000,
+				});
+
+			databricksNock.delete('/api/2.1/unity-catalog/tables/main.default.old_table').reply(200, {});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['unity-catalog-tables.workflow.json'],
+		});
+	});
+
 	describe('Vector Search -> Operations', () => {
 		beforeAll(() => {
 			const databricksNock = nock(HOST);

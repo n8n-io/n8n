@@ -24,6 +24,12 @@ export const unityCatalogOperations: INodeProperties = {
 			action: 'Create a function',
 		},
 		{
+			name: 'Create Table',
+			value: 'createTable',
+			description: 'Register a new table',
+			action: 'Create a table',
+		},
+		{
 			name: 'Create Volume',
 			value: 'createVolume',
 			description: 'Create a new volume',
@@ -40,6 +46,12 @@ export const unityCatalogOperations: INodeProperties = {
 			value: 'deleteFunction',
 			description: 'Delete a function',
 			action: 'Delete a function',
+		},
+		{
+			name: 'Delete Table',
+			value: 'deleteTable',
+			description: 'Delete a table',
+			action: 'Delete a table',
 		},
 		{
 			name: 'Delete Volume',
