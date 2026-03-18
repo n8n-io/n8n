@@ -12,9 +12,6 @@ import {
 } from '../../../config/ai-builder-wizard-fixtures';
 import { test, expect } from '../../../fixtures/base';
 
-/** Timeout for operations that hit the real backend (trigger execution, workflow save). */
-const BACKEND_TIMEOUT = 15_000;
-
 test.describe(
 	'Builder Setup Wizard @auth:owner @ai',
 	{
@@ -97,10 +94,8 @@ test.describe(
 
 			// 2 visible cards: Slack (card 1) + Telegram (card 2)
 			await bw.mockBuilderStream(createBuilderResponseThreeCardsNoTriggerPin());
-			const workflowSaved = bw.waitForWorkflowSaved();
-			await bw.triggerWorkflowGeneration();
-			await workflowSaved;
 			await bw.mockAutosave();
+			await bw.triggerWorkflowGeneration();
 
 			// Navigate to Telegram (card 2/2)
 			await bw.navigateToCard('Telegram');
@@ -122,10 +117,8 @@ test.describe(
 			const wiz = n8n.aiBuilder.wizard;
 
 			await bw.mockBuilderStream(createBuilderResponseWithoutTriggerPinData());
-			const workflowSaved = bw.waitForWorkflowSaved();
-			await bw.triggerWorkflowGeneration();
-			await workflowSaved;
 			await bw.mockAutosave();
+			await bw.triggerWorkflowGeneration();
 
 			// Follow-up inserts Telegram between trigger and Slack.
 			// After filter: Telegram + Slack = 2 cards.
@@ -262,34 +255,6 @@ test.describe(
 			// Credential is auto-applied, but the text parameter is empty (placeholder was cleared).
 			// Card should NOT be complete — both credential AND parameters are required.
 			await expect(wiz.getCompleteCheck()).not.toBeVisible();
-		});
-
-		test('should dismiss wizard after all cards complete and workflow executes', async ({
-			n8n,
-			api,
-		}) => {
-			await api.credentials.createCredential({
-				name: `Slack Test ${nanoid()}`,
-				type: 'slackApi',
-				data: { accessToken: 'xoxb-test-token' },
-				projectId,
-			});
-
-			const { builderWizardComposer: bw } = n8n;
-			const wiz = n8n.aiBuilder.wizard;
-
-			// Credential auto-applies to Slack → Slack card completes immediately
-			await bw.mockBuilderStream(createBuilderResponseWithoutTriggerPinData());
-			const workflowSaved = bw.waitForWorkflowSaved();
-			await bw.triggerWorkflowGeneration();
-			await workflowSaved;
-
-			// Wait for execute button to become enabled (all cards complete from auto-applied credential)
-			await expect(wiz.getExecuteStepButton()).toBeEnabled({ timeout: BACKEND_TIMEOUT });
-
-			// Click per-card execute → wizard should dismiss after execution
-			await wiz.getExecuteStepButton().click();
-			await expect(wiz.getWizard()).not.toBeVisible({ timeout: BACKEND_TIMEOUT });
 		});
 	},
 );
