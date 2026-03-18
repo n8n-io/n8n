@@ -1488,7 +1488,9 @@ export class Databricks implements INodeType {
 
 					// First chunk might be in the initial response
 					if (queryResult.result?.data_array) {
-						allRows.push.apply(allRows, queryResult.result.data_array);
+						for (const row of queryResult.result.data_array) {
+							allRows.push(row);
+						}
 						chunkIndex = 1;
 					}
 
@@ -1508,7 +1510,9 @@ export class Databricks implements INodeType {
 						)) as { data_array?: any[][] };
 
 						if (chunkResponse.data_array) {
-							allRows.push.apply(allRows, chunkResponse.data_array);
+							for (const row of chunkResponse.data_array) {
+								allRows.push(row);
+							}
 						}
 
 						chunkIndex++;
