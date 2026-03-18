@@ -19,6 +19,12 @@ export default {
 			options: ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'],
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A typographic heading component for section and page titles.' },
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
