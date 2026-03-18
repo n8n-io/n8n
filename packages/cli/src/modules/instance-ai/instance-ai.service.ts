@@ -52,6 +52,7 @@ import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import { MastraIterationLogStorage } from './iteration-log-storage';
 import { MastraTaskStorage } from './task-storage';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
+import { InstanceAiCompactionService } from './compaction.service';
 import { WorkflowLoopStorage } from './workflow-loop-storage';
 
 interface ActiveRun {
@@ -183,6 +184,7 @@ export class InstanceAiService {
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly compositeStore: TypeORMCompositeStore,
+		private readonly compactionService: InstanceAiCompactionService,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
@@ -721,12 +723,37 @@ export class InstanceAiService {
 				disableDeferredTools: true,
 			});
 
+			// Compact older conversation history into a summary (best-effort, non-blocking on failure)
+			this.eventBus.publish(threadId, {
+				type: 'status',
+				runId,
+				agentId: ORCHESTRATOR_AGENT_ID,
+				payload: { message: 'Recalling conversation...' },
+			});
+			const conversationSummary = await this.compactionService.prepareCompactedContext(
+				threadId,
+				memory,
+				modelId,
+				this.instanceAiConfig.lastMessages ?? 20,
+			);
+			this.eventBus.publish(threadId, {
+				type: 'status',
+				runId,
+				agentId: ORCHESTRATOR_AGENT_ID,
+				payload: { message: '' },
+			});
+
 			// Inject completed/running background task context into the message
 			const enrichedMessage = await this.enrichMessageWithBackgroundTasks(
 				threadId,
 				message,
 				workflowLoopStorage,
 			);
+
+			// Compose runtime input: conversation summary → background tasks → user message
+			const fullMessage = conversationSummary
+				? `${conversationSummary}\n\n${enrichedMessage}`
+				: enrichedMessage;
 
 			// Build multimodal message when attachments are present
 			const streamInput =
@@ -735,7 +762,7 @@ export class InstanceAiService {
 							{
 								role: 'user' as const,
 								content: [
-									{ type: 'text' as const, text: enrichedMessage },
+									{ type: 'text' as const, text: fullMessage },
 									...attachments.map((a) => ({
 										type: 'file' as const,
 										data: a.data,
@@ -744,7 +771,7 @@ export class InstanceAiService {
 								],
 							},
 						]
-					: enrichedMessage;
+					: fullMessage;
 
 			const result = await agent.stream(streamInput, {
 				abortSignal: signal,
