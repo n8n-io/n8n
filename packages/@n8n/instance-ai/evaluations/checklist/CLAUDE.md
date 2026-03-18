@@ -71,7 +71,9 @@ LANGSMITH_API_KEY=...
 │   Verify outputs against execution checklist            │
 ├─────────────────────────────────────────────────────────┤
 │ Phase 4: Verification                                   │
-│   Build artifact → Claude verifies each checklist item  │
+│   Fetch rich messages via GET /threads/:id/messages     │
+│   Build artifact from agent trees (full tool results)   │
+│   Claude verifies each checklist item against artifact  │
 │   Score = passed / total for both build + execution     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -83,8 +85,8 @@ LANGSMITH_API_KEY=...
 | `cli.ts` | CLI entry point, argument parsing, orchestration |
 | `runner.ts` | Runs a single prompt end-to-end (SSE → events → outcome → verify) |
 | `checklist.ts` | Claude-powered checklist extraction and verification |
-| `verification.ts` | Builds verification artifact, handles execution testing with pin data |
-| `n8n-client.ts` | HTTP client for n8n REST API and instance-ai endpoints |
+| `verification.ts` | Builds verification artifact from rich messages, handles execution testing with pin data |
+| `n8n-client.ts` | HTTP client for n8n REST API and instance-ai endpoints (incl. thread messages) |
 | `sse-client.ts` | Lightweight SSE stream parser |
 | `credentials.ts` | Test credential fixtures (Slack, Notion, GitHub, Gmail, etc.) |
 | `synthetic-prompts.ts` | Test prompt dataset with complexity and tag metadata |

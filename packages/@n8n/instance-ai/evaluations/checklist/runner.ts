@@ -15,7 +15,7 @@ import {
 	extractOutcomeFromEvents,
 	buildAgentOutcome,
 	buildMetrics,
-	buildVerificationArtifact,
+	buildVerificationArtifactFromMessages,
 	cleanupEvalArtifacts,
 	snapshotWorkflowIds,
 	runPostBuildExecutions,
@@ -183,11 +183,14 @@ export async function runSingleExample(
 			}
 		}
 
-		// 8. Build verification artifact and run checklist
-		const verificationArtifact = buildVerificationArtifact(
+		// 8. Build verification artifact from rich messages (structured tool results)
+		if (config.verbose) {
+			log(`[${threadId}] Fetching thread messages for artifact...`);
+		}
+		const threadMessages = await config.n8nClient.getThreadMessages(threadId);
+		const verificationArtifact = buildVerificationArtifactFromMessages(
+			threadMessages.messages,
 			outcome,
-			eventOutcome.toolCalls,
-			eventOutcome.agentActivities,
 		);
 
 		if (config.verbose) {

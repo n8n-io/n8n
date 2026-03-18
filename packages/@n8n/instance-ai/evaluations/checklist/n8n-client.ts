@@ -6,6 +6,8 @@
 // the REST API for post-run verification.
 // ---------------------------------------------------------------------------
 
+import type { InstanceAiRichMessagesResponse } from '@n8n/api-types';
+
 // ---------------------------------------------------------------------------
 // Response shapes from the n8n REST API (wrapped in { data: ... })
 // ---------------------------------------------------------------------------
@@ -120,6 +122,16 @@ export class N8nClient {
 	 */
 	async getThreadStatus(threadId: string): Promise<ThreadStatus> {
 		return (await this.fetch(`/rest/instance-ai/threads/${threadId}/status`)) as ThreadStatus;
+	}
+
+	/**
+	 * Get rich messages for a thread (structured agent trees with tool call results).
+	 * GET /instance-ai/threads/:threadId/messages
+	 */
+	async getThreadMessages(threadId: string): Promise<InstanceAiRichMessagesResponse> {
+		return (await this.fetch(
+			`/rest/instance-ai/threads/${threadId}/messages`,
+		)) as InstanceAiRichMessagesResponse;
 	}
 
 	// ── REST API (verification helpers) ───────────────────────────────────

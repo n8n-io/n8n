@@ -65,12 +65,12 @@ describe('delegateInputSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('rejects empty tools array', () => {
+	it('accepts empty tools array (defaults to [])', () => {
 		const result = delegateInputSchema.safeParse({
 			...makeValidInput(),
 			tools: [],
 		});
-		expect(result.success).toBe(false);
+		expect(result.success).toBe(true);
 	});
 
 	it('rejects missing required field', () => {
