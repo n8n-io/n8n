@@ -25,13 +25,9 @@ export class InstanceAiModule implements ModuleInterface {
 		const localGateway = service.isLocalFilesystemAvailable();
 		const localGatewayDisabled = settingsService.isFilesystemDisabled();
 		const localGatewayFallbackDirectory = service.getLocalFilesystemDirectory();
-		// Gateway connection status is per-user — use GET /gateway/status or the
-		// instanceAiGatewayStateChanged push notification for per-user state.
 		return {
 			enabled,
 			localGateway,
-			gatewayConnected: false,
-			gatewayDirectory: null,
 			localGatewayDisabled,
 			localGatewayFallbackDirectory,
 		};

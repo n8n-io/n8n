@@ -541,12 +541,7 @@ export class InstanceAiService {
 		for (const [, task] of this.backgroundTasks) task.abortController.abort();
 		this.backgroundTasks.clear();
 
-		for (const state of this.userGateways.values()) {
-			if (state.disconnectTimer) clearTimeout(state.disconnectTimer);
-			state.gateway.disconnect();
-		}
-		this.userGateways.clear();
-		this.apiKeyToUserId.clear();
+		this.gatewayRegistry.disconnectAll();
 
 		for (const [, pending] of this.pendingSubAgentConfirmations) {
 			pending.resolve({ approved: false });
@@ -599,7 +594,7 @@ export class InstanceAiService {
 			}
 
 			const localGatewayDisabled = this.settingsService.isFilesystemDisabled();
-			const userGateway = this.userGateways.get(user.id)?.gateway;
+			const userGateway = this.gatewayRegistry.findGateway(user.id);
 			const localFilesystemService =
 				!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
 					? this.getLocalFsProvider()

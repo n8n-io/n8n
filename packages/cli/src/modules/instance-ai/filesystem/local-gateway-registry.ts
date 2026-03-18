@@ -27,6 +27,15 @@ export class LocalGatewayRegistry {
 	/** Reverse lookup: pairing token or session key → userId. Used to route daemon requests. */
 	private readonly apiKeyToUserId = new Map<string, string>();
 
+	/** Generate a key with the given prefix that is not already in the reverse lookup. */
+	private generateUniqueKey(prefix: string): string {
+		let key: string;
+		do {
+			key = `${prefix}_${nanoid(32)}`;
+		} while (this.apiKeyToUserId.has(key));
+		return key;
+	}
+
 	private getOrCreate(userId: string): UserGatewayState {
 		if (!this.userGateways.has(userId)) {
 			this.userGateways.set(userId, {
@@ -56,7 +65,7 @@ export class LocalGatewayRegistry {
 		const existing = this.getPairingToken(userId);
 		if (existing) return existing;
 
-		const token = `gw_${nanoid(32)}`;
+		const token = this.generateUniqueKey('gw');
 		state.pairingToken = { token, createdAt: Date.now() };
 		this.apiKeyToUserId.set(token, userId);
 		return token;
@@ -85,9 +94,10 @@ export class LocalGatewayRegistry {
 
 		this.apiKeyToUserId.delete(token);
 		state.pairingToken = null; // Consumed — cannot be reused
-		state.activeSessionKey = `sess_${nanoid(32)}`;
-		this.apiKeyToUserId.set(state.activeSessionKey, userId);
-		return state.activeSessionKey;
+		const sessionKey = this.generateUniqueKey('sess');
+		state.activeSessionKey = sessionKey;
+		this.apiKeyToUserId.set(sessionKey, userId);
+		return sessionKey;
 	}
 
 	/** Get the active session key for a user. */
@@ -106,6 +116,11 @@ export class LocalGatewayRegistry {
 	/** Return the user's LocalGateway instance, creating state if needed. */
 	getGateway(userId: string): LocalGateway {
 		return this.getOrCreate(userId).gateway;
+	}
+
+	/** Return the user's LocalGateway if state exists, or undefined if the user has never connected. */
+	findGateway(userId: string): LocalGateway | undefined {
+		return this.userGateways.get(userId)?.gateway;
 	}
 
 	/** Initialize the gateway from daemon capabilities. Clears any pending disconnect timer. */

@@ -1,5 +1,7 @@
 # Local Gateway — Feature Specification
 
+> Backend technical design: [technical-spec.md](./technical-spec.md)
+
 ## Overview
 
 The Local Gateway is a feature of n8n's Instance AI that allows a user to connect
