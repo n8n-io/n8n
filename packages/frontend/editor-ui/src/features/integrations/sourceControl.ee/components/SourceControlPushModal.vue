@@ -42,7 +42,7 @@ import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
-import { createAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import {
 	N8nBadge,
 	N8nButton,
@@ -132,7 +132,7 @@ const projectAdminCalloutDismissed = useStorage(
 	localStorage,
 );
 
-const searchFnForFilters = createAvailableProjectSearch(projectsStore);
+const searchFnForFilters = useAvailableProjectSearch();
 const filterFnForFilters = (project: ProjectListItem) =>
 	!project.role || project.role === 'project:admin';
 

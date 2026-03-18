@@ -21,7 +21,7 @@ import type { ProjectListItem, ProjectSharingData } from '../projects.types';
 // ProjectListItem extends ProjectSharingData with `role` - the toast component types
 // expect ProjectListItem but only uses fields from ProjectSharingData (name, type).
 import {
-	createAvailableProjectSearch,
+	useAvailableProjectSearch,
 	getTruncatedProjectName,
 	MAX_NAME_LENGTH,
 	ResourceType,
@@ -57,7 +57,7 @@ const uiStore = useUIStore();
 const toast = useToast();
 const router = useRouter();
 const projectsStore = useProjectsStore();
-const searchFn = createAvailableProjectSearch(projectsStore);
+const searchFn = useAvailableProjectSearch();
 const workflowsListStore = useWorkflowsListStore();
 const credentialsStore = useCredentialsStore();
 const telemetry = useTelemetry();

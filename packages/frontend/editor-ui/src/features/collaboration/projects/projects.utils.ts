@@ -1,6 +1,6 @@
 import { truncate } from '@n8n/utils/string/truncate';
 import type { ProjectListItem } from './projects.types';
-import type { useProjectsStore } from './projects.store';
+import { useProjectsStore } from './projects.store';
 
 export const DEFAULT_PROJECT_SEARCH_PAGE_SIZE = 50;
 
@@ -11,9 +11,8 @@ export type ProjectSearchFn = (query: string) => Promise<ProjectSearchResult>;
  * Remote search for Group 1 consumers (sharing/transfer modals).
  * Always searches via GET /projects?search=&take= for ALL roles.
  */
-export function createRemoteProjectSearch(
-	store: ReturnType<typeof useProjectsStore>,
-): ProjectSearchFn {
+export function useRemoteProjectSearch(): ProjectSearchFn {
+	const store = useProjectsStore();
 	return async (query: string) => {
 		return await store.searchProjects({
 			search: query,
@@ -27,9 +26,8 @@ export function createRemoteProjectSearch(
  * - Admin (has project:list): remote search via GET /projects
  * - Member (no project:list): local filter over myProjects (bounded set)
  */
-export function createAvailableProjectSearch(
-	store: ReturnType<typeof useProjectsStore>,
-): ProjectSearchFn {
+export function useAvailableProjectSearch(): ProjectSearchFn {
+	const store = useProjectsStore();
 	return async (query: string) => {
 		if (store.globalProjectPermissions.list) {
 			return await store.searchProjects({

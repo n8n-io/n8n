@@ -30,7 +30,7 @@ import {
 	ResourceType,
 	getTruncatedProjectName,
 	splitName,
-	createAvailableProjectSearch,
+	useAvailableProjectSearch,
 } from '@/features/collaboration/projects/projects.utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useToast } from '@/app/composables/useToast';
@@ -123,7 +123,7 @@ const unShareableCredentials = computed(() =>
 	),
 );
 
-const searchFn = createAvailableProjectSearch(projectsStore);
+const searchFn = useAvailableProjectSearch();
 const filterFn = (p: ProjectListItem) =>
 	!p.scopes || !!getResourcePermissions(p.scopes)[props.data.resourceType].create;
 

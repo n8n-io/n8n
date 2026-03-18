@@ -17,7 +17,7 @@ import type {
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import {
 	splitName,
-	createRemoteProjectSearch,
+	useRemoteProjectSearch,
 } from '@/features/collaboration/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -73,7 +73,7 @@ const credentialDataHomeProject = computed<ProjectSharingData | undefined>(() =>
 		: undefined;
 });
 
-const searchFn = createRemoteProjectSearch(projectsStore);
+const searchFn = useRemoteProjectSearch();
 const filterFn = (project: ProjectListItem) =>
 	project.id !== props.credential?.homeProject?.id &&
 	project.id !== credentialDataHomeProject.value?.id;

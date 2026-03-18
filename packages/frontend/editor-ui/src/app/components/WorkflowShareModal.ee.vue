@@ -19,7 +19,7 @@ import ProjectSharing from '@/features/collaboration/projects/components/Project
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData, Project } from '@/features/collaboration/projects/projects.types';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
-import { createRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -113,7 +113,7 @@ const workflowOwnerName = computed(() =>
 	workflowsEEStore.getWorkflowOwnerName(`${workflow.value.id}`),
 );
 
-const searchFn = createRemoteProjectSearch(projectsStore);
+const searchFn = useRemoteProjectSearch();
 const filterFn = (project: ProjectListItem) =>
 	project.type === 'personal' && project.id !== workflow.value.homeProject?.id;
 

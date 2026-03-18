@@ -4,7 +4,7 @@ import ProjectSharing from '@/features/collaboration/projects/components/Project
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { createAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { DateValue } from '@internationalized/date';
@@ -195,7 +195,7 @@ onMounted(() => {
 // Must be *only* <email> — no extra text before or after
 const emailPattern = /^<([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})>$/;
 
-const searchFn = createAvailableProjectSearch(projectsStore);
+const searchFn = useAvailableProjectSearch();
 const filterFn = (project: ProjectListItem) =>
 	!!project.name && !emailPattern.test(project.name.trim());
 

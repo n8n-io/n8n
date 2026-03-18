@@ -5,7 +5,7 @@ import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
-import { createAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import type { BaseFilters } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 
@@ -45,7 +45,7 @@ const projectsStore = useProjectsStore();
 
 const i18n = useI18n();
 
-const searchFn = createAvailableProjectSearch(projectsStore);
+const searchFn = useAvailableProjectSearch();
 
 const selectedProject = computed<ProjectSharingData | null>({
 	get: () => {
