@@ -17,7 +17,9 @@ import type {
 	CapturedEvent,
 	CapturedToolCall,
 	ExecutionSummary,
+	ExecutionTestInput,
 	InstanceAiMetrics,
+	NodeOutputData,
 	PromptConfig,
 	WorkflowSummary,
 } from './types';
@@ -473,6 +475,12 @@ export function buildVerificationArtifact(
 			if (exec.triggeredByEval) parts.push('  Triggered by: eval runner (post-build)');
 			if (exec.error) parts.push(`  Error: ${exec.error}`);
 			if (exec.failedNode) parts.push(`  Failed node: ${exec.failedNode}`);
+			if (exec.outputData && exec.outputData.length > 0) {
+				for (const nodeOutput of exec.outputData) {
+					parts.push(`  Node "${nodeOutput.nodeName}" output:`);
+					parts.push(`  \`\`\`json\n${JSON.stringify(nodeOutput.data, null, 2)}\n  \`\`\``);
+				}
+			}
 			return parts.join('\n');
 		});
 		sections.push(formatSection('Execution Results', execLines.join('\n\n')));
@@ -518,16 +526,19 @@ const EXECUTION_POLL_TIMEOUT_MS = 30_000;
 
 /**
  * Force-execute every created workflow that wasn't already executed.
- * Enriches existing execution summaries with error/failedNode details.
+ * Enriches existing execution summaries with error/failedNode details and output data.
+ * When `testInputs` are provided, uses pin data to execute ALL trigger types
+ * (including webhooks, forms, schedules) with the provided test data.
  * Mutates `outcome.executionsRun` in place.
  */
 export async function runPostBuildExecutions(
 	client: N8nClient,
 	outcome: AgentOutcome,
+	testInputs?: ExecutionTestInput[],
 ): Promise<void> {
 	const alreadyExecutedWorkflowIds = new Set(outcome.executionsRun.map((e) => e.workflowId));
 
-	// Enrich already-executed workflows with error/failedNode details
+	// Enrich already-executed workflows with error/failedNode details + output data
 	for (const exec of outcome.executionsRun) {
 		if (exec.status === 'success' || exec.status === 'running') continue;
 		try {
@@ -535,6 +546,7 @@ export async function runPostBuildExecutions(
 			const { error, failedNode } = extractErrorFromExecution(detail.data);
 			if (error) exec.error = error;
 			if (failedNode) exec.failedNode = failedNode;
+			exec.outputData = extractOutputFromExecution(detail.data);
 		} catch {
 			// Non-fatal — keep existing summary
 		}
@@ -546,8 +558,13 @@ export async function runPostBuildExecutions(
 
 		const triggerNode = findTriggerNode(outcome.workflowJsons, wf.id);
 
-		// Skip non-executable triggers (webhook, schedule, form)
-		if (triggerNode && NON_EXECUTABLE_TRIGGERS.has(triggerNode.type)) {
+		// Check if we have a matching test input for this workflow's trigger type
+		const matchingInput = testInputs
+			? findMatchingTestInput(triggerNode?.type, testInputs)
+			: undefined;
+
+		// Skip non-executable triggers ONLY when no test inputs are available
+		if (!matchingInput && triggerNode && NON_EXECUTABLE_TRIGGERS.has(triggerNode.type)) {
 			outcome.executionsRun.push({
 				id: '',
 				workflowId: wf.id,
@@ -558,11 +575,22 @@ export async function runPostBuildExecutions(
 		}
 
 		try {
-			const { executionId } = await client.executeWorkflow(wf.id, triggerNode?.name);
-
-			// Poll for completion
-			const executionSummary = await pollExecution(client, executionId, wf.id);
-			outcome.executionsRun.push(executionSummary);
+			if (matchingInput && triggerNode) {
+				// Use pin data to execute with test inputs
+				const executionSummary = await executeWithPinData(
+					client,
+					wf.id,
+					triggerNode.name,
+					triggerNode.type,
+					matchingInput,
+				);
+				outcome.executionsRun.push(executionSummary);
+			} else {
+				// Execute without pin data (existing behavior)
+				const { executionId } = await client.executeWorkflow(wf.id, triggerNode?.name);
+				const executionSummary = await pollExecution(client, executionId, wf.id);
+				outcome.executionsRun.push(executionSummary);
+			}
 		} catch (err: unknown) {
 			const errorMessage = err instanceof Error ? err.message : String(err);
 			outcome.executionsRun.push({
@@ -572,6 +600,110 @@ export async function runPostBuildExecutions(
 				error: errorMessage,
 				triggeredByEval: true,
 			});
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Pin data execution helpers
+// ---------------------------------------------------------------------------
+
+/** Map n8n node type to ExecutionTestInput.triggerType */
+function nodeTypeToTriggerType(nodeType: string): ExecutionTestInput['triggerType'] | undefined {
+	if (nodeType.includes('webhook') || nodeType === 'n8n-nodes-base.webhook') return 'webhook';
+	if (nodeType.includes('formTrigger') || nodeType === 'n8n-nodes-base.formTrigger') return 'form';
+	if (nodeType.includes('manualTrigger') || nodeType === 'n8n-nodes-base.manualTrigger')
+		return 'manual';
+	if (nodeType.includes('scheduleTrigger') || nodeType === 'n8n-nodes-base.scheduleTrigger')
+		return 'schedule';
+	// Also handle cron trigger
+	if (nodeType.includes('cron') || nodeType.includes('Cron')) return 'schedule';
+	return undefined;
+}
+
+function findMatchingTestInput(
+	nodeType: string | undefined,
+	testInputs: ExecutionTestInput[],
+): ExecutionTestInput | undefined {
+	if (!nodeType || testInputs.length === 0) return undefined;
+	const triggerType = nodeTypeToTriggerType(nodeType);
+	if (!triggerType) return undefined;
+	return testInputs.find((input) => input.triggerType === triggerType);
+}
+
+/** Build pin data for a trigger node based on trigger type and test input */
+function buildPinData(
+	triggerNodeName: string,
+	triggerNodeType: string,
+	testInput: ExecutionTestInput,
+): Record<string, unknown> {
+	const triggerType = nodeTypeToTriggerType(triggerNodeType) ?? testInput.triggerType;
+
+	switch (triggerType) {
+		case 'webhook':
+			return {
+				[triggerNodeName]: [{ json: { headers: {}, query: {}, body: testInput.testData } }],
+			};
+		case 'form':
+			return {
+				[triggerNodeName]: [
+					{
+						json: {
+							submittedAt: new Date().toISOString(),
+							formMode: 'eval',
+							...testInput.testData,
+						},
+					},
+				],
+			};
+		case 'schedule':
+			return {
+				[triggerNodeName]: [
+					{ json: { timestamp: new Date().toISOString(), ...testInput.testData } },
+				],
+			};
+		case 'manual':
+		default:
+			return {
+				[triggerNodeName]: [{ json: testInput.testData }],
+			};
+	}
+}
+
+/**
+ * Execute a workflow using pin data on the trigger node.
+ * Sets pin data → executes → polls → captures output → restores pin data.
+ */
+async function executeWithPinData(
+	client: N8nClient,
+	workflowId: string,
+	triggerNodeName: string,
+	triggerNodeType: string,
+	testInput: ExecutionTestInput,
+): Promise<ExecutionSummary> {
+	// Save original workflow to restore pin data later
+	const originalWorkflow = await client.getWorkflow(workflowId);
+	const originalPinData = originalWorkflow.pinData ?? null;
+
+	const pinData = buildPinData(triggerNodeName, triggerNodeType, testInput);
+
+	try {
+		// Set pin data on the workflow
+		await client.updateWorkflow(workflowId, { pinData });
+
+		// Execute with triggerToStartFrom
+		const { executionId } = await client.executeWorkflow(workflowId, triggerNodeName);
+
+		// Poll for completion and extract output
+		return await pollExecution(client, executionId, workflowId);
+	} finally {
+		// Restore original pin data (best-effort)
+		try {
+			await client.updateWorkflow(workflowId, {
+				pinData: originalPinData ?? {},
+			});
+		} catch {
+			// Non-fatal — pin data restoration failure
 		}
 	}
 }
@@ -588,6 +720,7 @@ async function pollExecution(
 			const detail = await client.getExecution(executionId);
 			if (detail.status !== 'running' && detail.status !== 'new') {
 				const { error, failedNode } = extractErrorFromExecution(detail.data);
+				const outputData = extractOutputFromExecution(detail.data);
 				return {
 					id: executionId,
 					workflowId,
@@ -595,6 +728,7 @@ async function pollExecution(
 					error,
 					failedNode,
 					triggeredByEval: true,
+					outputData,
 				};
 			}
 		} catch {
@@ -635,10 +769,17 @@ function findTriggerNode(
 		);
 }
 
+interface FlatExecRunEntry {
+	data?: {
+		main?: Array<Array<{ json: Record<string, unknown> }> | null>;
+	};
+}
+
 interface FlatExecResultData {
 	resultData?: {
 		error?: { message?: string };
 		lastNodeExecuted?: string;
+		runData?: Record<string, FlatExecRunEntry[]>;
 	};
 }
 
@@ -656,6 +797,52 @@ function extractErrorFromExecution(flattedData: string): { error?: string; faile
 		};
 	} catch {
 		return {};
+	}
+}
+
+const MAX_NODE_OUTPUT_CHARS = 5000;
+
+function extractOutputFromExecution(flattedData: string): NodeOutputData[] {
+	if (!flattedData) return [];
+
+	try {
+		const parsed = parseFlatted(flattedData) as FlatExecResultData;
+		const runData = parsed?.resultData?.runData;
+		if (!runData) return [];
+
+		const outputs: NodeOutputData[] = [];
+
+		for (const [nodeName, taskDataArray] of Object.entries(runData)) {
+			if (!Array.isArray(taskDataArray) || taskDataArray.length === 0) continue;
+
+			const firstRun = taskDataArray[0];
+			const mainOutput = firstRun?.data?.main;
+			if (!Array.isArray(mainOutput) || mainOutput.length === 0) continue;
+
+			const firstConnection = mainOutput[0];
+			if (!Array.isArray(firstConnection) || firstConnection.length === 0) continue;
+
+			const items = firstConnection
+				.filter((item): item is { json: Record<string, unknown> } => item?.json !== undefined)
+				.map((item) => item.json);
+
+			if (items.length === 0) continue;
+
+			// Truncate large outputs to keep the artifact manageable
+			const jsonStr = JSON.stringify(items);
+			if (jsonStr.length > MAX_NODE_OUTPUT_CHARS) {
+				outputs.push({
+					nodeName,
+					data: [{ _truncated: true, _preview: jsonStr.slice(0, MAX_NODE_OUTPUT_CHARS) }],
+				});
+			} else {
+				outputs.push({ nodeName, data: items });
+			}
+		}
+
+		return outputs;
+	} catch {
+		return [];
 	}
 }
 

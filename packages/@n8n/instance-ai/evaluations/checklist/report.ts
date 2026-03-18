@@ -252,6 +252,21 @@ function renderResultRow(result: InstanceAiResult, index: number, n8nBaseUrl: st
 		result.checklistScore >= 0.8 ? 'good' : result.checklistScore >= 0.5 ? 'ok' : 'bad';
 	const successClass = result.success ? 'good' : 'bad';
 
+	const execPassedCount = (result.executionChecklistResults ?? []).filter((r) => r.pass).length;
+	const execTotalCount = (result.executionChecklist ?? []).length;
+	const execScoreClass =
+		execTotalCount === 0
+			? ''
+			: result.executionChecklistScore >= 0.8
+				? 'good'
+				: result.executionChecklistScore >= 0.5
+					? 'ok'
+					: 'bad';
+	const execScoreText =
+		execTotalCount > 0
+			? `${execPassedCount}/${execTotalCount} (${formatScore(result.executionChecklistScore)})`
+			: '-';
+
 	const promptHash = simpleHash(result.prompt);
 	const { metrics } = result;
 
@@ -262,13 +277,14 @@ function renderResultRow(result: InstanceAiResult, index: number, n8nBaseUrl: st
 			<td class="tags-cell">${renderTags(result.tags)}</td>
 			<td class="${successClass}">${result.success ? 'PASS' : 'FAIL'}</td>
 			<td class="${scoreClass}">${passedCount}/${totalCount} (${formatScore(result.checklistScore)})</td>
+			<td class="${execScoreClass}">${execScoreText}</td>
 			<td>${String(metrics.totalToolCalls)}</td>
 			<td>${String(metrics.subAgentsSpawned)}</td>
 			<td>${formatDuration(metrics.totalTimeMs)}</td>
 			<td>${metrics.timeToFirstTextMs > 0 ? formatDuration(metrics.timeToFirstTextMs) : '-'}</td>
 		</tr>
 		<tr id="detail-${index}" class="detail-row" data-complexity="${result.complexity ?? 'medium'}" data-prompt-hash="${promptHash}" style="display:none">
-			<td colspan="9">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -292,6 +308,29 @@ function renderResultRow(result: InstanceAiResult, index: number, n8nBaseUrl: st
 								.join('')}
 						</ul>
 					</div>
+					${
+						(result.executionChecklist ?? []).length > 0
+							? `<div class="detail-section">
+						<h4>Execution Checklist (${execPassedCount}/${execTotalCount})</h4>
+						<ul class="checklist">
+							${(result.executionChecklist ?? [])
+								.map((item) => {
+									const verification = (result.executionChecklistResults ?? []).find(
+										(r) => r.id === item.id,
+									);
+									const passed = verification?.pass ?? false;
+									return `<li class="${passed ? 'pass' : 'fail'}">
+										<span class="check">${passed ? '\u2713' : '\u2717'}</span>
+										<span class="category">[${item.category}]</span>
+										${escapeHtml(item.item)}
+										${verification ? `<div class="reasoning">${escapeHtml(verification.reasoning)}</div>` : ''}
+									</li>`;
+								})
+								.join('')}
+						</ul>
+					</div>`
+							: ''
+					}
 					${renderAgentActivitySection(metrics.agentActivities)}
 					${renderWorkflowsSection(result)}
 					${renderExecutionsSection(result, n8nBaseUrl)}
@@ -354,7 +393,8 @@ function renderRunSection(run: Run, runIndex: number): string {
 							<th>Prompt</th>
 							<th>Tags</th>
 							<th>Success</th>
-							<th>Score</th>
+							<th>Build Score</th>
+							<th>Exec Score</th>
 							<th>Tool Calls</th>
 							<th>Sub-Agents</th>
 							<th>Time</th>
@@ -419,6 +459,13 @@ export function generateReport(runs: Run[]): string {
 	const successRate =
 		totalResults > 0
 			? runs.reduce((s, r) => s + r.results.filter((rr) => rr.success).length, 0) / totalResults
+			: 0;
+	const execResults = runs.flatMap((r) =>
+		r.results.filter((rr) => (rr.executionChecklist ?? []).length > 0),
+	);
+	const avgExecScore =
+		execResults.length > 0
+			? execResults.reduce((s, rr) => s + rr.executionChecklistScore, 0) / execResults.length
 			: 0;
 
 	const allTags = [
@@ -520,8 +567,12 @@ export function generateReport(runs: Run[]): string {
 		<div class="value">${String(runs.length)}</div>
 	</div>
 	<div class="summary-card">
-		<div class="label">Avg Score</div>
+		<div class="label">Avg Build Score</div>
 		<div class="value">${formatScore(avgScore)}</div>
+	</div>
+	<div class="summary-card">
+		<div class="label">Avg Exec Score</div>
+		<div class="value">${execResults.length > 0 ? formatScore(avgExecScore) : '-'}</div>
 	</div>
 	<div class="summary-card">
 		<div class="label">Success Rate</div>

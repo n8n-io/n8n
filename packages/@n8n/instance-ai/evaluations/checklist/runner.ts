@@ -10,7 +10,7 @@ import crypto from 'node:crypto';
 
 import type { N8nClient } from './n8n-client';
 import { consumeSseStream } from './sse-client';
-import { verifyChecklist } from './checklist';
+import { verifyChecklist, extractExecutionChecklist } from './checklist';
 import {
 	extractOutcomeFromEvents,
 	buildAgentOutcome,
@@ -20,7 +20,13 @@ import {
 	snapshotWorkflowIds,
 	runPostBuildExecutions,
 } from './verification';
-import type { InstanceAiResult, PromptConfig, ChecklistItem, CapturedEvent } from './types';
+import type {
+	InstanceAiResult,
+	PromptConfig,
+	ChecklistItem,
+	CapturedEvent,
+	ExecutionChecklist,
+} from './types';
 
 // ---------------------------------------------------------------------------
 // Public interface
@@ -33,6 +39,8 @@ export interface RunnerConfig {
 	autoApprove: boolean;
 	/** Skip cleanup of created workflows/data tables (caller handles cleanup) */
 	skipCleanup?: boolean;
+	/** Skip execution-based evaluation (faster runs, only verify build checklist) */
+	skipExecutionEval?: boolean;
 }
 
 const DEFAULT_TIMEOUT_MS = 600_000;
@@ -123,6 +131,38 @@ export async function runSingleExample(
 			}
 		}
 
+		// 7c. Extract execution checklist and run with test inputs
+		const emptyExecChecklist: ExecutionChecklist = { items: [], testInputs: [] };
+		let executionChecklist = emptyExecChecklist;
+
+		if (
+			!config.skipExecutionEval &&
+			outcome.workflowsCreated.length > 0 &&
+			outcome.workflowJsons.length > 0
+		) {
+			if (config.verbose) {
+				log(`[${threadId}] Extracting execution checklist...`);
+			}
+			executionChecklist = await extractExecutionChecklist(
+				prompt.text,
+				outcome.workflowJsons[0] as Record<string, unknown>,
+			);
+
+			if (config.verbose) {
+				log(
+					`[${threadId}] Execution checklist: ${String(executionChecklist.items.length)} items, ${String(executionChecklist.testInputs.length)} test inputs`,
+				);
+			}
+
+			// 7d. Re-run execution with test inputs
+			if (executionChecklist.testInputs.length > 0) {
+				if (config.verbose) {
+					log(`[${threadId}] Running execution eval with test data...`);
+				}
+				await runPostBuildExecutions(config.n8nClient, outcome, executionChecklist.testInputs);
+			}
+		}
+
 		// 8. Build verification artifact and run checklist
 		const verificationArtifact = buildVerificationArtifact(
 			outcome,
@@ -140,6 +180,19 @@ export async function runSingleExample(
 		if (config.verbose) {
 			log(
 				`[${threadId}] Checklist score: ${formatPercent(checklistScore)} (${String(checklistResults.filter((r) => r.pass).length)}/${String(checklist.length)} passed)`,
+			);
+		}
+
+		// 8b. Verify execution checklist
+		const executionChecklistResults =
+			executionChecklist.items.length > 0
+				? await verifyChecklist(verificationArtifact, executionChecklist.items)
+				: [];
+		const executionChecklistScore = calculateScore(executionChecklistResults.map((r) => r.pass));
+
+		if (config.verbose && executionChecklist.items.length > 0) {
+			log(
+				`[${threadId}] Execution score: ${formatPercent(executionChecklistScore)} (${String(executionChecklistResults.filter((r) => r.pass).length)}/${String(executionChecklist.items.length)} passed)`,
 			);
 		}
 
@@ -162,6 +215,9 @@ export async function runSingleExample(
 			checklist,
 			checklistResults,
 			checklistScore,
+			executionChecklist: executionChecklist.items,
+			executionChecklistResults,
+			executionChecklistScore,
 		};
 	} catch (error: unknown) {
 		// Ensure SSE is cleaned up on error
@@ -524,6 +580,9 @@ function buildErrorResult(
 		checklist,
 		checklistResults: [],
 		checklistScore: 0,
+		executionChecklist: [],
+		executionChecklistResults: [],
+		executionChecklistScore: 0,
 		error: errorMessage,
 	};
 }

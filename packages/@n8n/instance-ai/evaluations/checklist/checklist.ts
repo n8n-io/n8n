@@ -4,7 +4,8 @@ import path from 'path';
 import { callLLM } from './anthropic';
 import { CHECKLIST_EXTRACT_PROMPT } from './system-prompts/checklist-extract';
 import { CHECKLIST_VERIFY_PROMPT } from './system-prompts/checklist-verify';
-import type { ChecklistItem, ChecklistResult } from './types';
+import { EXECUTION_CHECKLIST_EXTRACT_PROMPT } from './system-prompts/execution-checklist-extract';
+import type { ChecklistItem, ChecklistResult, ExecutionChecklist } from './types';
 
 const EVAL_MODEL = 'claude-sonnet-4-6';
 const CACHE_DIR = path.join(__dirname, '..', '.data', 'checklist-cache');
@@ -76,6 +77,75 @@ export function clearCache(): number {
 		fs.unlinkSync(path.join(CACHE_DIR, file));
 	}
 	return files.length;
+}
+
+function parseJsonObject<T>(text: string): T | null {
+	const fenceMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+	const jsonStr = fenceMatch ? fenceMatch[1].trim() : text.trim();
+
+	try {
+		const parsed: unknown = JSON.parse(jsonStr);
+		if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+			return parsed as T;
+		}
+		return null;
+	} catch {
+		const objectMatch = jsonStr.match(/\{[\s\S]*\}/);
+		if (objectMatch) {
+			try {
+				return JSON.parse(objectMatch[0]) as T;
+			} catch {
+				return null;
+			}
+		}
+		return null;
+	}
+}
+
+/** Build a simplified workflow summary for the LLM (node names, types, parameters — not the full JSON) */
+function simplifyWorkflowJson(workflowJson: Record<string, unknown>): string {
+	const nodes = Array.isArray(workflowJson.nodes)
+		? (workflowJson.nodes as Array<Record<string, unknown>>).map((n) => ({
+				name: n.name,
+				type: n.type,
+				parameters: n.parameters,
+			}))
+		: [];
+	const connections = workflowJson.connections ?? {};
+	return JSON.stringify({ nodes, connections }, null, 2);
+}
+
+const EMPTY_EXECUTION_CHECKLIST: ExecutionChecklist = { items: [], testInputs: [] };
+
+export async function extractExecutionChecklist(
+	promptText: string,
+	workflowJson: Record<string, unknown>,
+): Promise<ExecutionChecklist> {
+	const workflowSummary = simplifyWorkflowJson(workflowJson);
+
+	const userMessage = `## User Prompt
+
+${promptText}
+
+## Workflow JSON
+
+${workflowSummary}`;
+
+	const response = await callLLM({
+		model: EVAL_MODEL,
+		systemPrompt: EXECUTION_CHECKLIST_EXTRACT_PROMPT,
+		messages: [{ role: 'user', content: userMessage }],
+	});
+
+	const parsed = parseJsonObject<ExecutionChecklist>(response.content);
+	if (!parsed || !Array.isArray(parsed.items) || !Array.isArray(parsed.testInputs)) {
+		return EMPTY_EXECUTION_CHECKLIST;
+	}
+
+	return {
+		items: parsed.items,
+		testInputs: parsed.testInputs,
+	};
 }
 
 export async function verifyChecklist(

@@ -187,6 +187,21 @@ export class N8nClient {
 	}
 
 	/**
+	 * Update a workflow (partial update).
+	 * PATCH /rest/workflows/:id — used to set/restore pin data for execution eval.
+	 */
+	async updateWorkflow(
+		id: string,
+		updates: Record<string, unknown>,
+	): Promise<Record<string, unknown>> {
+		const result = (await this.fetch(`/rest/workflows/${id}`, {
+			method: 'PATCH',
+			body: updates,
+		})) as { data: Record<string, unknown> };
+		return result.data;
+	}
+
+	/**
 	 * Delete a workflow by ID.
 	 * DELETE /rest/workflows/:id
 	 */

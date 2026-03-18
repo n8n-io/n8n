@@ -4,7 +4,7 @@
 
 export interface ChecklistItem {
 	id: number;
-	category: 'structure' | 'data' | 'behavior';
+	category: 'structure' | 'data' | 'behavior' | 'execution';
 	item: string;
 }
 
@@ -61,6 +61,11 @@ export interface WorkflowSummary {
 	active: boolean;
 }
 
+export interface NodeOutputData {
+	nodeName: string;
+	data: Record<string, unknown>[];
+}
+
 export interface ExecutionSummary {
 	id: string;
 	workflowId: string;
@@ -68,6 +73,7 @@ export interface ExecutionSummary {
 	error?: string;
 	failedNode?: string;
 	triggeredByEval?: boolean;
+	outputData?: NodeOutputData[];
 }
 
 export interface AgentOutcome {
@@ -91,6 +97,9 @@ export interface InstanceAiResult {
 	checklist: ChecklistItem[];
 	checklistResults: ChecklistResult[];
 	checklistScore: number;
+	executionChecklist: ChecklistItem[];
+	executionChecklistResults: ChecklistResult[];
+	executionChecklistScore: number;
 	error?: string;
 }
 
@@ -111,6 +120,24 @@ export interface PromptConfig {
 		minToolCalls?: number;
 		expectedTools?: string[];
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Execution evaluation types
+// ---------------------------------------------------------------------------
+
+export interface ExecutionTestInput {
+	/** What kind of data to inject as pin data */
+	triggerType: 'webhook' | 'form' | 'manual' | 'schedule';
+	/** The payload body (webhook body, form fields, or manual trigger data) */
+	testData: Record<string, unknown>;
+	/** Human description of what this test does */
+	description: string;
+}
+
+export interface ExecutionChecklist {
+	items: ChecklistItem[];
+	testInputs: ExecutionTestInput[];
 }
 
 export type RunStatus = 'running' | 'completed' | 'failed';

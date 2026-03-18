@@ -29,6 +29,7 @@ interface CliArgs {
 	langsmith: boolean;
 	dataset: string;
 	experimentName: string;
+	skipExecutionEval: boolean;
 }
 
 function parseArgs(args: string[]): CliArgs {
@@ -44,6 +45,7 @@ function parseArgs(args: string[]): CliArgs {
 		langsmith: false,
 		dataset: '',
 		experimentName: '',
+		skipExecutionEval: false,
 	};
 
 	for (let i = 0; i < args.length; i++) {
@@ -80,6 +82,9 @@ function parseArgs(args: string[]): CliArgs {
 				break;
 			case '--name':
 				result.experimentName = args[++i];
+				break;
+			case '--skip-execution-eval':
+				result.skipExecutionEval = true;
 				break;
 		}
 	}
@@ -238,6 +243,7 @@ async function runEval() {
 		timeoutMs: args.timeoutMs,
 		verbose: args.verbose,
 		autoApprove: true,
+		skipExecutionEval: args.skipExecutionEval,
 	};
 
 	const run: Run = {
@@ -351,8 +357,19 @@ function printSummary(run: Run): void {
 		run.results.reduce((s, r) => s + r.metrics.subAgentsSpawned, 0) / run.results.length;
 	const avgTime = run.results.reduce((s, r) => s + r.metrics.totalTimeMs, 0) / run.results.length;
 
+	const execResults = run.results.filter((r) => (r.executionChecklist ?? []).length > 0);
+	const avgExecScore =
+		execResults.length > 0
+			? execResults.reduce((s, r) => s + r.executionChecklistScore, 0) / execResults.length
+			: 0;
+
 	console.log(`Success Rate: ${(successRate * 100).toFixed(0)}%`);
-	console.log(`Avg Checklist Score: ${(avgScore * 100).toFixed(0)}%`);
+	console.log(`Avg Build Score: ${(avgScore * 100).toFixed(0)}%`);
+	if (execResults.length > 0) {
+		console.log(
+			`Avg Exec Score: ${(avgExecScore * 100).toFixed(0)}% (${String(execResults.length)} workflows tested)`,
+		);
+	}
 	console.log(`Avg Tool Calls: ${avgToolCalls.toFixed(1)}`);
 	console.log(`Avg Sub-Agents: ${avgSubAgents.toFixed(1)}`);
 	console.log(`Avg Time: ${(avgTime / 1000).toFixed(1)}s`);
@@ -403,6 +420,7 @@ Options (local mode):
   --tags <tags>           Comma-separated tags to filter prompts
   --grep <substring>      Filter prompts by substring match
   --complexity <level>    Filter by complexity (simple, medium, complex)
+  --skip-execution-eval   Skip execution-based evaluation (faster runs)
 
 Options (LangSmith mode):
   --langsmith             Use LangSmith evaluate() harness
