@@ -306,7 +306,7 @@ export class OidcService {
 			return foundUser;
 		}
 
-		return await this.userRepository.manager.transaction(async (trx) => {
+		const user = await this.userRepository.manager.transaction(async (trx) => {
 			const { user } = await this.userRepository.createUserWithProject(
 				{
 					firstName: userInfo.given_name,
@@ -327,10 +327,12 @@ export class OidcService {
 				}),
 			);
 
-			await this.applySsoProvisioning(user, claims);
-
 			return user;
 		});
+
+		await this.applySsoProvisioning(user, claims);
+
+		return user;
 	}
 
 	private async applySsoProvisioning(user: User, claims: any) {
