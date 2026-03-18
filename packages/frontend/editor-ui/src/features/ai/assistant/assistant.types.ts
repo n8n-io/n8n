@@ -246,6 +246,14 @@ export namespace ChatRequest {
 		answers: PlanMode.QuestionResponse[];
 	}
 
+	export interface ApiWebFetchApprovalMessage {
+		role: 'assistant';
+		type: 'web_fetch_approval';
+		requestId: string;
+		url: string;
+		domain: string;
+	}
+
 	export interface MessagesCompactedEvent {
 		type: 'messages-compacted';
 	}
@@ -264,6 +272,7 @@ export namespace ChatRequest {
 				| ApiQuestionsMessage
 				| ApiPlanMessage
 				| ApiUserAnswersMessage
+				| ApiWebFetchApprovalMessage
 		  ) & {
 				quickReplies?: ChatUI.QuickReply[];
 		  })
@@ -377,6 +386,23 @@ export namespace PlanMode {
 	export type PlanModeMessage = QuestionsMessage | PlanMessage | UserAnswersMessage;
 }
 
+// ============================================================================
+// Web Fetch Approval Types
+// ============================================================================
+
+export namespace WebFetchApproval {
+	export interface MessageData {
+		requestId: string;
+		url: string;
+		domain: string;
+	}
+
+	export type Message = ChatUI.CustomMessage & {
+		customType: 'web_fetch_approval';
+		data: MessageData;
+	};
+}
+
 // Type guards for Plan Mode custom messages
 export function isPlanModeQuestionsMessage(
 	msg: ChatUI.AssistantMessage,
@@ -479,6 +505,24 @@ export function isUserAnswersMessage(
 	msg: ChatRequest.MessageResponse,
 ): msg is ChatRequest.ApiUserAnswersMessage {
 	return 'type' in msg && msg.type === 'user_answers' && 'answers' in msg;
+}
+
+export function isWebFetchApprovalMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.ApiWebFetchApprovalMessage {
+	return (
+		'type' in msg &&
+		msg.type === 'web_fetch_approval' &&
+		'requestId' in msg &&
+		'url' in msg &&
+		'domain' in msg
+	);
+}
+
+export function isWebFetchApprovalCustomMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is WebFetchApproval.Message {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'web_fetch_approval';
 }
 
 export function isMessagesCompactedEvent(

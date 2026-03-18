@@ -9,6 +9,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
+import { useRBACStore } from '@/app/stores/rbac.store';
 import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -619,6 +620,10 @@ describe('WorkflowSettingsVue', () => {
 		beforeEach(() => {
 			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue(mockResolvers);
 			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue(mockResolverTypes);
+			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
+			rbacStore.addGlobalScope('credentialResolver:create');
+			rbacStore.addGlobalScope('credentialResolver:update');
 		});
 
 		it('should render credential resolver dropdown', async () => {
@@ -789,7 +794,104 @@ describe('WorkflowSettingsVue', () => {
 		});
 	});
 
+	describe('Credential Resolver RBAC', () => {
+		const mockResolvers = [
+			{
+				id: 'resolver-1',
+				name: 'Test Resolver 1',
+				type: 'editable-type',
+				config: '{}',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
+		];
+
+		const mockResolverTypes = [
+			{
+				name: 'editable-type',
+				displayName: 'Editable Resolver',
+				options: [{ name: 'url', type: 'string', displayName: 'URL', default: '' }],
+			},
+		];
+
+		beforeEach(() => {
+			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue(mockResolvers);
+			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue(mockResolverTypes);
+		});
+
+		it('should not show "Create new" button when user lacks credentialResolver:create scope', async () => {
+			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
+			rbacStore.addGlobalScope('credentialResolver:update');
+
+			const { queryByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(
+				queryByTestId('workflow-settings-credential-resolver-create-new'),
+			).not.toBeInTheDocument();
+		});
+
+		it('should show "Create new" button when user has credentialResolver:create scope', async () => {
+			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
+			rbacStore.addGlobalScope('credentialResolver:create');
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getByTestId('workflow-settings-credential-resolver-create-new')).toBeInTheDocument();
+		});
+
+		it('should not show "Edit" button when user lacks credentialResolver:update scope', async () => {
+			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-1' });
+			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
+			rbacStore.addGlobalScope('credentialResolver:create');
+
+			const { queryByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(queryByTestId('workflow-settings-credential-resolver-edit')).not.toBeInTheDocument();
+		});
+
+		it('should show "Edit" button when user has credentialResolver:update scope and editable resolver is selected', async () => {
+			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-1' });
+			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
+			rbacStore.addGlobalScope('credentialResolver:update');
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-settings-credential-resolver-edit')).toBeInTheDocument();
+			});
+		});
+
+		it('should not fetch resolvers and should disable dropdown when user lacks credentialResolver:list scope', async () => {
+			// No scopes added — user has no credentialResolver:list
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(restApiClient.getCredentialResolvers).not.toHaveBeenCalled();
+			expect(restApiClient.getCredentialResolverTypes).not.toHaveBeenCalled();
+
+			const dropdownContainer = getByTestId('workflow-settings-credential-resolver');
+			const input = dropdownContainer.querySelector('input');
+			expect(input).toBeDisabled();
+		});
+	});
+
 	describe('Redaction Policy', () => {
+		it('should not render redaction policy when env feature flag is missing', async () => {
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
+		});
+
 		it('should not render redaction policy when redaction module is inactive', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
 				(name: string) => name !== 'redaction',
@@ -821,6 +923,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should render redaction policy when module is active and user has scope', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			settingsStore.settings.envFeatureFlags.N8N_ENV_FEAT_REDACTION_POLICY = true;
 
 			const workflowWithRedactionScope = createTestWorkflow({
 				id: '1',

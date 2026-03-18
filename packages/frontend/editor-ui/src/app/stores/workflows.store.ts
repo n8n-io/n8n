@@ -197,6 +197,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const allConnections = computed(() => workflow.value.connections);
 
+	/** @deprecated Use `workflowDocumentStore.allNodes` instead. */
 	const allNodes = computed<INodeUi[]>(() => workflow.value.nodes);
 
 	const willNodeWait = (node: INodeUi): boolean => {
@@ -242,9 +243,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return false;
 	});
 
-	// Names of all nodes currently on canvas.
+	/** @deprecated Use `workflowDocumentStore.canvasNames` instead. */
 	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
 
+	/** @deprecated Use `workflowDocumentStore.nodesByName` instead. */
 	const nodesByName = computed(() => {
 		return workflow.value.nodes.reduce<Record<string, INodeUi>>((acc, node) => {
 			acc[node.name] = node;
@@ -430,10 +432,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.getNodeByName()` instead. */
 	function getNodeByName(nodeName: string): INodeUi | null {
 		return workflowUtils.getNodeByName(nodesByName.value, nodeName);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.getNodeById()` instead. */
 	function getNodeById(nodeId: string): INodeUi | undefined {
 		return workflow.value.nodes.find((node) => node.id === nodeId);
 	}
@@ -453,7 +457,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return null;
 	}
 
-	// Finds the full id for a given partial id for a node, relying on order for uniqueness in edge cases
+	/** @deprecated Use `workflowDocumentStore.findNodeByPartialId()` instead. */
 	function findNodeByPartialId(partialId: string): INodeUi | undefined {
 		return workflow.value.nodes.find((node) => node.id.startsWith(partialId));
 	}
@@ -469,6 +473,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return fullId;
 	}
 
+	/** @deprecated Use `workflowDocumentStore.getNodesByIds()` instead. */
 	function getNodesByIds(nodeIds: string[]): INodeUi[] {
 		return nodeIds.map(getNodeById).filter(isPresent);
 	}
@@ -523,10 +528,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return nodeTypes;
 	}
 
-	// Returns a shallow copy of the nodes which means that all the data on the lower
-	// levels still only gets referenced but the top level object is a different one.
-	// This has the advantage that it is very fast and does not cause problems with vuex
-	// when the workflow replaces the node-parameters.
+	/**
+	 * Returns a shallow copy of the nodes which means that all the data on the lower
+	 * levels still only gets referenced but the top level object is a different one.
+	 * This has the advantage that it is very fast and does not cause problems with vuex
+	 * when the workflow replaces the node-parameters.
+	 * @deprecated Use `workflowDocumentStore.getNodes()` instead.
+	 */
 	function getNodes(): INodeUi[] {
 		return workflow.value.nodes.map((node) => ({ ...node }));
 	}
@@ -1048,10 +1056,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			});
 	}
 
-	function setParentFolder(folder: IWorkflowDb['parentFolder']) {
-		workflow.value.parentFolder = folder;
-	}
-
+	/** @deprecated Use `workflowDocumentStore.setNodes()` instead. */
 	function setNodes(nodes: INodeUi[]): void {
 		nodes.forEach((node) => {
 			if (!node.id) {
@@ -1080,6 +1085,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(value);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.addNode()` instead. */
 	function addNode(nodeData: INodeUi): void {
 		// @TODO(ckolb): Reminder to refactor useActions:setAddedNodeActionParameters
 		// which listens to this function being called, when this is moved to workflowState soon
@@ -1099,6 +1105,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	/** @deprecated Use `workflowDocumentStore.removeNode()` instead. */
 	function removeNode(node: INodeUi): void {
 		const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = nodeMetadata.value;
 		nodeMetadata.value = remainingNodeMetadata;
@@ -1584,10 +1591,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return !!matchedChatNode;
 	}
 
+	/**
+	 * Checks if a tool node is connected (via ai_tool) to an AI agent that has a Chat Trigger
+	 * in its main-connection ancestry. This covers partial execution scenarios where the
+	 * destination node is a tool node rather than a direct descendant of the Chat Trigger.
+	 */
+	function checkIfToolNodeHasChatParent(nodeName: string): boolean {
+		const agentNodes = workflowObject.value.getChildNodes(nodeName, NodeConnectionTypes.AiTool);
+		return agentNodes.some((agentNode) => checkIfNodeHasChatParent(agentNode));
+	}
+
 	//
 	// Start Canvas V2 Functions
 	//
 
+	/** @deprecated Use `workflowDocumentStore.removeNodeById()` instead. */
 	function removeNodeById(nodeId: string): void {
 		const node = getNodeById(nodeId);
 		if (!node) {
@@ -1751,7 +1769,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setDescription,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
-		setParentFolder,
 		setWorkflow,
 		addConnection,
 		removeConnection,
@@ -1781,6 +1798,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetChatMessages,
 		appendChatMessage,
 		checkIfNodeHasChatParent,
+		checkIfToolNodeHasChatParent,
 		removeNodeById,
 		removeNodeConnectionsById,
 		removeNodeExecutionDataById,

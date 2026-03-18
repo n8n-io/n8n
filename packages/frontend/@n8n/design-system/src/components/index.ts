@@ -22,6 +22,7 @@ export { default as N8nDatatable } from './N8nDatatable';
 export { default as N8nDropdown } from './N8nDropdown';
 export type { N8nDropdownOption } from './N8nDropdown';
 export { default as N8nExternalLink } from './N8nExternalLink';
+export { default as N8nFloatingWindow } from './N8nFloatingWindow';
 export { default as N8nFormBox } from './N8nFormBox';
 export { default as N8nFormInputs } from './N8nFormInputs';
 export { default as N8nFormInput } from './N8nFormInput';

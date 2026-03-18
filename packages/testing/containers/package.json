@@ -22,6 +22,8 @@
     "stack:helm:clean": "docker ps -aq --filter 'label=n8n.helm=true' | xargs -r docker rm -f 2>/dev/null; rm -f ~/.kube/n8n-helm-*.yaml; kubectl config delete-context n8n-helm-standalone 2>/dev/null; kubectl config delete-context n8n-helm-queue 2>/dev/null; true",
     "services": "tsx ./n8n-start-stack.ts --services-only",
     "services:clean": "docker ps -aq --filter 'name=n8n-svc-*' | xargs docker rm -f 2>/dev/null; rm -f ../../../packages/cli/bin/.env",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix"
   },
