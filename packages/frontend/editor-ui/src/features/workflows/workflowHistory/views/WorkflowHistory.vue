@@ -8,7 +8,6 @@ import {
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	WORKFLOW_HISTORY_DIFF_MODAL_KEY,
-	WORKFLOW_PUBLISH_TIMELINE_MODAL_KEY,
 	EnterpriseEditionFeature,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
@@ -23,7 +22,7 @@ import type {
 import WorkflowHistoryList from '../components/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '../components/WorkflowHistoryContent.vue';
 import WorkflowHistoryDiff from './WorkflowHistoryDiff.vue';
-import WorkflowPublishTimelineModal from '../components/WorkflowPublishTimelineModal.vue';
+import WorkflowPublishTimelineContent from '../components/WorkflowPublishTimelineContent.vue';
 import Modal from '@/app/components/Modal.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -36,7 +35,8 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nBadge, N8nButton, N8nHeading, N8nTooltip } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nHeading, N8nTabs } from '@n8n/design-system';
+import type { TabOptions } from '@n8n/design-system/types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowVersionFormModalEventBusEvents } from '../components/WorkflowVersionFormModal.vue';
@@ -133,6 +133,26 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 		value,
 	})),
 );
+
+type HistoryTab = 'history' | 'publishTimeline';
+const activeTab = ref<HistoryTab>('history');
+
+const wasEverPublished = computed(
+	() =>
+		publishedWorkflowVersionId.value !== undefined ||
+		workflowHistory.value.some((item) => item.workflowPublishHistory.length > 0),
+);
+
+const tabOptions = computed<Array<TabOptions<HistoryTab>>>(() => [
+	{
+		label: i18n.baseText('workflowHistory.tab.history'),
+		value: 'history',
+	},
+	{
+		label: i18n.baseText('workflowHistory.tab.publishTimeline'),
+		value: 'publishTimeline',
+	},
+]);
 
 const isFirstItemShown = computed(() => workflowHistory.value[0]?.versionId === versionId.value);
 const createCompareRoute = (compareVersionId: string) => {
@@ -480,11 +500,6 @@ const onPreview = async ({ event, id }: { event: MouseEvent; id: WorkflowVersion
 	}
 };
 
-const openPublishTimeline = () => {
-	uiStore.openModal(WORKFLOW_PUBLISH_TIMELINE_MODAL_KEY);
-	sendTelemetry('User opened publish timeline');
-};
-
 const onUpgrade = () => {
 	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 };
@@ -578,20 +593,20 @@ watchEffect(async () => {
 			</span>
 		</div>
 		<div :class="$style.corner">
-			<N8nHeading tag="h2" size="medium" bold>
-				{{ i18n.baseText('workflowHistory.title') }}
-			</N8nHeading>
+			<template v-if="wasEverPublished">
+				<N8nTabs
+					v-model="activeTab"
+					:options="tabOptions"
+					size="small"
+					data-test-id="workflow-history-tabs"
+				/>
+			</template>
+			<template v-else>
+				<N8nHeading tag="h2" size="medium" bold>
+					{{ i18n.baseText('workflowHistory.title') }}
+				</N8nHeading>
+			</template>
 			<div :class="$style.cornerActions">
-				<N8nTooltip :content="i18n.baseText('workflowHistory.publishTimeline.button.tooltip')">
-					<N8nButton
-						variant="ghost"
-						icon="clock"
-						size="small"
-						square
-						data-test-id="workflow-publish-timeline-button"
-						@click="openPublishTimeline"
-					/>
-				</N8nTooltip>
 				<RouterLink :to="editorRoute" data-test-id="workflow-history-close-button">
 					<N8nButton variant="ghost" icon="x" size="small" square />
 				</RouterLink>
@@ -599,7 +614,7 @@ watchEffect(async () => {
 		</div>
 		<div :class="$style.listComponentWrapper">
 			<WorkflowHistoryList
-				v-if="canRender"
+				v-if="canRender && activeTab === 'history'"
 				:items="workflowHistory"
 				:last-received-items-length="lastReceivedItemsLength"
 				:selected-item="selectedWorkflowVersion"
@@ -615,6 +630,10 @@ watchEffect(async () => {
 				@compare="({ id }) => openCompareView(id)"
 				@load-more="loadMore"
 				@upgrade="onUpgrade"
+			/>
+			<WorkflowPublishTimelineContent
+				v-if="canRender && activeTab === 'publishTimeline'"
+				:workflow-id="workflowId"
 			/>
 		</div>
 		<div :class="$style.contentComponentWrapper">
@@ -652,10 +671,6 @@ watchEffect(async () => {
 				/>
 			</template>
 		</Modal>
-		<WorkflowPublishTimelineModal
-			:modal-name="WORKFLOW_PUBLISH_TIMELINE_MODAL_KEY"
-			:workflow-id="workflowId"
-		/>
 	</div>
 </template>
 <style module lang="scss">

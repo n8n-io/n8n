@@ -1,16 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nHeading,
-	N8nText,
-	N8nLoading,
-	N8nIcon,
-	N8nCallout,
-	N8nTooltip,
-} from '@n8n/design-system';
-import Modal from '@/app/components/Modal.vue';
-import { useUIStore } from '@/app/stores/ui.store';
+import { N8nText, N8nLoading, N8nIcon, N8nCallout, N8nTooltip } from '@n8n/design-system';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
@@ -23,12 +14,10 @@ const MIN_UNPUBLISHED_DURATION_MS = 2000;
 const MIN_DURATION_FOR_BADGE_MS = 10 * 60 * 1000;
 
 const props = defineProps<{
-	modalName: string;
 	workflowId: string;
 }>();
 
 const i18n = useI18n();
-const uiStore = useUIStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
 
 const { isCalloutDismissed, dismissCallout } = useCalloutHelpers();
@@ -112,7 +101,22 @@ const periods = computed<TimelinePeriod[]>(() => {
 	});
 });
 
-const formatDate = (date: Date) => {
+const isToday = (date: Date) => {
+	const now = new Date();
+	return (
+		date.getDate() === now.getDate() &&
+		date.getMonth() === now.getMonth() &&
+		date.getFullYear() === now.getFullYear()
+	);
+};
+
+const formatDateShort = (date: Date) => {
+	if (isToday(date)) return dateformat(date, 'HH:MM');
+	const format = date.getFullYear() !== new Date().getFullYear() ? 'd mmm yyyy' : 'd mmm';
+	return dateformat(date, format);
+};
+
+const formatDateFull = (date: Date) => {
 	return dateformat(date, 'mmm d, yyyy HH:MM:ss');
 };
 
@@ -122,10 +126,7 @@ const getDurationMs = (period: TimelinePeriod) =>
 const shouldShowDurationBadge = (idx: number) =>
 	getDurationMs(periods.value[idx]) >= MIN_DURATION_FOR_BADGE_MS;
 
-const isModalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
-
-watch(isModalOpen, async (open) => {
-	if (!open) return;
+const loadTimeline = async () => {
 	isLoading.value = true;
 	try {
 		const timelineEvents = await workflowHistoryStore.getPublishTimeline(props.workflowId);
@@ -147,109 +148,102 @@ watch(isModalOpen, async (open) => {
 	} finally {
 		isLoading.value = false;
 	}
-});
+};
+
+onMounted(loadTimeline);
 </script>
 
 <template>
-	<Modal width="600px" :name="props.modalName">
-		<template #header>
-			<N8nHeading tag="h2" size="xlarge">
-				{{ i18n.baseText('workflowHistory.publishTimeline.title') }}
-			</N8nHeading>
-		</template>
-		<template #content>
-			<div :class="$style.content">
-				<N8nCallout
-					v-if="!isCalloutDismissed(DOWNTIME_DISCLAIMER_CALLOUT)"
-					theme="info"
-					:class="$style.disclaimer"
-				>
-					{{ i18n.baseText('workflowHistory.publishTimeline.downtimeDisclaimer') }}
-					<template #trailingContent>
-						<N8nIcon
-							icon="times"
-							size="small"
-							:class="$style.dismissButton"
-							@click="dismissCallout(DOWNTIME_DISCLAIMER_CALLOUT)"
-						/>
-					</template>
-				</N8nCallout>
-				<N8nLoading v-if="isLoading" :rows="4" />
-				<div v-else-if="periods.length === 0" :class="$style.empty">
-					<N8nText>{{ i18n.baseText('workflowHistory.publishTimeline.empty') }}</N8nText>
-				</div>
-				<template v-else>
-					<div :class="$style.timeline">
-						<template v-for="(period, idx) in periods" :key="idx">
-							<div v-if="shouldShowDurationBadge(idx)" :class="$style.durationSeparator">
-								<div :class="$style.timelineIndicator">
-									<span :class="$style.timelineLine" />
-								</div>
-								<div :class="$style.durationBadge">
-									<N8nIcon icon="clock" size="small" />
-									<N8nText size="small" color="text-light">
-										{{ period.durationText }}
-									</N8nText>
-								</div>
-							</div>
-							<div :class="$style.timelineItem">
-								<div :class="$style.timelineIndicator">
-									<span
-										:class="[
-											$style.timelineDot,
-											period.status === 'unpublished'
-												? $style.dotUnpublished
-												: period.isCurrent
-													? $style.dotPublished
-													: $style.dotPastPublished,
-										]"
-									/>
-									<span v-if="idx < periods.length - 1" :class="$style.timelineLine" />
-								</div>
-								<div :class="$style.timelineContent">
-									<div :class="$style.timelineHeader">
-										<N8nText :bold="true" size="small">
-											<template v-if="period.status === 'published'">
-												{{
-													period.versionName ??
-													i18n.baseText('workflowHistory.publishTimeline.event.activated')
-												}}
-											</template>
-											<template v-else>
-												{{ i18n.baseText('workflowHistory.publishTimeline.event.deactivated') }}
-											</template>
-											<template v-if="period.user">
-												<N8nText size="small" color="text-light">
-													{{
-														' ' +
-														i18n.baseText('workflowHistory.publishTimeline.by', {
-															interpolate: { user: period.user },
-														})
-													}}
-												</N8nText>
-											</template>
+	<div :class="$style.content">
+		<N8nCallout
+			v-if="!isCalloutDismissed(DOWNTIME_DISCLAIMER_CALLOUT)"
+			theme="info"
+			:class="$style.disclaimer"
+		>
+			{{ i18n.baseText('workflowHistory.publishTimeline.downtimeDisclaimer') }}
+			<template #trailingContent>
+				<N8nIcon
+					icon="x"
+					size="small"
+					:class="$style.dismissButton"
+					@click="dismissCallout(DOWNTIME_DISCLAIMER_CALLOUT)"
+				/>
+			</template>
+		</N8nCallout>
+		<N8nLoading v-if="isLoading" :rows="4" />
+		<div v-else-if="periods.length === 0" :class="$style.empty">
+			<N8nText>{{ i18n.baseText('workflowHistory.publishTimeline.empty') }}</N8nText>
+		</div>
+		<template v-else>
+			<div :class="$style.timeline">
+				<template v-for="(period, idx) in periods" :key="idx">
+					<div v-if="shouldShowDurationBadge(idx)" :class="$style.durationSeparator">
+						<div :class="$style.timelineIndicator">
+							<span :class="$style.timelineLine" />
+						</div>
+						<div :class="$style.durationBadge">
+							<N8nIcon icon="clock" size="small" />
+							<N8nText size="small" color="text-light">
+								{{ period.durationText }}
+							</N8nText>
+						</div>
+					</div>
+					<div :class="$style.timelineItem">
+						<div :class="$style.timelineIndicator">
+							<span
+								:class="[
+									$style.timelineDot,
+									period.status === 'unpublished'
+										? $style.dotUnpublished
+										: period.isCurrent
+											? $style.dotPublished
+											: $style.dotPastPublished,
+								]"
+							/>
+							<span v-if="idx < periods.length - 1" :class="$style.timelineLine" />
+						</div>
+						<div :class="$style.timelineContent">
+							<div :class="$style.timelineHeader">
+								<N8nText :bold="true" size="small">
+									<template v-if="period.status === 'published'">
+										{{
+											period.versionName ??
+											i18n.baseText('workflowHistory.publishTimeline.event.activated')
+										}}
+									</template>
+									<template v-else>
+										{{ i18n.baseText('workflowHistory.publishTimeline.event.deactivated') }}
+									</template>
+									<template v-if="period.user">
+										<N8nText size="small" color="text-light">
+											{{
+												' ' +
+												i18n.baseText('workflowHistory.publishTimeline.by', {
+													interpolate: { user: period.user },
+												})
+											}}
 										</N8nText>
-										<N8nTooltip placement="left" :content="period.durationText">
-											<N8nText size="small" color="text-light" :class="$style.dateText">
-												{{ formatDate(period.startedAt) }}
-											</N8nText>
-										</N8nTooltip>
-									</div>
-								</div>
+									</template>
+								</N8nText>
+								<N8nTooltip placement="left" :content="formatDateFull(period.startedAt)">
+									<N8nText size="small" color="text-light" :class="$style.dateText">
+										{{ formatDateShort(period.startedAt) }}
+									</N8nText>
+								</N8nTooltip>
 							</div>
-						</template>
+						</div>
 					</div>
 				</template>
 			</div>
 		</template>
-	</Modal>
+	</div>
 </template>
 
 <style module lang="scss">
 .content {
-	min-height: 200px;
-	max-height: 70vh;
+	padding: var(--spacing--sm);
 	overflow-y: auto;
+	height: 100%;
 }
 
 .disclaimer {

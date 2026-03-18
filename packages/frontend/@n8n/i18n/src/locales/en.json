@@ -3675,6 +3675,8 @@
 	"workflowSettings.toggleMCP.error.title": "Error updating MCP settings",
 	"workflowSettings.toggleMCP.notFoundError": "Workflow not found",
 	"workflowHistory.title": "Version History",
+	"workflowHistory.tab.history": "Versions",
+	"workflowHistory.tab.publishTimeline": "Publish Timeline",
 	"workflowHistory.content.actions": "Actions",
 	"workflowHistory.item.id": "ID: {id}",
 	"workflowHistory.item.createdAt": "{date} at {time}",
