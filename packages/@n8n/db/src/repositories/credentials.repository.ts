@@ -296,9 +296,10 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		if (credentialIds) {
 			if (credentialIds.length === 0) {
 				qb.andWhere('1 = 0');
-			} else {
-				qb.andWhere('credential.id IN (:...credentialIds)', { credentialIds });
+				return qb;
 			}
+
+			qb.andWhere('credential.id IN (:...credentialIds)', { credentialIds });
 		}
 
 		// Pass projectId from options to sharing options
