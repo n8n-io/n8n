@@ -277,14 +277,14 @@ export const IconButtonPatterns: Story = {
 		components: { N8nIconButton },
 		template: `
 		<div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-			<N8nIconButton icon="plus" title="Create" type="primary" size="xlarge" />
-			<N8nIconButton icon="plus" title="Create" type="primary" size="large" />
-			<N8nIconButton icon="plus" title="Create" type="primary" size="medium" />
-			<N8nIconButton icon="plus" title="Create" type="secondary" size="medium" />
-			<N8nIconButton icon="plus" title="Create" type="tertiary" size="medium" />
-			<N8nIconButton icon="plus" title="Create" type="primary" :outline="true" size="medium" />
-			<N8nIconButton icon="plus" title="Create" type="primary" :loading="true" size="medium" />
-			<N8nIconButton icon="plus" title="Create" type="primary" :disabled="true" size="medium" />
+			<N8nIconButton icon="plus" title="Create" variant="solid" size="xlarge" />
+			<N8nIconButton icon="plus" title="Create" variant="solid" size="large" />
+			<N8nIconButton icon="plus" title="Create" variant="solid" size="medium" />
+			<N8nIconButton icon="plus" title="Create" variant="subtle" size="medium" />
+			<N8nIconButton icon="plus" title="Create" variant="ghost" size="medium" />
+			<N8nIconButton icon="plus" title="Create" variant="outline" size="medium" />
+			<N8nIconButton icon="plus" title="Create" variant="solid" :loading="true" size="medium" />
+			<N8nIconButton icon="plus" title="Create" variant="solid" :disabled="true" size="medium" />
 		</div>
 		`,
 	}),
