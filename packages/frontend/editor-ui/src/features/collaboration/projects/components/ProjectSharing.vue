@@ -131,12 +131,17 @@ const projectIcon = computed<IconOrEmoji>(() => {
 });
 
 // ── Search logic ──
+let searchGeneration = 0;
+
 const executeSearch = async (query: string) => {
+	const generation = ++searchGeneration;
 	try {
 		const result = await props.searchFn(query);
+		if (generation !== searchGeneration) return; // stale response, discard
 		searchResults.value = result.data ?? [];
 		searchCount.value = result.count ?? 0;
 	} catch {
+		if (generation !== searchGeneration) return;
 		searchResults.value = [];
 		searchCount.value = 0;
 	}
