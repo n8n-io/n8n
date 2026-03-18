@@ -35,7 +35,13 @@ const inputSchema = {
 		.string()
 		.optional()
 		.describe(
-			"Optional project ID to create the workflow in. Defaults to the user's personal project.",
+			"Optional project ID to create the workflow in. Use search_projects to find a project by name. Defaults to the user's personal project.",
+		),
+	folderId: z
+		.string()
+		.optional()
+		.describe(
+			'Optional folder ID to create the workflow in. Requires projectId to be set. Use search_folders to find a folder by name within a project.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -91,17 +97,35 @@ export const createCreateWorkflowFromCodeTool = (
 		name,
 		description,
 		projectId,
+		folderId,
 	}: {
 		code: string;
 		name?: string;
 		description?: string;
 		projectId?: string;
+		folderId?: string;
 	}) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
-			parameters: { codeLength: code.length, hasName: !!name, hasProjectId: !!projectId },
+			parameters: {
+				codeLength: code.length,
+				hasName: !!name,
+				hasProjectId: !!projectId,
+				hasFolderId: !!folderId,
+			},
 		};
+
+		if (folderId && !projectId) {
+			const errorMessage = 'projectId is required when folderId is provided';
+			telemetryPayload.results = { success: false, error: errorMessage };
+			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			return {
+				content: [{ type: 'text', text: JSON.stringify({ error: errorMessage }, null, 2) }],
+				structuredContent: { error: errorMessage },
+				isError: true,
+			};
+		}
 
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
@@ -151,6 +175,7 @@ export const createCreateWorkflowFromCodeTool = (
 
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
 				projectId,
+				parentFolderId: folderId,
 			});
 
 			const baseUrl = urlService.getInstanceBaseUrl();
