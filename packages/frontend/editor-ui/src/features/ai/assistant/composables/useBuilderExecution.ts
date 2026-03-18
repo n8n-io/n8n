@@ -52,7 +52,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 	};
 
 	const ensureExecutionWatcher = (onExecutionComplete: () => void) => {
-		if (executionWatcherStop) return;
+		stopExecutionWatcher();
 
 		executionWatcherStop = watch(
 			() => workflowsStore.workflowExecutionData?.status,
