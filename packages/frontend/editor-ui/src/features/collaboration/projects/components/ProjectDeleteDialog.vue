@@ -4,7 +4,6 @@ import type { Project, ProjectListItem, ProjectSharingData } from '../projects.t
 import ProjectSharing from './ProjectSharing.vue';
 import { useAvailableProjectSearch } from '../projects.utils';
 import type { ProjectSearchFn } from '../projects.utils';
-import { useProjectsStore } from '../projects.store';
 import { useI18n } from '@n8n/i18n';
 import type { ResourceCounts } from '../projects.store';
 
@@ -18,7 +17,6 @@ type Props = {
 
 const props = defineProps<Props>();
 const visible = defineModel<boolean>();
-const projectsStore = useProjectsStore();
 
 const resolvedSearchFn = computed(() => props.searchFn ?? useAvailableProjectSearch());
 const filterFn = (project: ProjectListItem) => project.id !== props.currentProject?.id;
