@@ -106,19 +106,23 @@ export class CreateCredentialDependencyTable1773000000000 implements ReversibleM
 			}
 
 			if (Array.isArray(currentValue)) {
-				valuesToScan.push(...currentValue);
+				for (const value of currentValue as unknown[]) {
+					valuesToScan.push(value);
+				}
 				continue;
 			}
 
 			if (typeof currentValue === 'object' && currentValue !== null) {
-				valuesToScan.push(...Object.values(currentValue));
+				for (const value of Object.values(currentValue as Record<string, unknown>)) {
+					valuesToScan.push(value);
+				}
 			}
 		}
 
 		return [...uniqueKeys];
 	}
 
-	private tryDecryptCredentialData(encryptedCredentialData: string): unknown | null {
+	private tryDecryptCredentialData(encryptedCredentialData: string): unknown {
 		try {
 			const decrypted = this.cipher.decrypt(encryptedCredentialData);
 			return JSON.parse(decrypted) as unknown;
