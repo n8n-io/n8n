@@ -499,6 +499,14 @@ export function buildVerificationArtifact(
 			if (exec.triggeredByEval) parts.push('  Triggered by: eval runner (post-build)');
 			if (exec.error) parts.push(`  Error: ${exec.error}`);
 			if (exec.failedNode) parts.push(`  Failed node: ${exec.failedNode}`);
+			if (exec.webhookResponse) {
+				parts.push(`  Webhook HTTP response: ${String(exec.webhookResponse.status)}`);
+				const bodyStr =
+					typeof exec.webhookResponse.body === 'string'
+						? exec.webhookResponse.body
+						: JSON.stringify(exec.webhookResponse.body, null, 2);
+				parts.push(`  Response body:\n  \`\`\`json\n${bodyStr}\n  \`\`\``);
+			}
 			if (exec.outputData && exec.outputData.length > 0) {
 				for (const nodeOutput of exec.outputData) {
 					parts.push(`  Node "${nodeOutput.nodeName}" output:`);
@@ -695,6 +703,14 @@ export function buildVerificationArtifactFromMessages(
 			if (exec.triggeredByEval) parts.push('  Triggered by: eval runner (post-build)');
 			if (exec.error) parts.push(`  Error: ${exec.error}`);
 			if (exec.failedNode) parts.push(`  Failed node: ${exec.failedNode}`);
+			if (exec.webhookResponse) {
+				parts.push(`  Webhook HTTP response: ${String(exec.webhookResponse.status)}`);
+				const bodyStr =
+					typeof exec.webhookResponse.body === 'string'
+						? exec.webhookResponse.body
+						: JSON.stringify(exec.webhookResponse.body, null, 2);
+				parts.push(`  Response body:\n  \`\`\`json\n${bodyStr}\n  \`\`\``);
+			}
 			if (exec.outputData && exec.outputData.length > 0) {
 				for (const nodeOutput of exec.outputData) {
 					parts.push(`  Node "${nodeOutput.nodeName}" output:`);
@@ -815,8 +831,9 @@ const EXECUTION_POLL_TIMEOUT_MS = 30_000;
 /**
  * Force-execute every created workflow that wasn't already executed.
  * Enriches existing execution summaries with error/failedNode details and output data.
- * When `testInputs` are provided, uses pin data to execute ALL trigger types
- * (including webhooks, forms, schedules) with the provided test data.
+ * When `testInputs` are provided:
+ * - Webhook triggers: activates workflow and calls the live webhook URL
+ * - Other triggers: uses pin data to inject test data
  * Mutates `outcome.executionsRun` in place.
  */
 export async function runPostBuildExecutions(
@@ -824,7 +841,10 @@ export async function runPostBuildExecutions(
 	outcome: AgentOutcome,
 	testInputs?: ExecutionTestInput[],
 ): Promise<void> {
-	const alreadyExecutedWorkflowIds = new Set(outcome.executionsRun.map((e) => e.workflowId));
+	// Exclude skipped executions so Phase 7d can re-execute them with test inputs
+	const alreadyExecutedWorkflowIds = new Set(
+		outcome.executionsRun.filter((e) => e.status !== 'skipped').map((e) => e.workflowId),
+	);
 
 	// Enrich already-executed workflows with error/failedNode details + output data
 	for (const exec of outcome.executionsRun) {
@@ -846,13 +866,15 @@ export async function runPostBuildExecutions(
 
 		const triggerNode = findTriggerNode(outcome.workflowJsons, wf.id);
 
-		// Check if we have a matching test input for this workflow's trigger type
-		const matchingInput = testInputs
-			? findMatchingTestInput(triggerNode?.type, testInputs)
-			: undefined;
+		// Find all matching test inputs for this trigger type
+		const matchingInputs = testInputs ? findMatchingTestInputs(triggerNode?.type, testInputs) : [];
 
 		// Skip non-executable triggers ONLY when no test inputs are available
-		if (!matchingInput && triggerNode && NON_EXECUTABLE_TRIGGERS.has(triggerNode.type)) {
+		if (
+			matchingInputs.length === 0 &&
+			triggerNode &&
+			NON_EXECUTABLE_TRIGGERS.has(triggerNode.type)
+		) {
 			outcome.executionsRun.push({
 				id: '',
 				workflowId: wf.id,
@@ -862,17 +884,35 @@ export async function runPostBuildExecutions(
 			continue;
 		}
 
+		// Remove any previous skipped entry for this workflow
+		const skippedIdx = outcome.executionsRun.findIndex(
+			(e) => e.workflowId === wf.id && e.status === 'skipped',
+		);
+		if (skippedIdx >= 0) {
+			outcome.executionsRun.splice(skippedIdx, 1);
+		}
+
 		try {
-			if (matchingInput && triggerNode) {
-				// Use pin data to execute with test inputs
-				const executionSummary = await executeWithPinData(
-					client,
-					wf.id,
-					triggerNode.name,
-					triggerNode.type,
-					matchingInput,
-				);
-				outcome.executionsRun.push(executionSummary);
+			if (matchingInputs.length > 0 && triggerNode) {
+				const isWebhook = nodeTypeToTriggerType(triggerNode.type) === 'webhook';
+
+				if (isWebhook) {
+					// Execute via live webhook URL with each test payload
+					const summaries = await executeViaWebhook(client, wf.id, matchingInputs);
+					outcome.executionsRun.push(...summaries);
+				} else {
+					// Use pin data for non-webhook triggers (form, schedule, manual)
+					for (const input of matchingInputs) {
+						const executionSummary = await executeWithPinData(
+							client,
+							wf.id,
+							triggerNode.name,
+							triggerNode.type,
+							input,
+						);
+						outcome.executionsRun.push(executionSummary);
+					}
+				}
 			} else {
 				// Execute without pin data (existing behavior)
 				const { executionId } = await client.executeWorkflow(wf.id, triggerNode?.name);
@@ -909,14 +949,14 @@ function nodeTypeToTriggerType(nodeType: string): ExecutionTestInput['triggerTyp
 	return undefined;
 }
 
-function findMatchingTestInput(
+function findMatchingTestInputs(
 	nodeType: string | undefined,
 	testInputs: ExecutionTestInput[],
-): ExecutionTestInput | undefined {
-	if (!nodeType || testInputs.length === 0) return undefined;
+): ExecutionTestInput[] {
+	if (!nodeType || testInputs.length === 0) return [];
 	const triggerType = nodeTypeToTriggerType(nodeType);
-	if (!triggerType) return undefined;
-	return testInputs.find((input) => input.triggerType === triggerType);
+	if (!triggerType) return [];
+	return testInputs.filter((input) => input.triggerType === triggerType);
 }
 
 /** Build pin data for a trigger node based on trigger type and test input */
@@ -994,6 +1034,143 @@ async function executeWithPinData(
 			// Non-fatal — pin data restoration failure
 		}
 	}
+}
+
+/**
+ * Execute a webhook workflow by calling the live webhook URL.
+ * Activates the workflow, calls the webhook for each test input,
+ * polls for execution results, then deactivates.
+ */
+async function executeViaWebhook(
+	client: N8nClient,
+	workflowId: string,
+	testInputs: ExecutionTestInput[],
+): Promise<ExecutionSummary[]> {
+	const summaries: ExecutionSummary[] = [];
+
+	try {
+		await client.activateWorkflow(workflowId);
+	} catch (err: unknown) {
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		return [
+			{
+				id: '',
+				workflowId,
+				status: 'error',
+				error: `Failed to activate workflow for webhook execution: ${errorMessage}`,
+				triggeredByEval: true,
+			},
+		];
+	}
+
+	try {
+		for (const input of testInputs) {
+			const webhookPath = input.path ?? '';
+			const httpMethod = input.httpMethod ?? 'POST';
+
+			if (!webhookPath) {
+				summaries.push({
+					id: '',
+					workflowId,
+					status: 'error',
+					error: 'No webhook path provided in test input',
+					triggeredByEval: true,
+				});
+				continue;
+			}
+
+			try {
+				// Snapshot execution IDs before calling the webhook
+				const preCallExecIds = new Set((await client.listExecutions(workflowId)).map((e) => e.id));
+
+				// Call the live webhook
+				const webhookResponse = await client.callWebhook(
+					webhookPath,
+					httpMethod,
+					httpMethod.toUpperCase() !== 'GET' ? input.testData : undefined,
+				);
+
+				// Find the new execution created by the webhook call.
+				// The response is already back, so the execution should be done.
+				const execSummary = await pollNewExecution(client, workflowId, preCallExecIds);
+
+				summaries.push({
+					...execSummary,
+					webhookResponse: {
+						status: webhookResponse.status,
+						body: webhookResponse.data,
+					},
+				});
+			} catch (err: unknown) {
+				const errorMessage = err instanceof Error ? err.message : String(err);
+				summaries.push({
+					id: '',
+					workflowId,
+					status: 'error',
+					error: `Webhook call failed: ${errorMessage}`,
+					triggeredByEval: true,
+				});
+			}
+		}
+	} finally {
+		// Always deactivate (best-effort)
+		try {
+			await client.deactivateWorkflow(workflowId);
+		} catch {
+			// Non-fatal
+		}
+	}
+
+	return summaries;
+}
+
+/**
+ * Poll for a NEW execution of a workflow that didn't exist before.
+ * Uses a snapshot of pre-existing execution IDs to find the one
+ * created by the webhook call.  Best-effort — if the execution can't
+ * be found (e.g. "Respond to Webhook" already completed), returns a
+ * minimal summary.  The webhook HTTP response is captured separately
+ * and provides the primary verification data.
+ */
+async function pollNewExecution(
+	client: N8nClient,
+	workflowId: string,
+	preCallExecIds: Set<string>,
+): Promise<ExecutionSummary> {
+	const deadline = Date.now() + EXECUTION_POLL_TIMEOUT_MS;
+
+	while (Date.now() < deadline) {
+		try {
+			const executions = await client.listExecutions(workflowId);
+			// Find an execution that didn't exist before the webhook call
+			const newExec = executions.find((e) => !preCallExecIds.has(e.id));
+			if (newExec && newExec.status !== 'running' && newExec.status !== 'new') {
+				const detail = await client.getExecution(newExec.id);
+				const { error, failedNode } = extractErrorFromExecution(detail.data);
+				const outputData = extractOutputFromExecution(detail.data);
+				return {
+					id: newExec.id,
+					workflowId,
+					status: detail.status,
+					error,
+					failedNode,
+					triggeredByEval: true,
+					outputData,
+				};
+			}
+		} catch {
+			// Retry on transient errors
+		}
+		await new Promise((resolve) => setTimeout(resolve, EXECUTION_POLL_INTERVAL_MS));
+	}
+
+	// Timeout — the webhook response is still available for verification
+	return {
+		id: '',
+		workflowId,
+		status: 'webhook-only',
+		triggeredByEval: true,
+	};
 }
 
 async function pollExecution(

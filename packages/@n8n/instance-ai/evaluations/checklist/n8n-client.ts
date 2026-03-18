@@ -164,9 +164,10 @@ export class N8nClient {
 	async listExecutions(workflowId?: string): Promise<ExecutionListItem[]> {
 		const query = workflowId ? `?workflowId=${workflowId}` : '';
 		const result = (await this.fetch(`/rest/executions${query}`)) as {
-			data: ExecutionListItem[];
+			data: ExecutionListItem[] | { results: ExecutionListItem[]; count: number };
 		};
-		return result.data;
+		// The API may return either a direct array or { results: [...], count }
+		return Array.isArray(result.data) ? result.data : result.data.results;
 	}
 
 	/**
@@ -212,6 +213,61 @@ export class N8nClient {
 			body: updates,
 		})) as { data: Record<string, unknown> };
 		return result.data;
+	}
+
+	/**
+	 * Activate a workflow.
+	 * PATCH /rest/workflows/:id  body: { active: true }
+	 */
+	async activateWorkflow(id: string): Promise<void> {
+		await this.fetch(`/rest/workflows/${id}`, {
+			method: 'PATCH',
+			body: { active: true },
+		});
+	}
+
+	/**
+	 * Deactivate a workflow.
+	 * PATCH /rest/workflows/:id  body: { active: false }
+	 */
+	async deactivateWorkflow(id: string): Promise<void> {
+		await this.fetch(`/rest/workflows/${id}`, {
+			method: 'PATCH',
+			body: { active: false },
+		});
+	}
+
+	/**
+	 * Call a live webhook endpoint.
+	 * Sends an HTTP request to ${baseUrl}/webhook/${path} and returns the
+	 * status code and parsed response body.  The workflow must be active.
+	 */
+	async callWebhook(
+		path: string,
+		method: string,
+		body?: Record<string, unknown>,
+	): Promise<{ status: number; data: unknown }> {
+		const url = `${this.baseUrl}/webhook/${path}`;
+		const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+		if (this.sessionCookie) {
+			headers.cookie = this.sessionCookie;
+		}
+
+		const res = await fetch(url, {
+			method: method.toUpperCase(),
+			headers,
+			body: body ? JSON.stringify(body) : undefined,
+		});
+
+		let data: unknown;
+		const contentType = res.headers.get('content-type') ?? '';
+		if (contentType.includes('application/json')) {
+			data = await res.json();
+		} else {
+			data = await res.text();
+		}
+
+		return { status: res.status, data };
 	}
 
 	/**

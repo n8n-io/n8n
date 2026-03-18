@@ -74,6 +74,7 @@ export interface ExecutionSummary {
 	failedNode?: string;
 	triggeredByEval?: boolean;
 	outputData?: NodeOutputData[];
+	webhookResponse?: WebhookResponse;
 }
 
 export interface AgentOutcome {
@@ -150,6 +151,15 @@ export interface ExecutionTestInput {
 	testData: Record<string, unknown>;
 	/** Human description of what this test does */
 	description: string;
+	/** Webhook-specific: HTTP method (GET, POST, PUT, etc.) */
+	httpMethod?: string;
+	/** Webhook-specific: URL path segment (e.g. "contacts", "api/items") */
+	path?: string;
+}
+
+export interface WebhookResponse {
+	status: number;
+	body: unknown;
 }
 
 export interface ExecutionChecklist {
