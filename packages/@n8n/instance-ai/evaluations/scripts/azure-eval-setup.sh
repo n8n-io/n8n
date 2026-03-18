@@ -30,6 +30,7 @@ VM_USER="azureuser"
 LOCATION="eastus"
 REPO_URL="git@github.com:n8n-io/n8n-ai-tigers.git"
 REPO_BRANCH="feat/checklist-execution-eval-clean"
+AUTO_SHUTDOWN_TIME="2300"  # 11 PM UTC
 
 # Parse args
 while [[ $# -gt 0 ]]; do
@@ -38,6 +39,7 @@ while [[ $# -gt 0 ]]; do
 		--size) VM_SIZE="$2"; shift 2 ;;
 		--location) LOCATION="$2"; shift 2 ;;
 		--branch) REPO_BRANCH="$2"; shift 2 ;;
+		--shutdown-time) AUTO_SHUTDOWN_TIME="$2"; shift 2 ;;
 		*) echo "Unknown arg: $1"; exit 1 ;;
 	esac
 done
@@ -50,15 +52,31 @@ for var in ANTHROPIC_API_KEY N8N_ENCRYPTION_KEY N8N_EVAL_EMAIL N8N_EVAL_PASSWORD
 	fi
 done
 
+# Detect caller's public IP for SSH restriction
+echo "Detecting your public IP..."
+MY_IP=$(curl -sf https://api.ipify.org) || {
+	echo "Error: Could not detect public IP. Check your internet connection."
+	exit 1
+}
+echo "Your IP: $MY_IP"
+
+# Resource tags for tracking and cleanup
+CREATED_BY="$(whoami)"
+CREATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+TAGS="team=ai-tigers purpose=eval created-by=$CREATED_BY created-at=$CREATED_AT"
+
+echo ""
 echo "=== Azure Eval VM Setup ==="
 echo "VMs: $VM_COUNT x $VM_SIZE"
 echo "Location: $LOCATION"
 echo "Branch: $REPO_BRANCH"
+echo "SSH restricted to: $MY_IP"
+echo "Auto-shutdown: $AUTO_SHUTDOWN_TIME UTC"
 echo ""
 
 # Create resource group
 echo "Creating resource group $RESOURCE_GROUP..."
-az group create --name "$RESOURCE_GROUP" --location "$LOCATION" --output none 2>/dev/null || true
+az group create --name "$RESOURCE_GROUP" --location "$LOCATION" --tags $TAGS --output none 2>/dev/null || true
 
 VM_IPS=()
 
@@ -77,6 +95,7 @@ for idx in $(seq 1 "$VM_COUNT"); do
 		--admin-username "$VM_USER" \
 		--ssh-key-values ~/.ssh/id_rsa.pub \
 		--public-ip-sku Standard \
+		--tags $TAGS \
 		--output tsv \
 		--query publicIpAddress 2>/dev/null) || {
 		# VM may already exist — get its IP
@@ -92,8 +111,25 @@ for idx in $(seq 1 "$VM_COUNT"); do
 	VM_IPS+=("$VM_IP")
 	echo "  VM IP: $VM_IP"
 
-	# Open SSH port
-	az vm open-port --resource-group "$RESOURCE_GROUP" --name "$VM_NAME" --port 22 --output none 2>/dev/null || true
+	# Restrict SSH to caller's IP
+	NSG_NAME="${VM_NAME}NSG"
+	az network nsg rule create \
+		--resource-group "$RESOURCE_GROUP" \
+		--nsg-name "$NSG_NAME" \
+		--name "AllowSSH" \
+		--priority 1000 \
+		--source-address-prefixes "$MY_IP/32" \
+		--destination-port-ranges 22 \
+		--access Allow \
+		--protocol Tcp \
+		--output none 2>/dev/null || true
+
+	# Set auto-shutdown
+	az vm auto-shutdown \
+		--resource-group "$RESOURCE_GROUP" \
+		--name "$VM_NAME" \
+		--time "$AUTO_SHUTDOWN_TIME" \
+		--output none 2>/dev/null || echo "  Warning: could not set auto-shutdown"
 
 	# Wait for SSH
 	echo "  Waiting for SSH..."
