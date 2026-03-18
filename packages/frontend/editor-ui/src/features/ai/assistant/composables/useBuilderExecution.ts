@@ -81,6 +81,8 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 			? workflowsStore.getNodeByName(selectedTriggerNode)
 			: null;
 
+		ensureExecutionWatcher(onExecutionComplete);
+
 		if (selectedTriggerNodeType && isChatNode(selectedTriggerNodeType)) {
 			toast.showMessage({
 				title: i18n.baseText('aiAssistant.builder.toast.title'),
@@ -90,8 +92,6 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 			logsStore.toggleOpen(true);
 			return false;
 		}
-
-		ensureExecutionWatcher(onExecutionComplete);
 
 		const runOptions: Parameters<typeof runWorkflow>[0] = {};
 		if (selectedTriggerNode) {
