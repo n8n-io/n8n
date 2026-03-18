@@ -106,9 +106,7 @@ describe('getStatus', () => {
 
 	it('ensure updatedAt field for last deleted tag', async () => {
 		// ARRANGE
-		const user = mock<User>({
-			role: GLOBAL_ADMIN_ROLE,
-		});
+		const user = { role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 		// Define a tag that does only exist remotely.
 		// Pushing this means it was deleted.
@@ -145,9 +143,7 @@ describe('getStatus', () => {
 
 	it('ensure updatedAt field for last deleted folder', async () => {
 		// ARRANGE
-		const user = mock<User>({
-			role: GLOBAL_ADMIN_ROLE,
-		});
+		const user = { role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 		// Define a folder that does only exist remotely.
 		// Pushing this means it was deleted.
@@ -186,9 +182,7 @@ describe('getStatus', () => {
 
 	it('conflict depends on the value of `direction`', async () => {
 		// ARRANGE
-		const user = mock<User>({
-			role: GLOBAL_ADMIN_ROLE,
-		});
+		const user = { role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 		// Define a credential that does only exist locally.
 		// Pulling this would delete it so it should be marked as a conflict.
@@ -334,9 +328,7 @@ describe('getStatus', () => {
 
 	it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
 		// ARRANGE
-		const user = mock<User>({
-			role: GLOBAL_MEMBER_ROLE,
-		});
+		const user = { role: GLOBAL_MEMBER_ROLE } as unknown as User;
 
 		// ACT
 		await expect(
@@ -380,12 +372,8 @@ describe('getStatus', () => {
 		};
 
 		const mockUsers = {
-			globalAdmin: mock<User>({
-				role: GLOBAL_ADMIN_ROLE,
-			}),
-			limitedUser: mock<User>({
-				role: GLOBAL_MEMBER_ROLE,
-			}),
+			globalAdmin: { role: GLOBAL_ADMIN_ROLE } as unknown as User,
+			limitedUser: { role: GLOBAL_MEMBER_ROLE } as unknown as User,
 		};
 
 		const setupProjectMocks = ({
@@ -836,7 +824,7 @@ describe('getStatus', () => {
 	});
 
 	describe('workflows', () => {
-		const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+		const user = { role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 		const createWorkflow = (
 			overrides: Partial<SourceControlWorkflowVersionId> = {},
@@ -1099,7 +1087,7 @@ describe('getStatus', () => {
 
 	describe('credentials', () => {
 		describe('owner changes', () => {
-			const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+			const user = { role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 			const createCredential = (
 				overrides: Partial<StatusExportableCredential> = {},
@@ -1326,7 +1314,7 @@ describe('getStatus', () => {
 			},
 		};
 
-		const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+		const user = { role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 		it('should detect folder as modified when homeProjectId changes', async () => {
 			// ARRANGE
@@ -1447,7 +1435,7 @@ describe('getStatus', () => {
 		});
 
 		describe('owner changes', () => {
-			const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+			const user = { role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 			const createFolder = (overrides = {}) => ({
 				id: 'folder1',
@@ -1688,7 +1676,7 @@ describe('getStatus', () => {
 	});
 
 	describe('tag mappings', () => {
-		const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+		const user = { role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 		it('should detect when a tag mapping is removed locally but still exists remotely', async () => {
 			const tag = mock<TagEntity>({ id: 'tag1', name: 'Test Tag', updatedAt: new Date() });
@@ -1726,10 +1714,7 @@ describe('getStatus', () => {
 	describe('data tables', () => {
 		it('should handle undefined data tables from remote (null safety)', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = { id: '1', role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 			// Mock undefined data tables from remote
 			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(undefined as any);
@@ -1750,10 +1735,7 @@ describe('getStatus', () => {
 
 		it('should handle undefined data tables from local (null safety)', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = { id: '1', role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 			// Mock undefined data tables from local
 			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
@@ -1774,10 +1756,7 @@ describe('getStatus', () => {
 
 		it('should handle both data tables undefined (null safety)', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = { id: '1', role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 			// Mock both undefined
 			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(undefined as any);
@@ -1798,10 +1777,7 @@ describe('getStatus', () => {
 
 		it('should identify data tables missing in local (remote only)', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = { id: '1', role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 			const remoteDataTable = {
 				id: 'dt1',
@@ -1836,10 +1812,7 @@ describe('getStatus', () => {
 
 		it('should identify data tables missing in remote (local only)', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = { id: '1', role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 			const localDataTable = {
 				id: 'dt2',
@@ -1874,10 +1847,7 @@ describe('getStatus', () => {
 
 		it('should identify modified data tables (name changed)', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = { id: '1', role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 			const localDataTable = {
 				id: 'dt3',
@@ -1922,10 +1892,7 @@ describe('getStatus', () => {
 
 		it('should not detect modifications when data tables are identical', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = { id: '1', role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 			const dataTable = {
 				id: 'dt4',
@@ -1956,10 +1923,7 @@ describe('getStatus', () => {
 
 		it('should handle multiple data tables with mixed states', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = { id: '1', role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 			const localDataTables = [
 				{
@@ -2055,10 +2019,7 @@ describe('getStatus', () => {
 		});
 
 		describe('schema change detection', () => {
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = { id: '1', role: GLOBAL_ADMIN_ROLE } as unknown as User;
 
 			it('should detect column addition', async () => {
 				// ARRANGE
