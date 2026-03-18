@@ -1,6 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import type { Run, InstanceAiResult, PromptConfig, ChatMessage, ChatToolCall } from './types';
+import type {
+	Run,
+	InstanceAiResult,
+	PromptConfig,
+	ChatMessage,
+	ChatToolCall,
+	ChatEntry,
+} from './types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -98,6 +105,13 @@ function renderChatToolCall(tc: ChatToolCall, idx: number): string {
 	</details>`;
 }
 
+function renderChatEntry(entry: ChatEntry, tcIdx: number): string {
+	if (entry.type === 'text') {
+		return `<div style="margin:8px 0;padding:8px;background:#161b22;border:1px solid #30363d;border-radius:4px;font-size:12px;color:#c9d1d9;white-space:pre-wrap">${escapeHtml(entry.content)}</div>`;
+	}
+	return renderChatToolCall(entry.toolCall, tcIdx);
+}
+
 function renderChatMessagesSection(messages: ChatMessage[] | undefined): string {
 	if (!messages || messages.length === 0) return '';
 
@@ -109,17 +123,8 @@ function renderChatMessagesSection(messages: ChatMessage[] | undefined): string 
 			continue; // User message is already shown as the prompt
 		}
 
-		// Tool calls
-		if (msg.toolCalls.length > 0) {
-			html += `<div style="margin:8px 0"><span style="color:#8b949e;font-size:12px">${String(msg.toolCalls.length)} tool call(s)</span></div>`;
-			for (const tc of msg.toolCalls) {
-				html += renderChatToolCall(tc, tcIdx++);
-			}
-		}
-
-		// Agent text response
-		if (msg.content.trim()) {
-			html += `<div style="margin:8px 0;padding:8px;background:#161b22;border:1px solid #30363d;border-radius:4px;font-size:12px;color:#c9d1d9;white-space:pre-wrap">${escapeHtml(msg.content.trim())}</div>`;
+		for (const entry of msg.entries) {
+			html += renderChatEntry(entry, tcIdx++);
 		}
 	}
 

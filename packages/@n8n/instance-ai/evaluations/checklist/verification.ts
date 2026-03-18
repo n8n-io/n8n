@@ -21,8 +21,8 @@ import type {
 	AgentOutcome,
 	CapturedEvent,
 	CapturedToolCall,
+	ChatEntry,
 	ChatMessage,
-	ChatToolCall,
 	ExecutionSummary,
 	ExecutionTestInput,
 	InstanceAiMetrics,
@@ -540,34 +540,66 @@ export function extractChatMessages(messages: InstanceAiMessage[]): ChatMessage[
 
 	for (const message of messages) {
 		if (message.role === 'user') {
-			result.push({ role: 'user', content: message.content, toolCalls: [] });
+			result.push({ role: 'user', entries: [{ type: 'text', content: message.content }] });
 		} else if (message.role === 'assistant') {
-			const toolCalls: ChatToolCall[] = [];
+			const entries: ChatEntry[] = [];
 			if (message.agentTree) {
-				collectToolCalls(message.agentTree, toolCalls);
+				collectTimelineEntries(message.agentTree, entries);
+			} else if (message.content) {
+				entries.push({ type: 'text', content: message.content });
 			}
-			result.push({
-				role: 'assistant',
-				content: message.agentTree?.textContent ?? message.content,
-				toolCalls,
-			});
+			result.push({ role: 'assistant', entries });
 		}
 	}
 
 	return result;
 }
 
-function collectToolCalls(node: InstanceAiAgentNode, out: ChatToolCall[]): void {
-	for (const tc of node.toolCalls) {
-		out.push({
-			toolName: tc.toolName,
-			args: tc.args,
-			result: tc.result,
-			error: tc.error,
-		});
-	}
-	for (const child of node.children) {
-		collectToolCalls(child, out);
+function collectTimelineEntries(node: InstanceAiAgentNode, out: ChatEntry[]): void {
+	if (node.timeline.length > 0) {
+		for (const entry of node.timeline) {
+			switch (entry.type) {
+				case 'text':
+					out.push({ type: 'text', content: entry.content });
+					break;
+				case 'tool-call': {
+					const tc = node.toolCalls.find((t) => t.toolCallId === entry.toolCallId);
+					if (tc) {
+						out.push({
+							type: 'tool-call',
+							toolCall: {
+								toolName: tc.toolName,
+								args: tc.args,
+								result: tc.result,
+								error: tc.error,
+							},
+						});
+					}
+					break;
+				}
+				case 'child': {
+					const child = node.children.find((c) => c.agentId === entry.agentId);
+					if (child) {
+						collectTimelineEntries(child, out);
+					}
+					break;
+				}
+			}
+		}
+	} else {
+		// Fallback: text then tool calls then children
+		if (node.textContent) {
+			out.push({ type: 'text', content: node.textContent });
+		}
+		for (const tc of node.toolCalls) {
+			out.push({
+				type: 'tool-call',
+				toolCall: { toolName: tc.toolName, args: tc.args, result: tc.result, error: tc.error },
+			});
+		}
+		for (const child of node.children) {
+			collectTimelineEntries(child, out);
+		}
 	}
 }
 

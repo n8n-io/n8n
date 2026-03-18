@@ -92,10 +92,13 @@ export interface ChatToolCall {
 	error?: string;
 }
 
+export type ChatEntry =
+	| { type: 'text'; content: string }
+	| { type: 'tool-call'; toolCall: ChatToolCall };
+
 export interface ChatMessage {
 	role: 'user' | 'assistant';
-	content: string;
-	toolCalls: ChatToolCall[];
+	entries: ChatEntry[];
 }
 
 export interface InstanceAiResult {
