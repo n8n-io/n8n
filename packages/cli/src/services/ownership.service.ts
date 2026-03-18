@@ -1,3 +1,4 @@
+import type { EntityManager } from '@n8n/typeorm';
 import type { ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
@@ -140,8 +141,11 @@ export class OwnershipService {
 		return owner;
 	}
 
-	async invalidateProjectOwnerCacheByUserId(userId: string) {
-		const personalProject = await this.projectRepository.getPersonalProjectForUser(userId);
+	async invalidateProjectOwnerCacheByUserId(userId: string, entityManager?: EntityManager) {
+		const personalProject = await this.projectRepository.getPersonalProjectForUser(
+			userId,
+			entityManager,
+		);
 		if (personalProject) {
 			await this.cacheService.deleteFromHash('project-owner', personalProject.id);
 		}

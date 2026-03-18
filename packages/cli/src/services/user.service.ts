@@ -379,14 +379,17 @@ export class UserService {
 			}
 		};
 
-		if (outerTrx) {
-			await runInTransaction(outerTrx);
-		} else {
-			await this.userRepository.manager.transaction(runInTransaction);
-		}
+		const runInTransactionAndInvalidateCache = async (trx: EntityManager) => {
+			await runInTransaction(trx);
+			// Invalidate ownership cache for the user to ensure their new permissions are reflected in subsequent requests
+			await this.ownershipService.invalidateProjectOwnerCacheByUserId(user.id, trx);
+		};
 
-		// Invalidate ownership cache for the user to ensure their new permissions are reflected in subsequent requests
-		await this.ownershipService.invalidateProjectOwnerCacheByUserId(user.id);
+		if (outerTrx) {
+			await runInTransactionAndInvalidateCache(outerTrx);
+		} else {
+			await this.userRepository.manager.transaction(runInTransactionAndInvalidateCache);
+		}
 	}
 
 	/**
