@@ -57,7 +57,7 @@ export class DatabricksOAuth2Api implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.host}}',
-			url: '/api/2.0/serving-endpoints',
+			url: '/api/2.0/preview/scim/v2/Me',
 			method: 'GET',
 		},
 	};
