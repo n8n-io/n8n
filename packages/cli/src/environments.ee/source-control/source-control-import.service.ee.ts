@@ -6,7 +6,6 @@ import type {
 	TagEntity,
 	User,
 	Variables,
-	WorkflowEntity,
 	WorkflowTagMapping,
 } from '@n8n/db';
 import {
@@ -782,19 +781,17 @@ export class SourceControlImportService {
 			this.logger.debug(`Deactivating workflow id ${workflowId}`);
 			await this.activeWorkflowManager.remove(workflowId);
 
-			if (versionIdToActivate) {
-				// try activating the imported workflow
-				this.logger.debug(`Reactivating workflow id ${workflowId}`);
-				await this.activeWorkflowManager.add(workflowId, 'activate');
-				didPublish = true;
-			}
+			// try activating the imported workflow
+			this.logger.debug(`Reactivating workflow id ${workflowId}`);
+			await this.workflowRepository.updateActiveState(workflowId, true);
+			await this.activeWorkflowManager.add(workflowId, 'activate');
+			didPublish = true;
 		} catch (e) {
 			// TODO: this operation failing should be told to the user in the app, rather than just being logged
 			const error = ensureError(e);
 			this.logger.error(`Failed to activate workflow ${workflowId}`, { error });
 		} finally {
 			if (didPublish) {
-				await this.workflowRepository.updateActiveState(workflowId, true);
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId,
 					versionId: versionIdToActivate,

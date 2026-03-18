@@ -581,6 +581,51 @@ describe('SourceControlImportService', () => {
 				expect.objectContaining({ versionId: 'new-version-id', event: 'activated' }),
 			);
 		});
+
+		it('should call updateActiveState() before activeWorkflowManager.add() when reactivating a pulled workflow', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'Active Workflow',
+				versionId: 'new-version-id',
+				nodes: [],
+				connections: {},
+				parentFolderId: null,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			workflowRepository.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					name: 'Active Workflow',
+					active: true,
+					activeVersionId: 'old-version-id',
+					versionId: 'old-version-id',
+				}),
+			]);
+
+			// updateActiveState MUST be called before add() so that findById() inside
+			// add() sees the new activeVersionId and loads the correct WorkflowHistory
+			// for the cron/poll trigger closure. Cron triggers capture a snapshot of the
+			// workflow at activation time, unlike webhooks which re-fetch from DB on
+			// every incoming request.
+			workflowRepository.updateActiveState.mockResolvedValue({
+				generatedMaps: [],
+				raw: [],
+				affected: 1,
+			});
+			activeWorkflowManager.add.mockResolvedValue({ webhooks: false, triggersAndPollers: false });
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			const updateActiveStateCallOrder =
+				workflowRepository.updateActiveState.mock.invocationCallOrder[0];
+			const addCallOrder = activeWorkflowManager.add.mock.invocationCallOrder[0];
+			expect(updateActiveStateCallOrder).toBeLessThan(addCallOrder);
+		});
 	});
 
 	describe('getRemoteCredentialsFromFiles', () => {
