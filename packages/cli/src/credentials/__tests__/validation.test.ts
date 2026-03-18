@@ -1,6 +1,7 @@
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
-import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+
+import { createTestUser } from '@test/mock-objects';
 
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import * as checkAccess from '@/permissions.ee/check-access';
@@ -13,8 +14,8 @@ import {
 } from '../validation';
 
 describe('Credentials Validation', () => {
-	const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-	const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
+	const ownerUser = createTestUser({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+	const memberUser = createTestUser({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
 	const projectId = 'project-id';
 	const errorMessage = 'Lacking permissions to reference external secrets in credentials';
 

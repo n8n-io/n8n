@@ -10,6 +10,8 @@ import type {
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
+
+import { createTestUser } from '@test/mock-objects';
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	CREDENTIAL_EMPTY_VALUE,
@@ -591,8 +593,8 @@ describe('CredentialsService', () => {
 	});
 
 	describe('getMany', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
+		const ownerUser = createTestUser({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		const memberUser = createTestUser({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
 
 		const regularCredential = {
 			id: 'cred-1',
@@ -1479,8 +1481,8 @@ describe('CredentialsService', () => {
 
 	describe('findAllCredentialIdsForWorkflow', () => {
 		const workflowId = 'workflow-1';
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
+		const ownerUser = createTestUser({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		const memberUser = createTestUser({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
 
 		it('should return all personal credentials when owner has global read permissions', async () => {
 			// ARRANGE
@@ -1539,8 +1541,8 @@ describe('CredentialsService', () => {
 
 	describe('findAllCredentialIdsForProject', () => {
 		const projectId = 'project-1';
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
+		const ownerUser = createTestUser({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		const memberUser = createTestUser({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
 
 		it('should return all personal credentials when project owner has global read permissions', async () => {
 			// ARRANGE
@@ -1598,8 +1600,8 @@ describe('CredentialsService', () => {
 	});
 
 	describe('createUnmanagedCredential', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
+		const ownerUser = createTestUser({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		const memberUser = createTestUser({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
 
 		const credentialData = {
 			name: 'Test Credential',
@@ -1845,7 +1847,7 @@ describe('CredentialsService', () => {
 	});
 
 	describe('createManagedCredential', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		const ownerUser = createTestUser({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 
 		const credentialData = {
 			name: 'Managed Credential',
@@ -1928,7 +1930,7 @@ describe('CredentialsService', () => {
 	});
 
 	describe('prepareUpdateData', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		const ownerUser = createTestUser({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 		describe('external secrets', () => {
 			beforeEach(() => {
 				jest.spyOn(service, 'decrypt').mockReturnValue({});
@@ -2030,7 +2032,7 @@ describe('CredentialsService', () => {
 	});
 
 	describe('checkCredentialData', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		const ownerUser = createTestUser({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 		const testProjectId = 'test-project-id';
 
 		beforeEach(() => {
