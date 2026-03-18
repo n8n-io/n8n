@@ -1,88 +1,77 @@
-import {
-	lucideBodyChunkLoaders,
-	lucideIconChunkIndex,
-} from './generated/lucideChunkIndex.generated';
-
-type LucideBodyChunk = Record<string, string>;
+type IconLoaders = Record<string, () => Promise<{ default: string | null }>>;
 
 const bodyCache = new Map<string, string>();
-const loadedChunks = new Map<string, LucideBodyChunk>();
-const inFlightChunks = new Map<string, Promise<LucideBodyChunk>>();
+let loaders: IconLoaders | null = null;
+let loadersPromise: Promise<IconLoaders> | null = null;
 
-async function loadChunk(chunkId: string): Promise<LucideBodyChunk> {
-	const cachedChunk = loadedChunks.get(chunkId);
-	if (cachedChunk) {
-		return cachedChunk;
-	}
-
-	const inFlight = inFlightChunks.get(chunkId);
-	if (inFlight) {
-		return await inFlight;
-	}
-
-	const importer = lucideBodyChunkLoaders[chunkId];
-	if (!importer) {
-		return {};
-	}
-
-	const promise = importer()
-		.then((mod) => {
-			const chunk = mod.lucideBodyChunk ?? {};
-			loadedChunks.set(chunkId, chunk);
-			for (const [name, body] of Object.entries(chunk)) {
-				bodyCache.set(name, body);
-			}
-			return chunk;
-		})
-		.finally(() => {
-			inFlightChunks.delete(chunkId);
+async function getLoaders(): Promise<IconLoaders> {
+	if (loaders) return loaders;
+	if (!loadersPromise) {
+		loadersPromise = import('virtual:lucide-icon-loader').then((mod) => {
+			loaders = mod.default;
+			return loaders!;
 		});
-
-	inFlightChunks.set(chunkId, promise);
-	return await promise;
+	}
+	return loadersPromise!;
 }
 
 export async function loadLucideIconBody(name: string): Promise<string | null> {
-	const cachedBody = bodyCache.get(name);
-	if (cachedBody) {
-		return cachedBody;
-	}
+	const cached = bodyCache.get(name);
+	if (cached !== undefined) return cached;
 
-	const chunkId = lucideIconChunkIndex[name];
-	if (!chunkId) {
-		return null;
-	}
+	const map = await getLoaders();
+	const loader = map[name];
+	if (!loader) return null;
 
-	const chunk = await loadChunk(chunkId);
-	return chunk[name] ?? null;
+	const mod = await loader();
+	const body = mod.default;
+	if (body) bodyCache.set(name, body);
+	return body;
 }
 
+const BULK_THRESHOLD = 200;
+
 export async function loadLucideIconBodies(names: string[]): Promise<Record<string, string>> {
-	const uniqueNames = [...new Set(names)];
+	const unique = [...new Set(names)];
 	const result: Record<string, string> = {};
-	const chunkIdsToLoad = new Set<string>();
 
-	for (const name of uniqueNames) {
-		const cachedBody = bodyCache.get(name);
-		if (cachedBody) {
-			result[name] = cachedBody;
-			continue;
-		}
-
-		const chunkId = lucideIconChunkIndex[name];
-		if (chunkId) {
-			chunkIdsToLoad.add(chunkId);
+	const uncached: string[] = [];
+	for (const name of unique) {
+		const cached = bodyCache.get(name);
+		if (cached !== undefined) {
+			result[name] = cached;
+		} else {
+			uncached.push(name);
 		}
 	}
 
-	await Promise.all([...chunkIdsToLoad].map(async (chunkId) => await loadChunk(chunkId)));
+	if (uncached.length === 0) return result;
 
-	for (const name of uniqueNames) {
-		const body = bodyCache.get(name);
-		if (body) {
-			result[name] = body;
+	if (uncached.length > BULK_THRESHOLD) {
+		const { default: allBodies } = await import('virtual:lucide-icons');
+		for (const [name, body] of Object.entries(allBodies)) {
+			bodyCache.set(name, body);
 		}
+		for (const name of uncached) {
+			if (allBodies[name]) {
+				result[name] = allBodies[name];
+			}
+		}
+		return result;
 	}
+
+	const map = await getLoaders();
+	await Promise.all(
+		uncached.map(async (name) => {
+			const loader = map[name];
+			if (!loader) return;
+			const mod = await loader();
+			if (mod.default) {
+				bodyCache.set(name, mod.default);
+				result[name] = mod.default;
+			}
+		}),
+	);
 
 	return result;
 }

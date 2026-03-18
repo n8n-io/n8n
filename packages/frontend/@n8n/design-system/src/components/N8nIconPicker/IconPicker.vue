@@ -118,6 +118,7 @@ const container = ref<HTMLDivElement>();
 const searchInputRef = ref<InstanceType<typeof N8nInput>>();
 const colorPickerRef = ref<InstanceType<typeof IconColorPicker>>();
 const skinTonePickerRef = ref<InstanceType<typeof SkinTonePicker>>();
+const iconScrollerRef = ref<{ visibleItems: IconPickerVirtualRow[] }>();
 
 onClickOutside(container, () => {
 	popupVisible.value = false;
@@ -140,7 +141,9 @@ const iconRows = computed<IconPickerVirtualRow[]>(() =>
 		? buildIconSearchRows(filteredIcons.value)
 		: buildIconBrowseRows(filteredIconSections.value),
 );
-const emojiRows = computed<IconPickerVirtualRow[]>(() => buildEmojiRows(filteredEmojiSections.value));
+const emojiRows = computed<IconPickerVirtualRow[]>(() =>
+	buildEmojiRows(filteredEmojiSections.value),
+);
 
 // --- Actions ---
 const selectIcon = (value: IconOrEmoji) => {
@@ -203,6 +206,25 @@ watch([popupVisible, selectedTab, iconRows], async ([visible, tab, rows]) => {
 	if (!visible || tab !== 'icons') return;
 	await prefetchVisibleIconBodies(rows);
 });
+
+// Batch-load icon bodies for newly visible rows as the user scrolls
+watch(
+	() => iconScrollerRef.value?.visibleItems as IconPickerVirtualRow[] | undefined,
+	async (currentVisible, previousVisible) => {
+		if (!currentVisible || !popupVisible.value || selectedTab.value !== 'icons') return;
+
+		const previousKeys = new Set((previousVisible ?? []).map((item) => item.id));
+		const newlyVisible = currentVisible.filter((item) => !previousKeys.has(item.id));
+
+		const iconNames = newlyVisible
+			.filter((row): row is IconPickerIconRow => row.type === 'icon-row')
+			.flatMap((row) => row.iconNames);
+
+		if (iconNames.length > 0) {
+			await loadLucideIconBodies(iconNames);
+		}
+	},
+);
 
 // --- Random selection ---
 const selectRandomIcon = () => {
@@ -346,6 +368,7 @@ function humanizeIconName(name: string): string {
 			<!-- Icons tab -->
 			<div v-else-if="selectedTab === 'icons' && dataLoaded" :class="$style.content">
 				<N8nRecycleScroller
+					ref="iconScrollerRef"
 					v-if="iconRows.length > 0"
 					:items="iconRows"
 					item-key="id"
@@ -519,8 +542,8 @@ function humanizeIconName(name: string): string {
 	}
 
 	.emojiButton {
-		width: var(--icon-picker--emoji-cell-size, 28px);
-		height: var(--icon-picker--emoji-cell-size, 28px);
+		width: var(--icon-picker--emoji-cell--size, 28px);
+		height: var(--icon-picker--emoji-cell--size, 28px);
 	}
 
 	.emoji {

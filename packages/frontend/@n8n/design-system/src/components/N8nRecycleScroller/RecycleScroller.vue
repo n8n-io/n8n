@@ -182,6 +182,8 @@ function onScroll() {
 
 	scrollTop.value = wrapperRef.value.scrollTop;
 }
+
+defineExpose({ visibleItems });
 </script>
 
 <template>
