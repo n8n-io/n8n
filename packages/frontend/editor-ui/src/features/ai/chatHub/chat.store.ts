@@ -607,10 +607,16 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			agent,
 		};
 
+		const useManualMode = isCanvasManualExecution(agent.model);
+		const mode = useManualMode ? 'manual' : 'production';
+		const source = useManualMode ? 'canvas' : 'chat_hub';
+
 		telemetry.track('User sent chat hub message', {
 			...flattenModel(agent.model),
 			is_custom: agent.model.provider === 'custom-agent',
 			chat_session_id: sessionId,
+			mode,
+			source,
 		});
 
 		const payload = {
@@ -624,11 +630,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			agentName: agent.name,
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 		};
-
-		// Detect if this is a manual execution from the canvas.
-		// When the user is on a canvas with the same workflow as the selected n8n agent,
-		// use the manual endpoint to execute the draft version with canvas events.
-		const useManualMode = isCanvasManualExecution(agent.model);
 
 		try {
 			// Create session entry if new
@@ -726,14 +727,18 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			attachments: [...keptExistingAttachments, ...binaryData],
 		};
 
+		const useManualMode = isCanvasManualExecution(agent.model);
+		const mode = useManualMode ? 'manual' : 'production';
+		const source = useManualMode ? 'canvas' : 'chat_hub';
+
 		telemetry.track('User edited chat hub message', {
 			...flattenModel(agent.model),
 			is_custom: agent.model.provider === 'custom-agent',
 			chat_session_id: sessionId,
 			chat_message_id: editId,
+			mode,
+			source,
 		});
-
-		const useManualMode = isCanvasManualExecution(agent.model);
 
 		try {
 			if (useManualMode) {
@@ -795,14 +800,18 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			attachments: [],
 		};
 
+		const useManualMode = isCanvasManualExecution(agent.model);
+		const mode = useManualMode ? 'manual' : 'production';
+		const source = useManualMode ? 'canvas' : 'chat_hub';
+
 		telemetry.track('User regenerated chat hub message', {
 			...flattenModel(agent.model),
 			is_custom: agent.model.provider === 'custom-agent',
 			chat_session_id: sessionId,
 			chat_message_id: retryId,
+			mode,
+			source,
 		});
-
-		const useManualMode = isCanvasManualExecution(agent.model);
 
 		try {
 			if (useManualMode) {

@@ -67,6 +67,7 @@
     "recast": "0.22.0",
     "title-case": "3.0.3",
     "transliteration": "2.3.5",
+    "uuid": "catalog:",
     "xml2js": "catalog:",
     "zod": "catalog:",
     "jsonrepair": "catalog:",

@@ -63,8 +63,6 @@ export const EXECUTION_LOGIC_V2_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const TAMPER_PROOF_INVITE_LINKS = createExperiment('061_tamper_proof_invite_links');
-
 export const CREDENTIALS_APP_SELECTION_EXPERIMENT = createExperiment(
 	'065_credentials_app_selection',
 );
@@ -119,7 +117,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	RESOURCE_CENTER_EXPERIMENT.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
-	TAMPER_PROOF_INVITE_LINKS.name,
 	CREDENTIALS_APP_SELECTION_EXPERIMENT.name,
 	SIDEBAR_EXPANDED_EXPERIMENT.name,
 	EMPTY_STATE_EXPERIMENT.name,
