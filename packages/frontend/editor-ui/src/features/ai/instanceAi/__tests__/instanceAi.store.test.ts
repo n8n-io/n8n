@@ -20,6 +20,13 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
+const mockTelemetryTrack = vi.fn();
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: vi.fn().mockReturnValue({
+		track: (...args: unknown[]) => mockTelemetryTrack(...args),
+	}),
+}));
+
 vi.mock('@n8n/rest-api-client', () => ({
 	ResponseError: class ResponseError extends Error {
 		httpStatusCode?: number;
@@ -422,5 +429,47 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 			store.currentThreadId,
 		);
 		expect(mockPostMessage).toHaveBeenCalledTimes(2);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Store-level feedback integration tests
+// (Composable logic is tested in useResponseFeedback.test.ts)
+// ---------------------------------------------------------------------------
+
+describe('useInstanceAiStore - feedback integration', () => {
+	let store: ReturnType<typeof useInstanceAiStore>;
+
+	beforeEach(async () => {
+		setActivePinia(createPinia());
+		capturedOnMessage = null;
+		store = useInstanceAiStore();
+		store.newThread();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+	});
+
+	afterEach(() => {
+		store.closeSSE();
+		vi.clearAllMocks();
+	});
+
+	test('store exposes rateableResponseId, feedbackByResponseId, and submitFeedback', () => {
+		expect(store.rateableResponseId).toBeNull();
+		expect(store.feedbackByResponseId).toEqual({});
+		expect(typeof store.submitFeedback).toBe('function');
+	});
+
+	test('feedbackByResponseId is cleared when creating a new thread', async () => {
+		store.submitFeedback('resp-1', { rating: 'up' });
+		expect(store.feedbackByResponseId['resp-1']).toBeDefined();
+
+		store.newThread();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+
+		expect(Object.keys(store.feedbackByResponseId)).toHaveLength(0);
 	});
 });
