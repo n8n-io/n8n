@@ -14,6 +14,7 @@ import {
 	postCancelTask,
 	postConfirmation,
 } from './instanceAi.api';
+import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadMessages as fetchThreadMessagesApi,
@@ -48,6 +49,7 @@ let sseGeneration = 0;
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const persistedThreadIds = new Set<string>();
@@ -71,12 +73,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const isLocalGatewayEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.localGateway === true,
 	);
-	const isGatewayConnected = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.gatewayConnected === true,
-	);
-	const gatewayDirectory = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.gatewayDirectory ?? null,
-	);
+	const isGatewayConnected = computed(() => instanceAiSettingsStore.isGatewayConnected);
+	const gatewayDirectory = computed(() => instanceAiSettingsStore.gatewayDirectory);
 	const localGatewayFallbackDirectory = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayFallbackDirectory ?? null,
 	);

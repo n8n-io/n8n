@@ -10,7 +10,7 @@ declare global {
 			getDaemonStatus: () => Promise<StatusSnapshot>;
 			startDaemon: () => Promise<{ ok: boolean }>;
 			stopDaemon: () => Promise<{ ok: boolean }>;
-			onStatusChanged: (callback: (snapshot: StatusSnapshot) => void) => void;
+			onStatusChanged: (onChangeCallback: (snapshot: StatusSnapshot) => void) => void;
 		};
 	}
 }
@@ -167,8 +167,8 @@ async function init(): Promise<void> {
 					}, 2000);
 				}
 			})
-			.catch((err: unknown) => {
-				alert(`Failed to save settings: ${String(err)}`);
+			.catch((e: unknown) => {
+				alert(`Failed to save settings: ${String(e)}`);
 			});
 	});
 
@@ -180,8 +180,8 @@ async function init(): Promise<void> {
 					window.close();
 				}
 			})
-			.catch((err: unknown) => {
-				alert(`Failed to save settings: ${String(err)}`);
+			.catch((e: unknown) => {
+				alert(`Failed to save settings: ${String(e)}`);
 			});
 	});
 
@@ -194,6 +194,6 @@ async function init(): Promise<void> {
 	window.electronAPI.onStatusChanged(updateStatusBadge);
 }
 
-void init().catch((err: unknown) => {
-	console.error('Settings init failed:', err);
+void init().catch((e: unknown) => {
+	console.error('Settings init failed:', e);
 });
