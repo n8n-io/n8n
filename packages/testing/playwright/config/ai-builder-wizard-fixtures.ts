@@ -97,6 +97,9 @@ export function createBuilderStreamingResponse(
  * Builder response with a placeholder value in the Slack node + a Telegram node.
  * Produces 2 visible cards after trigger-only filter: Slack (with placeholder) + Telegram.
  * Navigating to the Slack card triggers lazy placeholder clearing.
+ *
+ * Uses operation: 'post' (the real Slack V2 operation for sending messages) so that the
+ * `text` parameter's displayOptions match and the parameter input is rendered in the card.
  */
 export function createBuilderResponseWithPlaceholderAndTelegram(): string {
 	const workflow = {
@@ -108,7 +111,7 @@ export function createBuilderResponseWithPlaceholderAndTelegram(): string {
 				position: [440, 0] as [number, number],
 				parameters: {
 					resource: 'message',
-					operation: 'send',
+					operation: 'post',
 					channelId: { __rl: true, mode: 'id', value: 'C01234567' },
 					messageType: 'text',
 					text: '<__PLACEHOLDER_VALUE__notification message__>',
