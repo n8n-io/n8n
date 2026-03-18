@@ -129,9 +129,10 @@ export class N8nClient {
 	 * GET /instance-ai/threads/:threadId/messages
 	 */
 	async getThreadMessages(threadId: string): Promise<InstanceAiRichMessagesResponse> {
-		return (await this.fetch(
-			`/rest/instance-ai/threads/${threadId}/messages`,
-		)) as InstanceAiRichMessagesResponse;
+		const result = (await this.fetch(`/rest/instance-ai/threads/${threadId}/messages`)) as {
+			data: InstanceAiRichMessagesResponse;
+		};
+		return result.data;
 	}
 
 	// ── REST API (verification helpers) ───────────────────────────────────
