@@ -26,6 +26,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'confirmation-request',
 	'tasks-update',
 	'filesystem-request',
+	'status',
 	'error',
 ]);
 export type InstanceAiEventType = z.infer<typeof instanceAiEventTypeSchema>;
@@ -178,6 +179,10 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
 });
 
+export const statusPayloadSchema = z.object({
+	message: z.string().describe('Transient status message. Empty string clears the indicator.'),
+});
+
 export const errorPayloadSchema = z.object({
 	content: z.string(),
 	statusCode: z.number().optional(),
@@ -302,6 +307,7 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		payload: confirmationRequestPayloadSchema,
 	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
+	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
 		type: z.literal('filesystem-request'),
@@ -331,6 +337,7 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 	{ type: 'confirmation-request' }
 >;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
+export type InstanceAiStatusEvent = Extract<InstanceAiEvent, { type: 'status' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
 	InstanceAiEvent,
@@ -416,6 +423,8 @@ export interface InstanceAiAgentNode {
 	goal?: string;
 	/** Resource this agent works on. */
 	targetResource?: InstanceAiTargetResource;
+	/** Transient status message (e.g. "Recalling conversation..."). Cleared when empty. */
+	statusMessage?: string;
 	status: InstanceAiAgentStatus;
 	textContent: string;
 	reasoning: string;

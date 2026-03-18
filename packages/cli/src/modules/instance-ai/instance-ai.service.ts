@@ -784,12 +784,24 @@ export class InstanceAiService {
 			});
 
 			// Compact older conversation history into a summary (best-effort, non-blocking on failure)
+			this.eventBus.publish(threadId, {
+				type: 'status',
+				runId,
+				agentId: ORCHESTRATOR_AGENT_ID,
+				payload: { message: 'Recalling conversation...' },
+			});
 			const conversationSummary = await this.compactionService.prepareCompactedContext(
 				threadId,
 				memory,
 				modelId,
 				this.instanceAiConfig.lastMessages ?? 20,
 			);
+			this.eventBus.publish(threadId, {
+				type: 'status',
+				runId,
+				agentId: ORCHESTRATOR_AGENT_ID,
+				payload: { message: '' },
+			});
 
 			// Inject completed/running background task context into the message
 			const enrichedMessage = await this.enrichMessageWithBackgroundTasks(
