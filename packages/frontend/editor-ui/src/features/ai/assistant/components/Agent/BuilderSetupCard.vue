@@ -71,6 +71,7 @@ const isHttpRequestNode = computed(() => isHttpRequestNodeType(props.state.node.
 const hasCredential = computed(() => !!props.state.credentialType);
 
 const executableNode = computed<INodeUi | null>(() => {
+	if (nodeTypesStore.isToolNode(props.state.node.type)) return null;
 	if (props.state.isTrigger) {
 		if (!props.firstTriggerName) return null;
 		return props.state.node.name === props.firstTriggerName ? props.state.node : null;

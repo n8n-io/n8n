@@ -4,6 +4,7 @@ import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import BuilderSetupCard from './BuilderSetupCard.vue';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -80,9 +81,13 @@ vi.mock('@/features/setupPanel/composables/useWebhookUrls', () => ({
 	}),
 }));
 
+const { mockIsNodeExecutable } = vi.hoisted(() => ({
+	mockIsNodeExecutable: vi.fn().mockReturnValue(false),
+}));
+
 vi.mock('@/app/composables/useNodeHelpers', () => ({
 	useNodeHelpers: () => ({
-		isNodeExecutable: vi.fn().mockReturnValue(false),
+		isNodeExecutable: mockIsNodeExecutable,
 		updateNodesParameterIssues: vi.fn(),
 	}),
 }));
@@ -237,6 +242,21 @@ describe('BuilderSetupCard', () => {
 		it('shows step indicator in footer', () => {
 			const { getByText } = render({}, { totalCards: 4, stepIndex: 1 });
 			expect(getByText('2 of 4')).toBeInTheDocument();
+		});
+	});
+
+	describe('execute button', () => {
+		it('does not show execute button for tool nodes', () => {
+			mockIsNodeExecutable.mockReturnValue(true);
+			const nodeTypesStore = useNodeTypesStore();
+			// @ts-expect-error -- pinia test store allows overriding computed
+			nodeTypesStore.isToolNode = () => true;
+
+			const { queryByTestId } = render(
+				{ node: createNode({ type: '@n8n/n8n-nodes-langchain.chatTool' }) },
+				{ totalCards: 2, stepIndex: 0 },
+			);
+			expect(queryByTestId('trigger-execute-button')).not.toBeInTheDocument();
 		});
 	});
 
