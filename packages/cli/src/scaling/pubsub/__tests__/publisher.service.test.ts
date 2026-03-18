@@ -118,6 +118,30 @@ describe('Publisher', () => {
 			);
 		});
 
+		it('should not debounce `restart-event-bus`', async () => {
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				executionsConfig,
+				globalConfig,
+			);
+			const msg = mock<PubSub.Command>({ command: 'restart-event-bus' });
+
+			await publisher.publishCommand(msg);
+
+			expect(client.publish).toHaveBeenCalledWith(
+				'n8n:n8n.commands',
+				JSON.stringify({
+					...msg,
+					_isMockObject: true,
+					senderId: hostId,
+					selfSend: false,
+					debounce: false,
+				}),
+			);
+		});
+
 		it('should not debounce `remove-triggers-and-pollers`', async () => {
 			const publisher = new Publisher(
 				logger,
