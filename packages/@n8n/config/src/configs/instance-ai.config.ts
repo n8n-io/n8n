@@ -70,9 +70,9 @@ export class InstanceAiConfig {
 	@Env('INSTANCE_AI_BRAVE_SEARCH_API_KEY')
 	braveSearchApiKey: string = '';
 
-	/** SearXNG instance URL for web search. Defaults to "http://searxng:8080" (standard Docker Compose service name). Set to empty string to disable. No API key needed. */
+	/** SearXNG instance URL for web search (e.g. "http://searxng:8080"). Empty = disabled. No API key needed. */
 	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
-	searxngUrl: string = 'http://searxng:8080';
+	searxngUrl: string = '';
 
 	/** Restrict filesystem access to this directory path. Empty = full filesystem access (reads any path the n8n process can access). */
 	@Env('N8N_INSTANCE_AI_FILESYSTEM_PATH')

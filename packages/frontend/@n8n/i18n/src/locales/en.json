@@ -5057,6 +5057,7 @@
 	"instanceAi.backgroundTask.failed": "Background task failed",
 	"instanceAi.message.retry": "Retry",
 	"instanceAi.input.amendPlaceholder": "Amend the {role} agent...",
+	"instanceAi.feedback.success": "Thanks for your feedback!",
 	"instanceAi.message.showMore": "Show more",
 	"instanceAi.message.showLess": "Show less",
 	"instanceAi.emptyState.title": "Instance AI",

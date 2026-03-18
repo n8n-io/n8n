@@ -49,7 +49,7 @@ and security model.
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | string | `''` | Brave Search API key. Takes priority over SearXNG when set. |
-| `N8N_INSTANCE_AI_SEARXNG_URL` | string | `http://searxng:8080` | SearXNG instance URL. Works out of the box with Docker Compose (service name `searxng`). Set to empty string to disable. No API key needed. |
+| `N8N_INSTANCE_AI_SEARXNG_URL` | string | `''` | SearXNG instance URL (e.g. `http://searxng:8080`). Empty = disabled. No API key needed. |
 
 **Provider priority**: Brave (if key set) > SearXNG (if URL set) > disabled.
 When no search provider is available, `web-search` and `research-with-agent` tools are disabled. `fetch-url` still works.
@@ -154,12 +154,9 @@ N8N_INSTANCE_AI_MCP_SERVERS="my-tools=https://mcp.example.com/sse"
 N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
 N8N_INSTANCE_AI_EMBEDDER_MODEL=openai/text-embedding-3-small
 
-# With SearXNG (free, self-hosted search — works by default with Docker Compose)
-# If your SearXNG service is named "searxng" in Docker Compose, no config needed!
-# The default URL http://searxng:8080 will work automatically.
-# Only set this if your SearXNG instance is at a different address:
+# With SearXNG (free, self-hosted search)
 N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
-N8N_INSTANCE_AI_SEARXNG_URL=http://my-searxng:9090
+N8N_INSTANCE_AI_SEARXNG_URL=http://searxng:8080
 
 # With Brave Search (paid API, takes priority over SearXNG)
 N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
@@ -209,9 +206,7 @@ N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS=30000
 SearXNG is a self-hosted metasearch engine that aggregates results from Google,
 Bing, DuckDuckGo, and others. No API key needed.
 
-The default `N8N_INSTANCE_AI_SEARXNG_URL` is `http://searxng:8080`, which works
-automatically when SearXNG runs as a service named `searxng` in the same Docker
-Compose stack:
+Add `N8N_INSTANCE_AI_SEARXNG_URL` pointing to your SearXNG service:
 
 ```yaml
 services:
@@ -222,7 +217,7 @@ services:
   n8n:
     environment:
       N8N_INSTANCE_AI_MODEL: anthropic/claude-sonnet-4-5
-      # No SEARXNG_URL needed — default http://searxng:8080 just works
+      N8N_INSTANCE_AI_SEARXNG_URL: http://searxng:8080
 ```
 
 SearXNG must have JSON format enabled in its `settings.yml`:
