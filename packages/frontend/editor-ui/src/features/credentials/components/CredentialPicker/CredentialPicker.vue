@@ -24,6 +24,7 @@ const props = defineProps<{
 	showDelete?: boolean;
 	hideCreateNew?: boolean;
 	createButtonVariant?: ButtonProps['variant'];
+	projectId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -109,7 +110,7 @@ const onCredentialSelected = (credentialId: string) => {
 	emit('credentialSelected', credentialId);
 };
 const createNewCredential = () => {
-	uiStore.openNewCredential(props.credentialType, true);
+	uiStore.openNewCredential(props.credentialType, true, false, props.projectId);
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', undefined);
 };

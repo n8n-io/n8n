@@ -105,6 +105,51 @@ describe('setup-credentials tool — credential flow', () => {
 		});
 	});
 
+	it('includes projectId in suspend payload when input has projectId', async () => {
+		const context = createMockContext();
+		const tool = createSetupCredentialsTool(context);
+		const suspendFn = jest.fn();
+		const ctx = {
+			agent: {
+				suspend: suspendFn,
+				resumeData: undefined,
+			},
+		} as never;
+
+		await tool.execute!(
+			{
+				credentials: [{ credentialType: 'slackApi', reason: 'Send messages' }],
+				projectId: 'proj-123',
+			},
+			ctx,
+		);
+
+		expect(suspendFn).toHaveBeenCalled();
+		const payload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
+		expect(payload).toHaveProperty('projectId', 'proj-123');
+	});
+
+	it('omits projectId from suspend payload when input has no projectId', async () => {
+		const context = createMockContext();
+		const tool = createSetupCredentialsTool(context);
+		const suspendFn = jest.fn();
+		const ctx = {
+			agent: {
+				suspend: suspendFn,
+				resumeData: undefined,
+			},
+		} as never;
+
+		await tool.execute!(
+			{ credentials: [{ credentialType: 'slackApi', reason: 'Send messages' }] },
+			ctx,
+		);
+
+		expect(suspendFn).toHaveBeenCalled();
+		const payload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
+		expect(payload).not.toHaveProperty('projectId');
+	});
+
 	it('returns success with credentials when approved=true', async () => {
 		const context = createMockContext();
 		const tool = createSetupCredentialsTool(context);

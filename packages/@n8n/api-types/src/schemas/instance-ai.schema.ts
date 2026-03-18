@@ -169,6 +169,12 @@ export const confirmationRequestPayloadSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
 	credentialRequests: z.array(credentialRequestSchema).optional(),
+	projectId: z
+		.string()
+		.optional()
+		.describe(
+			'Target project ID — used to scope actions (e.g. credential creation) to the correct project',
+		),
 	inputType: z
 		.enum(['approval', 'text'])
 		.optional()
@@ -387,6 +393,7 @@ export interface InstanceAiToolCallState {
 		severity: InstanceAiConfirmationSeverity;
 		message: string;
 		credentialRequests?: InstanceAiCredentialRequest[];
+		projectId?: string;
 		inputType?: 'approval' | 'text';
 		domainAccess?: DomainAccessMeta;
 	};

@@ -572,6 +572,7 @@ export class InstanceAiAdapterService {
 					listQueryOptions: {
 						filter: options?.type ? { type: options.type } : undefined,
 					},
+					includeGlobal: true,
 				});
 
 				return credentials.map(
