@@ -15,7 +15,11 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { shallowRef, watch } from 'vue';
 import { computed } from 'vue';
 import type { Ref, ComputedRef } from 'vue';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 export function useLogsSelection(
 	execution: ComputedRef<IExecutionResponse | undefined>,
@@ -33,7 +37,12 @@ export function useLogsSelection(
 	const logsStore = useLogsStore();
 	const uiStore = useUIStore();
 	const canvasStore = useCanvasStore();
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	function syncSelectionToCanvasIfEnabled(value: LogEntry) {
 		if (!logsStore.isLogSelectionSyncedWithCanvas) {
@@ -105,7 +114,7 @@ export function useLogsSelection(
 		[() => uiStore.lastSelectedNode, () => logsStore.isLogSelectionSyncedWithCanvas],
 		([selectedOnCanvas, shouldSync]) => {
 			const selectedNodeId = selectedOnCanvas
-				? (workflowDocumentStore?.value?.nodesByName ?? {})[selectedOnCanvas]?.id
+				? (workflowDocumentStore.value?.nodesByName ?? {})[selectedOnCanvas]?.id
 				: undefined;
 
 			nodeIdToSelect.value =

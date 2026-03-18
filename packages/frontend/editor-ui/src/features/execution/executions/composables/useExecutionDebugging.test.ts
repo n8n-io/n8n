@@ -1,11 +1,9 @@
-import { shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
-	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import {
 	injectWorkflowState,
@@ -35,14 +33,6 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 	};
 });
 
-vi.mock('@/app/stores/workflowDocument.store', async () => {
-	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
-	return {
-		...actual,
-		injectWorkflowDocumentStore: vi.fn(),
-	};
-});
-
 let workflowState: WorkflowState;
 let executionDebugging: ReturnType<typeof useExecutionDebugging>;
 let toast: ReturnType<typeof useToast>;
@@ -59,7 +49,6 @@ describe('useExecutionDebugging()', () => {
 		workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowStore.workflowId),
 		);
-		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 
 		toast = useToast();
 

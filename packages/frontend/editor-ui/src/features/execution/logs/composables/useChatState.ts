@@ -3,7 +3,10 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
@@ -44,7 +47,11 @@ export function useChatState(
 ): ChatState {
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const workflowState = injectWorkflowState();
 	const rootStore = useRootStore();
 	const logsStore = useLogsStore();
@@ -63,7 +70,7 @@ export function useChatState(
 
 	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const chatTriggerNode = computed(
-		() => (workflowDocumentStore?.value?.allNodes ?? []).find(isChatNode) ?? null,
+		() => (workflowDocumentStore.value?.allNodes ?? []).find(isChatNode) ?? null,
 	);
 
 	// Resolve the effective value for an options sub-parameter: returns the

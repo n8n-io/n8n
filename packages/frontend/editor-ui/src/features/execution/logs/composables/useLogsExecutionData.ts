@@ -2,7 +2,10 @@ import { watch, computed, ref, type ComputedRef } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	copyExecutionData,
@@ -31,7 +34,11 @@ interface UseLogsExecutionDataOptions {
 export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionDataOptions = {}) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const workflowState = injectWorkflowState();
 	const toast = useToast();
 
@@ -55,7 +62,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const latestNodeNameById = computed(() =>
 		Object.values(workflow.value?.nodes ?? {}).reduce<Record<string, LatestNodeInfo>>(
 			(acc, node) => {
-				const nodeInStore = workflowDocumentStore?.value?.getNodeById(node.id) ?? null;
+				const nodeInStore = workflowDocumentStore.value?.getNodeById(node.id) ?? null;
 
 				acc[node.id] = {
 					deleted: !nodeInStore,
@@ -72,7 +79,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		// When the floating chat panel experiment is enabled and the ChatTrigger has
 		// availableInChat enabled, the floating chat hub handles chat instead of the bottom panel
 		if (chatHubPanelStore.isFloatingChatEnabled) {
-			const isChatHubActive = (workflowDocumentStore?.value?.allNodes ?? []).some(
+			const isChatHubActive = (workflowDocumentStore.value?.allNodes ?? []).some(
 				(node) => node.type === CHAT_TRIGGER_NODE_TYPE && node.parameters?.availableInChat === true,
 			);
 			if (isChatHubActive) return false;
@@ -80,7 +87,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 
 		return [
 			Object.values(workflow.value?.nodes ?? {}),
-			workflowDocumentStore?.value?.allNodes ?? [],
+			workflowDocumentStore.value?.allNodes ?? [],
 		].some((nodes) => nodes.some(isChatNode));
 	});
 
