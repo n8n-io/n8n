@@ -55,6 +55,7 @@
     "@anthropic-ai/sdk": "^0.39.0",
     "@n8n/typescript-config": "workspace:*",
     "@types/turndown": "^5.0.5",
+    "flatted": "catalog:",
     "langsmith": "^0.4.6"
   }
 }

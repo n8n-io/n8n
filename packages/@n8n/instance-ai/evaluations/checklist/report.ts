@@ -196,31 +196,56 @@ function renderWorkflowsSection(result: InstanceAiResult): string {
 // Execution summary rendering
 // ---------------------------------------------------------------------------
 
-function renderExecutionsSection(result: InstanceAiResult): string {
+function renderExecutionsSection(result: InstanceAiResult, n8nBaseUrl: string): string {
 	if (result.outcome.executionsRun.length === 0) return '';
 
 	const items = result.outcome.executionsRun
-		.map((exec) => {
+		.map((exec, idx) => {
 			const statusBadge =
 				exec.status === 'success'
 					? '<span class="badge badge-completed">success</span>'
 					: exec.status === 'error' || exec.status === 'failed'
 						? '<span class="badge badge-failed">failed</span>'
-						: `<span class="badge badge-tag">${escapeHtml(exec.status)}</span>`;
-			return `<div style="margin:4px 0;padding:4px 8px;font-size:12px">
-				Execution ${escapeHtml(exec.id)} (workflow: ${escapeHtml(exec.workflowId)}) ${statusBadge}
+						: exec.status === 'skipped'
+							? '<span class="badge badge-tag">skipped</span>'
+							: `<span class="badge badge-tag">${escapeHtml(exec.status)}</span>`;
+
+			const evalBadge = exec.triggeredByEval
+				? ' <span class="badge badge-tool">eval-triggered</span>'
+				: '';
+
+			const errorLine = exec.error
+				? `<div class="tool-error" style="margin-top:4px">${escapeHtml(exec.error)}</div>`
+				: '';
+
+			const failedNodeLine = exec.failedNode
+				? `<div style="margin-top:4px;font-size:11px;color:#8b949e">Last node: <code>${escapeHtml(exec.failedNode)}</code></div>`
+				: '';
+
+			// Link to open execution in n8n (new tab)
+			const hasPreview = exec.id && exec.id !== '' && exec.workflowId && exec.workflowId !== '';
+			const previewUrl = hasPreview
+				? `${n8nBaseUrl}/workflow/${exec.workflowId}/executions/${exec.id}`
+				: '';
+			const previewHtml = hasPreview
+				? `<a href="${escapeHtml(previewUrl)}" target="_blank" rel="noopener" class="exec-preview-link">Open in n8n &rarr;</a>`
+				: '';
+
+			return `<div style="margin:8px 0;padding:8px;background:#161b22;border:1px solid #30363d;border-radius:4px;font-size:12px">
+				<div>Execution ${escapeHtml(exec.id || '(eval-triggered)')} (workflow: ${escapeHtml(exec.workflowId)}) ${statusBadge}${evalBadge}</div>
+				${errorLine}${failedNodeLine}${previewHtml}
 			</div>`;
 		})
 		.join('');
 
-	return `<div class="detail-section"><h4>Execution Results</h4>${items}</div>`;
+	return `<div class="detail-section"><h4>Execution Results (${String(result.outcome.executionsRun.length)})</h4>${items}</div>`;
 }
 
 // ---------------------------------------------------------------------------
 // Result row rendering
 // ---------------------------------------------------------------------------
 
-function renderResultRow(result: InstanceAiResult, index: number): string {
+function renderResultRow(result: InstanceAiResult, index: number, n8nBaseUrl: string): string {
 	const passedCount = result.checklistResults.filter((r) => r.pass).length;
 	const totalCount = result.checklist.length;
 	const scoreClass =
@@ -248,6 +273,7 @@ function renderResultRow(result: InstanceAiResult, index: number): string {
 					<div class="detail-section">
 						<h4>Prompt</h4>
 						<p class="prompt-full">${escapeHtml(result.prompt)}</p>
+						<a href="${escapeHtml(n8nBaseUrl)}/instance-ai/${escapeHtml(result.threadId)}" target="_blank" rel="noopener" class="chat-link">Open chat &rarr;</a>
 					</div>
 					<div class="detail-section">
 						<h4>Checklist (${passedCount}/${totalCount})</h4>
@@ -268,7 +294,7 @@ function renderResultRow(result: InstanceAiResult, index: number): string {
 					</div>
 					${renderAgentActivitySection(metrics.agentActivities)}
 					${renderWorkflowsSection(result)}
-					${renderExecutionsSection(result)}
+					${renderExecutionsSection(result, n8nBaseUrl)}
 					${
 						result.outcome.finalText.trim()
 							? `<div class="detail-section">
@@ -345,7 +371,7 @@ function renderRunSection(run: Run, runIndex: number): string {
 									a.prompt.localeCompare(b.prompt)
 								);
 							})
-							.map((r, i) => renderResultRow(r, runIndex * 1000 + i))
+							.map((r, i) => renderResultRow(r, runIndex * 1000 + i, run.config.n8nBaseUrl))
 							.join('')}
 					</tbody>
 				</table>
@@ -475,6 +501,10 @@ export function generateReport(runs: Run[]): string {
 	.tool-result-details > summary { cursor: pointer; color: #8b949e; font-size: 12px; }
 	.no-tools { color: #8b949e; font-size: 12px; padding: 4px; }
 	n8n-demo { display: block; margin: 8px 0; min-height: 200px; }
+	.exec-preview-link { display: inline-block; margin-top: 6px; color: #58a6ff; font-size: 12px; text-decoration: none; }
+	.exec-preview-link:hover { text-decoration: underline; }
+	.chat-link { display: inline-block; margin-top: 8px; color: #58a6ff; font-size: 13px; text-decoration: none; }
+	.chat-link:hover { text-decoration: underline; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@webcomponents/webcomponentsjs/webcomponents-loader.js"></script>
 <script type="module" src="https://cdn.jsdelivr.net/npm/lit/polyfill-support.js"></script>
