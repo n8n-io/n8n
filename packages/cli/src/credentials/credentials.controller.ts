@@ -239,9 +239,6 @@ export class CredentialsController {
 			req.body,
 			credential,
 		);
-		const projectOwningCredential = credential.shared.find(
-			(shared) => shared.role === 'credential:owner',
-		);
 		const newCredentialData = this.credentialsService.createEncryptedData({
 			id: credential.id,
 			name: preparedCredentialData.name,
@@ -269,8 +266,9 @@ export class CredentialsController {
 		const responseData = await this.credentialsService.update(
 			credentialId,
 			newCredentialData,
-			body.data ? (preparedCredentialData.data as ICredentialDataDecryptedObject) : undefined,
-			projectOwningCredential?.projectId,
+			body.data
+				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
+				: undefined,
 		);
 
 		if (responseData === null) {

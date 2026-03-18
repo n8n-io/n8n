@@ -10,7 +10,6 @@ import type {
 	CredentialsEntity,
 	CredentialsRepository,
 	SecretsProviderConnectionRepository,
-	VariablesRepository,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -40,7 +39,6 @@ describe('CredentialsController', () => {
 		credentialsRepository,
 		mock<CredentialDependencyRepository>(),
 		mock<SecretsProviderConnectionRepository>(),
-		mock<VariablesRepository>(),
 		mock(), // sharedCredentialsRepository
 		mock(), // ownershipService
 		mock(), // logger
@@ -240,7 +238,6 @@ describe('CredentialsController', () => {
 					isGlobal: true,
 				}),
 				expect.any(Object),
-				expect.any(String),
 			);
 			expect(eventService.emit).toHaveBeenCalledWith('credentials-updated', {
 				user: ownerReq.user,
@@ -285,7 +282,6 @@ describe('CredentialsController', () => {
 					isGlobal: false,
 				}),
 				expect.any(Object),
-				expect.any(String),
 			);
 		});
 
@@ -374,7 +370,6 @@ describe('CredentialsController', () => {
 					isGlobal: expect.anything(),
 				}),
 				expect.any(Object),
-				expect.any(String),
 			);
 		});
 
@@ -424,7 +419,6 @@ describe('CredentialsController', () => {
 					isResolvable: true,
 				}),
 				expect.any(Object),
-				expect.any(String),
 			);
 		});
 
@@ -473,7 +467,6 @@ describe('CredentialsController', () => {
 					isResolvable: true, // Should keep the existing value
 				}),
 				expect.any(Object),
-				expect.any(String),
 			);
 		});
 

@@ -94,53 +94,6 @@ export function extractExternalSecretProviderKeys(
 	return providerKeys;
 }
 
-function containsVariableExpression(value: string): boolean {
-	const containsExpression = value.includes('{{') && value.includes('}}');
-	if (!containsExpression) {
-		return false;
-	}
-
-	return value.includes('$vars.') || value.includes("$vars['") || value.includes('$vars["');
-}
-
-export function extractVariableKeys(expression: string): string[] {
-	const variableKeys = new Set<string>();
-	const expressionBlocks = expression.matchAll(/\{\{(.*?)\}\}/gs);
-
-	for (const expression of expressionBlocks) {
-		const expressionContent = expression[1];
-
-		const dotMatches = expressionContent.matchAll(/\$vars\.([A-Za-z0-9_]+)/g);
-		for (const match of dotMatches) {
-			variableKeys.add(match[1]);
-		}
-
-		const bracketMatches = expressionContent.matchAll(/\$vars\[['"]([A-Za-z0-9_]+)['"]\]/g);
-		for (const match of bracketMatches) {
-			variableKeys.add(match[1]);
-		}
-	}
-
-	return Array.from(variableKeys);
-}
-
-export function extractVariableReferenceKeys(
-	data: ICredentialDataDecryptedObject,
-): ReadonlySet<string> {
-	const variablePaths = getAllKeyPaths(data, '', [], containsVariableExpression);
-	const variableKeys = new Set<string>();
-
-	for (const path of variablePaths) {
-		const expressionString = get(data, path);
-		if (typeof expressionString !== 'string') continue;
-		for (const variableKey of extractVariableKeys(expressionString)) {
-			variableKeys.add(variableKey);
-		}
-	}
-
-	return variableKeys;
-}
-
 /**
  * Checks if any changed field in a credential contains an external secret expression
  */

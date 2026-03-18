@@ -12,7 +12,7 @@ import {
 import { WithCreatedAt } from './abstract-entity';
 import type { CredentialsEntity } from './credentials-entity';
 
-export type CredentialDependencyType = 'externalSecretProvider' | 'variable';
+export type CredentialDependencyType = 'externalSecretProvider';
 
 @Entity({ name: 'credential_dependency' })
 @Unique(['credentialId', 'dependencyType', 'dependencyId'])

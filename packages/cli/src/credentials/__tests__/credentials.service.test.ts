@@ -8,7 +8,6 @@ import type {
 	ProjectRepository,
 	UserRepository,
 	User,
-	VariablesRepository,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -62,7 +61,6 @@ describe('CredentialsService', () => {
 	const credentialsRepository = mock<CredentialsRepository>();
 	const credentialDependencyRepository = mock<CredentialDependencyRepository>();
 	const secretsProviderConnectionRepository = mock<SecretsProviderConnectionRepository>();
-	const variablesRepository = mock<VariablesRepository>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const ownershipService = mock<OwnershipService>();
 	const logger = mock<Logger>();
@@ -81,7 +79,6 @@ describe('CredentialsService', () => {
 		credentialsRepository,
 		credentialDependencyRepository,
 		secretsProviderConnectionRepository,
-		variablesRepository,
 		sharedCredentialsRepository,
 		ownershipService,
 		logger,
@@ -104,7 +101,6 @@ describe('CredentialsService', () => {
 		credentialDependencyRepository.findCredentialIdsByDependencyId.mockResolvedValue([]);
 		secretsProviderConnectionRepository.findIdByProviderKey.mockResolvedValue(null);
 		secretsProviderConnectionRepository.findIdsByProviderKeys.mockResolvedValue([]);
-		variablesRepository.findIdsByKeysForProject.mockResolvedValue([]);
 		ownershipService.addOwnedByAndSharedWith.mockImplementation((credential: any) => credential);
 		// Mock the subquery method used by member users and admin users with onlySharedWithMe
 		credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
@@ -1886,35 +1882,6 @@ describe('CredentialsService', () => {
 
 				await service.createUnmanagedCredential(payload, ownerUser);
 			});
-
-			it('should persist variable dependencies referenced in credential expressions', async () => {
-				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
-				variablesRepository.findIdsByKeysForProject.mockResolvedValue(['var-id']);
-
-				const payload = {
-					name: 'Test Credential',
-					type: 'apiKey',
-					data: {
-						apiKey: '={{ $vars.MY_VAR }}',
-						url: 'https://api.example.com',
-					},
-					projectId: 'WHwt9vP3keCUvmB5',
-				};
-
-				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
-				mockTransactionManager();
-
-				await service.createUnmanagedCredential(payload, ownerUser);
-
-				expect(credentialDependencyRepository.upsertDependenciesForCredential).toHaveBeenCalledWith(
-					expect.objectContaining({
-						credentialId: 'new-cred-id',
-						dependencyType: 'variable',
-						dependencyIds: ['var-id'],
-						entityManager: expect.any(Object),
-					}),
-				);
-			});
 		});
 	});
 
@@ -2097,39 +2064,6 @@ describe('CredentialsService', () => {
 
 				await service.prepareUpdateData(ownerUser, payload, existingCredential);
 			});
-		});
-	});
-
-	describe('update', () => {
-		it('should sync variable dependencies when updating credential data with $vars expression', async () => {
-			const txManager = {
-				update: jest.fn().mockResolvedValue(undefined),
-				findOneBy: jest.fn().mockResolvedValue({ id: 'cred-1' }),
-			};
-			// @ts-expect-error Mocking transaction manager
-			credentialsRepository.manager = {
-				transaction: jest.fn(async (cb) => await cb(txManager)),
-			};
-
-			externalHooks.run.mockResolvedValue(undefined);
-			secretsProviderConnectionRepository.findIdsByProviderKeys.mockResolvedValue([]);
-			variablesRepository.findIdsByKeysForProject.mockResolvedValue(['var-id']);
-
-			await service.update(
-				'cred-1',
-				{} as ICredentialsDb,
-				{ token: '={{ $vars.MY_VAR }}' } as ICredentialDataDecryptedObject,
-				'project-1',
-			);
-
-			expect(credentialDependencyRepository.syncDependenciesForCredential).toHaveBeenCalledWith(
-				expect.objectContaining({
-					credentialId: 'cred-1',
-					dependencyType: 'variable',
-					dependencyIds: ['var-id'],
-					entityManager: expect.any(Object),
-				}),
-			);
 		});
 	});
 

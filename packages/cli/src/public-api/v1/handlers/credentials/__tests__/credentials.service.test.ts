@@ -5,7 +5,6 @@ import type {
 	SecretsProviderConnectionRepository,
 	SharedCredentials,
 	User,
-	VariablesRepository,
 } from '@n8n/db';
 import { CredentialsRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -427,7 +426,6 @@ describe('CredentialsService', () => {
 			mock(), // credentialsRepository
 			mock<CredentialDependencyRepository>(),
 			mock<SecretsProviderConnectionRepository>(),
-			mock<VariablesRepository>(),
 			mock(), // sharedCredentialsRepository
 			mock(), // ownershipService
 			mock(), // logger

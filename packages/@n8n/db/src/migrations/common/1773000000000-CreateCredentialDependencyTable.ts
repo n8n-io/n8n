@@ -5,14 +5,11 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const credentialDependencyTable = 'credential_dependency';
 const externalSecretProviderDependencyType = 'externalSecretProvider';
-const variableDependencyType = 'variable';
 const providerKeyPattern = '[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*';
-const variableKeyPattern = '[A-Za-z0-9_]+';
 
 type CredentialRow = {
 	id: string;
 	data: string;
-	ownerProjectId: string | null;
 };
 
 export class CreateCredentialDependencyTable1773000000000 implements ReversibleMigration {
@@ -48,14 +45,8 @@ export class CreateCredentialDependencyTable1773000000000 implements ReversibleM
 		);
 
 		const credentialsTable = escape.tableName('credentials_entity');
-		const sharedCredentialsTable = escape.tableName('shared_credentials');
-		const credentialsIdColumn = escape.columnName('credentialsId');
-		const projectIdColumn = escape.columnName('projectId');
-		const roleColumn = escape.columnName('role');
-		const query = `SELECT c.id AS id, c.data AS data, sc.${projectIdColumn} AS ownerProjectId FROM ${credentialsTable} c LEFT JOIN ${sharedCredentialsTable} sc ON sc.${credentialsIdColumn} = c.id AND sc.${roleColumn} = 'credential:owner' ORDER BY c.id`;
+		const query = `SELECT c.id AS id, c.data AS data FROM ${credentialsTable} c ORDER BY c.id`;
 		const providerIdByKey = await this.loadProviderIdByKey(runQuery, escape);
-		const variableIdsByProjectAndKey = await this.loadVariableIdsByProjectAndKey(runQuery, escape);
-		const globalVariableIdsByKey = await this.loadGlobalVariableIdsByKey(runQuery, escape);
 
 		let processedCount = 0;
 		let insertedCount = 0;
@@ -68,28 +59,11 @@ export class CreateCredentialDependencyTable1773000000000 implements ReversibleM
 				const providerIds = providerKeys
 					.map((providerKey) => providerIdByKey.get(providerKey))
 					.filter((providerId): providerId is string => providerId !== undefined);
-				const providerDependencies = providerIds.map((providerId) => ({
+				return providerIds.map((providerId) => ({
 					credentialId: row.id,
 					dependencyType: externalSecretProviderDependencyType,
 					dependencyId: providerId,
 				}));
-
-				const variableKeys = this.extractVariableKeysFromCredentialData(row.data);
-				const variableDependencies = variableKeys.flatMap((variableKey) => {
-					const resolvedIds = this.resolveVariableIdsForCredential(
-						variableKey,
-						row.ownerProjectId,
-						variableIdsByProjectAndKey,
-						globalVariableIdsByKey,
-					);
-					return resolvedIds.map((variableId) => ({
-						credentialId: row.id,
-						dependencyType: variableDependencyType,
-						dependencyId: variableId,
-					}));
-				});
-
-				return [...providerDependencies, ...variableDependencies];
 			});
 
 			processedCount += rows.length;
@@ -114,32 +88,18 @@ export class CreateCredentialDependencyTable1773000000000 implements ReversibleM
 	private extractProviderKeysFromCredentialData(encryptedCredentialData: string): string[] {
 		const decrypted = this.tryDecryptCredentialData(encryptedCredentialData);
 		if (decrypted === null) return [];
-		return this.extractDependencyKeysFromData(decrypted, '$secrets', (value) =>
-			this.extractProviderKeys(value),
-		);
+		return this.extractProviderKeysFromDecryptedData(decrypted);
 	}
 
-	private extractVariableKeysFromCredentialData(encryptedCredentialData: string): string[] {
-		const decrypted = this.tryDecryptCredentialData(encryptedCredentialData);
-		if (decrypted === null) return [];
-		return this.extractDependencyKeysFromData(decrypted, '$vars', (value) =>
-			this.extractVariableKeys(value),
-		);
-	}
-
-	private extractDependencyKeysFromData(
-		decryptedCredentialData: unknown,
-		token: '$secrets' | '$vars',
-		extractKeys: (value: string) => string[],
-	): string[] {
+	private extractProviderKeysFromDecryptedData(decryptedCredentialData: unknown): string[] {
 		const uniqueKeys = new Set<string>();
 		const valuesToScan: unknown[] = [decryptedCredentialData];
 
 		while (valuesToScan.length > 0) {
 			const currentValue = valuesToScan.pop();
 			if (typeof currentValue === 'string') {
-				if (!currentValue.includes(token)) continue;
-				for (const dependencyKey of extractKeys(currentValue)) {
+				if (!currentValue.includes('$secrets')) continue;
+				for (const dependencyKey of this.extractProviderKeys(currentValue)) {
 					uniqueKeys.add(dependencyKey);
 				}
 				continue;
@@ -192,31 +152,6 @@ export class CreateCredentialDependencyTable1773000000000 implements ReversibleM
 		return [...providerKeys];
 	}
 
-	private extractVariableKeys(expression: string): string[] {
-		const variableKeys = new Set<string>();
-		const expressionBlocks = expression.matchAll(/\{\{(.*?)\}\}/gs);
-
-		for (const block of expressionBlocks) {
-			const expressionContent = block[1];
-
-			const dotMatches = expressionContent.matchAll(
-				new RegExp(`\\$vars\\.(${variableKeyPattern})`, 'g'),
-			);
-			for (const match of dotMatches) {
-				variableKeys.add(match[1]);
-			}
-
-			const bracketMatches = expressionContent.matchAll(
-				new RegExp(`\\$vars\\[['"](${variableKeyPattern})['"]\\]`, 'g'),
-			);
-			for (const match of bracketMatches) {
-				variableKeys.add(match[1]);
-			}
-		}
-
-		return [...variableKeys];
-	}
-
 	private async insertDependencies(
 		dependencies: Array<{
 			credentialId: string;
@@ -260,68 +195,5 @@ export class CreateCredentialDependencyTable1773000000000 implements ReversibleM
 		);
 
 		return new Map(rows.map(({ id, providerKey }) => [providerKey, id.toString()]));
-	}
-
-	private async loadVariableIdsByProjectAndKey(
-		runQuery: MigrationContext['runQuery'],
-		escape: MigrationContext['escape'],
-	): Promise<Map<string, Map<string, string[]>>> {
-		const variablesTable = escape.tableName('variables');
-		const idColumn = escape.columnName('id');
-		const keyColumn = escape.columnName('key');
-		const projectIdColumn = escape.columnName('projectId');
-		const rows = await runQuery<Array<{ id: string; key: string; projectId: string | null }>>(
-			`SELECT ${idColumn} AS id, ${keyColumn} AS key, ${projectIdColumn} AS projectId FROM ${variablesTable} WHERE ${projectIdColumn} IS NOT NULL`,
-		);
-
-		const idsByProjectAndKey = new Map<string, Map<string, string[]>>();
-		for (const row of rows) {
-			if (!row.projectId) continue;
-			const idsByKey = idsByProjectAndKey.get(row.projectId) ?? new Map<string, string[]>();
-			const ids = idsByKey.get(row.key) ?? [];
-			ids.push(row.id);
-			idsByKey.set(row.key, ids);
-			idsByProjectAndKey.set(row.projectId, idsByKey);
-		}
-
-		return idsByProjectAndKey;
-	}
-
-	private async loadGlobalVariableIdsByKey(
-		runQuery: MigrationContext['runQuery'],
-		escape: MigrationContext['escape'],
-	): Promise<Map<string, string[]>> {
-		const variablesTable = escape.tableName('variables');
-		const idColumn = escape.columnName('id');
-		const keyColumn = escape.columnName('key');
-		const projectIdColumn = escape.columnName('projectId');
-		const rows = await runQuery<Array<{ id: string; key: string }>>(
-			`SELECT ${idColumn} AS id, ${keyColumn} AS key FROM ${variablesTable} WHERE ${projectIdColumn} IS NULL`,
-		);
-
-		const idsByKey = new Map<string, string[]>();
-		for (const row of rows) {
-			const ids = idsByKey.get(row.key) ?? [];
-			ids.push(row.id);
-			idsByKey.set(row.key, ids);
-		}
-
-		return idsByKey;
-	}
-
-	private resolveVariableIdsForCredential(
-		variableKey: string,
-		ownerProjectId: string | null,
-		variableIdsByProjectAndKey: Map<string, Map<string, string[]>>,
-		globalVariableIdsByKey: Map<string, string[]>,
-	): string[] {
-		if (ownerProjectId) {
-			const projectSpecificIds = variableIdsByProjectAndKey.get(ownerProjectId)?.get(variableKey);
-			if (projectSpecificIds && projectSpecificIds.length > 0) {
-				return projectSpecificIds;
-			}
-		}
-
-		return globalVariableIdsByKey.get(variableKey) ?? [];
 	}
 }

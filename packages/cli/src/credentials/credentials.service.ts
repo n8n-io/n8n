@@ -10,7 +10,6 @@ import {
 	SecretsProviderConnectionRepository,
 	SharedCredentialsRepository,
 	UserRepository,
-	VariablesRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
@@ -60,7 +59,6 @@ import { CredentialsFinderService } from './credentials-finder.service';
 import {
 	validateAccessToReferencedSecretProviders,
 	extractExternalSecretProviderKeys,
-	extractVariableReferenceKeys,
 	validateExternalSecretsPermissions,
 } from './validation';
 
@@ -73,7 +71,6 @@ type CreateCredentialOptions = CreateCredentialDto & {
 };
 
 const EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE = 'externalSecretProvider' as const;
-const VARIABLE_DEPENDENCY_TYPE = 'variable' as const;
 
 @Service()
 export class CredentialsService {
@@ -81,7 +78,6 @@ export class CredentialsService {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly credentialDependencyRepository: CredentialDependencyRepository,
 		private readonly secretsProviderConnectionRepository: SecretsProviderConnectionRepository,
-		private readonly variablesRepository: VariablesRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
@@ -666,16 +662,11 @@ export class CredentialsService {
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
-		projectId?: string,
 	) {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 		const nextProviderIds = decryptedCredentialData
 			? await this.resolveProviderIdsFromCredentialData(decryptedCredentialData)
 			: undefined;
-		const nextVariableIds =
-			decryptedCredentialData && projectId
-				? await this.resolveVariableIdsFromCredentialData(decryptedCredentialData, projectId)
-				: undefined;
 
 		return await this.credentialsRepository.manager.transaction(async (transactionManager) => {
 			// Update the credentials in DB
@@ -686,15 +677,6 @@ export class CredentialsService {
 					credentialId,
 					dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 					dependencyIds: nextProviderIds,
-					entityManager: transactionManager,
-				});
-			}
-
-			if (nextVariableIds) {
-				await this.credentialDependencyRepository.syncDependenciesForCredential({
-					credentialId,
-					dependencyType: VARIABLE_DEPENDENCY_TYPE,
-					dependencyIds: nextVariableIds,
 					entityManager: transactionManager,
 				});
 			}
@@ -760,12 +742,6 @@ export class CredentialsService {
 					credentialId: savedCredential.id,
 					dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 					dependencyIds: await this.resolveProviderIdsFromCredentialData(decryptedData),
-					entityManager: transactionManager,
-				});
-				await this.credentialDependencyRepository.upsertDependenciesForCredential({
-					credentialId: savedCredential.id,
-					dependencyType: VARIABLE_DEPENDENCY_TYPE,
-					dependencyIds: await this.resolveVariableIdsFromCredentialData(decryptedData, project.id),
 					entityManager: transactionManager,
 				});
 			}
@@ -1225,13 +1201,5 @@ export class CredentialsService {
 	): Promise<string[]> {
 		const providerKeys = [...extractExternalSecretProviderKeys(decryptedCredentialData)];
 		return await this.secretsProviderConnectionRepository.findIdsByProviderKeys(providerKeys);
-	}
-
-	private async resolveVariableIdsFromCredentialData(
-		decryptedCredentialData: ICredentialDataDecryptedObject,
-		projectId: string,
-	): Promise<string[]> {
-		const variableKeys = [...extractVariableReferenceKeys(decryptedCredentialData)];
-		return await this.variablesRepository.findIdsByKeysForProject(variableKeys, projectId);
 	}
 }
