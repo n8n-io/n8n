@@ -81,8 +81,8 @@ describe('buildDiscoverResponse', () => {
 
 		expect(result.filters.resource.values).toContain('tags');
 		expect(result.filters.resource.values).toContain('workflow');
-		expect(result.filters.op.values).toContain('list');
-		expect(result.filters.op.values).toContain('read');
+		expect(result.filters.operation.values).toContain('list');
+		expect(result.filters.operation.values).toContain('read');
 		expect(result.filters.include.values).toEqual(['schemas']);
 	});
 

@@ -236,7 +236,7 @@ export async function buildDiscoverResponse(
 				description: 'Filter to a specific resource',
 				values: Object.keys(resources),
 			},
-			op: {
+			operation: {
 				description: 'Filter to a specific operation',
 				values: allOperations,
 			},
