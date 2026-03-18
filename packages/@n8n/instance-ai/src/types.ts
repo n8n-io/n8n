@@ -120,9 +120,16 @@ export interface InstanceAiWorkflowService {
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
 	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
-	createFromWorkflowJSON(json: WorkflowJSON): Promise<WorkflowDetail>;
+	createFromWorkflowJSON(
+		json: WorkflowJSON,
+		options?: { projectId?: string },
+	): Promise<WorkflowDetail>;
 	/** Update a workflow from SDK-produced WorkflowJSON. */
-	updateFromWorkflowJSON(workflowId: string, json: WorkflowJSON): Promise<WorkflowDetail>;
+	updateFromWorkflowJSON(
+		workflowId: string,
+		json: WorkflowJSON,
+		options?: { projectId?: string },
+	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	delete(workflowId: string): Promise<void>;
 	activate(workflowId: string): Promise<void>;

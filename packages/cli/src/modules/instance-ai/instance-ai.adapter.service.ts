@@ -141,14 +141,37 @@ export class InstanceAiAdapterService {
 		};
 	}
 
+	private createProjectScopeHelpers(user: User) {
+		const { projectRepository } = this;
+		let personalProjectIdPromise: Promise<string> | null = null;
+
+		const getPersonalProjectId = async () => {
+			personalProjectIdPromise ??= projectRepository
+				.getPersonalProjectForUserOrFail(user.id)
+				.then((p) => p.id);
+			return await personalProjectIdPromise;
+		};
+
+		const assertProjectScope = async (scopes: Scope[], projectId: string) => {
+			const allowed = await userHasScopes(user, scopes, false, { projectId });
+			if (!allowed) {
+				throw new Error('User does not have the required permissions in this project');
+			}
+		};
+
+		const resolveProjectId = async (scopes: Scope[], providedProjectId?: string) => {
+			const projectId = providedProjectId ?? (await getPersonalProjectId());
+			await assertProjectScope(scopes, projectId);
+			return projectId;
+		};
+
+		return { getPersonalProjectId, assertProjectScope, resolveProjectId };
+	}
+
 	private createWorkflowAdapter(user: User): InstanceAiWorkflowService {
-		const {
-			workflowService,
-			workflowFinderService,
-			workflowRepository,
-			sharedWorkflowRepository,
-			projectRepository,
-		} = this;
+		const { workflowService, workflowFinderService, workflowRepository, sharedWorkflowRepository } =
+			this;
+		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 
 		return {
 			async list(options) {
@@ -209,7 +232,9 @@ export class InstanceAiAdapterService {
 				return toWorkflowJSON(wf);
 			},
 
-			async createFromWorkflowJSON(json: WorkflowJSON) {
+			async createFromWorkflowJSON(json: WorkflowJSON, options?: { projectId?: string }) {
+				const projectId = await resolveProjectId(['workflow:create'], options?.projectId);
+
 				// Create the workflow shell WITHOUT nodes — so that the subsequent
 				// update() detects a real change and creates a WorkflowHistory entry.
 				// Without a history entry, activateWorkflow() fails with "Version not found"
@@ -225,11 +250,10 @@ export class InstanceAiAdapterService {
 
 				const saved = await workflowRepository.save(newWorkflow);
 
-				const personalProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
 				await sharedWorkflowRepository.save(
 					sharedWorkflowRepository.create({
 						role: 'workflow:owner',
-						projectId: personalProject.id,
+						projectId,
 						workflow: saved,
 					}),
 				);
@@ -248,7 +272,11 @@ export class InstanceAiAdapterService {
 				return toWorkflowDetail(updated);
 			},
 
-			async updateFromWorkflowJSON(workflowId: string, json: WorkflowJSON) {
+			async updateFromWorkflowJSON(
+				workflowId: string,
+				json: WorkflowJSON,
+				_options?: { projectId?: string },
+			) {
 				const updateData = workflowRepository.create({
 					name: json.name,
 					nodes: json.nodes as unknown as INode[],
@@ -688,12 +716,7 @@ export class InstanceAiAdapterService {
 	}
 
 	private createDataTableAdapter(user: User): InstanceAiDataTableService {
-		const {
-			dataTableService,
-			dataTableRepository,
-			projectRepository,
-			sourceControlPreferencesService,
-		} = this;
+		const { dataTableService, dataTableRepository, sourceControlPreferencesService } = this;
 
 		const assertInstanceNotReadOnly = () => {
 			if (sourceControlPreferencesService.getPreferences().branchReadOnly) {
@@ -703,29 +726,7 @@ export class InstanceAiAdapterService {
 			}
 		};
 
-		// Cache the personal project ID per adapter instance
-		let personalProjectIdPromise: Promise<string> | null = null;
-		const getPersonalProjectId = async () => {
-			personalProjectIdPromise ??= projectRepository
-				.getPersonalProjectForUserOrFail(user.id)
-				.then((p) => p.id);
-			return await personalProjectIdPromise;
-		};
-
-		// Check that the user has the required scope(s) for a project
-		const assertProjectScope = async (scopes: Scope[], projectId: string) => {
-			const allowed = await userHasScopes(user, scopes, false, { projectId });
-			if (!allowed) {
-				throw new Error('User does not have the required permissions in this project');
-			}
-		};
-
-		// Resolve projectId (provided or personal) and verify the user has the required scope in it
-		const resolveProjectId = async (scopes: Scope[], providedProjectId?: string) => {
-			const projectId = providedProjectId ?? (await getPersonalProjectId());
-			await assertProjectScope(scopes, projectId);
-			return projectId;
-		};
+		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 
 		// Check scope for a data table and return its projectId for downstream service calls
 		const resolveProjectIdForTable = async (scopes: Scope[], dataTableId: string) => {

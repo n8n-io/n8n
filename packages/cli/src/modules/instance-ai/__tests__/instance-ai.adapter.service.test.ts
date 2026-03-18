@@ -671,11 +671,17 @@ jest.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: jest.fn(),
 }));
 
-import type { User } from '@n8n/db';
-import type { ProjectRepository } from '@n8n/db';
+import type {
+	User,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -842,5 +848,130 @@ describe('createDataTableAdapter', () => {
 			expect(mockDataTableService.createDataTable).toHaveBeenCalled();
 			expect(result).toEqual(expect.objectContaining({ id: 'dt-new', name: 'New Table' }));
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createWorkflowAdapter – project scoping
+// ---------------------------------------------------------------------------
+
+function createWorkflowAdapterForTests() {
+	const mockProjectRepository = {
+		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-id' }),
+	};
+
+	const savedWorkflow = {
+		id: 'wf-new',
+		name: 'Test Workflow',
+		active: false,
+		createdAt: new Date('2026-01-01'),
+		updatedAt: new Date('2026-01-01'),
+		nodes: [],
+		connections: {},
+	};
+
+	const mockWorkflowRepository = {
+		create: jest.fn().mockImplementation((data: Record<string, unknown>) => data),
+		save: jest.fn().mockResolvedValue(savedWorkflow),
+	};
+
+	const mockSharedWorkflowRepository = {
+		create: jest.fn().mockImplementation((data: Record<string, unknown>) => data),
+		save: jest.fn().mockResolvedValue(undefined),
+	};
+
+	const mockWorkflowService = {
+		update: jest.fn().mockResolvedValue(savedWorkflow),
+	};
+
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	const service = new InstanceAiAdapterService(
+		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[0],
+		mockWorkflowService as unknown as WorkflowService,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
+		mockWorkflowRepository as unknown as WorkflowRepository,
+		mockSharedWorkflowRepository as unknown as SharedWorkflowRepository,
+		mockProjectRepository as unknown as ProjectRepository,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[8],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[9],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
+		{
+			getPreferences: jest.fn().mockReturnValue({ branchReadOnly: false }),
+		} as unknown as SourceControlPreferencesService,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
+	);
+
+	const adapter = service.createContext(mockUser).workflowService;
+
+	return {
+		adapter,
+		mockProjectRepository,
+		mockWorkflowRepository,
+		mockSharedWorkflowRepository,
+		mockWorkflowService,
+		mockUser,
+	};
+}
+
+const minimalWorkflowJSON = {
+	name: 'Test',
+	nodes: [],
+	connections: {},
+} as unknown as WorkflowJSON;
+
+describe('createWorkflowAdapter', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockedUserHasScopes.mockResolvedValue(true);
+	});
+
+	it('defaults to personal project when no projectId provided', async () => {
+		const { adapter, mockProjectRepository, mockSharedWorkflowRepository } =
+			createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockProjectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith('user-1');
+		expect(mockSharedWorkflowRepository.create).toHaveBeenCalledWith(
+			expect.objectContaining({ projectId: 'personal-project-id' }),
+		);
+	});
+
+	it('creates workflow in specified project when projectId provided', async () => {
+		const { adapter, mockProjectRepository, mockSharedWorkflowRepository } =
+			createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+			projectId: 'team-project-id',
+		});
+
+		expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
+		expect(mockSharedWorkflowRepository.create).toHaveBeenCalledWith(
+			expect.objectContaining({ projectId: 'team-project-id' }),
+		);
+	});
+
+	it('rejects when user lacks workflow:create scope in project', async () => {
+		mockedUserHasScopes.mockResolvedValue(false);
+		const { adapter } = createWorkflowAdapterForTests();
+
+		await expect(
+			adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+				projectId: 'restricted-project-id',
+			}),
+		).rejects.toThrow('User does not have the required permissions in this project');
 	});
 });
