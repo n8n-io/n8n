@@ -10,6 +10,7 @@ const NODES = {
 	EDIT_FIELDS: 'Edit Fields (Set)', // Use the full node name that appears in the Node List, although when it's added to the canvas it's called "Edit Fields"
 	CODE: 'Code',
 	END: 'End',
+	IF: 'If',
 };
 
 const webhookTestRequirements: TestRequirements = {
@@ -228,6 +229,91 @@ test.describe(
 
 				const poppers = n8n.ndv.getVisiblePoppers();
 				await expect(poppers).toHaveCount(0);
+			});
+		});
+
+		test.describe('Regression: N8N-9812 - Pin data not updating in dependent nodes', () => {
+			test('should use updated pin data in dependent Code node after pin data change', async ({
+				n8n,
+			}) => {
+				// Create Webhook node with initial pin data
+				await n8n.canvas.addNode(NODES.WEBHOOK);
+				await n8n.ndv.setPinnedData([{ comment: 'old_value', status: 'active' }]);
+				await n8n.ndv.close();
+
+				// Add Code node that references the webhook's pin data
+				await n8n.canvas.addNode(NODES.CODE);
+				await n8n.ndv.close();
+
+				// Execute workflow to generate initial run data
+				await n8n.canvas.clickExecuteWorkflowButton();
+
+				// Verify Code node received the initial pin data
+				await n8n.canvas.openNode(NODES.CODE);
+				await expect(n8n.ndv.inputPanel.get()).toBeVisible();
+				await expect(n8n.ndv.inputPanel.getTbodyCell(0, 0)).toContainText('old_value');
+				await n8n.ndv.close();
+
+				// Update the pin data in the Webhook node
+				await n8n.canvas.openNode(NODES.WEBHOOK);
+				await n8n.ndv.setPinnedData([{ comment: 'new_value', status: 'inactive' }]);
+				await n8n.ndv.close();
+
+				// Execute workflow again
+				await n8n.canvas.clickExecuteWorkflowButton();
+
+				// BUG: The Code node should now receive the UPDATED pin data
+				// but it still receives the old pin data
+				await n8n.canvas.openNode(NODES.CODE);
+				await expect(n8n.ndv.inputPanel.get()).toBeVisible();
+
+				// This assertion should FAIL due to the bug
+				// Expected: 'new_value', Actual: 'old_value'
+				await expect(n8n.ndv.inputPanel.getTbodyCell(0, 0)).toContainText('new_value');
+			});
+
+			test('should use updated pin data in If node expressions after pin data change', async ({
+				n8n,
+			}) => {
+				// Create Webhook node with pin data that will make If condition TRUE
+				await n8n.canvas.addNode(NODES.WEBHOOK);
+				await n8n.ndv.setPinnedData([{ value: 10 }]);
+				await n8n.ndv.close();
+
+				// Add Code node to pass through the data
+				await n8n.canvas.addNode(NODES.CODE);
+				await n8n.ndv.close();
+
+				// Add If node that checks value > 5
+				await n8n.canvas.addNode(NODES.IF);
+				await n8n.ndv.close();
+
+				// Execute workflow - If should take TRUE branch (value 10 > 5)
+				await n8n.canvas.clickExecuteWorkflowButton();
+
+				// Verify If node executed
+				await n8n.canvas.openNode(NODES.IF);
+				await expect(n8n.ndv.outputPanel.get()).toBeVisible();
+				await n8n.ndv.close();
+
+				// Update pin data to a value that should make If condition FALSE
+				await n8n.canvas.openNode(NODES.WEBHOOK);
+				await n8n.ndv.setPinnedData([{ value: 3 }]);
+				await n8n.ndv.close();
+
+				// Execute workflow again - If should take FALSE branch (value 3 < 5)
+				await n8n.canvas.clickExecuteWorkflowButton();
+
+				// BUG: The If node should evaluate with value: 3 (new pin data)
+				// but it still evaluates with value: 10 (old pin data)
+				// Verify by checking the input data the If node received
+				await n8n.canvas.openNode(NODES.IF);
+				await expect(n8n.ndv.inputPanel.get()).toBeVisible();
+
+				// This assertion should FAIL due to the bug
+				// The If node input should show value: 3 (new pin data)
+				// but will show value: 10 (old pin data)
+				await expect(n8n.ndv.inputPanel.getTbodyCell(0, 0)).toContainText('3');
 			});
 		});
 	},
