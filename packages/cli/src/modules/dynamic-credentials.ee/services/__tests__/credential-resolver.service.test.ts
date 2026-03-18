@@ -623,8 +623,9 @@ describe('DynamicCredentialResolverService', () => {
 			mockActiveWorkflowManager.remove.mockImplementation(async (id: string) => {
 				callOrder.push(`remove-${id}`);
 			});
-			mockActiveWorkflowManager.add.mockImplementation(async (id: string) => {
+			mockActiveWorkflowManager.add.mockImplementation(async (id) => {
 				callOrder.push(`add-${id}`);
+				return { webhooks: false, triggersAndPollers: false };
 			});
 
 			await service.delete('resolver-id-123');
