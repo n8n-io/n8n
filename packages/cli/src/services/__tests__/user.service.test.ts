@@ -337,7 +337,9 @@ describe('UserService', () => {
 
 			await userService.changeUserRole(user, { newRoleName: 'global:admin' });
 
-			expect(ownershipService.invalidateProjectOwnerCacheByUserId).toHaveBeenCalledWith(user.id);
+			const calls = ownershipService.invalidateProjectOwnerCacheByUserId.mock.calls;
+			expect(calls).toHaveLength(1);
+			expect(calls[0][0]).toBe(user.id);
 		});
 
 		it('removes higher privilege scopes from API tokens of user who is demoted from admin', async () => {

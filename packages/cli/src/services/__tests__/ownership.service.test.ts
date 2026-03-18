@@ -244,7 +244,10 @@ describe('OwnershipService', () => {
 
 			await ownershipService.invalidateProjectOwnerCacheByUserId('some-user-id');
 
-			expect(projectRepository.getPersonalProjectForUser).toHaveBeenCalledWith('some-user-id');
+			expect(projectRepository.getPersonalProjectForUser).toHaveBeenCalledWith(
+				'some-user-id',
+				undefined,
+			);
 			expect(cacheService.deleteFromHash).toHaveBeenCalledWith('project-owner', project.id);
 		});
 
@@ -253,7 +256,10 @@ describe('OwnershipService', () => {
 
 			await ownershipService.invalidateProjectOwnerCacheByUserId('some-user-id');
 
-			expect(projectRepository.getPersonalProjectForUser).toHaveBeenCalledWith('some-user-id');
+			expect(projectRepository.getPersonalProjectForUser).toHaveBeenCalledWith(
+				'some-user-id',
+				undefined,
+			);
 			expect(cacheService.deleteFromHash).not.toHaveBeenCalled();
 		});
 	});
