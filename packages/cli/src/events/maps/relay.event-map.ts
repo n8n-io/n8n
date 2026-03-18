@@ -345,6 +345,7 @@ export type RelayEventMap = {
 		path: string;
 		method: string;
 		apiVersion: string;
+		userAgent?: string;
 	};
 
 	// #endregion
