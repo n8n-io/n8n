@@ -336,10 +336,16 @@ export class WorkflowService {
 		}
 
 		// Update the workflow's version when changing nodes or connections
-		const saveNewVersion =
-			('nodes' in workflowUpdateData && !isEqual(workflowUpdateData.nodes, workflow.nodes)) ||
-			('connections' in workflowUpdateData &&
-				!isEqual(workflowUpdateData.connections, workflow.connections));
+		const hasNodesKey = 'nodes' in workflowUpdateData;
+		const hasConnectionsKey = 'connections' in workflowUpdateData;
+		const nodesChanged = hasNodesKey && !isEqual(workflowUpdateData.nodes, workflow.nodes);
+		const connectionsChanged =
+			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
+		const saveNewVersion = nodesChanged || connectionsChanged;
+
+		this.logger.debug(
+			`[WorkflowService.update] workflowId=${workflowId} autosaved=${options.autosaved} saveNewVersion=${saveNewVersion} nodesChanged=${nodesChanged} connectionsChanged=${connectionsChanged} incomingNodeCount=${Array.isArray(workflowUpdateData.nodes) ? workflowUpdateData.nodes.length : 'undefined'} existingNodeCount=${Array.isArray(workflow.nodes) ? workflow.nodes.length : 'undefined'} incomingConnectionKeys=${hasConnectionsKey ? JSON.stringify(Object.keys(workflowUpdateData.connections ?? {})) : 'undefined'} existingConnectionKeys=${JSON.stringify(Object.keys(workflow.connections ?? {}))}`,
+		);
 
 		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();

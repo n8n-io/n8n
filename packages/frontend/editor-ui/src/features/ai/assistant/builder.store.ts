@@ -272,6 +272,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	/** All version card messages in chat order */
 	const versionCardMessages = computed(() => chatMessages.value.filter(isVersionCardMessage));
+	console.log('[DEBUG] versionCardMessages', versionCardMessages.value);
 
 	const latestRevertVersion = computed(() => {
 		const cards = versionCardMessages.value;
@@ -480,7 +481,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 	}
 
-	function stopStreaming(payload?: StopStreamingPayload) {
+	async function stopStreaming(payload?: StopStreamingPayload) {
 		streaming.value = false;
 		isHelpStreaming.value = false;
 		if (streamingAbortController.value) {
@@ -498,6 +499,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Insert a version card after AI generation if a workflow modification happened.
 		// During planning or question phases no workflow changes happen, so skip it.
 		if (userMessageId && revertVersion && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
+			// Save the post-modification state to create a new version entry.
+			// Falls back to the pre-modification revertVersion if the save fails.
+			const postModVersion = await savePostModificationVersion();
+			const versionForCard = postModVersion ?? revertVersion;
+
 			chatMessages.value = [
 				...chatMessages.value,
 				{
@@ -506,8 +512,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					type: 'custom',
 					customType: 'version_card',
 					data: {
-						versionId: revertVersion.id,
-						createdAt: revertVersion.createdAt,
+						versionId: versionForCard.id,
+						createdAt: versionForCard.createdAt,
 					},
 				},
 			];
@@ -531,7 +537,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function abortStreaming() {
-		stopStreaming({ aborted: true });
+		void stopStreaming({ aborted: true });
 	}
 
 	// Error handling
@@ -544,7 +550,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function handleServiceError(e: unknown, userMessageId: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
 
-		stopStreaming({
+		void stopStreaming({
 			error: e.message,
 		});
 		builderThinkingMessage.value = undefined;
@@ -709,16 +715,36 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const isNewWorkflow = workflowsStore.isNewWorkflow;
 		const hasUnsavedChanges = uiStore.stateIsDirty;
 
+		console.debug('[saveWorkflowAndGetRevertVersion] start', {
+			isNewWorkflow,
+			hasUnsavedChanges,
+			workflowId: workflowsStore.workflowId,
+			currentVersionId: workflowsStore.workflowVersionId,
+			nodeCount: workflowsStore.allNodes.length,
+			connectionKeys: Object.keys(workflowsStore.allConnections),
+		});
+
 		// Save if it's a new workflow or has unsaved changes
 		if (isNewWorkflow || hasUnsavedChanges) {
+			console.debug('[saveWorkflowAndGetRevertVersion] triggering saveCurrentWorkflow', {
+				reason: isNewWorkflow ? 'new workflow' : 'unsaved changes',
+			});
 			const saved = await workflowSaver.saveCurrentWorkflow();
 			if (!saved) {
 				throw new Error('Could not save changes');
 			}
+			console.debug('[saveWorkflowAndGetRevertVersion] saveCurrentWorkflow completed', {
+				newVersionId: workflowsStore.workflowVersionId,
+			});
+		} else {
+			console.debug('[saveWorkflowAndGetRevertVersion] skipping save — no unsaved changes');
 		}
 
 		const versionId = workflowsStore.workflowVersionId;
-		if (!versionId) return undefined;
+		if (!versionId) {
+			console.debug('[saveWorkflowAndGetRevertVersion] no versionId, returning undefined');
+			return undefined;
+		}
 
 		// Verify the versionId actually exists in workflow history.
 		// The backend only creates history entries when nodes/connections change,
@@ -731,11 +757,48 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		]);
 
 		if (!existingVersions.has(versionId)) {
+			console.debug('[saveWorkflowAndGetRevertVersion] versionId not found in history', {
+				versionId,
+				workflowId,
+			});
 			return undefined;
 		}
 
 		const createdAt = existingVersions.get(versionId)!;
+		console.debug('[saveWorkflowAndGetRevertVersion] returning revert version', {
+			versionId,
+			createdAt,
+		});
 		return { id: versionId, createdAt };
+	}
+
+	/**
+	 * Saves the workflow after AI modifications and returns the new version info.
+	 * Called after streaming completes to create a post-modification history entry.
+	 * Returns undefined if the save fails or no new version is created.
+	 */
+	async function savePostModificationVersion(): Promise<
+		{ id: string; createdAt: string } | undefined
+	> {
+		try {
+			const saved = await workflowSaver.saveCurrentWorkflow();
+			if (!saved) return undefined;
+
+			const versionId = workflowsStore.workflowVersionId;
+			if (!versionId) return undefined;
+
+			const workflowId = workflowsStore.workflowId;
+			const existingVersions = await fetchExistingVersionIds(rootStore.restApiContext, workflowId, [
+				versionId,
+			]);
+
+			if (!existingVersions.has(versionId)) return undefined;
+
+			const createdAt = existingVersions.get(versionId)!;
+			return { id: versionId, createdAt };
+		} catch {
+			return undefined;
+		}
 	}
 
 	// Core API functions
@@ -907,7 +970,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					// (e.g., after submitting answers, before first tool call arrives).
 				},
 				() => {
-					stopStreaming();
+					void stopStreaming();
 				},
 				(e) => handleServiceError(e, userMessageId, retry),
 				revertVersion?.id,
@@ -1031,11 +1094,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				// Two-pass conversion: first convert all messages, then insert version
 				// cards in the correct position.
 				// During a live session, stopStreaming() appends version cards AFTER
-				// the AI response. On reload we must reproduce the same ordering:
+				// the AI response with the POST-modification version ID. On reload we
+				// must reproduce the same ordering and semantics:
 				//   user msg → tools → AI response → VERSION CARD → next user msg …
-				// The revertVersionId lives on the user message that TRIGGERED the
-				// generation, so we defer its version card until just before the
-				// NEXT user message (or the end of the list for the last generation).
+				// The revertVersionId on a user message is the PRE-modification version
+				// for that generation. The POST-modification version is the revertVersionId
+				// on the NEXT user message (since savePostModificationVersion runs after
+				// AI generation, and the next saveWorkflowAndGetRevertVersion captures it).
+				// For the last generation, we use the current workflow's versionId.
 
 				// Pass 1: convert messages, stripping revertVersion from user messages
 				type ConvertedItem = {
@@ -1052,6 +1118,46 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					'generate_workflow',
 				]);
 
+				// Pre-scan: collect ordered revertVersionIds from user messages
+				// to map each generation to its post-modification version.
+				const userMsgRevertIds: string[] = [];
+				for (let i = 0; i < latestSession.messages.length; i++) {
+					const msg = latestSession.messages[i];
+					if ('revertVersionId' in msg && typeof msg.revertVersionId === 'string') {
+						userMsgRevertIds.push(msg.revertVersionId);
+					}
+				}
+
+				// Build post-modification version map and fetch their existence.
+				// For generation i, post-mod version = revertVersionId of generation i+1.
+				// For the last generation, use the current workflow version.
+				const postModVersionIds: string[] = [];
+				for (let i = 0; i < userMsgRevertIds.length; i++) {
+					if (i < userMsgRevertIds.length - 1) {
+						postModVersionIds.push(userMsgRevertIds[i + 1]);
+					} else {
+						const currentVersionId = workflowsStore.workflowVersionId;
+						if (currentVersionId) {
+							postModVersionIds.push(currentVersionId);
+						}
+					}
+				}
+
+				// Fetch existence for post-modification version IDs
+				const uniquePostModIds = [...new Set(postModVersionIds)].filter(
+					(id) => !versionMap.has(id),
+				);
+				const postModVersionMap =
+					uniquePostModIds.length > 0
+						? await fetchExistingVersionIds(rootStore.restApiContext, workflowId, uniquePostModIds)
+						: new Map<string, string>();
+
+				// Merge both version maps for lookups
+				const allVersionMap = new Map([...versionMap, ...postModVersionMap]);
+
+				// Track which revertVersionId we're on to look up the post-mod version
+				let revertIdIndex = 0;
+
 				const items: ConvertedItem[] = enrichedMessages.map((raw, idx) => {
 					const id = 'id' in raw && typeof raw.id === 'string' ? raw.id : generateMessageId();
 					const uiMsg = mapAssistantMessageToUI(raw, id);
@@ -1067,6 +1173,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 							: undefined;
 
 					if (uiMsg.type === 'text' && uiMsg.role === 'user' && revertVersionId) {
+						const currentRevertIndex = revertIdIndex;
+						revertIdIndex++;
+
 						// Only create a version card if there is a workflow-modifying
 						// message in this batch (between this user msg and the next).
 						// Plan/question phases have revertVersion but no workflow update.
@@ -1089,7 +1198,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 						// Strip revertVersion from the UI message (it's now on the card)
 						const { revertVersion: _, ...msgWithoutRevert } = uiMsg;
-						const createdAt = versionMap.get(revertVersionId);
+
+						// Use post-modification version for the card (next user msg's revertVersionId,
+						// or current workflow version for the last generation).
+						const postModVersionId = postModVersionIds[currentRevertIndex];
+						const postModCreatedAt = postModVersionId
+							? allVersionMap.get(postModVersionId)
+							: undefined;
+						// Fall back to pre-modification version if post-mod is unavailable
+						const cardVersionId = postModVersionId ?? revertVersionId;
+						const cardCreatedAt = postModCreatedAt ?? allVersionMap.get(revertVersionId);
+
 						return {
 							msg: msgWithoutRevert,
 							...(hasWorkflowUpdate && {
@@ -1099,8 +1218,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 									type: 'custom' as const,
 									customType: 'version_card',
 									data: {
-										versionId: revertVersionId,
-										...(createdAt && { createdAt }),
+										versionId: cardVersionId,
+										...(cardCreatedAt && { createdAt: cardCreatedAt }),
 									},
 								},
 							}),

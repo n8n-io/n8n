@@ -205,22 +205,32 @@ const isChatInputDisabled = computed(() => {
 	return isInputDisabled.value || builderStore.shouldDisableChatInput;
 });
 
-const { nodeChanges, versionNodeChangesMap, openDiffView } = useReviewChanges();
+const { versionNodeChangesMap, openDiffView } = useReviewChanges();
 
 function onSelectChangedNode(nodeId: string) {
 	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
 }
 
-function isCurrentVersionCard(message: ChatUI.AssistantMessage): boolean {
+/** Returns true if the version card has at least one node change */
+function isNonEmptyVersionCard(message: ChatUI.AssistantMessage): boolean {
 	if (!isVersionCardMessage(message)) return false;
-	const latest = builderStore.latestRevertVersion;
-	return latest !== null && message.data.versionId === latest.id;
+	return (versionNodeChangesMap.value.get(message.data.versionId) ?? []).length > 0;
+}
+
+function isCurrentVersionCard(message: ChatUI.AssistantMessage): boolean {
+	if (!isNonEmptyVersionCard(message)) return false;
+	// Find the last non-empty version card
+	const nonEmptyCards = builderStore.chatMessages.filter(
+		(msg) => isVersionCardMessage(msg) && isNonEmptyVersionCard(msg),
+	);
+	const lastNonEmpty = nonEmptyCards[nonEmptyCards.length - 1];
+	return lastNonEmpty?.id === message.id;
 }
 
 function getVersionIndex(message: ChatUI.AssistantMessage): number {
 	let count = 0;
 	for (const msg of builderStore.chatMessages) {
-		if (isVersionCardMessage(msg)) {
+		if (isVersionCardMessage(msg) && isNonEmptyVersionCard(msg)) {
 			count++;
 			if (msg.id === message.id) return count;
 		}
@@ -624,10 +634,10 @@ defineExpose({
 			</template>
 			<template #custom-message="{ message }">
 				<VersionCardV2
-					v-if="isVersionCardMessage(message)"
+					v-if="isVersionCardMessage(message) && isNonEmptyVersionCard(message)"
 					:version-id="message.data.versionId"
 					:is-current="isCurrentVersionCard(message)"
-					:node-changes="versionNodeChangesMap.get(message.data.versionId) ?? nodeChanges"
+					:node-changes="versionNodeChangesMap.get(message.data.versionId) ?? []"
 					:streaming="builderStore.streaming"
 					:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 					:title="message.data.title"

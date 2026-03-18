@@ -106,8 +106,9 @@ export function useReviewChanges() {
 	 * Compute node changes between two sets of nodes (source → target).
 	 */
 	function computeNodeChanges(sourceNodes: INode[], targetNodes: INode[]): NodeChangeEntry[] {
-		const normalized = resolveNodeDefaults(sourceNodes);
-		const diff = compareWorkflowsNodes(normalized, targetNodes);
+		const normalizedSource = resolveNodeDefaults(sourceNodes);
+		const normalizedTarget = resolveNodeDefaults(targetNodes);
+		const diff = compareWorkflowsNodes(normalizedSource, normalizedTarget);
 		const targetById = new Map(targetNodes.map((n) => [n.id, n]));
 		return [...diff.values()]
 			.filter((d) => d.status !== NodeDiffStatus.Eq)
@@ -124,31 +125,31 @@ export function useReviewChanges() {
 
 	/**
 	 * Per-version node changes. For each version card, computes the diff
-	 * between that version's nodes and the NEXT version's nodes
-	 * (or the current workflow for the latest version card).
+	 * between the PREVIOUS version's nodes and this version's nodes.
+	 * For the first version (no predecessor), all nodes are treated as additions.
 	 */
 	const versionNodeChangesMap = computed<Map<string, NodeChangeEntry[]>>(() => {
-		if (builderStore.streaming) return new Map();
 		const cards = builderStore.versionCardMessages;
 		const result = new Map<string, NodeChangeEntry[]>();
 
 		for (let i = 0; i < cards.length; i++) {
 			const vid = cards[i].data.versionId;
-			const sourceData = versionDataCache.value.get(vid);
-			if (!sourceData) continue;
+			const targetData = versionDataCache.value.get(vid);
+			if (!targetData) continue;
 
-			// Target: next version's nodes, or current workflow for the latest
-			let targetNodes: INode[];
-			if (i < cards.length - 1) {
-				const nextVid = cards[i + 1].data.versionId;
-				const nextData = versionDataCache.value.get(nextVid);
-				if (!nextData) continue;
-				targetNodes = nextData.nodes;
+			let sourceNodes: INode[];
+			if (i > 0) {
+				// Diff from previous version to this version
+				const prevVid = cards[i - 1].data.versionId;
+				const prevData = versionDataCache.value.get(prevVid);
+				if (!prevData) continue;
+				sourceNodes = prevData.nodes;
 			} else {
-				targetNodes = workflowsStore.workflow.nodes;
+				// First version: no predecessor, so all nodes are additions
+				sourceNodes = [];
 			}
 
-			result.set(vid, computeNodeChanges(sourceData.nodes, targetNodes));
+			result.set(vid, computeNodeChanges(sourceNodes, targetData.nodes));
 		}
 
 		return result;
@@ -256,17 +257,35 @@ export function useReviewChanges() {
 	});
 
 	function openDiffView() {
-		const latest = builderStore.latestRevertVersion;
-		if (!latest) return;
-		const cached = versionDataCache.value.get(latest.id);
-		if (!cached) return;
+		const cards = builderStore.versionCardMessages;
+		if (cards.length === 0) return;
+
+		const latestCard = cards[cards.length - 1];
+		const latestCached = versionDataCache.value.get(latestCard.data.versionId);
+		if (!latestCached) return;
+
+		// Source: previous version's data (or empty workflow for the first card)
+		let sourceNodes: INode[] = [];
+		let sourceConnections: IConnections = {};
+		if (cards.length > 1) {
+			const prevCard = cards[cards.length - 2];
+			const prevCached = versionDataCache.value.get(prevCard.data.versionId);
+			if (prevCached) {
+				sourceNodes = prevCached.nodes;
+				sourceConnections = prevCached.connections;
+			}
+		}
 
 		const sourceWorkflow = {
 			...workflowsStore.workflow,
-			nodes: cached.nodes,
-			connections: cached.connections,
+			nodes: sourceNodes,
+			connections: sourceConnections,
 		};
-		const targetWorkflow = workflowsStore.workflow;
+		const targetWorkflow = {
+			...workflowsStore.workflow,
+			nodes: latestCached.nodes,
+			connections: latestCached.connections,
+		};
 
 		uiStore.openModalWithData({
 			name: AI_BUILDER_DIFF_MODAL_KEY,
