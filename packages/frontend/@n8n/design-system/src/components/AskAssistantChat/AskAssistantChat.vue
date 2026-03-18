@@ -6,7 +6,12 @@ import MessageWrapper from './messages/MessageWrapper.vue';
 import ThinkingMessage from './messages/ThinkingMessage.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
-import { isTaskAbortedMessage, isToolMessage, isThinkingGroupMessage } from '../../types/assistant';
+import {
+	isTaskAbortedMessage,
+	isToolMessage,
+	isThinkingGroupMessage,
+	isWorkflowUpdatedMessage,
+} from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
@@ -336,17 +341,15 @@ const showFooterRating = computed(() => {
 
 	// Find the last workflow-updated message index.
 	// (workflow-updated is filtered out of normalizedMessages since it's not rendered visually)
-	const lastWorkflowUpdateIdx = props.messages.findLastIndex(
-		(msg) => msg.type === 'workflow-updated',
-	);
+	const lastWorkflowUpdateIdx = props.messages.findLastIndex(isWorkflowUpdatedMessage);
 	if (lastWorkflowUpdateIdx === -1 || !normalizedMessages.value.length) {
 		return false;
 	}
 
 	// Don't show rating if the user has responded since the last workflow update
-	const hasUserAfterWorkflowUpdate = props.messages
-		.slice(lastWorkflowUpdateIdx + 1)
-		.some((msg) => msg.role === 'user');
+	const hasUserAfterWorkflowUpdate = props.messages.some(
+		(msg, i) => i > lastWorkflowUpdateIdx && msg.role === 'user',
+	);
 	if (hasUserAfterWorkflowUpdate) {
 		return false;
 	}
