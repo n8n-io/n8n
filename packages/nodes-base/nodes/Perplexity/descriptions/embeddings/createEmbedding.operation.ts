@@ -37,6 +37,48 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Dimensions',
+				name: 'dimensions',
+				type: 'number',
+				default: 0,
+				description:
+					'Number of dimensions for the output embedding. If 0 or unset, the full model dimensions are used.',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'dimensions',
+						value: '={{ $value || undefined }}',
+					},
+				},
+			},
+			{
+				displayName: 'Encoding Format',
+				name: 'encoding_format',
+				type: 'options',
+				default: 'float',
+				options: [
+					{ name: 'Float', value: 'float' },
+					{ name: 'Base64 Int8', value: 'base64_int8' },
+					{ name: 'Base64 Binary', value: 'base64_binary' },
+				],
+				description: 'The format of the returned embeddings',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'encoding_format',
+					},
+				},
+			},
+		],
+	},
 ];
 
 const displayOptions = {
