@@ -17,7 +17,7 @@
 					"mode": "name",
 					"value": "my-chat-endpoint"
 				},
-				"requestBody": { "messages": [{ "role": "user", "content": "Hello!" }] }
+				"requestBody": "{\"messages\":[{\"role\":\"user\",\"content\":\"Hello!\"}]}"
 			},
 			"type": "n8n-nodes-base.databricks",
 			"typeVersion": 1,

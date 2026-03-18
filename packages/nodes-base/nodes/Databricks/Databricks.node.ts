@@ -1541,7 +1541,9 @@ export class Databricks implements INodeType {
 					const endpointName = this.getNodeParameter('endpointName', i, '', {
 						extractValue: true,
 					}) as string;
-					const requestBody = this.getNodeParameter('requestBody', i) as any;
+					const requestBodyRaw = this.getNodeParameter('requestBody', i);
+					const requestBody =
+						typeof requestBodyRaw === 'string' ? JSON.parse(requestBodyRaw) : requestBodyRaw;
 
 					// Step 1: Fetch the OpenAPI schema for this endpoint
 					let detectedFormat = 'generic';
