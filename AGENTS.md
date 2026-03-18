@@ -149,6 +149,7 @@ CSS variables and styling conventions.
 ### Testing Guidelines
 - **Always work from within the package directory** when running tests
 - **Mock all external dependencies** in unit tests
+- **Prefer reusing hoisted shared `mock<T>(...)` fixtures** when a typed mock is immutable and used across tests. This rule exists to avoid massive test slowdowns from repeatedly creating nested proxy mocks while preserving the type contract. Avoid replacing these with `as unknown as T` helpers for entities like `User`.
 - **Confirm test cases with user** before writing unit tests
 - **Typecheck is critical before committing** - always run `pnpm typecheck`
 - **When modifying pinia stores**, check for unused computed properties
@@ -171,6 +172,23 @@ When implementing features:
 4. Update frontend in `packages/editor-ui` with i18n support
 5. Write tests with proper mocks
 6. Run `pnpm typecheck` to verify types
+
+## Design Principles
+
+### Security Must Not Degrade the Building Experience
+
+Security improvements, whether driven by enterprise requirements or internal
+standards, must NEVER add friction to the common-case building experience. When
+designing security-related features (defaults, behaviors, flows, error
+handling), apply these checks:
+
+- **No friction for the common case:** A community builder's workflow should
+  remain intuitive. Security should be invisible when it can be.
+- **Migration and upgrade paths:** Existing users must have a clear,
+  non-disruptive path forward when defaults or behaviors change.
+- **Security layers on top, not in competition:** Great UX and strong security
+  are not trade-offs. They're both required. If a design forces a choice
+  between them, the design needs more work.
 
 ## Github Guidelines
 - When creating a PR, use the conventions in
