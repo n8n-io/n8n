@@ -5,6 +5,12 @@ import N8nTree from './Tree.vue';
 export default {
 	title: 'Core/Tree',
 	component: N8nTree,
+
+	parameters: {
+		docs: {
+			description: { component: 'A hierarchical tree view with expand and collapse behavior.' },
+		},
+	},
 };
 
 // @ts-expect-error Storybook incorrect slot types

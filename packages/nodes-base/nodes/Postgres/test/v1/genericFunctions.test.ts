@@ -1,8 +1,8 @@
 import { mock } from 'jest-mock-extended';
 import pgPromise from 'pg-promise';
 
-import * as PostgresFun from '../v1/genericFunctions';
-import type { PgpDatabase } from '../v2/helpers/interfaces';
+import * as PostgresFun from '../../v1/genericFunctions';
+import type { PgpDatabase } from '../../v2/helpers/interfaces';
 
 type NodeParams = Record<string, string | {}>;
 
