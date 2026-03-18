@@ -4,6 +4,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
+import AgentTemplateSelector from '@/features/ai/chatHub/components/AgentTemplateSelector.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { ChatHubProvider, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nInput, N8nInputLabel } from '@n8n/design-system';
@@ -12,6 +13,7 @@ import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
+import type { BusinessAgentTemplate } from '@/features/ai/chatHub/business-templates';
 
 const props = defineProps<{
 	credentials: CredentialsMap;
@@ -36,6 +38,7 @@ const systemPrompt = ref('');
 const selectedModel = ref<ChatModelDto | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
+const showTemplateSelector = ref(false);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 
@@ -87,6 +90,18 @@ function resetForm() {
 	systemPrompt.value = '';
 	selectedModel.value = null;
 	agentSelectedCredentials.value = {};
+	showTemplateSelector.value = false;
+}
+
+function applyTemplate(template: BusinessAgentTemplate) {
+	name.value = template.name;
+	description.value = template.description;
+	systemPrompt.value = template.systemPrompt;
+	showTemplateSelector.value = false;
+}
+
+function onSkipTemplate() {
+	showTemplateSelector.value = false;
 }
 
 // Watch for modal opening
@@ -98,6 +113,7 @@ watch(
 				loadAgent();
 			} else {
 				resetForm();
+				showTemplateSelector.value = true;
 			}
 		}
 	},
@@ -200,16 +216,30 @@ async function onDelete() {
 	<Modal
 		name="agentEditor"
 		:event-bus="modalBus"
-		width="600px"
+		:width="showTemplateSelector ? '760px' : '600px'"
 		:center="true"
-		max-width="90%"
+		max-width="95%"
 		min-height="400px"
 	>
 		<template #header>
 			<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
 		</template>
 		<template #content>
-			<div :class="$style.content">
+			<div v-if="showTemplateSelector" :class="$style.content">
+				<AgentTemplateSelector @select="applyTemplate" @skip="onSkipTemplate" />
+			</div>
+			<div v-else :class="$style.content">
+				<div v-if="!isEditMode" :class="$style.templateLink">
+					<N8nButton
+						type="tertiary"
+						size="small"
+						icon="layers"
+						@click="showTemplateSelector = true"
+					>
+						Use a template
+					</N8nButton>
+				</div>
+
 				<N8nInputLabel
 					input-name="agent-name"
 					:label="i18n.baseText('chatHub.agent.editor.name.label')"
@@ -269,7 +299,7 @@ async function onDelete() {
 				</N8nInputLabel>
 			</div>
 		</template>
-		<template #footer>
+		<template v-if="!showTemplateSelector" #footer>
 			<div :class="$style.footer">
 				<div :class="$style.footerRight">
 					<N8nButton
@@ -295,6 +325,11 @@ async function onDelete() {
 	flex-direction: column;
 	gap: var(--spacing--md);
 	padding: var(--spacing--sm) 0;
+}
+
+.templateLink {
+	display: flex;
+	justify-content: flex-end;
 }
 
 .input {

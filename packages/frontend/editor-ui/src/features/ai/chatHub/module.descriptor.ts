@@ -1,9 +1,16 @@
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import { CHAT_VIEW, CHAT_CONVERSATION_VIEW, CHAT_AGENTS_VIEW } from './constants';
+import {
+	CHAT_VIEW,
+	CHAT_CONVERSATION_VIEW,
+	CHAT_AGENTS_VIEW,
+	CHAT_BUSINESS_DASHBOARD_VIEW,
+} from './constants';
 
 const ChatSidebar = async () => await import('@/features/ai/chatHub/components/ChatSidebar.vue');
 const ChatView = async () => await import('@/features/ai/chatHub/ChatView.vue');
 const ChatAgentsView = async () => await import('@/features/ai/chatHub/ChatAgentsView.vue');
+const BusinessDashboardView = async () =>
+	await import('@/features/ai/chatHub/BusinessDashboardView.vue');
 
 export const ChatModule: FrontendModuleDescription = {
 	id: 'chat-hub',
@@ -39,6 +46,17 @@ export const ChatModule: FrontendModuleDescription = {
 			path: '/home/chat/agents',
 			components: {
 				default: ChatAgentsView,
+				sidebar: ChatSidebar,
+			},
+			meta: {
+				middleware: ['authenticated', 'custom'],
+			},
+		},
+		{
+			name: CHAT_BUSINESS_DASHBOARD_VIEW,
+			path: '/home/chat/business',
+			components: {
+				default: BusinessDashboardView,
 				sidebar: ChatSidebar,
 			},
 			meta: {

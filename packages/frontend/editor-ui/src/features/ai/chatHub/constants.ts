@@ -4,6 +4,7 @@ import type { ChatHubProvider } from '@n8n/api-types';
 export const CHAT_VIEW = 'chat';
 export const CHAT_CONVERSATION_VIEW = 'chat-conversation';
 export const CHAT_AGENTS_VIEW = 'chat-agents';
+export const CHAT_BUSINESS_DASHBOARD_VIEW = 'chat-business-dashboard';
 
 export const CHAT_STORE = 'chatStore';
 
