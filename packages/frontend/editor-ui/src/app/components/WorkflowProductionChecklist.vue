@@ -81,7 +81,10 @@ const hasSavedTimeNodes = computed(() => {
 });
 
 const hasTimeSaved = computed(() => {
-	return props.workflow.settings?.timeSavedPerExecution !== undefined || hasSavedTimeNodes.value;
+	const timeSavedPerExecution =
+		workflowDocumentStore?.value?.settings?.timeSavedPerExecution ??
+		props.workflow.settings?.timeSavedPerExecution;
+	return timeSavedPerExecution !== undefined || hasSavedTimeNodes.value;
 });
 
 const isActivationModalOpen = computed(() => {
