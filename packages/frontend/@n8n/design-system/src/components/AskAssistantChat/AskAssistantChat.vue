@@ -468,6 +468,7 @@ defineExpose({
 				</div>
 				<slot name="header" />
 			</div>
+			<slot name="headerActions" />
 			<N8nIconButton
 				icon="x"
 				variant="ghost"

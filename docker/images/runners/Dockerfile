@@ -30,6 +30,12 @@ RUN node -e "const pkg = require('./package.json'); \
 RUN rm -f node_modules/.modules.yaml && \
     pnpm add moment@2.30.1 --prod --no-lockfile
 
+# Rebuild isolated-vm for the container platform. Install build tools as
+# fallback in case prebuild-install cannot find a prebuilt binary.
+RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
+    npm rebuild isolated-vm && \
+    apk del .build-deps
+
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
 # Produces a relocatable venv tied to the python version used
@@ -124,6 +130,8 @@ COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 # libstdc++ is required by Node
 # libc6-compat is required by task-runner-launcher
 RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
+    apk upgrade --no-cache && \
+    pip install --no-cache-dir "pip>=26.0" && \
     apk del apk-tools
 
 # Bring corepack and pnpm over, to make the image easier to extend

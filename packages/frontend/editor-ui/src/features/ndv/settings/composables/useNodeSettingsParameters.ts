@@ -177,6 +177,11 @@ export function useNodeSettingsParameters() {
 			return false;
 		}
 
+		// Fast path: hide parameters explicitly marked as cloud-only on cloud deployments
+		if (parameter.displayOptions?.hideOnCloud && settingsStore.isCloudDeployment) {
+			return false;
+		}
+
 		// Fast path: if no display/disabled options defined, no need for further checks
 		const hasDisplayOptions = parameter[displayKey] !== undefined;
 

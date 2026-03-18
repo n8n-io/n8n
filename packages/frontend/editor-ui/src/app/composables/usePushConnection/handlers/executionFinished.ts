@@ -439,6 +439,12 @@ export function handleExecutionFinishedWithSuccessOrOther(
 				}),
 				type: 'success',
 			});
+		} else if (!nodeOutput && !successToastAlreadyShown) {
+			toast.showMessage({
+				title: i18n.baseText('pushConnection.nodeNotExecuted'),
+				message: i18n.baseText('pushConnection.nodeNotExecuted.message'),
+				type: 'warning',
+			});
 		} else if (!successToastAlreadyShown) {
 			handleExecutionFinishedSuccessfully(
 				workflowName,
