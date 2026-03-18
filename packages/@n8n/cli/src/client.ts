@@ -37,6 +37,7 @@ export class N8nClient {
 			'X-N8N-API-KEY': options.apiKey,
 			'Content-Type': 'application/json',
 			Accept: 'application/json',
+			'User-Agent': 'n8n-cli',
 		});
 		this.debug = options.debug;
 	}
