@@ -60,12 +60,7 @@ async function onClickTemplatesLink() {
 </script>
 <template>
 	<div ref="container" :class="$style.addNodes" data-test-id="canvas-add-button">
-		<N8nTooltip
-			placement="top"
-			:visible="isTooltipVisible"
-			:disabled="nodeCreatorStore.showScrim"
-			:show-after="700"
-		>
+		<N8nTooltip placement="top" :visible="isTooltipVisible" :show-after="700">
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click.stop="onClick">
 				<N8nIcon icon="plus" color="foreground-xdark" :size="40" />
 			</button>

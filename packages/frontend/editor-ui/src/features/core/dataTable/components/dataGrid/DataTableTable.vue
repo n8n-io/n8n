@@ -169,6 +169,7 @@ watch(
 defineExpose({
 	addRow: dataTableOperations.onAddRowClick,
 	addColumn: dataTableOperations.onAddColumn,
+	fetchDataTableRows: dataTableOperations.fetchDataTableRows,
 });
 </script>
 

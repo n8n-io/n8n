@@ -40,15 +40,13 @@ const uiStore = useUIStore();
 const bannersStore = useBannersStore();
 const chatPanelStore = useChatPanelStore();
 
-const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
+const { setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
 
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
 	mousedownInsideEvent: null as MouseEvent | null,
 });
-
-const showScrim = computed(() => useNodeCreatorStore().showScrim);
 
 const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 
@@ -117,7 +115,6 @@ watch(
 	() => props.active,
 	(isActive) => {
 		if (!isActive) {
-			setShowScrim(false);
 			resetViewStacks();
 		}
 	},
@@ -127,7 +124,6 @@ watch(
 watch(viewStacksLength, (value) => {
 	if (value === 0) {
 		emit('closeNodeCreator');
-		setShowScrim(false);
 	}
 });
 
@@ -166,12 +162,7 @@ onClickOutside(
 
 <template>
 	<div>
-		<aside
-			:class="{
-				[$style.nodeCreatorScrim]: true,
-				[$style.active]: showScrim,
-			}"
-		/>
+		<aside :class="$style.nodeCreatorScrim" />
 		<N8nIconButton
 			variant="subtle"
 			v-if="active"
