@@ -31,7 +31,15 @@ function estimateTokens(text: string): number {
 function getContextWindowForModel(modelId: ModelConfig): number {
 	const raw = typeof modelId === 'string' ? modelId : modelId.id;
 	const slashIndex = raw.indexOf('/');
-	if (slashIndex < 0) return DEFAULT_CONTEXT_WINDOW;
+	if (slashIndex < 0) {
+		for (const providerModels of Object.values(maxContextWindowTokens)) {
+			if (providerModels[raw]) return providerModels[raw];
+			for (const [registryModel, tokens] of Object.entries(providerModels)) {
+				if (tokens > 0 && registryModel.startsWith(raw)) return tokens;
+			}
+		}
+		return DEFAULT_CONTEXT_WINDOW;
+	}
 
 	const provider = raw.slice(0, slashIndex) as ChatHubLLMProvider;
 	const model = raw.slice(slashIndex + 1);
