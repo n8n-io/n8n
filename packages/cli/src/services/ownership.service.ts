@@ -1,5 +1,4 @@
-import type { EntityManager } from '@n8n/typeorm';
-import type { ListQueryDb } from '@n8n/db';
+import type { EntityManager, ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
 	Project,
