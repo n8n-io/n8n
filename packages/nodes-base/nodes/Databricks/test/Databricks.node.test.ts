@@ -376,6 +376,15 @@ describe('Databricks', () => {
 					created_at: 1704067200000,
 				});
 
+			databricksNock
+				.patch('/api/2.1/unity-catalog/catalogs/main', { comment: 'Updated catalog description' })
+				.reply(200, {
+					name: 'main',
+					comment: 'Updated catalog description',
+					updated_at: 1704067200000,
+					owner: 'admin@example.com',
+				});
+
 			databricksNock.delete('/api/2.1/unity-catalog/catalogs/old-catalog').reply(200, {});
 		});
 

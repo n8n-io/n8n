@@ -72,6 +72,28 @@
 		{
 			"parameters": {
 				"resource": "unityCatalog",
+				"operation": "updateCatalog",
+				"catalogName": {
+					"mode": "id",
+					"value": "main"
+				},
+				"comment": "Updated catalog description"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 300],
+			"id": "uc-update-catalog-001",
+			"name": "Update Catalog",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
 				"operation": "deleteCatalog",
 				"catalogName": {
 					"mode": "id",
@@ -80,7 +102,7 @@
 			},
 			"type": "n8n-nodes-base.databricks",
 			"typeVersion": 1,
-			"position": [220, 300],
+			"position": [220, 500],
 			"id": "uc-delete-catalog-001",
 			"name": "Delete Catalog",
 			"credentials": {
@@ -121,6 +143,16 @@
 				}
 			}
 		],
+		"Update Catalog": [
+			{
+				"json": {
+					"name": "main",
+					"comment": "Updated catalog description",
+					"updated_at": 1704067200000,
+					"owner": "admin@example.com"
+				}
+			}
+		],
 		"Delete Catalog": [
 			{
 				"json": {
@@ -138,6 +170,7 @@
 					{ "node": "List Catalogs", "type": "main", "index": 0 },
 					{ "node": "Get Catalog", "type": "main", "index": 0 },
 					{ "node": "Create Catalog", "type": "main", "index": 0 },
+					{ "node": "Update Catalog", "type": "main", "index": 0 },
 					{ "node": "Delete Catalog", "type": "main", "index": 0 }
 				]
 			]
