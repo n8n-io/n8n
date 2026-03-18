@@ -484,8 +484,10 @@ export class SourceControlGitService {
 	}
 
 	/**
-	 * Returns all file paths that have ever been committed under the given directory.
-	 * Useful for determining whether a resource was previously synced via source control.
+	 * Returns all file paths that have ever been committed under the given directory
+	 * on the current branch. Scoped to the current branch (ancestors of HEAD) so that
+	 * data tables pushed by other instances on different branches are not mistaken
+	 * for previously-synced resources on this instance.
 	 */
 	async getHistoricallyTrackedFiles(directory: string): Promise<Set<string>> {
 		if (!this.git) {
@@ -494,7 +496,6 @@ export class SourceControlGitService {
 		try {
 			const output = await this.git.raw([
 				'log',
-				'--all',
 				'--pretty=format:',
 				'--name-only',
 				'--',
