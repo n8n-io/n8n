@@ -125,8 +125,9 @@ describe('setup-credentials tool — credential flow', () => {
 		);
 
 		expect(suspendFn).toHaveBeenCalled();
-		const payload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
-		expect(payload).toHaveProperty('projectId', 'proj-123');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const payload1 = suspendFn.mock.calls[0][0] as Record<string, unknown>;
+		expect(payload1).toHaveProperty('projectId', 'proj-123');
 	});
 
 	it('omits projectId from suspend payload when input has no projectId', async () => {
@@ -146,8 +147,9 @@ describe('setup-credentials tool — credential flow', () => {
 		);
 
 		expect(suspendFn).toHaveBeenCalled();
-		const payload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
-		expect(payload).not.toHaveProperty('projectId');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const payload2 = suspendFn.mock.calls[0][0] as Record<string, unknown>;
+		expect(payload2).not.toHaveProperty('projectId');
 	});
 
 	it('returns success with credentials when approved=true', async () => {
