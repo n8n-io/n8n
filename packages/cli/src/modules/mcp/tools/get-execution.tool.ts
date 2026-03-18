@@ -1,5 +1,5 @@
 import type { ExecutionRepository, User } from '@n8n/db';
-import type { IRunExecutionData, IRunData, ITaskDataConnections } from 'n8n-workflow';
+import type { IRunExecutionData, IRunData, ITaskDataConnections, IPinData } from 'n8n-workflow';
 import { jsonStringify, ensureError } from 'n8n-workflow';
 import z from 'zod';
 
@@ -95,12 +95,19 @@ export const createGetExecutionTool = (
 		try {
 			await getMcpWorkflow(workflowId, user, ['workflow:read'], workflowFinderService);
 
-			// Use lightweight metadata query when data isn't needed
-			const fullExecution = includeData
-				? await executionRepository.findWithUnflattenedData(executionId, [workflowId])
-				: undefined;
-			const execution =
-				fullExecution ?? (await executionRepository.findIfAccessible(executionId, [workflowId]));
+			// Use lightweight metadata query when data isn't needed;
+			// split into branches so TypeScript can narrow each return type.
+			let execution;
+			let executionData: IRunExecutionData | null | undefined;
+			if (includeData) {
+				const fullExecution = await executionRepository.findWithUnflattenedData(executionId, [
+					workflowId,
+				]);
+				execution = fullExecution;
+				executionData = fullExecution?.data ?? null;
+			} else {
+				execution = await executionRepository.findIfAccessible(executionId, [workflowId]);
+			}
 
 			if (!execution) {
 				// Check if execution exists at all
@@ -130,12 +137,14 @@ export const createGetExecutionTool = (
 				waitTill: execution.waitTill?.toISOString() ?? null,
 			};
 
-			let filteredData: IRunExecutionData | undefined;
-			if (fullExecution) {
-				filteredData = fullExecution.data;
-				if (filteredData && (nodeNames?.length || truncateData)) {
+			let filteredData: IRunExecutionData | null | undefined;
+			if (executionData) {
+				filteredData = executionData;
+				if (nodeNames !== undefined || truncateData) {
 					filteredData = filterExecutionData(filteredData, nodeNames, truncateData);
 				}
+			} else if (executionData === null) {
+				filteredData = null;
 			}
 
 			const output =
@@ -203,7 +212,7 @@ function filterExecutionData(
 
 	let runData = filtered.resultData.runData ?? {};
 
-	if (nodeNames?.length) {
+	if (nodeNames !== undefined) {
 		const filteredRunData: IRunData = {};
 		for (const name of nodeNames) {
 			if (name in runData) {
@@ -211,6 +220,16 @@ function filterExecutionData(
 			}
 		}
 		runData = filteredRunData;
+
+		if (filtered.resultData.pinData) {
+			const filteredPinData: IPinData = {};
+			for (const name of nodeNames) {
+				if (name in filtered.resultData.pinData) {
+					filteredPinData[name] = filtered.resultData.pinData[name];
+				}
+			}
+			filtered.resultData.pinData = filteredPinData;
+		}
 	}
 
 	if (truncateData) {
@@ -231,5 +250,6 @@ function filterExecutionData(
 	}
 
 	filtered.resultData.runData = runData;
+
 	return filtered;
 }
