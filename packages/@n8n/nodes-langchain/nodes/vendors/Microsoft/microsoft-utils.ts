@@ -222,7 +222,8 @@ export async function getMicrosoftMcpTools(
 
 			const callToolWithLogging = async (args: IDataObject) => {
 				let isError = false;
-				const callTool = createCallTool(tool.name, client, timeout, (_) => {
+				const callTool = createCallTool(tool.name, client, timeout, (errorMessage) => {
+					console.error(`Tool "${tool.name}" execution error:`, errorMessage);
 					isError = true;
 				});
 				const start = Date.now();
