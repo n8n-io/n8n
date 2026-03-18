@@ -15,6 +15,10 @@ export function createCreateDataTableTool(context: InstanceAiContext) {
 			'Column names must be alphanumeric with underscores, no leading numbers.',
 		inputSchema: z.object({
 			name: z.string().min(1).max(128).describe('Table name'),
+			projectId: z
+				.string()
+				.optional()
+				.describe('Project ID to create the table in. Defaults to personal project.'),
 			columns: z
 				.array(
 					z.object({
@@ -54,9 +58,15 @@ export function createCreateDataTableTool(context: InstanceAiContext) {
 
 			// State 1: First call — suspend for confirmation (unless always_allow)
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
+				let message = `Create data table "${input.name}"?`;
+				if (input.projectId) {
+					const project = await context.workspaceService?.getProject?.(input.projectId);
+					const projectLabel = project?.name ?? input.projectId;
+					message = `Create data table "${input.name}" in project "${projectLabel}"?`;
+				}
 				await suspend?.({
 					requestId: nanoid(),
-					message: `Create data table "${input.name}"?`,
+					message,
 					severity: 'info' as const,
 				});
 				return {};
@@ -68,7 +78,9 @@ export function createCreateDataTableTool(context: InstanceAiContext) {
 			}
 
 			// State 3: Approved or always_allow — execute
-			const table = await context.dataTableService.create(input.name, input.columns);
+			const table = await context.dataTableService.create(input.name, input.columns, {
+				projectId: input.projectId,
+			});
 			return { table };
 		},
 	});

@@ -281,10 +281,11 @@ export interface DataTableFilterInput {
 // ── Data table service ───────────────────────────────────────────────────────
 
 export interface InstanceAiDataTableService {
-	list(): Promise<DataTableSummary[]>;
+	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
 		name: string,
 		columns: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'date' }>,
+		options?: { projectId?: string },
 	): Promise<DataTableSummary>;
 	delete(dataTableId: string): Promise<void>;
 	getSchema(dataTableId: string): Promise<DataTableColumnInfo[]>;
@@ -452,6 +453,7 @@ export interface FolderSummary {
 
 export interface InstanceAiWorkspaceService {
 	// Projects
+	getProject?(projectId: string): Promise<ProjectSummary | null>;
 	listProjects(): Promise<ProjectSummary[]>;
 
 	// Folders
