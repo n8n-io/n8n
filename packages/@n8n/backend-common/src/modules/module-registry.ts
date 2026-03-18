@@ -48,7 +48,6 @@ export class ModuleRegistry {
 		'workflow-builder',
 		'redaction',
 		'instance-registry',
-		'instance-ai',
 	];
 
 	private readonly activeModules: string[] = [];
