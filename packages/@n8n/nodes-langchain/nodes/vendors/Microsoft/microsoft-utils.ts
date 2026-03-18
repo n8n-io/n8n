@@ -352,12 +352,11 @@ export const configureActivityCallback = (
 
 					invokeAgentScope.recordOutputMessages([`n8n Agent Response: ${response}`]);
 
+					await turnContext.sendActivity(response);
+				} finally {
 					if (mcpLogs?.length) {
 						activityCapture.mcpToolLogs = mcpLogs;
 					}
-
-					await turnContext.sendActivity(response);
-				} finally {
 					await disposeActivityResources(invokeAgentScope, mcpClient);
 				}
 			});

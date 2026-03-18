@@ -1351,6 +1351,68 @@ describe('microsoft-utils', () => {
 			expect(activityCapture.mcpToolLogs).toBeUndefined();
 		});
 
+		test('should persist mcpToolLogs on activityCapture even when invokeAgent throws', async () => {
+			const { McpToolServerConfigurationService } = jest.requireMock(
+				'@microsoft/agents-a365-tooling',
+			);
+			const mockConfigSvc = {
+				listToolServers: jest
+					.fn()
+					.mockResolvedValue([
+						{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
+					]),
+			};
+			(McpToolServerConfigurationService as jest.Mock).mockImplementation(() => mockConfigSvc);
+			(connectMcpClient as jest.Mock).mockResolvedValue({ ok: true, result: { close: jest.fn() } });
+			(getAllTools as jest.Mock).mockResolvedValue([
+				{ name: 'list_events', description: 'List events' },
+			]);
+
+			let capturedToolFunc: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
+			(mcpToolToDynamicTool as jest.Mock).mockImplementation(
+				(_tool: unknown, func: (args: Record<string, unknown>) => Promise<unknown>) => {
+					capturedToolFunc = func;
+					return { name: 'mcp_CalendarTools_list_events' };
+				},
+			);
+			(createCallTool as jest.Mock).mockImplementation(() =>
+				jest.fn().mockResolvedValue('event list result'),
+			);
+
+			// Simulate agent invoking a tool before the LLM call fails
+			(invokeAgent as jest.Mock).mockImplementation(async () => {
+				await capturedToolFunc!({ query: 'today' });
+				throw new Error('LLM API timeout');
+			});
+
+			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+				if (param === 'systemPrompt') return 'Test prompt';
+				if (param === 'useMcpTools') return true;
+				if (param === 'include') return 'all';
+				return undefined;
+			});
+
+			const activityCapture: ActivityCapture = { input: '', output: [], activity: {} };
+			const callback = configureActivityCallback(
+				nodeContext,
+				credentials,
+				mcpTokenRef,
+				mockAuthorization,
+				activityCapture,
+			);
+
+			await expect(callback(mockTurnContext)).rejects.toThrow('LLM API timeout');
+
+			// Logs from the tool call that ran before the failure must still be present
+			expect(activityCapture.mcpToolLogs).toHaveLength(1);
+			expect(activityCapture.mcpToolLogs![0]).toMatchObject({
+				serverName: 'mcp_CalendarTools',
+				toolName: 'mcp_CalendarTools_list_events',
+				input: { query: 'today' },
+				isError: false,
+			});
+		});
+
 		test('should use default values when recipient data is missing', async () => {
 			const contextWithoutRecipient = {
 				activity: {
