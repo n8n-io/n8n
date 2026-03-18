@@ -1226,6 +1226,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 			void trackNodeExecution(pushData);
 		}
+
+		// Synthesize redactionInfo from item-level redaction markers in push events.
+		// The full redactionInfo (with accurate canReveal) arrives later via the
+		// executionFinished REST call; this provides an early signal so the UI can
+		// show the redacted state during live execution.
+		if (!workflowExecutionData.value.data.redactionInfo?.isRedacted && data.data) {
+			for (const connectionType of Object.keys(data.data)) {
+				for (const items of data.data[connectionType]) {
+					if (items?.some((item) => item.redaction?.redacted)) {
+						workflowExecutionData.value.data.redactionInfo = {
+							isRedacted: true,
+							reason:
+								items.find((item) => item.redaction?.redacted)?.redaction?.reason ??
+								'workflow_redaction_policy',
+							canReveal: false, // conservative default; updated when executionFinished fetches full data
+						};
+						break;
+					}
+				}
+				if (workflowExecutionData.value.data.redactionInfo?.isRedacted) break;
+			}
+		}
 	}
 
 	function updateNodeExecutionRunData(pushData: PushPayload<'nodeExecuteAfterData'>): void {

@@ -13,7 +13,10 @@ import type {
 	INode,
 } from './interfaces';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
-import type { IRunExecutionDataV1 } from './run-execution-data/run-execution-data.v1';
+import type {
+	IRunExecutionDataV1,
+	RedactionInfo,
+} from './run-execution-data/run-execution-data.v1';
 
 export interface CreateFullRunExecutionDataOptions {
 	startData?: {
@@ -44,6 +47,7 @@ export interface CreateFullRunExecutionDataOptions {
 	waitTill?: Date;
 	manualData?: IRunExecutionData['manualData'];
 	pushRef?: IRunExecutionData['pushRef'];
+	redactionInfo?: RedactionInfo;
 }
 
 /**
@@ -82,6 +86,7 @@ export function createRunExecutionData(
 		waitTill: options.waitTill,
 		manualData: options.manualData,
 		pushRef: options.pushRef,
+		redactionInfo: options.redactionInfo,
 	} satisfies IRunExecutionDataV1 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }
 
