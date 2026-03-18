@@ -350,4 +350,49 @@ describe('TestRunner', () => {
 			expect(runner.canSendOffers).toBe(false);
 		});
 	});
+
+	describe('connection close', () => {
+		let processExitSpy: jest.SpyInstance;
+
+		beforeEach(() => {
+			processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+		});
+
+		afterEach(() => {
+			processExitSpy.mockRestore();
+		});
+
+		it('should exit process on unexpected close', () => {
+			runner = newTestRunner();
+
+			// Get the close handler that was registered
+			const closeHandler = (runner.ws.addEventListener as jest.Mock).mock.calls.find(
+				([event]: [string]) => event === 'close',
+			)?.[1] as () => void;
+			expect(closeHandler).toBeDefined();
+
+			closeHandler();
+
+			expect(processExitSpy).toHaveBeenCalledWith(1);
+		});
+
+		it('should not exit process during graceful stop', () => {
+			runner = newTestRunner();
+
+			// Get the close handler registered via addEventListener in constructor
+			const closeHandler = (runner.ws.addEventListener as jest.Mock).mock.calls.find(
+				([event]: [string]) => event === 'close',
+			)?.[1] as () => void;
+			expect(closeHandler).toBeDefined();
+
+			// Calling stop() sets isShuttingDown = true. We call it but don't
+			// await because the mocked ws can't complete the close handshake.
+			void runner.stop();
+
+			// Simulate the close event after stop() has set isShuttingDown
+			closeHandler();
+
+			expect(processExitSpy).not.toHaveBeenCalled();
+		});
+	});
 });

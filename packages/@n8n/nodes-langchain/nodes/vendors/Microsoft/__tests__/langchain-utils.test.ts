@@ -71,7 +71,8 @@ describe('langchain-utils', () => {
 			const mockModel = { name: 'primary-model' };
 			const mockMemory = { name: 'memory' };
 			const mockTools = [{ name: 'tool1' }];
-			const microsoftMcpTools = [{ name: 'mcp-tool1' }, { name: 'mcp-tool2' }];
+			const mcpTools = [{ name: 'mcp-tool1' }, { name: 'mcp-tool2' }];
+			const microsoftMcpToolkits = [{ tools: mcpTools }];
 			const mockPrompt = { name: 'prompt' };
 			const mockExecutor = {
 				invoke: jest.fn().mockResolvedValue({ output: 'test response' }),
@@ -95,7 +96,7 @@ describe('langchain-utils', () => {
 				'test input',
 				undefined,
 				{},
-				microsoftMcpTools as any,
+				microsoftMcpToolkits as any,
 			);
 
 			expect(result).toBe('test response');
@@ -103,7 +104,7 @@ describe('langchain-utils', () => {
 			expect(getTools).toHaveBeenCalled();
 			expect(createAgentExecutor).toHaveBeenCalledWith(
 				mockModel,
-				[...mockTools, ...microsoftMcpTools],
+				[...mockTools, ...mcpTools],
 				mockPrompt,
 				{ maxIterations: 10 },
 				null,
@@ -345,7 +346,8 @@ describe('langchain-utils', () => {
 			const mockModel = { name: 'primary-model' };
 			const mockMemory = { name: 'memory' };
 			const mockTools = [{ name: 'tool1' }, { name: 'tool2' }];
-			const microsoftMcpTools = [{ name: 'mcp-tool1' }, { name: 'mcp-tool2' }];
+			const mcpTools = [{ name: 'mcp-tool1' }, { name: 'mcp-tool2' }];
+			const microsoftMcpToolkits = [{ tools: mcpTools }];
 			const mockPrompt = { name: 'prompt' };
 			const mockExecutor = {
 				invoke: jest.fn().mockResolvedValue({ output: 'test response' }),
@@ -364,11 +366,11 @@ describe('langchain-utils', () => {
 				return false;
 			});
 
-			await invokeAgent(nodeContext, 'test input', undefined, {}, microsoftMcpTools as any);
+			await invokeAgent(nodeContext, 'test input', undefined, {}, microsoftMcpToolkits as any);
 
 			expect(createAgentExecutor).toHaveBeenCalledWith(
 				mockModel,
-				[...mockTools, ...microsoftMcpTools],
+				[...mockTools, ...mcpTools],
 				mockPrompt,
 				{ maxIterations: 10 },
 				null,

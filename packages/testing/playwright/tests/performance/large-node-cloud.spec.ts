@@ -51,8 +51,10 @@ test.describe(
 			}
 			const average = stats.reduce((a, b) => a + b, 0) / stats.length;
 
-			await attachMetric(testInfo, `open-node-${itemCount}`, average, 'ms');
-			await attachMetric(testInfo, `trigger-workflow-${itemCount}`, triggerDuration, 'ms');
+			await attachMetric(testInfo, 'open-node', average, 'ms', { item_count: itemCount });
+			await attachMetric(testInfo, 'trigger-workflow', triggerDuration, 'ms', {
+				item_count: itemCount,
+			});
 
 			expect(average).toBeGreaterThan(0);
 			expect(triggerDuration).toBeGreaterThan(0);

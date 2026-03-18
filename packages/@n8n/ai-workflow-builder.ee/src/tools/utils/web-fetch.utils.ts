@@ -1,8 +1,5 @@
 import { HumanMessage, type BaseMessage } from '@langchain/core/messages';
-import { Readability } from '@mozilla/readability';
 import dns from 'dns';
-import { JSDOM, VirtualConsole } from 'jsdom';
-import TurndownService from 'turndown';
 import { promisify } from 'util';
 
 import {
@@ -318,8 +315,12 @@ export async function fetchUrl(url: string, signal?: AbortSignal): Promise<Fetch
 
 /**
  * Extract readable content from HTML using JSDOM + Readability.
+ * Libraries are lazy-loaded to avoid pulling jsdom (~15-20MB) into memory at startup.
  */
-export function extractReadableContent(html: string, url: string): ExtractedContent {
+export async function extractReadableContent(html: string, url: string): Promise<ExtractedContent> {
+	const [{ JSDOM, VirtualConsole }, { Readability }, { default: TurndownService }] =
+		await Promise.all([import('jsdom'), import('@mozilla/readability'), import('turndown')]);
+
 	const virtualConsole = new VirtualConsole();
 	const dom = new JSDOM(html, { url, virtualConsole });
 	const article = new Readability(dom.window.document, { keepClasses: true }).parse();

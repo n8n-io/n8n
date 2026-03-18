@@ -27,6 +27,12 @@ export default {
 			],
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A typography component for styled body text and inline copy.' },
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
