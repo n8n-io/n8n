@@ -11,9 +11,7 @@ export default class ConfigShow extends Command {
 		await this.parse(ConfigShow);
 		const config = readConfig();
 		const url = config.url ?? '(not set)';
-		const apiKey = config.apiKey
-			? config.apiKey.slice(0, 12) + '...' + config.apiKey.slice(-4)
-			: '(not set)';
+		const apiKey = config.apiKey ? '****' + config.apiKey.slice(-4) : '(not set)';
 		this.log(`URL:      ${url}`);
 		this.log(`API Key:  ${apiKey}`);
 	}
