@@ -278,7 +278,6 @@ describe('useWorkflowSetupState', () => {
 			const triggerNode = createNode({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
-
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
@@ -528,7 +527,6 @@ describe('useWorkflowSetupState', () => {
 			const triggerNode = createNode({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
-
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
@@ -564,7 +562,6 @@ describe('useWorkflowSetupState', () => {
 			const triggerNode = createNode({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
-
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
@@ -1851,7 +1848,6 @@ describe('useWorkflowSetupState', () => {
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
 				properties: [{ name: 'url', required: true }],
 				webhooks: [{}],
-
 			});
 			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.webhook');
 
