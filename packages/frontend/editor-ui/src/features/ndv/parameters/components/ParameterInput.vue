@@ -785,15 +785,12 @@ async function loadRemoteParameterOptions() {
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
 		const loadOptions = getTypeOption('loadOptions');
 
-		const optionsPath = props.path.startsWith('parameters.')
-			? props.path
-			: `parameters.${props.path}`;
 		const options = await nodeTypesStore.getNodeParameterOptions({
 			nodeTypeAndVersion: {
 				name: node.value.type,
 				version: node.value.typeVersion,
 			},
-			path: optionsPath,
+			path: props.path,
 			methodName: loadOptionsMethod,
 			loadOptions,
 			currentNodeParameters: resolvedNodeParameters,
