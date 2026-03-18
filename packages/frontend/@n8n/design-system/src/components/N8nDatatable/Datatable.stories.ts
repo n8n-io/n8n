@@ -6,6 +6,14 @@ import N8nDatatable from './Datatable.vue';
 export default {
 	title: 'Core/Datatable',
 	component: N8nDatatable,
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A tabular data component for displaying rows, columns, and table interactions.',
+			},
+		},
+	},
 };
 
 export const Default: StoryFn = (args, { argTypes }) => ({

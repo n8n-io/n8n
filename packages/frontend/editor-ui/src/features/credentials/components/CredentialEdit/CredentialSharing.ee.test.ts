@@ -12,7 +12,10 @@ import { getDropdownItems } from '@/__tests__/utils';
 import { useI18n } from '@n8n/i18n';
 import type * as I18nModule from '@n8n/i18n';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
-import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
+import {
+	createProjectListItem,
+	createTestProject,
+} from '@/features/collaboration/projects/__tests__/utils';
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
 	const actual = await importOriginal<typeof I18nModule>();
@@ -52,6 +55,7 @@ const mockBaseText = vi.fn((key: string, options?: { interpolate?: Record<string
 });
 
 const renderComponent = createComponentRenderer(CredentialSharing);
+const testProjects = Array.from({ length: 3 }, createProjectListItem);
 
 const createCredential = (overrides = {}): ICredentialsResponse => ({
 	id: '1',
@@ -96,6 +100,10 @@ describe('CredentialSharing.ee', () => {
 		// Mock store methods
 		vi.spyOn(usersStore, 'fetchUsers').mockResolvedValue();
 		vi.spyOn(projectsStore, 'getAllProjects').mockResolvedValue();
+		vi.spyOn(projectsStore, 'searchProjects').mockResolvedValue({
+			count: testProjects.length,
+			data: testProjects,
+		});
 		vi.spyOn(rolesStore, 'processedCredentialRoles', 'get').mockReturnValue([
 			{
 				slug: 'credential:user',
