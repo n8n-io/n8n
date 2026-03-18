@@ -1,9 +1,11 @@
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
+import { mock } from 'jest-mock-extended';
 
 import { CredentialsEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { CredentialsRepository } from '../credentials.repository';
+import { SharedCredentialsRepository } from '../shared-credentials.repository';
 
 describe('CredentialsRepository', () => {
 	const entityManager = mockEntityManager(CredentialsEntity);
@@ -51,6 +53,30 @@ describe('CredentialsRepository', () => {
 			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
 			expect(callArg).toBeDefined();
 			expect(callArg!.where).toEqual(expect.objectContaining({ id: In(['id1', 'id2']) }));
+		});
+	});
+
+	describe('getManyQueryWithSharingSubquery', () => {
+		it('returns early when credentialIds is an empty array', () => {
+			const qb = mock<{ andWhere: (query: string) => unknown }>();
+			qb.andWhere.mockReturnThis();
+			jest.spyOn(credentialsRepository, 'createQueryBuilder').mockReturnValue(qb as never);
+
+			const getSpy = jest.spyOn(Container, 'get');
+
+			(
+				credentialsRepository as unknown as {
+					getManyQueryWithSharingSubquery: (
+						user: { id: string },
+						sharingOptions: Record<string, never>,
+						options: Record<string, never>,
+						credentialIds: string[],
+					) => unknown;
+				}
+			).getManyQueryWithSharingSubquery({ id: 'user-1' }, {}, {}, []);
+
+			expect(qb.andWhere).toHaveBeenCalledWith('1 = 0');
+			expect(getSpy).not.toHaveBeenCalledWith(SharedCredentialsRepository);
 		});
 	});
 });
