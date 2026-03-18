@@ -366,6 +366,7 @@ test.describe(
 					apiKey,
 					workflowId,
 					execResult.executionId!,
+					{ includeData: true },
 				);
 
 				expect(result.execution).toBeDefined();
