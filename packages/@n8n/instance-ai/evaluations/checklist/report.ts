@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { Run, InstanceAiResult, PromptConfig, CapturedToolCall, AgentActivity } from './types';
+import type { Run, InstanceAiResult, PromptConfig, ChatMessage, ChatToolCall } from './types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -64,10 +64,10 @@ function renderTags(tags: string[] | undefined): string {
 }
 
 // ---------------------------------------------------------------------------
-// Tool call detail rendering
+// Chat conversation rendering (from rich messages endpoint)
 // ---------------------------------------------------------------------------
 
-function renderToolCallDetail(tc: CapturedToolCall, idx: number, parentId: string): string {
+function renderChatToolCall(tc: ChatToolCall, idx: number): string {
 	const statusBadge = tc.error
 		? '<span class="badge badge-failed">ERROR</span>'
 		: '<span class="badge badge-completed">OK</span>';
@@ -82,15 +82,15 @@ function renderToolCallDetail(tc: CapturedToolCall, idx: number, parentId: strin
 		const resultStr =
 			typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result, null, 2);
 		const truncated =
-			resultStr.length > 1000 ? resultStr.slice(0, 1000) + '\n... (truncated)' : resultStr;
+			resultStr.length > 2000 ? resultStr.slice(0, 2000) + '\n... (truncated)' : resultStr;
 		resultHtml = `<details class="tool-result-details"><summary>Output</summary><pre class="tool-json"><code>${escapeHtml(truncated)}</code></pre></details>`;
 	}
 	if (tc.error) {
 		resultHtml += `<div class="tool-error">${escapeHtml(tc.error)}</div>`;
 	}
 
-	return `<details class="tool-call-detail" id="${parentId}-tc-${idx}">
-		<summary>${escapeHtml(tc.toolName)} <span style="color:#8b949e;font-size:11px">${String(tc.durationMs)}ms</span> ${statusBadge}</summary>
+	return `<details class="tool-call-detail" id="chat-tc-${String(idx)}">
+		<summary>${escapeHtml(tc.toolName)} ${statusBadge}</summary>
 		<div class="tool-call-body">
 			${argsHtml ? `<div class="tool-section"><div class="tool-section-label">Input</div>${argsHtml}</div>` : ''}
 			${resultHtml ? `<div class="tool-section">${resultHtml}</div>` : ''}
@@ -98,61 +98,29 @@ function renderToolCallDetail(tc: CapturedToolCall, idx: number, parentId: strin
 	</details>`;
 }
 
-// ---------------------------------------------------------------------------
-// Agent activity rendering
-// ---------------------------------------------------------------------------
+function renderChatMessagesSection(messages: ChatMessage[] | undefined): string {
+	if (!messages || messages.length === 0) return '';
 
-function renderAgentActivitySection(activities: AgentActivity[]): string {
-	if (activities.length === 0) return '';
+	let html = '<div class="detail-section"><h4>Chat Conversation</h4>';
+	let tcIdx = 0;
 
-	const orchestrators = activities.filter((a) => !a.parentId);
-	const subAgents = activities.filter((a) => a.parentId);
-
-	let html = '<div class="detail-section"><h4>Agent Activity</h4>';
-
-	// Summary line
-	html += `<p style="color:#8b949e;font-size:13px;margin-bottom:8px">`;
-	html += `${String(orchestrators.length)} orchestrator(s), ${String(subAgents.length)} sub-agent(s), `;
-	html += `${String(activities.reduce((sum, a) => sum + a.toolCalls.length, 0))} total tool calls`;
-	html += '</p>';
-
-	for (const activity of activities) {
-		const roleBadge = activity.parentId
-			? '<span class="badge badge-tag">sub-agent</span>'
-			: '<span class="badge badge-complexity-medium">orchestrator</span>';
-
-		const statusBadge =
-			activity.status === 'completed'
-				? '<span class="badge badge-completed">completed</span>'
-				: activity.status === 'failed'
-					? '<span class="badge badge-failed">failed</span>'
-					: `<span class="badge badge-tag">${escapeHtml(activity.status)}</span>`;
-
-		html += `<details class="iteration-detail">
-			<summary>
-				<span class="iter-num">${escapeHtml(activity.role || activity.agentId)}</span>
-				${roleBadge} ${statusBadge}
-				<span style="color:#8b949e;font-size:12px">${String(activity.toolCalls.length)} tool call(s)</span>
-			</summary>
-			<div class="iteration-tools">`;
-
-		if (activity.toolCalls.length > 0) {
-			html += activity.toolCalls
-				.map((tc, tci) => renderToolCallDetail(tc, tci, `agent-${simpleHash(activity.agentId)}`))
-				.join('');
-		} else {
-			html += '<div class="no-tools">No tool calls</div>';
+	for (const msg of messages) {
+		if (msg.role === 'user') {
+			continue; // User message is already shown as the prompt
 		}
 
-		if (activity.textContent) {
-			const truncated =
-				activity.textContent.length > 500
-					? activity.textContent.slice(0, 500) + '...'
-					: activity.textContent;
-			html += `<div style="margin-top:8px;padding:8px;background:#161b22;border-radius:4px;font-size:12px;color:#c9d1d9">${escapeHtml(truncated)}</div>`;
+		// Tool calls
+		if (msg.toolCalls.length > 0) {
+			html += `<div style="margin:8px 0"><span style="color:#8b949e;font-size:12px">${String(msg.toolCalls.length)} tool call(s)</span></div>`;
+			for (const tc of msg.toolCalls) {
+				html += renderChatToolCall(tc, tcIdx++);
+			}
 		}
 
-		html += '</div></details>';
+		// Agent text response
+		if (msg.content.trim()) {
+			html += `<div style="margin:8px 0;padding:8px;background:#161b22;border:1px solid #30363d;border-radius:4px;font-size:12px;color:#c9d1d9;white-space:pre-wrap">${escapeHtml(msg.content.trim())}</div>`;
+		}
 	}
 
 	html += '</div>';
@@ -331,17 +299,9 @@ function renderResultRow(result: InstanceAiResult, index: number, n8nBaseUrl: st
 					</div>`
 							: ''
 					}
-					${renderAgentActivitySection(metrics.agentActivities)}
+					${renderChatMessagesSection(result.chatMessages)}
 					${renderWorkflowsSection(result)}
 					${renderExecutionsSection(result, n8nBaseUrl)}
-					${
-						result.outcome.finalText.trim()
-							? `<div class="detail-section">
-						<h4>Agent Response</h4>
-						<pre style="white-space:pre-wrap"><code>${escapeHtml(result.outcome.finalText.trim())}</code></pre>
-					</div>`
-							: ''
-					}
 					${
 						result.error
 							? `<div class="detail-section">

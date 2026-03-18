@@ -85,6 +85,19 @@ export interface AgentOutcome {
 	workflowJsons: Record<string, unknown>[];
 }
 
+export interface ChatToolCall {
+	toolName: string;
+	args: Record<string, unknown>;
+	result?: unknown;
+	error?: string;
+}
+
+export interface ChatMessage {
+	role: 'user' | 'assistant';
+	content: string;
+	toolCalls: ChatToolCall[];
+}
+
 export interface InstanceAiResult {
 	prompt: string;
 	complexity: PromptConfig['complexity'];
@@ -94,6 +107,7 @@ export interface InstanceAiResult {
 	threadId: string;
 	metrics: InstanceAiMetrics;
 	outcome: AgentOutcome;
+	chatMessages?: ChatMessage[];
 	checklist: ChecklistItem[];
 	checklistResults: ChecklistResult[];
 	checklistScore: number;

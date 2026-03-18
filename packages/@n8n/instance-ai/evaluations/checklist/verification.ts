@@ -21,6 +21,8 @@ import type {
 	AgentOutcome,
 	CapturedEvent,
 	CapturedToolCall,
+	ChatMessage,
+	ChatToolCall,
 	ExecutionSummary,
 	ExecutionTestInput,
 	InstanceAiMetrics,
@@ -524,6 +526,49 @@ export function buildVerificationArtifact(
 	}
 
 	return sections.join('\n\n---\n\n');
+}
+
+// ---------------------------------------------------------------------------
+// extractChatMessages
+//
+// Flattens rich messages into a simple ChatMessage[] for report rendering.
+// Walks the agent tree to collect all tool calls with results.
+// ---------------------------------------------------------------------------
+
+export function extractChatMessages(messages: InstanceAiMessage[]): ChatMessage[] {
+	const result: ChatMessage[] = [];
+
+	for (const message of messages) {
+		if (message.role === 'user') {
+			result.push({ role: 'user', content: message.content, toolCalls: [] });
+		} else if (message.role === 'assistant') {
+			const toolCalls: ChatToolCall[] = [];
+			if (message.agentTree) {
+				collectToolCalls(message.agentTree, toolCalls);
+			}
+			result.push({
+				role: 'assistant',
+				content: message.agentTree?.textContent ?? message.content,
+				toolCalls,
+			});
+		}
+	}
+
+	return result;
+}
+
+function collectToolCalls(node: InstanceAiAgentNode, out: ChatToolCall[]): void {
+	for (const tc of node.toolCalls) {
+		out.push({
+			toolName: tc.toolName,
+			args: tc.args,
+			result: tc.result,
+			error: tc.error,
+		});
+	}
+	for (const child of node.children) {
+		collectToolCalls(child, out);
+	}
 }
 
 // ---------------------------------------------------------------------------
