@@ -32,6 +32,7 @@ jest.mock('../source-control-helper.ee', () => ({
 	sourceControlFoldersExistCheck: jest.fn(() => true),
 }));
 
+// Reuse typed user mocks at module scope to avoid performance issues related to recreating nested proxy mocks per test
 const globalAdminUser = mock<User>({ role: GLOBAL_ADMIN_ROLE });
 const globalAdminUserWithId = mock<User>({ id: 'user-id', role: GLOBAL_ADMIN_ROLE });
 const globalMemberUser = mock<User>({ role: GLOBAL_MEMBER_ROLE });

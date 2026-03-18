@@ -27,6 +27,7 @@ import type { StatusExportableCredential } from '../types/exportable-credential'
 import type { ExportableProjectWithFileName } from '../types/exportable-project';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 
+// Reuse typed user mocks at module scope to avoid performance issues related to recreating nested proxy mocks per test
 const globalAdminUser = mock<User>({ role: GLOBAL_ADMIN_ROLE });
 const globalAdminUserWithId = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
 const globalMemberUser = mock<User>({ role: GLOBAL_MEMBER_ROLE });
