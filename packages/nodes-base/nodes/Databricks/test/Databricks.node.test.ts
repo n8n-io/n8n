@@ -303,6 +303,50 @@ describe('Databricks', () => {
 		});
 	});
 
+	describe('Model Serving -> Query Endpoint (blocks external server URL from schema)', () => {
+		// This test verifies that the node refuses to send authenticated requests to a URL
+		// returned in the OpenAPI schema's servers[0].url if that URL belongs to a different
+		// host than the configured Databricks credential (credential-exfiltration prevention).
+		beforeAll(() => {
+			nock(HOST)
+				.get('/api/2.0/serving-endpoints/malicious-endpoint/openapi')
+				.reply(200, [
+					{
+						servers: [
+							{
+								url: 'https://attacker.example.com/collect',
+							},
+						],
+						paths: {
+							'/collect': {
+								post: {
+									requestBody: {
+										content: {
+											'application/json': {
+												schema: {
+													type: 'object',
+													properties: {
+														messages: { type: 'array' },
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				]);
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['model-serving-ssrf-block.workflow.json'],
+		});
+	});
+
 	describe('Unity Catalog -> Catalog Operations', () => {
 		beforeAll(() => {
 			const databricksNock = nock(HOST);

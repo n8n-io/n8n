@@ -1558,19 +1558,34 @@ export class Databricks implements INodeType {
 							},
 						)) as OpenAPISchema[];
 
-						if (openApiResponse && openApiResponse.length > 0) {
+						if (openApiResponse?.length > 0) {
 							const schemaInfo = detectInputFormat(openApiResponse[0]);
 							detectedFormat = schemaInfo.format;
-							invocationUrl = schemaInfo.invocationUrl; // Use the URL from schema
+							const schemaUrl = schemaInfo.invocationUrl;
 
-							// Generate example request body from schema
+							// Only use the URL from the schema if it belongs to the same host as the
+							// configured credential. This prevents a malicious or compromised endpoint
+							// from returning an attacker-controlled server URL and causing the node to
+							// forward the Databricks bearer token to an external host.
+							if (!URL.canParse(schemaUrl)) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`The serving endpoint returned an invalid server URL in its OpenAPI schema: ${schemaUrl}`,
+								);
+							}
+							if (new URL(schemaUrl).origin !== new URL(host).origin) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`The serving endpoint's OpenAPI schema contains a server URL (${schemaUrl}) that does not match the configured Databricks host (${host}). This request has been blocked for security reasons.`,
+								);
+							}
+
+							invocationUrl = schemaUrl;
 							exampleRequestBody = generateExampleFromSchema(schemaInfo.schema, detectedFormat);
 
-							// Validate the request body against detected schema
 							try {
 								validateRequestBody(requestBody, detectedFormat);
 							} catch (validationError) {
-								// Provide helpful error with example
 								throw new NodeOperationError(
 									this.getNode(),
 									`${(validationError as Error).message}\n\nDetected format: ${detectedFormat}\n\nExample request body:\n${exampleRequestBody}\n\nYour request body:\n${JSON.stringify(requestBody, null, 2)}`,
@@ -1578,8 +1593,7 @@ export class Databricks implements INodeType {
 							}
 						}
 					} catch (error) {
-						// If it's a validation error with example, re-throw it
-						if (error.message?.includes('Detected format:')) {
+						if (error instanceof NodeOperationError) {
 							throw error;
 						}
 
@@ -1589,11 +1603,9 @@ export class Databricks implements INodeType {
 							defaultUrl: invocationUrl,
 						});
 
-						// Generate a default example even if schema fetch failed
 						if (!exampleRequestBody) {
 							exampleRequestBody = generateExampleFromSchema(null, detectedFormat);
 						}
-						// Continue with default URL if schema fetch fails
 					}
 
 					// Step 2: Make the request using the URL from schema
@@ -2080,52 +2092,10 @@ export class Databricks implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (error.response) {
-					// API Error
-					if (this.continueOnFail()) {
-						returnData.push({
-							json: {
-								error: `API Error: ${error.response.status} ${error.response.statusText}`,
-								details: error.response.data,
-							},
-							pairedItem: { item: i },
-						});
-					} else {
-						const detail = error.response.data ? ` – ${JSON.stringify(error.response.data)}` : '';
-						throw new NodeOperationError(
-							this.getNode(),
-							`API Error: ${error.response.status} ${error.response.statusText}${detail}`,
-						);
-					}
-				} else if (error.request) {
-					// Network Error
-					if (this.continueOnFail()) {
-						returnData.push({
-							json: {
-								error: 'Network Error: No response received from server',
-								details: error.message,
-							},
-							pairedItem: { item: i },
-						});
-					} else {
-						throw new NodeOperationError(
-							this.getNode(),
-							'Network Error: No response received from server',
-						);
-					}
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 				} else {
-					// Other Error
-					if (this.continueOnFail()) {
-						returnData.push({
-							json: {
-								error: error.message,
-								details: error.stack,
-							},
-							pairedItem: { item: i },
-						});
-					} else {
-						throw error;
-					}
+					throw error;
 				}
 			}
 		}
