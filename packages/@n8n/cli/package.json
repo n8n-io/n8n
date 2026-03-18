@@ -23,9 +23,7 @@
 		"lint": "eslint src --quiet",
 		"lint:fix": "eslint src --fix",
 		"watch": "tsc -p tsconfig.build.json --watch",
-		"test": "vitest run",
-		"docs:dev": "vitepress dev docs",
-		"docs:build": "vitepress build docs"
+		"test": "vitest run"
 	},
 	"oclif": {
 		"bin": "n8n-cli",
@@ -42,7 +40,6 @@
 	"devDependencies": {
 		"@n8n/typescript-config": "workspace:*",
 		"@types/node": "catalog:",
-		"vitepress": "^1.6.0",
 		"vitest": "catalog:"
 	}
 }
