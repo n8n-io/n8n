@@ -33,7 +33,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+$',
+							regex: '^(`[^`]+`|[^\\s.`]+)\\.(`[^`]+`|[^\\s.`]+)\\.(`[^`]+`|[^\\s.`]+)$',
 							errorMessage: 'Must be in format: catalog.schema.table (e.g., main.default.my_table)',
 						},
 					},
@@ -73,7 +73,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+$',
+							regex: '^(`[^`]+`|[^\\s.`]+)\\.(`[^`]+`|[^\\s.`]+)\\.(`[^`]+`|[^\\s.`]+)$',
 							errorMessage:
 								'Must be in format: catalog.schema.function (e.g., main.default.my_function)',
 						},
