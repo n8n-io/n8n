@@ -9,6 +9,9 @@ import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
+
+const branchWriteAccess = createBranchWriteAccessMiddleware('variables');
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 
@@ -27,7 +30,7 @@ export class VariablesController {
 		return await this.variablesService.getAllForUser(req.user, query);
 	}
 
-	@Post('/')
+	@Post('/', { middlewares: [branchWriteAccess] })
 	@Licensed('feat:variables')
 	async createVariable(
 		req: AuthenticatedRequest,
@@ -55,7 +58,7 @@ export class VariablesController {
 		return variable;
 	}
 
-	@Patch('/:id')
+	@Patch('/:id', { middlewares: [branchWriteAccess] })
 	@Licensed('feat:variables')
 	async updateVariable(
 		req: AuthenticatedRequest<{ id: string }>,
@@ -75,7 +78,7 @@ export class VariablesController {
 		}
 	}
 
-	@Delete('/:id')
+	@Delete('/:id', { middlewares: [branchWriteAccess] })
 	@Licensed('feat:variables')
 	async deleteVariable(req: AuthenticatedRequest<{ id: string }>) {
 		await this.variablesService.deleteForUser(req.user, req.params.id);

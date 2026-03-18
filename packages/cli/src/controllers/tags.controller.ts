@@ -13,7 +13,10 @@ import {
 } from '@n8n/decorators';
 import { Response } from 'express';
 
+import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
 import { TagService } from '@/services/tag.service';
+
+const branchWriteAccess = createBranchWriteAccessMiddleware('tags');
 
 @RestController('/tags')
 export class TagsController {
@@ -25,7 +28,7 @@ export class TagsController {
 		return await this.tagService.getAll({ withUsageCount: query.withUsageCount });
 	}
 
-	@Post('/')
+	@Post('/', { middlewares: [branchWriteAccess] })
 	@GlobalScope('tag:create')
 	async createTag(
 		_req: AuthenticatedRequest,
@@ -38,7 +41,7 @@ export class TagsController {
 		return await this.tagService.save(tag, 'create');
 	}
 
-	@Patch('/:id')
+	@Patch('/:id', { middlewares: [branchWriteAccess] })
 	@GlobalScope('tag:update')
 	async updateTag(
 		_req: AuthenticatedRequest,
@@ -51,7 +54,7 @@ export class TagsController {
 		return await this.tagService.save(newTag, 'update');
 	}
 
-	@Delete('/:id')
+	@Delete('/:id', { middlewares: [branchWriteAccess] })
 	@GlobalScope('tag:delete')
 	async deleteTag(_req: AuthenticatedRequest, _res: Response, @Param('id') tagId: string) {
 		await this.tagService.delete(tagId);

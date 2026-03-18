@@ -27,6 +27,9 @@ import { In, Not } from '@n8n/typeorm';
 import { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
+
+const branchWriteAccess = createBranchWriteAccessMiddleware('projects');
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { ProjectRequest } from '@/requests';
@@ -72,7 +75,7 @@ export class ProjectController {
 		return await this.projectsService.getProjectCounts();
 	}
 
-	@Post('/')
+	@Post('/', { middlewares: [branchWriteAccess] })
 	@GlobalScope('project:create')
 	// Using admin as all plans that contain projects should allow admins at the very least
 	@Licensed('feat:projectRole:admin')
@@ -229,7 +232,7 @@ export class ProjectController {
 		};
 	}
 
-	@Patch('/:projectId')
+	@Patch('/:projectId', { middlewares: [branchWriteAccess] })
 	@ProjectScope('project:update')
 	async updateProject(
 		_req: AuthenticatedRequest,
@@ -330,7 +333,7 @@ export class ProjectController {
 		return res.status(204).send();
 	}
 
-	@Delete('/:projectId')
+	@Delete('/:projectId', { middlewares: [branchWriteAccess] })
 	@ProjectScope('project:delete')
 	async deleteProject(
 		req: AuthenticatedRequest,

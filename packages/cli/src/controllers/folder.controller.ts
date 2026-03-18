@@ -24,6 +24,9 @@ import { NextFunction, Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
+
+const branchWriteAccess = createBranchWriteAccessMiddleware('folders');
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -55,7 +58,7 @@ export class ProjectController {
 		}
 	}
 
-	@Post('/')
+	@Post('/', { middlewares: [branchWriteAccess] })
 	@ProjectScope('folder:create')
 	@Licensed('feat:folders')
 	async createFolder(
@@ -120,7 +123,7 @@ export class ProjectController {
 		}
 	}
 
-	@Patch('/:folderId')
+	@Patch('/:folderId', { middlewares: [branchWriteAccess] })
 	@ProjectScope('folder:update')
 	@Licensed('feat:folders')
 	async updateFolder(
@@ -142,7 +145,7 @@ export class ProjectController {
 		}
 	}
 
-	@Delete('/:folderId')
+	@Delete('/:folderId', { middlewares: [branchWriteAccess] })
 	@ProjectScope('folder:delete')
 	@Licensed('feat:folders')
 	async deleteFolder(
@@ -201,7 +204,7 @@ export class ProjectController {
 		}
 	}
 
-	@Put('/:folderId/transfer')
+	@Put('/:folderId/transfer', { middlewares: [branchWriteAccess] })
 	@ProjectScope('folder:move')
 	@Licensed('feat:folders')
 	async transferFolderToProject(

@@ -50,6 +50,9 @@ import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
+
+const branchWriteAccess = createBranchWriteAccessMiddleware('workflows');
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { IWorkflowResponse } from '@/interfaces';
@@ -84,7 +87,7 @@ export class WorkflowsController {
 		private readonly collaborationService: CollaborationService,
 	) {}
 
-	@Post('/')
+	@Post('/', { middlewares: [branchWriteAccess] })
 	async create(req: AuthenticatedRequest, _res: unknown, @Body body: CreateWorkflowDto) {
 		if (body.id) {
 			const workflowExists = await this.workflowRepository.existsBy({ id: body.id });
@@ -290,7 +293,7 @@ export class WorkflowsController {
 		return { exists };
 	}
 
-	@Patch('/:workflowId')
+	@Patch('/:workflowId', { middlewares: [branchWriteAccess] })
 	@ProjectScope('workflow:update')
 	async update(
 		req: WorkflowRequest.Update,
@@ -356,7 +359,7 @@ export class WorkflowsController {
 		return writeLock;
 	}
 
-	@Delete('/:workflowId')
+	@Delete('/:workflowId', { middlewares: [branchWriteAccess] })
 	@ProjectScope('workflow:delete')
 	async delete(req: AuthenticatedRequest, _res: Response, @Param('workflowId') workflowId: string) {
 		const clientId = req.headers['push-ref'];
@@ -377,7 +380,7 @@ export class WorkflowsController {
 		return true;
 	}
 
-	@Post('/:workflowId/archive')
+	@Post('/:workflowId/archive', { middlewares: [branchWriteAccess] })
 	@ProjectScope('workflow:delete')
 	async archive(
 		req: AuthenticatedRequest,
@@ -411,7 +414,7 @@ export class WorkflowsController {
 		return { ...workflow, checksum };
 	}
 
-	@Post('/:workflowId/unarchive')
+	@Post('/:workflowId/unarchive', { middlewares: [branchWriteAccess] })
 	@ProjectScope('workflow:delete')
 	async unarchive(
 		req: AuthenticatedRequest,
@@ -551,7 +554,7 @@ export class WorkflowsController {
 	}
 
 	@Licensed('feat:sharing')
-	@Put('/:workflowId/share')
+	@Put('/:workflowId/share', { middlewares: [branchWriteAccess] })
 	async share(req: WorkflowRequest.Share) {
 		const { workflowId } = req.params;
 		const { shareWithIds } = req.body;
@@ -633,7 +636,7 @@ export class WorkflowsController {
 		});
 	}
 
-	@Put('/:workflowId/transfer')
+	@Put('/:workflowId/transfer', { middlewares: [branchWriteAccess] })
 	@ProjectScope('workflow:move')
 	async transfer(
 		req: AuthenticatedRequest,

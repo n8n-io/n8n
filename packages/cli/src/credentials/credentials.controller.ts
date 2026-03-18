@@ -38,6 +38,9 @@ import { EnterpriseCredentialsService } from './credentials.service.ee';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
+
+const branchWriteAccess = createBranchWriteAccessMiddleware('credentials');
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { listQueryMiddleware } from '@/middlewares';
@@ -173,7 +176,7 @@ export class CredentialsController {
 		return await this.credentialsService.test(req.user.id, mergedCredentials);
 	}
 
-	@Post('/')
+	@Post('/', { middlewares: [branchWriteAccess] })
 	async createCredentials(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -202,7 +205,7 @@ export class CredentialsController {
 		return newCredential;
 	}
 
-	@Patch('/:credentialId')
+	@Patch('/:credentialId', { middlewares: [branchWriteAccess] })
 	@ProjectScope('credential:update')
 	async updateCredentials(req: CredentialRequest.Update) {
 		const {
@@ -286,7 +289,7 @@ export class CredentialsController {
 		return { ...rest, scopes };
 	}
 
-	@Delete('/:credentialId')
+	@Delete('/:credentialId', { middlewares: [branchWriteAccess] })
 	@ProjectScope('credential:delete')
 	async deleteCredentials(req: CredentialRequest.Delete) {
 		const { credentialId } = req.params;
@@ -319,7 +322,7 @@ export class CredentialsController {
 	}
 
 	@Licensed('feat:sharing')
-	@Put('/:credentialId/share')
+	@Put('/:credentialId/share', { middlewares: [branchWriteAccess] })
 	async shareCredentials(req: CredentialRequest.Share) {
 		const { credentialId } = req.params;
 		const { shareWithIds } = req.body;
@@ -411,7 +414,7 @@ export class CredentialsController {
 		});
 	}
 
-	@Put('/:credentialId/transfer')
+	@Put('/:credentialId/transfer', { middlewares: [branchWriteAccess] })
 	@ProjectScope('credential:move')
 	async transfer(req: CredentialRequest.Transfer) {
 		const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
