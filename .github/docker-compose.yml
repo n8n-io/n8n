@@ -19,6 +19,11 @@ services:
       - 3306:3306
     tmpfs:
       - /var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-ppassword']
+      interval: 5s
+      timeout: 10s
+      retries: 10
 
   postgres:
     image: postgres:16
