@@ -2007,7 +2007,9 @@ export class Databricks implements INodeType {
 					if (queryType === 'text') {
 						body.query_text = this.getNodeParameter('queryText', i) as string;
 					} else {
-						body.query_vector = this.getNodeParameter('queryVector', i) as number[];
+						const queryVectorRaw = this.getNodeParameter('queryVector', i);
+						body.query_vector =
+							typeof queryVectorRaw === 'string' ? JSON.parse(queryVectorRaw) : queryVectorRaw;
 					}
 
 					// Add columns - required by API

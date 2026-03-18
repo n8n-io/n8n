@@ -91,6 +91,31 @@
 					"name": "Databricks account"
 				}
 			}
+		},
+		{
+			"parameters": {
+				"resource": "vectorSearch",
+				"operation": "queryIndex",
+				"indexName": "main.default.search_index",
+				"queryType": "vector",
+				"queryVector": "[0.1, 0.2, 0.3]",
+				"searchMode": "ANN",
+				"numResults": 5,
+				"columns": "id, text",
+				"enableReranking": false,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 500],
+			"id": "vs-query-vector-001",
+			"name": "Query Index (vector)",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
 		}
 	],
 	"pinData": {
@@ -146,6 +171,20 @@
 					"next_page_token": null
 				}
 			}
+		],
+		"Query Index (vector)": [
+			{
+				"json": {
+					"result": {
+						"row_count": 1,
+						"data_array": [["1", "Nearest neighbour result", "0.99"]],
+						"manifest": {
+							"columns": [{ "name": "id" }, { "name": "text" }, { "name": "score" }]
+						}
+					},
+					"next_page_token": null
+				}
+			}
 		]
 	},
 	"connections": {
@@ -155,7 +194,8 @@
 					{ "node": "Create Index", "type": "main", "index": 0 },
 					{ "node": "Get Index", "type": "main", "index": 0 },
 					{ "node": "List Indexes", "type": "main", "index": 0 },
-					{ "node": "Query Index", "type": "main", "index": 0 }
+					{ "node": "Query Index", "type": "main", "index": 0 },
+					{ "node": "Query Index (vector)", "type": "main", "index": 0 }
 				]
 			]
 		}

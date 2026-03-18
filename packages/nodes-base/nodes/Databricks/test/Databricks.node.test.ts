@@ -570,6 +570,24 @@ describe('Databricks', () => {
 					},
 					next_page_token: null,
 				});
+
+			databricksNock
+				.post('/api/2.0/vector-search/indexes/main.default.search_index/query', {
+					num_results: 5,
+					query_type: 'ANN',
+					query_vector: [0.1, 0.2, 0.3],
+					columns: ['id', 'text'],
+				})
+				.reply(200, {
+					result: {
+						row_count: 1,
+						data_array: [['1', 'Nearest neighbour result', '0.99']],
+						manifest: {
+							columns: [{ name: 'id' }, { name: 'text' }, { name: 'score' }],
+						},
+					},
+					next_page_token: null,
+				});
 		});
 
 		afterAll(() => nock.cleanAll());
