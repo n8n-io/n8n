@@ -7,6 +7,7 @@ import {
 	isValidEmail,
 	GLOBAL_MEMBER_ROLE,
 	SettingsRepository,
+	type EntityManager,
 	type User,
 	UserRepository,
 } from '@n8n/db';
@@ -279,7 +280,9 @@ export class OidcService {
 		});
 
 		if (openidUser) {
-			await this.applySsoProvisioning(openidUser.user, claims);
+			await this.userRepository.manager.transaction(async (trx) => {
+				await this.applySsoProvisioning(openidUser.user, claims, trx);
+			});
 
 			return openidUser.user;
 		}
@@ -293,15 +296,17 @@ export class OidcService {
 			this.logger.debug(
 				`OIDC login: User with email ${userInfo.email} already exists, linking OIDC identity.`,
 			);
-			// If the user already exists, we just add the OIDC identity to the user
-			const id = this.authIdentityRepository.create({
-				providerId: claims.sub,
-				providerType: 'oidc',
-				userId: foundUser.id,
-			});
 
-			await this.authIdentityRepository.save(id);
-			await this.applySsoProvisioning(foundUser, claims);
+			await this.userRepository.manager.transaction(async (trx) => {
+				await trx.save(
+					trx.create(AuthIdentity, {
+						providerId: claims.sub,
+						providerType: 'oidc',
+						userId: foundUser.id,
+					}),
+				);
+				await this.applySsoProvisioning(foundUser, claims, trx);
+			});
 
 			return foundUser;
 		}
@@ -327,21 +332,25 @@ export class OidcService {
 				}),
 			);
 
-			await this.applySsoProvisioning(user, claims);
+			await this.applySsoProvisioning(user, claims, trx);
 
 			return user;
 		});
 	}
 
-	private async applySsoProvisioning(user: User, claims: any) {
+	private async applySsoProvisioning(
+		user: User,
+		claims: Record<string, unknown>,
+		trx: EntityManager,
+	) {
 		const provisioningConfig = await this.provisioningService.getConfig();
-		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
 		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
 		if (instanceRole) {
-			await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
+			await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole, trx);
 		}
+		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
 		if (projectRoleMapping) {
-			await this.provisioningService.provisionProjectRolesForUser(user.id, projectRoleMapping);
+			await this.provisioningService.provisionProjectRolesForUser(user.id, projectRoleMapping, trx);
 		}
 	}
 

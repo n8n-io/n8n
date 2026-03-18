@@ -4,6 +4,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import type { UserRepository, Settings, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
 import axios from 'axios';
 import type express from 'express';
 import type { HttpProxyAgent } from 'http-proxy-agent';
@@ -195,7 +196,12 @@ describe('SamlService', () => {
 			isMultiMain: true,
 		});
 		provisioningService = mock<ProvisioningService>();
-		userRepository = mock<UserRepository>();
+		const entityManager = mock<EntityManager>();
+		userRepository = mock<UserRepository>({ manager: entityManager });
+		entityManager.transaction.mockImplementation(async (cb) => {
+			// @ts-expect-error Mock
+			return await cb(entityManager);
+		});
 		globalConfig = mock<GlobalConfig>({
 			sso: { saml: { loginEnabled: false } },
 		});
@@ -551,13 +557,17 @@ describe('SamlService', () => {
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
+			const entityManager = userRepository.manager;
+			expect(entityManager.transaction).toHaveBeenCalledTimes(1);
 			expect(provisioningService.provisionInstanceRoleForUser).toHaveBeenCalledWith(
 				mockUser,
 				samlAttributes.n8nInstanceRole,
+				entityManager,
 			);
 			expect(provisioningService.provisionProjectRolesForUser).toHaveBeenCalledWith(
 				mockUser.id,
 				samlAttributes.n8nProjectRoles,
+				entityManager,
 			);
 		});
 	});

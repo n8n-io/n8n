@@ -1,15 +1,8 @@
 import { ProvisioningConfigDto, ProvisioningConfigPatchDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import {
-	RoleRepository,
-	SettingsRepository,
-	User,
-	UserRepository,
-	Role,
-	ProjectRepository,
-	ProjectRelation,
-} from '@n8n/db';
+import { SettingsRepository, User, Role, Project, ProjectRelation } from '@n8n/db';
+import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
@@ -31,10 +24,7 @@ export class ProvisioningService {
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
-		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
-		private readonly roleRepository: RoleRepository,
-		private readonly userRepository: UserRepository,
 		private readonly userService: UserService,
 		private readonly logger: Logger,
 		private readonly publisher: Publisher,
@@ -53,7 +43,7 @@ export class ProvisioningService {
 		return this.provisioningConfig;
 	}
 
-	async provisionInstanceRoleForUser(user: User, roleSlug: unknown) {
+	async provisionInstanceRoleForUser(user: User, roleSlug: unknown, trx: EntityManager) {
 		if (!(await this.isInstanceRoleProvisioningEnabled())) {
 			return;
 		}
@@ -71,10 +61,10 @@ export class ProvisioningService {
 			return;
 		}
 
-		let dbRole: Role;
+		let dbRole: Role | null;
 
 		try {
-			dbRole = await this.roleRepository.findOneOrFail({ where: { slug: roleSlug } });
+			dbRole = await trx.findOneOrFail(Role, { where: { slug: roleSlug } });
 		} catch (error) {
 			this.logger.warn(
 				`Skipping instance role provisioning, a role matching the slug ${roleSlug} was not found`,
@@ -96,7 +86,7 @@ export class ProvisioningService {
 		 * we need to check if they are the last owner to avoid an instance losing its only owner
 		 */
 		if (user.role.slug === globalOwnerRoleSlug && dbRole.slug !== globalOwnerRoleSlug) {
-			const otherOwners = await this.userRepository.count({
+			const otherOwners = await trx.count(User, {
 				where: { role: { slug: globalOwnerRoleSlug }, id: Not(user.id) },
 			});
 
@@ -111,7 +101,7 @@ export class ProvisioningService {
 
 		// No need to update record if the role hasn't changed
 		if (user.role.slug !== dbRole.slug) {
-			await this.userService.changeUserRole(user, { newRoleName: dbRole.slug });
+			await this.userService.changeUserRole(user, { newRoleName: dbRole.slug }, trx);
 
 			this.eventService.emit('sso-user-instance-role-updated', {
 				userId: user.id,
@@ -128,7 +118,11 @@ export class ProvisioningService {
 	 *   ...
 	 * ]
 	 */
-	async provisionProjectRolesForUser(userId: string, projectIdToRoles: unknown): Promise<void> {
+	async provisionProjectRolesForUser(
+		userId: string,
+		projectIdToRoles: unknown,
+		trx: EntityManager,
+	): Promise<void> {
 		if (!(await this.isProjectRolesProvisioningEnabled())) {
 			return;
 		}
@@ -182,11 +176,11 @@ export class ProvisioningService {
 		}
 
 		const [existingProjects, existingRoles] = await Promise.all([
-			this.projectRepository.find({
+			trx.find(Project, {
 				where: { id: In(projectIds), type: Not('personal') },
 				select: ['id'],
 			}),
-			this.roleRepository.find({
+			trx.find(Role, {
 				where: {
 					slug: In(roleSlugs),
 					roleType: 'project',
@@ -227,7 +221,7 @@ export class ProvisioningService {
 			return;
 		}
 
-		const currentlyAccessibleProjects = await this.projectRepository.find({
+		const currentlyAccessibleProjects = await trx.find(Project, {
 			where: {
 				type: Not('personal'),
 				projectRelations: {
@@ -242,15 +236,13 @@ export class ProvisioningService {
 			(project) => !validProjectIds.has(project.id),
 		);
 
-		await this.projectRepository.manager.transaction(async (tx) => {
-			for (const project of projectsToRemoveAccessFrom) {
-				await tx.delete(ProjectRelation, { projectId: project.id, userId });
-			}
+		for (const project of projectsToRemoveAccessFrom) {
+			await trx.delete(ProjectRelation, { projectId: project.id, userId });
+		}
 
-			for (const { projectId, roleSlug } of validProjectToRoleMappings) {
-				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
-			}
-		});
+		for (const { projectId, roleSlug } of validProjectToRoleMappings) {
+			await this.projectService.addUser(projectId, { userId, role: roleSlug }, trx);
+		}
 
 		this.eventService.emit('sso-user-project-access-updated', {
 			projectsAdded: validProjectIds.size,

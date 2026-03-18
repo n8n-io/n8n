@@ -478,6 +478,7 @@ describe('OidcService', () => {
 			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
 			oidcService.applySsoProvisioning = jest.fn().mockResolvedValue(undefined);
+			userRepository.manager.transaction = jest.fn().mockImplementation(async (cb) => cb({}));
 			authIdentityRepository.findOne = jest
 				.fn()
 				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any });
@@ -500,7 +501,11 @@ describe('OidcService', () => {
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
-			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(user, { sub: 'valid-subject' });
+			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(
+				user,
+				{ sub: 'valid-subject' },
+				expect.objectContaining({}),
+			);
 		});
 
 		it('should return a user if the user exists but the auth identity does not', async () => {
@@ -510,6 +515,11 @@ describe('OidcService', () => {
 			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
 			oidcService.applySsoProvisioning = jest.fn().mockResolvedValue(undefined);
+			userRepository.manager.transaction = jest
+				.fn()
+				.mockImplementation(async (cb) =>
+					cb({ create: jest.fn().mockReturnValue({}), save: jest.fn().mockResolvedValue({}) }),
+				);
 			userRepository.findOne = jest.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
 
 			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
@@ -530,7 +540,11 @@ describe('OidcService', () => {
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
-			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(user, { sub: 'valid-subject' });
+			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(
+				user,
+				{ sub: 'valid-subject' },
+				expect.objectContaining({}),
+			);
 		});
 
 		it('should create a new user if the user does not exist', async () => {

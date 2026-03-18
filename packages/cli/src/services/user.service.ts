@@ -1,7 +1,7 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { AuthIdentity, PublicUser } from '@n8n/db';
+import type { AuthIdentity, EntityManager, PublicUser } from '@n8n/db';
 import {
 	ProjectRelation,
 	User,
@@ -293,11 +293,11 @@ export class UserService {
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
 	}
 
-	async changeUserRole(user: User, newRole: RoleChangeRequestDto) {
+	async changeUserRole(user: User, newRole: RoleChangeRequestDto, outerTrx?: EntityManager) {
 		// Check that new role exists
 		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
 
-		await this.userRepository.manager.transaction(async (trx) => {
+		const runInTransaction = async (trx: EntityManager) => {
 			await trx.update(User, { id: user.id }, { role: { slug: newRole.newRoleName } });
 
 			const isAdminRole = (roleName: string) => {
@@ -378,7 +378,13 @@ export class UserService {
 					{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
 				);
 			}
-		});
+		};
+
+		if (outerTrx) {
+			await runInTransaction(outerTrx);
+		} else {
+			await this.userRepository.manager.transaction(runInTransaction);
+		}
 
 		// Invalidate ownership cache for the user to ensure their new permissions are reflected in subsequent requests
 		await this.ownershipService.invalidateProjectOwnerCacheByUserId(user.id);

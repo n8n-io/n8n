@@ -1,8 +1,8 @@
 import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
+import { AuthIdentity, AuthIdentityRepository, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { EntityManager } from '@n8n/db';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
 
@@ -50,7 +50,10 @@ export const isSamlPreferences = (candidate: unknown): candidate is SamlPreferen
 	);
 };
 
-export async function createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
+export async function createUserFromSamlAttributes(
+	attributes: SamlUserAttributes,
+	afterCreate?: (user: User, trx: EntityManager) => Promise<void>,
+): Promise<User> {
 	const randomPassword = randomString(18);
 	const userRepository = Container.get(UserRepository);
 	return await userRepository.manager.transaction(async (trx) => {
@@ -74,6 +77,8 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 			}),
 		);
 
+		if (afterCreate) await afterCreate(user, trx);
+
 		return user;
 	});
 }
@@ -81,6 +86,7 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 export async function updateUserFromSamlAttributes(
 	user: User,
 	attributes: SamlUserAttributes,
+	trx?: EntityManager,
 ): Promise<User> {
 	if (!attributes.email) throw new AuthError('Email is required to update user');
 	if (!user) throw new AuthError('User not found');
@@ -94,15 +100,15 @@ export async function updateUserFromSamlAttributes(
 	} else {
 		samlAuthIdentity.providerId = attributes.userPrincipalName;
 	}
-	await Container.get(AuthIdentityRepository).save(samlAuthIdentity, { transaction: false });
+	const em = trx ?? Container.get(AuthIdentityRepository).manager;
+	await em.save(AuthIdentity, samlAuthIdentity);
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
+	const resultUser = await em.save(User, user);
 	if (!resultUser) throw new AuthError('Could not update User');
-	const userWithRole = await Container.get(UserRepository).findOne({
+	const userWithRole = await em.findOne(User, {
 		where: { id: resultUser.id },
 		relations: ['role'],
-		transaction: false,
 	});
 	if (!userWithRole) throw new AuthError('Failed to fetch user!');
 	return userWithRole;

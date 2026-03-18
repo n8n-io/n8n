@@ -1,7 +1,7 @@
 import type { SamlPreferences, SamlPreferencesAttributeMapping } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { Settings, User } from '@n8n/db';
+import type { EntityManager, Settings, User } from '@n8n/db';
 import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -237,7 +237,9 @@ export class SamlService {
 						(e) => e.providerType === 'saml' && e.providerId === attributes.userPrincipalName,
 					)
 				) {
-					await this.applySsoProvisioning(user, attributes);
+					await this.userRepository.manager.transaction(async (trx) => {
+						await this.applySsoProvisioning(user, attributes, trx);
+					});
 					return {
 						authenticatedUser: user,
 						attributes,
@@ -245,20 +247,24 @@ export class SamlService {
 					};
 				} else {
 					// Login path for existing users that are NOT fully set up for SAML
-					const updatedUser = await updateUserFromSamlAttributes(user, attributes);
-					const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
-					await this.applySsoProvisioning(updatedUser, attributes);
-					return {
-						authenticatedUser: updatedUser,
-						attributes,
-						onboardingRequired,
-					};
+					return await this.userRepository.manager.transaction(async (trx) => {
+						const updatedUser = await updateUserFromSamlAttributes(user, attributes, trx);
+						const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
+						await this.applySsoProvisioning(updatedUser, attributes, trx);
+						return {
+							authenticatedUser: updatedUser,
+							attributes,
+							onboardingRequired,
+						};
+					});
 				}
 			} else {
 				// New users to be created JIT based on SAML attributes
 				if (isSsoJustInTimeProvisioningEnabled()) {
-					const newUser = await createUserFromSamlAttributes(attributes);
-					await this.applySsoProvisioning(newUser, attributes);
+					const newUser = await createUserFromSamlAttributes(
+						attributes,
+						async (user, trx) => await this.applySsoProvisioning(user, attributes, trx),
+					);
 					return {
 						authenticatedUser: newUser,
 						attributes,
@@ -275,14 +281,23 @@ export class SamlService {
 		};
 	}
 
-	private async applySsoProvisioning(user: User, attributes: SamlPreferencesAttributeMapping) {
+	private async applySsoProvisioning(
+		user: User,
+		attributes: SamlPreferencesAttributeMapping,
+		trx: EntityManager,
+	) {
 		if (attributes?.n8nInstanceRole) {
-			await this.provisioningService.provisionInstanceRoleForUser(user, attributes.n8nInstanceRole);
+			await this.provisioningService.provisionInstanceRoleForUser(
+				user,
+				attributes.n8nInstanceRole,
+				trx,
+			);
 		}
 		if (attributes?.n8nProjectRoles) {
 			await this.provisioningService.provisionProjectRolesForUser(
 				user.id,
 				attributes.n8nProjectRoles,
+				trx,
 			);
 		}
 	}

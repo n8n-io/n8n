@@ -1,11 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { AuthIdentity } from '@n8n/db';
+import type { AuthIdentity, EntityManager } from '@n8n/db';
 import { generateNanoId, User, AuthIdentityRepository, UserRepository } from '@n8n/db';
+import { mock } from 'jest-mock-extended';
 
 import * as helpers from '../saml-helpers';
 import type { SamlUserAttributes } from '../types';
 
-const userRepository = mockInstance(UserRepository);
+mockInstance(UserRepository);
 mockInstance(AuthIdentityRepository);
 
 describe('sso/saml/samlHelpers', () => {
@@ -30,26 +31,20 @@ describe('sso/saml/samlHelpers', () => {
 				n8nInstanceRole: 'n8n_instance_role',
 			};
 
-			userRepository.findOne.mockImplementationOnce(async (_) => user);
-			userRepository.save.mockImplementationOnce(async (_) => user);
+			const trx = mock<EntityManager>();
+			trx.save.mockImplementation(async (_entity: unknown, data: unknown) => data as any);
+			trx.findOne.mockResolvedValue(user as any);
 
 			//
 			// ACT
 			//
-			await helpers.updateUserFromSamlAttributes(user, samlUserAttributes);
+			await helpers.updateUserFromSamlAttributes(user, samlUserAttributes, trx);
 
 			//
 			// ASSERT
 			//
-			expect(userRepository.save).toHaveBeenCalledWith(
-				{
-					...user,
-					firstName: samlUserAttributes.firstName,
-					lastName: samlUserAttributes.lastName,
-				},
-				{ transaction: false },
-			);
-			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(trx.save).toHaveBeenCalledTimes(2); // AuthIdentity + User
+			expect(trx.findOne).toHaveBeenCalledTimes(1); // reload user with role
 		});
 	});
 
