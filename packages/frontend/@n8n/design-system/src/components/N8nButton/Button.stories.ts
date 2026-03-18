@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
-import IconTextButton from '../IconTextButton/IconTextButton.vue';
 import N8nButton from './Button.vue';
-import N8nIconButton from '../N8nIconButton/IconButton.vue';
+import IconTextButton from '../IconTextButton/IconTextButton.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nIconButton from '../N8nIconButton/IconButton.vue';
 
 const meta = {
 	title: 'Core/Button',

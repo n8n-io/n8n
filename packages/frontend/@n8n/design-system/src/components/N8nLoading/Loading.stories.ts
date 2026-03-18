@@ -1,8 +1,8 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
+import N8nLoading from './Loading.vue';
 import N8nCircleLoader from '../N8nCircleLoader/CircleLoader.vue';
 import N8nSpinner from '../N8nSpinner/Spinner.vue';
-import N8nLoading from './Loading.vue';
 
 export default {
 	title: 'Core/Loading',

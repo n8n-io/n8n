@@ -7,9 +7,9 @@ import N8nActionDropdown from '../N8nActionDropdown/ActionDropdown.vue';
 import N8nButton from '../N8nButton';
 import N8nIconButton from '../N8nIconButton';
 import N8nMenuItem from '../N8nMenuItem';
-import NavigationDropdown from '../N8nNavigationDropdown/NavigationDropdown.vue';
 import N8nDropdown from './Dropdown.vue';
 import type { N8nDropdownOption } from './Dropdown.vue';
+import NavigationDropdown from '../N8nNavigationDropdown/NavigationDropdown.vue';
 
 export default {
 	title: 'Core/Dropdown',

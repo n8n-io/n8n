@@ -1,8 +1,8 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 
-import N8nFormBox from '../N8nFormBox/FormBox.vue';
 import N8nFormInput from './FormInput.vue';
+import N8nFormBox from '../N8nFormBox/FormBox.vue';
 import N8nFormInputs from '../N8nFormInputs/FormInputs.vue';
 
 export default {

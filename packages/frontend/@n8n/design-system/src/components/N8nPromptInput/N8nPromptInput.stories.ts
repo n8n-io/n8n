@@ -3,8 +3,8 @@ import { action } from 'storybook/actions';
 import { ref } from 'vue';
 
 import N8nPromptInput from './N8nPromptInput.vue';
-import N8nPromptInputSuggestions from '../N8nPromptInputSuggestions/N8nPromptInputSuggestions.vue';
 import type { WorkflowSuggestion } from '../../types/assistant';
+import N8nPromptInputSuggestions from '../N8nPromptInputSuggestions/N8nPromptInputSuggestions.vue';
 
 export default {
 	title: 'Core/PromptInput',

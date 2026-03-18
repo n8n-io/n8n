@@ -2,8 +2,8 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 import { ref } from 'vue';
 
-import N8nResizeWrapper from '../N8nResizeWrapper/ResizeWrapper.vue';
 import N8nSticky from './Sticky.vue';
+import N8nResizeWrapper from '../N8nResizeWrapper/ResizeWrapper.vue';
 
 export default {
 	title: 'Core/Sticky',
