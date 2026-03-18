@@ -534,7 +534,7 @@ defineExpose({ focus, blur, select });
 	flex: 1;
 	min-width: 0;
 	resize: vertical;
-	padding: var(--spacing--xs);
+	padding: var(--input--padding);
 	line-height: var(--line-height--md);
 	border: none;
 	background: transparent;
