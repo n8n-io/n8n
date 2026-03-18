@@ -235,19 +235,51 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 }
 
 // ---------------------------------------------------------------------------
+// snapshotWorkflowIds — call before the run to know what existed prior
+// ---------------------------------------------------------------------------
+
+export async function snapshotWorkflowIds(client: N8nClient): Promise<Set<string>> {
+	try {
+		const workflows = await client.listWorkflows();
+		return new Set(workflows.map((wf) => wf.id));
+	} catch {
+		return new Set();
+	}
+}
+
+// ---------------------------------------------------------------------------
 // buildAgentOutcome
 // ---------------------------------------------------------------------------
 
 export async function buildAgentOutcome(
 	client: N8nClient,
 	eventOutcome: EventOutcome,
+	preRunWorkflowIds?: Set<string>,
 ): Promise<AgentOutcome> {
 	const workflowsCreated: WorkflowSummary[] = [];
 	const workflowJsons: Record<string, unknown>[] = [];
 	const executionsRun: ExecutionSummary[] = [];
 
+	// Collect workflow IDs from events
+	const knownWfIds = new Set(eventOutcome.workflowIds);
+
+	// Diff against pre-run snapshot to find workflows created by background tasks
+	// that didn't surface in the SSE events we parsed
+	if (preRunWorkflowIds) {
+		try {
+			const currentWorkflows = await client.listWorkflows();
+			for (const wf of currentWorkflows) {
+				if (!preRunWorkflowIds.has(wf.id) && !knownWfIds.has(wf.id)) {
+					knownWfIds.add(wf.id);
+				}
+			}
+		} catch {
+			// Non-fatal — fall back to event-based IDs only
+		}
+	}
+
 	// Fetch workflow details
-	for (const wfId of eventOutcome.workflowIds) {
+	for (const wfId of knownWfIds) {
 		try {
 			const wf = await client.getWorkflow(wfId);
 			const nodes = Array.isArray(wf.nodes) ? (wf.nodes as unknown[]) : [];

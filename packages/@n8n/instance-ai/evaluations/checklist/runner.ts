@@ -17,6 +17,7 @@ import {
 	buildMetrics,
 	buildVerificationArtifact,
 	cleanupEvalArtifacts,
+	snapshotWorkflowIds,
 } from './verification';
 import type { InstanceAiResult, PromptConfig, ChecklistItem, CapturedEvent } from './types';
 
@@ -37,7 +38,7 @@ const DEFAULT_TIMEOUT_MS = 600_000;
 const SSE_SETTLE_DELAY_MS = 200;
 const POLL_INTERVAL_MS = 500;
 const BACKGROUND_TASK_POLL_INTERVAL_MS = 1_000;
-const BACKGROUND_TASK_TIMEOUT_MS = 30_000;
+const BACKGROUND_TASK_TIMEOUT_MS = 300_000; // 5 min for complex multi-builder prompts
 
 // ---------------------------------------------------------------------------
 // Main entry point
@@ -59,6 +60,9 @@ export async function runSingleExample(
 	let runId = '';
 
 	try {
+		// 0. Snapshot existing workflows so we can diff after the run
+		const preRunWorkflowIds = await snapshotWorkflowIds(config.n8nClient);
+
 		// 1. Start SSE connection in the background
 		if (config.verbose) {
 			log(`[${threadId}] Starting SSE connection`);
@@ -92,19 +96,31 @@ export async function runSingleExample(
 			log(`[${threadId}] Run finished — status: ${status}, time: ${String(elapsed)}ms`);
 		}
 
-		// 5. Wait for background tasks to complete
-		await waitForBackgroundTasks(config.n8nClient, threadId, config.verbose);
+		// 5. Wait for background tasks to complete (SSE stays open to capture events)
+		await waitForBackgroundTasks(
+			config.n8nClient,
+			threadId,
+			events,
+			preRunWorkflowIds,
+			config.verbose,
+		);
 
-		// 6. Abort SSE connection
+		// 6. Abort SSE connection now that background tasks are done
 		abortController.abort();
 		await ssePromise.catch(() => {
 			// SSE promise rejects on abort — expected
 		});
 
-		// 7. Build metrics and outcome
+		// 7. Build metrics and outcome (diff workflows against pre-run snapshot)
 		const metrics = buildMetrics(events, startTime);
 		const eventOutcome = extractOutcomeFromEvents(events);
-		const outcome = await buildAgentOutcome(config.n8nClient, eventOutcome);
+		const outcome = await buildAgentOutcome(config.n8nClient, eventOutcome, preRunWorkflowIds);
+
+		if (config.verbose && outcome.workflowsCreated.length > 0) {
+			log(
+				`[${threadId}] Captured ${String(outcome.workflowsCreated.length)} workflow(s): ${outcome.workflowsCreated.map((w) => w.name).join(', ')}`,
+			);
+		}
 
 		// 8. Build verification artifact and run checklist
 		const verificationArtifact = buildVerificationArtifact(
@@ -308,35 +324,89 @@ function getNestedRecord(
 // ---------------------------------------------------------------------------
 
 async function waitForBackgroundTasks(
-	client: N8nClient,
-	threadId: string,
+	_client: N8nClient,
+	_threadId: string,
+	events: CapturedEvent[],
+	_preRunWorkflowIds: Set<string>,
 	verbose: boolean,
 ): Promise<void> {
 	const deadline = Date.now() + BACKGROUND_TASK_TIMEOUT_MS;
 
+	// Check if any sub-agents were spawned — if not, no background work to wait for
+	const hasSpawnedAgents = events.some((e) => e.type === 'agent-spawned');
+	if (!hasSpawnedAgents) {
+		if (verbose) {
+			log('No sub-agents spawned — skipping background task wait');
+		}
+		return;
+	}
+
+	if (verbose) {
+		log('Sub-agent(s) detected — waiting for all to complete via SSE events...');
+	}
+
+	// Fundamental approach: wait for every agent-spawned to have a matching
+	// agent-completed. The SSE connection is still open, so new events keep
+	// arriving in the shared `events` array.
 	while (Date.now() < deadline) {
-		try {
-			const status = await client.getThreadStatus(threadId);
+		const { pending, total } = getPendingAgents(events);
 
-			const activeTasks = status.backgroundTasks.filter((t) => t.status === 'running');
-			if (activeTasks.length === 0) {
-				return;
-			}
-
+		if (pending.length === 0 && total > 0) {
 			if (verbose) {
-				log(`Waiting for ${String(activeTasks.length)} background task(s) to complete...`);
+				log(`All ${String(total)} sub-agent(s) completed`);
 			}
-		} catch {
-			// If the status endpoint fails, assume tasks are done
+			// Brief extra wait for any trailing events (workflow save, etc.)
+			await delay(1000);
 			return;
+		}
+
+		if (verbose && pending.length > 0) {
+			log(
+				`Waiting for ${String(pending.length)}/${String(total)} sub-agent(s): ${pending.join(', ')}`,
+			);
 		}
 
 		await delay(BACKGROUND_TASK_POLL_INTERVAL_MS);
 	}
 
+	const { pending, total } = getPendingAgents(events);
 	if (verbose) {
-		log('Background task wait timed out — proceeding with verification');
+		log(
+			`Background task wait timed out — ${String(pending.length)}/${String(total)} agent(s) still pending`,
+		);
 	}
+}
+
+/** Compare agent-spawned vs agent-completed events to find pending agents */
+function getPendingAgents(events: CapturedEvent[]): { pending: string[]; total: number } {
+	const spawned = new Set<string>();
+	const completed = new Set<string>();
+
+	for (const event of events) {
+		if (event.type === 'agent-spawned') {
+			const agentId = getAgentId(event);
+			if (agentId) spawned.add(agentId);
+		}
+		if (event.type === 'agent-completed') {
+			const agentId = getAgentId(event);
+			if (agentId) completed.add(agentId);
+		}
+	}
+
+	const pending = [...spawned].filter((id) => !completed.has(id));
+	return { pending, total: spawned.size };
+}
+
+function getAgentId(event: CapturedEvent): string | undefined {
+	const fromData = typeof event.data.agentId === 'string' ? event.data.agentId : undefined;
+	if (fromData) return fromData;
+
+	const payload = event.data.payload;
+	if (typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
+		const p = payload as Record<string, unknown>;
+		return typeof p.agentId === 'string' ? p.agentId : undefined;
+	}
+	return undefined;
 }
 
 // ---------------------------------------------------------------------------
