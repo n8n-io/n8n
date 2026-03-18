@@ -37,15 +37,21 @@ const { getDependencies, fetchDependencies, getTotalCount } = useDependencies();
 
 const isLoadingDetails = ref(false);
 
-const resolvedDeps = computed(() => getDependencies(props.resourceId));
+const depsResult = computed(() => getDependencies(props.resourceId));
 
-const effectiveCount = computed(
-	() => resolvedDeps.value?.length ?? getTotalCount(props.resourceId) ?? 0,
+const effectiveCount = computed(() => {
+	const result = depsResult.value;
+	if (result) return result.dependencies.length + result.inaccessibleCount;
+	return getTotalCount(props.resourceId) ?? 0;
+});
+
+const hasHiddenDeps = computed(() => (depsResult.value?.inaccessibleCount ?? 0) > 0);
+
+const hasFullDeps = computed(() => depsResult.value !== undefined);
+
+const showSearch = computed(
+	() => (depsResult.value?.dependencies.length ?? 0) >= MIN_ITEMS_FOR_SEARCH,
 );
-
-const hasFullDeps = computed(() => resolvedDeps.value !== undefined);
-
-const showSearch = computed(() => (resolvedDeps.value?.length ?? 0) >= MIN_ITEMS_FOR_SEARCH);
 
 const searchTerm = ref('');
 
@@ -76,11 +82,11 @@ const displayOrder: DependencyType[] = [
 ];
 
 const menuItems = computed(() => {
-	const deps = resolvedDeps.value ?? [];
+	const deps = depsResult.value?.dependencies ?? [];
 	if (deps.length === 0) return [];
 
 	const query = searchTerm.value.toLowerCase().trim();
-	const filtered = query ? deps.filter((dep) => dep.name?.toLowerCase().includes(query)) : deps;
+	const filtered = query ? deps.filter((dep) => dep.name.toLowerCase().includes(query)) : deps;
 
 	const groups: Record<DependencyType, ResolvedDependency[]> = {
 		credentialId: [],
@@ -113,7 +119,7 @@ const menuItems = computed(() => {
 		for (const dep of deps) {
 			items.push({
 				id: `${dep.type}:${dep.id}`,
-				label: dep.name ?? dep.id,
+				label: dep.name,
 			});
 		}
 	}
@@ -125,7 +131,7 @@ function onSelect(value: string) {
 	const [type, id] = value.split(':') as [string, string];
 	if (!type || !id) return;
 
-	const dep = (resolvedDeps.value ?? []).find((d) => d.type === type && d.id === id);
+	const dep = (depsResult.value?.dependencies ?? []).find((d) => d.type === type && d.id === id);
 	if (!dep) return;
 
 	switch (dep.type) {
@@ -197,6 +203,16 @@ async function onDropdownToggle(open: boolean) {
 				</span>
 			</N8nBadge>
 		</template>
+		<template v-if="hasHiddenDeps" #footer>
+			<div :class="$style.hiddenNotice">
+				{{
+					i18n.baseText('workflows.dependencies.hiddenNotice', {
+						adjustToNumber: depsResult!.inaccessibleCount,
+						interpolate: { count: String(depsResult!.inaccessibleCount) },
+					})
+				}}
+			</div>
+		</template>
 	</N8nDropdownMenu>
 </template>
 
@@ -214,6 +230,15 @@ async function onDropdownToggle(open: boolean) {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	line-height: calc(var(--font-size--sm) + 1px);
+}
+
+.hiddenNotice {
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-top: var(--border);
+	color: var(--color--text--tint-2);
+	font-size: var(--font-size--3xs);
+	font-style: italic;
+	line-height: var(--line-height--lg);
 }
 </style>
 

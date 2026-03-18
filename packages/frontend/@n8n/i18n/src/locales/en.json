@@ -3772,6 +3772,7 @@
 	"workflows.dependencies.type.parentWorkflows": "Used by workflows",
 	"workflows.dependencies.search.placeholder": "Search...",
 	"workflows.dependencies.search.empty": "No matching dependencies",
+	"workflows.dependencies.hiddenNotice": "+1 not accessible to you | +{count} not accessible to you",
 	"resourceDependents.tooltip": "Used by 1 workflow | Used by {count} workflows",
 	"resourceDependents.modal.title": "Used by workflows",
 	"resourceDependents.modal.search": "Search workflows...",

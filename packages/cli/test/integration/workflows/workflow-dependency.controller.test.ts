@@ -249,13 +249,14 @@ describe('POST /workflow-dependencies/details', () => {
 			});
 
 		expect(resp.statusCode).toBe(200);
-		const deps = resp.body.data[workflow1.id];
-		expect(deps).toHaveLength(2);
+		const result = resp.body.data[workflow1.id];
+		expect(result.dependencies).toHaveLength(2);
+		expect(result.inaccessibleCount).toBe(0);
 
-		const subWf = deps.find((d: { type: string }) => d.type === 'workflowCall');
+		const subWf = result.dependencies.find((d: { type: string }) => d.type === 'workflowCall');
 		expect(subWf).toMatchObject({ id: workflow2.id, name: 'Sub WF', type: 'workflowCall' });
 
-		const credDep = deps.find((d: { type: string }) => d.type === 'credentialId');
+		const credDep = result.dependencies.find((d: { type: string }) => d.type === 'credentialId');
 		expect(credDep).toMatchObject({ id: cred.id, name: cred.name, type: 'credentialId' });
 	});
 
@@ -297,16 +298,17 @@ describe('POST /workflow-dependencies/details', () => {
 			});
 
 		expect(resp.statusCode).toBe(200);
-		const deps = resp.body.data[cred.id];
-		expect(deps).toHaveLength(1);
-		expect(deps[0]).toMatchObject({
+		const result = resp.body.data[cred.id];
+		expect(result.dependencies).toHaveLength(1);
+		expect(result.inaccessibleCount).toBe(0);
+		expect(result.dependencies[0]).toMatchObject({
 			id: parentWf.id,
 			name: 'Parent WF',
 			type: 'workflowParent',
 		});
 	});
 
-	it('should include deps with and without names on the same workflow', async () => {
+	it('should exclude inaccessible deps and report inaccessibleCount', async () => {
 		const owner = await createOwner();
 		const member = await createMember();
 
@@ -327,14 +329,15 @@ describe('POST /workflow-dependencies/details', () => {
 			});
 
 		expect(resp.statusCode).toBe(200);
-		const deps = resp.body.data[memberWorkflow.id];
-		expect(deps).toHaveLength(2);
+		const result = resp.body.data[memberWorkflow.id];
+		expect(result.dependencies).toHaveLength(1);
+		expect(result.inaccessibleCount).toBe(1);
 
-		const accessible = deps.find((d: { id: string }) => d.id === memberSubWorkflow.id);
-		expect(accessible).toMatchObject({ name: 'Member Sub', type: 'workflowCall' });
-
-		const inaccessible = deps.find((d: { id: string }) => d.id === ownerWorkflow.id);
-		expect(inaccessible?.name).toBeUndefined();
+		expect(result.dependencies[0]).toMatchObject({
+			id: memberSubWorkflow.id,
+			name: 'Member Sub',
+			type: 'workflowCall',
+		});
 	});
 
 	it('should return details for a shared workflow', async () => {
@@ -361,7 +364,7 @@ describe('POST /workflow-dependencies/details', () => {
 
 		expect(resp.statusCode).toBe(200);
 		expect(resp.body.data).toHaveProperty(sharedWorkflow.id);
-		expect(resp.body.data[sharedWorkflow.id]).toHaveLength(1);
+		expect(resp.body.data[sharedWorkflow.id].dependencies).toHaveLength(1);
 	});
 
 	it('should require resourceType in the request body', async () => {

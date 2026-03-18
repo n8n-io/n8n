@@ -5,9 +5,15 @@ export type DependencyResourceType = 'workflow' | 'credential' | 'dataTable';
 export interface ResolvedDependency {
 	type: DependencyType;
 	id: string;
-	name?: string; // Only included if user has permissions to view this dependency
+	name: string;
 	/** Project ID — included for data tables so the frontend can build a direct link */
 	projectId?: string;
 }
 
-export type DependenciesBatchResponse = Record<string, ResolvedDependency[]>;
+export interface ResolvedDependenciesResult {
+	dependencies: ResolvedDependency[];
+	/** Number of dependencies the user does not have access to view */
+	inaccessibleCount: number;
+}
+
+export type DependenciesBatchResponse = Record<string, ResolvedDependenciesResult>;

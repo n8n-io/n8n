@@ -48,64 +48,42 @@ export class WorkflowDependencyQueryService {
 		resourceType: DependencyResourceType,
 		user: User,
 	): Promise<DependencyCountsBatchResponse> {
-		const raw = await this.getResourceDependencies(resourceIds, resourceType, user, false);
+		const loaded = await this.loadDepsForResources(resourceIds, resourceType, user);
+		if (!loaded) return {};
+
+		const { accessibleInputIds, maps } = loaded;
 
 		const result: DependencyCountsBatchResponse = {};
-		for (const [k, v] of Object.entries(raw)) {
-			result[k] = { credentialId: 0, dataTableId: 0, workflowCall: 0, workflowParent: 0 };
-
-			for (const { type } of v) {
-				if (type in result[k]) {
-					result[k][type]++;
-				}
-			}
+		for (const id of accessibleInputIds) {
+			result[id] = {
+				credentialId: maps.credMap.get(id)?.size ?? 0,
+				dataTableId: maps.dtMap.get(id)?.size ?? 0,
+				workflowCall: maps.subMap.get(id)?.size ?? 0,
+				workflowParent: maps.parentMap.get(id)?.size ?? 0,
+			};
 		}
 		return result;
 	}
 
-	/**
-	 *	Return a map of dependencies for each input item in `resourceIds`
-	 *
-	 * @param enrichResources Make extra db queries to fetch e.g. names of the dependent resources
-	 */
+	/** Return resolved dependencies for each input resource, excluding inaccessible ones. */
 	async getResourceDependencies(
 		resourceIds: string[],
 		resourceType: DependencyResourceType,
 		user: User,
-		enrichResources = true,
 	): Promise<DependenciesBatchResponse> {
-		// Step 1: Filter input resourceIds to only those the user can access
-		const accessibleInputIds = await this.filterByAccess(resourceIds, resourceType, user);
-		if (accessibleInputIds.length === 0) return {};
+		const loaded = await this.loadDepsForResources(resourceIds, resourceType, user);
+		if (!loaded) return {};
 
-		const rawDeps = await this.dependencyRepository.find({
-			where: [
-				{
-					workflowId: In(accessibleInputIds),
-					dependencyType: In(['credentialId', 'dataTableId', 'workflowCall']),
-				},
-				{ dependencyKey: In(accessibleInputIds) },
-			],
-			select: ['workflowId', 'dependencyType', 'dependencyKey'],
-		});
+		const { accessibleInputIds, maps } = loaded;
 
-		if (rawDeps.length === 0) return {};
-
-		const maps = this.buildDepMaps(rawDeps);
-
-		if (!enrichResources) {
-			// We return the counts even if the user does not have access to the resource
-			return this.buildResult(accessibleInputIds, maps);
-		}
-
-		// Step 2: Check user access for each dependency type
+		// Check user access for each dependency type
 		const [accessibleWfIds, accessibleCredIds, accessibleDtIds] = await Promise.all([
 			this.filterByAccess([...maps.allWfIds], 'workflow', user),
 			this.filterByAccess([...maps.allCredIds], 'credential', user),
 			this.filterByAccess([...maps.allDtIds], 'dataTable', user),
 		]);
 
-		// Step 3: Only enrich names for accessible resources
+		// Only enrich names for accessible resources
 		const [credentials, workflows, dataTables] = await Promise.all([
 			accessibleCredIds.length > 0
 				? this.credentialsRepository.find({
@@ -135,8 +113,36 @@ export class WorkflowDependencyQueryService {
 		for (const w of workflows) wfNames.set(w.id, w.name ?? w.id);
 		for (const dt of dataTables)
 			dtNames.set(dt.id, { name: dt.name ?? dt.id, projectId: dt.projectId });
-		// Step 4: Build results, only including accessible dependencies
-		return this.buildResult(accessibleInputIds, maps, { wfNames, credNames, dtNames });
+
+		return this.buildEnrichedResult(accessibleInputIds, maps, {
+			wfNames,
+			credNames,
+			dtNames,
+		});
+	}
+
+	private async loadDepsForResources(
+		resourceIds: string[],
+		resourceType: DependencyResourceType,
+		user: User,
+	): Promise<{ accessibleInputIds: string[]; maps: RawDepMaps } | null> {
+		const accessibleInputIds = await this.filterByAccess(resourceIds, resourceType, user);
+		if (accessibleInputIds.length === 0) return null;
+
+		const rawDeps = await this.dependencyRepository.find({
+			where: [
+				{
+					workflowId: In(accessibleInputIds),
+					dependencyType: In(['credentialId', 'dataTableId', 'workflowCall']),
+				},
+				{ dependencyKey: In(accessibleInputIds) },
+			],
+			select: ['workflowId', 'dependencyType', 'dependencyKey'],
+		});
+
+		if (rawDeps.length === 0) return null;
+
+		return { accessibleInputIds, maps: this.buildDepMaps(rawDeps) };
 	}
 
 	private buildDepMaps(
@@ -172,35 +178,51 @@ export class WorkflowDependencyQueryService {
 		return { credMap, dtMap, subMap, parentMap, allCredIds, allWfIds, allDtIds };
 	}
 
-	private buildResult(
+	/** Build enriched result — only includes accessible deps, counts inaccessible ones. */
+	private buildEnrichedResult(
 		resourceIds: string[],
 		maps: RawDepMaps,
-		accessMaps?: {
+		accessMaps: {
 			wfNames: Map<string, string>;
 			credNames: Map<string, string>;
 			dtNames: Map<string, { name: string; projectId: string }>;
 		},
-	): Record<string, ResolvedDependency[]> {
-		const result: Record<string, ResolvedDependency[]> = {};
+	): DependenciesBatchResponse {
+		const result: DependenciesBatchResponse = {};
 
 		for (const resourceId of resourceIds) {
-			const deps: ResolvedDependency[] = [];
+			const dependencies: ResolvedDependency[] = [];
+			let inaccessibleCount = 0;
 
-			for (const id of maps.subMap.get(resourceId) ?? []) {
-				deps.push({ id, name: accessMaps?.wfNames?.get(id), type: 'workflowCall' });
-			}
-			for (const id of maps.parentMap.get(resourceId) ?? []) {
-				deps.push({ id, name: accessMaps?.wfNames?.get(id), type: 'workflowParent' });
-			}
-			for (const id of maps.credMap.get(resourceId) ?? []) {
-				deps.push({ id, name: accessMaps?.credNames?.get(id), type: 'credentialId' });
-			}
+			const resolve = (
+				ids: Set<string> | undefined,
+				nameMap: Map<string, string>,
+				type: ResolvedDependency['type'],
+			) => {
+				for (const id of ids ?? []) {
+					const name = nameMap.get(id);
+					if (name !== undefined) {
+						dependencies.push({ id, name, type });
+					} else {
+						inaccessibleCount++;
+					}
+				}
+			};
+
+			resolve(maps.subMap.get(resourceId), accessMaps.wfNames, 'workflowCall');
+			resolve(maps.parentMap.get(resourceId), accessMaps.wfNames, 'workflowParent');
+			resolve(maps.credMap.get(resourceId), accessMaps.credNames, 'credentialId');
+
 			for (const id of maps.dtMap.get(resourceId) ?? []) {
-				const dt = accessMaps?.dtNames.get(id);
-				deps.push({ id, name: dt?.name, type: 'dataTableId', projectId: dt?.projectId });
+				const dt = accessMaps.dtNames.get(id);
+				if (dt) {
+					dependencies.push({ id, name: dt.name, type: 'dataTableId', projectId: dt.projectId });
+				} else {
+					inaccessibleCount++;
+				}
 			}
 
-			result[resourceId] = deps;
+			result[resourceId] = { dependencies, inaccessibleCount };
 		}
 
 		return result;

@@ -118,6 +118,7 @@ export type {
 	DependencyType,
 	DependencyResourceType,
 	ResolvedDependency,
+	ResolvedDependenciesResult,
 	DependenciesBatchResponse,
 } from './schemas/dependency.schema';
 

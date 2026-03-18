@@ -1,14 +1,14 @@
 import type {
 	DependencyResourceType,
 	DependencyTypeCounts,
-	ResolvedDependency,
+	ResolvedDependenciesResult,
 } from '@n8n/api-types';
 import { ref } from 'vue';
 
 import * as workflowDependenciesApi from '@/app/api/workflow-dependencies';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-const dependenciesMap = ref<Record<string, ResolvedDependency[]>>({});
+const dependenciesMap = ref<Record<string, ResolvedDependenciesResult>>({});
 const countsMap = ref<Record<string, DependencyTypeCounts>>({});
 
 export function useDependencies() {
@@ -48,15 +48,15 @@ export function useDependencies() {
 				resourceIds,
 				resourceType,
 			);
-			for (const [id, deps] of Object.entries(result)) {
-				dependenciesMap.value[id] = deps;
+			for (const [id, entry] of Object.entries(result)) {
+				dependenciesMap.value[id] = entry;
 			}
 		} catch {
 			// Dependencies are supplementary — silently ignore errors
 		}
 	}
 
-	function getDependencies(resourceId: string): ResolvedDependency[] | undefined {
+	function getDependencies(resourceId: string): ResolvedDependenciesResult | undefined {
 		return dependenciesMap.value[resourceId];
 	}
 
@@ -72,8 +72,8 @@ export function useDependencies() {
 
 	function hasDependencies(resourceId: string): boolean {
 		// Check full deps first, then counts
-		const deps = dependenciesMap.value[resourceId];
-		if (deps !== undefined) return deps.length > 0;
+		const entry = dependenciesMap.value[resourceId];
+		if (entry !== undefined) return entry.dependencies.length > 0 || entry.inaccessibleCount > 0;
 		return getTotalCount(resourceId) > 0;
 	}
 

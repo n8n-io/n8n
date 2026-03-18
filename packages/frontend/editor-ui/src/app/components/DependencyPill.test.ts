@@ -22,11 +22,16 @@ vi.mock('vue-router', () => {
 	};
 });
 
-let mockDependencies: Array<{ type: string; id: string; name: string; projectId?: string }> = [];
+let mockDepsResult:
+	| {
+			dependencies: Array<{ type: string; id: string; name: string; projectId?: string }>;
+			inaccessibleCount: number;
+	  }
+	| undefined;
 
 vi.mock('@/app/composables/useDependencies', () => ({
 	useDependencies: () => ({
-		getDependencies: () => (mockDependencies.length > 0 ? mockDependencies : undefined),
+		getDependencies: () => mockDepsResult,
 		fetchDependencies: vi.fn(),
 		getTotalCount: () => 0,
 	}),
@@ -62,7 +67,8 @@ vi.mock('@n8n/design-system/v2/components/DropdownMenu', () => ({
 			capturedSelectHandler = (value: string) => emit('select', value);
 			capturedOpenHandler = (open: boolean) => emit('update:modelValue', open);
 		},
-		template: '<div data-test-id="mock-dropdown"><slot name="trigger" /></div>',
+		template:
+			'<div data-test-id="mock-dropdown"><slot name="trigger" /><slot name="footer" /></div>',
 	},
 }));
 
@@ -70,12 +76,15 @@ const renderComponent = createComponentRenderer(DependencyPill, {
 	pinia: createTestingPinia(),
 });
 
-const createDependencies = () => [
-	{ type: 'credentialId', id: 'cred-1', name: 'My API Key' },
-	{ type: 'dataTableId', id: 'dt-1', name: 'Users Table', projectId: 'proj-1' },
-	{ type: 'workflowCall', id: 'wf-1', name: 'Sub-Workflow A' },
-	{ type: 'workflowParent', id: 'wf-2', name: 'Parent Workflow B' },
-];
+const createDepsResult = (inaccessibleCount = 0) => ({
+	dependencies: [
+		{ type: 'credentialId', id: 'cred-1', name: 'My API Key' },
+		{ type: 'dataTableId', id: 'dt-1', name: 'Users Table', projectId: 'proj-1' },
+		{ type: 'workflowCall', id: 'wf-1', name: 'Sub-Workflow A' },
+		{ type: 'workflowParent', id: 'wf-2', name: 'Parent Workflow B' },
+	],
+	inaccessibleCount,
+});
 
 const defaultProps = {
 	resourceType: 'workflow' as const,
@@ -94,7 +103,7 @@ describe('DependencyPill', () => {
 		capturedOpenHandler = undefined;
 		capturedItems = [];
 		capturedSearchable = undefined;
-		mockDependencies = [];
+		mockDepsResult = undefined;
 	});
 
 	afterEach(() => {
@@ -102,21 +111,20 @@ describe('DependencyPill', () => {
 	});
 
 	it('should render badge with dependency count', () => {
-		mockDependencies = createDependencies();
+		mockDepsResult = createDepsResult();
 		const { getByText } = renderComponent({ props: defaultProps });
 
-		expect(getByText(String(mockDependencies.length))).toBeInTheDocument();
+		expect(getByText(String(mockDepsResult.dependencies.length))).toBeInTheDocument();
 	});
 
 	it('should render badge with zero count when no dependencies', () => {
-		mockDependencies = [];
 		const { getByText } = renderComponent({ props: defaultProps });
 
 		expect(getByText('0')).toBeInTheDocument();
 	});
 
 	it('should build menu items grouped by type', () => {
-		mockDependencies = createDependencies();
+		mockDepsResult = createDepsResult();
 		renderComponent({ props: defaultProps });
 
 		const items = capturedItems as Array<{ id: string; label: string; disabled?: boolean }>;
@@ -143,7 +151,10 @@ describe('DependencyPill', () => {
 	});
 
 	it('should open credential on select', () => {
-		mockDependencies = [{ type: 'credentialId', id: 'cred-1', name: 'My Key' }];
+		mockDepsResult = {
+			dependencies: [{ type: 'credentialId', id: 'cred-1', name: 'My Key' }],
+			inaccessibleCount: 0,
+		};
 		renderComponent({ props: defaultProps });
 		const uiStore = mockedStore(useUIStore);
 
@@ -153,7 +164,10 @@ describe('DependencyPill', () => {
 	});
 
 	it('should open workflow in new tab on select', () => {
-		mockDependencies = [{ type: 'workflowCall', id: 'wf-1', name: 'Sub WF' }];
+		mockDepsResult = {
+			dependencies: [{ type: 'workflowCall', id: 'wf-1', name: 'Sub WF' }],
+			inaccessibleCount: 0,
+		};
 		renderComponent({ props: defaultProps });
 
 		capturedSelectHandler?.('workflowCall:wf-1');
@@ -166,7 +180,10 @@ describe('DependencyPill', () => {
 	});
 
 	it('should open parent workflow in new tab on select', () => {
-		mockDependencies = [{ type: 'workflowParent', id: 'wf-2', name: 'Parent WF' }];
+		mockDepsResult = {
+			dependencies: [{ type: 'workflowParent', id: 'wf-2', name: 'Parent WF' }],
+			inaccessibleCount: 0,
+		};
 		renderComponent({ props: defaultProps });
 
 		capturedSelectHandler?.('workflowParent:wf-2');
@@ -179,7 +196,10 @@ describe('DependencyPill', () => {
 	});
 
 	it('should open data table in new tab on select', () => {
-		mockDependencies = [{ type: 'dataTableId', id: 'dt-1', name: 'My Table', projectId: 'proj-1' }];
+		mockDepsResult = {
+			dependencies: [{ type: 'dataTableId', id: 'dt-1', name: 'My Table', projectId: 'proj-1' }],
+			inaccessibleCount: 0,
+		};
 		renderComponent({ props: defaultProps });
 
 		capturedSelectHandler?.('dataTableId:dt-1');
@@ -192,7 +212,10 @@ describe('DependencyPill', () => {
 	});
 
 	it('should not open data table without projectId', () => {
-		mockDependencies = [{ type: 'dataTableId', id: 'dt-1', name: 'My Table' }];
+		mockDepsResult = {
+			dependencies: [{ type: 'dataTableId', id: 'dt-1', name: 'My Table' }],
+			inaccessibleCount: 0,
+		};
 		renderComponent({ props: defaultProps });
 
 		capturedSelectHandler?.('dataTableId:dt-1');
@@ -201,7 +224,7 @@ describe('DependencyPill', () => {
 	});
 
 	it('should ignore select with invalid value', () => {
-		mockDependencies = createDependencies();
+		mockDepsResult = createDepsResult();
 		renderComponent({ props: defaultProps });
 		const uiStore = mockedStore(useUIStore);
 
@@ -212,44 +235,85 @@ describe('DependencyPill', () => {
 	});
 
 	it('should hide search when fewer than 6 dependencies', () => {
-		mockDependencies = createDependencies(); // 4 items
+		mockDepsResult = createDepsResult(); // 4 items
 		renderComponent({ props: defaultProps });
 
 		expect(capturedSearchable).toBe(false);
 	});
 
 	it('should show search when 6 or more dependencies', () => {
-		mockDependencies = [
-			{ type: 'credentialId', id: 'c-1', name: 'Cred 1' },
-			{ type: 'credentialId', id: 'c-2', name: 'Cred 2' },
-			{ type: 'credentialId', id: 'c-3', name: 'Cred 3' },
-			{ type: 'workflowCall', id: 'w-1', name: 'WF 1' },
-			{ type: 'workflowCall', id: 'w-2', name: 'WF 2' },
-			{ type: 'workflowCall', id: 'w-3', name: 'WF 3' },
-		];
+		mockDepsResult = {
+			dependencies: [
+				{ type: 'credentialId', id: 'c-1', name: 'Cred 1' },
+				{ type: 'credentialId', id: 'c-2', name: 'Cred 2' },
+				{ type: 'credentialId', id: 'c-3', name: 'Cred 3' },
+				{ type: 'workflowCall', id: 'w-1', name: 'WF 1' },
+				{ type: 'workflowCall', id: 'w-2', name: 'WF 2' },
+				{ type: 'workflowCall', id: 'w-3', name: 'WF 3' },
+			],
+			inaccessibleCount: 0,
+		};
 		renderComponent({ props: defaultProps });
 
 		expect(capturedSearchable).toBe(true);
 	});
 
 	it('should track telemetry when dropdown opens', () => {
-		mockDependencies = createDependencies();
+		mockDepsResult = createDepsResult();
 		renderComponent({ props: { ...defaultProps, source: 'credential_card' } });
 
 		capturedOpenHandler?.(true);
 
 		expect(telemetryTrackMock).toHaveBeenCalledWith('User opened dependency pill', {
 			source: 'credential_card',
-			dependency_count: mockDependencies.length,
+			dependency_count: mockDepsResult.dependencies.length,
 		});
 	});
 
 	it('should not track telemetry when dropdown closes', () => {
-		mockDependencies = createDependencies();
+		mockDepsResult = createDepsResult();
 		renderComponent({ props: defaultProps });
 
 		capturedOpenHandler?.(false);
 
 		expect(telemetryTrackMock).not.toHaveBeenCalled();
+	});
+
+	it('should include inaccessible count in badge total', () => {
+		mockDepsResult = {
+			dependencies: [{ type: 'credentialId', id: 'cred-1', name: 'My API Key' }],
+			inaccessibleCount: 2,
+		};
+		const { getByText } = renderComponent({ props: defaultProps });
+
+		// Badge should show 1 accessible + 2 inaccessible = 3
+		expect(getByText('3')).toBeInTheDocument();
+	});
+
+	it('should show hidden notice with count when inaccessibleCount > 0', () => {
+		mockDepsResult = {
+			dependencies: [{ type: 'credentialId', id: 'cred-1', name: 'My API Key' }],
+			inaccessibleCount: 1,
+		};
+		const { getByText } = renderComponent({ props: defaultProps });
+
+		expect(getByText('+1 not accessible to you')).toBeInTheDocument();
+	});
+
+	it('should pluralize hidden notice for multiple inaccessible deps', () => {
+		mockDepsResult = {
+			dependencies: [{ type: 'credentialId', id: 'cred-1', name: 'My API Key' }],
+			inaccessibleCount: 3,
+		};
+		const { getByText } = renderComponent({ props: defaultProps });
+
+		expect(getByText('+3 not accessible to you')).toBeInTheDocument();
+	});
+
+	it('should not show hidden notice when inaccessibleCount is 0', () => {
+		mockDepsResult = createDepsResult();
+		const { queryByText } = renderComponent({ props: defaultProps });
+
+		expect(queryByText(/not accessible to you/)).not.toBeInTheDocument();
 	});
 });
