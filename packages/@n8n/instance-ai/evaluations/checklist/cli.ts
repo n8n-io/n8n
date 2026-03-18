@@ -6,6 +6,11 @@ import { writeReport } from './report';
 import { saveRun, listRuns } from './storage';
 import { SYNTHETIC_PROMPTS } from './synthetic-prompts';
 import { N8nClient } from './n8n-client';
+import {
+	verifyCredentialSupport,
+	seedEvalCredentials,
+	cleanupEvalCredentials,
+} from './verification';
 import type { Run, PromptConfig, ChecklistItem, InstanceAiResult } from './types';
 
 // ---------------------------------------------------------------------------
@@ -219,6 +224,15 @@ async function runEval() {
 	await n8nClient.login();
 	console.log('Authenticated successfully.');
 
+	// Verify credential support (fails fast if encryption key is missing)
+	await verifyCredentialSupport(n8nClient);
+
+	// Seed credentials required by the selected prompts
+	const seededCredentialIds = await seedEvalCredentials(n8nClient, prompts);
+	if (seededCredentialIds.length > 0) {
+		console.log(`Seeded ${String(seededCredentialIds.length)} eval credential(s).`);
+	}
+
 	const runnerConfig: RunnerConfig = {
 		n8nClient,
 		timeoutMs: args.timeoutMs,
@@ -301,6 +315,8 @@ async function runEval() {
 	} catch (err) {
 		console.error('Pipeline error:', err);
 		run.status = 'failed';
+	} finally {
+		await cleanupEvalCredentials(n8nClient, seededCredentialIds).catch(() => {});
 	}
 
 	saveRun(run);

@@ -28,6 +28,14 @@ interface ExecutionListItem {
 	status: string;
 }
 
+export interface ExecutionDetail {
+	id: string;
+	workflowId: string;
+	status: string;
+	/** Flatted-serialized execution data (contains error details, run data per node) */
+	data: string;
+}
+
 interface ThreadStatus {
 	hasActiveRun: boolean;
 	isSuspended: boolean;
@@ -149,11 +157,65 @@ export class N8nClient {
 	}
 
 	/**
+	 * Execute a workflow manually.
+	 * POST /rest/workflows/:id/run  body: { triggerToStartFrom?: { name } }
+	 */
+	async executeWorkflow(
+		workflowId: string,
+		triggerNodeName?: string,
+	): Promise<{ executionId: string }> {
+		const body: Record<string, unknown> = {};
+		if (triggerNodeName) {
+			body.triggerToStartFrom = { name: triggerNodeName };
+		}
+		const result = (await this.fetch(`/rest/workflows/${workflowId}/run`, {
+			method: 'POST',
+			body,
+		})) as { data: { executionId: string } };
+		return { executionId: result.data.executionId };
+	}
+
+	/**
+	 * Get a single execution by ID.
+	 * GET /rest/executions/:id
+	 */
+	async getExecution(executionId: string): Promise<ExecutionDetail> {
+		const result = (await this.fetch(`/rest/executions/${executionId}`)) as {
+			data: ExecutionDetail;
+		};
+		return result.data;
+	}
+
+	/**
 	 * Delete a workflow by ID.
 	 * DELETE /rest/workflows/:id
 	 */
 	async deleteWorkflow(id: string): Promise<void> {
 		await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * Create a credential.
+	 * POST /rest/credentials  body: { name, type, data }
+	 */
+	async createCredential(
+		name: string,
+		type: string,
+		data: Record<string, unknown>,
+	): Promise<{ id: string }> {
+		const result = (await this.fetch('/rest/credentials', {
+			method: 'POST',
+			body: { name, type, data },
+		})) as { data: { id: string } };
+		return { id: result.data.id };
+	}
+
+	/**
+	 * Delete a credential by ID.
+	 * DELETE /rest/credentials/:id
+	 */
+	async deleteCredential(id: string): Promise<void> {
+		await this.fetch(`/rest/credentials/${id}`, { method: 'DELETE' });
 	}
 
 	// ── SSE helpers ───────────────────────────────────────────────────────

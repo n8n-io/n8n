@@ -108,6 +108,34 @@ export const SYNTHETIC_PROMPTS: PromptConfig[] = [
 	},
 
 	// ---------------------------------------------------------------------------
+	// Medium — credential-based (external service nodes)
+	// ---------------------------------------------------------------------------
+	{
+		text: 'Build a workflow with a manual trigger that sends a message to a Slack channel called #general saying "Hello from n8n"',
+		complexity: 'medium',
+		source: 'synthetic',
+		tags: ['build', 'slack'],
+		dataset: 'builder',
+		requiredCredentials: ['slackApi'],
+	},
+	{
+		text: 'Create a workflow that fetches all pages from a Notion database and stores the titles in a data table',
+		complexity: 'medium',
+		source: 'synthetic',
+		tags: ['build', 'notion', 'data-table'],
+		dataset: 'builder',
+		requiredCredentials: ['notionApi'],
+	},
+	{
+		text: 'Build a workflow with a manual trigger that creates a new GitHub issue in a repository with title "Test Issue" and body "Created by n8n"',
+		complexity: 'medium',
+		source: 'synthetic',
+		tags: ['build', 'github'],
+		dataset: 'builder',
+		requiredCredentials: ['githubApi'],
+	},
+
+	// ---------------------------------------------------------------------------
 	// Complex (~6 prompts, multi-step autonomous tasks)
 	// ---------------------------------------------------------------------------
 	{

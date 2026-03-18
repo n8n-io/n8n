@@ -65,6 +65,9 @@ export interface ExecutionSummary {
 	id: string;
 	workflowId: string;
 	status: string;
+	error?: string;
+	failedNode?: string;
+	triggeredByEval?: boolean;
 }
 
 export interface AgentOutcome {
@@ -98,6 +101,8 @@ export interface PromptConfig {
 	complexity: 'simple' | 'medium' | 'complex';
 	source: 'manual' | 'synthetic';
 	tags?: string[];
+	/** Credential type IDs this prompt needs seeded (e.g. 'slackApi', 'notionApi') */
+	requiredCredentials?: string[];
 	/** Which LangSmith dataset this prompt belongs to */
 	dataset?: PromptDataset;
 	expectedOutcome?: {

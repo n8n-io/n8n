@@ -7,6 +7,9 @@
 // sent to Claude for checklist evaluation.
 // ---------------------------------------------------------------------------
 
+import { parse as parseFlatted } from 'flatted';
+
+import { EVAL_CREDENTIALS } from './credentials';
 import type { N8nClient } from './n8n-client';
 import type {
 	AgentActivity,
@@ -15,6 +18,7 @@ import type {
 	CapturedToolCall,
 	ExecutionSummary,
 	InstanceAiMetrics,
+	PromptConfig,
 	WorkflowSummary,
 } from './types';
 
@@ -462,10 +466,16 @@ export function buildVerificationArtifact(
 
 	// 3. Execution Results
 	if (outcome.executionsRun.length > 0) {
-		const execLines = outcome.executionsRun.map(
-			(exec) => `- Execution ${exec.id} (workflow: ${exec.workflowId}) — Status: ${exec.status}`,
-		);
-		sections.push(formatSection('Execution Results', execLines.join('\n')));
+		const execLines = outcome.executionsRun.map((exec) => {
+			const parts = [
+				`- Execution ${exec.id || '(eval-triggered)'} (workflow: ${exec.workflowId}) — Status: ${exec.status}`,
+			];
+			if (exec.triggeredByEval) parts.push('  Triggered by: eval runner (post-build)');
+			if (exec.error) parts.push(`  Error: ${exec.error}`);
+			if (exec.failedNode) parts.push(`  Failed node: ${exec.failedNode}`);
+			return parts.join('\n');
+		});
+		sections.push(formatSection('Execution Results', execLines.join('\n\n')));
 	}
 
 	// 4. Data Tables
@@ -490,6 +500,166 @@ export function buildVerificationArtifact(
 }
 
 // ---------------------------------------------------------------------------
+// Non-executable trigger types (cannot be force-executed in eval)
+// ---------------------------------------------------------------------------
+
+const NON_EXECUTABLE_TRIGGERS = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.scheduleTrigger',
+	'n8n-nodes-base.formTrigger',
+]);
+
+const EXECUTION_POLL_INTERVAL_MS = 500;
+const EXECUTION_POLL_TIMEOUT_MS = 30_000;
+
+// ---------------------------------------------------------------------------
+// runPostBuildExecutions
+// ---------------------------------------------------------------------------
+
+/**
+ * Force-execute every created workflow that wasn't already executed.
+ * Enriches existing execution summaries with error/failedNode details.
+ * Mutates `outcome.executionsRun` in place.
+ */
+export async function runPostBuildExecutions(
+	client: N8nClient,
+	outcome: AgentOutcome,
+): Promise<void> {
+	const alreadyExecutedWorkflowIds = new Set(outcome.executionsRun.map((e) => e.workflowId));
+
+	// Enrich already-executed workflows with error/failedNode details
+	for (const exec of outcome.executionsRun) {
+		if (exec.status === 'success' || exec.status === 'running') continue;
+		try {
+			const detail = await client.getExecution(exec.id);
+			const { error, failedNode } = extractErrorFromExecution(detail.data);
+			if (error) exec.error = error;
+			if (failedNode) exec.failedNode = failedNode;
+		} catch {
+			// Non-fatal — keep existing summary
+		}
+	}
+
+	// Force-execute workflows that weren't run by the agent
+	for (const wf of outcome.workflowsCreated) {
+		if (alreadyExecutedWorkflowIds.has(wf.id)) continue;
+
+		const triggerNode = findTriggerNode(outcome.workflowJsons, wf.id);
+
+		// Skip non-executable triggers (webhook, schedule, form)
+		if (triggerNode && NON_EXECUTABLE_TRIGGERS.has(triggerNode.type)) {
+			outcome.executionsRun.push({
+				id: '',
+				workflowId: wf.id,
+				status: 'skipped',
+				triggeredByEval: true,
+			});
+			continue;
+		}
+
+		try {
+			const { executionId } = await client.executeWorkflow(wf.id, triggerNode?.name);
+
+			// Poll for completion
+			const executionSummary = await pollExecution(client, executionId, wf.id);
+			outcome.executionsRun.push(executionSummary);
+		} catch (err: unknown) {
+			const errorMessage = err instanceof Error ? err.message : String(err);
+			outcome.executionsRun.push({
+				id: '',
+				workflowId: wf.id,
+				status: 'error',
+				error: errorMessage,
+				triggeredByEval: true,
+			});
+		}
+	}
+}
+
+async function pollExecution(
+	client: N8nClient,
+	executionId: string,
+	workflowId: string,
+): Promise<ExecutionSummary> {
+	const deadline = Date.now() + EXECUTION_POLL_TIMEOUT_MS;
+
+	while (Date.now() < deadline) {
+		try {
+			const detail = await client.getExecution(executionId);
+			if (detail.status !== 'running' && detail.status !== 'new') {
+				const { error, failedNode } = extractErrorFromExecution(detail.data);
+				return {
+					id: executionId,
+					workflowId,
+					status: detail.status,
+					error,
+					failedNode,
+					triggeredByEval: true,
+				};
+			}
+		} catch {
+			// Retry on transient errors
+		}
+		await new Promise((resolve) => setTimeout(resolve, EXECUTION_POLL_INTERVAL_MS));
+	}
+
+	return {
+		id: executionId,
+		workflowId,
+		status: 'timeout',
+		error: `Execution did not complete within ${String(EXECUTION_POLL_TIMEOUT_MS)}ms`,
+		triggeredByEval: true,
+	};
+}
+
+function findTriggerNode(
+	workflowJsons: Record<string, unknown>[],
+	workflowId: string,
+): { name: string; type: string } | undefined {
+	const wfJson = workflowJsons.find((wf) => typeof wf.id === 'string' && wf.id === workflowId);
+	if (!wfJson || !Array.isArray(wfJson.nodes)) return undefined;
+
+	const nodes = wfJson.nodes as Array<Record<string, unknown>>;
+
+	// Find the first trigger node (type contains "trigger" or "Trigger", or is a webhook/schedule)
+	return nodes
+		.filter(
+			(n): n is Record<string, unknown> & { name: string; type: string } =>
+				typeof n.name === 'string' && typeof n.type === 'string',
+		)
+		.find(
+			(n) =>
+				n.type.toLowerCase().includes('trigger') ||
+				n.type === 'n8n-nodes-base.webhook' ||
+				n.type === 'n8n-nodes-base.manualTrigger',
+		);
+}
+
+interface FlatExecResultData {
+	resultData?: {
+		error?: { message?: string };
+		lastNodeExecuted?: string;
+	};
+}
+
+function extractErrorFromExecution(flattedData: string): { error?: string; failedNode?: string } {
+	if (!flattedData) return {};
+
+	try {
+		const parsed = parseFlatted(flattedData) as FlatExecResultData;
+		const resultData = parsed?.resultData;
+		if (!resultData) return {};
+
+		return {
+			error: resultData.error?.message,
+			failedNode: resultData.lastNodeExecuted,
+		};
+	} catch {
+		return {};
+	}
+}
+
+// ---------------------------------------------------------------------------
 // cleanupEvalArtifacts
 // ---------------------------------------------------------------------------
 
@@ -502,6 +672,71 @@ export async function cleanupEvalArtifacts(
 			await client.deleteWorkflow(wf.id);
 		} catch {
 			// Best-effort cleanup — ignore failures
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Credential preflight, seeding, and cleanup
+// ---------------------------------------------------------------------------
+
+/**
+ * Verify the n8n instance can create/delete credentials.
+ * Catches missing encryption key or misconfigured instance early.
+ */
+export async function verifyCredentialSupport(client: N8nClient): Promise<void> {
+	try {
+		const { id } = await client.createCredential('eval-preflight-check', 'httpBasicAuth', {
+			user: 'test',
+			password: 'test',
+		});
+		await client.deleteCredential(id);
+	} catch (err: unknown) {
+		const msg = err instanceof Error ? err.message : String(err);
+		throw new Error(
+			'Credential preflight failed — n8n cannot create credentials. ' +
+				'Ensure N8N_ENCRYPTION_KEY is set and the instance is configured. ' +
+				`Details: ${msg}`,
+		);
+	}
+}
+
+/**
+ * Seed only the credentials required by the selected prompts.
+ * Returns IDs of created credentials for later cleanup.
+ */
+export async function seedEvalCredentials(
+	client: N8nClient,
+	prompts: PromptConfig[],
+): Promise<string[]> {
+	const neededTypes = new Set(prompts.flatMap((p) => p.requiredCredentials ?? []));
+	if (neededTypes.size === 0) return [];
+
+	const createdIds: string[] = [];
+	for (const cred of EVAL_CREDENTIALS) {
+		if (!neededTypes.has(cred.type)) continue;
+		try {
+			const { id } = await client.createCredential(cred.name, cred.type, cred.data);
+			createdIds.push(id);
+		} catch {
+			// Non-fatal — credential type may not exist on this n8n version
+		}
+	}
+	return createdIds;
+}
+
+/**
+ * Best-effort cleanup of seeded credentials after eval run.
+ */
+export async function cleanupEvalCredentials(
+	client: N8nClient,
+	credentialIds: string[],
+): Promise<void> {
+	for (const id of credentialIds) {
+		try {
+			await client.deleteCredential(id);
+		} catch {
+			// Best-effort cleanup
 		}
 	}
 }
