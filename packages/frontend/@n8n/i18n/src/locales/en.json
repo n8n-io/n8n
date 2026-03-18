@@ -334,6 +334,7 @@
 	"aiAssistant.builder.executeMessage.unpinAll": "Unpin all nodes",
 	"aiAssistant.builder.executeMessage.unpinIndividually": "or unpin individually",
 	"aiAssistant.builder.executeMessage.unpinTooltip": "Right-click on a node and select \"Unpin\" to unpin it",
+	"aiAssistant.builder.executeMessage.wizardSetupSuccess": "Workflow setup successfully",
 	"aiAssistant.builder.setupWizard.continue": "Continue",
 	"aiAssistant.builder.setupWizard.complete": "Complete",
 	"aiAssistant.builder.setupWizard.checkingCredentials": "Checking credentials",

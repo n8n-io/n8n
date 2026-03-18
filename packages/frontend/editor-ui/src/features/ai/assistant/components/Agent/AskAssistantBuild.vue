@@ -360,7 +360,7 @@ async function onWorkflowExecuted() {
 	// so there's no full execution data to inspect — just send success.
 	if (builderStore.wizardHasExecutedWorkflow) {
 		await builderStore.sendChatMessage({
-			text: i18n.baseText('aiAssistant.builder.executeMessage.executionSuccess'),
+			text: i18n.baseText('aiAssistant.builder.executeMessage.wizardSetupSuccess'),
 			type: 'execution',
 			executionStatus: 'success',
 		});
