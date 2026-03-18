@@ -12,6 +12,10 @@ export const RELEASE_TRACKS = /** @type { const } */ ([
 ]);
 
 /**
+ * @typedef { InstanceType<typeof import("@actions/github/lib/utils").GitHub> } GitHubInstance
+ * */
+
+/**
  * @typedef {typeof RELEASE_TRACKS[number]} ReleaseTrack
  * */
 
@@ -45,6 +49,15 @@ export function pickHighestReleaseTag(tags) {
 		.sort((a, b) => semver.rcompare(a.v, b.v));
 
 	return /** @type { ReleaseVersion } */ (versions[0]?.tag) ?? null;
+}
+
+/**
+ * @param {any} track
+ *
+ * @returns { track is ReleaseTrack }
+ * */
+export function isReleaseTrack(track) {
+	return RELEASE_TRACKS.includes(track);
 }
 
 /**
@@ -290,4 +303,38 @@ export async function getPullRequestById(pullRequestId) {
 	});
 
 	return pullRequest.data;
+}
+
+/**
+ * @param {string} tag
+ */
+export async function getExistingRelease(tag) {
+	const { octokit, owner, repo } = initGithub();
+
+	try {
+		const releaseRequest = await octokit.rest.repos.getReleaseByTag({
+			owner,
+			repo,
+			tag,
+		});
+
+		return releaseRequest.data;
+	} catch (ex) {
+		if (ex?.status === 404) {
+			return undefined;
+		}
+		throw ex;
+	}
+}
+
+/**
+ * @param {number} releaseId
+ */
+export async function deleteRelease(releaseId) {
+	const { octokit, owner, repo } = initGithub();
+	await octokit.rest.repos.deleteRelease({
+		owner,
+		repo,
+		release_id: releaseId,
+	});
 }
