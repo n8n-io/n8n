@@ -415,6 +415,10 @@ function countEvents(events: CapturedEvent[], type: string): number {
 // Confirmation auto-approval
 // ---------------------------------------------------------------------------
 
+/** Track retry state for confirmation requests that fail */
+const confirmationRetries = new Map<string, number>();
+const MAX_CONFIRMATION_RETRIES = 5;
+
 async function processConfirmationRequests(
 	config: RunnerConfig,
 	events: CapturedEvent[],
@@ -428,19 +432,29 @@ async function processConfirmationRequests(
 			continue;
 		}
 
-		approvedRequests.add(requestId);
+		// Skip if we've exhausted retries for this request
+		const retryCount = confirmationRetries.get(requestId) ?? 0;
+		if (retryCount >= MAX_CONFIRMATION_RETRIES) {
+			continue;
+		}
 
-		if (config.verbose) {
+		if (config.verbose && retryCount === 0) {
 			const title = extractConfirmationTitle(event);
 			log(`[auto-approve] Approving confirmation: ${title} (${requestId})`);
 		}
 
 		try {
 			await config.n8nClient.confirmAction(requestId, true);
+			approvedRequests.add(requestId);
+			confirmationRetries.delete(requestId);
 		} catch (error: unknown) {
+			// Track retry — don't add to approvedRequests so we retry next cycle
+			confirmationRetries.set(requestId, retryCount + 1);
 			const msg = error instanceof Error ? error.message : String(error);
 			if (config.verbose) {
-				log(`[auto-approve] Failed to approve ${requestId}: ${msg}`);
+				log(
+					`[auto-approve] Failed to approve ${requestId} (attempt ${String(retryCount + 1)}/${String(MAX_CONFIRMATION_RETRIES)}): ${msg}`,
+				);
 			}
 		}
 	}
