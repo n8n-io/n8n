@@ -1,3 +1,13 @@
+## [2.13.1](https://github.com/n8n-io/n8n/compare/n8n@2.13.0...n8n@2.13.1) (2026-03-18)
+
+
+### Bug Fixes
+
+* **core:** Emit `leader-takeover` on leadership mismatch in `checkLeader` (backport to release-candidate/2.13.x) ([#27149](https://github.com/n8n-io/n8n/issues/27149)) ([409066c](https://github.com/n8n-io/n8n/commit/409066c39fe79d0fcc1decf2950e6e1a2a9d5bbf))
+* **editor:** Adjust external secrets input styling (backport to release-candidate/2.13.x) ([#27164](https://github.com/n8n-io/n8n/issues/27164)) ([44c565b](https://github.com/n8n-io/n8n/commit/44c565b3abef939420be4c70312bdee5dc69dcd3))
+* **editor:** Command bar wasn't finding any workflows (backport to release-candidate/2.13.x) ([#27136](https://github.com/n8n-io/n8n/issues/27136)) ([07ea054](https://github.com/n8n-io/n8n/commit/07ea0549d3adb24c797885bd31665356c67af667))
+
+
 # [2.13.0](https://github.com/n8n-io/n8n/compare/n8n@2.12.0...n8n@2.13.0) (2026-03-16)
 
 
