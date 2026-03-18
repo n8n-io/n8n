@@ -1,15 +1,28 @@
-name: 'Test: DB Integration'
+name: 'Test: DB Postgres MySQL'
 
 on:
-  workflow_call:
-    inputs:
-      ref:
-        required: false
-        type: string
-        default: ''
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - packages/cli/src/databases/**
+      - packages/cli/src/modules/*/database/**
+      - packages/cli/src/modules/**/*.entity.ts
+      - packages/cli/src/modules/**/*.repository.ts
+      - packages/cli/test/integration/**
+      - packages/cli/test/shared/db/**
+      - packages/@n8n/db/**
+      - packages/cli/**/__tests__/**
+      - .github/workflows/test-db-postgres-mysql.yml
+      - .github/docker-compose.yml
+
+concurrency:
+  group: db-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
-  NODE_OPTIONS: '--max-old-space-size=6144'
+  NODE_OPTIONS: '--max-old-space-size=3072'
 
 jobs:
   build:
@@ -67,7 +80,7 @@ jobs:
 
       - name: Test MariaDB
         working-directory: packages/cli
-        run: pnpm test:mariadb --testTimeout 200000
+        run: pnpm test:mariadb --testTimeout 120000
 
   mysql:
     name: MySQL 8.4
@@ -95,7 +108,7 @@ jobs:
       - name: Test MySQL
         working-directory: packages/cli
         # We sleep here due to flakiness with DB tests if we connect to the database too soon
-        run: sleep 2s && pnpm test:mysql --testTimeout 200000
+        run: sleep 2s && pnpm test:mysql --testTimeout 120000
 
   postgres:
     name: Postgres
