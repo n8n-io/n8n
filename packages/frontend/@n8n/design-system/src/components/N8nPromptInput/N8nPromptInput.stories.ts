@@ -422,7 +422,7 @@ const SuggestionsTemplate: StoryFn = (args) => ({
 				:credits-quota="args.creditsQuota"
 				:credits-remaining="args.creditsRemaining"
 				:show-ask-owner-tooltip="args.showAskOwnerTooltip"
-				@suggestion-clicked="onSuggestionClick"
+				@suggestion-click="onSuggestionClick"
 			>
 				<template #prompt-input>
 					<N8nPromptInput
