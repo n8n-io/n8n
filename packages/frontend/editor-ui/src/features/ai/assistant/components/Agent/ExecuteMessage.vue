@@ -172,7 +172,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 </script>
 
 <template>
-	<BuilderSetupWizard v-if="isWizardVariant" />
+	<BuilderSetupWizard v-if="isWizardVariant" @workflow-executed="emit('workflowExecuted')" />
 	<div
 		v-else
 		ref="containerRef"

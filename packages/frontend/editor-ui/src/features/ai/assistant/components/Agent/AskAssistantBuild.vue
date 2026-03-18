@@ -356,6 +356,17 @@ function onFeedback(feedback: RatingFeedback) {
 }
 
 async function onWorkflowExecuted() {
+	// The wizard executes individual nodes, not the full workflow,
+	// so there's no full execution data to inspect — just send success.
+	if (builderStore.wizardHasExecutedWorkflow) {
+		await builderStore.sendChatMessage({
+			text: i18n.baseText('aiAssistant.builder.executeMessage.executionSuccess'),
+			type: 'execution',
+			executionStatus: 'success',
+		});
+		return;
+	}
+
 	const executionData = workflowsStore.workflowExecutionData;
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;

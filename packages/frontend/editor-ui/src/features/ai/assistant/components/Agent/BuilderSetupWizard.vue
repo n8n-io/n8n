@@ -8,6 +8,10 @@ import { useBuilderSetupCards } from '@/features/ai/assistant/composables/useBui
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
+const emit = defineEmits<{
+	workflowExecuted: [];
+}>();
+
 const i18n = useI18n();
 const builderStore = useBuilderStore();
 const setupPanelStore = useSetupPanelStore();
@@ -111,6 +115,7 @@ function handleStepExecuted() {
 	onStepExecuted();
 	if (builderStore.wizardHasExecutedWorkflow) {
 		setupPanelStore.clearHighlightedNodes();
+		emit('workflowExecuted');
 	}
 }
 
