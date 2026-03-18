@@ -14,11 +14,11 @@
 				"resource": "unityCatalog",
 				"operation": "listTables",
 				"catalogName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "main"
 				},
 				"schemaName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "default"
 				}
 			},
@@ -39,7 +39,7 @@
 				"resource": "unityCatalog",
 				"operation": "getTable",
 				"fullName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "main.default.my_table"
 				}
 			},
@@ -60,11 +60,11 @@
 				"resource": "unityCatalog",
 				"operation": "createTable",
 				"catalogName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "main"
 				},
 				"schemaName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "default"
 				},
 				"tableName": "new_table",
@@ -88,7 +88,7 @@
 				"resource": "unityCatalog",
 				"operation": "deleteTable",
 				"fullName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "main.default.old_table"
 				}
 			},

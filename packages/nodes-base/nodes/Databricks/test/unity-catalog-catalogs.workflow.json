@@ -31,7 +31,7 @@
 				"resource": "unityCatalog",
 				"operation": "getCatalog",
 				"catalogName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "main"
 				}
 			},
@@ -52,7 +52,7 @@
 				"resource": "unityCatalog",
 				"operation": "createCatalog",
 				"catalogName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "new-catalog"
 				},
 				"comment": "Test catalog"
@@ -74,7 +74,7 @@
 				"resource": "unityCatalog",
 				"operation": "updateCatalog",
 				"catalogName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "main"
 				},
 				"comment": "Updated catalog description"
@@ -96,7 +96,7 @@
 				"resource": "unityCatalog",
 				"operation": "deleteCatalog",
 				"catalogName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "old-catalog"
 				}
 			},

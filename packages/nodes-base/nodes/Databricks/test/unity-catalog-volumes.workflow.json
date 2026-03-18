@@ -14,11 +14,11 @@
 				"resource": "unityCatalog",
 				"operation": "listVolumes",
 				"catalogName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "main"
 				},
 				"schemaName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "default"
 				}
 			},
@@ -39,11 +39,11 @@
 				"resource": "unityCatalog",
 				"operation": "createVolume",
 				"catalogName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "main"
 				},
 				"schemaName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "default"
 				},
 				"volumeName": "new_volume",
@@ -67,11 +67,11 @@
 				"resource": "unityCatalog",
 				"operation": "deleteVolume",
 				"catalogName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "main"
 				},
 				"schemaName": {
-					"mode": "id",
+					"mode": "string",
 					"value": "default"
 				},
 				"volumeName": "old_volume"
