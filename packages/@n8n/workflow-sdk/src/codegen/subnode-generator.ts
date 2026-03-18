@@ -224,7 +224,7 @@ export function generateSubnodeCall(
 	const parts: string[] = [];
 
 	parts.push(`type: '${node.type}'`);
-	parts.push(`version: ${node.json.typeVersion}`);
+	parts.push(`version: ${node.json.typeVersion ?? 1}`);
 
 	const configParts = generateSubnodeConfigParts(node, ctx, options);
 
@@ -273,6 +273,9 @@ function generateSubnodesConfigInline(
 	const grouped = new Map<AiConnectionType, Array<{ node: SemanticNode; index: number }>>();
 
 	for (const sub of node.subnodes) {
+		// Skip self-referencing subnodes (circular reference in source data)
+		if (sub.subnodeName === node.name) continue;
+
 		const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
 		if (!subnodeNode) continue;
 
@@ -328,6 +331,9 @@ function generateSubnodesConfigWithVarRefs(
 	const grouped = new Map<AiConnectionType, Array<{ varName: string; index: number }>>();
 
 	for (const sub of node.subnodes) {
+		// Skip self-referencing subnodes (circular reference in source data)
+		if (sub.subnodeName === node.name) continue;
+
 		const varName = getVarName(sub.subnodeName, ctx);
 		const existing = grouped.get(sub.connectionType) ?? [];
 		existing.push({ varName, index: sub.index });
