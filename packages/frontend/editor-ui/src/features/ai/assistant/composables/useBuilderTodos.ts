@@ -114,7 +114,7 @@ export function formatPlaceholderPath(path: string[]): string {
 }
 
 /**
- * Checks if a value contains a placeholder
+ * Checks if a value is a placeholder value
  */
 export function isPlaceholderValue(value: unknown): boolean {
 	if (typeof value !== 'string') return false;
