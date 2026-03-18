@@ -343,7 +343,10 @@ export async function getExistingRelease(tag) {
 
 		return releaseRequest.data;
 	} catch (ex) {
-		return undefined;
+		if (ex?.status === 404) {
+			return undefined;
+		}
+		throw ex;
 	}
 }
 
