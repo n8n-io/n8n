@@ -84,6 +84,9 @@ jobs:
       - name: Restore .github/scripts from master
         run: git checkout "$MASTER_SHA" -- .github/scripts
 
+      - name: Restore .github/actions/setup-nodejs from master
+        run: git checkout "$MASTER_SHA" -- .github/actions/setup-nodejs
+
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
