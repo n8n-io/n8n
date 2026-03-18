@@ -93,11 +93,6 @@ const {
 
 const { webhookUrls } = useWebhookUrls(executableNode);
 
-// Combines executing and listening into a single "active" flag.
-// For non-schedule/non-manual triggers, isExecuting is always false because
-// isListeningForWorkflowEvents mirrors isNodeRunning, making the expression
-// isNodeRunning && !isNodeRunning === false.  Watching isActive instead
-// ensures we detect when a trigger finishes receiving its test event.
 const isActive = computed(() => isExecuting.value || isInListeningState.value);
 
 const isTestingCredential = computed(() => {
@@ -125,8 +120,7 @@ const allParameters = computed<INodeProperties[]>(() => {
 });
 
 const isNestedParam = (p: INodeProperties) =>
-	NESTED_PARAM_TYPES.has(p.type) ||
-	(p.typeOptions?.multipleValues === true && p.type !== 'fixedCollection');
+	NESTED_PARAM_TYPES.has(p.type) || p.typeOptions?.multipleValues === true;
 
 const simpleParameters = computed(() => allParameters.value.filter((p) => !isNestedParam(p)));
 const nestedParameterCount = computed(() => allParameters.value.filter(isNestedParam).length);
@@ -150,14 +144,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
 const isComplete = computed(() => props.state.isComplete);
 const isExecutable = computed(() => executableNode.value !== null);
-const isSingleCard = computed(() => props.totalCards === 1);
 const isLastCard = computed(() => props.stepIndex === props.totalCards - 1);
-
-// Footer visibility: hide when single card and not executable
-const showFooter = computed(() => {
-	if (isSingleCard.value && !isExecutable.value) return false;
-	return true;
-});
 
 const showContinue = computed(
 	() => !isExecutable.value && props.totalCards > 1 && !isLastCard.value,
@@ -175,7 +162,7 @@ const onCredentialSelected = (updateInfo: INodeUpdatePropertiesInformation) => {
 	if (!props.state.credentialType) return;
 
 	const credentialData = updateInfo.properties.credentials?.[props.state.credentialType];
-	const credentialId = typeof credentialData === 'string' ? undefined : credentialData?.id;
+	const credentialId = credentialData?.id;
 
 	if (credentialId) {
 		emit('credentialSelected', {
@@ -230,13 +217,19 @@ watch(isActive, (active, wasActive) => {
 				:size="16"
 			/>
 			<NodeIcon v-else :node-type="nodeType" :size="16" />
-			<N8nText :class="$style.title" size="medium" color="text-dark">
+			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
 				{{ state.node.name }}
 			</N8nText>
-			<span v-if="isComplete" data-test-id="builder-setup-card-check" :class="$style.completeLabel">
+			<N8nText
+				v-if="isComplete"
+				data-test-id="builder-setup-card-check"
+				:class="$style.completeLabel"
+				size="medium"
+				color="success"
+			>
 				<N8nIcon icon="check" size="large" />
 				{{ i18n.baseText('generic.complete') }}
-			</span>
+			</N8nText>
 		</header>
 
 		<!-- Trigger listening callout -->
@@ -271,13 +264,13 @@ watch(isActive, (active, wasActive) => {
 							<template #content>
 								{{ nodeNamesTooltip }}
 							</template>
-							<span data-test-id="builder-setup-card-nodes-hint" :class="$style.nodesHint">
+							<N8nText data-test-id="builder-setup-card-nodes-hint" size="small" color="text-light">
 								{{
 									i18n.baseText('setupPanel.usedInNodes' as BaseTextKey, {
 										interpolate: { count: String(nodeNames.length) },
 									})
 								}}
-							</span>
+							</N8nText>
 						</N8nTooltip>
 					</template>
 				</NodeCredentials>
@@ -312,7 +305,7 @@ watch(isActive, (active, wasActive) => {
 		</div>
 
 		<!-- Footer -->
-		<footer v-if="showFooter" :class="$style.footer">
+		<footer :class="$style.footer">
 			<div :class="$style.footerNav">
 				<N8nButton
 					v-if="showArrows"
@@ -392,15 +385,12 @@ watch(isActive, (active, wasActive) => {
 
 .title {
 	flex: 1;
-	font-weight: 500;
 }
 
 .completeLabel {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	color: var(--color--success);
-	font-size: var(--font-size--sm);
 	white-space: nowrap;
 }
 
@@ -422,12 +412,6 @@ watch(isActive, (active, wasActive) => {
 	:global(.node-credentials) {
 		margin-top: 0;
 	}
-}
-
-.nodesHint {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	cursor: default;
 }
 
 .footer {

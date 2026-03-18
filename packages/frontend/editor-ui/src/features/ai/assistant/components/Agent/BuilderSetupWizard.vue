@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, computed, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 
 import BuilderSetupCard from './BuilderSetupCard.vue';
 import { useBuilderSetupCards } from '@/features/ai/assistant/composables/useBuilderSetupCards';
@@ -74,9 +74,7 @@ const descriptionText = computed(() => {
 	if (!isAllComplete.value) {
 		return i18n.baseText('aiAssistant.builder.executeMessage.description');
 	}
-	return builderStore.hasTodosHiddenByPinnedData
-		? i18n.baseText('aiAssistant.builder.executeMessage.noIssuesWithPinData')
-		: i18n.baseText('aiAssistant.builder.executeMessage.noIssues');
+	return i18n.baseText('aiAssistant.builder.executeMessage.noIssues');
 });
 
 function onGoToNext() {
@@ -116,11 +114,19 @@ function handleStepExecuted() {
 	}
 }
 
-onMounted(() => {
-	builderStore.trackWorkflowBuilderJourney('setup_wizard_shown', {
-		total: totalCards.value,
-	});
-});
+const hasTrackedShown = ref(false);
+watch(
+	showCard,
+	(visible) => {
+		if (visible && !hasTrackedShown.value) {
+			hasTrackedShown.value = true;
+			builderStore.trackWorkflowBuilderJourney('setup_wizard_shown', {
+				total: totalCards.value,
+			});
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -133,14 +139,19 @@ onMounted(() => {
 		@mouseenter="onMouseEnter"
 		@mouseleave="onMouseLeave"
 	>
-		<p v-if="isCheckingCredentials" :class="$style.checkingCredentials">
+		<N8nText
+			v-if="isCheckingCredentials"
+			:class="$style.checkingCredentials"
+			size="medium"
+			color="text-light"
+		>
 			{{ i18n.baseText('aiAssistant.builder.setupWizard.checkingCredentials' as BaseTextKey) }}
 			<N8nIcon icon="chevron-right" size="small" />
-		</p>
+		</N8nText>
 		<template v-else>
-			<p :class="$style.description">
+			<N8nText :class="$style.description" size="medium" color="text-dark">
 				{{ descriptionText }}
-			</p>
+			</N8nText>
 
 			<BuilderSetupCard
 				v-if="showCard"
@@ -165,24 +176,12 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	line-height: var(--line-height--lg);
 	position: relative;
-	font-size: var(--font-size--sm);
-}
-
-.description {
-	margin: 0;
-	color: var(--color--text--shade-1);
-	line-height: var(--line-height--md);
 }
 
 .checkingCredentials {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	margin: 0;
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--md);
 }
 </style>

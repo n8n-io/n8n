@@ -169,13 +169,6 @@ describe('BuilderSetupCard', () => {
 		expect(card.className).toMatch(/completed/);
 	});
 
-	describe('footer visibility', () => {
-		it('hides footer when single card and not executable', () => {
-			const { queryByTestId } = render({ isComplete: false }, { totalCards: 1 });
-			expect(queryByTestId('builder-setup-card-prev')).not.toBeInTheDocument();
-		});
-	});
-
 	describe('navigation arrows', () => {
 		it('hides arrows when single card', () => {
 			const { queryByTestId } = render({ isComplete: true }, { totalCards: 1 });
