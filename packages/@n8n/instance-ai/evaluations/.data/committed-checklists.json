@@ -908,5 +908,275 @@
         "item": "Reports the execution result and confirms the inventory was updated correctly"
       }
     ]
+  },
+  "c46cdfa96e3474a6": {
+    "prompt": "List all my workflows",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "behavior",
+        "item": "Queries and retrieves all existing workflows from the n8n instance"
+      },
+      {
+        "id": 2,
+        "category": "behavior",
+        "item": "Responds with a list of the retrieved workflows"
+      }
+    ]
+  },
+  "d0871870ba7cb0b2": {
+    "prompt": "Show me the last 5 failed executions",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "behavior",
+        "item": "Queries the execution history to retrieve failed executions"
+      },
+      {
+        "id": 2,
+        "category": "behavior",
+        "item": "Filters executions to only include those with a failed status"
+      },
+      {
+        "id": 3,
+        "category": "behavior",
+        "item": "Limits the results to the 5 most recent failed executions"
+      },
+      {
+        "id": 4,
+        "category": "behavior",
+        "item": "Displays the failed executions results to the user"
+      }
+    ]
+  },
+  "12f4b545c41dfcdc": {
+    "prompt": "Create a data table called 'contacts' with columns: name, email, phone",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "behavior",
+        "item": "Creates a data table named 'contacts'"
+      },
+      {
+        "id": 2,
+        "category": "data",
+        "item": "Table includes a 'name' column"
+      },
+      {
+        "id": 3,
+        "category": "data",
+        "item": "Table includes an 'email' column"
+      },
+      {
+        "id": 4,
+        "category": "data",
+        "item": "Table includes a 'phone' column"
+      },
+      {
+        "id": 5,
+        "category": "behavior",
+        "item": "Confirms to the user that the table was successfully created"
+      }
+    ]
+  },
+  "b8da15b3c457fc9f": {
+    "prompt": "What node types are available for sending emails?",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "behavior",
+        "item": "Responds with a list of available n8n node types that support sending emails"
+      }
+    ]
+  },
+  "f6af6623ab90f76c": {
+    "prompt": "Build a workflow with a manual trigger that sends an email via Gmail to test@example.com with subject \"Test from n8n\" and body \"Hello, this is an automated test\"",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a manual trigger node"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a Gmail node connected to the manual trigger"
+      },
+      {
+        "id": 3,
+        "category": "data",
+        "item": "Gmail node is configured to send to test@example.com"
+      },
+      {
+        "id": 4,
+        "category": "data",
+        "item": "Email subject is set to 'Test from n8n'"
+      },
+      {
+        "id": 5,
+        "category": "data",
+        "item": "Email body is set to 'Hello, this is an automated test'"
+      },
+      {
+        "id": 6,
+        "category": "behavior",
+        "item": "Creates or uses existing Gmail credentials for authentication"
+      },
+      {
+        "id": 7,
+        "category": "behavior",
+        "item": "Creates the workflow in n8n"
+      },
+      {
+        "id": 8,
+        "category": "behavior",
+        "item": "Responds with a summary confirming what was created"
+      }
+    ]
+  },
+  "c9f23a6bce5d6db2": {
+    "prompt": "Create a workflow with a manual trigger that sends a message to a Microsoft Teams channel saying \"Status update from n8n\"",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a manual trigger node"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes a Microsoft Teams node to send a channel message"
+      },
+      {
+        "id": 3,
+        "category": "structure",
+        "item": "Manual trigger is connected to the Microsoft Teams node"
+      },
+      {
+        "id": 4,
+        "category": "data",
+        "item": "Message text is exactly 'Status update from n8n'"
+      },
+      {
+        "id": 5,
+        "category": "data",
+        "item": "Microsoft Teams node is configured to target a specific channel"
+      },
+      {
+        "id": 6,
+        "category": "behavior",
+        "item": "Creates credentials for the Microsoft Teams integration"
+      },
+      {
+        "id": 7,
+        "category": "behavior",
+        "item": "Creates the workflow in n8n"
+      },
+      {
+        "id": 8,
+        "category": "behavior",
+        "item": "Responds with a summary of what was created"
+      }
+    ]
+  },
+  "1fda535b322e575e": {
+    "prompt": "Build a workflow with a manual trigger that makes an HTTP request to https://jsonplaceholder.typicode.com/posts using HTTP Header Auth credentials and stores the response in a data table",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a manual trigger node"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes an HTTP Request node that calls https://jsonplaceholder.typicode.com/posts"
+      },
+      {
+        "id": 3,
+        "category": "structure",
+        "item": "Workflow includes a node to store the HTTP response in a data table"
+      },
+      {
+        "id": 4,
+        "category": "structure",
+        "item": "Nodes are connected in sequence: manual trigger → HTTP request → data table storage"
+      },
+      {
+        "id": 5,
+        "category": "data",
+        "item": "HTTP Request node is configured to use HTTP Header Auth credentials"
+      },
+      {
+        "id": 6,
+        "category": "data",
+        "item": "HTTP Request node targets the URL https://jsonplaceholder.typicode.com/posts"
+      },
+      {
+        "id": 7,
+        "category": "data",
+        "item": "Response data from the HTTP request is stored in the data table"
+      },
+      {
+        "id": 8,
+        "category": "behavior",
+        "item": "Creates HTTP Header Auth credentials for use by the HTTP Request node"
+      },
+      {
+        "id": 9,
+        "category": "behavior",
+        "item": "Creates a data table to store the response"
+      },
+      {
+        "id": 10,
+        "category": "behavior",
+        "item": "Creates the workflow with all nodes and connections properly configured"
+      },
+      {
+        "id": 11,
+        "category": "behavior",
+        "item": "Responds with a summary of what was created, including the workflow, credentials, and data table"
+      }
+    ]
+  },
+  "ad2bc8cdfdb4b0bc": {
+    "prompt": "Create a workflow with a manual trigger that fetches data from https://httpbin.org/get using HTTP Basic Auth credentials and returns the response",
+    "checklist": [
+      {
+        "id": 1,
+        "category": "structure",
+        "item": "Creates a workflow with a manual trigger node"
+      },
+      {
+        "id": 2,
+        "category": "structure",
+        "item": "Workflow includes an HTTP Request node that fetches data from https://httpbin.org/get"
+      },
+      {
+        "id": 3,
+        "category": "data",
+        "item": "HTTP request uses HTTP Basic Auth credentials for authentication"
+      },
+      {
+        "id": 4,
+        "category": "behavior",
+        "item": "Creates or configures Basic Auth credentials for use in the HTTP request"
+      },
+      {
+        "id": 5,
+        "category": "structure",
+        "item": "Manual trigger node is connected to the HTTP Request node"
+      },
+      {
+        "id": 6,
+        "category": "behavior",
+        "item": "Executes the workflow after creating it"
+      },
+      {
+        "id": 7,
+        "category": "behavior",
+        "item": "Returns or reports the HTTP response result to the user"
+      }
+    ]
   }
 }

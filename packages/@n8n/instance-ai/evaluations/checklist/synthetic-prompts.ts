@@ -134,6 +134,38 @@ export const SYNTHETIC_PROMPTS: PromptConfig[] = [
 		dataset: 'builder',
 		requiredCredentials: ['githubApi'],
 	},
+	{
+		text: 'Build a workflow with a manual trigger that sends an email via Gmail to test@example.com with subject "Test from n8n" and body "Hello, this is an automated test"',
+		complexity: 'medium',
+		source: 'synthetic',
+		tags: ['build', 'gmail', 'email'],
+		dataset: 'builder',
+		requiredCredentials: ['gmailOAuth2Api'],
+	},
+	{
+		text: 'Create a workflow with a manual trigger that sends a message to a Microsoft Teams channel saying "Status update from n8n"',
+		complexity: 'medium',
+		source: 'synthetic',
+		tags: ['build', 'teams', 'microsoft'],
+		dataset: 'builder',
+		requiredCredentials: ['microsoftTeamsOAuth2Api'],
+	},
+	{
+		text: 'Build a workflow with a manual trigger that makes an HTTP request to https://jsonplaceholder.typicode.com/posts using HTTP Header Auth credentials and stores the response in a data table',
+		complexity: 'medium',
+		source: 'synthetic',
+		tags: ['build', 'http', 'data-table'],
+		dataset: 'builder',
+		requiredCredentials: ['httpHeaderAuth'],
+	},
+	{
+		text: 'Create a workflow with a manual trigger that fetches data from https://httpbin.org/get using HTTP Basic Auth credentials and returns the response',
+		complexity: 'medium',
+		source: 'synthetic',
+		tags: ['build', 'http', 'auth'],
+		dataset: 'builder',
+		requiredCredentials: ['httpBasicAuth'],
+	},
 
 	// ---------------------------------------------------------------------------
 	// Complex (~6 prompts, multi-step autonomous tasks)
