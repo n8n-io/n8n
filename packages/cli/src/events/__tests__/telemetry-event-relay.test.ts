@@ -655,6 +655,7 @@ describe('TelemetryEventRelay', () => {
 				path: '/api/v1/workflows',
 				method: 'GET',
 				apiVersion: 'v1',
+				userAgent: 'n8n-cli',
 			};
 
 			eventService.emit('public-api-invoked', event);
@@ -664,6 +665,7 @@ describe('TelemetryEventRelay', () => {
 				path: '/api/v1/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				user_agent: 'n8n-cli',
 			});
 		});
 

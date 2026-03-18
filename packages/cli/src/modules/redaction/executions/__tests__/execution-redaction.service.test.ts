@@ -193,6 +193,45 @@ describe('ExecutionRedactionService', () => {
 		});
 	});
 
+	describe('keepOriginal mode', () => {
+		it('clones only executions that need redaction, preserving original references for others', async () => {
+			const noneExecution = makeExecution({
+				policy: 'none',
+				mode: 'trigger',
+				workflowId: 'wf-none',
+			});
+			const allExecution = makeExecution({
+				policy: 'all',
+				mode: 'trigger',
+				workflowId: 'wf-all',
+			});
+			const nonManualManual = makeExecution({
+				policy: 'non-manual',
+				mode: 'manual',
+				workflowId: 'wf-nm',
+			});
+
+			// FullItemRedactionStrategy.requiresRedaction always returns true when in the pipeline
+			fullItemRedactionStrategy.requiresRedaction.mockReturnValue(true);
+			// NodeDefinedFieldRedactionStrategy.requiresRedaction returns false (no sensitive fields)
+			nodeDefinedFieldRedactionStrategy.requiresRedaction.mockReturnValue(false);
+
+			const executions = [noneExecution, allExecution, nonManualManual];
+			const options: ExecutionRedactionOptions = { user: mockUser, keepOriginal: true };
+
+			await service.processExecutions(executions, options);
+
+			// policy=none → FullItemRedaction not in pipeline → no requiresRedaction=true → same reference
+			expect(executions[0]).toBe(noneExecution);
+
+			// policy=all → FullItemRedaction in pipeline → requiresRedaction=true → cloned
+			expect(executions[1]).not.toBe(allExecution);
+
+			// policy=non-manual + mode=manual → FullItemRedaction not in pipeline → same reference
+			expect(executions[2]).toBe(nonManualManual);
+		});
+	});
+
 	describe('FullItemRedactionStrategy inclusion', () => {
 		it('is included when redactExecutionData === true (regardless of policy)', async () => {
 			const execution = makeExecution({ policy: 'none', mode: 'trigger' });
