@@ -370,12 +370,6 @@ watch(
 			return;
 		}
 
-		// When Instance AI is available, always default to it
-		if (settingsStore.isModuleActive('instance-ai')) {
-			void router.replace({ name: CHAT_INSTANCE_AI_VIEW });
-			return;
-		}
-
 		const model = findOneFromModelsResponse(models, settings.providers);
 		if (model) {
 			void handleSelectAgent(model);
