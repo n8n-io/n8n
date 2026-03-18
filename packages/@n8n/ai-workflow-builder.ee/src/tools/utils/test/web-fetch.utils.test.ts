@@ -241,7 +241,7 @@ describe('web-fetch.utils', () => {
 	});
 
 	describe('extractReadableContent', () => {
-		it('should extract title and Markdown-formatted content from HTML', () => {
+		it('should extract title and Markdown-formatted content from HTML', async () => {
 			const html = `
 				<html>
 				<head><title>Test Page</title></head>
@@ -256,7 +256,7 @@ describe('web-fetch.utils', () => {
 				</html>
 			`;
 
-			const result = extractReadableContent(html, 'https://example.com/page');
+			const result = await extractReadableContent(html, 'https://example.com/page');
 			expect(result.title).toBe('Test Page');
 			expect(result.content).toContain('main content');
 			// Verify Markdown formatting is preserved
@@ -266,14 +266,14 @@ describe('web-fetch.utils', () => {
 			expect(result.truncated).toBe(false);
 		});
 
-		it('should handle HTML with no readable content', () => {
+		it('should handle HTML with no readable content', async () => {
 			const html = '<html><body></body></html>';
-			const result = extractReadableContent(html, 'https://example.com/empty');
+			const result = await extractReadableContent(html, 'https://example.com/empty');
 			expect(result.content).toBe('');
 			expect(result.truncated).toBe(false);
 		});
 
-		it('should truncate content exceeding max chars', () => {
+		it('should truncate content exceeding max chars', async () => {
 			// Generate content longer than WEB_FETCH_MAX_CONTENT_CHARS (30000)
 			const longText = 'A'.repeat(40_000);
 			const html = `
@@ -287,7 +287,7 @@ describe('web-fetch.utils', () => {
 				</html>
 			`;
 
-			const result = extractReadableContent(html, 'https://example.com/long');
+			const result = await extractReadableContent(html, 'https://example.com/long');
 			expect(result.truncated).toBe(true);
 			expect(result.truncateReason).toContain('30000');
 			expect(result.content.length).toBeLessThanOrEqual(30_000);

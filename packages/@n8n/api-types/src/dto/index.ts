@@ -39,6 +39,7 @@ export { UpdateProjectDto, UpdateProjectWithRelationsDto } from './project/updat
 export { DeleteProjectDto } from './project/delete-project.dto';
 export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
 export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
+export { ListProjectsQueryDto } from './project/list-projects-query.dto';
 
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
@@ -147,6 +148,7 @@ export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
+export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
 export {
 	OAuthClientResponseDto,

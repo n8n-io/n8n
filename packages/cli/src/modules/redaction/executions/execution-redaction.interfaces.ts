@@ -14,6 +14,10 @@ export interface RedactionContext {
 	readonly userCanReveal: boolean;
 	/** True when the execution used dynamic credential resolution. */
 	readonly hasDynamicCredentials: boolean;
+	/** Generic memo store — strategies may cache intermediate results here
+	 *  to avoid redundant computation across requiresRedaction/apply calls.
+	 *  Keyed by strategy name. */
+	readonly memo: Map<string, unknown>;
 }
 
 /**
@@ -27,4 +31,7 @@ export interface RedactionContext {
 export interface IExecutionRedactionStrategy {
 	readonly name: string;
 	apply(execution: RedactableExecution, context: RedactionContext): Promise<void>;
+	/** Returns true if apply() would mutate the execution data. Used by the
+	 *  copy-on-write path to avoid unnecessary cloning. */
+	requiresRedaction(execution: RedactableExecution, context: RedactionContext): boolean;
 }

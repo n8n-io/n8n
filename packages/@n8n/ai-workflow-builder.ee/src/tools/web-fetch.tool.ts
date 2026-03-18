@@ -244,7 +244,10 @@ export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager
 
 				// 5. Extract readable content
 				reporter.progress('Extracting content...');
-				const extracted = extractReadableContent(fetchResult.body, fetchResult.finalUrl ?? url);
+				const extracted = await extractReadableContent(
+					fetchResult.body,
+					fetchResult.finalUrl ?? url,
+				);
 
 				// 6. Build response
 				const responseLines = [

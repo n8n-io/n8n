@@ -5,6 +5,7 @@ import {
 	createWorkflowHistory,
 	setActiveVersion,
 } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -39,6 +40,7 @@ beforeAll(async () => {
 		Container.get(Logger),
 		Container.get(ErrorReporter),
 		Container.get(Tracing),
+		Container.get(WorkflowsConfig),
 	);
 
 	// Initialize the service to register event listeners
