@@ -263,6 +263,10 @@ export function createSubmitWorkflowTool(
 				.string()
 				.optional()
 				.describe('Existing workflow ID to update (omit to create new)'),
+			projectId: z
+				.string()
+				.optional()
+				.describe('Project ID to create the workflow in. Defaults to personal project.'),
 			name: z.string().optional().describe('Workflow name (required for new workflows)'),
 		}),
 		outputSchema: z.object({
@@ -276,7 +280,7 @@ export function createSubmitWorkflowTool(
 			errors: z.array(z.string()).optional(),
 			warnings: z.array(z.string()).optional(),
 		}),
-		execute: async ({ filePath: rawFilePath, workflowId, name }) => {
+		execute: async ({ filePath: rawFilePath, workflowId, projectId, name }) => {
 			// Resolve file path: relative paths resolve against workspace root, ~ is expanded
 			const root = await getWorkspaceRoot(workspace);
 			let filePath: string;
@@ -404,12 +408,17 @@ export function createSubmitWorkflowTool(
 
 			// Save
 			let savedId: string;
+			const opts = projectId ? { projectId } : undefined;
 			try {
 				if (workflowId) {
-					const updated = await context.workflowService.updateFromWorkflowJSON(workflowId, json);
+					const updated = await context.workflowService.updateFromWorkflowJSON(
+						workflowId,
+						json,
+						opts,
+					);
 					savedId = updated.id;
 				} else {
-					const created = await context.workflowService.createFromWorkflowJSON(json);
+					const created = await context.workflowService.createFromWorkflowJSON(json, opts);
 					savedId = created.id;
 				}
 			} catch (error) {

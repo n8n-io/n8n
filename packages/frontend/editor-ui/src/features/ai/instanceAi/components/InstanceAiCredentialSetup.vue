@@ -10,6 +10,7 @@ const props = defineProps<{
 	requestId: string;
 	credentialRequests: InstanceAiCredentialRequest[];
 	message: string;
+	projectId?: string;
 }>();
 
 const i18n = useI18n();
@@ -87,6 +88,7 @@ function handleDeny() {
 					:app-name="req.credentialType"
 					:credential-type="req.credentialType"
 					:selected-credential-id="selections[req.credentialType]"
+					:project-id="props.projectId"
 					@credential-selected="handleCredentialSelected(req.credentialType, $event)"
 					@credential-deselected="handleCredentialDeselected(req.credentialType)"
 				/>

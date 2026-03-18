@@ -27,6 +27,10 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 					}),
 				)
 				.describe('List of credentials to set up'),
+			projectId: z
+				.string()
+				.optional()
+				.describe('Project ID to scope credential creation to. Defaults to personal project.'),
 		}),
 		outputSchema: z.object({
 			success: z.boolean(),
@@ -62,6 +66,7 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 					existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
 				}),
 			),
+			projectId: z.string().optional(),
 		}),
 		resumeSchema: z.object({
 			approved: z.boolean(),
@@ -95,6 +100,7 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 							: `Select or create credentials: ${typeNames}`,
 					severity: 'info' as const,
 					credentialRequests,
+					...(input.projectId ? { projectId: input.projectId } : {}),
 				});
 				// suspend() never resolves
 				return { success: false };
