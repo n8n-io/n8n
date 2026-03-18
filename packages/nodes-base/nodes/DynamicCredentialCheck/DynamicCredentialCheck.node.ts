@@ -21,6 +21,7 @@ export class DynamicCredentialCheck implements INodeType {
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 		outputNames: ['Ready', 'Not Ready'],
+		sensitiveOutputFields: ['credentials[*].authorizationUrl', 'credentials[*].revokeUrl'],
 		properties: [],
 	};
 
