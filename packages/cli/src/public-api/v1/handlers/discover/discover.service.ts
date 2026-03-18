@@ -1,5 +1,6 @@
 import type { ApiKeyScope } from '@n8n/permissions';
 import path from 'path';
+import RefParser from '@apidevtools/json-schema-ref-parser';
 
 import type { ScopeTaggedMiddleware } from '../../shared/middlewares/global.middleware';
 
@@ -69,83 +70,12 @@ function extractScopeFromHandler(handlerChain: unknown[]): ApiKeyScope | null {
 	return null;
 }
 
-interface YAMLLoader {
-	load: (p: string) => unknown;
-}
-
-interface ResolvedPath {
-	spec: Record<string, unknown>;
-	/** Directory the path spec was loaded from (for resolving relative $ref) */
-	baseDir: string;
-}
-
 /**
- * Resolve path operations from a path entry. The built openapi.yml has
- * $ref resolved inline (operations directly on the object), while the
- * source YAML uses $ref pointing to separate files.
- */
-function resolvePathSpec(
-	pathValue: Record<string, unknown>,
-	specDir: string,
-	YAML: YAMLLoader,
-): ResolvedPath {
-	if ('$ref' in pathValue && typeof pathValue.$ref === 'string') {
-		const refPath = path.join(specDir, pathValue.$ref);
-		const loaded = YAML.load(refPath);
-		if (!isRecord(loaded)) return { spec: {}, baseDir: specDir };
-		return { spec: loaded, baseDir: path.dirname(refPath) };
-	}
-	return { spec: pathValue, baseDir: specDir };
-}
-
-const COMPONENTS_SCHEMA_PREFIX = '#/components/schemas/';
-
-/**
- * Recursively resolve all `$ref: '#/components/schemas/<name>'` references
- * within a schema object, inlining the resolved definitions. This handles
- * nested refs (e.g. workflow → nodes → node) so the returned schema is
- * fully self-contained. A `seen` set prevents circular reference loops.
- */
-export function resolveRefs(
-	obj: Record<string, unknown>,
-	componentSchemas: Record<string, unknown>,
-	seen = new Set<string>(),
-): Record<string, unknown> {
-	if (typeof obj.$ref === 'string' && obj.$ref.startsWith(COMPONENTS_SCHEMA_PREFIX)) {
-		const name = obj.$ref.slice(COMPONENTS_SCHEMA_PREFIX.length);
-		if (seen.has(name)) return { type: 'object', description: `(circular: ${name})` };
-		const resolved = componentSchemas[name];
-		if (isRecord(resolved)) {
-			seen.add(name);
-			return resolveRefs(resolved, componentSchemas, seen);
-		}
-		return obj;
-	}
-
-	const result: Record<string, unknown> = {};
-	for (const [key, value] of Object.entries(obj)) {
-		if (isRecord(value)) {
-			result[key] = resolveRefs(value, componentSchemas, new Set(seen));
-		} else if (Array.isArray(value)) {
-			result[key] = value.map((item): unknown =>
-				isRecord(item) ? resolveRefs(item, componentSchemas, new Set(seen)) : item,
-			);
-		} else {
-			result[key] = value;
-		}
-	}
-	return result;
-}
-
-/**
- * Extract the request body schema from an operation, resolving all $ref
- * references recursively so the returned schema is fully self-contained.
+ * Extract the request body schema from an operation.
+ * The spec is already fully dereferenced by RefParser.dereference().
  */
 function extractRequestSchema(
 	operation: Record<string, unknown>,
-	componentSchemas: Record<string, unknown>,
-	baseDir: string,
-	YAML: YAMLLoader,
 ): Record<string, unknown> | undefined {
 	if (!isRecord(operation.requestBody)) return undefined;
 	const content = operation.requestBody.content;
@@ -153,19 +83,7 @@ function extractRequestSchema(
 	const json = content['application/json'];
 	if (!isRecord(json)) return undefined;
 	const schema = json.schema;
-	if (!isRecord(schema)) return undefined;
-
-	// Source spec: relative file $ref (e.g. '../schemas/credential.yml')
-	if (typeof schema.$ref === 'string' && !schema.$ref.startsWith('#')) {
-		try {
-			const loaded = YAML.load(path.join(baseDir, schema.$ref));
-			if (isRecord(loaded)) return resolveRefs(loaded, componentSchemas);
-		} catch {
-			return undefined;
-		}
-	}
-
-	return resolveRefs(schema, componentSchemas);
+	return isRecord(schema) ? schema : undefined;
 }
 
 async function parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
@@ -176,33 +94,22 @@ async function parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 }
 
 async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
-	const { default: YAML } = await import('yamljs');
+	const specPath = path.join(__dirname, '..', '..', 'openapi.yml');
+	const publicApiRoot = path.join(__dirname, '..', '..', '..');
 
-	const specDir = path.join(__dirname, '..', '..');
-	const publicApiRoot = path.join(specDir, '..');
-	const loaded = YAML.load(path.join(specDir, 'openapi.yml'));
-	if (!isRecord(loaded) || !isRecord(loaded.paths)) return [];
+	// Load and fully dereference the spec in one operation
+	const spec = await RefParser.dereference(specPath);
 
-	const componentSchemas =
-		isRecord(loaded.components) && isRecord(loaded.components.schemas)
-			? loaded.components.schemas
-			: {};
+	if (!isRecord(spec) || !isRecord(spec.paths)) return [];
 
 	const endpoints: EndpointInfo[] = [];
 	const handlerCache = new Map<string, Record<string, unknown>>();
 
-	for (const [pathKey, pathValue] of Object.entries(loaded.paths)) {
+	for (const [pathKey, pathValue] of Object.entries(spec.paths)) {
 		if (!isRecord(pathValue)) continue;
 
-		let resolved: ResolvedPath;
-		try {
-			resolved = resolvePathSpec(pathValue, specDir, YAML);
-		} catch {
-			continue;
-		}
-
 		for (const method of HTTP_METHODS) {
-			const operation = resolved.spec[method];
+			const operation = pathValue[method];
 			if (!isRecord(operation)) continue;
 
 			const operationId = operation['x-eov-operation-id'];
@@ -231,12 +138,7 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 				? extractScopeFromHandler(middlewareChain)
 				: null;
 
-			const requestSchema = extractRequestSchema(
-				operation,
-				componentSchemas,
-				resolved.baseDir,
-				YAML,
-			);
+			const requestSchema = extractRequestSchema(operation);
 
 			endpoints.push({
 				method: method.toUpperCase(),
