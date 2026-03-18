@@ -16,6 +16,7 @@ import {
 	buildAgentOutcome,
 	buildMetrics,
 	buildVerificationArtifactFromMessages,
+	extractWorkflowIdsFromMessages,
 	cleanupEvalArtifacts,
 	snapshotWorkflowIds,
 	runPostBuildExecutions,
@@ -121,7 +122,13 @@ export async function runSingleExample(
 			// SSE promise rejects on abort — expected
 		});
 
-		// 7. Build metrics and outcome (diff workflows against pre-run snapshot)
+		// 7. Fetch thread messages and build metrics/outcome
+		if (config.verbose) {
+			log(`[${threadId}] Fetching thread messages...`);
+		}
+		const threadMessages = await config.n8nClient.getThreadMessages(threadId);
+		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
+
 		const metrics = buildMetrics(events, startTime);
 		const eventOutcome = extractOutcomeFromEvents(events);
 		const outcome = await buildAgentOutcome(
@@ -130,6 +137,20 @@ export async function runSingleExample(
 			preRunWorkflowIds,
 			config.claimedWorkflowIds,
 		);
+
+		// Filter outcome to only include workflows referenced in the thread messages.
+		// This prevents cross-run workflow attribution from snapshot diffing.
+		if (messageWorkflowIds.length > 0) {
+			const messageWfSet = new Set(messageWorkflowIds);
+			outcome.workflowsCreated = outcome.workflowsCreated.filter((wf) => messageWfSet.has(wf.id));
+			outcome.workflowJsons = outcome.workflowJsons.filter(
+				(wf) => typeof wf.id === 'string' && messageWfSet.has(wf.id),
+			);
+		} else if (eventOutcome.workflowIds.length === 0) {
+			// No workflows referenced in messages or SSE events — clear any snapshot-diff artifacts
+			outcome.workflowsCreated = [];
+			outcome.workflowJsons = [];
+		}
 
 		if (config.verbose && outcome.workflowsCreated.length > 0) {
 			log(
@@ -183,11 +204,7 @@ export async function runSingleExample(
 			}
 		}
 
-		// 8. Build verification artifact from rich messages (structured tool results)
-		if (config.verbose) {
-			log(`[${threadId}] Fetching thread messages for artifact...`);
-		}
-		const threadMessages = await config.n8nClient.getThreadMessages(threadId);
+		// 8. Build verification artifact from rich messages
 		const verificationArtifact = buildVerificationArtifactFromMessages(
 			threadMessages.messages,
 			outcome,

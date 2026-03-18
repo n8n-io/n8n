@@ -527,6 +527,34 @@ export function buildVerificationArtifact(
 }
 
 // ---------------------------------------------------------------------------
+// extractWorkflowIdsFromMessages
+//
+// Extracts workflow IDs from agent tree targetResource fields.
+// Thread-scoped — avoids cross-run workflow attribution.
+// ---------------------------------------------------------------------------
+
+export function extractWorkflowIdsFromMessages(messages: InstanceAiMessage[]): string[] {
+	const ids = new Set<string>();
+
+	for (const message of messages) {
+		if (message.role === 'assistant' && message.agentTree) {
+			collectWorkflowIds(message.agentTree, ids);
+		}
+	}
+
+	return [...ids];
+}
+
+function collectWorkflowIds(node: InstanceAiAgentNode, ids: Set<string>): void {
+	if (node.targetResource?.type === 'workflow' && node.targetResource.id) {
+		ids.add(node.targetResource.id);
+	}
+	for (const child of node.children) {
+		collectWorkflowIds(child, ids);
+	}
+}
+
+// ---------------------------------------------------------------------------
 // buildVerificationArtifactFromMessages
 //
 // Builds the verification artifact from the rich messages endpoint response

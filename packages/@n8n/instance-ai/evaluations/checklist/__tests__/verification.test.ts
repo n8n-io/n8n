@@ -4,7 +4,10 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 
-import { buildVerificationArtifactFromMessages } from '../verification';
+import {
+	buildVerificationArtifactFromMessages,
+	extractWorkflowIdsFromMessages,
+} from '../verification';
 import type { AgentOutcome } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -300,5 +303,81 @@ describe('buildVerificationArtifactFromMessages', () => {
 
 		expect(artifact).toContain('Fallback text content.');
 		expect(artifact).toContain('search-docs');
+	});
+});
+
+describe('extractWorkflowIdsFromMessages', () => {
+	test('extracts workflow IDs from targetResource on root agent', () => {
+		const messages: InstanceAiMessage[] = [
+			makeMessage({
+				role: 'assistant',
+				agentTree: makeAgentNode({
+					targetResource: { type: 'workflow', id: 'wf-1', name: 'My WF' },
+				}),
+			}),
+		];
+
+		expect(extractWorkflowIdsFromMessages(messages)).toEqual(['wf-1']);
+	});
+
+	test('extracts workflow IDs from child agents', () => {
+		const messages: InstanceAiMessage[] = [
+			makeMessage({
+				role: 'assistant',
+				agentTree: makeAgentNode({
+					children: [
+						makeAgentNode({
+							agentId: 'child-1',
+							targetResource: { type: 'workflow', id: 'wf-child', name: 'Child WF' },
+						}),
+					],
+				}),
+			}),
+		];
+
+		expect(extractWorkflowIdsFromMessages(messages)).toEqual(['wf-child']);
+	});
+
+	test('returns empty array when no workflows referenced', () => {
+		const messages: InstanceAiMessage[] = [
+			makeMessage({
+				role: 'assistant',
+				agentTree: makeAgentNode({ textContent: 'Just text, no workflows.' }),
+			}),
+		];
+
+		expect(extractWorkflowIdsFromMessages(messages)).toEqual([]);
+	});
+
+	test('ignores non-workflow targetResources', () => {
+		const messages: InstanceAiMessage[] = [
+			makeMessage({
+				role: 'assistant',
+				agentTree: makeAgentNode({
+					targetResource: { type: 'data-table', id: 'dt-1', name: 'Table' },
+				}),
+			}),
+		];
+
+		expect(extractWorkflowIdsFromMessages(messages)).toEqual([]);
+	});
+
+	test('deduplicates workflow IDs', () => {
+		const messages: InstanceAiMessage[] = [
+			makeMessage({
+				role: 'assistant',
+				agentTree: makeAgentNode({
+					targetResource: { type: 'workflow', id: 'wf-1' },
+					children: [
+						makeAgentNode({
+							agentId: 'child-1',
+							targetResource: { type: 'workflow', id: 'wf-1' },
+						}),
+					],
+				}),
+			}),
+		];
+
+		expect(extractWorkflowIdsFromMessages(messages)).toEqual(['wf-1']);
 	});
 });
