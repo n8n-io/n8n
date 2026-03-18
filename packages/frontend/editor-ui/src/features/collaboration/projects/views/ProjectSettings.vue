@@ -27,6 +27,7 @@ import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioni
 import { N8nAlert } from '@n8n/design-system';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 import {
 	N8nButton,
@@ -55,6 +56,9 @@ const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
+
+const sourceControlStore = useSourceControlStore();
+const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
 const canUpdateProject = computed(
 	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.update,
@@ -559,7 +563,7 @@ onMounted(async () => {
 						>{{ i18n.baseText('projects.settings.button.cancel') }}</N8nButton
 					>
 					<N8nButton
-						:disabled="!isValid || !isDirty"
+						:disabled="readOnlyEnv || !isValid || !isDirty"
 						variant="solid"
 						data-test-id="project-settings-save-button"
 						@click.stop.prevent="onSubmit"
@@ -576,6 +580,7 @@ onMounted(async () => {
 						<N8nIconPicker
 							v-model="projectIcon"
 							:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
+							:disabled="readOnlyEnv"
 							@update:model-value="onIconUpdated"
 						/>
 						<N8nFormInput
@@ -586,6 +591,7 @@ onMounted(async () => {
 							type="text"
 							name="name"
 							required
+							:disabled="readOnlyEnv"
 							data-test-id="project-settings-name-input"
 							:class="$style.projectNameInput"
 							@enter="onSubmit"
@@ -606,6 +612,7 @@ onMounted(async () => {
 						type="textarea"
 						:maxlength="512"
 						:autosize="true"
+						:disabled="readOnlyEnv"
 						data-test-id="project-settings-description-input"
 						:class="$style.projectDescriptionInput"
 						@enter="onSubmit"
@@ -689,6 +696,7 @@ onMounted(async () => {
 						variant="subtle"
 						size="large"
 						native-type="button"
+						:disabled="readOnlyEnv"
 						data-test-id="project-settings-delete-button"
 						@click.stop.prevent="onDelete"
 						>{{ i18n.baseText('projects.settings.danger.deleteProject') }}</N8nButton

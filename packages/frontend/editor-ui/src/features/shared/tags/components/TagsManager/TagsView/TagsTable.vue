@@ -13,10 +13,12 @@ interface Props {
 	newName: string;
 	isSaving: boolean;
 	usageColumnTitleLocaleKey: BaseTextKey;
+	readOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	usageColumnTitleLocaleKey: 'tagsTable.usage',
+	readOnly: false,
 });
 
 const emit = defineEmits<{
@@ -219,7 +221,7 @@ onMounted(() => {
 							@click.stop="apply"
 						/>
 					</div>
-					<div v-else-if="!scope.row.disable" :class="[$style.ops, $style.main]">
+					<div v-else-if="!scope.row.disable && !readOnly" :class="[$style.ops, $style.main]">
 						<N8nIconButton
 							:title="i18n.baseText('tagsTable.editTag')"
 							icon="pen"

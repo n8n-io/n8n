@@ -20,6 +20,7 @@ interface TagsManagerProps {
 	noTagsCreateLocaleKey?: BaseTextKey;
 	tags: ITag[];
 	isLoading: boolean;
+	readOnly?: boolean;
 	onFetchTags: () => Promise<void>;
 	onCreateTag: (name: string) => Promise<ITag>;
 	onUpdateTag: (id: string, name: string) => Promise<ITag>;
@@ -33,6 +34,7 @@ const props = withDefaults(defineProps<TagsManagerProps>(), {
 	noTagsTitleLocaleKey: 'noTagsView.readyToOrganizeYourWorkflows',
 	noTagsDescriptionLocaleKey: 'noTagsView.withWorkflowTagsYouReFree',
 	noTagsCreateLocaleKey: 'noTagsView.createTag',
+	readOnly: false,
 });
 
 const emit = defineEmits<{
@@ -163,6 +165,7 @@ function onEnter() {
 				<TagsView
 					v-if="hasTags || isCreating"
 					:is-loading="isLoading"
+					:read-only="readOnly"
 					:tags="tags"
 					:usage-locale-key="usageLocaleKey"
 					:usage-column-title-locale-key="usageColumnTitleLocaleKey"
@@ -176,6 +179,7 @@ function onEnter() {
 					:title-locale-key="noTagsTitleLocaleKey"
 					:description-locale-key="noTagsDescriptionLocaleKey"
 					:create-locale-key="noTagsCreateLocaleKey"
+					:read-only="readOnly"
 					@enable-create="onEnableCreate"
 				/>
 			</ElRow>

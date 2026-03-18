@@ -8,12 +8,14 @@ type Props = {
 	titleLocaleKey: BaseTextKey;
 	descriptionLocaleKey: BaseTextKey;
 	createLocaleKey: BaseTextKey;
+	readOnly?: boolean;
 };
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
 	titleLocaleKey: 'noTagsView.readyToOrganizeYourWorkflows',
 	descriptionLocaleKey: 'noTagsView.withWorkflowTagsYouReFree',
 	createLocaleKey: 'noTagsView.createTag',
+	readOnly: false,
 });
 
 const i18n = useI18n();
@@ -35,6 +37,7 @@ const i18n = useI18n();
 				<N8nButton
 					:label="i18n.baseText(`${createLocaleKey}`)"
 					size="large"
+					:disabled="props.readOnly"
 					@click="$emit('enableCreate')"
 				/>
 			</div>

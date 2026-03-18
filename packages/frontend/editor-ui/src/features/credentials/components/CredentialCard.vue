@@ -69,14 +69,18 @@ const actions = computed(() => {
 		},
 	];
 
-	if (credentialPermissions.value.delete) {
+	if (credentialPermissions.value.delete && !props.readOnly) {
 		items.push({
 			label: locale.baseText('credentials.item.delete'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
 		});
 	}
 
-	if (credentialPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
+	if (
+		credentialPermissions.value.move &&
+		projectsStore.isTeamProjectFeatureEnabled &&
+		!props.readOnly
+	) {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,

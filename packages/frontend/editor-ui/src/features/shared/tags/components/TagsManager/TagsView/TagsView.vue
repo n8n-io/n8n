@@ -16,10 +16,12 @@ const props = withDefaults(
 		usageLocaleKey?: BaseTextKey;
 		tags: ITag[];
 		isLoading: boolean;
+		readOnly?: boolean;
 	}>(),
 	{
 		usageColumnTitleLocaleKey: 'tagsTable.usage',
 		usageLocaleKey: 'tagsView.inUse',
+		readOnly: false,
 	},
 );
 
@@ -79,7 +81,11 @@ const onSearchChange = (searchValue: string): void => {
 };
 
 const isHeaderDisabled = (): boolean => {
-	return props.isLoading || !!(isCreateEnabled.value || updateId.value || deleteId.value);
+	return (
+		props.readOnly ||
+		props.isLoading ||
+		!!(isCreateEnabled.value || updateId.value || deleteId.value)
+	);
 };
 
 const onUpdateEnable = (updateIdValue: string): void => {
@@ -188,6 +194,7 @@ const cancelOperation = (): void => {
 			:is-loading="isLoading"
 			:is-saving="isSaving"
 			:new-name="newName"
+			:read-only="readOnly"
 			:usage-column-title-locale-key="usageColumnTitleLocaleKey"
 			data-test-id="tags-table"
 			@new-name-change="onNewNameChange"

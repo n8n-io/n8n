@@ -430,7 +430,10 @@ onMounted(() => {
 								size="small"
 								data-test-id="variable-row-edit-button"
 								class="mr-xs"
-								:disabled="!(globalPermissions.update ?? projectPermissions.update)"
+								:disabled="
+									sourceControlStore.preferences.branchReadOnly ||
+									!(globalPermissions.update ?? projectPermissions.update)
+								"
 								@click="openEditVariableModal(data)"
 							>
 								{{ i18n.baseText('variables.row.button.edit') }}
@@ -447,7 +450,10 @@ onMounted(() => {
 								variant="subtle"
 								size="small"
 								data-test-id="variable-row-delete-button"
-								:disabled="!(globalPermissions.delete ?? projectPermissions.delete)"
+								:disabled="
+									sourceControlStore.preferences.branchReadOnly ||
+									!(globalPermissions.delete ?? projectPermissions.delete)
+								"
 								@click="handleDeleteVariable(data)"
 							>
 								{{ i18n.baseText('variables.row.button.delete') }}

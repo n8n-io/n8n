@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useTagsStore } from '../../tags.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import TagsManager from './TagsManager.vue';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { TAGS_MANAGER_MODAL_KEY } from '../../tags.constants';
@@ -11,8 +12,11 @@ const i18n = useI18n();
 const { showError, showMessage } = useToast();
 const tagsStore = useTagsStore();
 
+const sourceControlStore = useSourceControlStore();
+
 const tags = computed(() => tagsStore.allTags);
 const isLoading = computed(() => tagsStore.isLoading);
+const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
 async function fetchTags() {
 	try {
@@ -94,6 +98,7 @@ async function deleteTag(id: string): Promise<boolean> {
 		:modal-key="TAGS_MANAGER_MODAL_KEY"
 		:tags="tags"
 		:is-loading="isLoading"
+		:read-only="readOnlyEnv"
 		:on-fetch-tags="fetchTags"
 		:on-create-tag="createTag"
 		:on-update-tag="updateTag"
