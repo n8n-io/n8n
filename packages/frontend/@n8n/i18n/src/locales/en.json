@@ -5141,5 +5141,6 @@
 	"instanceAi.filesystem.connectWaiting": "Connecting...",
 	"instanceAi.filesystem.copied": "Copied!",
 	"instanceAi.filesystem.setupCommand": "Run in your terminal to connect:",
-	"projects.menu.instanceAi": "Instance AI"
+	"projects.menu.instanceAi": "Instance AI",
+	"chatInputBase.button.attach": "Attach files"
 }
