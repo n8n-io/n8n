@@ -8,11 +8,6 @@ const sharedLoaderMock = vi.hoisted(() => ({
 }));
 
 vi.mock('./lucideIconLoader', () => sharedLoaderMock);
-vi.mock('@iconify/json/json/lucide.json', () => ({
-	default: {
-		icons: {},
-	},
-}));
 
 import Icon from './Icon.vue';
 import { deprecatedIconSet, type IconName } from './icons';

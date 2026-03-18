@@ -26,14 +26,6 @@ vi.mock('./lucideIconData', () => ({
 	lucideCategories: ['design'],
 }));
 
-vi.mock('@iconify/json/json/lucide.json', () => ({
-	default: {
-		icons: Object.fromEntries(
-			Object.keys(largeLucideIconSet).map((name) => [name, { body: `<path data-icon="${name}" />` }]),
-		),
-	},
-}));
-
 vi.mock('./emojiData', () => ({
 	emojiSections: [
 		{
@@ -83,11 +75,15 @@ describe('IconPicker virtualization', () => {
 		await fireEvent.click(getByTestId('icon-picker-button'));
 
 		await waitFor(() => {
-			expect(document.querySelectorAll('[data-test-id="icon-picker-icon"]').length).toBeGreaterThan(0);
+			expect(document.querySelectorAll('[data-test-id="icon-picker-icon"]').length).toBeGreaterThan(
+				0,
+			);
 		});
 
 		await waitFor(() => {
-			expect(document.querySelectorAll('[data-test-id="icon-picker-icon"]').length).toBeLessThan(35);
+			expect(document.querySelectorAll('[data-test-id="icon-picker-icon"]').length).toBeLessThan(
+				35,
+			);
 		});
 		expect(sharedLoaderMock.loadLucideIconBodies).toHaveBeenCalled();
 	});
@@ -110,11 +106,15 @@ describe('IconPicker virtualization', () => {
 		await fireEvent.update(searchInput, 'icon');
 
 		await waitFor(() => {
-			expect(document.querySelectorAll('[data-test-id="icon-picker-icon"]').length).toBeGreaterThan(0);
+			expect(document.querySelectorAll('[data-test-id="icon-picker-icon"]').length).toBeGreaterThan(
+				0,
+			);
 		});
 
 		await waitFor(() => {
-			expect(document.querySelectorAll('[data-test-id="icon-picker-icon"]').length).toBeLessThan(35);
+			expect(document.querySelectorAll('[data-test-id="icon-picker-icon"]').length).toBeLessThan(
+				35,
+			);
 		});
 	});
 });

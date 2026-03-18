@@ -96,6 +96,7 @@ const handleClick = (event: MouseEvent) => {
 		:aria-busy="loading || undefined"
 		:tabindex="componentTag === 'a' && isDisabled ? -1 : undefined"
 		:class="classes"
+		:data-icon-only="iconOnly ? 'true' : undefined"
 		aria-live="polite"
 		@click="handleClick"
 	>
@@ -108,7 +109,7 @@ const handleClick = (event: MouseEvent) => {
 		</Transition>
 
 		<div :class="$style['button-inner']">
-			<slot name="icon">
+			<slot name="icon" v-if="!loading">
 				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
 			</slot>
 

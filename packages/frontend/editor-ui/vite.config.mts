@@ -10,6 +10,7 @@ import { codecovVitePlugin } from '@codecov/vite-plugin';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
+import { viteLucideBodiesPlugin } from '../@n8n/design-system/vite/viteLucideBodiesPlugin';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
 import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
@@ -90,6 +91,7 @@ const { RELEASE: release } = process.env;
 
 const plugins: UserConfig['plugins'] = [
 	nodePopularityPlugin(),
+	viteLucideBodiesPlugin(),
 	icons({
 		compiler: 'vue3',
 		autoInstall: true,

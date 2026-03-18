@@ -21,6 +21,7 @@
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache"
   },
   "devDependencies": {
+    "@iconify/json": "^2.2.349",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
