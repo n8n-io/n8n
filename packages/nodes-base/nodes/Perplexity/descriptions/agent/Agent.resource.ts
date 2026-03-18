@@ -24,7 +24,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '/v1/responses',
+						url: '/v1/agent',
 					},
 					output: {
 						postReceive: [agentErrorPostReceive],

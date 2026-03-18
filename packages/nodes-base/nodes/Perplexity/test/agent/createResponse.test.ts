@@ -12,7 +12,7 @@ describe('Perplexity Node - Agent Create Response', () => {
 	beforeEach(() => {
 		nock.disableNetConnect();
 		nock('https://api.perplexity.ai')
-			.post('/v1/responses', (body) => {
+			.post('/v1/agent', (body) => {
 				return typeof body?.input === 'string';
 			})
 			.reply(200, {
