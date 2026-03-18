@@ -389,6 +389,33 @@ describe('instanceAi.reducer', () => {
 				message: 'Are you sure?',
 			});
 		});
+
+		test('confirmation-request passes through projectId when present', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'setup-credentials'));
+			handleEvent(state, {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					requestId: 'req-2',
+					toolCallId: 'tc-1',
+					toolName: 'setup-credentials',
+					args: {},
+					severity: 'info',
+					message: 'Select credentials',
+					projectId: 'proj-789',
+				},
+			});
+
+			const tc = state.messages[0].agentTree!.toolCalls[0];
+			expect(tc.confirmation).toEqual({
+				requestId: 'req-2',
+				severity: 'info',
+				message: 'Select credentials',
+				projectId: 'proj-789',
+			});
+		});
 	});
 
 	// -----------------------------------------------------------------------

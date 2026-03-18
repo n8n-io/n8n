@@ -45,6 +45,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				.string()
 				.optional()
 				.describe('Existing workflow ID to update (omit to create new)'),
+			projectId: z
+				.string()
+				.optional()
+				.describe('Project ID to create the workflow in. Defaults to personal project.'),
 			name: z.string().optional().describe('Workflow name (required for new workflows)'),
 		}),
 		outputSchema: z.object({
@@ -64,7 +68,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			approved: z.boolean(),
 		}),
 		execute: async (input, ctx) => {
-			const { code, patches, workflowId, name } = input;
+			const { code, patches, workflowId, projectId, name } = input;
 			const { resumeData, suspend } = ctx?.agent ?? {};
 			let finalCode: string;
 
@@ -196,8 +200,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			try {
+				const opts = projectId ? { projectId } : undefined;
 				if (workflowId) {
-					const updated = await context.workflowService.updateFromWorkflowJSON(workflowId, json);
+					const updated = await context.workflowService.updateFromWorkflowJSON(
+						workflowId,
+						json,
+						opts,
+					);
 					return {
 						success: true,
 						workflowId: updated.id,
@@ -207,7 +216,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 								: undefined,
 					};
 				} else {
-					const created = await context.workflowService.createFromWorkflowJSON(json);
+					const created = await context.workflowService.createFromWorkflowJSON(json, opts);
 					return {
 						success: true,
 						workflowId: created.id,
