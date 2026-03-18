@@ -162,8 +162,13 @@ export class RoleRepository extends Repository<Role> {
 		});
 	}
 
-	async findBySlugs(slugs: string[], roleType: 'global' | 'project' | 'workflow' | 'credential') {
-		return await this.find({
+	async findBySlugs(
+		slugs: string[],
+		roleType: 'global' | 'project' | 'workflow' | 'credential',
+		em?: EntityManager,
+	) {
+		const manager = em ?? this.manager;
+		return await manager.find(Role, {
 			where: { slug: In(slugs), roleType },
 			relations: ['scopes'],
 		});

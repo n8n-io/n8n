@@ -219,6 +219,10 @@ export class SamlService {
 	}> {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 
+		// Pre-warm provisioning config cache before entering any transaction,
+		// to avoid a DB query inside the transaction exhausting the connection pool.
+		await this.provisioningService.getConfig();
+
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
 

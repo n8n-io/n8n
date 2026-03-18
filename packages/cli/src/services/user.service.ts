@@ -294,10 +294,9 @@ export class UserService {
 	}
 
 	async changeUserRole(user: User, newRole: RoleChangeRequestDto, outerTrx?: EntityManager) {
-		// Check that new role exists
-		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
-
 		const runInTransaction = async (trx: EntityManager) => {
+			// Check that new role exists (using trx to avoid acquiring a second connection)
+			await this.roleService.checkRolesExist([newRole.newRoleName], 'global', trx);
 			await trx.update(User, { id: user.id }, { role: { slug: newRole.newRoleName } });
 
 			const isAdminRole = (roleName: string) => {

@@ -270,6 +270,10 @@ export class OidcService {
 			throw new BadRequestError('Invalid email format');
 		}
 
+		// Pre-warm provisioning config cache before entering any transaction,
+		// to avoid a DB query inside the transaction exhausting the connection pool.
+		await this.provisioningService.getConfig();
+
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
 			relations: {

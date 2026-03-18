@@ -226,9 +226,10 @@ export class RoleService {
 	async checkRolesExist(
 		roleSlugs: string[],
 		roleType: 'global' | 'project' | 'workflow' | 'credential',
+		trx?: EntityManager,
 	) {
 		const uniqueRoleSlugs = new Set(roleSlugs);
-		const roles = await this.roleRepository.findBySlugs(Array.from(uniqueRoleSlugs), roleType);
+		const roles = await this.roleRepository.findBySlugs(Array.from(uniqueRoleSlugs), roleType, trx);
 
 		if (roles.length < uniqueRoleSlugs.size) {
 			const nonExistentRoles = Array.from(uniqueRoleSlugs).filter(
