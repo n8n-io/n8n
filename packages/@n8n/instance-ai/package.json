@@ -37,7 +37,7 @@
     "@n8n/workflow-sdk": "workspace:*",
     "nanoid": "catalog:",
     "zod": "catalog:",
-    "@mozilla/readability": "^0.5.0",
+    "@mozilla/readability": "^0.6.0",
     "turndown": "^7.2.0",
     "@joplin/turndown-plugin-gfm": "^1.0.12",
     "linkedom": "^0.18.9",

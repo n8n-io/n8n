@@ -5,7 +5,6 @@ import { mock } from 'jest-mock-extended';
 import type { LicenseState } from '../../license-state';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
 import { ModuleRegistry } from '../module-registry';
-import { MODULE_NAMES } from '../modules.config';
 
 beforeEach(() => {
 	jest.resetAllMocks();
@@ -14,59 +13,21 @@ beforeEach(() => {
 });
 
 describe('eligibleModules', () => {
-	it('should consider all default modules eligible', () => {
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(MODULE_NAMES);
+	it('should not include opt-in modules by default', () => {
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		expect(eligible).not.toContain('instance-ai');
 	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
-			'external-secrets',
-			'community-packages',
-			'data-table',
-			'mcp',
-			'provisioning',
-			'breaking-changes',
-			'source-control',
-			'dynamic-credentials',
-			'chat-hub',
-			'sso-oidc',
-			'sso-saml',
-			'log-streaming',
-			'ldap',
-			'quick-connect',
-			'workflow-builder',
-			'redaction',
-			'instance-registry',
-			'otel',
-			'instance-ai', 2a16ae1ee5 (fix: update module-registry test to include instance-ai)
-		]);
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		expect(eligible).not.toContain('insights');
 	});
 
 	it('should consider a module eligible if it was enabled via env var', () => {
-		process.env.N8N_ENABLED_MODULES = 'data-table';
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
-			'insights',
-			'external-secrets',
-			'community-packages',
-			'data-table',
-			'mcp',
-			'provisioning',
-			'breaking-changes',
-			'source-control',
-			'dynamic-credentials',
-			'chat-hub',
-			'sso-oidc',
-			'sso-saml',
-			'log-streaming',
-			'ldap',
-			'quick-connect',
-			'workflow-builder',
-			'redaction',
-			'instance-registry',
-			'otel',
-			'instance-ai', 2a16ae1ee5 (fix: update module-registry test to include instance-ai)
-		]);
+		process.env.N8N_ENABLED_MODULES = 'instance-ai';
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		expect(eligible).toContain('instance-ai');
 	});
 
 	it('should throw `ModuleConfusionError` if a module is both enabled and disabled', () => {

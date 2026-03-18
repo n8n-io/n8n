@@ -49,7 +49,6 @@ export class ModuleRegistry {
 		'redaction',
 		'instance-registry',
 		'otel',
-		'instance-ai',
 	];
 
 	private readonly activeModules: string[] = [];
