@@ -79,23 +79,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
-          # registry-url is required for the NODE_AUTH_TOKEN / OIDC exchange.
-          registry-url: 'https://registry.npmjs.org/'
           cache: '{{packageManager.name}}'
 
       - name: Install dependencies
         run: '{{packageManager.name}} {{packageManager.installCommand}}'
 
       - name: Release
-        # `npm run release` detects the GitHub Actions environment and publishes
-        # to npm with a provenance attestation (requires id-token: write above).
+        # Publishes to npm with a provenance attestation (requires id-token: write above).
         # Lint and build run automatically as part of the release process.
         #
-        # NODE_AUTH_TOKEN   Works for both auth options:
-        #   Option A (OIDC): Leave NPM_TOKEN secret unset. setup-node writes
-        #                    an .npmrc using this variable; when it is empty,
-        #                    npm falls through to the OIDC exchange automatically.
-        #   Option B (token): Set NPM_TOKEN in repo secrets and it is used here.
-        run: '{{packageManager.name}} run release'
+        # Option A (OIDC): leave NPM_TOKEN unset — the token step is skipped and
+        #   npm uses the OIDC exchange instead.
+        # Option B (token): set NPM_TOKEN in repo secrets — it is written to
+        #   .npmrc here before publishing.
+        run: |
+          [ -n "$NPM_TOKEN" ] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          {{packageManager.name}} run release
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
