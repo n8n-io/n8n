@@ -28,6 +28,7 @@ import type {
 	WaitingWebhookRequest,
 } from './webhook.types';
 
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
@@ -295,6 +296,16 @@ export class WaitingWebhooks implements IWebhookManager {
 
 				(error: Error | null, data: object) => {
 					if (error !== null) {
+						if (
+							error instanceof ExecutionAlreadyResumingError ||
+							error.cause instanceof ExecutionAlreadyResumingError
+						) {
+							return reject(
+								new ConflictError(
+									`The execution "${executionId}" is already being resumed.`,
+								),
+							);
+						}
 						return reject(error);
 					}
 					resolve(data);
