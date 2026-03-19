@@ -15,6 +15,7 @@ import type { CredentialsEntity } from './credentials-entity';
 export type CredentialDependencyType = 'externalSecretProvider';
 
 @Entity({ name: 'credential_dependency' })
+@Index(['dependencyType', 'dependencyId'])
 @Unique(['credentialId', 'dependencyType', 'dependencyId'])
 export class CredentialDependency extends WithCreatedAt {
 	@PrimaryGeneratedColumn()
