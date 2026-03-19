@@ -77,14 +77,12 @@ export async function postConfirmation(
 	autoSetup?: { credentialType: string },
 	userInput?: string,
 	domainAccessAction?: string,
-	mockCredentials?: boolean,
 ): Promise<void> {
 	const payload: InstanceAiConfirmResponse = {
 		approved,
 		...(credentialId ? { credentialId } : {}),
 		...(credentials ? { credentials } : {}),
 		...(autoSetup ? { autoSetup } : {}),
-		...(mockCredentials ? { mockCredentials } : {}),
 		...(userInput !== undefined ? { userInput } : {}),
 		...(domainAccessAction
 			? {

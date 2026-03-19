@@ -256,6 +256,7 @@ export {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
+	credentialFlowSchema,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -317,6 +318,7 @@ export type {
 	InstanceAiTargetResource,
 	DomainAccessAction,
 	DomainAccessMeta,
+	InstanceAiCredentialFlow,
 } from './schemas/instance-ai.schema';
 
 export {

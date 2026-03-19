@@ -153,6 +153,7 @@ function handleTextSkip() {
 			:credential-requests="props.toolCall.confirmation!.credentialRequests!"
 			:message="props.toolCall.confirmation!.message"
 			:project-id="props.toolCall.confirmation?.projectId"
+			:credential-flow="props.toolCall.confirmation?.credentialFlow"
 		/>
 
 		<!-- Text input prompt (ask-user HITL) -->

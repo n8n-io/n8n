@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiCredentialRequest } from '@n8n/api-types';
+import type { InstanceAiCredentialRequest, InstanceAiCredentialFlow } from '@n8n/api-types';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 
@@ -11,18 +11,20 @@ const props = defineProps<{
 	credentialRequests: InstanceAiCredentialRequest[];
 	message: string;
 	projectId?: string;
+	credentialFlow?: InstanceAiCredentialFlow;
 }>();
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+
+const isFinalize = computed(() => props.credentialFlow?.stage === 'finalize');
 
 // Track selected credential ID per type
 const selections = ref<Record<string, string | null>>(
 	Object.fromEntries(props.credentialRequests.map((r) => [r.credentialType, null])),
 );
 const isSubmitted = ref(false);
-const isSkipped = ref(false);
-const isDenied = ref(false);
+const isDeferred = ref(false);
 
 const allSelected = computed(() =>
 	props.credentialRequests.every((r) => selections.value[r.credentialType] !== null),
@@ -36,7 +38,7 @@ function handleCredentialDeselected(credentialType: string) {
 	selections.value[credentialType] = null;
 }
 
-function handleUseSelected() {
+function handleApply() {
 	isSubmitted.value = true;
 	const credentials: Record<string, string> = {};
 	for (const [type, id] of Object.entries(selections.value)) {
@@ -45,24 +47,9 @@ function handleUseSelected() {
 	void store.confirmAction(props.requestId, true, undefined, credentials);
 }
 
-function handleSkip() {
+function handleLater() {
 	isSubmitted.value = true;
-	isSkipped.value = true;
-	void store.confirmAction(
-		props.requestId,
-		false,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		true,
-	);
-}
-
-function handleDeny() {
-	isSubmitted.value = true;
-	isDenied.value = true;
+	isDeferred.value = true;
 	void store.confirmAction(props.requestId, false);
 }
 </script>
@@ -95,34 +82,39 @@ function handleDeny() {
 			</div>
 
 			<div :class="$style.actions">
-				<button :class="$style.denyButton" @click="handleDeny">
-					{{ i18n.baseText('instanceAi.credential.deny') }}
+				<button :class="$style.secondaryButton" @click="handleLater">
+					{{
+						i18n.baseText(
+							isFinalize ? 'instanceAi.credential.finalize.later' : 'instanceAi.credential.deny',
+						)
+					}}
 				</button>
-				<button :class="$style.skipButton" @click="handleSkip">
-					{{ i18n.baseText('instanceAi.credential.skipForNow') }}
-				</button>
-				<button
-					:class="$style.useSelectedButton"
-					:disabled="!allSelected"
-					@click="handleUseSelected"
-				>
-					{{ i18n.baseText('instanceAi.credential.useSelected') }}
+				<button :class="$style.primaryButton" :disabled="!allSelected" @click="handleApply">
+					{{
+						i18n.baseText(
+							isFinalize
+								? 'instanceAi.credential.finalize.applyCredentials'
+								: 'instanceAi.credential.useSelected',
+						)
+					}}
 				</button>
 			</div>
 		</template>
 
 		<div v-else :class="$style.submitted">
-			<template v-if="isDenied">
-				<N8nIcon icon="x" size="small" :class="$style.deniedIcon" />
-				<span>{{ i18n.baseText('instanceAi.credential.denied') }}</span>
-			</template>
-			<template v-else-if="isSkipped">
+			<template v-if="isDeferred">
 				<N8nIcon icon="arrow-right" size="small" :class="$style.skippedIcon" />
-				<span>{{ i18n.baseText('instanceAi.credential.skipped') }}</span>
+				<span>{{ i18n.baseText('instanceAi.credential.finalize.deferred') }}</span>
 			</template>
 			<template v-else>
 				<N8nIcon icon="check" size="small" :class="$style.successIcon" />
-				<span>{{ i18n.baseText('instanceAi.credential.allSelected') }}</span>
+				<span>{{
+					i18n.baseText(
+						isFinalize
+							? 'instanceAi.credential.finalize.applied'
+							: 'instanceAi.credential.allSelected',
+					)
+				}}</span>
 			</template>
 		</div>
 	</div>
@@ -181,8 +173,7 @@ function handleDeny() {
 	justify-content: flex-end;
 }
 
-.denyButton,
-.skipButton {
+.secondaryButton {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
@@ -198,7 +189,7 @@ function handleDeny() {
 	}
 }
 
-.useSelectedButton {
+.primaryButton {
 	padding: var(--spacing--4xs) var(--spacing--sm);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
@@ -232,9 +223,5 @@ function handleDeny() {
 
 .skippedIcon {
 	color: var(--color--text--tint-2);
-}
-
-.deniedIcon {
-	color: var(--color--danger);
 }
 </style>

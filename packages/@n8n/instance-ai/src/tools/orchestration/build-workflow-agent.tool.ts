@@ -29,9 +29,9 @@ import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import {
 	createSubmitWorkflowTool,
-	type CredentialMap,
 	type SubmitWorkflowAttempt,
 } from '../workflows/submit-workflow.tool';
 
@@ -75,6 +75,8 @@ function buildOutcome(
 		needsUserInput: false,
 		mockedNodeNames: attempt.mockedNodeNames,
 		mockedCredentialTypes: attempt.mockedCredentialTypes,
+		mockedCredentialsByNode: attempt.mockedCredentialsByNode,
+		verificationPinData: attempt.verificationPinData,
 		summary: finalText,
 	};
 }
@@ -127,15 +129,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			let credMap: CredentialMap | undefined;
 
 			if (useSandbox) {
-				credMap = new Map();
-				try {
-					const allCreds = await domainContext.credentialService.list();
-					for (const cred of allCreds) {
-						credMap.set(cred.type, { id: cred.id, name: cred.name });
-					}
-				} catch {
-					// Non-fatal — credentials will be unresolved (user adds in UI)
-				}
+				credMap = await buildCredentialMap(domainContext.credentialService);
 
 				// Sandbox mode: node discovery, credential/execution tools
 				// submit-workflow is created per-builder inside run: (needs the builder's workspace)

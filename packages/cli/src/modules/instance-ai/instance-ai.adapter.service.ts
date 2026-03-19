@@ -441,15 +441,19 @@ export class InstanceAiAdapterService {
 					userId: user.id,
 				};
 
-				// Merge workflow-level pinData (from mocked credentials) with trigger input pinData.
-				// Workflow pinData is set during build when credentials are mocked via pinned data.
+				// Merge pin data from three sources:
+				// 1. Workflow-level pinData (from the saved workflow)
+				// 2. Override pinData (passed by verify-built-workflow for mocked credential verification)
+				// 3. Trigger input pinData (from the inputData parameter)
 				const workflowPinData = workflow.pinData ?? {};
+				const overridePinData = options?.pinData
+					? (sdkPinDataToRuntime(options.pinData) ?? {})
+					: {};
+				const basePinData = { ...workflowPinData, ...overridePinData };
 
 				if (inputData && triggerNode) {
 					const triggerPinData = getPinDataForTrigger(triggerNode, inputData);
-					// Merge: trigger pinData takes precedence for the trigger node,
-					// workflow pinData provides mock data for credential-mocked nodes.
-					const mergedPinData = { ...workflowPinData, ...triggerPinData };
+					const mergedPinData = { ...basePinData, ...triggerPinData };
 
 					runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
 					runData.pinData = mergedPinData;
@@ -470,9 +474,8 @@ export class InstanceAiAdapterService {
 							waitingExecutionSource: {},
 						},
 					});
-				} else if (Object.keys(workflowPinData).length > 0) {
-					// No trigger input but workflow has mock pinData — include it in the run
-					runData.pinData = workflowPinData;
+				} else if (Object.keys(basePinData).length > 0) {
+					runData.pinData = basePinData;
 				}
 
 				const executionId = await workflowRunner.run(runData);

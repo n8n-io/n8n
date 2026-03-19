@@ -4,6 +4,7 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 } from '@n8n/api-types';
 import {
+	InstanceAiConfirmRequestDto,
 	instanceAiGatewayCapabilitiesSchema,
 	instanceAiFilesystemResponseSchema,
 	InstanceAiRenameThreadRequestDto,
@@ -195,32 +196,19 @@ export class InstanceAiController {
 	}
 
 	@Post('/confirm/:requestId')
-	async confirm(req: AuthenticatedRequest, _res: Response, @Param('requestId') requestId: string) {
-		const {
-			approved,
-			credentialId,
-			credentials,
-			autoSetup,
-			mockCredentials,
-			userInput,
-			domainAccessAction,
-		} = req.body as {
-			approved: boolean;
-			credentialId?: string;
-			credentials?: Record<string, string>;
-			autoSetup?: { credentialType: string };
-			mockCredentials?: boolean;
-			userInput?: string;
-			domainAccessAction?: string;
-		};
+	async confirm(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('requestId') requestId: string,
+		@Body body: InstanceAiConfirmRequestDto,
+	) {
 		const resolved = await this.instanceAiService.resolveConfirmation(req.user.id, requestId, {
-			approved,
-			credentialId,
-			credentials,
-			autoSetup,
-			mockCredentials,
-			userInput,
-			domainAccessAction,
+			approved: body.approved,
+			credentialId: body.credentialId,
+			credentials: body.credentials,
+			autoSetup: body.autoSetup,
+			userInput: body.userInput,
+			domainAccessAction: body.domainAccessAction,
 		});
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');
