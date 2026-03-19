@@ -948,11 +948,13 @@ export class McpApiHelper {
 		apiKey: string,
 		workflowId: string,
 		executionId: string,
+		options?: { includeData?: boolean; nodeNames?: string[]; truncateData?: number },
 	): Promise<GetExecutionResult> {
 		try {
 			return await this.callInternalMcpTool<GetExecutionResult>(apiKey, 'get_execution', {
 				workflowId,
 				executionId,
+				...options,
 			});
 		} catch (error) {
 			return {
