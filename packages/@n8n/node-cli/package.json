@@ -60,10 +60,10 @@
     "prompts": "^2.4.2",
     "rimraf": "catalog:",
     "ts-morph": "catalog:",
-    "typescript-eslint": "^8.35.0"
+    "typescript-eslint": "^8.35.0",
+    "@eslint/js": "^9.29.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.29.0",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@oclif/test": "^4.1.13",
