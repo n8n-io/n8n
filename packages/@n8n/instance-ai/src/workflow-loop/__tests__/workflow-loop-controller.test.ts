@@ -190,17 +190,18 @@ describe('handleVerificationVerdict', () => {
 		expect(action.type).toBe('blocked');
 	});
 
-	it('transitions to blocked on failed_terminal', () => {
+	it('escalates failed_terminal to rebuild before verification budget is exhausted', () => {
 		const state = makeState({ phase: 'verifying', workflowId: 'wf_123' });
 		const verdict = makeVerdict({
 			verdict: 'failed_terminal',
 			failureSignature: 'node:timeout',
 		});
 
-		const { state: next } = handleVerificationVerdict(state, [], verdict);
+		const { state: next, action } = handleVerificationVerdict(state, [], verdict);
 
-		expect(next.phase).toBe('blocked');
+		expect(next.phase).toBe('repairing');
 		expect(next.lastFailureSignature).toBe('node:timeout');
+		expect(action.type).toBe('rebuild');
 	});
 
 	it('transitions to repairing with patch on needs_patch', () => {
@@ -254,7 +255,7 @@ describe('handleVerificationVerdict', () => {
 // ── Retry policy ────────────────────────────────────────────────────────────
 
 describe('retry policy', () => {
-	it('blocks on repeated patch with same failureSignature', () => {
+	it('escalates repeated patch failures to rebuild', () => {
 		const state = makeState({ phase: 'verifying', workflowId: 'wf_123', patchAttempts: 1 });
 		const priorAttempts: AttemptRecord[] = [
 			{
@@ -276,11 +277,11 @@ describe('retry policy', () => {
 
 		const { state: next, action } = handleVerificationVerdict(state, priorAttempts, verdict);
 
-		expect(next.phase).toBe('blocked');
-		expect(action.type).toBe('blocked');
+		expect(next.phase).toBe('repairing');
+		expect(action.type).toBe('rebuild');
 	});
 
-	it('blocks on repeated rebuild with same failureSignature', () => {
+	it('allows repeated rebuild attempts until the verification budget is exhausted', () => {
 		const state = makeState({ phase: 'verifying', workflowId: 'wf_123', rebuildAttempts: 1 });
 		const priorAttempts: AttemptRecord[] = [
 			{
@@ -300,8 +301,8 @@ describe('retry policy', () => {
 
 		const { state: next, action } = handleVerificationVerdict(state, priorAttempts, verdict);
 
-		expect(next.phase).toBe('blocked');
-		expect(action.type).toBe('blocked');
+		expect(next.phase).toBe('repairing');
+		expect(action.type).toBe('rebuild');
 	});
 
 	it('allows patch for a different failureSignature', () => {
@@ -342,6 +343,84 @@ describe('retry policy', () => {
 		// Each work item counts its own attempts independently
 		expect(a1.attempt).toBe(1);
 		expect(a2.attempt).toBe(1); // Not 2, because wi_2 has no prior attempts
+	});
+
+	it('marks the phase as failed after the third failed verification attempt', () => {
+		const state = makeState({ phase: 'verifying', workflowId: 'wf_123', rebuildAttempts: 2 });
+		const priorAttempts: AttemptRecord[] = [
+			{
+				workItemId: 'wi_test',
+				phase: 'verifying',
+				attempt: 1,
+				action: 'verify',
+				result: 'failure',
+				failureSignature: 'timeout:1',
+				createdAt: new Date().toISOString(),
+			},
+			{
+				workItemId: 'wi_test',
+				phase: 'verifying',
+				attempt: 2,
+				action: 'verify',
+				result: 'failure',
+				failureSignature: 'timeout:2',
+				createdAt: new Date().toISOString(),
+			},
+		];
+		const verdict = makeVerdict({
+			verdict: 'needs_rebuild',
+			failureSignature: 'timeout:3',
+			summary: 'Still timing out',
+		});
+
+		const {
+			state: next,
+			action,
+			attempt,
+		} = handleVerificationVerdict(state, priorAttempts, verdict);
+
+		expect(next.phase).toBe('failed');
+		expect(next.status).toBe('completed');
+		expect(action.type).toBe('failed');
+		if (action.type === 'failed') {
+			expect(action.reason).toBe('Still timing out');
+		}
+		expect(attempt.result).toBe('failure');
+	});
+
+	it('does not count needs_user_input toward the verification failure budget', () => {
+		const state = makeState({ phase: 'verifying', workflowId: 'wf_123' });
+		const priorAttempts: AttemptRecord[] = [
+			{
+				workItemId: 'wi_test',
+				phase: 'verifying',
+				attempt: 1,
+				action: 'verify',
+				result: 'failure',
+				failureSignature: 'timeout:1',
+				createdAt: new Date().toISOString(),
+			},
+			{
+				workItemId: 'wi_test',
+				phase: 'verifying',
+				attempt: 2,
+				action: 'verify',
+				result: 'blocked',
+				diagnosis: 'Missing API key',
+				createdAt: new Date().toISOString(),
+			},
+		];
+		const verdict = makeVerdict({
+			verdict: 'needs_patch',
+			failureSignature: 'timeout:2',
+			failedNodeName: 'HTTP Request',
+			patch: { parameters: { timeout: 120000 } },
+		});
+
+		const { state: next, action } = handleVerificationVerdict(state, priorAttempts, verdict);
+
+		expect(next.phase).toBe('repairing');
+		expect(action.type).toBe('patch');
 	});
 });
 

@@ -17,6 +17,10 @@ import {
 	handleVerificationVerdict,
 	workflowBuildOutcomeSchema,
 	createDomainAccessTracker,
+	derivePlanStatus,
+	patchPlanPhase,
+	reconcilePlanPhases,
+	shouldAutoContinuePlan,
 } from '@n8n/instance-ai';
 import type {
 	AttemptRecord,
@@ -43,6 +47,8 @@ import type {
 	InstanceAiGatewayCapabilities,
 	McpToolCallResult,
 	InstanceAiQuestionResponse,
+	InstanceAiPhaseSpec,
+	InstanceAiPlanSpec,
 } from '@n8n/api-types';
 
 import { LocalGateway, LocalFilesystemProvider } from './filesystem';
@@ -193,6 +199,9 @@ export class InstanceAiService {
 	/** Tracks all runIds that belong to each messageGroupId. */
 	private readonly runIdsByMessageGroup = new Map<string, string[]>();
 
+	/** Consecutive auto-follow-up runs on a thread. Reset by user input. */
+	private readonly autoFollowUpRunsByThread = new Map<string, number>();
+
 	/** Pre-warmed image manager for builder sandboxes (Daytona only). */
 	private snapshotManager?: SnapshotManager;
 
@@ -240,6 +249,90 @@ export class InstanceAiService {
 			image: sandboxImage || undefined,
 			timeout: sandboxTimeout,
 		};
+	}
+
+	private createThreadMemory() {
+		return createMemory({
+			storage: this.compositeStore,
+			embedderModel: this.instanceAiConfig.embedderModel || undefined,
+			lastMessages: this.instanceAiConfig.lastMessages,
+			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
+		});
+	}
+
+	private createPlanStorage() {
+		return new MastraPlanStorage(this.createThreadMemory());
+	}
+
+	private countVerificationFailures(attempts: AttemptRecord[]): number {
+		return attempts.filter((attempt) => attempt.action === 'verify' && attempt.result === 'failure')
+			.length;
+	}
+
+	private getPlanPhase(
+		plan: InstanceAiPlanSpec,
+		phaseId?: string,
+	): InstanceAiPhaseSpec | undefined {
+		if (!phaseId) {
+			return undefined;
+		}
+
+		return plan.phases.find((phase) => phase.id === phaseId);
+	}
+
+	private getLatestRunIdForThread(threadId: string): string | undefined {
+		const messageGroupId = this.threadMessageGroupId.get(threadId);
+		if (!messageGroupId) {
+			return undefined;
+		}
+
+		const runIds = this.runIdsByMessageGroup.get(messageGroupId);
+		return runIds?.[runIds.length - 1];
+	}
+
+	private async publishPlanUpdate(
+		threadId: string,
+		runId: string | undefined,
+		plan: InstanceAiPlanSpec,
+	) {
+		const planStorage = this.createPlanStorage();
+		await planStorage.save(threadId, plan);
+		const targetRunId = runId ?? this.getLatestRunIdForThread(threadId);
+		if (!targetRunId) {
+			return;
+		}
+
+		this.eventBus.publish(threadId, {
+			type: 'plan-updated',
+			runId: targetRunId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			payload: { plan },
+		});
+	}
+
+	private async reconcileStoredPlan(
+		threadId: string,
+		runId?: string,
+	): Promise<InstanceAiPlanSpec | null> {
+		const planStorage = this.createPlanStorage();
+		const existingPlan = await planStorage.get(threadId);
+		if (!existingPlan) {
+			return null;
+		}
+
+		const reconciledPlan = reconcilePlanPhases(existingPlan);
+		const nextStatus = derivePlanStatus(reconciledPlan, existingPlan.status);
+		if (reconciledPlan === existingPlan && nextStatus === existingPlan.status) {
+			return existingPlan;
+		}
+
+		const nextPlan = {
+			...reconciledPlan,
+			status: nextStatus,
+			lastUpdatedAt: new Date().toISOString(),
+		};
+		await this.publishPlanUpdate(threadId, runId, nextPlan);
+		return nextPlan;
 	}
 
 	private async resolveSandboxConfig(user: User): Promise<SandboxConfig> {
@@ -359,9 +452,15 @@ export class InstanceAiService {
 		// merges them into the same assistant message bubble.
 		if (message !== AUTO_FOLLOW_UP_MESSAGE) {
 			this.resetChainDepths(threadId);
+			this.autoFollowUpRunsByThread.set(threadId, 0);
 			const newGroupId = `mg_${nanoid()}`;
 			this.threadMessageGroupId.set(threadId, newGroupId);
 			this.runIdsByMessageGroup.set(newGroupId, []);
+		} else {
+			this.autoFollowUpRunsByThread.set(
+				threadId,
+				(this.autoFollowUpRunsByThread.get(threadId) ?? 0) + 1,
+			);
 		}
 
 		const messageGroupId = this.threadMessageGroupId.get(threadId);
@@ -777,7 +876,12 @@ export class InstanceAiService {
 				iterationLog,
 				sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
 				reportVerificationVerdict: async (verdict: VerificationResult) =>
-					await this.handleVerificationVerdictFromTool(verdict, threadId, workflowLoopStorage),
+					await this.handleVerificationVerdictFromTool(
+						verdict,
+						threadId,
+						workflowLoopStorage,
+						planStorage,
+					),
 				workspace: sandboxEntry?.workspace,
 				builderSandboxFactory: this.builderSandboxFactory,
 				nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
@@ -800,6 +904,7 @@ export class InstanceAiService {
 				threadId,
 				message,
 				workflowLoopStorage,
+				planStorage,
 			);
 
 			// Build multimodal message when attachments are present
@@ -897,6 +1002,9 @@ export class InstanceAiService {
 
 			// Save agent tree snapshot for session restore
 			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
+			if (!signal.aborted) {
+				await this.maybeAutoContinueThread(threadId, 'run-finished');
+			}
 		} catch (error) {
 			// Mastra throws AbortError when the signal is aborted — treat as cancellation
 			if (signal.aborted) {
@@ -1095,6 +1203,9 @@ export class InstanceAiService {
 
 			// Save agent tree snapshot for session restore
 			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
+			if (!opts.signal.aborted) {
+				await this.maybeAutoContinueThread(opts.threadId, 'run-finished');
+			}
 		} catch (error) {
 			if (opts.signal.aborted) {
 				this.eventBus.publish(opts.threadId, {
@@ -1234,10 +1345,9 @@ export class InstanceAiService {
 			);
 
 			// Auto-trigger a follow-up orchestrator run so results are delivered without
-			// the user needing to send another message. Only triggers when:
-			// 1. No orchestrator run is currently active for this thread
-			// 2. We have a stored user reference for the thread
-			this.maybeFollowUpAfterBackgroundTask(opts.threadId);
+			// the user needing to send another message. Plans use phase-aware continuation;
+			// non-plan work falls back to the generic depth-limited behavior.
+			await this.maybeAutoContinueThread(opts.threadId, 'background-task-completed');
 		})();
 	}
 
@@ -1267,6 +1377,7 @@ export class InstanceAiService {
 		threadId: string,
 		message: string,
 		workflowLoopStorage: WorkflowLoopStorage,
+		planStorage: MastraPlanStorage,
 	): Promise<string> {
 		const completedTasks = this.drainCompletedTasks(threadId);
 		const runningTasks = this.getRunningTasks(threadId);
@@ -1281,7 +1392,11 @@ export class InstanceAiService {
 
 				// Workflow-builder tasks: use typed outcome for deterministic guidance
 				if (task.role === 'workflow-builder' && task.outcome) {
-					const guidance = await this.getWorkflowLoopGuidance(task, workflowLoopStorage);
+					const guidance = await this.getWorkflowLoopGuidance(
+						task,
+						workflowLoopStorage,
+						planStorage,
+					);
 					resultLine += `\n\n${guidance}`;
 				} else if (task.role === 'workflow-builder') {
 					// Fallback for builders without structured outcome (tool mode)
@@ -1313,6 +1428,7 @@ export class InstanceAiService {
 	private async getWorkflowLoopGuidance(
 		task: BackgroundTask,
 		workflowLoopStorage: WorkflowLoopStorage,
+		planStorage: MastraPlanStorage,
 	): Promise<string> {
 		const outcome = task.outcome;
 		if (!outcome) return '';
@@ -1322,6 +1438,8 @@ export class InstanceAiService {
 		const state: WorkflowLoopState = existing?.state ?? {
 			workItemId: outcome.workItemId,
 			threadId: task.threadId,
+			planId: outcome.planId,
+			phaseId: outcome.phaseId,
 			workflowId: outcome.workflowId,
 			phase: 'building',
 			status: 'active',
@@ -1340,6 +1458,13 @@ export class InstanceAiService {
 			[...attempts, attempt],
 			outcome,
 		);
+		await this.syncPlanPhaseFromWorkflowLoop(
+			task.threadId,
+			task.runId,
+			newState,
+			action,
+			planStorage,
+		);
 
 		return this.actionToGuidance(action, outcome.workItemId);
 	}
@@ -1353,6 +1478,7 @@ export class InstanceAiService {
 		verdict: VerificationResult,
 		threadId: string,
 		workflowLoopStorage: WorkflowLoopStorage,
+		planStorage: MastraPlanStorage,
 	): Promise<WorkflowLoopAction> {
 		const existing = await workflowLoopStorage.getWorkItem(threadId, verdict.workItemId);
 		if (!existing) {
@@ -1365,9 +1491,133 @@ export class InstanceAiService {
 			attempt,
 		} = handleVerificationVerdict(existing.state, existing.attempts, verdict);
 
-		await workflowLoopStorage.saveWorkItem(threadId, newState, [...existing.attempts, attempt]);
+		const nextAttempts = [...existing.attempts, attempt];
+		await workflowLoopStorage.saveWorkItem(threadId, newState, nextAttempts);
+		await this.syncPlanPhaseFromWorkflowLoop(
+			threadId,
+			this.getLatestRunIdForThread(threadId),
+			newState,
+			action,
+			planStorage,
+			this.countVerificationFailures(nextAttempts),
+			verdict,
+		);
 
 		return action;
+	}
+
+	private async syncPlanPhaseFromWorkflowLoop(
+		threadId: string,
+		runId: string | undefined,
+		state: WorkflowLoopState,
+		action: WorkflowLoopAction,
+		planStorage: MastraPlanStorage,
+		verificationAttempts?: number,
+		verdict?: VerificationResult,
+	): Promise<void> {
+		if (!state.planId || !state.phaseId) {
+			return;
+		}
+
+		const existingPlan = await planStorage.get(threadId);
+		if (!existingPlan || existingPlan.planId !== state.planId) {
+			return;
+		}
+
+		const phase = this.getPlanPhase(existingPlan, state.phaseId);
+		if (!phase) {
+			return;
+		}
+
+		const nextVerificationAttempts = verificationAttempts ?? phase.verificationAttempts ?? 0;
+
+		let nextPlan = existingPlan;
+		switch (action.type) {
+			case 'verify':
+				nextPlan = patchPlanPhase(
+					existingPlan,
+					state.phaseId,
+					{
+						status: 'verifying',
+						blocker: undefined,
+					},
+					'running',
+				);
+				break;
+			case 'patch':
+			case 'rebuild':
+				nextPlan = patchPlanPhase(
+					existingPlan,
+					state.phaseId,
+					{
+						status: 'building',
+						blocker: undefined,
+						verificationAttempts: nextVerificationAttempts,
+						lastVerificationError:
+							verdict?.diagnosis ??
+							(action.type === 'patch'
+								? 'Repairing workflow after failed verification'
+								: 'Rebuilding workflow after failed verification'),
+						lastVerificationFailureSignature: verdict?.failureSignature,
+					},
+					'running',
+				);
+				break;
+			case 'done':
+				nextPlan = patchPlanPhase(
+					existingPlan,
+					state.phaseId,
+					{
+						status: 'done',
+						blocker: undefined,
+						lastVerificationError: undefined,
+						lastVerificationFailureSignature: undefined,
+					},
+					'running',
+				);
+				break;
+			case 'failed':
+				nextPlan = patchPlanPhase(
+					existingPlan,
+					state.phaseId,
+					{
+						status: 'failed',
+						blocker: undefined,
+						verificationAttempts: nextVerificationAttempts,
+						lastVerificationError: action.reason,
+						lastVerificationFailureSignature:
+							verdict?.failureSignature ?? state.lastFailureSignature,
+					},
+					'running',
+				);
+				break;
+			case 'blocked':
+				nextPlan = patchPlanPhase(
+					existingPlan,
+					state.phaseId,
+					{
+						status: 'blocked',
+						blocker: {
+							reason: action.reason,
+							inputType: 'text',
+						},
+						verificationAttempts:
+							verdict?.verdict === 'needs_user_input'
+								? (phase.verificationAttempts ?? 0)
+								: nextVerificationAttempts,
+						lastVerificationError:
+							verdict?.verdict === 'needs_user_input' ? undefined : action.reason,
+						lastVerificationFailureSignature:
+							verdict?.verdict === 'needs_user_input'
+								? undefined
+								: (verdict?.failureSignature ?? state.lastFailureSignature),
+					},
+					'blocked',
+				);
+				break;
+		}
+
+		await this.publishPlanUpdate(threadId, runId, nextPlan);
 	}
 
 	/** Convert a controller action to orchestrator guidance text. */
@@ -1383,6 +1633,8 @@ export class InstanceAiService {
 				}
 				return guidance;
 			}
+			case 'failed':
+				return `VERIFICATION FAILED: ${action.reason}. Report this clearly to the user and stop retrying phase "${workItemId ?? 'unknown'}".`;
 			case 'verify':
 				return (
 					`VERIFY: Run workflow ${action.workflowId} using \`run-workflow\`. ` +
@@ -1407,6 +1659,9 @@ export class InstanceAiService {
 	/** Maximum number of automatic follow-up runs before stopping and waiting for user input. */
 	private readonly MAX_AUTO_FOLLOW_UP_DEPTH = 3;
 
+	/** Emergency guard for consecutive plan auto-follow-up runs without user input. */
+	private readonly MAX_PLAN_AUTO_FOLLOW_UP_RUNS = 20;
+
 	/** Get the maximum chain depth across all non-running tasks for a thread. */
 	private getMaxChainDepth(threadId: string): number {
 		let max = 0;
@@ -1418,27 +1673,68 @@ export class InstanceAiService {
 		return max;
 	}
 
-	/**
-	 * After a background task completes, check if the orchestrator should automatically
-	 * start a follow-up run to deliver results to the user.
-	 *
-	 * Circuit breaker: stops auto-follow-ups after MAX_AUTO_FOLLOW_UP_DEPTH iterations
-	 * to prevent infinite build → verify → fail → rebuild loops.
-	 */
-	private maybeFollowUpAfterBackgroundTask(threadId: string): void {
-		// Don't trigger if there's already an active run — results will be picked up naturally
-		if (this.activeRuns.has(threadId)) return;
+	private async maybeAutoContinueThread(
+		threadId: string,
+		trigger: 'background-task-completed' | 'run-finished',
+	): Promise<void> {
+		if (this.activeRuns.has(threadId) || this.suspendedRuns.has(threadId)) {
+			return;
+		}
 
-		// Don't trigger if the run is suspended (awaiting confirmation)
-		if (this.suspendedRuns.has(threadId)) return;
-
-		// Need a stored user to start a run
 		const user = this.threadUsers.get(threadId);
-		if (!user) return;
+		if (!user) {
+			return;
+		}
 
-		// Circuit breaker: check if we've exceeded the maximum auto-follow-up depth.
-		// Each follow-up increments chainDepth on new background tasks. When the deepest
-		// completed task exceeds the limit, stop and wait for user input.
+		const existingPlan = await this.reconcileStoredPlan(
+			threadId,
+			this.getLatestRunIdForThread(threadId),
+		);
+		if (existingPlan) {
+			const runningTasks = this.getRunningTasks(threadId);
+			if (runningTasks.length > 0) {
+				this.logger.debug('Plan continuation deferred while background work is still running', {
+					threadId,
+					trigger,
+					planId: existingPlan.planId,
+					runningTasks: runningTasks.length,
+				});
+				return;
+			}
+
+			if (shouldAutoContinuePlan(existingPlan)) {
+				const autoFollowUpRuns = this.autoFollowUpRunsByThread.get(threadId) ?? 0;
+				if (autoFollowUpRuns >= this.MAX_PLAN_AUTO_FOLLOW_UP_RUNS) {
+					this.logger.warn('Plan auto-follow-up limit reached, waiting for user input', {
+						threadId,
+						trigger,
+						planId: existingPlan.planId,
+						limit: this.MAX_PLAN_AUTO_FOLLOW_UP_RUNS,
+					});
+					return;
+				}
+
+				this.logger.debug('Auto-triggering follow-up run for active plan', {
+					threadId,
+					trigger,
+					planId: existingPlan.planId,
+					autoFollowUpRuns: autoFollowUpRuns + 1,
+				});
+				const researchMode = this.threadResearchMode.get(threadId);
+				this.startRun(user, threadId, AUTO_FOLLOW_UP_MESSAGE, researchMode);
+				return;
+			}
+
+			if (existingPlan.status === 'completed' || existingPlan.status === 'blocked') {
+				this.autoFollowUpRunsByThread.set(threadId, 0);
+				return;
+			}
+		}
+
+		if (trigger !== 'background-task-completed') {
+			return;
+		}
+
 		const maxDepth = this.getMaxChainDepth(threadId);
 		if (maxDepth >= this.MAX_AUTO_FOLLOW_UP_DEPTH) {
 			this.logger.debug(
@@ -1448,13 +1744,10 @@ export class InstanceAiService {
 			return;
 		}
 
-		this.logger.debug('Auto-triggering follow-up run after background task completion', {
+		this.logger.debug('Auto-triggering generic follow-up run after background task completion', {
 			threadId,
 			chainDepth: maxDepth + 1,
 		});
-
-		// Start a new run with a minimal continuation prompt.
-		// enrichMessageWithBackgroundTasks() will prepend the completed task results.
 		const researchMode = this.threadResearchMode.get(threadId);
 		this.startRun(user, threadId, AUTO_FOLLOW_UP_MESSAGE, researchMode);
 	}

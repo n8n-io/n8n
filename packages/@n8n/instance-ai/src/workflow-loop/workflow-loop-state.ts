@@ -7,6 +7,7 @@ export const workflowLoopPhaseSchema = z.enum([
 	'verifying',
 	'repairing',
 	'done',
+	'failed',
 	'blocked',
 ]);
 
@@ -19,6 +20,8 @@ export const workflowLoopSourceSchema = z.enum(['create', 'modify']);
 export const workflowLoopStateSchema = z.object({
 	workItemId: z.string(),
 	threadId: z.string(),
+	planId: z.string().optional(),
+	phaseId: z.string().optional(),
 	workflowId: z.string().optional(),
 	phase: workflowLoopPhaseSchema,
 	status: workflowLoopStatusSchema,
@@ -67,6 +70,8 @@ export const triggerTypeSchema = z.enum(['manual_or_testable', 'trigger_only']);
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	taskId: z.string(),
+	planId: z.string().optional(),
+	phaseId: z.string().optional(),
 	workflowId: z.string().optional(),
 	submitted: z.boolean(),
 	triggerType: triggerTypeSchema,
@@ -120,5 +125,6 @@ export type WorkflowLoopAction =
 			patch: Record<string, unknown>;
 	  }
 	| { type: 'rebuild'; workflowId: string; failureDetails: string }
+	| { type: 'failed'; workflowId?: string; reason: string }
 	| { type: 'done'; workflowId?: string; summary: string; mockedCredentialTypes?: string[] }
 	| { type: 'blocked'; reason: string };

@@ -19,6 +19,8 @@ function actionToGuidance(action: WorkflowLoopAction): string {
 	switch (action.type) {
 		case 'done':
 			return `Workflow verified successfully. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
+		case 'failed':
+			return `Verification failed after repeated attempts. Explain the failure clearly to the user and stop retrying this phase.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
 		case 'verify':
 			return (
 				`VERIFY: Run workflow ${action.workflowId} using \`run-workflow\`. ` +

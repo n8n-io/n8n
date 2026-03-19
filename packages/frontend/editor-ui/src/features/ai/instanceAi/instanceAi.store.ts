@@ -94,6 +94,20 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return null;
 	});
 
+	/** The latest assistant message that owns a plan artifact for this thread. */
+	const currentPlanMessage = computed(() => {
+		for (let i = messages.value.length - 1; i >= 0; i--) {
+			const message = messages.value[i];
+			if (message.role !== 'assistant' || !message.agentTree?.plan) continue;
+			return message;
+		}
+		return null;
+	});
+
+	const currentPlanAgentNode = computed(() => currentPlanMessage.value?.agentTree ?? null);
+
+	const currentPlan = computed(() => currentPlanAgentNode.value?.plan ?? null);
+
 	/**
 	 * Derive a single contextual follow-up suggestion from the last completed
 	 * assistant message. Shown as the input placeholder + Tab to autocomplete.
@@ -725,6 +739,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		activeDirectory,
 		contextualSuggestion,
 		currentTasks,
+		currentPlanMessage,
+		currentPlanAgentNode,
+		currentPlan,
 		resourceRegistry,
 		// Actions
 		newThread,

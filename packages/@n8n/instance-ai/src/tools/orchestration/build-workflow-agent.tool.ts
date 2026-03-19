@@ -55,11 +55,15 @@ function buildOutcome(
 	taskId: string,
 	attempt: SubmitWorkflowAttempt | undefined,
 	finalText: string,
+	planId?: string,
+	phaseId?: string,
 ): WorkflowBuildOutcome {
 	if (!attempt?.success) {
 		return {
 			workItemId,
 			taskId,
+			...(planId ? { planId } : {}),
+			...(phaseId ? { phaseId } : {}),
 			submitted: false,
 			triggerType: 'manual_or_testable',
 			needsUserInput: false,
@@ -70,6 +74,8 @@ function buildOutcome(
 	return {
 		workItemId,
 		taskId,
+		...(planId ? { planId } : {}),
+		...(phaseId ? { phaseId } : {}),
 		workflowId: attempt.workflowId,
 		submitted: true,
 		triggerType: detectTriggerType(attempt),
@@ -235,6 +241,10 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			});
 
 			const { workflowId } = input;
+			const phaseExecution = {
+				...(input.planId ? { planId: input.planId } : {}),
+				...(input.phaseId ? { phaseId: input.phaseId } : {}),
+			};
 
 			// Inject iteration history so retries are informed by previous attempts
 			let iterationContext = '';
@@ -400,7 +410,14 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 									'Error: workflow builder finished without submitting /src/workflow.ts.';
 								return {
 									text,
-									outcome: buildOutcome(workItemId, taskId, undefined, text),
+									outcome: buildOutcome(
+										workItemId,
+										taskId,
+										undefined,
+										text,
+										phaseExecution.planId,
+										phaseExecution.phaseId,
+									),
 								};
 							}
 
@@ -410,7 +427,14 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 								const text = `Error: workflow builder stopped after a failed submit-workflow for /src/workflow.ts. ${errorText}`;
 								return {
 									text,
-									outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, text),
+									outcome: buildOutcome(
+										workItemId,
+										taskId,
+										mainWorkflowAttempt,
+										text,
+										phaseExecution.planId,
+										phaseExecution.phaseId,
+									),
 								};
 							}
 
@@ -419,13 +443,27 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 									'Error: workflow builder edited /src/workflow.ts after the last submit-workflow call. It must re-submit the workflow before finishing.';
 								return {
 									text,
-									outcome: buildOutcome(workItemId, taskId, undefined, text),
+									outcome: buildOutcome(
+										workItemId,
+										taskId,
+										undefined,
+										text,
+										phaseExecution.planId,
+										phaseExecution.phaseId,
+									),
 								};
 							}
 
 							return {
 								text: finalText,
-								outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, finalText),
+								outcome: buildOutcome(
+									workItemId,
+									taskId,
+									mainWorkflowAttempt,
+									finalText,
+									phaseExecution.planId,
+									phaseExecution.phaseId,
+								),
 							};
 						}
 

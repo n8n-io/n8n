@@ -54,16 +54,16 @@ const formattedTechnicalDetails = computed(() => {
 
 const attachments = computed(() => props.message.attachments ?? []);
 
-const hasPlanningUi = computed(() => {
+const hasInlinePlanningUi = computed(() => {
 	const tree = props.message.agentTree;
 	if (!tree) return false;
 
-	if (tree.plan) {
-		return true;
-	}
-
 	return tree.toolCalls.some(
-		(toolCall) => toolCall.renderHint === 'plan' && toolCall.isLoading && !!toolCall.confirmation,
+		(toolCall) =>
+			toolCall.renderHint === 'plan' &&
+			toolCall.isLoading &&
+			toolCall.confirmation?.inputType === 'questions' &&
+			!tree.plan,
 	);
 });
 
@@ -106,7 +106,7 @@ function formatJson(value: unknown): string {
 				<div :class="$style.assistantContent">
 					<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
 					<InstanceAiPlanTimeline
-						v-if="props.message.agentTree && hasPlanningUi"
+						v-if="props.message.agentTree && hasInlinePlanningUi"
 						:agent-node="props.message.agentTree"
 						:plan="props.message.agentTree.plan"
 					/>
@@ -114,7 +114,7 @@ function formatJson(value: unknown): string {
 						v-if="props.message.agentTree"
 						:agent-node="props.message.agentTree"
 						:is-root="true"
-						:suppress-plan-text="hasPlanningUi"
+						:hide-plan-prefix="!!props.message.agentTree.plan"
 					/>
 
 					<!-- Run-level error -->

@@ -13,11 +13,11 @@ const props = withDefaults(
 	defineProps<{
 		agentNode: InstanceAiAgentNode;
 		compact?: boolean;
-		suppressText?: boolean;
+		hidePlanPrefix?: boolean;
 	}>(),
 	{
 		compact: false,
-		suppressText: false,
+		hidePlanPrefix: false,
 	},
 );
 
@@ -42,14 +42,39 @@ const childrenById = computed(() => {
 	}
 	return map;
 });
+
+const lastPlanToolIndex = computed(() => {
+	if (!props.hidePlanPrefix) return -1;
+
+	for (let index = props.agentNode.timeline.length - 1; index >= 0; index--) {
+		const entry = props.agentNode.timeline[index];
+		if (entry.type !== 'tool-call') continue;
+
+		const toolCall = toolCallsById.value[entry.toolCallId];
+		if (toolCall?.renderHint === 'plan') {
+			return index;
+		}
+	}
+
+	return -1;
+});
+
+const visibleTimeline = computed(() =>
+	props.agentNode.timeline
+		.map((entry, index) => ({ entry, index }))
+		.filter(({ entry, index }) => {
+			if (entry.type !== 'text') return true;
+			return !(props.hidePlanPrefix && index <= lastPlanToolIndex.value);
+		}),
+);
 </script>
 
 <template>
 	<div :class="$style.timeline">
-		<template v-for="(entry, idx) in props.agentNode.timeline" :key="idx">
+		<template v-for="{ entry, index } in visibleTimeline" :key="index">
 			<!-- Text segment -->
 			<div
-				v-if="entry.type === 'text' && !props.suppressText"
+				v-if="entry.type === 'text'"
 				:class="[$style.textContent, props.compact && $style.compactText]"
 			>
 				<InstanceAiMarkdown :content="entry.content" />

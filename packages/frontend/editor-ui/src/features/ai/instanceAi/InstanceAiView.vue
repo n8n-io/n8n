@@ -18,6 +18,7 @@ import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiSettingsPanel from './components/settings/InstanceAiSettingsPanel.vue';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
+import InstanceAiPlanPanel from './components/InstanceAiPlanPanel.vue';
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
@@ -65,6 +66,20 @@ const showArtifactsPanel = ref(false);
 const showMemoryPanel = ref(false);
 const showDebugPanel = ref(false);
 const showSettingsPanel = ref(false);
+const showPlanPanel = ref(false);
+
+watch(
+	() => store.currentPlan?.planId ?? null,
+	(planId) => {
+		if (planId) {
+			showPlanPanel.value = true;
+			return;
+		}
+
+		showPlanPanel.value = false;
+	},
+	{ immediate: true },
+);
 
 // --- Sidebar resize ---
 const sidebarWidth = ref(260);
@@ -260,6 +275,14 @@ function handleStop() {
 				</N8nText>
 				<div :class="$style.headerActions">
 					<N8nIconButton
+						v-if="store.currentPlan && store.currentPlanAgentNode"
+						icon="list-checks"
+						variant="ghost"
+						size="small"
+						:class="{ [$style.activeButton]: showPlanPanel }"
+						@click="showPlanPanel = !showPlanPanel"
+					/>
+					<N8nIconButton
 						icon="layers"
 						variant="ghost"
 						size="small"
@@ -338,6 +361,12 @@ function handleStop() {
 			</div>
 
 			<!-- Side panels -->
+			<InstanceAiPlanPanel
+				v-if="showPlanPanel && store.currentPlan && store.currentPlanAgentNode"
+				:agent-node="store.currentPlanAgentNode"
+				:plan="store.currentPlan"
+				@close="showPlanPanel = false"
+			/>
 			<InstanceAiArtifactsPanel v-if="showArtifactsPanel" @close="showArtifactsPanel = false" />
 			<InstanceAiSettingsPanel v-if="showSettingsPanel" @close="showSettingsPanel = false" />
 			<InstanceAiMemoryPanel v-if="showMemoryPanel" @close="showMemoryPanel = false" />

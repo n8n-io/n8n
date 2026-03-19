@@ -129,12 +129,13 @@ describe('report-verification-verdict tool', () => {
 		expect((result as { guidance: string }).guidance).toContain('build-workflow-with-agent');
 	});
 
-	it('returns blocked guidance when action is blocked', async () => {
-		const blockedAction: WorkflowLoopAction = {
-			type: 'blocked',
-			reason: 'Repeated patch failure: TypeError',
+	it('returns failed guidance when action is failed', async () => {
+		const failedAction: WorkflowLoopAction = {
+			type: 'failed',
+			workflowId: 'wf-123',
+			reason: 'Verification failed after 3 attempts',
 		};
-		const reportVerificationVerdict = jest.fn().mockResolvedValue(blockedAction);
+		const reportVerificationVerdict = jest.fn().mockResolvedValue(failedAction);
 		const context = createMockContext({ reportVerificationVerdict });
 		const tool = createReportVerificationVerdictTool(context);
 
@@ -143,8 +144,8 @@ describe('report-verification-verdict tool', () => {
 			{} as never,
 		);
 
-		expect((result as { guidance: string }).guidance).toContain('BUILD BLOCKED');
-		expect((result as { guidance: string }).guidance).toContain('Repeated patch failure');
+		expect((result as { guidance: string }).guidance).toContain('Verification failed');
+		expect((result as { guidance: string }).guidance).toContain('stop retrying');
 	});
 
 	it('passes all optional fields to the callback', async () => {

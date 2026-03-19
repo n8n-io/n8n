@@ -10,11 +10,11 @@ const props = withDefaults(
 	defineProps<{
 		agentNode: InstanceAiAgentNode;
 		isRoot?: boolean;
-		suppressPlanText?: boolean;
+		hidePlanPrefix?: boolean;
 	}>(),
 	{
 		isRoot: false,
-		suppressPlanText: false,
+		hidePlanPrefix: false,
 	},
 );
 
@@ -37,7 +37,7 @@ const hasReasoning = computed(() => props.agentNode.reasoning.length > 0);
 		</CollapsibleRoot>
 
 		<!-- Unified timeline renderer -->
-		<AgentTimeline :agent-node="props.agentNode" :suppress-text="props.suppressPlanText" />
+		<AgentTimeline :agent-node="props.agentNode" :hide-plan-prefix="props.hidePlanPrefix" />
 	</div>
 </template>
 

@@ -2,6 +2,17 @@ export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export { createInstanceAgent } from './agent/instance-agent';
 export { createAllTools, createOrchestrationTools } from './tools';
+export {
+	derivePlanStatus,
+	getRunnablePhaseIds,
+	normalizePhase,
+	normalizePlanStatusForReview,
+	patchPlanPhase,
+	reconcilePlanPhases,
+	replacePlanPhase,
+	shouldAutoContinuePlan,
+	updatePlanPhase,
+} from './tools/orchestration/plan-utils';
 export { createMemory } from './memory/memory-config';
 export { iterationEntrySchema, formatPreviousAttempts } from './storage/iteration-log';
 export type { IterationEntry, IterationLog } from './storage/iteration-log';

@@ -317,6 +317,106 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		expect(store.activeRunId).toBe('run-suspended');
 	});
 
+	test('currentPlan selects the latest assistant plan in the thread', () => {
+		store.messages.push(
+			{
+				id: 'user-1',
+				role: 'user',
+				createdAt: '2026-03-18T10:00:00.000Z',
+				content: 'Build something',
+				reasoning: '',
+				isStreaming: false,
+			},
+			{
+				id: 'assistant-plan-1',
+				runId: 'run-plan-1',
+				role: 'assistant',
+				createdAt: '2026-03-18T10:00:01.000Z',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				agentTree: {
+					agentId: 'agent-root-1',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [],
+					children: [],
+					timeline: [],
+					plan: {
+						planId: 'plan-1',
+						goal: 'First plan',
+						summary: 'First summary',
+						assumptions: [],
+						externalSystems: [],
+						dataContracts: [],
+						acceptanceCriteria: [],
+						openQuestions: [],
+						status: 'completed',
+						lastUpdatedAt: '2026-03-18T10:00:01.000Z',
+						phases: [],
+					},
+				},
+			},
+			{
+				id: 'assistant-no-plan',
+				runId: 'run-no-plan',
+				role: 'assistant',
+				createdAt: '2026-03-18T10:00:02.000Z',
+				content: 'Working',
+				reasoning: '',
+				isStreaming: false,
+				agentTree: {
+					agentId: 'agent-root-2',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: 'Working',
+					reasoning: '',
+					toolCalls: [],
+					children: [],
+					timeline: [],
+				},
+			},
+			{
+				id: 'assistant-plan-2',
+				runId: 'run-plan-2',
+				role: 'assistant',
+				createdAt: '2026-03-18T10:00:03.000Z',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				agentTree: {
+					agentId: 'agent-root-3',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [],
+					children: [],
+					timeline: [],
+					plan: {
+						planId: 'plan-2',
+						goal: 'Latest plan',
+						summary: 'Latest summary',
+						assumptions: [],
+						externalSystems: [],
+						dataContracts: [],
+						acceptanceCriteria: [],
+						openQuestions: [],
+						status: 'running',
+						lastUpdatedAt: '2026-03-18T10:00:03.000Z',
+						phases: [],
+					},
+				},
+			},
+		);
+
+		expect(store.currentPlanMessage?.id).toBe('assistant-plan-2');
+		expect(store.currentPlanAgentNode?.agentId).toBe('agent-root-3');
+		expect(store.currentPlan?.planId).toBe('plan-2');
+	});
+
 	test('lastEventIdByThread is updated from sseEvent.lastEventId on every message', () => {
 		const threadId = store.currentThreadId;
 

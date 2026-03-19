@@ -7,13 +7,51 @@ import type {
 	InstanceAiPlanStatus,
 } from '@n8n/api-types';
 
+const COMPLETED_PHASE_STATUSES = new Set<InstanceAiPhaseStatus>(['done', 'failed']);
+const ACTIVE_PHASE_STATUSES = new Set<InstanceAiPhaseStatus>(['building', 'verifying']);
+
+function isCompletedPhase(phase: InstanceAiPhaseSpec): boolean {
+	return COMPLETED_PHASE_STATUSES.has(phase.status);
+}
+
+function hasSatisfiedDependencies(plan: InstanceAiPlanSpec, phase: InstanceAiPhaseSpec): boolean {
+	return phase.dependsOn.every((dependencyId) => {
+		const dependency = plan.phases.find((candidate) => candidate.id === dependencyId);
+		return dependency?.status === 'done';
+	});
+}
+
+function findFailedDependency(
+	plan: InstanceAiPlanSpec,
+	phase: InstanceAiPhaseSpec,
+): InstanceAiPhaseSpec | undefined {
+	for (const dependencyId of phase.dependsOn) {
+		const dependency = plan.phases.find((candidate) => candidate.id === dependencyId);
+		if (dependency?.status === 'failed') {
+			return dependency;
+		}
+	}
+
+	return undefined;
+}
+
 export function normalizePhase(
 	phase: Omit<InstanceAiPhaseSpec, 'status' | 'artifacts'> &
-		Partial<Pick<InstanceAiPhaseSpec, 'status' | 'artifacts'>>,
+		Partial<
+			Pick<
+				InstanceAiPhaseSpec,
+				| 'status'
+				| 'artifacts'
+				| 'verificationAttempts'
+				| 'lastVerificationError'
+				| 'lastVerificationFailureSignature'
+			>
+		>,
 ): InstanceAiPhaseSpec {
 	return {
 		...phase,
 		status: phase.status ?? (phase.dependsOn.length > 0 ? 'pending' : 'ready'),
+		verificationAttempts: phase.verificationAttempts ?? 0,
 		artifacts: phase.artifacts ?? [],
 	};
 }
@@ -42,11 +80,57 @@ export function replacePlanPhase(
 	};
 }
 
+export function reconcilePlanPhases(plan: InstanceAiPlanSpec): InstanceAiPlanSpec {
+	let phases = plan.phases;
+	let changed = false;
+
+	for (let i = 0; i < plan.phases.length; i++) {
+		const nextPhases: InstanceAiPhaseSpec[] = phases.map((phase) => {
+			if (isCompletedPhase(phase)) return phase;
+
+			const failedDependency = findFailedDependency({ ...plan, phases }, phase);
+			if (failedDependency) {
+				const reason = `Dependency phase "${failedDependency.title}" failed`;
+				if (
+					phase.status === 'failed' &&
+					phase.lastVerificationFailureSignature === `dependency_failed:${failedDependency.id}` &&
+					phase.lastVerificationError === reason
+				) {
+					return phase;
+				}
+
+				changed = true;
+				return {
+					...phase,
+					status: 'failed',
+					blocker: undefined,
+					lastVerificationError: reason,
+					lastVerificationFailureSignature: `dependency_failed:${failedDependency.id}`,
+				};
+			}
+
+			if (phase.status === 'pending' && hasSatisfiedDependencies({ ...plan, phases }, phase)) {
+				changed = true;
+				return {
+					...phase,
+					status: 'ready',
+				};
+			}
+
+			return phase;
+		});
+
+		phases = nextPhases;
+	}
+
+	return changed ? { ...plan, phases } : plan;
+}
+
 export function derivePlanStatus(
 	plan: InstanceAiPlanSpec,
 	fallbackStatus: InstanceAiPlanStatus,
 ): InstanceAiPlanStatus {
-	if (plan.phases.length > 0 && plan.phases.every((phase) => phase.status === 'done')) {
+	if (plan.phases.length > 0 && plan.phases.every((phase) => isCompletedPhase(phase))) {
 		return 'completed';
 	}
 
@@ -54,11 +138,38 @@ export function derivePlanStatus(
 		return 'blocked';
 	}
 
-	if (plan.phases.some((phase) => phase.status === 'building' || phase.status === 'verifying')) {
+	if (plan.phases.some((phase) => ACTIVE_PHASE_STATUSES.has(phase.status))) {
+		return 'running';
+	}
+
+	if (
+		fallbackStatus === 'running' &&
+		plan.phases.some((phase) => phase.status === 'ready' || phase.status === 'pending')
+	) {
 		return 'running';
 	}
 
 	return fallbackStatus;
+}
+
+export function patchPlanPhase(
+	plan: InstanceAiPlanSpec,
+	phaseId: string,
+	patch: Partial<InstanceAiPhaseSpec>,
+	fallbackStatus: InstanceAiPlanStatus = plan.status,
+): InstanceAiPlanSpec {
+	const nextPlan = {
+		...plan,
+		phases: plan.phases.map((phase) => (phase.id === phaseId ? { ...phase, ...patch } : phase)),
+	};
+
+	const reconciledPlan = reconcilePlanPhases(nextPlan);
+
+	return {
+		...reconciledPlan,
+		status: derivePlanStatus(reconciledPlan, fallbackStatus),
+		lastUpdatedAt: new Date().toISOString(),
+	};
 }
 
 export function updatePlanPhase(
@@ -67,33 +178,54 @@ export function updatePlanPhase(
 	status: InstanceAiPhaseStatus,
 	blocker?: InstanceAiPhaseBlocker,
 ): InstanceAiPlanSpec {
-	const nextPlan = {
-		...plan,
-		phases: plan.phases.map((phase) =>
-			phase.id === phaseId
-				? {
-						...phase,
-						status,
-						...(status === 'blocked' && blocker ? { blocker } : { blocker: undefined }),
-					}
-				: phase,
-		),
-	};
-
 	const fallbackStatus: InstanceAiPlanStatus =
 		status === 'blocked'
 			? 'blocked'
-			: plan.status === 'awaiting_approval'
-				? 'approved'
-				: plan.status === 'draft'
-					? 'draft'
-					: plan.status;
+			: status === 'building' || status === 'verifying' || status === 'done' || status === 'failed'
+				? 'running'
+				: plan.status === 'awaiting_approval'
+					? 'approved'
+					: plan.status === 'draft'
+						? 'draft'
+						: plan.status;
 
-	return {
-		...nextPlan,
-		status: derivePlanStatus(nextPlan, fallbackStatus),
-		lastUpdatedAt: new Date().toISOString(),
-	};
+	return patchPlanPhase(
+		plan,
+		phaseId,
+		{
+			status,
+			blocker: status === 'blocked' ? blocker : undefined,
+		},
+		fallbackStatus,
+	);
+}
+
+export function getRunnablePhaseIds(plan: InstanceAiPlanSpec): string[] {
+	const reconciledPlan = reconcilePlanPhases(plan);
+
+	return reconciledPlan.phases
+		.filter(
+			(phase) =>
+				phase.status === 'ready' ||
+				(phase.status === 'pending' && hasSatisfiedDependencies(reconciledPlan, phase)),
+		)
+		.map((phase) => phase.id);
+}
+
+export function shouldAutoContinuePlan(plan: InstanceAiPlanSpec): boolean {
+	if (plan.status === 'draft' || plan.status === 'awaiting_approval' || plan.status === 'blocked') {
+		return false;
+	}
+
+	if (plan.phases.length > 0 && plan.phases.every((phase) => isCompletedPhase(phase))) {
+		return false;
+	}
+
+	if (plan.phases.some((phase) => ACTIVE_PHASE_STATUSES.has(phase.status))) {
+		return true;
+	}
+
+	return getRunnablePhaseIds(plan).length > 0;
 }
 
 export function addPlanArtifact(

@@ -90,6 +90,10 @@ const clarificationIntroMessage = computed(
 	() => clarificationToolCall.value?.confirmation?.introMessage,
 );
 
+const showClarificationSummary = computed(
+	() => !clarificationIntroMessage.value && clarificationSummary.value.trim().length > 0,
+);
+
 const clarificationSubmitted = computed(
 	() =>
 		clarificationRequestId.value.length > 0 && !!submittedRequestIds[clarificationRequestId.value],
@@ -97,11 +101,28 @@ const clarificationSubmitted = computed(
 
 const approvalRequestId = computed(() => approvalToolCall.value?.confirmation?.requestId ?? '');
 
-const approvalSummary = computed(
-	() =>
-		approvalToolCall.value?.confirmation?.message ??
-		i18n.baseText('instanceAi.planTimeline.awaitingApproval'),
-);
+const approvalSummary = computed(() => {
+	const defaultSummary = i18n.baseText('instanceAi.planTimeline.awaitingApproval');
+	const summary = approvalToolCall.value?.confirmation?.message?.trim();
+	const planSummary = plan.value?.summary.trim();
+
+	if (!summary) {
+		return defaultSummary;
+	}
+
+	if (summary.length > 220) {
+		return defaultSummary;
+	}
+
+	if (
+		planSummary &&
+		(summary === planSummary || summary.includes(planSummary) || planSummary.includes(summary))
+	) {
+		return defaultSummary;
+	}
+
+	return summary;
+});
 
 const approvalSubmitted = computed(
 	() => approvalRequestId.value.length > 0 && !!submittedRequestIds[approvalRequestId.value],
@@ -256,13 +277,13 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 			<div :class="$style.requestHeader">
 				<div :class="$style.requestTitle">
 					<N8nIcon icon="messages-square" size="small" />
-					<span>{{ i18n.baseText('aiAssistant.builder.planMode.questions.title') }}</span>
+					<span>{{ i18n.baseText('instanceAi.planTimeline.questionsTitle') }}</span>
 				</div>
 				<span :class="$style.requestBadge">{{
-					i18n.baseText('node.theNodeIsWaitingUserInput')
+					i18n.baseText('instanceAi.planTimeline.waitingForAnswers')
 				}}</span>
 			</div>
-			<p :class="$style.requestSummary">{{ clarificationSummary }}</p>
+			<p v-if="showClarificationSummary" :class="$style.requestSummary">{{ clarificationSummary }}</p>
 			<PlanQuestionsMessage
 				:questions="clarificationQuestions"
 				:intro-message="clarificationIntroMessage"
@@ -297,62 +318,18 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 					<span :class="$style.metaLabel">{{
 						i18n.baseText('instanceAi.planTimeline.assumptions')
 					}}</span>
-					<div :class="$style.tokenList">
-						<span v-for="assumption in plan.assumptions" :key="assumption" :class="$style.token">
-							{{ assumption }}
-						</span>
-					</div>
+					<ul :class="$style.metaList">
+						<li v-for="assumption in plan.assumptions" :key="assumption">{{ assumption }}</li>
+					</ul>
 				</div>
 
 				<div v-if="plan.acceptanceCriteria.length > 0" :class="$style.metaBlock">
 					<span :class="$style.metaLabel">{{
 						i18n.baseText('instanceAi.planTimeline.acceptanceCriteria')
 					}}</span>
-					<ul :class="$style.list">
+					<ul :class="$style.metaList">
 						<li v-for="criterion in plan.acceptanceCriteria" :key="criterion">{{ criterion }}</li>
 					</ul>
-				</div>
-			</div>
-
-			<div
-				v-if="showApprovalCard"
-				:class="$style.requestCard"
-				data-test-id="instance-ai-plan-approval"
-			>
-				<div :class="$style.requestHeader">
-					<div :class="$style.requestTitle">
-						<N8nIcon icon="circle-help" size="small" />
-						<span>{{ i18n.baseText('aiAssistant.builder.planMode.plan.title') }}</span>
-					</div>
-					<span :class="$style.requestBadge">{{
-						i18n.baseText('instanceAi.planTimeline.status.awaitingApproval')
-					}}</span>
-				</div>
-				<p :class="$style.requestSummary">{{ approvalSummary }}</p>
-				<textarea
-					v-model="approvalFeedback"
-					:class="$style.feedbackInput"
-					:placeholder="i18n.baseText('aiAssistant.builder.planMode.plan.feedbackPlaceholder')"
-				/>
-				<div :class="$style.requestActions">
-					<N8nButton
-						type="secondary"
-						size="small"
-						data-test-id="instance-ai-plan-request-changes"
-						:disabled="!canRequestChanges || approvalSubmitted"
-						@click="requestPlanChanges"
-					>
-						{{ i18n.baseText('aiAssistant.builder.planMode.actions.modify') }}
-					</N8nButton>
-					<N8nButton
-						type="primary"
-						size="small"
-						data-test-id="instance-ai-plan-approve"
-						:disabled="approvalSubmitted"
-						@click="approvePlan"
-					>
-						{{ i18n.baseText('instanceAi.confirmation.approve') }}
-					</N8nButton>
 				</div>
 			</div>
 
@@ -371,86 +348,128 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 						<span :class="$style.phaseBadge">{{ phaseStatusLabel(phase) }}</span>
 					</div>
 
-					<p :class="$style.phaseDescription">{{ phase.description }}</p>
+						<p :class="$style.phaseDescription">{{ phase.description }}</p>
 
-					<div :class="$style.phaseMeta">
-						<div :class="$style.phaseMetaItem">
+						<div :class="$style.phaseMeta">
+							<div :class="$style.phaseMetaItem">
+								<span :class="$style.phaseMetaLabel">{{
+									i18n.baseText('instanceAi.planTimeline.objective')
+								}}</span>
+								<p :class="$style.phaseMetaValue">{{ phase.objective }}</p>
+							</div>
+							<div :class="$style.phaseMetaItem">
+								<span :class="$style.phaseMetaLabel">{{
+									i18n.baseText('instanceAi.planTimeline.deliverable')
+								}}</span>
+								<p :class="$style.phaseMetaValue">{{ phase.deliverable }}</p>
+							</div>
+							<div :class="$style.phaseMetaItem">
+								<span :class="$style.phaseMetaLabel">{{
+									i18n.baseText('instanceAi.planTimeline.verification')
+								}}</span>
+								<p :class="$style.phaseMetaValue">{{ phase.verification.expectedOutcome }}</p>
+							</div>
+						</div>
+
+						<div v-if="phase.dependsOn.length > 0" :class="$style.dependsOn">
 							<span :class="$style.phaseMetaLabel">{{
-								i18n.baseText('instanceAi.planTimeline.objective')
+								i18n.baseText('instanceAi.planTimeline.dependsOn')
 							}}</span>
-							<span>{{ phase.objective }}</span>
+							<span>{{ phase.dependsOn.join(', ') }}</span>
 						</div>
-						<div :class="$style.phaseMetaItem">
+
+						<div v-if="phase.artifacts.length > 0" :class="$style.artifacts">
 							<span :class="$style.phaseMetaLabel">{{
-								i18n.baseText('instanceAi.planTimeline.deliverable')
+								i18n.baseText('instanceAi.planTimeline.artifacts')
 							}}</span>
-							<span>{{ phase.deliverable }}</span>
+							<div :class="$style.artifactList">
+								<template v-for="artifact in phase.artifacts" :key="artifact.id">
+									<RouterLink
+										v-if="artifact.type === 'workflow' && artifact.resourceId"
+										:to="`/workflow/${artifact.resourceId}`"
+										target="_blank"
+										:class="$style.artifactLink"
+									>
+										{{ artifact.label }}
+									</RouterLink>
+									<span v-else :class="$style.token">{{ artifact.label }}</span>
+								</template>
+							</div>
 						</div>
-						<div :class="$style.phaseMetaItem">
-							<span :class="$style.phaseMetaLabel">{{
-								i18n.baseText('instanceAi.planTimeline.verification')
-							}}</span>
-							<span>{{ phase.verification.expectedOutcome }}</span>
-						</div>
-					</div>
 
-					<div v-if="phase.dependsOn.length > 0" :class="$style.dependsOn">
-						<span :class="$style.phaseMetaLabel">{{
-							i18n.baseText('instanceAi.planTimeline.dependsOn')
-						}}</span>
-						<span>{{ phase.dependsOn.join(', ') }}</span>
-					</div>
-
-					<div v-if="phase.artifacts.length > 0" :class="$style.artifacts">
-						<span :class="$style.phaseMetaLabel">{{
-							i18n.baseText('instanceAi.planTimeline.artifacts')
-						}}</span>
-						<div :class="$style.artifactList">
-							<template v-for="artifact in phase.artifacts" :key="artifact.id">
-								<RouterLink
-									v-if="artifact.type === 'workflow' && artifact.resourceId"
-									:to="`/workflow/${artifact.resourceId}`"
-									target="_blank"
-									:class="$style.artifactLink"
-								>
-									{{ artifact.label }}
-								</RouterLink>
-								<span v-else :class="$style.token">{{ artifact.label }}</span>
-							</template>
-						</div>
-					</div>
-
-					<div v-if="phase.status === 'blocked' && phase.blocker" :class="$style.blockerCard">
-						<div :class="$style.blockerReason">{{ phase.blocker.reason }}</div>
-						<div v-if="phase.blocker.question" :class="$style.blockerQuestion">
-							{{ phase.blocker.question }}
-						</div>
-						<div
-							v-if="phase.blocker.inputType === 'text' && phase.blocker.requestId"
-							:class="$style.blockerActions"
-						>
-							<input
-								v-model="blockerAnswers[phase.id]"
-								:class="$style.blockerInput"
-								type="text"
-								:placeholder="i18n.baseText('instanceAi.askUser.placeholder')"
-								@keydown.enter="submitBlocker(phase)"
-							/>
-							<div :class="$style.blockerButtons">
-								<N8nButton type="secondary" size="small" @click="skipBlocker(phase)">
-									{{ i18n.baseText('instanceAi.askUser.skip') }}
-								</N8nButton>
-								<N8nButton
-									type="primary"
-									size="small"
-									:disabled="!(blockerAnswers[phase.id] ?? '').trim()"
-									@click="submitBlocker(phase)"
-								>
-									{{ i18n.baseText('instanceAi.askUser.submit') }}
-								</N8nButton>
+						<div v-if="phase.status === 'blocked' && phase.blocker" :class="$style.blockerCard">
+							<div :class="$style.blockerReason">{{ phase.blocker.reason }}</div>
+							<div v-if="phase.blocker.question" :class="$style.blockerQuestion">
+								{{ phase.blocker.question }}
+							</div>
+							<div
+								v-if="phase.blocker.inputType === 'text' && phase.blocker.requestId"
+								:class="$style.blockerActions"
+							>
+								<input
+									v-model="blockerAnswers[phase.id]"
+									:class="$style.blockerInput"
+									type="text"
+									:placeholder="i18n.baseText('instanceAi.askUser.placeholder')"
+									@keydown.enter="submitBlocker(phase)"
+								/>
+								<div :class="$style.blockerButtons">
+									<N8nButton type="secondary" size="small" @click="skipBlocker(phase)">
+										{{ i18n.baseText('instanceAi.askUser.skip') }}
+									</N8nButton>
+									<N8nButton
+										type="primary"
+										size="small"
+										:disabled="!(blockerAnswers[phase.id] ?? '').trim()"
+										@click="submitBlocker(phase)"
+									>
+										{{ i18n.baseText('instanceAi.askUser.submit') }}
+									</N8nButton>
+								</div>
 							</div>
 						</div>
 					</div>
+				</div>
+
+			<div
+				v-if="showApprovalCard"
+				:class="$style.approvalCard"
+				data-test-id="instance-ai-plan-approval"
+			>
+				<div :class="$style.requestHeader">
+					<div :class="$style.requestTitle">
+						<N8nIcon icon="circle-help" size="small" />
+						<span>{{ i18n.baseText('instanceAi.planTimeline.approvalTitle') }}</span>
+					</div>
+					<span :class="$style.requestBadge">{{
+						i18n.baseText('instanceAi.planTimeline.status.awaitingApproval')
+					}}</span>
+				</div>
+				<p :class="$style.requestSummary">{{ approvalSummary }}</p>
+				<textarea
+					v-model="approvalFeedback"
+					:class="$style.feedbackInput"
+					:placeholder="i18n.baseText('instanceAi.planTimeline.feedbackPlaceholder')"
+				></textarea>
+				<div :class="$style.requestActions">
+					<N8nButton
+						type="secondary"
+						size="small"
+						data-test-id="instance-ai-plan-request-changes"
+						:disabled="!canRequestChanges || approvalSubmitted"
+						@click="requestPlanChanges"
+					>
+						{{ i18n.baseText('instanceAi.planTimeline.requestChanges') }}
+					</N8nButton>
+					<N8nButton
+						type="primary"
+						size="small"
+						data-test-id="instance-ai-plan-approve"
+						:disabled="approvalSubmitted"
+						@click="approvePlan"
+					>
+						{{ i18n.baseText('instanceAi.planTimeline.approvePlan') }}
+					</N8nButton>
 				</div>
 			</div>
 		</div>
@@ -488,6 +507,13 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 	padding: var(--spacing--sm);
 	display: grid;
 	gap: var(--spacing--sm);
+}
+
+.approvalCard {
+	display: grid;
+	gap: var(--spacing--sm);
+	padding-top: var(--spacing--sm);
+	border-top: 1px solid color-mix(in srgb, var(--color--foreground) 80%, transparent);
 }
 
 .header,
@@ -562,7 +588,7 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 .metaBlock {
 	padding: var(--spacing--sm);
 	display: grid;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 }
 
 .metaLabel,
@@ -573,29 +599,14 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 	color: var(--color--text--tint-1);
 }
 
-.tokenList,
-.artifactList {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--4xs);
-}
-
-.token {
-	display: inline-flex;
-	align-items: center;
-	border-radius: var(--border-radius-pill);
-	padding: var(--spacing--5xs) var(--spacing--2xs);
-	font-size: var(--font-size--2xs);
-	line-height: 1.4;
-	background: var(--color--foreground--tint-2);
-	color: var(--color--text);
-}
-
-.list {
+.metaList {
 	margin: 0;
 	padding-left: var(--spacing--sm);
 	display: grid;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
+	color: var(--color--text);
 }
 
 .phaseList {
@@ -617,22 +628,48 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 
 .phaseMeta {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 	gap: var(--spacing--xs);
 }
 
 .phaseMetaItem {
 	display: grid;
-	gap: var(--spacing--5xs);
-	font-size: var(--font-size--2xs);
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--xs);
+	border: 1px solid color-mix(in srgb, var(--color--foreground) 80%, transparent);
+	border-radius: var(--radius--md);
+	background: color-mix(in srgb, var(--color--background) 92%, transparent);
+}
+
+.phaseMetaValue {
+	margin: 0;
+	font-size: var(--font-size--xs);
 	line-height: var(--line-height--lg);
+	color: var(--color--text);
 }
 
 .dependsOn,
 .artifacts {
 	display: grid;
 	gap: var(--spacing--5xs);
+	font-size: var(--font-size--xs);
+}
+
+.artifactList {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+}
+
+.token {
+	display: inline-flex;
+	align-items: center;
+	border-radius: var(--border-radius-pill);
+	padding: var(--spacing--5xs) var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
+	line-height: 1.4;
+	background: var(--color--foreground--tint-2);
+	color: var(--color--text);
 }
 
 .artifactLink {

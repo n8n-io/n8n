@@ -282,6 +282,9 @@ export const instanceAiPhaseSpecSchema = z.object({
 	blockingQuestions: z.array(z.string()).default([]),
 	status: instanceAiPhaseStatusSchema,
 	blocker: instanceAiPhaseBlockerSchema.optional(),
+	verificationAttempts: z.number().int().min(0).optional(),
+	lastVerificationError: z.string().optional(),
+	lastVerificationFailureSignature: z.string().optional(),
 	artifacts: z.array(instanceAiPhaseArtifactSchema).default([]),
 });
 export type InstanceAiPhaseSpec = z.infer<typeof instanceAiPhaseSpecSchema>;
