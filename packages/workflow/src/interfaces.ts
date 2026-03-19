@@ -2862,6 +2862,7 @@ export interface IWorkflowExecutionDataProcess {
 	workflowData: IWorkflowBase;
 	userId?: string;
 	projectId?: string;
+	projectName?: string;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;
@@ -3254,6 +3255,7 @@ export interface ExecutionSummary {
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
+	workflowVersionId?: string | null;
 	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;

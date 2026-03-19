@@ -19,6 +19,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -48,6 +49,7 @@ import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -110,6 +112,7 @@ const route = useRoute();
 const telemetry = useTelemetry();
 const mcp = useMcp();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { hasDependencies } = useDependencies();
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -305,6 +308,8 @@ const isResolverMissing = computed(() => {
 		!props.data.settings?.credentialResolverId
 	);
 });
+
+const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
@@ -667,6 +672,13 @@ const tags = computed(
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<DependencyPill
+					v-if="workflowHasDependencies"
+					resource-type="workflow"
+					:resource-id="data.id"
+					source="workflow_card"
+					data-test-id="workflow-card-dependencies"
+				/>
 				<ProjectCardBadge
 					v-if="showOwnershipBadge"
 					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
@@ -694,7 +706,6 @@ const tags = computed(
 						</N8nBreadcrumbs>
 					</div>
 				</ProjectCardBadge>
-
 				<N8nText
 					v-if="data.isArchived"
 					color="text-light"
@@ -834,7 +845,6 @@ const tags = computed(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	margin-left: var(--spacing--2xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-radius: var(--spacing--4xs);
 	border: var(--border);
