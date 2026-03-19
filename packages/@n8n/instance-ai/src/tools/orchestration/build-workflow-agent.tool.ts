@@ -140,6 +140,8 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					'get-workflow-as-code',
 					'get-node-type-definition',
 					'explore-node-resources',
+					// Workflow discovery
+					'list-workflows',
 					// Credential awareness
 					'list-credentials',
 					'test-credential',
@@ -173,6 +175,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					'build-workflow',
 					'get-node-type-definition',
 					'get-workflow-as-code',
+					'list-workflows',
 					'search-nodes',
 					'get-suggested-nodes',
 					// Data table management
