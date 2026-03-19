@@ -198,9 +198,11 @@ const destinationNode = computed(
 watch(
 	() => destinationNode.value?.credentials,
 	(newCredentials) => {
+		unchanged.value = false;
 		if (newCredentials) {
-			unchanged.value = false;
 			nodeParameters.value.credentials = newCredentials as unknown as NodeParameterValueType;
+		} else {
+			nodeParameters.value.credentials = {};
 		}
 	},
 );
