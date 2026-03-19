@@ -108,7 +108,6 @@ export class DbConnectionOptions {
 			poolSize: postgresConfig.poolSize,
 			migrations: postgresMigrations,
 			connectTimeoutMS: postgresConfig.connectionTimeoutMs,
-			statementTimeout: postgresConfig.statementTimeoutMs,
 			ssl,
 			extra: {
 				idleTimeoutMillis: postgresConfig.idleTimeoutMs,

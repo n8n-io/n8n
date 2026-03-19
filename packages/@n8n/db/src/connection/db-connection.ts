@@ -4,6 +4,7 @@ import { Time } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { PostgresDriver } from '@n8n/typeorm/driver/postgres/PostgresDriver';
 import { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError, ensureError, OperationalError } from 'n8n-workflow';
 import { setTimeout as setTimeoutP } from 'timers/promises';
@@ -66,8 +67,30 @@ export class DbConnection {
 			throw error;
 		}
 
+		this.setPostgresStatementTimeout();
+
 		connectionState.connected = true;
 		if (!inTest) this.scheduleNextPing();
+	}
+
+	/**
+	 * Sets `statement_timeout` on each new pool connection via `SET`.
+	 * Some PostgreSQL providers (e.g. AWS RDS Proxy) reject some
+	 * startup params, so we apply this after the conn is established.
+	 */
+	private setPostgresStatementTimeout() {
+		const { driver } = this.dataSource;
+		if (!(driver instanceof PostgresDriver)) return;
+
+		const timeoutMs = this.databaseConfig.postgresdb.statementTimeoutMs;
+		if (timeoutMs === 0) return;
+
+		const { master: pool } = driver;
+		if (!pool) return;
+
+		pool.on('connect', (client: { query: (sql: string) => void }) => {
+			client.query(`SET statement_timeout = ${timeoutMs}`);
+		});
 	}
 
 	async migrate() {
