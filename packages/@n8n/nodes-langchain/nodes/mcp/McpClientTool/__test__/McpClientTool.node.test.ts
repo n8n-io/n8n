@@ -10,6 +10,7 @@ import {
 	type ILoadOptionsFunctions,
 	type INode,
 	type ISupplyDataFunctions,
+	jsonParse,
 } from 'n8n-workflow';
 
 import { getTools } from '../loadOptions';
@@ -322,8 +323,101 @@ describe('McpClientTool', () => {
 			expect(supplyDataResult.response).toBeInstanceOf(StructuredToolkit);
 
 			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
-			const toolResult = await tools[0].invoke({ location: 'Berlin' });
+			const toolResult: string = await tools[0].invoke({ location: 'Berlin' });
 			expect(toolResult).toEqual('Sunny');
+		});
+
+		it('should prioritize structuredContent over content for tool execution', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Success' }],
+				structuredContent: { id: '123', status: 'active' },
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'Status Tool',
+						description: 'Gets the current status',
+						inputSchema: { type: 'object', properties: {} },
+					},
+				],
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
+					logger: { debug: jest.fn(), error: jest.fn() },
+					addInputData: jest.fn(() => ({ index: 0 })),
+				}),
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			const toolResult: string = await tools[0].invoke({});
+			expect(jsonParse(toolResult)).toEqual({ id: '123', status: 'active' });
+		});
+
+		it('should fall back to content when structuredContent is null', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'result from tool' }],
+				toolResult: undefined,
+				structuredContent: null,
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'Status Tool',
+						description: 'Gets the current status',
+						inputSchema: { type: 'object', properties: {} },
+					},
+				],
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
+					logger: { debug: jest.fn(), error: jest.fn() },
+					addInputData: jest.fn(() => ({ index: 0 })),
+				}),
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			const toolResult: string = await tools[0].invoke({});
+			expect(toolResult).toEqual(JSON.stringify([{ type: 'text', text: 'result from tool' }]));
+		});
+
+		it('should fall back to content when structuredContent is an empty object', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'result from tool' }],
+				toolResult: undefined,
+				structuredContent: {},
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'Status Tool',
+						description: 'Gets the current status',
+						inputSchema: { type: 'object', properties: {} },
+					},
+				],
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
+					logger: { debug: jest.fn(), error: jest.fn() },
+					addInputData: jest.fn(() => ({ index: 0 })),
+				}),
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			const toolResult: string = await tools[0].invoke({});
+			// Empty object is a valid return but has no keys — should fall through to content
+			expect(toolResult).toEqual(JSON.stringify({}));
 		});
 
 		it('should handle tool errors', async () => {
