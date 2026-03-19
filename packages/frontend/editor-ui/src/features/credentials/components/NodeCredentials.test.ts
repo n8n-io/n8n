@@ -111,7 +111,7 @@ const openAiApiCredentialType = {
 		light: 'icons/n8n-nodes-base/dist/nodes/OpenAi/openAi.svg',
 		dark: 'icons/n8n-nodes-base/dist/nodes/OpenAi/openAi.dark.svg',
 	},
-};
+} satisfies ICredentialType;
 
 function createCredential(
 	overrides: Partial<{
