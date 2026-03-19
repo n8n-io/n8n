@@ -119,6 +119,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			name?: string;
 			description?: string;
 			projectId?: string;
+			folderId?: string;
 		},
 		tool = createTool(),
 	) =>
@@ -128,6 +129,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				name: input.name as string,
 				description: input.description as string,
 				projectId: input.projectId as string,
+				folderId: input.folderId as string,
 			},
 			{} as never,
 		);
@@ -149,6 +151,16 @@ describe('create-workflow-from-code MCP tool', () => {
 				}),
 			);
 			expect(typeof tool.handler).toBe('function');
+		});
+	});
+
+	describe('validation', () => {
+		test('returns error when folderId is provided without projectId', async () => {
+			const result = await callHandler({ code: 'const wf = ...', folderId: 'folder-1' });
+
+			expect(result.isError).toBe(true);
+			const response = parseResult(result);
+			expect(response.error).toBe('projectId is required when folderId is provided');
 		});
 	});
 

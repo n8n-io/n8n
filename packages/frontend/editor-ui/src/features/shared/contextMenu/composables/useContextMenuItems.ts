@@ -82,7 +82,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 	const targetNodes = computed(() =>
 		targetNodeIds.value
-			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId) ?? null)
+			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId))
 			.filter(isPresent),
 	);
 
@@ -192,7 +192,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			return [
 				{
 					id: 'add_node',
-					shortcut: { keys: ['Tab'] },
+					shortcut: { keys: ['N'] },
 					label: i18n.baseText('contextMenu.addNode'),
 					disabled: isReadOnly.value,
 				},

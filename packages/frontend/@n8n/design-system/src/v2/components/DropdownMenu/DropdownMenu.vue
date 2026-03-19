@@ -6,14 +6,18 @@ import {
 	DropdownMenuPortal,
 	DropdownMenuContent,
 } from 'reka-ui';
-import { computed, ref, watch, useCssModule, nextTick, toRef } from 'vue';
+import { computed, provide, ref, watch, useCssModule, nextTick, toRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
 import { isAlign, isSide } from './DropdownMenu.typeguards';
-import type { DropdownMenuProps, DropdownMenuSlots } from './DropdownMenu.types';
+import {
+	DropdownMenuPortalTargetKey,
+	type DropdownMenuProps,
+	type DropdownMenuSlots,
+} from './DropdownMenu.types';
 import N8nDropdownMenuItem from './DropdownMenuItem.vue';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
 
@@ -23,6 +27,7 @@ const props = withDefaults(defineProps<DropdownMenuProps<T, D>>(), {
 	placement: 'bottom',
 	trigger: 'click',
 	activatorIcon: () => ({ type: 'icon', value: 'ellipsis' }),
+	modal: true,
 	disabled: false,
 	teleported: true,
 	loading: false,
@@ -42,6 +47,11 @@ const emit = defineEmits<{
 
 const slots = defineSlots<DropdownMenuSlots<T, D>>();
 const $style = useCssModule();
+
+provide(
+	DropdownMenuPortalTargetKey,
+	computed(() => props.portalTarget),
+);
 
 // Handle controlled/uncontrolled state
 const internalOpen = ref(props.defaultOpen ?? false);
@@ -78,7 +88,10 @@ const navigation = useMenuKeyboardNavigation({
 
 const { highlightedIndex } = navigation;
 
-const openState = computed(() => (isControlled.value ? internalOpen.value : undefined));
+const openState = computed(() => {
+	if (!props.modal) return internalOpen.value;
+	return isControlled.value ? internalOpen.value : undefined;
+});
 
 const placementParts = computed(() => {
 	const [sideValue, alignValue] = props.placement.split('-');
@@ -205,11 +218,45 @@ watch(
 	},
 );
 
+// Custom dismiss for cross-window portals (e.g. pop-out chat window).
+// reka-ui's DismissableLayer captures ownerDocument during setup when the
+// element ref is still null, falling back to globalThis.document — the main
+// window's document. So the dismiss pointerdown listener never fires in the
+// pop-out window. This watcher adds one on the correct document.
+watch(internalOpen, (isOpen, _oldValue, onCleanup) => {
+	const target = props.portalTarget;
+	if (!target || typeof target === 'string' || !isOpen) return;
+
+	const targetDoc = target.ownerDocument;
+	if (!targetDoc || targetDoc === document) return;
+
+	let handler: ((e: PointerEvent) => void) | undefined;
+	const timerId = setTimeout(() => {
+		handler = (e: PointerEvent) => {
+			const el = e.target as HTMLElement;
+			// Check both the main content and any sub-menu content (which is
+			// portaled separately and thus not inside contentEl).
+			const contentEl = contentRef.value?.$el as HTMLElement | undefined;
+			if (contentEl?.contains(el)) return;
+			if (el.closest?.('[role="menu"]')) return;
+			setTimeout(() => {
+				if (internalOpen.value) close();
+			}, 0);
+		};
+		targetDoc.addEventListener('pointerdown', handler);
+	}, 0);
+
+	onCleanup(() => {
+		clearTimeout(timerId);
+		if (handler) targetDoc.removeEventListener('pointerdown', handler);
+	});
+});
+
 defineExpose({ open, close });
 </script>
 
 <template>
-	<DropdownMenuRoot :open="openState" @update:open="handleOpenChange">
+	<DropdownMenuRoot :modal="modal" :open="openState" @update:open="handleOpenChange">
 		<!-- Use as-child only when custom trigger slot is provided -->
 		<DropdownMenuTrigger v-if="slots.trigger" as-child :disabled="disabled">
 			<slot name="trigger" />
@@ -222,7 +269,10 @@ defineExpose({ open, close });
 			</span>
 		</DropdownMenuTrigger>
 
-		<component :is="teleported ? DropdownMenuPortal : 'template'">
+		<component
+			:is="teleported || portalTarget ? DropdownMenuPortal : 'template'"
+			v-bind="portalTarget ? { to: portalTarget } : {}"
+		>
 			<DropdownMenuContent
 				:id="id"
 				ref="contentRef"
@@ -354,6 +404,7 @@ $menu_width: 180px;
 	border: var(--border);
 	background-color: var(--color--background--light-2);
 	box-shadow: var(--shadow);
+	z-index: 9999;
 }
 
 .items-container {

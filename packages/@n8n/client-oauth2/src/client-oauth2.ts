@@ -127,7 +127,17 @@ export class ClientOAuth2 {
 		const body = response.data as string;
 
 		if (contentType.startsWith('application/json')) {
-			return JSON.parse(body) as T;
+			try {
+				return JSON.parse(body) as T;
+			} catch {
+				const preview = body.length > 100 ? body.slice(0, 100) + '...' : body;
+				throw new ResponseError(
+					response.status,
+					body,
+					undefined,
+					`Expected JSON response from OAuth2 token endpoint but received: ${preview}`,
+				);
+			}
 		}
 
 		if (contentType.startsWith('application/x-www-form-urlencoded')) {

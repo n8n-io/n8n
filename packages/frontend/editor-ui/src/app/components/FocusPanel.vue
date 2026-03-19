@@ -39,6 +39,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { computedAsync } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -47,6 +48,7 @@ import ExperimentalFocusPanelHeader from '@/features/workflows/canvas/experiment
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 import { N8nIcon, N8nInfoTip, N8nInput, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
@@ -72,8 +74,10 @@ const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const workflowId = useInjectWorkflowId();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
+const setupPanelStore = useSetupPanelStore();
 const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
@@ -130,7 +134,7 @@ const node = computed<INodeUi | undefined>(() => {
 	const selected: CanvasNode | undefined = vueFlow.getSelectedNodes.value[0];
 
 	return selected?.data?.render.type === CanvasNodeRenderType.Default
-		? workflowsStore.allNodes.find((n) => n.id === selected.id)
+		? (workflowDocumentStore?.value?.allNodes ?? []).find((n) => n.id === selected.id)
 		: undefined;
 });
 const multipleNodesSelected = computed(() => vueFlow.getSelectedNodes.value.length > 1);
@@ -321,7 +325,10 @@ function optionSelected(command: string) {
 }
 
 function closeFocusPanel() {
-	if (experimentalNdvStore.isNdvInFocusPanelEnabled && resolvedParameter.value) {
+	if (
+		(experimentalNdvStore.isNdvInFocusPanelEnabled || setupPanelStore.isFeatureEnabled) &&
+		resolvedParameter.value
+	) {
 		focusPanelStore.unsetParameters();
 
 		telemetry.track('User removed focused param', {
