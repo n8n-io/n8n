@@ -44,10 +44,13 @@ const i18n = useI18n();
 const builderStore = useBuilderStore();
 const posthogStore = usePostHog();
 
-const isWizardVariant = computed(
+const wizardFallback = ref(false);
+
+const showWizard = computed(
 	() =>
+		!wizardFallback.value &&
 		posthogStore.getVariant(AI_BUILDER_SETUP_WIZARD_EXPERIMENT.name) ===
-		AI_BUILDER_SETUP_WIZARD_EXPERIMENT.variant,
+			AI_BUILDER_SETUP_WIZARD_EXPERIMENT.variant,
 );
 
 const hasValidationIssues = computed(() => builderStore.workflowTodos.length > 0);
@@ -172,7 +175,11 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 </script>
 
 <template>
-	<BuilderSetupWizard v-if="isWizardVariant" @workflow-executed="emit('workflowExecuted')" />
+	<BuilderSetupWizard
+		v-if="showWizard"
+		@workflow-executed="emit('workflowExecuted')"
+		@no-setup-needed="wizardFallback = true"
+	/>
 	<div
 		v-else
 		ref="containerRef"

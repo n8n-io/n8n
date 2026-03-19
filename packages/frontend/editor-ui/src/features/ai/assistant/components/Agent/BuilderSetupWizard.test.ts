@@ -204,6 +204,31 @@ describe('BuilderSetupWizard', () => {
 		expect(queryByTestId('builder-setup-wizard')).not.toBeInTheDocument();
 	});
 
+	it('emits noSetupNeeded when there are no cards', () => {
+		mockTotalCards.value = 0;
+
+		const { emitted } = render();
+		expect(emitted().noSetupNeeded).toHaveLength(1);
+	});
+
+	it('emits noSetupNeeded when all cards are already complete on load', () => {
+		setCurrentCard({ isComplete: true });
+		mockTotalCards.value = 1;
+		mockIsAllComplete.value = true;
+		builderStore.wizardHasExecutedWorkflow = true;
+
+		const { emitted } = render();
+		expect(emitted().noSetupNeeded).toHaveLength(1);
+	});
+
+	it('does not emit noSetupNeeded when there are incomplete cards', () => {
+		mockTotalCards.value = 2;
+		setCurrentCard();
+
+		const { emitted } = render();
+		expect(emitted().noSetupNeeded).toBeUndefined();
+	});
+
 	it('does not dismiss wizard when a non-last step is executed', async () => {
 		setCurrentCard({ isComplete: true });
 		mockTotalCards.value = 3;

@@ -10,6 +10,7 @@ import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 const emit = defineEmits<{
 	workflowExecuted: [];
+	noSetupNeeded: [];
 }>();
 
 const i18n = useI18n();
@@ -128,6 +129,16 @@ watch(
 			builderStore.trackWorkflowBuilderJourney('setup_wizard_shown', {
 				total: totalCards.value,
 			});
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	[totalCards, wizardDismissed],
+	([count, dismissed]) => {
+		if ((count === 0 || dismissed) && !hasTrackedShown.value) {
+			emit('noSetupNeeded');
 		}
 	},
 	{ immediate: true },
