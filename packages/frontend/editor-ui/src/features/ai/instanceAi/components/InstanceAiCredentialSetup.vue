@@ -24,8 +24,6 @@ const selections = ref<Record<string, string | null>>(
 	Object.fromEntries(props.credentialRequests.map((r) => [r.credentialType, null])),
 );
 const isSubmitted = ref(false);
-const isSkipped = ref(false);
-const isDenied = ref(false);
 const isDeferred = ref(false);
 
 const allSelected = computed(() =>
@@ -40,34 +38,13 @@ function handleCredentialDeselected(credentialType: string) {
 	selections.value[credentialType] = null;
 }
 
-function handleUseSelected() {
+function handleApply() {
 	isSubmitted.value = true;
 	const credentials: Record<string, string> = {};
 	for (const [type, id] of Object.entries(selections.value)) {
 		if (id) credentials[type] = id;
 	}
 	void store.confirmAction(props.requestId, true, undefined, credentials);
-}
-
-function handleSkip() {
-	isSubmitted.value = true;
-	isSkipped.value = true;
-	void store.confirmAction(
-		props.requestId,
-		false,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		true,
-	);
-}
-
-function handleDeny() {
-	isSubmitted.value = true;
-	isDenied.value = true;
-	void store.confirmAction(props.requestId, false);
 }
 
 function handleLater() {
@@ -105,56 +82,27 @@ function handleLater() {
 			</div>
 
 			<div :class="$style.actions">
-				<template v-if="isFinalize">
-					<button :class="$style.skipButton" @click="handleLater">
-						{{ i18n.baseText('instanceAi.credential.finalize.later') }}
-					</button>
-					<button
-						:class="$style.useSelectedButton"
-						:disabled="!allSelected"
-						@click="handleUseSelected"
-					>
-						{{ i18n.baseText('instanceAi.credential.finalize.applyCredentials') }}
-					</button>
-				</template>
-				<template v-else>
-					<button :class="$style.denyButton" @click="handleDeny">
-						{{ i18n.baseText('instanceAi.credential.deny') }}
-					</button>
-					<button :class="$style.skipButton" @click="handleSkip">
-						{{ i18n.baseText('instanceAi.credential.skipForNow') }}
-					</button>
-					<button
-						:class="$style.useSelectedButton"
-						:disabled="!allSelected"
-						@click="handleUseSelected"
-					>
-						{{ i18n.baseText('instanceAi.credential.useSelected') }}
-					</button>
-				</template>
+				<button :class="$style.secondaryButton" @click="handleLater">
+					{{ i18n.baseText(isFinalize ? 'instanceAi.credential.finalize.later' : 'instanceAi.credential.deny') }}
+				</button>
+				<button
+					:class="$style.primaryButton"
+					:disabled="!allSelected"
+					@click="handleApply"
+				>
+					{{ i18n.baseText(isFinalize ? 'instanceAi.credential.finalize.applyCredentials' : 'instanceAi.credential.useSelected') }}
+				</button>
 			</div>
 		</template>
 
 		<div v-else :class="$style.submitted">
-			<template v-if="isDenied">
-				<N8nIcon icon="x" size="small" :class="$style.deniedIcon" />
-				<span>{{ i18n.baseText('instanceAi.credential.denied') }}</span>
-			</template>
-			<template v-else-if="isDeferred">
+			<template v-if="isDeferred">
 				<N8nIcon icon="arrow-right" size="small" :class="$style.skippedIcon" />
 				<span>{{ i18n.baseText('instanceAi.credential.finalize.deferred') }}</span>
 			</template>
-			<template v-else-if="isSkipped">
-				<N8nIcon icon="arrow-right" size="small" :class="$style.skippedIcon" />
-				<span>{{ i18n.baseText('instanceAi.credential.skipped') }}</span>
-			</template>
 			<template v-else>
 				<N8nIcon icon="check" size="small" :class="$style.successIcon" />
-				<span>{{
-					isFinalize
-						? i18n.baseText('instanceAi.credential.finalize.applied')
-						: i18n.baseText('instanceAi.credential.allSelected')
-				}}</span>
+				<span>{{ i18n.baseText(isFinalize ? 'instanceAi.credential.finalize.applied' : 'instanceAi.credential.allSelected') }}</span>
 			</template>
 		</div>
 	</div>
@@ -213,8 +161,7 @@ function handleLater() {
 	justify-content: flex-end;
 }
 
-.denyButton,
-.skipButton {
+.secondaryButton {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
@@ -230,7 +177,7 @@ function handleLater() {
 	}
 }
 
-.useSelectedButton {
+.primaryButton {
 	padding: var(--spacing--4xs) var(--spacing--sm);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
@@ -264,9 +211,5 @@ function handleLater() {
 
 .skippedIcon {
 	color: var(--color--text--tint-2);
-}
-
-.deniedIcon {
-	color: var(--color--danger);
 }
 </style>

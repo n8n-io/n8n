@@ -76,7 +76,6 @@ interface ConfirmationData {
 	credentialId?: string;
 	credentials?: Record<string, string>;
 	autoSetup?: { credentialType: string };
-	mockCredentials?: boolean;
 	userInput?: string;
 	domainAccessAction?: string;
 }
@@ -937,7 +936,6 @@ export class InstanceAiService {
 			...(data.credentialId ? { credentialId: data.credentialId } : {}),
 			...(data.credentials ? { credentials: data.credentials } : {}),
 			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
-			...(data.mockCredentials ? { mockCredentials: data.mockCredentials } : {}),
 			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
 			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
 		};

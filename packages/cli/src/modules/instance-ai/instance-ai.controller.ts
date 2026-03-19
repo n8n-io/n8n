@@ -201,7 +201,6 @@ export class InstanceAiController {
 			credentialId,
 			credentials,
 			autoSetup,
-			mockCredentials,
 			userInput,
 			domainAccessAction,
 		} = req.body as {
@@ -209,7 +208,6 @@ export class InstanceAiController {
 			credentialId?: string;
 			credentials?: Record<string, string>;
 			autoSetup?: { credentialType: string };
-			mockCredentials?: boolean;
 			userInput?: string;
 			domainAccessAction?: string;
 		};
@@ -218,7 +216,6 @@ export class InstanceAiController {
 			credentialId,
 			credentials,
 			autoSetup,
-			mockCredentials,
 			userInput,
 			domainAccessAction,
 		});

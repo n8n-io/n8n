@@ -387,8 +387,6 @@ export interface InstanceAiConfirmResponse {
 	credentialId?: string;
 	credentials?: Record<string, string>;
 	autoSetup?: { credentialType: string };
-	/** When true, the user chose to continue with mock data instead of providing credentials. */
-	mockCredentials?: boolean;
 	userInput?: string;
 	domainAccessAction?: DomainAccessAction;
 }

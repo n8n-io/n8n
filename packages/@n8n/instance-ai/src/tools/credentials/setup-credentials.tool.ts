@@ -43,10 +43,6 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 		outputSchema: z.object({
 			success: z.boolean(),
 			credentials: z.record(z.string()).optional(),
-			/** When true, credentials were mocked via pinned data (not provided by the user). */
-			mocked: z.boolean().optional(),
-			/** Credential types that were mocked (not provided by the user). */
-			mockedCredentialTypes: z.array(z.string()).optional(),
 			reason: z.string().optional(),
 			needsBrowserSetup: z.boolean().optional(),
 			credentialType: z.string().optional(),
@@ -81,8 +77,6 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 			approved: z.boolean(),
 			credentials: z.record(z.string()).optional(),
 			autoSetup: z.object({ credentialType: z.string() }).optional(),
-			/** When true, mock the credentials via pinned data (distinct from deny). */
-			mockCredentials: z.boolean().optional(),
 		}),
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
@@ -118,31 +112,11 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 				return { success: false };
 			}
 
-			// State 2: Not approved — either mock (generic only) or defer.
+			// State 2: Not approved — user clicked "Later" / deferred.
 			if (!resumeData.approved) {
-				if (isFinalize) {
-					// Finalize mode: "Later" — no mock option
-					return {
-						success: false,
-						reason: 'User deferred credential setup.',
-					};
-				}
-				if (resumeData.mockCredentials) {
-					// Generic mode: mock via pinned data
-					const mockedTypes = input.credentials.map((c) => c.credentialType);
-					return {
-						success: false,
-						mocked: true,
-						mockedCredentialTypes: mockedTypes,
-						reason:
-							'Credentials will be mocked via pinned data — real credentials are required before activation.',
-					};
-				}
-				// Deny: no mocking, credentials stay unresolved.
 				return {
 					success: false,
-					reason:
-						'User declined credential setup. Real credentials must be added before the workflow can run.',
+					reason: 'User deferred credential setup.',
 				};
 			}
 
