@@ -8,7 +8,7 @@ import type {
 	ExecutionRedactionOptions,
 	RedactableExecution,
 } from '@/executions/execution-redaction';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
 import type { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -371,11 +371,17 @@ describe('ExecutionRedactionService', () => {
 	});
 
 	describe('reveal path (redactExecutionData === false)', () => {
-		it('throws ForbiddenError when neither policy nor user allows reveal', async () => {
+		it('throws ScopeForbiddenError with structured error when neither policy nor user allows reveal', async () => {
 			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
-			await expect(
-				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
-			).rejects.toThrow(ForbiddenError);
+			const error: ScopeForbiddenError = await service
+				.processExecution(execution, { user: mockUser, redactExecutionData: false })
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(ScopeForbiddenError);
+			expect(error.httpStatusCode).toBe(403);
+			expect(error.meta.errorCode).toBe('EXECUTION_REVEAL_FORBIDDEN');
+			expect(error.meta.requiredScope).toBe('execution:reveal');
+			expect(error.hint).toBeDefined();
 		});
 
 		it('does not throw when policy allows reveal (policy=none)', async () => {
@@ -435,7 +441,7 @@ describe('ExecutionRedactionService', () => {
 					ipAddress: '1.2.3.4',
 					userAgent: 'TestAgent/1.0',
 				}),
-			).rejects.toThrow(ForbiddenError);
+			).rejects.toThrow(ScopeForbiddenError);
 
 			expect(eventService.emit).toHaveBeenCalledWith('execution-data-reveal-failure', {
 				user: mockUser,
@@ -463,7 +469,7 @@ describe('ExecutionRedactionService', () => {
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
 		});
 
-		it('throws ForbiddenError if any execution in batch is not allowed and emits reveal-failure event', async () => {
+		it('throws ScopeForbiddenError if any execution in batch is not allowed and emits reveal-failure event', async () => {
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
 
 			const executions = [
@@ -477,7 +483,9 @@ describe('ExecutionRedactionService', () => {
 				userAgent: 'TestAgent/1.0',
 			};
 
-			await expect(service.processExecutions(executions, options)).rejects.toThrow(ForbiddenError);
+			await expect(service.processExecutions(executions, options)).rejects.toThrow(
+				ScopeForbiddenError,
+			);
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledTimes(1);
 
 			expect(eventService.emit).toHaveBeenCalledWith('execution-data-reveal-failure', {
