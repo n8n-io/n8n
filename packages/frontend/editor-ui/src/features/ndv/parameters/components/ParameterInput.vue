@@ -42,6 +42,7 @@ import ResourceLocator from './ResourceLocator/ResourceLocator.vue';
 import SqlEditor from '@/features/shared/editors/components/SqlEditor/SqlEditor.vue';
 import TextEdit from './TextEdit.vue';
 import WorkflowSelectorParameterInput from './WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
+import { ModelSelect } from './ModelSelect';
 
 import {
 	formatAsExpression,
@@ -261,6 +262,10 @@ const isModelValueExpression = computed(() => isValueExpression(props.parameter,
 
 const isResourceLocatorParameter = computed<boolean>(() => {
 	return isResourceLocatorParameterType(props.parameter.type);
+});
+
+const isModelSelector = computed<boolean>(() => {
+	return props.parameter.type === 'options' && getTypeOption('isModelSelector') === true;
 });
 
 const isSecretParameter = computed<boolean>(() => {
@@ -1896,6 +1901,16 @@ onUpdated(async () => {
 					<ParameterIssues :issues="getIssues" />
 				</template>
 			</CredentialsSelect>
+
+			<ModelSelect
+				v-else-if="isModelSelector"
+				:options="parameterOptions"
+				:model-value="displayValue as string"
+				:loading="remoteParameterOptionsLoading"
+				:disabled="isReadOnly"
+				:default-value="String(parameter.default ?? '')"
+				@update:model-value="valueChanged"
+			/>
 
 			<N8nSelect
 				v-else-if="parameter.type === 'options'"

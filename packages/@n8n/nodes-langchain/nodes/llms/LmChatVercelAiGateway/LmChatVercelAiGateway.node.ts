@@ -76,6 +76,7 @@ export class LmChatVercelAiGateway implements INodeType {
 				type: 'options',
 				description: 'The model which will generate the completion',
 				typeOptions: {
+					isModelSelector: true,
 					loadOptions: {
 						routing: {
 							request: {
