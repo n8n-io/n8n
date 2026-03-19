@@ -21,7 +21,7 @@ export const searchFilesTool: ToolDefinition<typeof inputSchema> = {
 	inputSchema,
 	annotations: { defaultPermission: 'allow', readOnlyHint: true },
 	async execute({ dirPath, query, filePattern, ignoreCase, maxResults }, { dir }) {
-		const resolvedDir = resolveSafePath(dir, dirPath);
+		const resolvedDir = await resolveSafePath(dir, dirPath);
 		const limit = maxResults ?? 50;
 		const flags = ignoreCase ? 'gi' : 'g';
 		const regex = new RegExp(escapeRegex(query), flags);

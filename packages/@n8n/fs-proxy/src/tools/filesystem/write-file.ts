@@ -19,7 +19,7 @@ export const writeFileTool: ToolDefinition<typeof inputSchema> = {
 	inputSchema,
 	annotations: { defaultPermission: 'confirm' },
 	async execute({ filePath, content }, { dir }) {
-		const resolvedPath = resolveSafePath(dir, filePath);
+		const resolvedPath = await resolveSafePath(dir, filePath);
 
 		const byteSize = Buffer.byteLength(content, 'utf-8');
 		if (byteSize > MAX_FILE_SIZE) {

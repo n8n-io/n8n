@@ -16,7 +16,7 @@ export const deleteTool: ToolDefinition<typeof inputSchema> = {
 	inputSchema,
 	annotations: { defaultPermission: 'confirm', destructiveHint: true },
 	async execute({ path: relPath }, { dir }) {
-		const resolvedPath = resolveSafePath(dir, relPath);
+		const resolvedPath = await resolveSafePath(dir, relPath);
 
 		const stat = await fs.stat(resolvedPath);
 

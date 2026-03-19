@@ -18,8 +18,8 @@ export const moveFileTool: ToolDefinition<typeof inputSchema> = {
 	inputSchema,
 	annotations: { defaultPermission: 'confirm', destructiveHint: true },
 	async execute({ sourcePath, destinationPath }, { dir }) {
-		const resolvedSrc = resolveSafePath(dir, sourcePath);
-		const resolvedDest = resolveSafePath(dir, destinationPath);
+		const resolvedSrc = await resolveSafePath(dir, sourcePath);
+		const resolvedDest = await resolveSafePath(dir, destinationPath);
 
 		await fs.mkdir(path.dirname(resolvedDest), { recursive: true });
 		await fs.rename(resolvedSrc, resolvedDest);

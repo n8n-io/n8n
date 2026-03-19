@@ -184,7 +184,8 @@ function buildCliConfig(args: yargsParser.Arguments): Partial<GatewayConfig> {
 		const fsConfig: Record<string, unknown> = {};
 		const dir = args['filesystem-dir'] as string;
 		if (dir) fsConfig.dir = dir;
-		if (args['filesystem-write-access'] === true) fsConfig.writeAccess = true;
+		if (args['filesystem-write-access'] !== undefined)
+			fsConfig.writeAccess = args['filesystem-write-access'] as boolean;
 		if (Object.keys(fsConfig).length > 0) config.filesystem = fsConfig;
 	}
 

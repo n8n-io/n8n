@@ -128,11 +128,62 @@ function isAllowedDotFile(name: string): boolean {
 	return allowed.has(name);
 }
 
-/** Resolve a file path safely within the base directory. */
-export function resolveSafePath(basePath: string, relativePath: string): string {
-	const resolved = path.resolve(basePath, relativePath);
-	if (!resolved.startsWith(basePath + path.sep) && resolved !== basePath) {
+/**
+ * Resolve a path safely within the base directory, following symlinks.
+ *
+ * Walks each component of the path individually using `fs.realpath` so that
+ * symlinks are resolved at every level. This prevents a symlink inside the
+ * root from redirecting reads or writes to a location outside the root.
+ *
+ * For path components that do not yet exist (e.g. the target of a write
+ * operation), the remaining components are appended as plain strings once the
+ * deepest existing ancestor has been resolved.
+ *
+ * Dangling symlinks (a symlink whose target does not exist) are followed
+ * manually via `fs.lstat` + `fs.readlink` so that they are subject to the
+ * same bounds check as regular symlinks.
+ */
+export async function resolveSafePath(basePath: string, relativePath: string): Promise<string> {
+	const realBase = await fs.realpath(basePath);
+	const absolute = path.resolve(basePath, relativePath);
+
+	// Walk from the filesystem root, resolving each component in turn.
+	const root = path.parse(absolute).root;
+	const parts = path.relative(root, absolute).split(path.sep).filter(Boolean);
+
+	let current = root;
+
+	for (let i = 0; i < parts.length; i++) {
+		const next = path.join(current, parts[i]);
+
+		try {
+			// Happy path: follows all existing symlinks and returns the real path.
+			current = await fs.realpath(next);
+		} catch (realpathError) {
+			if ((realpathError as NodeJS.ErrnoException).code !== 'ENOENT') throw realpathError;
+
+			// ENOENT can mean the path is absent OR it is a dangling symlink whose
+			// target does not exist. Check with lstat (which does not follow symlinks).
+			try {
+				const lstat = await fs.lstat(next);
+				if (lstat.isSymbolicLink()) {
+					// Dangling symlink — follow it manually and continue the walk.
+					const target = await fs.readlink(next);
+					current = path.resolve(current, target);
+					continue;
+				}
+			} catch {
+				// lstat also failed — the path truly does not exist.
+			}
+
+			// Path does not exist and is not a symlink; append remaining parts as-is.
+			current = path.join(current, ...parts.slice(i));
+			break;
+		}
+	}
+
+	if (!current.startsWith(realBase + path.sep) && current !== realBase) {
 		throw new Error(`Path "${relativePath}" escapes the base directory`);
 	}
-	return resolved;
+	return current;
 }

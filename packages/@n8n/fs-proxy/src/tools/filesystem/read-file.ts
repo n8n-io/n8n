@@ -20,7 +20,7 @@ export const readFileTool: ToolDefinition<typeof inputSchema> = {
 	inputSchema,
 	annotations: { defaultPermission: 'allow', readOnlyHint: true },
 	async execute({ filePath, startLine, maxLines }, { dir }) {
-		const resolvedPath = resolveSafePath(dir, filePath);
+		const resolvedPath = await resolveSafePath(dir, filePath);
 
 		const stat = await fs.stat(resolvedPath);
 		if (stat.size > MAX_FILE_SIZE) {

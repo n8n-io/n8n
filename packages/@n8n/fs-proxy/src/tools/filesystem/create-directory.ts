@@ -16,7 +16,7 @@ export const createDirectoryTool: ToolDefinition<typeof inputSchema> = {
 	inputSchema,
 	annotations: { defaultPermission: 'confirm' },
 	async execute({ dirPath }, { dir }) {
-		const resolvedPath = resolveSafePath(dir, dirPath);
+		const resolvedPath = await resolveSafePath(dir, dirPath);
 
 		await fs.mkdir(resolvedPath, { recursive: true });
 

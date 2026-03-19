@@ -14,6 +14,10 @@ function mockMkdir(): void {
 describe('createDirectoryTool', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
+		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+			if (p === '/base') return await Promise.resolve('/base');
+			throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+		});
 	});
 
 	describe('metadata', () => {
@@ -55,11 +59,15 @@ describe('createDirectoryTool', () => {
 		});
 
 		it('is idempotent when the directory already exists', async () => {
-			mockMkdir();
+			// fs.mkdir with { recursive: true } resolves without error when the dir already exists
+			(fs.mkdir as jest.Mock).mockResolvedValue(undefined);
 
-			await expect(
-				createDirectoryTool.execute({ dirPath: 'existing' }, CONTEXT),
-			).resolves.not.toThrow();
+			const result = await createDirectoryTool.execute({ dirPath: 'existing' }, CONTEXT);
+
+			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
+			const data = JSON.parse(textOf(result)) as { path: string };
+			expect(data.path).toBe('existing');
+			expect(fs.mkdir).toHaveBeenCalledWith('/base/existing', { recursive: true });
 		});
 
 		it('returns a single text content block', async () => {

@@ -18,6 +18,10 @@ function mockCopyFile(): void {
 describe('copyFileTool', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
+		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+			if (p === '/base') return await Promise.resolve('/base');
+			throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+		});
 	});
 
 	describe('metadata', () => {

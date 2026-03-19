@@ -8,7 +8,7 @@ import { resolveSafePath } from './fs-utils';
 
 const inputSchema = z.object({
 	filePath: z.string().describe('File path relative to root'),
-	oldString: z.string().describe('Exact string to find and replace (first occurrence)'),
+	oldString: z.string().min(1).describe('Exact string to find and replace (first occurrence)'),
 	newString: z.string().describe('Replacement string'),
 });
 
@@ -19,7 +19,7 @@ export const editFileTool: ToolDefinition<typeof inputSchema> = {
 	inputSchema,
 	annotations: { defaultPermission: 'confirm' },
 	async execute({ filePath, oldString, newString }, { dir }) {
-		const resolvedPath = resolveSafePath(dir, filePath);
+		const resolvedPath = await resolveSafePath(dir, filePath);
 
 		const stat = await fs.stat(resolvedPath);
 		if (stat.size > MAX_FILE_SIZE) {
