@@ -1,4 +1,5 @@
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { resolveNodeWebhookId } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -104,7 +105,12 @@ export const createUpdateWorkflowTool = (
 
 		try {
 			// Fetch the workflow to check if it's available in MCP
-			await getMcpWorkflow(workflowId, user, ['workflow:update'], workflowFinderService);
+			const existingWorkflow = await getMcpWorkflow(
+				workflowId,
+				user,
+				['workflow:update'],
+				workflowFinderService,
+			);
 
 			const { ParseValidateHandler, stripImportStatements } = await import(
 				'@n8n/ai-workflow-builder'
@@ -124,6 +130,29 @@ export const createUpdateWorkflowTool = (
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
 			});
+
+			for (const node of workflowUpdateData.nodes) {
+				try {
+					const desc = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+					resolveNodeWebhookId(node, desc.description);
+				} catch {
+					// Node type not found, skip
+				}
+			}
+
+			// Preserve user-configured credentials from the existing workflow.
+			// Match nodes by name + type so that auto-assign skips them.
+			const existingCredsByNode = new Map(
+				existingWorkflow.nodes.map((n) => [n.name, { type: n.type, credentials: n.credentials }]),
+			);
+			for (const node of workflowUpdateData.nodes) {
+				if (!node.credentials) {
+					const existing = existingCredsByNode.get(node.name);
+					if (existing?.type === node.type && existing.credentials) {
+						node.credentials = { ...existing.credentials };
+					}
+				}
+			}
 
 			// Resolve the project ID from the workflow's owner relationship
 			const sharedWorkflow = await sharedWorkflowRepository.findOneOrFail({

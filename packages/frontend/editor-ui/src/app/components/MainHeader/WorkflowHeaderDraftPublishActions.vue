@@ -493,7 +493,7 @@ useKeybindings({
 	},
 	'ctrl+u': {
 		disabled: () =>
-			!activeVersion.value || !hasPublishPermission.value || collaborationReadOnly.value,
+			!activeVersion.value || !hasUnpublishPermission.value || collaborationReadOnly.value,
 		run: onUnpublish,
 	},
 });

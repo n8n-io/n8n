@@ -1,4 +1,5 @@
 import type { ExecutionRepository, User } from '@n8n/db';
+import type { IRunExecutionData, IRunData, ITaskDataConnections, IPinData } from 'n8n-workflow';
 import { jsonStringify, ensureError } from 'n8n-workflow';
 import z from 'zod';
 
@@ -13,6 +14,26 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow the execution belongs to'),
 	executionId: z.string().describe('The ID of the execution to retrieve'),
+	includeData: z
+		.boolean()
+		.optional()
+		.describe(
+			'Whether to include the full execution result data. Defaults to false (metadata only). Set to true to include node inputs/outputs.',
+		),
+	nodeNames: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'When includeData is true, return data only for these node names. If omitted, data for all nodes is included.',
+		),
+	truncateData: z
+		.number()
+		.int()
+		.positive()
+		.optional()
+		.describe(
+			'When includeData is true, limit the number of data items returned per node output to this value. If omitted, all items are returned.',
+		),
 });
 
 const outputSchema = {
@@ -31,7 +52,10 @@ const outputSchema = {
 		.passthrough()
 		.nullable()
 		.describe('Execution metadata, or null if an error occurred'),
-	data: z.unknown().optional().describe('Full execution result data'),
+	data: z
+		.unknown()
+		.optional()
+		.describe('Execution result data (only present when includeData is true)'),
 	error: z.string().optional().describe('Error message if the request failed'),
 } satisfies z.ZodRawShape;
 
@@ -43,7 +67,8 @@ export const createGetExecutionTool = (
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'get_execution',
 	config: {
-		description: 'Get full execution details and results using the execution ID and workflow ID',
+		description:
+			'Get execution details by execution ID and workflow ID. By default returns metadata only. Set includeData to true to include node execution data, optionally filtered by nodeNames and truncated by truncateData.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
@@ -54,20 +79,35 @@ export const createGetExecutionTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ workflowId, executionId }: z.infer<typeof inputSchema>) => {
+	handler: async ({
+		workflowId,
+		executionId,
+		includeData,
+		nodeNames,
+		truncateData,
+	}: z.infer<typeof inputSchema>) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'get_execution',
-			parameters: { workflowId, executionId },
+			parameters: { workflowId, executionId, includeData, nodeNames, truncateData },
 		};
 
 		try {
 			await getMcpWorkflow(workflowId, user, ['workflow:read'], workflowFinderService);
 
-			// Retrieve the execution with full data
-			const execution = await executionRepository.findWithUnflattenedData(executionId, [
-				workflowId,
-			]);
+			// Use lightweight metadata query when data isn't needed;
+			// split into branches so TypeScript can narrow each return type.
+			let execution;
+			let executionData: IRunExecutionData | null | undefined;
+			if (includeData) {
+				const fullExecution = await executionRepository.findWithUnflattenedData(executionId, [
+					workflowId,
+				]);
+				execution = fullExecution;
+				executionData = fullExecution?.data ?? null;
+			} else {
+				execution = await executionRepository.findIfAccessible(executionId, [workflowId]);
+			}
 
 			if (!execution) {
 				// Check if execution exists at all
@@ -85,20 +125,32 @@ export const createGetExecutionTool = (
 				);
 			}
 
-			const output = {
-				execution: {
-					id: execution.id,
-					workflowId: execution.workflowId,
-					mode: execution.mode,
-					status: execution.status,
-					startedAt: execution.startedAt?.toISOString() ?? null,
-					stoppedAt: execution.stoppedAt?.toISOString() ?? null,
-					retryOf: execution.retryOf ?? null,
-					retrySuccessId: execution.retrySuccessId ?? null,
-					waitTill: execution.waitTill?.toISOString() ?? null,
-				},
-				data: execution.data,
+			const executionMeta = {
+				id: execution.id,
+				workflowId: execution.workflowId,
+				mode: execution.mode,
+				status: execution.status,
+				startedAt: execution.startedAt?.toISOString() ?? null,
+				stoppedAt: execution.stoppedAt?.toISOString() ?? null,
+				retryOf: execution.retryOf ?? null,
+				retrySuccessId: execution.retrySuccessId ?? null,
+				waitTill: execution.waitTill?.toISOString() ?? null,
 			};
+
+			let filteredData: IRunExecutionData | null | undefined;
+			if (executionData) {
+				filteredData = executionData;
+				if (nodeNames !== undefined || truncateData) {
+					filteredData = filterExecutionData(filteredData, nodeNames, truncateData);
+				}
+			} else if (executionData === null) {
+				filteredData = null;
+			}
+
+			const output =
+				filteredData !== undefined
+					? { execution: executionMeta, data: filteredData }
+					: { execution: executionMeta };
 
 			telemetryPayload.results = {
 				success: true,
@@ -149,3 +201,55 @@ export const createGetExecutionTool = (
 		}
 	},
 });
+
+function filterExecutionData(
+	data: IRunExecutionData,
+	nodeNames?: string[],
+	truncateData?: number,
+): IRunExecutionData {
+	// Shallow clone is sufficient — the result is serialized immediately and never mutated
+	const filtered = { ...data, resultData: { ...data.resultData } };
+
+	let runData = filtered.resultData.runData ?? {};
+
+	if (nodeNames !== undefined) {
+		const filteredRunData: IRunData = {};
+		for (const name of nodeNames) {
+			if (name in runData) {
+				filteredRunData[name] = runData[name];
+			}
+		}
+		runData = filteredRunData;
+
+		if (filtered.resultData.pinData) {
+			const filteredPinData: IPinData = {};
+			for (const name of nodeNames) {
+				if (name in filtered.resultData.pinData) {
+					filteredPinData[name] = filtered.resultData.pinData[name];
+				}
+			}
+			filtered.resultData.pinData = filteredPinData;
+		}
+	}
+
+	if (truncateData) {
+		const truncated: IRunData = {};
+		for (const [nodeName, taskDataArray] of Object.entries(runData)) {
+			truncated[nodeName] = taskDataArray.map((taskData) => {
+				if (!taskData.data) return taskData;
+				const truncatedConnections: ITaskDataConnections = {};
+				for (const [connType, outputs] of Object.entries(taskData.data)) {
+					truncatedConnections[connType] = outputs.map((items) =>
+						items ? items.slice(0, truncateData) : items,
+					);
+				}
+				return { ...taskData, data: truncatedConnections };
+			});
+		}
+		runData = truncated;
+	}
+
+	filtered.resultData.runData = runData;
+
+	return filtered;
+}

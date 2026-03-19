@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { RELEASE_TRACKS, resolveReleaseTagForTrack, writeGithubOutput } from './github-helpers.mjs';
-import { tagVersionInfoToReleaseCandidateBranchName } from './ensure-release-candidate-branches.mjs';
+import {
+	RELEASE_TRACKS,
+	resolveReleaseTagForTrack,
+	tagVersionInfoToReleaseCandidateBranchName,
+	writeGithubOutput,
+} from './github-helpers.mjs';
 import semver from 'semver';
 
 /**
@@ -56,7 +60,10 @@ export function determineTrack(packageVersion) {
 		tag: /** @type {import('./github-helpers.mjs').ReleaseVersion} */ (`n8n@${packageVersion}`),
 	});
 
+	const previousVersion = trackToReleaseMap[track]?.version;
+
 	const output = {
+		previous_version: previousVersion,
 		version: packageVersion,
 		track,
 		bump,
@@ -67,7 +74,9 @@ export function determineTrack(packageVersion) {
 
 	writeGithubOutput(output);
 	console.log(
-		`Determined track info: track=${track}, version=${packageVersion}, new_stable_version=${newStable}, release_type=${releaseType}, rc_branch=${rc_branch}`,
+		`Determined track info: ${Object.entries(output)
+			.map(([key, val]) => `${key}=${val}`)
+			.join(', ')}`,
 	);
 
 	return output;

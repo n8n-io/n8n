@@ -90,6 +90,14 @@ export class SamlService {
 		private readonly provisioningService: ProvisioningService,
 	) {}
 
+	/**
+	 * Checks if SAML request signing is enabled via feature flag.
+	 * @returns true if N8N_ENV_FEAT_SIGNED_SAML_REQUESTS is set to 'true', false otherwise
+	 */
+	isSignedSamlRequestsEnabled(): boolean {
+		return process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS === 'true';
+	}
+
 	async init(): Promise<void> {
 		try {
 			// load preferences first but do not apply so as to not load samlify unnecessarily
