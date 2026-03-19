@@ -33,6 +33,9 @@ const mockDocumentStore = vi.hoisted(() => ({
 	resetParametersLastUpdatedAt: vi.fn(),
 	setPinData: vi.fn(),
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	getNodeByName: vi.fn().mockReturnValue(null),
+	setNodeIssue: vi.fn(),
+	updateNodeProperties: vi.fn(),
 })) as unknown as ReturnType<typeof useWorkflowDocumentStore>;
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
@@ -91,6 +94,9 @@ describe('useWorkflowUpdate', () => {
 		vi.mocked(mockDocumentStore.resetParametersLastUpdatedAt).mockClear();
 		vi.mocked(mockDocumentStore.setPinData).mockClear();
 		vi.mocked(mockDocumentStore.getPinDataSnapshot).mockReturnValue({});
+		vi.mocked(mockDocumentStore.getNodeByName).mockReturnValue(null);
+		vi.mocked(mockDocumentStore.setNodeIssue).mockClear();
+		vi.mocked(mockDocumentStore.updateNodeProperties).mockClear();
 		workflowsStore.workflowId = 'test-workflow';
 		workflowsStore.workflow = {
 			id: 'test-workflow',
