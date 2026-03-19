@@ -30,6 +30,9 @@ const { isGoogleOAuthType } = useCredentialOAuth();
 
 const buttonLabel = computed(() => {
 	if (props.label) return props.label;
+	if (!props.serviceName) {
+		return i18n.baseText('nodeCredentials.quickConnect.connect');
+	}
 	return i18n.baseText('nodeCredentials.quickConnect.connectTo', {
 		interpolate: { provider: props.serviceName },
 	});
