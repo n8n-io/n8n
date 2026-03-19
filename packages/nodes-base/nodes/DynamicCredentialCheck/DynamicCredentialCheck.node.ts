@@ -8,19 +8,20 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 export class DynamicCredentialCheck implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Dynamic Credential Check',
+		displayName: 'Check Credential Status',
 		name: 'dynamicCredentialCheck',
 		icon: 'fa:key',
 		group: ['transform'],
 		version: 1,
 		description:
-			'Checks dynamic credential status and routes to Ready or Not Ready based on availability',
+			'Checks whether the triggering user has the required Dynamic credential configured. Routes to "Ready" or "Not Ready" and returns auth URLs when the credential is missing.',
 		defaults: {
-			name: 'Dynamic Credential Check',
+			name: 'Check Credential Status',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 		outputNames: ['Ready', 'Not Ready'],
+		sensitiveOutputFields: ['credentials[*].authorizationUrl', 'credentials[*].revokeUrl'],
 		properties: [],
 	};
 
@@ -41,7 +42,7 @@ export class DynamicCredentialCheck implements INodeType {
 		}
 
 		const notReadyItems: INodeExecutionData[] = items.map((item, itemIndex) => ({
-			json: result,
+			json: structuredClone(result),
 			pairedItem: item.pairedItem ?? { item: itemIndex },
 		}));
 

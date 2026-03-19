@@ -41,12 +41,22 @@ describe('DynamicCredentialCheck Node', () => {
 				opts.hasExecutionContext === false ? undefined : executionContext,
 			getWorkflow: () => ({ id: opts.workflowId }),
 			getNode: () => ({
-				name: 'Dynamic Credential Check',
+				name: 'Check Credential Status',
 				type: 'n8n-nodes-base.dynamicCredentialCheck',
 			}),
 			helpers,
 		} as unknown as IExecuteFunctions;
 	};
+
+	describe('sensitiveOutputFields', () => {
+		it('should declare authorizationUrl as sensitive', () => {
+			expect(node.description.sensitiveOutputFields).toContain('credentials[*].authorizationUrl');
+		});
+
+		it('should declare revokeUrl as sensitive', () => {
+			expect(node.description.sensitiveOutputFields).toContain('credentials[*].revokeUrl');
+		});
+	});
 
 	describe('execute', () => {
 		it('should route items to Ready output when all credentials are configured', async () => {
