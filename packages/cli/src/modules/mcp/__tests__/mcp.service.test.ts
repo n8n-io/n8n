@@ -17,6 +17,7 @@ import { WorkflowBuilderToolsService } from '../tools/workflow-builder/workflow-
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ExecutionService } from '@/executions/execution.service';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -67,6 +68,7 @@ describe('McpService', () => {
 			mockInstance(FolderRepository),
 			mockInstance(SharedWorkflowRepository),
 			mockInstance(ExecutionRepository),
+			mockInstance(ExecutionService),
 		);
 	});
 
@@ -104,6 +106,7 @@ describe('McpService', () => {
 				mockInstance(FolderRepository),
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
+				mockInstance(ExecutionService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -306,6 +309,7 @@ describe('McpService', () => {
 				mockInstance(FolderRepository),
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
+				mockInstance(ExecutionService),
 			);
 
 			const server = await service.getServer(user);
@@ -345,6 +349,7 @@ describe('McpService', () => {
 				mockInstance(FolderRepository),
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
+				mockInstance(ExecutionService),
 			);
 
 			const server = await service.getServer(user);

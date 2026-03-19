@@ -1,0 +1,236 @@
+import { Time } from '@n8n/constants';
+import type { User } from '@n8n/db';
+import {
+	type INode,
+	type IPinData,
+	type INodeExecutionData,
+	type IWorkflowExecutionDataProcess,
+	createRunExecutionData,
+	jsonStringify,
+	ensureError,
+	isTriggerNode,
+} from 'n8n-workflow';
+import z from 'zod';
+
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { waitForExecutionResult, WORKFLOW_EXECUTION_TIMEOUT_MS } from './execution-utils';
+import { getMcpWorkflow } from './workflow-validation.utils';
+
+import type { ActiveExecutions } from '@/active-executions';
+import type { NodeTypes } from '@/node-types';
+import type { McpService } from '@/modules/mcp/mcp.service';
+import type { Telemetry } from '@/telemetry';
+import type { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+const inputSchema = z.object({
+	workflowId: z.string().describe('The ID of the workflow to test'),
+	pinData: z
+		.record(z.array(z.record(z.unknown())))
+		.describe(
+			'Pin data for all workflow nodes. Use the prepare_test_pin_data tool to generate this. Keys are node names, values are arrays of data objects.',
+		),
+});
+
+type TestWorkflowOutput = {
+	executionId: string | null;
+	status: 'success' | 'error' | 'running' | 'waiting' | 'canceled' | 'crashed' | 'new' | 'unknown';
+	error?: string;
+};
+
+const outputSchema = {
+	executionId: z.string().nullable(),
+	status: z
+		.enum(['success', 'error', 'running', 'waiting', 'canceled', 'crashed', 'new', 'unknown'])
+		.describe('The status of the test execution'),
+	error: z.string().optional().describe('Error message if the execution failed'),
+} satisfies z.ZodRawShape;
+
+export const createTestWorkflowTool = (
+	user: User,
+	workflowFinderService: WorkflowFinderService,
+	activeExecutions: ActiveExecutions,
+	workflowRunner: WorkflowRunner,
+	nodeTypes: NodeTypes,
+	telemetry: Telemetry,
+	mcpService: McpService,
+): ToolDefinition<typeof inputSchema.shape> => ({
+	name: 'test_workflow',
+	config: {
+		description:
+			'Test a workflow using pin data instead of calling external services. All nodes use the provided pin data, so no real credentials or API calls are needed. Use prepare_test_pin_data to generate the pin data first.',
+		inputSchema: inputSchema.shape,
+		outputSchema,
+		annotations: {
+			title: 'Test Workflow',
+			readOnlyHint: false,
+			destructiveHint: false,
+			idempotentHint: true,
+			openWorldHint: false,
+		},
+	},
+	handler: async ({ workflowId, pinData }: z.infer<typeof inputSchema>) => {
+		const telemetryPayload: UserCalledMCPToolEventPayload = {
+			user_id: user.id,
+			tool_name: 'test_workflow',
+			parameters: { workflowId, nodeCount: Object.keys(pinData).length },
+		};
+
+		try {
+			const output = await testWorkflow(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				mcpService,
+				workflowId,
+				pinData as IPinData,
+			);
+
+			telemetryPayload.results = {
+				success: output.status === 'success',
+				data: { executionId: output.executionId, status: output.status },
+			};
+			if (output.status === 'error' && output.error) {
+				telemetryPayload.results.error = output.error;
+			}
+			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+			return {
+				content: [{ type: 'text', text: jsonStringify(output) }],
+				structuredContent: output,
+			};
+		} catch (er) {
+			const error = ensureError(er);
+			const isTimeout = error instanceof McpExecutionTimeoutError;
+			const isAccessError = error instanceof WorkflowAccessError;
+
+			const output: TestWorkflowOutput = {
+				executionId: isTimeout ? error.executionId : null,
+				status: 'error',
+				error: isTimeout
+					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / Time.milliseconds.toSeconds} seconds`
+					: (error.message ?? `${error.constructor.name}: (no message)`),
+			};
+
+			telemetryPayload.results = {
+				success: false,
+				error: isTimeout ? 'Workflow execution timed out' : error.message,
+				error_reason: isAccessError ? error.reason : undefined,
+			};
+			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+			return {
+				content: [{ type: 'text', text: jsonStringify(output) }],
+				structuredContent: output,
+			};
+		}
+	},
+});
+
+// =============================================================================
+// Core Logic
+// =============================================================================
+
+export async function testWorkflow(
+	user: User,
+	workflowFinderService: WorkflowFinderService,
+	activeExecutions: ActiveExecutions,
+	workflowRunner: WorkflowRunner,
+	nodeTypes: NodeTypes,
+	mcpService: McpService,
+	workflowId: string,
+	pinData: IPinData,
+): Promise<TestWorkflowOutput> {
+	const workflow = await getMcpWorkflow(
+		workflowId,
+		user,
+		['workflow:execute'],
+		workflowFinderService,
+	);
+
+	const nodes = workflow.nodes ?? [];
+	const connections = workflow.connections ?? {};
+
+	// Find the trigger node — support any trigger type
+	const triggerNode = findTriggerNode(nodes, nodeTypes);
+	if (!triggerNode) {
+		throw new WorkflowAccessError(
+			'Workflow has no trigger node. A trigger node is required to test the workflow.',
+			'unsupported_trigger',
+		);
+	}
+
+	// Ensure trigger has pin data
+	const triggerPinData: INodeExecutionData[] = pinData[triggerNode.name] ?? [{ json: {} }];
+
+	const mcpMessageId = `mcp-test-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+	const runData: IWorkflowExecutionDataProcess = {
+		executionMode: 'manual',
+		workflowData: { ...workflow, nodes, connections },
+		userId: user.id,
+		isMcpExecution: mcpService.isQueueMode,
+		mcpType: 'service',
+		mcpSessionId: mcpMessageId,
+		mcpMessageId,
+		startNodes: [{ name: triggerNode.name, sourceData: null }],
+		pinData,
+		executionData: createRunExecutionData({
+			startData: {},
+			resultData: {
+				pinData,
+				runData: {},
+			},
+			executionData: {
+				contextData: {},
+				metadata: {},
+				nodeExecutionStack: [
+					{
+						node: triggerNode,
+						data: {
+							main: [triggerPinData],
+						},
+						source: null,
+					},
+				],
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+		}),
+	};
+
+	const executionId = await workflowRunner.run(runData);
+	const data = await waitForExecutionResult(executionId, activeExecutions, mcpService);
+	const hasError = data.status === 'error' || data.data.resultData?.error;
+
+	return {
+		executionId,
+		status: hasError ? 'error' : data.status,
+		error: hasError
+			? (data.data.resultData?.error?.message ?? 'Execution completed with errors')
+			: undefined,
+	};
+}
+
+/**
+ * Find the first trigger node in the workflow.
+ * Supports any node type with group.includes('trigger').
+ */
+function findTriggerNode(nodes: INode[], nodeTypes: NodeTypes): INode | undefined {
+	for (const node of nodes) {
+		if (node.disabled) continue;
+		try {
+			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			if (isTriggerNode(nodeType.description)) {
+				return node;
+			}
+		} catch {
+			// Node type not found — skip
+		}
+	}
+	return undefined;
+}

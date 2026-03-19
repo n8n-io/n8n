@@ -7,11 +7,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 	type INode,
 	type IPinData,
-	type IRun,
 	type IWorkflowExecutionDataProcess,
 	type WorkflowExecuteMode,
-	UnexpectedError,
-	TimeoutExecutionCancelledError,
 	ensureError,
 	jsonStringify,
 	SCHEDULE_TRIGGER_NODE_TYPE,
@@ -31,6 +28,7 @@ import type {
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 import { findMcpSupportedTrigger } from '../mcp.utils';
+import { waitForExecutionResult, WORKFLOW_EXECUTION_TIMEOUT_MS } from './execution-utils';
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -38,8 +36,6 @@ import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-
-const WORKFLOW_EXECUTION_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds; // 5 minutes
 
 export { type FoundWorkflow };
 
@@ -331,58 +327,6 @@ const buildRunData = async (
 	});
 
 	return runData;
-};
-
-const waitForExecutionResult = async (
-	executionId: string,
-	activeExecutions: ActiveExecutions,
-	mcpService: McpService,
-): Promise<IRun> => {
-	// Create a timeout promise
-	let timeoutId: NodeJS.Timeout | undefined;
-	const timeoutPromise = new Promise<never>((_, reject) => {
-		timeoutId = setTimeout(() => {
-			reject(new McpExecutionTimeoutError(executionId, WORKFLOW_EXECUTION_TIMEOUT_MS));
-		}, WORKFLOW_EXECUTION_TIMEOUT_MS);
-	});
-
-	// In queue mode, use the MCP service's pending response mechanism
-	// In regular mode, use the standard activeExecutions promise
-	const resultPromise = mcpService.isQueueMode
-		? mcpService.createPendingResponse(executionId).promise
-		: activeExecutions.getPostExecutePromise(executionId);
-
-	try {
-		const data = await Promise.race([resultPromise, timeoutPromise]);
-
-		// Executed successfully before timeout: clear the timeout
-		clearTimeout(timeoutId);
-
-		if (data === undefined) {
-			throw new UnexpectedError('Workflow did not return any data');
-		}
-
-		return data;
-	} catch (error) {
-		if (timeoutId) clearTimeout(timeoutId);
-
-		if (mcpService.isQueueMode) {
-			mcpService.removePendingResponse(executionId);
-		}
-
-		if (error instanceof McpExecutionTimeoutError) {
-			try {
-				const cancellationError = new TimeoutExecutionCancelledError(error.executionId!);
-				activeExecutions.stopExecution(error.executionId!, cancellationError);
-			} catch (stopError) {
-				throw new UnexpectedError(
-					`Failed to stop timed-out execution [id: ${error.executionId}]: ${ensureError(stopError).message}`,
-				);
-			}
-		}
-		// Re-throw the error to be handled by the caller
-		throw error;
-	}
 };
 
 /**

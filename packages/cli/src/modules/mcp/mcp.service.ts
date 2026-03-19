@@ -24,6 +24,8 @@ import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
+import { createPrepareTestPinDataTool } from './tools/test-workflow-pin-data';
+import { createTestWorkflowTool } from './tools/test-workflow.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
@@ -39,6 +41,7 @@ import { WorkflowBuilderToolsService } from './tools/workflow-builder/workflow-b
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ExecutionService } from '@/executions/execution.service';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -87,6 +90,7 @@ export class McpService {
 		private readonly folderRepository: FolderRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionService: ExecutionService,
 	) {}
 
 	async getServer(user: User) {
@@ -178,6 +182,30 @@ export class McpService {
 			unpublishWorkflowTool.config,
 			unpublishWorkflowTool.handler,
 		);
+
+		const prepareTestPinDataTool = createPrepareTestPinDataTool(
+			user,
+			this.workflowFinderService,
+			this.executionService,
+			this.nodeTypes,
+			this.telemetry,
+		);
+		server.registerTool(
+			prepareTestPinDataTool.name,
+			prepareTestPinDataTool.config,
+			prepareTestPinDataTool.handler,
+		);
+
+		const testWorkflowTool = createTestWorkflowTool(
+			user,
+			this.workflowFinderService,
+			this.activeExecutions,
+			this.workflowRunner,
+			this.nodeTypes,
+			this.telemetry,
+			this,
+		);
+		server.registerTool(testWorkflowTool.name, testWorkflowTool.config, testWorkflowTool.handler);
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
