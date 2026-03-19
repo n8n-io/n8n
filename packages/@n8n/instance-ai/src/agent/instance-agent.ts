@@ -12,7 +12,7 @@ import { createMemory } from '../memory/memory-config';
 import { createAllTools, createOrchestrationTools } from '../tools';
 import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-import type { CreateInstanceAgentOptions, McpServerConfig } from '../types';
+import type { CreateInstanceAgentOptions, McpServerConfig, TracingProxyConfig } from '../types';
 import { getSystemPrompt } from './system-prompt';
 
 function buildMcpServers(
@@ -107,7 +107,25 @@ async function getBrowserMcpTools(config: McpServerConfig | undefined): Promise<
 	return cachedBrowserMcpTools;
 }
 
-function ensureMastraRegistered(agent: Agent, storage: MastraCompositeStore): void {
+function buildLangSmithExporter(tracingConfig?: TracingProxyConfig): LangSmithExporter {
+	if (tracingConfig) {
+		return new LangSmithExporter({
+			projectName: 'instance-ai',
+			apiUrl: tracingConfig.apiUrl,
+			apiKey: '-', // proxy manages auth
+			autoBatchTracing: false,
+			traceBatchConcurrency: 1,
+			fetchOptions: { headers: tracingConfig.headers },
+		});
+	}
+	return new LangSmithExporter({ projectName: 'instance-ai' });
+}
+
+function ensureMastraRegistered(
+	agent: Agent,
+	storage: MastraCompositeStore,
+	tracingConfig?: TracingProxyConfig,
+): void {
 	// Only recreate Mastra if the storage instance changed
 	const key = storage.id ?? 'default';
 	if (cachedMastra && cachedMastraStorageKey === key) {
@@ -121,8 +139,8 @@ function ensureMastraRegistered(agent: Agent, storage: MastraCompositeStore): vo
 		observability: new Observability({
 			configs: {
 				langsmith: {
-					serviceName: 'my-service',
-					exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
+					serviceName: 'instance-ai',
+					exporters: [buildLangSmithExporter(tracingConfig)],
 				},
 			},
 		}),
@@ -140,6 +158,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		mcpServers = [],
 		memoryConfig,
 		disableDeferredTools = false,
+		tracingConfig,
 	} = options;
 
 	// Build native n8n domain tools (context captured via closures — per-run)
@@ -288,7 +307,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	});
 
 	// Register agent with Mastra for HITL suspend/resume snapshot storage
-	ensureMastraRegistered(agent, memoryConfig.storage);
+	ensureMastraRegistered(agent, memoryConfig.storage, tracingConfig);
 
 	return agent;
 }

@@ -12,7 +12,28 @@ import type { MastraCompositeStore } from '@mastra/core/storage';
 import { LangSmithExporter } from '@mastra/langsmith';
 import { Observability } from '@mastra/observability';
 
-export function registerWithMastra(agentId: string, agent: Agent, storage: MastraCompositeStore) {
+import type { TracingProxyConfig } from '../types';
+
+function buildLangSmithExporter(tracingConfig?: TracingProxyConfig): LangSmithExporter {
+	if (tracingConfig) {
+		return new LangSmithExporter({
+			projectName: 'instance-ai',
+			apiUrl: tracingConfig.apiUrl,
+			apiKey: '-',
+			autoBatchTracing: false,
+			traceBatchConcurrency: 1,
+			fetchOptions: { headers: tracingConfig.headers },
+		});
+	}
+	return new LangSmithExporter({ projectName: 'instance-ai' });
+}
+
+export function registerWithMastra(
+	agentId: string,
+	agent: Agent,
+	storage: MastraCompositeStore,
+	tracingConfig?: TracingProxyConfig,
+) {
 	new Mastra({
 		agents: { [agentId]: agent },
 		storage,
@@ -20,7 +41,7 @@ export function registerWithMastra(agentId: string, agent: Agent, storage: Mastr
 			configs: {
 				langsmith: {
 					serviceName: 'instance-ai',
-					exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
+					exporters: [buildLangSmithExporter(tracingConfig)],
 				},
 			},
 		}),

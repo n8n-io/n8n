@@ -33,6 +33,7 @@ import type {
 	OrchestrationContext,
 	SandboxConfig,
 	SpawnBackgroundTaskOptions,
+	TracingProxyConfig,
 	VerificationResult,
 	WorkflowBuildOutcome,
 	WorkflowLoopState,
@@ -40,6 +41,9 @@ import type {
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
+
+import { AiService } from '@/services/ai.service';
+import { Push } from '@/push';
 
 import { buildAgentTreeFromEvents } from './agent-tree-builder';
 import { AgentTreeSnapshotStorage } from './agent-tree-snapshot';
@@ -177,6 +181,9 @@ export class InstanceAiService {
 	/** Factory for creating per-builder ephemeral sandboxes. */
 	private builderSandboxFactory?: BuilderSandboxFactory;
 
+	/** Threads that have already had credits counted (first completed run only). */
+	private readonly creditedThreads = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
@@ -185,6 +192,8 @@ export class InstanceAiService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly compositeStore: TypeORMCompositeStore,
 		private readonly compactionService: InstanceAiCompactionService,
+		private readonly aiService: AiService,
+		private readonly push: Push,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
@@ -276,9 +285,93 @@ export class InstanceAiService {
 		}
 	}
 
-	/** Build model config: plain string for built-in providers, object for custom endpoints. */
+	/**
+	 * Build model config. When the AI service proxy is enabled, returns a config
+	 * that routes LLM calls through the proxy with fresh auth headers.
+	 * Otherwise returns the direct model config from user/admin settings.
+	 */
 	private async resolveModel(user: User): Promise<ModelConfig> {
+		if (this.aiService.isProxyEnabled()) {
+			const client = await this.aiService.getClient();
+			const token = await client.getBuilderApiProxyToken(
+				{ id: user.id },
+				{ userMessageId: nanoid() },
+			);
+			const modelName = await this.settingsService.resolveModelName(user);
+			return {
+				id: `anthropic/${modelName}` as `${string}/${string}`,
+				url: client.getApiProxyBaseUrl() + '/anthropic',
+				apiKey: 'proxy-managed',
+				headers: {
+					Authorization: `${token.tokenType} ${token.accessToken}`,
+				},
+			};
+		}
 		return await this.settingsService.resolveModelConfig(user);
+	}
+
+	/** Build tracing config when proxy is enabled. */
+	private async resolveTracingConfig(user: User): Promise<TracingProxyConfig | undefined> {
+		if (!this.aiService.isProxyEnabled()) return undefined;
+		const client = await this.aiService.getClient();
+		const token = await client.getBuilderApiProxyToken(
+			{ id: user.id },
+			{ userMessageId: nanoid() },
+		);
+		return {
+			apiUrl: client.getApiProxyBaseUrl() + '/langsmith',
+			headers: {
+				Authorization: `${token.tokenType} ${token.accessToken}`,
+			},
+		};
+	}
+
+	/**
+	 * Count one credit for the first completed orchestrator run in a thread.
+	 * Subsequent messages in the same thread are free.
+	 */
+	private async countCreditsIfFirst(user: User, threadId: string, runId: string): Promise<void> {
+		if (!this.aiService.isProxyEnabled()) return;
+		if (this.creditedThreads.has(threadId)) return;
+
+		try {
+			const client = await this.aiService.getClient();
+			const token = await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: runId });
+			const authHeaders = {
+				Authorization: `${token.tokenType} ${token.accessToken}`,
+			};
+			const info = await client.markBuilderSuccess({ id: user.id }, authHeaders);
+			if (info) {
+				this.creditedThreads.add(threadId);
+				this.push.sendToUsers(
+					{
+						type: 'updateInstanceAiCredits',
+						data: { creditsQuota: info.creditsQuota, creditsClaimed: info.creditsClaimed },
+					},
+					[user.id],
+				);
+			}
+		} catch (err) {
+			this.logger.warn('Failed to count Instance AI credits', {
+				error: getErrorMessage(err),
+				threadId,
+				runId,
+			});
+		}
+	}
+
+	/** Whether the AI service proxy is enabled for credit counting. */
+	isProxyEnabled(): boolean {
+		return this.aiService.isProxyEnabled();
+	}
+
+	/** Get current credit usage from the AI service proxy. */
+	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
+		if (!this.aiService.isProxyEnabled()) {
+			return { creditsQuota: -1, creditsClaimed: 0 };
+		}
+		const client = await this.aiService.getClient();
+		return await client.getBuilderInstanceCredits({ id: user.id });
 	}
 
 	isEnabled(): boolean {
@@ -556,6 +649,7 @@ export class InstanceAiService {
 		);
 		await Promise.allSettled(sandboxCleanups);
 
+		this.creditedThreads.clear();
 		this.snapshotManager?.invalidate();
 		this.eventBus.clear();
 		await this.mcpClientManager.disconnect();
@@ -620,6 +714,7 @@ export class InstanceAiService {
 
 			const modelId = await this.resolveModel(user);
 			const titleModel = typeof modelId === 'string' ? modelId : modelId.id;
+			const tracingConfig = await this.resolveTracingConfig(user);
 
 			const memoryConfig = {
 				storage: this.compositeStore,
@@ -710,6 +805,7 @@ export class InstanceAiService {
 				builderSandboxFactory: this.builderSandboxFactory,
 				nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 				domainContext: context,
+				tracingConfig,
 			};
 
 			const agent = await createInstanceAgent({
@@ -721,6 +817,7 @@ export class InstanceAiService {
 				memory,
 				workspace: sandboxEntry?.workspace,
 				disableDeferredTools: true,
+				tracingConfig,
 			});
 
 			// Compact older conversation history into a summary (best-effort, non-blocking on failure)
@@ -845,6 +942,9 @@ export class InstanceAiService {
 					agentId: ORCHESTRATOR_AGENT_ID,
 					payload: { status: 'completed' },
 				});
+
+				// Count credits on first completed run per thread
+				await this.countCreditsIfFirst(user, threadId, runId);
 			}
 
 			// Save agent tree snapshot for session restore

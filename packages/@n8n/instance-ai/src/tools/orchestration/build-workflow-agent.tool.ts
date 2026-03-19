@@ -319,7 +319,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 								memory: builderMemory,
 							});
 
-							registerWithMastra(subAgentId, subAgent, context.storage);
+							registerWithMastra(subAgentId, subAgent, context.storage, context.tracingConfig);
 
 							const builderMemoryOpts = builderMemory
 								? {
@@ -410,7 +410,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 							memory: builderMemory,
 						});
 
-						registerWithMastra(subAgentId, subAgent, context.storage);
+						registerWithMastra(subAgentId, subAgent, context.storage, context.tracingConfig);
 
 						const toolMemoryOpts = builderMemory
 							? {

@@ -13,7 +13,9 @@ import {
 	postCancel,
 	postCancelTask,
 	postConfirmation,
+	getInstanceAiCredits,
 } from './instanceAi.api';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	fetchThreads as fetchThreadsApi,
@@ -65,6 +67,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
+	const creditsQuota = ref<number | undefined>(undefined);
+	const creditsClaimed = ref<number | undefined>(undefined);
 	const MAX_DEBUG_EVENTS = 1000;
 
 	// --- Computed ---
@@ -128,6 +132,50 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 		return null;
 	});
+
+	const INFINITE_CREDITS = -1;
+
+	const creditsRemaining = computed(() => {
+		if (
+			creditsQuota.value === undefined ||
+			creditsClaimed.value === undefined ||
+			creditsQuota.value === INFINITE_CREDITS
+		) {
+			return undefined;
+		}
+		return Math.max(0, creditsQuota.value - creditsClaimed.value);
+	});
+
+	// --- Credits push listener ---
+
+	let removeCreditsPushListener: (() => void) | null = null;
+
+	function startCreditsPushListener(): void {
+		if (removeCreditsPushListener) return;
+		const pushStore = usePushConnectionStore();
+		removeCreditsPushListener = pushStore.addEventListener((message) => {
+			if (message.type !== 'updateInstanceAiCredits') return;
+			creditsQuota.value = message.data.creditsQuota;
+			creditsClaimed.value = message.data.creditsClaimed;
+		});
+	}
+
+	function stopCreditsPushListener(): void {
+		if (removeCreditsPushListener) {
+			removeCreditsPushListener();
+			removeCreditsPushListener = null;
+		}
+	}
+
+	async function fetchCredits(): Promise<void> {
+		try {
+			const result = await getInstanceAiCredits(rootStore.restApiContext);
+			creditsQuota.value = result.creditsQuota;
+			creditsClaimed.value = result.creditsClaimed;
+		} catch {
+			// Non-critical — credits display is optional
+		}
+	}
 
 	// --- Event reducer (delegated to pure module) ---
 
@@ -705,6 +753,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		researchMode,
 		amendContext,
 		feedbackByResponseId,
+		creditsQuota,
+		creditsClaimed,
 		// Computed
 		isStreaming,
 		hasMessages,
@@ -717,6 +767,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		currentTasks,
 		resourceRegistry,
 		rateableResponseId,
+		creditsRemaining,
 		// Actions
 		newThread,
 		deleteThread,
@@ -733,6 +784,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		confirmAction,
 		copyFullTrace,
 		submitFeedback,
+		fetchCredits,
+		startCreditsPushListener,
+		stopCreditsPushListener,
 		connectSSE,
 		closeSSE,
 	};

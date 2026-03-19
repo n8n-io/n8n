@@ -190,7 +190,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					tools: browserTools,
 				});
 
-				registerWithMastra(subAgentId, subAgent, context.storage);
+				registerWithMastra(subAgentId, subAgent, context.storage, context.tracingConfig);
 
 				// Build the briefing
 				const docsInfo = input.docsUrl

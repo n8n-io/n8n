@@ -106,7 +106,7 @@ export function createResearchWithAgentTool(context: OrchestrationContext) {
 						tools: researchTools,
 					});
 
-					registerWithMastra(subAgentId, subAgent, context.storage);
+					registerWithMastra(subAgentId, subAgent, context.storage, context.tracingConfig);
 
 					const stream = await subAgent.stream(briefing, {
 						maxSteps: RESEARCH_MAX_STEPS,

@@ -117,7 +117,7 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 						memory: dataTableMemory,
 					});
 
-					registerWithMastra(subAgentId, subAgent, context.storage);
+					registerWithMastra(subAgentId, subAgent, context.storage, context.tracingConfig);
 
 					const dtMemoryOpts = dataTableMemory
 						? {

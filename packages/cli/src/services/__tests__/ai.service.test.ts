@@ -175,4 +175,58 @@ describe('AiService', () => {
 			await expect(aiService.askAi(payload, user)).rejects.toThrow('Assistant client not setup');
 		});
 	});
+
+	describe('isProxyEnabled', () => {
+		it('should return true when license enabled and base URL configured', () => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+
+			expect(aiService.isProxyEnabled()).toBe(true);
+		});
+
+		it('should return false when license not enabled', () => {
+			license.isAiAssistantEnabled.mockReturnValue(false);
+
+			expect(aiService.isProxyEnabled()).toBe(false);
+		});
+
+		it('should return false when base URL is empty', () => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+			const configWithoutUrl = mock<GlobalConfig>({
+				logging: { level: 'info' },
+				aiAssistant: { baseUrl: '' },
+			});
+			const serviceNoUrl = new AiService(license, configWithoutUrl, instanceSettings);
+
+			expect(serviceNoUrl.isProxyEnabled()).toBe(false);
+		});
+	});
+
+	describe('getClient', () => {
+		it('should return initialized client when license is enabled', async () => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+			license.loadCertStr.mockResolvedValue('cert');
+			license.getConsumerId.mockReturnValue('consumer-1');
+
+			const result = await aiService.getClient();
+
+			expect(result).toBe(client);
+		});
+
+		it('should throw when client cannot be initialized', async () => {
+			license.isAiAssistantEnabled.mockReturnValue(false);
+
+			await expect(aiService.getClient()).rejects.toThrow('AI Assistant client not initialized');
+		});
+
+		it('should only initialize once on repeated calls', async () => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+			license.loadCertStr.mockResolvedValue('cert');
+			license.getConsumerId.mockReturnValue('consumer-1');
+
+			await aiService.getClient();
+			await aiService.getClient();
+
+			expect(AiAssistantClient).toHaveBeenCalledTimes(1);
+		});
+	});
 });

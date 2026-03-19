@@ -540,7 +540,17 @@ export interface InstanceAiMemoryConfig {
 // ── Model configuration ─────────────────────────────────────────────────────
 
 /** Model identifier: plain string for built-in providers, or object for OpenAI-compatible endpoints. */
-export type ModelConfig = string | { id: `${string}/${string}`; url: string; apiKey?: string };
+export type ModelConfig =
+	| string
+	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> };
+
+/** Configuration for routing LangSmith traces through a proxy. */
+export interface TracingProxyConfig {
+	/** Proxy endpoint for LangSmith, e.g. '{baseUrl}/langsmith' */
+	apiUrl: string;
+	/** Auth headers to include in trace requests */
+	headers: Record<string, string>;
+}
 
 // ── Background task spawning ─────────────────────────────────────────────────
 
@@ -615,6 +625,8 @@ export interface OrchestrationContext {
 	sendCorrectionToTask?: (taskId: string, correction: string) => void;
 	/** Report a verification verdict to the deterministic workflow loop controller */
 	reportVerificationVerdict?: (verdict: VerificationResult) => Promise<WorkflowLoopAction>;
+	/** When provided, LangSmith traces are routed through a proxy instead of direct */
+	tracingConfig?: TracingProxyConfig;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────
@@ -631,4 +643,6 @@ export interface CreateInstanceAgentOptions {
 	workspace?: Workspace;
 	/** When true, all tools are loaded eagerly (no ToolSearchProcessor). Workaround for Mastra bug where toModelOutput is not called for deferred tools. */
 	disableDeferredTools?: boolean;
+	/** When provided, LangSmith traces are routed through a proxy instead of direct. */
+	tracingConfig?: TracingProxyConfig;
 }

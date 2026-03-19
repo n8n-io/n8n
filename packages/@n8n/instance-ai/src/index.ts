@@ -86,4 +86,5 @@ export type {
 	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
+	TracingProxyConfig,
 } from './types';

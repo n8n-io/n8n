@@ -76,6 +76,20 @@ export class AiService {
 		return await this.client.askAi(payload, { id: user.id });
 	}
 
+	/** Whether the AI service proxy is enabled (license + base URL configured). */
+	isProxyEnabled(): boolean {
+		return this.licenseService.isAiAssistantEnabled() && !!this.globalConfig.aiAssistant.baseUrl;
+	}
+
+	/** Return the initialized AiAssistantClient. Initializes lazily if needed. */
+	async getClient(): Promise<AiAssistantClient> {
+		if (!this.client) {
+			await this.init();
+		}
+		assert(this.client, 'AI Assistant client not initialized');
+		return this.client;
+	}
+
 	async createFreeAiCredits(user: IUser) {
 		if (!this.client) {
 			await this.init();

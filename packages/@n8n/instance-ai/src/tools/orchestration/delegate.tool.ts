@@ -90,7 +90,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					memory,
 				});
 
-				registerWithMastra(subAgentId, subAgent, context.storage);
+				registerWithMastra(subAgentId, subAgent, context.storage, context.tracingConfig);
 
 				// 4. Build briefing message — protocol reminder at the end (strongest position)
 				const artifacts = input.artifacts
