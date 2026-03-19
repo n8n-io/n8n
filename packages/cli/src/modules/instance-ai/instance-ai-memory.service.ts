@@ -117,7 +117,7 @@ export class InstanceAiMemoryService {
 		const memory = this.createMemoryInstance();
 		const result = await memory.listThreads({
 			filter: { resourceId: userId },
-			limit: 100,
+			perPage: 100,
 		});
 		const match = result.threads.find(
 			(t: { metadata?: Record<string, unknown> }) => t.metadata?.workflowId === workflowId,
