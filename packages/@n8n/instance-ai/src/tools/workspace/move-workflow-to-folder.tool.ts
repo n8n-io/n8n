@@ -48,7 +48,7 @@ export function createMoveWorkflowToFolderTool(context: InstanceAiContext) {
 			}
 
 			// State 3: Approved or always_allow — execute
-			await context.workspaceService!.moveWorkflowToFolder(input.workflowId, input.folderId);
+			await context.workspaceService!.moveWorkflowToFolder!(input.workflowId, input.folderId);
 			return { success: true };
 		},
 	});

@@ -266,6 +266,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 				filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
 				toolSearchEnabled: hasDeferrableTools,
+				licenseHints: context.licenseHints,
 			}),
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },

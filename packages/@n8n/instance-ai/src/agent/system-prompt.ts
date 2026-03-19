@@ -3,10 +3,13 @@ interface SystemPromptOptions {
 	webhookBaseUrl?: string;
 	filesystemAccess?: boolean;
 	toolSearchEnabled?: boolean;
+	/** Human-readable hints about licensed features that are NOT available on this instance. */
+	licenseHints?: string[];
 }
 
 export function getSystemPrompt(options: SystemPromptOptions = {}): string {
-	const { researchMode, webhookBaseUrl, filesystemAccess, toolSearchEnabled } = options;
+	const { researchMode, webhookBaseUrl, filesystemAccess, toolSearchEnabled, licenseHints } =
+		options;
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
 ${webhookBaseUrl ? `\n## Instance Info\n\nWebhook base URL: ${webhookBaseUrl}\nWhen a workflow has webhook triggers, its live URL is: ${webhookBaseUrl}/{path} (where {path} is the webhook path parameter). Always share the full webhook URL with the user after a workflow with webhooks is created.\n\n**This URL is for sharing with the user only.** Do NOT include it in \`build-workflow-with-agent\` task descriptions — the builder cannot reach the n8n instance via HTTP and will fail if it tries to curl/fetch this URL.\n` : ''}
 
@@ -86,7 +89,17 @@ Keep exploration shallow — start at depth 1-2, prefer \`search-files\` over br
 You do NOT have access to the user's project files. The filesystem tools (list-files, read-file, search-files, get-file-tree) are not available. Do not attempt to use them or claim you can browse the user's codebase.`
 }
 
-## Conversation Summary
+${
+	licenseHints && licenseHints.length > 0
+		? `## License Limitations
+
+The following features require a license that is not active on this instance. If the user asks for these capabilities, explain that they require a license upgrade.
+
+${licenseHints.map((h) => `- ${h}`).join('\n')}
+
+`
+		: ''
+}## Conversation Summary
 
 When \`<conversation-summary>\` is present in your input, treat it as compressed prior context from earlier turns. Use the recent raw messages for exact wording and details; use the summary for long-range continuity (user goals, past decisions, workflow state). Do not repeat the summary back to the user.
 

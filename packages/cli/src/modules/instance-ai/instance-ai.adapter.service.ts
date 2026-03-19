@@ -15,6 +15,8 @@ import type {
 	WorkflowSummary,
 	WorkflowDetail,
 	WorkflowNode,
+	WorkflowVersionSummary,
+	WorkflowVersionDetail,
 	ExecutionResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,
@@ -82,6 +84,7 @@ import {
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -93,6 +96,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
@@ -123,6 +127,8 @@ export class InstanceAiAdapterService {
 		private readonly tagService: TagService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly license: License,
 	) {
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
 	}
@@ -137,8 +143,24 @@ export class InstanceAiAdapterService {
 			dataTableService: this.createDataTableAdapter(user),
 			webResearchService: this.createWebResearchAdapter(user),
 			workspaceService: this.createWorkspaceAdapter(user),
+			licenseHints: this.buildLicenseHints(),
 			...(filesystemService ? { filesystemService } : {}),
 		};
+	}
+
+	private buildLicenseHints(): string[] {
+		const hints: string[] = [];
+		if (!this.license.isLicensed('feat:namedVersions')) {
+			hints.push(
+				'**Named workflow versions** — naming and describing workflow versions (update-workflow-version) is available on the Pro plan and above.',
+			);
+		}
+		if (!this.license.isLicensed('feat:folders')) {
+			hints.push(
+				'**Folders** — organizing workflows into folders (list-folders, create-folder, delete-folder, move-workflow-to-folder) is available on registered Community Edition or paid plans.',
+			);
+		}
+		return hints;
 	}
 
 	private createProjectScopeHelpers(user: User) {
@@ -169,8 +191,13 @@ export class InstanceAiAdapterService {
 	}
 
 	private createWorkflowAdapter(user: User): InstanceAiWorkflowService {
-		const { workflowService, workflowFinderService, workflowRepository, sharedWorkflowRepository } =
-			this;
+		const {
+			workflowService,
+			workflowFinderService,
+			workflowRepository,
+			sharedWorkflowRepository,
+			workflowHistoryService,
+		} = this;
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 
 		return {
@@ -217,9 +244,14 @@ export class InstanceAiAdapterService {
 				await workflowService.delete(user, workflowId);
 			},
 
-			async publish(workflowId: string, options?: { versionId?: string }) {
+			async publish(
+				workflowId: string,
+				options?: { versionId?: string; name?: string; description?: string },
+			) {
 				const wf = await workflowService.activateWorkflow(user, workflowId, {
 					versionId: options?.versionId,
+					name: options?.name,
+					description: options?.description,
 				});
 				if (!wf.activeVersionId) {
 					throw new Error(`Workflow ${workflowId} was not activated — no active version set`);
@@ -337,6 +369,86 @@ export class InstanceAiAdapterService {
 				const updated = await workflowService.update(user, updateData, workflowId);
 				return toWorkflowDetail(updated);
 			},
+
+			async listVersions(workflowId, options) {
+				const take = options?.limit ?? 20;
+				const skip = options?.skip ?? 0;
+				const versions = await workflowHistoryService.getList(user, workflowId, take, skip);
+
+				// Fetch the workflow to determine active/draft version IDs
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				const activeVersionId = workflow?.activeVersionId ?? null;
+				const currentDraftVersionId = workflow?.versionId ?? null;
+
+				return versions.map(
+					(v): WorkflowVersionSummary => ({
+						versionId: v.versionId,
+						name: v.name ?? null,
+						description: v.description ?? null,
+						authors: v.authors,
+						createdAt: v.createdAt.toISOString(),
+						autosaved: v.autosaved ?? false,
+						isActive: v.versionId === activeVersionId,
+						isCurrentDraft: v.versionId === currentDraftVersionId,
+					}),
+				);
+			},
+
+			async getVersion(workflowId, versionId) {
+				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
+
+				// Fetch the workflow to determine active/draft version IDs
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				const activeVersionId = workflow?.activeVersionId ?? null;
+				const currentDraftVersionId = workflow?.versionId ?? null;
+
+				return {
+					versionId: version.versionId,
+					name: version.name ?? null,
+					description: version.description ?? null,
+					authors: version.authors,
+					createdAt: version.createdAt.toISOString(),
+					autosaved: version.autosaved ?? false,
+					isActive: version.versionId === activeVersionId,
+					isCurrentDraft: version.versionId === currentDraftVersionId,
+					nodes: (version.nodes ?? []).map(
+						(n): WorkflowNode => ({
+							name: n.name,
+							type: n.type,
+							parameters: n.parameters as Record<string, unknown>,
+							position: n.position,
+						}),
+					),
+					connections: version.connections as Record<string, unknown>,
+				} satisfies WorkflowVersionDetail;
+			},
+
+			async restoreVersion(workflowId, versionId) {
+				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
+
+				const updateData = workflowRepository.create({
+					nodes: version.nodes,
+					connections: version.connections,
+				} as Partial<WorkflowEntity>);
+
+				await workflowService.update(user, updateData, workflowId);
+			},
+
+			...(this.license.isLicensed('feat:namedVersions')
+				? {
+						async updateVersion(
+							workflowId: string,
+							versionId: string,
+							data: { name?: string | null; description?: string | null },
+						) {
+							await workflowHistoryService.updateVersionForUser(user, workflowId, versionId, data);
+						},
+					}
+				: {}),
 		};
 	}
 
@@ -1277,54 +1389,58 @@ export class InstanceAiAdapterService {
 				}));
 			},
 
-			async listFolders(projectId: string): Promise<FolderSummary[]> {
-				const [folders] = await folderService.getManyAndCount(projectId, { take: 100 });
-				return (folders as Array<{ id: string; name: string; parentFolderId: string | null }>).map(
-					(f) => ({
-						id: f.id,
-						name: f.name,
-						parentFolderId: f.parentFolderId,
-					}),
-				);
-			},
+			...(this.license.isLicensed('feat:folders')
+				? {
+						async listFolders(projectId: string): Promise<FolderSummary[]> {
+							const [folders] = await folderService.getManyAndCount(projectId, { take: 100 });
+							return (
+								folders as Array<{ id: string; name: string; parentFolderId: string | null }>
+							).map((f) => ({
+								id: f.id,
+								name: f.name,
+								parentFolderId: f.parentFolderId,
+							}));
+						},
 
-			async createFolder(
-				name: string,
-				projectId: string,
-				parentFolderId?: string,
-			): Promise<FolderSummary> {
-				const folder = await folderService.createFolder(
-					{ name, parentFolderId: parentFolderId ?? undefined },
-					projectId,
-				);
-				return {
-					id: folder.id,
-					name: folder.name,
-					parentFolderId: folder.parentFolderId ?? null,
-				};
-			},
+						async createFolder(
+							name: string,
+							projectId: string,
+							parentFolderId?: string,
+						): Promise<FolderSummary> {
+							const folder = await folderService.createFolder(
+								{ name, parentFolderId: parentFolderId ?? undefined },
+								projectId,
+							);
+							return {
+								id: folder.id,
+								name: folder.name,
+								parentFolderId: folder.parentFolderId ?? null,
+							};
+						},
 
-			async deleteFolder(
-				folderId: string,
-				projectId: string,
-				transferToFolderId?: string,
-			): Promise<void> {
-				await folderService.deleteFolder(user, folderId, projectId, {
-					transferToFolderId: transferToFolderId ?? undefined,
-				});
-			},
+						async deleteFolder(
+							folderId: string,
+							projectId: string,
+							transferToFolderId?: string,
+						): Promise<void> {
+							await folderService.deleteFolder(user, folderId, projectId, {
+								transferToFolderId: transferToFolderId ?? undefined,
+							});
+						},
 
-			async moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void> {
-				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-					'workflow:update',
-				]);
-				if (!workflow) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
-				}
-				await workflowService.update(user, workflow, workflowId, {
-					parentFolderId: folderId,
-				});
-			},
+						async moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void> {
+							const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+								'workflow:update',
+							]);
+							if (!workflow) {
+								throw new Error(`Workflow ${workflowId} not found or not accessible`);
+							}
+							await workflowService.update(user, workflow, workflowId, {
+								parentFolderId: folderId,
+							});
+						},
+					}
+				: {}),
 
 			async tagWorkflow(workflowId: string, tagNames: string[]): Promise<string[]> {
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [

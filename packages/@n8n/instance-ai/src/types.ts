@@ -119,6 +119,22 @@ export interface NodeDescription extends NodeSummary {
 
 // ── Service interfaces ───────────────────────────────────────────────────────
 
+export interface WorkflowVersionSummary {
+	versionId: string;
+	name: string | null;
+	description: string | null;
+	authors: string;
+	createdAt: string;
+	autosaved: boolean;
+	isActive: boolean;
+	isCurrentDraft: boolean;
+}
+
+export interface WorkflowVersionDetail extends WorkflowVersionSummary {
+	nodes: WorkflowNode[];
+	connections: Record<string, unknown>;
+}
+
 export interface InstanceAiWorkflowService {
 	list(options?: { query?: string; limit?: number }): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
@@ -139,7 +155,7 @@ export interface InstanceAiWorkflowService {
 	delete(workflowId: string): Promise<void>;
 	publish(
 		workflowId: string,
-		options?: { versionId?: string },
+		options?: { versionId?: string; name?: string; description?: string },
 	): Promise<{ activeVersionId: string }>;
 	unpublish(workflowId: string): Promise<void>;
 	/** Patch a single node's parameters, credentials, or disabled state in-place. */
@@ -152,6 +168,21 @@ export interface InstanceAiWorkflowService {
 			disabled?: boolean;
 		},
 	): Promise<WorkflowDetail>;
+	/** List version history for a workflow (metadata only, no nodes/connections). */
+	listVersions?(
+		workflowId: string,
+		options?: { limit?: number; skip?: number },
+	): Promise<WorkflowVersionSummary[]>;
+	/** Get full details of a specific version (including nodes and connections). */
+	getVersion?(workflowId: string, versionId: string): Promise<WorkflowVersionDetail>;
+	/** Restore a workflow to a previous version by overwriting the current draft. */
+	restoreVersion?(workflowId: string, versionId: string): Promise<void>;
+	/** Update name/description of a workflow version (licensed: namedVersions). */
+	updateVersion?(
+		workflowId: string,
+		versionId: string,
+		data: { name?: string | null; description?: string | null },
+	): Promise<void>;
 }
 
 export interface ExecutionSummary {
@@ -471,13 +502,13 @@ export interface InstanceAiWorkspaceService {
 	getProject?(projectId: string): Promise<ProjectSummary | null>;
 	listProjects(): Promise<ProjectSummary[]>;
 
-	// Folders
-	listFolders(projectId: string): Promise<FolderSummary[]>;
-	createFolder(name: string, projectId: string, parentFolderId?: string): Promise<FolderSummary>;
-	deleteFolder(folderId: string, projectId: string, transferToFolderId?: string): Promise<void>;
+	// Folders (licensed: feat:folders)
+	listFolders?(projectId: string): Promise<FolderSummary[]>;
+	createFolder?(name: string, projectId: string, parentFolderId?: string): Promise<FolderSummary>;
+	deleteFolder?(folderId: string, projectId: string, transferToFolderId?: string): Promise<void>;
 
-	// Workflow organization
-	moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void>;
+	// Workflow organization (moveWorkflowToFolder requires feat:folders)
+	moveWorkflowToFolder?(workflowId: string, folderId: string): Promise<void>;
 	tagWorkflow(workflowId: string, tagNames: string[]): Promise<string[]>;
 
 	// Tags
@@ -509,6 +540,9 @@ export interface InstanceAiContext {
 	localMcpServer?: LocalMcpServer;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/** Human-readable hints about licensed features that are NOT available on this instance.
+	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
+	licenseHints?: string[];
 	/** Domain access tracker for HITL gating of fetch-url and similar tools. */
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */

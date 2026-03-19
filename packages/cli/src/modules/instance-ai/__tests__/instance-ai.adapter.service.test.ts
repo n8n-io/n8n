@@ -682,6 +682,7 @@ import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import type { License } from '@/license';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -745,6 +746,8 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		mockSourceControlPreferencesService as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as License,
 	);
 
 	const adapter = service.createContext(mockUser).dataTableService;
@@ -855,7 +858,10 @@ describe('createDataTableAdapter', () => {
 // createWorkflowAdapter – project scoping
 // ---------------------------------------------------------------------------
 
-function createWorkflowAdapterForTests() {
+function createWorkflowAdapterForTests(overrides?: {
+	namedVersionsLicensed?: boolean;
+	foldersLicensed?: boolean;
+}) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-id' }),
 	};
@@ -912,12 +918,22 @@ function createWorkflowAdapterForTests() {
 			getPreferences: jest.fn().mockReturnValue({ branchReadOnly: false }),
 		} as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{
+			isLicensed: jest.fn().mockImplementation((feat: string) => {
+				if (feat === 'feat:namedVersions') return overrides?.namedVersionsLicensed ?? false;
+				if (feat === 'feat:folders') return overrides?.foldersLicensed ?? false;
+				return false;
+			}),
+		} as unknown as License,
 	);
 
-	const adapter = service.createContext(mockUser).workflowService;
+	const context = service.createContext(mockUser);
+	const adapter = context.workflowService;
 
 	return {
 		adapter,
+		context,
 		mockProjectRepository,
 		mockWorkflowRepository,
 		mockSharedWorkflowRepository,
@@ -973,5 +989,88 @@ describe('createWorkflowAdapter', () => {
 				projectId: 'restricted-project-id',
 			}),
 		).rejects.toThrow('User does not have the required permissions in this project');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// License-gated features
+// ---------------------------------------------------------------------------
+
+describe('license-gated features', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockedUserHasScopes.mockResolvedValue(true);
+	});
+
+	describe('updateVersion (feat:namedVersions)', () => {
+		it('is present on workflowService when licensed', () => {
+			const { adapter } = createWorkflowAdapterForTests({ namedVersionsLicensed: true });
+
+			expect(adapter.updateVersion).toBeDefined();
+			expect(typeof adapter.updateVersion).toBe('function');
+		});
+
+		it('is absent on workflowService when not licensed', () => {
+			const { adapter } = createWorkflowAdapterForTests({ namedVersionsLicensed: false });
+
+			expect(adapter.updateVersion).toBeUndefined();
+		});
+	});
+
+	describe('folders (feat:folders)', () => {
+		it('includes folder methods on workspaceService when licensed', () => {
+			const { context } = createWorkflowAdapterForTests({ foldersLicensed: true });
+
+			expect(context.workspaceService!.listFolders).toBeDefined();
+			expect(context.workspaceService!.createFolder).toBeDefined();
+			expect(context.workspaceService!.deleteFolder).toBeDefined();
+			expect(context.workspaceService!.moveWorkflowToFolder).toBeDefined();
+		});
+
+		it('omits folder methods on workspaceService when not licensed', () => {
+			const { context } = createWorkflowAdapterForTests({ foldersLicensed: false });
+
+			expect(context.workspaceService!.listFolders).toBeUndefined();
+			expect(context.workspaceService!.createFolder).toBeUndefined();
+			expect(context.workspaceService!.deleteFolder).toBeUndefined();
+			expect(context.workspaceService!.moveWorkflowToFolder).toBeUndefined();
+		});
+	});
+
+	describe('licenseHints', () => {
+		it('includes hints for unlicensed features', () => {
+			const { context } = createWorkflowAdapterForTests({
+				namedVersionsLicensed: false,
+				foldersLicensed: false,
+			});
+
+			expect(context.licenseHints).toEqual(
+				expect.arrayContaining([
+					expect.stringContaining('Named workflow versions'),
+					expect.stringContaining('Folders'),
+				]),
+			);
+		});
+
+		it('omits hints for licensed features', () => {
+			const { context } = createWorkflowAdapterForTests({
+				namedVersionsLicensed: true,
+				foldersLicensed: true,
+			});
+
+			expect(context.licenseHints).toEqual([]);
+		});
+
+		it('only includes hints for unlicensed features', () => {
+			const { context } = createWorkflowAdapterForTests({
+				namedVersionsLicensed: true,
+				foldersLicensed: false,
+			});
+
+			expect(context.licenseHints).toEqual([expect.stringContaining('Folders')]);
+			expect(context.licenseHints).not.toEqual(
+				expect.arrayContaining([expect.stringContaining('Named workflow versions')]),
+			);
+		});
 	});
 });

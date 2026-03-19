@@ -172,7 +172,7 @@ Only available when `N8N_INSTANCE_AI_BROWSER_MCP=true`.
 
 ---
 
-## Workflow Tools (7)
+## Workflow Tools (11)
 
 ### `list-workflows`
 
@@ -252,6 +252,68 @@ Unpublish a workflow — stops it from running in production. The draft is prese
 | `workflowId` | string | yes | Workflow ID to unpublish |
 
 **Returns**: `{ success: boolean }`
+
+### `list-workflow-versions`
+
+List version history for a workflow (metadata only, no nodes/connections). Each
+version includes flags indicating whether it is the currently active (published)
+version or the current draft.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `workflowId` | string | yes | — | Workflow ID |
+| `limit` | number | no | 20 | Max results (1–100) |
+| `skip` | number | no | 0 | Number of results to skip |
+
+**Returns**: `{ versions: [{ versionId, name, description, authors, createdAt, autosaved, isActive, isCurrentDraft }] }`
+
+### `get-workflow-version`
+
+Get full details of a specific workflow version including nodes and connections.
+Use to inspect what a version looked like, diff against the current draft, or
+answer "when did node X change".
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `workflowId` | string | yes | Workflow ID |
+| `versionId` | string | yes | Version ID to retrieve |
+
+**Returns**: `{ versionId, name, description, authors, createdAt, autosaved, isActive, isCurrentDraft, nodes: [{ name, type, parameters, position }], connections }`
+
+### `restore-workflow-version`
+
+Restore a workflow to a previous version by overwriting the current draft with
+that version's nodes and connections. Does NOT affect the published/active
+version — publish separately after restoring.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `workflowId` | string | yes | Workflow ID |
+| `versionId` | string | yes | Version ID to restore |
+
+**Returns**: `{ success: boolean }`
+
+**HITL**: Requires user approval (severity: `warning`) since it overwrites the
+current draft. Controlled by `restoreWorkflowVersion` permission.
+
+### `update-workflow-version`
+
+Update the name or description of a workflow version. Use to label versions
+with meaningful names (e.g. "v1 – initial release") or add descriptions
+explaining what changed.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `workflowId` | string | yes | Workflow ID |
+| `versionId` | string | yes | Version ID to update |
+| `name` | string \| null | no | New name for the version (null to clear) |
+| `description` | string \| null | no | New description for the version (null to clear) |
+
+**Returns**: `{ success: boolean, error?: string }`
+
+**Conditional**: Only registered when the `feat:namedVersions` license feature
+is active. The adapter checks the license at context creation time and omits
+the `updateVersion` method when unlicensed.
 
 ---
 

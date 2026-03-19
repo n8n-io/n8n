@@ -52,11 +52,15 @@ import { createApplyWorkflowCredentialsTool } from './workflows/apply-workflow-c
 import { createBuildWorkflowTool } from './workflows/build-workflow.tool';
 import { createDeleteWorkflowTool } from './workflows/delete-workflow.tool';
 import { createGetWorkflowAsCodeTool } from './workflows/get-workflow-as-code.tool';
+import { createGetWorkflowVersionTool } from './workflows/get-workflow-version.tool';
 import { createGetWorkflowTool } from './workflows/get-workflow.tool';
+import { createListWorkflowVersionsTool } from './workflows/list-workflow-versions.tool';
 import { createListWorkflowsTool } from './workflows/list-workflows.tool';
 import { createPatchWorkflowTool } from './workflows/patch-workflow.tool';
 import { createPublishWorkflowTool } from './workflows/publish-workflow.tool';
+import { createRestoreWorkflowVersionTool } from './workflows/restore-workflow-version.tool';
 import { createUnpublishWorkflowTool } from './workflows/unpublish-workflow.tool';
+import { createUpdateWorkflowVersionTool } from './workflows/update-workflow-version.tool';
 import { createCleanupTestExecutionsTool } from './workspace/cleanup-test-executions.tool';
 import { createCreateFolderTool } from './workspace/create-folder.tool';
 import { createDeleteFolderTool } from './workspace/delete-folder.tool';
@@ -116,16 +120,30 @@ export function createAllTools(context: InstanceAiContext) {
 		...(context.workflowService.patchNode
 			? { 'patch-workflow': createPatchWorkflowTool(context) }
 			: {}),
+		...(context.workflowService.listVersions
+			? {
+					'list-workflow-versions': createListWorkflowVersionsTool(context),
+					'get-workflow-version': createGetWorkflowVersionTool(context),
+					'restore-workflow-version': createRestoreWorkflowVersionTool(context),
+				}
+			: {}),
+		...(context.workflowService.updateVersion
+			? { 'update-workflow-version': createUpdateWorkflowVersionTool(context) }
+			: {}),
 		...(context.workspaceService
 			? {
 					'list-projects': createListProjectsTool(context),
-					'list-folders': createListFoldersTool(context),
-					'create-folder': createCreateFolderTool(context),
-					'delete-folder': createDeleteFolderTool(context),
-					'move-workflow-to-folder': createMoveWorkflowToFolderTool(context),
 					'tag-workflow': createTagWorkflowTool(context),
 					'list-tags': createListTagsTool(context),
 					'cleanup-test-executions': createCleanupTestExecutionsTool(context),
+					...(context.workspaceService.listFolders
+						? {
+								'list-folders': createListFoldersTool(context),
+								'create-folder': createCreateFolderTool(context),
+								'delete-folder': createDeleteFolderTool(context),
+								'move-workflow-to-folder': createMoveWorkflowToFolderTool(context),
+							}
+						: {}),
 				}
 			: {}),
 		...(context.localMcpServer

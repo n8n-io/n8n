@@ -63,6 +63,8 @@ export type {
 	WorkflowSummary,
 	WorkflowDetail,
 	WorkflowNode,
+	WorkflowVersionSummary,
+	WorkflowVersionDetail,
 	ExecutionResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,
