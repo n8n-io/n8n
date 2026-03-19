@@ -48,10 +48,26 @@ assert.ok(
 	'No changes found since the last release',
 );
 
-// If any package in the monorepo is dirty, we need to mark `packages/cli` (`n8n` @ npm)
-// dirty too, as the whole publishing logic relies on that package having a new version.
-if (Object.values(packageMap).some((pkg) => pkg.isDirty)) {
-	packageMap['n8n'].isDirty = true;
+// Propagate isDirty transitively: if a package's dependency will be bumped,
+// that package also needs a bump (e.g. design-system → editor-ui → cli).
+
+const depsByPackage = {};
+for (const packageName in packageMap) {
+	const packageFile = resolve(packageMap[packageName].path, 'package.json');
+	const packageJson = JSON.parse(await readFile(packageFile, 'utf-8'));
+	depsByPackage[packageName] = Object.keys(packageJson.dependencies || {});
+}
+
+let changed = true;
+while (changed) {
+	changed = false;
+	for (const packageName in packageMap) {
+		if (packageMap[packageName].isDirty) continue;
+		if (depsByPackage[packageName].some((dep) => packageMap[dep]?.isDirty)) {
+			packageMap[packageName].isDirty = true;
+			changed = true;
+		}
+	}
 }
 
 // Keep the monorepo version up to date with the released version
