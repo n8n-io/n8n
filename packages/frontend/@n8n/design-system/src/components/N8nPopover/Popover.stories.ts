@@ -20,6 +20,12 @@ export default {
 			control: 'text',
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A floating content panel anchored to a trigger element.' },
+		},
+	},
 };
 
 const Template: StoryFn = (args) => ({
