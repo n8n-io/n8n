@@ -2,6 +2,7 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InstanceAiAttachment,
+	InstanceAiCanvasContext,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmResponse,
@@ -19,6 +20,7 @@ export async function postMessage(
 	message: string,
 	researchMode?: boolean,
 	attachments?: InstanceAiAttachment[],
+	canvasContext?: InstanceAiCanvasContext,
 ): Promise<InstanceAiSendMessageResponse> {
 	return await makeRestApiRequest<InstanceAiSendMessageResponse>(
 		context,
@@ -28,6 +30,7 @@ export async function postMessage(
 			message,
 			...(researchMode ? { researchMode } : {}),
 			...(attachments && attachments.length > 0 ? { attachments } : {}),
+			...(canvasContext ? { canvasContext } : {}),
 		},
 	);
 }

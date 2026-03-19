@@ -52,7 +52,8 @@ export class InstanceAiController {
 
 	@Post('/chat/:threadId')
 	async chat(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
-		const { message, researchMode, attachments } = req.body as InstanceAiSendMessageRequest;
+		const { message, researchMode, attachments, canvasContext } =
+			req.body as InstanceAiSendMessageRequest;
 
 		if (!message?.trim()) {
 			throw new BadRequestError('Message is required');
@@ -68,12 +69,14 @@ export class InstanceAiController {
 
 		const safeResearchMode = typeof researchMode === 'boolean' ? researchMode : undefined;
 		const safeAttachments = Array.isArray(attachments) ? attachments : undefined;
+		const safeCanvasContext = canvasContext ?? undefined;
 		const runId = this.instanceAiService.startRun(
 			req.user,
 			threadId,
 			message,
 			safeResearchMode,
 			safeAttachments,
+			safeCanvasContext,
 		);
 		return { runId };
 	}

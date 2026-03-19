@@ -25,6 +25,7 @@ import { useResponseFeedback } from './useResponseFeedback';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import type {
 	InstanceAiAttachment,
+	InstanceAiCanvasContext,
 	InstanceAiEvent,
 	InstanceAiMessage,
 	InstanceAiAgentNode,
@@ -529,7 +530,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function sendMessage(message: string, attachments?: InstanceAiAttachment[]): Promise<void> {
+	async function sendMessage(
+		message: string,
+		attachments?: InstanceAiAttachment[],
+		canvasContext?: InstanceAiCanvasContext,
+	): Promise<void> {
 		// Clear amend context on new message
 		amendContext.value = null;
 
@@ -562,6 +567,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				message,
 				researchMode.value || undefined,
 				attachments,
+				canvasContext,
 			);
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;

@@ -314,6 +314,7 @@ export type {
 	InstanceAiModelCredential,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
+	InstanceAiCanvasContext,
 	InstanceAiTargetResource,
 	DomainAccessAction,
 	DomainAccessMeta,

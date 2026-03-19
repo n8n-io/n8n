@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useCanvasContext } from '../composables/useCanvasContext';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
@@ -21,6 +22,7 @@ const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
+const { canvasContext } = useCanvasContext();
 
 const workflowId = computed(() => workflowsStore.workflowId);
 
@@ -160,7 +162,7 @@ watch(
 
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	userScrolledUp.value = false;
-	await store.sendMessage(message, attachments);
+	await store.sendMessage(message, attachments, canvasContext.value);
 }
 
 function handleSuggestionSelect(prompt: string) {

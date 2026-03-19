@@ -1,12 +1,42 @@
+import type { InstanceAiCanvasContext } from '@n8n/api-types';
+
 interface SystemPromptOptions {
 	researchMode?: boolean;
 	webhookBaseUrl?: string;
 	filesystemAccess?: boolean;
 	toolSearchEnabled?: boolean;
+	canvasContext?: InstanceAiCanvasContext;
+}
+
+export function formatCanvasContextSection(canvasContext: InstanceAiCanvasContext): string {
+	const lines: string[] = [
+		'## Current Canvas Context',
+		'',
+		`You are assisting with workflow "${canvasContext.workflowName}" (ID: ${canvasContext.workflowId}).`,
+	];
+
+	if (canvasContext.nodeCount !== undefined) {
+		lines.push(`${String(canvasContext.nodeCount)} nodes in the workflow.`);
+	}
+
+	if (canvasContext.selectedNodes && canvasContext.selectedNodes.length > 0) {
+		lines.push('');
+		lines.push('### Selected Nodes');
+		lines.push('The user has selected the following nodes:');
+		for (const node of canvasContext.selectedNodes) {
+			lines.push(`- ${node.name} (${node.type})`);
+			if (node.parameters && Object.keys(node.parameters).length > 0) {
+				lines.push(`  Parameters: ${JSON.stringify(node.parameters)}`);
+			}
+		}
+	}
+
+	return lines.join('\n');
 }
 
 export function getSystemPrompt(options: SystemPromptOptions = {}): string {
-	const { researchMode, webhookBaseUrl, filesystemAccess, toolSearchEnabled } = options;
+	const { researchMode, webhookBaseUrl, filesystemAccess, toolSearchEnabled, canvasContext } =
+		options;
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
 ${webhookBaseUrl ? `\n## Instance Info\n\nWebhook base URL: ${webhookBaseUrl}\nWhen a workflow has webhook triggers, its live URL is: ${webhookBaseUrl}/{path} (where {path} is the webhook path parameter). Always share the full webhook URL with the user after a workflow with webhooks is created.\n\n**This URL is for sharing with the user only.** Do NOT include it in \`build-workflow-with-agent\` task descriptions — the builder cannot reach the n8n instance via HTTP and will fail if it tries to curl/fetch this URL.\n` : ''}
 
@@ -94,5 +124,5 @@ If the user sends a correction while a build is running, call \`correct-backgrou
 
 ## Sandbox (Code Execution)
 
-When available, \`mastra_workspace_execute_command\` runs shell commands in a persistent isolated sandbox. Use it for code execution, package installation, file processing. The sandbox cannot access the n8n host filesystem — use tool calls for n8n data.`;
+When available, \`mastra_workspace_execute_command\` runs shell commands in a persistent isolated sandbox. Use it for code execution, package installation, file processing. The sandbox cannot access the n8n host filesystem — use tool calls for n8n data.${canvasContext ? `\n\n${formatCanvasContextSection(canvasContext)}` : ''}`;
 }

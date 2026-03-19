@@ -140,6 +140,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		mcpServers = [],
 		memoryConfig,
 		disableDeferredTools = false,
+		canvasContext,
 	} = options;
 
 	// Build native n8n domain tools (context captured via closures — per-run)
@@ -266,6 +267,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 				filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
 				toolSearchEnabled: hasDeferrableTools,
+				canvasContext,
 			}),
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },

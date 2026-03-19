@@ -3,6 +3,7 @@ import type { MastraCompositeStore } from '@mastra/core/storage';
 import type { Workspace } from '@mastra/core/workspace';
 import type { Memory } from '@mastra/memory';
 import type {
+	InstanceAiCanvasContext,
 	TaskList,
 	InstanceAiPermissions,
 	McpTool,
@@ -621,4 +622,6 @@ export interface CreateInstanceAgentOptions {
 	workspace?: Workspace;
 	/** When true, all tools are loaded eagerly (no ToolSearchProcessor). Workaround for Mastra bug where toModelOutput is not called for deferred tools. */
 	disableDeferredTools?: boolean;
+	/** Current canvas context from the frontend (selected nodes, workflow info). */
+	canvasContext?: InstanceAiCanvasContext;
 }
