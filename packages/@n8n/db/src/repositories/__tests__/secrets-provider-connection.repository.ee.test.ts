@@ -59,7 +59,7 @@ describe('SecretsProviderConnectionRepository', () => {
 				select: ['id'],
 				where: { providerKey: 'myVault' },
 			});
-			expect(result).toBe(42);
+			expect(result).toBe('42');
 		});
 
 		it('returns null when provider does not exist', async () => {

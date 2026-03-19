@@ -34,15 +34,16 @@ export class CredentialDependencyRepository extends Repository<CredentialDepende
 		dependencyIds,
 		entityManager = this.manager,
 	}: DependencyMutationOptions): Promise<void> {
-		const uniqueIds = Array.from(new Set(dependencyIds));
-		if (uniqueIds.length === 0) return;
+		if (dependencyIds.length === 0) return;
+
+		const uniqueDependencyIds = Array.from(new Set(dependencyIds));
 
 		await entityManager
 			.createQueryBuilder()
 			.insert()
 			.into(CredentialDependency)
 			.values(
-				uniqueIds.map((dependencyId) => ({
+				uniqueDependencyIds.map((dependencyId) => ({
 					credentialId,
 					dependencyType,
 					dependencyId,

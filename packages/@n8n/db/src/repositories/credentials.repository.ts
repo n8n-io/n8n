@@ -3,10 +3,14 @@ import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, Like, Repository } from '@n8n/typeorm';
 
-import { CredentialsEntity } from '../entities';
-import type { User } from '../entities';
+import { CredentialsEntity, type CredentialDependencyType, type User } from '../entities';
 import { SharedCredentialsRepository } from './shared-credentials.repository';
 import type { ListQuery } from '../entities/types-db';
+
+type CredentialDependencyFilter = {
+	dependencyType: CredentialDependencyType;
+	dependencyId: string;
+};
 
 @Service()
 export class CredentialsRepository extends Repository<CredentialsEntity> {
@@ -193,6 +197,45 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		return await this.find(findManyOptions);
 	}
 
+	async findAllGlobalCredentialsByDependency(
+		includeData: boolean,
+		dependencyFilter: CredentialDependencyFilter,
+	): Promise<CredentialsEntity[]> {
+		const qb = this.createQueryBuilder('credential')
+			.where('credential.isGlobal = :isGlobal', { isGlobal: true })
+			.andWhere(
+				`EXISTS (
+					SELECT 1
+					FROM credential_dependency cd
+					WHERE cd.credentialId = credential.id
+						AND cd.dependencyType = :dependencyType
+						AND cd.dependencyId = :dependencyId
+				)`,
+				dependencyFilter,
+			);
+
+		const defaultSelect: Array<keyof CredentialsEntity> = [
+			'id',
+			'name',
+			'type',
+			'isManaged',
+			'createdAt',
+			'updatedAt',
+			'isGlobal',
+			'isResolvable',
+			'resolverId',
+		];
+
+		qb.select(defaultSelect.map((k) => `credential.${k}`))
+			.leftJoinAndSelect('credential.shared', 'shared')
+			.leftJoinAndSelect('shared.project', 'project')
+			.leftJoinAndSelect('project.projectRelations', 'projectRelations');
+
+		if (includeData) qb.addSelect('credential.data');
+
+		return await qb.getMany();
+	}
+
 	/**
 	 * Find all credentials that are owned by a personal project.
 	 */
@@ -240,31 +283,21 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		options: ListQuery.Options & {
 			includeData?: boolean;
 			order?: FindManyOptions<CredentialsEntity>['order'];
+			dependencyFilter?: CredentialDependencyFilter;
 		} = {},
-		credentialIds?: string[],
 	) {
-		const query = this.getManyQueryWithSharingSubquery(
-			user,
-			sharingOptions,
-			options,
-			credentialIds,
-		);
+		const query = this.getManyQueryWithSharingSubquery(user, sharingOptions, options);
 
 		// Get credentials with pagination
 		const credentials = await query.getMany();
 
 		// Build count query without pagination and relations
-		const countQuery = this.getManyQueryWithSharingSubquery(
-			user,
-			sharingOptions,
-			{
-				...options,
-				take: undefined,
-				skip: undefined,
-				select: undefined,
-			},
-			credentialIds,
-		);
+		const countQuery = this.getManyQueryWithSharingSubquery(user, sharingOptions, {
+			...options,
+			take: undefined,
+			skip: undefined,
+			select: undefined,
+		});
 
 		// Remove relations and select for count
 		const count = await countQuery.select('credential.id').getCount();
@@ -288,18 +321,22 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		options: ListQuery.Options & {
 			includeData?: boolean;
 			order?: FindManyOptions<CredentialsEntity>['order'];
+			dependencyFilter?: CredentialDependencyFilter;
 		} = {},
-		credentialIds?: string[],
 	): SelectQueryBuilder<CredentialsEntity> {
 		const qb = this.createQueryBuilder('credential');
 
-		if (credentialIds) {
-			if (credentialIds.length === 0) {
-				qb.andWhere('1 = 0');
-				return qb;
-			}
-
-			qb.andWhere('credential.id IN (:...credentialIds)', { credentialIds });
+		if (options.dependencyFilter) {
+			qb.andWhere(
+				`EXISTS (
+					SELECT 1
+					FROM credential_dependency cd
+					WHERE cd.credentialId = credential.id
+						AND cd.dependencyType = :dependencyType
+						AND cd.dependencyId = :dependencyId
+				)`,
+				options.dependencyFilter,
+			);
 		}
 
 		// Pass projectId from options to sharing options

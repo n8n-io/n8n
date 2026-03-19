@@ -13,13 +13,13 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 		return await this.find();
 	}
 
-	async findIdByProviderKey(providerKey: string): Promise<number | null> {
+	async findIdByProviderKey(providerKey: string): Promise<string | null> {
 		const connection = await this.findOne({
 			select: ['id'],
 			where: { providerKey },
 		});
 
-		return connection?.id ?? null;
+		return connection ? connection.id.toString() : null;
 	}
 
 	async findIdsByProviderKeys(providerKeys: string[]): Promise<string[]> {

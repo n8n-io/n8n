@@ -7,7 +7,6 @@ import {
 	SharedCredentials,
 	CredentialsRepository,
 	ProjectRepository,
-	SecretsProviderConnectionRepository,
 	SharedCredentialsRepository,
 	UserRepository,
 } from '@n8n/db';
@@ -57,8 +56,12 @@ import { RoleService } from '@/services/role.service';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 import {
+	CredentialDependencyService,
+	type CredentialDependencyFilter,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+} from './credential-dependency.service';
+import {
 	validateAccessToReferencedSecretProviders,
-	extractExternalSecretProviderKeys,
 	validateExternalSecretsPermissions,
 } from './validation';
 
@@ -70,14 +73,12 @@ type CreateCredentialOptions = CreateCredentialDto & {
 	isManaged: boolean;
 };
 
-const EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE = 'externalSecretProvider' as const;
-
 @Service()
 export class CredentialsService {
 	constructor(
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly credentialDependencyRepository: CredentialDependencyRepository,
-		private readonly secretsProviderConnectionRepository: SecretsProviderConnectionRepository,
+		private readonly credentialDependencyService: CredentialDependencyService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
@@ -98,14 +99,14 @@ export class CredentialsService {
 	private async addGlobalCredentials(
 		credentials: CredentialsEntity[],
 		includeData: boolean,
-		allowedCredentialIds?: Set<string>,
+		dependencyFilter?: CredentialDependencyFilter,
 	): Promise<CredentialsEntity[]> {
-		let globalCredentials = await this.credentialsRepository.findAllGlobalCredentials(includeData);
-		if (allowedCredentialIds) {
-			globalCredentials = globalCredentials.filter((credential) =>
-				allowedCredentialIds.has(credential.id),
-			);
-		}
+		const globalCredentials = dependencyFilter
+			? await this.credentialsRepository.findAllGlobalCredentialsByDependency(
+					includeData,
+					dependencyFilter,
+				)
+			: await this.credentialsRepository.findAllGlobalCredentials(includeData);
 
 		// Merge and deduplicate based on credential ID
 		const credentialIds = new Set(credentials.map((c) => c.id));
@@ -156,11 +157,13 @@ export class CredentialsService {
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
 		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
-		const credentialIdsByExternalSecretsStore = externalSecretsStore
-			? await this.findCredentialIdsByExternalSecretsStore(externalSecretsStore)
+		const dependencyFilter = externalSecretsStore
+			? await this.credentialDependencyService.resolveExternalSecretsStoreDependencyFilter(
+					externalSecretsStore,
+				)
 			: undefined;
 
-		if (credentialIdsByExternalSecretsStore?.length === 0) {
+		if (externalSecretsStore && !dependencyFilter) {
 			return [];
 		}
 
@@ -179,7 +182,7 @@ export class CredentialsService {
 				includeGlobal,
 				includeData,
 				onlySharedWithMe,
-				credentialIdsByExternalSecretsStore,
+				dependencyFilter,
 			);
 		} else {
 			credentials = await this.getManyForMemberUser(
@@ -188,7 +191,7 @@ export class CredentialsService {
 				includeGlobal,
 				includeData,
 				onlySharedWithMe,
-				credentialIdsByExternalSecretsStore,
+				dependencyFilter,
 			);
 		}
 
@@ -209,26 +212,24 @@ export class CredentialsService {
 		includeGlobal: boolean,
 		includeData: boolean,
 		onlySharedWithMe: boolean,
-		credentialIds?: string[],
+		dependencyFilter?: CredentialDependencyFilter,
 	): Promise<CredentialsEntity[]> {
-		// If onlySharedWithMe is requested, use the subquery approach even for admin users
-		if (onlySharedWithMe) {
+		// If onlySharedWithMe or dependency filtering is requested, use subquery approach.
+		if (onlySharedWithMe || dependencyFilter) {
 			const sharingOptions = {
-				onlySharedWithMe: true,
+				...(onlySharedWithMe ? { onlySharedWithMe: true } : {}),
 			};
 			const { credentials } = await this.credentialsRepository.getManyAndCountWithSharingSubquery(
 				user,
 				sharingOptions,
-				listQueryOptions,
-				credentialIds,
+				{
+					...listQueryOptions,
+					dependencyFilter,
+				},
 			);
 
 			if (includeGlobal) {
-				return await this.addGlobalCredentials(
-					credentials,
-					includeData,
-					credentialIds ? new Set(credentialIds) : undefined,
-				);
+				return await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
 			}
 
 			return credentials;
@@ -236,14 +237,10 @@ export class CredentialsService {
 
 		await this.applyPersonalProjectFilter(listQueryOptions);
 
-		let credentials = await this.credentialsRepository.findMany(listQueryOptions, credentialIds);
+		let credentials = await this.credentialsRepository.findMany(listQueryOptions);
 
 		if (includeGlobal) {
-			credentials = await this.addGlobalCredentials(
-				credentials,
-				includeData,
-				credentialIds ? new Set(credentialIds) : undefined,
-			);
+			credentials = await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
 		}
 
 		return credentials;
@@ -255,7 +252,7 @@ export class CredentialsService {
 		includeGlobal: boolean,
 		includeData: boolean,
 		onlySharedWithMe: boolean,
-		credentialIds?: string[],
+		dependencyFilter?: CredentialDependencyFilter,
 	): Promise<CredentialsEntity[]> {
 		let isPersonalProject = false;
 		let personalProjectOwnerId: string | null = null;
@@ -306,16 +303,14 @@ export class CredentialsService {
 		const { credentials } = await this.credentialsRepository.getManyAndCountWithSharingSubquery(
 			user,
 			sharingOptions,
-			listQueryOptions,
-			credentialIds,
+			{
+				...listQueryOptions,
+				dependencyFilter,
+			},
 		);
 
 		if (includeGlobal) {
-			return await this.addGlobalCredentials(
-				credentials,
-				includeData,
-				credentialIds ? new Set(credentialIds) : undefined,
-			);
+			return await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
 		}
 
 		return credentials;
@@ -665,7 +660,9 @@ export class CredentialsService {
 	) {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 		const nextProviderIds = decryptedCredentialData
-			? await this.resolveProviderIdsFromCredentialData(decryptedCredentialData)
+			? await this.credentialDependencyService.resolveProviderIdsFromCredentialData(
+					decryptedCredentialData,
+				)
 			: undefined;
 
 		return await this.credentialsRepository.manager.transaction(async (transactionManager) => {
@@ -738,10 +735,14 @@ export class CredentialsService {
 			await transactionManager.save<SharedCredentials>(newSharedCredential);
 
 			if (decryptedData) {
+				const dependencyIds =
+					await this.credentialDependencyService.resolveProviderIdsFromCredentialData(
+						decryptedData,
+					);
 				await this.credentialDependencyRepository.upsertDependenciesForCredential({
 					credentialId: savedCredential.id,
 					dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
-					dependencyIds: await this.resolveProviderIdsFromCredentialData(decryptedData),
+					dependencyIds,
 					entityManager: transactionManager,
 				});
 			}
@@ -1179,27 +1180,5 @@ export class CredentialsService {
 		const scopes = await this.getCredentialScopes(user, credential.id);
 
 		return { ...credential, scopes };
-	}
-
-	private async findCredentialIdsByExternalSecretsStore(
-		externalSecretsStoreProviderKey: string,
-	): Promise<string[]> {
-		const providerId = await this.secretsProviderConnectionRepository.findIdByProviderKey(
-			externalSecretsStoreProviderKey,
-		);
-
-		if (providerId === null) return [];
-
-		return await this.credentialDependencyRepository.findCredentialIdsByDependencyId(
-			EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
-			providerId.toString(),
-		);
-	}
-
-	private async resolveProviderIdsFromCredentialData(
-		decryptedCredentialData: ICredentialDataDecryptedObject,
-	): Promise<string[]> {
-		const providerKeys = [...extractExternalSecretProviderKeys(decryptedCredentialData)];
-		return await this.secretsProviderConnectionRepository.findIdsByProviderKeys(providerKeys);
 	}
 }

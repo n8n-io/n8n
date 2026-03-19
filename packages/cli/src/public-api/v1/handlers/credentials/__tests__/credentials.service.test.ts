@@ -2,7 +2,6 @@ import type {
 	CredentialDependencyRepository,
 	CredentialsEntity,
 	Project,
-	SecretsProviderConnectionRepository,
 	SharedCredentials,
 	User,
 } from '@n8n/db';
@@ -425,7 +424,7 @@ describe('CredentialsService', () => {
 		const credentialsService = new CredentialsService(
 			mock(), // credentialsRepository
 			mock<CredentialDependencyRepository>(),
-			mock<SecretsProviderConnectionRepository>(),
+			mock(),
 			mock(), // sharedCredentialsRepository
 			mock(), // ownershipService
 			mock(), // logger

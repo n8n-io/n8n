@@ -9,7 +9,6 @@ import type {
 	SharedCredentialsRepository,
 	CredentialsEntity,
 	CredentialsRepository,
-	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -38,7 +37,7 @@ describe('CredentialsController', () => {
 	const credentialsService = new CredentialsService(
 		credentialsRepository,
 		mock<CredentialDependencyRepository>(),
-		mock<SecretsProviderConnectionRepository>(),
+		mock(),
 		mock(), // sharedCredentialsRepository
 		mock(), // ownershipService
 		mock(), // logger
