@@ -6,9 +6,11 @@ import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import {
+	VIEWS,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_HISTORY_PUBLISH_TIMELINE_TAB,
 	AutoSaveState,
 	EnterpriseEditionFeature,
 } from '@/app/constants';
@@ -319,6 +321,7 @@ const latestPublishDate = computed(() => {
 const enum VERSION_ACTIONS {
 	PUBLISH = 'publish',
 	NAME_VERSION = 'name-version',
+	PUBLISH_TIMELINE = 'publish-timeline',
 	UNPUBLISH = 'unpublish',
 }
 
@@ -338,6 +341,13 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 			label: i18n.baseText('generic.nameVersion'),
 			shortcut: { metaKey: true, keys: ['S'] },
 			disabled: !hasUpdatePermission.value || !workflowsStore.workflow.versionId,
+		});
+	}
+
+	if (activeVersion.value) {
+		actions.push({
+			id: VERSION_ACTIONS.PUBLISH_TIMELINE,
+			label: i18n.baseText('workflowHistory.action.viewTimeline'),
 		});
 	}
 
@@ -449,6 +459,13 @@ const onDropdownMenuSelect = async (action: VERSION_ACTIONS) => {
 			break;
 		case VERSION_ACTIONS.NAME_VERSION:
 			await onNameVersion();
+			break;
+		case VERSION_ACTIONS.PUBLISH_TIMELINE:
+			await router.push({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: { workflowId: props.id },
+				query: { tab: WORKFLOW_HISTORY_PUBLISH_TIMELINE_TAB },
+			});
 			break;
 		case VERSION_ACTIONS.UNPUBLISH:
 			onUnpublish();

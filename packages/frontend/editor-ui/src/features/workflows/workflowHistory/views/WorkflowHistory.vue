@@ -8,6 +8,7 @@ import {
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	WORKFLOW_HISTORY_DIFF_MODAL_KEY,
+	WORKFLOW_HISTORY_PUBLISH_TIMELINE_TAB,
 	EnterpriseEditionFeature,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
@@ -135,7 +136,9 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 );
 
 type HistoryTab = 'history' | 'publishTimeline';
-const activeTab = ref<HistoryTab>('history');
+const initialTab: HistoryTab =
+	route.query.tab === WORKFLOW_HISTORY_PUBLISH_TIMELINE_TAB ? 'publishTimeline' : 'history';
+const activeTab = ref<HistoryTab>(initialTab);
 
 const wasEverPublished = computed(
 	() =>
@@ -485,18 +488,22 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 	}
 };
 
+const navigateToVersion = async (id: WorkflowVersionId) => {
+	await router.push({
+		name: VIEWS.WORKFLOW_HISTORY,
+		params: {
+			workflowId: workflowId.value,
+			versionId: id,
+		},
+	});
+};
+
 const onPreview = async ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) => {
 	if (event.metaKey || event.ctrlKey) {
 		openInNewTab(id);
 		sendTelemetry('User opened version in new tab');
 	} else {
-		await router.push({
-			name: VIEWS.WORKFLOW_HISTORY,
-			params: {
-				workflowId: workflowId.value,
-				versionId: id,
-			},
-		});
+		await navigateToVersion(id);
 	}
 };
 
@@ -634,6 +641,7 @@ watchEffect(async () => {
 			<WorkflowPublishTimelineContent
 				v-if="canRender && activeTab === 'publishTimeline'"
 				:workflow-id="workflowId"
+				@select-version="navigateToVersion"
 			/>
 		</div>
 		<div :class="$style.contentComponentWrapper">

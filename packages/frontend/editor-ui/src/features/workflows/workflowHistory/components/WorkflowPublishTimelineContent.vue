@@ -7,6 +7,10 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
 import dateformat from 'dateformat';
 
+const emit = defineEmits<{
+	selectVersion: [versionId: string];
+}>();
+
 const DOWNTIME_DISCLAIMER_CALLOUT = 'publishTimelineDowntimeDisclaimer';
 /** Threshold to filter out transient deactivation/reactivation gaps during version changes */
 const MIN_UNPUBLISHED_DURATION_MS = 2000;
@@ -206,10 +210,23 @@ onMounted(loadTimeline);
 							<div :class="$style.timelineHeader">
 								<N8nText :bold="true" size="small">
 									<template v-if="period.status === 'published'">
-										{{
-											period.versionName ??
-											i18n.baseText('workflowHistory.publishTimeline.event.activated')
-										}}
+										<a
+											v-if="period.versionId"
+											:class="$style.versionLink"
+											@click="emit('selectVersion', period.versionId)"
+										>
+											{{
+												period.versionName
+													? i18n.baseText(
+															'workflowHistory.publishTimeline.event.activatedVersion',
+															{ interpolate: { version: period.versionName } },
+														)
+													: i18n.baseText('workflowHistory.publishTimeline.event.activated')
+											}}
+										</a>
+										<template v-else>
+											{{ i18n.baseText('workflowHistory.publishTimeline.event.activated') }}
+										</template>
 									</template>
 									<template v-else>
 										{{ i18n.baseText('workflowHistory.publishTimeline.event.deactivated') }}
@@ -244,6 +261,15 @@ onMounted(loadTimeline);
 	padding: var(--spacing--sm);
 	overflow-y: auto;
 	height: 100%;
+}
+
+.versionLink {
+	cursor: pointer;
+	color: inherit;
+
+	&:hover {
+		color: var(--color--primary);
+	}
 }
 
 .disclaimer {
