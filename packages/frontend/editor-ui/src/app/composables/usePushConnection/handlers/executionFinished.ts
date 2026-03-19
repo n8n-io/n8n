@@ -32,7 +32,6 @@ import {
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
-import { parse } from 'flatted';
 import type {
 	ExecutionStatus,
 	ExpressionError,
@@ -217,7 +216,7 @@ export async function fetchExecutionData(
 			id: executionId,
 			workflowId: executionResponse.workflowId,
 			workflowData: workflowsStore.workflow,
-			data: parse(executionResponse.data as unknown as string),
+			data: executionResponse.data,
 			status: executionResponse.status,
 			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
 			stoppedAt: new Date(),
