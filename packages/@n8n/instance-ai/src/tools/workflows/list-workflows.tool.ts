@@ -23,7 +23,11 @@ export function createListWorkflowsTool(context: InstanceAiContext) {
 				z.object({
 					id: z.string(),
 					name: z.string(),
-					active: z.boolean(),
+					versionId: z.string(),
+					activeVersionId: z
+						.string()
+						.nullable()
+						.describe('Non-null when the workflow is published and running in production.'),
 					createdAt: z.string(),
 					updatedAt: z.string(),
 				}),

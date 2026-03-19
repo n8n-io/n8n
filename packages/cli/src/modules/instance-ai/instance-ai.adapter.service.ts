@@ -184,12 +184,13 @@ export class InstanceAiAdapterService {
 				});
 
 				return workflows
-					.filter((wf): wf is WorkflowEntity => 'active' in wf)
+					.filter((wf): wf is WorkflowEntity => 'versionId' in wf)
 					.map(
 						(wf): WorkflowSummary => ({
 							id: wf.id,
 							name: wf.name,
-							active: wf.active,
+							versionId: wf.versionId,
+							activeVersionId: wf.activeVersionId ?? null,
 							createdAt: wf.createdAt.toISOString(),
 							updatedAt: wf.updatedAt.toISOString(),
 						}),
@@ -216,11 +217,14 @@ export class InstanceAiAdapterService {
 				await workflowService.delete(user, workflowId);
 			},
 
-			async activate(workflowId: string) {
-				await workflowService.activateWorkflow(user, workflowId);
+			async publish(workflowId: string, options?: { versionId?: string }) {
+				const wf = await workflowService.activateWorkflow(user, workflowId, {
+					versionId: options?.versionId,
+				});
+				return { activeVersionId: wf.activeVersionId ?? options?.versionId ?? workflowId };
 			},
 
-			async deactivate(workflowId: string) {
+			async unpublish(workflowId: string) {
 				await workflowService.deactivateWorkflow(user, workflowId);
 			},
 
@@ -1820,7 +1824,8 @@ function toWorkflowDetail(workflow: WorkflowEntity): WorkflowDetail {
 	return {
 		id: workflow.id,
 		name: workflow.name,
-		active: workflow.active,
+		versionId: workflow.versionId,
+		activeVersionId: workflow.activeVersionId ?? null,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
 		nodes: (workflow.nodes ?? []).map(

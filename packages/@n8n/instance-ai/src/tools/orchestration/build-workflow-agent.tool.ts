@@ -154,7 +154,8 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					'get-execution',
 					'debug-execution',
 					// Workflow lifecycle
-					'activate-workflow',
+					'publish-workflow',
+					'unpublish-workflow',
 					// Data table management (create/inspect tables used by workflows)
 					'list-data-tables',
 					'create-data-table',
