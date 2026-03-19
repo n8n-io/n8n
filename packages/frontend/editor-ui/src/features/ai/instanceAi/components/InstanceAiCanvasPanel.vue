@@ -30,7 +30,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const { canvasContext, collectCanvasContext } = useCanvasContext();
 const { updateWorkflow } = useWorkflowUpdate();
-const { runWorkflow: triggerRunWorkflow, stopCurrentExecution } = useRunWorkflow({
+const { runEntireWorkflow, stopCurrentExecution } = useRunWorkflow({
 	router: useRouter(),
 });
 
@@ -227,7 +227,7 @@ watch(
 		if (pending.workflowId !== workflowId.value) return;
 		store.pendingTriggerManualRun = null;
 		// Trigger manual execution on canvas — equivalent to clicking the play button
-		void triggerRunWorkflow({});
+		void runEntireWorkflow('main');
 	},
 );
 
