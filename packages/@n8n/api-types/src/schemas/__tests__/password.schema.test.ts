@@ -1,4 +1,4 @@
-import { passwordSchema, createPasswordSchema } from '../password.schema';
+import { createPasswordSchema, passwordSchema } from '../../index';
 
 describe('passwordSchema', () => {
 	test('should throw on empty password', () => {

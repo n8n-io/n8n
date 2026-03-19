@@ -583,6 +583,18 @@ describe('GlobalConfig', () => {
 		);
 	});
 
+	it('should clamp password min length to valid range', () => {
+		process.env = { N8N_PASSWORD_MIN_LENGTH: '100' };
+		const config = Container.get(GlobalConfig);
+		expect(config.userManagement.password.minLength).toEqual(64);
+	});
+
+	it('should floor password min length at 8', () => {
+		process.env = { N8N_PASSWORD_MIN_LENGTH: '2' };
+		const config = Container.get(GlobalConfig);
+		expect(config.userManagement.password.minLength).toEqual(8);
+	});
+
 	describe('string unions', () => {
 		it('on invalid value, should warn and fall back to default value', () => {
 			process.env = {
