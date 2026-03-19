@@ -10,7 +10,7 @@ import { VIEWS } from '@/app/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useExecutionsStore } from '../../executions.store';
 import type { IWorkflowDb } from '@/Interface';
-import type { ExecutionFilterType } from '../../executions.types';
+import type { ExecutionFilterType, WorkflowExecutionViewMode } from '../../executions.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
@@ -20,7 +20,14 @@ import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
-import { N8nCheckbox, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import {
+	N8nCheckbox,
+	N8nHeading,
+	N8nIconButton,
+	N8nLoading,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 const props = defineProps<{
@@ -29,6 +36,7 @@ const props = defineProps<{
 	loading: boolean;
 	loadingMore: boolean;
 	temporaryExecution?: ExecutionSummary;
+	viewMode: WorkflowExecutionViewMode;
 }>();
 
 const emit = defineEmits<{
@@ -36,6 +44,7 @@ const emit = defineEmits<{
 	loadMore: [amount: number];
 	filterUpdated: [filter: ExecutionFilterType];
 	'update:autoRefresh': [boolean];
+	'update:viewMode': [value: WorkflowExecutionViewMode];
 	'execution:stopMany': [];
 }>();
 
@@ -178,9 +187,31 @@ const goToUpgrade = () => {
 <template>
 	<div :class="['executions-sidebar', $style.container]" data-test-id="executions-sidebar">
 		<div :class="$style.heading">
-			<N8nHeading tag="h2" size="medium" color="text-dark">
-				{{ i18n.baseText('generic.executions') }}
-			</N8nHeading>
+			<div :class="$style.headingLeft">
+				<N8nHeading tag="h2" size="medium" color="text-dark">
+					{{ i18n.baseText('generic.executions') }}
+				</N8nHeading>
+				<div :class="$style.viewToggle">
+					<N8nTooltip :content="i18n.baseText('executionsList.viewMode.detail')">
+						<N8nIconButton
+							icon="list"
+							type="secondary"
+							size="small"
+							data-test-id="executions-view-mode-detail"
+							@click="emit('update:viewMode', 'detail')"
+						/>
+					</N8nTooltip>
+					<N8nTooltip :content="i18n.baseText('executionsList.viewMode.table')">
+						<N8nIconButton
+							icon="table"
+							type="tertiary"
+							size="small"
+							data-test-id="executions-view-mode-table"
+							@click="emit('update:viewMode', 'table')"
+						/>
+					</N8nTooltip>
+				</div>
+			</div>
 
 			<ConcurrentExecutionsHeader
 				v-if="showConcurrencyHeader"
@@ -271,6 +302,18 @@ const goToUpgrade = () => {
 	justify-content: space-between;
 	align-items: center;
 	padding-right: var(--spacing--md);
+}
+
+.headingLeft {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.viewToggle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .controls {

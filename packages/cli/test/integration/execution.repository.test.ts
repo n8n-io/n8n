@@ -2,6 +2,7 @@ import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createExecution } from '@test-integration/db/executions';
+import assert from 'assert';
 import { stringify, parse } from 'flatted';
 import { DateTime } from 'luxon';
 import type { ExecutionStatus } from 'n8n-workflow';
@@ -64,6 +65,41 @@ describe('UserRepository', () => {
 				execution2.id,
 				execution1.id,
 			]);
+		});
+
+		test('should return customData object with metadata keys when present, and empty object when absent', async () => {
+			const workflow = await createWorkflow();
+			const execution1 = await createExecution(
+				{
+					metadata: [
+						{ key: 'test1', value: 'value1' },
+						{ key: 'test2', value: 'value2' },
+						{ key: 'test3', value: 'value3' },
+					],
+				},
+				workflow,
+			);
+			const execution2 = await createExecution({}, workflow);
+
+			const executions = await executionRepository.findManyByRangeQuery({
+				workflowId: workflow.id,
+				accessibleWorkflowIds: [workflow.id],
+				kind: 'range',
+				range: { limit: 10 },
+				order: { startedAt: 'DESC' },
+			});
+
+			// In the context of this test, we don't care about the order of executions, so we find them by id.
+			const executionsWithMetadata = executions.find((e) => e.id === execution1.id);
+			const executionsWithoutMetadata = executions.find((e) => e.id === execution2.id);
+
+			assert(executionsWithMetadata && executionsWithoutMetadata);
+			expect(executionsWithMetadata.customData).toEqual({
+				test1: 'value1',
+				test2: 'value2',
+				test3: 'value3',
+			});
+			expect(executionsWithoutMetadata.customData).toEqual({});
 		});
 	});
 

@@ -4,6 +4,7 @@ import { WAIT_INDEFINITELY, type ExecutionSummary } from 'n8n-workflow';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { DateTime } from 'luxon';
+import type { ExecutionColumnDefinition } from '../../executions.types';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -12,6 +13,7 @@ vi.mock('vue-router', async () => {
 		...actual,
 		useRouter: vi.fn(() => ({
 			resolve: vi.fn(() => ({ href: 'mockedRoute' })),
+			push: vi.fn(),
 		})),
 	};
 });
@@ -30,11 +32,65 @@ const renderComponent = createComponentRenderer(GlobalExecutionsListItem, {
 	},
 });
 
+const DEFAULT_VISIBLE_COLUMNS: ExecutionColumnDefinition[] = [
+	{
+		id: 'workflow',
+		labelKey: 'generic.workflow',
+		toggleable: true,
+		visible: true,
+		group: 'standard',
+	},
+	{
+		id: 'status',
+		labelKey: 'executionsList.status',
+		toggleable: true,
+		visible: true,
+		group: 'standard',
+	},
+	{
+		id: 'startedAt',
+		labelKey: 'executionsList.startedAt',
+		toggleable: true,
+		visible: true,
+		group: 'standard',
+	},
+	{
+		id: 'runTime',
+		labelKey: 'executionsList.runTime',
+		toggleable: true,
+		visible: true,
+		group: 'standard',
+	},
+	{ id: 'id', labelKey: 'executionsList.id', toggleable: true, visible: true, group: 'standard' },
+	{
+		id: 'tags',
+		labelKey: 'executionsList.columns.tags',
+		toggleable: true,
+		visible: true,
+		group: 'annotation',
+	},
+	{
+		id: 'rating',
+		labelKey: 'executionsList.columns.rating',
+		toggleable: true,
+		visible: true,
+		group: 'annotation',
+	},
+	{
+		id: 'mode',
+		labelKey: 'executionsList.columns.mode',
+		toggleable: true,
+		visible: true,
+		group: 'standard',
+	},
+];
+
 describe('GlobalExecutionsListItem', () => {
 	it('should render the status text for an execution', () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				execution: { status: 'running', id: 123, workflowName: 'Test Workflow' },
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
 			} as unknown as ExecutionSummary,
 		});
 
@@ -45,6 +101,7 @@ describe('GlobalExecutionsListItem', () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {
 				execution: { status: 'running', id: 123, stoppedAt: undefined, waitTill: true },
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
 			} as unknown as ExecutionSummary,
 		});
 
@@ -68,6 +125,7 @@ describe('GlobalExecutionsListItem', () => {
 					retrySuccessfulId: undefined,
 					waitTill: false,
 				} as unknown as ExecutionSummary,
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
 				workflowPermissions: {
 					execute: true,
 				},
@@ -89,6 +147,7 @@ describe('GlobalExecutionsListItem', () => {
 					id: 123,
 					stoppedAt: undefined,
 				} as unknown as ExecutionSummary,
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
 				workflowPermissions: {
 					update: true,
 				},
@@ -108,6 +167,7 @@ describe('GlobalExecutionsListItem', () => {
 					id: 123,
 					startedAt: testDate,
 				} as unknown as ExecutionSummary,
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
 				workflowPermissions: {},
 			},
 		});
@@ -126,6 +186,7 @@ describe('GlobalExecutionsListItem', () => {
 					id: 123,
 					workflowName: 'Test Workflow',
 				} as unknown as ExecutionSummary,
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
 				workflowPermissions: {},
 				concurrencyCap: 5,
 			},
@@ -143,6 +204,7 @@ describe('GlobalExecutionsListItem', () => {
 					id: 123,
 					workflowName: 'Test Workflow',
 				} as unknown as ExecutionSummary,
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
 				workflowPermissions: {},
 				concurrencyCap: 5,
 			},
@@ -159,6 +221,7 @@ describe('GlobalExecutionsListItem', () => {
 					id: 123,
 					workflowName: 'Test Workflow',
 				} as unknown as ExecutionSummary,
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
 				workflowPermissions: {},
 				concurrencyCap: 5,
 			},
@@ -183,6 +246,7 @@ describe('GlobalExecutionsListItem', () => {
 					workflowName: 'Test Workflow',
 					createdAt,
 				} as unknown as ExecutionSummary,
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
 				workflowPermissions: {},
 				concurrencyCap: 5,
 			},
@@ -206,6 +270,7 @@ describe('GlobalExecutionsListItem', () => {
 					createdAt,
 					stoppedAt: now,
 				} as unknown as ExecutionSummary,
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
 				workflowPermissions: {},
 				concurrencyCap: 5,
 			},
@@ -214,5 +279,140 @@ describe('GlobalExecutionsListItem', () => {
 		const executionTimeElement = getByTestId('execution-time');
 		expect(executionTimeElement).toBeVisible();
 		expect(executionTimeElement.textContent).toBe('30m 0s');
+	});
+
+	it('should render annotation tags when present', () => {
+		const { getByText } = renderComponent({
+			props: {
+				execution: {
+					status: 'success',
+					id: 123,
+					stoppedAt: '2024-01-01',
+					annotation: {
+						tags: [
+							{ id: 't1', name: 'important' },
+							{ id: 't2', name: 'reviewed' },
+						],
+					},
+				} as unknown as ExecutionSummary,
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
+				workflowPermissions: {},
+			},
+		});
+
+		expect(getByText('important')).toBeInTheDocument();
+		expect(getByText('reviewed')).toBeInTheDocument();
+	});
+
+	it('should render dash when no annotation tags', () => {
+		const { container } = renderComponent({
+			props: {
+				execution: {
+					status: 'success',
+					id: 123,
+					stoppedAt: '2024-01-01',
+				} as unknown as ExecutionSummary,
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
+				workflowPermissions: {},
+			},
+		});
+
+		const tagsCells = container.querySelectorAll('td');
+		const tagsCell = Array.from(tagsCells).find((td) => td.textContent?.trim() === '-');
+		expect(tagsCell).toBeTruthy();
+	});
+
+	it('should render thumbs-up icon for vote up', () => {
+		const { container } = renderComponent({
+			props: {
+				execution: {
+					status: 'success',
+					id: 123,
+					stoppedAt: '2024-01-01',
+					annotation: { vote: 'up', tags: [] },
+				} as unknown as ExecutionSummary,
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
+				workflowPermissions: {},
+			},
+		});
+
+		const thumbsUp = container.querySelector('[data-icon="thumbs-up"]');
+		expect(thumbsUp).toBeInTheDocument();
+	});
+
+	it('should render thumbs-down icon for vote down', () => {
+		const { container } = renderComponent({
+			props: {
+				execution: {
+					status: 'success',
+					id: 123,
+					stoppedAt: '2024-01-01',
+					annotation: { vote: 'down', tags: [] },
+				} as unknown as ExecutionSummary,
+				visibleColumns: DEFAULT_VISIBLE_COLUMNS,
+				workflowPermissions: {},
+			},
+		});
+
+		const thumbsDown = container.querySelector('[data-icon="thumbs-down"]');
+		expect(thumbsDown).toBeInTheDocument();
+	});
+
+	it('should render customData column value', () => {
+		const customDataColumns: ExecutionColumnDefinition[] = [
+			...DEFAULT_VISIBLE_COLUMNS,
+			{
+				id: 'customData:orderId',
+				labelKey: 'orderId',
+				toggleable: true,
+				visible: true,
+				group: 'customData',
+			},
+		];
+
+		const { getByText } = renderComponent({
+			props: {
+				execution: {
+					status: 'success',
+					id: 123,
+					stoppedAt: '2024-01-01',
+					customData: { orderId: 'ORD-999' },
+				} as unknown as ExecutionSummary,
+				visibleColumns: customDataColumns,
+				workflowPermissions: {},
+			},
+		});
+
+		expect(getByText('ORD-999')).toBeInTheDocument();
+	});
+
+	it('should render dash for missing customData value', () => {
+		const customDataColumns: ExecutionColumnDefinition[] = [
+			...DEFAULT_VISIBLE_COLUMNS,
+			{
+				id: 'customData:orderId',
+				labelKey: 'orderId',
+				toggleable: true,
+				visible: true,
+				group: 'customData',
+			},
+		];
+
+		const { container } = renderComponent({
+			props: {
+				execution: {
+					status: 'success',
+					id: 123,
+					stoppedAt: '2024-01-01',
+				} as unknown as ExecutionSummary,
+				visibleColumns: customDataColumns,
+				workflowPermissions: {},
+			},
+		});
+
+		const cells = container.querySelectorAll('td');
+		const dashCells = Array.from(cells).filter((td) => td.textContent?.trim() === '-');
+		// At least 3 dashes: tags, rating, and the missing customData
+		expect(dashCells.length).toBeGreaterThanOrEqual(3);
 	});
 });

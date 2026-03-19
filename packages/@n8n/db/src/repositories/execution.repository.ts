@@ -886,8 +886,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		> = await qb.getRawMany();
 
 		const executions = this.reduceExecutionsWithAnnotations(rawExecutionsWithTags);
+		const executionsWithCustomData = executions.map((execution) =>
+			this.parseExecutionCustomData(execution),
+		);
 
-		return executions.map((execution) => this.toSummary(execution));
+		return executionsWithCustomData.map((execution) => this.toSummary(execution));
+	}
+
+	private parseExecutionCustomData(execution: ExecutionSummary) {
+		return {
+			...execution,
+			customData: typeof execution.customData === 'string' ? JSON.parse(execution.customData) : {},
+		};
 	}
 
 	// @tech_debt: These transformations should not be needed
@@ -1075,13 +1085,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			subQuery.leftJoin('execution.annotation', 'annotation');
 		}
 
+		const dbType = this.globalConfig.database.type;
+		const metadataAggregate =
+			dbType === 'postgresdb'
+				? "COALESCE(json_object_agg(md.key, md.value) FILTER (WHERE md.key IS NOT NULL), '{}')"
+				: "COALESCE(json_group_object(md.key, md.value) FILTER (WHERE md.key IS NOT NULL), '{}')";
+
 		const qb = this.manager
 			.createQueryBuilder()
-			.select(['e.*', 'ate.id AS "annotation_tags_id"', 'ate.name AS "annotation_tags_name"'])
+			.select([
+				'e.*',
+				'ate.id AS "annotation_tags_id"',
+				'ate.name AS "annotation_tags_name"',
+				`${metadataAggregate} AS "customData"`,
+			])
 			.from(`(${subQuery.getQuery()})`, 'e')
 			.setParameters(subQuery.getParameters())
 			.leftJoin(AnnotationTagMapping, 'atm', 'atm.annotationId = e.annotation_id')
-			.leftJoin(AnnotationTagEntity, 'ate', 'ate.id = atm.tagId');
+			.leftJoin(AnnotationTagEntity, 'ate', 'ate.id = atm.tagId')
+			.leftJoin(ExecutionMetadata, 'md', 'md.executionId = e.id')
+			.groupBy('e.id');
 
 		// Sort the final result after the joins again, because there is no
 		// guarantee that the order is unchanged after performing joins. Especially
