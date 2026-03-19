@@ -682,6 +682,7 @@ import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import type { License } from '@/license';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -746,6 +747,7 @@ function createDataTableAdapterForTests(overrides?: {
 		mockSourceControlPreferencesService as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as License,
 	);
 
 	const adapter = service.createContext(mockUser).dataTableService;
@@ -914,6 +916,7 @@ function createWorkflowAdapterForTests() {
 		} as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as License,
 	);
 
 	const adapter = service.createContext(mockUser).workflowService;

@@ -58,6 +58,7 @@ import { createPatchWorkflowTool } from './workflows/patch-workflow.tool';
 import { createPublishWorkflowTool } from './workflows/publish-workflow.tool';
 import { createRestoreWorkflowVersionTool } from './workflows/restore-workflow-version.tool';
 import { createUnpublishWorkflowTool } from './workflows/unpublish-workflow.tool';
+import { createUpdateWorkflowVersionTool } from './workflows/update-workflow-version.tool';
 import { createCleanupTestExecutionsTool } from './workspace/cleanup-test-executions.tool';
 import { createCreateFolderTool } from './workspace/create-folder.tool';
 import { createDeleteFolderTool } from './workspace/delete-folder.tool';
@@ -123,6 +124,9 @@ export function createAllTools(context: InstanceAiContext) {
 					'get-workflow-version': createGetWorkflowVersionTool(context),
 					'restore-workflow-version': createRestoreWorkflowVersionTool(context),
 				}
+			: {}),
+		...(context.workflowService.updateVersion
+			? { 'update-workflow-version': createUpdateWorkflowVersionTool(context) }
 			: {}),
 		...(context.workspaceService
 			? {

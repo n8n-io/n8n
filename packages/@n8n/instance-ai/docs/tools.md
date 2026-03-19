@@ -172,7 +172,7 @@ Only available when `N8N_INSTANCE_AI_BROWSER_MCP=true`.
 
 ---
 
-## Workflow Tools (10)
+## Workflow Tools (11)
 
 ### `list-workflows`
 
@@ -295,6 +295,25 @@ version — publish separately after restoring.
 
 **HITL**: Requires user approval (severity: `warning`) since it overwrites the
 current draft. Controlled by `restoreWorkflowVersion` permission.
+
+### `update-workflow-version`
+
+Update the name or description of a workflow version. Use to label versions
+with meaningful names (e.g. "v1 – initial release") or add descriptions
+explaining what changed.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `workflowId` | string | yes | Workflow ID |
+| `versionId` | string | yes | Version ID to update |
+| `name` | string \| null | no | New name for the version (null to clear) |
+| `description` | string \| null | no | New description for the version (null to clear) |
+
+**Returns**: `{ success: boolean, error?: string }`
+
+**Conditional**: Only registered when the `feat:namedVersions` license feature
+is active. The adapter checks the license at context creation time and omits
+the `updateVersion` method when unlicensed.
 
 ---
 

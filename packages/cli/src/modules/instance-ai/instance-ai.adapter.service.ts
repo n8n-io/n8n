@@ -84,6 +84,7 @@ import {
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -127,6 +128,7 @@ export class InstanceAiAdapterService {
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly license: License,
 	) {
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
 	}
@@ -414,6 +416,18 @@ export class InstanceAiAdapterService {
 
 				await workflowService.update(user, updateData, workflowId);
 			},
+
+			...(this.license.isLicensed('feat:namedVersions')
+				? {
+						async updateVersion(
+							workflowId: string,
+							versionId: string,
+							data: { name?: string | null; description?: string | null },
+						) {
+							await workflowHistoryService.updateVersionForUser(user, workflowId, versionId, data);
+						},
+					}
+				: {}),
 		};
 	}
 

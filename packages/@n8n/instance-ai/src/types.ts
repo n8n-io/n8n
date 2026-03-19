@@ -173,6 +173,12 @@ export interface InstanceAiWorkflowService {
 	getVersion?(workflowId: string, versionId: string): Promise<WorkflowVersionDetail>;
 	/** Restore a workflow to a previous version by overwriting the current draft. */
 	restoreVersion?(workflowId: string, versionId: string): Promise<void>;
+	/** Update name/description of a workflow version (licensed: namedVersions). */
+	updateVersion?(
+		workflowId: string,
+		versionId: string,
+		data: { name?: string | null; description?: string | null },
+	): Promise<void>;
 }
 
 export interface ExecutionSummary {
