@@ -93,7 +93,7 @@ const versionFilterOptions = computed(() => {
 		const { date, time } = convertToDisplayDate(version.createdAt);
 		options.push({
 			id: version.versionId,
-			name: locale.baseText('executionDetails.versionLabel', {
+			name: locale.baseText('executionsFilter.version.label', {
 				interpolate: { name, date: `${date} ${time}` },
 			}),
 		});
