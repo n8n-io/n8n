@@ -244,9 +244,14 @@ export class InstanceAiAdapterService {
 				await workflowService.delete(user, workflowId);
 			},
 
-			async publish(workflowId: string, options?: { versionId?: string }) {
+			async publish(
+				workflowId: string,
+				options?: { versionId?: string; name?: string; description?: string },
+			) {
 				const wf = await workflowService.activateWorkflow(user, workflowId, {
 					versionId: options?.versionId,
+					name: options?.name,
+					description: options?.description,
 				});
 				if (!wf.activeVersionId) {
 					throw new Error(`Workflow ${workflowId} was not activated — no active version set`);

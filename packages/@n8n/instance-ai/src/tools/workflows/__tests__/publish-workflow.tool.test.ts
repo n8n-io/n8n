@@ -1,4 +1,5 @@
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+import type { z } from 'zod';
 
 import type { InstanceAiContext } from '../../../types';
 import { createPublishWorkflowTool } from '../publish-workflow.tool';
@@ -184,6 +185,74 @@ describe('createPublishWorkflowTool', () => {
 				versionId: undefined,
 			});
 			expect(result).toEqual({ success: true, activeVersionId: 'v-active-1' });
+		});
+	});
+
+	describe('when named versions license is available', () => {
+		beforeEach(() => {
+			context = createMockContext({
+				workflowService: {
+					...createMockContext().workflowService,
+					updateVersion: jest.fn(),
+				},
+				permissions: {
+					...DEFAULT_INSTANCE_AI_PERMISSIONS,
+					publishWorkflow: 'always_allow',
+				},
+			});
+		});
+
+		it('includes name and description in the input schema', () => {
+			const tool = createPublishWorkflowTool(context);
+			const shape = (tool.inputSchema as unknown as z.ZodObject<z.ZodRawShape>).shape;
+
+			expect(shape).toHaveProperty('name');
+			expect(shape).toHaveProperty('description');
+		});
+
+		it('passes name and description to the service', async () => {
+			const tool = createPublishWorkflowTool(context);
+
+			await tool.execute!(
+				{ workflowId: 'wf-123', name: 'v1.0', description: 'Initial release' } as never,
+				{
+					agent: { suspend: jest.fn(), resumeData: undefined },
+				} as never,
+			);
+
+			expect(context.workflowService.publish).toHaveBeenCalledWith('wf-123', {
+				versionId: undefined,
+				name: 'v1.0',
+				description: 'Initial release',
+			});
+		});
+	});
+
+	describe('when named versions license is not available', () => {
+		it('does not include name and description in the input schema', () => {
+			const tool = createPublishWorkflowTool(context);
+			const shape = (tool.inputSchema as unknown as z.ZodObject<z.ZodRawShape>).shape;
+
+			expect(shape).not.toHaveProperty('name');
+			expect(shape).not.toHaveProperty('description');
+		});
+
+		it('does not pass name and description to the service', async () => {
+			context = createMockContext({
+				permissions: {
+					...DEFAULT_INSTANCE_AI_PERMISSIONS,
+					publishWorkflow: 'always_allow',
+				},
+			});
+			const tool = createPublishWorkflowTool(context);
+
+			await tool.execute!({ workflowId: 'wf-123' }, {
+				agent: { suspend: jest.fn(), resumeData: undefined },
+			} as never);
+
+			expect(context.workflowService.publish).toHaveBeenCalledWith('wf-123', {
+				versionId: undefined,
+			});
 		});
 	});
 

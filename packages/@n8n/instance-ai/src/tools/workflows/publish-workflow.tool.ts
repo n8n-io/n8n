@@ -6,19 +6,36 @@ import { z } from 'zod';
 import type { InstanceAiContext } from '../../types';
 
 export function createPublishWorkflowTool(context: InstanceAiContext) {
+	const hasNamedVersions = !!context.workflowService.updateVersion;
+
+	const baseSchema = z.object({
+		workflowId: z.string().describe('ID of the workflow'),
+		versionId: z
+			.string()
+			.optional()
+			.describe('Specific version to publish (omit to publish the latest draft)'),
+	});
+
+	const inputSchema = hasNamedVersions
+		? baseSchema.extend({
+				name: z
+					.string()
+					.optional()
+					.describe('Name for this published version (e.g. "v1.2 — added retry logic")'),
+				description: z
+					.string()
+					.optional()
+					.describe('Description of what this version does or what changed'),
+			})
+		: baseSchema;
+
 	return createTool({
 		id: 'publish-workflow',
 		description:
 			'Publish a workflow version to production. Publishing makes the specified version active — ' +
 			'it will run on its triggers. If the workflow has been edited since last publish, you must ' +
 			're-publish for changes to take effect. Omit versionId to publish the latest draft.',
-		inputSchema: z.object({
-			workflowId: z.string().describe('ID of the workflow'),
-			versionId: z
-				.string()
-				.optional()
-				.describe('Specific version to publish (omit to publish the latest draft)'),
-		}),
+		inputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			activeVersionId: z
@@ -60,6 +77,12 @@ export function createPublishWorkflowTool(context: InstanceAiContext) {
 			try {
 				const result = await context.workflowService.publish(input.workflowId, {
 					versionId: input.versionId,
+					...(hasNamedVersions
+						? {
+								name: (input as { name?: string }).name,
+								description: (input as { description?: string }).description,
+							}
+						: {}),
 				});
 				return { success: true, activeVersionId: result.activeVersionId };
 			} catch (error) {

@@ -151,7 +151,7 @@ export interface InstanceAiWorkflowService {
 	delete(workflowId: string): Promise<void>;
 	publish(
 		workflowId: string,
-		options?: { versionId?: string },
+		options?: { versionId?: string; name?: string; description?: string },
 	): Promise<{ activeVersionId: string }>;
 	unpublish(workflowId: string): Promise<void>;
 	/** Patch a single node's parameters, credentials, or disabled state in-place. */
