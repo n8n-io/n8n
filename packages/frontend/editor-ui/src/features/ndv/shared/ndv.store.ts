@@ -27,7 +27,6 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { computed, ref } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 const DEFAULT_MAIN_PANEL_DIMENSIONS = {
 	relativeLeft: 1,
@@ -102,10 +101,8 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
 			: undefined,
 	);
-	const workflowState = injectWorkflowState();
-
 	const activeNode = computed(() => {
-		return workflowsStore.getNodeByName(activeNodeName.value || '');
+		return workflowDocumentStore.value?.getNodeByName(activeNodeName.value || '') ?? null;
 	});
 
 	const ndvInputData = computed(() => {
@@ -373,16 +370,12 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	};
 
 	const updateNodeParameterIssues = (issues: INodeIssues): void => {
-		const activeNode = workflowsStore.getNodeByName(activeNodeName.value || '');
+		const node = workflowDocumentStore.value?.getNodeByName(activeNodeName.value || '');
 
-		if (activeNode) {
-			const nodeIndex = workflowsStore.workflow.nodes.findIndex((node) => {
-				return node.name === activeNode.name;
-			});
-
-			workflowState.updateNodeAtIndex(nodeIndex, {
+		if (node?.id) {
+			workflowDocumentStore.value?.updateNodeById(node.id, {
 				issues: {
-					...activeNode.issues,
+					...node.issues,
 					...issues,
 				},
 			});

@@ -13,6 +13,8 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
+	combineScopes,
+	getAuthPrincipalScopes,
 	hasGlobalScope,
 	type Scope,
 	AssignableProjectRole,
@@ -94,6 +96,12 @@ export class ProjectService {
 	private get dataTableService() {
 		return import('@/modules/data-table/data-table.service').then(({ DataTableService }) =>
 			Container.get(DataTableService),
+		);
+	}
+
+	private get secretsProvidersConnectionsService() {
+		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee').then(
+			({ SecretsProvidersConnectionsService }) => Container.get(SecretsProvidersConnectionsService),
 		);
 	}
 
@@ -192,10 +200,16 @@ export class ProjectService {
 			}
 		}
 
-		// 7. delete project
+		// 7. delete secrets providers connections that are owned by this project
+		if (this.moduleRegistry.isActive('external-secrets')) {
+			const secretsProvidersConnectionsService = await this.secretsProvidersConnectionsService;
+			await secretsProvidersConnectionsService.cleanupConnectionsForProjectDeletion(project.id);
+		}
+
+		// 8. delete project
 		await this.projectRepository.remove(project);
 
-		// 8. delete project relations
+		// 9. delete project relations
 		// Cascading deletes take care of this.
 	}
 
@@ -205,6 +219,45 @@ export class ProjectService {
 	 */
 	async findProjectsWorkflowIsIn(workflowId: string) {
 		return await this.sharedWorkflowRepository.findProjectIds(workflowId);
+	}
+
+	/**
+	 * Enrich projects with the requesting user's role and scopes.
+	 * Mirrors the logic in getMyProjects controller: for each project,
+	 * find the user's ProjectRelation and combine global + project scopes.
+	 */
+	async addUserScopes(
+		user: User,
+		projects: Project[],
+	): Promise<Array<Project & { role: string; scopes: Scope[] }>> {
+		if (projects.length === 0) return [];
+
+		const relations = await this.projectRelationRepository.find({
+			where: {
+				userId: user.id,
+				projectId: In(projects.map((p) => p.id)),
+			},
+			relations: ['role'],
+		});
+		const relationsByProject = new Map(relations.map((r) => [r.projectId, r]));
+		const globalScopes = getAuthPrincipalScopes(user);
+
+		return projects.map((project) => {
+			const relation = relationsByProject.get(project.id);
+			const projectScopes = relation?.role?.scopes?.map((s) => s.slug) ?? [];
+			return {
+				...project,
+				role: relation?.role?.slug ?? user.role.slug,
+				scopes: [
+					...new Set(
+						combineScopes({
+							global: globalScopes,
+							...(projectScopes.length ? { project: projectScopes } : {}),
+						}),
+					),
+				].sort(),
+			};
+		});
 	}
 
 	async getAccessibleProjects(user: User): Promise<Project[]> {

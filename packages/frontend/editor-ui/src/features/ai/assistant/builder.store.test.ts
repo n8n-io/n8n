@@ -1226,6 +1226,80 @@ describe('AI Builder store', () => {
 		});
 	});
 
+	describe('isLowCredits', () => {
+		it('should return false when credits are undefined', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.isLowCredits).toBe(false);
+		});
+
+		it('should return false when credits are above 10%', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 89);
+			expect(builderStore.isLowCredits).toBe(false);
+		});
+
+		it('should return true when credits are exactly 10%', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 90);
+			expect(builderStore.isLowCredits).toBe(true);
+		});
+
+		it('should return true when credits are below 10%', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 95);
+			expect(builderStore.isLowCredits).toBe(true);
+		});
+
+		it('should return false when quota is unlimited (-1)', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(-1, 50);
+			expect(builderStore.isLowCredits).toBe(false);
+		});
+
+		it('should return true when quota is 0', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(0, 0);
+			expect(builderStore.isLowCredits).toBe(true);
+		});
+
+		it('should return true when all credits are consumed', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 100);
+			expect(builderStore.isLowCredits).toBe(true);
+		});
+	});
+
+	describe('creditsPercentageRemaining', () => {
+		it('should return undefined when credits are not initialized', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.creditsPercentageRemaining).toBeUndefined();
+		});
+
+		it('should return undefined when quota is unlimited (-1)', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(-1, 50);
+			expect(builderStore.creditsPercentageRemaining).toBeUndefined();
+		});
+
+		it('should return 0 when quota is 0', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(0, 0);
+			expect(builderStore.creditsPercentageRemaining).toBe(0);
+		});
+
+		it('should return correct percentage', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 30);
+			expect(builderStore.creditsPercentageRemaining).toBe(70);
+		});
+
+		it('should return 0 when all credits consumed', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 100);
+			expect(builderStore.creditsPercentageRemaining).toBe(0);
+		});
+	});
+
 	describe('fetchBuilderCredits', () => {
 		const mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
 

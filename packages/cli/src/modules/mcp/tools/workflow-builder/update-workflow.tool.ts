@@ -105,7 +105,12 @@ export const createUpdateWorkflowTool = (
 
 		try {
 			// Fetch the workflow to check if it's available in MCP
-			await getMcpWorkflow(workflowId, user, ['workflow:update'], workflowFinderService);
+			const existingWorkflow = await getMcpWorkflow(
+				workflowId,
+				user,
+				['workflow:update'],
+				workflowFinderService,
+			);
 
 			const { ParseValidateHandler, stripImportStatements } = await import(
 				'@n8n/ai-workflow-builder'
@@ -132,6 +137,20 @@ export const createUpdateWorkflowTool = (
 					resolveNodeWebhookId(node, desc.description);
 				} catch {
 					// Node type not found, skip
+				}
+			}
+
+			// Preserve user-configured credentials from the existing workflow.
+			// Match nodes by name + type so that auto-assign skips them.
+			const existingCredsByNode = new Map(
+				existingWorkflow.nodes.map((n) => [n.name, { type: n.type, credentials: n.credentials }]),
+			);
+			for (const node of workflowUpdateData.nodes) {
+				if (!node.credentials) {
+					const existing = existingCredsByNode.get(node.name);
+					if (existing?.type === node.type && existing.credentials) {
+						node.credentials = { ...existing.credentials };
+					}
 				}
 			}
 

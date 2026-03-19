@@ -2,6 +2,7 @@ import type { StartedNetwork } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
+import { EXPORTER_PORT } from './postgres-exporter';
 import type { HelperContext, Service, ServiceResult, StartContext } from './types';
 
 const VICTORIA_METRICS_HTTP_PORT = 8428;
@@ -47,12 +48,12 @@ function generateScrapeConfig(targets: ScrapeTarget[]): string {
     static_configs:
 ${targetConfigs}
     metrics_path: '/metrics'
-    scrape_interval: '5s'`);
+    scrape_interval: '2s'`);
 	}
 
 	return `
 global:
-  scrape_interval: 15s
+  scrape_interval: 2s
 
 scrape_configs:
 ${scrapeConfigs.join('\n')}
@@ -81,6 +82,17 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 				instance: `n8n-worker-${i}`,
 				host: `${projectName}-n8n-worker-${i}`,
 				port: 5678,
+			});
+		}
+
+		// Add postgres-exporter scrape target when it will be started
+		const services = ctx.config.services ?? [];
+		if (ctx.usePostgres && services.includes('victoriaMetrics')) {
+			scrapeTargets.push({
+				job: 'postgres',
+				instance: 'postgres',
+				host: 'postgres-exporter',
+				port: EXPORTER_PORT,
 			});
 		}
 

@@ -7,6 +7,9 @@ export default {
 	component: N8nPulse,
 	argTypes: {},
 	parameters: {
+		docs: {
+			description: { component: 'A pulsing status indicator for active or live states.' },
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

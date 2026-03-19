@@ -75,9 +75,9 @@ export function createMockSession(overrides: Partial<ChatHubSessionDto> = {}): C
 		agentId: null,
 		agentName: 'gpt-4',
 		agentIcon: null,
+		type: 'production',
 		createdAt: '2024-01-15T12:00:00Z',
 		updatedAt: '2024-01-15T12:00:00Z',
-		type: 'production',
 		toolIds: [],
 		...overrides,
 	};

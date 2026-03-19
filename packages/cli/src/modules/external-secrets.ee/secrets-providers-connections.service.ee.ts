@@ -16,6 +16,7 @@ import {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { In } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
@@ -378,6 +379,54 @@ export class SecretsProvidersConnectionsService {
 				name: access.project.name,
 			})),
 		};
+	}
+
+	/**
+	 * Cleans up external-secrets connections when a project is deleted.
+	 * - If this project owns the connection, delete it entirely (access rows cascade).
+	 * - Otherwise, remove this project's access and disable the shared connection.
+	 * - Sync each affected provider key once after cleanup.
+	 */
+	async cleanupConnectionsForProjectDeletion(projectId: string): Promise<void> {
+		const accessEntries = await this.projectAccessRepository.findByProjectId(projectId);
+		const providerKeysToSync = new Set<string>();
+		const ownerConnectionIds = new Set<number>();
+		const nonOwnerConnectionIds = new Set<number>();
+
+		for (const access of accessEntries) {
+			providerKeysToSync.add(access.secretsProviderConnection.providerKey);
+
+			if (access.role === 'secretsProviderConnection:owner') {
+				ownerConnectionIds.add(access.secretsProviderConnectionId);
+			} else {
+				nonOwnerConnectionIds.add(access.secretsProviderConnectionId);
+			}
+		}
+
+		// Wrap deletion + update ops in a transaction for consistency
+		await this.repository.manager.transaction(async (entityManager) => {
+			if (ownerConnectionIds.size > 0) {
+				// Delete owned connections entirely; DB cascade removes access entries
+				await entityManager.delete(this.repository.target, { id: In([...ownerConnectionIds]) });
+			}
+
+			if (nonOwnerConnectionIds.size > 0) {
+				// Remove only this project's access and disable shared connections
+				await entityManager.delete(this.projectAccessRepository.target, {
+					projectId,
+					secretsProviderConnectionId: In([...nonOwnerConnectionIds]),
+				});
+				await entityManager.update(
+					this.repository.target,
+					{ id: In([...nonOwnerConnectionIds]) },
+					{ isEnabled: false },
+				);
+			}
+		});
+
+		for (const providerKey of providerKeysToSync) {
+			await this.externalSecretsManager.syncProviderConnection(providerKey);
+		}
 	}
 
 	private encryptConnectionSettings(settings: IDataObject): string {

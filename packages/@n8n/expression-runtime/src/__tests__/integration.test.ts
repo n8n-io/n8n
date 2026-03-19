@@ -1,3 +1,4 @@
+import { DateTime, Duration, Interval } from 'luxon';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
@@ -207,6 +208,71 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		// Midnight UTC = 9am in Tokyo (JST = UTC+9)
 		expect(result).toBe('09:00 +09:00');
+	});
+
+	describe('Luxon type serialization at boundary', () => {
+		it('should return DateTime as ISO string', () => {
+			const data = { $json: {} };
+			const result = evaluator.evaluate('{{ DateTime.now() }}', data);
+			expect(typeof result).toBe('string');
+			const dt = DateTime.fromISO(result as string);
+			expect(dt.isValid).toBe(true);
+		});
+
+		it('should return Duration as ISO string', () => {
+			const data = { $json: {} };
+			const result = evaluator.evaluate('{{ Duration.fromMillis(3600000) }}', data);
+			expect(typeof result).toBe('string');
+			const duration = Duration.fromISO(result as string);
+			expect(duration.isValid).toBe(true);
+			expect(duration.toMillis()).toBe(3600000);
+		});
+
+		it('should return Interval as ISO string', () => {
+			const data = { $json: {} };
+			const result = evaluator.evaluate(
+				'{{ Interval.after(DateTime.fromISO("2024-01-01"), 86400000) }}',
+				data,
+			);
+			expect(typeof result).toBe('string');
+			const interval = Interval.fromISO(result as string);
+			expect(interval.isValid).toBe(true);
+			expect(interval.length('milliseconds')).toBe(86400000);
+		});
+
+		it('should serialize nested DateTime in objects', () => {
+			const data = { $json: {} };
+			const result = evaluator.evaluate(
+				'{{ ({ date: DateTime.fromISO("2024-01-15") }) }}',
+				data,
+			) as Record<string, unknown>;
+			expect(typeof result.date).toBe('string');
+			const dt = DateTime.fromISO(result.date as string);
+			expect(dt.isValid).toBe(true);
+			expect(dt.toISODate()).toBe('2024-01-15');
+		});
+
+		it('should not affect primitive return values', () => {
+			const data = { $json: { count: 42 } };
+			expect(evaluator.evaluate('{{ $json.count }}', data)).toBe(42);
+			expect(evaluator.evaluate('{{ $json.count > 10 }}', data)).toBe(true);
+			expect(evaluator.evaluate('{{ "hello" }}', data)).toBe('hello');
+		});
+
+		it('should return null for invalid DateTime', () => {
+			const data = { $json: {} };
+			const result = evaluator.evaluate('{{ DateTime.invalid("test") }}', data);
+			expect(result).toBeNull();
+		});
+
+		it('should preserve Date objects (structured-cloneable)', () => {
+			const data = { $json: {} };
+			const result = evaluator.evaluate('{{ new Date(2024, 0, 15) }}', data);
+			expect(result).toBeInstanceOf(Date);
+			expect((result as Date).getFullYear()).toBe(2024);
+			expect((result as Date).getMonth()).toBe(0);
+			expect((result as Date).getDate()).toBe(15);
+		});
 	});
 
 	it('should throw on invalid timezone', async () => {

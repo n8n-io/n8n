@@ -1,9 +1,11 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
+	ProjectSecretsProviderAccess,
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnection,
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
+import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_BLANKING_VALUE, type IDataObject, type INodeProperties } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -386,11 +388,66 @@ describe('SecretsProvidersConnectionsService', () => {
 
 		it('should sync provider connection after deleteConnection', async () => {
 			mockRepository.findOne.mockResolvedValueOnce(savedConnection);
-			mockRepository.remove.mockResolvedValue(savedConnection);
+			mockRepository.remove.mockResolvedValueOnce(savedConnection);
 
 			await service.deleteConnection('my-aws', 'user-123');
 
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
+		});
+	});
+
+	describe('cleanupConnectionsForProjectDeletion', () => {
+		it('runs owner and non-owner mutations inside a single transaction', async () => {
+			const entityManager = {
+				delete: jest.fn().mockResolvedValueOnce(undefined),
+				update: jest.fn().mockResolvedValueOnce(undefined),
+			};
+			const transaction = jest.fn(
+				async (callback: (em: typeof entityManager) => Promise<void>) =>
+					await callback(entityManager),
+			);
+			Object.defineProperty(mockRepository, 'manager', {
+				value: { transaction },
+				configurable: true,
+			});
+
+			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
+				mock<ProjectSecretsProviderAccess>({
+					projectId: 'project-1',
+					role: 'secretsProviderConnection:owner',
+					secretsProviderConnectionId: 1,
+					secretsProviderConnection: { providerKey: 'provider-a' },
+				}),
+				mock<ProjectSecretsProviderAccess>({
+					projectId: 'project-1',
+					role: 'secretsProviderConnection:user',
+					secretsProviderConnectionId: 2,
+					secretsProviderConnection: { providerKey: 'provider-b' },
+				}),
+			]);
+
+			await service.cleanupConnectionsForProjectDeletion('project-1');
+
+			expect(transaction).toHaveBeenCalledTimes(1);
+			expect(entityManager.delete).toHaveBeenNthCalledWith(1, mockRepository.target, {
+				id: In([1]),
+			});
+			expect(entityManager.delete).toHaveBeenNthCalledWith(2, mockProjectAccessRepository.target, {
+				projectId: 'project-1',
+				secretsProviderConnectionId: In([2]),
+			});
+			expect(entityManager.update).toHaveBeenCalledWith(
+				mockRepository.target,
+				{ id: In([2]) },
+				{ isEnabled: false },
+			);
+
+			expect(mockRepository.delete).not.toHaveBeenCalled();
+			expect(mockRepository.update).not.toHaveBeenCalled();
+			expect(mockProjectAccessRepository.delete).not.toHaveBeenCalled();
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledTimes(2);
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-a');
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-b');
 		});
 	});
 

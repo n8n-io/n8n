@@ -18,6 +18,7 @@ import type {
 	FolderListItem,
 	WorkflowListEventMap,
 } from '@/features/core/folders/folders.types';
+import { useDependencies } from '@/app/composables/useDependencies';
 import { useFolders } from '@/features/core/folders/composables/useFolders';
 import { useMessage } from '@/app/composables/useMessage';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
@@ -153,6 +154,7 @@ const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
 const { next: nextFetch } = useLatestFetch();
+const { fetchDependencyCounts } = useDependencies();
 const {
 	showRecommendedTemplatesInline,
 	emptyStateHeading: emptyListHeading,
@@ -679,6 +681,15 @@ const fetchWorkflows = async () => {
 		}
 
 		workflowsAndFolders.value = fetchedResources;
+
+		// Async-fetch dependency counts for visible workflows (fire-and-forget)
+		// in the overview page we don't have a resource type
+		const workflowIds = fetchedResources
+			.filter((r) => r.resource === 'workflow' || r.resource === undefined)
+			.map((r) => r.id);
+		if (workflowIds.length > 0) {
+			void fetchDependencyCounts(workflowIds, 'workflow');
+		}
 
 		// Toggle ownership cards visibility only after we have fetched the workflows
 		showCardsBadge.value =

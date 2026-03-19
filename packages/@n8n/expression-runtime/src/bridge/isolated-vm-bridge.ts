@@ -467,7 +467,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// Step 3: Wrap transformed code so 'this' === __data in the isolate.
 			// Tournament generates: this.$json.email, this.$items(), etc.
 			// __data has $json, $items, etc. as lazy proxies (set in resetDataProxies).
-			const wrappedCode = `(function() {\n${code}\n}).call(__data)`;
+			const wrappedCode = `(function() { var __result = (function() {\n${code}\n}).call(__data); return __prepareForTransfer(__result); })()`;
 
 			let script = this.scriptCache.get(code);
 			if (!script) {

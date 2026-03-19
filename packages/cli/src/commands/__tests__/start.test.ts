@@ -7,6 +7,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { DeprecationService } from '@/deprecation/deprecation.service';
@@ -223,6 +224,94 @@ describe('Start - AuthRolesService initialization', () => {
 			await start.init();
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('init - multi-main follower license retry', () => {
+		const multiMainConfig = {
+			executions: { mode: 'queue' as const },
+			multiMainSetup: { enabled: true },
+			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
+			database: { type: 'sqlite' },
+			sentry: {
+				backendDsn: '',
+				environment: 'test',
+				deploymentName: 'test',
+				profilesSampleRate: 0,
+				tracesSampleRate: 0,
+				eventLoopBlockThreshold: 0,
+			},
+			cache: { backend: 'memory' },
+			taskRunners: {},
+		};
+
+		beforeEach(() => {
+			jest.useFakeTimers();
+		});
+
+		afterEach(() => {
+			jest.useRealTimers();
+			// Restore original mock so other tests aren't affected
+			license.isMultiMainLicensed = (() => true) as unknown as typeof license.isMultiMainLicensed;
+		});
+
+		it('should retry and succeed when follower finds license cert on retry', async () => {
+			setupInstanceSettings('main', true, false);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = multiMainConfig;
+
+			// First call returns false (no cert yet), second call returns true (leader wrote cert)
+			license.isMultiMainLicensed = jest
+				.fn()
+				.mockReturnValueOnce(false)
+				.mockReturnValue(true) as unknown as typeof license.isMultiMainLicensed;
+
+			const initPromise = start.init();
+
+			// Advance past the first retry delay (2s)
+			await jest.advanceTimersByTimeAsync(2_000);
+
+			await initPromise;
+
+			expect(license.reload).toHaveBeenCalledTimes(1);
+		});
+
+		it('should throw FeatureNotLicensedError when follower exhausts all retries', async () => {
+			setupInstanceSettings('main', true, false);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = multiMainConfig;
+
+			license.isMultiMainLicensed = jest
+				.fn()
+				.mockReturnValue(false) as unknown as typeof license.isMultiMainLicensed;
+
+			const initPromise = start.init().catch((error) => {
+				expect(error).toBeInstanceOf(FeatureNotLicensedError);
+				return 'rejected';
+			});
+
+			// Advance past all retry delays: 2s + 4s + 8s + 16s + 32s = 62s
+			await jest.advanceTimersByTimeAsync(62_000);
+
+			const result = await initPromise;
+			expect(result).toBe('rejected');
+			// 5 retries = 5 reload calls
+			expect(license.reload).toHaveBeenCalledTimes(5);
+		});
+
+		it('should not retry when leader fails the license check', async () => {
+			setupInstanceSettings('main', true, true);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = multiMainConfig;
+
+			license.isMultiMainLicensed = jest
+				.fn()
+				.mockReturnValue(false) as unknown as typeof license.isMultiMainLicensed;
+
+			await expect(start.init()).rejects.toThrow(FeatureNotLicensedError);
+
+			// Followers only retry via reload; leaders should fail immediately
+			expect(license.reload).not.toHaveBeenCalled();
 		});
 	});
 });
