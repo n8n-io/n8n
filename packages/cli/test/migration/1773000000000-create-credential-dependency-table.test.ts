@@ -45,16 +45,15 @@ describe('CreateCredentialDependencyTable Migration', () => {
 
 	async function insertProviderConnection(
 		context: TestMigrationContext,
-		data: { id: number; providerKey: string; type?: string },
+		data: { providerKey: string; type?: string },
 	): Promise<void> {
 		const tableName = context.escape.tableName('secrets_provider_connection');
 		const now = new Date();
 
 		await context.runQuery(
-			`INSERT INTO ${tableName} ("id", "providerKey", "type", "encryptedSettings", "isEnabled", "createdAt", "updatedAt")
-			 VALUES (:id, :providerKey, :type, :encryptedSettings, :isEnabled, :createdAt, :updatedAt)`,
+			`INSERT INTO ${tableName} ("providerKey", "type", "encryptedSettings", "isEnabled", "createdAt", "updatedAt")
+			 VALUES (:providerKey, :type, :encryptedSettings, :isEnabled, :createdAt, :updatedAt)`,
 			{
-				id: data.id,
 				providerKey: data.providerKey,
 				type: data.type ?? data.providerKey,
 				encryptedSettings: cipher.encrypt(JSON.stringify({ region: 'us-east-1' })),
@@ -63,6 +62,19 @@ describe('CreateCredentialDependencyTable Migration', () => {
 				updatedAt: now,
 			},
 		);
+	}
+
+	async function getProviderIdByKey(
+		context: TestMigrationContext,
+		providerKey: string,
+	): Promise<string | undefined> {
+		const tableName = context.escape.tableName('secrets_provider_connection');
+		const rows = await context.runQuery<Array<{ id: number }>>(
+			`SELECT "id" AS "id" FROM ${tableName} WHERE "providerKey" = :providerKey`,
+			{ providerKey },
+		);
+
+		return rows[0]?.id.toString();
 	}
 
 	async function insertCredential(
@@ -104,8 +116,13 @@ describe('CreateCredentialDependencyTable Migration', () => {
 			const credentialWithoutSecretsId = randomUUID();
 			const credentialUnknownProviderId = randomUUID();
 
-			await insertProviderConnection(context, { id: 101, providerKey: 'vault' });
-			await insertProviderConnection(context, { id: 102, providerKey: 'aws-secrets-manager' });
+			await insertProviderConnection(context, { providerKey: 'vault' });
+			await insertProviderConnection(context, { providerKey: 'aws-secrets-manager' });
+
+			const vaultProviderId = await getProviderIdByKey(context, 'vault');
+			const awsProviderId = await getProviderIdByKey(context, 'aws-secrets-manager');
+			expect(vaultProviderId).toBeDefined();
+			expect(awsProviderId).toBeDefined();
 
 			await insertCredential(context, {
 				id: credentialWithSecretsId,
@@ -138,18 +155,21 @@ describe('CreateCredentialDependencyTable Migration', () => {
 			const postContext = createTestMigrationContext(dataSource);
 			const dependencies = await getDependencies(postContext);
 
-			expect(dependencies).toEqual([
-				{
-					credentialId: credentialWithSecretsId,
-					dependencyType: DEPENDENCY_TYPE,
-					dependencyId: '101',
-				},
-				{
-					credentialId: credentialWithSecretsId,
-					dependencyType: DEPENDENCY_TYPE,
-					dependencyId: '102',
-				},
-			]);
+			expect(dependencies).toHaveLength(2);
+			expect(dependencies).toEqual(
+				expect.arrayContaining([
+					{
+						credentialId: credentialWithSecretsId,
+						dependencyType: DEPENDENCY_TYPE,
+						dependencyId: vaultProviderId!,
+					},
+					{
+						credentialId: credentialWithSecretsId,
+						dependencyType: DEPENDENCY_TYPE,
+						dependencyId: awsProviderId!,
+					},
+				]),
+			);
 
 			await postContext.queryRunner.release();
 		});
@@ -158,7 +178,7 @@ describe('CreateCredentialDependencyTable Migration', () => {
 			const context = createTestMigrationContext(dataSource);
 			const invalidCredentialId = randomUUID();
 
-			await insertProviderConnection(context, { id: 201, providerKey: 'vault' });
+			await insertProviderConnection(context, { providerKey: 'vault' });
 			await insertCredential(context, {
 				id: invalidCredentialId,
 				encryptedData: 'not-encrypted-data',
