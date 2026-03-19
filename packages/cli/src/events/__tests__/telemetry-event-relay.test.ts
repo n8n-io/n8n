@@ -315,6 +315,27 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should track on `source-control-user-pushed-api` event', () => {
+			const event: RelayEventMap['source-control-user-pushed-api'] = {
+				userId: 'user1',
+				workflowsPushed: 3,
+				workflowsEligible: 5,
+				credsPushed: 2,
+				variablesPushed: 1,
+				forced: true,
+			};
+
+			eventService.emit('source-control-user-pushed-api', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User pushed via API', {
+				workflows_pushed: 3,
+				workflows_eligible: 5,
+				creds_pushed: 2,
+				variables_pushed: 1,
+				forced: true,
+			});
+		});
+
 		it('should track on `source-control-user-started-push-ui` event', () => {
 			const event: RelayEventMap['source-control-user-started-push-ui'] = {
 				userId: 'userId',
