@@ -43,7 +43,7 @@ function onUpdateModelValue(tab: string, event: MouseEvent): void {
 	position: absolute;
 	bottom: 0;
 	left: 50%;
-	transform: translateX(-50%) translateY(50%);
+	transform: translateX(-50%) translateY(150%);
 	min-height: 30px;
 	display: flex;
 	padding: var(--spacing--5xs);

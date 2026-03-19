@@ -86,7 +86,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<BaseLayout>
-		<template v-if="!isCanvasOnly" #header>
+		<template #header>
 			<AppHeader />
 		</template>
 		<template v-if="!isCanvasOnly" #sidebar>
