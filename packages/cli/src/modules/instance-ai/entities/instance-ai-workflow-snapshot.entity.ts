@@ -1,4 +1,4 @@
-import { WithTimestamps } from '@n8n/db';
+import { BinaryColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'instance_ai_workflow_snapshots' })
@@ -12,6 +12,9 @@ export class InstanceAiWorkflowSnapshot extends WithTimestamps {
 	@Column({ type: 'varchar', nullable: true })
 	resourceId: string | null;
 
-	@Column({ type: 'text' })
-	snapshot: string;
+	@Column({ type: 'varchar', nullable: true })
+	status: string | null;
+
+	@BinaryColumn()
+	snapshot: Buffer;
 }

@@ -14,6 +14,9 @@ export class InstanceAiModule implements ModuleInterface {
 		void Container.get(InstanceAiMemoryService)
 			.cleanupExpiredThreads()
 			.catch(() => undefined);
+
+		// Register snapshot pruning — lifecycle decorators handle start/stop
+		await import('./snapshot-pruning.service');
 	}
 
 	async settings() {

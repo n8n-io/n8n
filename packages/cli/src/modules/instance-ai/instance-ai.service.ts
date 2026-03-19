@@ -52,6 +52,7 @@ import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import { MastraIterationLogStorage } from './iteration-log-storage';
 import { MastraTaskStorage } from './task-storage';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
+import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storage';
 import { InstanceAiCompactionService } from './compaction.service';
 import { WorkflowLoopStorage } from './workflow-loop-storage';
 
@@ -572,6 +573,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 	): Promise<void> {
 		const signal = abortController.signal;
+		let mastraRunId = '';
 
 		try {
 			// Publish run-start (includes userId for audit trail attribution)
@@ -799,7 +801,7 @@ export class InstanceAiService {
 			});
 
 			// Capture Mastra's internal runId — needed for resumeStream snapshot lookup
-			const mastraRunId = (result as { runId?: string }).runId ?? '';
+			mastraRunId = (result as { runId?: string }).runId ?? '';
 
 			let lastSuspension: { toolCallId: string; requestId: string } | null = null;
 
@@ -896,6 +898,11 @@ export class InstanceAiService {
 			this.activeRuns.delete(threadId);
 			// Clear transient (allow_once) domain approvals for this run
 			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
+			// Clean up Mastra workflow snapshots unless the run is suspended (needed for resume).
+			// Mastra only persists snapshots on suspension and never deletes them on completion.
+			if (!this.suspendedRuns.has(threadId) && mastraRunId) {
+				void this.cleanupMastraSnapshots(mastraRunId);
+			}
 		}
 	}
 
@@ -1088,6 +1095,9 @@ export class InstanceAiService {
 			});
 		} finally {
 			this.activeRuns.delete(opts.threadId);
+			if (!this.suspendedRuns.has(opts.threadId) && opts.mastraRunId) {
+				void this.cleanupMastraSnapshots(opts.mastraRunId);
+			}
 		}
 	}
 
@@ -1434,6 +1444,26 @@ export class InstanceAiService {
 				task.abortController.abort();
 				this.backgroundTasks.delete(taskId);
 			}
+		}
+	}
+
+	/**
+	 * Remove Mastra workflow snapshots left behind after a run completes.
+	 *
+	 * Mastra's `executionWorkflow` and `agentic-loop` workflows only persist
+	 * snapshots on suspension (`shouldPersistSnapshot` returns true only for
+	 * status "suspended") and never clean them up on completion. This leaves
+	 * orphaned "suspended" rows that accumulate over time.
+	 */
+	private async cleanupMastraSnapshots(mastraRunId: string): Promise<void> {
+		try {
+			const workflowsStorage = this.compositeStore.stores.workflows as TypeORMWorkflowsStorage;
+			await workflowsStorage.deleteAllByRunId(mastraRunId);
+		} catch (error) {
+			this.logger.warn('Failed to clean up Mastra workflow snapshots', {
+				mastraRunId,
+				error: getErrorMessage(error),
+			});
 		}
 	}
 

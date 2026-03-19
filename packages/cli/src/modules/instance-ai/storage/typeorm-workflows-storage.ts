@@ -7,9 +7,8 @@ import type {
 	UpdateWorkflowStateOptions,
 } from '@mastra/core/storage';
 import type { StepResult, WorkflowRunState } from '@mastra/core/workflows';
-import { jsonParse } from 'n8n-workflow';
-
 import { InstanceAiWorkflowSnapshotRepository } from '../repositories/instance-ai-workflow-snapshot.repository';
+import { compressSnapshot, decompressSnapshot } from './snapshot-compression';
 
 @Service()
 export class TypeORMWorkflowsStorage extends WorkflowsStorage {
@@ -38,11 +37,16 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 			workflowName: args.workflowName,
 		});
 
+		const compressed = await compressSnapshot(args.snapshot);
+
+		const status = args.snapshot.status ?? null;
+
 		if (existing) {
 			await this.snapshotRepo.update(
 				{ runId: args.runId, workflowName: args.workflowName },
 				{
-					snapshot: JSON.stringify(args.snapshot),
+					snapshot: compressed,
+					status,
 					resourceId: args.resourceId ?? null,
 				},
 			);
@@ -51,7 +55,8 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 				runId: args.runId,
 				workflowName: args.workflowName,
 				resourceId: args.resourceId ?? null,
-				snapshot: JSON.stringify(args.snapshot),
+				status,
+				snapshot: compressed,
 			});
 			await this.snapshotRepo.save(entity);
 		}
@@ -66,7 +71,7 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 	}): Promise<WorkflowRunState | null> {
 		const entity = await this.snapshotRepo.findOneBy({ runId, workflowName });
 		if (!entity) return null;
-		return jsonParse<WorkflowRunState>(entity.snapshot);
+		return await decompressSnapshot<WorkflowRunState>(entity.snapshot);
 	}
 
 	async updateWorkflowState({
@@ -93,7 +98,13 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 			snapshot.resumeLabels = opts.resumeLabels;
 		}
 
-		await this.snapshotRepo.update({ runId, workflowName }, { snapshot: JSON.stringify(snapshot) });
+		await this.snapshotRepo.update(
+			{ runId, workflowName },
+			{
+				snapshot: await compressSnapshot(snapshot),
+				status: snapshot.status ?? null,
+			},
+		);
 		return snapshot;
 	}
 
@@ -115,10 +126,13 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 		});
 		if (!snapshot) return {};
 
-		if (!snapshot.result) snapshot.result = {};
+		snapshot.result ??= {};
 		(snapshot.result as Record<string, unknown>)[stepId] = result;
 
-		await this.snapshotRepo.update({ runId, workflowName }, { snapshot: JSON.stringify(snapshot) });
+		await this.snapshotRepo.update(
+			{ runId, workflowName },
+			{ snapshot: await compressSnapshot(snapshot) },
+		);
 		return snapshot.result as Record<string, StepResult<unknown, unknown, unknown, unknown>>;
 	}
 
@@ -131,6 +145,15 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 		if (args?.resourceId) {
 			qb.andWhere('s.resourceId = :rid', { rid: args.resourceId });
 		}
+		if (args?.status) {
+			qb.andWhere('s.status = :status', { status: args.status });
+		}
+		if (args?.fromDate) {
+			qb.andWhere('s.createdAt >= :fromDate', { fromDate: args.fromDate });
+		}
+		if (args?.toDate) {
+			qb.andWhere('s.createdAt <= :toDate', { toDate: args.toDate });
+		}
 
 		qb.orderBy('s.createdAt', 'DESC');
 		const total = await qb.getCount();
@@ -141,14 +164,16 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 		}
 
 		const entities = await qb.getMany();
-		const runs: WorkflowRun[] = entities.map((e) => ({
-			workflowName: e.workflowName,
-			runId: e.runId,
-			snapshot: jsonParse<WorkflowRunState>(e.snapshot),
-			createdAt: e.createdAt,
-			updatedAt: e.updatedAt,
-			resourceId: e.resourceId ?? undefined,
-		}));
+		const runs: WorkflowRun[] = await Promise.all(
+			entities.map(async (e) => ({
+				workflowName: e.workflowName,
+				runId: e.runId,
+				snapshot: await decompressSnapshot<WorkflowRunState>(e.snapshot),
+				createdAt: e.createdAt,
+				updatedAt: e.updatedAt,
+				resourceId: e.resourceId ?? undefined,
+			})),
+		);
 
 		return { runs, total };
 	}
@@ -167,7 +192,7 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 		return {
 			workflowName: entity.workflowName,
 			runId: entity.runId,
-			snapshot: jsonParse<WorkflowRunState>(entity.snapshot),
+			snapshot: await decompressSnapshot<WorkflowRunState>(entity.snapshot),
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
 			resourceId: entity.resourceId ?? undefined,
@@ -182,5 +207,10 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 		workflowName: string;
 	}): Promise<void> {
 		await this.snapshotRepo.delete({ runId, workflowName });
+	}
+
+	/** Delete all snapshots for a given runId regardless of workflowName. */
+	async deleteAllByRunId(runId: string): Promise<void> {
+		await this.snapshotRepo.delete({ runId });
 	}
 }

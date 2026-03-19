@@ -85,4 +85,12 @@ export class InstanceAiConfig {
 	/** Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. */
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 90;
+
+	/** Interval in minutes between snapshot pruning runs. 0 = disabled. */
+	@Env('N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL')
+	snapshotPruneInterval: number = 60;
+
+	/** Retention period in minutes for orphaned workflow snapshots before pruning. */
+	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
+	snapshotRetention: number = 1440;
 }
