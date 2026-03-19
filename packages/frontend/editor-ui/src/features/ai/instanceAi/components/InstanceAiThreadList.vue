@@ -77,10 +77,13 @@ function startRename(threadId: string, currentTitle: string) {
 
 async function confirmRename(threadId: string) {
 	const title = editingTitle.value.trim();
-	if (title && title !== store.threads.find((t) => t.id === threadId)?.title) {
-		await store.renameThread(threadId, title);
+	try {
+		if (title && title !== store.threads.find((t) => t.id === threadId)?.title) {
+			await store.renameThread(threadId, title);
+		}
+	} finally {
+		editingThreadId.value = null;
 	}
-	editingThreadId.value = null;
 }
 
 function cancelRename() {

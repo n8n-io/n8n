@@ -351,8 +351,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 		// Only call API for threads that have been persisted to the backend
 		if (persistedThreadIds.has(threadId)) {
-			await deleteThreadApi(rootStore.restApiContext, threadId);
-			persistedThreadIds.delete(threadId);
+			try {
+				await deleteThreadApi(rootStore.restApiContext, threadId);
+				persistedThreadIds.delete(threadId);
+			} catch {
+				toast.showError(new Error('Failed to delete thread. Try again.'), 'Delete failed');
+				return { currentThreadId: currentThreadId.value, wasActive };
+			}
 		}
 
 		// Remove thread from list
