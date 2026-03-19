@@ -10,7 +10,7 @@ export class SaveExecution implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Save Execution',
 		name: 'saveExecution',
-		icon: 'fa:floppy-disk',
+		icon: 'file:saveExecution.svg',
 		group: ['organization'],
 		version: 1,
 		description: 'Override execution save behavior for this run',
