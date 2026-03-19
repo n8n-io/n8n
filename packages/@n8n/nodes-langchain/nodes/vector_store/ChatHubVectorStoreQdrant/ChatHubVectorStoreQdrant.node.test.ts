@@ -75,6 +75,97 @@ describe('ChatHubVectorStoreQdrant', () => {
 	});
 
 	describe('getVectorStoreClient', () => {
+		it('should filter metadata in similaritySearch results to loc.* and fileName only', async () => {
+			const doc = {
+				pageContent: 'content',
+				metadata: {
+					fileName: 'file.pdf',
+					'loc.pageNumber': 3,
+					'loc.lines.from': 10,
+					agentId: 'agent-1',
+					fileKnowledgeId: 'k1',
+					userId: 'user-123',
+				},
+			};
+			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue({
+				similaritySearch: jest.fn().mockResolvedValue([doc]),
+				similaritySearchWithScore: jest.fn().mockResolvedValue([]),
+				similaritySearchVectorWithScore: jest.fn().mockResolvedValue([]),
+			});
+
+			const node = new ChatHubVectorStoreQdrant();
+			const store = await (node as any).getVectorStoreClient(
+				makeContext('user-123'),
+				undefined,
+				{},
+			);
+			const results = await store.similaritySearch('query');
+
+			expect(results[0].metadata).toEqual({
+				fileName: 'file.pdf',
+				'loc.pageNumber': 3,
+				'loc.lines.from': 10,
+			});
+		});
+
+		it('should filter metadata in similaritySearchWithScore results to loc.* and fileName only', async () => {
+			const doc = {
+				pageContent: 'content',
+				metadata: {
+					fileName: 'file.pdf',
+					'loc.pageNumber': 2,
+					agentId: 'agent-1',
+					fileKnowledgeId: 'k1',
+					userId: 'user-123',
+				},
+			};
+			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue({
+				similaritySearch: jest.fn().mockResolvedValue([]),
+				similaritySearchWithScore: jest.fn().mockResolvedValue([[doc, 0.9]]),
+				similaritySearchVectorWithScore: jest.fn().mockResolvedValue([]),
+			});
+
+			const node = new ChatHubVectorStoreQdrant();
+			const store = await (node as any).getVectorStoreClient(
+				makeContext('user-123'),
+				undefined,
+				{},
+			);
+			const results = await store.similaritySearchWithScore('query');
+
+			expect(results[0][0].metadata).toEqual({ fileName: 'file.pdf', 'loc.pageNumber': 2 });
+			expect(results[0][1]).toBe(0.9);
+		});
+
+		it('should filter metadata in similaritySearchVectorWithScore results to loc.* and fileName only', async () => {
+			const doc = {
+				pageContent: 'content',
+				metadata: {
+					fileName: 'file.pdf',
+					'loc.pageNumber': 5,
+					agentId: 'agent-1',
+					fileKnowledgeId: 'k1',
+					userId: 'user-123',
+				},
+			};
+			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue({
+				similaritySearch: jest.fn().mockResolvedValue([]),
+				similaritySearchWithScore: jest.fn().mockResolvedValue([]),
+				similaritySearchVectorWithScore: jest.fn().mockResolvedValue([[doc, 0.8]]),
+			});
+
+			const node = new ChatHubVectorStoreQdrant();
+			const store = await (node as any).getVectorStoreClient(
+				makeContext('user-123'),
+				undefined,
+				{},
+			);
+			const results = await store.similaritySearchVectorWithScore([0.1, 0.2]);
+
+			expect(results[0][0].metadata).toEqual({ fileName: 'file.pdf', 'loc.pageNumber': 5 });
+			expect(results[0][1]).toBe(0.8);
+		});
+
 		it('should inject userId into similaritySearch', async () => {
 			const originalSearch = jest.fn().mockResolvedValue([]);
 			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue({
@@ -104,35 +195,32 @@ describe('ChatHubVectorStoreQdrant', () => {
 			);
 		});
 
-		it('should merge userId with an existing filter', async () => {
-			const originalSearch = jest.fn().mockResolvedValue([]);
+		it('should convert flat anotherFilter into Qdrant must conditions (retrieve-as-tool path)', async () => {
+			const originalSearchVectorWithScore = jest.fn().mockResolvedValue([]);
 			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue({
-				similaritySearch: originalSearch,
+				similaritySearch: jest.fn().mockResolvedValue([]),
 				similaritySearchWithScore: jest.fn().mockResolvedValue([]),
-				similaritySearchVectorWithScore: jest.fn().mockResolvedValue([]),
+				similaritySearchVectorWithScore: originalSearchVectorWithScore,
 			});
-
-			const existingFilter = { must: [{ key: 'metadata.agentId', match: { value: 'agent-1' } }] };
 
 			const node = new ChatHubVectorStoreQdrant();
 			const store = await (node as any).getVectorStoreClient(
 				makeContext('user-123'),
-				existingFilter,
+				undefined,
 				{},
 			);
 
-			await store.similaritySearch('query');
+			await store.similaritySearchVectorWithScore([0.1, 0.2], 4, { agentId: 'agent-1' });
 
-			expect(originalSearch).toHaveBeenCalledWith(
-				'query',
-				undefined,
+			expect(originalSearchVectorWithScore).toHaveBeenCalledWith(
+				[0.1, 0.2],
+				4,
 				expect.objectContaining({
 					must: expect.arrayContaining([
-						{ key: 'metadata.userId', match: { value: 'user-123' } },
 						{ key: 'metadata.agentId', match: { value: 'agent-1' } },
+						{ key: 'metadata.userId', match: { value: 'user-123' } },
 					]),
 				}),
-				undefined,
 			);
 		});
 	});
@@ -158,6 +246,44 @@ describe('ChatHubVectorStoreQdrant', () => {
 					{
 						pageContent: 'doc2',
 						metadata: { agentId: 'agent-1', fileKnowledgeId: 'k2', userId: 'user-456' },
+					},
+				],
+				{},
+				expect.any(Object),
+			);
+		});
+
+		it('should strip metadata fields not in the allowed insert set', async () => {
+			MockQdrantVectorStore.fromDocuments = jest.fn().mockResolvedValue(undefined);
+
+			const documents = [
+				{
+					pageContent: 'doc1',
+					metadata: {
+						fileName: 'file.pdf',
+						agentId: 'agent-1',
+						fileKnowledgeId: 'k1',
+						loc: { pageNumber: 1 },
+						source: '/tmp/file.pdf',
+						pdf: { version: '1.4' },
+					},
+				},
+			];
+
+			const node = new ChatHubVectorStoreQdrant();
+			await (node as any).populateVectorStore(makeContext('user-456'), {}, documents);
+
+			expect(MockQdrantVectorStore.fromDocuments).toHaveBeenCalledWith(
+				[
+					{
+						pageContent: 'doc1',
+						metadata: {
+							fileName: 'file.pdf',
+							agentId: 'agent-1',
+							fileKnowledgeId: 'k1',
+							loc: { pageNumber: 1 },
+							userId: 'user-456',
+						},
 					},
 				],
 				{},

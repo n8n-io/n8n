@@ -1,7 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import {
+	ExecutionRepository,
+	FolderRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -13,6 +19,8 @@ import {
 
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import { createSearchFoldersTool } from './tools/search-folders.tool';
+import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
@@ -76,6 +84,7 @@ export class McpService {
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly projectRepository: ProjectRepository,
+		private readonly folderRepository: FolderRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 	) {}
@@ -219,6 +228,29 @@ export class McpService {
 			this.projectRepository,
 		);
 		server.registerTool(createTool.name, createTool.config, createTool.handler);
+
+		const searchProjectsTool = createSearchProjectsTool(
+			user,
+			this.projectRepository,
+			this.telemetry,
+		);
+		server.registerTool(
+			searchProjectsTool.name,
+			searchProjectsTool.config,
+			searchProjectsTool.handler,
+		);
+
+		const searchFoldersTool = createSearchFoldersTool(
+			user,
+			this.folderRepository,
+			this.projectService,
+			this.telemetry,
+		);
+		server.registerTool(
+			searchFoldersTool.name,
+			searchFoldersTool.config,
+			searchFoldersTool.handler,
+		);
 
 		const archiveTool = createArchiveWorkflowTool(user, this.workflowService, this.telemetry);
 		server.registerTool(archiveTool.name, archiveTool.config, archiveTool.handler);
