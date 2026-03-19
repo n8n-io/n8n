@@ -166,7 +166,6 @@ defineExpose({
 	// Headings inside list items should have no top margin
 	li > :is(h1, h2, h3, h4, h5, h6, p, strong):first-child {
 		margin-top: 0;
-		display: inline-block;
 	}
 
 	// Strong/bold text
@@ -300,9 +299,9 @@ defineExpose({
 
 	// Ordered lists
 	ol {
-		padding-left: calc(var(--markdown--spacing) * 2);
+		padding-left: calc(var(--markdown--spacing) * 4);
 		list-style-type: decimal;
-		list-style-position: inside;
+		list-style-position: outside;
 		margin: calc(var(--markdown--spacing) * 2) 0;
 
 		li + li {
@@ -317,9 +316,9 @@ defineExpose({
 
 	// Unordered lists
 	ul {
-		padding-left: calc(var(--markdown--spacing) * 2);
+		padding-left: calc(var(--markdown--spacing) * 4);
 		list-style-type: disc;
-		list-style-position: inside;
+		list-style-position: outside;
 		margin: calc(var(--markdown--spacing) * 2) 0;
 
 		li + li {

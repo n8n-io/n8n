@@ -8,7 +8,7 @@ import type {
 	ExecutionRedactionOptions,
 	RedactableExecution,
 } from '@/executions/execution-redaction';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
 import type { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -193,6 +193,45 @@ describe('ExecutionRedactionService', () => {
 		});
 	});
 
+	describe('keepOriginal mode', () => {
+		it('clones only executions that need redaction, preserving original references for others', async () => {
+			const noneExecution = makeExecution({
+				policy: 'none',
+				mode: 'trigger',
+				workflowId: 'wf-none',
+			});
+			const allExecution = makeExecution({
+				policy: 'all',
+				mode: 'trigger',
+				workflowId: 'wf-all',
+			});
+			const nonManualManual = makeExecution({
+				policy: 'non-manual',
+				mode: 'manual',
+				workflowId: 'wf-nm',
+			});
+
+			// FullItemRedactionStrategy.requiresRedaction always returns true when in the pipeline
+			fullItemRedactionStrategy.requiresRedaction.mockReturnValue(true);
+			// NodeDefinedFieldRedactionStrategy.requiresRedaction returns false (no sensitive fields)
+			nodeDefinedFieldRedactionStrategy.requiresRedaction.mockReturnValue(false);
+
+			const executions = [noneExecution, allExecution, nonManualManual];
+			const options: ExecutionRedactionOptions = { user: mockUser, keepOriginal: true };
+
+			await service.processExecutions(executions, options);
+
+			// policy=none → FullItemRedaction not in pipeline → no requiresRedaction=true → same reference
+			expect(executions[0]).toBe(noneExecution);
+
+			// policy=all → FullItemRedaction in pipeline → requiresRedaction=true → cloned
+			expect(executions[1]).not.toBe(allExecution);
+
+			// policy=non-manual + mode=manual → FullItemRedaction not in pipeline → same reference
+			expect(executions[2]).toBe(nonManualManual);
+		});
+	});
+
 	describe('FullItemRedactionStrategy inclusion', () => {
 		it('is included when redactExecutionData === true (regardless of policy)', async () => {
 			const execution = makeExecution({ policy: 'none', mode: 'trigger' });
@@ -332,11 +371,17 @@ describe('ExecutionRedactionService', () => {
 	});
 
 	describe('reveal path (redactExecutionData === false)', () => {
-		it('throws ForbiddenError when neither policy nor user allows reveal', async () => {
+		it('throws ScopeForbiddenError with structured error when neither policy nor user allows reveal', async () => {
 			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
-			await expect(
-				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
-			).rejects.toThrow(ForbiddenError);
+			const error: ScopeForbiddenError = await service
+				.processExecution(execution, { user: mockUser, redactExecutionData: false })
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(ScopeForbiddenError);
+			expect(error.httpStatusCode).toBe(403);
+			expect(error.meta.errorCode).toBe('EXECUTION_REVEAL_FORBIDDEN');
+			expect(error.meta.requiredScope).toBe('execution:reveal');
+			expect(error.hint).toBeDefined();
 		});
 
 		it('does not throw when policy allows reveal (policy=none)', async () => {
@@ -396,7 +441,7 @@ describe('ExecutionRedactionService', () => {
 					ipAddress: '1.2.3.4',
 					userAgent: 'TestAgent/1.0',
 				}),
-			).rejects.toThrow(ForbiddenError);
+			).rejects.toThrow(ScopeForbiddenError);
 
 			expect(eventService.emit).toHaveBeenCalledWith('execution-data-reveal-failure', {
 				user: mockUser,
@@ -424,7 +469,7 @@ describe('ExecutionRedactionService', () => {
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
 		});
 
-		it('throws ForbiddenError if any execution in batch is not allowed and emits reveal-failure event', async () => {
+		it('throws ScopeForbiddenError if any execution in batch is not allowed and emits reveal-failure event', async () => {
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
 
 			const executions = [
@@ -438,7 +483,9 @@ describe('ExecutionRedactionService', () => {
 				userAgent: 'TestAgent/1.0',
 			};
 
-			await expect(service.processExecutions(executions, options)).rejects.toThrow(ForbiddenError);
+			await expect(service.processExecutions(executions, options)).rejects.toThrow(
+				ScopeForbiddenError,
+			);
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledTimes(1);
 
 			expect(eventService.emit).toHaveBeenCalledWith('execution-data-reveal-failure', {

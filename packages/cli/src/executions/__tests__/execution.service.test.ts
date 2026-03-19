@@ -1,6 +1,13 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { IExecutionDb, IExecutionResponse, ExecutionRepository, User } from '@n8n/db';
+import type {
+	IExecutionDb,
+	IExecutionResponse,
+	ExecutionRepository,
+	User,
+	WorkflowHistoryRepository,
+} from '@n8n/db';
+import type { WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { IRun, IRunExecutionData } from 'n8n-workflow';
@@ -22,6 +29,7 @@ describe('ExecutionService', () => {
 	const scalingService = mockInstance(ScalingService);
 	const activeExecutions = mock<ActiveExecutions>();
 	const executionRepository = mock<ExecutionRepository>();
+	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 	const waitTracker = mock<WaitTracker>();
 	const concurrencyControl = mock<ConcurrencyControlService>();
 	const globalConfig = Container.get(GlobalConfig);
@@ -35,6 +43,7 @@ describe('ExecutionService', () => {
 		mock(),
 		executionRepository,
 		mock(),
+		workflowHistoryRepository,
 		mock(),
 		mock(),
 		waitTracker,
@@ -141,6 +150,7 @@ describe('ExecutionService', () => {
 				mock(),
 				mock(),
 				executionRepository,
+				mock(),
 				mock(),
 				mock(),
 				mock(),
@@ -543,6 +553,57 @@ describe('ExecutionService', () => {
 			expect(stopFn).toBeCalledWith('2', shared);
 			expect(stopFn).toBeCalledWith('3', shared);
 			expect(executionRepository.findByStopExecutionsFilter).toBeCalledWith(filters);
+		});
+	});
+
+	describe('getExecutedVersions', () => {
+		const workflowId = 'workflow-123';
+
+		it('should return empty array when no version IDs exist', async () => {
+			executionRepository.getDistinctVersionIds.mockResolvedValue([]);
+
+			const result = await executionService.getExecutedVersions(workflowId);
+
+			expect(result).toEqual([]);
+			expect(workflowHistoryRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('should return versions with metadata from workflow history', async () => {
+			const versionIds = ['v1', 'v2'];
+			executionRepository.getDistinctVersionIds.mockResolvedValue(versionIds);
+
+			const historyVersions = [
+				mock<WorkflowHistory>({ versionId: 'v2', name: null, createdAt: new Date('2025-01-02') }),
+				mock<WorkflowHistory>({
+					versionId: 'v1',
+					name: 'Release 1',
+					createdAt: new Date('2025-01-01'),
+				}),
+			];
+			workflowHistoryRepository.find.mockResolvedValue(historyVersions);
+
+			const result = await executionService.getExecutedVersions(workflowId);
+
+			expect(executionRepository.getDistinctVersionIds).toHaveBeenCalledWith(workflowId);
+			expect(workflowHistoryRepository.find).toHaveBeenCalledWith({
+				where: { workflowId, versionId: expect.anything() },
+				select: ['versionId', 'name', 'createdAt'],
+				order: { createdAt: 'DESC' },
+			});
+			expect(result).toHaveLength(2);
+			expect(result[0].versionId).toBe('v2');
+			expect(result[0].name).toBeNull();
+			expect(result[1].versionId).toBe('v1');
+			expect(result[1].name).toBe('Release 1');
+		});
+
+		it('should return empty array when version IDs have no matching history', async () => {
+			executionRepository.getDistinctVersionIds.mockResolvedValue(['orphan-v1']);
+			workflowHistoryRepository.find.mockResolvedValue([]);
+
+			const result = await executionService.getExecutedVersions(workflowId);
+
+			expect(result).toEqual([]);
 		});
 	});
 });

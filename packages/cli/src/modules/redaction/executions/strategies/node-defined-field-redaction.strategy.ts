@@ -10,6 +10,22 @@ import type {
 	RedactionContext,
 } from '../execution-redaction.interfaces';
 
+interface SensitiveFieldsResult {
+	sensitiveFields: Map<string, string[]>;
+	unknownNodes: Set<string>;
+}
+
+function isSensitiveFieldsResult(value: unknown): value is SensitiveFieldsResult {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'sensitiveFields' in value &&
+		'unknownNodes' in value &&
+		value.sensitiveFields instanceof Map &&
+		value.unknownNodes instanceof Set
+	);
+}
+
 @Service()
 export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStrategy {
 	readonly name = 'node-defined-field-redaction';
@@ -19,8 +35,14 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
-	async apply(execution: RedactableExecution, _context: RedactionContext): Promise<void> {
-		const { sensitiveFields, unknownNodes } = this.buildSensitiveFieldsMap(execution);
+	requiresRedaction(execution: RedactableExecution, context: RedactionContext): boolean {
+		if (!execution.data.resultData.runData) return false;
+		const { sensitiveFields, unknownNodes } = this.getSensitiveFieldsMap(execution, context);
+		return sensitiveFields.size > 0 || unknownNodes.size > 0;
+	}
+
+	async apply(execution: RedactableExecution, context: RedactionContext): Promise<void> {
+		const { sensitiveFields, unknownNodes } = this.getSensitiveFieldsMap(execution, context);
 		if (sensitiveFields.size === 0 && unknownNodes.size === 0) return;
 
 		const runData = execution.data.resultData.runData;
@@ -58,6 +80,18 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 				}
 			}
 		}
+	}
+
+	private getSensitiveFieldsMap(
+		execution: RedactableExecution,
+		context: RedactionContext,
+	): SensitiveFieldsResult {
+		const cached = context.memo.get(this.name);
+		if (isSensitiveFieldsResult(cached)) return cached;
+
+		const result = this.buildSensitiveFieldsMap(execution);
+		context.memo.set(this.name, result);
+		return result;
 	}
 
 	/**
