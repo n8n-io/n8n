@@ -46,10 +46,7 @@ describe('setup-credentials tool', () => {
 		const tool = createSetupCredentialsTool(context);
 		const ctx = createToolCtx({ resumeData: { approved: false } });
 
-		const result = await tool.execute!(
-			{ credentials: [{ credentialType: 'slackApi' }] },
-			ctx,
-		);
+		const result = await tool.execute!({ credentials: [{ credentialType: 'slackApi' }] }, ctx);
 
 		expect(result).toMatchObject({ success: false });
 		expect((result as { reason: string }).reason).toContain('deferred');
@@ -101,10 +98,7 @@ describe('setup-credentials tool', () => {
 			resumeData: { approved: true, credentials: { slackApi: 'cred-123' } },
 		});
 
-		const result = await tool.execute!(
-			{ credentials: [{ credentialType: 'slackApi' }] },
-			ctx,
-		);
+		const result = await tool.execute!({ credentials: [{ credentialType: 'slackApi' }] }, ctx);
 
 		expect(result).toEqual({ success: true, credentials: { slackApi: 'cred-123' } });
 	});
