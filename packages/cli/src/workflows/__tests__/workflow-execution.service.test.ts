@@ -890,6 +890,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
