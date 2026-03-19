@@ -143,8 +143,19 @@ export class InstanceAiAdapterService {
 			dataTableService: this.createDataTableAdapter(user),
 			webResearchService: this.createWebResearchAdapter(user),
 			workspaceService: this.createWorkspaceAdapter(user),
+			licenseHints: this.buildLicenseHints(),
 			...(filesystemService ? { filesystemService } : {}),
 		};
+	}
+
+	private buildLicenseHints(): string[] {
+		const hints: string[] = [];
+		if (!this.license.isLicensed('feat:namedVersions')) {
+			hints.push(
+				'**Named workflow versions** — naming and describing workflow versions (update-workflow-version) is available on the Pro plan and above.',
+			);
+		}
+		return hints;
 	}
 
 	private createProjectScopeHelpers(user: User) {

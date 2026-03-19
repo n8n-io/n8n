@@ -858,7 +858,7 @@ describe('createDataTableAdapter', () => {
 // createWorkflowAdapter – project scoping
 // ---------------------------------------------------------------------------
 
-function createWorkflowAdapterForTests() {
+function createWorkflowAdapterForTests(overrides?: { namedVersionsLicensed?: boolean }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-id' }),
 	};
@@ -916,13 +916,22 @@ function createWorkflowAdapterForTests() {
 		} as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
-		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as License,
+		{
+			isLicensed: jest
+				.fn()
+				.mockImplementation(
+					(feat: string) =>
+						feat === 'feat:namedVersions' && (overrides?.namedVersionsLicensed ?? false),
+				),
+		} as unknown as License,
 	);
 
-	const adapter = service.createContext(mockUser).workflowService;
+	const context = service.createContext(mockUser);
+	const adapter = context.workflowService;
 
 	return {
 		adapter,
+		context,
 		mockProjectRepository,
 		mockWorkflowRepository,
 		mockSharedWorkflowRepository,
@@ -978,5 +987,48 @@ describe('createWorkflowAdapter', () => {
 				projectId: 'restricted-project-id',
 			}),
 		).rejects.toThrow('User does not have the required permissions in this project');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// License-gated features
+// ---------------------------------------------------------------------------
+
+describe('license-gated features', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockedUserHasScopes.mockResolvedValue(true);
+	});
+
+	describe('updateVersion', () => {
+		it('is present on workflowService when namedVersions is licensed', () => {
+			const { adapter } = createWorkflowAdapterForTests({ namedVersionsLicensed: true });
+
+			expect(adapter.updateVersion).toBeDefined();
+			expect(typeof adapter.updateVersion).toBe('function');
+		});
+
+		it('is absent on workflowService when namedVersions is not licensed', () => {
+			const { adapter } = createWorkflowAdapterForTests({ namedVersionsLicensed: false });
+
+			expect(adapter.updateVersion).toBeUndefined();
+		});
+	});
+
+	describe('licenseHints', () => {
+		it('includes named versions hint when feature is not licensed', () => {
+			const { context } = createWorkflowAdapterForTests({ namedVersionsLicensed: false });
+
+			expect(context.licenseHints).toBeDefined();
+			expect(context.licenseHints).toEqual(
+				expect.arrayContaining([expect.stringContaining('Named workflow versions')]),
+			);
+		});
+
+		it('does not include named versions hint when feature is licensed', () => {
+			const { context } = createWorkflowAdapterForTests({ namedVersionsLicensed: true });
+
+			expect(context.licenseHints).toEqual([]);
+		});
 	});
 });

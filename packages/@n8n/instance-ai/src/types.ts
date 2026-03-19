@@ -536,6 +536,9 @@ export interface InstanceAiContext {
 	localMcpServer?: LocalMcpServer;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/** Human-readable hints about licensed features that are NOT available on this instance.
+	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
+	licenseHints?: string[];
 	/** Domain access tracker for HITL gating of fetch-url and similar tools. */
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
