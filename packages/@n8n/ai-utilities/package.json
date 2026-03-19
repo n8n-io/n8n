@@ -54,7 +54,7 @@
     "js-tiktoken": "catalog:",
     "https-proxy-agent": "catalog:",
     "proxy-from-env": "^1.1.0",
-    "undici": "^6.21.0"
+    "undici": "^7.0.0"
   },
   "peerDependencies": {
     "n8n-workflow": "*"
