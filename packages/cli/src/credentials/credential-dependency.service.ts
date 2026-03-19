@@ -3,7 +3,7 @@ import { SecretsProviderConnectionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { extractExternalSecretProviderKeys } from './validation';
+import { extractProviderKeysFromCredentialData } from './external-secrets.utils';
 
 export const EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE = 'externalSecretProvider' as const;
 
@@ -36,7 +36,7 @@ export class CredentialDependencyService {
 	async resolveProviderIdsFromCredentialData(
 		decryptedCredentialData: ICredentialDataDecryptedObject,
 	): Promise<string[]> {
-		const providerKeys = [...extractExternalSecretProviderKeys(decryptedCredentialData)];
+		const providerKeys = [...extractProviderKeysFromCredentialData(decryptedCredentialData)];
 		return await this.secretsProviderConnectionRepository.findIdsByProviderKeys(providerKeys);
 	}
 }
