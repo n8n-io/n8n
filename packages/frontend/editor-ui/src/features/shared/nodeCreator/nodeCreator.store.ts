@@ -64,12 +64,11 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const mergedNodes = ref<SimplifiedNodeType[]>([]);
 	const actions = ref<ActionsRecord<typeof mergedNodes.value>>({});
 
-	const showScrim = ref(false);
 	const openSource = ref<NodeCreatorOpenSource>('');
 
 	const isCreateNodeActive = ref<boolean>(false);
 
-	const oppeningContext = ref<null | 'replacement'>(null);
+	const openingContext = ref<null | 'replacement'>(null);
 
 	const nodePanelSessionId = ref<string>('');
 
@@ -87,10 +86,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	function setActions(nodes: ActionsRecord<typeof mergedNodes.value>) {
 		actions.value = nodes;
-	}
-
-	function setShowScrim(isVisible: boolean) {
-		showScrim.value = isVisible;
 	}
 
 	function setSelectedView(view: NodeFilterType) {
@@ -266,7 +261,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	function openNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
 		ndvStore.unsetActiveNodeName();
 		setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
-		setShowScrim(true);
 		setNodeCreatorState({
 			source,
 			createNodeActive: true,
@@ -277,7 +271,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	function openNodeCreatorForRegularNodes(source: NodeCreatorOpenSource) {
 		ndvStore.unsetActiveNodeName();
 		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
-		setShowScrim(true);
 		setNodeCreatorState({
 			source,
 			createNodeActive: true,
@@ -465,14 +458,12 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	return {
 		isCreateNodeActive,
-		oppeningContext,
+		openingContext,
 		openSource,
 		selectedView,
-		showScrim,
 		mergedNodes,
 		actions,
 		allNodeCreatorNodes,
-		setShowScrim,
 		setSelectedView,
 		setOpenSource,
 		setActions,

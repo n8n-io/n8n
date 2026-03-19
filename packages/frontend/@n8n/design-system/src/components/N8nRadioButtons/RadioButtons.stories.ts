@@ -13,6 +13,9 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: { component: 'A grouped single-choice selector using radio button options.' },
+		},
 		backgrounds: { default: '--color--background--light-3' },
 	},
 };

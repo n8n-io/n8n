@@ -114,6 +114,39 @@ export class MessageEventBusDestinationWebhook
 		this.logger.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
 	}
 
+	/**
+	 * The frontend fixedCollection uses the same name for the collection and its single
+	 * option, producing nested shapes like options.redirect = { redirect: { ... } }.
+	 * Older DB entries may store the flat (unwrapped) shape instead, so handle both.
+	 */
+	private resolveRedirect(options: MessageEventBusDestinationWebhookParameterOptions | undefined) {
+		const redirect = options?.redirect;
+		return redirect && 'redirect' in redirect ? redirect.redirect : redirect;
+	}
+
+	/**
+	 * Axios expects proxy as { protocol, host, port }, so unwrap the nested
+	 * fixedCollection shape options.proxy = { proxy: { ... } } when present.
+	 */
+	private resolveProxy(options: MessageEventBusDestinationWebhookParameterOptions | undefined) {
+		const proxyOpt = options?.proxy;
+		return proxyOpt && 'proxy' in proxyOpt ? proxyOpt.proxy : proxyOpt;
+	}
+
+	private buildAgentOptions(
+		options: MessageEventBusDestinationWebhookParameterOptions | undefined,
+	): HTTPAgentOptions {
+		return {
+			// keepAlive to keep TCP connections alive for reuse
+			keepAlive: options?.socket?.keepAlive ?? true,
+			maxSockets: options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+			maxFreeSockets: options?.socket?.maxFreeSockets ?? LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
+			maxTotalSockets: options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
+			// Socket timeout in milliseconds defaults to 5 seconds
+			timeout: options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
+		};
+	}
+
 	private buildAxiosSetting(
 		axiosParameters: MessageEventBusDestinationWebhookOptions,
 	): CreateAxiosDefaults {
@@ -124,23 +157,12 @@ export class MessageEventBusDestinationWebhook
 			maxRedirects: 0,
 		} as AxiosRequestConfig;
 
-		if (axiosParameters.options?.redirect?.followRedirects) {
-			axiosSetting.maxRedirects = axiosParameters.options.redirect?.maxRedirects;
+		const redirectInner = this.resolveRedirect(axiosParameters.options);
+		if (redirectInner?.followRedirects) {
+			axiosSetting.maxRedirects = redirectInner.maxRedirects;
 		}
 
-		// Unwrap nested proxy: fixedCollection in logStreaming.constants uses name 'proxy' for both
-		// the collection and its single option, producing options.proxy = { proxy: { protocol, host, port } }.
-		// Axios expects proxy to be { protocol, host, port }. Only set when explicitly configured;
-		// leaving proxy undefined allows axios to use HTTP_PROXY/HTTPS_PROXY from the environment.
-		let proxy = axiosParameters.options?.proxy;
-		if (
-			proxy &&
-			typeof proxy === 'object' &&
-			'proxy' in proxy &&
-			typeof (proxy as { proxy?: unknown }).proxy === 'object'
-		) {
-			proxy = (proxy as { proxy: typeof proxy }).proxy;
-		}
+		const proxy = this.resolveProxy(axiosParameters.options);
 		if (proxy) {
 			axiosSetting.proxy = proxy;
 		}
@@ -148,33 +170,18 @@ export class MessageEventBusDestinationWebhook
 		axiosSetting.timeout =
 			axiosParameters.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS;
 
-		const agentOptions: HTTPAgentOptions = {
-			// keepAlive to keep TCP connections alive for reuse
-			keepAlive: axiosParameters.options?.socket?.keepAlive ?? true,
-			maxSockets: axiosParameters.options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_SOCKETS,
-			maxFreeSockets:
-				axiosParameters.options?.socket?.maxFreeSockets ?? LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
-			maxTotalSockets:
-				axiosParameters.options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
-			// Socket timeout in milliseconds defaults to 5 seconds
-			timeout: axiosParameters.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
-		};
+		const agentOptions = this.buildAgentOptions(axiosParameters.options);
 
-		const httpsAgentOptions: HTTPSAgentOptions = {
-			...agentOptions,
-		};
-
-		if (axiosParameters.options?.allowUnauthorizedCerts) {
-			httpsAgentOptions.rejectUnauthorized = false;
-		}
-
-		const url = new URL(axiosParameters.url);
-
-		if (url.protocol === 'https:') {
+		if (new URL(axiosParameters.url).protocol === 'https:') {
+			const httpsAgentOptions: HTTPSAgentOptions = { ...agentOptions };
+			if (axiosParameters.options?.allowUnauthorizedCerts) {
+				httpsAgentOptions.rejectUnauthorized = false;
+			}
 			axiosSetting.httpsAgent = new HTTPSAgent(httpsAgentOptions);
 		} else {
 			axiosSetting.httpAgent = new HTTPAgent(agentOptions);
 		}
+
 		return axiosSetting;
 	}
 
@@ -275,6 +282,15 @@ export class MessageEventBusDestinationWebhook
 
 	serialize(): MessageEventBusDestinationWebhookOptions {
 		const abstractSerialized = super.serialize();
+		// Re-nest proxy and redirect if stored flat in DB by a previous version
+		// that used Zod .transform() to unwrap the fixedCollection nesting on save.
+		const options = { ...this.options };
+		if (options.proxy && !('proxy' in options.proxy)) {
+			options.proxy = { proxy: options.proxy };
+		}
+		if (options.redirect && !('redirect' in options.redirect)) {
+			options.redirect = { redirect: options.redirect };
+		}
 		return {
 			...abstractSerialized,
 			url: this.url,
@@ -293,7 +309,7 @@ export class MessageEventBusDestinationWebhook
 			headerParameters: this.headerParameters,
 			queryParameters: this.queryParameters,
 			sendPayload: this.sendPayload,
-			options: this.options,
+			options,
 			credentials: this.credentials,
 		};
 	}
