@@ -12,6 +12,8 @@ import type {
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import { AgentTreeSnapshotStorage } from './agent-tree-snapshot';
 import { parseStoredMessages } from './message-parser';
 import type { MastraDBMessage } from './message-parser';
@@ -236,7 +238,7 @@ export class InstanceAiMemoryService {
 		const memory = this.createMemoryInstance();
 		const thread = await memory.getThreadById({ threadId });
 		if (!thread) {
-			throw new Error(`Thread ${threadId} not found`);
+			throw new NotFoundError(`Thread ${threadId} not found`);
 		}
 		const updated = await memory.updateThread({
 			id: threadId,
