@@ -579,6 +579,7 @@ export interface InstanceAiPermissions {
 	cleanupTestExecutions: InstanceAiPermissionMode;
 	readFilesystem: InstanceAiPermissionMode;
 	fetchUrl: InstanceAiPermissionMode;
+	restoreWorkflowVersion: InstanceAiPermissionMode;
 }
 
 export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
@@ -598,6 +599,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	cleanupTestExecutions: 'require_approval',
 	readFilesystem: 'require_approval',
 	fetchUrl: 'require_approval',
+	restoreWorkflowVersion: 'require_approval',
 };
 
 // ---------------------------------------------------------------------------

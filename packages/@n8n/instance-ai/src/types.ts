@@ -115,6 +115,22 @@ export interface NodeDescription extends NodeSummary {
 
 // ── Service interfaces ───────────────────────────────────────────────────────
 
+export interface WorkflowVersionSummary {
+	versionId: string;
+	name: string | null;
+	description: string | null;
+	authors: string;
+	createdAt: string;
+	autosaved: boolean;
+	isActive: boolean;
+	isCurrentDraft: boolean;
+}
+
+export interface WorkflowVersionDetail extends WorkflowVersionSummary {
+	nodes: WorkflowNode[];
+	connections: Record<string, unknown>;
+}
+
 export interface InstanceAiWorkflowService {
 	list(options?: { query?: string; limit?: number }): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
@@ -148,6 +164,15 @@ export interface InstanceAiWorkflowService {
 			disabled?: boolean;
 		},
 	): Promise<WorkflowDetail>;
+	/** List version history for a workflow (metadata only, no nodes/connections). */
+	listVersions?(
+		workflowId: string,
+		options?: { limit?: number; skip?: number },
+	): Promise<WorkflowVersionSummary[]>;
+	/** Get full details of a specific version (including nodes and connections). */
+	getVersion?(workflowId: string, versionId: string): Promise<WorkflowVersionDetail>;
+	/** Restore a workflow to a previous version by overwriting the current draft. */
+	restoreVersion?(workflowId: string, versionId: string): Promise<void>;
 }
 
 export interface ExecutionSummary {

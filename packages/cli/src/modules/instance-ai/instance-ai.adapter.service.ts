@@ -15,6 +15,8 @@ import type {
 	WorkflowSummary,
 	WorkflowDetail,
 	WorkflowNode,
+	WorkflowVersionSummary,
+	WorkflowVersionDetail,
 	ExecutionResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,
@@ -93,6 +95,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
@@ -123,6 +126,7 @@ export class InstanceAiAdapterService {
 		private readonly tagService: TagService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly workflowHistoryService: WorkflowHistoryService,
 	) {
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
 	}
@@ -169,8 +173,13 @@ export class InstanceAiAdapterService {
 	}
 
 	private createWorkflowAdapter(user: User): InstanceAiWorkflowService {
-		const { workflowService, workflowFinderService, workflowRepository, sharedWorkflowRepository } =
-			this;
+		const {
+			workflowService,
+			workflowFinderService,
+			workflowRepository,
+			sharedWorkflowRepository,
+			workflowHistoryService,
+		} = this;
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 
 		return {
@@ -336,6 +345,74 @@ export class InstanceAiAdapterService {
 
 				const updated = await workflowService.update(user, updateData, workflowId);
 				return toWorkflowDetail(updated);
+			},
+
+			async listVersions(workflowId, options) {
+				const take = options?.limit ?? 20;
+				const skip = options?.skip ?? 0;
+				const versions = await workflowHistoryService.getList(user, workflowId, take, skip);
+
+				// Fetch the workflow to determine active/draft version IDs
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				const activeVersionId = workflow?.activeVersionId ?? null;
+				const currentDraftVersionId = workflow?.versionId ?? null;
+
+				return versions.map(
+					(v): WorkflowVersionSummary => ({
+						versionId: v.versionId,
+						name: v.name ?? null,
+						description: v.description ?? null,
+						authors: v.authors,
+						createdAt: v.createdAt.toISOString(),
+						autosaved: v.autosaved ?? false,
+						isActive: v.versionId === activeVersionId,
+						isCurrentDraft: v.versionId === currentDraftVersionId,
+					}),
+				);
+			},
+
+			async getVersion(workflowId, versionId) {
+				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
+
+				// Fetch the workflow to determine active/draft version IDs
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				const activeVersionId = workflow?.activeVersionId ?? null;
+				const currentDraftVersionId = workflow?.versionId ?? null;
+
+				return {
+					versionId: version.versionId,
+					name: version.name ?? null,
+					description: version.description ?? null,
+					authors: version.authors,
+					createdAt: version.createdAt.toISOString(),
+					autosaved: version.autosaved ?? false,
+					isActive: version.versionId === activeVersionId,
+					isCurrentDraft: version.versionId === currentDraftVersionId,
+					nodes: (version.nodes ?? []).map(
+						(n): WorkflowNode => ({
+							name: n.name,
+							type: n.type,
+							parameters: n.parameters as Record<string, unknown>,
+							position: n.position,
+						}),
+					),
+					connections: version.connections as Record<string, unknown>,
+				} satisfies WorkflowVersionDetail;
+			},
+
+			async restoreVersion(workflowId, versionId) {
+				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
+
+				const updateData = workflowRepository.create({
+					nodes: version.nodes,
+					connections: version.connections,
+				} as Partial<WorkflowEntity>);
+
+				await workflowService.update(user, updateData, workflowId);
 			},
 		};
 	}

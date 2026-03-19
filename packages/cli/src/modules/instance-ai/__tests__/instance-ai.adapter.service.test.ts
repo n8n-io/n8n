@@ -745,6 +745,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		mockSourceControlPreferencesService as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 	);
 
 	const adapter = service.createContext(mockUser).dataTableService;
@@ -912,6 +913,7 @@ function createWorkflowAdapterForTests() {
 			getPreferences: jest.fn().mockReturnValue({ branchReadOnly: false }),
 		} as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 	);
 
 	const adapter = service.createContext(mockUser).workflowService;
