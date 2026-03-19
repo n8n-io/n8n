@@ -48,6 +48,12 @@ assert.ok(
 	'No changes found since the last release',
 );
 
+// If any package in the monorepo is dirty, we need to mark `packages/cli` (`n8n` @ npm)
+// dirty too, as the whole publishing logic relies on that package having a new version.
+if (Object.values(packageMap).some((pkg) => pkg.isDirty)) {
+	packageMap['n8n'].isDirty = true;
+}
+
 // Keep the monorepo version up to date with the released version
 packageMap['monorepo-root'].version = packageMap['n8n'].version;
 
@@ -56,17 +62,32 @@ for (const packageName in packageMap) {
 	const packageFile = resolve(path, 'package.json');
 	const packageJson = JSON.parse(await readFile(packageFile, 'utf-8'));
 
-	packageJson.version = packageMap[packageName].nextVersion =
-		isDirty ||
-		Object.keys(packageJson.dependencies || {}).some(
-			(dependencyName) => packageMap[dependencyName]?.isDirty,
-		)
-			? releaseType === 'experimental'
-				? generateExperimentalVersion(version)
-				: releaseType === 'premajor'
-				? semver.inc(version, version.includes('-rc.') ? 'prerelease' : 'premajor', undefined, 'rc')
-					: semver.inc(version, releaseType)
-			: version;
+	const dependencyIsDirty = Object.keys(packageJson.dependencies || {}).some(
+		(dependencyName) => packageMap[dependencyName]?.isDirty,
+	);
+
+	let newVersion = version;
+
+	if (isDirty || dependencyIsDirty) {
+		switch (releaseType) {
+			case 'experimental':
+				newVersion = generateExperimentalVersion(version);
+				break;
+			case 'premajor':
+				newVersion = semver.inc(
+					version,
+					version.includes('-rc.') ? 'prerelease' : 'premajor',
+					undefined,
+					'rc',
+				);
+				break;
+			default:
+				newVersion = semver.inc(version, releaseType);
+				break;
+		}
+	}
+
+	packageJson.version = packageMap[packageName].nextVersion = newVersion;
 
 	await writeFile(packageFile, JSON.stringify(packageJson, null, 2) + '\n');
 }
