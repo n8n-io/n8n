@@ -187,7 +187,7 @@ const actions = computed(() => {
 		},
 	];
 
-	if (workflowPermissions.value.share) {
+	if (workflowPermissions.value.share && !props.readOnly) {
 		items.push({
 			label: locale.baseText('workflows.item.share'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,

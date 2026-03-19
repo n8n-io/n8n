@@ -156,6 +156,88 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy-workflow-ids')).toBeVisible();
 	});
 
+	describe('Viewer mode settings', () => {
+		it('should load and save viewer manual and inputs', async () => {
+			workflowDocumentStore.setSettings({
+				executionOrder: 'v1',
+				viewerMode: {
+					manual: 'Upload the invoice and add context',
+					inputs: [{ key: 'document', label: 'Document', type: 'file', required: true }],
+				},
+			});
+
+			const { getByRole, getAllByTestId } = createComponent({ pinia });
+			await flushPromises();
+			expect(getAllByTestId('workflow-settings-viewer-input-row')).toHaveLength(1);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						viewerMode: {
+							manual: 'Upload the invoice and add context',
+							inputs: [{ key: 'document', label: 'Document', type: 'file', required: true }],
+						},
+					}),
+				}),
+			);
+		});
+
+		it('should generate unique viewer input keys after removal', async () => {
+			const { getByTestId, getAllByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const addButton = getByTestId('workflow-settings-viewer-input-add');
+			await userEvent.click(addButton);
+			await userEvent.click(addButton);
+
+			let keyInputs = getAllByTestId('workflow-settings-viewer-input-key');
+
+			const getKeyInputValue = (el: Element) => {
+				const input =
+					el instanceof HTMLInputElement ? el : (el.querySelector('input') as HTMLInputElement | null);
+				if (!input) {
+					throw new Error('Viewer input key control was not rendered');
+				}
+				return input.value;
+			};
+
+			expect(keyInputs.map(getKeyInputValue)).toEqual(['input_1', 'input_2']);
+
+			const removeButtons = getAllByTestId('workflow-settings-viewer-input-remove');
+			await userEvent.click(removeButtons[0]);
+			await userEvent.click(addButton);
+
+			keyInputs = getAllByTestId('workflow-settings-viewer-input-key');
+			const values = keyInputs.map(getKeyInputValue);
+
+			expect(values).toHaveLength(2);
+			expect(values).toEqual(expect.arrayContaining(['input_2', 'input_3']));
+		});
+
+		it('should block saving when viewer input fields are invalid', async () => {
+			const { getByRole, getByTestId, getAllByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-viewer-input-add'));
+			const keyInputs = getAllByTestId('workflow-settings-viewer-input-key');
+			const keyInput =
+				keyInputs[0] instanceof HTMLInputElement
+					? keyInputs[0]
+					: keyInputs[0].querySelector('input');
+			if (!(keyInput instanceof HTMLInputElement)) {
+				throw new Error('Viewer input key control was not rendered');
+			}
+			await userEvent.clear(keyInput);
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(toast.showError).toHaveBeenCalled();
+			expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('Error Workflow', () => {
 		it('should fetch all workflows and render them in the error workflows dropdown', async () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;

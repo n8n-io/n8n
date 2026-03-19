@@ -95,6 +95,24 @@ const initialState = {
 	},
 };
 
+const localStorageMock = {
+	getItem: vi.fn(() => null),
+	setItem: vi.fn(),
+	removeItem: vi.fn(),
+	clear: vi.fn(),
+	key: vi.fn(() => null),
+	length: 0,
+};
+
+beforeEach(() => {
+	vi.stubGlobal('localStorage', localStorageMock);
+	localStorageMock.getItem.mockReturnValue(null);
+});
+
+afterEach(() => {
+	vi.unstubAllGlobals();
+});
+
 describe('WorkflowsView', () => {
 	beforeEach(async () => {
 		await router.push('/');
@@ -301,6 +319,64 @@ describe('WorkflowsView', () => {
 			);
 		});
 
+		it('should apply access filter and only show workflows matching permission', async () => {
+			await router.replace({ query: { access: 'canStart' } });
+			settingsStore.isFoldersFeatureEnabled = true;
+
+			const resources: WorkflowListResource[] = [
+				{
+					resource: 'workflow',
+					id: 'wf-start',
+					name: 'Can Start',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					active: false,
+					activeVersionId: null,
+					isArchived: false,
+					versionId: '1',
+					scopes: ['workflow:read', 'workflow:execute'],
+				} as WorkflowListResource,
+				{
+					resource: 'workflow',
+					id: 'wf-view',
+					name: 'Can View',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					active: false,
+					activeVersionId: null,
+					isArchived: false,
+					versionId: '2',
+					scopes: ['workflow:read'],
+				} as WorkflowListResource,
+				{
+					resource: 'folder',
+					id: 'folder-1',
+					name: 'Finance',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					workflowCount: 2,
+					subFolderCount: 0,
+				} as WorkflowListResource,
+			];
+
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue(resources);
+
+			const { getByTestId, queryByText } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.any(Object),
+				false,
+				expect.any(Boolean),
+			);
+			expect(getByTestId('workflow-card-name')).toHaveTextContent('Can Start');
+			expect(queryByText('Can View')).not.toBeInTheDocument();
+		});
+
 		it('should unset isArchived filter based on query parameters', async () => {
 			await router.replace({ query: { showArchived: 'true' } });
 
@@ -355,6 +431,16 @@ describe('WorkflowsView', () => {
 			tagStore.allTags = [{ id: 'test-tag', name: 'tag' }];
 			renderComponent({ pinia });
 			await waitAllPromises();
+			await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
+		});
+
+		it('should remove invalid access filter from query parameters', async () => {
+			await router.replace({ query: { access: 'invalid' } });
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+
 			await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
 		});
 
