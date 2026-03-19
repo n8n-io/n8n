@@ -83,14 +83,20 @@ function handleLater() {
 
 			<div :class="$style.actions">
 				<button :class="$style.secondaryButton" @click="handleLater">
-					{{ i18n.baseText(isFinalize ? 'instanceAi.credential.finalize.later' : 'instanceAi.credential.deny') }}
+					{{
+						i18n.baseText(
+							isFinalize ? 'instanceAi.credential.finalize.later' : 'instanceAi.credential.deny',
+						)
+					}}
 				</button>
-				<button
-					:class="$style.primaryButton"
-					:disabled="!allSelected"
-					@click="handleApply"
-				>
-					{{ i18n.baseText(isFinalize ? 'instanceAi.credential.finalize.applyCredentials' : 'instanceAi.credential.useSelected') }}
+				<button :class="$style.primaryButton" :disabled="!allSelected" @click="handleApply">
+					{{
+						i18n.baseText(
+							isFinalize
+								? 'instanceAi.credential.finalize.applyCredentials'
+								: 'instanceAi.credential.useSelected',
+						)
+					}}
 				</button>
 			</div>
 		</template>
@@ -102,7 +108,13 @@ function handleLater() {
 			</template>
 			<template v-else>
 				<N8nIcon icon="check" size="small" :class="$style.successIcon" />
-				<span>{{ i18n.baseText(isFinalize ? 'instanceAi.credential.finalize.applied' : 'instanceAi.credential.allSelected') }}</span>
+				<span>{{
+					i18n.baseText(
+						isFinalize
+							? 'instanceAi.credential.finalize.applied'
+							: 'instanceAi.credential.allSelected',
+					)
+				}}</span>
 			</template>
 		</div>
 	</div>
