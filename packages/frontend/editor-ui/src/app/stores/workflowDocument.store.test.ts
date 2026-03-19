@@ -7,6 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -18,6 +19,7 @@ import type { INodeUi } from '@/Interface';
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType: vi.fn().mockReturnValue(null),
+		communityNodeType: vi.fn().mockReturnValue(null),
 	})),
 }));
 
@@ -30,21 +32,26 @@ describe('workflowDocument.store orchestration', () => {
 		setActivePinia(createPinia());
 	});
 
-	it('removeAllNodes clears both nodes and pin data', () => {
+	it('removeAllNodes clears nodes, connections, and pin data', () => {
 		const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
 
-		// Set up nodes and pin data
+		// Set up nodes, connections, and pin data
 		store.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+		store.setConnections({
+			A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+		});
 		store.setPinData({ A: [{ json: { value: 1 } }] });
 
-		// Verify both are populated
+		// Verify all are populated
 		expect(store.allNodes).toHaveLength(2);
+		expect(store.connectionsBySourceNode).toHaveProperty('A');
 		expect(store.pinData).toHaveProperty('A');
 
-		// removeAllNodes should clear both
+		// removeAllNodes should clear all three
 		store.removeAllNodes();
 
 		expect(store.allNodes).toHaveLength(0);
+		expect(store.connectionsBySourceNode).toEqual({});
 		expect(store.pinData).toEqual({});
 	});
 
@@ -58,6 +65,27 @@ describe('workflowDocument.store orchestration', () => {
 
 		// addNode fires onStateDirty, which the store wires to markStateDirty
 		store.addNode(createNode({ name: 'A' }));
+
+		expect(uiStore.stateIsDirty).toBe(true);
+	});
+
+	it('connection mutation triggers markStateDirty on UI store', () => {
+		const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+		const uiStore = useUIStore();
+
+		store.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+
+		// Start clean
+		uiStore.markStateClean();
+		expect(uiStore.stateIsDirty).toBe(false);
+
+		// addConnection fires onStateDirty, which the store wires to markStateDirty
+		store.addConnection({
+			connection: [
+				{ node: 'A', type: NodeConnectionTypes.Main, index: 0 },
+				{ node: 'B', type: NodeConnectionTypes.Main, index: 0 },
+			],
+		});
 
 		expect(uiStore.stateIsDirty).toBe(true);
 	});

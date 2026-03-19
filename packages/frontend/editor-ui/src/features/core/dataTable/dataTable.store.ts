@@ -17,6 +17,7 @@ import {
 	deleteDataTableRowsApi,
 	fetchDataTableGlobalLimitInBytes,
 	downloadDataTableCsvApi,
+	importCsvToDataTableApi,
 	uploadCsvFileApi,
 } from '@/features/core/dataTable/dataTable.api';
 import type {
@@ -124,6 +125,10 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 
 	const uploadCsvFile = async (file: File, hasHeaders: boolean = true) => {
 		return await uploadCsvFileApi(rootStore.restApiContext, file, hasHeaders);
+	};
+
+	const importCsvToDataTable = async (dataTableId: string, projectId: string, fileId: string) => {
+		return await importCsvToDataTableApi(rootStore.restApiContext, dataTableId, projectId, fileId);
 	};
 
 	const deleteDataTable = async (dataTableId: string, projectId: string) => {
@@ -378,6 +383,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		maxSizeMB,
 		createDataTable,
 		uploadCsvFile,
+		importCsvToDataTable,
 		deleteDataTable,
 		updateDataTable,
 		fetchDataTableDetails,

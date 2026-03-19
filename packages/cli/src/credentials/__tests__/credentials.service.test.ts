@@ -32,6 +32,9 @@ import type { RoleService } from '@/services/role.service';
 
 import { mockExistingCredential } from './credentials.test-data';
 
+const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
+
 describe('CredentialsService', () => {
 	const credType = mock<ICredentialType>({
 		extends: [],
@@ -591,9 +594,6 @@ describe('CredentialsService', () => {
 	});
 
 	describe('getMany', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
-
 		const regularCredential = {
 			id: 'cred-1',
 			name: 'Regular Credential',
@@ -1479,8 +1479,6 @@ describe('CredentialsService', () => {
 
 	describe('findAllCredentialIdsForWorkflow', () => {
 		const workflowId = 'workflow-1';
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
 
 		it('should return all personal credentials when owner has global read permissions', async () => {
 			// ARRANGE
@@ -1539,8 +1537,6 @@ describe('CredentialsService', () => {
 
 	describe('findAllCredentialIdsForProject', () => {
 		const projectId = 'project-1';
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
 
 		it('should return all personal credentials when project owner has global read permissions', async () => {
 			// ARRANGE
@@ -1598,9 +1594,6 @@ describe('CredentialsService', () => {
 	});
 
 	describe('createUnmanagedCredential', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
-
 		const credentialData = {
 			name: 'Test Credential',
 			type: 'apiKey',
@@ -1845,8 +1838,6 @@ describe('CredentialsService', () => {
 	});
 
 	describe('createManagedCredential', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-
 		const credentialData = {
 			name: 'Managed Credential',
 			type: 'oauth2',
@@ -1928,7 +1919,6 @@ describe('CredentialsService', () => {
 	});
 
 	describe('prepareUpdateData', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 		describe('external secrets', () => {
 			beforeEach(() => {
 				jest.spyOn(service, 'decrypt').mockReturnValue({});
@@ -2030,7 +2020,6 @@ describe('CredentialsService', () => {
 	});
 
 	describe('checkCredentialData', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 		const testProjectId = 'test-project-id';
 
 		beforeEach(() => {

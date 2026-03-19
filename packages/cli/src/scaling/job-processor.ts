@@ -158,6 +158,7 @@ export class JobProcessor {
 				workflowData: execution.workflowData,
 				retryOf: execution.retryOf,
 				pushRef,
+				userId: execution.data.manualData?.userId,
 			},
 			executionId,
 		);

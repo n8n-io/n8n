@@ -3255,6 +3255,7 @@ export interface ExecutionSummary {
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
+	workflowVersionId?: string | null;
 	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;
