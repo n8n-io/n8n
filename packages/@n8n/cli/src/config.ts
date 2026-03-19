@@ -35,8 +35,10 @@ export function writeConfig(config: CliConfig): void {
 export function deleteConfig(): void {
 	try {
 		fs.unlinkSync(CONFIG_FILE);
-	} catch {
-		// Ignore if file doesn't exist
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+			throw error;
+		}
 	}
 }
 
