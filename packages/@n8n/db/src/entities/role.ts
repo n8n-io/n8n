@@ -45,7 +45,7 @@ export class Role extends WithTimestamps {
 	/**
 	 * Type of the role, e.g., global, project, or workflow.
 	 */
-	roleType: 'global' | 'project' | 'workflow' | 'credential';
+	roleType: 'global' | 'project' | 'workflow' | 'credential' | 'secretsProviderConnection';
 
 	@OneToMany('ProjectRelation', 'role')
 	projectRelations: ProjectRelation[];

@@ -5,8 +5,8 @@ import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
 	CredentialsEntity,
+	type User,
 } from '@n8n/db';
-import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	PROJECT_ADMIN_ROLE_SLUG,
@@ -63,13 +63,8 @@ describe('CredentialsFinderService', () => {
 		const credentialsId = 'cred_123';
 		const sharedCredential = mock<SharedCredentials>();
 		sharedCredential.credentials = mock<CredentialsEntity>({ id: credentialsId });
-		const owner = mock<User>({
-			role: GLOBAL_OWNER_ROLE,
-		});
-		const member = mock<User>({
-			role: GLOBAL_MEMBER_ROLE,
-			id: 'test',
-		});
+		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
+		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'test' });
 
 		test('should allow instance owner access to all credentials', async () => {
 			sharedCredentialsRepository.findOne.mockResolvedValueOnce(sharedCredential);

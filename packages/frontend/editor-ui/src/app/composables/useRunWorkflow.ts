@@ -52,11 +52,13 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
+import { chatEventBus } from '@n8n/chat/event-buses';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
+import { useChat } from '@n8n/chat/composables';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;
@@ -83,6 +85,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
 	const { startChat } = useCanvasOperations();
+	const chatStore = useChat();
 
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
@@ -215,10 +218,11 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				};
 			}
 
-			// If the destination node is specified, check if it is a chat node or has a chat parent
+			// If the destination node is specified, check if it is a chat trigger node or has a chat parent
 			if (
 				options.destinationNode &&
 				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode.nodeName) ||
+					workflowsStore.checkIfToolNodeHasChatParent(options.destinationNode.nodeName) ||
 					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
 				options.source !== 'RunData.ManualChatMessage' &&
 				options.source !== 'RunData.ManualChatTrigger'
@@ -238,6 +242,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 						return;
 					}
 				}
+
+				startChat();
 			}
 
 			const triggers = workflowData.nodes.filter(
@@ -389,6 +395,16 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
+
+			if (
+				!chatStore?.ws &&
+				chatTriggerNodeOptions?.responseMode === 'responseNodes' &&
+				options.source !== 'RunData.ManualChatMessage' &&
+				options.source !== 'RunData.ManualChatTrigger' &&
+				runWorkflowApiResponse.executionId
+			) {
+				chatEventBus.emit('setupWebsocket', runWorkflowApiResponse.executionId);
+			}
 			const pinData = workflowData.pinData ?? {};
 
 			const getTestUrl = (() => {
