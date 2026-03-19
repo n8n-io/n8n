@@ -1232,6 +1232,8 @@
 	"executionDetails.runningTimeFinished": "in {time}",
 	"executionDetails.runningTimeRunning": "for",
 	"executionDetails.runningMessage": "Execution is running. It will show here once finished.",
+	"executionDetails.versionAutosave": "Autosave",
+	"executionDetails.versionTooltip": "Created {date}",
 	"executionDetails.startingSoon": "Starting soon",
 	"executionDetails.workflow": "workflow",
 	"emptyStateBuilderPrompt.subtitle": "Build workflows by chatting with AI",

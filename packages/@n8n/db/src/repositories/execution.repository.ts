@@ -340,6 +340,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			...rest,
 			data,
 			workflowData: executionData.workflowData,
+			workflowVersionId: executionData.workflowVersionId ?? null,
 			customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			...(options?.includeAnnotation &&
 				serializedAnnotation && { annotation: serializedAnnotation }),
@@ -396,6 +397,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			data,
 			workflowId,
 			workflowData,
+			workflowVersionId, // must never change
 			createdAt, // must never change
 			startedAt, // must never change
 			customData,
