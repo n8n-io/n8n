@@ -22,7 +22,7 @@ import { useExecutionsStore } from '../../executions.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
-import { N8nButton, N8nIconButton, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIconButton, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import VoteButtons from './VoteButtons.vue';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
@@ -88,13 +88,18 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const workflowVersion = ref<WorkflowVersion | null>(null);
 
 const workflowVersionLabel = computed(() => {
-	if (!workflowVersion.value) return null;
+	if (!workflowVersion.value) return undefined;
 
-	const name = workflowVersion.value.name ?? locale.baseText('executionDetails.versionAutosave');
+	return workflowVersion.value.name ?? locale.baseText('executionDetails.versionAutosave');
+});
+
+const workflowVersionTooltip = computed(() => {
+	if (!workflowVersion.value) return undefined;
+
 	const { date, time } = convertToDisplayDate(workflowVersion.value.createdAt);
 
-	return locale.baseText('executionDetails.versionLabel', {
-		interpolate: { name, date: `${date} ${time}` },
+	return locale.baseText('executionDetails.versionTooltip', {
+		interpolate: { date: `${date} ${time}` },
 	});
 });
 
@@ -285,13 +290,15 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						<template v-if="workflowVersionLabel && workflowVersionRoute">
 							|
 							<N8nText color="text-light">
-								<RouterLink
-									:class="$style.versionLink"
-									data-test-id="execution-preview-version-link"
-									:to="workflowVersionRoute"
-								>
-									{{ workflowVersionLabel }}
-								</RouterLink>
+								<N8nTooltip :content="workflowVersionTooltip" placement="bottom">
+									<RouterLink
+										:class="$style.versionLink"
+										data-test-id="execution-preview-version-link"
+										:to="workflowVersionRoute"
+									>
+										{{ workflowVersionLabel }}
+									</RouterLink>
+								</N8nTooltip>
 							</N8nText>
 						</template>
 					</N8nText>
@@ -306,13 +313,15 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						<template v-if="workflowVersionLabel && workflowVersionRoute">
 							|
 							<N8nText color="text-light">
-								<RouterLink
-									:class="$style.versionLink"
-									data-test-id="execution-preview-version-link"
-									:to="workflowVersionRoute"
-								>
-									{{ workflowVersionLabel }}
-								</RouterLink>
+								<N8nTooltip :content="workflowVersionTooltip" placement="bottom">
+									<RouterLink
+										:class="$style.versionLink"
+										data-test-id="execution-preview-version-link"
+										:to="workflowVersionRoute"
+									>
+										{{ workflowVersionLabel }}
+									</RouterLink>
+								</N8nTooltip>
 							</N8nText>
 						</template>
 					</N8nText>
