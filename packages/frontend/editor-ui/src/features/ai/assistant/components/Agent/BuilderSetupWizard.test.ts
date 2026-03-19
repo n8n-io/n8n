@@ -204,11 +204,19 @@ describe('BuilderSetupWizard', () => {
 		expect(queryByTestId('builder-setup-wizard')).not.toBeInTheDocument();
 	});
 
-	it('emits noSetupNeeded when there are no cards', () => {
+	it('emits noSetupNeeded when there are no cards and builder has finished updating', () => {
 		mockTotalCards.value = 0;
+		builderStore.setBuilderMadeEdits(true);
 
 		const { emitted } = render();
 		expect(emitted().noSetupNeeded).toHaveLength(1);
+	});
+
+	it('does not emit noSetupNeeded when there are no cards but builder is still updating', () => {
+		mockTotalCards.value = 0;
+
+		const { emitted } = render();
+		expect(emitted().noSetupNeeded).toBeUndefined();
 	});
 
 	it('emits noSetupNeeded when all cards are already complete on load', () => {

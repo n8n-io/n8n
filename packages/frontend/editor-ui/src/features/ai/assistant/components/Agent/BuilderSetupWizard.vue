@@ -137,6 +137,14 @@ watch(
 watch(
 	[totalCards, wizardDismissed],
 	([count, dismissed]) => {
+		// Guard: don't emit noSetupNeeded while the builder is still applying
+		// the workflow update. Between addNewNodes() and updateConnections() there is
+		// an async gap (await nextTick) where connections are not yet in the store,
+		// causing sortNodesByExecutionOrder to drop non-trigger nodes and totalCards
+		// to be transiently 0. Once setBuilderMadeEdits(true) fires the update is
+		// complete and we can trust the card count.
+		if (count === 0 && !builderStore.getAiBuilderMadeEdits()) return;
+
 		if ((count === 0 || dismissed) && !hasTrackedShown.value) {
 			emit('noSetupNeeded');
 		}
