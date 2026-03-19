@@ -8,12 +8,14 @@ import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
+import { useCreditsStore } from '@/features/settings/credits/credits.store';
 
 export function useSettingsItems() {
 	const router = useRouter();
 	const i18n = useI18n();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
+	const creditsStore = useCreditsStore();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
 
 	const settingsItems = computed<IMenuItem[]>(() => {
@@ -25,6 +27,15 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.USAGE),
 				route: { to: { name: VIEWS.USAGE } },
+			},
+			{
+				id: 'settings-credits',
+				icon: 'hand-coins',
+				label: i18n.baseText('settings.credits'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.CREDITS_SETTINGS),
+				route: { to: { name: VIEWS.CREDITS_SETTINGS } },
+				suffix: creditsStore.formattedBalance,
 			},
 			{
 				id: 'settings-personal',

@@ -39,6 +39,7 @@ export type IMenuItem = {
 	size?: 'medium' | 'small';
 	beta?: boolean;
 	new?: boolean;
+	suffix?: string;
 };
 
 export interface ICustomMenuItem {

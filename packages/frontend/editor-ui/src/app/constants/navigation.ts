@@ -29,6 +29,7 @@ export const enum VIEWS {
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
 	COMMUNITY_NODES = 'CommunityNodes',
+	CREDITS_SETTINGS = 'CreditsSettings',
 	WORKFLOWS = 'WorkflowsView',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	EVALUATION = 'Evaluation',

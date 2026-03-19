@@ -141,6 +141,9 @@ const tooltipPlacement = computed(() => {
 						text="New"
 						:class="$style.newTag"
 					/>
+					<span v-if="!compact && item.suffix" :class="$style.menuItemSuffix">
+						{{ item.suffix }}
+					</span>
 				</div>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
 			</N8nRoute>
@@ -262,5 +265,17 @@ const tooltipPlacement = computed(() => {
 	min-height: auto;
 	height: auto;
 	line-height: 1;
+}
+
+.menuItemSuffix {
+	flex-shrink: 0;
+	font-variant-numeric: tabular-nums;
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--medium);
+	color: var(--color--text--tint-1);
+	background: var(--color--foreground);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border-radius: var(--radius--full);
+	line-height: 1.2;
 }
 </style>

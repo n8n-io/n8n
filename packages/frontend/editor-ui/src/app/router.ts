@@ -52,6 +52,8 @@ const SettingsUsersView = async () =>
 const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
+const SettingsCreditsView = async () =>
+	await import('@/features/settings/credits/views/SettingsCreditsView.vue');
 const SettingsApiView = async () =>
 	await import('@/features/settings/apiKeys/views/SettingsApiView.vue');
 const SettingsLogStreamingView = async () =>
@@ -897,6 +899,22 @@ export const routes: RouteRecordRaw[] = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
+					},
+				},
+			},
+			{
+				path: 'credits',
+				name: VIEWS.CREDITS_SETTINGS,
+				component: SettingsCreditsView,
+				meta: {
+					middleware: ['authenticated'],
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'credits',
+							};
+						},
 					},
 				},
 			},
