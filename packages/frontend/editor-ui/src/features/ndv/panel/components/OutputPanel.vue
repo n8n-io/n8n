@@ -26,6 +26,8 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 
 import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useUIStore } from '@/app/stores/ui.store';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -84,6 +86,7 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const { activeNode } = storeToRefs(ndvStore);
 const { dirtinessByName } = useNodeDirtiness();
+const uiStore = useUIStore();
 
 // Composables
 
@@ -267,6 +270,10 @@ const openSettings = () => {
 		pane: 'output',
 		type: 'settings',
 	});
+};
+
+const openWorkflowSettings = () => {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 };
 
 const onRunIndexChange = (run: number) => {
@@ -501,7 +508,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				:title="i18n.baseText('ndv.output.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
 				:can-reveal="canReveal"
-				@open-settings="openSettings"
+				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>
 		</template>

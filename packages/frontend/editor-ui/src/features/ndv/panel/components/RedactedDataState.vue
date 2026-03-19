@@ -26,7 +26,7 @@ const i18n = useI18n();
 		<template v-else>
 			<I18nT keypath="ndv.redacted.description" tag="span" scope="global">
 				<template #link>
-					<N8nLink size="small" @click="emit('openSettings')">{{
+					<N8nLink size="small" style="white-space: nowrap" @click="emit('openSettings')">{{
 						i18n.baseText('ndv.redacted.description.link')
 					}}</N8nLink>
 				</template>
@@ -35,7 +35,7 @@ const i18n = useI18n();
 		<template v-if="canReveal" #actions>
 			<N8nButton
 				:label="i18n.baseText('ndv.redacted.revealButton')"
-				type="secondary"
+				variant="outline"
 				size="small"
 				data-test-id="ndv-reveal-redacted-data"
 				@click="emit('reveal')"

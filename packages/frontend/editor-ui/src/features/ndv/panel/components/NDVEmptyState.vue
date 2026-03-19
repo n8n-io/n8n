@@ -30,7 +30,7 @@ defineSlots<{
 	flex-flow: column;
 	align-items: center;
 	justify-content: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
 
 	line-height: 2;
 	color: var(--color--text);

@@ -1824,8 +1824,84 @@ defineExpose({ enterEditMode });
 				</NDVEmptyState>
 			</div>
 
-			<div v-else-if="hasNodeRun && isExecutionRedacted" :class="$style.center">
-				<slot name="data-redacted"></slot>
+			<div v-else-if="hasNodeRun && isExecutionRedacted" :class="$style.redactedContainer">
+				<div :class="$style.redactedFakeData">
+					<table :class="$style.redactedTable">
+						<thead>
+							<tr>
+								<th>id</th>
+								<th>name</th>
+								<th>email</th>
+								<th>status</th>
+								<th>created_at</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="row in 8" :key="row">
+								<td>{{ 1000 + row * 7 }}</td>
+								<td>
+									{{
+										[
+											'John Smith',
+											'Jane Doe',
+											'Alex Johnson',
+											'Maria Garcia',
+											'Chris Lee',
+											'Pat Taylor',
+											'Sam Wilson',
+											'Robin Brown',
+										][row - 1]
+									}}
+								</td>
+								<td>
+									{{
+										[
+											'john@example',
+											'jane@company',
+											'alex@mail',
+											'maria@org',
+											'chris@test',
+											'pat@demo',
+											'sam@site',
+											'robin@web',
+										][row - 1]
+									}}.com
+								</td>
+								<td>
+									{{
+										[
+											'active',
+											'pending',
+											'active',
+											'inactive',
+											'active',
+											'pending',
+											'active',
+											'inactive',
+										][row - 1]
+									}}
+								</td>
+								<td>
+									{{
+										[
+											'2024-01-15',
+											'2024-02-20',
+											'2024-03-10',
+											'2024-04-05',
+											'2024-05-18',
+											'2024-06-22',
+											'2024-07-30',
+											'2024-08-12',
+										][row - 1]
+									}}
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<div :class="$style.redactedOverlay">
+					<slot name="data-redacted"></slot>
+				</div>
 			</div>
 
 			<div v-else-if="shouldShowNoDataInBranch" :class="$style.center">
@@ -2385,5 +2461,62 @@ defineExpose({ enterEditMode });
 	padding: 0 1px;
 	font-weight: var(--font-weight--regular);
 	font-style: normal;
+}
+
+.redactedContainer {
+	position: relative;
+	height: 100%;
+	overflow: hidden;
+}
+
+.redactedFakeData {
+	padding: var(--spacing--sm);
+	opacity: 0.6;
+	pointer-events: none;
+	user-select: none;
+}
+
+.redactedTable {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-2);
+
+	th,
+	td {
+		padding: var(--spacing--3xs) var(--spacing--xs);
+		text-align: left;
+		border-bottom: 1px solid var(--color--foreground);
+	}
+
+	th {
+		font-weight: var(--font-weight--bold);
+		color: var(--color--text--tint-1);
+	}
+}
+
+.redactedOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: 1;
+	backdrop-filter: blur(10px);
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background: var(--color--foreground--tint-2);
+		opacity: 0.5;
+		z-index: -1;
+	}
 }
 </style>

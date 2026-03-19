@@ -2,7 +2,13 @@
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
+import {
+	CRON_NODE_TYPE,
+	INTERVAL_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -108,9 +114,10 @@ const workflowState = injectWorkflowState();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const uiStore = useUIStore();
 
-const openSettings = () => {
-	emit('openSettings');
+const openWorkflowSettings = () => {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 };
 
 const activeNode = computed(
@@ -675,7 +682,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				:title="i18n.baseText('ndv.input.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
 				:can-reveal="canReveal"
-				@open-settings="openSettings"
+				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>
 		</template>
