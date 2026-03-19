@@ -146,6 +146,7 @@ import { AddSuggestedPromptsToAgentTable1772000000000 } from '../common/17720000
 import { AddRoleColumnToProjectSecretsProviderAccess1772619247761 } from '../common/1772619247761-AddRoleColumnToProjectSecretsProviderAccess';
 import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../common/1772619247762-ChangeWorkflowPublishedVersionFKsToRestrict';
 import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-AddTypeToChatHubSessions';
+import { CreateWorkflowPublicationOutboxTable1773308762000 } from '../common/1773308762000-CreateWorkflowPublicationOutboxTable';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -297,6 +298,7 @@ const sqliteMigrations: Migration[] = [
 	AddRoleColumnToProjectSecretsProviderAccess1772619247761,
 	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
 	AddTypeToChatHubSessions1772700000000,
+	CreateWorkflowPublicationOutboxTable1773308762000,
 ];
 
 export { sqliteMigrations };
