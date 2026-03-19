@@ -200,7 +200,9 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			(context.redactExecutionData === true ||
 				hasDynamicCredentials ||
 				(!policyAllowsReveal &&
-					(policy === 'all' || (policy === 'non-manual' && !MANUAL_MODES.has(execution.mode)))));
+					(policy === 'all' ||
+						(policy === 'non-manual' && !MANUAL_MODES.has(execution.mode)) ||
+						(policy === 'manual-only' && MANUAL_MODES.has(execution.mode)))));
 
 		if (shouldClearItems) {
 			pipeline.push(this.fullItemRedactionStrategy);
@@ -229,7 +231,11 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 */
 	private policyAllowsReveal(execution: RedactableExecution): boolean {
 		const policy = this.resolvePolicy(execution);
-		return policy === 'none' || (policy === 'non-manual' && MANUAL_MODES.has(execution.mode));
+		return (
+			policy === 'none' ||
+			(policy === 'non-manual' && MANUAL_MODES.has(execution.mode)) ||
+			(policy === 'manual-only' && !MANUAL_MODES.has(execution.mode))
+		);
 	}
 
 	/**
