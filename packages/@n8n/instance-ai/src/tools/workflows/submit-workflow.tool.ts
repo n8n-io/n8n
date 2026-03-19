@@ -277,7 +277,10 @@ export function createSubmitWorkflowTool(
 			errors: z.array(z.string()).optional(),
 			warnings: z.array(z.string()).optional(),
 		}),
-		execute: async ({ filePath: rawFilePath, workflowId, name }) => {
+		execute: async ({ filePath: rawFilePath, workflowId: rawWorkflowId, name }) => {
+			// Canvas-aware: when no workflowId specified but we're on canvas, target the canvas workflow
+			const workflowId = rawWorkflowId ?? context.canvasContext?.workflowId;
+
 			// Resolve file path: relative paths resolve against workspace root, ~ is expanded
 			const root = await getWorkspaceRoot(workspace);
 			let filePath: string;

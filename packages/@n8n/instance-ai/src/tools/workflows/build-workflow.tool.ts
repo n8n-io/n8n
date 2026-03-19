@@ -65,7 +65,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			approved: z.boolean(),
 		}),
 		execute: async (input, ctx) => {
-			const { code, patches, workflowId, name } = input;
+			const { code, patches, workflowId: rawWorkflowId, name } = input;
+			// Canvas-aware: when no workflowId specified but we're on canvas, target the canvas workflow
+			const workflowId = rawWorkflowId ?? context.canvasContext?.workflowId;
 			const { resumeData, suspend } = ctx?.agent ?? {};
 			let finalCode: string;
 
