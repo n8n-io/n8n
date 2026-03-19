@@ -396,7 +396,7 @@ describe('NodeExecuteButton', () => {
 				name: 'test',
 				value: 'Test',
 			}));
-		const updateNodePropertiesSpy = vi.spyOn(workflowState, 'updateNodeProperties');
+		const updateNodePropertiesSpy = vi.spyOn(workflowDocumentStore, 'updateNodeProperties');
 		const node = mockNode({
 			name: 'test-node',
 			type: AI_TRANSFORM_NODE_TYPE,

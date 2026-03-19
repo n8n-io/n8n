@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { isPresent } from '@/app/utils/typesUtils';
 import type { IConnectedNode, Workflow } from 'n8n-workflow';
 import { computed } from 'vue';
@@ -24,10 +25,13 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 
-const selectedInputNode = computed(() => workflowsStore.getNodeByName(props.modelValue ?? ''));
+const selectedInputNode = computed(
+	() => workflowDocumentStore?.value?.getNodeByName(props.modelValue ?? '') ?? null,
+);
 
 const selectedInputNodeType = computed(() => {
 	const node = selectedInputNode.value;
@@ -40,7 +44,7 @@ const inputNodes = computed(
 	() =>
 		props.nodes
 			?.map((node) => {
-				const fullNode = workflowsStore.getNodeByName(node.name);
+				const fullNode = workflowDocumentStore?.value?.getNodeByName(node.name) ?? null;
 				if (!fullNode) return null;
 
 				return {

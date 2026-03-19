@@ -32,7 +32,6 @@ import type { ChatMessage } from '@n8n/chat/types';
 import * as useChatMessaging from '@/features/execution/logs/composables/useChatMessaging';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
-import type * as useNodeHelpersModule from '@/app/composables/useNodeHelpers';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -66,18 +65,6 @@ vi.mock('@/stores/pushConnection.store', () => ({
 		isConnected: true,
 	}),
 }));
-
-// Use a mutable reference so the mock always returns the current workflowState
-const workflowStateRef: { current: WorkflowState | undefined } = { current: undefined };
-
-vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
-	const actual = await importOriginal<typeof useNodeHelpersModule>();
-	return {
-		...actual,
-		useNodeHelpers: (opts = {}) =>
-			actual.useNodeHelpers({ ...opts, workflowState: workflowStateRef.current }),
-	};
-});
 
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
@@ -125,7 +112,6 @@ describe('LogsPanel', () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowState = useWorkflowState();
-		workflowStateRef.current = workflowState;
 		workflowState.setWorkflowExecutionData(null);
 
 		logsStore = mockedStore(useLogsStore);

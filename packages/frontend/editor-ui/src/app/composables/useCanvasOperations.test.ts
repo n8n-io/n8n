@@ -1824,7 +1824,7 @@ describe('useCanvasOperations', () => {
 				createTestNode({ id: '2', name: 'B' }),
 			];
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
-			const updateNodePropertiesSpy = vi.spyOn(workflowState, 'updateNodeProperties');
+			const updateNodePropertiesSpy = vi.spyOn(workflowDocumentStoreInstance, 'updateNodeProperties');
 
 			const { toggleNodesDisabled } = useCanvasOperations();
 			toggleNodesDisabled([nodes[0].id, nodes[1].id], {
@@ -1846,7 +1846,7 @@ describe('useCanvasOperations', () => {
 			const nodeName = 'testNode';
 			const node = createTestNode({ name: nodeName });
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(node);
-			const updateNodePropertiesSpy = vi.spyOn(workflowState, 'updateNodeProperties');
+			const updateNodePropertiesSpy = vi.spyOn(workflowDocumentStoreInstance, 'updateNodeProperties');
 
 			const { revertToggleNodeDisabled } = useCanvasOperations();
 			revertToggleNodeDisabled(nodeName);
@@ -3945,7 +3945,6 @@ describe('useCanvasOperations', () => {
 			const resetStateSpy = vi.spyOn(workflowState, 'resetState');
 
 			nodeCreatorStore.setNodeCreatorState = vi.fn();
-			nodeCreatorStore.setShowScrim = vi.fn();
 			workflowsStore.removeTestWebhook = vi.fn();
 			workflowsStore.resetWorkflow = vi.fn();
 			workflowsStore.resetState = vi.fn();
@@ -3982,7 +3981,6 @@ describe('useCanvasOperations', () => {
 			expect(nodeCreatorStore.setNodeCreatorState).toHaveBeenCalledWith({
 				createNodeActive: false,
 			});
-			expect(nodeCreatorStore.setShowScrim).toHaveBeenCalledWith(false);
 			expect(workflowsStore.removeTestWebhook).toHaveBeenCalledWith('workflow-id');
 			expect(workflowsStore.resetWorkflow).toHaveBeenCalled();
 			expect(resetStateSpy).toHaveBeenCalled();
@@ -4001,7 +3999,6 @@ describe('useCanvasOperations', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 
 			nodeCreatorStore.setNodeCreatorState = vi.fn();
-			nodeCreatorStore.setShowScrim = vi.fn();
 			workflowsStore.removeTestWebhook = vi.fn();
 
 			workflowsStore.executionWaitingForWebhook = false;
