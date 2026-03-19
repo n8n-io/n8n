@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiMessage, InstanceAiTaskRun } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 
@@ -23,9 +23,31 @@ function findPendingPlanConfirmation(tree: InstanceAiAgentNode) {
 	);
 }
 
-function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?: string } | null {
+function deriveTaskActivity(taskRun: InstanceAiTaskRun): { label: string; detail?: string } {
+	const detail =
+		taskRun.status === 'suspended'
+			? i18n.baseText('node.theNodeIsWaitingUserInput')
+			: i18n.baseText('instanceAi.backgroundTask.running');
+
+	return {
+		label: taskRun.title,
+		detail,
+	};
+}
+
+function deriveActivity(
+	messages: InstanceAiMessage[],
+	activeTaskRuns: InstanceAiTaskRun[],
+): { label: string; detail?: string } | null {
 	const lastMsg = [...messages].reverse().find((m) => m.role === 'assistant' && m.isStreaming);
-	if (!lastMsg?.agentTree) return { label: i18n.baseText('instanceAi.statusBar.thinking') };
+	if (!lastMsg?.agentTree) {
+		const activeTaskRun = activeTaskRuns[0];
+		if (activeTaskRun) {
+			return deriveTaskActivity(activeTaskRun);
+		}
+
+		return { label: i18n.baseText('instanceAi.statusBar.thinking') };
+	}
 
 	const tree = lastMsg.agentTree;
 	const pendingPlanConfirmation = findPendingPlanConfirmation(tree);
@@ -78,9 +100,9 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 	return { label: i18n.baseText('instanceAi.statusBar.thinking') };
 }
 
-const activity = computed(() => deriveActivity(store.messages));
+const activity = computed(() => deriveActivity(store.messages, store.activeTaskRuns));
 
-const isVisible = computed(() => store.isStreaming);
+const isVisible = computed(() => store.isStreaming || store.activeTaskRuns.length > 0);
 
 const formattedElapsed = computed(() => {
 	const s = elapsed.value;

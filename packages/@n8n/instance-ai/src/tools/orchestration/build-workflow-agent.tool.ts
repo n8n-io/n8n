@@ -12,6 +12,7 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
+import type { InstanceAiWorkflowBuildTaskOutcome } from '@n8n/api-types';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
@@ -26,7 +27,7 @@ import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import type { BackgroundTaskResult, OrchestrationContext } from '../../types';
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
-import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
+import type { TriggerType } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
@@ -57,9 +58,10 @@ function buildOutcome(
 	finalText: string,
 	planId?: string,
 	phaseId?: string,
-): WorkflowBuildOutcome {
+): InstanceAiWorkflowBuildTaskOutcome {
 	if (!attempt?.success) {
 		return {
+			kind: 'workflow-build',
 			workItemId,
 			taskId,
 			...(planId ? { planId } : {}),
@@ -72,6 +74,7 @@ function buildOutcome(
 		};
 	}
 	return {
+		kind: 'workflow-build',
 		workItemId,
 		taskId,
 		...(planId ? { planId } : {}),
@@ -297,7 +300,17 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				threadId: context.threadId,
 				agentId: subAgentId,
 				role: 'workflow-builder',
+				kind: 'workflow-build',
+				title: 'Building workflow',
+				subtitle: truncateLabel(input.task),
+				goal: input.task,
+				targetResource: {
+					type: 'workflow',
+					...(input.workflowId ? { id: input.workflowId } : {}),
+				},
 				workItemId,
+				planId: input.planId,
+				phaseId: input.phaseId,
 				run: async (signal, drainCorrections): Promise<BackgroundTaskResult> => {
 					let builderWs: BuilderWorkspace | undefined;
 					const submitAttempts = new Map<string, SubmitWorkflowAttempt>();

@@ -91,6 +91,10 @@ export function createResearchWithAgentTool(context: OrchestrationContext) {
 				threadId: context.threadId,
 				agentId: subAgentId,
 				role: 'web-researcher',
+				kind: 'research',
+				title: 'Researching',
+				subtitle: truncateLabel(input.goal),
+				goal: input.goal,
 				run: async (signal, drainCorrections) => {
 					const subAgent = new Agent({
 						id: subAgentId,
@@ -130,7 +134,15 @@ export function createResearchWithAgentTool(context: OrchestrationContext) {
 						drainCorrections,
 					});
 
-					return await text;
+					const finalText = await text;
+
+					return {
+						text: finalText,
+						outcome: {
+							kind: 'research',
+							summary: finalText,
+						},
+					};
 				},
 			});
 

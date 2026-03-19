@@ -66,6 +66,7 @@ export type {
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,
 	TaskStorage,
+	TaskRunStorage,
 	PlanStorage,
 	OrchestrationContext,
 	SpawnBackgroundTaskOptions,

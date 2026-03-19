@@ -18,6 +18,8 @@ export const instanceAiEventTypeSchema = z.enum([
 	'run-finish',
 	'agent-spawned',
 	'agent-completed',
+	'task-created',
+	'task-updated',
 	'plan-created',
 	'plan-updated',
 	'plan-status-updated',
@@ -64,6 +66,24 @@ export const instanceAiAgentKindSchema = z.enum([
 	'browser-setup',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
+
+export const instanceAiTaskKindSchema = z.enum([
+	'workflow-build',
+	'data-table',
+	'research',
+	'plan-phase',
+]);
+export type InstanceAiTaskKind = z.infer<typeof instanceAiTaskKindSchema>;
+
+export const instanceAiTaskStatusSchema = z.enum([
+	'queued',
+	'running',
+	'suspended',
+	'completed',
+	'failed',
+	'cancelled',
+]);
+export type InstanceAiTaskStatus = z.infer<typeof instanceAiTaskStatusSchema>;
 
 export const instanceAiPlanStatusSchema = z.enum([
 	'draft',
@@ -161,6 +181,80 @@ export const agentCompletedPayloadSchema = z.object({
 	role: z.string(),
 	result: z.string().describe('Synthesized answer'),
 	error: z.string().optional(),
+});
+
+export const instanceAiWorkflowBuildTaskOutcomeSchema = z.object({
+	kind: z.literal('workflow-build'),
+	workItemId: z.string().optional(),
+	taskId: z.string().optional(),
+	planId: z.string().optional(),
+	phaseId: z.string().optional(),
+	workflowId: z.string().optional(),
+	submitted: z.boolean().optional(),
+	triggerType: z.enum(['manual_or_testable', 'trigger_only']).optional(),
+	needsUserInput: z.boolean().optional(),
+	failureSignature: z.string().optional(),
+	summary: z.string().optional(),
+	mockedNodeNames: z.array(z.string()).optional(),
+	mockedCredentialTypes: z.array(z.string()).optional(),
+});
+export type InstanceAiWorkflowBuildTaskOutcome = z.infer<
+	typeof instanceAiWorkflowBuildTaskOutcomeSchema
+>;
+
+export const instanceAiDataTableTaskOutcomeSchema = z.object({
+	kind: z.literal('data-table'),
+	action: z
+		.enum(['created', 'updated', 'deleted', 'schema_updated', 'rows_mutated', 'unknown'])
+		.default('unknown'),
+	tableId: z.string().optional(),
+	tableName: z.string().optional(),
+	columnNames: z.array(z.string()).optional(),
+	summary: z.string().optional(),
+});
+export type InstanceAiDataTableTaskOutcome = z.infer<typeof instanceAiDataTableTaskOutcomeSchema>;
+
+export const instanceAiResearchTaskOutcomeSchema = z.object({
+	kind: z.literal('research'),
+	summary: z.string().optional(),
+});
+export type InstanceAiResearchTaskOutcome = z.infer<typeof instanceAiResearchTaskOutcomeSchema>;
+
+export const instanceAiTaskOutcomeSchema = z.discriminatedUnion('kind', [
+	instanceAiWorkflowBuildTaskOutcomeSchema,
+	instanceAiDataTableTaskOutcomeSchema,
+	instanceAiResearchTaskOutcomeSchema,
+]);
+export type InstanceAiTaskOutcome = z.infer<typeof instanceAiTaskOutcomeSchema>;
+
+export const instanceAiTaskRunSchema = z.object({
+	taskId: z.string(),
+	threadId: z.string(),
+	originRunId: z.string().optional(),
+	messageGroupId: z.string().optional(),
+	agentId: z.string(),
+	role: z.string(),
+	kind: instanceAiTaskKindSchema,
+	title: z.string(),
+	subtitle: z.string().optional(),
+	goal: z.string().optional(),
+	targetResource: agentSpawnedTargetResourceSchema.optional(),
+	status: instanceAiTaskStatusSchema,
+	planId: z.string().optional(),
+	phaseId: z.string().optional(),
+	workItemId: z.string().optional(),
+	resultSummary: z.string().optional(),
+	error: z.string().optional(),
+	outcome: instanceAiTaskOutcomeSchema.optional(),
+	createdAt: z.number().int(),
+	startedAt: z.number().int().optional(),
+	updatedAt: z.number().int(),
+	completedAt: z.number().int().optional(),
+});
+export type InstanceAiTaskRun = z.infer<typeof instanceAiTaskRunSchema>;
+
+export const taskRunPayloadSchema = z.object({
+	task: instanceAiTaskRunSchema,
 });
 
 export const textDeltaPayloadSchema = z.object({
@@ -430,6 +524,8 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: agentCompletedPayloadSchema,
 	}),
+	z.object({ type: z.literal('task-created'), ...eventBase, payload: taskRunPayloadSchema }),
+	z.object({ type: z.literal('task-updated'), ...eventBase, payload: taskRunPayloadSchema }),
 	z.object({ type: z.literal('plan-created'), ...eventBase, payload: planCreatedPayloadSchema }),
 	z.object({ type: z.literal('plan-updated'), ...eventBase, payload: planUpdatedPayloadSchema }),
 	z.object({
@@ -481,6 +577,8 @@ export type InstanceAiRunStartEvent = Extract<InstanceAiEvent, { type: 'run-star
 export type InstanceAiRunFinishEvent = Extract<InstanceAiEvent, { type: 'run-finish' }>;
 export type InstanceAiAgentSpawnedEvent = Extract<InstanceAiEvent, { type: 'agent-spawned' }>;
 export type InstanceAiAgentCompletedEvent = Extract<InstanceAiEvent, { type: 'agent-completed' }>;
+export type InstanceAiTaskCreatedEvent = Extract<InstanceAiEvent, { type: 'task-created' }>;
+export type InstanceAiTaskUpdatedEvent = Extract<InstanceAiEvent, { type: 'task-updated' }>;
 export type InstanceAiPlanCreatedEvent = Extract<InstanceAiEvent, { type: 'plan-created' }>;
 export type InstanceAiPlanUpdatedEvent = Extract<InstanceAiEvent, { type: 'plan-updated' }>;
 export type InstanceAiPlanStatusUpdatedEvent = Extract<
@@ -702,11 +800,12 @@ export interface InstanceAiRichMessagesResponse {
 export interface InstanceAiThreadStatusResponse {
 	hasActiveRun: boolean;
 	isSuspended: boolean;
+	taskRuns: InstanceAiTaskRun[];
 	backgroundTasks: Array<{
 		taskId: string;
 		role: string;
 		agentId: string;
-		status: 'running' | 'completed' | 'failed' | 'cancelled';
+		status: InstanceAiTaskStatus;
 		startedAt: number;
 		/** The runId this background task belongs to — used for run-sync on reconnect. */
 		runId?: string;

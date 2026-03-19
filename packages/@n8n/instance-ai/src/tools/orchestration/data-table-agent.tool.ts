@@ -35,6 +35,29 @@ const DATA_TABLE_TOOL_NAMES = [
 	'delete-data-table-rows',
 ];
 
+function buildDataTableOutcome(text: string) {
+	const createdMatch = /Created table '([^']+)' \(ID: `([^`]+)`\)/.exec(text);
+	if (!createdMatch) {
+		return {
+			kind: 'data-table' as const,
+			action: 'unknown' as const,
+			summary: text,
+		};
+	}
+
+	const inlineCodeMatches = [...text.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+	const columnNames = inlineCodeMatches.slice(1);
+
+	return {
+		kind: 'data-table' as const,
+		action: 'created' as const,
+		tableName: createdMatch[1],
+		tableId: createdMatch[2],
+		...(columnNames.length > 0 ? { columnNames } : {}),
+		summary: text,
+	};
+}
+
 export function createDataTableAgentTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'manage-data-tables-with-agent',
@@ -48,6 +71,8 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 				.describe(
 					'What to do: describe the data table operation. Include table names, column details, data to insert, or query criteria.',
 				),
+			planId: z.string().optional().describe('Plan ID for task/phase tracking.'),
+			phaseId: z.string().optional().describe('Phase ID for task/phase tracking.'),
 		}),
 		outputSchema: z.object({
 			result: z.string(),
@@ -99,6 +124,13 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 				threadId: context.threadId,
 				agentId: subAgentId,
 				role: 'data-table-manager',
+				kind: 'data-table',
+				title: 'Managing data table',
+				subtitle: truncateLabel(input.task),
+				goal: input.task,
+				targetResource: { type: 'data-table' as const },
+				planId: input.planId,
+				phaseId: input.phaseId,
 				run: async (signal, _drainCorrections) => {
 					const dataTableMemory = createSubAgentMemory(context.storage, 'data-table-manager');
 
@@ -150,7 +182,12 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 						waitForConfirmation: context.waitForConfirmation,
 					});
 
-					return await hitlResult.text;
+					const text = await hitlResult.text;
+
+					return {
+						text,
+						outcome: buildDataTableOutcome(text),
+					};
 				},
 			});
 

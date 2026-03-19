@@ -121,7 +121,7 @@ export class InstanceAiController {
 		//     from an older turn outlives its original turn. Each frame uses named
 		//     SSE event type (event: run-sync) with NO id: field so the browser's
 		//     lastEventId is unaffected and replay cursor stays consistent.
-		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
+		const threadStatus = await this.instanceAiService.getThreadStatus(threadId);
 
 		// Collect all distinct message groups that have live activity.
 		const liveGroups = new Map<
@@ -167,6 +167,7 @@ export class InstanceAiController {
 					runIds: group.runIds,
 					agentTree,
 					status: group.status,
+					taskRuns: threadStatus.taskRuns,
 					backgroundTasks: threadStatus.backgroundTasks,
 				})}\n\n`,
 			);
@@ -381,7 +382,7 @@ export class InstanceAiController {
 	) {
 		// Allow new threads — the frontend polls status before the first message is sent
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		return this.instanceAiService.getThreadStatus(threadId);
+		return await this.instanceAiService.getThreadStatus(threadId);
 	}
 
 	@Get('/threads/:threadId/context')

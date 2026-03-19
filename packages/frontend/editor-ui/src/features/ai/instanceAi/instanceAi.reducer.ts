@@ -366,7 +366,11 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 	// Mid-run replay guard: if we receive events for a runId that has no
 	// message yet (e.g., reconnect missed the run-start), create the message
 	// on the fly so subsequent events aren't dropped.
-	if (event.type !== 'run-start') {
+	if (
+		event.type !== 'run-start' &&
+		event.type !== 'task-created' &&
+		event.type !== 'task-updated'
+	) {
 		const { msg, groupId } = resolveTarget(state, event.runId);
 		if (!msg) {
 			const rootAgentId = event.type === 'agent-spawned' ? event.payload.parentId : event.agentId;
@@ -448,6 +452,8 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'tool-error':
 		case 'agent-spawned':
 		case 'agent-completed':
+		case 'task-created':
+		case 'task-updated':
 		case 'plan-created':
 		case 'plan-updated':
 		case 'plan-status-updated':

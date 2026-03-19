@@ -49,7 +49,12 @@ import type {
 	InstanceAiQuestionResponse,
 	InstanceAiPhaseSpec,
 	InstanceAiPlanSpec,
+	InstanceAiTaskKind,
+	InstanceAiTaskOutcome,
+	InstanceAiTaskRun,
+	InstanceAiTargetResource,
 } from '@n8n/api-types';
+import { instanceAiTaskOutcomeSchema } from '@n8n/api-types';
 
 import { LocalGateway, LocalFilesystemProvider } from './filesystem';
 import { buildAgentTreeFromEvents } from './agent-tree-builder';
@@ -60,6 +65,7 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { MastraIterationLogStorage } from './iteration-log-storage';
 import { MastraPlanStorage } from './plan-storage';
 import { MastraTaskStorage } from './task-storage';
+import { MastraTaskRunStorage } from './task-run-storage';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
 import { WorkflowLoopStorage } from './workflow-loop-storage';
 
@@ -102,10 +108,17 @@ interface BackgroundTask {
 	runId: string;
 	role: string;
 	agentId: string;
+	kind: InstanceAiTaskKind;
+	title: string;
+	subtitle?: string;
+	goal?: string;
+	targetResource?: InstanceAiTargetResource;
 	status: 'running' | 'completed' | 'failed' | 'cancelled';
 	result?: string;
 	error?: string;
 	startedAt: number;
+	updatedAt: number;
+	completedAt?: number;
 	abortController: AbortController;
 	/** User corrections queued for mid-flight delivery to the running task. */
 	corrections: string[];
@@ -113,8 +126,10 @@ interface BackgroundTask {
 	chainDepth: number;
 	/** The messageGroupId this task belongs to — captured at spawn time, not the thread's current one. */
 	messageGroupId?: string;
-	/** Typed outcome for workflow tasks — consumed by the workflow loop controller. */
-	outcome?: WorkflowBuildOutcome;
+	/** Typed outcome for task-driven coordination. */
+	outcome?: InstanceAiTaskOutcome;
+	planId?: string;
+	phaseId?: string;
 	/** Work item ID for workflow loop tracking. */
 	workItemId?: string;
 }
@@ -127,9 +142,20 @@ function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
-/** Try to parse a record as a WorkflowBuildOutcome. Returns undefined if invalid. */
-function parseOutcome(raw: unknown): WorkflowBuildOutcome | undefined {
-	const result = workflowBuildOutcomeSchema.safeParse(raw);
+/** Try to parse a record as a typed task outcome. Returns undefined if invalid. */
+function parseOutcome(raw: unknown): InstanceAiTaskOutcome | undefined {
+	const result = instanceAiTaskOutcomeSchema.safeParse(raw);
+	return result.success ? result.data : undefined;
+}
+
+function toWorkflowBuildOutcome(
+	outcome: InstanceAiTaskOutcome | undefined,
+): WorkflowBuildOutcome | undefined {
+	if (!outcome || outcome.kind !== 'workflow-build') {
+		return undefined;
+	}
+
+	const result = workflowBuildOutcomeSchema.safeParse(outcome);
 	return result.success ? result.data : undefined;
 }
 
@@ -262,6 +288,139 @@ export class InstanceAiService {
 
 	private createPlanStorage() {
 		return new MastraPlanStorage(this.createThreadMemory());
+	}
+
+	private createTaskRunStorage() {
+		return new MastraTaskRunStorage(this.createThreadMemory());
+	}
+
+	private toTaskRun(task: BackgroundTask): InstanceAiTaskRun {
+		return {
+			taskId: task.taskId,
+			threadId: task.threadId,
+			originRunId: task.runId,
+			messageGroupId: task.messageGroupId,
+			agentId: task.agentId,
+			role: task.role,
+			kind: task.kind,
+			title: task.title,
+			...(task.subtitle ? { subtitle: task.subtitle } : {}),
+			...(task.goal ? { goal: task.goal } : {}),
+			...(task.targetResource ? { targetResource: task.targetResource } : {}),
+			status: task.status,
+			...(task.planId ? { planId: task.planId } : {}),
+			...(task.phaseId ? { phaseId: task.phaseId } : {}),
+			...(task.workItemId ? { workItemId: task.workItemId } : {}),
+			...(task.result ? { resultSummary: task.result } : {}),
+			...(task.error ? { error: task.error } : {}),
+			...(task.outcome ? { outcome: task.outcome } : {}),
+			createdAt: task.startedAt,
+			startedAt: task.startedAt,
+			updatedAt: task.updatedAt,
+			...(task.completedAt ? { completedAt: task.completedAt } : {}),
+		};
+	}
+
+	private async saveTaskRunSnapshot(
+		threadId: string,
+		taskRun: InstanceAiTaskRun,
+		eventType: 'task-created' | 'task-updated',
+	): Promise<void> {
+		const taskRunStorage = this.createTaskRunStorage();
+		const existingTaskRuns = await taskRunStorage.get(threadId);
+		const nextTaskRuns = existingTaskRuns.filter(
+			(existingTask) => existingTask.taskId !== taskRun.taskId,
+		);
+		nextTaskRuns.push(taskRun);
+		nextTaskRuns.sort((left, right) => right.updatedAt - left.updatedAt);
+		await taskRunStorage.save(threadId, nextTaskRuns);
+
+		const targetRunId = taskRun.originRunId ?? this.getLatestRunIdForThread(threadId);
+		if (!targetRunId) {
+			return;
+		}
+
+		this.eventBus.publish(threadId, {
+			type: eventType,
+			runId: targetRunId,
+			agentId: taskRun.agentId,
+			payload: { task: taskRun },
+		});
+	}
+
+	private async reconcileStoredTaskRuns(threadId: string): Promise<InstanceAiTaskRun[]> {
+		const taskRunStorage = this.createTaskRunStorage();
+		const existingTaskRuns = await taskRunStorage.get(threadId);
+		let changed = false;
+		const now = Date.now();
+		const reconciledTaskRuns = existingTaskRuns.map((taskRun) => {
+			if (
+				(taskRun.status === 'queued' ||
+					taskRun.status === 'running' ||
+					taskRun.status === 'suspended') &&
+				!this.backgroundTasks.has(taskRun.taskId)
+			) {
+				changed = true;
+				return {
+					...taskRun,
+					status: 'failed' as const,
+					error: taskRun.error ?? 'Background task was interrupted before completion',
+					updatedAt: now,
+					completedAt: taskRun.completedAt ?? now,
+				};
+			}
+
+			return taskRun;
+		});
+
+		reconciledTaskRuns.sort((left, right) => right.updatedAt - left.updatedAt);
+		if (changed) {
+			await taskRunStorage.save(threadId, reconciledTaskRuns);
+		}
+
+		return reconciledTaskRuns;
+	}
+
+	private async syncPlanPhaseFromTaskRun(task: BackgroundTask): Promise<void> {
+		if (!task.planId || !task.phaseId || task.kind !== 'data-table') {
+			return;
+		}
+
+		const planStorage = this.createPlanStorage();
+		const existingPlan = await planStorage.get(task.threadId);
+		if (!existingPlan || existingPlan.planId !== task.planId) {
+			return;
+		}
+
+		let nextPlan = existingPlan;
+		if (task.status === 'completed') {
+			nextPlan = patchPlanPhase(
+				existingPlan,
+				task.phaseId,
+				{
+					status: 'done',
+					blocker: undefined,
+					lastVerificationError: undefined,
+					lastVerificationFailureSignature: undefined,
+				},
+				'running',
+			);
+		} else if (task.status === 'failed' || task.status === 'cancelled') {
+			nextPlan = patchPlanPhase(
+				existingPlan,
+				task.phaseId,
+				{
+					status: 'failed',
+					blocker: undefined,
+					lastVerificationError: task.error ?? 'Data table task failed',
+				},
+				'running',
+			);
+		}
+
+		if (nextPlan !== existingPlan) {
+			await this.publishPlanUpdate(task.threadId, task.runId, nextPlan);
+		}
 	}
 
 	private countVerificationFailures(attempts: AttemptRecord[]): number {
@@ -414,21 +573,22 @@ export class InstanceAiService {
 		return this.activeRuns.has(threadId) || this.suspendedRuns.has(threadId);
 	}
 
-	getThreadStatus(threadId: string): InstanceAiThreadStatusResponse {
+	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
 		const hasActiveRun = this.activeRuns.has(threadId);
 		const isSuspended = this.suspendedRuns.has(threadId);
-		const bgTasks = [...this.backgroundTasks.values()]
-			.filter((t) => t.threadId === threadId)
+		const taskRuns = await this.reconcileStoredTaskRuns(threadId);
+		const bgTasks = taskRuns
+			.filter((taskRun) => taskRun.status === 'running')
 			.map((t) => ({
 				taskId: t.taskId,
 				role: t.role,
 				agentId: t.agentId,
 				status: t.status,
-				startedAt: t.startedAt,
-				runId: t.runId,
+				startedAt: t.startedAt ?? t.createdAt,
+				runId: t.originRunId,
 				messageGroupId: t.messageGroupId,
 			}));
-		return { hasActiveRun, isSuspended, backgroundTasks: bgTasks };
+		return { hasActiveRun, isSuspended, taskRuns, backgroundTasks: bgTasks };
 	}
 
 	startRun(
@@ -575,6 +735,8 @@ export class InstanceAiService {
 
 		task.abortController.abort();
 		task.status = 'cancelled';
+		task.updatedAt = Date.now();
+		task.completedAt = task.updatedAt;
 
 		this.eventBus.publish(threadId, {
 			type: 'agent-completed',
@@ -582,6 +744,9 @@ export class InstanceAiService {
 			agentId: task.agentId,
 			payload: { role: task.role, result: '', error: 'Cancelled by user' },
 		});
+
+		void this.saveTaskRunSnapshot(threadId, this.toTaskRun(task), 'task-updated');
+		void this.syncPlanPhaseFromTaskRun(task);
 
 		this.backgroundTasks.delete(taskId);
 	}
@@ -1003,6 +1168,7 @@ export class InstanceAiService {
 			// Save agent tree snapshot for session restore
 			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 			if (!signal.aborted) {
+				this.activeRuns.delete(threadId);
 				await this.maybeAutoContinueThread(threadId, 'run-finished');
 			}
 		} catch (error) {
@@ -1204,6 +1370,7 @@ export class InstanceAiService {
 			// Save agent tree snapshot for session restore
 			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 			if (!opts.signal.aborted) {
+				this.activeRuns.delete(opts.threadId);
 				await this.maybeAutoContinueThread(opts.threadId, 'run-finished');
 			}
 		} catch (error) {
@@ -1278,6 +1445,7 @@ export class InstanceAiService {
 		// Capture the messageGroupId at spawn time — NOT the thread's current one,
 		// which may change if the user starts a new turn while this task runs.
 		const messageGroupId = this.threadMessageGroupId.get(opts.threadId);
+		const startedAt = Date.now();
 
 		const task: BackgroundTask = {
 			taskId: opts.taskId,
@@ -1285,14 +1453,23 @@ export class InstanceAiService {
 			runId,
 			role: opts.role,
 			agentId: opts.agentId,
+			kind: opts.kind,
+			title: opts.title,
+			subtitle: opts.subtitle,
+			goal: opts.goal,
+			targetResource: opts.targetResource,
 			status: 'running',
-			startedAt: Date.now(),
+			startedAt,
+			updatedAt: startedAt,
 			abortController,
 			corrections: [],
 			chainDepth: currentMaxDepth,
 			messageGroupId,
+			planId: opts.planId,
+			phaseId: opts.phaseId,
 		};
 		this.backgroundTasks.set(opts.taskId, task);
+		void this.saveTaskRunSnapshot(opts.threadId, this.toTaskRun(task), 'task-created');
 
 		// Create a drain function that atomically drains queued corrections
 		const drainCorrections = (): string[] => {
@@ -1314,6 +1491,8 @@ export class InstanceAiService {
 				task.status = 'completed';
 				task.result = resultText;
 				task.outcome = outcome;
+				task.updatedAt = Date.now();
+				task.completedAt = task.updatedAt;
 
 				this.eventBus.publish(opts.threadId, {
 					type: 'agent-completed',
@@ -1326,6 +1505,8 @@ export class InstanceAiService {
 				const errorMessage = getErrorMessage(error);
 				task.status = 'failed';
 				task.error = errorMessage;
+				task.updatedAt = Date.now();
+				task.completedAt = task.updatedAt;
 				this.eventBus.publish(opts.threadId, {
 					type: 'agent-completed',
 					runId,
@@ -1333,6 +1514,8 @@ export class InstanceAiService {
 					payload: { role: opts.role, result: '', error: errorMessage },
 				});
 			}
+			await this.saveTaskRunSnapshot(opts.threadId, this.toTaskRun(task), 'task-updated');
+			await this.syncPlanPhaseFromTaskRun(task);
 			// Re-save snapshot so the completed/failed background agent is captured.
 			// Use the task's own messageGroupId (captured at spawn time), not the
 			// thread's current one — the user may have started a new turn since.
@@ -1430,7 +1613,7 @@ export class InstanceAiService {
 		workflowLoopStorage: WorkflowLoopStorage,
 		planStorage: MastraPlanStorage,
 	): Promise<string> {
-		const outcome = task.outcome;
+		const outcome = toWorkflowBuildOutcome(task.outcome);
 		if (!outcome) return '';
 
 		// Load existing state or create initial state for this work item
@@ -1757,6 +1940,11 @@ export class InstanceAiService {
 		for (const [taskId, task] of this.backgroundTasks) {
 			if (task.threadId === threadId && task.status === 'running') {
 				task.abortController.abort();
+				task.status = 'cancelled';
+				task.updatedAt = Date.now();
+				task.completedAt = task.updatedAt;
+				void this.saveTaskRunSnapshot(threadId, this.toTaskRun(task), 'task-updated');
+				void this.syncPlanPhaseFromTaskRun(task);
 				this.backgroundTasks.delete(taskId);
 			}
 		}

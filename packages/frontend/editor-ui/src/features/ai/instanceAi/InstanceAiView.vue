@@ -19,6 +19,7 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiSettingsPanel from './components/settings/InstanceAiSettingsPanel.vue';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiPlanPanel from './components/InstanceAiPlanPanel.vue';
+import InstanceAiTaskPanel from './components/InstanceAiTaskPanel.vue';
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
@@ -67,6 +68,7 @@ const showMemoryPanel = ref(false);
 const showDebugPanel = ref(false);
 const showSettingsPanel = ref(false);
 const showPlanPanel = ref(false);
+const showTaskPanel = ref(false);
 
 watch(
 	() => store.currentPlan?.planId ?? null,
@@ -77,6 +79,26 @@ watch(
 		}
 
 		showPlanPanel.value = false;
+	},
+	{ immediate: true },
+);
+
+watch(
+	() => store.activeTaskRuns.length,
+	(nextCount, previousCount) => {
+		if (nextCount > 0 && (previousCount ?? 0) === 0) {
+			showTaskPanel.value = true;
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	() => store.hasTaskRuns,
+	(hasTaskRuns) => {
+		if (!hasTaskRuns) {
+			showTaskPanel.value = false;
+		}
 	},
 	{ immediate: true },
 );
@@ -275,6 +297,14 @@ function handleStop() {
 				</N8nText>
 				<div :class="$style.headerActions">
 					<N8nIconButton
+						v-if="store.hasTaskRuns"
+						icon="list"
+						variant="ghost"
+						size="small"
+						:class="{ [$style.activeButton]: showTaskPanel }"
+						@click="showTaskPanel = !showTaskPanel"
+					/>
+					<N8nIconButton
 						v-if="store.currentPlan && store.currentPlanAgentNode"
 						icon="list-checks"
 						variant="ghost"
@@ -367,6 +397,7 @@ function handleStop() {
 				:plan="store.currentPlan"
 				@close="showPlanPanel = false"
 			/>
+			<InstanceAiTaskPanel v-if="showTaskPanel" @close="showTaskPanel = false" />
 			<InstanceAiArtifactsPanel v-if="showArtifactsPanel" @close="showArtifactsPanel = false" />
 			<InstanceAiSettingsPanel v-if="showSettingsPanel" @close="showSettingsPanel = false" />
 			<InstanceAiMemoryPanel v-if="showMemoryPanel" @close="showMemoryPanel = false" />

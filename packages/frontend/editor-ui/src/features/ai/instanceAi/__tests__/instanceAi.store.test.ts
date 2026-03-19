@@ -48,9 +48,12 @@ vi.mock('../instanceAi.memory.api', () => ({
 	fetchThreadMessages: vi
 		.fn()
 		.mockResolvedValue({ threadId: 'thread-1', messages: [], nextEventId: 0 }),
-	fetchThreadStatus: vi
-		.fn()
-		.mockResolvedValue({ hasActiveRun: false, isSuspended: false, backgroundTasks: [] }),
+	fetchThreadStatus: vi.fn().mockResolvedValue({
+		hasActiveRun: false,
+		isSuspended: false,
+		taskRuns: [],
+		backgroundTasks: [],
+	}),
 }));
 
 // Mock EventSource globally
@@ -152,6 +155,7 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		mockFetchThreadStatus.mockResolvedValue({
 			hasActiveRun: false,
 			isSuspended: false,
+			taskRuns: [],
 			backgroundTasks: [],
 		});
 	});
@@ -219,6 +223,7 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 				timeline: [],
 			},
 			status: 'active',
+			taskRuns: [],
 			backgroundTasks: [],
 		});
 		expect(store.activeRunId).toBe('run-active');
@@ -250,6 +255,7 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 				timeline: [],
 			},
 			status: 'background',
+			taskRuns: [],
 			backgroundTasks: [],
 		});
 
@@ -306,6 +312,7 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 				},
 			},
 			status: 'suspended',
+			taskRuns: [],
 			backgroundTasks: [],
 		});
 
@@ -546,6 +553,7 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 				timeline: [],
 			},
 			status: 'background',
+			taskRuns: [],
 			backgroundTasks: [],
 		});
 

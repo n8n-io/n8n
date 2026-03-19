@@ -386,6 +386,13 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'task-created':
+		case 'task-updated': {
+			// Task lifecycle is rendered from the dedicated task store/panel.
+			// No agent-tree mutation is required here.
+			break;
+		}
+
 		case 'confirmation-request': {
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
 			const tc = state.toolCallsById[event.payload.toolCallId];

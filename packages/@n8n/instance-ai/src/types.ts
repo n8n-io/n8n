@@ -6,6 +6,10 @@ import type {
 	TaskList,
 	InstanceAiPermissions,
 	InstanceAiPlanSpec,
+	InstanceAiTaskKind,
+	InstanceAiTaskOutcome,
+	InstanceAiTaskRun,
+	InstanceAiTargetResource,
 	McpTool,
 	McpToolCallRequest,
 	McpToolCallResult,
@@ -505,6 +509,11 @@ export interface TaskStorage {
 	save(threadId: string, tasks: TaskList): Promise<void>;
 }
 
+export interface TaskRunStorage {
+	get(threadId: string): Promise<InstanceAiTaskRun[]>;
+	save(threadId: string, taskRuns: InstanceAiTaskRun[]): Promise<void>;
+}
+
 export interface PlanStorage {
 	get(threadId: string): Promise<InstanceAiPlanSpec | null>;
 	save(threadId: string, plan: InstanceAiPlanSpec): Promise<void>;
@@ -545,7 +554,7 @@ export type ModelConfig = string | { id: `${string}/${string}`; url: string; api
  *  loop controller (additive — existing callers that return a plain string still work). */
 export interface BackgroundTaskResult {
 	text: string;
-	outcome?: Record<string, unknown>;
+	outcome?: InstanceAiTaskOutcome;
 }
 
 export interface SpawnBackgroundTaskOptions {
@@ -553,6 +562,13 @@ export interface SpawnBackgroundTaskOptions {
 	threadId: string;
 	agentId: string;
 	role: string;
+	kind: InstanceAiTaskKind;
+	title: string;
+	subtitle?: string;
+	goal?: string;
+	targetResource?: InstanceAiTargetResource;
+	planId?: string;
+	phaseId?: string;
 	/** Unique work item ID for workflow loop tracking. When set, the service
 	 *  uses the workflow loop controller to manage verify/repair transitions. */
 	workItemId?: string;

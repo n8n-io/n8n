@@ -26,6 +26,7 @@ import type {
 	InstanceAiEvent,
 	InstanceAiMessage,
 	InstanceAiAgentNode,
+	InstanceAiTaskRun,
 	InstanceAiThreadSummary,
 	InstanceAiSSEConnectionState,
 	InstanceAiQuestionResponse,
@@ -57,6 +58,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const lastEventIdByThread = ref<Record<string, number>>({});
 	const activeRunId = ref<string | null>(null);
 	const messages = ref<InstanceAiMessage[]>([]);
+	const taskRuns = ref<InstanceAiTaskRun[]>([]);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
@@ -107,6 +109,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const currentPlanAgentNode = computed(() => currentPlanMessage.value?.agentTree ?? null);
 
 	const currentPlan = computed(() => currentPlanAgentNode.value?.plan ?? null);
+	const currentTaskRuns = computed(() => taskRuns.value);
+	const activeTaskRuns = computed(() =>
+		taskRuns.value.filter(
+			(taskRun) =>
+				taskRun.status === 'running' ||
+				taskRun.status === 'queued' ||
+				taskRun.status === 'suspended',
+		),
+	);
+	const hasTaskRuns = computed(() => taskRuns.value.length > 0);
 
 	/**
 	 * Derive a single contextual follow-up suggestion from the last completed
@@ -139,6 +151,18 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return null;
 	});
 
+	function replaceTaskRuns(nextTaskRuns: InstanceAiTaskRun[]): void {
+		taskRuns.value = [...nextTaskRuns].sort((left, right) => right.updatedAt - left.updatedAt);
+	}
+
+	function upsertTaskRun(taskRun: InstanceAiTaskRun): void {
+		const nextTaskRuns = taskRuns.value.filter(
+			(existingTask) => existingTask.taskId !== taskRun.taskId,
+		);
+		nextTaskRuns.push(taskRun);
+		replaceTaskRuns(nextTaskRuns);
+	}
+
 	// --- Event reducer (delegated to pure module) ---
 
 	// --- SSE lifecycle ---
@@ -161,6 +185,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			});
 			if (debugEvents.value.length > MAX_DEBUG_EVENTS) {
 				debugEvents.value.splice(0, debugEvents.value.length - MAX_DEBUG_EVENTS);
+			}
+			if (parsed.data.type === 'task-created' || parsed.data.type === 'task-updated') {
+				upsertTaskRun(parsed.data.payload.task);
+				return;
 			}
 			const previousRunId = activeRunId.value;
 			activeRunId.value = reduceEvent(
@@ -195,6 +223,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				messageGroupId?: string;
 				runIds?: string[];
 				agentTree: InstanceAiAgentNode;
+				taskRuns?: InstanceAiTaskRun[];
 				status: string;
 			};
 
@@ -215,6 +244,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			}
 
 			const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
+			if (Array.isArray(data.taskRuns)) {
+				replaceTaskRuns(data.taskRuns);
+			}
 
 			if (!msg) {
 				msg = {
@@ -328,6 +360,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		closeSSE();
 		// 2. Clear store state
 		messages.value = [];
+		taskRuns.value = [];
 		activeRunId.value = null;
 		debugEvents.value = [];
 		runStateByGroupId = {};
@@ -350,6 +383,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		const newThreadId = uuidv4();
 		closeSSE();
 		messages.value = [];
+		taskRuns.value = [];
 		activeRunId.value = null;
 		debugEvents.value = [];
 		runStateByGroupId = {};
@@ -384,6 +418,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				const freshId = uuidv4();
 				closeSSE();
 				messages.value = [];
+				taskRuns.value = [];
 				activeRunId.value = null;
 				debugEvents.value = [];
 				runStateByGroupId = {};
@@ -487,9 +522,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		try {
 			const status = await fetchThreadStatusApi(rootStore.restApiContext, threadId);
 			if (currentThreadId.value !== threadId) return;
+			replaceTaskRuns(status.taskRuns ?? []);
 
 			const hasActivity =
-				status.hasActiveRun || status.isSuspended || status.backgroundTasks.length > 0;
+				status.hasActiveRun ||
+				status.isSuspended ||
+				status.backgroundTasks.length > 0 ||
+				(status.taskRuns?.length ?? 0) > 0;
 			if (!hasActivity) return;
 
 			const lastAssistant = [...messages.value].reverse().find((m) => m.role === 'assistant');
@@ -742,7 +781,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		currentPlanMessage,
 		currentPlanAgentNode,
 		currentPlan,
+		currentTaskRuns,
+		activeTaskRuns,
+		hasTaskRuns,
 		resourceRegistry,
+		taskRuns,
 		// Actions
 		newThread,
 		deleteThread,
