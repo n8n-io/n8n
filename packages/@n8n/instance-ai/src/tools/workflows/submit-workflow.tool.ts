@@ -252,8 +252,8 @@ export function createSubmitWorkflowTool(
 		id: 'submit-workflow',
 		description:
 			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, ' +
-			'and saves it to n8n. Sub-workflows (those with only an executeWorkflowTrigger) are ' +
-			'automatically activated so they can be called by executeWorkflow nodes.',
+			'and saves it to n8n as a draft. The workflow must be explicitly published via ' +
+			'publish-workflow before it will run on its triggers in production.',
 		inputSchema: z.object({
 			filePath: z
 				.string()
@@ -272,7 +272,6 @@ export function createSubmitWorkflowTool(
 		outputSchema: z.object({
 			success: z.boolean(),
 			workflowId: z.string().optional(),
-			activated: z.boolean().optional(),
 			/** Node names whose credentials were mocked via pinned data. */
 			mockedNodeNames: z.array(z.string()).optional(),
 			/** Credential types that were mocked (not resolved to real credentials). */
@@ -434,58 +433,17 @@ export function createSubmitWorkflowTool(
 
 			const hasMockedCredentials = mockResult.mockedNodeNames.length > 0;
 
-			// Auto-activate sub-workflows: if the only trigger is executeWorkflowTrigger,
-			// this is a sub-workflow meant to be called by executeWorkflow nodes.
-			// It must be active for composition to work.
-			// However, skip activation if credentials were mocked — the workflow is
-			// testable but not production-ready.
-			const EXECUTE_WORKFLOW_TRIGGER = 'n8n-nodes-base.executeWorkflowTrigger';
-			let activated = false;
-			const triggers = (json.nodes ?? []).filter(
-				(n) =>
-					n.type === EXECUTE_WORKFLOW_TRIGGER ||
-					n.type?.endsWith?.('Trigger') ||
-					n.type?.endsWith?.('trigger'),
-			);
-			const isSubWorkflow =
-				triggers.length > 0 && triggers.every((t) => t.type === EXECUTE_WORKFLOW_TRIGGER);
-
-			if (isSubWorkflow && !hasMockedCredentials) {
-				// For newly created workflows, activation may fail if the version history
-				// hasn't been committed yet. Retry once after a short delay.
-				let activationError: string | undefined;
-				for (let attempt = 0; attempt < 2 && !activated; attempt++) {
-					try {
-						if (attempt > 0) {
-							await new Promise((resolve) => setTimeout(resolve, 500));
-						}
-						await context.workflowService.activate(savedId);
-						activated = true;
-					} catch (error) {
-						activationError = error instanceof Error ? error.message : 'Unknown activation error';
-					}
-				}
-				if (!activated && activationError) {
-					informational.push({
-						code: 'ACTIVATION_FAILED',
-						message: `Sub-workflow auto-activation failed: ${activationError}. Call activate-workflow explicitly after verifying the workflow.`,
-					});
-				}
-			} else if (isSubWorkflow && hasMockedCredentials) {
-				informational.push({
-					code: 'ACTIVATION_SKIPPED_MOCKED',
-					message: `Sub-workflow auto-activation skipped because credentials were mocked (${mockResult.mockedCredentialTypes.join(', ')}). Add real credentials before activating.`,
-				});
-			}
-
 			// Add mock summary warning when credentials were mocked
 			if (hasMockedCredentials) {
 				informational.push({
 					code: 'CREDENTIALS_MOCKED',
-					message: `Mocked ${mockResult.mockedCredentialTypes.join(', ')} via pinned data on nodes: ${mockResult.mockedNodeNames.join(', ')}. Add real credentials before activating.`,
+					message: `Mocked ${mockResult.mockedCredentialTypes.join(', ')} via pinned data on nodes: ${mockResult.mockedNodeNames.join(', ')}. Add real credentials before publishing.`,
 				});
 			}
 
+			const triggers = (json.nodes ?? []).filter(
+				(n) => n.type?.endsWith?.('Trigger') || n.type?.endsWith?.('trigger'),
+			);
 			const triggerNodeTypes = triggers.map((t) => t.type).filter(Boolean);
 			reportAttempt({
 				success: true,
@@ -498,7 +456,6 @@ export function createSubmitWorkflowTool(
 				success: true,
 				workflowId: savedId,
 				workflowName: json.name || undefined,
-				activated: activated || undefined,
 				mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
 				mockedCredentialTypes: hasMockedCredentials ? mockResult.mockedCredentialTypes : undefined,
 				warnings:

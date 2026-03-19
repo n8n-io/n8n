@@ -564,7 +564,7 @@ export type InstanceAiPermissionMode = 'require_approval' | 'always_allow';
 
 export interface InstanceAiPermissions {
 	runWorkflow: InstanceAiPermissionMode;
-	activateWorkflow: InstanceAiPermissionMode;
+	publishWorkflow: InstanceAiPermissionMode;
 	deleteWorkflow: InstanceAiPermissionMode;
 	buildWorkflow: InstanceAiPermissionMode;
 	patchWorkflow: InstanceAiPermissionMode;
@@ -583,7 +583,7 @@ export interface InstanceAiPermissions {
 
 export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	runWorkflow: 'require_approval',
-	activateWorkflow: 'require_approval',
+	publishWorkflow: 'require_approval',
 	deleteWorkflow: 'require_approval',
 	buildWorkflow: 'require_approval',
 	patchWorkflow: 'require_approval',

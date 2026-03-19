@@ -25,7 +25,8 @@ import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory'
 export interface WorkflowSummary {
 	id: string;
 	name: string;
-	active: boolean;
+	versionId: string;
+	activeVersionId: string | null;
 	createdAt: string;
 	updatedAt: string;
 	tags?: string[];
@@ -132,8 +133,11 @@ export interface InstanceAiWorkflowService {
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	delete(workflowId: string): Promise<void>;
-	activate(workflowId: string): Promise<void>;
-	deactivate(workflowId: string): Promise<void>;
+	publish(
+		workflowId: string,
+		options?: { versionId?: string },
+	): Promise<{ activeVersionId: string }>;
+	unpublish(workflowId: string): Promise<void>;
 	/** Patch a single node's parameters, credentials, or disabled state in-place. */
 	patchNode?(
 		workflowId: string,

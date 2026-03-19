@@ -172,7 +172,7 @@ Only available when `N8N_INSTANCE_AI_BROWSER_MCP=true`.
 
 ---
 
-## Workflow Tools (6)
+## Workflow Tools (7)
 
 ### `list-workflows`
 
@@ -232,14 +232,24 @@ Archive a workflow. This is a soft delete that deactivates it if needed and can 
 
 **Returns**: `{ success: boolean }`
 
-### `activate-workflow`
+### `publish-workflow`
 
-Activate or deactivate a workflow.
+Publish a workflow version to production. Makes the specified version active — it will run on its triggers.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
-| `active` | boolean | yes | `true` to activate, `false` to deactivate |
+| `versionId` | string | no | Specific version to publish (omit to publish the latest draft) |
+
+**Returns**: `{ success: boolean, activeVersionId?: string }`
+
+### `unpublish-workflow`
+
+Unpublish a workflow — stops it from running in production. The draft is preserved.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `workflowId` | string | yes | Workflow ID to unpublish |
 
 **Returns**: `{ success: boolean }`
 
