@@ -19,6 +19,8 @@ import ProjectSharing from '@/features/collaboration/projects/components/Project
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData, Project } from '@/features/collaboration/projects/projects.types';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
@@ -111,9 +113,9 @@ const workflowOwnerName = computed(() =>
 	workflowsEEStore.getWorkflowOwnerName(`${workflow.value.id}`),
 );
 
-const projects = computed(() =>
-	projectsStore.personalProjects.filter((project) => project.id !== workflow.value.homeProject?.id),
-);
+const searchFn = useRemoteProjectSearch();
+const filterFn = (project: ProjectListItem) =>
+	project.type === 'personal' && project.id !== workflow.value.homeProject?.id;
 
 const numberOfMembersInHomeTeamProject = computed(() => teamProject.value?.relations.length ?? 0);
 
@@ -225,8 +227,6 @@ const goToUpgrade = () => {
 
 const initialize = async () => {
 	if (isSharingEnabled.value) {
-		await projectsStore.getAllProjects();
-
 		// Fetch workflow if it exists and is not new
 		if (workflowsStore.isWorkflowSaved[workflow.value.id]) {
 			await workflowsListStore.fetchWorkflow(workflow.value.id);
@@ -290,7 +290,8 @@ watch(
 						<ProjectSharing
 							v-model="sharedWithProjects"
 							:home-project="workflow.homeProject"
-							:projects="projects"
+							:search-fn="searchFn"
+							:filter-fn="filterFn"
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
 							:static="isHomeTeamProject || !workflowPermissions.share"

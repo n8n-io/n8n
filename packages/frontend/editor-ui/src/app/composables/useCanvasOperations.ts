@@ -2273,7 +2273,6 @@ export function useCanvasOperations() {
 	function resetWorkspace() {
 		// Reset node creator
 		nodeCreatorStore.setNodeCreatorState({ createNodeActive: false });
-		nodeCreatorStore.setShowScrim(false);
 
 		// Make sure that if there is a waiting test-webhook, it gets removed
 		if (workflowsStore.executionWaitingForWebhook) {
