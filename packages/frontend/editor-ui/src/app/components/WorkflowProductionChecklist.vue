@@ -64,7 +64,9 @@ const hasEvaluationSetOutputsNode = computed((): boolean => {
 });
 
 const hasErrorWorkflow = computed(() => {
-	return !!props.workflow.settings?.errorWorkflow;
+	const errorWorkflow =
+		workflowDocumentStore?.value?.settings?.errorWorkflow ?? props.workflow.settings?.errorWorkflow;
+	return !!errorWorkflow;
 });
 
 const isErrorWorkflow = computed(() => {
@@ -218,7 +220,10 @@ const availableActions = computed(() => {
 			...baseAction,
 			id: 'workflow-mcp-access',
 			description: i18n.baseText('mcp.productionChecklist.workflow.description'),
-			completed: props.workflow.settings?.availableInMCP ?? false,
+			completed:
+				workflowDocumentStore?.value?.settings?.availableInMCP ??
+				props.workflow.settings?.availableInMCP ??
+				false,
 		};
 	}
 });
