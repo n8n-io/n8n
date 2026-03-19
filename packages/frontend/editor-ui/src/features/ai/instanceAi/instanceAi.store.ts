@@ -19,6 +19,8 @@ import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadMessages as fetchThreadMessagesApi,
 	fetchThreadStatus as fetchThreadStatusApi,
+	deleteThread as deleteThreadApi,
+	renameThread as renameThreadApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
 import { useResourceRegistry } from './useResourceRegistry';
@@ -342,8 +344,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return newThreadId;
 	}
 
-	function deleteThread(threadId: string): { currentThreadId: string; wasActive: boolean } {
+	async function deleteThread(
+		threadId: string,
+	): Promise<{ currentThreadId: string; wasActive: boolean }> {
 		const wasActive = threadId === currentThreadId.value;
+
+		// Only call API for threads that have been persisted to the backend
+		if (persistedThreadIds.has(threadId)) {
+			await deleteThreadApi(rootStore.restApiContext, threadId);
+			persistedThreadIds.delete(threadId);
+		}
 
 		// Remove thread from list
 		threads.value = threads.value.filter((t) => t.id !== threadId);
@@ -685,10 +695,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		);
 	}
 
-	function renameThread(threadId: string, title: string): void {
+	async function renameThread(threadId: string, title: string): Promise<void> {
 		const thread = threads.value.find((t) => t.id === threadId);
 		if (thread) {
 			thread.title = title;
+		}
+
+		// Only call API for threads that have been persisted to the backend
+		if (persistedThreadIds.has(threadId)) {
+			await renameThreadApi(rootStore.restApiContext, threadId, title);
 		}
 	}
 

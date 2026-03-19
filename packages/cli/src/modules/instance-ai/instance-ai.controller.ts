@@ -10,7 +10,7 @@ import {
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Get, Post, Put, Param } from '@n8n/decorators';
+import { RestController, Get, Post, Put, Patch, Delete, Param } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import type { Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
@@ -337,6 +337,31 @@ export class InstanceAiController {
 
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
 		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
+	}
+
+	@Delete('/threads/:threadId')
+	async deleteThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		await this.assertThreadAccess(req.user.id, threadId);
+		await this.memoryService.deleteThread(req.user.id, threadId);
+		return { ok: true };
+	}
+
+	@Patch('/threads/:threadId')
+	async renameThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		const { title } = req.body as { title?: string };
+		if (typeof title !== 'string' || !title.trim()) {
+			throw new BadRequestError('Title is required');
+		}
+		const thread = await this.memoryService.renameThread(req.user.id, threadId, title.trim());
+		return { thread };
 	}
 
 	@Get('/threads/:threadId/messages')

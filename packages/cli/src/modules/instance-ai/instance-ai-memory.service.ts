@@ -223,6 +223,33 @@ export class InstanceAiMemoryService {
 		return thread.resourceId === userId ? 'owned' : 'other_user';
 	}
 
+	async deleteThread(userId: string, threadId: string): Promise<void> {
+		const memory = this.createMemoryInstance();
+		const thread = await memory.getThreadById({ threadId });
+		if (!thread || thread.resourceId !== userId) {
+			throw new Error(`Thread ${threadId} not found or not owned by user ${userId}`);
+		}
+		await memory.deleteThread(threadId);
+	}
+
+	async renameThread(
+		userId: string,
+		threadId: string,
+		title: string,
+	): Promise<InstanceAiThreadInfo> {
+		const memory = this.createMemoryInstance();
+		const thread = await memory.getThreadById({ threadId });
+		if (!thread || thread.resourceId !== userId) {
+			throw new Error(`Thread ${threadId} not found or not owned by user ${userId}`);
+		}
+		const updated = await memory.updateThread({
+			id: threadId,
+			title,
+			metadata: thread.metadata ?? {},
+		});
+		return this.toThreadInfo(updated);
+	}
+
 	async getThreadMetadata(
 		userId: string,
 		threadId: string,
