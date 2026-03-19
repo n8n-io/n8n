@@ -15,5 +15,3 @@ export * from './shutdown';
 export * from './module/module-metadata';
 export type { TimedOptions } from './timed';
 export { Timed } from './timed';
-export type { TracedOptions } from './traced';
-export { Traced } from './traced';

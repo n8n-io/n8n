@@ -3,7 +3,6 @@ import { Logger } from '@n8n/backend-common';
 import { FolderRepository, TagRepository, type User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import { Traced } from '@n8n/decorators';
 import { In } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { UserError } from 'n8n-workflow';
@@ -238,7 +237,6 @@ export class SourceControlStatusService {
 		return sourceControlledFiles;
 	}
 
-	@Traced()
 	private async resetWorkfolder(): Promise<void> {
 		if (!this.gitService.git) {
 			throw new Error('Git service not initialized');
