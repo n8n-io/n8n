@@ -22,7 +22,7 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 
 	async getWorkflowNodeContext(
 		nodeType: string,
-		useActiveVersion: boolean = false,
+		preferActiveVersion: boolean = false,
 	): Promise<IWorkflowNodeContext | null> {
 		const { value: workflowId } = this.getCurrentNodeParameter(
 			'workflowId',
@@ -35,7 +35,7 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 		const dbWorkflow = await this.workflowLoader.get(workflowId);
 
 		const selectedWorkflowNode = (
-			useActiveVersion && dbWorkflow.activeVersion
+			preferActiveVersion && dbWorkflow.activeVersion
 				? dbWorkflow.activeVersion.nodes
 				: dbWorkflow.nodes
 		).find((node) => node.type === nodeType);
