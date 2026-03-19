@@ -113,7 +113,7 @@ test.describe(
 				const { apiKey } = await api.rotateMcpApiKey();
 				const tools = await api.mcp.internalMcpListTools(apiKey);
 
-				expect(tools).toHaveLength(13);
+				expect(tools).toHaveLength(15);
 
 				const toolNames = tools.map((t) => t.name).sort();
 				expect(toolNames).toEqual([
@@ -125,7 +125,9 @@ test.describe(
 					'get_suggested_nodes',
 					'get_workflow_details',
 					'publish_workflow',
+					'search_folders',
 					'search_nodes',
+					'search_projects',
 					'search_workflows',
 					'unpublish_workflow',
 					'update_workflow',
