@@ -45,7 +45,9 @@ export function createPublishWorkflowTool(context: InstanceAiContext) {
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				await suspend?.({
 					requestId: nanoid(),
-					message: `Publish workflow "${input.workflowId}"?`,
+					message: input.versionId
+						? `Publish version "${input.versionId}" of workflow "${input.workflowId}"?`
+						: `Publish workflow "${input.workflowId}"?`,
 					severity: 'warning' as const,
 				});
 				return { success: false };

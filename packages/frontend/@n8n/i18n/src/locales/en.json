@@ -5023,7 +5023,7 @@
 	"instanceAi.settings.section.permissions": "Permissions",
 	"instanceAi.settings.permissions.description": "Toggle which actions require your approval before the agent executes them.",
 	"instanceAi.settings.permissions.runWorkflow.label": "Run workflow without approval",
-	"instanceAi.settings.permissions.publishWorkflow.label": "Publish workflow without approval",
+	"instanceAi.settings.permissions.publishWorkflow.label": "Publish/unpublish workflow without approval",
 	"instanceAi.settings.permissions.deleteWorkflow.label": "Delete workflow without approval",
 	"instanceAi.settings.permissions.deleteCredential.label": "Delete credential without approval",
 	"instanceAi.builderCard.title": "Building workflow",
