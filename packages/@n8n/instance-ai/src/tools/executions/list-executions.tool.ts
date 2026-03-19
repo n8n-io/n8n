@@ -41,6 +41,26 @@ export function createListExecutionsTool(context: InstanceAiContext) {
 				status: inputData.status,
 				limit: inputData.limit,
 			});
+
+			// Canvas-first: include canvas execution in results if available
+			if (
+				context.canvasContext?.executionData &&
+				(!inputData.workflowId || inputData.workflowId === context.canvasContext.workflowId)
+			) {
+				const canvasExec = context.canvasContext.executionData as Record<string, unknown>;
+				const canvasEntry = {
+					id: (canvasExec.executionId as string) ?? 'canvas-execution',
+					workflowId: context.canvasContext.workflowId,
+					workflowName: context.canvasContext.workflowName,
+					status: (canvasExec.status as string) ?? 'unknown',
+					startedAt: (canvasExec.startedAt as string) ?? new Date().toISOString(),
+					finishedAt: canvasExec.finishedAt as string | undefined,
+					mode: 'canvas',
+				};
+				// Prepend canvas execution so it appears first
+				return { executions: [canvasEntry, ...executions] };
+			}
+
 			return { executions };
 		},
 	});

@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
+import { isOnCanvas, publishCanvasEvent } from '../utils/canvas-events';
 
 const MAX_TIMEOUT_MS = 600_000;
 
@@ -75,6 +76,19 @@ export function createRunWorkflowTool(context: InstanceAiContext) {
 			}
 
 			// Approved or always_allow — execute
+
+			// Canvas-aware: emit trigger-manual-run event so frontend triggers the execution
+			if (isOnCanvas(context, input.workflowId)) {
+				publishCanvasEvent(context, 'trigger-manual-run', {
+					workflowId: input.workflowId,
+					inputData: input.inputData,
+				});
+				return {
+					executionId: 'canvas-manual-run',
+					status: 'running' as const,
+				};
+			}
+
 			return await context.executionService.run(input.workflowId, input.inputData, {
 				timeout: input.timeout,
 			});

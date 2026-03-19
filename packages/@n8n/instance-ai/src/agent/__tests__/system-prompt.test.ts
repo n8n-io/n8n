@@ -12,7 +12,7 @@ describe('getSystemPrompt', () => {
 				{
 					name: 'HTTP Request',
 					type: 'n8n-nodes-base.httpRequest',
-					parameters: { url: 'https://example.com' },
+					issues: { parameters: ['URL is required'] },
 				},
 			],
 		};
@@ -24,7 +24,7 @@ describe('getSystemPrompt', () => {
 		expect(prompt).toContain('5 nodes in the workflow');
 		expect(prompt).toContain('### Selected Nodes');
 		expect(prompt).toContain('- HTTP Request (n8n-nodes-base.httpRequest)');
-		expect(prompt).toContain('Parameters: {"url":"https://example.com"}');
+		expect(prompt).toContain('Issues:');
 	});
 
 	it('omits canvas context section when canvasContext is undefined', () => {
@@ -36,7 +36,7 @@ describe('getSystemPrompt', () => {
 });
 
 describe('formatCanvasContextSection', () => {
-	it('formats a complete canvas context with selected nodes', () => {
+	it('formats a complete canvas context with selected nodes, issues, and connections', () => {
 		const ctx: InstanceAiCanvasContext = {
 			workflowId: 'wf-456',
 			workflowName: 'Test Workflow',
@@ -45,7 +45,9 @@ describe('formatCanvasContextSection', () => {
 				{
 					name: 'Slack',
 					type: 'n8n-nodes-base.slack',
-					parameters: { channel: '#general', text: 'Hello' },
+					issues: { credentials: ['No credentials set'] },
+					incomingConnections: ['Set'],
+					outgoingConnections: ['Email'],
 				},
 				{
 					name: 'Set',
@@ -61,10 +63,11 @@ describe('formatCanvasContextSection', () => {
 		expect(section).toContain('3 nodes in the workflow');
 		expect(section).toContain('### Selected Nodes');
 		expect(section).toContain('- Slack (n8n-nodes-base.slack)');
-		expect(section).toContain('Parameters: {"channel":"#general","text":"Hello"}');
+		expect(section).toContain('Issues:');
+		expect(section).toContain('Incoming: Set');
+		expect(section).toContain('Outgoing: Email');
 		expect(section).toContain('- Set (n8n-nodes-base.set)');
-		// Set has no parameters — should not include a Parameters line for it
-		expect(section).not.toContain('- Set (n8n-nodes-base.set)\n  Parameters:');
+		expect(section).toContain('Use `get-workflow` or `get-workflow-as-code`');
 	});
 
 	it('omits selected nodes section when no nodes are selected', () => {
@@ -94,15 +97,14 @@ describe('formatCanvasContextSection', () => {
 		expect(section).not.toContain('nodes in the workflow');
 	});
 
-	it('omits parameters line when node has empty parameters', () => {
+	it('omits issues/connections lines when node has none', () => {
 		const ctx: InstanceAiCanvasContext = {
 			workflowId: 'wf-111',
-			workflowName: 'Params Test',
+			workflowName: 'Clean Node',
 			selectedNodes: [
 				{
 					name: 'NoOp',
 					type: 'n8n-nodes-base.noOp',
-					parameters: {},
 				},
 			],
 		};
@@ -110,6 +112,8 @@ describe('formatCanvasContextSection', () => {
 		const section = formatCanvasContextSection(ctx);
 
 		expect(section).toContain('- NoOp (n8n-nodes-base.noOp)');
-		expect(section).not.toContain('Parameters:');
+		expect(section).not.toContain('Issues:');
+		expect(section).not.toContain('Incoming:');
+		expect(section).not.toContain('Outgoing:');
 	});
 });

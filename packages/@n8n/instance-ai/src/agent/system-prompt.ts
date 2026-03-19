@@ -24,12 +24,24 @@ export function formatCanvasContextSection(canvasContext: InstanceAiCanvasContex
 		lines.push('### Selected Nodes');
 		lines.push('The user has selected the following nodes:');
 		for (const node of canvasContext.selectedNodes) {
-			lines.push(`- ${node.name} (${node.type})`);
-			if (node.parameters && Object.keys(node.parameters).length > 0) {
-				lines.push(`  Parameters: ${JSON.stringify(node.parameters)}`);
+			const parts = [`- ${node.name} (${node.type})`];
+			if (node.issues && Object.keys(node.issues).length > 0) {
+				parts.push(`  Issues: ${JSON.stringify(node.issues)}`);
 			}
+			if (node.incomingConnections && node.incomingConnections.length > 0) {
+				parts.push(`  Incoming: ${node.incomingConnections.join(', ')}`);
+			}
+			if (node.outgoingConnections && node.outgoingConnections.length > 0) {
+				parts.push(`  Outgoing: ${node.outgoingConnections.join(', ')}`);
+			}
+			lines.push(parts.join('\n'));
 		}
 	}
+
+	lines.push('');
+	lines.push(
+		'Use `get-workflow` or `get-workflow-as-code` to read the full workflow state (including unsaved canvas edits). Use execution tools for run data. Canvas writes emit live preview events — the user saves manually.',
+	);
 
 	return lines.join('\n');
 }

@@ -27,6 +27,15 @@ export function createGetWorkflowTool(context: InstanceAiContext) {
 			settings: z.record(z.unknown()).optional(),
 		}),
 		execute: async (inputData) => {
+			// Canvas-first: return unsaved workflow state if available for the current workflow
+			if (
+				context.canvasContext?.workflowId === inputData.workflowId &&
+				context.canvasContext.currentWorkflow
+			) {
+				return context.canvasContext.currentWorkflow as unknown as Awaited<
+					ReturnType<typeof context.workflowService.get>
+				>;
+			}
 			return await context.workflowService.get(inputData.workflowId);
 		},
 	});

@@ -677,6 +677,11 @@ export class InstanceAiService {
 			}
 			context.domainAccessTracker = domainTracker;
 			context.runId = runId;
+			if (canvasContext) {
+				context.canvasContext = canvasContext;
+			}
+			context.eventBus = this.eventBus;
+			context.threadId = threadId;
 
 			const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
 

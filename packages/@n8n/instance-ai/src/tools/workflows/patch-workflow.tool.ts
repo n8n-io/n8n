@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
+import { isOnCanvas, publishCanvasEvent } from '../utils/canvas-events';
 
 export function createPatchWorkflowTool(context: InstanceAiContext) {
 	return createTool({
@@ -77,6 +78,22 @@ export function createPatchWorkflowTool(context: InstanceAiContext) {
 			}
 
 			// State 3: Approved or always_allow — execute
+
+			// Canvas-aware: emit event with patch data instead of saving to DB
+			if (isOnCanvas(context, workflowId)) {
+				publishCanvasEvent(context, 'workflow-updated', {
+					workflowId,
+					workflowData: {
+						_patch: true,
+						nodeName,
+						parameterPatch,
+						credentialPatch,
+						disabled,
+					},
+				});
+				return { success: true, workflowId, nodeName };
+			}
+
 			try {
 				await context.workflowService.patchNode(workflowId, nodeName, {
 					parameters: parameterPatch,

@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
+import { publishCanvasEvent } from '../utils/canvas-events';
 
 export function createActivateWorkflowTool(context: InstanceAiContext) {
 	return createTool({
@@ -55,6 +56,11 @@ export function createActivateWorkflowTool(context: InstanceAiContext) {
 				} else {
 					await context.workflowService.deactivate(input.workflowId);
 				}
+				// Emit canvas event so the frontend updates the active toggle
+				publishCanvasEvent(context, 'workflow-activated', {
+					workflowId: input.workflowId,
+					active: input.active,
+				});
 				return { success: true };
 			} catch (error) {
 				return {

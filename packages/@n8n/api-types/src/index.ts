@@ -257,6 +257,10 @@ export {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
+	workflowActivatedPayloadSchema,
+	workflowArchivedPayloadSchema,
+	triggerManualRunPayloadSchema,
+	stopManualRunPayloadSchema,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -284,6 +288,10 @@ export type {
 	InstanceAiConfirmationRequestEvent,
 	InstanceAiErrorEvent,
 	InstanceAiWorkflowUpdatedEvent,
+	InstanceAiWorkflowActivatedEvent,
+	InstanceAiWorkflowArchivedEvent,
+	InstanceAiTriggerManualRunEvent,
+	InstanceAiStopManualRunEvent,
 	InstanceAiFilesystemRequestEvent,
 	InstanceAiFilesystemResponse,
 	InstanceAiGatewayCapabilities,

@@ -69,6 +69,20 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		workflowId: string;
 		workflowData: Record<string, unknown>;
 	} | null>(null);
+	/** Latest workflow-activated event payload — consumed and cleared by the canvas panel. */
+	const pendingWorkflowActivated = ref<{
+		workflowId: string;
+		active: boolean;
+	} | null>(null);
+	/** Latest workflow-archived event payload — consumed and cleared by the canvas panel. */
+	const pendingWorkflowArchived = ref<{ workflowId: string } | null>(null);
+	/** Latest trigger-manual-run event payload — consumed and cleared by the canvas panel. */
+	const pendingTriggerManualRun = ref<{
+		workflowId: string;
+		inputData?: Record<string, unknown>;
+	} | null>(null);
+	/** Latest stop-manual-run event payload — consumed and cleared by the canvas panel. */
+	const pendingStopManualRun = ref<{ workflowId: string } | null>(null);
 	const MAX_DEBUG_EVENTS = 1000;
 
 	// --- Computed ---
@@ -170,11 +184,29 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				},
 				parsed.data,
 			);
-			// Capture workflow-updated events for the canvas panel to consume
+			// Capture canvas-related events for the canvas panel to consume
 			if (parsed.data.type === 'workflow-updated') {
 				pendingWorkflowUpdate.value = {
 					workflowId: parsed.data.payload.workflowId,
 					workflowData: parsed.data.payload.workflowData,
+				};
+			} else if (parsed.data.type === 'workflow-activated') {
+				pendingWorkflowActivated.value = {
+					workflowId: parsed.data.payload.workflowId,
+					active: parsed.data.payload.active,
+				};
+			} else if (parsed.data.type === 'workflow-archived') {
+				pendingWorkflowArchived.value = {
+					workflowId: parsed.data.payload.workflowId,
+				};
+			} else if (parsed.data.type === 'trigger-manual-run') {
+				pendingTriggerManualRun.value = {
+					workflowId: parsed.data.payload.workflowId,
+					inputData: parsed.data.payload.inputData,
+				};
+			} else if (parsed.data.type === 'stop-manual-run') {
+				pendingStopManualRun.value = {
+					workflowId: parsed.data.payload.workflowId,
 				};
 			}
 			// When a run finishes, refresh thread list to pick up Mastra-generated titles
@@ -778,6 +810,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		researchMode,
 		amendContext,
 		pendingWorkflowUpdate,
+		pendingWorkflowActivated,
+		pendingWorkflowArchived,
+		pendingTriggerManualRun,
+		pendingStopManualRun,
 		feedbackByResponseId,
 		// Computed
 		isStreaming,

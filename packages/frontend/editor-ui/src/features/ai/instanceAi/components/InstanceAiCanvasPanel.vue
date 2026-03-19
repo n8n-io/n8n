@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -10,6 +11,7 @@ import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useCanvasContext } from '../composables/useCanvasContext';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
+import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
@@ -26,8 +28,11 @@ const settingsStore = useInstanceAiSettingsStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { canvasContext } = useCanvasContext();
+const { canvasContext, collectCanvasContext } = useCanvasContext();
 const { updateWorkflow } = useWorkflowUpdate();
+const { runWorkflow: triggerRunWorkflow, stopCurrentExecution } = useRunWorkflow({
+	router: useRouter(),
+});
 
 const workflowId = computed(() => workflowsStore.workflowId);
 
@@ -187,6 +192,57 @@ watch(
 	},
 );
 
+// --- Workflow activated from AI agent ---
+
+watch(
+	() => store.pendingWorkflowActivated,
+	(pending) => {
+		if (!pending) return;
+		if (pending.workflowId !== workflowId.value) return;
+		store.pendingWorkflowActivated = null;
+		// Reload to reflect the updated active state from DB
+		window.location.reload();
+	},
+);
+
+// --- Workflow archived from AI agent ---
+
+watch(
+	() => store.pendingWorkflowArchived,
+	(pending) => {
+		if (!pending) return;
+		if (pending.workflowId !== workflowId.value) return;
+		store.pendingWorkflowArchived = null;
+		// Reload to reflect archived state
+		window.location.reload();
+	},
+);
+
+// --- Manual run trigger from AI agent ---
+
+watch(
+	() => store.pendingTriggerManualRun,
+	(pending) => {
+		if (!pending) return;
+		if (pending.workflowId !== workflowId.value) return;
+		store.pendingTriggerManualRun = null;
+		// Trigger manual execution on canvas — equivalent to clicking the play button
+		void triggerRunWorkflow({});
+	},
+);
+
+// --- Stop manual run from AI agent ---
+
+watch(
+	() => store.pendingStopManualRun,
+	(pending) => {
+		if (!pending) return;
+		if (pending.workflowId !== workflowId.value) return;
+		store.pendingStopManualRun = null;
+		void stopCurrentExecution();
+	},
+);
+
 // --- Message handlers ---
 
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
@@ -195,7 +251,9 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	});
 
 	userScrolledUp.value = false;
-	await store.sendMessage(message, attachments, canvasContext.value);
+	// Collect rich canvas context (async — includes workflow JSON, execution data, etc.)
+	const richContext = await collectCanvasContext();
+	await store.sendMessage(message, attachments, richContext ?? canvasContext.value);
 }
 
 function handleSuggestionSelect(prompt: string) {

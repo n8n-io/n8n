@@ -35,6 +35,24 @@ export function createGetNodeOutputTool(context: InstanceAiContext) {
 			}),
 		}),
 		execute: async (inputData) => {
+			// Canvas-first: return node output from canvas execution data if available
+			if (context.canvasContext?.executionData) {
+				const execData = context.canvasContext.executionData as Record<string, unknown>;
+				const runData = execData.runData as Record<string, unknown[]> | undefined;
+				if (runData?.[inputData.nodeName]) {
+					const nodeRuns = runData[inputData.nodeName];
+					const items = Array.isArray(nodeRuns) ? nodeRuns : [];
+					const start = inputData.startIndex ?? 0;
+					const max = inputData.maxItems ?? 10;
+					const sliced = items.slice(start, start + max);
+					return {
+						nodeName: inputData.nodeName,
+						items: sliced,
+						totalItems: items.length,
+						returned: { from: start, to: start + sliced.length - 1 },
+					};
+				}
+			}
 			return await context.executionService.getNodeOutput(
 				inputData.executionId,
 				inputData.nodeName,

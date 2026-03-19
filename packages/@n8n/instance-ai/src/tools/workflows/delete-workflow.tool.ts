@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
+import { publishCanvasEvent } from '../utils/canvas-events';
 
 export function createDeleteWorkflowTool(context: InstanceAiContext) {
 	return createTool({
@@ -57,6 +58,10 @@ export function createDeleteWorkflowTool(context: InstanceAiContext) {
 
 			// State 3: Approved or always_allow — execute
 			await context.workflowService.archive(input.workflowId);
+			// Emit canvas event so the frontend updates the workflow state
+			publishCanvasEvent(context, 'workflow-archived', {
+				workflowId: input.workflowId,
+			});
 			return { success: true };
 		},
 	});

@@ -27,6 +27,10 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tasks-update',
 	'filesystem-request',
 	'workflow-updated',
+	'workflow-activated',
+	'workflow-archived',
+	'trigger-manual-run',
+	'stop-manual-run',
 	'error',
 ]);
 export type InstanceAiEventType = z.infer<typeof instanceAiEventTypeSchema>;
@@ -278,6 +282,24 @@ export const workflowUpdatedPayloadSchema = z.object({
 	workflowData: z.record(z.unknown()).describe('Full workflow JSON for canvas application'),
 });
 
+export const workflowActivatedPayloadSchema = z.object({
+	workflowId: z.string(),
+	active: z.boolean(),
+});
+
+export const workflowArchivedPayloadSchema = z.object({
+	workflowId: z.string(),
+});
+
+export const triggerManualRunPayloadSchema = z.object({
+	workflowId: z.string(),
+	inputData: z.record(z.unknown()).optional(),
+});
+
+export const stopManualRunPayloadSchema = z.object({
+	workflowId: z.string(),
+});
+
 // ---------------------------------------------------------------------------
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
@@ -313,6 +335,26 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: workflowUpdatedPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('workflow-activated'),
+		...eventBase,
+		payload: workflowActivatedPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('workflow-archived'),
+		...eventBase,
+		payload: workflowArchivedPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('trigger-manual-run'),
+		...eventBase,
+		payload: triggerManualRunPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('stop-manual-run'),
+		...eventBase,
+		payload: stopManualRunPayloadSchema,
+	}),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
 		type: z.literal('filesystem-request'),
@@ -343,6 +385,19 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 >;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
 export type InstanceAiWorkflowUpdatedEvent = Extract<InstanceAiEvent, { type: 'workflow-updated' }>;
+export type InstanceAiWorkflowActivatedEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'workflow-activated' }
+>;
+export type InstanceAiWorkflowArchivedEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'workflow-archived' }
+>;
+export type InstanceAiTriggerManualRunEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'trigger-manual-run' }
+>;
+export type InstanceAiStopManualRunEvent = Extract<InstanceAiEvent, { type: 'stop-manual-run' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
 	InstanceAiEvent,
@@ -358,16 +413,49 @@ export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemRe
 export const instanceAiCanvasContextSchema = z.object({
 	workflowId: z.string(),
 	workflowName: z.string(),
+	/** Full workflow JSON (unsaved state from canvas). */
+	currentWorkflow: z.record(z.unknown()).optional(),
+	/** Execution results (may include partial/unsaved executions). */
+	executionData: z.record(z.unknown()).optional(),
+	/** Resolved expressions per node. */
+	expressionValues: z
+		.record(
+			z.array(
+				z.object({
+					expression: z.string(),
+					resolvedValue: z.unknown().optional(),
+					nodeType: z.string(),
+					parameterPath: z.string().optional(),
+				}),
+			),
+		)
+		.optional(),
+	/** Input/output schemas per node. */
+	executionSchema: z
+		.array(
+			z.object({
+				nodeName: z.string(),
+				schema: z.unknown(),
+			}),
+		)
+		.optional(),
+	/** Selected nodes with topology and issues. */
 	selectedNodes: z
 		.array(
 			z.object({
 				name: z.string(),
 				type: z.string(),
 				parameters: z.record(z.unknown()).optional(),
+				issues: z.record(z.array(z.string())).optional(),
+				incomingConnections: z.array(z.string()).optional(),
+				outgoingConnections: z.array(z.string()).optional(),
 			}),
 		)
 		.optional(),
 	nodeCount: z.number().optional(),
+	pinnedNodes: z.array(z.string()).optional(),
+	/** When true, parameter values were excluded for privacy. */
+	valuesExcluded: z.boolean().optional(),
 });
 
 export type InstanceAiCanvasContext = z.infer<typeof instanceAiCanvasContextSchema>;

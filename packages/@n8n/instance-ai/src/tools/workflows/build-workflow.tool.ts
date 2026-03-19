@@ -9,6 +9,7 @@ import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
 import { extractWorkflowCode } from '../../workflow-builder/extract-code';
 import { applyPatches } from '../../workflow-builder/patch-code';
+import { isOnCanvas, publishCanvasEvent } from '../utils/canvas-events';
 
 const patchSchema = z.object({
 	old_str: z.string().describe('Exact string to find in the code'),
@@ -193,6 +194,22 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					code: 'CREDENTIALS_MOCKED',
 					message: `Mocked ${mockResult.mockedCredentialTypes.join(', ')} via pinned data on nodes: ${mockResult.mockedNodeNames.join(', ')}. Add real credentials before activating.`,
 				});
+			}
+
+			// Canvas-aware: emit event instead of saving to DB when on canvas
+			if (workflowId && isOnCanvas(context, workflowId)) {
+				publishCanvasEvent(context, 'workflow-updated', {
+					workflowId,
+					workflowData: json as unknown as Record<string, unknown>,
+				});
+				return {
+					success: true,
+					workflowId,
+					warnings:
+						informational.length > 0
+							? informational.map((w) => `[${w.code}]: ${w.message}`)
+							: undefined,
+				};
 			}
 
 			try {

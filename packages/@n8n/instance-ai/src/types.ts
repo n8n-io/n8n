@@ -496,6 +496,12 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/** Canvas context from the frontend — unsaved edits, partial executions, selected nodes. */
+	canvasContext?: InstanceAiCanvasContext;
+	/** Event bus for publishing SSE events (available when tools need to emit canvas events). */
+	eventBus?: InstanceAiEventBus;
+	/** Thread ID for event publishing. */
+	threadId?: string;
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────

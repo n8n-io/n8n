@@ -345,6 +345,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		}
 
 		case 'workflow-updated':
+		case 'workflow-activated':
+		case 'workflow-archived':
+		case 'trigger-manual-run':
+		case 'stop-manual-run':
 		case 'filesystem-request': {
 			// Handled externally — no state change in the agent tree
 			break;

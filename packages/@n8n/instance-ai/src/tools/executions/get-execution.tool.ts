@@ -20,6 +20,12 @@ export function createGetExecutionTool(context: InstanceAiContext) {
 			finishedAt: z.string().optional(),
 		}),
 		execute: async (inputData) => {
+			// Canvas-first: return canvas execution data if available
+			if (context.canvasContext?.executionData) {
+				return context.canvasContext.executionData as unknown as Awaited<
+					ReturnType<typeof context.executionService.getStatus>
+				>;
+			}
 			return await context.executionService.getStatus(inputData.executionId);
 		},
 	});
