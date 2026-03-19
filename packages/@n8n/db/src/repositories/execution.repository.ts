@@ -974,6 +974,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			annotationTags,
 			vote,
 			projectId,
+			workflowVersionId,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -1022,6 +1023,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 			qb.setParameter('key', key);
 			qb.setParameter('value', exactMatch ? value : `%${value}%`);
+		}
+
+		if (workflowVersionId) {
+			qb.innerJoin(
+				'execution.executionData',
+				'executionData',
+				'executionData.workflowVersionId = :workflowVersionId',
+			);
+			qb.setParameter('workflowVersionId', workflowVersionId);
 		}
 
 		if (annotationTags?.length || vote) {
@@ -1103,6 +1113,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		return qb;
+	}
+
+	async getDistinctVersionIds(workflowId: string): Promise<string[]> {
+		const result = await this.createQueryBuilder('execution')
+			.innerJoin('execution.executionData', 'ed')
+			.select('DISTINCT ed.workflowVersionId', 'workflowVersionId')
+			.where('execution.workflowId = :workflowId', { workflowId })
+			.andWhere('ed.workflowVersionId IS NOT NULL')
+			.getRawMany<{ workflowVersionId: string }>();
+
+		return result.map((r) => r.workflowVersionId);
 	}
 
 	async getAllIds() {
