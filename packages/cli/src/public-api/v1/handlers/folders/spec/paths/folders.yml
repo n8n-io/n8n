@@ -1,0 +1,32 @@
+get:
+  x-eov-operation-id: getFolders
+  x-eov-operation-handler: v1/handlers/folders/folders.handler
+  tags:
+    - Folder
+  summary: Retrieve folders
+  description: Retrieve folders for a project. Requires the folders feature to be licensed. Each folder includes the IDs of workflows directly inside it.
+  parameters:
+    - name: projectId
+      in: query
+      required: true
+      description: The ID of the project to retrieve folders for.
+      schema:
+        type: string
+        example: VmwOO9HeTEj20kxM
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/folderList.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
