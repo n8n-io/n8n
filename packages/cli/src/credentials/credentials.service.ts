@@ -71,6 +71,16 @@ type CreateCredentialOptions = CreateCredentialDto & {
 	isManaged: boolean;
 };
 
+type GetManyCredentialsOptions = {
+	listQueryOptions: ListQuery.Options;
+	includeGlobal: boolean;
+	includeData: boolean;
+	onlySharedWithMe: boolean;
+	filters?: {
+		dependency?: CredentialDependencyFilter;
+	};
+};
+
 @Service()
 export class CredentialsService {
 	constructor(
@@ -113,23 +123,27 @@ export class CredentialsService {
 	async getMany(
 		user: User,
 		options: {
-			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			listQueryOptions?: ListQuery.Options;
 			includeScopes?: boolean;
 			includeData: true;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
-			externalSecretsStore?: string;
+			filters?: {
+				externalSecretsStore?: string;
+			};
 		},
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
 	async getMany(
 		user: User,
 		options?: {
-			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			listQueryOptions?: ListQuery.Options;
 			includeScopes?: boolean;
 			includeData?: boolean;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
-			externalSecretsStore?: string;
+			filters?: {
+				externalSecretsStore?: string;
+			};
 		},
 	): Promise<CredentialsEntity[]>;
 	async getMany(
@@ -140,16 +154,19 @@ export class CredentialsService {
 			includeData = false,
 			onlySharedWithMe = false,
 			includeGlobal = false,
-			externalSecretsStore,
+			filters = {},
 		}: {
-			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			listQueryOptions?: ListQuery.Options;
 			includeScopes?: boolean;
 			includeData?: boolean;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
-			externalSecretsStore?: string;
+			filters?: {
+				externalSecretsStore?: string;
+			};
 		} = {},
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
+		const { externalSecretsStore } = filters;
 		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
 		const dependencyFilter = externalSecretsStore
@@ -165,29 +182,26 @@ export class CredentialsService {
 		// Auto-enable includeScopes when includeData is requested
 		if (includeData) {
 			includeScopes = true;
-			listQueryOptions.includeData = true;
 		}
 
 		let credentials: CredentialsEntity[];
 
 		if (returnAll) {
-			credentials = await this.getManyForAdminUser(
-				user,
+			credentials = await this.getManyForAdminUser(user, {
 				listQueryOptions,
 				includeGlobal,
 				includeData,
 				onlySharedWithMe,
-				dependencyFilter,
-			);
+				filters: { dependency: dependencyFilter },
+			});
 		} else {
-			credentials = await this.getManyForMemberUser(
-				user,
+			credentials = await this.getManyForMemberUser(user, {
 				listQueryOptions,
 				includeGlobal,
 				includeData,
 				onlySharedWithMe,
-				dependencyFilter,
-			);
+				filters: { dependency: dependencyFilter },
+			});
 		}
 
 		return await this.enrichCredentials(
@@ -203,12 +217,16 @@ export class CredentialsService {
 
 	private async getManyForAdminUser(
 		user: User,
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
-		includeGlobal: boolean,
-		includeData: boolean,
-		onlySharedWithMe: boolean,
-		dependencyFilter?: CredentialDependencyFilter,
+		{
+			listQueryOptions,
+			includeGlobal,
+			includeData,
+			onlySharedWithMe,
+			filters,
+		}: GetManyCredentialsOptions,
 	): Promise<CredentialsEntity[]> {
+		const { dependency: dependencyFilter } = filters ?? {};
+
 		// If onlySharedWithMe or dependency filtering is requested, use subquery approach.
 		if (onlySharedWithMe || dependencyFilter) {
 			const sharingOptions = {
@@ -219,6 +237,7 @@ export class CredentialsService {
 				sharingOptions,
 				{
 					...listQueryOptions,
+					...(includeData ? { includeData: true } : {}),
 					filters: {
 						dependency: dependencyFilter,
 					},
@@ -234,7 +253,10 @@ export class CredentialsService {
 
 		await this.applyPersonalProjectFilter(listQueryOptions);
 
-		let credentials = await this.credentialsRepository.findMany(listQueryOptions);
+		let credentials = await this.credentialsRepository.findMany({
+			...listQueryOptions,
+			...(includeData ? { includeData: true } : {}),
+		});
 
 		if (includeGlobal) {
 			credentials = await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
@@ -245,12 +267,16 @@ export class CredentialsService {
 
 	private async getManyForMemberUser(
 		user: User,
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
-		includeGlobal: boolean,
-		includeData: boolean,
-		onlySharedWithMe: boolean,
-		dependencyFilter?: CredentialDependencyFilter,
+		{
+			listQueryOptions,
+			includeGlobal,
+			includeData,
+			onlySharedWithMe,
+			filters,
+		}: GetManyCredentialsOptions,
 	): Promise<CredentialsEntity[]> {
+		const { dependency: dependencyFilter } = filters ?? {};
+
 		let isPersonalProject = false;
 		let personalProjectOwnerId: string | null = null;
 
@@ -302,6 +328,7 @@ export class CredentialsService {
 			sharingOptions,
 			{
 				...listQueryOptions,
+				...(includeData ? { includeData: true } : {}),
 				filters: {
 					dependency: dependencyFilter,
 				},
@@ -315,9 +342,7 @@ export class CredentialsService {
 		return credentials;
 	}
 
-	private async applyPersonalProjectFilter(
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
-	): Promise<void> {
+	private async applyPersonalProjectFilter(listQueryOptions: ListQuery.Options): Promise<void> {
 		const projectId =
 			typeof listQueryOptions.filter?.projectId === 'string'
 				? listQueryOptions.filter.projectId
@@ -346,7 +371,7 @@ export class CredentialsService {
 		isDefaultSelect: boolean,
 		includeScopes: boolean,
 		includeData: true,
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		listQueryOptions: ListQuery.Options,
 		onlySharedWithMe: boolean,
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
 	private async enrichCredentials(
@@ -355,7 +380,7 @@ export class CredentialsService {
 		isDefaultSelect: boolean,
 		includeScopes: boolean,
 		includeData: boolean,
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		listQueryOptions: ListQuery.Options,
 		onlySharedWithMe: boolean,
 	): Promise<CredentialsEntity[]>;
 	private async enrichCredentials(
@@ -364,7 +389,7 @@ export class CredentialsService {
 		isDefaultSelect: boolean,
 		includeScopes: boolean,
 		includeData: boolean,
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		listQueryOptions: ListQuery.Options,
 		onlySharedWithMe: boolean,
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
 		if (isDefaultSelect) {
@@ -393,7 +418,7 @@ export class CredentialsService {
 
 	private async populateSharedRelations(
 		credentials: CredentialsEntity[],
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		listQueryOptions: ListQuery.Options,
 		onlySharedWithMe: boolean,
 	): Promise<CredentialsEntity[]> {
 		const needsRelations =

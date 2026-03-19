@@ -1359,7 +1359,7 @@ describe('CredentialsService', () => {
 
 				// ACT
 				const result = await service.getMany(memberUser, {
-					externalSecretsStore: 'myProvider',
+					filters: { externalSecretsStore: 'myProvider' },
 					listQueryOptions: { select: { id: true } } as any,
 				});
 
@@ -1387,7 +1387,7 @@ describe('CredentialsService', () => {
 				);
 
 				const result = await service.getMany(memberUser, {
-					externalSecretsStore: 'myProvider',
+					filters: { externalSecretsStore: 'myProvider' },
 				});
 
 				expect(result).toEqual([]);
