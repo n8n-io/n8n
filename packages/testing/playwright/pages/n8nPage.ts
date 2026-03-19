@@ -20,6 +20,7 @@ import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
+import { InstanceAiCanvasPanelPage } from './InstanceAiCanvasPanelPage';
 import { InteractionsPage } from './InteractionsPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
@@ -77,6 +78,7 @@ export class n8nPage {
 	readonly chatHubPersonalAgents: ChatHubPersonalAgentsPage;
 	readonly chatHubSettings: ChatHubSettingsPage;
 	readonly chatHubWorkflowAgents: ChatHubWorkflowAgentsPage;
+	readonly instanceAiCanvas: InstanceAiCanvasPanelPage;
 	readonly communityNodes: CommunityNodesPage;
 	readonly demo: DemoPage;
 	readonly interactions: InteractionsPage;
@@ -155,6 +157,7 @@ export class n8nPage {
 		this.chatHubPersonalAgents = new ChatHubPersonalAgentsPage(page);
 		this.chatHubSettings = new ChatHubSettingsPage(page);
 		this.chatHubWorkflowAgents = new ChatHubWorkflowAgentsPage(page);
+		this.instanceAiCanvas = new InstanceAiCanvasPanelPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);
 		this.interactions = new InteractionsPage(page);
