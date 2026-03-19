@@ -26,6 +26,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'confirmation-request',
 	'tasks-update',
 	'filesystem-request',
+	'workflow-updated',
 	'error',
 ]);
 export type InstanceAiEventType = z.infer<typeof instanceAiEventTypeSchema>;
@@ -272,6 +273,11 @@ export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
 });
 
+export const workflowUpdatedPayloadSchema = z.object({
+	workflowId: z.string(),
+	workflowData: z.record(z.unknown()).describe('Full workflow JSON for canvas application'),
+});
+
 // ---------------------------------------------------------------------------
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
@@ -302,6 +308,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		payload: confirmationRequestPayloadSchema,
 	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
+	z.object({
+		type: z.literal('workflow-updated'),
+		...eventBase,
+		payload: workflowUpdatedPayloadSchema,
+	}),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
 		type: z.literal('filesystem-request'),
@@ -331,6 +342,7 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 	{ type: 'confirmation-request' }
 >;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
+export type InstanceAiWorkflowUpdatedEvent = Extract<InstanceAiEvent, { type: 'workflow-updated' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
 	InstanceAiEvent,

@@ -4,10 +4,12 @@ import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useCanvasContext } from '../composables/useCanvasContext';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
 import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
 import InstanceAiEmptyState from './InstanceAiEmptyState.vue';
@@ -23,6 +25,7 @@ const settingsStore = useInstanceAiSettingsStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const { canvasContext } = useCanvasContext();
+const { updateWorkflow } = useWorkflowUpdate();
 
 const workflowId = computed(() => workflowsStore.workflowId);
 
@@ -156,6 +159,22 @@ watch(
 		}
 	},
 	{ immediate: true },
+);
+
+// --- Workflow update from AI agent ---
+
+watch(
+	() => store.pendingWorkflowUpdate,
+	async (pending) => {
+		if (!pending) return;
+		// Only apply if the update targets the currently open workflow
+		if (pending.workflowId !== workflowId.value) return;
+
+		const update = store.consumeWorkflowUpdate();
+		if (!update) return;
+
+		await updateWorkflow(update.workflowData as WorkflowDataUpdate);
+	},
 );
 
 // --- Message handlers ---

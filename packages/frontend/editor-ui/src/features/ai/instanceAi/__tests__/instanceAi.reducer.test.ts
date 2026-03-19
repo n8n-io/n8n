@@ -176,6 +176,20 @@ function makeErrorEvent(
 	};
 }
 
+function makeWorkflowUpdatedEvent(
+	runId: string,
+	agentId: string,
+	workflowId: string,
+	workflowData: Record<string, unknown>,
+): Extract<InstanceAiEvent, { type: 'workflow-updated' }> {
+	return {
+		type: 'workflow-updated',
+		runId,
+		agentId,
+		payload: { workflowId, workflowData },
+	};
+}
+
 /** Convenience: run-start then return the state with the new activeRunId set. */
 function stateWithRun(runId: string, agentId: string): InstanceAiReducerState {
 	const state = makeState();
@@ -740,6 +754,62 @@ describe('instanceAi.reducer', () => {
 			handleEvent(state, makeRunStartEvent('run-2', 'agent-root'));
 
 			expect(state.messages).toHaveLength(2);
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// Workflow updated
+	// -----------------------------------------------------------------------
+	describe('workflow-updated', () => {
+		test('handles workflow-updated event without mutating agent tree or message content', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			const msg = state.messages[0];
+			const treeBefore = msg.agentTree;
+
+			handleEvent(
+				state,
+				makeWorkflowUpdatedEvent('run-1', 'agent-root', 'wf-123', {
+					nodes: [],
+					connections: {},
+				}),
+			);
+
+			// Message should still exist and be unchanged
+			expect(state.messages).toHaveLength(1);
+			expect(msg.content).toBe('');
+			expect(msg.agentTree).toBe(treeBefore);
+			expect(msg.agentTree!.textContent).toBe('');
+		});
+
+		test('workflow-updated does not change activeRunId', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			state.activeRunId = 'run-1';
+
+			const newActiveRunId = handleEvent(
+				state,
+				makeWorkflowUpdatedEvent('run-1', 'agent-root', 'wf-123', {
+					nodes: [],
+					connections: {},
+				}),
+			);
+
+			expect(newActiveRunId).toBe('run-1');
+		});
+
+		test('workflow-updated for unknown runId creates placeholder message', () => {
+			const state = makeState();
+
+			handleEvent(
+				state,
+				makeWorkflowUpdatedEvent('run-99', 'agent-root', 'wf-123', {
+					nodes: [],
+					connections: {},
+				}),
+			);
+
+			// Mid-run replay guard should create a placeholder
+			expect(state.messages).toHaveLength(1);
+			expect(state.messages[0].runId).toBe('run-99');
 		});
 	});
 

@@ -64,6 +64,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
+	/** Latest workflow-updated event payload — consumed and cleared by the canvas panel. */
+	const pendingWorkflowUpdate = ref<{
+		workflowId: string;
+		workflowData: Record<string, unknown>;
+	} | null>(null);
 	const MAX_DEBUG_EVENTS = 1000;
 
 	// --- Computed ---
@@ -165,6 +170,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				},
 				parsed.data,
 			);
+			// Capture workflow-updated events for the canvas panel to consume
+			if (parsed.data.type === 'workflow-updated') {
+				pendingWorkflowUpdate.value = {
+					workflowId: parsed.data.payload.workflowId,
+					workflowData: parsed.data.payload.workflowData,
+				};
+			}
 			// When a run finishes, refresh thread list to pick up Mastra-generated titles
 			if (previousRunId && activeRunId.value === null) {
 				void loadThreads();
@@ -645,6 +657,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	/** Consume and clear the pending workflow update. Called by the canvas panel after applying. */
+	function consumeWorkflowUpdate(): {
+		workflowId: string;
+		workflowData: Record<string, unknown>;
+	} | null {
+		const update = pendingWorkflowUpdate.value;
+		pendingWorkflowUpdate.value = null;
+		return update;
+	}
+
 	function toggleResearchMode(): void {
 		researchMode.value = !researchMode.value;
 		localStorage.setItem('instanceAi.researchMode', String(researchMode.value));
@@ -755,6 +777,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		debugMode,
 		researchMode,
 		amendContext,
+		pendingWorkflowUpdate,
 		feedbackByResponseId,
 		// Computed
 		isStreaming,
@@ -782,6 +805,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		cancelRun,
 		cancelBackgroundTask,
 		amendAgent,
+		consumeWorkflowUpdate,
 		toggleResearchMode,
 		confirmAction,
 		copyFullTrace,

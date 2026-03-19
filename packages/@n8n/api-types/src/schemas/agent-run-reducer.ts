@@ -344,8 +344,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'workflow-updated':
 		case 'filesystem-request': {
-			// Handled externally — no state change
+			// Handled externally — no state change in the agent tree
 			break;
 		}
 	}

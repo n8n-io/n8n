@@ -487,7 +487,9 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return state.activeRunId;
 		}
 
+		case 'workflow-updated':
 		case 'filesystem-request':
+			// Handled externally (store captures the payload) — no tree mutation needed
 			return state.activeRunId;
 
 		case 'run-finish': {
