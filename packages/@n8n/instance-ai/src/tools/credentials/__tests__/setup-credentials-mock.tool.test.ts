@@ -69,6 +69,7 @@ describe('setup-credentials tool', () => {
 		);
 
 		expect(suspendFn).toHaveBeenCalled();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const payload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 		expect(payload).toHaveProperty('projectId', 'proj-123');
 	});
@@ -87,6 +88,7 @@ describe('setup-credentials tool', () => {
 		);
 
 		expect(suspendFn).toHaveBeenCalled();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const payload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 		expect(payload).not.toHaveProperty('projectId');
 	});
@@ -120,6 +122,7 @@ describe('setup-credentials tool', () => {
 		);
 
 		expect(suspendFn).toHaveBeenCalled();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const payload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 		expect(payload).toHaveProperty('credentialFlow', { stage: 'finalize' });
 		expect((payload as { message: string }).message).toContain('verified');

@@ -43,12 +43,12 @@ import { createReportVerificationVerdictTool } from './orchestration/report-veri
 import { createResearchWithAgentTool } from './orchestration/research-with-agent.tool';
 import { createUpdateTasksTool } from './orchestration/update-tasks.tool';
 import { createVerifyBuiltWorkflowTool } from './orchestration/verify-built-workflow.tool';
-import { createApplyWorkflowCredentialsTool } from './workflows/apply-workflow-credentials.tool';
 import { createAskUserTool } from './shared/ask-user.tool';
 import { createSearchTemplateParametersTool } from './templates/search-template-parameters.tool';
 import { createSearchTemplateStructuresTool } from './templates/search-template-structures.tool';
 import { createFetchUrlTool } from './web-research/fetch-url.tool';
 import { createWebSearchTool } from './web-research/web-search.tool';
+import { createApplyWorkflowCredentialsTool } from './workflows/apply-workflow-credentials.tool';
 import { createBuildWorkflowTool } from './workflows/build-workflow.tool';
 import { createDeleteWorkflowTool } from './workflows/delete-workflow.tool';
 import { createGetWorkflowAsCodeTool } from './workflows/get-workflow-as-code.tool';

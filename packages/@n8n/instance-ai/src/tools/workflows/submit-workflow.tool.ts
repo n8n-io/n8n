@@ -13,12 +13,12 @@ import { validateWorkflow } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
+import { resolveCredentials, type CredentialMap } from './resolve-credentials';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
 import { escapeSingleQuotes, readFileViaSandbox, runInSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
-import { resolveCredentials, type CredentialMap } from './resolve-credentials';
 
 export interface SubmitWorkflowAttempt {
 	filePath: string;

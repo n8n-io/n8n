@@ -21,10 +21,12 @@ function actionToGuidance(action: WorkflowLoopAction): string {
 			if (action.mockedCredentialTypes?.length) {
 				const types = action.mockedCredentialTypes.join(', ');
 				return (
-					`Workflow verified successfully with temporary mock data. ` +
-					`Call \`setup-credentials\` with types [${types}] and ` +
-					`credentialFlow stage "finalize" to let the user add real credentials. ` +
-					`After the user selects credentials, call \`apply-workflow-credentials\` to apply them.`
+					'Workflow verified successfully with temporary mock data. ' +
+					'Call `setup-credentials` with types [' +
+					types +
+					'] and ' +
+					'credentialFlow stage "finalize" to let the user add real credentials. ' +
+					'After the user selects credentials, call `apply-workflow-credentials` to apply them.'
 				);
 			}
 			return `Workflow verified successfully. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
