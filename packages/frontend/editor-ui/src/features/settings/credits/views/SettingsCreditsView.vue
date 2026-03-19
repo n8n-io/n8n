@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useCssModule } from 'vue';
 import { ElSwitch } from 'element-plus';
-import { N8nButton, N8nHeading, N8nIcon, N8nInputNumber, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDataTableServer,
+	N8nHeading,
+	N8nIcon,
+	N8nInputNumber,
+	N8nText,
+} from '@n8n/design-system';
+import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useI18n } from '@n8n/i18n';
 import { useCreditsStore } from '../credits.store';
 import CreditTopUpModal from '../components/CreditTopUpModal.vue';
@@ -12,6 +20,114 @@ const creditsStore = useCreditsStore();
 
 const showTopUpModal = ref(false);
 const isSaving = ref(false);
+const isRefreshing = ref(false);
+
+interface UsageEntry {
+	id: string;
+	date: string;
+	type: 'service_usage' | 'model_call' | 'ai_builder';
+	workflowName: string;
+	user?: string;
+	amount: number;
+}
+
+const usageHistory = ref<UsageEntry[]>([
+	{
+		id: '1',
+		date: '19 Mar 2026, 13:42',
+		type: 'ai_builder',
+		workflowName: 'Email Classifier v2',
+		user: 'jake@n8n.io',
+		amount: 0.18,
+	},
+	{
+		id: '2',
+		date: '19 Mar 2026, 12:15',
+		type: 'model_call',
+		workflowName: 'Lead Scoring Pipeline',
+		amount: 0.04,
+	},
+	{
+		id: '3',
+		date: '19 Mar 2026, 11:58',
+		type: 'ai_builder',
+		workflowName: 'Support Ticket Router',
+		user: 'maria@n8n.io',
+		amount: 0.32,
+	},
+	{
+		id: '4',
+		date: '19 Mar 2026, 10:30',
+		type: 'service_usage',
+		workflowName: 'Slack Digest Bot',
+		amount: 0.02,
+	},
+	{
+		id: '5',
+		date: '18 Mar 2026, 17:45',
+		type: 'ai_builder',
+		workflowName: 'Product Description Gen',
+		user: 'jake@n8n.io',
+		amount: 0.55,
+	},
+	{
+		id: '6',
+		date: '18 Mar 2026, 16:20',
+		type: 'service_usage',
+		workflowName: 'Invoice Processor',
+		amount: 0.08,
+	},
+	{
+		id: '7',
+		date: '18 Mar 2026, 14:05',
+		type: 'ai_builder',
+		workflowName: 'Customer FAQ Builder',
+		user: 'tom@n8n.io',
+		amount: 0.41,
+	},
+	{
+		id: '8',
+		date: '18 Mar 2026, 11:30',
+		type: 'model_call',
+		workflowName: 'Lead Scoring Pipeline',
+		amount: 0.04,
+	},
+	{
+		id: '9',
+		date: '17 Mar 2026, 15:12',
+		type: 'ai_builder',
+		workflowName: 'Email Classifier v2',
+		user: 'maria@n8n.io',
+		amount: 0.22,
+	},
+	{
+		id: '10',
+		date: '17 Mar 2026, 09:48',
+		type: 'service_usage',
+		workflowName: 'Daily Report Aggregator',
+		amount: 0.06,
+	},
+]);
+
+const usageHeaders = ref<Array<TableHeader<UsageEntry>>>([
+	{ title: 'Date', key: 'date', width: 170, disableSort: true },
+	{ title: 'Type', key: 'type', width: 150, disableSort: true },
+	{ title: 'Workflow', key: 'workflowName', disableSort: true },
+	{ title: 'User', key: 'user', width: 180, disableSort: true },
+	{ title: 'Amount', key: 'amount', width: 100, align: 'end', disableSort: true },
+]);
+
+const USAGE_TYPE_LABELS: Record<UsageEntry['type'], string> = {
+	service_usage: 'Service Usage',
+	model_call: 'Model Call',
+	ai_builder: 'AI Builder',
+};
+
+async function refreshUsage() {
+	isRefreshing.value = true;
+	await new Promise((resolve) => setTimeout(resolve, 600));
+	isRefreshing.value = false;
+}
 
 interface SettingsSnapshot {
 	autoRechargeEnabled: boolean;
@@ -260,13 +376,55 @@ async function handleSave() {
 			</div>
 		</div>
 
+		<!-- Usage Section -->
+		<div :class="$style.usageSection">
+			<div :class="$style.usageHeader">
+				<N8nHeading tag="h2" size="large">Usage</N8nHeading>
+				<N8nButton
+					variant="subtle"
+					size="small"
+					icon="sync"
+					:loading="isRefreshing"
+					label="Refresh"
+					data-test-id="credits-usage-refresh"
+					@click="refreshUsage"
+				/>
+			</div>
+
+			<N8nDataTableServer
+				:headers="usageHeaders"
+				:items="usageHistory"
+				:items-length="usageHistory.length"
+				:page-sizes="[10, 25, 50]"
+				:loading="isRefreshing"
+			>
+				<template #[`item.date`]="{ item }">
+					<N8nText size="small" color="text-light">{{ item.date }}</N8nText>
+				</template>
+				<template #[`item.type`]="{ item }">
+					<span :class="$style.usageTypeBadge">
+						{{ USAGE_TYPE_LABELS[item.type] }}
+					</span>
+				</template>
+				<template #[`item.workflowName`]="{ item }">
+					<N8nText size="small">{{ item.workflowName }}</N8nText>
+				</template>
+				<template #[`item.user`]="{ item }">
+					<N8nText size="small" color="text-light">{{ item.user ?? '—' }}</N8nText>
+				</template>
+				<template #[`item.amount`]="{ item }">
+					<N8nText size="small">−${{ item.amount.toFixed(2) }}</N8nText>
+				</template>
+			</N8nDataTableServer>
+		</div>
+
 		<CreditTopUpModal v-model:open="showTopUpModal" />
 	</div>
 </template>
 
 <style lang="scss" module>
 .page {
-	max-width: 640px;
+	max-width: 800px;
 }
 
 .headerRow {
@@ -367,5 +525,28 @@ async function handleSave() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+}
+
+.usageSection {
+	margin-top: var(--spacing--lg);
+}
+
+.usageHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--spacing--sm);
+}
+
+.usageTypeBadge {
+	display: inline-flex;
+	align-items: center;
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border-radius: var(--radius--full);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--medium);
+	white-space: nowrap;
+	background: var(--color--foreground);
+	color: var(--color--text--tint-1);
 }
 </style>
