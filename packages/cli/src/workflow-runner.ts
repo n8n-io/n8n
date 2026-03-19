@@ -147,6 +147,7 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 
 		const { id: workflowId, nodes } = data.workflowData;
+
 		try {
 			await this.credentialsPermissionChecker.check(workflowId, nodes);
 		} catch (error) {
@@ -205,6 +206,9 @@ export class WorkflowRunner {
 					error,
 					executionId,
 					workflowId,
+					workflowName: data.workflowData.name,
+					...(data.projectId && { projectId: data.projectId }),
+					...(data.projectName && { projectName: data.projectName }),
 				});
 			});
 		}
@@ -390,6 +394,8 @@ export class WorkflowRunner {
 			pushRef: data.pushRef,
 			streamingEnabled: data.streamingEnabled,
 			restartExecutionId,
+			projectId: data.projectId,
+			projectName: data.projectName,
 			// MCP-specific fields for queue mode support
 			isMcpExecution: data.isMcpExecution,
 			mcpType: data.mcpType,
