@@ -1,10 +1,7 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { agent } from './descriptions';
-import { chat } from './descriptions';
-import { embeddings } from './descriptions';
-import { search } from './descriptions';
+import { agent, chat, embeddings, search } from './descriptions';
 import { getAgentModels } from './GenericFunctions';
 
 export class Perplexity implements INodeType {

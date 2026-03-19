@@ -499,10 +499,10 @@ const properties: INodeProperties[] = [
 				name: 'searchRecency',
 				type: 'options',
 				options: [
-					{ name: 'Hour', value: 'hour' },
 					{ name: 'Day', value: 'day' },
-					{ name: 'Week', value: 'week' },
+					{ name: 'Hour', value: 'hour' },
 					{ name: 'Month', value: 'month' },
+					{ name: 'Week', value: 'week' },
 					{ name: 'Year', value: 'year' },
 				],
 				default: 'month',

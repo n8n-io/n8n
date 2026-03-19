@@ -8,8 +8,8 @@ const properties: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		options: [
-			{ name: 'PPLX Embed v1 0.6B', value: 'pplx-embed-v1-0.6b' },
-			{ name: 'PPLX Embed v1 4B', value: 'pplx-embed-v1-4b' },
+			{ name: 'PPLX Embed V1 0.6B', value: 'pplx-embed-v1-0.6b' },
+			{ name: 'PPLX Embed V1 4B', value: 'pplx-embed-v1-4b' },
 		],
 		default: 'pplx-embed-v1-4b',
 		description: 'The embedding model to use',

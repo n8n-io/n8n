@@ -7,7 +7,7 @@ const properties: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		required: true,
-		options: [{ name: 'PPLX Embed Context v1 4B', value: 'pplx-embed-context-v1-4b' }],
+		options: [{ name: 'PPLX Embed Context V1 4B', value: 'pplx-embed-context-v1-4b' }],
 		default: 'pplx-embed-context-v1-4b',
 		description: 'The contextualized embedding model to use',
 		routing: {
