@@ -23,6 +23,7 @@ import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
+import { OtelConfig } from './configs/otel.config';
 import { PersonalizationConfig } from './configs/personalization.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
@@ -66,6 +67,7 @@ export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { OtelConfig } from './configs/otel.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -111,6 +113,9 @@ export class GlobalConfig {
 
 	@Nested
 	sentry: SentryConfig;
+
+	@Nested
+	otel: OtelConfig;
 
 	/** Path n8n is deployed to */
 	@Env('N8N_PATH')

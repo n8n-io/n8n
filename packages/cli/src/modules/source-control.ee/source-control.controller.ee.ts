@@ -6,7 +6,7 @@ import {
 	type SourceControlledFile,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
+import { Get, Post, Patch, RestController, GlobalScope, Body, Traced } from '@n8n/decorators';
 import * as express from 'express';
 import type { PullResult } from 'simple-git';
 
@@ -232,6 +232,9 @@ export class SourceControlController {
 	}
 
 	@Get('/get-status', { middlewares: [sourceControlEnabledMiddleware] })
+	@Traced({
+		name: 'get-status',
+	})
 	async getStatus(req: SourceControlRequest.GetStatus) {
 		try {
 			const result = await this.sourceControlService.getStatus(

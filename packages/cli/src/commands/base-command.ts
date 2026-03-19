@@ -82,6 +82,11 @@ export abstract class BaseCommand<F = never> {
 	protected needsTaskRunner = false;
 
 	async init(): Promise<void> {
+		if (this.globalConfig.otel.enabled) {
+			const { initOtel } = await import('n8n-core');
+			await initOtel(this.globalConfig.otel);
+		}
+
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
@@ -335,6 +340,11 @@ export abstract class BaseCommand<F = never> {
 			await this.shutdownService.waitForShutdown();
 
 			await this.errorReporter.shutdown();
+
+			if (this.globalConfig.otel.enabled) {
+				const { shutdownOtel } = await import('n8n-core');
+				await shutdownOtel();
+			}
 
 			await this.stopProcess();
 

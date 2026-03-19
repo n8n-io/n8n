@@ -31,6 +31,7 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/typeorm": "catalog:",
+    "@opentelemetry/api": "catalog:",
     "class-validator": "0.14.0",
     "flatted": "catalog:",
     "lodash": "catalog:",

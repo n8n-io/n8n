@@ -310,6 +310,13 @@ describe('GlobalConfig', () => {
 			tracesSampleRate: 0,
 			eventLoopBlockThreshold: 500,
 		},
+		otel: {
+			enabled: false,
+			otlpEndpoint: 'http://localhost:4318',
+			otlpProtocol: 'http/protobuf',
+			serviceName: 'n8n',
+			sampleRate: 1,
+		},
 		logging: {
 			level: 'info',
 			format: 'text',
