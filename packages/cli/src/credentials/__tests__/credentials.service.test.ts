@@ -99,7 +99,9 @@ describe('CredentialsService', () => {
 		credentialDependencyService.resolveExternalSecretsStoreDependencyFilter.mockResolvedValue(
 			undefined,
 		);
-		credentialDependencyService.resolveProviderIdsFromCredentialData.mockResolvedValue([]);
+		credentialDependencyService.syncExternalSecretProviderDependenciesForCredential.mockResolvedValue(
+			undefined,
+		);
 		ownershipService.addOwnedByAndSharedWith.mockImplementation((credential: any) => credential);
 		// Mock the subquery method used by member users and admin users with onlySharedWithMe
 		credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
