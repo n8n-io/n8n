@@ -629,7 +629,7 @@ Supported input types: \`string\`, \`number\`, \`boolean\`, \`array\`, \`object\
 ### Step 2: Submit and test the chunk
 
 1. Write the chunk file, then submit it: \`submit-workflow\` with the chunk file path.
-   - Sub-workflows with \`executeWorkflowTrigger\` are **auto-activated** on submission. The response will include \`activated: true\`.
+   - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`run-workflow\` without publishing. However, they must be **published** via \`publish-workflow\` before the parent workflow can call them in production (trigger-based) executions.
 2. Run the chunk: \`run-workflow\` with \`inputData\` matching the trigger schema.
 3. If it fails, use \`debug-execution\` to investigate, fix, and re-submit.
 
@@ -703,7 +703,7 @@ When \`explore-node-resources\` returns no results for a required resource:
 - You CANNOT find or use n8n API keys — they do not exist in the sandbox environment
 - Do NOT spend time searching for API keys, config files, environment variables, or process info — none of it is accessible
 
-**All interaction with n8n is through the provided tools:** \`submit-workflow\`, \`run-workflow\`, \`debug-execution\`, \`get-execution\`, \`list-credentials\`, \`test-credential\`, \`explore-node-resources\`, \`activate-workflow\`, \`list-data-tables\`, \`create-data-table\`, \`get-data-table-schema\`, etc. These tools communicate with n8n internally — no HTTP required.
+**All interaction with n8n is through the provided tools:** \`submit-workflow\`, \`run-workflow\`, \`debug-execution\`, \`get-execution\`, \`list-credentials\`, \`test-credential\`, \`explore-node-resources\`, \`publish-workflow\`, \`unpublish-workflow\`, \`list-data-tables\`, \`create-data-table\`, \`get-data-table-schema\`, etc. These tools communicate with n8n internally — no HTTP required.
 
 ## Sandbox-Specific Rules
 
@@ -784,11 +784,12 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
 5. **For each chunk**:
    a. Write the chunk to \`/home/daytona/workspace/chunks/<name>.ts\` with an \`executeWorkflowTrigger\` and explicit input schema.
    b. Run tsc.
-   c. Submit the chunk: \`submit-workflow\` with \`filePath\` pointing to the chunk file. Sub-workflows are auto-activated.
+   c. Submit the chunk: \`submit-workflow\` with \`filePath\` pointing to the chunk file. Test via \`run-workflow\` (no publish needed for manual runs).
    d. Fix if needed (max 2 submission fix attempts per chunk).
 6. **Write the main workflow** in \`/home/daytona/workspace/src/workflow.ts\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
 7. **Submit** the main workflow.
-8. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
+8. **Publish** all sub-workflows and the main workflow via \`publish-workflow\` so they run on triggers in production.
+9. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 
 Do NOT produce visible output until the final step. All reasoning happens internally.
 

@@ -5,16 +5,26 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
-export function createActivateWorkflowTool(context: InstanceAiContext) {
+export function createPublishWorkflowTool(context: InstanceAiContext) {
 	return createTool({
-		id: 'activate-workflow',
-		description: 'Activate or deactivate a workflow. Active workflows run on their triggers.',
+		id: 'publish-workflow',
+		description:
+			'Publish a workflow version to production. Publishing makes the specified version active — ' +
+			'it will run on its triggers. If the workflow has been edited since last publish, you must ' +
+			're-publish for changes to take effect. Omit versionId to publish the latest draft.',
 		inputSchema: z.object({
 			workflowId: z.string().describe('ID of the workflow'),
-			active: z.boolean().describe('true to activate, false to deactivate'),
+			versionId: z
+				.string()
+				.optional()
+				.describe('Specific version to publish (omit to publish the latest draft)'),
 		}),
 		outputSchema: z.object({
 			success: z.boolean(),
+			activeVersionId: z
+				.string()
+				.optional()
+				.describe('The now-active version ID. Confirms the workflow is published.'),
 			error: z.string().optional(),
 			denied: z.boolean().optional(),
 			reason: z.string().optional(),
@@ -30,36 +40,32 @@ export function createActivateWorkflowTool(context: InstanceAiContext) {
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
 
-			const needsApproval = context.permissions?.activateWorkflow !== 'always_allow';
+			const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
-			// If approval is required and this is the first call, suspend for confirmation
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
-				const action = input.active ? 'Activate' : 'Deactivate';
 				await suspend?.({
 					requestId: nanoid(),
-					message: `${action} workflow "${input.workflowId}"?`,
+					message: input.versionId
+						? `Publish version "${input.versionId}" of workflow "${input.workflowId}"?`
+						: `Publish workflow "${input.workflowId}"?`,
 					severity: 'warning' as const,
 				});
 				return { success: false };
 			}
 
-			// If resumed with denial
 			if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 				return { success: false, denied: true, reason: 'User denied the action' };
 			}
 
-			// Approved or always_allow — execute
 			try {
-				if (input.active) {
-					await context.workflowService.activate(input.workflowId);
-				} else {
-					await context.workflowService.deactivate(input.workflowId);
-				}
-				return { success: true };
+				const result = await context.workflowService.publish(input.workflowId, {
+					versionId: input.versionId,
+				});
+				return { success: true, activeVersionId: result.activeVersionId };
 			} catch (error) {
 				return {
 					success: false,
-					error: error instanceof Error ? error.message : 'Activation failed',
+					error: error instanceof Error ? error.message : 'Publish failed',
 				};
 			}
 		},
