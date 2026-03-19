@@ -1206,7 +1206,8 @@ describe('CredentialsService', () => {
 
 				// ASSERT
 				expect(credentialsRepository.findMany).toHaveBeenCalled();
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(false, {
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
+					includeData: false,
 					filters: { dependency: undefined },
 				});
 				expect(result).toHaveLength(2);
@@ -1233,7 +1234,8 @@ describe('CredentialsService', () => {
 
 				// ASSERT
 				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalled();
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(false, {
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
+					includeData: false,
 					filters: { dependency: undefined },
 				});
 				expect(result).toHaveLength(2);
@@ -1291,7 +1293,8 @@ describe('CredentialsService', () => {
 				});
 
 				// ASSERT
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(true, {
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
+					includeData: true,
 					filters: { dependency: undefined },
 				});
 			});
