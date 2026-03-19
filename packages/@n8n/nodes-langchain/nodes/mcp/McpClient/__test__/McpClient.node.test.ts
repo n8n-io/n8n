@@ -136,6 +136,28 @@ describe('McpClient', () => {
 		]);
 	});
 
+	it('should ignore structuredContent if it is an array', async () => {
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			content: [{ type: 'text', text: 'Success' }],
+			toolResult: undefined,
+			structuredContent: ['should', 'be', 'ignored'],
+		});
+
+		const result = await new McpClient().execute.call(executeFunctions);
+
+		expect(result).toEqual([
+			[
+				{
+					json: { content: [{ type: 'text', text: 'Success' }] },
+					pairedItem: { item: 0 },
+				},
+			],
+		]);
+	});
+
 	it('should convert images and audio to binary data when convertToBinary is true', async () => {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(key, _idx, defaultValue) =>

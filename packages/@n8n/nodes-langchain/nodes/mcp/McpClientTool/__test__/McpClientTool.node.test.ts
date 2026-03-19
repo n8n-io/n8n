@@ -388,7 +388,7 @@ describe('McpClientTool', () => {
 			expect(toolResult).toEqual(JSON.stringify([{ type: 'text', text: 'result from tool' }]));
 		});
 
-		it('should fall back to content when structuredContent is an empty object', async () => {
+		it('should return empty object directly when structuredContent is an empty object', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				content: [{ type: 'text', text: 'result from tool' }],
@@ -416,7 +416,6 @@ describe('McpClientTool', () => {
 
 			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 			const toolResult: string = await tools[0].invoke({});
-			// Empty object is a valid return but has no keys — should fall through to content
 			expect(toolResult).toEqual(JSON.stringify({}));
 		});
 
