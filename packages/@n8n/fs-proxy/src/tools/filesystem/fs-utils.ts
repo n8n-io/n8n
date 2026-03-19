@@ -129,11 +129,12 @@ function isAllowedDotFile(name: string): boolean {
 }
 
 /**
- * Resolve a path safely within the base directory, following symlinks.
+ * Resolve a path safely within the base directory.
  *
  * Walks each component of the path individually using `fs.realpath` so that
- * symlinks are resolved at every level. This prevents a symlink inside the
- * root from redirecting reads or writes to a location outside the root.
+ * symlinks are resolved at every level during the *security check*. This
+ * prevents a symlink inside the root from redirecting reads or writes to a
+ * location outside the root.
  *
  * For path components that do not yet exist (e.g. the target of a write
  * operation), the remaining components are appended as plain strings once the
@@ -142,6 +143,9 @@ function isAllowedDotFile(name: string): boolean {
  * Dangling symlinks (a symlink whose target does not exist) are followed
  * manually via `fs.lstat` + `fs.readlink` so that they are subject to the
  * same bounds check as regular symlinks.
+ *
+ * Returns the logical absolute path (without resolving symlinks), so the
+ * caller never needs to know that a symlink is involved.
  */
 export async function resolveSafePath(basePath: string, relativePath: string): Promise<string> {
 	const realBase = await fs.realpath(basePath);
@@ -185,5 +189,5 @@ export async function resolveSafePath(basePath: string, relativePath: string): P
 	if (!current.startsWith(realBase + path.sep) && current !== realBase) {
 		throw new Error(`Path "${relativePath}" escapes the base directory`);
 	}
-	return current;
+	return absolute;
 }

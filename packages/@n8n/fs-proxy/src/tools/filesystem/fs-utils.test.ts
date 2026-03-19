@@ -69,7 +69,8 @@ describe('resolveSafePath', () => {
 		]);
 
 		const result = await resolveSafePath(BASE, 'link/file.ts');
-		expect(result).toBe('/base/inner/file.ts');
+		// Returns the logical path without following symlinks
+		expect(result).toBe('/base/link/file.ts');
 	});
 
 	it('throws when a symlink redirects outside the base directory', async () => {
@@ -100,7 +101,8 @@ describe('resolveSafePath', () => {
 		mockReadlink([[baseLink, baseNewfile]]);
 
 		const result = await resolveSafePath(BASE, 'link/sub');
-		expect(result).toBe('/base/newfile/sub');
+		// Returns the logical path without following symlinks
+		expect(result).toBe('/base/link/sub');
 	});
 
 	it('resolves a symlink chain that loops back inside the base', async () => {
@@ -118,7 +120,8 @@ describe('resolveSafePath', () => {
 		]);
 
 		const result = await resolveSafePath(BASE, 'test/hello/bam/bum');
-		expect(result).toBe('/base/bam/bum');
+		// Returns the logical path without following symlinks
+		expect(result).toBe('/base/test/hello/bam/bum');
 	});
 
 	it('throws when a symlink chain exits the base without returning', async () => {
