@@ -113,6 +113,46 @@ describe('CredentialDependencyRepository', () => {
 			});
 		});
 	});
+
+	describe('deleteByDependency', () => {
+		it('deletes all dependency rows by type and id', async () => {
+			await repository.deleteByDependency({
+				dependencyType: 'externalSecretProvider',
+				dependencyId: 'provider-1',
+				entityManager,
+			});
+
+			expect(entityManager.delete).toHaveBeenCalledWith(CredentialDependency, {
+				dependencyType: 'externalSecretProvider',
+				dependencyId: 'provider-1',
+			});
+		});
+	});
+
+	describe('deleteByDependencies', () => {
+		it('deletes all dependency rows by type and ids', async () => {
+			await repository.deleteByDependencies({
+				dependencyType: 'externalSecretProvider',
+				dependencyIds: ['provider-1', 'provider-2'],
+				entityManager,
+			});
+
+			expect(entityManager.delete).toHaveBeenCalledWith(CredentialDependency, {
+				dependencyType: 'externalSecretProvider',
+				dependencyId: In(['provider-1', 'provider-2']),
+			});
+		});
+
+		it('returns early when there is nothing to delete', async () => {
+			await repository.deleteByDependencies({
+				dependencyType: 'externalSecretProvider',
+				dependencyIds: [],
+				entityManager,
+			});
+
+			expect(entityManager.delete).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('addCredentialDependencyExistsFilter', () => {

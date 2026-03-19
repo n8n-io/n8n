@@ -12,6 +12,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import type { SecretsProviderAccessRole, SecretsProviderConnection } from '@n8n/db';
 import {
+	CredentialDependencyRepository,
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
@@ -21,6 +22,8 @@ import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
+import { ExternalSecretsProviderRegistry } from './provider-registry.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -28,7 +31,7 @@ import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 
-import { ExternalSecretsProviderRegistry } from './provider-registry.service';
+const EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE = 'externalSecretProvider' as const;
 
 @Service()
 export class SecretsProvidersConnectionsService {
@@ -36,6 +39,7 @@ export class SecretsProvidersConnectionsService {
 		private readonly logger: Logger,
 		private readonly repository: SecretsProviderConnectionRepository,
 		private readonly projectAccessRepository: ProjectSecretsProviderAccessRepository,
+		private readonly credentialDependencyRepository: CredentialDependencyRepository,
 		private readonly providerRegistry: ExternalSecretsProviderRegistry,
 		private readonly cipher: Cipher,
 		private readonly externalSecretsManager: ExternalSecretsManager,
@@ -201,8 +205,13 @@ export class SecretsProvidersConnectionsService {
 	async deleteConnection(providerKey: string, userId: string): Promise<SecretsProviderConnection> {
 		const connection = await this.findConnectionOrFail(providerKey);
 		const projectInfo = this.extractProjectInfo(connection);
+		const dependencyId = connection.id.toString();
 
 		await this.projectAccessRepository.deleteByConnectionId(connection.id);
+		await this.credentialDependencyRepository.deleteByDependency({
+			dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+			dependencyId,
+		});
 		await this.repository.remove(connection);
 
 		await this.externalSecretsManager.syncProviderConnection(providerKey);
@@ -406,6 +415,12 @@ export class SecretsProvidersConnectionsService {
 		// Wrap deletion + update ops in a transaction for consistency
 		await this.repository.manager.transaction(async (entityManager) => {
 			if (ownerConnectionIds.size > 0) {
+				await this.credentialDependencyRepository.deleteByDependencies({
+					dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+					dependencyIds: [...ownerConnectionIds].map((id) => id.toString()),
+					entityManager,
+				});
+
 				// Delete owned connections entirely; DB cascade removes access entries
 				await entityManager.delete(this.repository.target, { id: In([...ownerConnectionIds]) });
 			}
@@ -475,6 +490,10 @@ export class SecretsProvidersConnectionsService {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
 		}
 
+		await this.credentialDependencyRepository.deleteByDependency({
+			dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+			dependencyId: connection.id.toString(),
+		});
 		await this.projectAccessRepository.deleteByConnectionId(connection.id);
 		await this.externalSecretsManager.syncProviderConnection(providerKey);
 

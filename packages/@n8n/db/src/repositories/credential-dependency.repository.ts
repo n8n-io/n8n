@@ -45,6 +45,18 @@ type DependencyMutationOptions = {
 	entityManager?: EntityManager;
 };
 
+type DeleteByDependencyOptions = {
+	dependencyType: CredentialDependencyType;
+	dependencyId: string;
+	entityManager?: EntityManager;
+};
+
+type DeleteByDependenciesOptions = {
+	dependencyType: CredentialDependencyType;
+	dependencyIds: string[];
+	entityManager?: EntityManager;
+};
+
 @Service()
 export class CredentialDependencyRepository extends Repository<CredentialDependency> {
 	constructor(dataSource: DataSource) {
@@ -121,5 +133,29 @@ export class CredentialDependencyRepository extends Repository<CredentialDepende
 				entityManager,
 			});
 		}
+	}
+
+	async deleteByDependency({
+		dependencyType,
+		dependencyId,
+		entityManager = this.manager,
+	}: DeleteByDependencyOptions): Promise<void> {
+		await entityManager.delete(CredentialDependency, {
+			dependencyType,
+			dependencyId,
+		});
+	}
+
+	async deleteByDependencies({
+		dependencyType,
+		dependencyIds,
+		entityManager = this.manager,
+	}: DeleteByDependenciesOptions): Promise<void> {
+		if (dependencyIds.length === 0) return;
+
+		await entityManager.delete(CredentialDependency, {
+			dependencyType,
+			dependencyId: In(dependencyIds),
+		});
 	}
 }
