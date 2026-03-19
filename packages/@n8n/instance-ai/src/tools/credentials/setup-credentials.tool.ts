@@ -118,11 +118,7 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 				return {
 					success: true,
 					deferred: true,
-					reason:
-						'User chose to defer credential setup for now. Continue with any remaining work. ' +
-						'Once everything is complete, ask the user if they would like to set up the ' +
-						'missing credentials. If they say yes, call `setup-credentials` again with the ' +
-						'same credential types. Do NOT give manual setup instructions.',
+					reason: 'User deferred credential setup.',
 				};
 			}
 

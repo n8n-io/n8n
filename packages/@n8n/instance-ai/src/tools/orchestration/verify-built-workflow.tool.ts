@@ -35,7 +35,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 		outputSchema: z.object({
 			executionId: z.string().optional(),
 			success: z.boolean(),
-			status: z.enum(['running', 'success', 'error', 'waiting']).optional(),
+			status: z.enum(['running', 'success', 'error', 'waiting', 'unknown']).optional(),
 			data: z.record(z.unknown()).optional(),
 			error: z.string().optional(),
 		}),
@@ -64,7 +64,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			return {
 				executionId: result.executionId || undefined,
 				success: result.status === 'success',
-				status: result.status as 'running' | 'success' | 'error' | 'waiting' | undefined,
+				status: result.status,
 				data: result.data,
 				error: result.error,
 			};
