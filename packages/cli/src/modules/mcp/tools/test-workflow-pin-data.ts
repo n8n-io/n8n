@@ -1,10 +1,6 @@
 import type { User } from '@n8n/db';
-import {
-	discoverSchemasForNode,
-	findSchemaForOperation,
-	jsonSchemaToSampleData,
-} from '@n8n/workflow-sdk';
-import type { INode, IPinData, INodeExecutionData } from 'n8n-workflow';
+import { discoverSchemasForNode, findSchemaForOperation, type JsonSchema } from '@n8n/workflow-sdk';
+import type { INode, INodeExecutionData, IPinData } from 'n8n-workflow';
 import { jsonStringify } from 'n8n-workflow';
 import z from 'zod';
 
@@ -13,7 +9,6 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 import type { ExecutionService } from '@/executions/execution.service';
-import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -24,14 +19,28 @@ const inputSchema = z.object({
 const outputSchema = {
 	pinData: z
 		.record(z.array(z.record(z.unknown())))
-		.describe('Pin data map: node name → array of data items. Pass this to test_workflow.'),
+		.describe(
+			'Pin data from the last successful execution. Keys are node names, values are arrays of data items. These are ready to use as-is.',
+		),
+	nodeSchemasToGenerate: z
+		.record(z.record(z.unknown()))
+		.describe(
+			'Nodes that need pin data generated. Keys are node names, values are JSON Schema objects describing the expected output shape. Generate realistic sample data matching each schema and merge into pinData before passing to test_workflow.',
+		),
+	nodesWithoutSchema: z
+		.array(z.string())
+		.describe(
+			'Node names with no execution data or output schema. Generate a single item with an empty JSON object ({ json: {} }) for each, and merge into pinData before passing to test_workflow.',
+		),
 	coverage: z.object({
 		fromExecution: z
 			.number()
 			.describe('Number of nodes with pin data from last successful execution'),
-		fromSchema: z.number().describe('Number of nodes with pin data generated from output schemas'),
-		fallback: z.number().describe('Number of nodes with fallback empty pin data'),
-		total: z.number().describe('Total number of nodes processed'),
+		withSchema: z.number().describe('Number of nodes with output schemas for you to generate'),
+		withoutSchema: z
+			.number()
+			.describe('Number of nodes with no data or schema — use empty defaults'),
+		total: z.number().describe('Total number of enabled nodes'),
 	}),
 } satisfies z.ZodRawShape;
 
@@ -39,13 +48,12 @@ export const createPrepareTestPinDataTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
 	executionService: ExecutionService,
-	nodeTypes: NodeTypes,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'prepare_test_pin_data',
 	config: {
 		description:
-			'Generate test pin data for all nodes in a workflow. Uses data from the last successful execution when available, falls back to schema-based sample data, then to empty defaults. Pass the result to test_workflow.',
+			'Prepare test pin data for a workflow. Returns execution data for nodes that have it, JSON Schemas for nodes that need generated data, and a list of nodes with no schema. You should generate realistic sample data for the schemas, use empty defaults for nodes without schema, merge everything into a single pinData object, and pass it to test_workflow.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
@@ -69,7 +77,6 @@ export const createPrepareTestPinDataTool = (
 				user,
 				workflowFinderService,
 				executionService,
-				nodeTypes,
 			);
 
 			telemetryPayload.results = {
@@ -100,16 +107,25 @@ export const createPrepareTestPinDataTool = (
 // Core Logic
 // =============================================================================
 
+interface PreparePinDataResult {
+	[key: string]: unknown;
+	pinData: IPinData;
+	nodeSchemasToGenerate: Record<string, JsonSchema>;
+	nodesWithoutSchema: string[];
+	coverage: {
+		fromExecution: number;
+		withSchema: number;
+		withoutSchema: number;
+		total: number;
+	};
+}
+
 export async function preparePinData(
 	workflowId: string,
 	user: User,
 	workflowFinderService: WorkflowFinderService,
 	executionService: ExecutionService,
-	nodeTypes: NodeTypes,
-): Promise<{
-	pinData: IPinData;
-	coverage: { fromExecution: number; fromSchema: number; fallback: number; total: number };
-}> {
+): Promise<PreparePinDataResult> {
 	const workflow = await getMcpWorkflow(workflowId, user, ['workflow:read'], workflowFinderService);
 
 	const enabledNodes = (workflow.nodes ?? []).filter((n) => !n.disabled);
@@ -118,9 +134,12 @@ export async function preparePinData(
 	const executionRunData = await getExecutionRunData(workflowId, user, executionService);
 
 	const pinData: IPinData = {};
+	const nodeSchemasToGenerate: Record<string, JsonSchema> = {};
+	const nodesWithoutSchema: string[] = [];
+
 	let fromExecution = 0;
-	let fromSchema = 0;
-	let fallback = 0;
+	let withSchema = 0;
+	let withoutSchema = 0;
 
 	for (const node of enabledNodes) {
 		// Tier 1: Execution history
@@ -131,25 +150,27 @@ export async function preparePinData(
 			continue;
 		}
 
-		// Tier 2: Schema-based generation
-		const schemaData = generatePinDataFromSchema(node, nodeTypes);
-		if (schemaData) {
-			pinData[node.name] = schemaData;
-			fromSchema++;
+		// Tier 2: Return schema for LLM to generate
+		const schema = discoverOutputSchema(node);
+		if (schema) {
+			nodeSchemasToGenerate[node.name] = schema;
+			withSchema++;
 			continue;
 		}
 
-		// Tier 3: Fallback
-		pinData[node.name] = [{ json: {} }];
-		fallback++;
+		// Tier 3: No data, no schema
+		nodesWithoutSchema.push(node.name);
+		withoutSchema++;
 	}
 
 	return {
 		pinData,
+		nodeSchemasToGenerate,
+		nodesWithoutSchema,
 		coverage: {
 			fromExecution,
-			fromSchema,
-			fallback,
+			withSchema,
+			withoutSchema,
 			total: enabledNodes.length,
 		},
 	};
@@ -192,54 +213,30 @@ function extractNodePinDataFromExecution(
 }
 
 // =============================================================================
-// Tier 2: Schema-Based Generation
+// Tier 2: Schema Discovery
 // =============================================================================
 
-function generatePinDataFromSchema(
-	node: INode,
-	nodeTypes: NodeTypes,
-): INodeExecutionData[] | undefined {
+function discoverOutputSchema(node: INode): JsonSchema | undefined {
 	try {
-		const resource = (node.parameters?.resource as string) ?? '';
-		const operation = (node.parameters?.operation as string) ?? '';
-
-		// Need at least a node type to look up schemas
 		if (!node.type) return undefined;
 
-		// Get the node version
+		const resource = (node.parameters?.resource as string) ?? '';
+		const operation = (node.parameters?.operation as string) ?? '';
 		const version =
 			typeof node.typeVersion === 'number' ? node.typeVersion : Number(node.typeVersion);
 
-		// Discover schemas for this node type
 		const schemas = discoverSchemasForNode(node.type, version);
 		if (schemas.length === 0) return undefined;
 
-		// For nodes without resource/operation, try to find a single output schema
-		let schema;
+		let match;
 		if (resource || operation) {
-			schema = findSchemaForOperation(schemas, resource, operation);
+			match = findSchemaForOperation(schemas, resource, operation);
 		} else if (schemas.length === 1) {
-			// Single schema (e.g., Webhook output.json)
-			schema = schemas[0];
+			match = schemas[0];
 		}
 
-		if (!schema?.schema) return undefined;
-
-		// Verify the node type exists (prevents errors for removed node types)
-		try {
-			nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		} catch {
-			return undefined;
-		}
-
-		const sampleData = jsonSchemaToSampleData(schema.schema);
-		if (typeof sampleData === 'object' && sampleData !== null) {
-			return [{ json: sampleData as INodeExecutionData['json'] }];
-		}
-
-		return undefined;
+		return match?.schema;
 	} catch {
-		// Schema discovery/generation failed — fall through to Tier 3
 		return undefined;
 	}
 }

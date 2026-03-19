@@ -30,7 +30,7 @@ const inputSchema = z.object({
 	pinData: z
 		.record(z.array(z.record(z.unknown())))
 		.describe(
-			'Pin data for all workflow nodes. Use the prepare_test_pin_data tool to generate this. Keys are node names, values are arrays of data objects.',
+			'Pin data for all workflow nodes. Use the prepare_test_pin_data tool to generate this. Keys are node names, values are arrays of items. Each item MUST be wrapped in a "json" property, e.g. [{"json": {"id": "123", "name": "test"}}]. Do NOT pass flat objects like [{"id": "123"}].',
 		),
 });
 
@@ -164,8 +164,13 @@ export async function testWorkflow(
 		);
 	}
 
+	// Normalize pin data: ensure each item has a "json" wrapper
+	const normalizedPinData = normalizePinData(pinData);
+
 	// Ensure trigger has pin data
-	const triggerPinData: INodeExecutionData[] = pinData[triggerNode.name] ?? [{ json: {} }];
+	const triggerPinData: INodeExecutionData[] = normalizedPinData[triggerNode.name] ?? [
+		{ json: {} },
+	];
 
 	const mcpMessageId = `mcp-test-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
@@ -178,11 +183,11 @@ export async function testWorkflow(
 		mcpSessionId: mcpMessageId,
 		mcpMessageId,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
-		pinData,
+		pinData: normalizedPinData,
 		executionData: createRunExecutionData({
 			startData: {},
 			resultData: {
-				pinData,
+				pinData: normalizedPinData,
 				runData: {},
 			},
 			executionData: {
@@ -233,4 +238,23 @@ function findTriggerNode(nodes: INode[], nodeTypes: NodeTypes): INode | undefine
 		}
 	}
 	return undefined;
+}
+
+/**
+ * Normalize pin data items to ensure each has a "json" wrapper.
+ * LLM clients may send flat objects like [{"id": "123"}] instead of
+ * the required [{"json": {"id": "123"}}] format.
+ */
+function normalizePinData(pinData: IPinData): IPinData {
+	const normalized: IPinData = {};
+	for (const [nodeName, items] of Object.entries(pinData)) {
+		normalized[nodeName] = items.map((item) => {
+			if ('json' in item && typeof item.json === 'object') {
+				return item;
+			}
+			// Wrap the flat object in { json: ... }
+			return { json: item } as INodeExecutionData;
+		});
+	}
+	return normalized;
 }

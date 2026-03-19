@@ -187,7 +187,6 @@ export class McpService {
 			user,
 			this.workflowFinderService,
 			this.executionService,
-			this.nodeTypes,
 			this.telemetry,
 		);
 		server.registerTool(
