@@ -5,6 +5,7 @@ import type { Memory } from '@mastra/memory';
 import type {
 	TaskList,
 	InstanceAiPermissions,
+	InstanceAiPlanSpec,
 	McpTool,
 	McpToolCallRequest,
 	McpToolCallResult,
@@ -504,6 +505,11 @@ export interface TaskStorage {
 	save(threadId: string, tasks: TaskList): Promise<void>;
 }
 
+export interface PlanStorage {
+	get(threadId: string): Promise<InstanceAiPlanSpec | null>;
+	save(threadId: string, plan: InstanceAiPlanSpec): Promise<void>;
+}
+
 // ── MCP ──────────────────────────────────────────────────────────────────────
 
 export interface McpServerConfig {
@@ -570,6 +576,7 @@ export interface OrchestrationContext {
 	domainTools: ToolsInput;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
+	planStorage: PlanStorage;
 	waitForConfirmation?: (requestId: string) => Promise<{
 		approved: boolean;
 		credentialId?: string;

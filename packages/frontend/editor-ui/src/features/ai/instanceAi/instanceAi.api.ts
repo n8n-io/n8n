@@ -5,6 +5,7 @@ import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmResponse,
+	InstanceAiQuestionResponse,
 } from '@n8n/api-types';
 
 /**
@@ -78,6 +79,7 @@ export async function postConfirmation(
 	userInput?: string,
 	domainAccessAction?: string,
 	mockCredentials?: boolean,
+	answers?: InstanceAiQuestionResponse[],
 ): Promise<void> {
 	const payload: InstanceAiConfirmResponse = {
 		approved,
@@ -86,6 +88,7 @@ export async function postConfirmation(
 		...(autoSetup ? { autoSetup } : {}),
 		...(mockCredentials ? { mockCredentials } : {}),
 		...(userInput !== undefined ? { userInput } : {}),
+		...(answers ? { answers } : {}),
 		...(domainAccessAction
 			? {
 					domainAccessAction: domainAccessAction as InstanceAiConfirmResponse['domainAccessAction'],

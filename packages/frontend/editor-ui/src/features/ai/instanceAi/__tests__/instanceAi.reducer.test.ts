@@ -159,6 +159,16 @@ function makeConfirmationRequestEvent(
 			args: {},
 			severity: 'warning',
 			message: 'Are you sure?',
+			inputType: 'questions',
+			introMessage: 'A few quick questions before I proceed.',
+			questions: [
+				{
+					id: 'q-1',
+					question: 'Which provider should I use?',
+					type: 'single',
+					options: ['OpenAI', 'Anthropic'],
+				},
+			],
 		},
 	};
 }
@@ -173,6 +183,51 @@ function makeErrorEvent(
 		runId,
 		agentId,
 		payload: { content },
+	};
+}
+
+function makePlanCreatedEvent(
+	runId: string,
+	agentId: string,
+): Extract<InstanceAiEvent, { type: 'plan-created' }> {
+	return {
+		type: 'plan-created',
+		runId,
+		agentId,
+		payload: {
+			plan: {
+				planId: 'plan-1',
+				goal: 'Build the workflow',
+				summary: 'Phase-based plan',
+				assumptions: ['Slack access is available'],
+				externalSystems: ['Slack'],
+				dataContracts: ['Incoming payload contains email'],
+				acceptanceCriteria: ['Workflow runs successfully'],
+				openQuestions: [],
+				status: 'awaiting_approval',
+				lastUpdatedAt: '2026-03-18T10:00:00.000Z',
+				phases: [
+					{
+						id: 'phase-1',
+						title: 'Set up trigger',
+						description: 'Create the entry point',
+						objective: 'Receive new submissions',
+						dependsOn: [],
+						inputs: ['Form submission'],
+						deliverable: 'Runnable trigger workflow',
+						targetResource: { type: 'workflow' },
+						status: 'pending',
+						artifacts: [],
+						verification: {
+							mode: 'run-workflow',
+							expectedOutcome: 'Trigger receives sample input',
+							successCriteria: 'The trigger can be executed with sample input.',
+						},
+						blockingQuestions: [],
+					},
+				],
+			},
+		},
 	};
 }
 
@@ -345,6 +400,55 @@ describe('instanceAi.reducer', () => {
 		});
 	});
 
+	describe('plan state', () => {
+		test('plan-created attaches the plan to the root agent tree', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makePlanCreatedEvent('run-1', 'agent-root'));
+
+			expect(state.messages[0].agentTree?.plan).toMatchObject({
+				planId: 'plan-1',
+				status: 'awaiting_approval',
+				phases: [{ id: 'phase-1', status: 'pending' }],
+			});
+		});
+
+		test('phase-status-updated mutates only the targeted phase', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makePlanCreatedEvent('run-1', 'agent-root'));
+			handleEvent(state, {
+				type: 'phase-status-updated',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					planId: 'plan-1',
+					phase: {
+						id: 'phase-1',
+						title: 'Set up trigger',
+						description: 'Create the entry point',
+						objective: 'Receive new submissions',
+						dependsOn: [],
+						inputs: ['Form submission'],
+						deliverable: 'Runnable trigger workflow',
+						targetResource: { type: 'workflow' },
+						status: 'building',
+						artifacts: [],
+						verification: {
+							mode: 'run-workflow',
+							expectedOutcome: 'Trigger receives sample input',
+							successCriteria: 'The trigger can be executed with sample input.',
+						},
+						blockingQuestions: [],
+					},
+				},
+			});
+
+			expect(state.messages[0].agentTree?.plan?.phases[0]).toMatchObject({
+				id: 'phase-1',
+				status: 'building',
+			});
+		});
+	});
+
 	// -----------------------------------------------------------------------
 	// Agent lifecycle
 	// -----------------------------------------------------------------------
@@ -387,6 +491,16 @@ describe('instanceAi.reducer', () => {
 				requestId: 'req-1',
 				severity: 'warning',
 				message: 'Are you sure?',
+				inputType: 'questions',
+				introMessage: 'A few quick questions before I proceed.',
+				questions: [
+					{
+						id: 'q-1',
+						question: 'Which provider should I use?',
+						type: 'single',
+						options: ['OpenAI', 'Anthropic'],
+					},
+				],
 			});
 		});
 	});
@@ -571,6 +685,11 @@ describe('instanceAi.reducer', () => {
 	describe('getRenderHint', () => {
 		test('returns tasks for "update-tasks"', () => {
 			expect(getRenderHint('update-tasks')).toBe('tasks');
+		});
+
+		test('returns plan for planning tools', () => {
+			expect(getRenderHint('create-plan')).toBe('plan');
+			expect(getRenderHint('update-phase-status')).toBe('plan');
 		});
 
 		test('returns delegate for "delegate"', () => {

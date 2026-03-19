@@ -1,5 +1,9 @@
-import { credentialRequestSchema } from '@n8n/api-types';
-import type { InstanceAiCredentialRequest, InstanceAiEvent } from '@n8n/api-types';
+import { credentialRequestSchema, instanceAiPlannerQuestionSchema } from '@n8n/api-types';
+import type {
+	InstanceAiCredentialRequest,
+	InstanceAiEvent,
+	InstanceAiPlannerQuestion,
+} from '@n8n/api-types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -174,7 +178,23 @@ export function mapMastraChunkToEvent(
 				? ('text' as const)
 				: rawInputType === 'approval'
 					? ('approval' as const)
-					: undefined;
+					: rawInputType === 'questions'
+						? ('questions' as const)
+						: undefined;
+
+		let questions: InstanceAiPlannerQuestion[] | undefined;
+		if (Array.isArray(suspendPayload.questions)) {
+			const parsedQuestions = suspendPayload.questions
+				.map((item) => instanceAiPlannerQuestionSchema.safeParse(item))
+				.filter((result) => result.success)
+				.map((result) => result.data);
+			if (parsedQuestions.length > 0) {
+				questions = parsedQuestions;
+			}
+		}
+
+		const introMessage =
+			typeof suspendPayload.introMessage === 'string' ? suspendPayload.introMessage : undefined;
 
 		// Extract optional domainAccess metadata (for domain-gated tools like fetch-url)
 		const rawDomainAccess = isRecord(suspendPayload.domainAccess)
@@ -202,6 +222,8 @@ export function mapMastraChunkToEvent(
 						? suspendPayload.message
 						: 'Confirmation required',
 				...(credentialRequests ? { credentialRequests } : {}),
+				...(questions ? { questions } : {}),
+				...(introMessage ? { introMessage } : {}),
 				...(inputType ? { inputType } : {}),
 				...(domainAccess ? { domainAccess } : {}),
 			},

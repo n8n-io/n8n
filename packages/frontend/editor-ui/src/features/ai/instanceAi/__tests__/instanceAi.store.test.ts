@@ -263,6 +263,60 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		expect(oldMsg?.agentTree?.children).toHaveLength(1);
 	});
 
+	test('run-sync creates a placeholder assistant message when no matching message exists yet', () => {
+		capturedInstance!.dispatchNamedEvent('run-sync', {
+			runId: 'run-suspended',
+			messageGroupId: 'mg-suspended',
+			runIds: ['run-suspended'],
+			agentTree: {
+				agentId: 'agent-root',
+				role: 'orchestrator',
+				status: 'suspended',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tool-plan-approval',
+						toolName: 'request-plan-approval',
+						args: {},
+						isLoading: true,
+						renderHint: 'plan',
+						confirmation: {
+							requestId: 'req-plan',
+							severity: 'info',
+							message: 'Review the plan before building.',
+							inputType: 'approval',
+						},
+					},
+				],
+				children: [],
+				timeline: [{ type: 'tool-call', toolCallId: 'tool-plan-approval' }],
+				plan: {
+					planId: 'plan-1',
+					goal: 'Build a dashboard',
+					summary: 'Phase-based plan',
+					assumptions: [],
+					externalSystems: [],
+					dataContracts: [],
+					acceptanceCriteria: [],
+					openQuestions: [],
+					status: 'awaiting_approval',
+					lastUpdatedAt: '2026-03-18T10:00:00.000Z',
+					phases: [],
+				},
+			},
+			status: 'suspended',
+			backgroundTasks: [],
+		});
+
+		expect(store.messages).toHaveLength(1);
+		expect(store.messages[0].runId).toBe('run-suspended');
+		expect(store.messages[0].messageGroupId).toBe('mg-suspended');
+		expect(store.messages[0].agentTree?.plan?.planId).toBe('plan-1');
+		expect(store.messages[0].isStreaming).toBe(true);
+		expect(store.activeRunId).toBe('run-suspended');
+	});
+
 	test('lastEventIdByThread is updated from sseEvent.lastEventId on every message', () => {
 		const threadId = store.currentThreadId;
 

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiMessage } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 
@@ -17,11 +17,44 @@ const ROLE_LABELS: Record<string, string> = {
 	'data-table-manager': 'Managing data tables',
 };
 
+function findPendingPlanConfirmation(tree: InstanceAiAgentNode) {
+	return tree.toolCalls.find(
+		(toolCall) => toolCall.renderHint === 'plan' && toolCall.isLoading && !!toolCall.confirmation,
+	);
+}
+
 function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?: string } | null {
 	const lastMsg = [...messages].reverse().find((m) => m.role === 'assistant' && m.isStreaming);
 	if (!lastMsg?.agentTree) return { label: i18n.baseText('instanceAi.statusBar.thinking') };
 
 	const tree = lastMsg.agentTree;
+	const pendingPlanConfirmation = findPendingPlanConfirmation(tree);
+	if (pendingPlanConfirmation?.confirmation?.inputType === 'questions') {
+		return {
+			label: i18n.baseText('aiAssistant.builder.planMode.questions.title'),
+			detail: i18n.baseText('node.theNodeIsWaitingUserInput'),
+		};
+	}
+
+	if (pendingPlanConfirmation?.confirmation?.inputType === 'approval') {
+		return {
+			label: i18n.baseText('instanceAi.planTimeline.title'),
+			detail: i18n.baseText('instanceAi.planTimeline.status.awaitingApproval'),
+		};
+	}
+
+	const activePhase = tree.plan?.phases.find(
+		(phase) => phase.status === 'building' || phase.status === 'verifying',
+	);
+	if (activePhase) {
+		return {
+			label: activePhase.title,
+			detail:
+				activePhase.status === 'verifying'
+					? i18n.baseText('instanceAi.planTimeline.phase.verifying')
+					: i18n.baseText('instanceAi.planTimeline.phase.building'),
+		};
+	}
 
 	// Check active children first (sub-agents)
 	const activeChild = tree.children.find((c) => c.status === 'active');

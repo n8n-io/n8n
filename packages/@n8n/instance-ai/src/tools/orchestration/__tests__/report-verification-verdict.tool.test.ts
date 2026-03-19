@@ -25,6 +25,10 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 			get: jest.fn(),
 			save: jest.fn(),
 		} as TaskStorage,
+		planStorage: {
+			get: jest.fn(),
+			save: jest.fn(),
+		},
 		...overrides,
 	};
 }

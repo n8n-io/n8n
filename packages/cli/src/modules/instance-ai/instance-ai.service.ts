@@ -42,6 +42,7 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiGatewayCapabilities,
 	McpToolCallResult,
+	InstanceAiQuestionResponse,
 } from '@n8n/api-types';
 
 import { LocalGateway, LocalFilesystemProvider } from './filesystem';
@@ -51,6 +52,7 @@ import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { MastraIterationLogStorage } from './iteration-log-storage';
+import { MastraPlanStorage } from './plan-storage';
 import { MastraTaskStorage } from './task-storage';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
 import { WorkflowLoopStorage } from './workflow-loop-storage';
@@ -78,6 +80,7 @@ interface ConfirmationData {
 	autoSetup?: { credentialType: string };
 	mockCredentials?: boolean;
 	userInput?: string;
+	answers?: InstanceAiQuestionResponse[];
 	domainAccessAction?: string;
 }
 
@@ -704,6 +707,7 @@ export class InstanceAiService {
 				});
 			}
 			const taskStorage = new MastraTaskStorage(memory);
+			const planStorage = new MastraPlanStorage(memory);
 			const iterationLog = new MastraIterationLogStorage(memory);
 			const snapshotStorage = new AgentTreeSnapshotStorage(memory);
 			const workflowLoopStorage = new WorkflowLoopStorage(memory);
@@ -716,6 +720,15 @@ export class InstanceAiService {
 					runId,
 					agentId: ORCHESTRATOR_AGENT_ID,
 					payload: { tasks: existingTasks },
+				});
+			}
+			const existingPlan = await planStorage.get(threadId);
+			if (existingPlan) {
+				this.eventBus.publish(threadId, {
+					type: 'plan-created',
+					runId,
+					agentId: ORCHESTRATOR_AGENT_ID,
+					payload: { plan: existingPlan },
 				});
 			}
 
@@ -743,6 +756,7 @@ export class InstanceAiService {
 				domainTools,
 				abortSignal: signal,
 				taskStorage,
+				planStorage,
 				researchMode,
 				browserMcpConfig: this.instanceAiConfig.browserMcp
 					? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
@@ -850,6 +864,7 @@ export class InstanceAiService {
 
 			// Stream ended due to tool suspension — save state and exit without run-finish
 			if (lastSuspension && !signal.aborted) {
+				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 				this.activeRuns.delete(threadId);
 				this.suspendedRuns.set(threadId, {
 					runId,
@@ -957,6 +972,7 @@ export class InstanceAiService {
 			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 			...(data.mockCredentials ? { mockCredentials: data.mockCredentials } : {}),
 			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
+			...(data.answers ? { answers: data.answers } : {}),
 			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
 		};
 
@@ -1046,6 +1062,7 @@ export class InstanceAiService {
 			}
 
 			if (lastSuspension && !opts.signal.aborted) {
+				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 				this.activeRuns.delete(opts.threadId);
 				this.suspendedRuns.set(opts.threadId, {
 					runId: opts.runId,

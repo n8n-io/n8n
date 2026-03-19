@@ -43,6 +43,10 @@ function createMockContext(domainTools: Record<string, unknown> = {}): Orchestra
 			get: jest.fn(),
 			save: jest.fn(),
 		} as TaskStorage,
+		planStorage: {
+			get: jest.fn(),
+			save: jest.fn(),
+		},
 	};
 }
 

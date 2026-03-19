@@ -161,6 +161,7 @@ function patchNodeInPlace(node: InstanceAiAgentNode, state: AgentRunState): bool
 	node.result = agent.result;
 	node.error = agent.error;
 	node.tasks = agent.tasks;
+	node.plan = agent.plan;
 	node.kind = agent.kind;
 	node.title = agent.title;
 	node.subtitle = agent.subtitle;
@@ -309,6 +310,7 @@ function populateRunStateFromNode(
 		textContent: node.textContent,
 		reasoning: node.reasoning,
 		tasks: node.tasks,
+		plan: node.plan,
 		result: node.result,
 		error: node.error,
 	};
@@ -446,6 +448,11 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'tool-error':
 		case 'agent-spawned':
 		case 'agent-completed':
+		case 'plan-created':
+		case 'plan-updated':
+		case 'plan-status-updated':
+		case 'phase-status-updated':
+		case 'phase-artifact-added':
 		case 'confirmation-request':
 		case 'tasks-update': {
 			const { msg, runState } = resolveTarget(state, event.runId);

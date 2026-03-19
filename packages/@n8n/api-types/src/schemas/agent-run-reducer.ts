@@ -12,6 +12,9 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiAgentKind,
 	InstanceAiAgentStatus,
+	InstanceAiPhaseArtifact,
+	InstanceAiPhaseSpec,
+	InstanceAiPlanSpec,
 	InstanceAiToolCallState,
 	InstanceAiTimelineEntry,
 	InstanceAiTargetResource,
@@ -37,6 +40,7 @@ export interface AgentNode {
 	textContent: string;
 	reasoning: string;
 	tasks?: TaskList;
+	plan?: InstanceAiPlanSpec;
 	result?: string;
 	error?: string;
 }
@@ -141,6 +145,63 @@ function appendTimelineText(timeline: InstanceAiTimelineEntry[], text: string): 
 	} else {
 		timeline.push({ type: 'text', content: text });
 	}
+}
+
+function replacePlanPhase(
+	phases: InstanceAiPhaseSpec[],
+	phase: InstanceAiPhaseSpec,
+): InstanceAiPhaseSpec[] {
+	const index = phases.findIndex((existingPhase) => existingPhase.id === phase.id);
+	if (index < 0) {
+		return [...phases, phase];
+	}
+
+	return phases.map((existingPhase, currentIndex) =>
+		currentIndex === index ? phase : existingPhase,
+	);
+}
+
+function updatePlanStatus(agent: AgentNode, status: InstanceAiPlanSpec['status']): void {
+	if (!agent.plan) return;
+	agent.plan = {
+		...agent.plan,
+		status,
+		lastUpdatedAt: new Date().toISOString(),
+	};
+}
+
+function updatePlanPhase(agent: AgentNode, phase: InstanceAiPhaseSpec): void {
+	if (!agent.plan) return;
+	agent.plan = {
+		...agent.plan,
+		phases: replacePlanPhase(agent.plan.phases, phase),
+		lastUpdatedAt: new Date().toISOString(),
+	};
+}
+
+function addPlanArtifact(
+	agent: AgentNode,
+	phaseId: string,
+	artifact: InstanceAiPhaseArtifact,
+): void {
+	if (!agent.plan) return;
+	agent.plan = {
+		...agent.plan,
+		phases: agent.plan.phases.map((phase) => {
+			if (phase.id !== phaseId) return phase;
+
+			const hasArtifact = phase.artifacts.some(
+				(existingArtifact) => existingArtifact.id === artifact.id,
+			);
+			if (hasArtifact) return phase;
+
+			return {
+				...phase,
+				artifacts: [...phase.artifacts, artifact],
+			};
+		}),
+		lastUpdatedAt: new Date().toISOString(),
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -292,6 +353,39 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'plan-created':
+		case 'plan-updated': {
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				agent.plan = event.payload.plan;
+			}
+			break;
+		}
+
+		case 'plan-status-updated': {
+			const agent = ensureAgent(state, event.agentId);
+			if (agent?.plan && agent.plan.planId === event.payload.planId) {
+				updatePlanStatus(agent, event.payload.status);
+			}
+			break;
+		}
+
+		case 'phase-status-updated': {
+			const agent = ensureAgent(state, event.agentId);
+			if (agent?.plan && agent.plan.planId === event.payload.planId) {
+				updatePlanPhase(agent, event.payload.phase);
+			}
+			break;
+		}
+
+		case 'phase-artifact-added': {
+			const agent = ensureAgent(state, event.agentId);
+			if (agent?.plan && agent.plan.planId === event.payload.planId) {
+				addPlanArtifact(agent, event.payload.phaseId, event.payload.artifact);
+			}
+			break;
+		}
+
 		case 'confirmation-request': {
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
 			const tc = state.toolCallsById[event.payload.toolCallId];
@@ -301,6 +395,8 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					severity: event.payload.severity,
 					message: event.payload.message,
 					credentialRequests: event.payload.credentialRequests,
+					questions: event.payload.questions,
+					introMessage: event.payload.introMessage,
 					inputType: event.payload.inputType,
 					domainAccess: event.payload.domainAccess,
 				};
@@ -417,6 +513,7 @@ function buildNodeRecursive(state: AgentRunState, agentId: string): InstanceAiAg
 		children,
 		timeline: [...timeline],
 		tasks: agent?.tasks,
+		plan: agent?.plan,
 		result: agent?.result,
 		error: agent?.error,
 	};

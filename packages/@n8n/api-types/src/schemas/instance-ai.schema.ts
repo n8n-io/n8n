@@ -18,6 +18,11 @@ export const instanceAiEventTypeSchema = z.enum([
 	'run-finish',
 	'agent-spawned',
 	'agent-completed',
+	'plan-created',
+	'plan-updated',
+	'plan-status-updated',
+	'phase-status-updated',
+	'phase-artifact-added',
 	'text-delta',
 	'reasoning-delta',
 	'tool-call',
@@ -59,6 +64,35 @@ export const instanceAiAgentKindSchema = z.enum([
 	'browser-setup',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
+
+export const instanceAiPlanStatusSchema = z.enum([
+	'draft',
+	'awaiting_approval',
+	'approved',
+	'running',
+	'blocked',
+	'completed',
+]);
+export type InstanceAiPlanStatus = z.infer<typeof instanceAiPlanStatusSchema>;
+
+export const instanceAiPhaseStatusSchema = z.enum([
+	'pending',
+	'ready',
+	'building',
+	'verifying',
+	'blocked',
+	'done',
+	'failed',
+]);
+export type InstanceAiPhaseStatus = z.infer<typeof instanceAiPhaseStatusSchema>;
+
+export const instanceAiVerificationModeSchema = z.enum([
+	'run-workflow',
+	'trigger-only',
+	'resource-check',
+	'manual-confirmation',
+]);
+export type InstanceAiVerificationMode = z.infer<typeof instanceAiVerificationModeSchema>;
 
 // ---------------------------------------------------------------------------
 // Domain access gating (shared across any tool that fetches external URLs)
@@ -161,6 +195,26 @@ export const credentialRequestSchema = z.object({
 
 export type InstanceAiCredentialRequest = z.infer<typeof credentialRequestSchema>;
 
+export const instanceAiPlannerQuestionTypeSchema = z.enum(['single', 'multi', 'text']);
+export type InstanceAiPlannerQuestionType = z.infer<typeof instanceAiPlannerQuestionTypeSchema>;
+
+export const instanceAiPlannerQuestionSchema = z.object({
+	id: z.string(),
+	question: z.string(),
+	type: instanceAiPlannerQuestionTypeSchema,
+	options: z.array(z.string()).optional(),
+});
+export type InstanceAiPlannerQuestion = z.infer<typeof instanceAiPlannerQuestionSchema>;
+
+export const instanceAiQuestionResponseSchema = z.object({
+	questionId: z.string(),
+	question: z.string(),
+	selectedOptions: z.array(z.string()),
+	customText: z.string().optional(),
+	skipped: z.boolean().optional(),
+});
+export type InstanceAiQuestionResponse = z.infer<typeof instanceAiQuestionResponseSchema>;
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	toolCallId: z.string().describe('Correlates to the tool-call that needs approval'),
@@ -169,8 +223,10 @@ export const confirmationRequestPayloadSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
 	credentialRequests: z.array(credentialRequestSchema).optional(),
+	questions: z.array(instanceAiPlannerQuestionSchema).optional(),
+	introMessage: z.string().optional(),
 	inputType: z
-		.enum(['approval', 'text'])
+		.enum(['approval', 'text', 'questions'])
 		.optional()
 		.describe('UI mode: approval (default) shows approve/deny, text shows a text input'),
 	domainAccess: domainAccessMetaSchema
@@ -183,6 +239,90 @@ export const errorPayloadSchema = z.object({
 	statusCode: z.number().optional(),
 	provider: z.string().optional(),
 	technicalDetails: z.string().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Planning and phased execution schemas
+// ---------------------------------------------------------------------------
+
+export const instanceAiPhaseArtifactSchema = z.object({
+	id: z.string(),
+	label: z.string(),
+	type: z.enum(['workflow', 'data-table', 'credential', 'other']),
+	resourceId: z.string().optional(),
+});
+export type InstanceAiPhaseArtifact = z.infer<typeof instanceAiPhaseArtifactSchema>;
+
+export const instanceAiPhaseBlockerSchema = z.object({
+	reason: z.string(),
+	question: z.string().optional(),
+	requestId: z.string().optional(),
+	inputType: z.enum(['approval', 'text']).optional(),
+});
+export type InstanceAiPhaseBlocker = z.infer<typeof instanceAiPhaseBlockerSchema>;
+
+export const instanceAiVerificationSpecSchema = z.object({
+	mode: instanceAiVerificationModeSchema,
+	successCriteria: z.string(),
+	expectedOutcome: z.string(),
+});
+export type InstanceAiVerificationSpec = z.infer<typeof instanceAiVerificationSpecSchema>;
+
+export const instanceAiPhaseSpecSchema = z.object({
+	id: z.string(),
+	title: z.string(),
+	description: z.string(),
+	objective: z.string(),
+	dependsOn: z.array(z.string()).default([]),
+	executionGroup: z.string().optional(),
+	inputs: z.array(z.string()).default([]),
+	deliverable: z.string(),
+	targetResource: agentSpawnedTargetResourceSchema.optional(),
+	verification: instanceAiVerificationSpecSchema,
+	blockingQuestions: z.array(z.string()).default([]),
+	status: instanceAiPhaseStatusSchema,
+	blocker: instanceAiPhaseBlockerSchema.optional(),
+	artifacts: z.array(instanceAiPhaseArtifactSchema).default([]),
+});
+export type InstanceAiPhaseSpec = z.infer<typeof instanceAiPhaseSpecSchema>;
+
+export const instanceAiPlanSpecSchema = z.object({
+	planId: z.string(),
+	goal: z.string(),
+	summary: z.string(),
+	assumptions: z.array(z.string()).default([]),
+	externalSystems: z.array(z.string()).default([]),
+	dataContracts: z.array(z.string()).default([]),
+	acceptanceCriteria: z.array(z.string()).default([]),
+	openQuestions: z.array(z.string()).default([]),
+	status: instanceAiPlanStatusSchema,
+	phases: z.array(instanceAiPhaseSpecSchema),
+	lastUpdatedAt: z.string().optional(),
+});
+export type InstanceAiPlanSpec = z.infer<typeof instanceAiPlanSpecSchema>;
+
+export const planCreatedPayloadSchema = z.object({
+	plan: instanceAiPlanSpecSchema,
+});
+
+export const planUpdatedPayloadSchema = z.object({
+	plan: instanceAiPlanSpecSchema,
+});
+
+export const planStatusUpdatedPayloadSchema = z.object({
+	planId: z.string(),
+	status: instanceAiPlanStatusSchema,
+});
+
+export const phaseStatusUpdatedPayloadSchema = z.object({
+	planId: z.string(),
+	phase: instanceAiPhaseSpecSchema,
+});
+
+export const phaseArtifactAddedPayloadSchema = z.object({
+	planId: z.string(),
+	phaseId: z.string(),
+	artifact: instanceAiPhaseArtifactSchema,
 });
 
 // ---------------------------------------------------------------------------
@@ -287,6 +427,23 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: agentCompletedPayloadSchema,
 	}),
+	z.object({ type: z.literal('plan-created'), ...eventBase, payload: planCreatedPayloadSchema }),
+	z.object({ type: z.literal('plan-updated'), ...eventBase, payload: planUpdatedPayloadSchema }),
+	z.object({
+		type: z.literal('plan-status-updated'),
+		...eventBase,
+		payload: planStatusUpdatedPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('phase-status-updated'),
+		...eventBase,
+		payload: phaseStatusUpdatedPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('phase-artifact-added'),
+		...eventBase,
+		payload: phaseArtifactAddedPayloadSchema,
+	}),
 	z.object({ type: z.literal('text-delta'), ...eventBase, payload: textDeltaPayloadSchema }),
 	z.object({
 		type: z.literal('reasoning-delta'),
@@ -321,6 +478,20 @@ export type InstanceAiRunStartEvent = Extract<InstanceAiEvent, { type: 'run-star
 export type InstanceAiRunFinishEvent = Extract<InstanceAiEvent, { type: 'run-finish' }>;
 export type InstanceAiAgentSpawnedEvent = Extract<InstanceAiEvent, { type: 'agent-spawned' }>;
 export type InstanceAiAgentCompletedEvent = Extract<InstanceAiEvent, { type: 'agent-completed' }>;
+export type InstanceAiPlanCreatedEvent = Extract<InstanceAiEvent, { type: 'plan-created' }>;
+export type InstanceAiPlanUpdatedEvent = Extract<InstanceAiEvent, { type: 'plan-updated' }>;
+export type InstanceAiPlanStatusUpdatedEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'plan-status-updated' }
+>;
+export type InstanceAiPhaseStatusUpdatedEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'phase-status-updated' }
+>;
+export type InstanceAiPhaseArtifactAddedEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'phase-artifact-added' }
+>;
 export type InstanceAiTextDeltaEvent = Extract<InstanceAiEvent, { type: 'text-delta' }>;
 export type InstanceAiReasoningDeltaEvent = Extract<InstanceAiEvent, { type: 'reasoning-delta' }>;
 export type InstanceAiToolCallEvent = Extract<InstanceAiEvent, { type: 'tool-call' }>;
@@ -367,6 +538,7 @@ export interface InstanceAiConfirmResponse {
 	/** When true, the user chose to continue with mock data instead of providing credentials. */
 	mockCredentials?: boolean;
 	userInput?: string;
+	answers?: InstanceAiQuestionResponse[];
 	domainAccessAction?: DomainAccessAction;
 }
 
@@ -381,13 +553,15 @@ export interface InstanceAiToolCallState {
 	result?: unknown;
 	error?: string;
 	isLoading: boolean;
-	renderHint?: 'tasks' | 'delegate' | 'builder' | 'data-table' | 'researcher' | 'default';
+	renderHint?: 'tasks' | 'delegate' | 'builder' | 'data-table' | 'researcher' | 'plan' | 'default';
 	confirmation?: {
 		requestId: string;
 		severity: InstanceAiConfirmationSeverity;
 		message: string;
 		credentialRequests?: InstanceAiCredentialRequest[];
-		inputType?: 'approval' | 'text';
+		questions?: InstanceAiPlannerQuestion[];
+		introMessage?: string;
+		inputType?: 'approval' | 'text' | 'questions';
 		domainAccess?: DomainAccessMeta;
 	};
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
@@ -425,6 +599,8 @@ export interface InstanceAiAgentNode {
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
+	/** Latest plan state — updated by plan and phase events. */
+	plan?: InstanceAiPlanSpec;
 	result?: string;
 	error?: string;
 	errorDetails?: {
@@ -653,5 +829,16 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
 	if (toolName === 'research-with-agent') return 'researcher';
+	if (
+		toolName === 'create-plan' ||
+		toolName === 'update-plan' ||
+		toolName === 'approve-plan' ||
+		toolName === 'request-plan-approval' ||
+		toolName === 'ask-plan-questions' ||
+		toolName === 'update-phase-status' ||
+		toolName === 'block-phase-with-question'
+	) {
+		return 'plan';
+	}
 	return 'default';
 }

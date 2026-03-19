@@ -13,9 +13,11 @@ const props = withDefaults(
 	defineProps<{
 		agentNode: InstanceAiAgentNode;
 		compact?: boolean;
+		suppressText?: boolean;
 	}>(),
 	{
 		compact: false,
+		suppressText: false,
 	},
 );
 
@@ -47,7 +49,7 @@ const childrenById = computed(() => {
 		<template v-for="(entry, idx) in props.agentNode.timeline" :key="idx">
 			<!-- Text segment -->
 			<div
-				v-if="entry.type === 'text'"
+				v-if="entry.type === 'text' && !props.suppressText"
 				:class="[$style.textContent, props.compact && $style.compactText]"
 			>
 				<InstanceAiMarkdown :content="entry.content" />
@@ -55,7 +57,12 @@ const childrenById = computed(() => {
 
 			<!-- Tool call -->
 			<template v-else-if="entry.type === 'tool-call' && toolCallsById[entry.toolCallId]">
-				<template v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'" />
+				<template
+					v-if="
+						toolCallsById[entry.toolCallId].renderHint === 'tasks' ||
+						toolCallsById[entry.toolCallId].renderHint === 'plan'
+					"
+				/>
 				<DelegateCard
 					v-else-if="toolCallsById[entry.toolCallId].renderHint === 'delegate'"
 					:args="toolCallsById[entry.toolCallId].args"

@@ -53,7 +53,13 @@ let cachedMastraStorageKey = '';
 // These are used in nearly every conversation per system prompt analysis.
 // All other tools are deferred behind ToolSearchProcessor for on-demand discovery.
 const ALWAYS_LOADED_TOOLS = new Set([
-	'plan',
+	'ask-plan-questions',
+	'create-plan',
+	'update-plan',
+	'approve-plan',
+	'request-plan-approval',
+	'update-phase-status',
+	'block-phase-with-question',
 	'delegate',
 	'build-workflow-with-agent',
 	'ask-user',

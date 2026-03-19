@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import AgentActivityTree from './AgentActivityTree.vue';
+import InstanceAiPlanTimeline from './InstanceAiPlanTimeline.vue';
 import type { InstanceAiMessage } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
 import CollapsibleMessage from './CollapsibleMessage.vue';
@@ -53,6 +54,19 @@ const formattedTechnicalDetails = computed(() => {
 
 const attachments = computed(() => props.message.attachments ?? []);
 
+const hasPlanningUi = computed(() => {
+	const tree = props.message.agentTree;
+	if (!tree) return false;
+
+	if (tree.plan) {
+		return true;
+	}
+
+	return tree.toolCalls.some(
+		(toolCall) => toolCall.renderHint === 'plan' && toolCall.isLoading && !!toolCall.confirmation,
+	);
+});
+
 /**
  * Background task indicator: shows when the orchestrator run has finished
  * but child agents (e.g., workflow builder) are still working in the background.
@@ -91,10 +105,16 @@ function formatJson(value: unknown): string {
 			<CollapsibleMessage :is-streaming="isStreaming">
 				<div :class="$style.assistantContent">
 					<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
+					<InstanceAiPlanTimeline
+						v-if="props.message.agentTree && hasPlanningUi"
+						:agent-node="props.message.agentTree"
+						:plan="props.message.agentTree.plan"
+					/>
 					<AgentActivityTree
 						v-if="props.message.agentTree"
 						:agent-node="props.message.agentTree"
 						:is-root="true"
+						:suppress-plan-text="hasPlanningUi"
 					/>
 
 					<!-- Run-level error -->

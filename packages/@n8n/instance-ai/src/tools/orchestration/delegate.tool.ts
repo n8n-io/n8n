@@ -12,7 +12,17 @@ import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import type { OrchestrationContext } from '../../types';
 
-const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'delegate']);
+const FORBIDDEN_TOOL_NAMES = new Set([
+	'plan',
+	'ask-plan-questions',
+	'create-plan',
+	'update-plan',
+	'approve-plan',
+	'request-plan-approval',
+	'update-phase-status',
+	'block-phase-with-question',
+	'delegate',
+]);
 
 const FALLBACK_MAX_STEPS = 10;
 

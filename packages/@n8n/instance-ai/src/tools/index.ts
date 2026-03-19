@@ -33,14 +33,21 @@ import { createGetNodeTypeDefinitionTool } from './nodes/get-node-type-definitio
 import { createGetSuggestedNodesTool } from './nodes/get-suggested-nodes.tool';
 import { createListNodesTool } from './nodes/list-nodes.tool';
 import { createSearchNodesTool } from './nodes/search-nodes.tool';
+import { createApprovePlanTool } from './orchestration/approve-plan.tool';
+import { createAskPlanQuestionsTool } from './orchestration/ask-plan-questions.tool';
+import { createBlockPhaseWithQuestionTool } from './orchestration/block-phase-with-question.tool';
 import { createBrowserCredentialSetupTool } from './orchestration/browser-credential-setup.tool';
 import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
 import { createCancelBackgroundTaskTool } from './orchestration/cancel-background-task.tool';
 import { createCorrectBackgroundTaskTool } from './orchestration/correct-background-task.tool';
+import { createCreatePlanTool } from './orchestration/create-plan.tool';
 import { createDataTableAgentTool } from './orchestration/data-table-agent.tool';
 import { createDelegateTool } from './orchestration/delegate.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
+import { createRequestPlanApprovalTool } from './orchestration/request-plan-approval.tool';
 import { createResearchWithAgentTool } from './orchestration/research-with-agent.tool';
+import { createUpdatePhaseStatusTool } from './orchestration/update-phase-status.tool';
+import { createUpdatePlanTool } from './orchestration/update-plan.tool';
 import { createUpdateTasksTool } from './orchestration/update-tasks.tool';
 import { createAskUserTool } from './shared/ask-user.tool';
 import { createSearchTemplateParametersTool } from './templates/search-template-parameters.tool';
@@ -143,6 +150,13 @@ export function createAllTools(context: InstanceAiContext) {
  */
 export function createOrchestrationTools(context: OrchestrationContext) {
 	return {
+		'ask-plan-questions': createAskPlanQuestionsTool(),
+		'create-plan': createCreatePlanTool(context),
+		'update-plan': createUpdatePlanTool(context),
+		'approve-plan': createApprovePlanTool(context),
+		'request-plan-approval': createRequestPlanApprovalTool(context),
+		'update-phase-status': createUpdatePhaseStatusTool(context),
+		'block-phase-with-question': createBlockPhaseWithQuestionTool(context),
 		'update-tasks': createUpdateTasksTool(context),
 		delegate: createDelegateTool(context),
 		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),

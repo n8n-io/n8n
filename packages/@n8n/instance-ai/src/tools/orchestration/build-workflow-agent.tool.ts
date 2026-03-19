@@ -19,6 +19,7 @@ import { z } from 'zod';
 
 import { BUILDER_AGENT_PROMPT, SANDBOX_BUILDER_AGENT_PROMPT } from './build-workflow-agent.prompt';
 import { truncateLabel } from './display-utils';
+import { updatePlanPhase } from './plan-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
@@ -106,6 +107,11 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				.describe(
 					'Existing workflow ID to modify. When provided, the agent starts with the current workflow code pre-loaded.',
 				),
+			planId: z.string().optional().describe('Plan ID for phase-aware execution updates.'),
+			phaseId: z
+				.string()
+				.optional()
+				.describe('Phase ID in the current plan that this build belongs to.'),
 		}),
 		outputSchema: z.object({
 			result: z.string(),
@@ -245,6 +251,35 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			const briefing = workflowId
 				? `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`
 				: `${input.task}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+
+			if (input.planId && input.phaseId) {
+				const existingPlan = await context.planStorage.get(context.threadId);
+				if (existingPlan && existingPlan.planId === input.planId) {
+					const updatedPlan = updatePlanPhase(existingPlan, input.phaseId, 'building');
+					const updatedPhase = updatedPlan.phases.find((phase) => phase.id === input.phaseId);
+					if (updatedPhase) {
+						await context.planStorage.save(context.threadId, updatedPlan);
+						context.eventBus.publish(context.threadId, {
+							type: 'phase-status-updated',
+							runId: context.runId,
+							agentId: context.orchestratorAgentId,
+							payload: {
+								planId: updatedPlan.planId,
+								phase: updatedPhase,
+							},
+						});
+						context.eventBus.publish(context.threadId, {
+							type: 'plan-status-updated',
+							runId: context.runId,
+							agentId: context.orchestratorAgentId,
+							payload: {
+								planId: updatedPlan.planId,
+								status: updatedPlan.status,
+							},
+						});
+					}
+				}
+			}
 
 			// Spawn builder as a background task — returns immediately
 			context.spawnBackgroundTask({

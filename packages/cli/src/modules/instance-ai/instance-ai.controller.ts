@@ -202,6 +202,7 @@ export class InstanceAiController {
 			autoSetup,
 			mockCredentials,
 			userInput,
+			answers,
 			domainAccessAction,
 		} = req.body as {
 			approved: boolean;
@@ -210,6 +211,13 @@ export class InstanceAiController {
 			autoSetup?: { credentialType: string };
 			mockCredentials?: boolean;
 			userInput?: string;
+			answers?: Array<{
+				questionId: string;
+				question: string;
+				selectedOptions: string[];
+				customText?: string;
+				skipped?: boolean;
+			}>;
 			domainAccessAction?: string;
 		};
 		const resolved = await this.instanceAiService.resolveConfirmation(req.user.id, requestId, {
@@ -219,6 +227,7 @@ export class InstanceAiController {
 			autoSetup,
 			mockCredentials,
 			userInput,
+			answers,
 			domainAccessAction,
 		});
 		if (!resolved) {
