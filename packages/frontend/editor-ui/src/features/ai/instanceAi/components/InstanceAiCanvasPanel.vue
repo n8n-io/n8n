@@ -10,6 +10,7 @@ import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useCanvasContext } from '../composables/useCanvasContext';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
 import InstanceAiEmptyState from './InstanceAiEmptyState.vue';
@@ -24,6 +25,7 @@ const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const { canvasContext } = useCanvasContext();
 const { updateWorkflow } = useWorkflowUpdate();
 
@@ -44,6 +46,10 @@ const currentLabel = computed(() => {
 });
 
 function handleThreadSelect(_threadId: string, threadWorkflowId?: string) {
+	telemetry.track('User switched instance AI canvas thread', {
+		hasWorkflowId: !!threadWorkflowId,
+	});
+
 	if (threadWorkflowId) {
 		void store.ensureWorkflowThread(threadWorkflowId);
 	} else {
@@ -54,6 +60,10 @@ function handleThreadSelect(_threadId: string, threadWorkflowId?: string) {
 // --- Lifecycle ---
 
 onMounted(() => {
+	telemetry.track('User opened instance AI canvas panel', {
+		workflowId: workflowId.value,
+	});
+
 	// Auto-connect local gateway if enabled
 	void settingsStore
 		.refreshModuleSettings()
@@ -180,6 +190,10 @@ watch(
 // --- Message handlers ---
 
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+	telemetry.track('User sent instance AI canvas message', {
+		hasCanvasContext: !!canvasContext.value,
+	});
+
 	userScrolledUp.value = false;
 	await store.sendMessage(message, attachments, canvasContext.value);
 }
