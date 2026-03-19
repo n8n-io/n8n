@@ -155,6 +155,11 @@ export class InstanceAiAdapterService {
 				'**Named workflow versions** — naming and describing workflow versions (update-workflow-version) is available on the Pro plan and above.',
 			);
 		}
+		if (!this.license.isLicensed('feat:folders')) {
+			hints.push(
+				'**Folders** — organizing workflows into folders (list-folders, create-folder, delete-folder, move-workflow-to-folder) is available on registered Community Edition or paid plans.',
+			);
+		}
 		return hints;
 	}
 
@@ -1376,54 +1381,58 @@ export class InstanceAiAdapterService {
 				}));
 			},
 
-			async listFolders(projectId: string): Promise<FolderSummary[]> {
-				const [folders] = await folderService.getManyAndCount(projectId, { take: 100 });
-				return (folders as Array<{ id: string; name: string; parentFolderId: string | null }>).map(
-					(f) => ({
-						id: f.id,
-						name: f.name,
-						parentFolderId: f.parentFolderId,
-					}),
-				);
-			},
+			...(this.license.isLicensed('feat:folders')
+				? {
+						async listFolders(projectId: string): Promise<FolderSummary[]> {
+							const [folders] = await folderService.getManyAndCount(projectId, { take: 100 });
+							return (
+								folders as Array<{ id: string; name: string; parentFolderId: string | null }>
+							).map((f) => ({
+								id: f.id,
+								name: f.name,
+								parentFolderId: f.parentFolderId,
+							}));
+						},
 
-			async createFolder(
-				name: string,
-				projectId: string,
-				parentFolderId?: string,
-			): Promise<FolderSummary> {
-				const folder = await folderService.createFolder(
-					{ name, parentFolderId: parentFolderId ?? undefined },
-					projectId,
-				);
-				return {
-					id: folder.id,
-					name: folder.name,
-					parentFolderId: folder.parentFolderId ?? null,
-				};
-			},
+						async createFolder(
+							name: string,
+							projectId: string,
+							parentFolderId?: string,
+						): Promise<FolderSummary> {
+							const folder = await folderService.createFolder(
+								{ name, parentFolderId: parentFolderId ?? undefined },
+								projectId,
+							);
+							return {
+								id: folder.id,
+								name: folder.name,
+								parentFolderId: folder.parentFolderId ?? null,
+							};
+						},
 
-			async deleteFolder(
-				folderId: string,
-				projectId: string,
-				transferToFolderId?: string,
-			): Promise<void> {
-				await folderService.deleteFolder(user, folderId, projectId, {
-					transferToFolderId: transferToFolderId ?? undefined,
-				});
-			},
+						async deleteFolder(
+							folderId: string,
+							projectId: string,
+							transferToFolderId?: string,
+						): Promise<void> {
+							await folderService.deleteFolder(user, folderId, projectId, {
+								transferToFolderId: transferToFolderId ?? undefined,
+							});
+						},
 
-			async moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void> {
-				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-					'workflow:update',
-				]);
-				if (!workflow) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
-				}
-				await workflowService.update(user, workflow, workflowId, {
-					parentFolderId: folderId,
-				});
-			},
+						async moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void> {
+							const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+								'workflow:update',
+							]);
+							if (!workflow) {
+								throw new Error(`Workflow ${workflowId} not found or not accessible`);
+							}
+							await workflowService.update(user, workflow, workflowId, {
+								parentFolderId: folderId,
+							});
+						},
+					}
+				: {}),
 
 			async tagWorkflow(workflowId: string, tagNames: string[]): Promise<string[]> {
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [

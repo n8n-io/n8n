@@ -58,7 +58,7 @@ export function createDeleteFolderTool(context: InstanceAiContext) {
 			}
 
 			// State 3: Approved or always_allow — execute
-			await context.workspaceService!.deleteFolder(
+			await context.workspaceService!.deleteFolder!(
 				input.folderId,
 				input.projectId,
 				input.transferToFolderId,

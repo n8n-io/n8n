@@ -858,7 +858,10 @@ describe('createDataTableAdapter', () => {
 // createWorkflowAdapter – project scoping
 // ---------------------------------------------------------------------------
 
-function createWorkflowAdapterForTests(overrides?: { namedVersionsLicensed?: boolean }) {
+function createWorkflowAdapterForTests(overrides?: {
+	namedVersionsLicensed?: boolean;
+	foldersLicensed?: boolean;
+}) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-id' }),
 	};
@@ -917,12 +920,11 @@ function createWorkflowAdapterForTests(overrides?: { namedVersionsLicensed?: boo
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{
-			isLicensed: jest
-				.fn()
-				.mockImplementation(
-					(feat: string) =>
-						feat === 'feat:namedVersions' && (overrides?.namedVersionsLicensed ?? false),
-				),
+			isLicensed: jest.fn().mockImplementation((feat: string) => {
+				if (feat === 'feat:namedVersions') return overrides?.namedVersionsLicensed ?? false;
+				if (feat === 'feat:folders') return overrides?.foldersLicensed ?? false;
+				return false;
+			}),
 		} as unknown as License,
 	);
 
@@ -1000,35 +1002,75 @@ describe('license-gated features', () => {
 		mockedUserHasScopes.mockResolvedValue(true);
 	});
 
-	describe('updateVersion', () => {
-		it('is present on workflowService when namedVersions is licensed', () => {
+	describe('updateVersion (feat:namedVersions)', () => {
+		it('is present on workflowService when licensed', () => {
 			const { adapter } = createWorkflowAdapterForTests({ namedVersionsLicensed: true });
 
 			expect(adapter.updateVersion).toBeDefined();
 			expect(typeof adapter.updateVersion).toBe('function');
 		});
 
-		it('is absent on workflowService when namedVersions is not licensed', () => {
+		it('is absent on workflowService when not licensed', () => {
 			const { adapter } = createWorkflowAdapterForTests({ namedVersionsLicensed: false });
 
 			expect(adapter.updateVersion).toBeUndefined();
 		});
 	});
 
-	describe('licenseHints', () => {
-		it('includes named versions hint when feature is not licensed', () => {
-			const { context } = createWorkflowAdapterForTests({ namedVersionsLicensed: false });
+	describe('folders (feat:folders)', () => {
+		it('includes folder methods on workspaceService when licensed', () => {
+			const { context } = createWorkflowAdapterForTests({ foldersLicensed: true });
 
-			expect(context.licenseHints).toBeDefined();
+			expect(context.workspaceService!.listFolders).toBeDefined();
+			expect(context.workspaceService!.createFolder).toBeDefined();
+			expect(context.workspaceService!.deleteFolder).toBeDefined();
+			expect(context.workspaceService!.moveWorkflowToFolder).toBeDefined();
+		});
+
+		it('omits folder methods on workspaceService when not licensed', () => {
+			const { context } = createWorkflowAdapterForTests({ foldersLicensed: false });
+
+			expect(context.workspaceService!.listFolders).toBeUndefined();
+			expect(context.workspaceService!.createFolder).toBeUndefined();
+			expect(context.workspaceService!.deleteFolder).toBeUndefined();
+			expect(context.workspaceService!.moveWorkflowToFolder).toBeUndefined();
+		});
+	});
+
+	describe('licenseHints', () => {
+		it('includes hints for unlicensed features', () => {
+			const { context } = createWorkflowAdapterForTests({
+				namedVersionsLicensed: false,
+				foldersLicensed: false,
+			});
+
 			expect(context.licenseHints).toEqual(
-				expect.arrayContaining([expect.stringContaining('Named workflow versions')]),
+				expect.arrayContaining([
+					expect.stringContaining('Named workflow versions'),
+					expect.stringContaining('Folders'),
+				]),
 			);
 		});
 
-		it('does not include named versions hint when feature is licensed', () => {
-			const { context } = createWorkflowAdapterForTests({ namedVersionsLicensed: true });
+		it('omits hints for licensed features', () => {
+			const { context } = createWorkflowAdapterForTests({
+				namedVersionsLicensed: true,
+				foldersLicensed: true,
+			});
 
 			expect(context.licenseHints).toEqual([]);
+		});
+
+		it('only includes hints for unlicensed features', () => {
+			const { context } = createWorkflowAdapterForTests({
+				namedVersionsLicensed: true,
+				foldersLicensed: false,
+			});
+
+			expect(context.licenseHints).toEqual([expect.stringContaining('Folders')]);
+			expect(context.licenseHints).not.toEqual(
+				expect.arrayContaining([expect.stringContaining('Named workflow versions')]),
+			);
 		});
 	});
 });

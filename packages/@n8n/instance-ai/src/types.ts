@@ -498,13 +498,13 @@ export interface InstanceAiWorkspaceService {
 	getProject?(projectId: string): Promise<ProjectSummary | null>;
 	listProjects(): Promise<ProjectSummary[]>;
 
-	// Folders
-	listFolders(projectId: string): Promise<FolderSummary[]>;
-	createFolder(name: string, projectId: string, parentFolderId?: string): Promise<FolderSummary>;
-	deleteFolder(folderId: string, projectId: string, transferToFolderId?: string): Promise<void>;
+	// Folders (licensed: feat:folders)
+	listFolders?(projectId: string): Promise<FolderSummary[]>;
+	createFolder?(name: string, projectId: string, parentFolderId?: string): Promise<FolderSummary>;
+	deleteFolder?(folderId: string, projectId: string, transferToFolderId?: string): Promise<void>;
 
-	// Workflow organization
-	moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void>;
+	// Workflow organization (moveWorkflowToFolder requires feat:folders)
+	moveWorkflowToFolder?(workflowId: string, folderId: string): Promise<void>;
 	tagWorkflow(workflowId: string, tagNames: string[]): Promise<string[]>;
 
 	// Tags

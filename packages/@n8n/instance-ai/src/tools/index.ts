@@ -131,13 +131,17 @@ export function createAllTools(context: InstanceAiContext) {
 		...(context.workspaceService
 			? {
 					'list-projects': createListProjectsTool(context),
-					'list-folders': createListFoldersTool(context),
-					'create-folder': createCreateFolderTool(context),
-					'delete-folder': createDeleteFolderTool(context),
-					'move-workflow-to-folder': createMoveWorkflowToFolderTool(context),
 					'tag-workflow': createTagWorkflowTool(context),
 					'list-tags': createListTagsTool(context),
 					'cleanup-test-executions': createCleanupTestExecutionsTool(context),
+					...(context.workspaceService.listFolders
+						? {
+								'list-folders': createListFoldersTool(context),
+								'create-folder': createCreateFolderTool(context),
+								'delete-folder': createDeleteFolderTool(context),
+								'move-workflow-to-folder': createMoveWorkflowToFolderTool(context),
+							}
+						: {}),
 				}
 			: {}),
 		...(context.localMcpServer
