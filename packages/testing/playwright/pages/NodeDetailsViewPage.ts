@@ -537,8 +537,13 @@ export class NodeDetailsViewPage extends BasePage {
 
 	// Credentials modal helpers
 	async clickCreateNewCredential(eq: number = 0): Promise<void> {
-		await this.page.getByTestId('node-credentials-select').nth(eq).click();
-		await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
+		const quickConnectEmpty = this.page.getByTestId('quick-connect-empty-state');
+		if (await quickConnectEmpty.isVisible()) {
+			await this.page.getByTestId('setup-manually-link').click();
+		} else {
+			await this.page.getByTestId('node-credentials-select').nth(eq).click();
+			await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
+		}
 	}
 
 	// Run selector and linking helpers
