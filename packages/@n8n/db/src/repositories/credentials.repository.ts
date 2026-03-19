@@ -198,37 +198,51 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	): Promise<CredentialsEntity[]> {
 		const { includeData = false, filters } = options;
 
-		if (filters?.dependency) {
-			const qb = this.createQueryBuilder('credential');
-			qb.where('credential.isGlobal = :isGlobal', { isGlobal: true });
-			addCredentialDependencyExistsFilter(qb, filters.dependency);
-
-			const defaultSelect: Array<keyof CredentialsEntity> = [
-				'id',
-				'name',
-				'type',
-				'isManaged',
-				'createdAt',
-				'updatedAt',
-				'isGlobal',
-				'isResolvable',
-				'resolverId',
-			];
-
-			qb.select(defaultSelect.map((k) => `credential.${k}`));
-			qb.leftJoinAndSelect('credential.shared', 'shared');
-			qb.leftJoinAndSelect('shared.project', 'project');
-			qb.leftJoinAndSelect('project.projectRelations', 'projectRelations');
-
-			if (includeData) qb.addSelect('credential.data');
-
-			return await qb.getMany();
+		const dependencyFilter = filters?.dependency;
+		if (dependencyFilter) {
+			return await this.findAllGlobalCredentialsByDependencyFilter({
+				dependencyFilter,
+				includeData,
+			});
 		}
 
-		const findManyOptions = this.toFindManyOptions(includeData ? { includeData: true } : undefined);
+		const findManyOptions = this.toFindManyOptions({ includeData });
 		findManyOptions.where = { ...findManyOptions.where, isGlobal: true };
-
 		return await this.find(findManyOptions);
+	}
+
+	private async findAllGlobalCredentialsByDependencyFilter(options: {
+		dependencyFilter: CredentialDependencyFilter;
+		includeData?: boolean;
+	}): Promise<CredentialsEntity[]> {
+		const { includeData, dependencyFilter } = options;
+
+		const qb = this.createQueryBuilder('credential');
+		qb.where('credential.isGlobal = :isGlobal', { isGlobal: true });
+		addCredentialDependencyExistsFilter(qb, dependencyFilter);
+
+		const defaultSelect: Array<keyof CredentialsEntity> = [
+			'id',
+			'name',
+			'type',
+			'isManaged',
+			'createdAt',
+			'updatedAt',
+			'isGlobal',
+			'isResolvable',
+			'resolverId',
+		];
+		const selectColumns = defaultSelect.map((k) => `credential.${k}`);
+		if (includeData) {
+			selectColumns.push('credential.data');
+		}
+
+		qb.select(selectColumns);
+		qb.leftJoinAndSelect('credential.shared', 'shared');
+		qb.leftJoinAndSelect('shared.project', 'project');
+		qb.leftJoinAndSelect('project.projectRelations', 'projectRelations');
+
+		return await qb.getMany();
 	}
 
 	/**
