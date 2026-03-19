@@ -353,6 +353,8 @@
       "dist/credentials/StravaOAuth2Api.credentials.js",
       "dist/credentials/StripeApi.credentials.js",
       "dist/credentials/SupabaseApi.credentials.js",
+      "dist/credentials/SupabaseManagementApi.credentials.js",
+      "dist/credentials/SupabaseManagementOAuth2Api.credentials.js",
       "dist/credentials/SurveyMonkeyApi.credentials.js",
       "dist/credentials/SurveyMonkeyOAuth2Api.credentials.js",
       "dist/credentials/SyncroMspApi.credentials.js",

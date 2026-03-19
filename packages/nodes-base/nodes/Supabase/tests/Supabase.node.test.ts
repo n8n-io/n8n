@@ -10,10 +10,17 @@ import {
 } from 'n8n-workflow';
 
 import * as utils from '../GenericFunctions';
-import { Supabase } from '../Supabase.node';
+import { SupabaseV1 } from '../v1/SupabaseV1.node';
 
 describe('Test Supabase Node', () => {
-	const node = new Supabase();
+	const node = new SupabaseV1({
+		displayName: 'Supabase',
+		name: 'supabase',
+		icon: 'file:supabase.svg',
+		group: ['input'],
+		description: 'Add, get, delete and update data in a table',
+		defaultVersion: 1,
+	});
 	const input = [{ json: {} }];
 	const mockRequestWithAuthentication = jest.fn().mockResolvedValue([]);
 
