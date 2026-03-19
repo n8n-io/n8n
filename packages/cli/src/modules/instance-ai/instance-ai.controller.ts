@@ -6,11 +6,12 @@ import type {
 import {
 	instanceAiGatewayCapabilitiesSchema,
 	instanceAiFilesystemResponseSchema,
+	InstanceAiRenameThreadRequestDto,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Get, Post, Put, Param } from '@n8n/decorators';
+import { RestController, Get, Post, Put, Patch, Delete, Param, Body } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import type { Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
@@ -337,6 +338,29 @@ export class InstanceAiController {
 
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
 		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
+	}
+
+	@Delete('/threads/:threadId')
+	async deleteThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		await this.assertThreadAccess(req.user.id, threadId);
+		await this.memoryService.deleteThread(req.user.id, threadId);
+		return { ok: true };
+	}
+
+	@Patch('/threads/:threadId')
+	async renameThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiRenameThreadRequestDto,
+	) {
+		await this.assertThreadAccess(req.user.id, threadId);
+		const thread = await this.memoryService.renameThread(req.user.id, threadId, payload.title);
+		return { thread };
 	}
 
 	@Get('/threads/:threadId/messages')

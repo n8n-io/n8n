@@ -1,6 +1,7 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
+	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
 	InstanceAiThreadContextResponse,
 	InstanceAiRichMessagesResponse,
@@ -26,6 +27,20 @@ export async function fetchThreads(
 	context: IRestApiContext,
 ): Promise<InstanceAiThreadListResponse> {
 	return await makeRestApiRequest(context, 'GET', '/instance-ai/threads');
+}
+
+export async function deleteThread(context: IRestApiContext, threadId: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `/instance-ai/threads/${threadId}`);
+}
+
+export async function renameThread(
+	context: IRestApiContext,
+	threadId: string,
+	title: string,
+): Promise<{ thread: InstanceAiThreadInfo }> {
+	return await makeRestApiRequest(context, 'PATCH', `/instance-ai/threads/${threadId}`, {
+		title,
+	});
 }
 
 export async function fetchThreadMessages(
