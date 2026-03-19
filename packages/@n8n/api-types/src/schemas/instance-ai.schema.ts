@@ -575,8 +575,6 @@ export interface InstanceAiPermissions {
 	runWorkflow: InstanceAiPermissionMode;
 	publishWorkflow: InstanceAiPermissionMode;
 	deleteWorkflow: InstanceAiPermissionMode;
-	buildWorkflow: InstanceAiPermissionMode;
-	patchWorkflow: InstanceAiPermissionMode;
 	deleteCredential: InstanceAiPermissionMode;
 	createFolder: InstanceAiPermissionMode;
 	deleteFolder: InstanceAiPermissionMode;
@@ -594,8 +592,6 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	runWorkflow: 'require_approval',
 	publishWorkflow: 'require_approval',
 	deleteWorkflow: 'require_approval',
-	buildWorkflow: 'require_approval',
-	patchWorkflow: 'require_approval',
 	deleteCredential: 'require_approval',
 	createFolder: 'require_approval',
 	deleteFolder: 'require_approval',

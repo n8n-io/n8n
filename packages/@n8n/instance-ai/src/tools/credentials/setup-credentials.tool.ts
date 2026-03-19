@@ -42,6 +42,7 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 		}),
 		outputSchema: z.object({
 			success: z.boolean(),
+			deferred: z.boolean().optional(),
 			credentials: z.record(z.string()).optional(),
 			reason: z.string().optional(),
 			needsBrowserSetup: z.boolean().optional(),
