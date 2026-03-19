@@ -40,7 +40,7 @@ export function extractProviderKeysFromExpression(expression: string): string[] 
 
 		// Match all dot notation occurrences: $secrets.providerKey
 		const dotMatches = expressionContent.matchAll(
-			new RegExp(`\\$secrets\\.(${PROVIDER_KEY_PATTERN})`, 'g'),
+			new RegExp(`\\$secrets\\.(${PROVIDER_KEY_PATTERN})(?=\\.)`, 'g'),
 		);
 		for (const match of dotMatches) {
 			providerKeys.add(match[1]);

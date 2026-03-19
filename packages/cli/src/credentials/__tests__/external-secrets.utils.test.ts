@@ -29,6 +29,14 @@ describe('External secrets utils', () => {
 			).toEqual(['vault']);
 		});
 
+		it('does not extract partial provider keys from malformed dot notation', () => {
+			expect(
+				extractProviderKeysFromExpression(
+					'={{ $secrets.vault_invalid.key + $secrets.aws.secret }}',
+				),
+			).toEqual(['aws']);
+		});
+
 		it('returns empty array when no $secrets references found', () => {
 			expect(extractProviderKeysFromExpression('={{ $variables.myVar }}')).toEqual([]);
 		});
