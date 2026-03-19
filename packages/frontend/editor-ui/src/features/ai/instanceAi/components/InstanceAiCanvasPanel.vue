@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
+import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
@@ -11,6 +11,7 @@ import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
 import InstanceAiEmptyState from './InstanceAiEmptyState.vue';
 import InstanceAiStatusBar from './InstanceAiStatusBar.vue';
+import InstanceAiThreadPicker from './InstanceAiThreadPicker.vue';
 
 const emit = defineEmits<{
 	close: [];
@@ -22,6 +23,28 @@ const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 
 const workflowId = computed(() => workflowsStore.workflowId);
+
+// --- Thread picker ---
+
+const currentLabel = computed(() => {
+	const thread = store.threads.find((t) => t.id === store.currentThreadId);
+	if (thread?.workflowId) {
+		return thread.title || workflowsStore.workflowName;
+	}
+	if (thread) {
+		return thread.title || i18n.baseText('instanceAi.threadPicker.global');
+	}
+	// Fallback: use workflow name if we have a workflowId, otherwise generic title
+	return workflowId.value ? workflowsStore.workflowName : i18n.baseText('instanceAi.view.title');
+});
+
+function handleThreadSelect(_threadId: string, threadWorkflowId?: string) {
+	if (threadWorkflowId) {
+		void store.ensureWorkflowThread(threadWorkflowId);
+	} else {
+		void store.switchToGlobalThread();
+	}
+}
 
 // --- Lifecycle ---
 
@@ -40,6 +63,9 @@ onMounted(() => {
 
 	// Resolve workflow-scoped thread (falls back to global for unsaved workflows)
 	void store.ensureWorkflowThread(workflowId.value);
+
+	// Load threads so the picker has data
+	void store.loadThreads();
 });
 
 onUnmounted(() => {
@@ -150,9 +176,12 @@ function handleStop() {
 	<div :class="$style.panel" data-test-id="instance-ai-canvas-panel">
 		<!-- Header -->
 		<div :class="$style.header">
-			<N8nText tag="h3" size="medium" bold>
-				{{ i18n.baseText('instanceAi.view.title') }}
-			</N8nText>
+			<InstanceAiThreadPicker
+				:current-thread-id="store.currentThreadId"
+				:threads="store.threads"
+				:current-label="currentLabel"
+				@select="handleThreadSelect"
+			/>
 			<N8nIconButton
 				icon="times"
 				variant="ghost"
@@ -225,6 +254,8 @@ function handleStop() {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 
 .scrollArea {
