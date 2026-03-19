@@ -17,7 +17,7 @@ export function createStopExecutionTool(context: InstanceAiContext) {
 		}),
 		execute: async (inputData) => {
 			// Canvas-aware: emit stop-manual-run event if on canvas
-			if (context.canvasContext && inputData.executionId === 'canvas-manual-run') {
+			if (context.canvasContext && inputData.executionId === 'pending') {
 				publishCanvasEvent(context, 'stop-manual-run', {
 					workflowId: context.canvasContext.workflowId,
 				});
