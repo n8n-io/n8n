@@ -967,7 +967,9 @@ describe('CredentialsService', () => {
 						projectRoles: expect.any(Array),
 						credentialRoles: expect.any(Array),
 					}),
-					expect.objectContaining({ dependencyFilter: undefined }),
+					expect.objectContaining({
+						filters: { dependency: undefined },
+					}),
 				);
 			});
 
@@ -1147,7 +1149,9 @@ describe('CredentialsService', () => {
 					expect.objectContaining({
 						onlySharedWithMe: true,
 					}),
-					expect.objectContaining({ dependencyFilter: undefined }),
+					expect.objectContaining({
+						filters: { dependency: undefined },
+					}),
 				);
 				expect(sharedCredentialsRepository.getAllRelationsForCredentials).toHaveBeenCalledWith([
 					'cred-1',
@@ -1202,7 +1206,9 @@ describe('CredentialsService', () => {
 
 				// ASSERT
 				expect(credentialsRepository.findMany).toHaveBeenCalled();
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(false);
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(false, {
+					filters: { dependency: undefined },
+				});
 				expect(result).toHaveLength(2);
 				expect(result).toEqual(
 					expect.arrayContaining([
@@ -1227,7 +1233,9 @@ describe('CredentialsService', () => {
 
 				// ASSERT
 				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalled();
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(false);
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(false, {
+					filters: { dependency: undefined },
+				});
 				expect(result).toHaveLength(2);
 				expect(result).toEqual(
 					expect.arrayContaining([
@@ -1283,7 +1291,9 @@ describe('CredentialsService', () => {
 				});
 
 				// ASSERT
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(true);
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(true, {
+					filters: { dependency: undefined },
+				});
 			});
 		});
 
@@ -1358,9 +1368,11 @@ describe('CredentialsService', () => {
 					expect.any(Object),
 					{
 						select: { id: true },
-						dependencyFilter: {
-							dependencyType: 'externalSecretProvider',
-							dependencyId: '123',
+						filters: {
+							dependency: {
+								dependencyType: 'externalSecretProvider',
+								dependencyId: '123',
+							},
 						},
 					},
 				);

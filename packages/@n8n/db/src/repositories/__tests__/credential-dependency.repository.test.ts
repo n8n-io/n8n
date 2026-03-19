@@ -3,7 +3,10 @@ import { In } from '@n8n/typeorm';
 
 import { CredentialDependency } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
-import { CredentialDependencyRepository } from '../credential-dependency.repository';
+import {
+	addCredentialDependencyExistsFilter,
+	CredentialDependencyRepository,
+} from '../credential-dependency.repository';
 
 describe('CredentialDependencyRepository', () => {
 	const entityManager = mockEntityManager(CredentialDependency);
@@ -109,5 +112,25 @@ describe('CredentialDependencyRepository', () => {
 				entityManager,
 			});
 		});
+	});
+});
+
+describe('addCredentialDependencyExistsFilter', () => {
+	it('applies the EXISTS dependency filter using andWhere', () => {
+		const qb = {
+			andWhere: jest.fn().mockReturnThis(),
+		};
+		const filter = {
+			dependencyType: 'externalSecretProvider',
+			dependencyId: 'provider-1',
+		} as const;
+
+		const result = addCredentialDependencyExistsFilter(qb as never, filter);
+
+		expect(qb.andWhere).toHaveBeenCalledWith(
+			expect.stringContaining('FROM credential_dependency cd'),
+			filter,
+		);
+		expect(result).toBe(qb);
 	});
 });

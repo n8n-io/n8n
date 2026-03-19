@@ -1,7 +1,42 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository, type EntityManager } from '@n8n/typeorm';
+import {
+	DataSource,
+	In,
+	Repository,
+	type EntityManager,
+	type SelectQueryBuilder,
+} from '@n8n/typeorm';
 
-import { CredentialDependency, type CredentialDependencyType } from '../entities';
+import {
+	CredentialDependency,
+	CredentialsEntity,
+	type CredentialDependencyType,
+} from '../entities';
+
+export type CredentialDependencyFilter = {
+	dependencyType: CredentialDependencyType;
+	dependencyId: string;
+};
+
+/**
+ * Apply dependency filter to a credential query.
+ * Expects outer query builder alias to be "credential".
+ */
+export function addCredentialDependencyExistsFilter(
+	qb: SelectQueryBuilder<CredentialsEntity>,
+	filter: CredentialDependencyFilter,
+) {
+	return qb.andWhere(
+		`EXISTS (
+			SELECT 1
+			FROM credential_dependency cd
+			WHERE cd."credentialId" = credential.id
+				AND cd."dependencyType" = :dependencyType
+				AND cd."dependencyId" = :dependencyId
+		)`,
+		filter,
+	);
+}
 
 type DependencyMutationOptions = {
 	credentialId: string;

@@ -37,6 +37,17 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
+import {
+	CredentialDependencyService,
+	type CredentialDependencyFilter,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+} from './credential-dependency.service';
+import { CredentialsFinderService } from './credentials-finder.service';
+import {
+	validateAccessToReferencedSecretProviders,
+	validateExternalSecretsPermissions,
+} from './validation';
+
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -53,17 +64,6 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-
-import { CredentialsFinderService } from './credentials-finder.service';
-import {
-	CredentialDependencyService,
-	type CredentialDependencyFilter,
-	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
-} from './credential-dependency.service';
-import {
-	validateAccessToReferencedSecretProviders,
-	validateExternalSecretsPermissions,
-} from './validation';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -101,12 +101,10 @@ export class CredentialsService {
 		includeData: boolean,
 		dependencyFilter?: CredentialDependencyFilter,
 	): Promise<CredentialsEntity[]> {
-		const globalCredentials = dependencyFilter
-			? await this.credentialsRepository.findAllGlobalCredentialsByDependency(
-					includeData,
-					dependencyFilter,
-				)
-			: await this.credentialsRepository.findAllGlobalCredentials(includeData);
+		const globalCredentials = await this.credentialsRepository.findAllGlobalCredentials({
+			includeData,
+			filters: { dependency: dependencyFilter },
+		});
 
 		// Merge and deduplicate based on credential ID
 		const credentialIds = new Set(credentials.map((c) => c.id));
@@ -224,7 +222,9 @@ export class CredentialsService {
 				sharingOptions,
 				{
 					...listQueryOptions,
-					dependencyFilter,
+					filters: {
+						dependency: dependencyFilter,
+					},
 				},
 			);
 
@@ -305,7 +305,9 @@ export class CredentialsService {
 			sharingOptions,
 			{
 				...listQueryOptions,
-				dependencyFilter,
+				filters: {
+					dependency: dependencyFilter,
+				},
 			},
 		);
 
@@ -491,8 +493,9 @@ export class CredentialsService {
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
-		const globalCredentials =
-			await this.credentialsRepository.findAllGlobalCredentials(includeData);
+		const globalCredentials = await this.credentialsRepository.findAllGlobalCredentials({
+			includeData,
+		});
 		return globalCredentials;
 	}
 

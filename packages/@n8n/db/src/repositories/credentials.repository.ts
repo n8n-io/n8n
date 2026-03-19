@@ -3,14 +3,13 @@ import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, Like, Repository } from '@n8n/typeorm';
 
-import { CredentialsEntity, type CredentialDependencyType, type User } from '../entities';
+import { CredentialsEntity, type User } from '../entities';
+import {
+	addCredentialDependencyExistsFilter,
+	type CredentialDependencyFilter,
+} from './credential-dependency.repository';
 import { SharedCredentialsRepository } from './shared-credentials.repository';
 import type { ListQuery } from '../entities/types-db';
-
-type CredentialDependencyFilter = {
-	dependencyType: CredentialDependencyType;
-	dependencyId: string;
-};
 
 @Service()
 export class CredentialsRepository extends Repository<CredentialsEntity> {
@@ -189,51 +188,47 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	/**
 	 * Find all global credentials
 	 */
-	async findAllGlobalCredentials(includeData = false): Promise<CredentialsEntity[]> {
-		const findManyOptions = this.toFindManyOptions({ includeData });
+	async findAllGlobalCredentials(
+		options: {
+			includeData?: boolean;
+			filters?: {
+				dependency?: CredentialDependencyFilter;
+			};
+		} = {},
+	): Promise<CredentialsEntity[]> {
+		const { includeData = false, filters } = options;
 
+		if (filters?.dependency) {
+			const qb = this.createQueryBuilder('credential');
+			qb.where('credential.isGlobal = :isGlobal', { isGlobal: true });
+			addCredentialDependencyExistsFilter(qb, filters.dependency);
+
+			const defaultSelect: Array<keyof CredentialsEntity> = [
+				'id',
+				'name',
+				'type',
+				'isManaged',
+				'createdAt',
+				'updatedAt',
+				'isGlobal',
+				'isResolvable',
+				'resolverId',
+			];
+
+			qb.select(defaultSelect.map((k) => `credential.${k}`));
+			qb.leftJoinAndSelect('credential.shared', 'shared');
+			qb.leftJoinAndSelect('shared.project', 'project');
+			qb.leftJoinAndSelect('project.projectRelations', 'projectRelations');
+
+			if (includeData) qb.addSelect('credential.data');
+
+			return await qb.getMany();
+		}
+
+		const findManyOptions = this.toFindManyOptions(includeData ? { includeData: true } : undefined);
 		findManyOptions.where = { ...findManyOptions.where, isGlobal: true };
 
 		return await this.find(findManyOptions);
-	}
-
-	async findAllGlobalCredentialsByDependency(
-		includeData: boolean,
-		dependencyFilter: CredentialDependencyFilter,
-	): Promise<CredentialsEntity[]> {
-		const qb = this.createQueryBuilder('credential')
-			.where('credential.isGlobal = :isGlobal', { isGlobal: true })
-			.andWhere(
-				`EXISTS (
-					SELECT 1
-					FROM credential_dependency cd
-					WHERE cd.credentialId = credential.id
-						AND cd.dependencyType = :dependencyType
-						AND cd.dependencyId = :dependencyId
-				)`,
-				dependencyFilter,
-			);
-
-		const defaultSelect: Array<keyof CredentialsEntity> = [
-			'id',
-			'name',
-			'type',
-			'isManaged',
-			'createdAt',
-			'updatedAt',
-			'isGlobal',
-			'isResolvable',
-			'resolverId',
-		];
-
-		qb.select(defaultSelect.map((k) => `credential.${k}`))
-			.leftJoinAndSelect('credential.shared', 'shared')
-			.leftJoinAndSelect('shared.project', 'project')
-			.leftJoinAndSelect('project.projectRelations', 'projectRelations');
-
-		if (includeData) qb.addSelect('credential.data');
-
-		return await qb.getMany();
 	}
 
 	/**
@@ -283,7 +278,9 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		options: ListQuery.Options & {
 			includeData?: boolean;
 			order?: FindManyOptions<CredentialsEntity>['order'];
-			dependencyFilter?: CredentialDependencyFilter;
+			filters?: {
+				dependency?: CredentialDependencyFilter;
+			};
 		} = {},
 	) {
 		const query = this.getManyQueryWithSharingSubquery(user, sharingOptions, options);
@@ -321,22 +318,15 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		options: ListQuery.Options & {
 			includeData?: boolean;
 			order?: FindManyOptions<CredentialsEntity>['order'];
-			dependencyFilter?: CredentialDependencyFilter;
+			filters?: {
+				dependency?: CredentialDependencyFilter;
+			};
 		} = {},
 	): SelectQueryBuilder<CredentialsEntity> {
 		const qb = this.createQueryBuilder('credential');
 
-		if (options.dependencyFilter) {
-			qb.andWhere(
-				`EXISTS (
-					SELECT 1
-					FROM credential_dependency cd
-					WHERE cd.credentialId = credential.id
-						AND cd.dependencyType = :dependencyType
-						AND cd.dependencyId = :dependencyId
-				)`,
-				options.dependencyFilter,
-			);
+		if (options.filters?.dependency) {
+			addCredentialDependencyExistsFilter(qb, options.filters.dependency);
 		}
 
 		// Pass projectId from options to sharing options
