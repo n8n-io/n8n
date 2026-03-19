@@ -41,7 +41,7 @@ describe('DynamicCredentialCheck Node', () => {
 				opts.hasExecutionContext === false ? undefined : executionContext,
 			getWorkflow: () => ({ id: opts.workflowId }),
 			getNode: () => ({
-				name: 'Dynamic Credential Check',
+				name: 'Check Credential Status',
 				type: 'n8n-nodes-base.dynamicCredentialCheck',
 			}),
 			helpers,
