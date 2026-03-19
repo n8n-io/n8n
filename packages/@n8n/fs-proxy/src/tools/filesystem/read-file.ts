@@ -3,9 +3,8 @@ import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
+import { MAX_FILE_SIZE } from './constants';
 import { resolveSafePath } from './fs-utils';
-
-const MAX_FILE_SIZE = 512 * 1024; // 512 KB
 const DEFAULT_MAX_LINES = 200;
 const BINARY_CHECK_SIZE = 8192;
 

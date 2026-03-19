@@ -4,9 +4,8 @@ import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
+import { MAX_FILE_SIZE } from './constants';
 import { EXCLUDED_DIRS, resolveSafePath } from './fs-utils';
-
-const MAX_FILE_SIZE = 512 * 1024; // 512 KB
 
 const inputSchema = z.object({
 	dirPath: z.string().describe('Directory to search in'),

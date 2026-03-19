@@ -41,6 +41,7 @@ export type LogLevel = z.infer<typeof logLevelSchema>;
 
 const filesystemConfigSchema = z.object({
 	dir: z.string().default('.'),
+	writeAccess: z.boolean().default(false),
 });
 
 const shellConfigSchema = z.object({
@@ -105,10 +106,14 @@ function buildEnvConfig(): Partial<GatewayConfig> {
 	// Filesystem
 	const fsEnabled = envBoolean('FILESYSTEM_ENABLED');
 	const fsDir = envString('FILESYSTEM_DIR');
+	const fsWriteAccess = envBoolean('FILESYSTEM_WRITE_ACCESS');
 	if (fsEnabled === false) {
 		config.filesystem = false;
-	} else if (fsDir) {
-		config.filesystem = { dir: fsDir };
+	} else {
+		const fsConfig: Record<string, unknown> = {};
+		if (fsDir) fsConfig.dir = fsDir;
+		if (fsWriteAccess !== undefined) fsConfig.writeAccess = fsWriteAccess;
+		if (Object.keys(fsConfig).length > 0) config.filesystem = fsConfig;
 	}
 
 	// Computer — shell
@@ -176,8 +181,11 @@ function buildCliConfig(args: yargsParser.Arguments): Partial<GatewayConfig> {
 	if (args['no-filesystem'] === true) {
 		config.filesystem = false;
 	} else {
+		const fsConfig: Record<string, unknown> = {};
 		const dir = args['filesystem-dir'] as string;
-		if (dir) config.filesystem = { dir };
+		if (dir) fsConfig.dir = dir;
+		if (args['filesystem-write-access'] === true) fsConfig.writeAccess = true;
+		if (Object.keys(fsConfig).length > 0) config.filesystem = fsConfig;
 	}
 
 	// Computer — shell
@@ -279,6 +287,7 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 		string: ['log-level', 'filesystem-dir', 'browser-default', 'browser-viewport', 'allow-origin'],
 		boolean: [
 			'no-filesystem',
+			'filesystem-write-access',
 			'no-computer-shell',
 			'no-computer-screenshot',
 			'no-computer-mouse-keyboard',
