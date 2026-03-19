@@ -1,4 +1,5 @@
-import type { SecretsProviderConnectionRepository } from '@n8n/db';
+import type { CredentialDependencyRepository, SecretsProviderConnectionRepository } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import {
@@ -7,8 +8,12 @@ import {
 } from '@/credentials/credential-dependency.service';
 
 describe('CredentialDependencyService', () => {
+	const credentialDependencyRepository = mock<CredentialDependencyRepository>();
 	const secretsProviderConnectionRepository = mock<SecretsProviderConnectionRepository>();
-	const service = new CredentialDependencyService(secretsProviderConnectionRepository);
+	const service = new CredentialDependencyService(
+		credentialDependencyRepository,
+		secretsProviderConnectionRepository,
+	);
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -36,31 +41,95 @@ describe('CredentialDependencyService', () => {
 		});
 	});
 
-	describe('resolveProviderIdsFromCredentialData', () => {
-		it('extracts provider keys and resolves provider ids', async () => {
+	describe('upsertExternalSecretProviderDependenciesForCredential', () => {
+		it('resolves provider ids and upserts dependencies', async () => {
 			secretsProviderConnectionRepository.findIdsByProviderKeys.mockResolvedValue(['7', '8']);
+			const entityManager = mock<EntityManager>();
 
-			const result = await service.resolveProviderIdsFromCredentialData({
-				apiKey: '={{ $secrets.vault.apiKey }}', // With dot notation
-				token: '={{ $secrets["aws-secrets-manager"].token }}', // With bracket notation
+			await service.upsertExternalSecretProviderDependenciesForCredential({
+				credentialId: 'cred-1',
+				decryptedCredentialData: {
+					apiKey: '={{ $secrets.vault.apiKey }}',
+					token: '={{ $secrets["aws-secrets-manager"].token }}',
+				},
+				entityManager,
 			});
 
 			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith([
 				'vault',
 				'aws-secrets-manager',
 			]);
-			expect(result).toEqual(['7', '8']);
+			expect(credentialDependencyRepository.upsertDependenciesForCredential).toHaveBeenCalledWith({
+				credentialId: 'cred-1',
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyIds: ['7', '8'],
+				entityManager,
+			});
 		});
 
-		it('returns empty ids when no providers are referenced', async () => {
+		it('handles credential data without external providers', async () => {
 			secretsProviderConnectionRepository.findIdsByProviderKeys.mockResolvedValue([]);
+			const entityManager = mock<EntityManager>();
 
-			const result = await service.resolveProviderIdsFromCredentialData({
-				apiKey: 'plain-value',
+			await service.upsertExternalSecretProviderDependenciesForCredential({
+				credentialId: 'cred-1',
+				decryptedCredentialData: { apiKey: 'plain-value' },
+				entityManager,
 			});
 
 			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith([]);
-			expect(result).toEqual([]);
+			expect(credentialDependencyRepository.upsertDependenciesForCredential).toHaveBeenCalledWith({
+				credentialId: 'cred-1',
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyIds: [],
+				entityManager,
+			});
+		});
+	});
+
+	describe('syncExternalSecretProviderDependenciesForCredential', () => {
+		it('resolves provider ids and syncs dependencies', async () => {
+			secretsProviderConnectionRepository.findIdsByProviderKeys.mockResolvedValue(['7', '8']);
+			const entityManager = mock<EntityManager>();
+
+			await service.syncExternalSecretProviderDependenciesForCredential({
+				credentialId: 'cred-1',
+				decryptedCredentialData: {
+					apiKey: '={{ $secrets.vault.apiKey }}',
+					token: '={{ $secrets["aws-secrets-manager"].token }}',
+				},
+				entityManager,
+			});
+
+			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith([
+				'vault',
+				'aws-secrets-manager',
+			]);
+			expect(credentialDependencyRepository.syncDependenciesForCredential).toHaveBeenCalledWith({
+				credentialId: 'cred-1',
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyIds: ['7', '8'],
+				entityManager,
+			});
+		});
+
+		it('handles credential data without external providers', async () => {
+			secretsProviderConnectionRepository.findIdsByProviderKeys.mockResolvedValue([]);
+			const entityManager = mock<EntityManager>();
+
+			await service.syncExternalSecretProviderDependenciesForCredential({
+				credentialId: 'cred-1',
+				decryptedCredentialData: { apiKey: 'plain-value' },
+				entityManager,
+			});
+
+			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith([]);
+			expect(credentialDependencyRepository.syncDependenciesForCredential).toHaveBeenCalledWith({
+				credentialId: 'cred-1',
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyIds: [],
+				entityManager,
+			});
 		});
 	});
 });

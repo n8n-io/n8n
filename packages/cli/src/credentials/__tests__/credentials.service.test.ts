@@ -1,6 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
-	CredentialDependencyRepository,
 	CredentialsEntity,
 	CredentialsRepository,
 	SharedCredentialsRepository,
@@ -17,6 +16,9 @@ import {
 	type ICredentialDataDecryptedObject,
 	type ICredentialType,
 } from 'n8n-workflow';
+
+import { mockExistingCredential } from './credentials.test-data';
+
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -31,8 +33,6 @@ import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
-
-import { mockExistingCredential } from './credentials.test-data';
 
 const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
@@ -59,7 +59,6 @@ describe('CredentialsService', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const credentialTypes = mock<CredentialTypes>();
 	const credentialsRepository = mock<CredentialsRepository>();
-	const credentialDependencyRepository = mock<CredentialDependencyRepository>();
 	const credentialDependencyService = mock<CredentialDependencyService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const ownershipService = mock<OwnershipService>();
@@ -77,7 +76,6 @@ describe('CredentialsService', () => {
 
 	const service = new CredentialsService(
 		credentialsRepository,
-		credentialDependencyRepository,
 		credentialDependencyService,
 		sharedCredentialsRepository,
 		ownershipService,

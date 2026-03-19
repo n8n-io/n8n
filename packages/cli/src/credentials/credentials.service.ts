@@ -2,7 +2,6 @@ import type { CreateCredentialDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
 import {
-	CredentialDependencyRepository,
 	CredentialsEntity,
 	SharedCredentials,
 	CredentialsRepository,
@@ -40,7 +39,6 @@ import {
 import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
-	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 } from './credential-dependency.service';
 import { CredentialsFinderService } from './credentials-finder.service';
 import {
@@ -77,7 +75,6 @@ type CreateCredentialOptions = CreateCredentialDto & {
 export class CredentialsService {
 	constructor(
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly credentialDependencyRepository: CredentialDependencyRepository,
 		private readonly credentialDependencyService: CredentialDependencyService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
@@ -662,21 +659,15 @@ export class CredentialsService {
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 	) {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
-		const nextProviderIds = decryptedCredentialData
-			? await this.credentialDependencyService.resolveProviderIdsFromCredentialData(
-					decryptedCredentialData,
-				)
-			: undefined;
 
 		return await this.credentialsRepository.manager.transaction(async (transactionManager) => {
 			// Update the credentials in DB
 			await transactionManager.update(CredentialsEntity, credentialId, newCredentialData);
 
-			if (nextProviderIds) {
-				await this.credentialDependencyRepository.syncDependenciesForCredential({
+			if (decryptedCredentialData) {
+				await this.credentialDependencyService.syncExternalSecretProviderDependenciesForCredential({
 					credentialId,
-					dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
-					dependencyIds: nextProviderIds,
+					decryptedCredentialData,
 					entityManager: transactionManager,
 				});
 			}
@@ -692,7 +683,7 @@ export class CredentialsService {
 		encryptedData: ICredentialsDb,
 		user: User,
 		projectId?: string,
-		decryptedData?: ICredentialDataDecryptedObject,
+		decryptedCredentialData?: ICredentialDataDecryptedObject,
 	) {
 		// To avoid side effects
 		const newCredential = new CredentialsEntity();
@@ -737,17 +728,14 @@ export class CredentialsService {
 
 			await transactionManager.save<SharedCredentials>(newSharedCredential);
 
-			if (decryptedData) {
-				const dependencyIds =
-					await this.credentialDependencyService.resolveProviderIdsFromCredentialData(
-						decryptedData,
-					);
-				await this.credentialDependencyRepository.upsertDependenciesForCredential({
-					credentialId: savedCredential.id,
-					dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
-					dependencyIds,
-					entityManager: transactionManager,
-				});
+			if (decryptedCredentialData) {
+				await this.credentialDependencyService.upsertExternalSecretProviderDependenciesForCredential(
+					{
+						credentialId: savedCredential.id,
+						decryptedCredentialData,
+						entityManager: transactionManager,
+					},
+				);
 			}
 
 			return savedCredential;
