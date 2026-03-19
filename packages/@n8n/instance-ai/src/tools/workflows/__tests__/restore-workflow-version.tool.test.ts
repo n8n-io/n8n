@@ -94,6 +94,7 @@ describe('createRestoreWorkflowVersionTool', () => {
 			const suspendPayload = (suspend.mock.calls as unknown[][])[0][0] as Record<string, unknown>;
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					message: expect.stringContaining('overwrite the current draft'),
 					severity: 'warning',
 				}),
