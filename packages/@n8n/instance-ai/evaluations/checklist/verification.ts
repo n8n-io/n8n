@@ -815,11 +815,7 @@ function renderToolCallState(tc: InstanceAiToolCallState, indent: string): strin
 // Non-executable trigger types (cannot be force-executed in eval)
 // ---------------------------------------------------------------------------
 
-const NON_EXECUTABLE_TRIGGERS = new Set([
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.scheduleTrigger',
-	'n8n-nodes-base.formTrigger',
-]);
+const NON_EXECUTABLE_TRIGGERS = new Set(['n8n-nodes-base.webhook', 'n8n-nodes-base.formTrigger']);
 
 const EXECUTION_POLL_INTERVAL_MS = 500;
 const EXECUTION_POLL_TIMEOUT_MS = 30_000;
@@ -1329,52 +1325,48 @@ export async function cleanupEvalArtifacts(
 }
 
 // ---------------------------------------------------------------------------
-// Credential preflight, seeding, and cleanup
+// Credential seeding and cleanup
 // ---------------------------------------------------------------------------
 
-/**
- * Verify the n8n instance can create/delete credentials.
- * Catches missing encryption key or misconfigured instance early.
- */
-export async function verifyCredentialSupport(client: N8nClient): Promise<void> {
-	try {
-		const { id } = await client.createCredential('eval-preflight-check', 'httpBasicAuth', {
-			user: 'test',
-			password: 'test',
-		});
-		await client.deleteCredential(id);
-	} catch (err: unknown) {
-		const msg = err instanceof Error ? err.message : String(err);
-		throw new Error(
-			'Credential preflight failed — n8n cannot create credentials. ' +
-				'Ensure N8N_ENCRYPTION_KEY is set and the instance is configured. ' +
-				`Details: ${msg}`,
-		);
-	}
+export interface SeedResult {
+	credentialIds: string[];
+	seededTypes: string[];
 }
 
 /**
  * Seed only the credentials required by the selected prompts.
- * Returns IDs of created credentials for later cleanup.
+ * External service credentials are skipped if the env var is not set.
+ * Returns IDs for cleanup and the types that were actually seeded.
  */
 export async function seedEvalCredentials(
 	client: N8nClient,
 	prompts: PromptConfig[],
-): Promise<string[]> {
+): Promise<SeedResult> {
 	const neededTypes = new Set(prompts.flatMap((p) => p.requiredCredentials ?? []));
-	if (neededTypes.size === 0) return [];
+	if (neededTypes.size === 0) return { credentialIds: [], seededTypes: [] };
 
-	const createdIds: string[] = [];
+	const credentialIds: string[] = [];
+	const seededTypes: string[] = [];
 	for (const cred of EVAL_CREDENTIALS) {
 		if (!neededTypes.has(cred.type)) continue;
+
+		const credData = cred.data();
+		if (!credData) {
+			if (cred.envVar) {
+				console.log(`  Skipping ${cred.name}: ${cred.envVar} not set`);
+			}
+			continue;
+		}
+
 		try {
-			const { id } = await client.createCredential(cred.name, cred.type, cred.data);
-			createdIds.push(id);
+			const { id } = await client.createCredential(cred.name, cred.type, credData);
+			credentialIds.push(id);
+			seededTypes.push(cred.type);
 		} catch {
 			// Non-fatal — credential type may not exist on this n8n version
 		}
 	}
-	return createdIds;
+	return { credentialIds, seededTypes };
 }
 
 /**

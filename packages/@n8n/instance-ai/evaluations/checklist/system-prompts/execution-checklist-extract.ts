@@ -29,7 +29,7 @@ After execution, we capture the output data from every node in the workflow AND 
 4. All checklist items MUST have category "execution"
 5. Generate 2-8 items depending on workflow complexity
 6. Only assert on things that can be verified from node output data or webhook HTTP response — do NOT assert on external side effects (emails sent, Slack messages delivered, etc.)
-7. If the workflow uses nodes that require real external API credentials (Slack, GitHub, Notion, HTTP Request to external URLs, etc.), return EMPTY arrays — these workflows cannot produce meaningful results with test credentials
+7. If the workflow uses nodes that require real external API credentials (Slack, GitHub, Notion, HTTP Request to external URLs, etc.) AND those credentials were NOT seeded with real tokens, return EMPTY arrays. If the "Seeded credentials" section below lists the credential types used by the workflow, then real tokens ARE available and you SHOULD generate test inputs. For seeded external credentials, do NOT assert on external side effects (e.g. "Slack message was delivered") — only assert on execution success and node output structure.
 8. If the workflow has no trigger node or is trivially simple (just a manual trigger with no processing), return EMPTY arrays
 9. Test data should be realistic and exercise the workflow's logic paths
 10. For webhooks expecting specific field names, use those exact field names in the test data

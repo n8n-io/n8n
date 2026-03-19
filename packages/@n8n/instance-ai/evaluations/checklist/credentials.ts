@@ -1,59 +1,81 @@
 // Credential fixtures for eval seeding.
 //
-// Reuses the same shape as CredentialPayload from @n8n/backend-test-utils
-// and credential data patterns from node integration tests.
+// External service credentials (Slack, GitHub, etc.) require real tokens
+// via environment variables. If the env var is not set, the credential
+// is skipped. Generic HTTP credentials use placeholder values.
 //
-// Seeded via POST /rest/credentials before eval runs so the agent
-// can discover and attach them when building workflows.
+// POST /rest/credentials takes raw values — n8n encrypts them server-side.
 
 export interface CredentialFixture {
 	type: string;
 	name: string;
-	data: Record<string, unknown>;
+	/** Env var that must contain the real token. If unset, credential is skipped. */
+	envVar?: string;
+	data: () => Record<string, unknown> | undefined;
 }
 
 export const EVAL_CREDENTIALS: CredentialFixture[] = [
-	// -- API key credentials --
+	// -- External service credentials (require real tokens) --
 	{
 		type: 'slackApi',
 		name: 'Eval — Slack API',
-		data: { accessToken: 'xoxb-eval-placeholder-token' },
+		envVar: 'EVAL_SLACK_ACCESS_TOKEN',
+		data: () => {
+			const token = process.env.EVAL_SLACK_ACCESS_TOKEN;
+			if (!token) return undefined;
+			return { accessToken: token };
+		},
 	},
 	{
 		type: 'notionApi',
 		name: 'Eval — Notion API',
-		data: { apiKey: 'ntn_eval_placeholder_key' },
+		envVar: 'EVAL_NOTION_API_KEY',
+		data: () => {
+			const key = process.env.EVAL_NOTION_API_KEY;
+			if (!key) return undefined;
+			return { apiKey: key };
+		},
 	},
 	{
 		type: 'githubApi',
 		name: 'Eval — GitHub API',
-		data: { accessToken: 'ghp_eval_placeholder_token' },
+		envVar: 'EVAL_GITHUB_ACCESS_TOKEN',
+		data: () => {
+			const token = process.env.EVAL_GITHUB_ACCESS_TOKEN;
+			if (!token) return undefined;
+			return { accessToken: token };
+		},
 	},
-
-	// -- OAuth credentials --
 	{
 		type: 'gmailOAuth2Api',
 		name: 'Eval — Gmail',
-		data: { oauthTokenData: { access_token: 'eval-placeholder-token' } },
+		envVar: 'EVAL_GMAIL_ACCESS_TOKEN',
+		data: () => {
+			const token = process.env.EVAL_GMAIL_ACCESS_TOKEN;
+			if (!token) return undefined;
+			return { oauthTokenData: { access_token: token } };
+		},
 	},
 	{
 		type: 'microsoftTeamsOAuth2Api',
 		name: 'Eval — Microsoft Teams',
-		data: {
-			scope: 'openid',
-			oauthTokenData: { access_token: 'eval-placeholder-token' },
+		envVar: 'EVAL_TEAMS_ACCESS_TOKEN',
+		data: () => {
+			const token = process.env.EVAL_TEAMS_ACCESS_TOKEN;
+			if (!token) return undefined;
+			return { scope: 'openid', oauthTokenData: { access_token: token } };
 		},
 	},
 
-	// -- Generic HTTP credentials --
+	// -- Generic HTTP credentials (no real token needed) --
 	{
 		type: 'httpHeaderAuth',
 		name: 'Eval — HTTP Header Auth',
-		data: { name: 'Authorization', value: 'Bearer eval-placeholder' },
+		data: () => ({ name: 'Authorization', value: 'Bearer eval-placeholder' }),
 	},
 	{
 		type: 'httpBasicAuth',
 		name: 'Eval — HTTP Basic Auth',
-		data: { user: 'eval-user', password: 'eval-pass' },
+		data: () => ({ user: 'eval-user', password: 'eval-pass' }),
 	},
 ];

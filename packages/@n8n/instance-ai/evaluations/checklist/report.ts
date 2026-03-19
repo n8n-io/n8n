@@ -165,7 +165,8 @@ function renderChatMessagesSection(
 	if (!messages || messages.length === 0) return '';
 
 	const workflowJsonMap = buildWorkflowJsonMap(result);
-	let html = '<div class="detail-section"><h4>Chat Conversation</h4>';
+	let html =
+		'<details class="detail-section"><summary><h4 style="display:inline">Chat Conversation</h4></summary>';
 	let tcIdx = 0;
 
 	for (const msg of messages) {
@@ -178,7 +179,7 @@ function renderChatMessagesSection(
 		}
 	}
 
-	html += '</div>';
+	html += '</details>';
 	return html;
 }
 
@@ -222,6 +223,8 @@ function renderWorkflowsSection(result: InstanceAiResult): string {
 function renderExecutionsSection(result: InstanceAiResult, n8nBaseUrl: string): string {
 	if (result.outcome.executionsRun.length === 0) return '';
 
+	const workflowJsonMap = buildWorkflowJsonMap(result);
+
 	const items = result.outcome.executionsRun
 		.map((exec) => {
 			const statusBadge =
@@ -246,17 +249,74 @@ function renderExecutionsSection(result: InstanceAiResult, n8nBaseUrl: string): 
 				: '';
 
 			// Link to open execution in n8n (new tab)
-			const hasPreview = exec.id && exec.id !== '' && exec.workflowId && exec.workflowId !== '';
-			const previewUrl = hasPreview
-				? `${n8nBaseUrl}/workflow/${exec.workflowId}/executions/${exec.id}`
-				: '';
-			const previewHtml = hasPreview
-				? `<a href="${escapeHtml(previewUrl)}" target="_blank" rel="noopener" class="exec-preview-link">Open in n8n &rarr;</a>`
+			const hasExecId = exec.id && exec.id !== '';
+			const hasWorkflowId = exec.workflowId && exec.workflowId !== '';
+			const linkUrl =
+				hasExecId && hasWorkflowId
+					? `${n8nBaseUrl}/workflow/${exec.workflowId}/executions/${exec.id}`
+					: hasWorkflowId
+						? `${n8nBaseUrl}/workflow/${exec.workflowId}/executions`
+						: '';
+			const linkHtml = linkUrl
+				? `<a href="${escapeHtml(linkUrl)}" target="_blank" rel="noopener" class="exec-preview-link">Open in n8n &rarr;</a>`
 				: '';
 
-			return `<div style="margin:8px 0;padding:8px;background:#161b22;border:1px solid #30363d;border-radius:4px;font-size:12px">
-				<div>Execution ${escapeHtml(exec.id || '(eval-triggered)')} (workflow: ${escapeHtml(exec.workflowId)}) ${statusBadge}${evalBadge}</div>
-				${errorLine}${failedNodeLine}${previewHtml}
+			// Workflow preview via n8n-demo
+			let workflowPreviewHtml = '';
+			const wfJson = workflowJsonMap.get(exec.workflowId);
+			if (wfJson) {
+				const wfJsonStr = JSON.stringify(wfJson);
+				workflowPreviewHtml = `<div class="exec-workflow-preview"><n8n-demo tidyup="true" workflow='${escapeHtml(wfJsonStr)}'></n8n-demo></div>`;
+			}
+
+			// Node output data
+			let nodeOutputHtml = '';
+			if (exec.outputData && exec.outputData.length > 0) {
+				const nodeItems = exec.outputData
+					.map((nodeOutput) => {
+						const jsonStr = JSON.stringify(nodeOutput.data, null, 2);
+						const truncated =
+							jsonStr.length > 5000 ? jsonStr.slice(0, 5000) + '\n... (truncated)' : jsonStr;
+						return `<div class="exec-node-output">
+							<div class="exec-node-name">${escapeHtml(nodeOutput.nodeName)}</div>
+							<pre class="exec-node-json"><code>${escapeHtml(truncated)}</code></pre>
+						</div>`;
+					})
+					.join('');
+				nodeOutputHtml = `<details class="exec-data-section">
+					<summary>Node Outputs (${String(exec.outputData.length)} nodes)</summary>
+					${nodeItems}
+				</details>`;
+			}
+
+			// Webhook response
+			let webhookHtml = '';
+			if (exec.webhookResponse) {
+				const statusClass =
+					exec.webhookResponse.status >= 200 && exec.webhookResponse.status < 300
+						? 'webhook-status-ok'
+						: 'webhook-status-error';
+				const bodyStr =
+					typeof exec.webhookResponse.body === 'string'
+						? exec.webhookResponse.body
+						: JSON.stringify(exec.webhookResponse.body, null, 2);
+				const truncatedBody =
+					bodyStr.length > 5000 ? bodyStr.slice(0, 5000) + '\n... (truncated)' : bodyStr;
+				webhookHtml = `<details class="exec-data-section">
+					<summary>Webhook Response <span class="webhook-status ${statusClass}">${String(exec.webhookResponse.status)}</span></summary>
+					<pre class="exec-node-json"><code>${escapeHtml(truncatedBody)}</code></pre>
+				</details>`;
+			}
+
+			return `<div class="exec-card">
+				<div class="exec-card-header">
+					<span>Execution ${escapeHtml(exec.id || '(eval-triggered)')} (workflow: ${escapeHtml(exec.workflowId)})</span>
+					${statusBadge}${evalBadge}
+				</div>
+				${errorLine}${failedNodeLine}${linkHtml}
+				${workflowPreviewHtml}
+				${nodeOutputHtml}
+				${webhookHtml}
 			</div>`;
 		})
 		.join('');
@@ -565,6 +625,19 @@ export function generateReport(runs: Run[]): string {
 	n8n-demo { display: block; margin: 8px 0; min-height: 200px; }
 	.exec-preview-link { display: inline-block; margin-top: 6px; color: #58a6ff; font-size: 12px; text-decoration: none; }
 	.exec-preview-link:hover { text-decoration: underline; }
+	.exec-card { margin: 8px 0; padding: 12px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; font-size: 12px; }
+	.exec-card-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+	.exec-workflow-preview { margin: 12px 0 8px 0; }
+	.exec-data-section { margin-top: 8px; }
+	.exec-data-section > summary { cursor: pointer; color: #58a6ff; font-size: 12px; font-weight: 600; padding: 4px 0; }
+	.exec-data-section > summary:hover { text-decoration: underline; }
+	.exec-data-section[open] > summary { margin-bottom: 8px; }
+	.exec-node-output { margin-bottom: 8px; }
+	.exec-node-name { color: #f0f6fc; font-size: 12px; font-weight: 600; margin-bottom: 4px; font-family: monospace; }
+	.exec-node-json { font-size: 11px; max-height: 200px; overflow-y: auto; margin: 0; padding: 8px; background: #0d1117; border: 1px solid #21262d; border-radius: 4px; }
+	.webhook-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: monospace; }
+	.webhook-status-ok { background: #23863633; color: #3fb950; }
+	.webhook-status-error { background: #da363333; color: #f85149; }
 	.chat-link { display: inline-block; margin-top: 8px; color: #58a6ff; font-size: 13px; text-decoration: none; }
 	.chat-link:hover { text-decoration: underline; }
 </style>

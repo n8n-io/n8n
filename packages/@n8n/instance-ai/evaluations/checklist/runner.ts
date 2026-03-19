@@ -26,6 +26,7 @@ import type {
 	InstanceAiResult,
 	PromptConfig,
 	ChecklistItem,
+	ChecklistResult,
 	CapturedEvent,
 	ExecutionChecklist,
 } from './types';
@@ -55,6 +56,8 @@ export interface RunnerConfig {
 	 * other concurrent runs in the same batch won't claim them too.
 	 */
 	claimedWorkflowIds?: Set<string>;
+	/** Credential types that were seeded with real tokens (for execution eval) */
+	seededCredentialTypes?: string[];
 }
 
 const DEFAULT_TIMEOUT_MS = 600_000;
@@ -188,6 +191,7 @@ export async function runSingleExample(
 			executionChecklist = await extractExecutionChecklist(
 				prompt.text,
 				outcome.workflowJsons[0] as Record<string, unknown>,
+				config.seededCredentialTypes,
 			);
 
 			if (config.verbose) {
@@ -225,10 +229,29 @@ export async function runSingleExample(
 		}
 
 		// 8b. Verify execution checklist
-		const executionChecklistResults =
-			executionChecklist.items.length > 0
-				? await verifyChecklist(verificationArtifact, executionChecklist.items)
-				: [];
+		// If all eval-triggered executions failed, force score to 0
+		const evalExecutions = outcome.executionsRun.filter((e) => e.triggeredByEval);
+		const allEvalExecutionsFailed =
+			evalExecutions.length > 0 &&
+			evalExecutions.every((e) => e.status === 'error' || e.status === 'failed');
+
+		let executionChecklistResults: ChecklistResult[];
+		if (allEvalExecutionsFailed && executionChecklist.items.length > 0) {
+			const failureReasons = evalExecutions
+				.filter((e) => e.error)
+				.map((e) => e.error)
+				.join('; ');
+			executionChecklistResults = executionChecklist.items.map((item) => ({
+				id: item.id,
+				pass: false,
+				reasoning: `All executions failed: ${failureReasons || 'unknown error'}`,
+			}));
+		} else {
+			executionChecklistResults =
+				executionChecklist.items.length > 0
+					? await verifyChecklist(verificationArtifact, executionChecklist.items)
+					: [];
+		}
 		const executionChecklistScore = calculateScore(executionChecklistResults.map((r) => r.pass));
 
 		if (config.verbose && executionChecklist.items.length > 0) {

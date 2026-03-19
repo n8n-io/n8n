@@ -173,8 +173,14 @@ const EMPTY_EXECUTION_CHECKLIST: ExecutionChecklist = { items: [], testInputs: [
 export async function extractExecutionChecklist(
 	promptText: string,
 	workflowJson: Record<string, unknown>,
+	seededCredentialTypes?: string[],
 ): Promise<ExecutionChecklist> {
 	const workflowSummary = simplifyWorkflowJson(workflowJson);
+
+	const seededSection =
+		seededCredentialTypes && seededCredentialTypes.length > 0
+			? `\n\n## Seeded credentials (real tokens available)\n\n${seededCredentialTypes.join(', ')}`
+			: '\n\n## Seeded credentials (real tokens available)\n\nNone';
 
 	const userMessage = `## User Prompt
 
@@ -182,7 +188,7 @@ ${promptText}
 
 ## Workflow JSON
 
-${workflowSummary}`;
+${workflowSummary}${seededSection}`;
 
 	const response = await callLLM({
 		model: EVAL_MODEL,

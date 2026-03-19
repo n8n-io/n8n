@@ -6,12 +6,7 @@ import { writeReport } from './report';
 import { saveRun, listRuns } from './storage';
 import { SYNTHETIC_PROMPTS } from './synthetic-prompts';
 import { N8nClient } from './n8n-client';
-import {
-	verifyCredentialSupport,
-	seedEvalCredentials,
-	cleanupEvalCredentials,
-	snapshotWorkflowIds,
-} from './verification';
+import { seedEvalCredentials, cleanupEvalCredentials, snapshotWorkflowIds } from './verification';
 import type { Run, PromptConfig, ChecklistItem, InstanceAiResult } from './types';
 
 // ---------------------------------------------------------------------------
@@ -276,15 +271,18 @@ async function runEval() {
 	console.log(`Authenticating with ${String(n8nUrls.length)} n8n instance(s)...`);
 	const n8nClients: N8nClient[] = [];
 	const allSeededCredentialIds: Array<{ client: N8nClient; ids: string[] }> = [];
+	let seededCredentialTypes: string[] = [];
 
 	for (const url of n8nUrls) {
 		const client = new N8nClient(url);
 		await client.login();
-		await verifyCredentialSupport(client);
-		const seededIds = await seedEvalCredentials(client, prompts);
+		const seedResult = await seedEvalCredentials(client, prompts);
 		n8nClients.push(client);
-		allSeededCredentialIds.push({ client, ids: seededIds });
-		console.log(`  ${url}: authenticated, ${String(seededIds.length)} credential(s) seeded`);
+		allSeededCredentialIds.push({ client, ids: seedResult.credentialIds });
+		seededCredentialTypes = seedResult.seededTypes;
+		console.log(
+			`  ${url}: authenticated, ${String(seedResult.credentialIds.length)} credential(s) seeded`,
+		);
 	}
 
 	const run: Run = {
@@ -344,6 +342,7 @@ async function runEval() {
 						verbose: args.verbose,
 						autoApprove: true,
 						skipExecutionEval: args.skipExecutionEval,
+						seededCredentialTypes,
 						preRunWorkflowIds: snapshot,
 						claimedWorkflowIds: batchClaimedIds,
 					};
