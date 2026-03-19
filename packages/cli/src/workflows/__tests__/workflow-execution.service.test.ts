@@ -15,6 +15,7 @@ import {
 
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -75,6 +76,14 @@ const secondHackerNewsNode: INode = {
 	position: [0, 0],
 };
 
+const mockOwnershipService = () => {
+	const ownershipService = mock<OwnershipService>();
+	ownershipService.getWorkflowProjectCached.mockResolvedValue(
+		mock<Project>({ id: 'test-project-id', name: 'Test Project' }),
+	);
+	return ownershipService;
+};
+
 describe('WorkflowExecutionService', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRunner = mock<WorkflowRunner>();
@@ -90,6 +99,7 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		mock(),
+		mockOwnershipService(),
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -154,6 +164,8 @@ describe('WorkflowExecutionService', () => {
 				workflowData,
 				userId,
 				dirtyNodeNames: runPayload.dirtyNodeNames,
+				projectId: 'test-project-id',
+				projectName: 'Test Project',
 			});
 			expect(result).toEqual({ executionId });
 		});
@@ -187,6 +199,8 @@ describe('WorkflowExecutionService', () => {
 				pushRef: undefined,
 				workflowData,
 				userId,
+				projectId: 'test-project-id',
+				projectName: 'Test Project',
 			});
 			expect(result).toEqual({ executionId });
 		});
@@ -247,6 +261,8 @@ describe('WorkflowExecutionService', () => {
 				workflowData,
 				userId,
 				triggerToStartFrom: { name: pinnedTrigger.name },
+				projectId: 'test-project-id',
+				projectName: 'Test Project',
 			});
 			expect(result).toEqual({ executionId });
 		});
@@ -303,6 +319,8 @@ describe('WorkflowExecutionService', () => {
 				userId,
 				// pass unexecuted trigger to start from
 				triggerToStartFrom: runPayload.triggerToStartFrom,
+				projectId: 'test-project-id',
+				projectName: 'Test Project',
 			});
 			expect(result).toEqual({ executionId });
 		});
@@ -409,6 +427,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mockOwnershipService(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -589,6 +608,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mockOwnershipService(),
 			);
 		});
 
@@ -740,12 +760,13 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mockOwnershipService(),
 			);
 
 			await service.executeErrorWorkflow(
 				'error-workflow-id',
 				workflowErrorData,
-				mock<Project>({ id: 'project-id' }),
+				mock<Project>({ id: 'project-id', name: 'Error Project' }),
 			);
 
 			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
@@ -786,6 +807,7 @@ describe('WorkflowExecutionService', () => {
 				}),
 				workflowData: errorWorkflow,
 				projectId: 'project-id',
+				projectName: 'Error Project',
 			});
 		});
 
@@ -865,6 +887,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				workflowRunnerMock,
 				globalConfig,
+				mock(),
 				mock(),
 				mock(),
 				mock(),
