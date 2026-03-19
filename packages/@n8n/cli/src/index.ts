@@ -23,6 +23,7 @@ import ExecutionList from './commands/execution/list';
 import ExecutionRetry from './commands/execution/retry';
 import ExecutionStop from './commands/execution/stop';
 import Login from './commands/login';
+import Logout from './commands/logout';
 import ProjectAddMember from './commands/project/add-member';
 import ProjectCreate from './commands/project/create';
 import ProjectDelete from './commands/project/delete';
@@ -55,6 +56,7 @@ import WorkflowUpdate from './commands/workflow/update';
 
 export const commands = {
 	login: Login,
+	logout: Logout,
 
 	'config:set-url': ConfigSetUrl,
 	'config:set-api-key': ConfigSetApiKey,

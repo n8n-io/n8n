@@ -32,6 +32,14 @@ export function writeConfig(config: CliConfig): void {
 	});
 }
 
+export function deleteConfig(): void {
+	try {
+		fs.unlinkSync(CONFIG_FILE);
+	} catch {
+		// Ignore if file doesn't exist
+	}
+}
+
 /** Resolve URL and API key from flags > env > config file */
 export function resolveConnection(flags: {
 	url?: string;
