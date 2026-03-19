@@ -196,21 +196,15 @@ export class InstanceAiController {
 
 	@Post('/confirm/:requestId')
 	async confirm(req: AuthenticatedRequest, _res: Response, @Param('requestId') requestId: string) {
-		const {
-			approved,
-			credentialId,
-			credentials,
-			autoSetup,
-			userInput,
-			domainAccessAction,
-		} = req.body as {
-			approved: boolean;
-			credentialId?: string;
-			credentials?: Record<string, string>;
-			autoSetup?: { credentialType: string };
-			userInput?: string;
-			domainAccessAction?: string;
-		};
+		const { approved, credentialId, credentials, autoSetup, userInput, domainAccessAction } =
+			req.body as {
+				approved: boolean;
+				credentialId?: string;
+				credentials?: Record<string, string>;
+				autoSetup?: { credentialType: string };
+				userInput?: string;
+				domainAccessAction?: string;
+			};
 		const resolved = await this.instanceAiService.resolveConfirmation(req.user.id, requestId, {
 			approved,
 			credentialId,
