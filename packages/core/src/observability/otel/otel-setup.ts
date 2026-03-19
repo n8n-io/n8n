@@ -1,18 +1,30 @@
 import type { OtelConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
+import type { Span } from '@opentelemetry/api';
 
 let sdkInstance: { shutdown(): Promise<void> } | undefined;
+let originalContainerGet: (<T>(type: { new (...args: unknown[]): T }) => T) | undefined;
 
 const wrappedInstances = new WeakSet<object>();
+const tracer = trace.getTracer('n8n');
 
 /** Classes excluded from automatic method-level tracing. */
 const EXCLUDED_CLASSES = new Set(['DataSource', 'DbConnection', 'TaskBroker']);
 
+/** End a span with an error status. */
+export function endSpanWithError(span: Span, error: unknown): void {
+	span.setStatus({
+		code: SpanStatusCode.ERROR,
+		message: error instanceof Error ? error.message : String(error),
+	});
+	if (error instanceof Error) span.recordException(error);
+	span.end();
+}
+
 /**
  * Wrap every own prototype method of `instance` in an OTEL span.
- * Skips getters, setters, constructor, private-looking (`_` prefixed),
- * and anything already wrapped.
+ * Skips getters, setters, and constructor.
  */
 function wrapInstanceMethods(instance: object): void {
 	if (wrappedInstances.has(instance)) return;
@@ -24,8 +36,6 @@ function wrapInstanceMethods(instance: object): void {
 	const className: string = (instance.constructor?.name as string | undefined) ?? 'Unknown';
 	if (EXCLUDED_CLASSES.has(className)) return;
 
-	const tracer = trace.getTracer('n8n');
-
 	for (const key of Object.getOwnPropertyNames(proto)) {
 		if (key === 'constructor') continue;
 
@@ -35,12 +45,10 @@ function wrapInstanceMethods(instance: object): void {
 		const original = desc.value as (...args: unknown[]) => unknown;
 		const spanName = `${className}.${key}`;
 
-		// Replace with a traced wrapper that preserves `this`
 		(instance as Record<string, unknown>)[key] = function (this: unknown, ...args: unknown[]) {
 			return tracer.startActiveSpan(spanName, (span) => {
 				try {
 					const result = original.apply(this, args);
-					// Handle both sync and async methods
 					if (result instanceof Promise) {
 						return result.then(
 							(value: unknown) => {
@@ -49,12 +57,7 @@ function wrapInstanceMethods(instance: object): void {
 								return value;
 							},
 							(error: unknown) => {
-								span.setStatus({
-									code: SpanStatusCode.ERROR,
-									message: error instanceof Error ? error.message : String(error),
-								});
-								if (error instanceof Error) span.recordException(error);
-								span.end();
+								endSpanWithError(span, error);
 								throw error;
 							},
 						);
@@ -63,12 +66,7 @@ function wrapInstanceMethods(instance: object): void {
 					span.end();
 					return result;
 				} catch (error) {
-					span.setStatus({
-						code: SpanStatusCode.ERROR,
-						message: error instanceof Error ? error.message : String(error),
-					});
-					if (error instanceof Error) span.recordException(error);
-					span.end();
+					endSpanWithError(span, error);
 					throw error;
 				}
 			});
@@ -81,15 +79,22 @@ function wrapInstanceMethods(instance: object): void {
  * automatic OTEL tracing on all its methods.
  */
 function patchContainer(): void {
-	const originalGet = Container.get.bind(Container);
+	originalContainerGet = Container.get.bind(Container);
 
 	Container.get = function <T>(type: unknown): T {
-		const instance = originalGet(type as Parameters<typeof originalGet>[0]);
+		const instance = originalContainerGet!(type as { new (...args: unknown[]): T });
 		if (instance && typeof instance === 'object') {
 			wrapInstanceMethods(instance);
 		}
 		return instance as T;
 	};
+}
+
+function unpatchContainer(): void {
+	if (originalContainerGet) {
+		Container.get = originalContainerGet as typeof Container.get;
+		originalContainerGet = undefined;
+	}
 }
 
 /**
@@ -100,6 +105,8 @@ function patchContainer(): void {
  * gets automatic method-level tracing.
  */
 export async function initOtel(config: OtelConfig): Promise<void> {
+	if (sdkInstance) return;
+
 	const { NodeSDK } = await import('@opentelemetry/sdk-node');
 	const { getNodeAutoInstrumentations } = await import('@opentelemetry/auto-instrumentations-node');
 	const { Resource } = await import('@opentelemetry/resources');
@@ -128,10 +135,10 @@ export async function initOtel(config: OtelConfig): Promise<void> {
 				'@opentelemetry/instrumentation-fs': { enabled: false },
 				'@opentelemetry/instrumentation-http': {
 					requestHook: (span, request) => {
-						const method = 'method' in request ? request.method : undefined;
-						const url = 'url' in request ? request.url : undefined;
-						if (method && url) {
-							span.updateName(`${method} ${url}`);
+						if ('method' in request && 'url' in request) {
+							const { method, url } = request as { method: string; url: string };
+							const path = url.split('?')[0];
+							span.updateName(`${method} ${path}`);
 						}
 					},
 				},
@@ -150,6 +157,7 @@ export async function initOtel(config: OtelConfig): Promise<void> {
  * Gracefully shut down the OTEL SDK, flushing any pending spans.
  */
 export async function shutdownOtel(): Promise<void> {
+	unpatchContainer();
 	if (sdkInstance) {
 		await sdkInstance.shutdown();
 		sdkInstance = undefined;

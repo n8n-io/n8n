@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 
-/** Schema for sample rates (0.0 to 1.0). */
 const sampleRateSchema = z.number({ coerce: true }).min(0).max(1);
+const protocolSchema = z.enum(['http/protobuf', 'grpc']);
 
 @Config
 export class OtelConfig {
@@ -15,9 +15,9 @@ export class OtelConfig {
 	@Env('OTEL_EXPORTER_OTLP_ENDPOINT')
 	otlpEndpoint: string = 'http://localhost:4318';
 
-	/** OTLP exporter protocol ('http/protobuf' or 'grpc'). */
-	@Env('OTEL_EXPORTER_OTLP_PROTOCOL')
-	otlpProtocol: string = 'http/protobuf';
+	/** OTLP exporter protocol. */
+	@Env('OTEL_EXPORTER_OTLP_PROTOCOL', protocolSchema)
+	otlpProtocol: 'http/protobuf' | 'grpc' = 'http/protobuf';
 
 	/** Service name reported to the OTLP backend. */
 	@Env('OTEL_SERVICE_NAME')

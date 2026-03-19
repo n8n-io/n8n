@@ -4,26 +4,31 @@ import type { BeforeQueryEvent, AfterQueryEvent } from '@n8n/typeorm/subscriber/
 import type { Span } from '@opentelemetry/api';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 
+const tracer = trace.getTracer('n8n');
+
+/** Extract the SQL operation (SELECT, INSERT, etc.) for a low-cardinality span name. */
+function getOperationName(query: string): string {
+	const match = query.trimStart().match(/^(\w+)/);
+	return match ? match[1].toUpperCase() : 'QUERY';
+}
+
 /**
  * TypeORM subscriber that creates OpenTelemetry spans for every database query.
  * Uses `@opentelemetry/api` directly — noop when no SDK is registered.
  */
 @EventSubscriber()
 export class QueryTracingSubscriber implements EntitySubscriberInterface {
-	private readonly tracer = trace.getTracer('n8n');
+	private dbSystem: string | undefined;
 
 	beforeQuery(event: BeforeQueryEvent<unknown>) {
-		const dbSystem = this.getDbSystem(event.queryRunner);
-		const spanName = `db.query ${event.query.length > 80 ? event.query.slice(0, 80) + '…' : event.query}`;
-		const span = this.tracer.startSpan(spanName, {
+		const dbSystem = this.resolveDbSystem(event.queryRunner);
+		const span = tracer.startSpan(`db ${getOperationName(event.query)}`, {
 			attributes: {
 				'db.system': dbSystem,
 				'db.statement': event.query,
-				'db.parameters': event.parameters ? JSON.stringify(event.parameters) : undefined,
 			},
 		});
 
-		// Stash span on the queryRunner so we can end it in afterQuery
 		(event.queryRunner as QueryRunnerWithSpan).__otelSpan = span;
 	}
 
@@ -49,11 +54,13 @@ export class QueryTracingSubscriber implements EntitySubscriberInterface {
 		}
 	}
 
-	private getDbSystem(queryRunner: QueryRunner): string {
+	private resolveDbSystem(queryRunner: QueryRunner): string {
+		if (this.dbSystem) return this.dbSystem;
 		const driverName = (queryRunner.connection?.options as { type?: string })?.type;
-		if (driverName === 'postgres') return 'postgresql';
-		if (driverName === 'sqlite' || driverName === 'better-sqlite3') return 'sqlite';
-		return driverName ?? 'unknown';
+		if (driverName === 'postgres') this.dbSystem = 'postgresql';
+		else if (driverName === 'sqlite' || driverName === 'better-sqlite3') this.dbSystem = 'sqlite';
+		else this.dbSystem = driverName ?? 'unknown';
+		return this.dbSystem;
 	}
 }
 
