@@ -706,6 +706,21 @@ export class InstanceAiService {
 				sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
 				reportVerificationVerdict: async (verdict: VerificationResult) =>
 					await this.handleVerificationVerdictFromTool(verdict, threadId, workflowLoopStorage),
+				getWorkItemBuildOutcome: async (workItemId: string) => {
+					const item = await workflowLoopStorage.getWorkItem(threadId, workItemId);
+					return item?.lastBuildOutcome ?? undefined;
+				},
+				updateWorkItemBuildOutcome: async (workItemId: string, update) => {
+					const item = await workflowLoopStorage.getWorkItem(threadId, workItemId);
+					if (!item?.lastBuildOutcome) return;
+					const updatedOutcome = { ...item.lastBuildOutcome, ...update };
+					await workflowLoopStorage.saveWorkItem(
+						threadId,
+						item.state,
+						item.attempts,
+						updatedOutcome,
+					);
+				},
 				workspace: sandboxEntry?.workspace,
 				builderSandboxFactory: this.builderSandboxFactory,
 				nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
@@ -1324,18 +1339,23 @@ export class InstanceAiService {
 	private actionToGuidance(action: WorkflowLoopAction, workItemId?: string): string {
 		switch (action.type) {
 			case 'done': {
-				let guidance = `Workflow is ready. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
 				if (action.mockedCredentialTypes && action.mockedCredentialTypes.length > 0) {
-					guidance +=
-						`\n\nCREDENTIALS MOCKED: The following credential types were mocked with pinned data: ${action.mockedCredentialTypes.join(', ')}. ` +
-						'Tell the user that the workflow was verified with mock data and offer to help them set up real credentials using `setup-credentials`. ' +
-						'The workflow will work end-to-end once real credentials are configured.';
+					const types = action.mockedCredentialTypes.join(', ');
+					return (
+						`Workflow verified successfully with temporary mock data. ` +
+						`Call \`setup-credentials\` with types [${types}] and ` +
+						`credentialFlow stage "finalize" to let the user add real credentials. ` +
+						`After the user selects credentials, call \`apply-workflow-credentials\` ` +
+						`with the workItemId "${workItemId ?? 'unknown'}" and workflowId to apply them.`
+					);
 				}
-				return guidance;
+				return `Workflow is ready. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
 			}
 			case 'verify':
 				return (
-					`VERIFY: Run workflow ${action.workflowId} using \`run-workflow\`. ` +
+					`VERIFY: Run workflow ${action.workflowId}. ` +
+					`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${workItemId ?? 'unknown'}". ` +
+					'Otherwise use `run-workflow`. ' +
 					'If it fails, use `debug-execution` to diagnose. ' +
 					`Then call \`report-verification-verdict\` with workItemId "${workItemId ?? 'unknown'}" and your findings.`
 				);

@@ -17,11 +17,23 @@ import type { WorkflowLoopAction } from '../../workflow-loop/workflow-loop-state
 
 function actionToGuidance(action: WorkflowLoopAction): string {
 	switch (action.type) {
-		case 'done':
+		case 'done': {
+			if (action.mockedCredentialTypes?.length) {
+				const types = action.mockedCredentialTypes.join(', ');
+				return (
+					`Workflow verified successfully with temporary mock data. ` +
+					`Call \`setup-credentials\` with types [${types}] and ` +
+					`credentialFlow stage "finalize" to let the user add real credentials. ` +
+					`After the user selects credentials, call \`apply-workflow-credentials\` to apply them.`
+				);
+			}
 			return `Workflow verified successfully. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
+		}
 		case 'verify':
 			return (
-				`VERIFY: Run workflow ${action.workflowId} using \`run-workflow\`. ` +
+				`VERIFY: Run workflow ${action.workflowId}. ` +
+				'If the build had mocked credentials, use `verify-built-workflow` with the workItemId. ' +
+				'Otherwise use `run-workflow`. ' +
 				'If it fails, use `debug-execution` to diagnose. ' +
 				'Then call `report-verification-verdict` with your findings.'
 			);

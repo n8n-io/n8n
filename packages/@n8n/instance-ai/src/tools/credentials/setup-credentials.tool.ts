@@ -31,6 +31,14 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 				.string()
 				.optional()
 				.describe('Project ID to scope credential creation to. Defaults to personal project.'),
+			credentialFlow: z
+				.object({
+					stage: z.enum(['generic', 'finalize']),
+				})
+				.optional()
+				.describe(
+					'Credential flow stage. "finalize" renders post-verification picker with "Apply credentials" / "Later" buttons.',
+				),
 		}),
 		outputSchema: z.object({
 			success: z.boolean(),
@@ -67,6 +75,7 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 				}),
 			),
 			projectId: z.string().optional(),
+			credentialFlow: z.object({ stage: z.enum(['generic', 'finalize']) }).optional(),
 		}),
 		resumeSchema: z.object({
 			approved: z.boolean(),
@@ -77,6 +86,7 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 		}),
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
+			const isFinalize = input.credentialFlow?.stage === 'finalize';
 
 			// State 1: First call — look up existing credentials per type and suspend
 			if (resumeData === undefined || resumeData === null) {
@@ -94,22 +104,31 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 				const typeNames = input.credentials.map((c) => c.credentialType).join(', ');
 				await suspend?.({
 					requestId: nanoid(),
-					message:
-						input.credentials.length === 1
+					message: isFinalize
+						? `Your workflow is verified. Add credentials to make it production-ready: ${typeNames}`
+						: input.credentials.length === 1
 							? `Select or create a ${typeNames} credential`
 							: `Select or create credentials: ${typeNames}`,
 					severity: 'info' as const,
 					credentialRequests,
 					...(input.projectId ? { projectId: input.projectId } : {}),
+					...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
 				});
 				// suspend() never resolves
 				return { success: false };
 			}
 
-			// State 2: Not approved — either mock via pinned data or deny outright.
+			// State 2: Not approved — either mock (generic only) or defer.
 			if (!resumeData.approved) {
+				if (isFinalize) {
+					// Finalize mode: "Later" — no mock option
+					return {
+						success: false,
+						reason: 'User deferred credential setup.',
+					};
+				}
 				if (resumeData.mockCredentials) {
-					// Mock: generate pinned data so the workflow can run without real credentials
+					// Generic mode: mock via pinned data
 					const mockedTypes = input.credentials.map((c) => c.credentialType);
 					return {
 						success: false,
@@ -119,8 +138,7 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 							'Credentials will be mocked via pinned data — real credentials are required before activation.',
 					};
 				}
-				// Deny: no mocking, credentials stay unresolved. The workflow will
-				// require real credentials before the affected nodes can execute.
+				// Deny: no mocking, credentials stay unresolved.
 				return {
 					success: false,
 					reason:

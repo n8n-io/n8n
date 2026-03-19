@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiCredentialRequest } from '@n8n/api-types';
+import type { InstanceAiCredentialRequest, InstanceAiCredentialFlow } from '@n8n/api-types';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 
@@ -11,10 +11,13 @@ const props = defineProps<{
 	credentialRequests: InstanceAiCredentialRequest[];
 	message: string;
 	projectId?: string;
+	credentialFlow?: InstanceAiCredentialFlow;
 }>();
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+
+const isFinalize = computed(() => props.credentialFlow?.stage === 'finalize');
 
 // Track selected credential ID per type
 const selections = ref<Record<string, string | null>>(
@@ -23,6 +26,7 @@ const selections = ref<Record<string, string | null>>(
 const isSubmitted = ref(false);
 const isSkipped = ref(false);
 const isDenied = ref(false);
+const isDeferred = ref(false);
 
 const allSelected = computed(() =>
 	props.credentialRequests.every((r) => selections.value[r.credentialType] !== null),
@@ -65,6 +69,12 @@ function handleDeny() {
 	isDenied.value = true;
 	void store.confirmAction(props.requestId, false);
 }
+
+function handleLater() {
+	isSubmitted.value = true;
+	isDeferred.value = true;
+	void store.confirmAction(props.requestId, false);
+}
 </script>
 
 <template>
@@ -95,19 +105,33 @@ function handleDeny() {
 			</div>
 
 			<div :class="$style.actions">
-				<button :class="$style.denyButton" @click="handleDeny">
-					{{ i18n.baseText('instanceAi.credential.deny') }}
-				</button>
-				<button :class="$style.skipButton" @click="handleSkip">
-					{{ i18n.baseText('instanceAi.credential.skipForNow') }}
-				</button>
-				<button
-					:class="$style.useSelectedButton"
-					:disabled="!allSelected"
-					@click="handleUseSelected"
-				>
-					{{ i18n.baseText('instanceAi.credential.useSelected') }}
-				</button>
+				<template v-if="isFinalize">
+					<button :class="$style.skipButton" @click="handleLater">
+						{{ i18n.baseText('instanceAi.credential.finalize.later') }}
+					</button>
+					<button
+						:class="$style.useSelectedButton"
+						:disabled="!allSelected"
+						@click="handleUseSelected"
+					>
+						{{ i18n.baseText('instanceAi.credential.finalize.applyCredentials') }}
+					</button>
+				</template>
+				<template v-else>
+					<button :class="$style.denyButton" @click="handleDeny">
+						{{ i18n.baseText('instanceAi.credential.deny') }}
+					</button>
+					<button :class="$style.skipButton" @click="handleSkip">
+						{{ i18n.baseText('instanceAi.credential.skipForNow') }}
+					</button>
+					<button
+						:class="$style.useSelectedButton"
+						:disabled="!allSelected"
+						@click="handleUseSelected"
+					>
+						{{ i18n.baseText('instanceAi.credential.useSelected') }}
+					</button>
+				</template>
 			</div>
 		</template>
 
@@ -116,13 +140,21 @@ function handleDeny() {
 				<N8nIcon icon="x" size="small" :class="$style.deniedIcon" />
 				<span>{{ i18n.baseText('instanceAi.credential.denied') }}</span>
 			</template>
+			<template v-else-if="isDeferred">
+				<N8nIcon icon="arrow-right" size="small" :class="$style.skippedIcon" />
+				<span>{{ i18n.baseText('instanceAi.credential.finalize.deferred') }}</span>
+			</template>
 			<template v-else-if="isSkipped">
 				<N8nIcon icon="arrow-right" size="small" :class="$style.skippedIcon" />
 				<span>{{ i18n.baseText('instanceAi.credential.skipped') }}</span>
 			</template>
 			<template v-else>
 				<N8nIcon icon="check" size="small" :class="$style.successIcon" />
-				<span>{{ i18n.baseText('instanceAi.credential.allSelected') }}</span>
+				<span>{{
+					isFinalize
+						? i18n.baseText('instanceAi.credential.finalize.applied')
+						: i18n.baseText('instanceAi.credential.allSelected')
+				}}</span>
 			</template>
 		</div>
 	</div>

@@ -42,6 +42,8 @@ import { createDelegateTool } from './orchestration/delegate.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
 import { createResearchWithAgentTool } from './orchestration/research-with-agent.tool';
 import { createUpdateTasksTool } from './orchestration/update-tasks.tool';
+import { createVerifyBuiltWorkflowTool } from './orchestration/verify-built-workflow.tool';
+import { createApplyWorkflowCredentialsTool } from './workflows/apply-workflow-credentials.tool';
 import { createAskUserTool } from './shared/ask-user.tool';
 import { createSearchTemplateParametersTool } from './templates/search-template-parameters.tool';
 import { createSearchTemplateStructuresTool } from './templates/search-template-structures.tool';
@@ -168,6 +170,18 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 		...(context.reportVerificationVerdict
 			? {
 					'report-verification-verdict': createReportVerificationVerdictTool(context),
+				}
+			: {}),
+		...(context.getWorkItemBuildOutcome && context.domainContext
+			? {
+					'verify-built-workflow': createVerifyBuiltWorkflowTool(context),
+				}
+			: {}),
+		...(context.getWorkItemBuildOutcome &&
+		context.updateWorkItemBuildOutcome &&
+		context.domainContext
+			? {
+					'apply-workflow-credentials': createApplyWorkflowCredentialsTool(context),
 				}
 			: {}),
 	};

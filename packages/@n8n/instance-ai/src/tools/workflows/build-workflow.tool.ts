@@ -4,7 +4,7 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { resolveCredentials, type CredentialMap } from './submit-workflow.tool';
+import { resolveCredentials, type CredentialMap } from './resolve-credentials';
 import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
 import { extractWorkflowCode } from '../../workflow-builder/extract-code';

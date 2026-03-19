@@ -77,6 +77,10 @@ export const workflowBuildOutcomeSchema = z.object({
 	mockedNodeNames: z.array(z.string()).optional(),
 	/** Credential types that were mocked (not resolved to real credentials). */
 	mockedCredentialTypes: z.array(z.string()).optional(),
+	/** Map of node name → credential types that were mocked on that node. */
+	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
+	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
+	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
 	summary: z.string(),
 });
 

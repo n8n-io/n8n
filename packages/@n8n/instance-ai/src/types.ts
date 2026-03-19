@@ -17,7 +17,11 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { IterationLog } from './storage/iteration-log';
-import type { VerificationResult, WorkflowLoopAction } from './workflow-loop/workflow-loop-state';
+import type {
+	VerificationResult,
+	WorkflowBuildOutcome,
+	WorkflowLoopAction,
+} from './workflow-loop/workflow-loop-state';
 import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
@@ -169,7 +173,7 @@ export interface InstanceAiExecutionService {
 	run(
 		workflowId: string,
 		inputData?: Record<string, unknown>,
-		options?: { timeout?: number },
+		options?: { timeout?: number; pinData?: Record<string, unknown[]> },
 	): Promise<ExecutionResult>;
 	getStatus(executionId: string): Promise<ExecutionResult>;
 	getResult(executionId: string): Promise<ExecutionResult>;
@@ -619,6 +623,13 @@ export interface OrchestrationContext {
 	sendCorrectionToTask?: (taskId: string, correction: string) => void;
 	/** Report a verification verdict to the deterministic workflow loop controller */
 	reportVerificationVerdict?: (verdict: VerificationResult) => Promise<WorkflowLoopAction>;
+	/** Read a work item's build outcome from workflow loop storage */
+	getWorkItemBuildOutcome?: (workItemId: string) => Promise<WorkflowBuildOutcome | undefined>;
+	/** Update a work item's build outcome in workflow loop storage */
+	updateWorkItemBuildOutcome?: (
+		workItemId: string,
+		update: Partial<WorkflowBuildOutcome>,
+	) => Promise<void>;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────
