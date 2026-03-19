@@ -5,6 +5,8 @@ import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmResponse,
+	InstanceAiThreadInfo,
+	InstanceAiThreadListResponse,
 } from '@n8n/api-types';
 
 /**
@@ -33,6 +35,7 @@ export async function postMessage(
 export async function ensureThread(
 	context: IRestApiContext,
 	threadId?: string,
+	workflowId?: string,
 ): Promise<InstanceAiEnsureThreadResponse> {
 	return await makeRestApiRequest<InstanceAiEnsureThreadResponse>(
 		context,
@@ -40,8 +43,21 @@ export async function ensureThread(
 		'/instance-ai/threads',
 		{
 			...(threadId ? { threadId } : {}),
+			...(workflowId ? { workflowId } : {}),
 		},
 	);
+}
+
+export async function findThreadByWorkflowId(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<InstanceAiThreadInfo | null> {
+	const response = await makeRestApiRequest<InstanceAiThreadListResponse>(
+		context,
+		'GET',
+		`/instance-ai/threads?workflowId=${encodeURIComponent(workflowId)}`,
+	);
+	return response.threads.length > 0 ? response.threads[0] : null;
 }
 
 /**

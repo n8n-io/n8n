@@ -473,3 +473,83 @@ describe('useInstanceAiStore - feedback integration', () => {
 		expect(Object.keys(store.feedbackByResponseId)).toHaveLength(0);
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Workflow thread resolution
+// ---------------------------------------------------------------------------
+
+describe('useInstanceAiStore - workflow thread resolution', () => {
+	let store: ReturnType<typeof useInstanceAiStore>;
+
+	beforeEach(async () => {
+		setActivePinia(createPinia());
+		capturedOnMessage = null;
+		store = useInstanceAiStore();
+		store.newThread();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+	});
+
+	afterEach(() => {
+		store.closeSSE();
+		vi.clearAllMocks();
+	});
+
+	test('ensureWorkflowThread creates a thread with workflowId and switches to it', async () => {
+		const mockEnsureThreadLocal = vi.mocked(ensureThread);
+		mockEnsureThreadLocal.mockResolvedValueOnce({
+			thread: {
+				id: 'thread-wf-1',
+				title: '',
+				resourceId: 'user-1',
+				workflowId: 'wf-123',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			},
+			created: true,
+		});
+
+		await store.ensureWorkflowThread('wf-123');
+
+		expect(store.currentThreadId).toBe('thread-wf-1');
+		expect(mockEnsureThreadLocal).toHaveBeenCalled();
+	});
+
+	test('switchToGlobalThread switches to a thread without workflowId', async () => {
+		const mockEnsureThreadLocal = vi.mocked(ensureThread);
+		mockEnsureThreadLocal.mockResolvedValueOnce({
+			thread: {
+				id: 'thread-global',
+				title: '',
+				resourceId: 'user-1',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			},
+			created: true,
+		});
+
+		await store.switchToGlobalThread();
+
+		expect(store.currentThreadId).toBe('thread-global');
+	});
+
+	test('ensureWorkflowThread falls back to global thread for empty workflowId', async () => {
+		const mockEnsureThreadLocal = vi.mocked(ensureThread);
+		mockEnsureThreadLocal.mockResolvedValueOnce({
+			thread: {
+				id: 'thread-global',
+				title: '',
+				resourceId: 'user-1',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			},
+			created: true,
+		});
+
+		await store.ensureWorkflowThread('');
+
+		// Should have called switchToGlobalThread instead
+		expect(store.currentThreadId).toBe('thread-global');
+	});
+});

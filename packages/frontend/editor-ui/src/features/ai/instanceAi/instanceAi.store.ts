@@ -321,6 +321,49 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		});
 	}
 
+	async function ensureWorkflowThread(workflowId: string): Promise<void> {
+		if (!workflowId) {
+			await switchToGlobalThread();
+			return;
+		}
+
+		const result = await ensureThread(rootStore.restApiContext, undefined, workflowId);
+		const threadId = result.thread.id;
+
+		closeSSE();
+		messages.value = [];
+		activeRunId.value = null;
+		debugEvents.value = [];
+		resetFeedback();
+		runStateByGroupId = {};
+		groupIdByRunId = {};
+		currentThreadId.value = threadId;
+
+		delete lastEventIdByThread.value[threadId];
+		await loadHistoricalMessages(threadId);
+		void loadThreadStatus(threadId);
+		connectSSE(threadId);
+	}
+
+	async function switchToGlobalThread(): Promise<void> {
+		const result = await ensureThread(rootStore.restApiContext);
+		const threadId = result.thread.id;
+
+		closeSSE();
+		messages.value = [];
+		activeRunId.value = null;
+		debugEvents.value = [];
+		resetFeedback();
+		runStateByGroupId = {};
+		groupIdByRunId = {};
+		currentThreadId.value = threadId;
+
+		delete lastEventIdByThread.value[threadId];
+		await loadHistoricalMessages(threadId);
+		void loadThreadStatus(threadId);
+		connectSSE(threadId);
+	}
+
 	// --- Actions ---
 
 	function newThread(): string {
@@ -724,6 +767,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		deleteThread,
 		renameThread,
 		switchThread,
+		ensureWorkflowThread,
+		switchToGlobalThread,
 		loadThreads,
 		loadHistoricalMessages,
 		loadThreadStatus,

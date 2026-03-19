@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
 import InstanceAiEmptyState from './InstanceAiEmptyState.vue';
@@ -17,7 +18,10 @@ const emit = defineEmits<{
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
+const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
+
+const workflowId = computed(() => workflowsStore.workflowId);
 
 // --- Lifecycle ---
 
@@ -34,10 +38,8 @@ onMounted(() => {
 			}
 		});
 
-	void store.loadHistoricalMessages(store.currentThreadId).then(() => {
-		void store.loadThreadStatus(store.currentThreadId);
-		store.connectSSE();
-	});
+	// Resolve workflow-scoped thread (falls back to global for unsaved workflows)
+	void store.ensureWorkflowThread(workflowId.value);
 });
 
 onUnmounted(() => {
