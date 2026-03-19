@@ -1340,10 +1340,10 @@ export class InstanceAiService {
 				if (action.mockedCredentialTypes && action.mockedCredentialTypes.length > 0) {
 					const types = action.mockedCredentialTypes.join(', ');
 					return (
-						`Workflow verified successfully with temporary mock data. ` +
+						'Workflow verified successfully with temporary mock data. ' +
 						`Call \`setup-credentials\` with types [${types}] and ` +
-						`credentialFlow stage "finalize" to let the user add real credentials. ` +
-						`After the user selects credentials, call \`apply-workflow-credentials\` ` +
+						'credentialFlow stage "finalize" to let the user add real credentials. ' +
+						'After the user selects credentials, call `apply-workflow-credentials` ' +
 						`with the workItemId "${workItemId ?? 'unknown'}" and workflowId to apply them.`
 					);
 				}
