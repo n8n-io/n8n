@@ -340,6 +340,27 @@ export type InstanceAiFilesystemRequestEvent = Extract<
 export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemResponseSchema>;
 
 // ---------------------------------------------------------------------------
+// Canvas context (sent with messages from the canvas panel)
+// ---------------------------------------------------------------------------
+
+export const instanceAiCanvasContextSchema = z.object({
+	workflowId: z.string(),
+	workflowName: z.string(),
+	selectedNodes: z
+		.array(
+			z.object({
+				name: z.string(),
+				type: z.string(),
+				parameters: z.record(z.unknown()).optional(),
+			}),
+		)
+		.optional(),
+	nodeCount: z.number().optional(),
+});
+
+export type InstanceAiCanvasContext = z.infer<typeof instanceAiCanvasContextSchema>;
+
+// ---------------------------------------------------------------------------
 // API types
 // ---------------------------------------------------------------------------
 
@@ -353,6 +374,7 @@ export interface InstanceAiSendMessageRequest {
 	message: string;
 	researchMode?: boolean;
 	attachments?: InstanceAiAttachment[];
+	canvasContext?: InstanceAiCanvasContext;
 }
 
 export interface InstanceAiSendMessageResponse {
@@ -453,6 +475,8 @@ export interface InstanceAiMessage {
 export interface InstanceAiThreadSummary {
 	id: string;
 	title: string;
+	workflowId?: string;
+	lastMessagePreview?: string;
 	createdAt: string;
 }
 
@@ -470,6 +494,7 @@ export interface InstanceAiThreadInfo {
 	id: string;
 	title?: string;
 	resourceId: string;
+	workflowId?: string;
 	createdAt: string;
 	updatedAt: string;
 	metadata?: Record<string, unknown>;

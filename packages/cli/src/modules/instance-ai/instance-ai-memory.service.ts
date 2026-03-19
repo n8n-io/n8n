@@ -73,7 +73,11 @@ export class InstanceAiMemoryService {
 		};
 	}
 
-	async ensureThread(userId: string, threadId: string): Promise<InstanceAiEnsureThreadResponse> {
+	async ensureThread(
+		userId: string,
+		threadId: string,
+		options?: { workflowId?: string },
+	): Promise<InstanceAiEnsureThreadResponse> {
 		const memory = this.createMemoryInstance();
 		const existing = await memory.getThreadById({ threadId });
 		if (existing) {
@@ -88,11 +92,13 @@ export class InstanceAiMemoryService {
 		}
 
 		const now = new Date();
+		const metadata = options?.workflowId ? { workflowId: options.workflowId } : undefined;
 		const created = await memory.saveThread({
 			thread: {
 				id: threadId,
 				resourceId: userId,
 				title: '',
+				metadata,
 				createdAt: now,
 				updatedAt: now,
 			},
@@ -102,6 +108,21 @@ export class InstanceAiMemoryService {
 			thread: this.toThreadInfo(created),
 			created: true,
 		};
+	}
+
+	async findThreadByWorkflowId(
+		userId: string,
+		workflowId: string,
+	): Promise<InstanceAiThreadInfo | null> {
+		const memory = this.createMemoryInstance();
+		const result = await memory.listThreads({
+			filter: { resourceId: userId },
+			limit: 100,
+		});
+		const match = result.threads.find(
+			(t: { metadata?: Record<string, unknown> }) => t.metadata?.workflowId === workflowId,
+		);
+		return match ? this.toThreadInfo(match) : null;
 	}
 
 	async getThreadMessages(
@@ -298,10 +319,13 @@ export class InstanceAiMemoryService {
 		createdAt: Date;
 		updatedAt: Date;
 	}): InstanceAiThreadInfo {
+		const workflowId =
+			typeof thread.metadata?.workflowId === 'string' ? thread.metadata.workflowId : undefined;
 		return {
 			id: thread.id,
 			title: thread.title,
 			resourceId: thread.resourceId,
+			workflowId,
 			createdAt: thread.createdAt.toISOString(),
 			updatedAt: thread.updatedAt.toISOString(),
 			metadata: thread.metadata,

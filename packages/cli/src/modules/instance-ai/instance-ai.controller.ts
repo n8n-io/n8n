@@ -331,12 +331,14 @@ export class InstanceAiController {
 
 	@Post('/threads')
 	async ensureThread(req: AuthenticatedRequest) {
-		const { threadId } = req.body as { threadId?: string };
+		const { threadId, workflowId } = req.body as { threadId?: string; workflowId?: string };
 		const requestedThreadId =
 			typeof threadId === 'string' && threadId.trim().length > 0 ? threadId : randomUUID();
 
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
-		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
+		const options =
+			typeof workflowId === 'string' && workflowId.trim().length > 0 ? { workflowId } : undefined;
+		return await this.memoryService.ensureThread(req.user.id, requestedThreadId, options);
 	}
 
 	@Get('/threads/:threadId/messages')

@@ -6,10 +6,12 @@ import { InstanceAiMemoryService } from '../instance-ai-memory.service';
 const mockRecall = jest.fn();
 const mockGetThreadById = jest.fn();
 const mockSaveThread = jest.fn();
+const mockListThreads = jest.fn();
 const mockMemory = {
 	recall: mockRecall,
 	getThreadById: mockGetThreadById,
 	saveThread: mockSaveThread,
+	listThreads: mockListThreads,
 };
 
 jest.mock('@n8n/instance-ai', () => ({
@@ -205,5 +207,122 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		expect(mockSaveThread).not.toHaveBeenCalled();
 		expect(result.created).toBe(false);
 		expect(result.thread.title).toBe('Existing');
+	});
+});
+
+describe('InstanceAiMemoryService.ensureThread with workflowId', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('stores workflowId in thread metadata when provided', async () => {
+		mockGetThreadById.mockResolvedValueOnce(null);
+		mockSaveThread.mockResolvedValueOnce({
+			id: 'thread-wf',
+			title: '',
+			resourceId: 'user-1',
+			metadata: { workflowId: 'wf-123' },
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		});
+
+		const service = createService();
+		const result = await service.ensureThread('user-1', 'thread-wf', { workflowId: 'wf-123' });
+
+		expect(mockSaveThread).toHaveBeenCalledWith({
+			thread: expect.objectContaining({
+				id: 'thread-wf',
+				resourceId: 'user-1',
+				metadata: { workflowId: 'wf-123' },
+			}),
+		});
+		expect(result.thread.workflowId).toBe('wf-123');
+	});
+
+	it('returns workflowId from existing thread metadata', async () => {
+		mockGetThreadById.mockResolvedValueOnce({
+			id: 'thread-wf-existing',
+			title: 'Existing WF Thread',
+			resourceId: 'user-1',
+			metadata: { workflowId: 'wf-456' },
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+		});
+
+		const service = createService();
+		const result = await service.ensureThread('user-1', 'thread-wf-existing');
+
+		expect(mockSaveThread).not.toHaveBeenCalled();
+		expect(result.thread.workflowId).toBe('wf-456');
+	});
+});
+
+describe('InstanceAiMemoryService.findThreadByWorkflowId', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('returns thread matching workflowId for the user', async () => {
+		mockListThreads.mockResolvedValueOnce({
+			threads: [
+				{
+					id: 'thread-1',
+					title: 'Thread 1',
+					resourceId: 'user-1',
+					metadata: { workflowId: 'wf-other' },
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+					updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+				},
+				{
+					id: 'thread-2',
+					title: 'Thread 2',
+					resourceId: 'user-1',
+					metadata: { workflowId: 'wf-target' },
+					createdAt: new Date('2026-01-02T00:00:00.000Z'),
+					updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+				},
+				{
+					id: 'thread-3',
+					title: 'Thread 3',
+					resourceId: 'user-1',
+					metadata: {},
+					createdAt: new Date('2026-01-03T00:00:00.000Z'),
+					updatedAt: new Date('2026-01-03T00:00:00.000Z'),
+				},
+			],
+			total: 3,
+			page: 0,
+			hasMore: false,
+		});
+
+		const service = createService();
+		const result = await service.findThreadByWorkflowId('user-1', 'wf-target');
+
+		expect(result).not.toBeNull();
+		expect(result?.id).toBe('thread-2');
+		expect(result?.workflowId).toBe('wf-target');
+	});
+
+	it('returns null when no thread matches workflowId', async () => {
+		mockListThreads.mockResolvedValueOnce({
+			threads: [
+				{
+					id: 'thread-1',
+					title: 'Thread 1',
+					resourceId: 'user-1',
+					metadata: { workflowId: 'wf-other' },
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+					updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+				},
+			],
+			total: 1,
+			page: 0,
+			hasMore: false,
+		});
+
+		const service = createService();
+		const result = await service.findThreadByWorkflowId('user-1', 'wf-nonexistent');
+
+		expect(result).toBeNull();
 	});
 });
