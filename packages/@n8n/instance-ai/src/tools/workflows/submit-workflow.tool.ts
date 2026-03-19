@@ -124,6 +124,7 @@ function enhanceBuildErrors(errors: string[]): string[] {
 
 // Re-export from shared module for backward compatibility
 export {
+	buildCredentialMap,
 	resolveCredentials,
 	type CredentialMap,
 	type CredentialResolutionResult,

@@ -4,7 +4,7 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { resolveCredentials, type CredentialMap } from './resolve-credentials';
+import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
 import { extractWorkflowCode } from '../../workflow-builder/extract-code';
@@ -180,24 +180,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			// Resolve undefined/null credentials before saving.
 			// newCredential() produces NewCredentialImpl which serializes to undefined.
-			// Build a credential map from available credentials and resolve them.
-			const credentialMap: CredentialMap = new Map();
-			try {
-				const allCreds = await context.credentialService.list();
-				for (const cred of allCreds) {
-					credentialMap.set(cred.type, { id: cred.id, name: cred.name });
-				}
-			} catch {
-				// Non-fatal — credentials will be unresolved (user adds in UI)
-			}
-			const mockResult = await resolveCredentials(json, workflowId, context, credentialMap);
-
-			if (mockResult.mockedNodeNames.length > 0) {
-				informational.push({
-					code: 'CREDENTIALS_MOCKED',
-					message: `Mocked ${mockResult.mockedCredentialTypes.join(', ')} via pinned data on nodes: ${mockResult.mockedNodeNames.join(', ')}. Add real credentials before activating.`,
-				});
-			}
+			const credentialMap = await buildCredentialMap(context.credentialService);
+			await resolveCredentials(json, workflowId, context, credentialMap);
 
 			try {
 				const opts = projectId ? { projectId } : undefined;
