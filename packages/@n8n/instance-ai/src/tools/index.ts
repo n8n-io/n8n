@@ -43,6 +43,8 @@ import { createCorrectBackgroundTaskTool } from './orchestration/correct-backgro
 import { createCreatePlanTool } from './orchestration/create-plan.tool';
 import { createDataTableAgentTool } from './orchestration/data-table-agent.tool';
 import { createDelegateTool } from './orchestration/delegate.tool';
+import { createGetBackgroundTaskTool } from './orchestration/get-background-task.tool';
+import { createListBackgroundTasksTool } from './orchestration/list-background-tasks.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
 import { createRequestPlanApprovalTool } from './orchestration/request-plan-approval.tool';
 import { createResearchWithAgentTool } from './orchestration/research-with-agent.tool';
@@ -171,6 +173,12 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 			: {}),
 		...(context.sendCorrectionToTask
 			? { 'correct-background-task': createCorrectBackgroundTaskTool(context) }
+			: {}),
+		...(context.listBackgroundTasks
+			? { 'list-background-tasks': createListBackgroundTasksTool(context) }
+			: {}),
+		...(context.getBackgroundTask
+			? { 'get-background-task': createGetBackgroundTaskTool(context) }
 			: {}),
 		...(context.browserMcpConfig
 			? {

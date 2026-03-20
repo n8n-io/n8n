@@ -4,6 +4,7 @@ import type {
 	InstanceAiPhaseBlocker,
 	InstanceAiPhaseSpec,
 	InstanceAiPhaseStatus,
+	InstanceAiPlanExecutionContext,
 	InstanceAiPlanSpec,
 	InstanceAiPlanStatus,
 } from '@n8n/api-types';
@@ -102,7 +103,9 @@ export function normalizePhase(
 	};
 }
 
-export function getPhaseExecution(phase: InstanceAiPhaseSpec): InstanceAiPhaseExecutionSpec | undefined {
+export function getPhaseExecution(
+	phase: InstanceAiPhaseSpec,
+): InstanceAiPhaseExecutionSpec | undefined {
 	return phase.execution ?? inferPhaseExecution(phase);
 }
 
@@ -276,6 +279,28 @@ export function shouldAutoContinuePlan(plan: InstanceAiPlanSpec): boolean {
 	}
 
 	return getRunnablePhaseIds(plan).length > 0;
+}
+
+export function ensurePlanExecutionContext(
+	plan: InstanceAiPlanSpec,
+	executionContext: InstanceAiPlanExecutionContext,
+): InstanceAiPlanSpec {
+	if (plan.executionContext?.originRunId) {
+		return plan;
+	}
+
+	return {
+		...plan,
+		executionContext: {
+			originRunId: executionContext.originRunId,
+			...(executionContext.messageGroupId
+				? { messageGroupId: executionContext.messageGroupId }
+				: {}),
+			...(executionContext.startedAt ? { startedAt: executionContext.startedAt } : {}),
+			...(executionContext.lastTaskId ? { lastTaskId: executionContext.lastTaskId } : {}),
+		},
+		lastUpdatedAt: new Date().toISOString(),
+	};
 }
 
 export function addPlanArtifact(

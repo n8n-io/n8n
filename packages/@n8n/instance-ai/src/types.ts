@@ -11,6 +11,7 @@ import type {
 	InstanceAiTaskKind,
 	InstanceAiTaskOutcome,
 	InstanceAiTaskRun,
+	InstanceAiTaskStatus,
 	InstanceAiTargetResource,
 	McpTool,
 	McpToolCallRequest,
@@ -587,6 +588,11 @@ export interface SpawnBackgroundTaskOptions {
 	) => Promise<string | BackgroundTaskResult>;
 }
 
+export interface BackgroundTaskListFilters {
+	planId?: string;
+	status?: InstanceAiTaskStatus;
+}
+
 // ── Orchestration context (plan + delegate tools) ───────────────────────────
 
 export interface OrchestrationContext {
@@ -640,6 +646,10 @@ export interface OrchestrationContext {
 	iterationLog?: IterationLog;
 	/** Send a correction message to a running background task */
 	sendCorrectionToTask?: (taskId: string, correction: string) => void;
+	/** List background tasks for the current thread so the orchestrator can inspect real status. */
+	listBackgroundTasks?: (filters?: BackgroundTaskListFilters) => Promise<InstanceAiTaskRun[]>;
+	/** Fetch one background task by ID for precise status checks. */
+	getBackgroundTask?: (taskId: string) => Promise<InstanceAiTaskRun | null>;
 	/** Report a verification verdict to a deterministic runtime coordinator */
 	reportVerificationVerdict?: (verdict: VerificationResult) => Promise<WorkflowLoopAction>;
 }

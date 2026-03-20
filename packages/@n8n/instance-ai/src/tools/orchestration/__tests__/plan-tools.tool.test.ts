@@ -16,7 +16,10 @@ const { createUpdatePhaseStatusTool } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../update-phase-status.tool') as typeof import('../update-phase-status.tool');
 
-function createMockContext(plan?: InstanceAiPlanSpec): OrchestrationContext {
+function createMockContext(
+	plan?: InstanceAiPlanSpec,
+	overrides?: Partial<OrchestrationContext>,
+): OrchestrationContext {
 	return {
 		threadId: 'test-thread',
 		runId: 'test-run',
@@ -38,6 +41,7 @@ function createMockContext(plan?: InstanceAiPlanSpec): OrchestrationContext {
 			get: jest.fn().mockResolvedValue(plan),
 			save: jest.fn(),
 		},
+		...overrides,
 	};
 }
 
@@ -416,5 +420,43 @@ describe('plan orchestration tools', () => {
 				status: 'running',
 			},
 		});
+	});
+
+	it('update-phase-status stamps execution context for runtime-owned plans', async () => {
+		const context = createMockContext(
+			{
+				...makePlan(),
+				status: 'approved',
+			},
+			{
+				runtimeOwnedPlanActive: true,
+				messageGroupId: 'message-group-1',
+			},
+		);
+		const tool = createUpdatePhaseStatusTool(context);
+
+		const output = await tool.execute!(
+			{
+				planId: 'plan_123',
+				phaseId: 'phase-1',
+				status: 'building',
+			},
+			{} as never,
+		);
+
+		expect(output).toEqual({ saved: true });
+		const saveCalls = (context.planStorage.save as jest.Mock).mock.calls as Array<
+			[string, InstanceAiPlanSpec]
+		>;
+		const savedPlan = saveCalls[0]?.[1];
+		expect(savedPlan).toBeDefined();
+		if (!savedPlan) {
+			throw new Error('Expected runtime-owned plan to be saved');
+		}
+		expect(savedPlan.executionContext).toMatchObject({
+			originRunId: 'test-run',
+			messageGroupId: 'message-group-1',
+		});
+		expect(savedPlan.executionContext?.startedAt).toEqual(expect.any(Number));
 	});
 });

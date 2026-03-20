@@ -2,7 +2,7 @@ import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
 import { nanoid } from 'nanoid';
 
-import { delegateInputSchema, delegateOutputSchema } from './delegate.schemas';
+import { delegateInputSchema, delegateOutputSchema, type DelegateInput } from './delegate.schemas';
 import { truncateLabel } from './display-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
@@ -26,8 +26,32 @@ const FORBIDDEN_TOOL_NAMES = new Set([
 
 const FALLBACK_MAX_STEPS = 10;
 
+const WORKFLOW_BUILD_TOOL_NAMES = new Set(['build-workflow', 'patch-workflow']);
+const WORKFLOW_BUILD_PATTERNS = [
+	/\bworkflow builder\b/i,
+	/\bbuild(?:ing)? (?:an? |the )?workflow\b/i,
+	/\bcreate(?:ing)? (?:an? |the )?workflow\b/i,
+	/\bmodify(?:ing)? (?:an? |the )?workflow\b/i,
+	/\bupdate(?:ing)? (?:an? |the )?workflow\b/i,
+	/\bpatch(?:ing)? (?:an? |the )?workflow\b/i,
+	/\bfix(?:ing)? (?:an? |the )?workflow\b/i,
+	/\badd(?:ing)? .* node\b/i,
+	/\bremove(?:ing)? .* node\b/i,
+	/\brewire\b/i,
+];
+
 function generateAgentId(): string {
 	return `agent-${nanoid(6)}`;
+}
+
+function isWorkflowBuildDelegation(input: DelegateInput): boolean {
+	if (input.tools.some((name) => WORKFLOW_BUILD_TOOL_NAMES.has(name))) {
+		return true;
+	}
+
+	return [input.role, input.instructions, input.briefing].some((text) =>
+		WORKFLOW_BUILD_PATTERNS.some((pattern) => pattern.test(text)),
+	);
 }
 
 export function createDelegateTool(context: OrchestrationContext) {
@@ -65,6 +89,13 @@ export function createDelegateTool(context: OrchestrationContext) {
 
 			if (errors.length > 0) {
 				return { result: `Delegation failed: ${errors.join('; ')}` };
+			}
+
+			if (isWorkflowBuildDelegation(input)) {
+				return {
+					result:
+						'Delegation failed: workflow building or structural workflow edits must use build-workflow-with-agent, not delegate.',
+				};
 			}
 
 			const subAgentId = generateAgentId();

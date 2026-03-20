@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { InstanceAiMessage, InstanceAiStreamFrame } from '@n8n/api-types';
+import { jsonParse } from 'n8n-workflow';
 
 import { ensureThread, postMessage } from '../instanceAi.api';
 import { fetchThreadMessages } from '../instanceAi.memory.api';
@@ -50,7 +51,9 @@ const encoder = new TextEncoder();
 
 class MockThreadStream {
 	private controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+
 	private closed = false;
+
 	readonly url: string;
 
 	readonly body: ReadableStream<Uint8Array>;
@@ -374,6 +377,46 @@ describe('useInstanceAiStore stream flow', () => {
 		await vi.waitFor(() => {
 			expect(store.messages[0].agentTree?.toolCalls[0]?.confirmationStatus).toBe('approved');
 		});
+	});
+
+	test('copyFullTrace includes taskRuns for detached-task debugging', async () => {
+		currentStream().pushFrame({
+			type: 'sync',
+			threadId: store.currentThreadId,
+			activeRunId: null,
+			messages: [],
+			taskRuns: [
+				{
+					taskId: 'task-1',
+					threadId: store.currentThreadId,
+					originRunId: 'run-1',
+					messageGroupId: 'mg-1',
+					agentId: 'agent-builder',
+					role: 'workflow-builder',
+					kind: 'workflow-build',
+					title: 'Building workflow',
+					status: 'running',
+					createdAt: 1,
+					startedAt: 1,
+					updatedAt: 2,
+				},
+			],
+		});
+
+		await vi.waitFor(() => {
+			expect(store.currentTaskRuns).toHaveLength(1);
+		});
+
+		const trace = jsonParse<{
+			taskRuns: Array<{ taskId: string; status: string }>;
+		}>(store.copyFullTrace());
+
+		expect(trace.taskRuns).toEqual([
+			expect.objectContaining({
+				taskId: 'task-1',
+				status: 'running',
+			}),
+		]);
 	});
 
 	test('currentPlan selects the latest assistant plan in the thread', () => {

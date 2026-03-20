@@ -3,7 +3,7 @@ import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { updatePlanPhase } from './plan-utils';
+import { ensurePlanExecutionContext, updatePlanPhase } from './plan-utils';
 import type { OrchestrationContext } from '../../types';
 
 export function createBlockPhaseWithQuestionTool(context: OrchestrationContext) {
@@ -41,12 +41,38 @@ export function createBlockPhaseWithQuestionTool(context: OrchestrationContext) 
 				}
 
 				const requestId = nanoid();
-				const plan = updatePlanPhase(existingPlan, input.phaseId, 'blocked', {
-					reason: input.reason,
-					question: input.question,
-					requestId,
-					inputType: 'text',
-				});
+				const shouldEnsureExecutionContext =
+					context.runtimeOwnedPlanActive === true ||
+					context.planExecutionContext !== undefined ||
+					existingPlan.executionContext !== undefined ||
+					existingPlan.status === 'approved' ||
+					existingPlan.status === 'running';
+				const messageGroupId =
+					context.planExecutionContext?.messageGroupId ?? context.messageGroupId;
+				const lastTaskId =
+					context.planExecutionContext?.lastTaskId ?? existingPlan.executionContext?.lastTaskId;
+				const executionContext = {
+					originRunId: context.planExecutionContext?.originRunId ?? context.runId,
+					...(messageGroupId ? { messageGroupId } : {}),
+					startedAt:
+						context.planExecutionContext?.startedAt ??
+						existingPlan.executionContext?.startedAt ??
+						Date.now(),
+					...(lastTaskId ? { lastTaskId } : {}),
+				};
+				const plan = updatePlanPhase(
+					shouldEnsureExecutionContext
+						? ensurePlanExecutionContext(existingPlan, executionContext)
+						: existingPlan,
+					input.phaseId,
+					'blocked',
+					{
+						reason: input.reason,
+						question: input.question,
+						requestId,
+						inputType: 'text',
+					},
+				);
 				const phase = plan.phases.find((currentPhase) => currentPhase.id === input.phaseId);
 				if (!phase) {
 					return { answered: false };

@@ -43,6 +43,7 @@ import {
 	SnapshotManager,
 	createDomainAccessTracker,
 	derivePlanStatus,
+	ensurePlanExecutionContext,
 	getPhaseExecution,
 	getRunnablePhaseIds,
 	patchPlanPhase,
@@ -52,6 +53,7 @@ import {
 	startResearchWithAgentTask,
 } from '@n8n/instance-ai';
 import type {
+	BackgroundTaskListFilters,
 	DomainAccessTracker,
 	McpServerConfig,
 	ModelConfig,
@@ -406,6 +408,79 @@ export class InstanceAiService {
 		return [...(this.threadRuntimes.get(threadId)?.taskRunsById.values() ?? [])];
 	}
 
+	private getLiveTaskRuns(threadId: string): InstanceAiTaskRun[] {
+		const liveTaskRuns = new Map(
+			this.getRuntimeTaskRuns(threadId).map((taskRun) => [taskRun.taskId, taskRun]),
+		);
+
+		for (const task of this.backgroundTasks.values()) {
+			if (task.threadId !== threadId) {
+				continue;
+			}
+
+			const liveTaskRun = this.toTaskRun(task);
+			const existingTaskRun = liveTaskRuns.get(task.taskId);
+			if (!existingTaskRun || liveTaskRun.updatedAt >= existingTaskRun.updatedAt) {
+				liveTaskRuns.set(task.taskId, liveTaskRun);
+			}
+		}
+
+		return this.sortTaskRuns(liveTaskRuns.values());
+	}
+
+	private mergeTaskRuns(
+		threadId: string,
+		persistedTaskRuns: Iterable<InstanceAiTaskRun>,
+	): InstanceAiTaskRun[] {
+		const mergedTaskRuns = new Map(
+			[...persistedTaskRuns].map((taskRun) => [taskRun.taskId, taskRun]),
+		);
+		for (const taskRun of this.getLiveTaskRuns(threadId)) {
+			const existingTaskRun = mergedTaskRuns.get(taskRun.taskId);
+			if (!existingTaskRun || taskRun.updatedAt >= existingTaskRun.updatedAt) {
+				mergedTaskRuns.set(taskRun.taskId, taskRun);
+			}
+		}
+
+		return this.sortTaskRuns(mergedTaskRuns.values());
+	}
+
+	private async getThreadTaskRuns(threadId: string): Promise<InstanceAiTaskRun[]> {
+		const persistedTaskRuns = await this.reconcileStoredTaskRuns(threadId);
+		return this.mergeTaskRuns(threadId, persistedTaskRuns);
+	}
+
+	private async listBackgroundTasksForThread(
+		threadId: string,
+		filters?: BackgroundTaskListFilters,
+	): Promise<InstanceAiTaskRun[]> {
+		const taskRuns = await this.getThreadTaskRuns(threadId);
+		return taskRuns.filter((taskRun) => {
+			if (filters?.planId && taskRun.planId !== filters.planId) {
+				return false;
+			}
+
+			if (filters?.status && taskRun.status !== filters.status) {
+				return false;
+			}
+
+			return true;
+		});
+	}
+
+	private async getBackgroundTaskForThread(
+		threadId: string,
+		taskId: string,
+	): Promise<InstanceAiTaskRun | null> {
+		const liveTask = this.backgroundTasks.get(taskId);
+		if (liveTask && liveTask.threadId === threadId) {
+			return this.toTaskRun(liveTask);
+		}
+
+		const taskRuns = await this.getThreadTaskRuns(threadId);
+		return taskRuns.find((taskRun) => taskRun.taskId === taskId) ?? null;
+	}
+
 	private nextSequence(threadId: string): number {
 		const runtime = this.getOrCreateThreadRuntime(threadId);
 		runtime.sequence += 1;
@@ -584,17 +659,11 @@ export class InstanceAiService {
 		persistedMessages: InstanceAiMessage[],
 		persistedTaskRuns: InstanceAiTaskRun[],
 	): InstanceAiStreamSyncFrame {
-		const runtimeTaskRuns = this.getRuntimeTaskRuns(threadId);
-		const mergedTaskRuns = new Map(persistedTaskRuns.map((taskRun) => [taskRun.taskId, taskRun]));
-		for (const taskRun of runtimeTaskRuns) {
-			mergedTaskRuns.set(taskRun.taskId, taskRun);
-		}
-
 		return {
 			type: 'sync',
 			threadId,
 			messages: this.buildSyncedMessages(threadId, persistedMessages),
-			taskRuns: this.sortTaskRuns(mergedTaskRuns.values()),
+			taskRuns: this.mergeTaskRuns(threadId, persistedTaskRuns),
 			activeRunId:
 				this.activeRuns.get(threadId)?.runId ?? this.suspendedRuns.get(threadId)?.runId ?? null,
 		};
@@ -835,6 +904,7 @@ export class InstanceAiService {
 		taskRun: InstanceAiTaskRun,
 		_eventType: 'task-created' | 'task-updated',
 	): Promise<void> {
+		this.upsertRuntimeTaskRun(threadId, taskRun);
 		const taskRunStorage = this.createTaskRunStorage();
 		await taskRunStorage.upsert(taskRun);
 		this.publishTaskUpsert(threadId, taskRun);
@@ -882,6 +952,18 @@ export class InstanceAiService {
 		}
 
 		return plan.phases.find((phase) => phase.id === phaseId);
+	}
+
+	private ensurePlanExecutionContextFromTask(
+		plan: InstanceAiPlanSpec,
+		task: Pick<BackgroundTask, 'runId' | 'messageGroupId' | 'startedAt' | 'taskId'>,
+	): InstanceAiPlanSpec {
+		return ensurePlanExecutionContext(plan, {
+			originRunId: task.runId,
+			...(task.messageGroupId ? { messageGroupId: task.messageGroupId } : {}),
+			startedAt: plan.executionContext?.startedAt ?? task.startedAt,
+			lastTaskId: task.taskId,
+		});
 	}
 
 	private isTaskActive(task: BackgroundTask): boolean {
@@ -1134,6 +1216,8 @@ export class InstanceAiService {
 		if (existingPlan.status !== 'completed' && nextPlan.status === 'completed') {
 			milestone = milestone ? `${milestone} Plan completed.` : 'Plan completed.';
 		}
+
+		nextPlan = this.ensurePlanExecutionContextFromTask(nextPlan, task);
 
 		if (nextPlan !== existingPlan) {
 			await this.publishPlanUpdate(task.threadId, task.runId, nextPlan);
@@ -1432,18 +1516,21 @@ export class InstanceAiService {
 			const planStorage = this.createPlanStorage();
 			const existingPlan = await planStorage.get(task.threadId);
 			if (existingPlan?.planId === task.planId) {
-				const nextPlan = patchPlanPhase(
-					existingPlan,
-					task.phaseId,
-					{
-						status: 'blocked',
-						blocker: {
-							reason: 'Execution cancelled by user',
-							inputType: 'text',
+				const nextPlan = this.ensurePlanExecutionContextFromTask(
+					patchPlanPhase(
+						existingPlan,
+						task.phaseId,
+						{
+							status: 'blocked',
+							blocker: {
+								reason: 'Execution cancelled by user',
+								inputType: 'text',
+							},
+							lastVerificationError: 'Execution cancelled by user',
 						},
-						lastVerificationError: 'Execution cancelled by user',
-					},
-					'blocked',
+						'blocked',
+					),
+					task,
 				);
 				await this.publishPlanUpdate(task.threadId, task.runId, nextPlan);
 			}
@@ -1755,6 +1842,10 @@ export class InstanceAiService {
 				spawnBackgroundTask: (opts) => this.spawnBackgroundTask(runId, opts, snapshotStorage),
 				iterationLog,
 				sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
+				listBackgroundTasks: async (filters) =>
+					await this.listBackgroundTasksForThread(threadId, filters),
+				getBackgroundTask: async (taskId) =>
+					await this.getBackgroundTaskForThread(threadId, taskId),
 				workspace: sandboxEntry?.workspace,
 				builderSandboxFactory: this.builderSandboxFactory,
 				nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
@@ -2224,6 +2315,10 @@ export class InstanceAiService {
 					this.spawnBackgroundTask(executionContext.originRunId, opts, snapshotStorage),
 				iterationLog,
 				sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
+				listBackgroundTasks: async (filters) =>
+					await this.listBackgroundTasksForThread(threadId, filters),
+				getBackgroundTask: async (taskId) =>
+					await this.getBackgroundTaskForThread(threadId, taskId),
 				workspace: sandboxEntry?.workspace,
 				builderSandboxFactory: this.builderSandboxFactory,
 				nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
@@ -2406,7 +2501,7 @@ export class InstanceAiService {
 			return nextPlan;
 		}
 
-		let startedTask: { taskId: string; result: string } | undefined;
+		let startedTask: { taskId?: string; result: string; started?: boolean } | undefined;
 		switch (execution.kind) {
 			case 'data-table':
 				startedTask = startDataTableAgentTask(orchestrationContext, {
@@ -2562,18 +2657,21 @@ export class InstanceAiService {
 						if (task.planId && task.phaseId) {
 							const existingPlan = await planStorage.get(task.threadId);
 							if (existingPlan?.planId === task.planId) {
-								const nextPlan = patchPlanPhase(
-									existingPlan,
-									task.phaseId,
-									{
-										status: 'blocked',
-										blocker: {
-											reason: 'Waiting for user input to continue this task',
-											requestId,
-											inputType: 'approval',
+								const nextPlan = this.ensurePlanExecutionContextFromTask(
+									patchPlanPhase(
+										existingPlan,
+										task.phaseId,
+										{
+											status: 'blocked',
+											blocker: {
+												reason: 'Waiting for user input to continue this task',
+												requestId,
+												inputType: 'approval',
+											},
 										},
-									},
-									'blocked',
+										'blocked',
+									),
+									task,
 								);
 								await this.publishPlanUpdate(task.threadId, task.runId, nextPlan);
 							}
@@ -2587,14 +2685,17 @@ export class InstanceAiService {
 						if (task.planId && task.phaseId) {
 							const existingPlan = await planStorage.get(task.threadId);
 							if (existingPlan?.planId === task.planId) {
-								const nextPlan = patchPlanPhase(
-									existingPlan,
-									task.phaseId,
-									{
-										status: 'building',
-										blocker: undefined,
-									},
-									'running',
+								const nextPlan = this.ensurePlanExecutionContextFromTask(
+									patchPlanPhase(
+										existingPlan,
+										task.phaseId,
+										{
+											status: 'building',
+											blocker: undefined,
+										},
+										'running',
+									),
+									task,
 								);
 								await this.publishPlanUpdate(task.threadId, task.runId, nextPlan);
 							}

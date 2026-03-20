@@ -61,6 +61,8 @@ const ALWAYS_LOADED_TOOLS = new Set([
 	'block-phase-with-question',
 	'delegate',
 	'build-workflow-with-agent',
+	'list-background-tasks',
+	'get-background-task',
 	'ask-user',
 	'web-search',
 	'fetch-url',

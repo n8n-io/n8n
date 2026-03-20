@@ -5,6 +5,7 @@ export { createAllTools, createOrchestrationTools } from './tools';
 export {
 	addPlanArtifact,
 	derivePlanStatus,
+	ensurePlanExecutionContext,
 	getPhaseExecution,
 	getRunnablePhaseIds,
 	normalizePhase,
@@ -74,6 +75,7 @@ export type {
 	TaskRunStorage,
 	PlanStorage,
 	OrchestrationContext,
+	BackgroundTaskListFilters,
 	SpawnBackgroundTaskOptions,
 	BackgroundTaskResult,
 	WorkflowSummary,

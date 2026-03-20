@@ -117,10 +117,9 @@ function buildOutcome(
 			verified: reportedResult.status === 'verified',
 			triggerType: 'manual_or_testable',
 			needsUserInput: reportedResult.status === 'blocked',
-			failureSignature:
-				reportedResult.status === 'failed' ? reportedResult.reason : undefined,
+			failureSignature: reportedResult.status === 'failed' ? reportedResult.reason : undefined,
 			failureReason:
-				reportedResult.status === 'verified' ? undefined : reportedResult.reason ?? finalText,
+				reportedResult.status === 'verified' ? undefined : (reportedResult.reason ?? finalText),
 			summary: reportedResult.summary ?? finalText,
 		};
 	}
@@ -204,9 +203,9 @@ function buildOutcome(
 export async function startBuildWorkflowAgentTask(
 	context: OrchestrationContext,
 	input: StartBuildWorkflowAgentTaskInput,
-): Promise<{ result: string; taskId: string }> {
+): Promise<{ started: boolean; result: string; taskId?: string }> {
 	if (!context.spawnBackgroundTask) {
-		return { result: 'Error: background task support not available.', taskId: '' };
+		return { started: false, result: 'Error: background task support not available.' };
 	}
 
 	const factory = context.builderSandboxFactory;
@@ -282,7 +281,7 @@ export async function startBuildWorkflowAgentTask(
 		}
 
 		if (!builderTools['build-workflow']) {
-			return { result: 'Error: build-workflow tool not available.', taskId: '' };
+			return { started: false, result: 'Error: build-workflow tool not available.' };
 		}
 
 		prompt = BUILDER_AGENT_PROMPT;
@@ -452,8 +451,7 @@ export async function startBuildWorkflowAgentTask(
 					const currentMainWorkflowHash = hashContent(currentMainWorkflow);
 
 					if (!mainWorkflowAttempt) {
-						const text =
-							'Error: workflow builder finished without submitting /src/workflow.ts.';
+						const text = 'Error: workflow builder finished without submitting /src/workflow.ts.';
 						return {
 							text,
 							outcome: buildOutcome(
@@ -592,6 +590,7 @@ export async function startBuildWorkflowAgentTask(
 	});
 
 	return {
+		started: true,
 		result: `Workflow build started (task: ${taskId}). Acknowledge briefly and move on.`,
 		taskId,
 	};
@@ -623,11 +622,12 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				.describe('Phase ID in the current plan that this build belongs to.'),
 		}),
 		outputSchema: z.object({
+			started: z.boolean(),
 			result: z.string(),
+			taskId: z.string().optional(),
 		}),
 		execute: async (input) => {
-			const { result } = await startBuildWorkflowAgentTask(context, input);
-			return { result };
+			return await startBuildWorkflowAgentTask(context, input);
 		},
 	});
 }

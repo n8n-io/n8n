@@ -857,6 +857,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				threadId: currentThreadId.value,
 				exportedAt: new Date().toISOString(),
 				messages: messages.value,
+				taskRuns: taskRuns.value,
 				events: collapsed,
 			},
 			null,

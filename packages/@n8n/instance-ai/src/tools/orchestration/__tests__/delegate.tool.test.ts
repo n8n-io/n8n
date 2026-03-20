@@ -119,4 +119,23 @@ describe('createDelegateTool', () => {
 		expect((output as { result: string }).result).toContain('nonexistent');
 		expect((output as { result: string }).result).toContain('not a registered domain tool');
 	});
+
+	it('rejects workflow-building delegation and directs the orchestrator to the builder tool', async () => {
+		const context = createMockContext({ 'patch-workflow': {}, 'tool-a': {} });
+		const tool = createDelegateTool(context);
+
+		const output = await tool.execute!(
+			{
+				role: 'workflow builder',
+				instructions: 'Modify the workflow structure to add retries',
+				tools: ['patch-workflow'],
+				briefing: 'Update the workflow to add an error branch and retry handling',
+			},
+			{} as never,
+		);
+
+		expect('result' in output).toBe(true);
+		expect((output as { result: string }).result).toContain('build-workflow-with-agent');
+		expect((output as { result: string }).result).toContain('workflow building');
+	});
 });
