@@ -446,11 +446,9 @@ export function handleExecutionFinishedWithSuccessOrOther(
 		} else if (!nodeOutput && !successToastAlreadyShown) {
 			const runData = workflowExecution.data?.resultData?.runData;
 			const nodeWithError = runData
-				? Object.entries(runData).find(([, tasks]) =>
-						tasks.some((task) => task.error && !task.data),
-					)
+				? Object.entries(runData).find(([, tasks]) => tasks.some((task) => task.error))
 				: undefined;
-			const error = nodeWithError?.[1].find((task) => task.error && !task.data)?.error;
+			const error = nodeWithError?.[1].find((task) => task.error)?.error;
 
 			if (error) {
 				const { message, title } = getExecutionErrorToastConfiguration({
