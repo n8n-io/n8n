@@ -28,7 +28,7 @@ Not every workflow with an AI node is regulated. The EU AI Act classifies AI sys
 
 n8n integrates with a range of AI services. The following are the key ones relevant to compliance:
 
-- **AI providers:** OpenAI, Google GenAI, HuggingFace, LangChain
+- **AI providers:** OpenAI, Anthropic, Google GenAI, HuggingFace, LangChain
 - **Model identifiers include:** gpt-4o, gemini-2.5-flash, whisper-1, text-embedding-ada-002, and others
 
 These are the AI services n8n *integrates with*. Your workflows use a subset. Document which nodes are active.
@@ -62,7 +62,7 @@ graph LR
 
 **GDPR roles:**
 - **Your organization** is the controller (you determine the purpose and means of processing).
-- **Organizations operating AI providers (OpenAI, Google, Anthropic)** act as processors — requires Data Processing Agreement.
+- **AI providers (OpenAI, Google, Anthropic)** are typically processors for customer-submitted data, but the exact role depends on each provider's terms of service and the specific processing purpose. Review each provider's Data Processing Agreement and document the role accordingly.
 - **Self-hosted vector stores:** Your organization remains the controller — no third-party transfer.
 - **The organization operating n8n Cloud** acts as a processor if you use the hosted version; no processor relationship if self-hosted.
 
