@@ -653,7 +653,14 @@ export class HttpRequestV3 implements INodeType {
 						if (!pagination.completeExpression.length || pagination.completeExpression[0] !== '=') {
 							throw new NodeOperationError(this.getNode(), 'Invalid or empty Complete Expression');
 						}
-						continueExpression = `={{ !(${pagination.completeExpression.trim().slice(3, -2)}) }}`;
+						const completionExpression = pagination.completeExpression.trim().slice(3, -2);
+						if (response?.response?.neverError) {
+							continueExpression = `={{ !(${completionExpression}) }}`;
+						} else {
+							// In paginated mode, non-2xx responses are surfaced as errors via the helper when
+							// another request is requested. For "other", force that error path unless Never Error is enabled.
+							continueExpression = `={{ !(${completionExpression}) || ($response.statusCode < 200 || $response.statusCode >= 300) }}`;
+						}
 					}
 
 					const paginationData: PaginationOptions = {
