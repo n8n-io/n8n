@@ -1,26 +1,15 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 
-import type { BrowserAdapter } from './adapters/adapter';
-import type { SessionManager as SessionManagerType } from './session-manager';
-
 // ---------------------------------------------------------------------------
 // Browser names
 // ---------------------------------------------------------------------------
 
 const chromiumBrowsers = ['chromium', 'chrome', 'brave', 'edge'] as const;
-const allBrowsers = [...chromiumBrowsers, 'firefox', 'safari', 'webkit'] as const;
 
-export type ChromiumBrowser = (typeof chromiumBrowsers)[number];
-export type BrowserName = (typeof allBrowsers)[number];
-export type SessionMode = 'ephemeral' | 'persistent' | 'local';
+export type BrowserName = (typeof chromiumBrowsers)[number];
 
-export const browserNameSchema = z.enum(allBrowsers);
-export const sessionModeSchema = z.enum(['ephemeral', 'persistent', 'local']);
-
-export function isChromiumBased(browser: BrowserName): browser is ChromiumBrowser {
-	return (chromiumBrowsers as readonly string[]).includes(browser);
-}
+export const browserNameSchema = z.enum(chromiumBrowsers);
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -39,13 +28,9 @@ const browserOverrideSchema = z.object({
 });
 
 export const configSchema = z.object({
-	defaultBrowser: browserNameSchema.default('chromium'),
-	defaultMode: sessionModeSchema.default('ephemeral'),
+	defaultBrowser: browserNameSchema.default('chrome'),
 	headless: z.boolean().default(false),
 	viewport: viewportSchema.default({ width: 1280, height: 720 }),
-	sessionTtlMs: z.number().positive().default(1_800_000),
-	maxConcurrentSessions: z.number().positive().default(5),
-	profilesDir: z.string().default('~/.n8n-browser/profiles'),
 	browsers: z.record(browserNameSchema, browserOverrideSchema).default({}),
 });
 
@@ -59,28 +44,18 @@ export interface ResolvedBrowserInfo {
 
 export interface ResolvedConfig {
 	defaultBrowser: BrowserName;
-	defaultMode: SessionMode;
 	headless: boolean;
 	viewport: Viewport;
-	sessionTtlMs: number;
-	maxConcurrentSessions: number;
-	profilesDir: string;
 	browsers: Map<BrowserName, ResolvedBrowserInfo>;
-	geckodriverPath?: string;
-	safaridriverPath?: string;
 }
 
 // ---------------------------------------------------------------------------
-// Sessions
+// Connection
 // ---------------------------------------------------------------------------
 
-export interface SessionConfig {
-	mode: SessionMode;
+export interface ConnectConfig {
 	browser: BrowserName;
-	headless: boolean;
 	viewport: Viewport;
-	profileName?: string;
-	ttlMs: number;
 }
 
 export interface PageInfo {
@@ -89,31 +64,14 @@ export interface PageInfo {
 	url: string;
 }
 
-export interface BrowserSession {
-	id: string;
-	adapter: BrowserAdapter;
-	config: SessionConfig;
+export interface ConnectionState {
+	adapter: PlaywrightAdapter;
 	pages: Map<string, PageInfo>;
 	activePageId: string;
-	createdAt: Date;
-	lastAccessedAt: Date;
 }
 
-export const openSessionSchema = z.object({
-	mode: sessionModeSchema.optional(),
-	browser: browserNameSchema.optional(),
-	headless: z.boolean().optional(),
-	viewport: viewportSchema.optional(),
-	profileName: z.string().optional(),
-	ttlMs: z.number().positive().optional(),
-});
-
-export type OpenSessionOptions = z.infer<typeof openSessionSchema>;
-
-export interface SessionOpenResult {
-	sessionId: string;
-	browser: BrowserName;
-	mode: SessionMode;
+export interface ConnectResult {
+	browser: string;
 	pages: PageInfo[];
 }
 
@@ -228,8 +186,14 @@ export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
 
 export interface BrowserToolkit {
 	tools: ToolDefinition[];
-	sessionManager: SessionManagerType;
+	connection: BrowserConnection;
 }
+
+// Forward declarations — imported at runtime to avoid circular deps
+import type { PlaywrightAdapter as PlaywrightAdapterType } from './adapters/playwright';
+import type { BrowserConnection as BrowserConnectionType } from './connection';
+type BrowserConnection = BrowserConnectionType;
+type PlaywrightAdapter = PlaywrightAdapterType;
 
 // ---------------------------------------------------------------------------
 // Discovery types
@@ -245,8 +209,4 @@ export interface DiscoveredBrowsers {
 	brave?: BrowserInfo;
 	edge?: BrowserInfo;
 	chromium?: BrowserInfo;
-	firefox?: BrowserInfo;
-	safari?: BrowserInfo;
-	geckodriverPath?: string;
-	safaridriverPath?: string;
 }

@@ -8,20 +8,23 @@ export class McpBrowserError extends Error {
 	}
 }
 
-export class SessionNotFoundError extends McpBrowserError {
-	constructor(readonly sessionId: string) {
+export class NotConnectedError extends McpBrowserError {
+	constructor() {
+		super('Not connected to a browser', 'Call browser_connect first to connect to the browser.');
+	}
+}
+
+export class AlreadyConnectedError extends McpBrowserError {
+	constructor() {
 		super(
-			`Session not found: ${sessionId}`,
-			'The session may have expired or been closed. Create a new session with browser_open.',
+			'Already connected to a browser',
+			'Disconnect first with browser_disconnect before connecting again.',
 		);
 	}
 }
 
 export class PageNotFoundError extends McpBrowserError {
-	constructor(
-		readonly pageId: string,
-		readonly sessionId: string,
-	) {
+	constructor(readonly pageId: string) {
 		super(
 			`Page not found: ${pageId}`,
 			'The page may have been closed. List open pages with browser_tab_list.',
@@ -45,16 +48,7 @@ export class UnsupportedOperationError extends McpBrowserError {
 	) {
 		super(
 			`Operation not supported: ${operation}`,
-			`This operation is not available for ${adapterName} sessions. Use a Chromium or Firefox session instead.`,
-		);
-	}
-}
-
-export class MaxSessionsError extends McpBrowserError {
-	constructor(readonly max: number) {
-		super(
-			`Maximum concurrent sessions (${max}) reached`,
-			'Close an existing session with browser_close before opening a new one.',
+			`This operation is not available for ${adapterName} sessions.`,
 		);
 	}
 }
@@ -64,25 +58,6 @@ export class BrowserNotAvailableError extends McpBrowserError {
 		super(
 			`Browser not available: ${browser}`,
 			`${browser} was not found on this system. Install it or configure the executablePath.`,
-		);
-	}
-}
-
-export class LocalModeUnsupportedBrowserError extends McpBrowserError {
-	constructor(readonly browser: string) {
-		super(
-			`Local mode only supports Chrome (got: ${browser})`,
-			"Local mode connects to the user's real browser via the n8n Browser Bridge Chrome extension. " +
-				'Use browser: "chrome" with mode: "local", or use mode: "ephemeral" for any browser without setup.',
-		);
-	}
-}
-
-export class ProfileLockedError extends McpBrowserError {
-	constructor() {
-		super(
-			'Firefox profile is locked',
-			'Close Firefox before opening a local Firefox session. The profile can only be used by one Firefox instance at a time.',
 		);
 	}
 }

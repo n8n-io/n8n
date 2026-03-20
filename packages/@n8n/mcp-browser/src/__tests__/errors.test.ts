@@ -1,10 +1,9 @@
 import {
+	AlreadyConnectedError,
 	BrowserNotAvailableError,
-	MaxSessionsError,
 	McpBrowserError,
+	NotConnectedError,
 	PageNotFoundError,
-	ProfileLockedError,
-	SessionNotFoundError,
 	StaleRefError,
 	UnsupportedOperationError,
 } from '../errors';
@@ -25,19 +24,31 @@ describe('McpBrowserError', () => {
 	});
 });
 
-describe('SessionNotFoundError', () => {
-	const error = new SessionNotFoundError('sess_abc123');
+describe('NotConnectedError', () => {
+	const error = new NotConnectedError();
 
-	it('should include session ID in message', () => {
-		expect(error.message).toContain('sess_abc123');
+	it('should mention not connected', () => {
+		expect(error.message).toContain('Not connected');
 	});
 
-	it('should store sessionId property', () => {
-		expect(error.sessionId).toBe('sess_abc123');
+	it('should hint about browser_connect', () => {
+		expect(error.hint).toContain('browser_connect');
 	});
 
-	it('should have a hint about creating a new session', () => {
-		expect(error.hint).toContain('browser_open');
+	it('should be instanceof McpBrowserError', () => {
+		expect(error).toBeInstanceOf(McpBrowserError);
+	});
+});
+
+describe('AlreadyConnectedError', () => {
+	const error = new AlreadyConnectedError();
+
+	it('should mention already connected', () => {
+		expect(error.message).toContain('Already connected');
+	});
+
+	it('should hint about browser_disconnect', () => {
+		expect(error.hint).toContain('browser_disconnect');
 	});
 
 	it('should be instanceof McpBrowserError', () => {
@@ -46,15 +57,14 @@ describe('SessionNotFoundError', () => {
 });
 
 describe('PageNotFoundError', () => {
-	const error = new PageNotFoundError('page_1', 'sess_abc');
+	const error = new PageNotFoundError('page_1');
 
 	it('should include page ID in message', () => {
 		expect(error.message).toContain('page_1');
 	});
 
-	it('should store pageId and sessionId', () => {
+	it('should store pageId', () => {
 		expect(error.pageId).toBe('page_1');
-		expect(error.sessionId).toBe('sess_abc');
 	});
 
 	it('should hint about browser_tab_list', () => {
@@ -86,22 +96,6 @@ describe('UnsupportedOperationError', () => {
 	});
 });
 
-describe('MaxSessionsError', () => {
-	const error = new MaxSessionsError(5);
-
-	it('should include limit in message', () => {
-		expect(error.message).toContain('5');
-	});
-
-	it('should store max property', () => {
-		expect(error.max).toBe(5);
-	});
-
-	it('should hint about browser_close', () => {
-		expect(error.hint).toContain('browser_close');
-	});
-});
-
 describe('BrowserNotAvailableError', () => {
 	const error = new BrowserNotAvailableError('firefox');
 
@@ -112,17 +106,5 @@ describe('BrowserNotAvailableError', () => {
 	it('should hint about installation', () => {
 		expect(error.hint).toContain('firefox');
 		expect(error.hint).toContain('Install');
-	});
-});
-
-describe('ProfileLockedError', () => {
-	const error = new ProfileLockedError();
-
-	it('should mention Firefox in hint', () => {
-		expect(error.hint).toContain('Firefox');
-	});
-
-	it('should be instanceof McpBrowserError', () => {
-		expect(error).toBeInstanceOf(McpBrowserError);
 	});
 });
