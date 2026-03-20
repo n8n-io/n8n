@@ -50,6 +50,7 @@ function handleContinue() {
 		if (id) credentials[type] = id;
 	}
 	isSubmitted.value = true;
+	store.resolveConfirmation(props.requestId, 'approved');
 	void store.confirmAction(props.requestId, true, undefined, credentials);
 }
 
