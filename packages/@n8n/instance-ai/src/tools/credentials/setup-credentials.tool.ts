@@ -113,12 +113,13 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 				return { success: false };
 			}
 
-			// State 2: Not approved — user clicked "Later" / deferred.
+			// State 2: Not approved — user clicked "Later" / skipped.
 			if (!resumeData.approved) {
 				return {
 					success: true,
 					deferred: true,
-					reason: 'User deferred credential setup.',
+					reason:
+						'User skipped credential setup for now. Continue without credentials and let the user set them up later.',
 				};
 			}
 
