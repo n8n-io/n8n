@@ -87,14 +87,27 @@ n8n's execution log provides a foundation for Article 12 compliance:
 - Add a "Log" node after AI nodes to capture model name, token usage, and response metadata
 - Use n8n's credential system to track which API keys (and therefore which provider accounts) are in use
 
-## Article 13: Transparency
+## Article 13: Transparency to deployers
 
-For limited-risk AI systems (chatbots, content generation), Article 52 requires that users know they are interacting with AI.
+Article 13 requires providers of high-risk AI systems to supply deployers with the information needed to understand and operate the system correctly. For n8n workflows, this means the upstream AI providers (OpenAI, Google, Anthropic) must give you:
+
+- Instructions for use, including intended purpose and known limitations
+- Accuracy metrics and performance benchmarks
+- Known or foreseeable risks and residual risks after mitigation
+- Technical specifications: input/output formats, training data characteristics, model architecture details
+
+As a deployer, collect model cards, system documentation, and accuracy reports from each AI provider your workflows use. Maintain these as part of your Annex IV technical documentation.
+
+## Article 50: End-user transparency
+
+Article 50 requires deployers to inform end users that they are interacting with an AI system. This is a separate obligation from Article 13 and applies even to limited-risk systems.
 
 For n8n workflows that serve end users:
 - Add a disclosure in any user-facing output that AI was involved
 - Document which AI model generated or influenced the content
 - If using AI for customer support, inform the customer they are interacting with an automated system
+
+> **Note:** Article 50 applies to chatbots and systems interacting directly with natural persons. It has a separate scope from the high-risk designation under Annex III — it applies even to limited-risk systems.
 
 ## Article 14: Human oversight
 
