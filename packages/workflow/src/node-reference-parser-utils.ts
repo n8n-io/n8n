@@ -101,7 +101,7 @@ const ACCESS_PATTERNS: AccessPattern[] = [
 	},
 ];
 
-export function prepareOldNodeName(nodeName: string) {
+function prepareOldNodeName(nodeName: string) {
 	// if node name contains literal \ -> replace with \\
 	// since that's how it'll be written in a JS expression
 	const doubleSlashes = nodeName.replaceAll('\\', '\\\\');
@@ -112,7 +112,7 @@ export function prepareOldNodeName(nodeName: string) {
 	return escaped.replace(/"/g, '(?:\\\\?")').replace(/'/g, "(?:\\\\?')");
 }
 
-export function prepareNewNodeName(nodeName: string) {
+function prepareNewNodeName(nodeName: string) {
 	// escape $ for replacement regex
 	const dollarEscaped = dollarEscape(nodeName);
 	// escape literal \ ' " characters
