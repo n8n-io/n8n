@@ -444,11 +444,25 @@ export function handleExecutionFinishedWithSuccessOrOther(
 				type: 'success',
 			});
 		} else if (!nodeOutput && !successToastAlreadyShown) {
-			toast.showMessage({
-				title: i18n.baseText('pushConnection.nodeNotExecuted'),
-				message: i18n.baseText('pushConnection.nodeNotExecuted.message'),
-				type: 'warning',
-			});
+			const runData = workflowExecution.data?.resultData?.runData;
+			const nodeWithError = runData
+				? Object.entries(runData).find(([, tasks]) => tasks.some((task) => task.error))
+				: undefined;
+			const error = nodeWithError?.[1].find((task) => task.error)?.error;
+
+			if (error) {
+				const { message, title } = getExecutionErrorToastConfiguration({
+					error,
+					lastNodeExecuted: nodeWithError?.[0],
+				});
+				toast.showMessage({ title, message, type: 'error', duration: 0 });
+			} else {
+				toast.showMessage({
+					title: i18n.baseText('pushConnection.nodeNotExecuted'),
+					message: i18n.baseText('pushConnection.nodeNotExecuted.message'),
+					type: 'warning',
+				});
+			}
 		} else if (!successToastAlreadyShown) {
 			handleExecutionFinishedSuccessfully(
 				workflowName,

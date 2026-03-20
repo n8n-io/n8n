@@ -656,6 +656,44 @@ describe('manual execution stats tracking', () => {
 			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
 		});
 
+		it('shows error toast when executed node was not reached but an upstream node has an error', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const executedNodeName = 'Send a text message';
+			const erroredNodeName = 'HTTP Request';
+			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+				executedNode: executedNodeName,
+				data: {
+					resultData: {
+						runData: {
+							[erroredNodeName]: [
+								mock<ITaskData>({
+									error: {
+										message: 'Request failed',
+										name: 'NodeApiError',
+									},
+								}),
+							],
+						},
+					},
+				},
+			} as unknown as IExecutionResponse);
+
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
+				mock<INodeUi>({ type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
+			);
+
+			nodeTypesStore.getNodeType = () => mock<INodeTypeDescription>({ polling: undefined });
+
+			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		});
+
 		it('does not show warning toast when successToastAlreadyShown is true', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
