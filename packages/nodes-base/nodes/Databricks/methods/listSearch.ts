@@ -1,15 +1,13 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
-import { getActiveCredentialType } from '../actions/helpers';
-import type { DatabricksCredentials } from '../actions/interfaces';
+import { extractResourceLocatorValue, getActiveCredentialType, getHost } from '../actions/helpers';
 
 export async function getWarehouses(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentialType = getActiveCredentialType(this);
-	const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
-	const host = credentials.host.replace(/\/$/, '');
+	const host = await getHost(this, credentialType);
 
 	const response = (await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
 		method: 'GET',
@@ -39,8 +37,7 @@ export async function getEndpoints(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentialType = getActiveCredentialType(this);
-	const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
-	const host = credentials.host.replace(/\/$/, '');
+	const host = await getHost(this, credentialType);
 
 	const response = (await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
 		method: 'GET',
@@ -94,8 +91,7 @@ export async function getCatalogs(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentialType = getActiveCredentialType(this);
-	const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
-	const host = credentials.host.replace(/\/$/, '');
+	const host = await getHost(this, credentialType);
 
 	const response = (await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
 		method: 'GET',
@@ -125,21 +121,13 @@ export async function getSchemas(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentialType = getActiveCredentialType(this);
-	const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
-	const host = credentials.host.replace(/\/$/, '');
+	const host = await getHost(this, credentialType);
 
 	let selectedCatalog: string | undefined;
 	try {
-		const catalogParam = this.getCurrentNodeParameter('catalogName') as unknown;
 		selectedCatalog =
-			typeof catalogParam === 'object' && catalogParam !== null
-				? (catalogParam as { value?: string }).value
-				: (catalogParam as string);
-
-		if (selectedCatalog) {
-			selectedCatalog = selectedCatalog.trim();
-			if (selectedCatalog === '') selectedCatalog = undefined;
-		}
+			extractResourceLocatorValue(this.getCurrentNodeParameter('catalogName') as unknown) ||
+			undefined;
 	} catch (e) {
 		selectedCatalog = undefined;
 	}
@@ -176,7 +164,12 @@ export async function getSchemas(
 		return { results: allSchemas };
 	} catch (e) {
 		return {
-			results: [{ name: `Error loading schemas for catalog: ${selectedCatalog}`, value: '' }],
+			results: [
+				{
+					name: `Error loading schemas: ${e instanceof Error ? e.message : String(e)}`,
+					value: '',
+				},
+			],
 		};
 	}
 }
@@ -186,8 +179,7 @@ export async function getVolumes(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentialType = getActiveCredentialType(this);
-	const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
-	const host = credentials.host.replace(/\/$/, '');
+	const host = await getHost(this, credentialType);
 
 	const allVolumes: Array<{ name: string; value: string; description: string; url?: string }> = [];
 
@@ -269,8 +261,7 @@ export async function getTables(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentialType = getActiveCredentialType(this);
-	const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
-	const host = credentials.host.replace(/\/$/, '');
+	const host = await getHost(this, credentialType);
 
 	const allTables: Array<{ name: string; value: string; description: string; url?: string }> = [];
 
@@ -352,8 +343,7 @@ export async function getFunctions(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentialType = getActiveCredentialType(this);
-	const credentials = await this.getCredentials<DatabricksCredentials>(credentialType);
-	const host = credentials.host.replace(/\/$/, '');
+	const host = await getHost(this, credentialType);
 
 	const allFunctions: Array<{ name: string; value: string; description: string; url?: string }> =
 		[];
