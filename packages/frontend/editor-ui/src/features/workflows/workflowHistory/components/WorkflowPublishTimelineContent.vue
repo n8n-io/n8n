@@ -209,7 +209,11 @@ onMounted(loadTimeline);
 											}}
 										</a>
 										<template v-else>
-											{{ i18n.baseText('workflowHistory.publishTimeline.event.activated') }}
+											{{
+												i18n.baseText(
+													'workflowHistory.publishTimeline.event.activatedDeletedVersion',
+												)
+											}}
 										</template>
 									</template>
 									<template v-else>
@@ -225,6 +229,17 @@ onMounted(loadTimeline);
 											}}
 										</N8nText>
 									</template>
+									<N8nTooltip
+										v-if="period.status === 'published' && !period.versionId"
+										placement="top"
+										:content="
+											i18n.baseText(
+												'workflowHistory.publishTimeline.event.activatedDeletedVersion.tooltip',
+											)
+										"
+									>
+										<N8nIcon icon="info" size="small" :class="$style.deletedVersionHint" />
+									</N8nTooltip>
 								</N8nText>
 								<N8nTooltip placement="left" :content="formatDateFull(period.startedAt)">
 									<N8nText size="small" color="text-light" :class="$style.dateText">
@@ -236,6 +251,17 @@ onMounted(loadTimeline);
 					</div>
 				</template>
 			</div>
+			<N8nTooltip
+				placement="top"
+				:content="
+					i18n.baseText('workflowHistory.publishTimeline.deletedVersionsDisclaimer.tooltip')
+				"
+			>
+				<N8nText size="small" color="text-light" :class="$style.deletedVersionsDisclaimer">
+					{{ i18n.baseText('workflowHistory.publishTimeline.deletedVersionsDisclaimer') }}
+					<N8nIcon icon="info" size="small" />
+				</N8nText>
+			</N8nTooltip>
 		</template>
 	</div>
 </template>
@@ -245,6 +271,12 @@ onMounted(loadTimeline);
 	padding: var(--spacing--sm);
 	overflow-y: auto;
 	height: 100%;
+}
+
+.deletedVersionHint {
+	color: var(--color--text--tint-2);
+	margin-left: var(--spacing--4xs);
+	vertical-align: middle;
 }
 
 .versionLink {
@@ -341,6 +373,15 @@ onMounted(loadTimeline);
 .durationSeparator {
 	display: flex;
 	gap: var(--spacing--xs);
+}
+
+.deletedVersionsDisclaimer {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--sm) 0;
+	width: 100%;
+	justify-content: center;
 }
 
 .durationBadge {
