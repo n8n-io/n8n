@@ -58,11 +58,6 @@ function handleLater() {
 
 <template>
 	<div :class="$style.root">
-		<div :class="$style.header">
-			<N8nIcon icon="key-round" size="small" :class="$style.icon" />
-			<span>{{ props.message }}</span>
-		</div>
-
 		<template v-if="!isSubmitted">
 			<ul :class="$style.summaryList">
 				<li
@@ -70,6 +65,7 @@ function handleLater() {
 					:key="req.credentialType"
 					:class="$style.summaryItem"
 				>
+					<N8nIcon icon="key-round" size="small" :class="$style.icon" />
 					<span :class="$style.credentialName">{{ getDisplayName(req.credentialType) }}</span>
 					<span v-if="req.reason" :class="$style.credentialReason">{{ req.reason }}</span>
 				</li>
@@ -118,17 +114,9 @@ function handleLater() {
 	background: var(--color--background--shade-1);
 }
 
-.header {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text);
-	margin-bottom: var(--spacing--xs);
-}
-
 .icon {
 	color: var(--color--primary);
+	flex-shrink: 0;
 }
 
 .summaryList {
@@ -139,7 +127,7 @@ function handleLater() {
 
 .summaryItem {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--4xs) 0;
 }
