@@ -367,6 +367,78 @@ describe('McpClientTool', () => {
 			);
 		});
 
+		it('should not call MCP tool when execution is already cancelled', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			const callToolSpy = jest
+				.spyOn(Client.prototype, 'callTool')
+				.mockResolvedValue({ content: [{ type: 'text', text: 'should not reach here' }] });
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const abortController = new AbortController();
+			abortController.abort();
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
+					logger: { debug: jest.fn(), error: jest.fn() },
+					addInputData: jest.fn(() => ({ index: 0 })),
+					getExecutionCancelSignal: jest.fn(() => abortController.signal),
+				}),
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			const result = await tools[0].invoke({ input: 'foo' });
+
+			expect(result).toEqual('Execution was cancelled');
+			expect(callToolSpy).not.toHaveBeenCalled();
+		});
+
+		it('should pass abort signal to client.callTool options', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			const callToolSpy = jest
+				.spyOn(Client.prototype, 'callTool')
+				.mockResolvedValue({ content: [{ type: 'text', text: 'result' }] });
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const abortController = new AbortController();
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
+					logger: { debug: jest.fn(), error: jest.fn() },
+					addInputData: jest.fn(() => ({ index: 0 })),
+					getExecutionCancelSignal: jest.fn(() => abortController.signal),
+				}),
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			await tools[0].invoke({ input: 'foo' });
+
+			expect(callToolSpy).toHaveBeenCalledWith(
+				expect.any(Object),
+				expect.any(Object),
+				expect.objectContaining({ signal: abortController.signal }),
+			);
+		});
+
 		it('should support setting a timeout', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			const callToolSpy = jest

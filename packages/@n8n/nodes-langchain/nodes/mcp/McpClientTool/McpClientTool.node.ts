@@ -379,11 +379,19 @@ export class McpClientTool implements INodeType {
 			logWrapper(
 				mcpToolToDynamicTool(
 					tool,
-					createCallTool(tool.name, client, config.timeout, (errorMessage) => {
-						const error = new NodeOperationError(node, errorMessage, { itemIndex });
-						void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
-						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
-					}),
+					createCallTool(
+						tool.name,
+						client,
+						config.timeout,
+						(errorMessage) => {
+							const error = new NodeOperationError(node, errorMessage, { itemIndex });
+							void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
+							this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, {
+								error,
+							});
+						},
+						() => this.getExecutionCancelSignal(),
+					),
 				),
 				this,
 			),
