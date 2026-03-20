@@ -42,7 +42,7 @@ function createMockNodeTypes() {
 				version: 1,
 			},
 		};
-	}) as typeof instance.getByNameAndVersion);
+	}) as unknown as typeof instance.getByNameAndVersion);
 	return instance;
 }
 
@@ -744,6 +744,7 @@ describe('test-workflow MCP tool', () => {
 				{
 					workflowId: 'wf-1',
 					pinData: { Trigger: [{ json: {} }] },
+					triggerNodeName: undefined,
 				},
 				{} as any,
 			);
@@ -772,6 +773,7 @@ describe('test-workflow MCP tool', () => {
 				{
 					workflowId: 'missing-wf',
 					pinData: {},
+					triggerNodeName: undefined,
 				},
 				{} as any,
 			);
@@ -857,7 +859,10 @@ describe('test-workflow MCP tool', () => {
 				mcpService,
 			);
 
-			await tool.handler({ workflowId: 'missing', pinData: {} }, {} as any);
+			await tool.handler(
+				{ workflowId: 'missing', pinData: {}, triggerNodeName: undefined },
+				{} as any,
+			);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'User called mcp tool',

@@ -53,7 +53,7 @@ function createMockNodeTypes() {
 				version: 1,
 			},
 		};
-	}) as typeof instance.getByNameAndVersion);
+	}) as unknown as typeof instance.getByNameAndVersion);
 	return instance;
 }
 
