@@ -123,7 +123,7 @@ export const createTestWorkflowTool = (
 				executionId: isTimeout ? error.executionId : null,
 				status: 'error',
 				error: isTimeout
-					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / Time.milliseconds.toSeconds} seconds`
+					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS * Time.milliseconds.toSeconds} seconds`
 					: (error.message ?? `${error.constructor.name}: (no message)`),
 			};
 

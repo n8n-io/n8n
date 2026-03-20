@@ -176,7 +176,7 @@ export const createExecuteWorkflowTool = (
 				executionId: isTimeout ? error.executionId : null,
 				status: 'error',
 				error: isTimeout
-					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / Time.milliseconds.toSeconds} seconds (Enforced MCP timeout)`
+					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS * Time.milliseconds.toSeconds} seconds (Enforced MCP timeout)`
 					: (error.message ?? `${error.constructor.name}: (no message)`),
 			};
 
