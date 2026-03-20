@@ -4,7 +4,6 @@ import {
 	Index,
 	JoinColumn,
 	ManyToOne,
-	OneToOne,
 	PrimaryGeneratedColumn,
 	Relation,
 } from '@n8n/typeorm';
@@ -34,7 +33,7 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;
 
-	@OneToOne('User', {
+	@ManyToOne('User', {
 		onDelete: 'SET NULL',
 		nullable: true,
 	})

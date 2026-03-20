@@ -574,11 +574,12 @@ watchEffect(async () => {
 		publishedWorkflow.value = workflow;
 
 		sendTelemetry('User selected version');
-	} catch (error) {
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : undefined;
 		// Handle workflow version fetch error
-		if (error.message?.includes('version')) {
+		if (message?.includes('version')) {
 			toast.showError(
-				new Error(`${error.message} "${versionId.value}"&nbsp;`),
+				new Error(`${message} "${versionId.value}"&nbsp;`),
 				i18n.baseText('workflowHistory.title'),
 			);
 		} else {

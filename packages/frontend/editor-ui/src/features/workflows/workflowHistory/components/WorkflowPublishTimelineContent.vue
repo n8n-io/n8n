@@ -232,9 +232,9 @@ onMounted(loadTimeline);
 										{{ i18n.baseText('workflowHistory.publishTimeline.event.deactivated') }}
 									</template>
 									<template v-if="period.user">
+										{{ ' ' }}
 										<N8nText size="small" color="text-light">
 											{{
-												' ' +
 												i18n.baseText('workflowHistory.publishTimeline.by', {
 													interpolate: { user: period.user },
 												})

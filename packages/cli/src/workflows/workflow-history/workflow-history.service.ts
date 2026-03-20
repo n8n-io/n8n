@@ -1,5 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import { UpdateWorkflowHistoryVersionDto, WorkflowHistoryLookupDto } from '@n8n/api-types';
+import {
+	UpdateWorkflowHistoryVersionDto,
+	WorkflowHistoryLookupDto,
+	type WorkflowHistoryLookupField,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import {
 	WorkflowHistory,
@@ -246,7 +250,7 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		const select: Array<keyof WorkflowHistory> = ['versionId', ...body.fields];
+		const select: Array<'versionId' | WorkflowHistoryLookupField> = ['versionId', ...body.fields];
 
 		return await this.workflowHistoryRepository.find({
 			where: {

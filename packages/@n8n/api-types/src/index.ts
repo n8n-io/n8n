@@ -235,3 +235,5 @@ export {
 	testSecretProviderConnectionResponseSchema,
 	reloadSecretProviderConnectionResponseSchema,
 } from './schemas/secrets-provider.schema';
+
+export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
