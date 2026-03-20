@@ -87,6 +87,7 @@ function buildOutcome(
 
 const BUILDER_MAX_STEPS = 30;
 const PATCH_MAX_STEPS = 8;
+const PATCH_TOOL_NAMES = ['patch-workflow', 'list-credentials', 'test-credential'] as const;
 
 function hashContent(content: string | null): string {
 	return createHash('sha256')
@@ -128,9 +129,10 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				return { result: 'Error: background task support not available.' };
 			}
 
+			const isPatch = input.mode === 'patch';
 			const factory = context.builderSandboxFactory;
 			const domainContext = context.domainContext;
-			const useSandbox = !!factory && !!domainContext;
+			const useSandbox = !!factory && !!domainContext && !isPatch;
 
 			// Build the appropriate tool set based on mode
 			let builderTools: ToolsInput;
@@ -142,38 +144,29 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			if (useSandbox) {
 				credMap = await buildCredentialMap(domainContext.credentialService);
 
-				const isPatch = input.mode === 'patch';
-
-				const toolNames = isPatch
-					? [
-							// Patch mode: minimal tool set for targeted fixes
-							'patch-workflow',
-							'list-credentials',
-							'test-credential',
-						]
-					: [
-							// Full build/rebuild mode: node discovery, credential/execution tools
-							// submit-workflow is created per-builder inside run: (needs the builder's workspace)
-							'search-nodes',
-							'get-suggested-nodes',
-							'get-workflow-as-code',
-							'get-node-type-definition',
-							'explore-node-resources',
-							'list-workflows',
-							'list-credentials',
-							'test-credential',
-							'run-workflow',
-							'get-execution',
-							'debug-execution',
-							'publish-workflow',
-							'unpublish-workflow',
-							'list-data-tables',
-							'create-data-table',
-							'get-data-table-schema',
-							'add-data-table-column',
-							'query-data-table-rows',
-							'insert-data-table-rows',
-						];
+				const toolNames = [
+					// Full build/rebuild mode: node discovery, credential/execution tools
+					// submit-workflow is created per-builder inside run: (needs the builder's workspace)
+					'search-nodes',
+					'get-suggested-nodes',
+					'get-workflow-as-code',
+					'get-node-type-definition',
+					'explore-node-resources',
+					'list-workflows',
+					'list-credentials',
+					'test-credential',
+					'run-workflow',
+					'get-execution',
+					'debug-execution',
+					'publish-workflow',
+					'unpublish-workflow',
+					'list-data-tables',
+					'create-data-table',
+					'get-data-table-schema',
+					'add-data-table-column',
+					'query-data-table-rows',
+					'insert-data-table-rows',
+				];
 
 				builderTools = {};
 				for (const name of toolNames) {
@@ -181,15 +174,13 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 						builderTools[name] = context.domainTools[name];
 					}
 				}
-				prompt = isPatch ? PATCH_AGENT_PROMPT : SANDBOX_BUILDER_AGENT_PROMPT;
+				prompt = SANDBOX_BUILDER_AGENT_PROMPT;
 			} else {
-				// Tool mode: original approach with build-workflow + get-node-type-definition
+				// Tool mode: original approach, also used for all patch invocations
 				builderTools = {};
 
-				const isPatch = input.mode === 'patch';
-
 				const toolNames = isPatch
-					? ['patch-workflow', 'list-credentials', 'test-credential']
+					? [...PATCH_TOOL_NAMES]
 					: [
 							'build-workflow',
 							'get-node-type-definition',
@@ -235,7 +226,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					tools: Object.keys(builderTools),
 					taskId,
 					kind: 'builder',
-					title: input.mode === 'patch' ? 'Patching workflow' : 'Building workflow',
+					title: isPatch ? 'Patching workflow' : 'Building workflow',
 					subtitle: truncateLabel(input.task),
 					goal: input.task,
 					targetResource: input.workflowId
@@ -259,7 +250,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			}
 
 			let briefing: string;
-			if (input.mode === 'patch' && workflowId) {
+			if (isPatch && workflowId) {
 				briefing = `${input.task}\n\n[CONTEXT: Patching workflow ${workflowId}.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
 			} else if (workflowId) {
 				briefing = `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
@@ -314,17 +305,14 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 								}
 							}
 
-							// Patch mode uses patch-workflow directly — no submit tool needed
-							if (input.mode !== 'patch') {
-								builderTools['submit-workflow'] = createSubmitWorkflowTool(
-									domainContext,
-									workspace,
-									credMap,
-									(attempt) => {
-										submitAttempts.set(attempt.filePath, attempt);
-									},
-								);
-							}
+							builderTools['submit-workflow'] = createSubmitWorkflowTool(
+								domainContext,
+								workspace,
+								credMap,
+								(attempt) => {
+									submitAttempts.set(attempt.filePath, attempt);
+								},
+							);
 
 							const subAgent = new Agent({
 								id: subAgentId,
@@ -351,7 +339,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 									}
 								: undefined;
 
-							const maxSteps = input.mode === 'patch' ? PATCH_MAX_STEPS : BUILDER_MAX_STEPS;
+							const maxSteps = BUILDER_MAX_STEPS;
 
 							const stream = await subAgent.stream(briefing, {
 								maxSteps,
@@ -379,11 +367,6 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 							});
 
 							const finalText = await hitlResult.text;
-
-							// Patch mode: no submit-workflow tracking — patch was applied directly
-							if (input.mode === 'patch') {
-								return { text: finalText };
-							}
 
 							const root = await getWorkspaceRoot(workspace);
 							const mainWorkflowPath = `${root}/src/workflow.ts`;
@@ -450,10 +433,10 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 								}
 							: undefined;
 
-						const toolMaxSteps = input.mode === 'patch' ? PATCH_MAX_STEPS : BUILDER_MAX_STEPS;
+						const maxSteps = isPatch ? PATCH_MAX_STEPS : BUILDER_MAX_STEPS;
 
 						const stream = await subAgent.stream(briefing, {
-							maxSteps: toolMaxSteps,
+							maxSteps,
 							abortSignal: signal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
