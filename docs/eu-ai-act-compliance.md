@@ -2,6 +2,25 @@
 
 n8n automates workflows. When those workflows include AI nodes (OpenAI, Anthropic, Google, LangChain), they become AI systems under the EU AI Act. This guide helps n8n users understand when their workflows cross the regulatory threshold and what to do about it.
 
+## Is your system in scope?
+
+The detailed obligations in Articles 12, 13, and 14 only apply to **high-risk AI systems** as defined in Annex III of the EU AI Act. An n8n workflow is high-risk if it uses AI to make or influence decisions in these domains:
+
+- **Recruitment and HR** — screening CVs, ranking candidates, evaluating employee performance, allocating tasks
+- **Credit scoring and insurance** — assessing creditworthiness or setting premiums
+- **Law enforcement** — profiling, criminal risk assessment, border control
+- **Critical infrastructure** — managing energy, water, transport, or telecommunications systems
+- **Education assessment** — grading students, determining admissions
+- **Essential public services** — evaluating eligibility for benefits, housing, or emergency services
+
+Most n8n workflows with AI nodes (summarization, content generation, internal automation) are **not** high-risk. If your workflow does not fall into one of the categories above:
+
+- **Article 50** (end-user transparency) still applies if users interact with your workflow's output directly. See the [Article 50 section](#article-50-end-user-transparency) below.
+- **GDPR** still applies if you process personal data through AI nodes. See the [GDPR section](#gdpr-considerations) below.
+- You can skip the Articles 11-14 requirements and focus on transparency and data protection instead.
+
+If you are unsure whether your use case qualifies as high-risk, consult a qualified legal professional before proceeding.
+
 ## When does an n8n workflow become regulated?
 
 Not every workflow with an AI node is regulated. The EU AI Act classifies AI systems by risk:
@@ -83,7 +102,7 @@ n8n's execution log provides a foundation for Article 12 compliance:
 
 ### Recommendations
 
-- Set `EXECUTIONS_DATA_MAX_AGE` to at least 180 days (6 months) for Article 12 compliance
+- **Retention periods:** The required retention period depends on your role under the Act. Article 18 requires **providers** of high-risk systems to retain logs and technical documentation for **10 years** after market placement. Article 26(6) requires **deployers** to retain logs for at least **6 months**. Set `EXECUTIONS_DATA_MAX_AGE` accordingly. If you have substantially modified the AI system, you may be classified as a provider rather than a deployer. Confirm the applicable retention period with legal counsel.
 - Add a "Log" node after AI nodes to capture model name, token usage, and response metadata
 - Use n8n's credential system to track which API keys (and therefore which provider accounts) are in use
 
