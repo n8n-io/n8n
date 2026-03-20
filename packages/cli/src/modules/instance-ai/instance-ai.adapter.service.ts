@@ -328,6 +328,48 @@ export class InstanceAiAdapterService {
 				return toWorkflowDetail(updated);
 			},
 
+			async patchNode(workflowId, nodeName, patch) {
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:update',
+				]);
+
+				if (!workflow) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
+
+				const nodes = workflow.nodes ?? [];
+				const node = nodes.find((n) => n.name === nodeName);
+
+				if (!node) {
+					throw new Error(`Node "${nodeName}" not found in workflow ${workflowId}`);
+				}
+
+				// Shallow-merge parameters
+				if (patch.parameters) {
+					node.parameters = {
+						...node.parameters,
+						...(patch.parameters as INodeParameters),
+					};
+				}
+
+				// Override credentials
+				if (patch.credentials) {
+					node.credentials = { ...node.credentials, ...patch.credentials };
+				}
+
+				// Override disabled
+				if (patch.disabled !== undefined) {
+					node.disabled = patch.disabled;
+				}
+
+				const updateData = workflowRepository.create({
+					nodes,
+				} as Partial<WorkflowEntity>);
+
+				const updated = await workflowService.update(user, updateData, workflowId);
+				return toWorkflowDetail(updated);
+			},
+
 			async listVersions(workflowId, options) {
 				const take = options?.limit ?? 20;
 				const skip = options?.skip ?? 0;
