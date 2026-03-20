@@ -3215,7 +3215,7 @@
 	"settings.sourceControl.button.save": "Save settings",
 	"settings.sourceControl.instanceSettings": "Instance settings",
 	"settings.sourceControl.branches": "Branch connected to this n8n instance",
-	"settings.sourceControl.protected": "{bold}: prevent editing source-controlled resources such as workflows, credentials, variables, and data tables (recommended for production environments).",
+	"settings.sourceControl.protected": "{bold}: prevent editing all source-controlled resources (recommended for production environments).",
 	"settings.sourceControl.protected.bold": "Protected instance",
 	"settings.sourceControl.color": "Color",
 	"settings.sourceControl.switchBranch.title": "Switch to {branch} branch",
