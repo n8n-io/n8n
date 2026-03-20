@@ -31,9 +31,39 @@ import type {
 	InstanceAiEvent,
 	InstanceAiMessage,
 	InstanceAiAgentNode,
+	InstanceAiToolCallState,
 	InstanceAiThreadSummary,
 	InstanceAiSSEConnectionState,
 } from '@n8n/api-types';
+
+export interface PendingConfirmationItem {
+	toolCall: InstanceAiToolCallState;
+	agentNode: InstanceAiAgentNode;
+	messageId: string;
+}
+
+/** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
+function collectPendingConfirmations(
+	node: InstanceAiAgentNode,
+	messageId: string,
+	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
+	out: PendingConfirmationItem[],
+): void {
+	for (const tc of node.toolCalls) {
+		if (
+			tc.confirmation &&
+			tc.isLoading &&
+			tc.confirmationStatus !== 'approved' &&
+			tc.confirmationStatus !== 'denied' &&
+			!resolved.has(tc.confirmation.requestId)
+		) {
+			out.push({ toolCall: tc, agentNode: node, messageId });
+		}
+	}
+	for (const child of node.children) {
+		collectPendingConfirmations(child, messageId, resolved, out);
+	}
+}
 
 // Module-level EventSource reference — not in reactive state (not serializable,
 // not needed for rendering, wrapping in a reactive proxy causes issues).
@@ -67,6 +97,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
+	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied' | 'deferred'>>(new Map());
 	const MAX_DEBUG_EVENTS = 1000;
 
 	// --- Computed ---
@@ -130,6 +161,25 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 		return null;
 	});
+
+	/** All pending confirmations across all messages, for the top-level panel. */
+	const pendingConfirmations = computed((): PendingConfirmationItem[] => {
+		const items: PendingConfirmationItem[] = [];
+		for (const msg of messages.value) {
+			if (msg.role !== 'assistant' || !msg.agentTree) continue;
+			collectPendingConfirmations(msg.agentTree, msg.id, resolvedConfirmationIds.value, items);
+		}
+		return items;
+	});
+
+	function resolveConfirmation(
+		requestId: string,
+		action: 'approved' | 'denied' | 'deferred',
+	): void {
+		const next = new Map(resolvedConfirmationIds.value);
+		next.set(requestId, action);
+		resolvedConfirmationIds.value = next;
+	}
 
 	// --- Event reducer (delegated to pure module) ---
 
@@ -307,6 +357,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
+		resolvedConfirmationIds.value = new Map();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		// 3. Switch thread
@@ -330,6 +381,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
+		resolvedConfirmationIds.value = new Map();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		currentThreadId.value = newThreadId;
@@ -378,6 +430,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				activeRunId.value = null;
 				debugEvents.value = [];
 				resetFeedback();
+				resolvedConfirmationIds.value = new Map();
 				runStateByGroupId = {};
 				groupIdByRunId = {};
 				currentThreadId.value = freshId;
@@ -723,6 +776,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		researchMode,
 		amendContext,
 		feedbackByResponseId,
+		resolvedConfirmationIds,
 		// Computed
 		isStreaming,
 		hasMessages,
@@ -735,6 +789,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		currentTasks,
 		resourceRegistry,
 		rateableResponseId,
+		pendingConfirmations,
 		// Actions
 		newThread,
 		deleteThread,
@@ -749,6 +804,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		amendAgent,
 		toggleResearchMode,
 		confirmAction,
+		resolveConfirmation,
 		copyFullTrace,
 		submitFeedback,
 		connectSSE,

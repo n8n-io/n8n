@@ -49,7 +49,7 @@ describe('setup-credentials tool', () => {
 		const result = await tool.execute!({ credentials: [{ credentialType: 'slackApi' }] }, ctx);
 
 		expect(result).toMatchObject({ success: true, deferred: true });
-		expect((result as { reason: string }).reason).toContain('defer');
+		expect((result as { reason: string }).reason).toContain('skipped');
 	});
 
 	it('includes projectId in suspend payload when input has projectId', async () => {
