@@ -3,8 +3,6 @@ import type { INodeParameters, IWorkflowSettings } from 'n8n-workflow';
 // eslint-disable-next-line import-x/extensions
 import { useAIGatewayStore } from './aiGateway.store';
 
-const GATEWAY_CREDENTIAL_TYPE = 'n8nAiGatewayApi';
-const GATEWAY_CREDENTIAL_NAME = 'n8n AI Gateway';
 const GATEWAY_NODE_TYPE = '@n8n/n8n-nodes-langchain.lmChatN8nAiGateway';
 
 /**
@@ -16,28 +14,13 @@ export function isLlmChatNode(nodeType: string): boolean {
 }
 
 /**
- * Apply AI Gateway credential to a newly-created gateway LLM node.
- * Only mutates when the node is a gateway node and credential is not already set.
+ * No-op: the gateway node no longer requires credential assignment.
+ * Kept for API compatibility with callers.
  */
 export function applyAIGatewayDefaultsToLlmNode(
-	node: INodeUi,
+	_node: INodeUi,
 	_workflowSettings?: IWorkflowSettings,
-): void {
-	if (node.type !== GATEWAY_NODE_TYPE) return;
-
-	const store = useAIGatewayStore();
-	store.initialize();
-
-	if (node.credentials?.[GATEWAY_CREDENTIAL_TYPE]) return;
-
-	node.credentials = {
-		...node.credentials,
-		[GATEWAY_CREDENTIAL_TYPE]: {
-			id: null,
-			name: GATEWAY_CREDENTIAL_NAME,
-		},
-	};
-}
+): void {}
 
 /**
  * Returns the node type + parameters for creating the gateway LLM node.
@@ -56,11 +39,6 @@ export async function getGatewayLlmNodeData(_workflowSettings?: IWorkflowSetting
 	return {
 		type: GATEWAY_NODE_TYPE,
 		parameters: {},
-		credentials: {
-			[GATEWAY_CREDENTIAL_TYPE]: {
-				id: null,
-				name: GATEWAY_CREDENTIAL_NAME,
-			},
-		},
+		credentials: {},
 	};
 }

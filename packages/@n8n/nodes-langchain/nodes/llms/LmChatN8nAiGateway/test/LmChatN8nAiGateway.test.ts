@@ -29,37 +29,18 @@ describe('LmChatN8nAiGateway', () => {
 		parameters: {},
 	};
 
-	const setupMockContext = (
-		nodeOverrides: Partial<INode> = {},
-		credentialOverrides: Record<string, unknown> = {},
-		workflowSettings: Record<string, unknown> = {},
-	) => {
-		const nodeDef = { ...mockNodeDef, ...nodeOverrides };
+	const setupMockContext = (paramOverrides: Record<string, unknown> = {}) => {
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
-			nodeDef,
+			mockNodeDef,
 		) as jest.Mocked<ISupplyDataFunctions>;
 
-		ctx.getCredentials = jest.fn().mockResolvedValue({
-			apiKey: 'test-key',
-			url: 'https://openrouter.ai/api/v1',
-			defaultCategory: 'balanced',
-			defaultModel: 'openai/gpt-4.1-nano',
-			categoryMap: JSON.stringify({
-				balanced: 'openai/gpt-4.1-nano',
-				cheapest: 'openai/gpt-4.1-nano',
-				fastest: 'google/gemini-2.0-flash-001',
-				'best-quality': 'anthropic/claude-sonnet-4',
-				reasoning: 'openai/o4-mini',
-			}),
-			...credentialOverrides,
-		});
-		ctx.getNode = jest.fn().mockReturnValue(nodeDef);
+		ctx.getNode = jest.fn().mockReturnValue(mockNodeDef);
 		ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-			if (paramName === 'options') return {};
+			if (paramName === 'options') return paramOverrides.options ?? {};
+			if (paramName === 'model') return paramOverrides.model ?? '';
 			return undefined;
 		});
-		ctx.getWorkflowSettings = jest.fn().mockReturnValue(workflowSettings);
 
 		MockedN8nLlmTracing.mockImplementation(() => ({}) as unknown as N8nLlmTracing);
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(jest.fn());
@@ -70,6 +51,13 @@ describe('LmChatN8nAiGateway', () => {
 	beforeEach(() => {
 		node = new LmChatN8nAiGateway();
 		jest.clearAllMocks();
+		process.env.N8N_AI_GATEWAY_OPENROUTER_API_KEY = 'test-key';
+		process.env.N8N_AI_GATEWAY_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+	});
+
+	afterEach(() => {
+		delete process.env.N8N_AI_GATEWAY_OPENROUTER_API_KEY;
+		delete process.env.N8N_AI_GATEWAY_OPENROUTER_BASE_URL;
 	});
 
 	describe('node description', () => {
@@ -82,8 +70,8 @@ describe('LmChatN8nAiGateway', () => {
 			});
 		});
 
-		it('should require n8nAiGatewayApi credentials', () => {
-			expect(node.description.credentials).toEqual([{ name: 'n8nAiGatewayApi', required: true }]);
+		it('should not declare any credentials', () => {
+			expect(node.description.credentials).toBeUndefined();
 		});
 
 		it('should output ai_languageModel', () => {
@@ -91,153 +79,54 @@ describe('LmChatN8nAiGateway', () => {
 			expect(node.description.outputNames).toEqual(['Model']);
 		});
 
-		it('should have no model parameter in properties', () => {
+		it('should have a model parameter with isModelSelector and loadOptionsMethod', () => {
 			const modelProp = node.description.properties.find((p) => p?.name === 'model');
-			expect(modelProp).toBeUndefined();
+			expect(modelProp).toBeDefined();
+			expect(modelProp?.typeOptions).toEqual(
+				expect.objectContaining({
+					isModelSelector: true,
+					loadOptionsMethod: 'getModels',
+				}),
+			);
 		});
 	});
 
 	describe('supplyData', () => {
-		it('should resolve balanced category to openai/gpt-4.1-nano by default', async () => {
-			const ctx = setupMockContext();
+		it('should use the selected model with API key from env', async () => {
+			const ctx = setupMockContext({ model: 'anthropic/claude-sonnet-4' });
 
 			await node.supplyData.call(ctx, 0);
 
-			expect(ctx.getCredentials).toHaveBeenCalledWith('n8nAiGatewayApi');
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					apiKey: 'test-key',
-					model: 'openai/gpt-4.1-nano',
-				}),
-			);
-		});
-
-		it('should resolve credential defaultCategory to correct model', async () => {
-			const ctx = setupMockContext({}, { defaultCategory: 'fastest' });
-
-			await node.supplyData.call(ctx, 0);
-
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
-					model: 'google/gemini-2.0-flash-001',
-				}),
-			);
-		});
-
-		it('should use workflow-level category override over credential default', async () => {
-			const ctx = setupMockContext(
-				{},
-				{ defaultCategory: 'balanced' },
-				{ aiGatewayCategory: 'reasoning' },
-			);
-
-			await node.supplyData.call(ctx, 0);
-
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
-					model: 'openai/o4-mini',
-				}),
-			);
-		});
-
-		it('should ignore workflow category when set to DEFAULT', async () => {
-			const ctx = setupMockContext(
-				{},
-				{ defaultCategory: 'cheapest' },
-				{ aiGatewayCategory: 'DEFAULT' },
-			);
-
-			await node.supplyData.call(ctx, 0);
-
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
-					model: 'openai/gpt-4.1-nano',
-				}),
-			);
-		});
-
-		it('should fall back to balanced when no category is set', async () => {
-			const ctx = setupMockContext({}, { defaultCategory: undefined, defaultModel: undefined });
-
-			await node.supplyData.call(ctx, 0);
-
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
-					model: 'openai/gpt-4.1-nano',
-				}),
-			);
-		});
-
-		it('should fall back to defaultModel for unknown categories', async () => {
-			const ctx = setupMockContext(
-				{},
-				{ defaultCategory: 'unknown-category', defaultModel: 'anthropic/claude-sonnet-4' },
-			);
-
-			await node.supplyData.call(ctx, 0);
-
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
 					model: 'anthropic/claude-sonnet-4',
 				}),
 			);
 		});
 
-		it('should use defaultModel from credential when category is manual', async () => {
-			const ctx = setupMockContext(
-				{},
-				{ defaultCategory: 'manual', defaultModel: 'anthropic/claude-sonnet-4' },
-			);
-
-			await node.supplyData.call(ctx, 0);
-
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
-					model: 'anthropic/claude-sonnet-4',
-				}),
-			);
-		});
-
-		it('should fall back to gpt-4.1-nano when manual category has no defaultModel', async () => {
-			const ctx = setupMockContext({}, { defaultCategory: 'manual', defaultModel: undefined });
+		it('should fall back to gpt-4.1-nano when no model is selected', async () => {
+			const ctx = setupMockContext({ model: '' });
 
 			await node.supplyData.call(ctx, 0);
 
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					model: 'openai/gpt-4.1-nano',
-				}),
-			);
-		});
-
-		it('should use workflow-level aiGatewayModel when category is manual', async () => {
-			const ctx = setupMockContext(
-				{},
-				{ defaultCategory: 'manual', defaultModel: 'openai/gpt-4.1-nano' },
-				{ aiGatewayCategory: 'manual', aiGatewayModel: 'anthropic/claude-sonnet-4' },
-			);
-
-			await node.supplyData.call(ctx, 0);
-
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
-					model: 'anthropic/claude-sonnet-4',
 				}),
 			);
 		});
 
 		it('should pass options to ChatOpenAI', async () => {
-			const ctx = setupMockContext();
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'options')
-					return {
-						temperature: 0.5,
-						maxTokens: 2000,
-						topP: 0.9,
-						timeout: 60000,
-						maxRetries: 5,
-					};
-				return undefined;
+			const ctx = setupMockContext({
+				model: 'openai/gpt-4.1-nano',
+				options: {
+					temperature: 0.5,
+					maxTokens: 2000,
+					topP: 0.9,
+					timeout: 60000,
+					maxRetries: 5,
+				},
 			});
 
 			await node.supplyData.call(ctx, 0);
@@ -253,7 +142,7 @@ describe('LmChatN8nAiGateway', () => {
 			);
 		});
 
-		it('should set baseURL from credentials', async () => {
+		it('should set baseURL from env var', async () => {
 			const ctx = setupMockContext();
 
 			await node.supplyData.call(ctx, 0);

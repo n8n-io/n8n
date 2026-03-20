@@ -7,8 +7,10 @@ import {
 } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
+	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ILoadOptionsFunctions,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
@@ -21,33 +23,6 @@ interface OpenAIToolCall {
 
 interface OpenAIChoice {
 	message?: { tool_calls?: OpenAIToolCall[] };
-}
-
-function parseCategoryMap(value: unknown): Record<string, string> {
-	if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-		return Object.fromEntries(
-			Object.entries(value).filter(
-				([key, entry]) => typeof key === 'string' && typeof entry === 'string',
-			),
-		);
-	}
-
-	if (typeof value === 'string' && value.trim() !== '') {
-		try {
-			const parsed = JSON.parse(value) as unknown;
-			if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-				return Object.fromEntries(
-					Object.entries(parsed).filter(
-						([key, entry]) => typeof key === 'string' && typeof entry === 'string',
-					),
-				);
-			}
-		} catch {
-			return {};
-		}
-	}
-
-	return {};
 }
 
 function isOpenAIResponseWithChoices(json: unknown): json is { choices: OpenAIChoice[] } {
@@ -104,6 +79,14 @@ function createOpenRouterFetch(baseFetch: typeof globalThis.fetch): typeof globa
 }
 
 const FALLBACK_MODEL = 'openai/gpt-4.1-nano';
+const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
+
+function getGatewayConfig() {
+	return {
+		apiKey: process.env.N8N_AI_GATEWAY_OPENROUTER_API_KEY ?? '',
+		baseUrl: process.env.N8N_AI_GATEWAY_OPENROUTER_BASE_URL ?? DEFAULT_BASE_URL,
+	};
+}
 
 export class LmChatN8nAiGateway implements INodeType {
 	description: INodeTypeDescription = {
@@ -132,109 +115,19 @@ export class LmChatN8nAiGateway implements INodeType {
 		},
 
 		inputs: [],
-		requestDefaults: {
-			ignoreHttpStatusErrors: true,
-			baseURL: '={{ $credentials?.url }}',
-		},
-
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
-		credentials: [
-			{
-				name: 'n8nAiGatewayApi',
-				required: true,
-			},
-		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
-			{
-				displayName: 'Category',
-				name: 'category',
-				type: 'options',
-				default: 'default',
-				description:
-					'Choose a model category or pick a specific model manually. Default inherits from workflow or global settings.',
-				options: [
-					{
-						name: 'Balanced',
-						value: 'balanced',
-						description: 'Good quality at reasonable cost',
-					},
-					{
-						name: 'Best Quality',
-						value: 'best-quality',
-						description: 'Maximum capability',
-					},
-					{
-						name: 'Cheapest',
-						value: 'cheapest',
-						description: 'Minimize token spend',
-					},
-					{
-						name: 'Default (Inherit)',
-						value: 'default',
-						description: 'Use the category from workflow or global settings',
-					},
-					{
-						name: 'Fastest',
-						value: 'fastest',
-						description: 'Lowest latency',
-					},
-					{
-						name: 'Manual',
-						value: 'manual',
-						description: 'Choose a specific model',
-					},
-					{
-						name: 'Reasoning',
-						value: 'reasoning',
-						description: 'Complex multi-step tasks',
-					},
-				],
-			},
 			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
-				default: '',
-				description: 'The model to use for completion',
+				default: FALLBACK_MODEL,
+				description: 'The model which will generate the completion',
 				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'data',
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.id}}',
-											value: '={{$responseItem.id}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
-					},
-				},
-				displayOptions: {
-					show: {
-						category: ['manual'],
-					},
+					isModelSelector: true,
+					loadOptionsMethod: 'getModels',
 				},
 			},
 			{
@@ -330,43 +223,60 @@ export class LmChatN8nAiGateway implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const { apiKey, baseUrl } = getGatewayConfig();
+				const response = await this.helpers.httpRequest({
+					method: 'GET',
+					url: `${baseUrl}/models`,
+					headers: { Authorization: `Bearer ${apiKey}` },
+					json: true,
+				});
+
+				interface OpenRouterModel {
+					id: string;
+					name?: string;
+					pricing?: { prompt?: string; completion?: string };
+					context_length?: number;
+					architecture?: { input_modalities?: string[] };
+					supported_parameters?: string[];
+				}
+
+				const models = (response?.data ?? []) as OpenRouterModel[];
+				return models
+					.map((m) => {
+						const promptPrice = parseFloat(m.pricing?.prompt ?? '0');
+						const completionPrice = parseFloat(m.pricing?.completion ?? '0');
+						const inputModalities = m.architecture?.input_modalities ?? [];
+						const supportedParams = m.supported_parameters ?? [];
+
+						const meta = {
+							inputCost: promptPrice * 1_000_000,
+							outputCost: completionPrice * 1_000_000,
+							contextLength: m.context_length ?? 0,
+							capabilities: {
+								vision: inputModalities.includes('image'),
+								function_calling: supportedParams.includes('tools'),
+								json_mode: supportedParams.includes('response_format'),
+							},
+						};
+
+						return {
+							name: m.name ?? m.id,
+							value: m.id,
+							description: JSON.stringify(meta),
+						};
+					})
+					.sort((a, b) => a.name.localeCompare(b.name));
+			},
+		},
+	};
+
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
-			apiKey: string;
-			url: string;
-			defaultCategory?: string;
-			defaultModel?: string;
-			categoryMap?: string | Record<string, string>;
-		}>('n8nAiGatewayApi');
+		const { apiKey, baseUrl } = getGatewayConfig();
 
-		const nodeCategory = this.getNodeParameter('category', itemIndex, 'default') as string;
-		const nodeModel = this.getNodeParameter('model', itemIndex, '') as string;
-
-		const workflowSettings = this.getWorkflowSettings();
-		const workflowCategory = workflowSettings?.aiGatewayCategory;
-
-		// 3-tier override: node param > workflow settings > global settings (credentials)
-		let category: string;
-		if (nodeCategory !== 'default') {
-			category = nodeCategory;
-		} else if (workflowCategory && workflowCategory !== 'DEFAULT') {
-			category = workflowCategory;
-		} else {
-			category = credentials.defaultCategory ?? 'balanced';
-		}
-
-		const categoryMap = parseCategoryMap(credentials.categoryMap);
-		let modelName: string;
-		if (category === 'manual') {
-			// For manual: node model > workflow model > credential default > fallback
-			modelName =
-				(nodeCategory === 'manual' && nodeModel ? nodeModel : undefined) ??
-				workflowSettings?.aiGatewayModel ??
-				credentials.defaultModel ??
-				FALLBACK_MODEL;
-		} else {
-			modelName = categoryMap[category] ?? credentials.defaultModel ?? FALLBACK_MODEL;
-		}
+		const modelName = (this.getNodeParameter('model', itemIndex, '') as string) || FALLBACK_MODEL;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			frequencyPenalty?: number;
@@ -381,10 +291,10 @@ export class LmChatN8nAiGateway implements INodeType {
 
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
-			baseURL: credentials.url,
+			baseURL: baseUrl,
 			fetch: createOpenRouterFetch(globalThis.fetch),
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url, {
+				dispatcher: getProxyAgent(baseUrl, {
 					headersTimeout: timeout,
 					bodyTimeout: timeout,
 				}),
@@ -392,7 +302,7 @@ export class LmChatN8nAiGateway implements INodeType {
 		};
 
 		const model = new ChatOpenAI({
-			apiKey: credentials.apiKey,
+			apiKey,
 			model: modelName,
 			...options,
 			timeout,

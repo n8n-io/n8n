@@ -47,6 +47,7 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 	const initialized = ref(false);
 	let initPromise: Promise<void> | null = null;
 	const enabled = ref(false);
+	const creditsRemaining = ref<number | null>(null);
 	const selectedCategory = ref<AIGatewayCategory>('balanced');
 	const selectedModel = ref<string>('openai/gpt-4.1-nano');
 	const availableModels = ref<AIGatewayModel[]>([]);
@@ -86,6 +87,7 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 				'/ai-gateway/settings',
 			);
 			enabled.value = settings.enabled;
+			creditsRemaining.value = settings.creditsRemaining ?? null;
 			if (settings.defaultCategory) {
 				selectedCategory.value = settings.defaultCategory as AIGatewayCategory;
 			}
@@ -195,6 +197,7 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 	return {
 		initialized,
 		enabled,
+		creditsRemaining,
 		selectedCategory,
 		selectedModel,
 		selectedProvider,

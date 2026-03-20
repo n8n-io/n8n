@@ -13,4 +13,7 @@ export class AiGatewayConfig {
 
 	@Env('N8N_AI_GATEWAY_DEFAULT_CATEGORY')
 	defaultCategory: string = 'balanced';
+
+	@Env('N8N_AI_GATEWAY_CREDITS_REMAINING')
+	creditsRemaining: number = 5.0;
 }

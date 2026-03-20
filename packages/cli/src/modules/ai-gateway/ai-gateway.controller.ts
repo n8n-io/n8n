@@ -35,6 +35,7 @@ export class AiGatewayController {
 			enabled: this.config.enabled,
 			defaultCategory,
 			defaultModel: MODEL_CATEGORY_MAP[defaultCategory],
+			creditsRemaining: this.config.creditsRemaining,
 		};
 	}
 
@@ -56,6 +57,7 @@ export class AiGatewayController {
 			enabled: this.config.enabled,
 			defaultCategory,
 			defaultModel: MODEL_CATEGORY_MAP[defaultCategory],
+			creditsRemaining: this.config.creditsRemaining,
 		};
 	}
 

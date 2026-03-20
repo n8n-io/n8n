@@ -25,6 +25,7 @@ import ParameterInputList from '@/features/ndv/parameters/components/ParameterIn
 import get from 'lodash/get';
 
 import ExperimentalEmbeddedNdvHeader from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
+import AiGatewayCreditsNotice from '@/features/ai/gateway/AiGatewayCreditsNotice.vue';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import NodeActionsList from '@/app/components/NodeActionsList.vue';
 import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue';
@@ -725,6 +726,7 @@ function handleSelectAction(params: INodeParameters) {
 				"
 			/>
 			<FreeAiCreditsCallout />
+			<AiGatewayCreditsNotice />
 			<NodeStorageLimitCallout />
 			<NodeActionsList
 				v-if="openPanel === 'action'"

@@ -67,6 +67,7 @@ export interface AiGatewaySettingsResponse {
 	enabled: boolean;
 	defaultCategory: string;
 	defaultModel?: string;
+	creditsRemaining?: number;
 }
 
 export interface AiGatewayModelCategoryResponse {

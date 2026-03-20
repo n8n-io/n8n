@@ -6,8 +6,8 @@ import N8nScrollArea from '@n8n/design-system/components/N8nScrollArea/N8nScroll
 import N8nSpinner from '@n8n/design-system/components/N8nSpinner';
 import type { INodePropertyOptions } from 'n8n-workflow';
 import type { ModelInfo, SortField, SortDirection, ModelCapability } from './types';
-import { ALL_CAPABILITIES, CAPABILITY_META, PROVIDER_COLORS } from './types';
-import { getModelMetadata, getProviderDisplayName } from './modelMetadata';
+import { ALL_CAPABILITIES, CAPABILITY_META, PROVIDER_COLORS, PROVIDER_LOGO_MAP } from './types';
+import { parseOptionMeta, getProviderDisplayName } from './modelMetadata';
 
 interface Props {
 	options: INodePropertyOptions[];
@@ -53,14 +53,14 @@ function formatModelDisplayName(modelName: string): string {
 const models = computed<ModelInfo[]>(() => {
 	return props.options.map((opt) => {
 		const { provider, modelName } = parseModelId(String(opt.value));
-		const metadata = getModelMetadata(String(opt.value));
+		const meta = parseOptionMeta(opt.description);
 		return {
 			value: String(opt.value),
 			name: opt.name,
 			provider,
 			providerDisplayName: getProviderDisplayName(provider),
 			modelName: formatModelDisplayName(modelName),
-			...metadata,
+			...meta,
 		};
 	});
 });
@@ -72,8 +72,6 @@ const selectedModel = computed<ModelInfo | undefined>(() => {
 const isDefault = computed(() => {
 	return props.modelValue === props.defaultValue;
 });
-
-const BADGE_PRIORITY: Record<string, number> = { flagship: 0, latest: 1, fastest: 2, cheapest: 3 };
 
 const filteredModels = computed<ModelInfo[]>(() => {
 	let result = models.value;
@@ -94,19 +92,14 @@ const filteredModels = computed<ModelInfo[]>(() => {
 			switch (sortField.value) {
 				case 'name':
 					return dir * a.value.localeCompare(b.value);
-				case 'latency': {
-					const aVal = parseFloat(a.latency ?? '999');
-					const bVal = parseFloat(b.latency ?? '999');
-					return dir * (aVal - bVal);
-				}
 				case 'inputCost': {
-					const aVal = parseFloat((a.inputCost ?? '$999').replace('$', ''));
-					const bVal = parseFloat((b.inputCost ?? '$999').replace('$', ''));
+					const aVal = parseFloat((a.inputCost ?? '$999').replace(/[$<,]/g, ''));
+					const bVal = parseFloat((b.inputCost ?? '$999').replace(/[$<,]/g, ''));
 					return dir * (aVal - bVal);
 				}
 				case 'outputCost': {
-					const aVal = parseFloat((a.outputCost ?? '$999').replace('$', ''));
-					const bVal = parseFloat((b.outputCost ?? '$999').replace('$', ''));
+					const aVal = parseFloat((a.outputCost ?? '$999').replace(/[$<,]/g, ''));
+					const bVal = parseFloat((b.outputCost ?? '$999').replace(/[$<,]/g, ''));
 					return dir * (aVal - bVal);
 				}
 				default:
@@ -123,20 +116,14 @@ const filteredModels = computed<ModelInfo[]>(() => {
 			const bIsDefault = b.value === props.defaultValue ? 1 : 0;
 			if (aIsDefault !== bIsDefault) return bIsDefault - aIsDefault;
 
-			const aBadge = a.badge ? (BADGE_PRIORITY[a.badge] ?? 99) : 99;
-			const bBadge = b.badge ? (BADGE_PRIORITY[b.badge] ?? 99) : 99;
-			if (aBadge !== bBadge) return aBadge - bBadge;
-
-			const aHasBadge = a.badge ? 0 : 1;
-			const bHasBadge = b.badge ? 0 : 1;
-			if (aHasBadge !== bHasBadge) return aHasBadge - bHasBadge;
-
 			return a.value.localeCompare(b.value);
 		});
 	}
 
 	return result;
 });
+
+const logoErrors = ref(new Set<string>());
 
 function getProviderColor(provider: string): string {
 	return PROVIDER_COLORS[provider.toLowerCase()] ?? '#6b7280';
@@ -145,6 +132,18 @@ function getProviderColor(provider: string): string {
 function getProviderInitial(provider: string): string {
 	const displayName = getProviderDisplayName(provider);
 	return displayName.charAt(0).toUpperCase();
+}
+
+function getProviderLogo(provider: string): string | undefined {
+	return PROVIDER_LOGO_MAP[provider.toLowerCase()];
+}
+
+function showLogo(provider: string): boolean {
+	return !!getProviderLogo(provider) && !logoErrors.value.has(provider);
+}
+
+function onLogoError(provider: string) {
+	logoErrors.value.add(provider);
 }
 
 function toggleSort(field: SortField) {
@@ -173,25 +172,6 @@ function hasCapability(model: ModelInfo, cap: ModelCapability): boolean {
 function getSortIndicator(field: SortField): string {
 	if (sortField.value !== field) return '';
 	return sortDirection.value === 'asc' ? ' ↑' : ' ↓';
-}
-
-function getBadgeClass(badge: string): string {
-	switch (badge) {
-		case 'flagship':
-			return 'badgeFlagship';
-		case 'latest':
-			return 'badgeLatest';
-		case 'fastest':
-			return 'badgeFastest';
-		case 'cheapest':
-			return 'badgeCheapest';
-		default:
-			return '';
-	}
-}
-
-function getBadgeLabel(badge: string): string {
-	return badge.charAt(0).toUpperCase() + badge.slice(1);
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -252,24 +232,24 @@ watch(searchQuery, () => {
 				<span :class="$style.triggerLoadingText">Loading models...</span>
 			</template>
 			<template v-else-if="selectedModel">
+				<img
+					v-if="showLogo(selectedModel.provider)"
+					:src="getProviderLogo(selectedModel.provider)"
+					:alt="selectedModel.providerDisplayName"
+					:class="$style.providerLogo"
+					@error="onLogoError(selectedModel.provider)"
+				/>
 				<div
+					v-else
 					:class="$style.providerIcon"
 					:style="{ backgroundColor: getProviderColor(selectedModel.provider) }"
 				>
 					{{ getProviderInitial(selectedModel.provider) }}
 				</div>
 				<div :class="$style.triggerText">
-					<span :class="$style.triggerTitle">
-						{{ selectedModel.providerDisplayName }}: {{ selectedModel.modelName }}
-					</span>
+					<span :class="$style.triggerTitle">{{ selectedModel.name }}</span>
 					<span :class="$style.triggerSubtitle">{{ selectedModel.value }}</span>
 				</div>
-				<span
-					v-if="selectedModel.badge"
-					:class="[$style.triggerBadge, $style[getBadgeClass(selectedModel.badge)]]"
-				>
-					{{ getBadgeLabel(selectedModel.badge) }}
-				</span>
 				<span v-if="isDefault" :class="$style.defaultBadge">Default</span>
 			</template>
 			<template v-else>
@@ -328,16 +308,9 @@ watch(searchQuery, () => {
 						>
 							Model{{ getSortIndicator('name') }}
 						</button>
-						<button
-							:class="[
-								$style.headerCell,
-								$style.metricColumn,
-								{ [$style.headerCellActive]: sortField === 'latency' },
-							]"
-							@click="toggleSort('latency')"
-						>
-							Latency{{ getSortIndicator('latency') }}
-						</button>
+						<div :class="[$style.headerCell, $style.headerCellStatic, $style.contextColumn]">
+							Context
+						</div>
 						<button
 							:class="[
 								$style.headerCell,
@@ -346,7 +319,7 @@ watch(searchQuery, () => {
 							]"
 							@click="toggleSort('inputCost')"
 						>
-							Input ${{ getSortIndicator('inputCost') }}
+							Input /1M{{ getSortIndicator('inputCost') }}
 						</button>
 						<button
 							:class="[
@@ -356,7 +329,7 @@ watch(searchQuery, () => {
 							]"
 							@click="toggleSort('outputCost')"
 						>
-							Output ${{ getSortIndicator('outputCost') }}
+							Output /1M{{ getSortIndicator('outputCost') }}
 						</button>
 						<div :class="[$style.headerCell, $style.headerCellStatic, $style.capabilitiesColumn]">
 							Capabilities
@@ -381,32 +354,32 @@ watch(searchQuery, () => {
 								@mouseenter="selectedIndex = index"
 							>
 								<div :class="[$style.cell, $style.modelColumn]">
+									<img
+										v-if="showLogo(model.provider)"
+										:src="getProviderLogo(model.provider)"
+										:alt="model.providerDisplayName"
+										:class="$style.rowProviderLogo"
+										@error="onLogoError(model.provider)"
+									/>
 									<div
+										v-else
 										:class="$style.rowProviderIcon"
 										:style="{ backgroundColor: getProviderColor(model.provider) }"
 									>
 										{{ getProviderInitial(model.provider) }}
 									</div>
 									<div :class="$style.modelInfo">
-										<span :class="$style.modelDisplayName">
-											{{ model.providerDisplayName }}: {{ model.modelName }}
-										</span>
+										<span :class="$style.modelDisplayName">{{ model.name }}</span>
 										<span
 											v-if="model.value === defaultValue"
 											:class="[$style.badge, $style.badgeDefault]"
 										>
 											Default
 										</span>
-										<span
-											v-if="model.badge"
-											:class="[$style.badge, $style[getBadgeClass(model.badge)]]"
-										>
-											{{ getBadgeLabel(model.badge) }}
-										</span>
 									</div>
 								</div>
-								<div :class="[$style.cell, $style.metricColumn, $style.metricValue]">
-									{{ model.latency ?? '—' }}
+								<div :class="[$style.cell, $style.contextColumn, $style.metricValue]">
+									{{ model.contextLength ?? '—' }}
 								</div>
 								<div :class="[$style.cell, $style.metricColumn, $style.metricValue]">
 									{{ model.inputCost ?? '—' }}
@@ -479,6 +452,14 @@ watch(searchQuery, () => {
 	cursor: not-allowed;
 }
 
+.providerLogo {
+	width: 32px;
+	height: 32px;
+	min-width: 32px;
+	border-radius: var(--radius);
+	object-fit: contain;
+}
+
 .providerIcon {
 	display: flex;
 	align-items: center;
@@ -527,17 +508,6 @@ watch(searchQuery, () => {
 .triggerPlaceholder {
 	font-size: var(--font-size--sm);
 	color: var(--color--text--tint-2);
-}
-
-.triggerBadge {
-	display: inline-flex;
-	align-items: center;
-	padding: 2px var(--spacing--3xs);
-	border-radius: var(--radius--full);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	white-space: nowrap;
-	flex-shrink: 0;
 }
 
 .defaultBadge {
@@ -693,7 +663,13 @@ watch(searchQuery, () => {
 }
 
 .metricColumn {
-	width: 76px;
+	width: 80px;
+	text-align: right;
+	flex-shrink: 0;
+}
+
+.contextColumn {
+	width: 60px;
 	text-align: right;
 	flex-shrink: 0;
 }
@@ -752,6 +728,14 @@ watch(searchQuery, () => {
 	align-items: center;
 }
 
+.rowProviderLogo {
+	width: 24px;
+	height: 24px;
+	min-width: 24px;
+	border-radius: var(--radius--sm);
+	object-fit: contain;
+}
+
 .rowProviderIcon {
 	display: flex;
 	align-items: center;
@@ -804,26 +788,6 @@ watch(searchQuery, () => {
 .badgeDefault {
 	background: var(--color--foreground);
 	color: var(--color--text--tint-1);
-}
-
-.badgeFlagship {
-	background: var(--color--success--tint-3);
-	color: var(--color--success--shade-1);
-}
-
-.badgeLatest {
-	background: var(--color--primary--tint-3);
-	color: var(--color--primary--shade-1);
-}
-
-.badgeFastest {
-	background: #fef3c7;
-	color: #92400e;
-}
-
-.badgeCheapest {
-	background: #ede9fe;
-	color: #6d28d9;
 }
 
 /* Capabilities */
