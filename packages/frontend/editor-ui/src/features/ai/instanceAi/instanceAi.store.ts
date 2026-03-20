@@ -50,7 +50,13 @@ function collectPendingConfirmations(
 	out: PendingConfirmationItem[],
 ): void {
 	for (const tc of node.toolCalls) {
-		if (tc.confirmation && tc.isLoading && !resolved.has(tc.confirmation.requestId)) {
+		if (
+			tc.confirmation &&
+			tc.isLoading &&
+			tc.confirmationStatus !== 'approved' &&
+			tc.confirmationStatus !== 'denied' &&
+			!resolved.has(tc.confirmation.requestId)
+		) {
 			out.push({ toolCall: tc, agentNode: node, messageId });
 		}
 	}

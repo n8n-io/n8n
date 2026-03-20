@@ -34,7 +34,8 @@ const showConfirmation = computed(
 	() =>
 		props.toolCall.confirmation &&
 		props.toolCall.isLoading &&
-		!props.toolCall.confirmationStatus &&
+		props.toolCall.confirmationStatus !== 'approved' &&
+		props.toolCall.confirmationStatus !== 'denied' &&
 		!store.resolvedConfirmationIds.has(props.toolCall.confirmation.requestId),
 );
 
