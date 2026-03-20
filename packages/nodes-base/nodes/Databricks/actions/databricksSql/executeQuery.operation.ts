@@ -73,6 +73,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		throw new NodeOperationError(
 			this.getNode(),
 			`Query ${status.toLowerCase()}: ${JSON.stringify(queryResult.status)}`,
+			{ itemIndex: i },
 		);
 	}
 
@@ -80,6 +81,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		throw new NodeOperationError(
 			this.getNode(),
 			'Query execution timeout - exceeded maximum wait time',
+			{ itemIndex: i },
 		);
 	}
 
