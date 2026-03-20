@@ -30,12 +30,74 @@ export function extractResourceLocatorValue(param: unknown): string {
 	return (param as string) || '';
 }
 
-export function detectInputFormat(openApiSchema: OpenAPISchema): {
+type DetectFormatResult = {
 	format: string;
 	schema: unknown;
 	requiredFields: string[];
 	invocationUrl: string;
-} {
+};
+
+function detectFormatFromProperties(
+	properties: Record<string, unknown>,
+	invocationUrl: string,
+	isOneOf = false,
+): DetectFormatResult | null {
+	if (properties.messages)
+		return {
+			format: 'chat',
+			schema: properties.messages,
+			requiredFields: ['messages'],
+			invocationUrl,
+		};
+	if (properties.prompt)
+		return {
+			format: 'completions',
+			schema: properties.prompt,
+			requiredFields: ['prompt'],
+			invocationUrl,
+		};
+	if (
+		properties.input &&
+		(!isOneOf || (!properties.dataframe_records && !properties.dataframe_split))
+	)
+		return {
+			format: 'embeddings',
+			schema: properties.input,
+			requiredFields: ['input'],
+			invocationUrl,
+		};
+	if (properties.dataframe_split)
+		return {
+			format: 'dataframe_split',
+			schema: properties.dataframe_split,
+			requiredFields: ['dataframe_split'],
+			invocationUrl,
+		};
+	if (properties.dataframe_records)
+		return {
+			format: 'dataframe_records',
+			schema: properties.dataframe_records,
+			requiredFields: ['dataframe_records'],
+			invocationUrl,
+		};
+	if (properties.inputs)
+		return {
+			format: 'inputs',
+			schema: properties.inputs,
+			requiredFields: ['inputs'],
+			invocationUrl,
+		};
+	if (properties.instances)
+		return {
+			format: 'instances',
+			schema: properties.instances,
+			requiredFields: ['instances'],
+			invocationUrl,
+		};
+	return null;
+}
+
+export function detectInputFormat(openApiSchema: OpenAPISchema): DetectFormatResult {
 	const invocationUrl = openApiSchema.servers?.[0]?.url;
 	if (!invocationUrl) {
 		throw new UserError('No server URL found in OpenAPI schema');
@@ -58,116 +120,14 @@ export function detectInputFormat(openApiSchema: OpenAPISchema): {
 	if (schema.oneOf && schema.oneOf.length > 0) {
 		for (const option of schema.oneOf) {
 			const properties = (option.properties || {}) as Record<string, unknown>;
-
-			if (properties.messages) {
-				return {
-					format: 'chat',
-					schema: properties.messages,
-					requiredFields: ['messages'],
-					invocationUrl,
-				};
-			}
-			if (properties.prompt) {
-				return {
-					format: 'completions',
-					schema: properties.prompt,
-					requiredFields: ['prompt'],
-					invocationUrl,
-				};
-			}
-			if (properties.input && !properties.dataframe_records && !properties.dataframe_split) {
-				return {
-					format: 'embeddings',
-					schema: properties.input,
-					requiredFields: ['input'],
-					invocationUrl,
-				};
-			}
-			if (properties.dataframe_split) {
-				return {
-					format: 'dataframe_split',
-					schema: properties.dataframe_split,
-					requiredFields: ['dataframe_split'],
-					invocationUrl,
-				};
-			}
-			if (properties.dataframe_records) {
-				return {
-					format: 'dataframe_records',
-					schema: properties.dataframe_records,
-					requiredFields: ['dataframe_records'],
-					invocationUrl,
-				};
-			}
-			if (properties.inputs) {
-				return {
-					format: 'inputs',
-					schema: properties.inputs,
-					requiredFields: ['inputs'],
-					invocationUrl,
-				};
-			}
-			if (properties.instances) {
-				return {
-					format: 'instances',
-					schema: properties.instances,
-					requiredFields: ['instances'],
-					invocationUrl,
-				};
-			}
+			const result = detectFormatFromProperties(properties, invocationUrl, true);
+			if (result) return result;
 		}
 	}
 
 	const properties = (schema.properties || {}) as Record<string, unknown>;
-	if (properties.messages)
-		return {
-			format: 'chat',
-			schema: properties.messages,
-			requiredFields: ['messages'],
-			invocationUrl,
-		};
-	if (properties.prompt)
-		return {
-			format: 'completions',
-			schema: properties.prompt,
-			requiredFields: ['prompt'],
-			invocationUrl,
-		};
-	if (properties.input)
-		return {
-			format: 'embeddings',
-			schema: properties.input,
-			requiredFields: ['input'],
-			invocationUrl,
-		};
-	if (properties.dataframe_records)
-		return {
-			format: 'dataframe_records',
-			schema: properties.dataframe_records,
-			requiredFields: ['dataframe_records'],
-			invocationUrl,
-		};
-	if (properties.dataframe_split)
-		return {
-			format: 'dataframe_split',
-			schema: properties.dataframe_split,
-			requiredFields: ['dataframe_split'],
-			invocationUrl,
-		};
-	if (properties.inputs)
-		return {
-			format: 'inputs',
-			schema: properties.inputs,
-			requiredFields: ['inputs'],
-			invocationUrl,
-		};
-	if (properties.instances)
-		return {
-			format: 'instances',
-			schema: properties.instances,
-			requiredFields: ['instances'],
-			invocationUrl,
-		};
+	const result = detectFormatFromProperties(properties, invocationUrl);
+	if (result) return result;
 
 	return { format: 'generic', schema, requiredFields: [], invocationUrl };
 }
