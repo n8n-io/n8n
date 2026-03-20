@@ -104,7 +104,7 @@ const ACCESS_PATTERNS: AccessPattern[] = [
 export function prepareOldNodeName(nodeName: string) {
 	// if node name contains literal \ -> replace with \\
 	// since that's how it'll be written in a JS expression
-	const doubleSlashes = nodeName.replace('\\', '\\\\');
+	const doubleSlashes = nodeName.replaceAll('\\', '\\\\');
 	// escape special characters for regex
 	const escaped = backslashEscape(doubleSlashes);
 	// quotes may or may not be escaped in the JS expression
