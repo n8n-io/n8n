@@ -61,6 +61,8 @@ graph LR
     TRIGGER((Trigger)) -->|input data| N8N[n8n Workflow]
     N8N -->|prompts| OpenAI([OpenAI API])
     OpenAI -->|responses| N8N
+    N8N -->|prompts| Anthropic([Anthropic API])
+    Anthropic -->|responses| N8N
     N8N -->|prompts| Google([Google GenAI])
     Google -->|responses| N8N
     N8N -->|embeddings| VectorStore[(Vector Store)]
@@ -74,6 +76,7 @@ graph LR
     class TRIGGER trigger
     class N8N app
     class OpenAI processor
+    class Anthropic processor
     class Google processor
     class VectorStore controller
     class ACTION trigger
