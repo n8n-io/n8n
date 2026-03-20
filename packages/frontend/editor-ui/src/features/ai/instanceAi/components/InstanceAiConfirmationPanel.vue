@@ -53,14 +53,14 @@ const grouped = computed((): ConfirmationGroup[] => {
 const textInputValues = ref<Record<string, string>>({});
 
 function handleConfirm(requestId: string, approved: boolean) {
-	store.resolveConfirmation(requestId);
+	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
 	void store.confirmAction(requestId, approved);
 }
 
 function handleApproveAll(items: PendingConfirmationItem[]) {
 	for (const item of items) {
 		const rid = item.toolCall.confirmation!.requestId;
-		store.resolveConfirmation(rid);
+		store.resolveConfirmation(rid, 'approved');
 		void store.confirmAction(rid, true);
 	}
 }
@@ -68,12 +68,12 @@ function handleApproveAll(items: PendingConfirmationItem[]) {
 function handleTextSubmit(requestId: string) {
 	const value = (textInputValues.value[requestId] ?? '').trim();
 	if (!value) return;
-	store.resolveConfirmation(requestId);
+	store.resolveConfirmation(requestId, 'approved');
 	void store.confirmAction(requestId, true, undefined, undefined, undefined, value);
 }
 
 function handleTextSkip(requestId: string) {
-	store.resolveConfirmation(requestId);
+	store.resolveConfirmation(requestId, 'denied');
 	void store.confirmAction(requestId, false);
 }
 

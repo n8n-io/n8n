@@ -37,6 +37,15 @@ const showConfirmation = computed(
 		!props.toolCall.confirmationStatus &&
 		!store.resolvedConfirmationIds.has(props.toolCall.confirmation.requestId),
 );
+
+/** Resolved confirmation action — from backend or local optimistic state. */
+const resolvedAction = computed((): 'approved' | 'denied' | null => {
+	const status = props.toolCall.confirmationStatus;
+	if (status === 'approved' || status === 'denied') return status;
+	const rid = props.toolCall.confirmation?.requestId;
+	if (rid) return store.resolvedConfirmationIds.get(rid) ?? null;
+	return null;
+});
 </script>
 
 <template>
@@ -92,24 +101,14 @@ const showConfirmation = computed(
 		</div>
 
 		<!-- Confirmation status indicator (after panel resolution or backend response) -->
-		<div
-			v-else-if="
-				props.toolCall.confirmationStatus === 'approved' ||
-				props.toolCall.confirmationStatus === 'denied' ||
-				(props.toolCall.confirmation &&
-					store.resolvedConfirmationIds.has(props.toolCall.confirmation.requestId))
-			"
-			:class="$style.confirmationStatus"
-		>
+		<div v-else-if="resolvedAction" :class="$style.confirmationStatus">
 			<N8nIcon
-				:icon="props.toolCall.confirmationStatus === 'approved' ? 'check' : 'x'"
+				:icon="resolvedAction === 'approved' ? 'check' : 'x'"
 				size="small"
-				:class="
-					props.toolCall.confirmationStatus === 'approved' ? $style.successIcon : $style.errorIcon
-				"
+				:class="resolvedAction === 'approved' ? $style.successIcon : $style.errorIcon"
 			/>
 			<span>{{
-				props.toolCall.confirmationStatus === 'approved'
+				resolvedAction === 'approved'
 					? i18n.baseText('instanceAi.confirmation.approved')
 					: i18n.baseText('instanceAi.confirmation.denied')
 			}}</span>

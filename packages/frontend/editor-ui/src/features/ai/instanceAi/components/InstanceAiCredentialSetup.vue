@@ -38,7 +38,7 @@ function handleOpenModal() {
 		projectId: props.projectId,
 		onComplete: (credentials: Record<string, string>) => {
 			isSubmitted.value = true;
-			store.resolveConfirmation(props.requestId);
+			store.resolveConfirmation(props.requestId, 'approved');
 			void store.confirmAction(props.requestId, true, undefined, credentials);
 		},
 	};
@@ -51,7 +51,7 @@ function handleOpenModal() {
 function handleLater() {
 	isSubmitted.value = true;
 	isDeferred.value = true;
-	store.resolveConfirmation(props.requestId);
+	store.resolveConfirmation(props.requestId, 'denied');
 	void store.confirmAction(props.requestId, false);
 }
 </script>

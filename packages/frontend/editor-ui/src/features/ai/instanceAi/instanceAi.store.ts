@@ -46,7 +46,7 @@ export interface PendingConfirmationItem {
 function collectPendingConfirmations(
 	node: InstanceAiAgentNode,
 	messageId: string,
-	resolved: Set<string>,
+	resolved: Map<string, 'approved' | 'denied'>,
 	out: PendingConfirmationItem[],
 ): void {
 	for (const tc of node.toolCalls) {
@@ -91,7 +91,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
-	const resolvedConfirmationIds = ref<Set<string>>(new Set());
+	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied'>>(new Map());
 	const MAX_DEBUG_EVENTS = 1000;
 
 	// --- Computed ---
@@ -166,8 +166,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return items;
 	});
 
-	function resolveConfirmation(requestId: string): void {
-		resolvedConfirmationIds.value = new Set([...resolvedConfirmationIds.value, requestId]);
+	function resolveConfirmation(requestId: string, action: 'approved' | 'denied'): void {
+		const next = new Map(resolvedConfirmationIds.value);
+		next.set(requestId, action);
+		resolvedConfirmationIds.value = next;
 	}
 
 	// --- Event reducer (delegated to pure module) ---
@@ -346,7 +348,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
-		resolvedConfirmationIds.value = new Set();
+		resolvedConfirmationIds.value = new Map();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		// 3. Switch thread
@@ -370,7 +372,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
-		resolvedConfirmationIds.value = new Set();
+		resolvedConfirmationIds.value = new Map();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		currentThreadId.value = newThreadId;
@@ -419,7 +421,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				activeRunId.value = null;
 				debugEvents.value = [];
 				resetFeedback();
-				resolvedConfirmationIds.value = new Set();
+				resolvedConfirmationIds.value = new Map();
 				runStateByGroupId = {};
 				groupIdByRunId = {};
 				currentThreadId.value = freshId;
