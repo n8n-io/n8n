@@ -4,13 +4,16 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 } from '@n8n/api-types';
 import {
+	InstanceAiConfirmRequestDto,
 	instanceAiGatewayCapabilitiesSchema,
 	instanceAiFilesystemResponseSchema,
+	InstanceAiRenameThreadRequestDto,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Get, Post, Put, Param } from '@n8n/decorators';
+import { RestController, Get, Post, Put, Patch, Delete, Param, Body } from '@n8n/decorators';
+import type { StoredEvent } from '@n8n/instance-ai';
 import type { Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 
@@ -121,41 +124,20 @@ export class InstanceAiController {
 	}
 
 	@Post('/confirm/:requestId')
-	async confirm(req: AuthenticatedRequest, _res: Response, @Param('requestId') requestId: string) {
-		const {
-			approved,
-			credentialId,
-			credentials,
-			autoSetup,
-			mockCredentials,
-			userInput,
-			answers,
-			domainAccessAction,
-		} = req.body as {
-			approved: boolean;
-			credentialId?: string;
-			credentials?: Record<string, string>;
-			autoSetup?: { credentialType: string };
-			mockCredentials?: boolean;
-			userInput?: string;
-			answers?: Array<{
-				questionId: string;
-				question: string;
-				selectedOptions: string[];
-				customText?: string;
-				skipped?: boolean;
-			}>;
-			domainAccessAction?: string;
-		};
+	async confirm(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('requestId') requestId: string,
+		@Body body: InstanceAiConfirmRequestDto,
+	) {
 		const resolved = await this.instanceAiService.resolveConfirmation(req.user.id, requestId, {
-			approved,
-			credentialId,
-			credentials,
-			autoSetup,
-			mockCredentials,
-			userInput,
-			answers,
-			domainAccessAction,
+			approved: body.approved,
+			credentialId: body.credentialId,
+			credentials: body.credentials,
+			autoSetup: body.autoSetup,
+			userInput: body.userInput,
+			answers: body.answers,
+			domainAccessAction: body.domainAccessAction,
 		});
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');
@@ -275,6 +257,29 @@ export class InstanceAiController {
 		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
 	}
 
+	@Delete('/threads/:threadId')
+	async deleteThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		await this.assertThreadAccess(req.user.id, threadId);
+		await this.memoryService.deleteThread(req.user.id, threadId);
+		return { ok: true };
+	}
+
+	@Patch('/threads/:threadId')
+	async renameThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiRenameThreadRequestDto,
+	) {
+		await this.assertThreadAccess(req.user.id, threadId);
+		const thread = await this.memoryService.renameThread(req.user.id, threadId, payload.title);
+		return { thread };
+	}
+
 	@Get('/threads/:threadId/messages')
 	async getThreadMessages(
 		req: AuthenticatedRequest<{}, {}, {}, { limit?: string; page?: string; raw?: string }>,
@@ -308,8 +313,8 @@ export class InstanceAiController {
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
 
 	@Post('/gateway/create-link')
-	async createGatewayLink(_req: AuthenticatedRequest) {
-		const token = this.instanceAiService.generatePairingToken();
+	async createGatewayLink(req: AuthenticatedRequest) {
+		const token = this.instanceAiService.generatePairingToken(req.user.id);
 		const baseUrl = this.instanceBaseUrl.replace(/\/$/, '');
 		const command = `npx @n8n/fs-proxy ${baseUrl} ${token}`;
 		return { token, command };
@@ -317,7 +322,7 @@ export class InstanceAiController {
 
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
 	async gatewayEvents(req: Request<{}, {}, {}, { apiKey?: string }>, res: FlushableResponse) {
-		this.validateGatewayApiKey(req.query.apiKey);
+		const userId = this.validateGatewayApiKey(req.query.apiKey);
 
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 		res.setHeader('Cache-Control', 'no-cache');
@@ -325,7 +330,7 @@ export class InstanceAiController {
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
 
-		const gateway = this.instanceAiService.getLocalGateway();
+		const gateway = this.instanceAiService.getLocalGateway(userId);
 		const unsubscribe = gateway.onRequest((event) => {
 			res.write(`data: ${JSON.stringify(event)}\n\n`);
 			res.flush?.();
@@ -339,16 +344,11 @@ export class InstanceAiController {
 		const cleanup = () => {
 			unsubscribe();
 			clearInterval(keepAlive);
-			this.instanceAiService.startDisconnectTimer(() => {
-				void this.moduleRegistry
-					.refreshModuleSettings('instance-ai')
-					.then(() => {
-						this.push.broadcast({
-							type: 'instanceAiGatewayStateChanged',
-							data: { connected: false, directory: null },
-						});
-					})
-					.catch(() => {});
+			this.instanceAiService.startDisconnectTimer(userId, () => {
+				this.push.sendToUsers(
+					{ type: 'instanceAiGatewayStateChanged', data: { connected: false, directory: null } },
+					[userId],
+				);
 			});
 		};
 		req.once('close', cleanup);
@@ -356,24 +356,26 @@ export class InstanceAiController {
 	}
 
 	@Post('/gateway/init', { skipAuth: true })
-	async gatewayInit(req: Request) {
+	gatewayInit(req: Request) {
 		const key = req.headers['x-gateway-key'] as string | undefined;
-		this.validateGatewayApiKey(key);
+		const userId = this.validateGatewayApiKey(key);
 
 		const parsed = instanceAiGatewayCapabilitiesSchema.safeParse(req.body);
 		if (!parsed.success) {
 			throw new BadRequestError(parsed.error.message);
 		}
-		this.instanceAiService.initGateway(parsed.data);
-		await this.moduleRegistry.refreshModuleSettings('instance-ai');
+		this.instanceAiService.initGateway(userId, parsed.data);
 
-		this.push.broadcast({
-			type: 'instanceAiGatewayStateChanged',
-			data: { connected: true, directory: parsed.data.rootPath },
-		});
+		this.push.sendToUsers(
+			{
+				type: 'instanceAiGatewayStateChanged',
+				data: { connected: true, directory: parsed.data.rootPath },
+			},
+			[userId],
+		);
 
 		// Try to consume a pairing token and upgrade to a session key
-		const sessionKey = key ? this.instanceAiService.consumePairingToken(key) : null;
+		const sessionKey = key ? this.instanceAiService.consumePairingToken(userId, key) : null;
 		if (sessionKey) {
 			return { ok: true, sessionKey };
 		}
@@ -381,29 +383,29 @@ export class InstanceAiController {
 	}
 
 	@Post('/gateway/disconnect', { skipAuth: true })
-	async gatewayDisconnect(req: Request) {
-		this.validateGatewayApiKey(req.headers['x-gateway-key'] as string | undefined);
+	gatewayDisconnect(req: Request) {
+		const userId = this.validateGatewayApiKey(req.headers['x-gateway-key'] as string | undefined);
 
-		this.instanceAiService.clearDisconnectTimer();
-		this.instanceAiService.disconnectGateway();
-		this.instanceAiService.clearActiveSessionKey();
-		await this.moduleRegistry.refreshModuleSettings('instance-ai');
-		this.push.broadcast({
-			type: 'instanceAiGatewayStateChanged',
-			data: { connected: false, directory: null },
-		});
+		this.instanceAiService.clearDisconnectTimer(userId);
+		this.instanceAiService.disconnectGateway(userId);
+		this.instanceAiService.clearActiveSessionKey(userId);
+		this.push.sendToUsers(
+			{ type: 'instanceAiGatewayStateChanged', data: { connected: false, directory: null } },
+			[userId],
+		);
 		return { ok: true };
 	}
 
 	@Post('/gateway/response/:requestId', { skipAuth: true })
-	async gatewayResponse(req: Request, _res: Response, @Param('requestId') requestId: string) {
-		this.validateGatewayApiKey(req.headers['x-gateway-key'] as string | undefined);
+	gatewayResponse(req: Request, _res: Response, @Param('requestId') requestId: string) {
+		const userId = this.validateGatewayApiKey(req.headers['x-gateway-key'] as string | undefined);
 
 		const parsed = instanceAiFilesystemResponseSchema.safeParse(req.body);
 		if (!parsed.success) {
 			throw new BadRequestError(parsed.error.message);
 		}
 		const resolved = this.instanceAiService.resolveGatewayRequest(
+			userId,
 			requestId,
 			parsed.data.result,
 			parsed.data.error,
@@ -415,8 +417,8 @@ export class InstanceAiController {
 	}
 
 	@Get('/gateway/status')
-	async gatewayStatus(_req: AuthenticatedRequest) {
-		return this.instanceAiService.getGatewayStatus();
+	async gatewayStatus(req: AuthenticatedRequest) {
+		return this.instanceAiService.getGatewayStatus(req.user.id);
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────────
@@ -450,38 +452,25 @@ export class InstanceAiController {
 	/**
 	 * Validate the gateway API key from query param or header.
 	 * Accepts: static env var key, one-time pairing token (init only), or active session key.
+	 * Returns the userId associated with the key.
 	 */
-	private validateGatewayApiKey(key: string | undefined): void {
+	private validateGatewayApiKey(key: string | undefined): string {
 		if (!key) {
 			throw new ForbiddenError('Missing API key');
 		}
 		const actual = Buffer.from(key);
 
-		// Check static env var key
+		// Check static env var key — out of user-scoped flow, uses a sentinel userId
 		if (this.gatewayApiKey) {
 			const expected = Buffer.from(this.gatewayApiKey);
 			if (expected.length === actual.length && timingSafeEqual(expected, actual)) {
-				return;
+				return 'env-gateway';
 			}
 		}
 
-		// Check one-time pairing token (valid until consumed on init)
-		const pairingToken = this.instanceAiService.getPairingToken();
-		if (pairingToken) {
-			const expected = Buffer.from(pairingToken);
-			if (expected.length === actual.length && timingSafeEqual(expected, actual)) {
-				return;
-			}
-		}
-
-		// Check active session key (issued after pairing token is consumed)
-		const sessionKey = this.instanceAiService.getActiveSessionKey();
-		if (sessionKey) {
-			const expected = Buffer.from(sessionKey);
-			if (expected.length === actual.length && timingSafeEqual(expected, actual)) {
-				return;
-			}
-		}
+		// Check per-user pairing token or session key via reverse lookup
+		const userId = this.instanceAiService.getUserIdForApiKey(key);
+		if (userId) return userId;
 
 		throw new ForbiddenError('Invalid API key');
 	}

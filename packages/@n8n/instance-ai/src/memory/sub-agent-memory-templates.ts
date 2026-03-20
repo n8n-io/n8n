@@ -15,31 +15,18 @@
 // ── Builder ──────────────────────────────────────────────────────────────────
 
 export const BUILDER_MEMORY_TEMPLATE = `
-# Credential Map
-Track every credential the user has and what it unlocks.
-- **credential name → type, services, quirks**:
+# User Preferences
+Style and convention choices that affect how workflows are built.
+- **naming**:
+- **default trigger**:
+- **structure**:
+- **other**:
 
-# Node Gotchas
-Hard-won lessons about specific node configurations.
-- **node type → pitfall / required setting / version quirk**:
-
-# Workflow Topology
-Key workflows and how they relate to each other.
-- **workflow name (ID) → purpose, triggers, dependencies**:
-
-# Recurring Errors & Fixes
-Patterns that keep coming up — record the fix once, apply forever.
-- **error signature → root cause → fix**:
-
-# User Conventions
-Naming patterns, preferred structures, team standards.
-- **naming**: (e.g. kebab-case, prefix with team name)
-- **structure**: (e.g. always Error Trigger → Slack alert)
-- **preferred nodes**: (e.g. HTTP Request over vendor nodes)
-
-# SDK & Build Patterns
-Reusable code patterns discovered during builds.
-- **pattern → code snippet or approach**:
+# Instance Knowledge
+Facts specific to this user's environment, not derivable from tools or schemas.
+- **credential disambiguation**: (when multiple credentials of same type exist, which to prefer)
+- **node runtime quirks**: (issues unique to this instance's data/setup, not in schema)
+- **recurring failures**: (stable instance-specific failures worth remembering)
 `;
 
 // ── Debugger ─────────────────────────────────────────────────────────────────

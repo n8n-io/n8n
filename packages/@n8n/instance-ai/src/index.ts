@@ -1,3 +1,5 @@
+export { generateCompactionSummary } from './compaction';
+export type { CompactionInput } from './compaction';
 export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export { createInstanceAgent } from './agent/instance-agent';
@@ -82,6 +84,8 @@ export type {
 	WorkflowSummary,
 	WorkflowDetail,
 	WorkflowNode,
+	WorkflowVersionSummary,
+	WorkflowVersionDetail,
 	ExecutionResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,

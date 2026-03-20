@@ -17,23 +17,38 @@ import type { WorkflowLoopAction } from '../../workflow-loop/workflow-loop-state
 
 function actionToGuidance(action: WorkflowLoopAction): string {
 	switch (action.type) {
-		case 'done':
+		case 'done': {
+			if (action.mockedCredentialTypes?.length) {
+				const types = action.mockedCredentialTypes.join(', ');
+				return (
+					'Workflow verified successfully with temporary mock data. ' +
+					'Call `setup-credentials` with types [' +
+					types +
+					'] and ' +
+					'credentialFlow stage "finalize" to let the user add real credentials. ' +
+					'After the user selects credentials, call `apply-workflow-credentials` to apply them.'
+				);
+			}
 			return `Workflow verified successfully. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
+		}
 		case 'failed':
 			return `Verification failed after repeated attempts. Explain the failure clearly to the user and stop retrying this phase.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
 		case 'verify':
 			return (
-				`VERIFY: Run workflow ${action.workflowId} using \`run-workflow\`. ` +
+				`VERIFY: Run workflow ${action.workflowId}. ` +
+				'If the build had mocked credentials, use `verify-built-workflow` with the workItemId. ' +
+				'Otherwise use `run-workflow`. ' +
 				'If it fails, use `debug-execution` to diagnose. ' +
 				'Then call `report-verification-verdict` with your findings.'
 			);
-		case 'blocked':
-			return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
 		case 'patch':
 			return (
-				`PATCH NEEDED: Apply \`patch-workflow\` to node "${action.nodeName}" in workflow ${action.workflowId}. ` +
-				'After patching, run the workflow again and call `report-verification-verdict` with the result.'
+				`PATCH: Apply a targeted fix to node "${action.nodeName}" in workflow ${action.workflowId}. ` +
+				`Parameters to change: ${JSON.stringify(action.patch)}. ` +
+				'After applying the patch, re-run the workflow and call `report-verification-verdict` again.'
 			);
+		case 'blocked':
+			return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. ` +
@@ -47,9 +62,9 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 	return createTool({
 		id: 'report-verification-verdict',
 		description:
-			'Report the result of verifying a workflow after building or patching it. ' +
+			'Report the result of verifying a workflow after building it. ' +
 			'Call this after running a workflow and (optionally) debugging a failed execution. ' +
-			'Returns deterministic guidance on what to do next (done, patch, rebuild, or blocked).',
+			'Returns deterministic guidance on what to do next (done, rebuild, or blocked).',
 		inputSchema: z.object({
 			workItemId: z.string().describe('The work item ID from the build task (wi_XXXXXXXX)'),
 			workflowId: z.string().describe('The workflow ID that was verified'),

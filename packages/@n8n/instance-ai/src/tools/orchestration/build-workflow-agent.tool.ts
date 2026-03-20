@@ -31,9 +31,9 @@ import type { TriggerType } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import type { CredentialMap } from '../workflows/resolve-credentials';
 import {
 	createSubmitWorkflowTool,
-	type CredentialMap,
 	type SubmitWorkflowAttempt,
 } from '../workflows/submit-workflow.tool';
 

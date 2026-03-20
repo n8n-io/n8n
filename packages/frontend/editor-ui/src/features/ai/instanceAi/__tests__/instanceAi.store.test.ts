@@ -19,6 +19,13 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
+const mockTelemetryTrack = vi.fn();
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: vi.fn().mockReturnValue({
+		track: (...args: unknown[]) => mockTelemetryTrack(...args),
+	}),
+}));
+
 vi.mock('@n8n/rest-api-client', () => ({
 	ResponseError: class ResponseError extends Error {
 		httpStatusCode?: number;
@@ -44,7 +51,14 @@ vi.mock('../instanceAi.api', () => ({
 
 vi.mock('../instanceAi.memory.api', () => ({
 	fetchThreads: vi.fn().mockResolvedValue({ threads: [], total: 0, page: 1, hasMore: false }),
-	fetchThreadMessages: vi.fn().mockResolvedValue({ threadId: 'thread-1', messages: [] }),
+	fetchThreadMessages: vi
+		.fn()
+		.mockResolvedValue({ threadId: 'thread-1', messages: [], nextEventId: 0 }),
+	fetchThreadStatus: vi
+		.fn()
+		.mockResolvedValue({ hasActiveRun: false, isSuspended: false, backgroundTasks: [] }),
+	deleteThread: vi.fn().mockResolvedValue(undefined),
+	renameThread: vi.fn().mockResolvedValue({ thread: {} }),
 }));
 
 const encoder = new TextEncoder();
@@ -514,7 +528,7 @@ describe('useInstanceAiStore stream flow', () => {
 			expect(store.messages).toHaveLength(1);
 		});
 
-		store.deleteThread(deletedThreadId);
+		await store.deleteThread(deletedThreadId);
 
 		await vi.waitFor(() => {
 			expect(capturedStream).not.toBe(previousStream);
@@ -601,5 +615,47 @@ describe('useInstanceAiStore stream flow', () => {
 			store.currentThreadId,
 		);
 		expect(mockPostMessage).toHaveBeenCalledTimes(2);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Store-level feedback integration tests
+// (Composable logic is tested in useResponseFeedback.test.ts)
+// ---------------------------------------------------------------------------
+
+describe('useInstanceAiStore - feedback integration', () => {
+	let store: ReturnType<typeof useInstanceAiStore>;
+
+	beforeEach(async () => {
+		setActivePinia(createPinia());
+		capturedOnMessage = null;
+		store = useInstanceAiStore();
+		store.newThread();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+	});
+
+	afterEach(() => {
+		store.closeSSE();
+		vi.clearAllMocks();
+	});
+
+	test('store exposes rateableResponseId, feedbackByResponseId, and submitFeedback', () => {
+		expect(store.rateableResponseId).toBeNull();
+		expect(store.feedbackByResponseId).toEqual({});
+		expect(typeof store.submitFeedback).toBe('function');
+	});
+
+	test('feedbackByResponseId is cleared when creating a new thread', async () => {
+		store.submitFeedback('resp-1', { rating: 'up' });
+		expect(store.feedbackByResponseId['resp-1']).toBeDefined();
+
+		store.newThread();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+
+		expect(Object.keys(store.feedbackByResponseId)).toHaveLength(0);
 	});
 });

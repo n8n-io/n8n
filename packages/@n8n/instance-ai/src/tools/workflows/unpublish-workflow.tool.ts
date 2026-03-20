@@ -5,13 +5,14 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
-export function createActivateWorkflowTool(context: InstanceAiContext) {
+export function createUnpublishWorkflowTool(context: InstanceAiContext) {
 	return createTool({
-		id: 'activate-workflow',
-		description: 'Activate or deactivate a workflow. Active workflows run on their triggers.',
+		id: 'unpublish-workflow',
+		description:
+			'Unpublish a workflow — stops it from running in production. ' +
+			'The draft is preserved and can be re-published later.',
 		inputSchema: z.object({
-			workflowId: z.string().describe('ID of the workflow'),
-			active: z.boolean().describe('true to activate, false to deactivate'),
+			workflowId: z.string().describe('ID of the workflow to unpublish'),
 		}),
 		outputSchema: z.object({
 			success: z.boolean(),
@@ -30,36 +31,28 @@ export function createActivateWorkflowTool(context: InstanceAiContext) {
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
 
-			const needsApproval = context.permissions?.activateWorkflow !== 'always_allow';
+			const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
-			// If approval is required and this is the first call, suspend for confirmation
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
-				const action = input.active ? 'Activate' : 'Deactivate';
 				await suspend?.({
 					requestId: nanoid(),
-					message: `${action} workflow "${input.workflowId}"?`,
+					message: `Unpublish workflow "${input.workflowId}"?`,
 					severity: 'warning' as const,
 				});
 				return { success: false };
 			}
 
-			// If resumed with denial
 			if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 				return { success: false, denied: true, reason: 'User denied the action' };
 			}
 
-			// Approved or always_allow — execute
 			try {
-				if (input.active) {
-					await context.workflowService.activate(input.workflowId);
-				} else {
-					await context.workflowService.deactivate(input.workflowId);
-				}
+				await context.workflowService.unpublish(input.workflowId);
 				return { success: true };
 			} catch (error) {
 				return {
 					success: false,
-					error: error instanceof Error ? error.message : 'Activation failed',
+					error: error instanceof Error ? error.message : 'Unpublish failed',
 				};
 			}
 		},

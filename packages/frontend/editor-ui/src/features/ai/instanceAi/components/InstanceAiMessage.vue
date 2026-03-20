@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nMessageRating } from '@n8n/design-system';
+import type { RatingFeedback } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -83,6 +84,11 @@ const fallbackNarrationContent = computed(() => {
 	}
 
 	return props.message.agentTree.textContent.trim();
+
+/** Transient status message from the backend (e.g. "Recalling conversation..."). */
+const statusMessage = computed(() => {
+	if (!isStreaming.value || !props.message.agentTree) return '';
+	return props.message.agentTree.statusMessage ?? '';
 });
 
 /**
@@ -100,6 +106,24 @@ const activeBackgroundTasks = computed(() => {
 });
 
 const hasActiveBackgroundTasks = computed(() => activeBackgroundTasks.value.length > 0);
+
+// --- Feedback ---
+const responseId = computed(() => props.message.messageGroupId ?? props.message.id);
+
+const isRateable = computed(
+	() =>
+		!isUser.value &&
+		store.rateableResponseId === responseId.value &&
+		!(responseId.value in store.feedbackByResponseId),
+);
+
+const hasSubmittedFeedback = computed(
+	() => !isUser.value && responseId.value in store.feedbackByResponseId,
+);
+
+function onFeedback(payload: RatingFeedback) {
+	store.submitFeedback(responseId.value, payload);
+}
 
 function formatJson(value: unknown): string {
 	try {
@@ -173,9 +197,15 @@ function formatJson(value: unknown): string {
 						<InstanceAiMarkdown v-if="props.message.content" :content="props.message.content" />
 					</div>
 
+					<!-- Status indicator while preparing context -->
+					<div v-if="statusMessage && !props.message.content" :class="$style.statusIndicator">
+						<span :class="$style.statusDot" />
+						<span>{{ statusMessage }}</span>
+					</div>
+
 					<!-- Blinking cursor while waiting for response -->
 					<span
-						v-if="isStreaming && !props.message.content && !props.message.agentTree"
+						v-else-if="isStreaming && !props.message.content && !props.message.agentTree"
 						:class="$style.blinkingCursor"
 					/>
 
@@ -186,6 +216,21 @@ function formatJson(value: unknown): string {
 					</div>
 				</div>
 			</CollapsibleMessage>
+
+			<!-- Response feedback -->
+			<N8nMessageRating
+				v-if="isRateable"
+				minimal
+				data-test-id="instance-ai-message-rating"
+				@feedback="onFeedback"
+			/>
+			<p
+				v-else-if="hasSubmittedFeedback"
+				:class="$style.feedbackSuccess"
+				data-test-id="instance-ai-feedback-success"
+			>
+				{{ i18n.baseText('instanceAi.feedback.success') }}
+			</p>
 
 			<div :class="$style.actionButtons">
 				<N8nIconButton
@@ -273,6 +318,12 @@ function formatJson(value: unknown): string {
 	}
 }
 
+.feedbackSuccess {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	margin: var(--spacing--2xs) 0 0;
+}
+
 .backgroundStatus {
 	display: flex;
 	align-items: center;
@@ -281,6 +332,43 @@ function formatJson(value: unknown): string {
 	margin-top: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text);
+}
+
+.statusIndicator {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	padding: var(--spacing--4xs) 0;
+	animation: status-fade-in 0.2s ease;
+}
+
+.statusDot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--color--primary);
+	animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes status-fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.3;
+	}
 }
 
 .blinkingCursor {

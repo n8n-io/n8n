@@ -39,8 +39,8 @@ export function createWorkItem(
 		phase: 'building',
 		status: 'active',
 		source,
-		patchAttempts: 0,
 		rebuildAttempts: 0,
+		patchAttempts: 0,
 	};
 }
 

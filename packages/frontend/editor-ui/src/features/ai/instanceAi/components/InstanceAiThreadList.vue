@@ -60,8 +60,8 @@ function handleNewThread() {
 	void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 }
 
-function handleDeleteThread(threadId: string) {
-	const { wasActive } = store.deleteThread(threadId);
+async function handleDeleteThread(threadId: string) {
+	const { wasActive } = await store.deleteThread(threadId);
 	if (wasActive) {
 		void router.push({
 			name: INSTANCE_AI_THREAD_VIEW,
@@ -75,12 +75,15 @@ function startRename(threadId: string, currentTitle: string) {
 	editingTitle.value = currentTitle;
 }
 
-function confirmRename(threadId: string) {
+async function confirmRename(threadId: string) {
 	const title = editingTitle.value.trim();
-	if (title && title !== store.threads.find((t) => t.id === threadId)?.title) {
-		store.renameThread(threadId, title);
+	try {
+		if (title && title !== store.threads.find((t) => t.id === threadId)?.title) {
+			await store.renameThread(threadId, title);
+		}
+	} finally {
+		editingThreadId.value = null;
 	}
-	editingThreadId.value = null;
 }
 
 function cancelRename() {
@@ -89,7 +92,7 @@ function cancelRename() {
 
 function handleThreadAction(action: string, threadId: string) {
 	if (action === 'delete') {
-		handleDeleteThread(threadId);
+		void handleDeleteThread(threadId);
 	} else if (action === 'rename') {
 		const thread = store.threads.find((t) => t.id === threadId);
 		if (thread) {

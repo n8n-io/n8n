@@ -25,7 +25,11 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventSink } from './event-bus/event-bus.interface';
 import type { IterationLog } from './storage/iteration-log';
-import type { VerificationResult, WorkflowLoopAction } from './workflow-loop/workflow-loop-state';
+import type {
+	VerificationResult,
+	WorkflowBuildOutcome,
+	WorkflowLoopAction,
+} from './workflow-loop/workflow-loop-state';
 import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
@@ -33,7 +37,8 @@ import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory'
 export interface WorkflowSummary {
 	id: string;
 	name: string;
-	active: boolean;
+	versionId: string;
+	activeVersionId: string | null;
 	createdAt: string;
 	updatedAt: string;
 	tags?: string[];
@@ -122,19 +127,45 @@ export interface NodeDescription extends NodeSummary {
 
 // ── Service interfaces ───────────────────────────────────────────────────────
 
+export interface WorkflowVersionSummary {
+	versionId: string;
+	name: string | null;
+	description: string | null;
+	authors: string;
+	createdAt: string;
+	autosaved: boolean;
+	isActive: boolean;
+	isCurrentDraft: boolean;
+}
+
+export interface WorkflowVersionDetail extends WorkflowVersionSummary {
+	nodes: WorkflowNode[];
+	connections: Record<string, unknown>;
+}
+
 export interface InstanceAiWorkflowService {
 	list(options?: { query?: string; limit?: number }): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
 	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
-	createFromWorkflowJSON(json: WorkflowJSON): Promise<WorkflowDetail>;
+	createFromWorkflowJSON(
+		json: WorkflowJSON,
+		options?: { projectId?: string },
+	): Promise<WorkflowDetail>;
 	/** Update a workflow from SDK-produced WorkflowJSON. */
-	updateFromWorkflowJSON(workflowId: string, json: WorkflowJSON): Promise<WorkflowDetail>;
+	updateFromWorkflowJSON(
+		workflowId: string,
+		json: WorkflowJSON,
+		options?: { projectId?: string },
+	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	delete(workflowId: string): Promise<void>;
-	activate(workflowId: string): Promise<void>;
-	deactivate(workflowId: string): Promise<void>;
+	publish(
+		workflowId: string,
+		options?: { versionId?: string; name?: string; description?: string },
+	): Promise<{ activeVersionId: string }>;
+	unpublish(workflowId: string): Promise<void>;
 	/** Patch a single node's parameters, credentials, or disabled state in-place. */
 	patchNode?(
 		workflowId: string,
@@ -145,6 +176,21 @@ export interface InstanceAiWorkflowService {
 			disabled?: boolean;
 		},
 	): Promise<WorkflowDetail>;
+	/** List version history for a workflow (metadata only, no nodes/connections). */
+	listVersions?(
+		workflowId: string,
+		options?: { limit?: number; skip?: number },
+	): Promise<WorkflowVersionSummary[]>;
+	/** Get full details of a specific version (including nodes and connections). */
+	getVersion?(workflowId: string, versionId: string): Promise<WorkflowVersionDetail>;
+	/** Restore a workflow to a previous version by overwriting the current draft. */
+	restoreVersion?(workflowId: string, versionId: string): Promise<void>;
+	/** Update name/description of a workflow version (licensed: namedVersions). */
+	updateVersion?(
+		workflowId: string,
+		versionId: string,
+		data: { name?: string | null; description?: string | null },
+	): Promise<void>;
 }
 
 export interface ExecutionSummary {
@@ -166,7 +212,7 @@ export interface InstanceAiExecutionService {
 	run(
 		workflowId: string,
 		inputData?: Record<string, unknown>,
-		options?: { timeout?: number },
+		options?: { timeout?: number; pinData?: Record<string, unknown[]> },
 	): Promise<ExecutionResult>;
 	getStatus(executionId: string): Promise<ExecutionResult>;
 	getResult(executionId: string): Promise<ExecutionResult>;
@@ -264,6 +310,7 @@ export interface SearchableNodeDescription {
 export interface DataTableSummary {
 	id: string;
 	name: string;
+	projectId: string;
 	columns: Array<{ id: string; name: string; type: string }>;
 	createdAt: string;
 	updatedAt: string;
@@ -288,10 +335,11 @@ export interface DataTableFilterInput {
 // ── Data table service ───────────────────────────────────────────────────────
 
 export interface InstanceAiDataTableService {
-	list(): Promise<DataTableSummary[]>;
+	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
 		name: string,
 		columns: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'date' }>,
+		options?: { projectId?: string },
 	): Promise<DataTableSummary>;
 	delete(dataTableId: string): Promise<void>;
 	getSchema(dataTableId: string): Promise<DataTableColumnInfo[]>;
@@ -459,15 +507,16 @@ export interface FolderSummary {
 
 export interface InstanceAiWorkspaceService {
 	// Projects
+	getProject?(projectId: string): Promise<ProjectSummary | null>;
 	listProjects(): Promise<ProjectSummary[]>;
 
-	// Folders
-	listFolders(projectId: string): Promise<FolderSummary[]>;
-	createFolder(name: string, projectId: string, parentFolderId?: string): Promise<FolderSummary>;
-	deleteFolder(folderId: string, projectId: string, transferToFolderId?: string): Promise<void>;
+	// Folders (licensed: feat:folders)
+	listFolders?(projectId: string): Promise<FolderSummary[]>;
+	createFolder?(name: string, projectId: string, parentFolderId?: string): Promise<FolderSummary>;
+	deleteFolder?(folderId: string, projectId: string, transferToFolderId?: string): Promise<void>;
 
-	// Workflow organization
-	moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void>;
+	// Workflow organization (moveWorkflowToFolder requires feat:folders)
+	moveWorkflowToFolder?(workflowId: string, folderId: string): Promise<void>;
 	tagWorkflow(workflowId: string, tagNames: string[]): Promise<string[]>;
 
 	// Tags
@@ -499,6 +548,9 @@ export interface InstanceAiContext {
 	localMcpServer?: LocalMcpServer;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/** Human-readable hints about licensed features that are NOT available on this instance.
+	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
+	licenseHints?: string[];
 	/** Domain access tracker for HITL gating of fetch-url and similar tools. */
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
@@ -627,7 +679,6 @@ export interface OrchestrationContext {
 		credentialId?: string;
 		credentials?: Record<string, string>;
 		autoSetup?: { credentialType: string };
-		mockCredentials?: boolean;
 	}>;
 	/** Chrome DevTools MCP config — only present when browser automation is enabled */
 	browserMcpConfig?: McpServerConfig;
@@ -661,6 +712,13 @@ export interface OrchestrationContext {
 	getBackgroundTask?: (taskId: string) => Promise<InstanceAiTaskRun | null>;
 	/** Report a verification verdict to a deterministic runtime coordinator */
 	reportVerificationVerdict?: (verdict: VerificationResult) => Promise<WorkflowLoopAction>;
+	/** Read a work item's build outcome from workflow loop storage */
+	getWorkItemBuildOutcome?: (workItemId: string) => Promise<WorkflowBuildOutcome | undefined>;
+	/** Update a work item's build outcome in workflow loop storage */
+	updateWorkItemBuildOutcome?: (
+		workItemId: string,
+		update: Partial<WorkflowBuildOutcome>,
+	) => Promise<void>;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────

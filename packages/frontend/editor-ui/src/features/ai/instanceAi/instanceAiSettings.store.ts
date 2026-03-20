@@ -45,12 +45,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isLocalGatewayEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.localGateway === true,
 	);
-	const isGatewayConnected = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.gatewayConnected === true,
-	);
-	const gatewayDirectory = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.gatewayDirectory ?? null,
-	);
+	const gatewayConnected = ref(false);
+	const gatewayDirectory = ref<string | null>(null);
+	const isGatewayConnected = computed(() => gatewayConnected.value);
 	const localGatewayFallbackDirectory = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayFallbackDirectory ?? null,
 	);
@@ -167,13 +164,20 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		if (isGatewayPolling.value) return;
 		isGatewayPolling.value = true;
 
+		// Fetch initial status immediately so UI reflects current state
+		void getGatewayStatus(rootStore.restApiContext)
+			.then((status) => {
+				gatewayConnected.value = status.connected;
+				gatewayDirectory.value = status.directory;
+			})
+			.catch(() => {});
+
 		gatewayPollTimer = setInterval(async () => {
 			try {
 				const status = await getGatewayStatus(rootStore.restApiContext);
-				const wasConnected = isGatewayConnected.value;
-				if (status.connected !== wasConnected) {
-					await settingsStore.getModuleSettings();
-				}
+				const wasConnected = gatewayConnected.value;
+				gatewayConnected.value = status.connected;
+				gatewayDirectory.value = status.directory;
 				if (!status.connected && wasConnected) {
 					daemonConnectAttempted = false;
 					startDaemonProbing();
@@ -258,7 +262,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		const pushStore = usePushConnectionStore();
 		removeGatewayPushListener = pushStore.addEventListener((message) => {
 			if (message.type !== 'instanceAiGatewayStateChanged') return;
-			void settingsStore.getModuleSettings();
+			gatewayConnected.value = message.data.connected;
+			gatewayDirectory.value = message.data.directory;
 			if (!message.data.connected) {
 				daemonConnectAttempted = false;
 				startDaemonProbing();

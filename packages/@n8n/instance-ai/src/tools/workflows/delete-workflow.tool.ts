@@ -9,7 +9,7 @@ export function createDeleteWorkflowTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'delete-workflow',
 		description:
-			'Archive a workflow by ID. This is a soft delete that deactivates the workflow if needed and can be undone later.',
+			'Archive a workflow by ID. This is a soft delete that unpublishes the workflow if needed and can be undone later.',
 		inputSchema: z.object({
 			workflowId: z.string().describe('ID of the workflow to archive'),
 		}),

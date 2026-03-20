@@ -86,7 +86,6 @@ export async function postConfirmation(
 		...(credentialId ? { credentialId } : {}),
 		...(credentials ? { credentials } : {}),
 		...(autoSetup ? { autoSetup } : {}),
-		...(mockCredentials ? { mockCredentials } : {}),
 		...(userInput !== undefined ? { userInput } : {}),
 		...(answers ? { answers } : {}),
 		...(domainAccessAction

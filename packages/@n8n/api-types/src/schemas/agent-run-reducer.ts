@@ -36,6 +36,8 @@ export interface AgentNode {
 	subtitle?: string;
 	goal?: string;
 	targetResource?: InstanceAiTargetResource;
+	/** Transient status message (e.g. "Recalling conversation..."). Cleared when empty. */
+	statusMessage?: string;
 	status: InstanceAiAgentStatus;
 	textContent: string;
 	reasoning: string;
@@ -404,8 +406,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					credentialRequests: event.payload.credentialRequests,
 					questions: event.payload.questions,
 					introMessage: event.payload.introMessage,
+					projectId: event.payload.projectId,
 					inputType: event.payload.inputType,
 					domainAccess: event.payload.domainAccess,
+					credentialFlow: event.payload.credentialFlow,
 				};
 				tc.confirmationStatus = 'pending';
 			}
@@ -434,6 +438,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.tasks = event.payload.tasks;
+			}
+			break;
+		}
+
+		case 'status': {
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				agent.statusMessage = event.payload.message || undefined;
 			}
 			break;
 		}
@@ -532,6 +544,7 @@ function buildNodeRecursive(state: AgentRunState, agentId: string): InstanceAiAg
 		subtitle: agent?.subtitle,
 		goal: agent?.goal,
 		targetResource: agent?.targetResource,
+		statusMessage: agent?.statusMessage,
 		status: agent?.status ?? 'active',
 		textContent: agent?.textContent ?? '',
 		reasoning: agent?.reasoning ?? '',

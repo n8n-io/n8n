@@ -19,7 +19,7 @@ export const listFilesTool: ToolDefinition<typeof inputSchema> = {
 	inputSchema,
 	annotations: { defaultPermission: 'allow', readOnlyHint: true },
 	async execute({ dirPath, type, maxResults }, { dir }) {
-		const resolvedDir = resolveSafePath(dir, dirPath || '.');
+		const resolvedDir = await resolveSafePath(dir, dirPath || '.');
 		// maxDepth=0 → immediate children only, no recursion
 		const { tree } = await scanDirectory(resolvedDir, 0);
 

@@ -1,67 +1,57 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiCredentialRequest } from '@n8n/api-types';
-import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
+import type { InstanceAiCredentialRequest, InstanceAiCredentialFlow } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY } from '@/app/constants';
+import type { InstanceAiCredentialSetupModalData } from './InstanceAiCredentialSetupModal.vue';
 
 const props = defineProps<{
 	requestId: string;
 	credentialRequests: InstanceAiCredentialRequest[];
 	message: string;
+	projectId?: string;
+	credentialFlow?: InstanceAiCredentialFlow;
 }>();
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
 
-// Track selected credential ID per type
-const selections = ref<Record<string, string | null>>(
-	Object.fromEntries(props.credentialRequests.map((r) => [r.credentialType, null])),
-);
+const isFinalize = computed(() => props.credentialFlow?.stage === 'finalize');
+
 const isSubmitted = ref(false);
-const isSkipped = ref(false);
-const isDenied = ref(false);
+const isDeferred = ref(false);
 
-const allSelected = computed(() =>
-	props.credentialRequests.every((r) => selections.value[r.credentialType] !== null),
-);
-
-function handleCredentialSelected(credentialType: string, credentialId: string) {
-	selections.value[credentialType] = credentialId;
+function getDisplayName(credentialType: string): string {
+	return credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
 }
 
-function handleCredentialDeselected(credentialType: string) {
-	selections.value[credentialType] = null;
+function handleOpenModal() {
+	const data: InstanceAiCredentialSetupModalData = {
+		credentialRequests: props.credentialRequests,
+		message: props.message,
+		projectId: props.projectId,
+		onComplete: (credentials: Record<string, string>) => {
+			isSubmitted.value = true;
+			store.resolveConfirmation(props.requestId, 'approved');
+			void store.confirmAction(props.requestId, true, undefined, credentials);
+		},
+	};
+	uiStore.openModalWithData({
+		name: INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+		data: data as unknown as Record<string, unknown>,
+	});
 }
 
-function handleUseSelected() {
+function handleLater() {
 	isSubmitted.value = true;
-	const credentials: Record<string, string> = {};
-	for (const [type, id] of Object.entries(selections.value)) {
-		if (id) credentials[type] = id;
-	}
-	void store.confirmAction(props.requestId, true, undefined, credentials);
-}
-
-function handleSkip() {
-	isSubmitted.value = true;
-	isSkipped.value = true;
-	void store.confirmAction(
-		props.requestId,
-		false,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		true,
-	);
-}
-
-function handleDeny() {
-	isSubmitted.value = true;
-	isDenied.value = true;
+	isDeferred.value = true;
+	store.resolveConfirmation(props.requestId, 'deferred');
 	void store.confirmAction(props.requestId, false);
 }
 </script>
@@ -74,53 +64,48 @@ function handleDeny() {
 		</div>
 
 		<template v-if="!isSubmitted">
-			<div
-				v-for="req in props.credentialRequests"
-				:key="req.credentialType"
-				:class="$style.credentialRow"
-			>
-				<div :class="$style.credentialLabel">
-					<span :class="$style.credentialType">{{ req.credentialType }}</span>
+			<ul :class="$style.summaryList">
+				<li
+					v-for="req in props.credentialRequests"
+					:key="req.credentialType"
+					:class="$style.summaryItem"
+				>
+					<span :class="$style.credentialName">{{ getDisplayName(req.credentialType) }}</span>
 					<span v-if="req.reason" :class="$style.credentialReason">{{ req.reason }}</span>
-				</div>
-				<CredentialPicker
-					:app-name="req.credentialType"
-					:credential-type="req.credentialType"
-					:selected-credential-id="selections[req.credentialType]"
-					@credential-selected="handleCredentialSelected(req.credentialType, $event)"
-					@credential-deselected="handleCredentialDeselected(req.credentialType)"
-				/>
-			</div>
+				</li>
+			</ul>
 
 			<div :class="$style.actions">
-				<button :class="$style.denyButton" @click="handleDeny">
-					{{ i18n.baseText('instanceAi.credential.deny') }}
+				<button :class="$style.secondaryButton" @click="handleLater">
+					{{
+						i18n.baseText(
+							isFinalize ? 'instanceAi.credential.finalize.later' : 'instanceAi.credential.deny',
+						)
+					}}
 				</button>
-				<button :class="$style.skipButton" @click="handleSkip">
-					{{ i18n.baseText('instanceAi.credential.skipForNow') }}
-				</button>
-				<button
-					:class="$style.useSelectedButton"
-					:disabled="!allSelected"
-					@click="handleUseSelected"
-				>
-					{{ i18n.baseText('instanceAi.credential.useSelected') }}
-				</button>
+				<N8nButton
+					size="small"
+					:label="i18n.baseText('instanceAi.credential.setupButton')"
+					data-test-id="instance-ai-credential-setup-button"
+					@click="handleOpenModal"
+				/>
 			</div>
 		</template>
 
 		<div v-else :class="$style.submitted">
-			<template v-if="isDenied">
-				<N8nIcon icon="x" size="small" :class="$style.deniedIcon" />
-				<span>{{ i18n.baseText('instanceAi.credential.denied') }}</span>
-			</template>
-			<template v-else-if="isSkipped">
+			<template v-if="isDeferred">
 				<N8nIcon icon="arrow-right" size="small" :class="$style.skippedIcon" />
-				<span>{{ i18n.baseText('instanceAi.credential.skipped') }}</span>
+				<span>{{ i18n.baseText('instanceAi.credential.finalize.deferred') }}</span>
 			</template>
 			<template v-else>
 				<N8nIcon icon="check" size="small" :class="$style.successIcon" />
-				<span>{{ i18n.baseText('instanceAi.credential.allSelected') }}</span>
+				<span>{{
+					i18n.baseText(
+						isFinalize
+							? 'instanceAi.credential.finalize.applied'
+							: 'instanceAi.credential.allSelected',
+					)
+				}}</span>
 			</template>
 		</div>
 	</div>
@@ -146,25 +131,22 @@ function handleDeny() {
 	color: var(--color--primary);
 }
 
-.credentialRow {
-	margin-bottom: var(--spacing--2xs);
-
-	&:last-of-type {
-		margin-bottom: var(--spacing--xs);
-	}
+.summaryList {
+	list-style: none;
+	padding: 0;
+	margin: 0 0 var(--spacing--xs) 0;
 }
 
-.credentialLabel {
+.summaryItem {
 	display: flex;
 	align-items: baseline;
 	gap: var(--spacing--3xs);
-	margin-bottom: var(--spacing--4xs);
+	padding: var(--spacing--4xs) 0;
 }
 
-.credentialType {
+.credentialName {
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
-	font-family: monospace;
 	color: var(--color--text);
 }
 
@@ -177,10 +159,10 @@ function handleDeny() {
 	display: flex;
 	gap: var(--spacing--2xs);
 	justify-content: flex-end;
+	align-items: center;
 }
 
-.denyButton,
-.skipButton {
+.secondaryButton {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
@@ -193,26 +175,6 @@ function handleDeny() {
 	&:hover {
 		color: var(--color--text);
 		text-decoration: underline;
-	}
-}
-
-.useSelectedButton {
-	padding: var(--spacing--4xs) var(--spacing--sm);
-	border-radius: var(--radius);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	cursor: pointer;
-	border: none;
-	background: var(--color--primary);
-	color: var(--button--color--text--primary);
-
-	&:hover:not(:disabled) {
-		background: var(--color--primary--shade-1);
-	}
-
-	&:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
 	}
 }
 
@@ -230,9 +192,5 @@ function handleDeny() {
 
 .skippedIcon {
 	color: var(--color--text--tint-2);
-}
-
-.deniedIcon {
-	color: var(--color--danger);
 }
 </style>

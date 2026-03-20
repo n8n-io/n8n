@@ -170,6 +170,10 @@ export function mapMastraChunkToEvent(
 			}
 		}
 
+		// Extract optional projectId for project-scoped actions
+		const projectId =
+			typeof suspendPayload.projectId === 'string' ? suspendPayload.projectId : undefined;
+
 		// Extract optional inputType (e.g., 'text' for ask-user tool)
 		const rawInputType =
 			typeof suspendPayload.inputType === 'string' ? suspendPayload.inputType : undefined;
@@ -224,6 +228,7 @@ export function mapMastraChunkToEvent(
 				...(credentialRequests ? { credentialRequests } : {}),
 				...(questions ? { questions } : {}),
 				...(introMessage ? { introMessage } : {}),
+				...(projectId ? { projectId } : {}),
 				...(inputType ? { inputType } : {}),
 				...(domainAccess ? { domainAccess } : {}),
 			},

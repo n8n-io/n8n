@@ -1,10 +1,8 @@
 import { createTool } from '@mastra/core/tools';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
-import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { resolveCredentials, type CredentialMap } from './submit-workflow.tool';
+import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
 import { extractWorkflowCode } from '../../workflow-builder/extract-code';
@@ -45,6 +43,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				.string()
 				.optional()
 				.describe('Existing workflow ID to update (omit to create new)'),
+			projectId: z
+				.string()
+				.optional()
+				.describe('Project ID to create the workflow in. Defaults to personal project.'),
 			name: z.string().optional().describe('Workflow name (required for new workflows)'),
 		}),
 		outputSchema: z.object({
@@ -52,20 +54,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			workflowId: z.string().optional(),
 			errors: z.array(z.string()).optional(),
 			warnings: z.array(z.string()).optional(),
-			denied: z.boolean().optional(),
-			reason: z.string().optional(),
 		}),
-		suspendSchema: z.object({
-			requestId: z.string(),
-			message: z.string(),
-			severity: instanceAiConfirmationSeveritySchema,
-		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { code, patches, workflowId, name } = input;
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		execute: async (input) => {
+			const { code, patches, workflowId, projectId, name } = input;
 			let finalCode: string;
 
 			if (patches) {
@@ -153,51 +144,19 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			const needsApproval = context.permissions?.buildWorkflow !== 'always_allow';
-
-			// State 1: First call — suspend for confirmation (unless always_allow)
-			if (needsApproval && (resumeData === undefined || resumeData === null)) {
-				await suspend?.({
-					requestId: nanoid(),
-					message: workflowId
-						? `Update workflow "${workflowId}" from SDK code?`
-						: `Create new workflow "${json.name ?? ''}" from SDK code?`,
-					severity: 'warning' as const,
-				});
-				return { success: false };
-			}
-
-			// State 2: Denied
-			if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-				return { success: false, denied: true, reason: 'User denied the action' };
-			}
-
-			// State 3: Approved or always_allow — save
-
 			// Resolve undefined/null credentials before saving.
 			// newCredential() produces NewCredentialImpl which serializes to undefined.
-			// Build a credential map from available credentials and resolve them.
-			const credentialMap: CredentialMap = new Map();
-			try {
-				const allCreds = await context.credentialService.list();
-				for (const cred of allCreds) {
-					credentialMap.set(cred.type, { id: cred.id, name: cred.name });
-				}
-			} catch {
-				// Non-fatal — credentials will be unresolved (user adds in UI)
-			}
-			const mockResult = await resolveCredentials(json, workflowId, context, credentialMap);
-
-			if (mockResult.mockedNodeNames.length > 0) {
-				informational.push({
-					code: 'CREDENTIALS_MOCKED',
-					message: `Mocked ${mockResult.mockedCredentialTypes.join(', ')} via pinned data on nodes: ${mockResult.mockedNodeNames.join(', ')}. Add real credentials before activating.`,
-				});
-			}
+			const credentialMap = await buildCredentialMap(context.credentialService);
+			await resolveCredentials(json, workflowId, context, credentialMap);
 
 			try {
+				const opts = projectId ? { projectId } : undefined;
 				if (workflowId) {
-					const updated = await context.workflowService.updateFromWorkflowJSON(workflowId, json);
+					const updated = await context.workflowService.updateFromWorkflowJSON(
+						workflowId,
+						json,
+						opts,
+					);
 					return {
 						success: true,
 						workflowId: updated.id,
@@ -207,7 +166,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 								: undefined,
 					};
 				} else {
-					const created = await context.workflowService.createFromWorkflowJSON(json);
+					const created = await context.workflowService.createFromWorkflowJSON(json, opts);
 					return {
 						success: true,
 						workflowId: created.id,
