@@ -26,10 +26,8 @@ export class SourceControlScopedService {
 	) {}
 
 	async createContext(user: User): Promise<SourceControlContext> {
-		const isAdmin = hasGlobalScope(user, 'project:update');
-
-		if (isAdmin) {
-			return new SourceControlContext(user, await this.fetchAllProjects(), [], true);
+		if (hasGlobalScope(user, 'project:update')) {
+			return new SourceControlContext(user, await this.fetchAllProjects(), []);
 		}
 
 		const [authorizedProjects, accessibleWorkflowIds] = await Promise.all([
@@ -37,7 +35,7 @@ export class SourceControlScopedService {
 			this.fetchAccessibleWorkflowIds(user),
 		]);
 
-		return new SourceControlContext(user, authorizedProjects, accessibleWorkflowIds, false);
+		return new SourceControlContext(user, authorizedProjects, accessibleWorkflowIds);
 	}
 
 	async ensureIsAllowedToPush(req: AuthenticatedRequest) {
@@ -56,7 +54,7 @@ export class SourceControlScopedService {
 		context: SourceControlContext,
 		id?: string,
 	): Promise<WorkflowEntity[] | undefined> {
-		if (context.isAdmin) {
+		if (context.hasAccessToAllProjects()) {
 			return;
 		}
 
@@ -73,7 +71,7 @@ export class SourceControlScopedService {
 	getProjectsWithPushScopeByContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<Project> | undefined {
-		if (context.isAdmin) {
+		if (context.hasAccessToAllProjects()) {
 			return;
 		}
 
@@ -93,7 +91,7 @@ export class SourceControlScopedService {
 	getFoldersInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<Folder> {
-		if (context.isAdmin) {
+		if (context.hasAccessToAllProjects()) {
 			return {};
 		}
 
@@ -105,7 +103,7 @@ export class SourceControlScopedService {
 	getWorkflowsInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<WorkflowEntity> {
-		if (context.isAdmin) {
+		if (context.hasAccessToAllProjects()) {
 			return {};
 		}
 
@@ -120,7 +118,7 @@ export class SourceControlScopedService {
 	getCredentialsInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<CredentialsEntity> {
-		if (context.isAdmin) {
+		if (context.hasAccessToAllProjects()) {
 			return {};
 		}
 
@@ -135,7 +133,7 @@ export class SourceControlScopedService {
 	getWorkflowTagMappingInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<WorkflowTagMapping> {
-		if (context.isAdmin) {
+		if (context.hasAccessToAllProjects()) {
 			return {};
 		}
 
@@ -147,7 +145,7 @@ export class SourceControlScopedService {
 	getDataTablesInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<DataTable> {
-		if (context.isAdmin) {
+		if (context.hasAccessToAllProjects()) {
 			return {};
 		}
 

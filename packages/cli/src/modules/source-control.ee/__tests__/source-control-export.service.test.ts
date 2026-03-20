@@ -44,7 +44,6 @@ describe('SourceControlExportService', () => {
 		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
 		[],
 		[],
-		true,
 	);
 
 	const service = new SourceControlExportService(

@@ -336,7 +336,7 @@ export class SourceControlStatusService {
 
 		let outOfScopeWF: SourceControlWorkflowVersionId[] = [];
 
-		if (!context.isAdmin) {
+		if (!context.hasAccessToAllProjects()) {
 			// we need to query for all wf in the DB to hide possible deletions,
 			// when a wf went out of scope locally
 			outOfScopeWF = await this.sourceControlImportService.getAllLocalVersionIdsFromDb();
@@ -1025,7 +1025,7 @@ export class SourceControlStatusService {
 
 		let outOfScopeProjects: ExportableProjectWithFileName[] = [];
 
-		if (!context.isAdmin) {
+		if (!context.hasAccessToAllProjects()) {
 			// we need to query for all projects in the DB to hide possible deletions,
 			// when a project went out of scope locally
 			outOfScopeProjects = await this.sourceControlImportService.getLocalTeamProjectsFromDb();
