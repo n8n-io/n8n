@@ -319,11 +319,12 @@ export function useWorkflowUpdate() {
 	 * Update workflow name if initial generation and name starts with default
 	 */
 	function updateWorkflowNameIfNeeded(name?: string, isInitialGeneration?: boolean): void {
-		if (
-			name &&
-			isInitialGeneration &&
-			workflowsStore.workflow.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
-		) {
+		if (!name || !isInitialGeneration || !workflowsStore.workflowId) return;
+
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		if (workflowDocumentStore.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)) {
 			workflowState.setWorkflowName({ newName: name, setStateDirty: false });
 		}
 	}

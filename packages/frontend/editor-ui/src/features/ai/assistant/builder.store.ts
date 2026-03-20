@@ -210,6 +210,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const telemetry = useTelemetry();
 	const uiStore = useUIStore();
 	const router = useRouter();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const workflowSaver = useWorkflowSaving({ router });
 	const posthogStore = usePostHog();
 	const focusedNodesStore = useFocusedNodesStore();
@@ -485,7 +490,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return;
 		}
 
-		const workflowName = workflowsStore.workflowName;
+		const workflowName = workflowDocumentStore.value?.name ?? '';
 
 		const titleKey =
 			completionType === 'workflow-ready'
@@ -551,7 +556,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Update page title on completion. We show Done when the user is not on the page
 		// Browser notifications are only shown when the tab is hidden
 		if (document.hidden) {
-			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_DONE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'AI_DONE');
 			if (!wasAborted && userMessageId) {
 				const completionType = hasWorkflowUpdateInCurrentBatch(userMessageId)
 					? 'workflow-ready'
@@ -559,7 +564,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				notifyOnCompletion(completionType);
 			}
 		} else {
-			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'IDLE');
 		}
 	}
 
@@ -636,7 +641,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Updates page title to show AI is building (skip for help questions)
 		if (!isHelpStreaming.value) {
-			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_BUILDING');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'AI_BUILDING');
 		}
 	}
 
@@ -1313,7 +1318,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function clearDoneIndicatorTitle() {
 		if (documentTitle.getDocumentState() === 'AI_DONE') {
-			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'IDLE');
 		}
 	}
 

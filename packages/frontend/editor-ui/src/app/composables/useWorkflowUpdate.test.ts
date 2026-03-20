@@ -10,6 +10,10 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 // Mock canvas event bus - using hoisted to ensure proper initialization order
 const canvasEventBusEmitMock = vi.hoisted(() => vi.fn());
@@ -614,6 +618,11 @@ describe('useWorkflowUpdate', () => {
 		describe('workflow name update', () => {
 			it('should update workflow name on initial generation when name starts with default', async () => {
 				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+				const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+				Object.defineProperty(docStore, 'name', {
+					value: DEFAULT_NEW_WORKFLOW_NAME,
+					configurable: true,
+				});
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -634,6 +643,11 @@ describe('useWorkflowUpdate', () => {
 
 			it('should not update workflow name when not initial generation', async () => {
 				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+				const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+				Object.defineProperty(docStore, 'name', {
+					value: DEFAULT_NEW_WORKFLOW_NAME,
+					configurable: true,
+				});
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -651,6 +665,11 @@ describe('useWorkflowUpdate', () => {
 
 			it('should not update workflow name when current name does not start with default', async () => {
 				workflowsStore.workflow.name = 'Custom Workflow Name';
+				const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+				Object.defineProperty(docStore, 'name', {
+					value: 'Custom Workflow Name',
+					configurable: true,
+				});
 
 				const { updateWorkflow } = useWorkflowUpdate();
 

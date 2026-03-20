@@ -603,7 +603,7 @@ export function useWorkflowHelpers() {
 		);
 
 		const data: WorkflowData = {
-			name: workflowsStore.workflowName,
+			name: workflowDocumentStore.name,
 			nodes,
 			pinData: workflowDocumentStore.getPinDataSnapshot(),
 			connections,
@@ -1030,6 +1030,7 @@ export function useWorkflowHelpers() {
 			workflowsStore.workflowObject.setSettings(payload.settings);
 		});
 
+		workflowDocumentStore.setName(workflowData.name);
 		workflowDocumentStore.setTags(tagIds);
 		workflowDocumentStore.setActiveState({
 			activeVersionId: workflowData.activeVersionId,

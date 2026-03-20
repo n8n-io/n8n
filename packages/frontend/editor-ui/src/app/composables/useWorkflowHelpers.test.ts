@@ -322,13 +322,13 @@ describe('useWorkflowHelpers', () => {
 			};
 
 			workflowsStore.workflowId = workflowId;
-			workflowsStore.workflowName = 'Test Workflow';
 			workflowsStore.allNodes = [];
 			workflowsStore.allConnections = initialConnections;
 			workflowsStore.workflow.versionId = 'v1';
 
 			const documentId = createWorkflowDocumentId(workflowId);
 			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+			Object.defineProperty(workflowDocumentStore, 'name', { value: 'Test Workflow' });
 			vi.mocked(workflowDocumentStore.getSettingsSnapshot).mockReturnValue({
 				executionOrder: 'v1',
 			});
@@ -351,7 +351,6 @@ describe('useWorkflowHelpers', () => {
 			const tagIds = ['tag1', 'tag2'];
 
 			workflowsStore.workflowId = workflowId;
-			workflowsStore.workflowName = 'Test Workflow';
 			workflowsStore.allNodes = [];
 			workflowsStore.allConnections = {};
 			workflowsStore.isWorkflowActive = false;
@@ -362,7 +361,8 @@ describe('useWorkflowHelpers', () => {
 			const documentId = createWorkflowDocumentId(workflowId);
 			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 
-			// Note: createTestingPinia() stubs actions by default, so setTags()/setSettings() won't work
+			// Note: createTestingPinia() stubs actions by default, so setTags()/setSettings()/setName() won't work
+			Object.defineProperty(workflowDocumentStore, 'name', { value: 'Test Workflow' });
 			Object.defineProperty(workflowDocumentStore, 'tags', {
 				value: tagIds,
 			});

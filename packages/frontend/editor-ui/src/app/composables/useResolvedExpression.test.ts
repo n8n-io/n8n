@@ -118,6 +118,7 @@ describe('useResolvedExpression', () => {
 
 	it('should re-resolve when workflow name changes', async () => {
 		const workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.id = 'test-workflow';
 		const resolveExpressionSpy = mockResolveExpression();
 		resolveExpressionSpy.mockImplementation(async () => workflowsStore.workflow.name);
 

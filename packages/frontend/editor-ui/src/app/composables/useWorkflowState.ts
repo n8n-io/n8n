@@ -64,6 +64,15 @@ export function useWorkflowState() {
 		if (data.setStateDirty) {
 			uiStore.markStateDirty('metadata');
 		}
+
+		if (ws.workflow.id) {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(ws.workflow.id),
+			);
+			workflowDocumentStore.setName(data.newName);
+		}
+
+		// Bridge: keep legacy stores in sync until workflow ref is fully removed
 		ws.workflow.name = data.newName;
 		ws.workflowObject.name = data.newName;
 
@@ -176,7 +185,10 @@ export function useWorkflowState() {
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.clearNodeExecutionQueue();
 		ws.executionWaitingForWebhook = false;
-		documentTitle.setDocumentTitle(ws.workflowName, 'IDLE');
+		const workflowDocumentStore = ws.workflow.id
+			? useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflow.id))
+			: undefined;
+		documentTitle.setDocumentTitle(workflowDocumentStore?.name ?? '', 'IDLE');
 		ws.workflowExecutionStartedData = undefined;
 
 		// TODO(ckolb): confirm this works across files?

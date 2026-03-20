@@ -149,8 +149,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
 	const selectedTriggerNodeName = ref<string>();
 
-	const workflowName = computed(() => workflow.value.name);
-
 	const workflowId = computed(() => workflow.value.id);
 
 	const workflowVersionId = computed(() => workflow.value.versionId);
@@ -1718,7 +1716,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		isInDebugMode,
 		chatMessages,
 		chatPartialExecutionDestinationNode,
-		workflowName,
 		workflowId,
 		workflowVersionId,
 		isNewWorkflow,
