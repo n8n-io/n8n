@@ -187,8 +187,7 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const accessibleProjects =
-			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+		const accessibleProjects = context.authorizedProjects;
 		const projectIndex = new ProjectIndex(accessibleProjects);
 
 		const remoteWorkflowsRead = await Promise.all(
@@ -200,10 +199,7 @@ export class SourceControlImportService {
 				if (!remote?.id) {
 					return false;
 				}
-				return (
-					context.hasAccessToAllProjects() ||
-					(remote.owner && projectIndex.findByOwner(remote.owner))
-				);
+				return context.isAdmin || (remote.owner && projectIndex.findByOwner(remote.owner));
 			})
 			.map((remote) => {
 				const project = remote.owner ? projectIndex.findByOwner(remote.owner) : undefined;
@@ -327,8 +323,7 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const accessibleProjects =
-			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+		const accessibleProjects = context.authorizedProjects;
 		const projectIndex = new ProjectIndex(accessibleProjects);
 
 		const remoteCredentialFilesRead = await Promise.all(
@@ -347,7 +342,7 @@ export class SourceControlImportService {
 					return false;
 				}
 				const owner = remote.ownedBy;
-				return !owner || context.hasAccessToAllProjects() || projectIndex.findByOwner(owner);
+				return !owner || context.isAdmin || projectIndex.findByOwner(owner);
 			})
 			.map((remote) => {
 				const project = remote.ownedBy ? projectIndex.findByOwner(remote.ownedBy) : null;
@@ -544,9 +539,8 @@ export class SourceControlImportService {
 				fallbackValue: { folders: [] },
 			});
 
-			if (!context.hasAccessToAllProjects()) {
-				const accessibleProjects =
-					await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+			if (!context.isAdmin) {
+				const accessibleProjects = context.authorizedProjects;
 				const accessibleProjectIds = new Set(accessibleProjects.map((p) => p.id));
 
 				mappedFolders.folders = mappedFolders.folders.filter((folder) =>
@@ -649,12 +643,11 @@ export class SourceControlImportService {
 			}),
 		);
 
-		if (context.hasAccessToAllProjects()) {
+		if (context.isAdmin) {
 			return remoteProjects;
 		}
 
-		const accessibleProjects =
-			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+		const accessibleProjects = context.authorizedProjects;
 		const projectIndex = new ProjectIndex(accessibleProjects);
 
 		return remoteProjects.filter((remoteProject) => {
@@ -1050,7 +1043,7 @@ export class SourceControlImportService {
 
 		// Get all workflow IDs from remote files (in scope for this import)
 		// This ensures we delete mappings for workflows with zero tags
-		const context = new SourceControlContext(user);
+		const context = await this.sourceControlScopedService.createContext(user);
 		const remoteWorkflowIds = (await this.getRemoteVersionIdsFromFiles(context)).map((wf) => wf.id);
 
 		// Include both workflows with mappings AND workflows in remote files (even with zero tags)

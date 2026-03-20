@@ -37,7 +37,6 @@ import {
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
-import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
@@ -303,7 +302,7 @@ export class SourceControlService {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 
-		const context = new SourceControlContext(user);
+		const context = await this.sourceControlScopedService.createContext(user);
 
 		let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
 			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
@@ -615,7 +614,7 @@ export class SourceControlService {
 		commit?: string;
 	}): Promise<IWorkflowToImport> {
 		await this.sanityCheck();
-		const context = new SourceControlContext(user);
+		const context = await this.sourceControlScopedService.createContext(user);
 		switch (type) {
 			case 'workflow': {
 				if (typeof id === 'undefined') {

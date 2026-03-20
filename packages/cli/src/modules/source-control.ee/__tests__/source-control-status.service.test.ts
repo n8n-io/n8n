@@ -22,7 +22,9 @@ import type { SourceControlGitService } from '../source-control-git.service.ee';
 import * as sourceControlHelper from '../source-control-helper.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlScopedService } from '../source-control-scoped.service';
 import { SourceControlStatusService } from '../source-control-status.service.ee';
+import { SourceControlContext } from '../types/source-control-context';
 import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { ExportableProjectWithFileName } from '../types/exportable-project';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
@@ -40,11 +42,13 @@ describe('getStatus', () => {
 		mock(),
 		mock(),
 	);
+	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const sourceControlStatusService = new SourceControlStatusService(
 		mockLogger(),
 		mock<SourceControlGitService>(),
 		sourceControlImportService,
 		preferencesService,
+		sourceControlScopedService,
 		tagRepository,
 		folderRepository,
 		workflowRepository,
@@ -53,6 +57,11 @@ describe('getStatus', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+
+		sourceControlScopedService.createContext.mockImplementation(async (user) => {
+			const isAdmin = user.role === GLOBAL_ADMIN_ROLE;
+			return new SourceControlContext(user, [], [], isAdmin);
+		});
 
 		// version ids (workflows)
 		sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);

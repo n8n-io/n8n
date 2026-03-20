@@ -403,8 +403,7 @@ export class SourceControlExportService {
 				};
 			}
 
-			const allowedProjects =
-				await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+			const allowedProjects = context.authorizedProjects;
 
 			const fileName = getFoldersPath(this.gitFolder);
 
@@ -412,7 +411,7 @@ export class SourceControlExportService {
 
 			// keep all folders that are not accessible by the current user
 			// if allowedProjects is undefined, all folders are accessible by the current user
-			const foldersToKeepUnchanged = context.hasAccessToAllProjects()
+			const foldersToKeepUnchanged = context.isAdmin
 				? []
 				: existingFolders.folders.filter((folder) => {
 						return !allowedProjects.some((project) => project.id === folder.homeProjectId);
