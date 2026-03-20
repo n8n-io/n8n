@@ -9,7 +9,7 @@ export class DatabricksOAuth2Api implements ICredentialType {
 
 	documentationUrl = 'https://docs.databricks.com/dev-tools/api/latest/authentication.html';
 
-	icon = 'file:databricks.svg' as const;
+	icon = 'file:icons/databricks.svg' as const;
 
 	properties: INodeProperties[] = [
 		{
