@@ -384,3 +384,5 @@ export {
 export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
+
+export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';

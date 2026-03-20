@@ -1,3 +1,4 @@
+import type { PublishTimelineEvent, WorkflowHistoryLookupField } from '@n8n/api-types';
 import type { IConnections, INode } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
@@ -84,12 +85,7 @@ export const getWorkflowVersionsByIds = async (
 	return data;
 };
 
-export type WorkflowHistoryLookupField =
-	| 'authors'
-	| 'createdAt'
-	| 'updatedAt'
-	| 'name'
-	| 'description';
+export type { WorkflowHistoryLookupField } from '@n8n/api-types';
 
 export type WorkflowHistoryLookupParams = {
 	versionIds: string[];
@@ -113,15 +109,7 @@ export const lookupWorkflowVersions = async (
 	return data;
 };
 
-export type PublishTimelineEvent = {
-	id: number;
-	workflowId: string;
-	versionId: string;
-	event: 'activated' | 'deactivated';
-	createdAt: string;
-	userId: string | null;
-	user: { firstName: string; lastName: string } | null;
-};
+export type { PublishTimelineEvent } from '@n8n/api-types';
 
 export const getPublishTimeline = async (
 	context: IRestApiContext,
