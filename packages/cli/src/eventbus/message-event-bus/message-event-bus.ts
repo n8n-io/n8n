@@ -224,6 +224,11 @@ export class MessageEventBus extends EventEmitter {
 		}
 		for (const msg of msgs) {
 			this.logWriter?.putMessage(msg);
+			// If no destination is listening (e.g. log-streaming module not licensed),
+			// confirm the message immediately to prevent unbounded accumulation across restarts.
+			if (this.listenerCount('message') === 0) {
+				this.confirmSent(msg, { id: '0', name: 'eventBus' });
+			}
 			await this.emitMessage(msg);
 		}
 	}
