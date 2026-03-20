@@ -565,12 +565,21 @@ export interface BackgroundTaskLifecycleReporter {
 	resumed: () => Promise<void>;
 }
 
+export interface SpawnBackgroundTaskResult {
+	started: boolean;
+	reused: boolean;
+	taskId?: string;
+	executionKey?: string;
+	error?: string;
+}
+
 export interface SpawnBackgroundTaskOptions {
 	taskId: string;
 	threadId: string;
 	agentId: string;
 	role: string;
 	kind: InstanceAiTaskKind;
+	executionKey: string;
 	title: string;
 	subtitle?: string;
 	goal?: string;
@@ -629,7 +638,7 @@ export interface OrchestrationContext {
 	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */
 	webhookBaseUrl?: string;
 	/** Spawn a detached background task that outlives the current orchestrator run */
-	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => void;
+	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => SpawnBackgroundTaskResult;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
 	/** Sandbox workspace — when present, enables sandbox-based workflow building */

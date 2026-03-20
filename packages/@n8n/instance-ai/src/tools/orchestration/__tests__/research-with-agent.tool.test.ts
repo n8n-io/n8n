@@ -57,7 +57,12 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 			get: jest.fn(),
 			save: jest.fn(),
 		},
-		spawnBackgroundTask: jest.fn(),
+		spawnBackgroundTask: jest.fn().mockReturnValue({
+			started: true,
+			reused: false,
+			taskId: 'research-existing',
+			executionKey: 'research:key',
+		}),
 		cancelBackgroundTask: jest.fn(),
 		...overrides,
 	};
@@ -104,10 +109,12 @@ describe('research-with-agent tool', () => {
 			const result = (await tool.execute!(
 				{ goal: 'How does Stripe webhook verification work?' },
 				{} as never,
-			)) as { result: string };
+			)) as { started: boolean; reused: boolean; result: string; taskId?: string };
 
+			expect(result.started).toBe(true);
+			expect(result.reused).toBe(false);
 			expect(result.result).toContain('Research started');
-			expect(result.result).toMatch(/task: research-/);
+			expect(result.taskId).toBe('research-existing');
 			expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
 		});
 
@@ -117,18 +124,53 @@ describe('research-with-agent tool', () => {
 
 			await tool.execute!({ goal: 'test research' }, {} as never);
 
-			expect(context.eventBus.publish).toHaveBeenCalledWith(
-				'thread-123',
-				expect.objectContaining({
-					type: 'agent-spawned',
-					runId: 'run-123',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					payload: expect.objectContaining({
-						role: 'web-researcher',
-						tools: ['web-search', 'fetch-url'],
-					}),
+			const publishMock = context.eventBus.publish as jest.Mock;
+			expect(publishMock).toHaveBeenCalledTimes(1);
+			const [threadId, event] = publishMock.mock.calls[0] as [
+				string,
+				{
+					type: string;
+					runId: string;
+					payload: {
+						role: string;
+						tools: string[];
+						taskId: string;
+					};
+				},
+			];
+			expect(threadId).toBe('thread-123');
+			expect(event.type).toBe('agent-spawned');
+			expect(event.runId).toBe('run-123');
+			expect(event.payload.role).toBe('web-researcher');
+			expect(event.payload.tools).toEqual(['web-search', 'fetch-url']);
+			expect(event.payload.taskId).toBe('research-existing');
+		});
+
+		it('reuses an active research task without publishing a new agent-spawned event', async () => {
+			const context = createMockContext({
+				spawnBackgroundTask: jest.fn().mockReturnValue({
+					started: true,
+					reused: true,
+					taskId: 'research-running',
+					executionKey: 'research:key',
 				}),
-			);
+			});
+			const tool = createResearchWithAgentTool(context);
+
+			const result = (await tool.execute!({ goal: 'test research' }, {} as never)) as {
+				started: boolean;
+				reused: boolean;
+				result: string;
+				taskId?: string;
+			};
+
+			expect(result).toMatchObject({
+				started: true,
+				reused: true,
+				taskId: 'research-running',
+			});
+			expect(result.result).toContain('already running');
+			expect(context.eventBus.publish).not.toHaveBeenCalled();
 		});
 
 		it('returns error when web-search tool is not available', async () => {
@@ -139,8 +181,14 @@ describe('research-with-agent tool', () => {
 			});
 			const tool = createResearchWithAgentTool(context);
 
-			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as { result: string };
+			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as {
+				started: boolean;
+				reused: boolean;
+				result: string;
+			};
 
+			expect(result.started).toBe(false);
+			expect(result.reused).toBe(false);
 			expect(result.result).toBe('Error: web-search tool not available.');
 			expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
 		});
@@ -151,8 +199,14 @@ describe('research-with-agent tool', () => {
 			});
 			const tool = createResearchWithAgentTool(context);
 
-			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as { result: string };
+			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as {
+				started: boolean;
+				reused: boolean;
+				result: string;
+			};
 
+			expect(result.started).toBe(false);
+			expect(result.reused).toBe(false);
 			expect(result.result).toBe('Error: background task support not available.');
 		});
 	});

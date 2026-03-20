@@ -77,6 +77,7 @@ export type {
 	OrchestrationContext,
 	BackgroundTaskListFilters,
 	SpawnBackgroundTaskOptions,
+	SpawnBackgroundTaskResult,
 	BackgroundTaskResult,
 	WorkflowSummary,
 	WorkflowDetail,

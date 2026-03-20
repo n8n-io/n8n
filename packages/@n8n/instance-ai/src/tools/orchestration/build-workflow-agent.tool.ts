@@ -20,6 +20,7 @@ import { z } from 'zod';
 
 import { BUILDER_AGENT_PROMPT, SANDBOX_BUILDER_AGENT_PROMPT } from './build-workflow-agent.prompt';
 import { truncateLabel } from './display-utils';
+import { createBackgroundTaskExecutionKey } from './execution-key';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
@@ -203,9 +204,13 @@ function buildOutcome(
 export async function startBuildWorkflowAgentTask(
 	context: OrchestrationContext,
 	input: StartBuildWorkflowAgentTaskInput,
-): Promise<{ started: boolean; result: string; taskId?: string }> {
+): Promise<{ started: boolean; reused: boolean; result: string; taskId?: string }> {
 	if (!context.spawnBackgroundTask) {
-		return { started: false, result: 'Error: background task support not available.' };
+		return {
+			started: false,
+			reused: false,
+			result: 'Error: background task support not available.',
+		};
 	}
 
 	const factory = context.builderSandboxFactory;
@@ -281,7 +286,11 @@ export async function startBuildWorkflowAgentTask(
 		}
 
 		if (!builderTools['build-workflow']) {
-			return { started: false, result: 'Error: build-workflow tool not available.' };
+			return {
+				started: false,
+				reused: false,
+				result: 'Error: build-workflow tool not available.',
+			};
 		}
 
 		prompt = BUILDER_AGENT_PROMPT;
@@ -291,24 +300,12 @@ export async function startBuildWorkflowAgentTask(
 	const subAgentId = `agent-builder-${nanoid(6)}`;
 	const taskId = `build-${nanoid(8)}`;
 	const workItemId = `wi_${nanoid(8)}`;
-
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: 'workflow-builder',
-			tools: Object.keys(builderTools),
-			taskId,
-			kind: 'builder',
-			title: 'Building workflow',
-			subtitle: truncateLabel(input.task),
-			goal: input.task,
-			targetResource: input.workflowId
-				? { type: 'workflow' as const, id: input.workflowId }
-				: { type: 'workflow' as const },
-		},
+	const executionKey = createBackgroundTaskExecutionKey({
+		kind: 'workflow-build',
+		planId: input.planId,
+		phaseId: input.phaseId,
+		targetId: input.workflowId,
+		goal: input.task,
 	});
 
 	const { workflowId } = input;
@@ -332,12 +329,13 @@ export async function startBuildWorkflowAgentTask(
 		? `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`
 		: `${input.task}${iterationContext ? `\n\n${iterationContext}` : ''}`;
 
-	context.spawnBackgroundTask({
+	const spawnResult = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'workflow-builder',
 		kind: 'workflow-build',
+		executionKey,
 		title: 'Building workflow',
 		subtitle: truncateLabel(input.task),
 		goal: input.task,
@@ -589,10 +587,42 @@ export async function startBuildWorkflowAgentTask(
 		},
 	});
 
+	if (!spawnResult.started) {
+		return {
+			started: false,
+			reused: false,
+			result: spawnResult.error ?? 'Error: failed to start workflow build.',
+		};
+	}
+
+	if (!spawnResult.reused) {
+		context.eventBus.publish(context.threadId, {
+			type: 'agent-spawned',
+			runId: context.runId,
+			agentId: subAgentId,
+			payload: {
+				parentId: context.orchestratorAgentId,
+				role: 'workflow-builder',
+				tools: Object.keys(builderTools),
+				taskId: spawnResult.taskId,
+				kind: 'builder',
+				title: 'Building workflow',
+				subtitle: truncateLabel(input.task),
+				goal: input.task,
+				targetResource: input.workflowId
+					? { type: 'workflow' as const, id: input.workflowId }
+					: { type: 'workflow' as const },
+			},
+		});
+	}
+
 	return {
 		started: true,
-		result: `Workflow build started (task: ${taskId}). Acknowledge briefly and move on.`,
-		taskId,
+		reused: spawnResult.reused,
+		result: spawnResult.reused
+			? `Workflow build already running (task: ${spawnResult.taskId}). Acknowledge briefly and move on.`
+			: `Workflow build started (task: ${spawnResult.taskId}). Acknowledge briefly and move on.`,
+		taskId: spawnResult.taskId,
 	};
 }
 
@@ -623,6 +653,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 		}),
 		outputSchema: z.object({
 			started: z.boolean(),
+			reused: z.boolean(),
 			result: z.string(),
 			taskId: z.string().optional(),
 		}),

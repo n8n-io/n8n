@@ -60,6 +60,7 @@ import type {
 	OrchestrationContext,
 	SandboxConfig,
 	SpawnBackgroundTaskOptions,
+	SpawnBackgroundTaskResult,
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -122,6 +123,7 @@ interface BackgroundTask {
 	role: string;
 	agentId: string;
 	kind: InstanceAiTaskKind;
+	executionKey: string;
 	title: string;
 	subtitle?: string;
 	goal?: string;
@@ -878,6 +880,7 @@ export class InstanceAiService {
 			threadId: task.threadId,
 			originRunId: task.runId,
 			messageGroupId: task.messageGroupId,
+			executionKey: task.executionKey,
 			agentId: task.agentId,
 			role: task.role,
 			kind: task.kind,
@@ -974,6 +977,13 @@ export class InstanceAiService {
 		return [...this.backgroundTasks.values()].filter(
 			(task) => task.threadId === threadId && this.isTaskActive(task),
 		);
+	}
+
+	private getActiveTaskByExecutionKey(
+		threadId: string,
+		executionKey: string,
+	): BackgroundTask | undefined {
+		return this.getActiveTasks(threadId).find((task) => task.executionKey === executionKey);
 	}
 
 	private getActivePlanTasks(threadId: string, planId: string): BackgroundTask[] {
@@ -2587,23 +2597,28 @@ export class InstanceAiService {
 		runId: string,
 		opts: SpawnBackgroundTaskOptions,
 		snapshotStorage: AgentTreeSnapshotStorage,
-	): void {
+	): SpawnBackgroundTaskResult {
+		const existingTask = this.getActiveTaskByExecutionKey(opts.threadId, opts.executionKey);
+		if (existingTask) {
+			return {
+				started: true,
+				reused: true,
+				taskId: existingTask.taskId,
+				executionKey: existingTask.executionKey,
+			};
+		}
+
 		// Enforce per-thread concurrent task limit
 		const runningCount = [...this.backgroundTasks.values()].filter(
 			(t) => t.threadId === opts.threadId && this.isTaskActive(t),
 		).length;
 		if (runningCount >= this.MAX_BACKGROUND_TASKS_PER_THREAD) {
-			this.publishEvent(opts.threadId, {
-				type: 'agent-completed',
-				runId,
-				agentId: opts.agentId,
-				payload: {
-					role: opts.role,
-					result: '',
-					error: `Cannot start background task: limit of ${this.MAX_BACKGROUND_TASKS_PER_THREAD} concurrent tasks reached. Wait for existing tasks to complete.`,
-				},
-			});
-			return;
+			return {
+				started: false,
+				reused: false,
+				executionKey: opts.executionKey,
+				error: `Cannot start background task: limit of ${this.MAX_BACKGROUND_TASKS_PER_THREAD} concurrent tasks reached. Wait for existing tasks to complete.`,
+			};
 		}
 
 		const abortController = new AbortController();
@@ -2620,6 +2635,7 @@ export class InstanceAiService {
 			role: opts.role,
 			agentId: opts.agentId,
 			kind: opts.kind,
+			executionKey: opts.executionKey,
 			title: opts.title,
 			subtitle: opts.subtitle,
 			goal: opts.goal,
@@ -2754,6 +2770,13 @@ export class InstanceAiService {
 			}
 			this.maybeCleanupThreadState(opts.threadId);
 		})();
+
+		return {
+			started: true,
+			reused: false,
+			taskId: task.taskId,
+			executionKey: task.executionKey,
+		};
 	}
 
 	/** Cancel all background tasks for a thread. */

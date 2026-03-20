@@ -235,6 +235,7 @@ export const instanceAiTaskRunSchema = z.object({
 	threadId: z.string(),
 	originRunId: z.string().optional(),
 	messageGroupId: z.string().optional(),
+	executionKey: z.string().optional(),
 	agentId: z.string(),
 	role: z.string(),
 	kind: instanceAiTaskKindSchema,

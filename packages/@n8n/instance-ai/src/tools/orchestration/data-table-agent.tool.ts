@@ -14,6 +14,7 @@ import { z } from 'zod';
 
 import { DATA_TABLE_AGENT_PROMPT } from './data-table-agent.prompt';
 import { truncateLabel } from './display-utils';
+import { createBackgroundTaskExecutionKey } from './execution-key';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
@@ -67,7 +68,7 @@ function buildDataTableOutcome(text: string) {
 export function startDataTableAgentTask(
 	context: OrchestrationContext,
 	input: StartDataTableAgentTaskInput,
-): { result: string; taskId: string } {
+): { started: boolean; reused: boolean; result: string; taskId?: string } {
 	const dataTableTools: ToolsInput = {};
 	for (const name of DATA_TABLE_TOOL_NAMES) {
 		if (name in context.domainTools) {
@@ -76,42 +77,37 @@ export function startDataTableAgentTask(
 	}
 
 	if (Object.keys(dataTableTools).length === 0) {
-		return { result: 'Error: no data table tools available.', taskId: '' };
+		return {
+			started: false,
+			reused: false,
+			result: 'Error: no data table tools available.',
+		};
 	}
 
 	if (!context.spawnBackgroundTask) {
 		return {
+			started: false,
+			reused: false,
 			result: 'Error: background task support not available.',
-			taskId: '',
 		};
 	}
 
 	const subAgentId = `agent-datatable-${nanoid(6)}`;
 	const taskId = `datatable-${nanoid(8)}`;
-
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: 'data-table-manager',
-			tools: Object.keys(dataTableTools),
-			taskId,
-			kind: 'data-table',
-			title: 'Managing data table',
-			subtitle: truncateLabel(input.task),
-			goal: input.task,
-			targetResource: { type: 'data-table' as const },
-		},
+	const executionKey = createBackgroundTaskExecutionKey({
+		kind: 'data-table',
+		planId: input.planId,
+		phaseId: input.phaseId,
+		goal: input.task,
 	});
 
-	context.spawnBackgroundTask({
+	const spawnResult = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'data-table-manager',
 		kind: 'data-table',
+		executionKey,
 		title: 'Managing data table',
 		subtitle: truncateLabel(input.task),
 		goal: input.task,
@@ -181,9 +177,40 @@ export function startDataTableAgentTask(
 		},
 	});
 
+	if (!spawnResult.started) {
+		return {
+			started: false,
+			reused: false,
+			result: spawnResult.error ?? 'Error: failed to start data table task.',
+		};
+	}
+
+	if (!spawnResult.reused) {
+		context.eventBus.publish(context.threadId, {
+			type: 'agent-spawned',
+			runId: context.runId,
+			agentId: subAgentId,
+			payload: {
+				parentId: context.orchestratorAgentId,
+				role: 'data-table-manager',
+				tools: Object.keys(dataTableTools),
+				taskId: spawnResult.taskId,
+				kind: 'data-table',
+				title: 'Managing data table',
+				subtitle: truncateLabel(input.task),
+				goal: input.task,
+				targetResource: { type: 'data-table' as const },
+			},
+		});
+	}
+
 	return {
-		result: `Data table operation started (task: ${taskId}). Acknowledge briefly and move on.`,
-		taskId,
+		started: true,
+		reused: spawnResult.reused,
+		result: spawnResult.reused
+			? `Data table operation already running (task: ${spawnResult.taskId}). Acknowledge briefly and move on.`
+			: `Data table operation started (task: ${spawnResult.taskId}). Acknowledge briefly and move on.`,
+		taskId: spawnResult.taskId,
 	};
 }
 
@@ -204,12 +231,15 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 			phaseId: z.string().optional().describe('Phase ID for task/phase tracking.'),
 		}),
 		outputSchema: z.object({
+			started: z.boolean(),
+			reused: z.boolean(),
 			result: z.string(),
+			taskId: z.string().optional(),
 		}),
 		execute: async (input) => {
-			const { result } = startDataTableAgentTask(context, input);
+			const result = startDataTableAgentTask(context, input);
 			await Promise.resolve();
-			return { result };
+			return result;
 		},
 	});
 }

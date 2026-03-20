@@ -11,13 +11,15 @@ export function createRunWorkflowTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'run-workflow',
 		description:
-			'Execute a workflow, wait for completion (with timeout), and return the full result including output data and any errors. Default timeout is 5 minutes.',
+			'Execute a workflow, wait for completion (with timeout), and return the full result including output data and any errors. For webhook triggers, pass only the parsed request body as inputData, not an envelope like { body: ... }, because the tool constructs the webhook shape automatically. Default timeout is 5 minutes.',
 		inputSchema: z.object({
 			workflowId: z.string().describe('ID of the workflow to execute'),
 			inputData: z
 				.record(z.unknown())
 				.optional()
-				.describe('Input data passed to the workflow trigger'),
+				.describe(
+					'Input data passed to the workflow trigger. For webhook triggers, pass only the parsed request body, not an envelope like { body: ... }.',
+				),
 			timeout: z
 				.number()
 				.int()

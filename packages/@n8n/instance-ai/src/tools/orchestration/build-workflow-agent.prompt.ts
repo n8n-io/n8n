@@ -631,6 +631,8 @@ Supported input types: \`string\`, \`number\`, \`boolean\`, \`array\`, \`object\
 1. Write the chunk file, then submit it: \`submit-workflow\` with the chunk file path.
    - Sub-workflows with \`executeWorkflowTrigger\` are **auto-activated** on submission. The response will include \`activated: true\`.
 2. Run the chunk: \`run-workflow\` with \`inputData\` matching the trigger schema.
+   - For \`webhook\` triggers, pass only the parsed HTTP request body as \`inputData\` (for example \`{ title, description, deadline }\`), **not** an envelope like \`{ body: { ... } }\`.
+   - The \`run-workflow\` tool automatically wraps webhook test input into the webhook shape with \`headers\`, \`query\`, and \`body\`.
 3. If it fails, use \`debug-execution\` to investigate, fix, and re-submit.
 
 ### Step 3: Compose chunks in the main workflow
