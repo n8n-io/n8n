@@ -1,4 +1,5 @@
 import { SamlAcsDto, SamlPreferences, SamlToggleDto } from '@n8n/api-types';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import { Response } from 'express';
@@ -52,6 +53,7 @@ export class SamlController {
 		const prefs = this.samlService.samlPreferences;
 		return {
 			...prefs,
+			signingPrivateKey: prefs.signingPrivateKey ? CREDENTIAL_BLANKING_VALUE : undefined,
 			entityID: getServiceProviderEntityId(),
 			returnUrl: getServiceProviderReturnUrl(),
 		};
