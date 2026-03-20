@@ -164,14 +164,50 @@ export async function getSchemas(
 		return { results: allSchemas };
 	} catch (e) {
 		return {
-			results: [
-				{
-					name: `Error loading schemas: ${e instanceof Error ? e.message : String(e)}`,
-					value: '',
-				},
-			],
+			results: [{ name: `Error loading schemas for catalog: ${selectedCatalog}`, value: '' }],
 		};
 	}
+}
+
+async function fetchResourcesInSchema<T extends { name: string }>(
+	context: ILoadOptionsFunctions,
+	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	host: string,
+	apiPath: string,
+	catalogName: string,
+	schemaName: string,
+	responseKey: string,
+): Promise<T[]> {
+	const response = (await context.helpers.httpRequestWithAuthentication.call(
+		context,
+		credentialType,
+		{
+			method: 'GET',
+			url: `${host}${apiPath}?catalog_name=${catalogName}&schema_name=${schemaName}`,
+			headers: { Accept: 'application/json' },
+			json: true,
+		},
+	)) as Record<string, T[] | undefined>;
+	return response[responseKey] ?? [];
+}
+
+function getSelectedCatalogAndSchema(context: ILoadOptionsFunctions): {
+	selectedCatalog: string | undefined;
+	selectedSchema: string | undefined;
+} {
+	let selectedCatalog: string | undefined;
+	let selectedSchema: string | undefined;
+	try {
+		selectedCatalog =
+			extractResourceLocatorValue(context.getCurrentNodeParameter('catalogName') as unknown) ||
+			undefined;
+		selectedSchema =
+			extractResourceLocatorValue(context.getCurrentNodeParameter('schemaName') as unknown) ||
+			undefined;
+	} catch (e) {
+		// Parameters may not be available in all contexts
+	}
+	return { selectedCatalog, selectedSchema };
 }
 
 export async function getVolumes(
@@ -180,80 +216,55 @@ export async function getVolumes(
 ): Promise<INodeListSearchResult> {
 	const credentialType = getActiveCredentialType(this);
 	const host = await getHost(this, credentialType);
+	const { selectedCatalog, selectedSchema } = getSelectedCatalogAndSchema(this);
 
-	const allVolumes: Array<{ name: string; value: string; description: string; url?: string }> = [];
-
-	const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
-		this,
-		credentialType,
-		{
-			method: 'GET',
-			url: `${host}/api/2.1/unity-catalog/catalogs`,
-			headers: { Accept: 'application/json' },
-			json: true,
-		},
-	)) as { catalogs?: Array<{ name: string }> };
-
-	const catalogs = catalogsResponse.catalogs ?? [];
-
-	for (const catalog of catalogs) {
-		try {
-			const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
-				this,
-				credentialType,
-				{
-					method: 'GET',
-					url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
-					headers: { Accept: 'application/json' },
-					json: true,
-				},
-			)) as { schemas?: Array<{ name: string }> };
-
-			const schemas = schemasResponse.schemas ?? [];
-
-			for (const schema of schemas) {
-				try {
-					const volumesResponse = (await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						credentialType,
-						{
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/volumes?catalog_name=${catalog.name}&schema_name=${schema.name}`,
-							headers: { Accept: 'application/json' },
-							json: true,
-						},
-					)) as { volumes?: Array<{ name: string; volume_type?: string }> };
-
-					for (const volume of volumesResponse.volumes ?? []) {
-						const fullPath = `${catalog.name}.${schema.name}.${volume.name}`;
-						allVolumes.push({
-							name: fullPath,
-							value: fullPath,
-							description: `${catalog.name} / ${schema.name}${volume.volume_type ? ` (${volume.volume_type})` : ''}`,
-							url: `${host}/explore/data/${catalog.name}/${schema.name}/${volume.name}`,
-						});
-					}
-				} catch (e) {
-					// Skip if can't access volumes in this schema
-				}
-			}
-		} catch (e) {
-			// Skip if can't access schemas in this catalog
-		}
+	if (!selectedCatalog) {
+		return { results: [{ name: 'Please Select a Catalog First', value: '' }] };
+	}
+	if (!selectedSchema) {
+		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
 	}
 
-	if (filter) {
-		const filterLower = filter.toLowerCase();
+	try {
+		const volumes = await fetchResourcesInSchema<{ name: string; volume_type?: string }>(
+			this,
+			credentialType,
+			host,
+			'/api/2.1/unity-catalog/volumes',
+			selectedCatalog,
+			selectedSchema,
+			'volumes',
+		);
+
+		const allResults = volumes.map((volume) => {
+			const fullPath = `${selectedCatalog}.${selectedSchema}.${volume.name}`;
+			return {
+				name: fullPath,
+				value: fullPath,
+				description: `${selectedCatalog} / ${selectedSchema}${volume.volume_type ? ` (${volume.volume_type})` : ''}`,
+				url: `${host}/explore/data/${selectedCatalog}/${selectedSchema}/${volume.name}`,
+			};
+		});
+
+		if (filter) {
+			const filterLower = filter.toLowerCase();
+			return {
+				results: allResults.filter(
+					(r) =>
+						r.name.toLowerCase().includes(filterLower) ||
+						r.description.toLowerCase().includes(filterLower),
+				),
+			};
+		}
+
+		return { results: allResults };
+	} catch (e) {
 		return {
-			results: allVolumes.filter(
-				(r) =>
-					r.name.toLowerCase().includes(filterLower) ||
-					r.description.toLowerCase().includes(filterLower),
-			),
+			results: [
+				{ name: `Error loading volumes for ${selectedCatalog}.${selectedSchema}`, value: '' },
+			],
 		};
 	}
-
-	return { results: allVolumes };
 }
 
 export async function getTables(
@@ -262,80 +273,59 @@ export async function getTables(
 ): Promise<INodeListSearchResult> {
 	const credentialType = getActiveCredentialType(this);
 	const host = await getHost(this, credentialType);
+	const { selectedCatalog, selectedSchema } = getSelectedCatalogAndSchema(this);
 
-	const allTables: Array<{ name: string; value: string; description: string; url?: string }> = [];
-
-	const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
-		this,
-		credentialType,
-		{
-			method: 'GET',
-			url: `${host}/api/2.1/unity-catalog/catalogs`,
-			headers: { Accept: 'application/json' },
-			json: true,
-		},
-	)) as { catalogs?: Array<{ name: string }> };
-
-	const catalogs = catalogsResponse.catalogs ?? [];
-
-	for (const catalog of catalogs) {
-		try {
-			const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
-				this,
-				credentialType,
-				{
-					method: 'GET',
-					url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
-					headers: { Accept: 'application/json' },
-					json: true,
-				},
-			)) as { schemas?: Array<{ name: string }> };
-
-			const schemas = schemasResponse.schemas ?? [];
-
-			for (const schema of schemas) {
-				try {
-					const tablesResponse = (await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						credentialType,
-						{
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/tables?catalog_name=${catalog.name}&schema_name=${schema.name}`,
-							headers: { Accept: 'application/json' },
-							json: true,
-						},
-					)) as { tables?: Array<{ name: string; table_type?: string }> };
-
-					for (const table of tablesResponse.tables ?? []) {
-						const fullPath = `${catalog.name}.${schema.name}.${table.name}`;
-						allTables.push({
-							name: fullPath,
-							value: fullPath,
-							description: `${catalog.name} / ${schema.name}${table.table_type ? ` (${table.table_type})` : ''}`,
-							url: `${host}/explore/data/${catalog.name}/${schema.name}/${table.name}`,
-						});
-					}
-				} catch (e) {
-					// Skip if can't access tables in this schema
-				}
-			}
-		} catch (e) {
-			// Skip if can't access schemas in this catalog
-		}
+	if (!selectedCatalog) {
+		return { results: [{ name: 'Please Select a Catalog First', value: '' }] };
+	}
+	if (!selectedSchema) {
+		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
 	}
 
-	if (filter) {
-		const filterLower = filter.toLowerCase();
+	try {
+		const tables = await fetchResourcesInSchema<{ name: string; table_type?: string }>(
+			this,
+			credentialType,
+			host,
+			'/api/2.1/unity-catalog/tables',
+			selectedCatalog,
+			selectedSchema,
+			'tables',
+		);
+
+		const allResults = tables.map((table) => {
+			const fullPath = `${selectedCatalog}.${selectedSchema}.${table.name}`;
+			return {
+				name: fullPath,
+				value: fullPath,
+				description: `${selectedCatalog} / ${selectedSchema}${table.table_type ? ` (${table.table_type})` : ''}`,
+				url: `${host}/explore/data/${selectedCatalog}/${selectedSchema}/${table.name}`,
+			};
+		});
+
+		if (filter) {
+			const filterLower = filter.toLowerCase();
+			return {
+				results: allResults.filter(
+					(r) =>
+						r.name.toLowerCase().includes(filterLower) ||
+						r.description.toLowerCase().includes(filterLower),
+				),
+			};
+		}
+
+		return { results: allResults };
+	} catch (e) {
+		const message = e instanceof Error ? e.message : String(e);
 		return {
-			results: allTables.filter(
-				(r) =>
-					r.name.toLowerCase().includes(filterLower) ||
-					r.description.toLowerCase().includes(filterLower),
-			),
+			results: [
+				{
+					name: `Error loading tables for ${selectedCatalog}.${selectedSchema}: ${message}`,
+					value: '',
+				},
+			],
 		};
 	}
-
-	return { results: allTables };
 }
 
 export async function getFunctions(
@@ -344,79 +334,53 @@ export async function getFunctions(
 ): Promise<INodeListSearchResult> {
 	const credentialType = getActiveCredentialType(this);
 	const host = await getHost(this, credentialType);
+	const { selectedCatalog, selectedSchema } = getSelectedCatalogAndSchema(this);
 
-	const allFunctions: Array<{ name: string; value: string; description: string; url?: string }> =
-		[];
-
-	const catalogsResponse = (await this.helpers.httpRequestWithAuthentication.call(
-		this,
-		credentialType,
-		{
-			method: 'GET',
-			url: `${host}/api/2.1/unity-catalog/catalogs`,
-			headers: { Accept: 'application/json' },
-			json: true,
-		},
-	)) as { catalogs?: Array<{ name: string }> };
-
-	const catalogs = catalogsResponse.catalogs ?? [];
-
-	for (const catalog of catalogs) {
-		try {
-			const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
-				this,
-				credentialType,
-				{
-					method: 'GET',
-					url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${catalog.name}`,
-					headers: { Accept: 'application/json' },
-					json: true,
-				},
-			)) as { schemas?: Array<{ name: string }> };
-
-			const schemas = schemasResponse.schemas ?? [];
-
-			for (const schema of schemas) {
-				try {
-					const functionsResponse = (await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						credentialType,
-						{
-							method: 'GET',
-							url: `${host}/api/2.1/unity-catalog/functions?catalog_name=${catalog.name}&schema_name=${schema.name}`,
-							headers: { Accept: 'application/json' },
-							json: true,
-						},
-					)) as { functions?: Array<{ name: string; data_type?: string }> };
-
-					for (const func of functionsResponse.functions ?? []) {
-						const fullPath = `${catalog.name}.${schema.name}.${func.name}`;
-						allFunctions.push({
-							name: fullPath,
-							value: fullPath,
-							description: `${catalog.name} / ${schema.name}${func.data_type ? ` → ${func.data_type}` : ''}`,
-							url: `${host}/explore/data/${catalog.name}/${schema.name}/${func.name}`,
-						});
-					}
-				} catch (e) {
-					// Skip if can't access functions in this schema
-				}
-			}
-		} catch (e) {
-			// Skip if can't access schemas in this catalog
-		}
+	if (!selectedCatalog) {
+		return { results: [{ name: 'Please Select a Catalog First', value: '' }] };
+	}
+	if (!selectedSchema) {
+		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
 	}
 
-	if (filter) {
-		const filterLower = filter.toLowerCase();
+	try {
+		const functions = await fetchResourcesInSchema<{ name: string; data_type?: string }>(
+			this,
+			credentialType,
+			host,
+			'/api/2.1/unity-catalog/functions',
+			selectedCatalog,
+			selectedSchema,
+			'functions',
+		);
+
+		const allResults = functions.map((func) => {
+			const fullPath = `${selectedCatalog}.${selectedSchema}.${func.name}`;
+			return {
+				name: fullPath,
+				value: fullPath,
+				description: `${selectedCatalog} / ${selectedSchema}${func.data_type ? ` → ${func.data_type}` : ''}`,
+				url: `${host}/explore/data/${selectedCatalog}/${selectedSchema}/${func.name}`,
+			};
+		});
+
+		if (filter) {
+			const filterLower = filter.toLowerCase();
+			return {
+				results: allResults.filter(
+					(r) =>
+						r.name.toLowerCase().includes(filterLower) ||
+						r.description.toLowerCase().includes(filterLower),
+				),
+			};
+		}
+
+		return { results: allResults };
+	} catch (e) {
 		return {
-			results: allFunctions.filter(
-				(r) =>
-					r.name.toLowerCase().includes(filterLower) ||
-					r.description.toLowerCase().includes(filterLower),
-			),
+			results: [
+				{ name: `Error loading functions for ${selectedCatalog}.${selectedSchema}`, value: '' },
+			],
 		};
 	}
-
-	return { results: allFunctions };
 }
