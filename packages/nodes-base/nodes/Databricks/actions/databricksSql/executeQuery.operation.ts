@@ -1,13 +1,13 @@
 import { NodeOperationError, sleep } from 'n8n-workflow';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { getActiveCredentialType, getHost } from '../helpers';
+import { extractResourceLocatorValue, getActiveCredentialType, getHost } from '../helpers';
 import type { DatabricksStatementResponse } from '../interfaces';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
 	const host = await getHost(this, credentialType);
-	const warehouseId = this.getNodeParameter('warehouseId', i) as { mode: string; value: string };
+	const warehouseId = extractResourceLocatorValue(this.getNodeParameter('warehouseId', i));
 	const query = this.getNodeParameter('query', i) as string;
 	const rawParams = this.getNodeParameter('queryParameters.parameters', i, []) as Array<{
 		name: string;
@@ -31,7 +31,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			method: 'POST',
 			url: `${host}/api/2.0/sql/statements`,
 			body: {
-				warehouse_id: warehouseId.value,
+				warehouse_id: warehouseId,
 				statement: query,
 				wait_timeout: '50s',
 				on_wait_timeout: 'CONTINUE',
