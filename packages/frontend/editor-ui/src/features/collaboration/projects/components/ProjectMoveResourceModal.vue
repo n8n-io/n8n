@@ -16,8 +16,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { ProjectTypes } from '../projects.types';
 import type { ProjectListItem, ProjectSharingData } from '../projects.types';
-// ProjectListItem extends ProjectSharingData with `role` - the toast component types
-// expect ProjectListItem but only uses fields from ProjectSharingData (name, type).
 import {
 	useAvailableProjectSearch,
 	getTruncatedProjectName,

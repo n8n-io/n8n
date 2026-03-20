@@ -4,14 +4,14 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { ResourceType } from '../projects.utils';
-import type { ProjectListItem } from '../projects.types';
+import type { ProjectSharingData } from '../projects.types';
 import ProjectMoveSuccessToastMessage from '../components/ProjectMoveSuccessToastMessage.vue';
 
 interface ShowMoveToProjectToastOptions {
 	resourceType: Exclude<ResourceType, 'dataTable'>;
 	resourceTypeLabel: string;
 	resourceName: string;
-	targetProject: ProjectListItem;
+	targetProject: ProjectSharingData;
 	targetProjectName: string;
 	destinationFolderId?: string;
 	shareUsedCredentials: boolean;
