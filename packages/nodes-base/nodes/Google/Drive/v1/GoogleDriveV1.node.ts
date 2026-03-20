@@ -2722,9 +2722,17 @@ export class GoogleDriveV1 implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {
-						items[i].json = { error: error.message };
+						// Return a dedicated error item so the workflow engine can move it to the
+						// error output instead of treating the download as a silent empty result.
+						items[i] = {
+							json: { error: error instanceof Error ? error.message : 'Unknown error' },
+							pairedItem: { item: i },
+						};
 					} else {
-						returnData.push({ json: { error: error.message } });
+						returnData.push({
+							json: { error: error instanceof Error ? error.message : 'Unknown error' },
+							pairedItem: { item: i },
+						});
 					}
 					continue;
 				}
