@@ -57,7 +57,7 @@ function goToUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-users');
 }
 
-const { state, isLoading } = useAsyncState(async () => {
+const { state } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
 	return {
 		personalSpacePublishing: settings.personalSpacePublishing,

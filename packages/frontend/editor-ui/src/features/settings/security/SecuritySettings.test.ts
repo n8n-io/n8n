@@ -355,7 +355,7 @@ describe('SecuritySettings', () => {
 	it('should not show personal space toggles before settings are loaded', async () => {
 		let resolveSettings: (value: typeof defaultSettings) => void = () => {};
 		getSecuritySettings.mockImplementation(
-			() => new Promise((resolve) => (resolveSettings = resolve)),
+			async () => new Promise((resolve) => (resolveSettings = resolve)),
 		);
 
 		const { queryByTestId } = renderView();
