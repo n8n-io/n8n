@@ -18,13 +18,9 @@ const i18n = useI18n();
 const isOpen = ref(false);
 const dropdownRef = ref<HTMLElement>();
 
-onClickOutside(
-	dropdownRef,
-	() => {
-		isOpen.value = false;
-	},
-	{ ignore: ['.n8n-tooltip'] },
-);
+onClickOutside(dropdownRef, () => {
+	isOpen.value = false;
+});
 
 const hasCredits = computed(() => {
 	return props.creditsQuota !== undefined && props.creditsRemaining !== undefined;
