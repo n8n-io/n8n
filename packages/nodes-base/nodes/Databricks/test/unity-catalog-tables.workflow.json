@@ -38,6 +38,14 @@
 			"parameters": {
 				"resource": "unityCatalog",
 				"operation": "getTable",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				},
 				"fullName": {
 					"mode": "string",
 					"value": "main.default.my_table"
@@ -87,6 +95,14 @@
 			"parameters": {
 				"resource": "unityCatalog",
 				"operation": "deleteTable",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				},
 				"fullName": {
 					"mode": "string",
 					"value": "main.default.old_table"
