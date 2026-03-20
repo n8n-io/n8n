@@ -32,6 +32,12 @@ const inputSchema = z.object({
 		.describe(
 			'Pin data for all workflow nodes. Use the prepare_test_pin_data tool to generate this. Keys are node names, values are arrays of items. Each item MUST be wrapped in a "json" property, e.g. [{"json": {"id": "123", "name": "test"}}]. Do NOT pass flat objects like [{"id": "123"}].',
 		),
+	triggerNodeName: z
+		.string()
+		.optional()
+		.describe(
+			'Optional name of the trigger node to start execution from. Useful for workflows with multiple triggers. Defaults to the first trigger node found.',
+		),
 });
 
 type TestWorkflowOutput = {
@@ -71,11 +77,15 @@ export const createTestWorkflowTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ workflowId, pinData }: z.infer<typeof inputSchema>) => {
+	handler: async ({ workflowId, pinData, triggerNodeName }: z.infer<typeof inputSchema>) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'test_workflow',
-			parameters: { workflowId, nodeCount: Object.keys(pinData).length },
+			parameters: {
+				workflowId,
+				nodeCount: Object.keys(pinData).length,
+				hasTriggerNodeName: !!triggerNodeName,
+			},
 		};
 
 		try {
@@ -88,6 +98,7 @@ export const createTestWorkflowTool = (
 				mcpService,
 				workflowId,
 				pinData as IPinData,
+				triggerNodeName,
 			);
 
 			telemetryPayload.results = {
@@ -144,6 +155,7 @@ export async function testWorkflow(
 	mcpService: McpService,
 	workflowId: string,
 	pinData: IPinData,
+	triggerNodeName?: string,
 ): Promise<TestWorkflowOutput> {
 	const workflow = await getMcpWorkflow(
 		workflowId,
@@ -156,10 +168,12 @@ export async function testWorkflow(
 	const connections = workflow.connections ?? {};
 
 	// Find the trigger node — support any trigger type
-	const triggerNode = findTriggerNode(nodes, nodeTypes);
+	const triggerNode = findTriggerNode(nodes, nodeTypes, triggerNodeName);
 	if (!triggerNode) {
 		throw new WorkflowAccessError(
-			'Workflow has no trigger node. A trigger node is required to test the workflow.',
+			triggerNodeName
+				? `Trigger node "${triggerNodeName}" not found in the workflow. Check the node name and ensure it is a trigger node.`
+				: 'Workflow has no trigger node. A trigger node is required to test the workflow.',
 			'unsupported_trigger',
 		);
 	}
@@ -222,12 +236,18 @@ export async function testWorkflow(
 }
 
 /**
- * Find the first trigger node in the workflow.
- * Supports any node type with group.includes('trigger').
+ * Find a trigger node in the workflow.
+ * When triggerNodeName is provided, returns that specific node if it is a trigger.
+ * Otherwise returns the first trigger node found.
  */
-function findTriggerNode(nodes: INode[], nodeTypes: NodeTypes): INode | undefined {
+function findTriggerNode(
+	nodes: INode[],
+	nodeTypes: NodeTypes,
+	triggerNodeName?: string,
+): INode | undefined {
 	for (const node of nodes) {
 		if (node.disabled) continue;
+		if (triggerNodeName && node.name !== triggerNodeName) continue;
 		try {
 			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			if (isTriggerNode(nodeType.description)) {
