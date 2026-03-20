@@ -1,6 +1,17 @@
 export { Z, type ZodClass } from './zod-class';
 export type * from './datetime';
 export * from './dto';
+export {
+	AI_GATEWAY_MODEL_CATEGORIES,
+	AI_GATEWAY_CREDENTIAL_TYPE,
+	AI_GATEWAY_MODEL_CATEGORY_MAP,
+	AI_GATEWAY_MODEL_CATEGORY_INFO,
+	resolveAiGatewayModel,
+	type AiGatewayModelCategory,
+	type AiGatewaySettingsResponse,
+	type AiGatewayModelCategoryResponse,
+	type AiGatewayUsageResponse,
+} from './ai-gateway';
 export type * from './push';
 export type * from './scaling';
 export type * from './frontend-settings';
