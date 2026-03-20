@@ -66,13 +66,13 @@ export const createTestWorkflowTool = (
 	name: 'test_workflow',
 	config: {
 		description:
-			'Test a workflow using pin data instead of calling external services. All nodes use the provided pin data, so no real credentials or API calls are needed. Use prepare_test_pin_data to generate the pin data first.',
+			'Test a workflow using pin data to bypass external services. Trigger nodes, nodes with credentials, and HTTP Request nodes are pinned (use simulated data). Other nodes (Set, If, Code, etc.) execute normally — including credential-free I/O nodes like Execute Command or file read/write nodes. Use prepare_test_pin_data to generate the pin data first.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
 			title: 'Test Workflow',
 			readOnlyHint: false,
-			destructiveHint: false,
+			destructiveHint: true,
 			idempotentHint: true,
 			openWorldHint: false,
 		},
