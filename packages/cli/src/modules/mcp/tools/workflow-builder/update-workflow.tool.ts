@@ -140,11 +140,21 @@ export const createUpdateWorkflowTool = (
 				}
 			}
 
-			// Strip credentials from parsed code — they may contain placeholder IDs
-			// or newCredential() markers that would fail the credential permission
-			// check. autoPopulateNodeCredentials will re-assign valid credentials.
+			// Strip newCredential() stubs from parsed code.
+			// The SDK's newCredential() serializes to undefined via toJSON(), so after
+			// deepCopy the credentials object may contain entries like { slackApi: undefined }.
+			// These would fail the credential permission check, so we remove them here.
 			for (const node of workflowUpdateData.nodes) {
-				node.credentials = undefined;
+				if (node.credentials) {
+					for (const key of Object.keys(node.credentials)) {
+						if (node.credentials[key] == null) {
+							delete node.credentials[key];
+						}
+					}
+					if (Object.keys(node.credentials).length === 0) {
+						node.credentials = undefined;
+					}
+				}
 			}
 
 			// Preserve user-configured credentials from the existing workflow.
