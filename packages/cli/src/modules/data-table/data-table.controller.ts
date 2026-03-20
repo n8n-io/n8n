@@ -32,9 +32,10 @@ import { DataTableRowReturn } from 'n8n-workflow';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { DataTableService } from './data-table.service';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
@@ -43,15 +44,14 @@ import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { FileUploadError } from './errors/data-table-file-upload.error';
-import { ProjectService } from '@/services/project.service.ee';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+
+const branchWriteAccess = createBranchWriteAccessMiddleware('data tables');
 
 @RestController('/projects/:projectId/data-tables')
 export class DataTableController {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly projectService: ProjectService,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 	) {}
 
 	private handleDataTableColumnOperationError(e: unknown): never {
@@ -74,15 +74,6 @@ export class DataTableController {
 		throw e;
 	}
 
-	private checkInstanceWriteAccess(): void {
-		const preferences = this.sourceControlPreferencesService.getPreferences();
-		if (preferences.branchReadOnly) {
-			throw new ForbiddenError(
-				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
-			);
-		}
-	}
-
 	@Middleware()
 	async validateProjectExists(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -99,14 +90,13 @@ export class DataTableController {
 		}
 	}
 
-	@Post('/')
+	@Post('/', { middlewares: [branchWriteAccess] })
 	@ProjectScope('dataTable:create')
 	async createDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Body dto: CreateDataTableDto,
 	) {
-		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.createDataTable(req.params.projectId, dto);
 		} catch (e: unknown) {
@@ -138,7 +128,7 @@ export class DataTableController {
 		});
 	}
 
-	@Patch('/:dataTableId')
+	@Patch('/:dataTableId', { middlewares: [branchWriteAccess] })
 	@ProjectScope('dataTable:update')
 	async updateDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -146,7 +136,6 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: UpdateDataTableDto,
 	) {
-		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.updateDataTable(dataTableId, req.params.projectId, dto);
 		} catch (e: unknown) {
@@ -162,14 +151,13 @@ export class DataTableController {
 		}
 	}
 
-	@Delete('/:dataTableId')
+	@Delete('/:dataTableId', { middlewares: [branchWriteAccess] })
 	@ProjectScope('dataTable:delete')
 	async deleteDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataTableId') dataTableId: string,
 	) {
-		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.deleteDataTable(dataTableId, req.params.projectId);
 		} catch (e: unknown) {
@@ -203,7 +191,7 @@ export class DataTableController {
 		}
 	}
 
-	@Post('/:dataTableId/columns')
+	@Post('/:dataTableId/columns', { middlewares: [branchWriteAccess] })
 	@ProjectScope('dataTable:update')
 	async addColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -211,7 +199,6 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: AddDataTableColumnDto,
 	) {
-		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.addColumn(dataTableId, req.params.projectId, dto);
 		} catch (e: unknown) {
@@ -219,7 +206,7 @@ export class DataTableController {
 		}
 	}
 
-	@Delete('/:dataTableId/columns/:columnId')
+	@Delete('/:dataTableId/columns/:columnId', { middlewares: [branchWriteAccess] })
 	@ProjectScope('dataTable:update')
 	async deleteColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -227,7 +214,6 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Param('columnId') columnId: string,
 	) {
-		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.deleteColumn(dataTableId, req.params.projectId, columnId);
 		} catch (e: unknown) {
@@ -235,7 +221,7 @@ export class DataTableController {
 		}
 	}
 
-	@Patch('/:dataTableId/columns/:columnId/move')
+	@Patch('/:dataTableId/columns/:columnId/move', { middlewares: [branchWriteAccess] })
 	@ProjectScope('dataTable:update')
 	async moveColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -244,7 +230,6 @@ export class DataTableController {
 		@Param('columnId') columnId: string,
 		@Body dto: MoveDataTableColumnDto,
 	) {
-		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.moveColumn(
 				dataTableId,
@@ -257,7 +242,7 @@ export class DataTableController {
 		}
 	}
 
-	@Patch('/:dataTableId/columns/:columnId/rename')
+	@Patch('/:dataTableId/columns/:columnId/rename', { middlewares: [branchWriteAccess] })
 	@ProjectScope('dataTable:update')
 	async renameColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -266,7 +251,6 @@ export class DataTableController {
 		@Param('columnId') columnId: string,
 		@Body dto: RenameDataTableColumnDto,
 	) {
-		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.renameColumn(
 				dataTableId,
@@ -345,7 +329,7 @@ export class DataTableController {
 		dataTableId: string,
 		dto: AddDataTableRowsDto & { returnType?: T },
 	): Promise<Array<T extends true ? DataTableRowReturn : Pick<DataTableRowReturn, 'id'>>>;
-	@Post('/:dataTableId/insert')
+	@Post('/:dataTableId/insert', { middlewares: [branchWriteAccess] })
 	@ProjectScope('dataTable:writeRow')
 	async appendDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -353,7 +337,6 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: AddDataTableRowsDto,
 	) {
-		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.insertRows(
 				dataTableId,
@@ -374,7 +357,7 @@ export class DataTableController {
 		}
 	}
 
-	@Post('/:dataTableId/import-csv')
+	@Post('/:dataTableId/import-csv', { middlewares: [branchWriteAccess] })
 	@ProjectScope('dataTable:writeRow')
 	async importCsvToDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -382,7 +365,6 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: ImportCsvToDataTableDto,
 	) {
-		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.importCsvToExistingTable(
 				dataTableId,
@@ -404,7 +386,7 @@ export class DataTableController {
 		}
 	}
 
-	@Post('/:dataTableId/upsert')
+	@Post('/:dataTableId/upsert', { middlewares: [branchWriteAccess] })
 	@ProjectScope('dataTable:writeRow')
 	async upsertDataTableRow(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -412,7 +394,6 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: UpsertDataTableRowDto,
 	) {
-		this.checkInstanceWriteAccess();
 		try {
 			// because of strict overloads, we need separate paths
 			const dryRun = dto.dryRun;
@@ -457,7 +438,7 @@ export class DataTableController {
 		}
 	}
 
-	@Patch('/:dataTableId/rows')
+	@Patch('/:dataTableId/rows', { middlewares: [branchWriteAccess] })
 	@ProjectScope('dataTable:writeRow')
 	async updateDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -465,7 +446,6 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: UpdateDataTableRowDto,
 	) {
-		this.checkInstanceWriteAccess();
 		try {
 			// because of strict overloads, we need separate paths
 			const dryRun = dto.dryRun;
@@ -510,7 +490,7 @@ export class DataTableController {
 		}
 	}
 
-	@Delete('/:dataTableId/rows')
+	@Delete('/:dataTableId/rows', { middlewares: [branchWriteAccess] })
 	@ProjectScope('dataTable:writeRow')
 	async deleteDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -518,7 +498,6 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Query dto: DeleteDataTableRowsDto,
 	) {
-		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.deleteRows(
 				dataTableId,
