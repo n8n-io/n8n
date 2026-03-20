@@ -124,7 +124,7 @@ export function stripNullCredentialStubs(nodes: INode[]): void {
 	for (const node of nodes) {
 		if (node.credentials) {
 			for (const key of Object.keys(node.credentials)) {
-				if (node.credentials[key] == null) {
+				if (node.credentials[key] === null) {
 					delete node.credentials[key];
 				}
 			}
