@@ -130,6 +130,9 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			}
 
 			const isPatch = input.mode === 'patch';
+			if (isPatch && !input.workflowId) {
+				return { result: 'Error: workflowId is required in patch mode.' };
+			}
 			const factory = context.builderSandboxFactory;
 			const domainContext = context.domainContext;
 			const useSandbox = !!factory && !!domainContext && !isPatch;
@@ -202,6 +205,9 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					}
 				}
 
+				if (isPatch && !builderTools['patch-workflow']) {
+					return { result: 'Error: patch-workflow tool not available.' };
+				}
 				if (!isPatch && !builderTools['build-workflow']) {
 					return { result: 'Error: build-workflow tool not available.' };
 				}

@@ -194,6 +194,7 @@ export function handleVerificationVerdict(
 
 		case 'needs_rebuild': {
 			attempt.result = 'failure';
+			attempt.action = 'rebuild';
 
 			const failureDetails = [
 				verdict.diagnosis ?? '',
