@@ -1,7 +1,7 @@
 import type { Agent } from '@mastra/core/agent';
 
 import { mapMastraChunkToEvent } from './map-chunk';
-import type { InstanceAiEventBus } from '../event-bus/event-bus.interface';
+import type { InstanceAiEventSink } from '../event-bus/event-bus.interface';
 import { parseSuspension, asResumable } from '../utils/stream-helpers';
 
 export interface ConsumeWithHitlOptions {
@@ -9,7 +9,7 @@ export interface ConsumeWithHitlOptions {
 	stream: { runId?: string; fullStream: AsyncIterable<unknown>; text: Promise<string> };
 	runId: string;
 	agentId: string;
-	eventBus: InstanceAiEventBus;
+	eventBus: InstanceAiEventSink;
 	threadId: string;
 	abortSignal: AbortSignal;
 	waitForConfirmation?: (requestId: string) => Promise<Record<string, unknown>>;

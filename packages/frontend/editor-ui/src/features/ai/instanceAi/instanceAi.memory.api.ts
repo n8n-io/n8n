@@ -4,7 +4,6 @@ import type {
 	InstanceAiThreadListResponse,
 	InstanceAiThreadContextResponse,
 	InstanceAiRichMessagesResponse,
-	InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
 
 export async function fetchMemory(
@@ -43,13 +42,6 @@ export async function fetchThreadMessages(
 		'GET',
 		`/instance-ai/threads/${threadId}/messages${qs ? `?${qs}` : ''}`,
 	);
-}
-
-export async function fetchThreadStatus(
-	context: IRestApiContext,
-	threadId: string,
-): Promise<InstanceAiThreadStatusResponse> {
-	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}/status`);
 }
 
 export async function fetchThreadContext(

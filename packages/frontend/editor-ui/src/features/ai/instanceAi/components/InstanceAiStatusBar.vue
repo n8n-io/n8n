@@ -19,7 +19,11 @@ const ROLE_LABELS: Record<string, string> = {
 
 function findPendingPlanConfirmation(tree: InstanceAiAgentNode) {
 	return tree.toolCalls.find(
-		(toolCall) => toolCall.renderHint === 'plan' && toolCall.isLoading && !!toolCall.confirmation,
+		(toolCall) =>
+			toolCall.renderHint === 'plan' &&
+			toolCall.isLoading &&
+			!!toolCall.confirmation &&
+			(!toolCall.confirmationStatus || toolCall.confirmationStatus === 'pending'),
 	);
 }
 

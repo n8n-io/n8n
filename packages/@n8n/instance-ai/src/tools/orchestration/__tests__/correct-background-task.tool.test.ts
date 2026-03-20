@@ -12,11 +12,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: jest.fn(),
-			subscribe: jest.fn(),
-			getEventsAfter: jest.fn(),
-			getNextEventId: jest.fn(),
-			getEventsForRun: jest.fn().mockReturnValue([]),
-			getEventsForRuns: jest.fn().mockReturnValue([]),
 		},
 		domainTools: {} as OrchestrationContext['domainTools'],
 		abortSignal: new AbortController().signal,

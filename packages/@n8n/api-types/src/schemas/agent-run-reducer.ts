@@ -407,6 +407,25 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					inputType: event.payload.inputType,
 					domainAccess: event.payload.domainAccess,
 				};
+				tc.confirmationStatus = 'pending';
+			}
+			break;
+		}
+
+		case 'confirmation-resolved': {
+			const targetToolCallId = event.payload.toolCallId;
+			if (targetToolCallId && isSafeObjectKey(targetToolCallId)) {
+				const tc = state.toolCallsById[targetToolCallId];
+				if (tc?.confirmation?.requestId === event.payload.requestId) {
+					tc.confirmationStatus = event.payload.status;
+				}
+				break;
+			}
+
+			for (const toolCall of Object.values(state.toolCallsById)) {
+				if (toolCall.confirmation?.requestId === event.payload.requestId) {
+					toolCall.confirmationStatus = event.payload.status;
+				}
 			}
 			break;
 		}

@@ -4,13 +4,10 @@ import { deepCopy } from 'n8n-workflow';
 import { MastraPlanStorage } from '../plan-storage';
 
 function clone<T>(value: T): T {
-	return deepCopy(value);
+	return deepCopy(value as never) as T;
 }
 
-function makePhase(
-	id: string,
-	overrides: Partial<InstanceAiPhaseSpec> = {},
-): InstanceAiPhaseSpec {
+function makePhase(id: string, overrides: Partial<InstanceAiPhaseSpec> = {}): InstanceAiPhaseSpec {
 	return {
 		id,
 		title: `Phase ${id}`,
@@ -90,7 +87,11 @@ function createPlanStateRepo(initialPlan?: InstanceAiPlanSpec, initialVersion = 
 						hook();
 					}
 
-					if (!entity || entity.threadId !== criteria.threadId || entity.version !== criteria.version) {
+					if (
+						!entity ||
+						entity.threadId !== criteria.threadId ||
+						entity.version !== criteria.version
+					) {
 						return { affected: 0 };
 					}
 

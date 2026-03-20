@@ -10,7 +10,7 @@ import type {
 
 /**
  * POST /instance-ai/chat/:threadId -> { runId }
- * Sends a user message. Events arrive separately via the SSE connection.
+ * Sends a user message. Live updates arrive separately via the thread stream.
  */
 export async function postMessage(
 	context: IRestApiContext,

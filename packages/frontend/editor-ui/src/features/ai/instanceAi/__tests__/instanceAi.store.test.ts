@@ -1,12 +1,10 @@
-import { setActivePinia, createPinia } from 'pinia';
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
-import { ensureThread, postMessage } from '../instanceAi.api';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { createPinia, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import type { InstanceAiMessage, InstanceAiStreamFrame } from '@n8n/api-types';
 
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
+import { ensureThread, postMessage } from '../instanceAi.api';
+import { fetchThreadMessages } from '../instanceAi.memory.api';
+import { useInstanceAiStore } from '../instanceAi.store';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -45,205 +43,229 @@ vi.mock('../instanceAi.api', () => ({
 
 vi.mock('../instanceAi.memory.api', () => ({
 	fetchThreads: vi.fn().mockResolvedValue({ threads: [], total: 0, page: 1, hasMore: false }),
-	fetchThreadMessages: vi
-		.fn()
-		.mockResolvedValue({ threadId: 'thread-1', messages: [], nextEventId: 0 }),
-	fetchThreadStatus: vi.fn().mockResolvedValue({
-		hasActiveRun: false,
-		isSuspended: false,
-		taskRuns: [],
-		backgroundTasks: [],
-	}),
+	fetchThreadMessages: vi.fn().mockResolvedValue({ threadId: 'thread-1', messages: [] }),
 }));
 
-// Mock EventSource globally
-let capturedOnMessage: ((ev: MessageEvent) => void) | null = null;
-let capturedInstance: MockEventSource | null = null;
-const mockClose = vi.fn();
+const encoder = new TextEncoder();
 
-class MockEventSource {
-	onopen: (() => void) | null = null;
-	onmessage: ((ev: MessageEvent) => void) | null = null;
-	onerror: (() => void) | null = null;
-	readyState = 1; // OPEN
-	private listeners: Record<string, Array<(ev: MessageEvent) => void>> = {};
+class MockThreadStream {
+	private controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+	private closed = false;
+	readonly url: string;
 
-	constructor(public url: string) {
-		capturedInstance = this;
-		// Capture onmessage after it's assigned (deferred via microtask)
-		setTimeout(() => {
-			capturedOnMessage = this.onmessage;
-			// Trigger onopen to move to connected state
-			this.onopen?.();
-		}, 0);
+	readonly body: ReadableStream<Uint8Array>;
+
+	constructor(
+		url: string,
+		private readonly threadId: string,
+		autoSync = true,
+	) {
+		this.url = url;
+		this.body = new ReadableStream<Uint8Array>({
+			start: (controller) => {
+				this.controller = controller;
+				if (autoSync) {
+					this.pushFrame({
+						type: 'sync',
+						threadId: this.threadId,
+						messages: [],
+						taskRuns: [],
+						activeRunId: null,
+					});
+				}
+			},
+		});
 	}
 
-	addEventListener(type: string, handler: (ev: MessageEvent) => void): void {
-		if (!this.listeners[type]) this.listeners[type] = [];
-		this.listeners[type].push(handler);
+	pushFrame(frame: InstanceAiStreamFrame | Record<string, unknown>): void {
+		if (this.closed) return;
+		this.controller?.enqueue(encoder.encode(`${JSON.stringify(frame)}\n`));
 	}
 
-	/** Dispatch a named event (e.g. 'run-sync') to registered listeners. */
-	dispatchNamedEvent(type: string, data: unknown): void {
-		const handlers = this.listeners[type];
-		if (!handlers) return;
-		const ev = { data: JSON.stringify(data) } as unknown as MessageEvent;
-		for (const h of handlers) h(ev);
+	pushRaw(line: string): void {
+		if (this.closed) return;
+		this.controller?.enqueue(encoder.encode(`${line}\n`));
 	}
 
-	close = mockClose;
+	close(): void {
+		if (this.closed) return;
+		this.closed = true;
+		this.controller?.close();
+	}
 
-	static readonly CONNECTING = 0;
-	static readonly OPEN = 1;
-	static readonly CLOSED = 2;
+	error(error: unknown): void {
+		if (this.closed) return;
+		this.closed = true;
+		try {
+			this.controller?.error(error);
+		} catch {
+			// ignore double-close races in tests
+		}
+	}
 }
 
-vi.stubGlobal('EventSource', MockEventSource);
+let capturedStream: MockThreadStream | null = null;
+let streamInstances: MockThreadStream[] = [];
+let nextStreamAutoSync = true;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+	const url = String(input);
+	const threadId = url.split('/').pop() ?? 'thread-unknown';
+	const stream = new MockThreadStream(url, threadId, nextStreamAutoSync);
+	nextStreamAutoSync = true;
+	capturedStream = stream;
+	streamInstances.push(stream);
 
-function makeSSEEvent(data: unknown, lastEventId = ''): MessageEvent {
-	return {
-		data: JSON.stringify(data),
-		lastEventId,
-	} as unknown as MessageEvent;
+	if (init?.signal) {
+		const signal = init.signal as AbortSignal;
+		signal.addEventListener(
+			'abort',
+			() => {
+				stream.error(new DOMException('Aborted', 'AbortError'));
+			},
+			{ once: true },
+		);
+	}
+
+	return new Response(stream.body, {
+		status: 200,
+		headers: { 'Content-Type': 'application/x-ndjson; charset=UTF-8' },
+	});
+});
+
+vi.stubGlobal('fetch', fetchMock);
+
+function currentStream(): MockThreadStream {
+	expect(capturedStream).not.toBeNull();
+	return capturedStream as MockThreadStream;
 }
 
 function validRunStartEvent(runId: string, agentId: string) {
 	return {
-		type: 'run-start',
+		type: 'run-start' as const,
 		runId,
 		agentId,
-		payload: { messageId: 'msg-1' },
+		payload: { messageId: `msg-${runId}` },
 	};
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+function makeAssistantMessage(
+	id: string,
+	runId: string,
+	overrides: Partial<InstanceAiMessage> = {},
+): InstanceAiMessage {
+	return {
+		id,
+		runId,
+		messageGroupId: runId,
+		role: 'assistant',
+		createdAt: '2026-03-18T10:00:00.000Z',
+		content: '',
+		reasoning: '',
+		isStreaming: false,
+		agentTree: {
+			agentId: `${runId}-root`,
+			role: 'orchestrator',
+			status: 'completed',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [],
+			children: [],
+			timeline: [],
+		},
+		...overrides,
+	};
+}
 
 const mockFetchThreadMessages = vi.mocked(fetchThreadMessages);
-const mockFetchThreadStatus = vi.mocked(fetchThreadStatus);
 const mockEnsureThread = vi.mocked(ensureThread);
 const mockPostMessage = vi.mocked(postMessage);
 
-describe('useInstanceAiStore - onSSEMessage', () => {
+describe('useInstanceAiStore stream flow', () => {
 	let store: ReturnType<typeof useInstanceAiStore>;
 
 	beforeEach(async () => {
 		setActivePinia(createPinia());
-		capturedOnMessage = null;
+		capturedStream = null;
+		streamInstances = [];
+		nextStreamAutoSync = true;
 		store = useInstanceAiStore();
-		// newThread() clears module-level routing state before reconnecting SSE
 		store.newThread();
-		// Wait for the setTimeout in MockEventSource constructor
 		await vi.waitFor(() => {
-			expect(capturedOnMessage).not.toBeNull();
+			expect(store.streamState).toBe('connected');
 		});
 	});
 
 	afterEach(() => {
-		store.closeSSE();
+		store.closeStream();
+		for (const stream of streamInstances) {
+			stream.close();
+		}
 		vi.clearAllMocks();
 		mockFetchThreadMessages.mockResolvedValue({
 			threadId: 'thread-1',
 			messages: [],
-			nextEventId: 0,
 		});
-		mockFetchThreadStatus.mockResolvedValue({
-			hasActiveRun: false,
-			isSuspended: false,
+	});
+
+	test('ignores malformed stream frames', async () => {
+		currentStream().pushRaw(JSON.stringify({ invalid: 'shape' }));
+
+		await vi.waitFor(() => {
+			expect(store.messages).toHaveLength(0);
+			expect(store.activeRunId).toBeNull();
+		});
+	});
+
+	test('applies valid delta frames after the initial sync', async () => {
+		currentStream().pushFrame(validRunStartEvent('run-1', 'agent-root'));
+
+		await vi.waitFor(() => {
+			expect(store.messages).toHaveLength(1);
+			expect(store.messages[0].runId).toBe('run-1');
+			expect(store.activeRunId).toBe('run-1');
+		});
+	});
+
+	test('sync hydrates active and background groups without overwriting activeRunId', async () => {
+		currentStream().pushFrame({
+			type: 'sync',
+			threadId: store.currentThreadId,
+			activeRunId: 'run-active',
 			taskRuns: [],
-			backgroundTasks: [],
-		});
-	});
-
-	test('malformed SSE event (bad JSON shape) does not update messages or activeRunId', () => {
-		// Send data that parses as JSON but fails Zod validation
-		capturedOnMessage!(makeSSEEvent({ invalid: 'shape' }));
-
-		expect(store.messages).toHaveLength(0);
-		expect(store.activeRunId).toBeNull();
-	});
-
-	test('valid SSE event dispatched updates messages state correctly', () => {
-		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
-
-		expect(store.messages).toHaveLength(1);
-		expect(store.messages[0].runId).toBe('run-1');
-		expect(store.activeRunId).toBe('run-1');
-	});
-
-	test('background-group run-sync does not overwrite activeRunId from orchestrator sync', () => {
-		// First, create two assistant messages via normal events
-		capturedOnMessage!(
-			makeSSEEvent({
-				type: 'run-start',
-				runId: 'run-old',
-				agentId: 'agent-root',
-				payload: { messageId: 'msg-1', messageGroupId: 'mg-old' },
-			}),
-		);
-		capturedOnMessage!(
-			makeSSEEvent({
-				type: 'run-finish',
-				runId: 'run-old',
-				agentId: 'agent-root',
-				payload: { status: 'completed' },
-			}),
-		);
-		capturedOnMessage!(
-			makeSSEEvent({
-				type: 'run-start',
-				runId: 'run-active',
-				agentId: 'agent-root',
-				payload: { messageId: 'msg-2', messageGroupId: 'mg-active' },
-			}),
-		);
-
-		expect(store.activeRunId).toBe('run-active');
-		expect(store.messages).toHaveLength(2);
-
-		// Now simulate reconnect: two run-sync frames arrive.
-		// First: orchestrator group (active)
-		capturedInstance!.dispatchNamedEvent('run-sync', {
-			runId: 'run-active',
-			messageGroupId: 'mg-active',
-			runIds: ['run-active'],
-			agentTree: {
-				agentId: 'agent-root',
-				role: 'orchestrator',
-				status: 'active',
-				textContent: '',
-				reasoning: '',
-				toolCalls: [],
-				children: [],
-				timeline: [],
-			},
-			status: 'active',
-			taskRuns: [],
-			backgroundTasks: [],
-		});
-		expect(store.activeRunId).toBe('run-active');
-
-		// Second: background group from the older turn
-		capturedInstance!.dispatchNamedEvent('run-sync', {
-			runId: 'run-old',
-			messageGroupId: 'mg-old',
-			runIds: ['run-old'],
-			agentTree: {
-				agentId: 'agent-root',
-				role: 'orchestrator',
-				status: 'completed',
-				textContent: 'old',
-				reasoning: '',
-				toolCalls: [],
-				children: [
-					{
-						agentId: 'bg-task',
-						role: 'workflow-builder',
+			messages: [
+				makeAssistantMessage('assistant-old', 'run-old', {
+					messageGroupId: 'mg-old',
+					runIds: ['run-old'],
+					agentTree: {
+						agentId: 'agent-root-old',
+						role: 'orchestrator',
+						status: 'completed',
+						textContent: 'old',
+						reasoning: '',
+						toolCalls: [],
+						children: [
+							{
+								agentId: 'bg-task',
+								role: 'workflow-builder',
+								status: 'active',
+								textContent: '',
+								reasoning: '',
+								toolCalls: [],
+								children: [],
+								timeline: [],
+							},
+						],
+						timeline: [],
+					},
+				}),
+				makeAssistantMessage('assistant-active', 'run-active', {
+					messageGroupId: 'mg-active',
+					runIds: ['run-active'],
+					isStreaming: true,
+					agentTree: {
+						agentId: 'agent-root-active',
+						role: 'orchestrator',
 						status: 'active',
 						textContent: '',
 						reasoning: '',
@@ -251,77 +273,107 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 						children: [],
 						timeline: [],
 					},
-				],
-				timeline: [],
-			},
-			status: 'background',
-			taskRuns: [],
-			backgroundTasks: [],
+				}),
+			],
 		});
 
-		// activeRunId must still point to the orchestrator run, NOT the background group's
-		expect(store.activeRunId).toBe('run-active');
-		// The old message should be updated with the background group's tree
-		const oldMsg = store.messages.find((m) => m.messageGroupId === 'mg-old');
-		// Background-only: isStreaming must be false so hasActiveBackgroundTasks
-		// computed in InstanceAiMessage.vue correctly shows the background indicator
-		expect(oldMsg?.isStreaming).toBe(false);
-		expect(oldMsg?.agentTree?.children).toHaveLength(1);
+		await vi.waitFor(() => {
+			expect(store.activeRunId).toBe('run-active');
+			const oldMessage = store.messages.find((message) => message.messageGroupId === 'mg-old');
+			expect(oldMessage?.isStreaming).toBe(false);
+			expect(oldMessage?.agentTree?.children).toHaveLength(1);
+		});
 	});
 
-	test('run-sync creates a placeholder assistant message when no matching message exists yet', () => {
-		capturedInstance!.dispatchNamedEvent('run-sync', {
-			runId: 'run-suspended',
-			messageGroupId: 'mg-suspended',
-			runIds: ['run-suspended'],
-			agentTree: {
-				agentId: 'agent-root',
-				role: 'orchestrator',
-				status: 'suspended',
-				textContent: '',
-				reasoning: '',
-				toolCalls: [
-					{
-						toolCallId: 'tool-plan-approval',
-						toolName: 'request-plan-approval',
-						args: {},
-						isLoading: true,
-						renderHint: 'plan',
-						confirmation: {
-							requestId: 'req-plan',
-							severity: 'info',
-							message: 'Review the plan before building.',
-							inputType: 'approval',
-						},
-					},
-				],
-				children: [],
-				timeline: [{ type: 'tool-call', toolCallId: 'tool-plan-approval' }],
-				plan: {
-					planId: 'plan-1',
-					goal: 'Build a dashboard',
-					summary: 'Phase-based plan',
-					assumptions: [],
-					externalSystems: [],
-					dataContracts: [],
-					acceptanceCriteria: [],
-					openQuestions: [],
-					status: 'awaiting_approval',
-					lastUpdatedAt: '2026-03-18T10:00:00.000Z',
-					phases: [],
-				},
-			},
-			status: 'suspended',
+	test('ignores deltas until the first sync frame arrives', async () => {
+		store.closeStream();
+		nextStreamAutoSync = false;
+		store.connectStream(store.currentThreadId);
+
+		const stream = currentStream();
+		stream.pushFrame(validRunStartEvent('run-pre-sync', 'agent-root'));
+
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(store.messages).toHaveLength(0);
+		expect(store.streamState).toBe('connecting');
+
+		stream.pushFrame({
+			type: 'sync',
+			threadId: store.currentThreadId,
+			messages: [],
 			taskRuns: [],
-			backgroundTasks: [],
+			activeRunId: null,
 		});
 
-		expect(store.messages).toHaveLength(1);
-		expect(store.messages[0].runId).toBe('run-suspended');
-		expect(store.messages[0].messageGroupId).toBe('mg-suspended');
-		expect(store.messages[0].agentTree?.plan?.planId).toBe('plan-1');
-		expect(store.messages[0].isStreaming).toBe(true);
-		expect(store.activeRunId).toBe('run-suspended');
+		await vi.waitFor(() => {
+			expect(store.streamState).toBe('connected');
+		});
+
+		stream.pushFrame(validRunStartEvent('run-after-sync', 'agent-root'));
+		await vi.waitFor(() => {
+			expect(store.messages).toHaveLength(1);
+			expect(store.messages[0].runId).toBe('run-after-sync');
+		});
+	});
+
+	test('confirmation-resolved updates synced tool-call confirmation state', async () => {
+		currentStream().pushFrame({
+			type: 'sync',
+			threadId: store.currentThreadId,
+			activeRunId: 'run-suspended',
+			taskRuns: [],
+			messages: [
+				makeAssistantMessage('assistant-suspended', 'run-suspended', {
+					messageGroupId: 'mg-suspended',
+					runIds: ['run-suspended'],
+					isStreaming: true,
+					agentTree: {
+						agentId: 'agent-root',
+						role: 'orchestrator',
+						status: 'active',
+						textContent: '',
+						reasoning: '',
+						toolCalls: [
+							{
+								toolCallId: 'tool-plan-approval',
+								toolName: 'request-plan-approval',
+								args: {},
+								isLoading: true,
+								renderHint: 'plan',
+								confirmation: {
+									requestId: 'req-plan',
+									severity: 'info',
+									message: 'Review the plan before building.',
+									inputType: 'approval',
+								},
+								confirmationStatus: 'pending',
+							},
+						],
+						children: [],
+						timeline: [{ type: 'tool-call', toolCallId: 'tool-plan-approval' }],
+					},
+				}),
+			],
+		});
+
+		await vi.waitFor(() => {
+			expect(store.messages[0].agentTree?.toolCalls[0]?.confirmationStatus).toBe('pending');
+		});
+
+		currentStream().pushFrame({
+			type: 'confirmation-resolved',
+			runId: 'run-suspended',
+			agentId: 'agent-root',
+			payload: {
+				requestId: 'req-plan',
+				toolCallId: 'tool-plan-approval',
+				status: 'approved',
+			},
+		});
+
+		await vi.waitFor(() => {
+			expect(store.messages[0].agentTree?.toolCalls[0]?.confirmationStatus).toBe('approved');
+		});
 	});
 
 	test('currentPlan selects the latest assistant plan in the thread', () => {
@@ -334,14 +386,7 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 				reasoning: '',
 				isStreaming: false,
 			},
-			{
-				id: 'assistant-plan-1',
-				runId: 'run-plan-1',
-				role: 'assistant',
-				createdAt: '2026-03-18T10:00:01.000Z',
-				content: '',
-				reasoning: '',
-				isStreaming: false,
+			makeAssistantMessage('assistant-plan-1', 'run-plan-1', {
 				agentTree: {
 					agentId: 'agent-root-1',
 					role: 'orchestrator',
@@ -365,15 +410,9 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 						phases: [],
 					},
 				},
-			},
-			{
-				id: 'assistant-no-plan',
-				runId: 'run-no-plan',
-				role: 'assistant',
-				createdAt: '2026-03-18T10:00:02.000Z',
+			}),
+			makeAssistantMessage('assistant-no-plan', 'run-no-plan', {
 				content: 'Working',
-				reasoning: '',
-				isStreaming: false,
 				agentTree: {
 					agentId: 'agent-root-2',
 					role: 'orchestrator',
@@ -384,15 +423,8 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 					children: [],
 					timeline: [],
 				},
-			},
-			{
-				id: 'assistant-plan-2',
-				runId: 'run-plan-2',
-				role: 'assistant',
-				createdAt: '2026-03-18T10:00:03.000Z',
-				content: '',
-				reasoning: '',
-				isStreaming: false,
+			}),
+			makeAssistantMessage('assistant-plan-2', 'run-plan-2', {
 				agentTree: {
 					agentId: 'agent-root-3',
 					role: 'orchestrator',
@@ -416,7 +448,7 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 						phases: [],
 					},
 				},
-			},
+			}),
 		);
 
 		expect(store.currentPlanMessage?.id).toBe('assistant-plan-2');
@@ -424,63 +456,41 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		expect(store.currentPlan?.planId).toBe('plan-2');
 	});
 
-	test('lastEventIdByThread is updated from sseEvent.lastEventId on every message', () => {
-		const threadId = store.currentThreadId;
-
-		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root'), '42'));
-
-		expect(store.lastEventIdByThread[threadId]).toBe(42);
-
-		// Second event updates the value
-		capturedOnMessage!(
-			makeSSEEvent(
-				{
-					type: 'text-delta',
-					runId: 'run-1',
-					agentId: 'agent-root',
-					payload: { text: 'hello' },
-				},
-				'43',
-			),
-		);
-
-		expect(store.lastEventIdByThread[threadId]).toBe(43);
-	});
-
-	test('deleting the last active thread clears stale routing state before the replacement thread starts', async () => {
+	test('deleting the last active thread clears stale routing state before the replacement stream starts', async () => {
 		const deletedThreadId = store.currentThreadId;
-		const previousEventSource = capturedInstance;
-		const previousOnMessage = capturedOnMessage;
+		const previousStream = currentStream();
 
-		capturedOnMessage!(
-			makeSSEEvent({
-				type: 'run-start',
-				runId: 'run-old',
-				agentId: 'old-root',
-				payload: { messageId: 'msg-1', messageGroupId: 'mg-old' },
-			}),
-		);
+		previousStream.pushFrame({
+			type: 'run-start',
+			runId: 'run-old',
+			agentId: 'old-root',
+			payload: { messageId: 'msg-1', messageGroupId: 'mg-old' },
+		});
+
+		await vi.waitFor(() => {
+			expect(store.messages).toHaveLength(1);
+		});
 
 		store.deleteThread(deletedThreadId);
 
 		await vi.waitFor(() => {
-			expect(capturedInstance).not.toBe(previousEventSource);
-			expect(capturedOnMessage).not.toBe(previousOnMessage);
+			expect(capturedStream).not.toBe(previousStream);
 			expect(store.currentThreadId).not.toBe(deletedThreadId);
+			expect(store.streamState).toBe('connected');
 		});
 
-		capturedOnMessage!(
-			makeSSEEvent({
-				type: 'text-delta',
-				runId: 'run-old',
-				agentId: 'fresh-root',
-				payload: { text: 'hello again' },
-			}),
-		);
+		currentStream().pushFrame({
+			type: 'text-delta',
+			runId: 'run-old',
+			agentId: 'fresh-root',
+			payload: { text: 'hello again' },
+		});
 
-		expect(store.messages).toHaveLength(1);
-		expect(store.messages[0].messageGroupId).toBe('run-old');
-		expect(store.messages[0].agentTree?.agentId).toBe('fresh-root');
+		await vi.waitFor(() => {
+			expect(store.messages).toHaveLength(1);
+			expect(store.messages[0].messageGroupId).toBe('run-old');
+			expect(store.messages[0].agentTree?.agentId).toBe('fresh-root');
+		});
 	});
 
 	test('loadHistoricalMessages skips unsafe routing identifiers when rebuilding state', async () => {
@@ -508,58 +518,22 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 					},
 				},
 			],
-			nextEventId: 11,
 		});
 
 		await store.loadHistoricalMessages(store.currentThreadId);
 
-		capturedOnMessage!(
-			makeSSEEvent({
-				type: 'text-delta',
-				runId: 'safe-run',
-				agentId: 'fresh-root',
-				payload: { text: 'restored safely' },
-			}),
-		);
+		currentStream().pushFrame({
+			type: 'text-delta',
+			runId: 'safe-run',
+			agentId: 'fresh-root',
+			payload: { text: 'restored safely' },
+		});
 
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(store.messages).toHaveLength(1);
 		expect(store.messages[0].messageGroupId).toBe('__proto__');
 		expect(store.messages[0].agentTree?.agentId).toBe('agent-root');
 		expect(store.messages[0].content).toBe('');
-	});
-
-	test('run-sync skips unsafe group identifiers instead of registering them', () => {
-		capturedOnMessage!(
-			makeSSEEvent({
-				type: 'run-start',
-				runId: 'run-safe',
-				agentId: 'agent-root',
-				payload: { messageId: 'msg-1', messageGroupId: 'run-safe' },
-			}),
-		);
-
-		capturedInstance!.dispatchNamedEvent('run-sync', {
-			runId: 'run-safe',
-			messageGroupId: '__proto__',
-			runIds: ['run-safe', '__proto__'],
-			agentTree: {
-				agentId: 'agent-root',
-				role: 'orchestrator',
-				status: 'completed',
-				textContent: 'unsafe sync',
-				reasoning: '',
-				toolCalls: [],
-				children: [],
-				timeline: [],
-			},
-			status: 'background',
-			taskRuns: [],
-			backgroundTasks: [],
-		});
-
-		expect(store.messages).toHaveLength(1);
-		expect(store.messages[0].messageGroupId).toBe('run-safe');
-		expect(store.messages[0].agentTree?.textContent).toBe('');
 	});
 
 	test('sendMessage syncs a new thread before the first post and reuses the persisted thread afterwards', async () => {

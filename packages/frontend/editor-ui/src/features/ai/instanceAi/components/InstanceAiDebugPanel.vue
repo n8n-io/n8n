@@ -180,8 +180,8 @@ onMounted(() => {
 		<template v-if="activeTab === 'events'">
 			<!-- Connection status -->
 			<div :class="$style.statusBar">
-				<span :class="$style.statusDot" :data-state="store.sseState" />
-				<span>SSE: {{ store.sseState }}</span>
+				<span :class="$style.statusDot" :data-state="store.streamState" />
+				<span>Stream: {{ store.streamState }}</span>
 				<span :class="$style.eventCount">{{ events.length }} events</span>
 			</div>
 

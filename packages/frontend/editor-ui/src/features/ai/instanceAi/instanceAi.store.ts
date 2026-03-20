@@ -5,7 +5,12 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { ResponseError } from '@n8n/rest-api-client';
-import { instanceAiEventSchema, isSafeObjectKey } from '@n8n/api-types';
+import {
+	instanceAiEventSchema,
+	instanceAiPlanSpecSchema,
+	instanceAiTaskRunSchema,
+	isSafeObjectKey,
+} from '@n8n/api-types';
 import {
 	ensureThread,
 	postMessage,
@@ -16,7 +21,6 @@ import {
 import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadMessages as fetchThreadMessagesApi,
-	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
 import { useResourceRegistry } from './useResourceRegistry';
@@ -25,25 +29,28 @@ import type {
 	InstanceAiAttachment,
 	InstanceAiEvent,
 	InstanceAiMessage,
-	InstanceAiAgentNode,
 	InstanceAiTaskRun,
+	InstanceAiTaskUpsertFrame,
+	InstanceAiPlanUpsertFrame,
+	InstanceAiStreamFrame,
+	InstanceAiStreamSyncFrame,
 	InstanceAiThreadSummary,
-	InstanceAiSSEConnectionState,
+	InstanceAiStreamConnectionState,
 	InstanceAiQuestionResponse,
 } from '@n8n/api-types';
 
-// Module-level EventSource reference — not in reactive state (not serializable,
-// not needed for rendering, wrapping in a reactive proxy causes issues).
-let eventSource: EventSource | null = null;
+let streamAbortController: AbortController | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Module-level reducer state storage — kept outside Vue reactivity.
 import type { AgentRunState } from '@n8n/api-types';
 let runStateByGroupId: Record<string, AgentRunState> = {};
 let groupIdByRunId: Record<string, string> = {};
 
-// SSE connection generation — incremented on every connectSSE() call.
-// Stale EventSource instances from previous threads discard events.
-let sseGeneration = 0;
+// Stream connection generation — incremented on every connectStream() call.
+// Stale stream readers from previous threads discard frames.
+let streamGeneration = 0;
+const STREAM_RECONNECT_DELAY_MS = 1000;
 
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
@@ -54,8 +61,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// --- State ---
 	const currentThreadId = ref<string>(uuidv4());
 	const threads = ref<InstanceAiThreadSummary[]>([]);
-	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
-	const lastEventIdByThread = ref<Record<string, number>>({});
+	const streamState = ref<InstanceAiStreamConnectionState>('disconnected');
 	const activeRunId = ref<string | null>(null);
 	const messages = ref<InstanceAiMessage[]>([]);
 	const taskRuns = ref<InstanceAiTaskRun[]>([]);
@@ -180,229 +186,386 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	// --- Event reducer (delegated to pure module) ---
 
-	// --- SSE lifecycle ---
+	// --- Stream lifecycle ---
 
-	function onSSEMessage(sseEvent: MessageEvent): void {
-		// Track last event ID per thread (for reconnection)
-		if (sseEvent.lastEventId) {
-			lastEventIdByThread.value[currentThreadId.value] = Number(sseEvent.lastEventId);
-		}
-		try {
-			const parsed = instanceAiEventSchema.safeParse(JSON.parse(String(sseEvent.data)));
-			if (!parsed.success) {
-				console.warn('[InstanceAI] Invalid SSE event, skipping:', parsed.error.message);
-				return;
-			}
-			// Push to debug event buffer (capped)
-			debugEvents.value.push({
-				timestamp: new Date().toISOString(),
-				event: parsed.data,
-			});
-			if (debugEvents.value.length > MAX_DEBUG_EVENTS) {
-				debugEvents.value.splice(0, debugEvents.value.length - MAX_DEBUG_EVENTS);
-			}
-			if (parsed.data.type === 'task-created' || parsed.data.type === 'task-updated') {
-				upsertTaskRun(parsed.data.payload.task);
-				return;
-			}
-			const previousRunId = activeRunId.value;
-			activeRunId.value = reduceEvent(
-				{
-					messages: messages.value,
-					activeRunId: activeRunId.value,
-					runStateByGroupId,
-					groupIdByRunId,
-				},
-				parsed.data,
-			);
-			// When a run finishes, refresh thread list to pick up Mastra-generated titles
-			if (previousRunId && activeRunId.value === null) {
-				void loadThreads();
-			}
-		} catch {
-			// Malformed JSON — skip
-		}
+	function isRecord(value: unknown): value is Record<string, unknown> {
+		return value !== null && typeof value === 'object' && !Array.isArray(value);
 	}
 
-	/**
-	 * Handle run-sync control frames — full state snapshot from the backend.
-	 * Replaces the agent tree AND rebuilds the group-level run state so
-	 * subsequent live events have state to reduce into. Also restores the
-	 * runId → groupId mapping so late events from any run in the group route
-	 * to the correct message.
-	 */
-	function onRunSync(sseEvent: MessageEvent): void {
-		try {
-			const data = JSON.parse(String(sseEvent.data)) as {
-				runId: string;
-				messageGroupId?: string;
-				runIds?: string[];
-				agentTree: InstanceAiAgentNode;
-				taskRuns?: InstanceAiTaskRun[];
-				status: string;
-			};
-
-			const groupId = data.messageGroupId ?? data.runId;
-			if (!isSafeObjectKey(data.runId) || !isSafeObjectKey(groupId)) return;
-			const rebuiltRunState = rebuildRunStateFromTree(data.agentTree);
-			if (!rebuiltRunState) return;
-
-			// Find the message to update — by messageGroupId first, then runId
-			let msg: InstanceAiMessage | undefined;
-			if (data.messageGroupId) {
-				msg = messages.value.find(
-					(m) => m.messageGroupId === data.messageGroupId && m.role === 'assistant',
-				);
-			}
-			if (!msg) {
-				msg = messages.value.find((m) => m.runId === data.runId);
-			}
-
-			const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
-			if (Array.isArray(data.taskRuns)) {
-				replaceTaskRuns(data.taskRuns);
-			}
-
-			if (!msg) {
-				msg = {
-					id: data.runId,
-					runId: data.runId,
-					messageGroupId: groupId,
-					runIds: data.runIds,
-					role: 'assistant',
-					createdAt: new Date().toISOString(),
-					content: data.agentTree.textContent,
-					reasoning: data.agentTree.reasoning,
-					isStreaming: isOrchestratorLive,
-					agentTree: data.agentTree,
-				};
-				messages.value.push(msg);
-			} else {
-				msg.agentTree = data.agentTree;
-				msg.runId = data.runId;
-				msg.messageGroupId = groupId;
-				msg.runIds = data.runIds;
-				msg.content = data.agentTree.textContent;
-				msg.reasoning = data.agentTree.reasoning;
-				msg.isStreaming = isOrchestratorLive;
-			}
-
-			// Only the active/suspended orchestrator run should claim activeRunId.
-			// Background-only groups update their message but don't override the
-			// global active run, which controls input state and cancel buttons.
-			if (isOrchestratorLive) {
-				activeRunId.value = data.runId;
-			}
-
-			// Rebuild normalized run state keyed by groupId
-			runStateByGroupId[groupId] = rebuiltRunState;
-
-			// Restore runId → groupId mappings for ALL runs in the group.
-			// This ensures late events from older follow-up runs still route
-			// to this message after reconnect.
-			if (data.runIds) {
-				for (const rid of data.runIds) {
-					if (!isSafeObjectKey(rid)) continue;
-					groupIdByRunId[rid] = groupId;
-				}
-			}
-			// Always register the current runId
-			groupIdByRunId[data.runId] = groupId;
-		} catch {
-			// Malformed run-sync — skip
-		}
-	}
-
-	function connectSSE(threadId?: string): void {
-		const tid = threadId ?? currentThreadId.value;
-		if (eventSource) {
-			closeSSE();
-		}
-		sseState.value = 'connecting';
-
-		// Increment generation — stale EventSource handlers will check this
-		const gen = ++sseGeneration;
-		const capturedThreadId = tid;
-
-		const lastEventId = lastEventIdByThread.value[tid];
-		const baseUrl = rootStore.restApiContext.baseUrl;
-		const url =
-			lastEventId !== null && lastEventId !== undefined
-				? `${baseUrl}/instance-ai/events/${tid}?lastEventId=${String(lastEventId)}`
-				: `${baseUrl}/instance-ai/events/${tid}`;
-
-		eventSource = new EventSource(url, { withCredentials: true });
-
-		eventSource.onopen = () => {
-			if (gen !== sseGeneration) return;
-			sseState.value = 'connected';
-		};
-
-		eventSource.onmessage = (ev: MessageEvent) => {
-			// Guard: discard events from stale connections or wrong threads
-			if (gen !== sseGeneration || capturedThreadId !== currentThreadId.value) return;
-			onSSEMessage(ev);
-		};
-
-		// Listen for run-sync control frames (named SSE event, no id: field)
-		eventSource.addEventListener('run-sync', (ev: MessageEvent) => {
-			if (gen !== sseGeneration || capturedThreadId !== currentThreadId.value) return;
-			onRunSync(ev);
-		});
-
-		eventSource.onerror = () => {
-			if (gen !== sseGeneration) return;
-			// EventSource auto-reconnects. Mark as reconnecting if not already closed.
-			if (eventSource?.readyState === EventSource.CONNECTING) {
-				sseState.value = 'reconnecting';
-			} else if (eventSource?.readyState === EventSource.CLOSED) {
-				sseState.value = 'disconnected';
-				eventSource = null;
-			}
-		};
-	}
-
-	function closeSSE(): void {
-		if (eventSource) {
-			eventSource.close();
-			eventSource = null;
-		}
-		sseState.value = 'disconnected';
-	}
-
-	function switchThread(threadId: string): void {
-		// 1. Close current SSE connection
-		closeSSE();
-		// 2. Clear store state
+	function resetThreadState(): void {
 		messages.value = [];
 		taskRuns.value = [];
 		activeRunId.value = null;
 		debugEvents.value = [];
 		runStateByGroupId = {};
 		groupIdByRunId = {};
+	}
+
+	function pushDebugEvent(event: InstanceAiEvent): void {
+		debugEvents.value.push({
+			timestamp: new Date().toISOString(),
+			event,
+		});
+		if (debugEvents.value.length > MAX_DEBUG_EVENTS) {
+			debugEvents.value.splice(0, debugEvents.value.length - MAX_DEBUG_EVENTS);
+		}
+	}
+
+	function rebuildRoutingState(nextMessages: InstanceAiMessage[]): void {
+		runStateByGroupId = {};
+		groupIdByRunId = {};
+
+		for (const message of nextMessages) {
+			if (message.role !== 'assistant' || !message.agentTree) continue;
+
+			const groupId = message.messageGroupId ?? message.runId;
+			if (!groupId || !isSafeObjectKey(groupId)) continue;
+
+			const rebuiltRunState = rebuildRunStateFromTree(message.agentTree);
+			if (!rebuiltRunState) continue;
+			runStateByGroupId[groupId] = rebuiltRunState;
+
+			if (message.runIds) {
+				for (const runId of message.runIds) {
+					if (!isSafeObjectKey(runId)) continue;
+					groupIdByRunId[runId] = groupId;
+				}
+			}
+
+			if (message.runId && isSafeObjectKey(message.runId)) {
+				groupIdByRunId[message.runId] = groupId;
+			}
+		}
+	}
+
+	function hydrateThreadState(
+		nextMessages: InstanceAiMessage[],
+		nextTaskRuns: InstanceAiTaskRun[],
+		nextActiveRunId: string | null,
+	): void {
+		messages.value = nextMessages;
+		replaceTaskRuns(nextTaskRuns);
+		activeRunId.value = nextActiveRunId;
+		rebuildRoutingState(nextMessages);
+	}
+
+	function applyStreamEvent(event: InstanceAiEvent): void {
+		pushDebugEvent(event);
+
+		if (event.type === 'task-created' || event.type === 'task-updated') {
+			upsertTaskRun(event.payload.task);
+			return;
+		}
+
+		const previousRunId = activeRunId.value;
+		activeRunId.value = reduceEvent(
+			{
+				messages: messages.value,
+				activeRunId: activeRunId.value,
+				runStateByGroupId,
+				groupIdByRunId,
+			},
+			event,
+		);
+
+		if (previousRunId && activeRunId.value === null) {
+			void loadThreads();
+		}
+	}
+
+	function applySyncFrame(frame: InstanceAiStreamSyncFrame): void {
+		hydrateThreadState(frame.messages, frame.taskRuns, frame.activeRunId);
+	}
+
+	function applyTaskUpsertFrame(frame: InstanceAiTaskUpsertFrame): void {
+		const event: InstanceAiEvent = {
+			type: 'task-updated',
+			runId: frame.runId,
+			agentId: frame.agentId,
+			payload: { task: frame.payload.task },
+		};
+		pushDebugEvent(event);
+		upsertTaskRun(frame.payload.task);
+	}
+
+	function applyPlanUpsertFrame(frame: InstanceAiPlanUpsertFrame): void {
+		applyStreamEvent({
+			type: 'plan-updated',
+			runId: frame.runId,
+			agentId: frame.agentId,
+			payload: { plan: frame.payload.plan },
+		});
+	}
+
+	function parseStreamFrame(line: string): InstanceAiStreamFrame | null {
+		try {
+			const parsed = JSON.parse(line) as unknown;
+			if (!isRecord(parsed) || typeof parsed.type !== 'string') {
+				return null;
+			}
+
+			if (parsed.type === 'sync') {
+				if (
+					typeof parsed.threadId === 'string' &&
+					Array.isArray(parsed.messages) &&
+					Array.isArray(parsed.taskRuns) &&
+					(parsed.activeRunId === null || typeof parsed.activeRunId === 'string')
+				) {
+					return {
+						type: 'sync',
+						threadId: parsed.threadId,
+						messages: parsed.messages as InstanceAiMessage[],
+						taskRuns: parsed.taskRuns as InstanceAiTaskRun[],
+						activeRunId: parsed.activeRunId,
+					};
+				}
+				return null;
+			}
+
+			if (parsed.type === 'task-upsert') {
+				const payload = isRecord(parsed.payload) ? parsed.payload : undefined;
+				const task = instanceAiTaskRunSchema.safeParse(payload?.task);
+				if (
+					task.success &&
+					typeof parsed.runId === 'string' &&
+					typeof parsed.agentId === 'string'
+				) {
+					return {
+						type: 'task-upsert',
+						runId: parsed.runId,
+						agentId: parsed.agentId,
+						payload: { task: task.data },
+					};
+				}
+				return null;
+			}
+
+			if (parsed.type === 'plan-upsert') {
+				const payload = isRecord(parsed.payload) ? parsed.payload : undefined;
+				const plan = instanceAiPlanSpecSchema.safeParse(payload?.plan);
+				if (
+					plan.success &&
+					typeof parsed.runId === 'string' &&
+					typeof parsed.agentId === 'string'
+				) {
+					return {
+						type: 'plan-upsert',
+						runId: parsed.runId,
+						agentId: parsed.agentId,
+						payload: { plan: plan.data },
+					};
+				}
+				return null;
+			}
+
+			const event = instanceAiEventSchema.safeParse(parsed);
+			if (!event.success) {
+				return null;
+			}
+
+			switch (event.data.type) {
+				case 'task-created':
+				case 'task-updated':
+					return {
+						type: 'task-upsert',
+						runId: event.data.runId,
+						agentId: event.data.agentId,
+						payload: { task: event.data.payload.task },
+					};
+				case 'plan-created':
+				case 'plan-updated':
+					return {
+						type: 'plan-upsert',
+						runId: event.data.runId,
+						agentId: event.data.agentId,
+						payload: { plan: event.data.payload.plan },
+					};
+				case 'filesystem-request':
+					return null;
+				default:
+					return event.data;
+			}
+		} catch {
+			return null;
+		}
+	}
+
+	function handleStreamFrame(frame: InstanceAiStreamFrame): void {
+		switch (frame.type) {
+			case 'sync':
+				applySyncFrame(frame);
+				return;
+			case 'task-upsert':
+				applyTaskUpsertFrame(frame);
+				return;
+			case 'plan-upsert':
+				applyPlanUpsertFrame(frame);
+				return;
+			default:
+				applyStreamEvent(frame);
+		}
+	}
+
+	function clearReconnectTimer(): void {
+		if (reconnectTimer) {
+			clearTimeout(reconnectTimer);
+			reconnectTimer = null;
+		}
+	}
+
+	async function waitForReconnectDelay(): Promise<void> {
+		await new Promise<void>((resolve) => {
+			reconnectTimer = setTimeout(() => {
+				reconnectTimer = null;
+				resolve();
+			}, STREAM_RECONNECT_DELAY_MS);
+		});
+	}
+
+	async function consumeThreadStream(
+		threadId: string,
+		gen: number,
+		signal: AbortSignal,
+	): Promise<void> {
+		const baseUrl = rootStore.restApiContext.baseUrl;
+		const response = await fetch(`${baseUrl}/instance-ai/stream/${threadId}`, {
+			method: 'GET',
+			credentials: 'include',
+			headers: { Accept: 'application/x-ndjson' },
+			signal,
+		});
+
+		if (!response.ok || !response.body) {
+			throw new Error(`Stream request failed with status ${response.status}`);
+		}
+
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+		let receivedSync = false;
+
+		const processLine = (line: string) => {
+			const trimmed = line.trim();
+			if (!trimmed || trimmed.startsWith('#')) {
+				return;
+			}
+
+			const frame = parseStreamFrame(trimmed);
+			if (!frame) {
+				console.warn('[InstanceAI] Invalid stream frame, skipping');
+				return;
+			}
+
+			if (gen !== streamGeneration || currentThreadId.value !== threadId) {
+				return;
+			}
+
+			if (!receivedSync && frame.type !== 'sync') {
+				console.warn('[InstanceAI] Ignoring pre-sync frame');
+				return;
+			}
+
+			handleStreamFrame(frame);
+			if (frame.type === 'sync') {
+				receivedSync = true;
+				streamState.value = 'connected';
+			}
+		};
+
+		while (true) {
+			const { value, done } = await reader.read();
+			if (done) {
+				break;
+			}
+
+			buffer += decoder.decode(value, { stream: true });
+			let newlineIndex = buffer.indexOf('\n');
+			while (newlineIndex >= 0) {
+				processLine(buffer.slice(0, newlineIndex));
+				buffer = buffer.slice(newlineIndex + 1);
+				newlineIndex = buffer.indexOf('\n');
+			}
+		}
+
+		buffer += decoder.decode();
+		if (buffer.length > 0) {
+			processLine(buffer);
+		}
+
+		if (!receivedSync) {
+			throw new Error('Stream ended before initial sync frame');
+		}
+	}
+
+	async function runThreadStream(threadId: string, gen: number): Promise<void> {
+		let firstAttempt = true;
+
+		while (gen === streamGeneration && currentThreadId.value === threadId) {
+			clearReconnectTimer();
+			const controller = new AbortController();
+			streamAbortController = controller;
+			streamState.value = firstAttempt ? 'connecting' : 'reconnecting';
+
+			try {
+				await consumeThreadStream(threadId, gen, controller.signal);
+			} catch (error) {
+				if (controller.signal.aborted || gen !== streamGeneration) {
+					return;
+				}
+
+				console.warn('[InstanceAI] Thread stream disconnected, retrying', error);
+			} finally {
+				if (streamAbortController === controller) {
+					streamAbortController = null;
+				}
+			}
+
+			if (gen !== streamGeneration || currentThreadId.value !== threadId) {
+				return;
+			}
+
+			streamState.value = 'reconnecting';
+			await waitForReconnectDelay();
+			firstAttempt = false;
+		}
+	}
+
+	function connectStream(threadId?: string): void {
+		const tid = threadId ?? currentThreadId.value;
+		clearReconnectTimer();
+		if (streamAbortController) {
+			streamAbortController.abort();
+			streamAbortController = null;
+		}
+
+		const gen = ++streamGeneration;
+		void runThreadStream(tid, gen);
+	}
+
+	function closeStream(): void {
+		streamGeneration += 1;
+		clearReconnectTimer();
+		if (streamAbortController) {
+			streamAbortController.abort();
+			streamAbortController = null;
+		}
+		streamState.value = 'disconnected';
+	}
+
+	function switchThread(threadId: string): void {
+		closeStream();
+		resetThreadState();
 		// 3. Switch thread
 		currentThreadId.value = threadId;
-		// 4. Load rich historical messages first, then connect SSE after.
-		//    loadHistoricalMessages sets the SSE cursor (nextEventId) so SSE
-		//    only receives events that arrived AFTER the historical snapshot.
-		delete lastEventIdByThread.value[threadId];
-		void loadHistoricalMessages(threadId).then(() => {
-			void loadThreadStatus(threadId);
-			connectSSE(threadId);
-		});
+		connectStream(threadId);
 	}
 
 	// --- Actions ---
 
 	function newThread(): string {
 		const newThreadId = uuidv4();
-		closeSSE();
-		messages.value = [];
-		taskRuns.value = [];
-		activeRunId.value = null;
-		debugEvents.value = [];
-		runStateByGroupId = {};
-		groupIdByRunId = {};
+		closeStream();
+		resetThreadState();
 		currentThreadId.value = newThreadId;
 
 		threads.value.unshift({
@@ -411,7 +574,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			createdAt: new Date().toISOString(),
 		});
 
-		connectSSE(newThreadId);
+		connectStream(newThreadId);
 		return newThreadId;
 	}
 
@@ -421,9 +584,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		// Remove thread from list
 		threads.value = threads.value.filter((t) => t.id !== threadId);
 
-		// Clean up event cursor
-		delete lastEventIdByThread.value[threadId];
-
 		if (wasActive) {
 			if (threads.value.length > 0) {
 				// Switch to first remaining thread
@@ -431,20 +591,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			} else {
 				// No threads left — create a new one
 				const freshId = uuidv4();
-				closeSSE();
-				messages.value = [];
-				taskRuns.value = [];
-				activeRunId.value = null;
-				debugEvents.value = [];
-				runStateByGroupId = {};
-				groupIdByRunId = {};
+				closeStream();
+				resetThreadState();
 				currentThreadId.value = freshId;
 				threads.value.push({
 					id: freshId,
 					title: NEW_CONVERSATION_TITLE,
 					createdAt: new Date().toISOString(),
 				});
-				connectSSE(freshId);
+				connectStream(freshId);
 			}
 		}
 
@@ -495,69 +650,14 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	async function loadHistoricalMessages(threadId: string): Promise<void> {
 		try {
 			const result = await fetchThreadMessagesApi(rootStore.restApiContext, threadId, 100);
-			// Only hydrate if we're still on the same thread and SSE hasn't delivered messages
+			// Only hydrate if we're still on the same thread and the live stream
+			// has not already replaced the state with a sync frame.
 			if (currentThreadId.value !== threadId || messages.value.length > 0) return;
-			// Backend now returns InstanceAiMessage[] directly — no conversion needed
 			if (result.messages.length > 0) {
-				messages.value = result.messages;
-
-				// Rebuild reducer routing state from historical messages so SSE
-				// replay events (which arrive before run-sync) can reduce into
-				// existing run states instead of being dropped or creating phantoms.
-				for (const msg of result.messages) {
-					if (msg.role !== 'assistant' || !msg.agentTree) continue;
-					const groupId = msg.messageGroupId ?? msg.runId;
-					if (!groupId || !isSafeObjectKey(groupId)) continue;
-					const rebuiltRunState = rebuildRunStateFromTree(msg.agentTree);
-					if (!rebuiltRunState) continue;
-					runStateByGroupId[groupId] = rebuiltRunState;
-					// Register ALL runIds in the group — not just the latest one.
-					// This ensures late events from older runs in a merged A→B→C
-					// chain still route to the correct message after restore.
-					if (msg.runIds) {
-						for (const rid of msg.runIds) {
-							if (!isSafeObjectKey(rid)) continue;
-							groupIdByRunId[rid] = groupId;
-						}
-					}
-					if (msg.runId && isSafeObjectKey(msg.runId)) groupIdByRunId[msg.runId] = groupId;
-				}
-			}
-			// Set SSE cursor to skip past events already covered by historical messages.
-			// This prevents duplicate messages when SSE replays in-memory events.
-			if (result.nextEventId !== null && result.nextEventId !== undefined) {
-				lastEventIdByThread.value[threadId] = result.nextEventId - 1;
+				hydrateThreadState(result.messages, taskRuns.value, activeRunId.value);
 			}
 		} catch {
-			// Silently ignore — messages will appear if SSE delivers them
-		}
-	}
-
-	async function loadThreadStatus(threadId: string): Promise<void> {
-		try {
-			const status = await fetchThreadStatusApi(rootStore.restApiContext, threadId);
-			if (currentThreadId.value !== threadId) return;
-			replaceTaskRuns(status.taskRuns ?? []);
-
-			const hasActivity =
-				status.hasActiveRun ||
-				status.isSuspended ||
-				status.backgroundTasks.length > 0 ||
-				(status.taskRuns?.length ?? 0) > 0;
-			if (!hasActivity) return;
-
-			const lastAssistant = [...messages.value].reverse().find((m) => m.role === 'assistant');
-			if (!lastAssistant) return;
-
-			if (status.hasActiveRun || status.isSuspended) {
-				activeRunId.value = lastAssistant.runId ?? null;
-				lastAssistant.isStreaming = status.hasActiveRun;
-			}
-
-			// Background task visibility is handled by the run-sync control frame
-			// that is sent on SSE connect. No need to inject children directly here.
-		} catch {
-			// Silently ignore
+			// Silently ignore — messages will appear when the stream sync arrives
 		}
 	}
 
@@ -586,7 +686,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 		// 2. POST to backend — returns { runId }
 		// Thread title is generated by Mastra asynchronously after the agent responds.
-		// activeRunId is set by the run-start event arriving over SSE, NOT by the POST response.
+		// activeRunId is set by the live stream, NOT by the POST response.
 		try {
 			await postMessage(
 				rootStore.restApiContext,
@@ -619,7 +719,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		if (!activeRunId.value) return;
 		try {
 			await postCancel(rootStore.restApiContext, currentThreadId.value);
-			// Don't clear activeRunId here — wait for the run-finish event via SSE
+			// Don't clear activeRunId here — wait for the run-finish event via the stream
 		} catch {
 			toast.showError(new Error('Failed to cancel. Try again.'), 'Cancel failed');
 		}
@@ -775,8 +875,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		// State
 		currentThreadId,
 		threads,
-		sseState,
-		lastEventIdByThread,
+		streamState,
 		activeRunId,
 		messages,
 		debugEvents,
@@ -810,7 +909,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		switchThread,
 		loadThreads,
 		loadHistoricalMessages,
-		loadThreadStatus,
 		sendMessage,
 		cancelRun,
 		cancelBackgroundTask,
@@ -818,7 +916,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		toggleResearchMode,
 		confirmAction,
 		copyFullTrace,
-		connectSSE,
-		closeSSE,
+		connectStream,
+		closeStream,
 	};
 });

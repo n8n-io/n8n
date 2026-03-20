@@ -1,1 +1,1 @@
-export type { InstanceAiEventBus, StoredEvent } from './event-bus.interface';
+export type { InstanceAiEventSink } from './event-bus.interface';

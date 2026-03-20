@@ -2,7 +2,10 @@ import type {
 	InstanceAiAttachment,
 	AgentRunState,
 	InstanceAiEvent,
-	InstanceAiThreadStatusResponse,
+	InstanceAiMessage,
+	InstanceAiStreamDeltaFrame,
+	InstanceAiStreamFrame,
+	InstanceAiStreamSyncFrame,
 	InstanceAiGatewayCapabilities,
 	McpToolCallResult,
 	InstanceAiQuestionResponse,
@@ -15,12 +18,18 @@ import type {
 	InstanceAiTaskRun,
 	InstanceAiTargetResource,
 } from '@n8n/api-types';
-import { createInitialState, instanceAiTaskOutcomeSchema, reduceEvent, toAgentTree } from '@n8n/api-types';
+import {
+	createInitialState,
+	instanceAiTaskOutcomeSchema,
+	reduceEvent,
+	toAgentTree,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { Response } from 'express';
 import {
 	addPlanArtifact,
 	createInstanceAgent,
@@ -53,11 +62,9 @@ import type {
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
-
-import { buildAgentTreeFromEvents } from './agent-tree-builder';
 import { AgentTreeSnapshotStorage } from './agent-tree-snapshot';
-import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { LocalGateway, LocalFilesystemProvider } from './filesystem';
+import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { MastraIterationLogStorage } from './iteration-log-storage';
@@ -102,6 +109,8 @@ interface PendingConfirmation {
 	resolve: (data: ConfirmationData) => void;
 	threadId: string;
 	userId: string;
+	runId: string;
+	messageGroupId?: string;
 }
 
 interface BackgroundTask {
@@ -132,6 +141,33 @@ interface BackgroundTask {
 	phaseId?: string;
 	/** Work item ID for workflow loop tracking. */
 	workItemId?: string;
+}
+
+type FlushableResponse = Response & { flush?: () => void };
+
+interface BufferedFrame {
+	seq: number;
+	frame: InstanceAiStreamDeltaFrame;
+}
+
+interface ThreadConnection {
+	id: string;
+	res: FlushableResponse;
+	state: 'buffering' | 'live';
+	buffer: BufferedFrame[];
+	baselineSeq: number;
+}
+
+interface ThreadRuntime {
+	sequence: number;
+	user?: User;
+	researchMode?: boolean;
+	currentMessageGroupId?: string;
+	runIdsByMessageGroup: Map<string, string[]>;
+	messageGroupIdByRunId: Map<string, string>;
+	runStateByMessageGroup: Map<string, AgentRunState>;
+	taskRunsById: Map<string, InstanceAiTaskRun>;
+	connections: Map<string, ThreadConnection>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -199,29 +235,11 @@ export class InstanceAiService {
 	/** Server-issued session key — replaces the pairing token after init. */
 	private activeSessionKey: string | null = null;
 
-	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
-	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
+	/** Live per-thread chat runtime state, including connections and group snapshots. */
+	private readonly threadRuntimes = new Map<string, ThreadRuntime>();
 
-	/** Tracks the last user per thread so durable task/plan execution can continue after the chat run ends. */
-	private readonly threadUsers = new Map<string, User>();
-
-	/** Tracks the last researchMode setting per thread for detached task/plan execution. */
-	private readonly threadResearchMode = new Map<string, boolean>();
-
-	/** Tracks the current messageGroupId per thread for panel/timeline routing. */
-	private readonly threadMessageGroupId = new Map<string, string>();
-
-	/** Tracks all runIds that belong to each messageGroupId. */
-	private readonly runIdsByMessageGroup = new Map<string, string[]>();
-
-	/** Fast lookup from runId to messageGroupId for snapshot/state reconstruction. */
-	private readonly messageGroupIdByRunId = new Map<string, string>();
-
-	/** Live normalized run state per messageGroupId for refresh-safe snapshot persistence. */
-	private readonly runStateByMessageGroup = new Map<string, AgentRunState>();
-
-	/** Thread-scoped event subscriptions that keep runStateByMessageGroup updated. */
-	private readonly threadEventUnsubscribers = new Map<string, () => void>();
+	/** Thread-scoped domain approvals must survive runtime teardown between runs. */
+	private readonly threadDomainAccessTrackers = new Map<string, DomainAccessTracker>();
 
 	/** Serializes plan execution decisions per thread/plan pair. */
 	private readonly planExecutionQueues = new Map<string, Promise<void>>();
@@ -232,11 +250,17 @@ export class InstanceAiService {
 	/** Factory for creating per-builder ephemeral sandboxes. */
 	private builderSandboxFactory?: BuilderSandboxFactory;
 
+	private readonly eventSink = {
+		publish: (threadId: string, event: InstanceAiEvent) => {
+			this.publishEvent(threadId, event);
+		},
+	};
+
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
 		private readonly adapterService: InstanceAiAdapterService,
-		private readonly eventBus: InProcessEventBus,
+		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly planStateRepo: InstanceAiPlanStateRepository,
 		private readonly taskRunRepo: InstanceAiTaskRunRepository,
@@ -257,6 +281,495 @@ export class InstanceAiService {
 		} else if (sbxConfig.enabled) {
 			this.builderSandboxFactory = new BuilderSandboxFactory(sbxConfig);
 		}
+	}
+
+	private getOrCreateThreadRuntime(threadId: string): ThreadRuntime {
+		let runtime = this.threadRuntimes.get(threadId);
+		if (!runtime) {
+			runtime = {
+				sequence: 0,
+				runIdsByMessageGroup: new Map(),
+				messageGroupIdByRunId: new Map(),
+				runStateByMessageGroup: new Map(),
+				taskRunsById: new Map(),
+				connections: new Map(),
+			};
+			this.threadRuntimes.set(threadId, runtime);
+		}
+
+		return runtime;
+	}
+
+	private getThreadRuntime(threadId: string): ThreadRuntime | undefined {
+		return this.threadRuntimes.get(threadId);
+	}
+
+	private getThreadUser(threadId: string): User | undefined {
+		return this.threadRuntimes.get(threadId)?.user;
+	}
+
+	private getThreadResearchMode(threadId: string): boolean | undefined {
+		return this.threadRuntimes.get(threadId)?.researchMode;
+	}
+
+	private getCurrentMessageGroupId(threadId: string): string | undefined {
+		return this.threadRuntimes.get(threadId)?.currentMessageGroupId;
+	}
+
+	private getOrCreateDomainTracker(threadId: string): DomainAccessTracker {
+		let tracker = this.threadDomainAccessTrackers.get(threadId);
+		if (!tracker) {
+			tracker = createDomainAccessTracker();
+			this.threadDomainAccessTrackers.set(threadId, tracker);
+		}
+
+		return tracker;
+	}
+
+	private ensureRunState(threadId: string, messageGroupId: string): AgentRunState {
+		const runtime = this.getOrCreateThreadRuntime(threadId);
+		let runState = runtime.runStateByMessageGroup.get(messageGroupId);
+		if (!runState) {
+			runState = createInitialState(ORCHESTRATOR_AGENT_ID);
+			runtime.runStateByMessageGroup.set(messageGroupId, runState);
+		}
+
+		return runState;
+	}
+
+	private registerRunWithMessageGroup(
+		threadId: string,
+		runId: string,
+		messageGroupId: string,
+	): void {
+		const runtime = this.getOrCreateThreadRuntime(threadId);
+		runtime.messageGroupIdByRunId.set(runId, messageGroupId);
+		const runIds = runtime.runIdsByMessageGroup.get(messageGroupId) ?? [];
+		if (!runIds.includes(runId)) {
+			runIds.push(runId);
+			runtime.runIdsByMessageGroup.set(messageGroupId, runIds);
+		}
+	}
+
+	private findMessageGroupIdForRun(threadId: string, runId: string): string | undefined {
+		const runtime = this.threadRuntimes.get(threadId);
+		if (!runtime) return undefined;
+
+		const known = runtime.messageGroupIdByRunId.get(runId);
+		if (known) {
+			return known;
+		}
+
+		for (const [messageGroupId, runIds] of runtime.runIdsByMessageGroup.entries()) {
+			if (runIds.includes(runId)) {
+				runtime.messageGroupIdByRunId.set(runId, messageGroupId);
+				return messageGroupId;
+			}
+		}
+
+		return undefined;
+	}
+
+	private resolveMessageGroupIdForEvent(
+		threadId: string,
+		event: InstanceAiEvent,
+	): string | undefined {
+		if (event.type === 'run-start') {
+			const messageGroupId =
+				event.payload.messageGroupId ?? this.getCurrentMessageGroupId(threadId);
+			if (!messageGroupId) {
+				return undefined;
+			}
+
+			this.registerRunWithMessageGroup(threadId, event.runId, messageGroupId);
+			return messageGroupId;
+		}
+
+		return this.findMessageGroupIdForRun(threadId, event.runId);
+	}
+
+	private recordEventForSnapshot(threadId: string, event: InstanceAiEvent): void {
+		const messageGroupId = this.resolveMessageGroupIdForEvent(threadId, event);
+		if (!messageGroupId) {
+			return;
+		}
+
+		const runState = this.ensureRunState(threadId, messageGroupId);
+		reduceEvent(runState, event);
+	}
+
+	private upsertRuntimeTaskRun(threadId: string, taskRun: InstanceAiTaskRun): void {
+		this.getOrCreateThreadRuntime(threadId).taskRunsById.set(taskRun.taskId, taskRun);
+	}
+
+	private getRuntimeTaskRuns(threadId: string): InstanceAiTaskRun[] {
+		return [...(this.threadRuntimes.get(threadId)?.taskRunsById.values() ?? [])];
+	}
+
+	private nextSequence(threadId: string): number {
+		const runtime = this.getOrCreateThreadRuntime(threadId);
+		runtime.sequence += 1;
+		return runtime.sequence;
+	}
+
+	private currentSequence(threadId: string): number {
+		return this.threadRuntimes.get(threadId)?.sequence ?? 0;
+	}
+
+	private sortTaskRuns(taskRuns: Iterable<InstanceAiTaskRun>): InstanceAiTaskRun[] {
+		return [...taskRuns].sort((left, right) => right.updatedAt - left.updatedAt);
+	}
+
+	private toStreamFrame(event: InstanceAiEvent): InstanceAiStreamDeltaFrame | null {
+		switch (event.type) {
+			case 'task-created':
+			case 'task-updated':
+				return {
+					type: 'task-upsert',
+					runId: event.runId,
+					agentId: event.agentId,
+					payload: event.payload,
+				};
+			case 'plan-created':
+			case 'plan-updated':
+				return {
+					type: 'plan-upsert',
+					runId: event.runId,
+					agentId: event.agentId,
+					payload: event.payload,
+				};
+			case 'filesystem-request':
+				return null;
+			default:
+				return event;
+		}
+	}
+
+	private writeFrame(res: FlushableResponse, frame: InstanceAiStreamFrame): void {
+		res.write(`${JSON.stringify(frame)}\n`);
+		res.flush?.();
+	}
+
+	private broadcastFrame(threadId: string, frame: InstanceAiStreamDeltaFrame): void {
+		const runtime = this.getThreadRuntime(threadId);
+		if (!runtime) {
+			return;
+		}
+
+		const seq = this.nextSequence(threadId);
+		const failedConnectionIds: string[] = [];
+
+		for (const connection of runtime.connections.values()) {
+			try {
+				if (connection.state === 'buffering') {
+					connection.buffer.push({ seq, frame });
+				} else {
+					this.writeFrame(connection.res, frame);
+				}
+			} catch {
+				failedConnectionIds.push(connection.id);
+			}
+		}
+
+		for (const connectionId of failedConnectionIds) {
+			runtime.connections.delete(connectionId);
+		}
+		if (failedConnectionIds.length > 0) {
+			this.maybeCleanupThreadState(threadId);
+		}
+	}
+
+	private publishEvent(threadId: string, event: InstanceAiEvent): void {
+		this.recordEventForSnapshot(threadId, event);
+		const frame = this.toStreamFrame(event);
+		if (frame) {
+			this.broadcastFrame(threadId, frame);
+		}
+	}
+
+	private publishTaskUpsert(threadId: string, taskRun: InstanceAiTaskRun): void {
+		this.upsertRuntimeTaskRun(threadId, taskRun);
+		const runId = taskRun.originRunId ?? this.getLatestRunIdForThread(threadId);
+		if (!runId) {
+			return;
+		}
+
+		this.broadcastFrame(threadId, {
+			type: 'task-upsert',
+			runId,
+			agentId: taskRun.agentId,
+			payload: { task: taskRun },
+		});
+	}
+
+	private getMessageGroupSyncStatus(
+		threadId: string,
+		messageGroupId: string,
+	): 'active' | 'suspended' | 'background' | 'idle' {
+		if (
+			this.activeRuns.has(threadId) &&
+			this.getCurrentMessageGroupId(threadId) === messageGroupId
+		) {
+			return 'active';
+		}
+		if (
+			this.suspendedRuns.has(threadId) &&
+			this.getCurrentMessageGroupId(threadId) === messageGroupId
+		) {
+			return 'suspended';
+		}
+
+		const hasBackgroundActivity = [...this.backgroundTasks.values()].some(
+			(task) =>
+				task.threadId === threadId &&
+				task.messageGroupId === messageGroupId &&
+				this.isTaskActive(task),
+		);
+		return hasBackgroundActivity ? 'background' : 'idle';
+	}
+
+	private buildSyncedMessages(
+		threadId: string,
+		persistedMessages: InstanceAiMessage[],
+	): InstanceAiMessage[] {
+		const messages = persistedMessages.map((message) => ({ ...message }));
+		const runtime = this.getThreadRuntime(threadId);
+		if (!runtime) {
+			return messages;
+		}
+
+		for (const [messageGroupId, runState] of runtime.runStateByMessageGroup.entries()) {
+			const runIds = runtime.runIdsByMessageGroup.get(messageGroupId) ?? [];
+			const runId = runIds.at(-1) ?? messageGroupId;
+			const agentTree = toAgentTree(runState);
+			const status = this.getMessageGroupSyncStatus(threadId, messageGroupId);
+			const isStreaming = status === 'active' || status === 'suspended';
+
+			let message = messages.find(
+				(existingMessage) =>
+					existingMessage.role === 'assistant' &&
+					(existingMessage.messageGroupId === messageGroupId || existingMessage.runId === runId),
+			);
+			if (!message) {
+				message = {
+					id: runId,
+					runId,
+					messageGroupId,
+					runIds: runIds.length > 0 ? [...runIds] : undefined,
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: agentTree.textContent,
+					reasoning: agentTree.reasoning,
+					isStreaming,
+					agentTree,
+				};
+				messages.push(message);
+				continue;
+			}
+
+			message.runId = runId;
+			message.messageGroupId = messageGroupId;
+			message.runIds = runIds.length > 0 ? [...runIds] : undefined;
+			message.content = agentTree.textContent;
+			message.reasoning = agentTree.reasoning;
+			message.isStreaming = isStreaming;
+			message.agentTree = agentTree;
+		}
+
+		return messages;
+	}
+
+	private buildSyncFrame(
+		threadId: string,
+		persistedMessages: InstanceAiMessage[],
+		persistedTaskRuns: InstanceAiTaskRun[],
+	): InstanceAiStreamSyncFrame {
+		const runtimeTaskRuns = this.getRuntimeTaskRuns(threadId);
+		const mergedTaskRuns = new Map(persistedTaskRuns.map((taskRun) => [taskRun.taskId, taskRun]));
+		for (const taskRun of runtimeTaskRuns) {
+			mergedTaskRuns.set(taskRun.taskId, taskRun);
+		}
+
+		return {
+			type: 'sync',
+			threadId,
+			messages: this.buildSyncedMessages(threadId, persistedMessages),
+			taskRuns: this.sortTaskRuns(mergedTaskRuns.values()),
+			activeRunId:
+				this.activeRuns.get(threadId)?.runId ?? this.suspendedRuns.get(threadId)?.runId ?? null,
+		};
+	}
+
+	openThreadStream(
+		userId: string,
+		threadId: string,
+		res: FlushableResponse,
+	): { cleanup: () => void; ready: Promise<void> } {
+		const runtime = this.getOrCreateThreadRuntime(threadId);
+		const connectionId = `conn_${nanoid(8)}`;
+		const connection: ThreadConnection = {
+			id: connectionId,
+			res,
+			state: 'buffering',
+			buffer: [],
+			baselineSeq: 0,
+		};
+
+		runtime.connections.set(connectionId, connection);
+
+		const cleanup = () => {
+			const currentRuntime = this.getThreadRuntime(threadId);
+			if (!currentRuntime) {
+				return;
+			}
+
+			currentRuntime.connections.delete(connectionId);
+			this.maybeCleanupThreadState(threadId);
+		};
+
+		const ready = (async () => {
+			try {
+				const [richMessages, taskRuns] = await Promise.all([
+					this.memoryService.getRichMessages(userId, threadId, { limit: 100, page: 0 }),
+					this.reconcileStoredTaskRuns(threadId),
+				]);
+
+				connection.baselineSeq = this.currentSequence(threadId);
+				const syncFrame = this.buildSyncFrame(threadId, richMessages.messages, taskRuns);
+
+				if (!this.getThreadRuntime(threadId)?.connections.has(connectionId)) {
+					return;
+				}
+
+				this.writeFrame(res, syncFrame);
+				for (const buffered of connection.buffer) {
+					if (buffered.seq > connection.baselineSeq) {
+						this.writeFrame(res, buffered.frame);
+					}
+				}
+				connection.buffer = [];
+				connection.state = 'live';
+			} catch (error) {
+				cleanup();
+				throw error;
+			}
+		})();
+
+		return { cleanup, ready };
+	}
+
+	private maybeCleanupThreadState(threadId: string): void {
+		const runtime = this.getThreadRuntime(threadId);
+		if (!runtime) {
+			return;
+		}
+
+		const hasConnectedWriters = runtime.connections.size > 0;
+		const hasActiveRun = this.activeRuns.has(threadId);
+		const hasSuspendedRun = this.suspendedRuns.has(threadId);
+		const hasActiveTasks = [...this.backgroundTasks.values()].some(
+			(task) => task.threadId === threadId && this.isTaskActive(task),
+		);
+		const hasPendingConfirmations = [...this.pendingSubAgentConfirmations.values()].some(
+			(pending) => pending.threadId === threadId,
+		);
+
+		if (
+			hasConnectedWriters ||
+			hasActiveRun ||
+			hasSuspendedRun ||
+			hasActiveTasks ||
+			hasPendingConfirmations
+		) {
+			return;
+		}
+
+		this.threadRuntimes.delete(threadId);
+		for (const key of this.planExecutionQueues.keys()) {
+			if (key.startsWith(`${threadId}:`)) {
+				this.planExecutionQueues.delete(key);
+			}
+		}
+		void this.destroySandbox(threadId);
+	}
+
+	private async resolveRuntimeConfirmationState(
+		threadId: string,
+		requestId: string,
+		status: 'approved' | 'denied',
+	): Promise<void> {
+		const runtime = this.getThreadRuntime(threadId);
+		if (!runtime) {
+			return;
+		}
+
+		for (const [messageGroupId, runState] of runtime.runStateByMessageGroup.entries()) {
+			const runIds = runtime.runIdsByMessageGroup.get(messageGroupId) ?? [];
+			const runId = runIds.at(-1) ?? this.getLatestRunIdForThread(threadId);
+			if (!runId) continue;
+
+			for (const [toolCallId, toolCall] of Object.entries(runState.toolCallsById)) {
+				if (toolCall.confirmation?.requestId !== requestId) {
+					continue;
+				}
+
+				this.publishEvent(threadId, {
+					type: 'confirmation-resolved',
+					runId,
+					agentId: this.findOwningAgentId(runState, toolCallId) ?? ORCHESTRATOR_AGENT_ID,
+					payload: {
+						requestId,
+						toolCallId,
+						status,
+					},
+				});
+			}
+
+			for (const [agentId, agent] of Object.entries(runState.agentsById)) {
+				if (!agent.plan) continue;
+
+				let updatedPlan = false;
+				const nextPhases = agent.plan.phases.map((phase) => {
+					if (phase.blocker?.requestId !== requestId) {
+						return phase;
+					}
+
+					updatedPlan = true;
+					return {
+						...phase,
+						blocker: {
+							...phase.blocker,
+							requestId: undefined,
+						},
+					};
+				});
+
+				if (!updatedPlan) {
+					continue;
+				}
+
+				await this.publishPlanUpdate(
+					threadId,
+					runId,
+					{
+						...agent.plan,
+						phases: nextPhases,
+						lastUpdatedAt: new Date().toISOString(),
+					},
+					agentId,
+				);
+			}
+		}
+	}
+
+	private findOwningAgentId(runState: AgentRunState, toolCallId: string): string | undefined {
+		for (const [agentId, toolCallIds] of Object.entries(runState.toolCallIdsByAgentId)) {
+			if (toolCallIds.includes(toolCallId)) {
+				return agentId;
+			}
+		}
+
+		return undefined;
 	}
 
 	private getSandboxConfigFromEnv(): SandboxConfig {
@@ -320,22 +833,11 @@ export class InstanceAiService {
 	private async saveTaskRunSnapshot(
 		threadId: string,
 		taskRun: InstanceAiTaskRun,
-		eventType: 'task-created' | 'task-updated',
+		_eventType: 'task-created' | 'task-updated',
 	): Promise<void> {
 		const taskRunStorage = this.createTaskRunStorage();
 		await taskRunStorage.upsert(taskRun);
-
-		const targetRunId = taskRun.originRunId ?? this.getLatestRunIdForThread(threadId);
-		if (!targetRunId) {
-			return;
-		}
-
-		this.eventBus.publish(threadId, {
-			type: eventType,
-			runId: targetRunId,
-			agentId: taskRun.agentId,
-			payload: { task: taskRun },
-		});
+		this.publishTaskUpsert(threadId, taskRun);
 	}
 
 	private async reconcileStoredTaskRuns(threadId: string): Promise<InstanceAiTaskRun[]> {
@@ -449,6 +951,32 @@ export class InstanceAiService {
 		return activeRunId !== runId;
 	}
 
+	private async persistThreadSnapshot(
+		threadId: string,
+		runId: string,
+		overrideMessageGroupId?: string,
+	): Promise<void> {
+		await this.saveAgentTreeSnapshot(
+			threadId,
+			runId,
+			this.createSnapshotStorage(),
+			overrideMessageGroupId,
+		);
+	}
+
+	private async persistDetachedSnapshot(task: BackgroundTask): Promise<void> {
+		if (!this.shouldPersistDetachedSnapshot(task.threadId, task.runId)) {
+			return;
+		}
+
+		await this.saveAgentTreeSnapshot(
+			task.threadId,
+			task.runId,
+			this.createSnapshotStorage(),
+			task.messageGroupId,
+		);
+	}
+
 	private async publishMilestoneSummary(
 		threadId: string,
 		runId: string,
@@ -456,7 +984,7 @@ export class InstanceAiService {
 		snapshotStorage?: AgentTreeSnapshotStorage,
 		messageGroupId?: string,
 	): Promise<void> {
-		this.eventBus.publish(threadId, {
+		this.publishEvent(threadId, {
 			type: 'text-delta',
 			runId,
 			agentId: ORCHESTRATOR_AGENT_ID,
@@ -464,7 +992,7 @@ export class InstanceAiService {
 		});
 
 		if (snapshotStorage && this.shouldPersistDetachedSnapshot(threadId, runId)) {
-			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage, true, messageGroupId);
+			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage, messageGroupId);
 		}
 	}
 
@@ -625,12 +1153,12 @@ export class InstanceAiService {
 	}
 
 	private getLatestRunIdForThread(threadId: string): string | undefined {
-		const messageGroupId = this.threadMessageGroupId.get(threadId);
+		const messageGroupId = this.getCurrentMessageGroupId(threadId);
 		if (!messageGroupId) {
 			return undefined;
 		}
 
-		const runIds = this.runIdsByMessageGroup.get(messageGroupId);
+		const runIds = this.getThreadRuntime(threadId)?.runIdsByMessageGroup.get(messageGroupId);
 		return runIds?.[runIds.length - 1];
 	}
 
@@ -638,6 +1166,7 @@ export class InstanceAiService {
 		threadId: string,
 		runId: string | undefined,
 		plan: InstanceAiPlanSpec,
+		agentId = ORCHESTRATOR_AGENT_ID,
 	) {
 		const planStorage = this.createPlanStorage();
 		await planStorage.save(threadId, plan);
@@ -646,10 +1175,10 @@ export class InstanceAiService {
 			return;
 		}
 
-		this.eventBus.publish(threadId, {
+		this.publishEvent(threadId, {
 			type: 'plan-updated',
 			runId: targetRunId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId,
 			payload: { plan },
 		});
 	}
@@ -758,24 +1287,6 @@ export class InstanceAiService {
 		return this.activeRuns.has(threadId) || this.suspendedRuns.has(threadId);
 	}
 
-	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
-		const hasActiveRun = this.activeRuns.has(threadId);
-		const isSuspended = this.suspendedRuns.has(threadId);
-		const taskRuns = await this.reconcileStoredTaskRuns(threadId);
-		const bgTasks = taskRuns
-			.filter((taskRun) => taskRun.status === 'running' || taskRun.status === 'suspended')
-			.map((t) => ({
-				taskId: t.taskId,
-				role: t.role,
-				agentId: t.agentId,
-				status: t.status,
-				startedAt: t.startedAt ?? t.createdAt,
-				runId: t.originRunId,
-				messageGroupId: t.messageGroupId,
-			}));
-		return { hasActiveRun, isSuspended, taskRuns, backgroundTasks: bgTasks };
-	}
-
 	startRun(
 		user: User,
 		threadId: string,
@@ -785,26 +1296,18 @@ export class InstanceAiService {
 	): string {
 		const runId = `run_${nanoid()}`;
 		const abortController = new AbortController();
+		const runtime = this.getOrCreateThreadRuntime(threadId);
 
 		this.activeRuns.set(threadId, { runId, abortController });
-		this.threadUsers.set(threadId, user);
+		runtime.user = user;
 		if (researchMode !== undefined) {
-			this.threadResearchMode.set(threadId, researchMode);
+			runtime.researchMode = researchMode;
 		}
-		this.ensureThreadEventSubscription(threadId);
 
 		const newGroupId = `mg_${nanoid()}`;
-		this.threadMessageGroupId.set(threadId, newGroupId);
-		this.runIdsByMessageGroup.set(newGroupId, []);
-		this.messageGroupIdByRunId.set(runId, newGroupId);
-		this.ensureRunState(newGroupId);
-
-		const messageGroupId = this.threadMessageGroupId.get(threadId);
-		// Register this runId with its messageGroup
-		if (messageGroupId) {
-			const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
-			if (groupRunIds) groupRunIds.push(runId);
-		}
+		runtime.currentMessageGroupId = newGroupId;
+		this.registerRunWithMessageGroup(threadId, runId, newGroupId);
+		this.ensureRunState(threadId, newGroupId);
 
 		// Fire-and-forget — errors handled inside executeRun
 		void this.executeRun(
@@ -815,84 +1318,15 @@ export class InstanceAiService {
 			abortController,
 			researchMode,
 			attachments,
-			messageGroupId,
+			newGroupId,
 		);
 
 		return runId;
 	}
 
-	/** Get the current messageGroupId for a thread (used by SSE sync). */
+	/** Get the current messageGroupId for a thread (used by sync serialization). */
 	getMessageGroupId(threadId: string): string | undefined {
-		return this.threadMessageGroupId.get(threadId);
-	}
-
-	private ensureRunState(messageGroupId: string): AgentRunState {
-		let runState = this.runStateByMessageGroup.get(messageGroupId);
-		if (!runState) {
-			runState = createInitialState(ORCHESTRATOR_AGENT_ID);
-			this.runStateByMessageGroup.set(messageGroupId, runState);
-		}
-
-		return runState;
-	}
-
-	private ensureThreadEventSubscription(threadId: string): void {
-		if (this.threadEventUnsubscribers.has(threadId)) {
-			return;
-		}
-
-		const unsubscribe = this.eventBus.subscribe(threadId, ({ event }) => {
-			this.recordEventForSnapshot(threadId, event);
-		});
-		this.threadEventUnsubscribers.set(threadId, unsubscribe);
-	}
-
-	private findMessageGroupIdForRun(runId: string): string | undefined {
-		const known = this.messageGroupIdByRunId.get(runId);
-		if (known) {
-			return known;
-		}
-
-		for (const [messageGroupId, runIds] of this.runIdsByMessageGroup.entries()) {
-			if (runIds.includes(runId)) {
-				this.messageGroupIdByRunId.set(runId, messageGroupId);
-				return messageGroupId;
-			}
-		}
-
-		return undefined;
-	}
-
-	private resolveMessageGroupIdForEvent(
-		threadId: string,
-		event: InstanceAiEvent,
-	): string | undefined {
-		if (event.type === 'run-start') {
-			const messageGroupId = event.payload.messageGroupId ?? this.threadMessageGroupId.get(threadId);
-			if (!messageGroupId) {
-				return undefined;
-			}
-
-			this.messageGroupIdByRunId.set(event.runId, messageGroupId);
-			const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId) ?? [];
-			if (!groupRunIds.includes(event.runId)) {
-				groupRunIds.push(event.runId);
-				this.runIdsByMessageGroup.set(messageGroupId, groupRunIds);
-			}
-			return messageGroupId;
-		}
-
-		return this.findMessageGroupIdForRun(event.runId);
-	}
-
-	private recordEventForSnapshot(threadId: string, event: InstanceAiEvent): void {
-		const messageGroupId = this.resolveMessageGroupIdForEvent(threadId, event);
-		if (!messageGroupId) {
-			return;
-		}
-
-		const runState = this.ensureRunState(messageGroupId);
-		reduceEvent(runState, event);
+		return this.getCurrentMessageGroupId(threadId);
 	}
 
 	/**
@@ -906,18 +1340,25 @@ export class InstanceAiService {
 		// If there's an active/suspended orchestrator run, use the thread-global
 		// (it was set when that run started).
 		if (this.activeRuns.has(threadId) || this.suspendedRuns.has(threadId)) {
-			return this.threadMessageGroupId.get(threadId);
+			return this.getCurrentMessageGroupId(threadId);
 		}
 		// Background-only: find the most recent running task's group
 		const runningTask = [...this.backgroundTasks.values()]
 			.filter((t) => t.threadId === threadId && this.isTaskActive(t))
 			.sort((a, b) => b.startedAt - a.startedAt)[0];
-		return runningTask?.messageGroupId ?? this.threadMessageGroupId.get(threadId);
+		return runningTask?.messageGroupId ?? this.getCurrentMessageGroupId(threadId);
 	}
 
 	/** Get all runIds belonging to a messageGroupId. */
 	getRunIdsForMessageGroup(messageGroupId: string): string[] {
-		return this.runIdsByMessageGroup.get(messageGroupId) ?? [];
+		for (const runtime of this.threadRuntimes.values()) {
+			const runIds = runtime.runIdsByMessageGroup.get(messageGroupId);
+			if (runIds) {
+				return runIds;
+			}
+		}
+
+		return [];
 	}
 
 	/** Get the active runId for a thread. */
@@ -925,17 +1366,21 @@ export class InstanceAiService {
 		return this.activeRuns.get(threadId)?.runId;
 	}
 
-	cancelRun(threadId: string): void {
+	async cancelRun(threadId: string): Promise<void> {
 		// Clean up sub-agent confirmations for this thread
 		for (const [reqId, pending] of this.pendingSubAgentConfirmations) {
 			if (pending.threadId === threadId) {
+				await this.resolveRuntimeConfirmationState(threadId, reqId, 'denied');
+				if (this.shouldPersistDetachedSnapshot(pending.threadId, pending.runId)) {
+					await this.persistThreadSnapshot(pending.threadId, pending.runId, pending.messageGroupId);
+				}
 				pending.resolve({ approved: false });
 				this.pendingSubAgentConfirmations.delete(reqId);
 			}
 		}
 
 		// Cancel background tasks for this thread
-		this.cancelBackgroundTasks(threadId);
+		await this.cancelBackgroundTasks(threadId);
 
 		const active = this.activeRuns.get(threadId);
 		if (active) {
@@ -946,14 +1391,17 @@ export class InstanceAiService {
 
 		const suspended = this.suspendedRuns.get(threadId);
 		if (suspended) {
+			await this.resolveRuntimeConfirmationState(threadId, suspended.requestId, 'denied');
 			suspended.abortController.abort();
 			this.suspendedRuns.delete(threadId);
-			this.eventBus.publish(threadId, {
+			this.publishEvent(threadId, {
 				type: 'run-finish',
 				runId: suspended.runId,
 				agentId: ORCHESTRATOR_AGENT_ID,
 				payload: { status: 'cancelled', reason: 'user_cancelled' },
 			});
+			await this.persistThreadSnapshot(threadId, suspended.runId);
+			this.maybeCleanupThreadState(threadId);
 		}
 	}
 
@@ -964,47 +1412,54 @@ export class InstanceAiService {
 		task.corrections.push(correction);
 	}
 
-	/** Cancel a single background task by ID. */
-	cancelBackgroundTask(threadId: string, taskId: string): void {
-		const task = this.backgroundTasks.get(taskId);
-		if (!task || task.threadId !== threadId || !this.isTaskActive(task)) return;
-
+	private async cancelBackgroundTaskInternal(task: BackgroundTask): Promise<void> {
 		task.abortController.abort();
 		task.status = 'cancelled';
 		task.updatedAt = Date.now();
 		task.completedAt = task.updatedAt;
+		task.error = 'Cancelled by user';
 
-		this.eventBus.publish(threadId, {
+		this.publishEvent(task.threadId, {
 			type: 'agent-completed',
 			runId: task.runId,
 			agentId: task.agentId,
 			payload: { role: task.role, result: '', error: 'Cancelled by user' },
 		});
 
-		void this.saveTaskRunSnapshot(threadId, this.toTaskRun(task), 'task-updated');
-		this.backgroundTasks.delete(taskId);
-		void (async () => {
-			if (task.planId && task.phaseId) {
-				const planStorage = this.createPlanStorage();
-				const existingPlan = await planStorage.get(threadId);
-				if (existingPlan?.planId === task.planId) {
-					const nextPlan = patchPlanPhase(
-						existingPlan,
-						task.phaseId,
-						{
-							status: 'blocked',
-							blocker: {
-								reason: 'Execution cancelled by user',
-								inputType: 'text',
-							},
-							lastVerificationError: 'Execution cancelled by user',
+		await this.saveTaskRunSnapshot(task.threadId, this.toTaskRun(task), 'task-updated');
+
+		if (task.planId && task.phaseId) {
+			const planStorage = this.createPlanStorage();
+			const existingPlan = await planStorage.get(task.threadId);
+			if (existingPlan?.planId === task.planId) {
+				const nextPlan = patchPlanPhase(
+					existingPlan,
+					task.phaseId,
+					{
+						status: 'blocked',
+						blocker: {
+							reason: 'Execution cancelled by user',
+							inputType: 'text',
 						},
-						'blocked',
-					);
-					await this.publishPlanUpdate(threadId, task.runId, nextPlan);
-				}
+						lastVerificationError: 'Execution cancelled by user',
+					},
+					'blocked',
+				);
+				await this.publishPlanUpdate(task.threadId, task.runId, nextPlan);
 			}
-		})();
+		}
+
+		await this.persistDetachedSnapshot(task);
+		this.backgroundTasks.delete(task.taskId);
+	}
+
+	/** Cancel a single background task by ID. */
+	async cancelBackgroundTask(threadId: string, taskId: string): Promise<void> {
+		const task = this.backgroundTasks.get(taskId);
+		if (!task || task.threadId !== threadId || !this.isTaskActive(task)) return;
+
+		await this.cancelBackgroundTaskInternal(task);
+		this.maybeCleanupThreadState(threadId);
 	}
 
 	// ── Gateway lifecycle ─────────────────────────────────────────────────
@@ -1131,14 +1586,8 @@ export class InstanceAiService {
 			pending.resolve({ approved: false });
 		}
 		this.pendingSubAgentConfirmations.clear();
-		for (const [, unsubscribe] of this.threadEventUnsubscribers) {
-			unsubscribe();
-		}
-		this.threadEventUnsubscribers.clear();
-		this.threadMessageGroupId.clear();
-		this.runIdsByMessageGroup.clear();
-		this.messageGroupIdByRunId.clear();
-		this.runStateByMessageGroup.clear();
+		this.threadRuntimes.clear();
+		this.threadDomainAccessTrackers.clear();
 
 		// Destroy all active sandboxes
 		const sandboxCleanups = [...this.sandboxes.keys()].map(
@@ -1147,7 +1596,6 @@ export class InstanceAiService {
 		await Promise.allSettled(sandboxCleanups);
 
 		this.snapshotManager?.invalidate();
-		this.eventBus.clear();
 		await this.mcpClientManager.disconnect();
 		this.logger.debug('Instance AI service shut down');
 	}
@@ -1163,10 +1611,11 @@ export class InstanceAiService {
 		messageGroupId?: string,
 	): Promise<void> {
 		const signal = abortController.signal;
+		const snapshotStorage = this.createSnapshotStorage();
 
 		try {
 			// Publish run-start (includes userId for audit trail attribution)
-			this.eventBus.publish(threadId, {
+			this.publishEvent(threadId, {
 				type: 'run-start',
 				runId,
 				agentId: ORCHESTRATOR_AGENT_ID,
@@ -1176,7 +1625,7 @@ export class InstanceAiService {
 
 			// Check if already cancelled before starting agent work
 			if (signal.aborted) {
-				this.eventBus.publish(threadId, {
+				this.publishEvent(threadId, {
 					type: 'run-finish',
 					runId,
 					agentId: ORCHESTRATOR_AGENT_ID,
@@ -1197,12 +1646,7 @@ export class InstanceAiService {
 			context.permissions = this.settingsService.getPermissions();
 
 			// Domain-access tracker: get or create for this thread, set runId
-			let domainTracker = this.domainAccessTrackersByThread.get(threadId);
-			if (!domainTracker) {
-				domainTracker = createDomainAccessTracker();
-				this.domainAccessTrackersByThread.set(threadId, domainTracker);
-			}
-			context.domainAccessTracker = domainTracker;
+			context.domainAccessTracker = this.getOrCreateDomainTracker(threadId);
 			context.runId = runId;
 
 			const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
@@ -1237,11 +1681,10 @@ export class InstanceAiService {
 			const taskStorage = new MastraTaskStorage(memory);
 			const planStorage = this.createPlanStorage();
 			const iterationLog = new MastraIterationLogStorage(memory);
-			const snapshotStorage = this.createSnapshotStorage();
 			// Replay existing tasks to the new run's agentTree so the frontend shows them immediately
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {
-				this.eventBus.publish(threadId, {
+				this.publishEvent(threadId, {
 					type: 'tasks-update',
 					runId,
 					agentId: ORCHESTRATOR_AGENT_ID,
@@ -1252,7 +1695,7 @@ export class InstanceAiService {
 			const runtimeOwnedPlanActive =
 				existingPlan?.status === 'approved' || existingPlan?.status === 'running';
 			if (existingPlan) {
-				this.eventBus.publish(threadId, {
+				this.publishEvent(threadId, {
 					type: 'plan-created',
 					runId,
 					agentId: ORCHESTRATOR_AGENT_ID,
@@ -1280,7 +1723,7 @@ export class InstanceAiService {
 				modelId,
 				storage: this.compositeStore,
 				subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
-				eventBus: this.eventBus,
+				eventBus: this.eventSink,
 				domainTools,
 				abortSignal: signal,
 				taskStorage,
@@ -1303,10 +1746,12 @@ export class InstanceAiService {
 							resolve,
 							threadId,
 							userId: user.id,
+							runId,
+							messageGroupId,
 						});
 					});
 				},
-				cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
+				cancelBackgroundTask: async (taskId) => await this.cancelBackgroundTask(threadId, taskId),
 				spawnBackgroundTask: (opts) => this.spawnBackgroundTask(runId, opts, snapshotStorage),
 				iterationLog,
 				sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
@@ -1383,7 +1828,7 @@ export class InstanceAiService {
 
 				const event = mapMastraChunkToEvent(runId, ORCHESTRATOR_AGENT_ID, chunk);
 				if (event) {
-					this.eventBus.publish(threadId, event);
+					this.publishEvent(threadId, event);
 				}
 			}
 
@@ -1405,14 +1850,14 @@ export class InstanceAiService {
 			}
 
 			if (signal.aborted) {
-				this.eventBus.publish(threadId, {
+				this.publishEvent(threadId, {
 					type: 'run-finish',
 					runId,
 					agentId: ORCHESTRATOR_AGENT_ID,
 					payload: { status: 'cancelled', reason: 'user_cancelled' },
 				});
 			} else {
-				this.eventBus.publish(threadId, {
+				this.publishEvent(threadId, {
 					type: 'run-finish',
 					runId,
 					agentId: ORCHESTRATOR_AGENT_ID,
@@ -1428,12 +1873,13 @@ export class InstanceAiService {
 		} catch (error) {
 			// Mastra throws AbortError when the signal is aborted — treat as cancellation
 			if (signal.aborted) {
-				this.eventBus.publish(threadId, {
+				this.publishEvent(threadId, {
 					type: 'run-finish',
 					runId,
 					agentId: ORCHESTRATOR_AGENT_ID,
 					payload: { status: 'cancelled', reason: 'user_cancelled' },
 				});
+				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 				return;
 			}
 
@@ -1445,7 +1891,7 @@ export class InstanceAiService {
 				runId,
 			});
 
-			this.eventBus.publish(threadId, {
+			this.publishEvent(threadId, {
 				type: 'run-finish',
 				runId,
 				agentId: ORCHESTRATOR_AGENT_ID,
@@ -1454,10 +1900,12 @@ export class InstanceAiService {
 					reason: errorMessage,
 				},
 			});
+			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 		} finally {
 			this.activeRuns.delete(threadId);
 			// Clear transient (allow_once) domain approvals for this run
-			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
+			this.threadDomainAccessTrackers.get(threadId)?.clearRun(runId);
+			this.maybeCleanupThreadState(threadId);
 		}
 	}
 
@@ -1471,7 +1919,16 @@ export class InstanceAiService {
 		if (pending) {
 			if (pending.userId !== requestingUserId) return false;
 			this.pendingSubAgentConfirmations.delete(requestId);
+			await this.resolveRuntimeConfirmationState(
+				pending.threadId,
+				requestId,
+				data.approved ? 'approved' : 'denied',
+			);
+			if (this.shouldPersistDetachedSnapshot(pending.threadId, pending.runId)) {
+				await this.persistThreadSnapshot(pending.threadId, pending.runId, pending.messageGroupId);
+			}
 			pending.resolve(data);
+			this.maybeCleanupThreadState(pending.threadId);
 			return true;
 		}
 
@@ -1490,6 +1947,12 @@ export class InstanceAiService {
 		const { agent, runId, mastraRunId, threadId, user, toolCallId, abortController } = suspended;
 		if (user.id !== requestingUserId) return false;
 
+		await this.resolveRuntimeConfirmationState(
+			threadId,
+			requestId,
+			data.approved ? 'approved' : 'denied',
+		);
+		await this.persistThreadSnapshot(threadId, runId);
 		this.suspendedRuns.delete(threadId);
 		this.activeRuns.set(threadId, { runId, abortController });
 
@@ -1579,7 +2042,7 @@ export class InstanceAiService {
 
 				const event = mapMastraChunkToEvent(opts.runId, ORCHESTRATOR_AGENT_ID, chunk);
 				if (event) {
-					this.eventBus.publish(opts.threadId, event);
+					this.publishEvent(opts.threadId, event);
 				}
 			}
 
@@ -1600,14 +2063,14 @@ export class InstanceAiService {
 			}
 
 			if (opts.signal.aborted) {
-				this.eventBus.publish(opts.threadId, {
+				this.publishEvent(opts.threadId, {
 					type: 'run-finish',
 					runId: opts.runId,
 					agentId: ORCHESTRATOR_AGENT_ID,
 					payload: { status: 'cancelled', reason: 'user_cancelled' },
 				});
 			} else {
-				this.eventBus.publish(opts.threadId, {
+				this.publishEvent(opts.threadId, {
 					type: 'run-finish',
 					runId: opts.runId,
 					agentId: ORCHESTRATOR_AGENT_ID,
@@ -1622,12 +2085,13 @@ export class InstanceAiService {
 			}
 		} catch (error) {
 			if (opts.signal.aborted) {
-				this.eventBus.publish(opts.threadId, {
+				this.publishEvent(opts.threadId, {
 					type: 'run-finish',
 					runId: opts.runId,
 					agentId: ORCHESTRATOR_AGENT_ID,
 					payload: { status: 'cancelled', reason: 'user_cancelled' },
 				});
+				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 				return;
 			}
 
@@ -1639,7 +2103,7 @@ export class InstanceAiService {
 				runId: opts.runId,
 			});
 
-			this.eventBus.publish(opts.threadId, {
+			this.publishEvent(opts.threadId, {
 				type: 'run-finish',
 				runId: opts.runId,
 				agentId: ORCHESTRATOR_AGENT_ID,
@@ -1648,8 +2112,10 @@ export class InstanceAiService {
 					reason: errorMessage,
 				},
 			});
+			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 		} finally {
 			this.activeRuns.delete(opts.threadId);
+			this.maybeCleanupThreadState(opts.threadId);
 		}
 	}
 
@@ -1678,12 +2144,7 @@ export class InstanceAiService {
 		}
 		context.permissions = this.settingsService.getPermissions();
 
-		let domainTracker = this.domainAccessTrackersByThread.get(threadId);
-		if (!domainTracker) {
-			domainTracker = createDomainAccessTracker();
-			this.domainAccessTrackersByThread.set(threadId, domainTracker);
-		}
-		context.domainAccessTracker = domainTracker;
+		context.domainAccessTracker = this.getOrCreateDomainTracker(threadId);
 		context.runId = executionContext.originRunId;
 
 		const modelId = await this.resolveModel(user);
@@ -1732,13 +2193,14 @@ export class InstanceAiService {
 				storage: this.compositeStore,
 				messageGroupId: executionContext.messageGroupId,
 				subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
-				eventBus: this.eventBus,
+				eventBus: this.eventSink,
 				domainTools,
 				abortSignal: new AbortController().signal,
 				taskStorage,
 				planStorage,
 				activePlanStatus: existingPlan?.status,
-				runtimeOwnedPlanActive: existingPlan?.status === 'approved' || existingPlan?.status === 'running',
+				runtimeOwnedPlanActive:
+					existingPlan?.status === 'approved' || existingPlan?.status === 'running',
 				planExecutionContext: executionContext,
 				researchMode,
 				browserMcpConfig: this.instanceAiConfig.browserMcp
@@ -1752,10 +2214,12 @@ export class InstanceAiService {
 							resolve,
 							threadId,
 							userId: user.id,
+							runId: executionContext.originRunId,
+							messageGroupId: executionContext.messageGroupId,
 						});
 					});
 				},
-				cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
+				cancelBackgroundTask: async (taskId) => await this.cancelBackgroundTask(threadId, taskId),
 				spawnBackgroundTask: (opts) =>
 					this.spawnBackgroundTask(executionContext.originRunId, opts, snapshotStorage),
 				iterationLog,
@@ -1775,12 +2239,12 @@ export class InstanceAiService {
 		runId: string,
 		messageGroupId?: string,
 	): Promise<void> {
-		const user = this.threadUsers.get(threadId);
+		const user = this.getThreadUser(threadId);
 		if (!user) {
 			return;
 		}
 
-		const researchMode = this.threadResearchMode.get(threadId);
+		const researchMode = this.getThreadResearchMode(threadId);
 		await this.queuePlanExecution(threadId, planId, async () => {
 			const planStorage = this.createPlanStorage();
 			const existingPlan = await planStorage.get(threadId);
@@ -1818,12 +2282,12 @@ export class InstanceAiService {
 		researchMode?: boolean,
 		executionContextOverride?: InstanceAiPlanExecutionContext,
 	): Promise<void> {
-		const activeUser = user ?? this.threadUsers.get(threadId);
+		const activeUser = user ?? this.getThreadUser(threadId);
 		if (!activeUser) {
 			return;
 		}
 
-		const activeResearchMode = researchMode ?? this.threadResearchMode.get(threadId);
+		const activeResearchMode = researchMode ?? this.getThreadResearchMode(threadId);
 		await this.queuePlanExecution(threadId, planId, async () => {
 			await this.continuePlanExecutionNow(
 				threadId,
@@ -1873,10 +2337,7 @@ export class InstanceAiService {
 		while (true) {
 			const reconciledCurrentPlan = reconcilePlanPhases(currentPlan);
 			const nextStatus = derivePlanStatus(reconciledCurrentPlan, reconciledCurrentPlan.status);
-			if (
-				reconciledCurrentPlan !== currentPlan ||
-				nextStatus !== reconciledCurrentPlan.status
-			) {
+			if (reconciledCurrentPlan !== currentPlan || nextStatus !== reconciledCurrentPlan.status) {
 				currentPlan = {
 					...reconciledCurrentPlan,
 					status: nextStatus,
@@ -1937,19 +2398,23 @@ export class InstanceAiService {
 				`Phase "${phase.title}" is missing an execution spec.`,
 				'missing_execution_spec',
 			);
-			await this.publishPlanUpdate(orchestrationContext.threadId, orchestrationContext.runId, nextPlan);
+			await this.publishPlanUpdate(
+				orchestrationContext.threadId,
+				orchestrationContext.runId,
+				nextPlan,
+			);
 			return nextPlan;
 		}
 
-			let startedTask: { taskId: string; result: string } | undefined;
-			switch (execution.kind) {
-				case 'data-table':
-					startedTask = startDataTableAgentTask(orchestrationContext, {
-						task: execution.task,
-						planId: plan.planId,
-						phaseId: phase.id,
-					});
-					break;
+		let startedTask: { taskId: string; result: string } | undefined;
+		switch (execution.kind) {
+			case 'data-table':
+				startedTask = startDataTableAgentTask(orchestrationContext, {
+					task: execution.task,
+					planId: plan.planId,
+					phaseId: phase.id,
+				});
+				break;
 			case 'workflow-build':
 				startedTask = await startBuildWorkflowAgentTask(orchestrationContext, {
 					task: execution.task,
@@ -1958,12 +2423,12 @@ export class InstanceAiService {
 					phaseId: phase.id,
 				});
 				break;
-				case 'research':
-					startedTask = startResearchWithAgentTask(orchestrationContext, {
-						goal: execution.goal,
-						constraints: execution.constraints,
-						planId: plan.planId,
-						phaseId: phase.id,
+			case 'research':
+				startedTask = startResearchWithAgentTask(orchestrationContext, {
+					goal: execution.goal,
+					constraints: execution.constraints,
+					planId: plan.planId,
+					phaseId: phase.id,
 				});
 				break;
 		}
@@ -1974,7 +2439,11 @@ export class InstanceAiService {
 				phase,
 				startedTask?.result ?? `Failed to start phase "${phase.title}".`,
 			);
-			await this.publishPlanUpdate(orchestrationContext.threadId, orchestrationContext.runId, nextPlan);
+			await this.publishPlanUpdate(
+				orchestrationContext.threadId,
+				orchestrationContext.runId,
+				nextPlan,
+			);
 			await this.publishMilestoneSummary(
 				orchestrationContext.threadId,
 				orchestrationContext.runId,
@@ -2004,7 +2473,11 @@ export class InstanceAiService {
 			lastUpdatedAt: new Date().toISOString(),
 		};
 
-		await this.publishPlanUpdate(orchestrationContext.threadId, orchestrationContext.runId, nextPlan);
+		await this.publishPlanUpdate(
+			orchestrationContext.threadId,
+			orchestrationContext.runId,
+			nextPlan,
+		);
 		await this.publishMilestoneSummary(
 			orchestrationContext.threadId,
 			orchestrationContext.runId,
@@ -2025,7 +2498,7 @@ export class InstanceAiService {
 			(t) => t.threadId === opts.threadId && this.isTaskActive(t),
 		).length;
 		if (runningCount >= this.MAX_BACKGROUND_TASKS_PER_THREAD) {
-			this.eventBus.publish(opts.threadId, {
+			this.publishEvent(opts.threadId, {
 				type: 'agent-completed',
 				runId,
 				agentId: opts.agentId,
@@ -2042,7 +2515,7 @@ export class InstanceAiService {
 
 		// Capture the messageGroupId at spawn time — NOT the thread's current one,
 		// which may change if the user starts a new turn while this task runs.
-		const messageGroupId = opts.messageGroupId ?? this.threadMessageGroupId.get(opts.threadId);
+		const messageGroupId = opts.messageGroupId ?? this.getCurrentMessageGroupId(opts.threadId);
 		const startedAt = Date.now();
 
 		const task: BackgroundTask = {
@@ -2105,6 +2578,7 @@ export class InstanceAiService {
 								await this.publishPlanUpdate(task.threadId, task.runId, nextPlan);
 							}
 						}
+						await this.persistDetachedSnapshot(task);
 					},
 					resumed: async () => {
 						task.status = 'running';
@@ -2125,6 +2599,7 @@ export class InstanceAiService {
 								await this.publishPlanUpdate(task.threadId, task.runId, nextPlan);
 							}
 						}
+						await this.persistDetachedSnapshot(task);
 					},
 				});
 				// Support both plain string and structured result
@@ -2137,7 +2612,7 @@ export class InstanceAiService {
 				task.updatedAt = Date.now();
 				task.completedAt = task.updatedAt;
 
-				this.eventBus.publish(opts.threadId, {
+				this.publishEvent(opts.threadId, {
 					type: 'agent-completed',
 					runId,
 					agentId: opts.agentId,
@@ -2152,7 +2627,7 @@ export class InstanceAiService {
 				task.error = errorMessage;
 				task.updatedAt = Date.now();
 				task.completedAt = task.updatedAt;
-				this.eventBus.publish(opts.threadId, {
+				this.publishEvent(opts.threadId, {
 					type: 'agent-completed',
 					runId,
 					agentId: opts.agentId,
@@ -2169,7 +2644,6 @@ export class InstanceAiService {
 					opts.threadId,
 					runId,
 					snapshotStorage,
-					true,
 					task.messageGroupId,
 				);
 			}
@@ -2177,87 +2651,52 @@ export class InstanceAiService {
 			if (task.planId) {
 				await this.continuePlanExecution(opts.threadId, task.planId);
 			}
+			this.maybeCleanupThreadState(opts.threadId);
 		})();
 	}
 
 	/** Cancel all background tasks for a thread. */
-	private cancelBackgroundTasks(threadId: string): void {
-		for (const [taskId, task] of this.backgroundTasks) {
+	private async cancelBackgroundTasks(threadId: string): Promise<void> {
+		for (const [, task] of this.backgroundTasks) {
 			if (task.threadId === threadId && this.isTaskActive(task)) {
-				task.abortController.abort();
-				task.status = 'cancelled';
-				task.updatedAt = Date.now();
-				task.completedAt = task.updatedAt;
-				void this.saveTaskRunSnapshot(threadId, this.toTaskRun(task), 'task-updated');
-				this.backgroundTasks.delete(taskId);
-				void (async () => {
-					if (task.planId && task.phaseId) {
-						const planStorage = this.createPlanStorage();
-						const existingPlan = await planStorage.get(threadId);
-						if (existingPlan?.planId === task.planId) {
-							const nextPlan = patchPlanPhase(
-								existingPlan,
-								task.phaseId,
-								{
-									status: 'blocked',
-									blocker: {
-										reason: 'Execution cancelled by user',
-										inputType: 'text',
-									},
-									lastVerificationError: 'Execution cancelled by user',
-								},
-								'blocked',
-							);
-							await this.publishPlanUpdate(threadId, task.runId, nextPlan);
-						}
-					}
-				})();
+				await this.cancelBackgroundTaskInternal(task);
+				this.maybeCleanupThreadState(threadId);
 			}
 		}
 	}
 
 	/**
-	 * Build an agent tree from in-memory events and persist it as a thread metadata snapshot.
-	 * @param isUpdate If true, updates the existing snapshot for this runId (background task completion).
+	 * Build an agent tree from live runtime state and persist it as the durable snapshot
+	 * for this assistant message group. Existing snapshots for the same group are updated in place.
 	 */
 	private async saveAgentTreeSnapshot(
 		threadId: string,
 		runId: string,
 		snapshotStorage: AgentTreeSnapshotStorage,
-		isUpdate = false,
 		/** Override the messageGroupId instead of using the thread's current one.
 		 *  Background tasks pass their own group since the thread-global may have
 		 *  changed if the user started a new turn. */
 		overrideMessageGroupId?: string,
 	): Promise<void> {
 		try {
-			const messageGroupId = overrideMessageGroupId ?? this.threadMessageGroupId.get(threadId);
-
-			let groupRunIds: string[] | undefined;
-			let agentTree;
-			if (messageGroupId) {
-				groupRunIds = this.getRunIdsForMessageGroup(messageGroupId);
-				const runState = this.runStateByMessageGroup.get(messageGroupId);
-				if (runState) {
-					agentTree = toAgentTree(runState);
-				}
+			const runtime = this.getThreadRuntime(threadId);
+			const messageGroupId =
+				overrideMessageGroupId ??
+				this.findMessageGroupIdForRun(threadId, runId) ??
+				this.getCurrentMessageGroupId(threadId);
+			if (!runtime || !messageGroupId) {
+				return;
 			}
 
-			if (!agentTree) {
-				// Fallback for legacy or partially restored flows that do not have
-				// an in-memory normalized run state available.
-				const events =
-					groupRunIds && groupRunIds.length > 0
-						? this.eventBus.getEventsForRuns(threadId, groupRunIds)
-						: this.eventBus.getEventsForRun(threadId, runId);
-				agentTree = buildAgentTreeFromEvents(events);
+			const runState = runtime.runStateByMessageGroup.get(messageGroupId);
+			if (!runState) {
+				return;
 			}
 
-			if (isUpdate) {
-				await snapshotStorage.updateLast(threadId, agentTree, runId, messageGroupId, groupRunIds);
-			} else {
-				await snapshotStorage.save(threadId, agentTree, runId, messageGroupId, groupRunIds);
-			}
+			const groupRunIds = runtime.runIdsByMessageGroup.get(messageGroupId);
+			const agentTree = toAgentTree(runState);
+
+			await snapshotStorage.updateLast(threadId, agentTree, runId, messageGroupId, groupRunIds);
 		} catch (error) {
 			this.logger.warn('Failed to save agent tree snapshot', {
 				threadId,

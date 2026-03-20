@@ -22,7 +22,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 // The backend module provides concrete implementations via InstanceAiAdapterService.
 
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
-import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
+import type { InstanceAiEventSink } from './event-bus/event-bus.interface';
 import type { IterationLog } from './storage/iteration-log';
 import type { VerificationResult, WorkflowLoopAction } from './workflow-loop/workflow-loop-state';
 import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
@@ -598,7 +598,7 @@ export interface OrchestrationContext {
 	storage: MastraCompositeStore;
 	messageGroupId?: string;
 	subAgentMaxSteps: number;
-	eventBus: InstanceAiEventBus;
+	eventBus: InstanceAiEventSink;
 	domainTools: ToolsInput;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;

@@ -6,7 +6,7 @@ export type {
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 	InstanceAiThreadSummary,
-	InstanceAiSSEConnectionState,
+	InstanceAiStreamConnectionState,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmResponse,
 } from '@n8n/api-types';

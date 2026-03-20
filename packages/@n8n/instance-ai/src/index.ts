@@ -15,15 +15,9 @@ export {
 	shouldAutoContinuePlan,
 	updatePlanPhase,
 } from './tools/orchestration/plan-utils';
-export {
-	startBuildWorkflowAgentTask,
-} from './tools/orchestration/build-workflow-agent.tool';
-export {
-	startDataTableAgentTask,
-} from './tools/orchestration/data-table-agent.tool';
-export {
-	startResearchWithAgentTask,
-} from './tools/orchestration/research-with-agent.tool';
+export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';
+export { startDataTableAgentTask } from './tools/orchestration/data-table-agent.tool';
+export { startResearchWithAgentTask } from './tools/orchestration/research-with-agent.tool';
 export { createMemory } from './memory/memory-config';
 export { iterationEntrySchema, formatPreviousAttempts } from './storage/iteration-log';
 export type { IterationEntry, IterationLog } from './storage/iteration-log';
@@ -43,7 +37,7 @@ export type { SandboxConfig } from './workspace/create-workspace';
 export { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
 export type { BuilderWorkspace } from './workspace/builder-sandbox-factory';
 export { SnapshotManager } from './workspace/snapshot-manager';
-export type { InstanceAiEventBus, StoredEvent } from './event-bus';
+export type { InstanceAiEventSink } from './event-bus';
 export {
 	createWorkItem,
 	handleBuildOutcome,

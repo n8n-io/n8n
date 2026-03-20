@@ -31,6 +31,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-result',
 	'tool-error',
 	'confirmation-request',
+	'confirmation-resolved',
 	'tasks-update',
 	'filesystem-request',
 	'error',
@@ -330,6 +331,12 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
 });
 
+export const confirmationResolvedPayloadSchema = z.object({
+	requestId: z.string(),
+	toolCallId: z.string().optional(),
+	status: z.enum(['approved', 'denied']),
+});
+
 export const errorPayloadSchema = z.object({
 	content: z.string(),
 	statusCode: z.number().optional(),
@@ -590,6 +597,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: confirmationRequestPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('confirmation-resolved'),
+		...eventBase,
+		payload: confirmationResolvedPayloadSchema,
+	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
@@ -634,6 +646,10 @@ export type InstanceAiToolErrorEvent = Extract<InstanceAiEvent, { type: 'tool-er
 export type InstanceAiConfirmationRequestEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'confirmation-request' }
+>;
+export type InstanceAiConfirmationResolvedEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'confirmation-resolved' }
 >;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
@@ -766,7 +782,7 @@ export interface InstanceAiThreadSummary {
 	createdAt: string;
 }
 
-export type InstanceAiSSEConnectionState =
+export type InstanceAiStreamConnectionState =
 	| 'disconnected'
 	| 'connecting'
 	| 'connected'
@@ -822,30 +838,47 @@ export interface InstanceAiThreadContextResponse {
 export interface InstanceAiRichMessagesResponse {
 	threadId: string;
 	messages: InstanceAiMessage[];
-	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
-	nextEventId: number;
 }
 
-// ---------------------------------------------------------------------------
-// Thread status response (background task visibility)
-// ---------------------------------------------------------------------------
-
-export interface InstanceAiThreadStatusResponse {
-	hasActiveRun: boolean;
-	isSuspended: boolean;
+export interface InstanceAiStreamSyncFrame {
+	type: 'sync';
+	threadId: string;
+	messages: InstanceAiMessage[];
 	taskRuns: InstanceAiTaskRun[];
-	backgroundTasks: Array<{
-		taskId: string;
-		role: string;
-		agentId: string;
-		status: InstanceAiTaskStatus;
-		startedAt: number;
-		/** The runId this background task belongs to — used for run-sync on reconnect. */
-		runId?: string;
-		/** The messageGroupId this task was spawned under. */
-		messageGroupId?: string;
-	}>;
+	activeRunId: string | null;
 }
+
+export interface InstanceAiTaskUpsertFrame {
+	type: 'task-upsert';
+	runId: string;
+	agentId: string;
+	payload: {
+		task: InstanceAiTaskRun;
+	};
+}
+
+export interface InstanceAiPlanUpsertFrame {
+	type: 'plan-upsert';
+	runId: string;
+	agentId: string;
+	payload: {
+		plan: InstanceAiPlanSpec;
+	};
+}
+
+export type InstanceAiStreamDeltaFrame =
+	| Exclude<
+			InstanceAiEvent,
+			| { type: 'task-created' }
+			| { type: 'task-updated' }
+			| { type: 'plan-created' }
+			| { type: 'plan-updated' }
+			| { type: 'filesystem-request' }
+	  >
+	| InstanceAiTaskUpsertFrame
+	| InstanceAiPlanUpsertFrame;
+
+export type InstanceAiStreamFrame = InstanceAiStreamSyncFrame | InstanceAiStreamDeltaFrame;
 
 // ---------------------------------------------------------------------------
 // Shared utility: maps tool names to render hints (used by both FE and BE)

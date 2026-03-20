@@ -1,6 +1,6 @@
 import type { ToolsInput } from '@mastra/core/agent';
 
-import type { InstanceAiEventBus } from '../../../event-bus/event-bus.interface';
+import type { InstanceAiEventSink } from '../../../event-bus/event-bus.interface';
 import type { OrchestrationContext, TaskStorage } from '../../../types';
 
 // Mock all heavy Mastra dependencies to avoid ESM issues in Jest
@@ -28,14 +28,9 @@ const { createResearchWithAgentTool } =
 // Helpers
 // ---------------------------------------------------------------------------
 
-function createMockEventBus(): InstanceAiEventBus {
+function createMockEventBus(): InstanceAiEventSink {
 	return {
 		publish: jest.fn(),
-		subscribe: jest.fn().mockReturnValue(() => {}),
-		getEventsAfter: jest.fn(),
-		getNextEventId: jest.fn(),
-		getEventsForRun: jest.fn().mockReturnValue([]),
-		getEventsForRuns: jest.fn().mockReturnValue([]),
 	};
 }
 

@@ -27,11 +27,6 @@ function createMockContext(plan?: InstanceAiPlanSpec): OrchestrationContext {
 		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: jest.fn(),
-			subscribe: jest.fn(),
-			getEventsAfter: jest.fn(),
-			getNextEventId: jest.fn(),
-			getEventsForRun: jest.fn().mockReturnValue([]),
-			getEventsForRuns: jest.fn().mockReturnValue([]),
 		},
 		domainTools: {} as OrchestrationContext['domainTools'],
 		abortSignal: new AbortController().signal,
@@ -249,7 +244,11 @@ describe('plan orchestration tools', () => {
 			}),
 		);
 
-		const savedPlan = (context.planStorage.save as jest.Mock).mock.calls[0]?.[1] as InstanceAiPlanSpec;
+		const saveCalls = (context.planStorage.save as jest.Mock).mock.calls as Array<
+			[string, InstanceAiPlanSpec]
+		>;
+		const savedPlan = saveCalls[0]?.[1];
+		expect(savedPlan).toBeDefined();
 		(context.planStorage.get as jest.Mock).mockResolvedValue(savedPlan);
 
 		const resumedResult = await tool.execute!(

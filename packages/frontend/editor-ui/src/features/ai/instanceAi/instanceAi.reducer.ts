@@ -278,7 +278,7 @@ function syncStreamingReasoningNode(
 }
 
 /**
- * Rebuild an AgentRunState from a snapshot tree (for run-sync).
+ * Rebuild an AgentRunState from a sync snapshot tree.
  */
 export function rebuildRunStateFromTree(tree: InstanceAiAgentNode): AgentRunState | undefined {
 	if (!isSafeObjectKey(tree.agentId)) return undefined;
@@ -460,6 +460,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'phase-status-updated':
 		case 'phase-artifact-added':
 		case 'confirmation-request':
+		case 'confirmation-resolved':
 		case 'tasks-update': {
 			const { msg, runState } = resolveTarget(state, event.runId);
 			if (runState) {

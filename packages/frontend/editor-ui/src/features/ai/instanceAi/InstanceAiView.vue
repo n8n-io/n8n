@@ -193,7 +193,7 @@ watch(
 onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
-	store.closeSSE();
+	store.closeStream();
 	settingsStore.stopDaemonProbing();
 	settingsStore.stopGatewayPolling();
 	settingsStore.stopGatewayPushListener();
@@ -208,7 +208,7 @@ watch(
 	routeThreadId,
 	(threadId) => {
 		if (!threadId) {
-			// /instance-ai base route (no :threadId) — bootstrap default thread + SSE
+			// /instance-ai base route (no :threadId) — bootstrap default thread + stream
 			if ((store.threads?.length ?? 0) === 0) {
 				store.threads.push({
 					id: store.currentThreadId,
@@ -216,22 +216,16 @@ watch(
 					createdAt: new Date().toISOString(),
 				});
 			}
-			if (store.sseState === 'disconnected') {
-				void store.loadHistoricalMessages(store.currentThreadId).then(() => {
-					void store.loadThreadStatus(store.currentThreadId);
-					store.connectSSE();
-				});
+			if (store.streamState === 'disconnected') {
+				store.connectStream();
 			}
 			return;
 		}
 		if (threadId === store.currentThreadId) {
 			// Re-entering the same thread (e.g. after navigating away and back) —
-			// SSE was closed on unmount, reconnect if needed.
-			if (store.sseState === 'disconnected') {
-				void store.loadHistoricalMessages(threadId).then(() => {
-					void store.loadThreadStatus(threadId);
-					store.connectSSE();
-				});
+			// the thread stream was closed on unmount, reconnect if needed.
+			if (store.streamState === 'disconnected') {
+				store.connectStream();
 			}
 			return;
 		}
@@ -244,7 +238,7 @@ watch(
 				createdAt: new Date().toISOString(),
 			});
 		}
-		// switchThread already calls loadHistoricalMessages internally
+		// switchThread reconnects the thread stream and waits for sync hydration
 		store.switchThread(threadId);
 	},
 	{ immediate: true },
@@ -288,7 +282,7 @@ function handleStop() {
 					{{ i18n.baseText('instanceAi.view.title') }}
 				</N8nText>
 				<N8nText
-					v-if="store.sseState === 'reconnecting'"
+					v-if="store.streamState === 'reconnecting'"
 					size="small"
 					color="text-light"
 					:class="$style.reconnecting"

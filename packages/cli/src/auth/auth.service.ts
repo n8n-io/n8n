@@ -91,8 +91,8 @@ export class AuthService {
 			// Skip browser ID check for chat hub attachments
 			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
 
-			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
-			`/${restEndpoint}/instance-ai/events/:threadId`,
+			// Skip browser ID check for the Instance AI thread stream endpoint
+			`/${restEndpoint}/instance-ai/stream/:threadId`,
 		];
 	}
 

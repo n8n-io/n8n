@@ -43,7 +43,7 @@ const hiddenPlanConfirmation = computed(() =>
 			toolCall.renderHint === 'plan' &&
 			toolCall.isLoading &&
 			toolCall.confirmation &&
-			!toolCall.confirmationStatus,
+			(!toolCall.confirmationStatus || toolCall.confirmationStatus === 'pending'),
 	),
 );
 
@@ -333,7 +333,9 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 					i18n.baseText('instanceAi.planTimeline.waitingForAnswers')
 				}}</span>
 			</div>
-			<p v-if="showClarificationSummary" :class="$style.requestSummary">{{ clarificationSummary }}</p>
+			<p v-if="showClarificationSummary" :class="$style.requestSummary">
+				{{ clarificationSummary }}
+			</p>
 			<PlanQuestionsMessage
 				:questions="clarificationQuestions"
 				:intro-message="clarificationIntroMessage"
@@ -418,88 +420,88 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 						<span :class="$style.phaseBadge">{{ phaseStatusLabel(phase) }}</span>
 					</div>
 
-						<p :class="$style.phaseDescription">{{ phase.description }}</p>
+					<p :class="$style.phaseDescription">{{ phase.description }}</p>
 
-						<div :class="$style.phaseMeta">
-							<div :class="$style.phaseMetaItem">
-								<span :class="$style.phaseMetaLabel">{{
-									i18n.baseText('instanceAi.planTimeline.objective')
-								}}</span>
-								<p :class="$style.phaseMetaValue">{{ phase.objective }}</p>
-							</div>
-							<div :class="$style.phaseMetaItem">
-								<span :class="$style.phaseMetaLabel">{{
-									i18n.baseText('instanceAi.planTimeline.deliverable')
-								}}</span>
-								<p :class="$style.phaseMetaValue">{{ phase.deliverable }}</p>
-							</div>
-							<div :class="$style.phaseMetaItem">
-								<span :class="$style.phaseMetaLabel">{{
-									i18n.baseText('instanceAi.planTimeline.verification')
-								}}</span>
-								<p :class="$style.phaseMetaValue">{{ phase.verification.expectedOutcome }}</p>
-							</div>
-						</div>
-
-						<div v-if="phase.dependsOn.length > 0" :class="$style.dependsOn">
+					<div :class="$style.phaseMeta">
+						<div :class="$style.phaseMetaItem">
 							<span :class="$style.phaseMetaLabel">{{
-								i18n.baseText('instanceAi.planTimeline.dependsOn')
+								i18n.baseText('instanceAi.planTimeline.objective')
 							}}</span>
-							<span>{{ phase.dependsOn.join(', ') }}</span>
+							<p :class="$style.phaseMetaValue">{{ phase.objective }}</p>
 						</div>
-
-						<div v-if="phase.artifacts.length > 0" :class="$style.artifacts">
+						<div :class="$style.phaseMetaItem">
 							<span :class="$style.phaseMetaLabel">{{
-								i18n.baseText('instanceAi.planTimeline.artifacts')
+								i18n.baseText('instanceAi.planTimeline.deliverable')
 							}}</span>
-							<div :class="$style.artifactList">
-								<template v-for="artifact in phase.artifacts" :key="artifact.id">
-									<RouterLink
-										v-if="artifact.type === 'workflow' && artifact.resourceId"
-										:to="`/workflow/${artifact.resourceId}`"
-										target="_blank"
-										:class="$style.artifactLink"
-									>
-										{{ artifact.label }}
-									</RouterLink>
-									<span v-else :class="$style.token">{{ artifact.label }}</span>
-								</template>
-							</div>
+							<p :class="$style.phaseMetaValue">{{ phase.deliverable }}</p>
 						</div>
+						<div :class="$style.phaseMetaItem">
+							<span :class="$style.phaseMetaLabel">{{
+								i18n.baseText('instanceAi.planTimeline.verification')
+							}}</span>
+							<p :class="$style.phaseMetaValue">{{ phase.verification.expectedOutcome }}</p>
+						</div>
+					</div>
 
-						<div v-if="phase.status === 'blocked' && phase.blocker" :class="$style.blockerCard">
-							<div :class="$style.blockerReason">{{ phase.blocker.reason }}</div>
-							<div v-if="phase.blocker.question" :class="$style.blockerQuestion">
-								{{ phase.blocker.question }}
-							</div>
-							<div
-								v-if="phase.blocker.inputType === 'text' && phase.blocker.requestId"
-								:class="$style.blockerActions"
-							>
-								<input
-									v-model="blockerAnswers[phase.id]"
-									:class="$style.blockerInput"
-									type="text"
-									:placeholder="i18n.baseText('instanceAi.askUser.placeholder')"
-									@keydown.enter="submitBlocker(phase)"
-								/>
-								<div :class="$style.blockerButtons">
-									<N8nButton type="secondary" size="small" @click="skipBlocker(phase)">
-										{{ i18n.baseText('instanceAi.askUser.skip') }}
-									</N8nButton>
-									<N8nButton
-										type="primary"
-										size="small"
-										:disabled="!(blockerAnswers[phase.id] ?? '').trim()"
-										@click="submitBlocker(phase)"
-									>
-										{{ i18n.baseText('instanceAi.askUser.submit') }}
-									</N8nButton>
-								</div>
+					<div v-if="phase.dependsOn.length > 0" :class="$style.dependsOn">
+						<span :class="$style.phaseMetaLabel">{{
+							i18n.baseText('instanceAi.planTimeline.dependsOn')
+						}}</span>
+						<span>{{ phase.dependsOn.join(', ') }}</span>
+					</div>
+
+					<div v-if="phase.artifacts.length > 0" :class="$style.artifacts">
+						<span :class="$style.phaseMetaLabel">{{
+							i18n.baseText('instanceAi.planTimeline.artifacts')
+						}}</span>
+						<div :class="$style.artifactList">
+							<template v-for="artifact in phase.artifacts" :key="artifact.id">
+								<RouterLink
+									v-if="artifact.type === 'workflow' && artifact.resourceId"
+									:to="`/workflow/${artifact.resourceId}`"
+									target="_blank"
+									:class="$style.artifactLink"
+								>
+									{{ artifact.label }}
+								</RouterLink>
+								<span v-else :class="$style.token">{{ artifact.label }}</span>
+							</template>
+						</div>
+					</div>
+
+					<div v-if="phase.status === 'blocked' && phase.blocker" :class="$style.blockerCard">
+						<div :class="$style.blockerReason">{{ phase.blocker.reason }}</div>
+						<div v-if="phase.blocker.question" :class="$style.blockerQuestion">
+							{{ phase.blocker.question }}
+						</div>
+						<div
+							v-if="phase.blocker.inputType === 'text' && phase.blocker.requestId"
+							:class="$style.blockerActions"
+						>
+							<input
+								v-model="blockerAnswers[phase.id]"
+								:class="$style.blockerInput"
+								type="text"
+								:placeholder="i18n.baseText('instanceAi.askUser.placeholder')"
+								@keydown.enter="submitBlocker(phase)"
+							/>
+							<div :class="$style.blockerButtons">
+								<N8nButton type="secondary" size="small" @click="skipBlocker(phase)">
+									{{ i18n.baseText('instanceAi.askUser.skip') }}
+								</N8nButton>
+								<N8nButton
+									type="primary"
+									size="small"
+									:disabled="!(blockerAnswers[phase.id] ?? '').trim()"
+									@click="submitBlocker(phase)"
+								>
+									{{ i18n.baseText('instanceAi.askUser.submit') }}
+								</N8nButton>
 							</div>
 						</div>
 					</div>
 				</div>
+			</div>
 
 			<div
 				v-if="showApprovalCard"
