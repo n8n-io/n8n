@@ -1,4 +1,5 @@
 import type { CredentialDependencyRepository, SecretsProviderConnectionRepository } from '@n8n/db';
+import { In } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
@@ -129,6 +130,87 @@ describe('CredentialDependencyService', () => {
 				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 				dependencyIds: [],
 				entityManager,
+			});
+		});
+	});
+
+	describe('deleteDependencyById', () => {
+		it('deletes through entity manager when provided', async () => {
+			const entityManager = mock<EntityManager>();
+
+			await service.deleteDependencyById({
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyId: 'provider-1',
+				entityManager,
+			});
+
+			expect(entityManager.delete).toHaveBeenCalledWith(credentialDependencyRepository.target, {
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyId: 'provider-1',
+			});
+			expect(credentialDependencyRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('deletes through repository when entity manager is not provided', async () => {
+			const manager = mock<EntityManager>();
+			Object.defineProperty(credentialDependencyRepository, 'manager', {
+				value: manager,
+				configurable: true,
+			});
+
+			await service.deleteDependencyById({
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyId: 'provider-1',
+			});
+
+			expect(manager.delete).toHaveBeenCalledWith(credentialDependencyRepository.target, {
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyId: 'provider-1',
+			});
+		});
+	});
+
+	describe('deleteDependenciesByIds', () => {
+		it('returns early when dependency ids are empty', async () => {
+			await service.deleteDependenciesByIds({
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyIds: [],
+			});
+
+			expect(credentialDependencyRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('deletes through entity manager when provided', async () => {
+			const entityManager = mock<EntityManager>();
+
+			await service.deleteDependenciesByIds({
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyIds: ['provider-1', 'provider-2'],
+				entityManager,
+			});
+
+			expect(entityManager.delete).toHaveBeenCalledWith(credentialDependencyRepository.target, {
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyId: In(['provider-1', 'provider-2']),
+			});
+			expect(credentialDependencyRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('deletes through repository when entity manager is not provided', async () => {
+			const manager = mock<EntityManager>();
+			Object.defineProperty(credentialDependencyRepository, 'manager', {
+				value: manager,
+				configurable: true,
+			});
+
+			await service.deleteDependenciesByIds({
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyIds: ['provider-1', 'provider-2'],
+			});
+
+			expect(manager.delete).toHaveBeenCalledWith(credentialDependencyRepository.target, {
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyId: In(['provider-1', 'provider-2']),
 			});
 		});
 	});
