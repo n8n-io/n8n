@@ -1943,6 +1943,9 @@ importers:
       '@1password/connect':
         specifier: 1.4.2
         version: 1.4.2
+      '@apidevtools/json-schema-ref-parser':
+        specifier: 12.0.2
+        version: 12.0.2
       '@aws-sdk/client-secrets-manager':
         specifier: 3.808.0
         version: 3.808.0

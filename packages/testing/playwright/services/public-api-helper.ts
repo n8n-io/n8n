@@ -157,6 +157,29 @@ export class PublicApiHelper {
 		return { id: invited.id, email, password, firstName, lastName, role: role as TestUser['role'] };
 	}
 
+	async getDiscovery(): Promise<{
+		scopes: string[];
+		resources: Record<
+			string,
+			{
+				operations: string[];
+				endpoints: Array<{ method: string; path: string; operationId: string }>;
+			}
+		>;
+		specUrl: string;
+	}> {
+		const headers = await this.getApiHeaders();
+		const response = await this.api.request.get('/api/v1/discover', { headers });
+
+		if (!response.ok()) {
+			const errorText = await response.text();
+			throw new TestError(`Failed to get discovery: ${response.status()} ${errorText}`);
+		}
+
+		const result = await response.json();
+		return result.data;
+	}
+
 	async getUsers(options?: { includeRole?: boolean; limit?: number }): Promise<
 		Array<{ id: string; email: string; firstName: string; lastName: string; role?: string }>
 	> {
