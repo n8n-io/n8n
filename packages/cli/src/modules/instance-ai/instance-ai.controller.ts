@@ -13,7 +13,6 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { RestController, Get, Post, Put, Patch, Delete, Param, Body } from '@n8n/decorators';
-import type { StoredEvent } from '@n8n/instance-ai';
 import type { Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 

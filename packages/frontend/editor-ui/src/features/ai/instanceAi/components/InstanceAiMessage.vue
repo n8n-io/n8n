@@ -67,10 +67,11 @@ const hasInlinePlanningUi = computed(() => {
 	);
 });
 
-const hasRootTimelineText = computed(() =>
-	props.message.agentTree?.timeline.some(
-		(entry) => entry.type === 'text' && entry.content.trim().length > 0,
-	) ?? false,
+const hasRootTimelineText = computed(
+	() =>
+		props.message.agentTree?.timeline.some(
+			(entry) => entry.type === 'text' && entry.content.trim().length > 0,
+		) ?? false,
 );
 
 const fallbackNarrationContent = computed(() => {
@@ -84,6 +85,7 @@ const fallbackNarrationContent = computed(() => {
 	}
 
 	return props.message.agentTree.textContent.trim();
+});
 
 /** Transient status message from the backend (e.g. "Recalling conversation..."). */
 const statusMessage = computed(() => {
@@ -97,12 +99,14 @@ const statusMessage = computed(() => {
  */
 const activeBackgroundTasks = computed(() => {
 	if (props.message.isStreaming) return [];
-	return store.getTaskRunsForMessageGroup(props.message.messageGroupId).filter(
-		(taskRun) =>
-			taskRun.status === 'queued' ||
-			taskRun.status === 'running' ||
-			taskRun.status === 'suspended',
-	);
+	return store
+		.getTaskRunsForMessageGroup(props.message.messageGroupId)
+		.filter(
+			(taskRun) =>
+				taskRun.status === 'queued' ||
+				taskRun.status === 'running' ||
+				taskRun.status === 'suspended',
+		);
 });
 
 const hasActiveBackgroundTasks = computed(() => activeBackgroundTasks.value.length > 0);

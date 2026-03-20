@@ -20,16 +20,21 @@ import {
 	postConfirmation,
 } from './instanceAi.api';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
+import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
+import { useResourceRegistry } from './useResourceRegistry';
+import { useResponseFeedback } from './useResponseFeedback';
+import { NEW_CONVERSATION_TITLE } from './constants';
 import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadMessages as fetchThreadMessagesApi,
-	InstanceAiAgentNode,
-	InstanceAiToolCallState,
-	InstanceAiThreadSummary,
-	InstanceAiStreamConnectionState,
-	InstanceAiQuestionResponse,
-} from '@n8n/api-types';
-
+	fetchThreadStatus as fetchThreadStatusApi,
+	deleteThread as deleteThreadApi,
+	renameThread as renameThreadApi,
+} from './instanceAi.memory.api';
+import type {
+	InstanceAiAttachment,
+	InstanceAiEvent,
+	InstanceAiMessage,
 	InstanceAiTaskRun,
 	InstanceAiTaskUpsertFrame,
 	InstanceAiPlanUpsertFrame,
@@ -37,9 +42,16 @@ import {
 	InstanceAiStreamSyncFrame,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
+	InstanceAiThreadSummary,
+	InstanceAiStreamConnectionState,
+	InstanceAiQuestionResponse,
+	AgentRunState,
+} from '@n8n/api-types';
+
+let streamAbortController: AbortController | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Module-level reducer state storage — kept outside Vue reactivity.
-import type { AgentRunState } from '@n8n/api-types';
 let runStateByGroupId: Record<string, AgentRunState> = {};
 let groupIdByRunId: Record<string, string> = {};
 
@@ -47,6 +59,35 @@ let groupIdByRunId: Record<string, string> = {};
 // Stale stream readers from previous threads discard frames.
 let streamGeneration = 0;
 const STREAM_RECONNECT_DELAY_MS = 1000;
+
+export interface PendingConfirmationItem {
+	toolCall: InstanceAiToolCallState;
+	agentNode: InstanceAiAgentNode;
+	messageId: string;
+}
+
+/** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
+function collectPendingConfirmations(
+	node: InstanceAiAgentNode,
+	messageId: string,
+	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
+	out: PendingConfirmationItem[],
+): void {
+	for (const tc of node.toolCalls) {
+		if (
+			tc.confirmation &&
+			tc.isLoading &&
+			tc.confirmationStatus !== 'approved' &&
+			tc.confirmationStatus !== 'denied' &&
+			!resolved.has(tc.confirmation.requestId)
+		) {
+			out.push({ toolCall: tc, agentNode: node, messageId });
+		}
+	}
+	for (const child of node.children) {
+		collectPendingConfirmations(child, messageId, resolved, out);
+	}
+}
 
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
@@ -181,6 +222,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return taskRuns.value
 			.filter((taskRun) => taskRun.messageGroupId === messageGroupId)
 			.sort((left, right) => left.createdAt - right.createdAt);
+	}
 
 	/** All pending confirmations across all messages, for the top-level panel. */
 	const pendingConfirmations = computed((): PendingConfirmationItem[] => {
@@ -585,15 +627,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		const newThreadId = uuidv4();
 		closeStream();
 		resetThreadState();
-
-		closeSSE();
-		messages.value = [];
-		activeRunId.value = null;
-		debugEvents.value = [];
-		resetFeedback();
 		resolvedConfirmationIds.value = new Map();
-		runStateByGroupId = {};
-		groupIdByRunId = {};
+		resetFeedback();
 		currentThreadId.value = newThreadId;
 
 		threads.value.unshift({
@@ -632,10 +667,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			} else {
 				// No threads left — create a new one
 				const freshId = uuidv4();
-		closeStream();
-		resetThreadState();
-		resolvedConfirmationIds.value = new Map();
-		resetFeedback();
+				closeStream();
+				resetThreadState();
+				resolvedConfirmationIds.value = new Map();
+				resetFeedback();
 				currentThreadId.value = freshId;
 				threads.value.push({
 					id: freshId,
@@ -795,10 +830,21 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		autoSetup?: { credentialType: string },
 		userInput?: string,
 		domainAccessAction?: string,
-				closeStream();
-				resetThreadState();
-				resolvedConfirmationIds.value = new Map();
-				resetFeedback();
+		mockCredentials?: boolean,
+		answers?: InstanceAiQuestionResponse[],
+	): Promise<void> {
+		try {
+			await postConfirmation(
+				rootStore.restApiContext,
+				requestId,
+				approved,
+				credentialId,
+				credentials,
+				autoSetup,
+				userInput,
+				domainAccessAction,
+				mockCredentials,
+				answers,
 			);
 		} catch {
 			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
@@ -942,6 +988,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		getTaskRunsForMessageGroup,
 		resourceRegistry,
 		taskRuns,
+		rateableResponseId,
+		pendingConfirmations,
 		// Actions
 		newThread,
 		deleteThread,
@@ -959,5 +1007,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		copyFullTrace,
 		connectStream,
 		closeStream,
+		submitFeedback,
 	};
 });

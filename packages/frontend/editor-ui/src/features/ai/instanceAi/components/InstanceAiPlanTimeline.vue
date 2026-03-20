@@ -620,7 +620,7 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 .phaseBadge {
 	display: inline-flex;
 	align-items: center;
-	border-radius: var(--border-radius-pill);
+	border-radius: var(--radius--xl);
 	border: 1px solid var(--color--foreground);
 	padding: 0 var(--spacing--xs);
 	min-height: 24px;
@@ -736,7 +736,7 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 .token {
 	display: inline-flex;
 	align-items: center;
-	border-radius: var(--border-radius-pill);
+	border-radius: var(--radius--xl);
 	padding: var(--spacing--5xs) var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
 	line-height: 1.4;

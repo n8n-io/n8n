@@ -1562,7 +1562,7 @@ export class InstanceAiService {
 	// ── Gateway lifecycle ─────────────────────────────────────────────────
 
 	/** Generate a one-time pairing token for UI-initiated connections. */
-	generatePairingToken(): string {
+	generatePairingToken(_userId?: string): string {
 		// If there's an active session key, return it so the daemon can reconnect
 		// without losing its authenticated session (e.g. after a page reload).
 		if (this.activeSessionKey) {
@@ -1591,7 +1591,7 @@ export class InstanceAiService {
 	 * Consume the pairing token and issue a session key.
 	 * Returns the session key on success, or null if the token is invalid/expired.
 	 */
-	consumePairingToken(token: string): string | null {
+	consumePairingToken(_userId: string, token: string): string | null {
 		const valid = this.getPairingToken();
 		if (!valid || valid !== token) return null;
 
@@ -1606,29 +1606,34 @@ export class InstanceAiService {
 	}
 
 	/** Clear the active session key (e.g. after explicit disconnect). */
-	clearActiveSessionKey(): void {
+	clearActiveSessionKey(_userId?: string): void {
 		this.activeSessionKey = null;
 	}
 
 	/** Return the filesystem gateway (used by the controller for SSE subscription). */
-	getLocalGateway(): LocalGateway {
+	getLocalGateway(_userId?: string): LocalGateway {
 		return this.localGateway;
 	}
 
 	/** Initialize gateway from a daemon's MCP capabilities upload. */
-	initGateway(data: InstanceAiGatewayCapabilities): void {
+	initGateway(_userId: string, data: InstanceAiGatewayCapabilities): void {
 		this.clearDisconnectTimer();
 		this.reconnectCount = 0;
 		this.localGateway.init(data);
 	}
 
 	/** Resolve a pending gateway filesystem request. */
-	resolveGatewayRequest(requestId: string, result?: McpToolCallResult, error?: string): boolean {
+	resolveGatewayRequest(
+		_userId: string,
+		requestId: string,
+		result?: McpToolCallResult,
+		error?: string,
+	): boolean {
 		return this.localGateway.resolveRequest(requestId, result, error);
 	}
 
 	/** Disconnect the gateway (called when daemon SSE disconnects). */
-	disconnectGateway(): void {
+	disconnectGateway(_userId?: string): void {
 		this.localGateway.disconnect();
 	}
 
@@ -1637,12 +1642,16 @@ export class InstanceAiService {
 	}
 
 	/** Return gateway connection status for the frontend. */
-	getGatewayStatus(): { connected: boolean; connectedAt: string | null; directory: string | null } {
+	getGatewayStatus(_userId?: string): {
+		connected: boolean;
+		connectedAt: string | null;
+		directory: string | null;
+	} {
 		return this.localGateway.getStatus();
 	}
 
 	/** Start a grace-period timer. If the daemon doesn't reconnect, fully disconnect the gateway. */
-	startDisconnectTimer(onDisconnect: () => void): void {
+	startDisconnectTimer(_userId: string, onDisconnect: () => void): void {
 		this.clearDisconnectTimer();
 		const graceMs = Math.min(
 			this.INITIAL_GRACE_MS * Math.pow(2, this.reconnectCount),
@@ -1658,8 +1667,19 @@ export class InstanceAiService {
 		}, graceMs);
 	}
 
+	/**
+	 * Reverse-lookup: given a key, return the userId it belongs to.
+	 * Checks pairing token and active session key (single-user — returns a sentinel).
+	 */
+	getUserIdForApiKey(key: string): string | undefined {
+		const pairing = this.getPairingToken();
+		if (pairing && pairing === key) return 'pairing-user';
+		if (this.activeSessionKey && this.activeSessionKey === key) return 'session-user';
+		return undefined;
+	}
+
 	/** Cancel a pending disconnect timer (e.g. daemon reconnected in time). */
-	clearDisconnectTimer(): void {
+	clearDisconnectTimer(_userId?: string): void {
 		if (this.disconnectTimer) {
 			clearTimeout(this.disconnectTimer);
 			this.disconnectTimer = null;
