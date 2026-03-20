@@ -66,7 +66,7 @@ export const properties: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Folders to Include',
@@ -77,7 +77,7 @@ export const properties: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Read Status',

@@ -860,7 +860,7 @@ export class EditImage implements INodeType {
 								},
 								default: '',
 								description:
-									'The font to use. Defaults to Arial. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+									'The font to use. Defaults to Arial. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -909,7 +909,7 @@ export class EditImage implements INodeType {
 						},
 						default: '',
 						description:
-							'The font to use. Defaults to Arial. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'The font to use. Defaults to Arial. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Format',

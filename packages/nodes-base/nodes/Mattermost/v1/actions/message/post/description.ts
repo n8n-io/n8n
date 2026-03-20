@@ -18,7 +18,7 @@ export const messagePostDescription: MessageProperties = [
 			},
 		},
 		description:
-			'The ID of the channel to post to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'The ID of the channel to post to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Message',

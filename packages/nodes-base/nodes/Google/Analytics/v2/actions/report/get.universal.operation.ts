@@ -81,7 +81,7 @@ const dimensionDropdown: INodeProperties[] = [
 		},
 		default: 'ga:date',
 		description:
-			'Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				listName: ['other'],
@@ -302,7 +302,7 @@ export const description: INodeProperties[] = [
 						default: 'ga:users',
 						hint: 'If expression is specified, name can be any string that you would like',
 						description:
-							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 						displayOptions: {
 							show: {
 								listName: ['other'],

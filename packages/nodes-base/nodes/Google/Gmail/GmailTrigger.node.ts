@@ -144,7 +144,7 @@ export class GmailTrigger implements INodeType {
 						},
 						default: [],
 						description:
-							'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Search',

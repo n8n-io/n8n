@@ -217,7 +217,7 @@ const versionDescription: INodeTypeDescription = {
 					},
 					default: 'UTC',
 					description:
-						'The timezone to convert from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+						'The timezone to convert from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 				},
 				{
 					displayName: 'To Timezone Name or ID',
@@ -228,7 +228,7 @@ const versionDescription: INodeTypeDescription = {
 					},
 					default: 'UTC',
 					description:
-						'The timezone to convert to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+						'The timezone to convert to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 				},
 			],
 		},

@@ -439,7 +439,7 @@ export const mainProperties: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						description:
-							'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -522,7 +522,7 @@ export const mainProperties: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						description:
-							'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -612,7 +612,7 @@ export const mainProperties: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						description:
-							'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',

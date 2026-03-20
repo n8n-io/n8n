@@ -75,7 +75,7 @@ export const bankTransactionFields: INodeProperties[] = [
 				name: 'bankIntegrationId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getBankIntegrations',
 				},
@@ -102,7 +102,7 @@ export const bankTransactionFields: INodeProperties[] = [
 				name: 'currencyId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCurrencies',
 				},
@@ -209,7 +209,7 @@ export const bankTransactionFields: INodeProperties[] = [
 		name: 'paymentId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getPayments',
 		},

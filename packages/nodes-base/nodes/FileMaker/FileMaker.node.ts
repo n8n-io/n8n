@@ -112,7 +112,7 @@ export class FileMaker implements INodeType {
 				displayOptions: {},
 				placeholder: 'Layout Name',
 				description:
-					'FileMaker Layout Name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'FileMaker Layout Name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Record ID',
@@ -188,7 +188,7 @@ export class FileMaker implements INodeType {
 				},
 				placeholder: 'Portals',
 				description:
-					'The portal result set to return. Use the portal object name or portal table name. If this parameter is omitted, the API will return all portal objects and records in the layout. For best performance, pass the portal object name or portal table name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The portal result set to return. Use the portal object name or portal table name. If this parameter is omitted, the API will return all portal objects and records in the layout. For best performance, pass the portal object name or portal table name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 			},
 			// ----------------------------------
 			//         find/records
@@ -198,7 +198,7 @@ export class FileMaker implements INodeType {
 				name: 'responseLayout',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getResponseLayouts',
 				},
@@ -253,7 +253,7 @@ export class FileMaker implements INodeType {
 												},
 												options: [],
 												description:
-													'Search Field. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+													'Search Field. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 											},
 											{
 												displayName: 'Value',
@@ -320,7 +320,7 @@ export class FileMaker implements INodeType {
 								},
 								options: [],
 								description:
-									'Field Name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+									'Field Name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Order',
@@ -374,7 +374,7 @@ export class FileMaker implements INodeType {
 				},
 				placeholder: 'Script Name',
 				description:
-					'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Script Parameter',
@@ -421,7 +421,7 @@ export class FileMaker implements INodeType {
 				},
 				placeholder: 'Script Name',
 				description:
-					'The name of the FileMaker script to be run after the action specified by the API call but before the subsequent sort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The name of the FileMaker script to be run after the action specified by the API call but before the subsequent sort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Script Parameter',
@@ -468,7 +468,7 @@ export class FileMaker implements INodeType {
 				},
 				placeholder: 'Script Name',
 				description:
-					'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Script Parameter',
@@ -546,7 +546,7 @@ export class FileMaker implements INodeType {
 								},
 								options: [],
 								description:
-									'Field Name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+									'Field Name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -578,7 +578,7 @@ export class FileMaker implements INodeType {
 				},
 				placeholder: 'Script Name',
 				description:
-					'The name of the FileMaker script to be run. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The name of the FileMaker script to be run. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Script Parameter',

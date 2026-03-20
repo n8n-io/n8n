@@ -294,7 +294,7 @@ export class GoogleDriveTrigger implements INodeType {
 				default: 'root',
 				required: true,
 				description:
-					'The drive to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The drive to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Watch For',
