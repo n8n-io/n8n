@@ -2,6 +2,8 @@ import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-
 import type { Project, Variables } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 import { CacheService } from '@/services/cache/cache.service';
 import {
 	createProjectVariable,
@@ -384,5 +386,60 @@ describe('DELETE /variables/:id', () => {
 
 		const byId = await getVariableById(variable.id);
 		expect(byId).not.toBeNull();
+	});
+});
+
+describe('Source Control read-only mode', () => {
+	let sourceControlPreferencesService: SourceControlPreferencesService;
+	let originalPreferences: SourceControlPreferences;
+
+	beforeAll(async () => {
+		sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+		originalPreferences = sourceControlPreferencesService.getPreferences();
+		await sourceControlPreferencesService.setPreferences({
+			connected: true,
+			keyGeneratorType: 'rsa',
+			branchReadOnly: true,
+		});
+	});
+
+	afterAll(async () => {
+		await sourceControlPreferencesService.setPreferences(originalPreferences);
+	});
+
+	describe('mutating endpoints should return 403', () => {
+		test('POST /variables should fail', async () => {
+			const response = await authOwnerAgent
+				.post('/variables')
+				.send({ key: 'test', value: 'value' })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /variables/:id should fail', async () => {
+			const variable = await createVariable('test1', 'value1');
+
+			const response = await authOwnerAgent
+				.patch(`/variables/${variable.id}`)
+				.send({ key: 'updated', value: 'updatedvalue' })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('DELETE /variables/:id should fail', async () => {
+			const variable = await createVariable('test1', 'value1');
+
+			const response = await authOwnerAgent.delete(`/variables/${variable.id}`).expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+	});
+
+	describe('read-only endpoints should still work', () => {
+		test('GET /variables should work', async () => {
+			await authOwnerAgent.get('/variables').expect(200);
+		});
 	});
 });

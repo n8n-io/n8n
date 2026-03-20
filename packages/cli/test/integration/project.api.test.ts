@@ -38,6 +38,8 @@ import { createMember, createOwner, createUser } from './shared/db/users';
 import * as utils from './shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 
 const testServer = utils.setupTestServer({
@@ -1335,5 +1337,69 @@ describe('DELETE /project/:projectId', () => {
 				role: 'workflow:owner',
 			}),
 		).resolves.toBeDefined();
+	});
+});
+
+describe('Source Control read-only mode', () => {
+	let sourceControlPreferencesService: SourceControlPreferencesService;
+	let originalPreferences: SourceControlPreferences;
+
+	beforeAll(async () => {
+		sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+		originalPreferences = sourceControlPreferencesService.getPreferences();
+		await sourceControlPreferencesService.setPreferences({
+			connected: true,
+			keyGeneratorType: 'rsa',
+			branchReadOnly: true,
+		});
+	});
+
+	afterAll(async () => {
+		await sourceControlPreferencesService.setPreferences(originalPreferences);
+	});
+
+	describe('mutating endpoints should return 403', () => {
+		test('POST /projects should fail', async () => {
+			const response = await testServer
+				.authAgentFor(await createOwner())
+				.post('/projects')
+				.send({ name: 'test project' })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /projects/:id should fail', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('test', owner);
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.patch(`/projects/${project.id}`)
+				.send({ name: 'updated' })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('DELETE /projects/:id should fail', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('test', owner);
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.delete(`/projects/${project.id}`)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+	});
+
+	describe('read-only endpoints should still work', () => {
+		test('GET /projects should work', async () => {
+			const owner = await createOwner();
+
+			await testServer.authAgentFor(owner).get('/projects').expect(200);
+		});
 	});
 });

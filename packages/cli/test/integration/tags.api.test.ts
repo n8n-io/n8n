@@ -2,6 +2,9 @@ import { testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, TagRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
+
 import { createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
@@ -91,6 +94,60 @@ describe('POST /tags', () => {
 			createdAt: savedTag.createdAt.toISOString(),
 			updatedAt: savedTag.updatedAt.toISOString(),
 			usageCount: 0,
+		});
+	});
+});
+
+describe('Source Control read-only mode', () => {
+	let sourceControlPreferencesService: SourceControlPreferencesService;
+	let originalPreferences: SourceControlPreferences;
+
+	beforeAll(async () => {
+		sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+		originalPreferences = sourceControlPreferencesService.getPreferences();
+		await sourceControlPreferencesService.setPreferences({
+			connected: true,
+			keyGeneratorType: 'rsa',
+			branchReadOnly: true,
+		});
+	});
+
+	afterAll(async () => {
+		await sourceControlPreferencesService.setPreferences(originalPreferences);
+	});
+
+	describe('mutating endpoints should return 403', () => {
+		test('POST /tags should fail', async () => {
+			const response = await authOwnerAgent.post('/tags').send({ name: 'test' }).expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /tags/:id should fail', async () => {
+			const newTag = Container.get(TagRepository).create({ name: 'test' });
+			const savedTag = await Container.get(TagRepository).save(newTag);
+
+			const response = await authOwnerAgent
+				.patch(`/tags/${savedTag.id}`)
+				.send({ name: 'updated' })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('DELETE /tags/:id should fail', async () => {
+			const newTag = Container.get(TagRepository).create({ name: 'test' });
+			const savedTag = await Container.get(TagRepository).save(newTag);
+
+			const response = await authOwnerAgent.delete(`/tags/${savedTag.id}`).expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+	});
+
+	describe('read-only endpoints should still work', () => {
+		test('GET /tags should work', async () => {
+			await authOwnerAgent.get('/tags').expect(200);
 		});
 	});
 });

@@ -22,6 +22,8 @@ import {
 } from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
@@ -1947,6 +1949,80 @@ describe('POST /credentials/test', () => {
 		expect(response.statusCode).toBe(200);
 
 		expect(response.body.data).toHaveLength(0);
+	});
+});
+
+describe('Source Control read-only mode', () => {
+	let sourceControlPreferencesService: SourceControlPreferencesService;
+	let originalPreferences: SourceControlPreferences;
+
+	beforeAll(async () => {
+		sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+		originalPreferences = sourceControlPreferencesService.getPreferences();
+		await sourceControlPreferencesService.setPreferences({
+			connected: true,
+			keyGeneratorType: 'rsa',
+			branchReadOnly: true,
+		});
+	});
+
+	afterAll(async () => {
+		await sourceControlPreferencesService.setPreferences(originalPreferences);
+	});
+
+	describe('mutating endpoints should return 403', () => {
+		test('POST /credentials should fail', async () => {
+			const response = await authOwnerAgent.post('/credentials').send(payload()).expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /credentials/:id should fail', async () => {
+			const credential = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+
+			const response = await authOwnerAgent
+				.patch(`/credentials/${credential.id}`)
+				.send(payload())
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('DELETE /credentials/:id should fail', async () => {
+			const credential = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+
+			const response = await authOwnerAgent.delete(`/credentials/${credential.id}`).expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PUT /credentials/:id/share should fail', async () => {
+			const credential = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+
+			const response = await authOwnerAgent
+				.put(`/credentials/${credential.id}/share`)
+				.send({ shareWithIds: [] })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PUT /credentials/:id/transfer should fail', async () => {
+			const credential = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+
+			const response = await authOwnerAgent
+				.put(`/credentials/${credential.id}/transfer`)
+				.send({ destinationProjectId: ownerPersonalProject.id })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+	});
+
+	describe('read-only endpoints should still work', () => {
+		test('GET /credentials should work', async () => {
+			await authOwnerAgent.get('/credentials').expect(200);
+		});
 	});
 });
 

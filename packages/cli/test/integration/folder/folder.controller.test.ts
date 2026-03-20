@@ -32,6 +32,8 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 import { OwnershipService } from '@/services/ownership.service';
 
 let owner: User;
@@ -2665,5 +2667,73 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		const cachedProject2After = await ownershipService.getWorkflowProjectCached(workflow2.id);
 		expect(cachedProject1After.id).toBe(destinationProject.id);
 		expect(cachedProject2After.id).toBe(destinationProject.id);
+	});
+});
+
+describe('Source Control read-only mode', () => {
+	let sourceControlPreferencesService: SourceControlPreferencesService;
+	let originalPreferences: SourceControlPreferences;
+
+	beforeAll(async () => {
+		sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+		originalPreferences = sourceControlPreferencesService.getPreferences();
+		await sourceControlPreferencesService.setPreferences({
+			connected: true,
+			keyGeneratorType: 'rsa',
+			branchReadOnly: true,
+		});
+	});
+
+	afterAll(async () => {
+		await sourceControlPreferencesService.setPreferences(originalPreferences);
+	});
+
+	describe('mutating endpoints should return 403', () => {
+		test('POST /folders should fail', async () => {
+			const response = await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/folders`)
+				.send({ name: 'test folder' })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /folders/:id should fail', async () => {
+			const folder = await createFolder(ownerProject, { name: 'test' });
+
+			const response = await authOwnerAgent
+				.patch(`/projects/${ownerProject.id}/folders/${folder.id}`)
+				.send({ name: 'updated' })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('DELETE /folders/:id should fail', async () => {
+			const folder = await createFolder(ownerProject, { name: 'test' });
+
+			const response = await authOwnerAgent
+				.delete(`/projects/${ownerProject.id}/folders/${folder.id}`)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PUT /folders/:id/transfer should fail', async () => {
+			const folder = await createFolder(ownerProject, { name: 'test' });
+
+			const response = await authOwnerAgent
+				.put(`/projects/${ownerProject.id}/folders/${folder.id}/transfer`)
+				.send({ destinationProjectId: ownerProject.id, destinationParentFolderId: '0' })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+	});
+
+	describe('read-only endpoints should still work', () => {
+		test('GET /folders should work', async () => {
+			await authOwnerAgent.get(`/projects/${ownerProject.id}/folders`).expect(200);
+		});
 	});
 });

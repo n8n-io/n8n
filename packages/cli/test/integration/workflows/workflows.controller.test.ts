@@ -53,6 +53,8 @@ import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EventService } from '@/events/event.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 import { ProjectService } from '@/services/project.service.ee';
 
 let owner: User;
@@ -4717,5 +4719,96 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 			.expect(200);
 
 		expect(response.body.data).toBeNull();
+	});
+});
+
+describe('Source Control read-only mode', () => {
+	let sourceControlPreferencesService: SourceControlPreferencesService;
+	let originalPreferences: SourceControlPreferences;
+
+	beforeAll(async () => {
+		sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+		originalPreferences = sourceControlPreferencesService.getPreferences();
+		await sourceControlPreferencesService.setPreferences({
+			connected: true,
+			keyGeneratorType: 'rsa',
+			branchReadOnly: true,
+		});
+	});
+
+	afterAll(async () => {
+		await sourceControlPreferencesService.setPreferences(originalPreferences);
+	});
+
+	describe('mutating endpoints should return 403', () => {
+		test('POST /workflows should fail', async () => {
+			const response = await authOwnerAgent.post('/workflows').send(makeWorkflow()).expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /workflows/:id should fail', async () => {
+			const workflow = await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent
+				.patch(`/workflows/${workflow.id}`)
+				.send({ name: 'updated' })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('DELETE /workflows/:id should fail', async () => {
+			const workflow = await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent.delete(`/workflows/${workflow.id}`).expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('POST /workflows/:id/archive should fail', async () => {
+			const workflow = await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent.post(`/workflows/${workflow.id}/archive`).expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('POST /workflows/:id/unarchive should fail', async () => {
+			const workflow = await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent.post(`/workflows/${workflow.id}/unarchive`).expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PUT /workflows/:id/share should fail', async () => {
+			const workflow = await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent
+				.put(`/workflows/${workflow.id}/share`)
+				.send({ shareWithIds: [] })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PUT /workflows/:id/transfer should fail', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const personalProject = await getPersonalProject(owner);
+
+			const response = await authOwnerAgent
+				.put(`/workflows/${workflow.id}/transfer`)
+				.send({ destinationProjectId: personalProject.id })
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+	});
+
+	describe('read-only endpoints should still work', () => {
+		test('GET /workflows should work', async () => {
+			await authOwnerAgent.get('/workflows').expect(200);
+		});
 	});
 });
