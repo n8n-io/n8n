@@ -11,6 +11,8 @@ import {
 	ProjectScope,
 } from '@n8n/decorators';
 import { ensureError } from 'n8n-workflow';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { Response } from 'express';
 
 import { UpdateAllowedRedirectUrisDto } from './dto/update-allowed-redirect-uris.dto';
