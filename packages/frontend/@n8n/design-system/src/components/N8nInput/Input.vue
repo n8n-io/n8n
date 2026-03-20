@@ -448,6 +448,7 @@ defineExpose({ focus, blur, select });
 	min-width: 0;
 	gap: var(--input--padding);
 	padding: 0 var(--input--padding);
+	height: var(--input--height);
 	border-radius: var(--input--radius--top-left, var(--input--radius))
 		var(--input--radius--top-right, var(--input--radius))
 		var(--input--radius--bottom-right, var(--input--radius))
