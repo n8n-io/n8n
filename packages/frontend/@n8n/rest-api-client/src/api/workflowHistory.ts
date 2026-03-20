@@ -1,4 +1,4 @@
-import type { PublishTimelineEvent, WorkflowHistoryLookupField } from '@n8n/api-types';
+import type { PublishTimelineEvent } from '@n8n/api-types';
 import type { IConnections, INode } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
@@ -81,30 +81,6 @@ export const getWorkflowVersionsByIds = async (
 		context.baseUrl,
 		`/workflow-history/workflow/${workflowId}/versions`,
 		{ versionIds },
-	);
-	return data;
-};
-
-export type { WorkflowHistoryLookupField } from '@n8n/api-types';
-
-export type WorkflowHistoryLookupParams = {
-	versionIds: string[];
-	fields: WorkflowHistoryLookupField[];
-};
-
-export type WorkflowHistoryLookupResult = {
-	versionId: string;
-} & Partial<Pick<WorkflowHistory, WorkflowHistoryLookupField>>;
-
-export const lookupWorkflowVersions = async (
-	context: IRestApiContext,
-	workflowId: string,
-	params: WorkflowHistoryLookupParams,
-): Promise<WorkflowHistoryLookupResult[]> => {
-	const { data } = await post(
-		context.baseUrl,
-		`/workflow-history/workflow/${workflowId}/versions/lookup`,
-		params,
 	);
 	return data;
 };

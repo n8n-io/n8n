@@ -1,5 +1,10 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
-import { User, WorkflowHistoryRepository, WorkflowPublishHistoryRepository } from '@n8n/db';
+import {
+	User,
+	WorkflowHistory,
+	WorkflowHistoryRepository,
+	WorkflowPublishHistoryRepository,
+} from '@n8n/db';
 import type { UpdateResult } from '@n8n/typeorm';
 import { mockClear } from 'jest-mock-extended';
 
@@ -329,60 +334,6 @@ describe('WorkflowHistoryService', () => {
 		});
 	});
 
-	describe('lookupVersions', () => {
-		it('should throw SharedWorkflowNotFoundError when workflow not found for user', async () => {
-			const workflowId = '123';
-			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(null);
-
-			await expect(
-				workflowHistoryService.lookupVersions(testUser, workflowId, {
-					versionIds: ['v1'],
-					fields: ['name'],
-				}),
-			).rejects.toThrow(SharedWorkflowNotFoundError);
-		});
-
-		it('should return versions with only requested fields', async () => {
-			const workflowId = '123';
-			const workflow = getWorkflow({ addNodeWithoutCreds: true });
-			workflow.id = workflowId;
-			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
-
-			const mockVersions = [getWorkflowHistory(workflow, { versionId: 'v1', name: 'Release 1' })];
-			workflowHistoryRepository.find.mockResolvedValueOnce(mockVersions);
-
-			const result = await workflowHistoryService.lookupVersions(testUser, workflowId, {
-				versionIds: ['v1'],
-				fields: ['name'],
-			});
-
-			expect(result).toEqual(mockVersions);
-			expect(workflowHistoryRepository.find).toHaveBeenCalledWith({
-				where: { workflowId, versionId: expect.anything() },
-				select: ['versionId', 'name'],
-			});
-		});
-
-		it('should always include versionId in select', async () => {
-			const workflowId = '123';
-			const workflow = getWorkflow({ addNodeWithoutCreds: true });
-			workflow.id = workflowId;
-			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
-			workflowHistoryRepository.find.mockResolvedValueOnce([]);
-
-			await workflowHistoryService.lookupVersions(testUser, workflowId, {
-				versionIds: ['v1'],
-				fields: ['authors', 'description'],
-			});
-
-			expect(workflowHistoryRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					select: ['versionId', 'authors', 'description'],
-				}),
-			);
-		});
-	});
-
 	describe('getPublishTimeline', () => {
 		it('should throw SharedWorkflowNotFoundError when workflow not found for user', async () => {
 			const workflowId = '123';
@@ -393,29 +344,30 @@ describe('WorkflowHistoryService', () => {
 			);
 		});
 
-		it('should return publish timeline events ordered by createdAt ASC', async () => {
+		it('should return publish timeline events with version names', async () => {
 			const workflowId = '123';
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			workflow.id = workflowId;
 			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
 
+			const createdAt = new Date();
 			const mockEvents = [
 				{
 					id: 1,
 					workflowId,
 					versionId: 'v1',
 					event: 'activated' as const,
-					createdAt: new Date(),
+					createdAt,
 					userId: null,
 					user: null,
-					workflowHistory: null,
+					workflowHistory: { name: 'Release 1' } as WorkflowHistory,
 				},
 				{
 					id: 2,
 					workflowId,
 					versionId: 'v1',
 					event: 'deactivated' as const,
-					createdAt: new Date(),
+					createdAt,
 					userId: null,
 					user: null,
 					workflowHistory: null,
@@ -425,10 +377,31 @@ describe('WorkflowHistoryService', () => {
 
 			const result = await workflowHistoryService.getPublishTimeline(testUser, workflowId);
 
-			expect(result).toEqual(mockEvents);
+			expect(result).toEqual([
+				{
+					id: 1,
+					workflowId,
+					versionId: 'v1',
+					event: 'activated',
+					createdAt,
+					userId: null,
+					user: null,
+					versionName: 'Release 1',
+				},
+				{
+					id: 2,
+					workflowId,
+					versionId: 'v1',
+					event: 'deactivated',
+					createdAt,
+					userId: null,
+					user: null,
+					versionName: null,
+				},
+			]);
 			expect(workflowPublishHistoryRepository.find).toHaveBeenCalledWith({
 				where: { workflowId },
-				relations: ['user'],
+				relations: ['user', 'workflowHistory'],
 				order: { createdAt: 'ASC' },
 			});
 		});

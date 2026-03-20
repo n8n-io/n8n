@@ -10,8 +10,6 @@ import type {
 	WorkflowVersionId,
 	UpdateWorkflowHistoryVersion,
 	PublishTimelineEvent,
-	WorkflowHistoryLookupParams,
-	WorkflowHistoryLookupResult,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import * as whApi from '@n8n/rest-api-client/api/workflowHistory';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -117,12 +115,6 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		await whApi.updateWorkflowHistoryVersion(rootStore.restApiContext, workflowId, versionId, data);
 	};
 
-	const lookupVersions = async (
-		workflowId: string,
-		params: WorkflowHistoryLookupParams,
-	): Promise<WorkflowHistoryLookupResult[]> =>
-		await whApi.lookupWorkflowVersions(rootStore.restApiContext, workflowId, params);
-
 	const getPublishTimeline = async (workflowId: string): Promise<PublishTimelineEvent[]> =>
 		await whApi.getPublishTimeline(rootStore.restApiContext, workflowId);
 
@@ -133,7 +125,6 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		cloneIntoNewWorkflow,
 		restoreWorkflow,
 		updateWorkflowHistoryVersion,
-		lookupVersions,
 		getPublishTimeline,
 		evaluatedPruneTime,
 		shouldUpgrade,

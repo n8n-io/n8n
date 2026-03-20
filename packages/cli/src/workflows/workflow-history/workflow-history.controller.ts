@@ -1,7 +1,6 @@
 import {
 	PaginationDto,
 	WorkflowHistoryVersionsByIdsDto,
-	WorkflowHistoryLookupDto,
 	UpdateWorkflowHistoryVersionDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -68,27 +67,6 @@ export class WorkflowHistoryController {
 				body.versionIds,
 			);
 			return { versions };
-		} catch (e) {
-			if (e instanceof SharedWorkflowNotFoundError) {
-				throw new NotFoundError('Could not find workflow');
-			}
-			throw e;
-		}
-	}
-
-	/**
-	 * Look up specific workflow history versions by ID, returning only the requested fields.
-	 * Always includes `versionId` in the response. Uses POST to avoid URL length limits
-	 * when filtering by many version IDs.
-	 */
-	@Post('/workflow/:workflowId/versions/lookup')
-	async lookupVersions(
-		req: WorkflowHistoryRequest.GetList,
-		_res: Response,
-		@Body body: WorkflowHistoryLookupDto,
-	) {
-		try {
-			return await this.historyService.lookupVersions(req.user, req.params.workflowId, body);
 		} catch (e) {
 			if (e instanceof SharedWorkflowNotFoundError) {
 				throw new NotFoundError('Could not find workflow');

@@ -6,4 +6,5 @@ export type PublishTimelineEvent = {
 	createdAt: string;
 	userId: string | null;
 	user: { firstName: string; lastName: string } | null;
+	versionName: string | null;
 };
