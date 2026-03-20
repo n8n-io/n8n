@@ -290,6 +290,87 @@ describe('NodeDefinedFieldRedactionStrategy', () => {
 		});
 	});
 
+	describe('array wildcard [*] traversal', () => {
+		it('redacts a field inside each element of an array', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: mockNodeDescription(['credentials[*].authorizationUrl']),
+			} as ReturnType<typeof nodeTypes.getByNameAndVersion>);
+
+			const execution = makeExecution(
+				[{ name: 'CredCheck', type: 'n8n-nodes-base.dynamicCredentialCheck', typeVersion: 1 }],
+				{
+					CredCheck: [
+						{
+							data: {
+								main: [
+									[
+										{
+											json: {
+												readyToExecute: false,
+												credentials: [
+													{
+														credentialName: 'Gmail',
+														authorizationUrl: 'https://secret-oauth-url.com',
+														revokeUrl: 'https://secret-revoke-url.com',
+													},
+													{
+														credentialName: 'Slack',
+														authorizationUrl: 'https://another-secret-url.com',
+													},
+												],
+											},
+										},
+									],
+								],
+							},
+						},
+					],
+				},
+			);
+
+			await strategy.apply(execution, makeContext());
+
+			const credentials = execution.data.resultData.runData.CredCheck[0].data!.main[0]![0].json
+				.credentials as Array<Record<string, unknown>>;
+			expect(credentials[0].authorizationUrl).toEqual(REDACTED_MARKER);
+			expect(credentials[0].revokeUrl).toBe('https://secret-revoke-url.com'); // not in sensitiveOutputFields
+			expect(credentials[1].authorizationUrl).toEqual(REDACTED_MARKER);
+			expect(credentials[0].credentialName).toBe('Gmail'); // non-sensitive field untouched
+		});
+
+		it('silently skips when the array field does not exist', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: mockNodeDescription(['items[*].secret']),
+			} as ReturnType<typeof nodeTypes.getByNameAndVersion>);
+
+			const execution = makeExecution(
+				[{ name: 'Node', type: 'n8n-nodes-base.webhook', typeVersion: 1 }],
+				{ Node: [{ data: { main: [[{ json: { other: 'data' } }]] } }] },
+			);
+
+			await expect(strategy.apply(execution, makeContext())).resolves.toBeUndefined();
+			expect(execution.data.resultData.runData.Node[0].data!.main[0]![0].json).toEqual({
+				other: 'data',
+			});
+		});
+
+		it('silently skips when the field is not an array', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: mockNodeDescription(['items[*].secret']),
+			} as ReturnType<typeof nodeTypes.getByNameAndVersion>);
+
+			const execution = makeExecution(
+				[{ name: 'Node', type: 'n8n-nodes-base.webhook', typeVersion: 1 }],
+				{ Node: [{ data: { main: [[{ json: { items: 'not-an-array' } }]] } }] },
+			);
+
+			await expect(strategy.apply(execution, makeContext())).resolves.toBeUndefined();
+			expect(execution.data.resultData.runData.Node[0].data!.main[0]![0].json.items).toBe(
+				'not-an-array',
+			);
+		});
+	});
+
 	describe('fail-closed behavior', () => {
 		it('redacts all outputs conservatively when node type cannot be resolved', async () => {
 			nodeTypes.getByNameAndVersion.mockImplementation(() => {
