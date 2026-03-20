@@ -1,37 +1,35 @@
 import {
-	CreateProjectDto,
-	DeleteProjectDto,
-	UpdateProjectDto,
 	AddUsersToProjectDto,
 	ChangeUserRoleInProject,
+	CreateProjectDto,
+	DeleteProjectDto,
 	ListProjectsQueryDto,
+	UpdateProjectDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
 import {
-	Get,
-	Post,
-	GlobalScope,
-	RestController,
-	Licensed,
-	Patch,
-	ProjectScope,
-	Delete,
 	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Licensed,
 	Param,
+	Patch,
+	Post,
+	ProjectScope,
 	Query,
+	RestController,
 } from '@n8n/decorators';
-import { combineScopes, getAuthPrincipalScopes, hasGlobalScope } from '@n8n/permissions';
 import type { Scope } from '@n8n/permissions';
+import { combineScopes, getAuthPrincipalScopes, hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
 import { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
-
-const branchWriteAccess = createBranchWriteAccessMiddleware('projects');
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
 import type { ProjectRequest } from '@/requests';
 import {
 	ProjectService,
@@ -39,6 +37,8 @@ import {
 	UnlicensedProjectRoleError,
 } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
+
+const branchWriteAccess = createBranchWriteAccessMiddleware('projects');
 
 @RestController('/projects')
 export class ProjectController {

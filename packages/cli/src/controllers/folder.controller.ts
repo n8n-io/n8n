@@ -7,32 +7,32 @@ import {
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
-	Post,
-	RestController,
-	ProjectScope,
 	Body,
-	Get,
-	Patch,
 	Delete,
-	Query,
-	Put,
-	Param,
+	Get,
 	Licensed,
 	Middleware,
+	Param,
+	Patch,
+	Post,
+	ProjectScope,
+	Put,
+	Query,
+	RestController,
 } from '@n8n/decorators';
 import { NextFunction, Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
-
-const branchWriteAccess = createBranchWriteAccessMiddleware('folders');
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
 import { FolderService } from '@/services/folder.service';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { ProjectService } from '@/services/project.service.ee';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+
+const branchWriteAccess = createBranchWriteAccessMiddleware('folders');
 
 @RestController('/projects/:projectId/folders')
 export class ProjectController {

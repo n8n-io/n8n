@@ -9,14 +9,13 @@ import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
-
-const branchWriteAccess = createBranchWriteAccessMiddleware('variables');
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
+import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
 
 import { VariablesService } from './variables.service.ee';
 
+const branchWriteAccess = createBranchWriteAccessMiddleware('variables');
 @RestController('/variables')
 export class VariablesController {
 	constructor(private readonly variablesService: VariablesService) {}

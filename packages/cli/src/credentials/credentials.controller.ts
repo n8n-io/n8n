@@ -7,29 +7,29 @@ import {
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
-	SharedCredentials,
-	ProjectRelationRepository,
-	SharedCredentialsRepository,
 	AuthenticatedRequest,
+	ProjectRelationRepository,
+	SharedCredentials,
+	SharedCredentialsRepository,
 } from '@n8n/db';
 import {
+	Body,
 	Delete,
 	Get,
 	Licensed,
+	Param,
 	Patch,
 	Post,
-	Put,
-	RestController,
 	ProjectScope,
-	Body,
-	Param,
+	Put,
 	Query,
+	RestController,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { deepCopy } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialsFinderService } from './credentials-finder.service';
@@ -38,17 +38,17 @@ import { EnterpriseCredentialsService } from './credentials.service.ee';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
-
-const branchWriteAccess = createBranchWriteAccessMiddleware('credentials');
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { listQueryMiddleware } from '@/middlewares';
+import { createBranchWriteAccessMiddleware } from '@/modules/source-control.ee/middleware/branch-write-access.middleware';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
+
+const branchWriteAccess = createBranchWriteAccessMiddleware('credentials');
 
 @RestController('/credentials')
 export class CredentialsController {
