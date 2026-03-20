@@ -76,6 +76,8 @@ export class WorkflowCreationService {
 
 		WorkflowHelpers.addNodeIds(newWorkflow);
 
+		WorkflowHelpers.validatePinDataSize(newWorkflow);
+
 		if (this.licenseState.isSharingLicensed()) {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used credentials
