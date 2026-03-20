@@ -157,6 +157,13 @@ export const createCreateWorkflowFromCodeTool = (
 				}
 			}
 
+			// Strip credentials from parsed code — they may contain placeholder IDs
+			// or newCredential() markers that would fail the credential permission
+			// check. autoPopulateNodeCredentials will re-assign valid credentials.
+			for (const node of newWorkflow.nodes) {
+				node.credentials = undefined;
+			}
+
 			// Resolve the effective project ID — default to the user's personal project
 			let effectiveProjectId = projectId;
 			if (!effectiveProjectId) {

@@ -140,6 +140,13 @@ export const createUpdateWorkflowTool = (
 				}
 			}
 
+			// Strip credentials from parsed code — they may contain placeholder IDs
+			// or newCredential() markers that would fail the credential permission
+			// check. autoPopulateNodeCredentials will re-assign valid credentials.
+			for (const node of workflowUpdateData.nodes) {
+				node.credentials = undefined;
+			}
+
 			// Preserve user-configured credentials from the existing workflow.
 			// Match nodes by name + type so that auto-assign skips them.
 			const existingCredsByNode = new Map(
