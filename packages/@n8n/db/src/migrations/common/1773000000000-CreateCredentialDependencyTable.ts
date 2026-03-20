@@ -195,7 +195,7 @@ export class CreateCredentialDependencyTable1773000000000 implements ReversibleM
 		const idColumn = escape.columnName('id');
 		const providerKeyColumn = escape.columnName('providerKey');
 		const rows = await runQuery<Array<{ id: number; providerKey: string }>>(
-			`SELECT ${idColumn} AS id, ${providerKeyColumn} AS providerKey FROM ${providerTable}`,
+			`SELECT ${idColumn} AS ${idColumn}, ${providerKeyColumn} AS ${providerKeyColumn} FROM ${providerTable}`,
 		);
 
 		return new Map(rows.map(({ id, providerKey }) => [providerKey, id.toString()]));
