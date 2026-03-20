@@ -53,7 +53,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 		displayName: 'Catalog',
 		name: 'catalogName',
 		type: 'resourceLocator',
-		default: { mode: 'string', value: '' },
+		default: { mode: 'list', value: '' },
 		description: 'Filter by catalog (optional)',
 		displayOptions: {
 			show: {
@@ -128,7 +128,7 @@ export const unityCatalogParameters: INodeProperties[] = [
 		displayName: 'Schema',
 		name: 'schemaName',
 		type: 'resourceLocator',
-		default: { mode: 'string', value: '' },
+		default: { mode: 'list', value: '' },
 		description: 'Filter by schema (optional, requires catalog)',
 		displayOptions: {
 			show: {
