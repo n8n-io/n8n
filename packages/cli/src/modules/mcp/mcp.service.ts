@@ -24,7 +24,7 @@ import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
-import { createPrepareTestPinDataTool } from './tools/test-workflow-pin-data';
+import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
