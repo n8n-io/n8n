@@ -412,10 +412,13 @@ const handleAddResourceClick = async () => {
 		let resolvedUrl = redirectUrl;
 
 		if (resolvedUrl.includes('{{$projectId}}')) {
-			resolvedUrl = resolvedUrl.replace(
-				/\{\{\$projectId\}\}/g,
-				projectsStore.currentProjectId ?? '',
-			);
+			const activeProjectId =
+				projectsStore.currentProjectId ??
+				workflowsStore.workflow?.homeProject?.id ??
+				projectsStore.personalProject?.id ??
+				'';
+
+			resolvedUrl = resolvedUrl.replace(/\{\{\$projectId\}\}/g, activeProjectId);
 		}
 
 		hideResourceDropdown();
