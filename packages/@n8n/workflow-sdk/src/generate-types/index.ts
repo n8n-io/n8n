@@ -78,9 +78,6 @@ export {
 	planSplitVersionSchemaFiles,
 } from './generate-zod-schemas';
 
-// Sample data generation from JSON Schema
-export { jsonSchemaToSampleData } from './json-schema-to-sample-data';
-
 // JSON Schema inference from data
 export { generateJsonSchemaFromData } from './json-schema-from-data';
 
