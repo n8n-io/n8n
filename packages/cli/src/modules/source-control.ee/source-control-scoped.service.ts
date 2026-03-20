@@ -4,6 +4,7 @@ import {
 	type CredentialsEntity,
 	type Folder,
 	type Project,
+	type User,
 	type WorkflowEntity,
 	type WorkflowTagMapping,
 } from '@n8n/db';
@@ -24,119 +25,55 @@ export class SourceControlScopedService {
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
+	async createContext(user: User): Promise<SourceControlContext> {
+		const isAdmin = hasGlobalScope(user, 'project:update');
+
+		if (isAdmin) {
+			return new SourceControlContext(user, await this.fetchAllProjects(), [], true);
+		}
+
+		const [authorizedProjects, accessibleWorkflowIds] = await Promise.all([
+			this.fetchAuthorizedProjects(user),
+			this.fetchAccessibleWorkflowIds(user),
+		]);
+
+		return new SourceControlContext(user, authorizedProjects, accessibleWorkflowIds, false);
+	}
+
 	async ensureIsAllowedToPush(req: AuthenticatedRequest) {
 		if (hasGlobalScope(req.user, 'sourceControl:push')) {
 			return;
 		}
 
-		const ctx = new SourceControlContext(req.user);
-		const projectsWithAdminAccess = await this.getAuthorizedProjectsFromContext(ctx);
+		const ctx = await this.createContext(req.user);
 
-		if (projectsWithAdminAccess?.length === 0) {
+		if (ctx.authorizedProjects.length === 0) {
 			throw new ForbiddenError('You are not allowed to push changes');
 		}
-	}
-
-	async getAuthorizedProjectsFromContext(context: SourceControlContext): Promise<Project[]> {
-		return context.getOrFetchAuthorizedProjects(async () => {
-			if (context.hasAccessToAllProjects()) {
-				// Load projects with only the minimal relations needed:
-				// - For team projects: just id/name/type (no relations needed)
-				// - For personal projects: need the owner's email via projectRelations
-				// Instead of loading ALL projectRelations (every member of every project),
-				// load projects first, then selectively load only personalOwner relations.
-				const projects = await this.projectRepository.find();
-
-				const personalProjects = projects.filter((p) => p.type === 'personal');
-				if (personalProjects.length > 0) {
-					const personalProjectIds = personalProjects.map((p) => p.id);
-					const ownerRelations = await this.projectRepository
-						.createQueryBuilder('project')
-						.leftJoinAndSelect('project.projectRelations', 'pr', 'pr.role = :ownerRole', {
-							ownerRole: 'project:personalOwner',
-						})
-						.leftJoinAndSelect('pr.role', 'role')
-						.leftJoinAndSelect('pr.user', 'user')
-						.where('project.id IN (:...ids)', { ids: personalProjectIds })
-						.select(['project.id', 'pr.userId', 'pr.projectId', 'role.slug', 'user.email'])
-						.getMany();
-
-					const relationsById = new Map(ownerRelations.map((p) => [p.id, p.projectRelations]));
-					for (const project of personalProjects) {
-						project.projectRelations = relationsById.get(project.id) ?? [];
-					}
-				}
-
-				// Team projects don't need projectRelations for source control
-				for (const project of projects) {
-					if (project.type === 'team') {
-						project.projectRelations = [];
-					}
-				}
-
-				return projects;
-			}
-
-			// Non-admin: find team project IDs where user has sourceControl:push scope
-			// using a single efficient subquery, then load only those projects.
-			const projectEntities = await this.projectRepository
-				.createQueryBuilder('project')
-				.innerJoin('project.projectRelations', 'pr', 'pr.userId = :userId', {
-					userId: context.user.id,
-				})
-				.innerJoin('pr.role', 'role')
-				.innerJoin('role.scopes', 'scope', 'scope.slug = :scope', {
-					scope: 'sourceControl:push',
-				})
-				.where('project.type = :type', { type: 'team' })
-				.select(['project.id'])
-				.getMany();
-
-			if (projectEntities.length === 0) return [];
-
-			const ids = projectEntities.map((p) => p.id);
-			const projects = await this.projectRepository.find({
-				select: { id: true, name: true, type: true },
-				where: { id: In(ids) },
-			});
-
-			for (const project of projects) {
-				project.projectRelations = [];
-			}
-
-			return projects;
-		});
 	}
 
 	async getWorkflowsInAdminProjectsFromContext(
 		context: SourceControlContext,
 		id?: string,
 	): Promise<WorkflowEntity[] | undefined> {
-		if (context.hasAccessToAllProjects()) {
+		if (context.isAdmin) {
 			return;
 		}
 
-		// For single-id lookups, skip cache and query directly
+		// For single-id lookups, query directly
 		if (id) {
 			const where = this.getWorkflowsInAdminProjectsFromContextFilter(context);
 			where.id = id;
 			return await this.workflowRepository.find({ select: { id: true }, where });
 		}
 
-		const ids = await context.getOrFetchAccessibleWorkflowIds(async () => {
-			const where = this.getWorkflowsInAdminProjectsFromContextFilter(context);
-			const workflows = await this.workflowRepository.find({ select: { id: true }, where });
-			return workflows.map((w) => w.id);
-		});
-
-		return ids.map((wfId) => ({ id: wfId }) as WorkflowEntity);
+		return context.accessibleWorkflowIds.map((wfId) => ({ id: wfId }) as WorkflowEntity);
 	}
 
 	getProjectsWithPushScopeByContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<Project> | undefined {
-		if (context.hasAccessToAllProjects()) {
-			// In case the user is a global admin or owner, we don't need a filter
+		if (context.isAdmin) {
 			return;
 		}
 
@@ -156,13 +93,10 @@ export class SourceControlScopedService {
 	getFoldersInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<Folder> {
-		if (context.hasAccessToAllProjects()) {
-			// In case the user is a global admin or owner, we don't need a filter
+		if (context.isAdmin) {
 			return {};
 		}
 
-		// We build a filter to only select folder, that belong to a team project
-		// that the user is an admin off
 		return {
 			homeProject: this.getProjectsWithPushScopeByContextFilter(context),
 		};
@@ -171,13 +105,10 @@ export class SourceControlScopedService {
 	getWorkflowsInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<WorkflowEntity> {
-		if (context.hasAccessToAllProjects()) {
-			// In case the user is a global admin or owner, we don't need a filter
+		if (context.isAdmin) {
 			return {};
 		}
 
-		// We build a filter to only select workflows, that belong to a team project
-		// that the user is an admin off
 		return {
 			shared: {
 				role: 'workflow:owner',
@@ -189,13 +120,10 @@ export class SourceControlScopedService {
 	getCredentialsInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<CredentialsEntity> {
-		if (context.hasAccessToAllProjects()) {
-			// In case the user is a global admin or owner, we don't need a filter
+		if (context.isAdmin) {
 			return {};
 		}
 
-		// We build a filter to only select workflows, that belong to a team project
-		// that the user is an admin off
 		return {
 			shared: {
 				role: 'credential:owner',
@@ -207,13 +135,10 @@ export class SourceControlScopedService {
 	getWorkflowTagMappingInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<WorkflowTagMapping> {
-		if (context.hasAccessToAllProjects()) {
-			// In case the user is a global admin or owner, we don't need a filter
+		if (context.isAdmin) {
 			return {};
 		}
 
-		// We build a filter to only select workflows, that belong to a team project
-		// that the user is an admin off
 		return {
 			workflows: this.getWorkflowsInAdminProjectsFromContextFilter(context),
 		};
@@ -222,15 +147,94 @@ export class SourceControlScopedService {
 	getDataTablesInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<DataTable> {
-		if (context.hasAccessToAllProjects()) {
-			// In case the user is a global admin or owner, we don't need a filter
+		if (context.isAdmin) {
 			return {};
 		}
 
-		// We build a filter to only select data tables that belong to a team project
-		// that the user is an admin of
 		return {
 			project: this.getProjectsWithPushScopeByContextFilter(context),
 		};
+	}
+
+	private async fetchAllProjects(): Promise<Project[]> {
+		const projects = await this.projectRepository.find();
+
+		const personalProjects = projects.filter((p) => p.type === 'personal');
+		if (personalProjects.length > 0) {
+			const personalProjectIds = personalProjects.map((p) => p.id);
+			const ownerRelations = await this.projectRepository
+				.createQueryBuilder('project')
+				.leftJoinAndSelect('project.projectRelations', 'pr', 'pr.role = :ownerRole', {
+					ownerRole: 'project:personalOwner',
+				})
+				.leftJoinAndSelect('pr.role', 'role')
+				.leftJoinAndSelect('pr.user', 'user')
+				.where('project.id IN (:...ids)', { ids: personalProjectIds })
+				.select(['project.id', 'pr.userId', 'pr.projectId', 'role.slug', 'user.email'])
+				.getMany();
+
+			const relationsById = new Map(ownerRelations.map((p) => [p.id, p.projectRelations]));
+			for (const project of personalProjects) {
+				project.projectRelations = relationsById.get(project.id) ?? [];
+			}
+		}
+
+		for (const project of projects) {
+			if (project.type === 'team') {
+				project.projectRelations = [];
+			}
+		}
+
+		return projects;
+	}
+
+	private async fetchAuthorizedProjects(user: User): Promise<Project[]> {
+		const projectEntities = await this.projectRepository
+			.createQueryBuilder('project')
+			.innerJoin('project.projectRelations', 'pr', 'pr.userId = :userId', {
+				userId: user.id,
+			})
+			.innerJoin('pr.role', 'role')
+			.innerJoin('role.scopes', 'scope', 'scope.slug = :scope', {
+				scope: 'sourceControl:push',
+			})
+			.where('project.type = :type', { type: 'team' })
+			.select(['project.id'])
+			.getMany();
+
+		if (projectEntities.length === 0) return [];
+
+		const ids = projectEntities.map((p) => p.id);
+		const projects = await this.projectRepository.find({
+			select: { id: true, name: true, type: true },
+			where: { id: In(ids) },
+		});
+
+		for (const project of projects) {
+			project.projectRelations = [];
+		}
+
+		return projects;
+	}
+
+	private async fetchAccessibleWorkflowIds(user: User): Promise<string[]> {
+		const where: FindOptionsWhere<WorkflowEntity> = {
+			shared: {
+				role: 'workflow:owner',
+				project: {
+					type: 'team',
+					projectRelations: {
+						role: {
+							scopes: {
+								slug: 'sourceControl:push',
+							},
+						},
+						userId: user.id,
+					},
+				},
+			},
+		};
+		const workflows = await this.workflowRepository.find({ select: { id: true }, where });
+		return workflows.map((w) => w.id);
 	}
 }

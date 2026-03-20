@@ -23,6 +23,7 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlScopedService } from './source-control-scoped.service';
 import type { StatusExportableCredential } from './types/exportable-credential';
 import type {
 	DataTableResourceOwner,
@@ -51,6 +52,7 @@ export class SourceControlStatusService {
 		private readonly gitService: SourceControlGitService,
 		private readonly sourceControlImportService: SourceControlImportService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly sourceControlScopedService: SourceControlScopedService,
 		private readonly tagRepository: TagRepository,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -147,7 +149,7 @@ export class SourceControlStatusService {
 		user: User,
 		options: SourceControlGetStatus,
 	): Promise<SourceControlledFile[] | SourceControlGetStatusVerboseResult> {
-		const context = new SourceControlContext(user);
+		const context = await this.sourceControlScopedService.createContext(user);
 		const collectVerbose = options?.verbose ?? false;
 
 		if (options.direction === 'pull' && !hasGlobalScope(user, 'sourceControl:pull')) {
@@ -334,7 +336,7 @@ export class SourceControlStatusService {
 
 		let outOfScopeWF: SourceControlWorkflowVersionId[] = [];
 
-		if (!context.hasAccessToAllProjects()) {
+		if (!context.isAdmin) {
 			// we need to query for all wf in the DB to hide possible deletions,
 			// when a wf went out of scope locally
 			outOfScopeWF = await this.sourceControlImportService.getAllLocalVersionIdsFromDb();
@@ -1023,7 +1025,7 @@ export class SourceControlStatusService {
 
 		let outOfScopeProjects: ExportableProjectWithFileName[] = [];
 
-		if (!context.hasAccessToAllProjects()) {
+		if (!context.isAdmin) {
 			// we need to query for all projects in the DB to hide possible deletions,
 			// when a project went out of scope locally
 			outOfScopeProjects = await this.sourceControlImportService.getLocalTeamProjectsFromDb();
