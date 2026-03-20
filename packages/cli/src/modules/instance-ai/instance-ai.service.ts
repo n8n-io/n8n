@@ -1289,7 +1289,6 @@ export class InstanceAiService {
 			phase: 'building',
 			status: 'active',
 			source: outcome.workflowId ? 'modify' : 'create',
-			patchAttempts: 0,
 			rebuildAttempts: 0,
 		};
 		const attempts: AttemptRecord[] = existing?.attempts ?? [];
@@ -1359,11 +1358,6 @@ export class InstanceAiService {
 				);
 			case 'blocked':
 				return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
-			case 'patch':
-				return (
-					`PATCH NEEDED: Apply \`patch-workflow\` to node "${action.nodeName}" in workflow ${action.workflowId}. ` +
-					`After patching, run the workflow again and call \`report-verification-verdict\` with workItemId "${workItemId ?? 'unknown'}" and the result.`
-				);
 			case 'rebuild':
 				return (
 					`REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. ` +

@@ -41,11 +41,6 @@ function actionToGuidance(action: WorkflowLoopAction): string {
 			);
 		case 'blocked':
 			return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
-		case 'patch':
-			return (
-				`PATCH NEEDED: Apply \`patch-workflow\` to node "${action.nodeName}" in workflow ${action.workflowId}. ` +
-				'After patching, run the workflow again and call `report-verification-verdict` with the result.'
-			);
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. ` +
@@ -59,9 +54,9 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 	return createTool({
 		id: 'report-verification-verdict',
 		description:
-			'Report the result of verifying a workflow after building or patching it. ' +
+			'Report the result of verifying a workflow after building it. ' +
 			'Call this after running a workflow and (optionally) debugging a failed execution. ' +
-			'Returns deterministic guidance on what to do next (done, patch, rebuild, or blocked).',
+			'Returns deterministic guidance on what to do next (done, rebuild, or blocked).',
 		inputSchema: z.object({
 			workItemId: z.string().describe('The work item ID from the build task (wi_XXXXXXXX)'),
 			workflowId: z.string().describe('The workflow ID that was verified'),
