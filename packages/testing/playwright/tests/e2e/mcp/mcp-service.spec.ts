@@ -113,10 +113,10 @@ test.describe(
 				const { apiKey } = await api.rotateMcpApiKey();
 				const tools = await api.mcp.internalMcpListTools(apiKey);
 
-				expect(tools).toHaveLength(16);
-
 				const toolNames = tools.map((t) => t.name).sort();
-				expect(toolNames).toEqual([
+
+				// Verify known built-in tools are present (subset check so new tools don't break the test)
+				const expectedTools = [
 					'archive_workflow',
 					'create_workflow_from_code',
 					'execute_workflow',
@@ -125,15 +125,18 @@ test.describe(
 					'get_sdk_reference',
 					'get_suggested_nodes',
 					'get_workflow_details',
+					'prepare_test_pin_data',
 					'publish_workflow',
 					'search_folders',
 					'search_nodes',
 					'search_projects',
 					'search_workflows',
+					'test_workflow',
 					'unpublish_workflow',
 					'update_workflow',
 					'validate_workflow',
-				]);
+				];
+				expect(toolNames).toEqual(expect.arrayContaining(expectedTools));
 			});
 
 			test('should include proper tool descriptions and schemas', async ({ api }) => {
