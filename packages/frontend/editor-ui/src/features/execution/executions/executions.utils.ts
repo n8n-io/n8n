@@ -53,6 +53,7 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		annotationTags: [],
 		metadata: [],
 		vote: 'all',
+		workflowVersionId: 'all',
 	};
 }
 
@@ -74,6 +75,10 @@ export const executionFilterToQueryFilter = (
 
 	if (filter.vote !== 'all') {
 		queryFilter.vote = filter.vote;
+	}
+
+	if (filter.workflowVersionId !== 'all') {
+		queryFilter.workflowVersionId = filter.workflowVersionId;
 	}
 
 	if (!isEmpty(filter.metadata)) {

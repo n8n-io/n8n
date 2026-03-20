@@ -10,6 +10,10 @@ import {
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import {
 	CanvasNodeDirtiness,
 	type CanvasNodeDirtinessType,
 } from '@/features/workflows/canvas/canvas.types';
@@ -121,6 +125,12 @@ export function useNodeDirtiness() {
 	const historyStore = useHistoryStore();
 	const workflowsStore = useWorkflowsStore();
 
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
+
 	function getParentSubNodes(nodeName: string) {
 		return Object.entries(workflowsStore.incomingConnectionsByNodeName(nodeName))
 			.filter(([type]) => (type as NodeConnectionType) !== NodeConnectionTypes.Main)
@@ -211,7 +221,7 @@ export function useNodeDirtiness() {
 			}
 		}
 
-		for (const startNode of workflowsStore.allNodes) {
+		for (const startNode of workflowDocumentStore.value?.allNodes ?? []) {
 			const hasIncomingNode =
 				Object.keys(workflowsStore.incomingConnectionsByNodeName(startNode.name)).length > 0;
 
