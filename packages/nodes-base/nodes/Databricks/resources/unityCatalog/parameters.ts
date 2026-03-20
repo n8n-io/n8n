@@ -1,6 +1,160 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 export const unityCatalogParameters: INodeProperties[] = [
+	// Catalog Name parameter (resourceLocator) - for catalog operations and create/delete/get operations
+	{
+		displayName: 'Catalog',
+		name: 'catalogName',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		description: 'The catalog to use',
+		displayOptions: {
+			show: {
+				operation: [
+					'getCatalog',
+					'updateCatalog',
+					'deleteCatalog',
+					'createCatalog',
+					'createVolume',
+					'getVolume',
+					'deleteVolume',
+					'createFunction',
+					'getFunction',
+					'deleteFunction',
+					'createTable',
+					'getTable',
+					'deleteTable',
+				],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getCatalogs',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By Name',
+				name: 'string',
+				type: 'string',
+				placeholder: 'main',
+				hint: 'Enter catalog name or leave empty to list all',
+			},
+		],
+	},
+
+	// Catalog Name (optional) - for list operations
+	{
+		displayName: 'Catalog',
+		name: 'catalogName',
+		type: 'resourceLocator',
+		default: { mode: 'string', value: '' },
+		description: 'Filter by catalog (optional)',
+		displayOptions: {
+			show: {
+				operation: ['listVolumes', 'listTables', 'listFunctions'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getCatalogs',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By Name',
+				name: 'string',
+				type: 'string',
+				placeholder: 'main',
+				hint: 'Enter catalog name or leave empty to list all',
+			},
+		],
+	},
+
+	// Schema Name parameter (resourceLocator) - for create/delete/get operations
+	{
+		displayName: 'Schema',
+		name: 'schemaName',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		description: 'The schema to use',
+		displayOptions: {
+			show: {
+				operation: [
+					'createVolume',
+					'getVolume',
+					'deleteVolume',
+					'createFunction',
+					'getFunction',
+					'deleteFunction',
+					'createTable',
+					'getTable',
+					'deleteTable',
+				],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getSchemas',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By Name',
+				name: 'string',
+				type: 'string',
+				placeholder: 'default',
+				hint: 'Enter schema name or leave empty to list all',
+			},
+		],
+	},
+
+	// Schema Name (optional) - for list operations
+	{
+		displayName: 'Schema',
+		name: 'schemaName',
+		type: 'resourceLocator',
+		default: { mode: 'string', value: '' },
+		description: 'Filter by schema (optional, requires catalog)',
+		displayOptions: {
+			show: {
+				operation: ['listVolumes', 'listTables', 'listFunctions'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getSchemas',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By Name',
+				name: 'string',
+				type: 'string',
+				placeholder: 'schema',
+				hint: 'Enter full schema name or leave empty to list all',
+			},
+		],
+	},
+
 	{
 		displayName: 'Table',
 		name: 'fullName',
@@ -79,146 +233,6 @@ export const unityCatalogParameters: INodeProperties[] = [
 						},
 					},
 				],
-			},
-		],
-	},
-
-	// Catalog Name parameter (resourceLocator) - for catalog operations and create/delete/get operations
-	{
-		displayName: 'Catalog',
-		name: 'catalogName',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		required: true,
-		description: 'The catalog to use',
-		displayOptions: {
-			show: {
-				operation: [
-					'getCatalog',
-					'updateCatalog',
-					'deleteCatalog',
-					'createCatalog',
-					'createVolume',
-					'getVolume',
-					'deleteVolume',
-					'createFunction',
-					'createTable',
-				],
-			},
-		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getCatalogs',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By Name',
-				name: 'string',
-				type: 'string',
-				placeholder: 'main',
-				hint: 'Enter catalog name or leave empty to list all',
-			},
-		],
-	},
-
-	// Catalog Name (optional) - for list operations
-	{
-		displayName: 'Catalog',
-		name: 'catalogName',
-		type: 'resourceLocator',
-		default: { mode: 'string', value: '' },
-		description: 'Filter by catalog (optional)',
-		displayOptions: {
-			show: {
-				operation: ['listVolumes', 'listTables', 'listFunctions'],
-			},
-		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getCatalogs',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By Name',
-				name: 'string',
-				type: 'string',
-				placeholder: 'main',
-				hint: 'Enter catalog name or leave empty to list all',
-			},
-		],
-	},
-
-	// Schema Name parameter (resourceLocator) - for create/delete/get operations
-	{
-		displayName: 'Schema',
-		name: 'schemaName',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		required: true,
-		description: 'The schema to use',
-		displayOptions: {
-			show: {
-				operation: ['createVolume', 'getVolume', 'deleteVolume', 'createFunction', 'createTable'],
-			},
-		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getSchemas',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By Name',
-				name: 'string',
-				type: 'string',
-				placeholder: 'default',
-				hint: 'Enter schema name or leave empty to list all',
-			},
-		],
-	},
-
-	// Schema Name (optional) - for list operations
-	{
-		displayName: 'Schema',
-		name: 'schemaName',
-		type: 'resourceLocator',
-		default: { mode: 'string', value: '' },
-		description: 'Filter by schema (optional, requires catalog)',
-		displayOptions: {
-			show: {
-				operation: ['listVolumes', 'listTables', 'listFunctions'],
-			},
-		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getSchemas',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By Name',
-				name: 'string',
-				type: 'string',
-				placeholder: 'schema',
-				hint: 'Enter full schema name or leave empty to list all',
 			},
 		],
 	},
