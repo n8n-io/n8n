@@ -59,11 +59,13 @@ export class AiController {
 
 			res.on('close', handleClose);
 
-			const { id, text, workflowContext, featureFlags, versionId } = payload.payload;
+			const { id, text, workflowContext, featureFlags, versionId, quickReplyType } =
+				payload.payload;
 			const aiResponse = this.workflowBuilderService.chat(
 				{
 					id,
 					message: text,
+					quickReplyType,
 					workflowContext: {
 						currentWorkflow: workflowContext.currentWorkflow,
 						executionData: workflowContext.executionData,

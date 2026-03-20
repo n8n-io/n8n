@@ -6,10 +6,6 @@
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -372,15 +368,9 @@ export function useWorkflowUpdate() {
 			await updateConnections(workflowData.connections ?? {});
 			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
 
-			// Merge pin data from workflow data with existing pin data
-			if (workflowData.pinData && workflowsStore.workflowId) {
-				const workflowDocumentStore = useWorkflowDocumentStore(
-					createWorkflowDocumentId(workflowsStore.workflowId),
-				);
-				workflowDocumentStore.setPinData({
-					...workflowDocumentStore.getPinDataSnapshot(),
-					...workflowData.pinData,
-				});
+			// Defer pin data instead of applying immediately — user chooses via follow-up actions
+			if (workflowData.pinData && Object.keys(workflowData.pinData).length > 0) {
+				builderStore.storeDeferredPinData(workflowData.pinData);
 			}
 
 			builderStore.setBuilderMadeEdits(true);

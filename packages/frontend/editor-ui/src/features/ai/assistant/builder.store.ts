@@ -35,7 +35,7 @@ import {
 import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import pick from 'lodash/pick';
-import { type ITelemetryTrackProperties } from 'n8n-workflow';
+import { type IPinData, type ITelemetryTrackProperties } from 'n8n-workflow';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -47,6 +47,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
+import type { QuickReplyType } from '@n8n/api-types';
 import type { PlanMode } from '@/features/ai/assistant/assistant.types';
 import {
 	type ChatRequest,
@@ -86,7 +87,9 @@ export type WorkflowBuilderJourneyEventType =
 	| 'web_fetch_completed'
 	| 'qa_question_answered'
 	| 'qa_question_skipped'
-	| 'qa_answers_submitted';
+	| 'qa_answers_submitted'
+	| 'user_clicked_run_with_test_data'
+	| 'user_clicked_configure_own';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -163,6 +166,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	// Track whether a successful full execution has occurred in this session
 	const hasHadSuccessfulExecution = ref(false);
+
+	// Holds pin data from the backend until the user explicitly chooses to apply it
+	const deferredPinData = ref<IPinData | null>(null);
+
+	// Tracks whether deferred test data was applied (for showing unpin escape hatch)
+	const testDataWasApplied = ref(false);
 
 	// Track whether AI Builder made edits since last save (resets after each save)
 	const aiBuilderMadeEdits = ref(false);
@@ -360,6 +369,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		lastUserMessageId.value = undefined;
 		loadedSessionsForWorkflowId.value = undefined;
 		hasHadSuccessfulExecution.value = false;
+		deferredPinData.value = null;
+		testDataWasApplied.value = false;
 		builderMode.value = 'build';
 	}
 
@@ -752,7 +763,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	async function sendChatMessage(options: {
 		text: string;
 		source?: 'chat' | 'canvas' | 'empty-state';
-		quickReplyType?: string;
+		quickReplyType?: QuickReplyType;
 		initialGeneration?: boolean;
 		type?: 'message' | 'execution';
 		errorMessage?: string;
@@ -1075,6 +1086,31 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		uiStore.markStateDirty();
 	}
 
+	const hasDeferredPinData = computed(
+		() => deferredPinData.value !== null && Object.keys(deferredPinData.value).length > 0,
+	);
+
+	function storeDeferredPinData(pinData: IPinData) {
+		deferredPinData.value = {
+			...(deferredPinData.value ?? {}),
+			...pinData,
+		};
+	}
+
+	function applyDeferredPinData() {
+		if (!deferredPinData.value || !workflowsStore.workflowId) return;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.setPinData({
+			...workflowDocumentStore.getPinDataSnapshot(),
+			...deferredPinData.value,
+		});
+		uiStore.markStateDirty();
+		testDataWasApplied.value = true;
+		deferredPinData.value = null;
+	}
+
 	function clearExistingWorkflow() {
 		workflowState.removeAllConnections({ setStateDirty: false });
 		workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
@@ -1324,10 +1360,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		workflowTodos,
 		hasTodosHiddenByPinnedData,
 		hasHadSuccessfulExecution,
+		hasDeferredPinData,
+		testDataWasApplied,
 		lastUserMessageId,
 
 		// Methods
 		unpinAllNodes,
+		storeDeferredPinData,
+		applyDeferredPinData,
 		abortStreaming,
 		resetBuilderChat,
 		setBuilderMode,

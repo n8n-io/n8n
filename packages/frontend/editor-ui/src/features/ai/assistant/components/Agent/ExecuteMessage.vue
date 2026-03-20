@@ -18,10 +18,10 @@ import NodeIssueItem from './NodeIssueItem.vue';
 import CredentialsSetupCard from './CredentialsSetupCard.vue';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useLogsStore } from '@/app/stores/logs.store';
+import { watchExecutionCompletion } from '@/features/ai/assistant/composables/useExecutionWatcher';
 import { isChatNode } from '@/app/utils/aiUtils';
 import { useToast } from '@/app/composables/useToast';
 import { N8nTooltip, N8nIcon, N8nButton } from '@n8n/design-system';
-import { nextTick } from 'vue';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 import type { WorkflowValidationIssue } from '@/Interface';
@@ -29,6 +29,8 @@ import type { WorkflowValidationIssue } from '@/Interface';
 interface Emits {
 	/** Emitted when workflow execution completes */
 	workflowExecuted: [];
+	/** Emitted when user clicks "Execute with mock data" follow-up */
+	executeWithMockData: [];
 }
 
 const emit = defineEmits<Emits>();
@@ -69,22 +71,10 @@ const stopExecutionWatcher = () => {
 const ensureExecutionWatcher = () => {
 	if (executionWatcherStop) return;
 
-	const RUNNING_STATES = ['running', 'waiting'];
-
-	executionWatcherStop = watch(
-		() => workflowsStore.workflowExecutionData?.status,
-		async (status) => {
-			await nextTick();
-
-			if (!status || RUNNING_STATES.includes(status)) return;
-
-			stopExecutionWatcher();
-
-			if (status !== 'canceled') {
-				emit('workflowExecuted');
-			}
-		},
-	);
+	executionWatcherStop = watchExecutionCompletion(() => {
+		stopExecutionWatcher();
+		emit('workflowExecuted');
+	});
 };
 
 const hasValidationIssues = computed(() => builderStore.workflowTodos.length > 0);
@@ -167,14 +157,45 @@ const executeButtonTooltip = computed(() =>
 
 const showUnpinSection = computed(
 	() =>
-		builderStore.isCodeBuilder &&
+		(builderStore.isCodeBuilder || builderStore.testDataWasApplied) &&
 		builderStore.hasTodosHiddenByPinnedData &&
 		builderStore.hasHadSuccessfulExecution,
+);
+
+const showFollowUps = computed(() => builderStore.hasDeferredPinData);
+
+const showPostExecutionFollowUps = computed(
+	() =>
+		builderStore.testDataWasApplied &&
+		builderStore.hasHadSuccessfulExecution &&
+		builderStore.hasTodosHiddenByPinnedData &&
+		!builderStore.hasDeferredPinData,
+);
+
+const followUpsTitle = computed(() =>
+	i18n.baseText('aiAssistant.builder.followUps.title' as BaseTextKey),
+);
+const executeWithMockDataLabel = computed(() =>
+	i18n.baseText('aiAssistant.builder.followUps.executeWithMockData' as BaseTextKey),
+);
+const unpinTestDataLabel = computed(() =>
+	i18n.baseText('aiAssistant.builder.followUps.unpinTestData' as BaseTextKey),
+);
+const executeAndRefineLabel = computed(() =>
+	i18n.baseText('aiAssistant.builder.followUps.executeAndRefine' as BaseTextKey),
+);
+const executeWithConfiguredDataLabel = computed(() =>
+	i18n.baseText('aiAssistant.builder.followUps.executeWithConfiguredData' as BaseTextKey),
 );
 
 function onUnpinAll() {
 	builderStore.unpinAllNodes();
 	builderStore.trackWorkflowBuilderJourney('user_clicked_unpin_all');
+}
+
+function onExecuteWithMockData() {
+	builderStore.trackWorkflowBuilderJourney('user_clicked_run_with_test_data');
+	emit('executeWithMockData');
 }
 
 async function onExecute() {
@@ -305,9 +326,9 @@ onBeforeUnmount(() => {
 			</p>
 		</template>
 
-		<!-- Execution Button -->
+		<!-- Execution Button (hidden when follow-ups are shown instead) -->
 		<N8nTooltip
-			v-if="triggerNodes.length > 0"
+			v-if="triggerNodes.length > 0 && !showFollowUps && !showPostExecutionFollowUps"
 			:disabled="!hasValidationIssues"
 			:content="executeButtonTooltip"
 			placement="left"
@@ -329,8 +350,8 @@ onBeforeUnmount(() => {
 			/>
 		</N8nTooltip>
 
-		<!-- Unpin All Section -->
-		<div v-if="showUnpinSection" :class="$style.unpinSection">
+		<!-- Unpin All Section (hidden when post-execution follow-ups provide the same actions) -->
+		<div v-if="showUnpinSection && !showPostExecutionFollowUps" :class="$style.unpinSection">
 			<N8nButton
 				type="secondary"
 				size="medium"
@@ -347,6 +368,75 @@ onBeforeUnmount(() => {
 					<N8nIcon icon="circle-help" size="small" :class="$style.infoIcon" />
 				</N8nTooltip>
 			</span>
+		</div>
+
+		<!-- Pre-execution Follow-ups -->
+		<div v-if="showFollowUps" :class="$style.followUpsSection">
+			<span :class="$style.followUpsTitle">
+				{{ followUpsTitle }}
+			</span>
+			<div
+				:class="$style.followUpItem"
+				role="button"
+				tabindex="0"
+				data-test-id="follow-up-execute-with-mock-data"
+				@click="onExecuteWithMockData"
+				@keydown.enter="onExecuteWithMockData"
+			>
+				<N8nIcon :class="$style.followUpIcon" icon="flask-conical" :size="14" />
+				<span :class="$style.followUpText">
+					{{ executeWithMockDataLabel }}
+				</span>
+			</div>
+			<N8nTooltip :disabled="!hasValidationIssues" :content="executeButtonTooltip" placement="top">
+				<div
+					:class="[$style.followUpItem, { [$style.followUpItemDisabled]: hasValidationIssues }]"
+					role="button"
+					:tabindex="hasValidationIssues ? -1 : 0"
+					:aria-disabled="hasValidationIssues"
+					data-test-id="follow-up-execute-with-configured-data"
+					@click="onExecute"
+					@keydown.enter="onExecute"
+				>
+					<N8nIcon :class="$style.followUpIcon" icon="play" :size="14" />
+					<span :class="$style.followUpText">
+						{{ executeWithConfiguredDataLabel }}
+					</span>
+				</div>
+			</N8nTooltip>
+		</div>
+
+		<!-- Post-execution Follow-ups -->
+		<div v-if="showPostExecutionFollowUps" :class="$style.followUpsSection">
+			<span :class="$style.followUpsTitle">
+				{{ followUpsTitle }}
+			</span>
+			<div
+				:class="$style.followUpItem"
+				role="button"
+				tabindex="0"
+				data-test-id="follow-up-unpin-test-data"
+				@click="onUnpinAll"
+				@keydown.enter="onUnpinAll"
+			>
+				<N8nIcon :class="$style.followUpIcon" icon="pin" :size="14" />
+				<span :class="$style.followUpText">
+					{{ unpinTestDataLabel }}
+				</span>
+			</div>
+			<div
+				:class="$style.followUpItem"
+				role="button"
+				tabindex="0"
+				data-test-id="follow-up-execute-and-refine"
+				@click="onExecute"
+				@keydown.enter="onExecute"
+			>
+				<N8nIcon :class="$style.followUpIcon" icon="play" :size="14" />
+				<span :class="$style.followUpText">
+					{{ executeAndRefineLabel }}
+				</span>
+			</div>
 		</div>
 	</div>
 </template>
@@ -423,5 +513,51 @@ onBeforeUnmount(() => {
 .infoIcon {
 	color: var(--color--text--tint-1);
 	cursor: help;
+}
+
+.followUpsSection {
+	display: flex;
+	flex-direction: column;
+	border-top: var(--border);
+	padding-top: var(--spacing--xs);
+}
+
+.followUpsTitle {
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--bold);
+	line-height: 1.45;
+	color: var(--color--text);
+	margin-bottom: var(--spacing--2xs);
+}
+
+.followUpItem {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--4xs) 0;
+	cursor: pointer;
+	color: var(--color--text);
+
+	&:hover {
+		color: var(--color--primary);
+	}
+}
+
+.followUpItemDisabled {
+	cursor: not-allowed;
+	opacity: 0.5;
+
+	&:hover {
+		color: var(--color--text);
+	}
+}
+
+.followUpIcon {
+	margin-right: var(--spacing--2xs);
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
+}
+
+.followUpText {
+	font-size: var(--font-size--sm);
 }
 </style>
