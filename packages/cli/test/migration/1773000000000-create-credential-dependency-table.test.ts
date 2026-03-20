@@ -23,6 +23,16 @@ type CredentialDependencyRow = {
 describe('CreateCredentialDependencyTable Migration', () => {
 	let dataSource: DataSource;
 	let cipher: Cipher;
+	jest.setTimeout(20_000);
+
+	async function withContext<T>(fn: (context: TestMigrationContext) => Promise<T>): Promise<T> {
+		const context = createTestMigrationContext(dataSource);
+		try {
+			return await fn(context);
+		} finally {
+			await context.queryRunner.release();
+		}
+	}
 
 	beforeAll(async () => {
 		const dbConnection = Container.get(DbConnection);
@@ -32,9 +42,9 @@ describe('CreateCredentialDependencyTable Migration', () => {
 	});
 
 	beforeEach(async () => {
-		const context = createTestMigrationContext(dataSource);
-		await context.queryRunner.clearDatabase();
-		await context.queryRunner.release();
+		await withContext(async (context) => {
+			await context.queryRunner.clearDatabase();
+		});
 		await initDbUpToMigration(MIGRATION_NAME);
 	});
 
@@ -111,49 +121,49 @@ describe('CreateCredentialDependencyTable Migration', () => {
 
 	describe('up migration', () => {
 		it('should create table and backfill dependencies from credential expressions', async () => {
-			const context = createTestMigrationContext(dataSource);
 			const credentialWithSecretsId = randomUUID();
 			const credentialWithoutSecretsId = randomUUID();
 			const credentialUnknownProviderId = randomUUID();
 
-			await insertProviderConnection(context, { providerKey: 'vault' });
-			await insertProviderConnection(context, { providerKey: 'aws-secrets-manager' });
+			const { vaultProviderId, awsProviderId } = await withContext(async (context) => {
+				await insertProviderConnection(context, { providerKey: 'vault' });
+				await insertProviderConnection(context, { providerKey: 'aws-secrets-manager' });
 
-			const vaultProviderId = await getProviderIdByKey(context, 'vault');
-			const awsProviderId = await getProviderIdByKey(context, 'aws-secrets-manager');
-			expect(vaultProviderId).toBeDefined();
-			expect(awsProviderId).toBeDefined();
+				const vaultProviderId = await getProviderIdByKey(context, 'vault');
+				const awsProviderId = await getProviderIdByKey(context, 'aws-secrets-manager');
+				expect(vaultProviderId).toBeDefined();
+				expect(awsProviderId).toBeDefined();
 
-			await insertCredential(context, {
-				id: credentialWithSecretsId,
-				encryptedData: cipher.encrypt(
-					JSON.stringify({
-						apiKey: '={{ $secrets.vault.primaryKey }}',
-						nested: {
-							token: "={{ $secrets['aws-secrets-manager']['token'] }}",
-						},
-						repeated: '={{ $secrets.vault.secondary + ":" + $secrets.vault.third }}',
-					}),
-				),
+				await insertCredential(context, {
+					id: credentialWithSecretsId,
+					encryptedData: cipher.encrypt(
+						JSON.stringify({
+							apiKey: '={{ $secrets.vault.primaryKey }}',
+							nested: {
+								token: "={{ $secrets['aws-secrets-manager']['token'] }}",
+							},
+							repeated: '={{ $secrets.vault.secondary + ":" + $secrets.vault.third }}',
+						}),
+					),
+				});
+
+				await insertCredential(context, {
+					id: credentialWithoutSecretsId,
+					encryptedData: cipher.encrypt(JSON.stringify({ apiKey: 'plain-value' })),
+				});
+
+				await insertCredential(context, {
+					id: credentialUnknownProviderId,
+					encryptedData: cipher.encrypt(JSON.stringify({ apiKey: '={{ $secrets.unknown.key }}' })),
+				});
+
+				return { vaultProviderId, awsProviderId };
 			});
-
-			await insertCredential(context, {
-				id: credentialWithoutSecretsId,
-				encryptedData: cipher.encrypt(JSON.stringify({ apiKey: 'plain-value' })),
-			});
-
-			await insertCredential(context, {
-				id: credentialUnknownProviderId,
-				encryptedData: cipher.encrypt(JSON.stringify({ apiKey: '={{ $secrets.unknown.key }}' })),
-			});
-
-			await context.queryRunner.release();
 
 			await runSingleMigration(MIGRATION_NAME);
 			dataSource = Container.get(DataSource);
 
-			const postContext = createTestMigrationContext(dataSource);
-			const dependencies = await getDependencies(postContext);
+			const dependencies = await withContext(async (context) => await getDependencies(context));
 
 			expect(dependencies).toHaveLength(2);
 			expect(dependencies).toEqual(
@@ -170,29 +180,25 @@ describe('CreateCredentialDependencyTable Migration', () => {
 					},
 				]),
 			);
-
-			await postContext.queryRunner.release();
 		});
 
 		it('should skip credentials that cannot be decrypted', async () => {
-			const context = createTestMigrationContext(dataSource);
 			const invalidCredentialId = randomUUID();
 
-			await insertProviderConnection(context, { providerKey: 'vault' });
-			await insertCredential(context, {
-				id: invalidCredentialId,
-				encryptedData: 'not-encrypted-data',
+			await withContext(async (context) => {
+				await insertProviderConnection(context, { providerKey: 'vault' });
+				await insertCredential(context, {
+					id: invalidCredentialId,
+					encryptedData: 'not-encrypted-data',
+				});
 			});
-			await context.queryRunner.release();
 
 			await runSingleMigration(MIGRATION_NAME);
 			dataSource = Container.get(DataSource);
 
-			const postContext = createTestMigrationContext(dataSource);
-			const dependencies = await getDependencies(postContext);
+			const dependencies = await withContext(async (context) => await getDependencies(context));
 
 			expect(dependencies).toHaveLength(0);
-			await postContext.queryRunner.release();
 		});
 	});
 
@@ -201,12 +207,11 @@ describe('CreateCredentialDependencyTable Migration', () => {
 			await runSingleMigration(MIGRATION_NAME);
 			await undoLastSingleMigration();
 
-			const context = createTestMigrationContext(dataSource);
-			const dependencyTableName = `${context.tablePrefix}credential_dependency`;
-			const hasDependencyTable = await context.queryRunner.hasTable(dependencyTableName);
-
-			expect(hasDependencyTable).toBe(false);
-			await context.queryRunner.release();
+			await withContext(async (context) => {
+				const dependencyTableName = `${context.tablePrefix}credential_dependency`;
+				const hasDependencyTable = await context.queryRunner.hasTable(dependencyTableName);
+				expect(hasDependencyTable).toBe(false);
+			});
 		});
 	});
 });

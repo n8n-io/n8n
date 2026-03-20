@@ -391,15 +391,33 @@ describe('SecretsProvidersConnectionsService', () => {
 		});
 
 		it('should sync provider connection after deleteConnection', async () => {
+			const entityManager = {
+				delete: jest.fn().mockResolvedValue(undefined),
+			};
+			const transaction = jest.fn(
+				async (fn: (em: typeof entityManager) => Promise<void>) => await fn(entityManager),
+			);
+			Object.defineProperty(mockRepository, 'manager', {
+				value: { transaction },
+				configurable: true,
+			});
+
 			mockRepository.findOne.mockResolvedValueOnce(savedConnection);
-			mockRepository.remove.mockResolvedValueOnce(savedConnection);
 
 			await service.deleteConnection('my-aws', 'user-123');
 
-			expect(mockCredentialDependencyRepository.deleteByDependency).toHaveBeenCalledWith({
-				dependencyType: 'externalSecretProvider',
-				dependencyId: '1',
+			expect(entityManager.delete).toHaveBeenNthCalledWith(1, mockProjectAccessRepository.target, {
+				secretsProviderConnectionId: 1,
 			});
+			expect(entityManager.delete).toHaveBeenNthCalledWith(
+				2,
+				mockCredentialDependencyRepository.target,
+				{
+					dependencyType: 'externalSecretProvider',
+					dependencyId: '1',
+				},
+			);
+			expect(entityManager.delete).toHaveBeenNthCalledWith(3, mockRepository.target, { id: 1 });
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
 		});
 	});
@@ -437,10 +455,18 @@ describe('SecretsProvidersConnectionsService', () => {
 			await service.cleanupConnectionsForProjectDeletion('project-1');
 
 			expect(transaction).toHaveBeenCalledTimes(1);
-			expect(entityManager.delete).toHaveBeenNthCalledWith(1, mockRepository.target, {
+			expect(entityManager.delete).toHaveBeenNthCalledWith(
+				1,
+				mockCredentialDependencyRepository.target,
+				{
+					dependencyType: 'externalSecretProvider',
+					dependencyId: In(['1']),
+				},
+			);
+			expect(entityManager.delete).toHaveBeenNthCalledWith(2, mockRepository.target, {
 				id: In([1]),
 			});
-			expect(entityManager.delete).toHaveBeenNthCalledWith(2, mockProjectAccessRepository.target, {
+			expect(entityManager.delete).toHaveBeenNthCalledWith(3, mockProjectAccessRepository.target, {
 				projectId: 'project-1',
 				secretsProviderConnectionId: In([2]),
 			});
@@ -453,11 +479,6 @@ describe('SecretsProvidersConnectionsService', () => {
 			expect(mockRepository.delete).not.toHaveBeenCalled();
 			expect(mockRepository.update).not.toHaveBeenCalled();
 			expect(mockProjectAccessRepository.delete).not.toHaveBeenCalled();
-			expect(mockCredentialDependencyRepository.deleteByDependencies).toHaveBeenCalledWith({
-				dependencyType: 'externalSecretProvider',
-				dependencyIds: ['1'],
-				entityManager,
-			});
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledTimes(2);
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-a');
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-b');
@@ -494,11 +515,9 @@ describe('SecretsProvidersConnectionsService', () => {
 
 			await service.cleanupConnectionsForProjectDeletion('project-1');
 
-			expect(mockCredentialDependencyRepository.deleteByDependencies).toHaveBeenCalledTimes(1);
-			expect(mockCredentialDependencyRepository.deleteByDependencies).toHaveBeenCalledWith({
+			expect(entityManager.delete).toHaveBeenCalledWith(mockCredentialDependencyRepository.target, {
 				dependencyType: 'externalSecretProvider',
-				dependencyIds: ['10', '11'],
-				entityManager,
+				dependencyId: In(['10', '11']),
 			});
 		});
 
@@ -527,7 +546,10 @@ describe('SecretsProvidersConnectionsService', () => {
 
 			await service.cleanupConnectionsForProjectDeletion('project-1');
 
-			expect(mockCredentialDependencyRepository.deleteByDependencies).not.toHaveBeenCalled();
+			expect(entityManager.delete).not.toHaveBeenCalledWith(
+				mockCredentialDependencyRepository.target,
+				expect.anything(),
+			);
 		});
 	});
 
@@ -758,16 +780,17 @@ describe('SecretsProvidersConnectionsService', () => {
 		} as unknown as SecretsProviderConnection;
 
 		it('should delete connection and sync provider when found', async () => {
-			mockRepository.removeByProviderKeyAndProjectId.mockResolvedValue(deletedConnection);
+			mockRepository.findByProviderKeyAndProjectId.mockResolvedValue(deletedConnection);
+			mockRepository.remove.mockResolvedValue(deletedConnection);
 
 			const result = await service.deleteConnectionForProject('my-aws', 'project-1');
 
 			expect(result).toBe(deletedConnection);
-			expect(mockRepository.removeByProviderKeyAndProjectId).toHaveBeenCalledWith(
+			expect(mockRepository.findByProviderKeyAndProjectId).toHaveBeenCalledWith(
 				'my-aws',
 				'project-1',
 			);
-			expect(mockCredentialDependencyRepository.deleteByDependency).toHaveBeenCalledWith({
+			expect(mockCredentialDependencyRepository.delete).toHaveBeenCalledWith({
 				dependencyType: 'externalSecretProvider',
 				dependencyId: '1',
 			});
@@ -776,18 +799,18 @@ describe('SecretsProvidersConnectionsService', () => {
 		});
 
 		it('should throw NotFoundError when connection does not exist', async () => {
-			mockRepository.removeByProviderKeyAndProjectId.mockResolvedValue(null);
+			mockRepository.findByProviderKeyAndProjectId.mockResolvedValue(null);
 
 			await expect(service.deleteConnectionForProject('missing', 'project-1')).rejects.toThrow(
 				NotFoundError,
 			);
-			expect(mockCredentialDependencyRepository.deleteByDependency).not.toHaveBeenCalled();
+			expect(mockCredentialDependencyRepository.delete).not.toHaveBeenCalled();
 			expect(mockProjectAccessRepository.deleteByConnectionId).not.toHaveBeenCalled();
 			expect(mockExternalSecretsManager.syncProviderConnection).not.toHaveBeenCalled();
 		});
 
 		it('should throw NotFoundError when connection does not belong to the project', async () => {
-			mockRepository.removeByProviderKeyAndProjectId.mockResolvedValue(null);
+			mockRepository.findByProviderKeyAndProjectId.mockResolvedValue(null);
 
 			await expect(service.deleteConnectionForProject('my-aws', 'other-project')).rejects.toThrow(
 				NotFoundError,

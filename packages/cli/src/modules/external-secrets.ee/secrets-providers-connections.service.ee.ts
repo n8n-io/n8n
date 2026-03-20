@@ -207,12 +207,15 @@ export class SecretsProvidersConnectionsService {
 		const projectInfo = this.extractProjectInfo(connection);
 		const dependencyId = connection.id.toString();
 
-		await this.projectAccessRepository.deleteByConnectionId(connection.id);
-		await this.credentialDependencyRepository.deleteByDependency({
-			dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
-			dependencyId,
+		await this.repository.manager.transaction(async (entityManager) => {
+			await this.projectAccessRepository.deleteByConnectionId(connection.id, entityManager);
+			await this.credentialDependencyRepository.deleteByDependency({
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyId,
+				entityManager,
+			});
+			await entityManager.remove(connection);
 		});
-		await this.repository.remove(connection);
 
 		await this.externalSecretsManager.syncProviderConnection(providerKey);
 
@@ -481,20 +484,24 @@ export class SecretsProvidersConnectionsService {
 		providerKey: string,
 		projectId: string,
 	): Promise<SecretsProviderConnection> {
-		const connection = await this.repository.removeByProviderKeyAndProjectId(
-			providerKey,
-			projectId,
-		);
+		const connection = await this.repository.findByProviderKeyAndProjectId(providerKey, projectId);
 
 		if (!connection) {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
 		}
 
-		await this.credentialDependencyRepository.deleteByDependency({
-			dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
-			dependencyId: connection.id.toString(),
+		const connectionId = connection.id;
+		await this.repository.manager.transaction(async (entityManager) => {
+			await entityManager.delete(this.projectAccessRepository.target, {
+				secretsProviderConnectionId: connectionId,
+			});
+			await this.credentialDependencyRepository.deleteByDependency({
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyId: connectionId.toString(),
+				entityManager,
+			});
+			await this.projectAccessRepository.deleteByConnectionId(connectionId, entityManager);
 		});
-		await this.projectAccessRepository.deleteByConnectionId(connection.id);
 		await this.externalSecretsManager.syncProviderConnection(providerKey);
 
 		return connection;
