@@ -321,6 +321,7 @@ async function onWorkflowDeactivated() {
 				v-if="onWorkflowPage"
 				:items="tabBarItems"
 				:model-value="activeHeaderTab"
+				:floating="settingsStore.isCanvasOnly"
 				@update:model-value="onTabSelected"
 			/>
 		</div>
