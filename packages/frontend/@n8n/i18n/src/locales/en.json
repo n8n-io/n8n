@@ -4945,6 +4945,7 @@
 	"instanceAi.confirmation.deny": "Deny",
 	"instanceAi.confirmation.approved": "Approved",
 	"instanceAi.confirmation.denied": "Denied",
+	"instanceAi.confirmation.deferred": "Deferred",
 	"instanceAi.confirmation.pendingInline": "Waiting for approval",
 	"instanceAi.confirmation.agentContext": "{agent} needs approval",
 	"instanceAi.confirmation.approveAll": "Approve all",

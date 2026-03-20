@@ -40,11 +40,13 @@ const showConfirmation = computed(
 );
 
 /** Resolved confirmation action — from backend or local optimistic state. */
-const resolvedAction = computed((): 'approved' | 'denied' | null => {
+const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null => {
+	// Local optimistic state takes priority (has richer semantics like 'deferred')
+	const rid = props.toolCall.confirmation?.requestId;
+	const local = rid ? store.resolvedConfirmationIds.get(rid) : undefined;
+	if (local) return local;
 	const status = props.toolCall.confirmationStatus;
 	if (status === 'approved' || status === 'denied') return status;
-	const rid = props.toolCall.confirmation?.requestId;
-	if (rid) return store.resolvedConfirmationIds.get(rid) ?? null;
 	return null;
 });
 </script>
@@ -104,14 +106,28 @@ const resolvedAction = computed((): 'approved' | 'denied' | null => {
 		<!-- Confirmation status indicator (after panel resolution or backend response) -->
 		<div v-else-if="resolvedAction" :class="$style.confirmationStatus">
 			<N8nIcon
-				:icon="resolvedAction === 'approved' ? 'check' : 'x'"
+				:icon="
+					resolvedAction === 'approved'
+						? 'check'
+						: resolvedAction === 'deferred'
+							? 'arrow-right'
+							: 'x'
+				"
 				size="small"
-				:class="resolvedAction === 'approved' ? $style.successIcon : $style.errorIcon"
+				:class="
+					resolvedAction === 'approved'
+						? $style.successIcon
+						: resolvedAction === 'deferred'
+							? $style.deferredIcon
+							: $style.errorIcon
+				"
 			/>
 			<span>{{
 				resolvedAction === 'approved'
 					? i18n.baseText('instanceAi.confirmation.approved')
-					: i18n.baseText('instanceAi.confirmation.denied')
+					: resolvedAction === 'deferred'
+						? i18n.baseText('instanceAi.confirmation.deferred')
+						: i18n.baseText('instanceAi.confirmation.denied')
 			}}</span>
 		</div>
 	</CollapsibleRoot>
@@ -224,6 +240,10 @@ const resolvedAction = computed((): 'approved' | 'denied' | null => {
 
 .pendingIcon {
 	color: var(--color--warning);
+}
+
+.deferredIcon {
+	color: var(--color--text--tint-2);
 }
 
 .confirmationStatus {

@@ -46,7 +46,7 @@ export interface PendingConfirmationItem {
 function collectPendingConfirmations(
 	node: InstanceAiAgentNode,
 	messageId: string,
-	resolved: Map<string, 'approved' | 'denied'>,
+	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
 	out: PendingConfirmationItem[],
 ): void {
 	for (const tc of node.toolCalls) {
@@ -97,7 +97,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
-	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied'>>(new Map());
+	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied' | 'deferred'>>(new Map());
 	const MAX_DEBUG_EVENTS = 1000;
 
 	// --- Computed ---
@@ -172,7 +172,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return items;
 	});
 
-	function resolveConfirmation(requestId: string, action: 'approved' | 'denied'): void {
+	function resolveConfirmation(
+		requestId: string,
+		action: 'approved' | 'denied' | 'deferred',
+	): void {
 		const next = new Map(resolvedConfirmationIds.value);
 		next.set(requestId, action);
 		resolvedConfirmationIds.value = next;

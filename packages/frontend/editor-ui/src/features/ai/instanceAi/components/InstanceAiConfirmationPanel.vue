@@ -73,7 +73,7 @@ function handleTextSubmit(requestId: string) {
 }
 
 function handleTextSkip(requestId: string) {
-	store.resolveConfirmation(requestId, 'denied');
+	store.resolveConfirmation(requestId, 'deferred');
 	void store.confirmAction(requestId, false);
 }
 

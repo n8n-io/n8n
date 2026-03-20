@@ -51,7 +51,7 @@ function handleOpenModal() {
 function handleLater() {
 	isSubmitted.value = true;
 	isDeferred.value = true;
-	store.resolveConfirmation(props.requestId, 'denied');
+	store.resolveConfirmation(props.requestId, 'deferred');
 	void store.confirmAction(props.requestId, false);
 }
 </script>
