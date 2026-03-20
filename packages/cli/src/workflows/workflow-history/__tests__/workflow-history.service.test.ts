@@ -373,7 +373,16 @@ describe('WorkflowHistoryService', () => {
 					workflowHistory: null,
 				},
 			];
-			workflowPublishHistoryRepository.find.mockResolvedValueOnce(mockEvents);
+
+			const qb = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoin: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValueOnce(mockEvents),
+			};
+			workflowPublishHistoryRepository.createQueryBuilder.mockReturnValueOnce(qb as never);
 
 			const result = await workflowHistoryService.getPublishTimeline(testUser, workflowId);
 
@@ -399,11 +408,8 @@ describe('WorkflowHistoryService', () => {
 					versionName: null,
 				},
 			]);
-			expect(workflowPublishHistoryRepository.find).toHaveBeenCalledWith({
-				where: { workflowId },
-				relations: ['user', 'workflowHistory'],
-				order: { createdAt: 'ASC' },
-			});
+			expect(qb.leftJoin).toHaveBeenCalledWith('wph.workflowHistory', 'wh');
+			expect(qb.addSelect).toHaveBeenCalledWith('wh.name');
 		});
 	});
 

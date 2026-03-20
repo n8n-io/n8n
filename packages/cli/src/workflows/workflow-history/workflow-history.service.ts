@@ -246,11 +246,14 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		const events = await this.workflowPublishHistoryRepository.find({
-			where: { workflowId: workflow.id },
-			relations: ['user', 'workflowHistory'],
-			order: { createdAt: 'ASC' },
-		});
+		const events = await this.workflowPublishHistoryRepository
+			.createQueryBuilder('wph')
+			.leftJoinAndSelect('wph.user', 'user')
+			.leftJoin('wph.workflowHistory', 'wh')
+			.addSelect('wh.name')
+			.where('wph.workflowId = :workflowId', { workflowId: workflow.id })
+			.orderBy('wph.createdAt', 'ASC')
+			.getMany();
 
 		return events.map((e) => ({
 			id: e.id,
