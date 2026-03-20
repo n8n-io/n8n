@@ -135,6 +135,12 @@ export class WaitingForms extends WaitingWebhooks {
 		});
 	}
 
+	/**
+	 * Checks if the request is a form execution status poll and, if so,
+	 * responds with the current execution status (e.g. 'waiting', 'form-waiting')
+	 * and signals that no further webhook response is needed.
+	 * Returns `undefined` for non-status requests so normal webhook handling continues.
+	 */
 	private handleStatusRequest(
 		execution: IExecutionResponse | undefined,
 		suffix: string | undefined,
