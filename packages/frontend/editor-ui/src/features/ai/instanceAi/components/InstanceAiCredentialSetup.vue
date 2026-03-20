@@ -4,10 +4,8 @@ import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiCredentialRequest, InstanceAiCredentialFlow } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY } from '@/app/constants';
-import type { InstanceAiCredentialSetupModalData } from './InstanceAiCredentialSetupModal.vue';
+import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 
 const props = defineProps<{
 	requestId: string;
@@ -19,7 +17,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
-const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 
 const isFinalize = computed(() => props.credentialFlow?.stage === 'finalize');
@@ -27,25 +24,33 @@ const isFinalize = computed(() => props.credentialFlow?.stage === 'finalize');
 const isSubmitted = ref(false);
 const isDeferred = ref(false);
 
+const selections = ref<Record<string, string | null>>(
+	Object.fromEntries(props.credentialRequests.map((r) => [r.credentialType, null])),
+);
+
+const allSelected = computed(() =>
+	props.credentialRequests.every((r) => selections.value[r.credentialType] !== null),
+);
+
 function getDisplayName(credentialType: string): string {
 	return credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
 }
 
-function handleOpenModal() {
-	const data: InstanceAiCredentialSetupModalData = {
-		credentialRequests: props.credentialRequests,
-		message: props.message,
-		projectId: props.projectId,
-		onComplete: (credentials: Record<string, string>) => {
-			isSubmitted.value = true;
-			store.resolveConfirmation(props.requestId, 'approved');
-			void store.confirmAction(props.requestId, true, undefined, credentials);
-		},
-	};
-	uiStore.openModalWithData({
-		name: INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
-		data: data as unknown as Record<string, unknown>,
-	});
+function handleCredentialSelected(credentialType: string, credentialId: string) {
+	selections.value[credentialType] = credentialId;
+}
+
+function handleCredentialDeselected(credentialType: string) {
+	selections.value[credentialType] = null;
+}
+
+function handleContinue() {
+	const credentials: Record<string, string> = {};
+	for (const [type, id] of Object.entries(selections.value)) {
+		if (id) credentials[type] = id;
+	}
+	isSubmitted.value = true;
+	void store.confirmAction(props.requestId, true, undefined, credentials);
 }
 
 function handleLater() {
@@ -59,15 +64,34 @@ function handleLater() {
 <template>
 	<div :class="$style.root">
 		<template v-if="!isSubmitted">
-			<ul :class="$style.summaryList">
+			<ul :class="$style.credentialList">
 				<li
 					v-for="req in props.credentialRequests"
 					:key="req.credentialType"
-					:class="$style.summaryItem"
+					:class="$style.credentialRow"
 				>
 					<N8nIcon icon="key-round" size="small" :class="$style.icon" />
-					<span :class="$style.credentialName">{{ getDisplayName(req.credentialType) }}</span>
-					<span v-if="req.reason" :class="$style.credentialReason">{{ req.reason }}</span>
+					<div :class="$style.credentialText">
+						<span :class="$style.credentialName">{{ getDisplayName(req.credentialType) }}</span>
+						<span v-if="req.reason" :class="$style.credentialReason">{{ req.reason }}</span>
+					</div>
+					<span :class="$style.picker">
+						<CredentialPicker
+							:app-name="getDisplayName(req.credentialType)"
+							:credential-type="req.credentialType"
+							:selected-credential-id="selections[req.credentialType]"
+							:project-id="props.projectId"
+							create-button-variant="outline"
+							@credential-selected="handleCredentialSelected(req.credentialType, $event)"
+							@credential-deselected="handleCredentialDeselected(req.credentialType)"
+						/>
+					</span>
+					<N8nIcon
+						v-if="selections[req.credentialType]"
+						icon="check"
+						size="small"
+						:class="$style.checkIcon"
+					/>
 				</li>
 			</ul>
 
@@ -81,9 +105,10 @@ function handleLater() {
 				</button>
 				<N8nButton
 					size="small"
-					:label="i18n.baseText('instanceAi.credential.setupButton')"
-					data-test-id="instance-ai-credential-setup-button"
-					@click="handleOpenModal"
+					:label="i18n.baseText('instanceAi.credential.continueButton')"
+					:disabled="!allSelected"
+					data-test-id="instance-ai-credential-continue-button"
+					@click="handleContinue"
 				/>
 			</div>
 		</template>
@@ -114,22 +139,32 @@ function handleLater() {
 	background: var(--color--background--shade-1);
 }
 
+.credentialList {
+	list-style: none;
+	padding: 0;
+	margin: 0 0 var(--spacing--xs) 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.credentialRow {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--3xs);
+}
+
 .icon {
 	color: var(--color--primary);
 	flex-shrink: 0;
 }
 
-.summaryList {
-	list-style: none;
-	padding: 0;
-	margin: 0 0 var(--spacing--xs) 0;
-}
-
-.summaryItem {
+.credentialText {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) 0;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+	flex: 1;
 }
 
 .credentialName {
@@ -141,6 +176,16 @@ function handleLater() {
 .credentialReason {
 	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-1);
+}
+
+.picker {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+.checkIcon {
+	color: var(--color--success);
+	flex-shrink: 0;
 }
 
 .actions {
