@@ -13,6 +13,7 @@ import { randomUUID } from 'node:crypto';
 
 const MIGRATION_NAME = 'CreateCredentialDependencyTable1773000000000';
 const DEPENDENCY_TYPE = 'externalSecretProvider';
+const TEST_ENCRYPTION_KEY = 'test-encryption-key-for-migration-suite-32';
 
 type CredentialDependencyRow = {
 	credentialId: string;
@@ -23,6 +24,7 @@ type CredentialDependencyRow = {
 describe('CreateCredentialDependencyTable Migration', () => {
 	let dataSource: DataSource;
 	let cipher: Cipher;
+	let originalEncryptionKey: string | undefined;
 	jest.setTimeout(20_000);
 
 	async function withContext<T>(fn: (context: TestMigrationContext) => Promise<T>): Promise<T> {
@@ -35,6 +37,9 @@ describe('CreateCredentialDependencyTable Migration', () => {
 	}
 
 	beforeAll(async () => {
+		originalEncryptionKey = process.env.N8N_ENCRYPTION_KEY;
+		process.env.N8N_ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
+
 		const dbConnection = Container.get(DbConnection);
 		await dbConnection.init();
 		dataSource = Container.get(DataSource);
@@ -51,6 +56,12 @@ describe('CreateCredentialDependencyTable Migration', () => {
 	afterAll(async () => {
 		const dbConnection = Container.get(DbConnection);
 		await dbConnection.close();
+
+		if (originalEncryptionKey === undefined) {
+			delete process.env.N8N_ENCRYPTION_KEY;
+		} else {
+			process.env.N8N_ENCRYPTION_KEY = originalEncryptionKey;
+		}
 	});
 
 	async function insertProviderConnection(
