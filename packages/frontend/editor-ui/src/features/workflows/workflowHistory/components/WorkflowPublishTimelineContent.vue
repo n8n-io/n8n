@@ -27,7 +27,6 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const { isCalloutDismissed, dismissCallout } = useCalloutHelpers();
 const isLoading = ref(true);
 const events = ref<PublishTimelineEvent[]>([]);
-const versionNames = ref<Map<string, string | null>>(new Map());
 
 type TimelinePeriod = {
 	status: 'published' | 'unpublished';
@@ -91,7 +90,7 @@ const periods = computed<TimelinePeriod[]>(() => {
 			endedAt,
 			durationText,
 			versionId: isActivated ? event.versionId : null,
-			versionName: isActivated ? (versionNames.value.get(event.versionId) ?? null) : null,
+			versionName: isActivated ? (event.versionName ?? null) : null,
 			user: event.user ? `${event.user.firstName} ${event.user.lastName}` : null,
 			isCurrent: !nextEvent,
 		});
@@ -133,22 +132,7 @@ const shouldShowDurationBadge = (idx: number) =>
 const loadTimeline = async () => {
 	isLoading.value = true;
 	try {
-		const timelineEvents = await workflowHistoryStore.getPublishTimeline(props.workflowId);
-		const activatedVersionIds = [
-			...new Set(timelineEvents.filter((e) => e.event === 'activated').map((e) => e.versionId)),
-		];
-		const nameMap = new Map<string, string | null>();
-		if (activatedVersionIds.length > 0) {
-			const versions = await workflowHistoryStore.lookupVersions(props.workflowId, {
-				versionIds: activatedVersionIds,
-				fields: ['name'],
-			});
-			for (const version of versions) {
-				nameMap.set(version.versionId, version.name ?? null);
-			}
-		}
-		versionNames.value = nameMap;
-		events.value = timelineEvents;
+		events.value = await workflowHistoryStore.getPublishTimeline(props.workflowId);
 	} finally {
 		isLoading.value = false;
 	}

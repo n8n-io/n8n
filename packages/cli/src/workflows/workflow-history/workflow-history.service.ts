@@ -1,9 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import {
-	UpdateWorkflowHistoryVersionDto,
-	WorkflowHistoryLookupDto,
-	type WorkflowHistoryLookupField,
-} from '@n8n/api-types';
+import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import {
 	WorkflowHistory,
@@ -241,26 +237,6 @@ export class WorkflowHistoryService {
 		return versions.map((v) => ({ versionId: v.versionId, createdAt: v.createdAt }));
 	}
 
-	async lookupVersions(user: User, workflowId: string, body: WorkflowHistoryLookupDto) {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:read',
-		]);
-
-		if (!workflow) {
-			throw new SharedWorkflowNotFoundError('');
-		}
-
-		const select: Array<'versionId' | WorkflowHistoryLookupField> = ['versionId', ...body.fields];
-
-		return await this.workflowHistoryRepository.find({
-			where: {
-				workflowId: workflow.id,
-				versionId: In(body.versionIds),
-			},
-			select,
-		});
-	}
-
 	async getPublishTimeline(user: User, workflowId: string) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
@@ -270,10 +246,21 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		return await this.workflowPublishHistoryRepository.find({
+		const events = await this.workflowPublishHistoryRepository.find({
 			where: { workflowId: workflow.id },
-			relations: ['user'],
+			relations: ['user', 'workflowHistory'],
 			order: { createdAt: 'ASC' },
 		});
+
+		return events.map((e) => ({
+			id: e.id,
+			workflowId: e.workflowId,
+			versionId: e.versionId,
+			event: e.event,
+			createdAt: e.createdAt,
+			userId: e.userId,
+			user: e.user,
+			versionName: e.workflowHistory?.name ?? null,
+		}));
 	}
 }
