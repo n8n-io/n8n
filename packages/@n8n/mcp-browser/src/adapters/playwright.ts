@@ -1,14 +1,12 @@
 import { execFile } from 'node:child_process';
-import fs from 'node:fs';
-import path from 'node:path';
 import type { Browser, BrowserContext, Dialog, Locator, Page, Response } from 'playwright-core';
-import { chromium, firefox, webkit, devices } from 'playwright-core';
+import { chromium, devices } from 'playwright-core';
 
 import { CDPRelayServer } from '../cdp-relay';
 import { PageNotFoundError, StaleRefError, UnsupportedOperationError } from '../errors';
 import type {
-	BrowserName,
 	ClickOptions,
+	ConnectConfig,
 	ConsoleEntry,
 	Cookie,
 	DeviceDescriptor,
@@ -20,14 +18,11 @@ import type {
 	ResolvedConfig,
 	ScreenshotOptions,
 	ScrollOptions,
-	SessionConfig,
 	SnapshotResult,
 	TypeOptions,
 	WaitOptions,
 } from '../types';
-import { isChromiumBased } from '../types';
 import { generateId, toError } from '../utils';
-import type { BrowserAdapter } from './adapter';
 
 // ---------------------------------------------------------------------------
 // Type augmentation for Playwright's private _snapshotForAI API.
@@ -73,7 +68,7 @@ const BROWSER_BRIDGE_EXTENSION_ID = 'agklaocphkdbepcjccjpnbcglmpebhpo';
 // Adapter
 // ---------------------------------------------------------------------------
 
-export class PlaywrightAdapter implements BrowserAdapter {
+export class PlaywrightAdapter {
 	readonly name = 'playwright';
 
 	private resolvedConfig: ResolvedConfig;
@@ -90,54 +85,38 @@ export class PlaywrightAdapter implements BrowserAdapter {
 	// Lifecycle
 	// =========================================================================
 
-	async launch(config: SessionConfig): Promise<void> {
-		const browserType = this.getBrowserType(config.browser);
-		const launchOptions = { headless: config.headless };
+	async launch(config: ConnectConfig): Promise<void> {
+		// Local mode — connect to the user's running Chrome via extension bridge.
+		// The CDPRelayServer bridges Playwright ↔ Chrome extension (chrome.debugger).
+		this.relay = new CDPRelayServer();
+		const port = await this.relay.listen();
+		const extensionEndpoint = this.relay.extensionEndpoint(port);
 
-		if (config.mode === 'ephemeral') {
-			this.browser = await browserType.launch(launchOptions);
-			this.context = await this.browser.newContext({ viewport: config.viewport });
-		} else if (config.mode === 'persistent') {
-			const profileDir = path.join(
-				this.resolvedConfig.profilesDir,
-				config.profileName ?? 'default',
-			);
-			fs.mkdirSync(profileDir, { recursive: true });
-			this.context = await browserType.launchPersistentContext(profileDir, {
-				...launchOptions,
-				viewport: config.viewport,
-			});
-		} else {
-			// local mode — connect to the user's running Chrome via extension bridge.
-			// The CDPRelayServer bridges Playwright ↔ Chrome extension (chrome.debugger).
-			this.relay = new CDPRelayServer();
-			const port = await this.relay.listen();
-			const extensionEndpoint = this.relay.extensionEndpoint(port);
-
-			// Open the extension's connect page with the relay URL so the user can pick a tab.
-			const connectUrl =
-				`chrome-extension://${BROWSER_BRIDGE_EXTENSION_ID}/dist/connect.html` +
-				`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}`;
-			const browserInfo = this.resolvedConfig.browsers.get(config.browser);
-			const chromePath = browserInfo?.executablePath;
-			if (chromePath) {
-				execFile(chromePath, [connectUrl]);
-			}
-
-			// Wait for the extension to connect and attach to a tab
-			await this.relay.waitForExtension();
-
-			// Connect Playwright over CDP through the relay
-			const cdpEndpoint = this.relay.cdpEndpoint(port);
-			this.browser = await chromium.connectOverCDP(cdpEndpoint);
-			const contexts = this.browser.contexts();
-			this.context = contexts[0] ?? (await this.browser.newContext({ viewport: config.viewport }));
+		// Open the extension's connect page with the relay URL so it auto-connects.
+		const connectUrl =
+			`chrome-extension://${BROWSER_BRIDGE_EXTENSION_ID}/dist/connect.html` +
+			`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}`;
+		const browserInfo = this.resolvedConfig.browsers.get(config.browser);
+		const chromePath = browserInfo?.executablePath;
+		if (chromePath) {
+			execFile(chromePath, [connectUrl]);
 		}
 
-		// Set up the initial page
+		// Wait for the extension to connect and attach to tabs
+		await this.relay.waitForExtension();
+
+		// Connect Playwright over CDP through the relay
+		const cdpEndpoint = this.relay.cdpEndpoint(port);
+		this.browser = await chromium.connectOverCDP(cdpEndpoint);
+		const contexts = this.browser.contexts();
+		this.context = contexts[0] ?? (await this.browser.newContext({ viewport: config.viewport }));
+
+		// Set up initial pages
 		const pages = this.context.pages();
 		if (pages.length > 0) {
-			this.trackPage(pages[0]);
+			for (const page of pages) {
+				this.trackPage(page);
+			}
 		} else {
 			const page = await this.context.newPage();
 			this.trackPage(page);
@@ -681,13 +660,6 @@ export class PlaywrightAdapter implements BrowserAdapter {
 	// Private helpers
 	// =========================================================================
 
-	private getBrowserType(browser: BrowserName) {
-		if (isChromiumBased(browser)) return chromium;
-		if (browser === 'firefox') return firefox;
-		if (browser === 'webkit' || browser === 'safari') return webkit;
-		return chromium;
-	}
-
 	private requireContext(): BrowserContext {
 		if (!this.context) throw new Error('Browser context not initialized');
 		return this.context;
@@ -695,7 +667,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
 
 	private requirePage(pageId: string): PageState {
 		const state = this.pageStates.get(pageId);
-		if (!state) throw new PageNotFoundError(pageId, '');
+		if (!state) throw new PageNotFoundError(pageId);
 		return state;
 	}
 

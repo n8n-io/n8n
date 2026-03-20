@@ -1,4 +1,4 @@
-import { SessionManager } from '../session-manager';
+import { BrowserConnection } from '../connection';
 import type { BrowserToolkit, Config, ToolDefinition } from '../types';
 import { createInspectionTools } from './inspection';
 import { createInteractionTools } from './interaction';
@@ -9,17 +9,17 @@ import { createTabTools } from './tabs';
 import { createWaitTools } from './wait';
 
 export function createBrowserTools(config?: Partial<Config>): BrowserToolkit {
-	const sessionManager = new SessionManager(config);
+	const connection = new BrowserConnection(config);
 
 	const tools: ToolDefinition[] = [
-		...createSessionTools(sessionManager),
-		...createTabTools(sessionManager),
-		...createNavigationTools(sessionManager),
-		...createInteractionTools(sessionManager),
-		...createInspectionTools(sessionManager),
-		...createWaitTools(sessionManager),
-		...createStateTools(sessionManager),
+		...createSessionTools(connection),
+		...createTabTools(connection),
+		...createNavigationTools(connection),
+		...createInteractionTools(connection),
+		...createInspectionTools(connection),
+		...createWaitTools(connection),
+		...createStateTools(connection),
 	];
 
-	return { tools, sessionManager };
+	return { tools, connection };
 }

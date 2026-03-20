@@ -1,19 +1,33 @@
 /**
  * Chrome extension service worker (background script).
  *
- * Manages the lifecycle of relay connections initiated from the connect UI.
- * Each connection bridges CDP commands between the relay server and a Chrome tab
- * via the chrome.debugger API.
+ * Manages the lifecycle of relay connections. Auto-connects to all eligible
+ * browser tabs and tracks tab lifecycle (new tabs, closed tabs).
  */
 
-import { RelayConnection } from './relayConnection';
+import { RelayConnection, type TabManagementSettings } from './relayConnection';
 
 interface ConnectionState {
 	relay: RelayConnection;
-	tabId?: number;
 }
 
 let activeConnection: ConnectionState | null = null;
+
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+
+const SETTINGS_KEY = 'tabManagementSettings';
+
+const DEFAULT_SETTINGS: TabManagementSettings = {
+	allowTabCreation: true,
+	allowTabClosing: false,
+};
+
+async function loadSettings(): Promise<TabManagementSettings> {
+	const result = await chrome.storage.local.get(SETTINGS_KEY);
+	return (result[SETTINGS_KEY] as TabManagementSettings) ?? DEFAULT_SETTINGS;
+}
 
 // ---------------------------------------------------------------------------
 // Message handling from connect.html UI
@@ -26,7 +40,6 @@ interface GetTabsMessage {
 interface ConnectMessage {
 	type: 'connect';
 	relayUrl: string;
-	tabId: number;
 }
 
 interface DisconnectMessage {
@@ -37,7 +50,22 @@ interface GetStatusMessage {
 	type: 'getStatus';
 }
 
-type ExtensionMessage = GetTabsMessage | ConnectMessage | DisconnectMessage | GetStatusMessage;
+interface UpdateSettingsMessage {
+	type: 'updateSettings';
+	settings: TabManagementSettings;
+}
+
+interface GetSettingsMessage {
+	type: 'getSettings';
+}
+
+type ExtensionMessage =
+	| GetTabsMessage
+	| ConnectMessage
+	| DisconnectMessage
+	| GetStatusMessage
+	| UpdateSettingsMessage
+	| GetSettingsMessage;
 
 chrome.runtime.onMessage.addListener(
 	(
@@ -53,10 +81,10 @@ chrome.runtime.onMessage.addListener(
 async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 	switch (message.type) {
 		case 'getTabs':
-			return await getAvailableTabs();
+			return await getControlledTabs();
 
 		case 'connect':
-			return await connectToRelay(message.relayUrl, message.tabId);
+			return await connectToRelay(message.relayUrl);
 
 		case 'disconnect':
 			disconnect();
@@ -65,8 +93,19 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 		case 'getStatus':
 			return {
 				connected: activeConnection !== null,
-				tabId: activeConnection?.tabId,
+				tabIds: activeConnection?.relay.getControlledTabIds() ?? [],
 			};
+
+		case 'updateSettings': {
+			await chrome.storage.local.set({ [SETTINGS_KEY]: message.settings });
+			if (activeConnection) {
+				activeConnection.relay.setSettings(message.settings);
+			}
+			return { success: true };
+		}
+
+		case 'getSettings':
+			return await loadSettings();
 
 		default:
 			return { error: 'Unknown message type' };
@@ -77,7 +116,7 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 // Tab enumeration
 // ---------------------------------------------------------------------------
 
-async function getAvailableTabs(): Promise<chrome.tabs.Tab[]> {
+async function getControlledTabs(): Promise<chrome.tabs.Tab[]> {
 	const tabs = await chrome.tabs.query({});
 	return tabs.filter(
 		(tab) =>
@@ -90,13 +129,58 @@ async function getAvailableTabs(): Promise<chrome.tabs.Tab[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Tab lifecycle listeners — auto-attach/detach new/closed tabs
+// ---------------------------------------------------------------------------
+
+chrome.tabs.onCreated.addListener((tab) => {
+	if (!activeConnection || !tab.id) return;
+
+	// Wait for URL to be populated, then add if eligible
+	const checkAndAdd = () => {
+		if (!tab.url || tab.url === 'chrome://newtab/') {
+			// URL not yet known — wait for update
+			return;
+		}
+		if (
+			!tab.url.startsWith('chrome://') &&
+			!tab.url.startsWith('chrome-extension://') &&
+			!tab.url.startsWith('about:')
+		) {
+			activeConnection?.relay.addTab(tab.id!, tab.title ?? '', tab.url ?? '');
+		}
+	};
+	checkAndAdd();
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+	if (!activeConnection) return;
+
+	// When a tab's URL is loaded for the first time (new tab navigation)
+	if (changeInfo.url) {
+		const url = changeInfo.url;
+		if (
+			!url.startsWith('chrome://') &&
+			!url.startsWith('chrome-extension://') &&
+			!url.startsWith('about:')
+		) {
+			// If not already tracked, add it
+			if (!activeConnection.relay.getControlledTabIds().includes(tabId)) {
+				activeConnection.relay.addTab(tabId, changeInfo.title ?? '', url);
+			}
+		}
+	}
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+	if (!activeConnection) return;
+	activeConnection.relay.removeTab(tabId);
+});
+
+// ---------------------------------------------------------------------------
 // Relay connection management
 // ---------------------------------------------------------------------------
 
-async function connectToRelay(
-	relayUrl: string,
-	tabId: number,
-): Promise<{ success: boolean; error?: string }> {
+async function connectToRelay(relayUrl: string): Promise<{ success: boolean; error?: string }> {
 	// Clean up existing connection
 	disconnect();
 
@@ -110,16 +194,22 @@ async function connectToRelay(
 		});
 
 		const relay = new RelayConnection(ws);
-		relay.setTabId(tabId);
 
-		activeConnection = { relay, tabId };
+		// Auto-discover and attach to all eligible tabs
+		await relay.discoverAndAttachTabs();
+
+		// Load and apply settings
+		const settings = await loadSettings();
+		relay.setSettings(settings);
+
+		activeConnection = { relay };
 
 		relay.onclose = () => {
 			activeConnection = null;
-			updateBadge(false);
+			updateBadge(0);
 		};
 
-		updateBadge(true);
+		updateBadge(relay.getControlledTabIds().length);
 		return { success: true };
 	} catch (error) {
 		return {
@@ -133,7 +223,7 @@ function disconnect(): void {
 	if (activeConnection) {
 		activeConnection.relay.close('User disconnected');
 		activeConnection = null;
-		updateBadge(false);
+		updateBadge(0);
 	}
 }
 
@@ -141,9 +231,10 @@ function disconnect(): void {
 // Badge
 // ---------------------------------------------------------------------------
 
-function updateBadge(connected: boolean): void {
-	void chrome.action.setBadgeText({ text: connected ? 'ON' : '' });
-	void chrome.action.setBadgeBackgroundColor({ color: connected ? '#4CAF50' : '#999' });
+function updateBadge(tabCount: number): void {
+	const text = tabCount > 0 ? String(tabCount) : '';
+	void chrome.action.setBadgeText({ text });
+	void chrome.action.setBadgeBackgroundColor({ color: tabCount > 0 ? '#4CAF50' : '#999' });
 }
 
 // ---------------------------------------------------------------------------

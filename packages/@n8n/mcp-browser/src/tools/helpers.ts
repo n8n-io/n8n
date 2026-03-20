@@ -1,21 +1,20 @@
 import { z } from 'zod';
 
+import type { BrowserConnection } from '../connection';
 import { McpBrowserError } from '../errors';
-import type { SessionManager } from '../session-manager';
-import type { BrowserSession, ToolContext, ToolDefinition, CallToolResult } from '../types';
+import type { ConnectionState, ToolContext, ToolDefinition, CallToolResult } from '../types';
 import { formatErrorResponse } from '../utils';
 
 // ---------------------------------------------------------------------------
-// Session tool input constraint — every session tool must have these fields
+// Connected tool input constraint — every tool must have at least pageId
 // ---------------------------------------------------------------------------
 
-type SessionToolInput = { sessionId: string; pageId?: string };
+type ConnectedToolInput = { pageId?: string };
 
 // ---------------------------------------------------------------------------
 // Common Zod field schemas reused across tools
 // ---------------------------------------------------------------------------
 
-export const sessionIdField = z.string().describe('Session ID from browser_open');
 export const pageIdField = z
 	.string()
 	.optional()
@@ -33,25 +32,25 @@ export const elementTargetSchema = z.union([refTargetSchema, selectorTargetSchem
 export type ElementTargetInput = z.infer<typeof elementTargetSchema>;
 
 // ---------------------------------------------------------------------------
-// Tool factory: session-scoped tool with automatic session/page resolution
+// Tool factory: connection-scoped tool with automatic page resolution
 // ---------------------------------------------------------------------------
 
 /**
- * Create a tool that operates on an existing session.
- * Handles session lookup, TTL touch, page resolution, and error formatting.
+ * Create a tool that operates on the active browser connection.
+ * Handles connection lookup, page resolution, and error formatting.
  *
  * Accepts either:
  *  - a ZodRawShape (auto-wrapped in z.object)
  *  - a pre-built ZodType (for unions, intersections, etc.)
  */
-export function createSessionTool<
-	TSchema extends z.ZodType<SessionToolInput & Record<string, unknown>>,
+export function createConnectedTool<
+	TSchema extends z.ZodType<ConnectedToolInput & Record<string, unknown>>,
 >(
-	sessionManager: SessionManager,
+	connection: BrowserConnection,
 	name: string,
 	description: string,
 	inputSchema: TSchema,
-	fn: (session: BrowserSession, input: z.infer<TSchema>, pageId: string) => Promise<CallToolResult>,
+	fn: (state: ConnectionState, input: z.infer<TSchema>, pageId: string) => Promise<CallToolResult>,
 	outputSchema?: z.ZodObject<z.ZodRawShape>,
 ): ToolDefinition<TSchema> {
 	return {
@@ -61,13 +60,10 @@ export function createSessionTool<
 		outputSchema,
 		async execute(args: z.infer<TSchema>, _context: ToolContext) {
 			try {
-				const { sessionId, pageId: rawPageId } = args;
-				const session = sessionManager.get(sessionId);
-				sessionManager.touch(sessionId);
+				const state = connection.getConnection();
+				const pageId = args.pageId ?? state.activePageId;
 
-				const pageId = rawPageId ?? session.activePageId;
-
-				return await fn(session, args, pageId);
+				return await fn(state, args, pageId);
 			} catch (error) {
 				if (error instanceof McpBrowserError) {
 					return formatErrorResponse(error);

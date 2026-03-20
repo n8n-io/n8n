@@ -26,6 +26,8 @@ const mockRemoveDetachListener = jest.fn((fn: (...args: unknown[]) => void) => {
 	if (idx >= 0) detachListeners.splice(idx, 1);
 });
 
+const mockTabsQuery = jest.fn().mockResolvedValue([]);
+
 Object.assign(globalThis, {
 	chrome: {
 		debugger: {
@@ -39,6 +41,18 @@ Object.assign(globalThis, {
 			onDetach: {
 				addListener: mockAddDetachListener,
 				removeListener: mockRemoveDetachListener,
+			},
+		},
+		tabs: {
+			create: jest.fn().mockResolvedValue({ id: 999, title: 'New Tab', url: 'about:blank' }),
+			remove: jest.fn().mockResolvedValue(undefined),
+			get: jest.fn().mockResolvedValue({ id: 42, title: 'Test Tab', url: 'https://example.com' }),
+			query: mockTabsQuery,
+		},
+		storage: {
+			local: {
+				get: jest.fn().mockResolvedValue({}),
+				set: jest.fn().mockResolvedValue(undefined),
 			},
 		},
 	},
@@ -99,56 +113,192 @@ describe('RelayConnection', () => {
 		expect(mockAddDetachListener).toHaveBeenCalledTimes(1);
 	});
 
-	it('should set debuggee tabId via setTabId', () => {
-		relay.setTabId(42);
-		// No direct getter, but we can verify indirectly by sending a message
-		// that requires tabId to be set.
-		expect(() => relay.setTabId(42)).not.toThrow();
-	});
+	describe('discoverAndAttachTabs', () => {
+		it('should discover and register eligible tabs', async () => {
+			mockTabsQuery.mockResolvedValueOnce([
+				{ id: 1, url: 'https://example.com' },
+				{ id: 2, url: 'https://google.com' },
+				{ id: 3, url: 'chrome://extensions/' },
+				{ id: 4, url: 'chrome-extension://abc/popup.html' },
+				{ id: 5, url: 'about:blank' },
+			]);
 
-	it('should respond to attachToTab with targetInfo', async () => {
-		relay.setTabId(123);
+			await relay.discoverAndAttachTabs();
 
-		mockAttach.mockResolvedValueOnce(undefined);
-		mockSendCommand.mockResolvedValueOnce({ targetInfo: { targetId: 'abc', type: 'page' } });
-
-		// Simulate incoming attachToTab command
-		const message = JSON.stringify({ id: 1, method: 'attachToTab' });
-		ws.onmessage?.({ data: message });
-
-		// Wait for async processing
-		await new Promise((resolve) => setTimeout(resolve, 10));
-
-		expect(mockAttach).toHaveBeenCalledWith({ tabId: 123 }, '1.3');
-		expect(ws.sent).toHaveLength(1);
-
-		const response = JSON.parse(ws.sent[0]);
-		expect(response.id).toBe(1);
-		expect(response.result).toEqual({ targetInfo: { targetId: 'abc', type: 'page' } });
-	});
-
-	it('should forward CDP commands via chrome.debugger.sendCommand', async () => {
-		relay.setTabId(123);
-		mockSendCommand.mockResolvedValueOnce({ data: 'test-result' });
-
-		const message = JSON.stringify({
-			id: 2,
-			method: 'forwardCDPCommand',
-			params: { method: 'Runtime.evaluate', params: { expression: '1+1' } },
+			// Only tabs 1 and 2 are eligible
+			expect(relay.getControlledTabIds()).toEqual([1, 2]);
 		});
-		ws.onmessage?.({ data: message });
 
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		it('should set the first eligible tab as primary', async () => {
+			mockTabsQuery.mockResolvedValueOnce([
+				{ id: 10, url: 'https://example.com' },
+				{ id: 20, url: 'https://google.com' },
+			]);
 
-		expect(mockSendCommand).toHaveBeenCalledWith(
-			{ tabId: 123, sessionId: undefined },
-			'Runtime.evaluate',
-			{ expression: '1+1' },
-		);
+			await relay.discoverAndAttachTabs();
 
-		const response = JSON.parse(ws.sent[0]);
-		expect(response.id).toBe(2);
-		expect(response.result).toEqual({ data: 'test-result' });
+			// Verify by sending a CDP command without tabId — should route to tab 10
+			mockSendCommand.mockResolvedValueOnce({ data: 'ok' });
+			const message = JSON.stringify({
+				id: 1,
+				method: 'forwardCDPCommand',
+				params: { method: 'Runtime.evaluate', params: { expression: '1' } },
+			});
+			ws.onmessage?.({ data: message });
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			expect(mockSendCommand).toHaveBeenCalledWith({ tabId: 10 }, 'Runtime.evaluate', {
+				expression: '1',
+			});
+		});
+	});
+
+	describe('addTab / removeTab', () => {
+		it('should add a tab and send tabOpened event', () => {
+			relay.addTab(42, 'Test', 'https://test.com');
+			expect(relay.getControlledTabIds()).toEqual([42]);
+
+			const sent = JSON.parse(ws.sent[0]);
+			expect(sent.method).toBe('tabOpened');
+			expect(sent.params).toEqual({ tabId: 42, title: 'Test', url: 'https://test.com' });
+		});
+
+		it('should not add duplicate tabs', () => {
+			relay.addTab(42, 'Test', 'https://test.com');
+			relay.addTab(42, 'Test', 'https://test.com');
+			expect(relay.getControlledTabIds()).toEqual([42]);
+			expect(ws.sent).toHaveLength(1);
+		});
+
+		it('should remove a tab and send tabClosed event', () => {
+			relay.addTab(42, 'Test', 'https://test.com');
+			ws.sent.length = 0; // clear tabOpened message
+
+			relay.removeTab(42);
+			expect(relay.getControlledTabIds()).toEqual([]);
+
+			const sent = JSON.parse(ws.sent[0]);
+			expect(sent.method).toBe('tabClosed');
+			expect(sent.params).toEqual({ tabId: 42 });
+		});
+
+		it('should close connection when last tab is removed', () => {
+			relay.addTab(42, 'Test', 'https://test.com');
+			const onclose = jest.fn();
+			relay.onclose = onclose;
+
+			relay.removeTab(42);
+			expect(ws.closed).toBe(true);
+			expect(onclose).toHaveBeenCalled();
+		});
+
+		it('should keep connection when one of multiple tabs is removed', () => {
+			relay.addTab(42, 'A', 'https://a.com');
+			relay.addTab(43, 'B', 'https://b.com');
+
+			relay.removeTab(42);
+			expect(relay.getControlledTabIds()).toEqual([43]);
+			expect(ws.closed).toBe(false);
+		});
+	});
+
+	describe('attachToAllTabs', () => {
+		it('should attach debugger to all controlled tabs', async () => {
+			relay.addTab(10, 'A', 'https://a.com');
+			relay.addTab(20, 'B', 'https://b.com');
+			relay.addTab(30, 'C', 'https://c.com');
+			ws.sent.length = 0;
+
+			mockAttach.mockResolvedValue(undefined);
+			mockSendCommand.mockResolvedValueOnce({ targetInfo: { targetId: 'first', type: 'page' } });
+
+			const message = JSON.stringify({ id: 1, method: 'attachToAllTabs' });
+			ws.onmessage?.({ data: message });
+
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			expect(mockAttach).toHaveBeenCalledTimes(3);
+			expect(mockAttach).toHaveBeenCalledWith({ tabId: 10 }, '1.3');
+			expect(mockAttach).toHaveBeenCalledWith({ tabId: 20 }, '1.3');
+			expect(mockAttach).toHaveBeenCalledWith({ tabId: 30 }, '1.3');
+		});
+
+		it('should return primary tab targetInfo', async () => {
+			relay.addTab(123, 'Test', 'https://test.com');
+			ws.sent.length = 0;
+
+			mockAttach.mockResolvedValueOnce(undefined);
+			mockSendCommand.mockResolvedValueOnce({ targetInfo: { targetId: 'abc', type: 'page' } });
+
+			const message = JSON.stringify({ id: 1, method: 'attachToAllTabs' });
+			ws.onmessage?.({ data: message });
+
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			expect(ws.sent).toHaveLength(1);
+			const response = JSON.parse(ws.sent[0]);
+			expect(response.id).toBe(1);
+			expect(response.result).toEqual({ targetInfo: { targetId: 'abc', type: 'page' } });
+		});
+	});
+
+	describe('forwardCDPCommand', () => {
+		it('should forward CDP commands via chrome.debugger.sendCommand', async () => {
+			relay.addTab(123, 'Test', 'https://test.com');
+			ws.sent.length = 0;
+			mockSendCommand.mockResolvedValueOnce({ data: 'test-result' });
+
+			const message = JSON.stringify({
+				id: 2,
+				method: 'forwardCDPCommand',
+				params: { method: 'Runtime.evaluate', params: { expression: '1+1' } },
+			});
+			ws.onmessage?.({ data: message });
+
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			expect(mockSendCommand).toHaveBeenCalledWith({ tabId: 123 }, 'Runtime.evaluate', {
+				expression: '1+1',
+			});
+
+			const response = JSON.parse(ws.sent[0]);
+			expect(response.id).toBe(2);
+			expect(response.result).toEqual({ data: 'test-result' });
+		});
+
+		it('should route CDP commands to specific tab when tabId provided', async () => {
+			relay.addTab(10, 'A', 'https://a.com');
+			relay.addTab(20, 'B', 'https://b.com');
+			ws.sent.length = 0;
+			mockSendCommand.mockResolvedValueOnce({ data: 'result' });
+
+			const message = JSON.stringify({
+				id: 3,
+				method: 'forwardCDPCommand',
+				params: { method: 'Page.navigate', params: { url: 'https://example.com' }, tabId: 20 },
+			});
+			ws.onmessage?.({ data: message });
+
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			expect(mockSendCommand).toHaveBeenCalledWith({ tabId: 20 }, 'Page.navigate', {
+				url: 'https://example.com',
+			});
+		});
+
+		it('should error when no tabs are connected', async () => {
+			const message = JSON.stringify({
+				id: 4,
+				method: 'forwardCDPCommand',
+				params: { method: 'Runtime.evaluate' },
+			});
+			ws.onmessage?.({ data: message });
+
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			const response = JSON.parse(ws.sent[0]);
+			expect(response.error).toContain('No tab is connected');
+		});
 	});
 
 	it('should send error response for malformed JSON', async () => {
@@ -161,19 +311,22 @@ describe('RelayConnection', () => {
 		expect(response.error).toBeDefined();
 	});
 
-	it('should clean up listeners on close', () => {
+	it('should clean up all listeners and debuggees on close', () => {
+		relay.addTab(42, 'A', 'https://a.com');
+		relay.addTab(43, 'B', 'https://b.com');
 		relay.close('test');
 
 		expect(ws.closed).toBe(true);
 		expect(mockRemoveEventListener).toHaveBeenCalledTimes(1);
 		expect(mockRemoveDetachListener).toHaveBeenCalledTimes(1);
-		expect(mockDetach).toHaveBeenCalled();
+		// Should detach all debuggees
+		expect(mockDetach).toHaveBeenCalledTimes(2);
 	});
 
 	it('should forward debugger events for matching tab', () => {
-		relay.setTabId(42);
+		relay.addTab(42, 'Test', 'https://test.com');
+		ws.sent.length = 0;
 
-		// Simulate a debugger event for the matching tab
 		const listener = eventListeners[0];
 		listener({ tabId: 42 }, 'Page.loadEventFired', { timestamp: 123 });
 
@@ -181,14 +334,74 @@ describe('RelayConnection', () => {
 		const event = JSON.parse(ws.sent[0]);
 		expect(event.method).toBe('forwardCDPEvent');
 		expect(event.params.method).toBe('Page.loadEventFired');
+		expect(event.params.tabId).toBe(42);
 	});
 
 	it('should ignore debugger events for other tabs', () => {
-		relay.setTabId(42);
+		relay.addTab(42, 'Test', 'https://test.com');
+		ws.sent.length = 0;
 
 		const listener = eventListeners[0];
 		listener({ tabId: 99 }, 'Page.loadEventFired', {});
 
 		expect(ws.sent).toHaveLength(0);
+	});
+
+	it('should remove tab on debugger detach and close if no tabs left', () => {
+		relay.addTab(42, 'Test', 'https://test.com');
+		const onclose = jest.fn();
+		relay.onclose = onclose;
+
+		const detachListener = detachListeners[0];
+		detachListener({ tabId: 42 }, 'target_closed');
+
+		expect(relay.getControlledTabIds()).toEqual([]);
+		expect(ws.closed).toBe(true);
+		expect(onclose).toHaveBeenCalled();
+	});
+
+	it('should keep connection alive when one of multiple tabs detaches', () => {
+		relay.addTab(42, 'A', 'https://a.com');
+		relay.addTab(43, 'B', 'https://b.com');
+
+		const detachListener = detachListeners[0];
+		detachListener({ tabId: 42 }, 'target_closed');
+
+		expect(relay.getControlledTabIds()).toEqual([43]);
+		expect(ws.closed).toBe(false);
+	});
+
+	it('should reject createTab when tab creation is disabled', async () => {
+		relay.setSettings({ allowTabCreation: false, allowTabClosing: false });
+
+		const message = JSON.stringify({
+			id: 5,
+			method: 'createTab',
+			params: { url: 'https://example.com' },
+		});
+		ws.onmessage?.({ data: message });
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+
+		const response = JSON.parse(ws.sent[0]);
+		expect(response.error).toContain('Tab creation is disabled');
+	});
+
+	it('should reject closeTab when tab closing is disabled', async () => {
+		relay.addTab(42, 'Test', 'https://test.com');
+		relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
+		ws.sent.length = 0; // clear tabOpened message
+
+		const message = JSON.stringify({
+			id: 6,
+			method: 'closeTab',
+			params: { tabId: 42 },
+		});
+		ws.onmessage?.({ data: message });
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+
+		const response = JSON.parse(ws.sent[0]);
+		expect(response.error).toContain('Tab closing is disabled');
 	});
 });

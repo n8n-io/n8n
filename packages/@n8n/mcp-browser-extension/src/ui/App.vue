@@ -3,10 +3,20 @@ import { ref, onMounted, computed } from 'vue';
 
 type ConnectionStatus = 'disconnected' | 'connected' | 'connecting';
 
+interface TabManagementSettings {
+	allowTabCreation: boolean;
+	allowTabClosing: boolean;
+}
+
 const status = ref<ConnectionStatus>('disconnected');
+const controlledTabIds = ref<number[]>([]);
 const tabs = ref<chrome.tabs.Tab[]>([]);
-const selectedTabId = ref<number>();
 const errorMessage = ref('');
+const showSettings = ref(false);
+const settings = ref<TabManagementSettings>({
+	allowTabCreation: true,
+	allowTabClosing: false,
+});
 
 const statusTheme = computed(() => {
 	const map: Record<ConnectionStatus, string> = {
@@ -29,16 +39,9 @@ const statusLabel = computed(() => {
 async function loadTabs(): Promise<void> {
 	const result = (await chrome.runtime.sendMessage({ type: 'getTabs' })) as chrome.tabs.Tab[];
 	tabs.value = result;
-	selectedTabId.value = undefined;
-}
-
-function selectTab(tabId: number): void {
-	selectedTabId.value = tabId;
 }
 
 async function connect(): Promise<void> {
-	if (!selectedTabId.value) return;
-
 	const params = new URLSearchParams(window.location.search);
 	const relayUrl = params.get('mcpRelayUrl');
 
@@ -53,11 +56,11 @@ async function connect(): Promise<void> {
 	const result = (await chrome.runtime.sendMessage({
 		type: 'connect',
 		relayUrl,
-		tabId: selectedTabId.value,
 	})) as { success: boolean; error?: string };
 
 	if (result.success) {
 		status.value = 'connected';
+		await refreshStatus();
 	} else {
 		status.value = 'disconnected';
 		errorMessage.value = result.error ?? 'Unknown error';
@@ -67,74 +70,172 @@ async function connect(): Promise<void> {
 async function disconnect(): Promise<void> {
 	await chrome.runtime.sendMessage({ type: 'disconnect' });
 	status.value = 'disconnected';
+	controlledTabIds.value = [];
 	await loadTabs();
 }
 
-onMounted(async () => {
+async function refreshStatus(): Promise<void> {
 	const currentStatus = (await chrome.runtime.sendMessage({ type: 'getStatus' })) as {
 		connected: boolean;
-		tabId?: number;
+		tabIds?: number[];
+	};
+	controlledTabIds.value = currentStatus.tabIds ?? [];
+	await loadTabs();
+}
+
+async function updateSettings(partial: Partial<TabManagementSettings>): Promise<void> {
+	settings.value = { ...settings.value, ...partial };
+	await chrome.runtime.sendMessage({
+		type: 'updateSettings',
+		settings: settings.value,
+	});
+}
+
+onMounted(async () => {
+	// Load settings
+	const savedSettings = (await chrome.runtime.sendMessage({
+		type: 'getSettings',
+	})) as TabManagementSettings;
+	if (savedSettings) {
+		settings.value = savedSettings;
+	}
+
+	const currentStatus = (await chrome.runtime.sendMessage({ type: 'getStatus' })) as {
+		connected: boolean;
+		tabIds?: number[];
 	};
 
 	if (currentStatus.connected) {
 		status.value = 'connected';
+		controlledTabIds.value = currentStatus.tabIds ?? [];
+		await loadTabs();
 	} else {
 		await loadTabs();
 
+		// Auto-connect if relay URL is provided (opened by n8n)
 		const params = new URLSearchParams(window.location.search);
 		const relayUrl = params.get('mcpRelayUrl');
-		const autoTabId = params.get('tabId');
-
-		if (relayUrl && autoTabId) {
-			selectedTabId.value = Number(autoTabId);
+		if (relayUrl) {
 			void connect();
 		}
 	}
+});
+
+const controlledTabs = computed(() => {
+	if (status.value !== 'connected') return tabs.value;
+	return tabs.value.filter((t) => t.id !== undefined && controlledTabIds.value.includes(t.id));
 });
 </script>
 
 <template>
 	<div class="container">
 		<h1 class="title">n8n Browser Bridge</h1>
-		<p class="subtitle">Share a browser tab with n8n's AI agent</p>
+		<p class="subtitle">Controls all browser tabs for n8n's AI agent</p>
 
 		<div :class="['status', `status--${statusTheme}`]">
 			<span class="status-dot" />
 			<span>{{ statusLabel }}</span>
+			<span v-if="status === 'connected'" class="tab-count"
+				>{{ controlledTabIds.length }} tabs</span
+			>
 		</div>
 
 		<template v-if="status !== 'connected'">
-			<ul v-if="tabs.length" class="tab-list">
-				<li
-					v-for="tab in tabs"
-					:key="tab.id"
-					:class="['tab-item', { 'tab-item--selected': tab.id === selectedTabId }]"
-					@click="selectTab(tab.id!)"
-				>
-					<img
-						v-if="tab.favIconUrl"
-						:src="tab.favIconUrl"
-						alt=""
-						class="tab-favicon"
-						@error="($event.target as HTMLImageElement).style.display = 'none'"
-					/>
-					<div class="tab-info">
-						<div class="tab-title">{{ tab.title ?? 'Untitled' }}</div>
-						<div class="tab-url">{{ tab.url ?? '' }}</div>
-					</div>
-				</li>
-			</ul>
-
-			<button class="btn btn--solid" :disabled="!selectedTabId" @click="connect">
-				Connect Selected Tab
+			<p v-if="tabs.length" class="info-text">
+				All {{ tabs.length }} eligible tabs will be controlled on connect.
+			</p>
+			<button class="btn btn--solid" :disabled="status === 'connecting'" @click="connect">
+				Connect
 			</button>
 		</template>
 
 		<template v-else>
+			<!-- Read-only list of controlled tabs -->
+			<div v-if="controlledTabs.length" class="tab-list-container">
+				<div class="tab-list-header">Controlled Tabs</div>
+				<ul class="tab-list">
+					<li v-for="tab in controlledTabs" :key="tab.id" class="tab-item">
+						<img
+							v-if="tab.favIconUrl"
+							:src="tab.favIconUrl"
+							alt=""
+							class="tab-favicon"
+							@error="($event.target as HTMLImageElement).style.display = 'none'"
+						/>
+						<div class="tab-info">
+							<div class="tab-title">{{ tab.title ?? 'Untitled' }}</div>
+							<div class="tab-url">{{ tab.url ?? '' }}</div>
+						</div>
+					</li>
+				</ul>
+			</div>
+
 			<button class="btn btn--outline" @click="disconnect">Disconnect</button>
 		</template>
 
-		<button class="btn btn--ghost refresh-btn" @click="loadTabs">Refresh Tabs</button>
+		<!-- Settings -->
+		<div class="settings">
+			<button class="settings-toggle" @click="showSettings = !showSettings">
+				<svg
+					class="settings-icon"
+					viewBox="0 0 16 16"
+					fill="none"
+					xmlns="http://www.w3.org/2000/svg"
+				>
+					<path
+						d="M6.5 1.75a.75.75 0 011.5 0v.3a2.5 2.5 0 011.4.81l.26-.15a.75.75 0 01.75 1.3l-.26.15a2.5 2.5 0 010 1.63l.26.15a.75.75 0 01-.75 1.3l-.26-.15a2.5 2.5 0 01-1.4.81v.3a.75.75 0 01-1.5 0v-.3a2.5 2.5 0 01-1.4-.81l-.26.15a.75.75 0 01-.75-1.3l.26-.15a2.5 2.5 0 010-1.63l-.26-.15a.75.75 0 01.75-1.3l.26.15A2.5 2.5 0 016.5 2.05v-.3zM7.25 5.5a1 1 0 100-2 1 1 0 000 2z"
+						fill="currentColor"
+					/>
+					<path
+						d="M10 9.75a.75.75 0 011.5 0v.3a2.5 2.5 0 011.4.81l.26-.15a.75.75 0 01.75 1.3l-.26.15a2.5 2.5 0 010 1.63l.26.15a.75.75 0 01-.75 1.3l-.26-.15a2.5 2.5 0 01-1.4.81v.3a.75.75 0 01-1.5 0v-.3a2.5 2.5 0 01-1.4-.81l-.26.15a.75.75 0 01-.75-1.3l.26-.15a2.5 2.5 0 010-1.63l-.26-.15a.75.75 0 01.75-1.3l.26.15a2.5 2.5 0 011.4-.81v-.3zM10.75 13.5a1 1 0 100-2 1 1 0 000 2z"
+						fill="currentColor"
+					/>
+				</svg>
+				<span>Settings</span>
+				<svg
+					:class="['chevron', { 'chevron--open': showSettings }]"
+					viewBox="0 0 16 16"
+					fill="none"
+					xmlns="http://www.w3.org/2000/svg"
+				>
+					<path
+						d="M4 6l4 4 4-4"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+				</svg>
+			</button>
+
+			<div v-if="showSettings" class="settings-panel">
+				<label
+					class="setting-row"
+					@click.prevent="updateSettings({ allowTabCreation: !settings.allowTabCreation })"
+				>
+					<span class="setting-label">
+						<span class="setting-name">Allow tab creation</span>
+						<span class="setting-desc">AI agent can open new browser tabs</span>
+					</span>
+					<span :class="['toggle', { 'toggle--on': settings.allowTabCreation }]">
+						<span class="toggle-thumb" />
+					</span>
+				</label>
+
+				<label
+					class="setting-row"
+					@click.prevent="updateSettings({ allowTabClosing: !settings.allowTabClosing })"
+				>
+					<span class="setting-label">
+						<span class="setting-name">Allow tab closing</span>
+						<span class="setting-desc">AI agent can close controlled tabs</span>
+					</span>
+					<span :class="['toggle', { 'toggle--on': settings.allowTabClosing }]">
+						<span class="toggle-thumb" />
+					</span>
+				</label>
+			</div>
+		</div>
 
 		<p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 	</div>
@@ -164,6 +265,12 @@ onMounted(async () => {
 	font-size: var(--font-size--sm);
 	color: var(--text-color--subtler);
 	margin: 0 0 var(--spacing--lg);
+}
+
+.info-text {
+	font-size: var(--font-size--sm);
+	color: var(--text-color--subtler);
+	margin: 0 0 var(--spacing--sm);
 }
 
 /* ----- Status indicator ----- */
@@ -200,12 +307,30 @@ onMounted(async () => {
 	background: currentcolor;
 }
 
-/* ----- Tab list ----- */
+.tab-count {
+	margin-left: auto;
+	font-size: var(--font-size--2xs);
+}
+
+/* ----- Tab list (read-only when connected) ----- */
+
+.tab-list-container {
+	margin-bottom: var(--spacing--sm);
+}
+
+.tab-list-header {
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text--tint-1);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	margin-bottom: var(--spacing--3xs);
+}
 
 .tab-list {
 	list-style: none;
 	padding: 0;
-	margin: 0 0 var(--spacing--sm);
+	margin: 0;
 	max-height: 300px;
 	overflow-y: auto;
 }
@@ -216,18 +341,7 @@ onMounted(async () => {
 	gap: var(--spacing--xs);
 	padding: var(--spacing--xs);
 	border-radius: var(--radius--lg);
-	cursor: pointer;
-	transition: background var(--duration--snappy);
 	border: var(--border-width) var(--border-style) transparent;
-
-	&:hover {
-		background: var(--background--surface--hover);
-	}
-}
-
-.tab-item--selected {
-	background: var(--color--primary--tint-3);
-	border-color: var(--color--primary--tint-1);
 }
 
 .tab-favicon {
@@ -350,14 +464,116 @@ onMounted(async () => {
 		light-dark(var(--color--black-alpha-300), var(--color--white-alpha-300));
 }
 
-.btn--ghost {
-	--btn-bg: transparent;
-	--btn-bg-hover: light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
-	--btn-bg-active: light-dark(var(--color--black-alpha-200), var(--color--white-alpha-200));
+/* ----- Settings ----- */
+
+.settings {
+	margin-top: var(--spacing--md);
+	border-top: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	padding-top: var(--spacing--sm);
 }
 
-.refresh-btn {
-	margin-top: var(--spacing--2xs);
+.settings-toggle {
+	appearance: none;
+	background: none;
+	border: none;
+	padding: var(--spacing--2xs) 0;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	cursor: pointer;
+	font-size: var(--font-size--xs);
+	color: var(--color--text--tint-1);
+	width: 100%;
+
+	&:hover {
+		color: var(--color--text);
+	}
+}
+
+.settings-icon {
+	width: 14px;
+	height: 14px;
+}
+
+.chevron {
+	width: 12px;
+	height: 12px;
+	margin-left: auto;
+	transition: transform var(--duration--snappy);
+}
+
+.chevron--open {
+	transform: rotate(180deg);
+}
+
+.settings-panel {
+	padding: var(--spacing--xs) 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.setting-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border-radius: var(--radius);
+	cursor: pointer;
+
+	&:hover {
+		background: var(--background--surface--hover);
+	}
+}
+
+.setting-label {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.setting-name {
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+}
+
+.setting-desc {
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtler);
+}
+
+/* ----- Toggle switch ----- */
+
+.toggle {
+	position: relative;
+	width: 36px;
+	height: 20px;
+	min-width: 36px;
+	border-radius: 10px;
+	background: var(--color--foreground--shade-1);
+	transition: background var(--duration--snappy);
+	cursor: pointer;
+}
+
+.toggle--on {
+	background: var(--color--primary);
+}
+
+.toggle-thumb {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: white;
+	transition: transform var(--duration--snappy);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+
+	.toggle--on & {
+		transform: translateX(16px);
+	}
 }
 
 .error {

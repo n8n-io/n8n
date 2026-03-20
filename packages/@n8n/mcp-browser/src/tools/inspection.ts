@@ -1,20 +1,20 @@
 import { z } from 'zod';
 
-import type { SessionManager } from '../session-manager';
+import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult, formatImageResponse } from '../utils';
-import { createSessionTool, elementTargetSchema, pageIdField, sessionIdField } from './helpers';
+import { createConnectedTool, elementTargetSchema, pageIdField } from './helpers';
 
-export function createInspectionTools(sessionManager: SessionManager): ToolDefinition[] {
+export function createInspectionTools(connection: BrowserConnection): ToolDefinition[] {
 	return [
-		browserSnapshot(sessionManager),
-		browserScreenshot(sessionManager),
-		browserText(sessionManager),
-		browserEvaluate(sessionManager),
-		browserConsole(sessionManager),
-		browserErrors(sessionManager),
-		browserPdf(sessionManager),
-		browserNetwork(sessionManager),
+		browserSnapshot(connection),
+		browserScreenshot(connection),
+		browserText(connection),
+		browserEvaluate(connection),
+		browserConsole(connection),
+		browserErrors(connection),
+		browserPdf(connection),
+		browserNetwork(connection),
 	];
 }
 
@@ -24,7 +24,6 @@ export function createInspectionTools(sessionManager: SessionManager): ToolDefin
 
 const browserSnapshotSchema = z
 	.object({
-		sessionId: sessionIdField,
 		scope: elementTargetSchema
 			.optional()
 			.describe('Optionally scope to a subtree rooted at this element'),
@@ -36,14 +35,14 @@ const browserSnapshotOutputSchema = z.object({
 	snapshot: z.string(),
 });
 
-function browserSnapshot(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserSnapshot(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_snapshot',
 		'Use this tool as your primary way to observe the page. Returns a ref-annotated accessibility tree — a compact text representation of all visible elements. Each interactive element gets a numeric ref for use in subsequent tool calls (browser_click, browser_type, etc.). Snapshots are small and fast. Prefer this over browser_screenshot unless you specifically need visual/layout information.',
 		browserSnapshotSchema,
-		async (session, input, pageId) => {
-			const result = await session.adapter.snapshot(pageId, input.scope);
+		async (state, input, pageId) => {
+			const result = await state.adapter.snapshot(pageId, input.scope);
 			return formatCallToolResult({ snapshot: result.tree });
 		},
 		browserSnapshotOutputSchema,
@@ -56,7 +55,6 @@ function browserSnapshot(sessionManager: SessionManager): ToolDefinition {
 
 const browserScreenshotSchema = z
 	.object({
-		sessionId: sessionIdField,
 		element: elementTargetSchema
 			.optional()
 			.describe('Optionally target a specific element to screenshot'),
@@ -65,14 +63,14 @@ const browserScreenshotSchema = z
 	})
 	.describe('Take a screenshot of the page or a specific element');
 
-function browserScreenshot(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserScreenshot(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_screenshot',
 		'Take a screenshot of the page or a specific element. Returns a base64-encoded PNG image. Note: Prefer browser_snapshot for most tasks — it is smaller, faster, and returns refs for element targeting. Use screenshots only when you need visual information (layout, images, charts).',
 		browserScreenshotSchema,
-		async (session, input, pageId) => {
-			const base64 = await session.adapter.screenshot(pageId, input.element, {
+		async (state, input, pageId) => {
+			const base64 = await state.adapter.screenshot(pageId, input.element, {
 				fullPage: input.fullPage,
 			});
 
@@ -89,7 +87,6 @@ function browserScreenshot(sessionManager: SessionManager): ToolDefinition {
 
 const browserTextSchema = z
 	.object({
-		sessionId: sessionIdField,
 		selector: z
 			.string()
 			.optional()
@@ -102,15 +99,15 @@ const browserTextOutputSchema = z.object({
 	text: z.string(),
 });
 
-function browserText(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserText(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_text',
 		'Get the text content of an element or the full page body.',
 		browserTextSchema,
-		async (session, input, pageId) => {
+		async (state, input, pageId) => {
 			const target = input.selector ? { selector: input.selector } : undefined;
-			const text = await session.adapter.getText(pageId, target);
+			const text = await state.adapter.getText(pageId, target);
 			return formatCallToolResult({ text });
 		},
 		browserTextOutputSchema,
@@ -123,7 +120,6 @@ function browserText(sessionManager: SessionManager): ToolDefinition {
 
 const browserEvaluateSchema = z
 	.object({
-		sessionId: sessionIdField,
 		script: z.string().describe('JavaScript to execute'),
 		pageId: pageIdField,
 	})
@@ -133,14 +129,14 @@ const browserEvaluateOutputSchema = z.object({
 	result: z.unknown(),
 });
 
-function browserEvaluate(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserEvaluate(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_evaluate',
 		'Execute JavaScript in the page context and return the result. The script must be an expression or IIFE. The result is JSON-serialized.',
 		browserEvaluateSchema,
-		async (session, input, pageId) => {
-			const result = await session.adapter.evaluate(pageId, input.script);
+		async (state, input, pageId) => {
+			const result = await state.adapter.evaluate(pageId, input.script);
 			return formatCallToolResult({ result });
 		},
 		browserEvaluateOutputSchema,
@@ -153,7 +149,6 @@ function browserEvaluate(sessionManager: SessionManager): ToolDefinition {
 
 const browserConsoleSchema = z
 	.object({
-		sessionId: sessionIdField,
 		level: z
 			.enum(['log', 'warn', 'error', 'info', 'debug'])
 			.optional()
@@ -173,14 +168,14 @@ const browserConsoleOutputSchema = z.object({
 	),
 });
 
-function browserConsole(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserConsole(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_console',
 		'Get console log entries from the page.',
 		browserConsoleSchema,
-		async (session, input, pageId) => {
-			const entries = await session.adapter.getConsole(pageId, input.level, input.clear);
+		async (state, input, pageId) => {
+			const entries = await state.adapter.getConsole(pageId, input.level, input.clear);
 			return formatCallToolResult({ entries });
 		},
 		browserConsoleOutputSchema,
@@ -193,7 +188,6 @@ function browserConsole(sessionManager: SessionManager): ToolDefinition {
 
 const browserErrorsSchema = z
 	.object({
-		sessionId: sessionIdField,
 		clear: z.boolean().optional().describe('Clear buffer after reading'),
 		pageId: pageIdField,
 	})
@@ -209,14 +203,14 @@ const browserErrorsOutputSchema = z.object({
 	),
 });
 
-function browserErrors(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserErrors(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_errors',
 		'Get page errors (uncaught exceptions).',
 		browserErrorsSchema,
-		async (session, input, pageId) => {
-			const errors = await session.adapter.getErrors(pageId, input.clear);
+		async (state, input, pageId) => {
+			const errors = await state.adapter.getErrors(pageId, input.clear);
 			return formatCallToolResult({ errors });
 		},
 		browserErrorsOutputSchema,
@@ -229,7 +223,6 @@ function browserErrors(sessionManager: SessionManager): ToolDefinition {
 
 const browserPdfSchema = z
 	.object({
-		sessionId: sessionIdField,
 		format: z.enum(['A4', 'Letter', 'Legal']).optional().describe('Page format (default: "A4")'),
 		landscape: z.boolean().optional().describe('Landscape orientation'),
 		pageId: pageIdField,
@@ -241,14 +234,14 @@ const browserPdfOutputSchema = z.object({
 	pages: z.number(),
 });
 
-function browserPdf(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserPdf(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_pdf',
-		'Generate a PDF of the current page. Playwright only.',
+		'Generate a PDF of the current page.',
 		browserPdfSchema,
-		async (session, input, pageId) => {
-			const result = await session.adapter.pdf(pageId, {
+		async (state, input, pageId) => {
+			const result = await state.adapter.pdf(pageId, {
 				format: input.format,
 				landscape: input.landscape,
 			});
@@ -264,7 +257,6 @@ function browserPdf(sessionManager: SessionManager): ToolDefinition {
 
 const browserNetworkSchema = z
 	.object({
-		sessionId: sessionIdField,
 		filter: z.string().optional().describe('URL pattern filter (glob)'),
 		clear: z.boolean().optional().describe('Clear buffer after reading'),
 		pageId: pageIdField,
@@ -283,14 +275,14 @@ const browserNetworkOutputSchema = z.object({
 	),
 });
 
-function browserNetwork(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserNetwork(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_network',
 		'Get recent network requests and responses.',
 		browserNetworkSchema,
-		async (session, input, pageId) => {
-			const requests = await session.adapter.getNetwork(pageId, input.filter, input.clear);
+		async (state, input, pageId) => {
+			const requests = await state.adapter.getNetwork(pageId, input.filter, input.clear);
 			return formatCallToolResult({ requests });
 		},
 		browserNetworkOutputSchema,

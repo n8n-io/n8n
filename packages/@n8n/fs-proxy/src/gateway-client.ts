@@ -1,4 +1,5 @@
 import { EventSource } from 'eventsource';
+import * as os from 'node:os';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import type { ResolvedGatewayConfig } from './config';
@@ -57,6 +58,8 @@ export class GatewayClient {
 	private sessionKey: string | null = null;
 
 	private allDefinitions: ToolDefinition[] | null = null;
+
+	private activeToolCategories: string[] = [];
 
 	private definitionMap: Map<string, ToolDefinition> = new Map();
 
@@ -135,6 +138,7 @@ export class GatewayClient {
 
 		const { config } = this.options;
 		const defs: ToolDefinition[] = [];
+		const categories: string[] = [];
 
 		// Filesystem
 		if (config.filesystem !== false) {
@@ -142,38 +146,44 @@ export class GatewayClient {
 			if (config.filesystem.writeAccess) {
 				defs.push(...filesystemWriteTools);
 			}
+			categories.push('filesystem');
 		}
 
 		// Computer use modules — check both config and platform support
 		const computerModules: Array<{
 			name: string;
+			category: string;
 			enabled: boolean;
 			module: { isSupported(): boolean | Promise<boolean>; definitions: ToolDefinition[] };
 		}> = [
 			{
 				name: 'Shell',
+				category: 'shell',
 				enabled: config.computer.shell !== false,
 				module: ShellModule,
 			},
 			{
 				name: 'Screenshot',
+				category: 'screenshot',
 				enabled: config.computer.screenshot !== false,
 				module: ScreenshotModule,
 			},
 			{
 				name: 'MouseKeyboard',
+				category: 'mouse-keyboard',
 				enabled: config.computer.mouseKeyboard !== false,
 				module: MouseKeyboardModule,
 			},
 		];
 
-		for (const { name, enabled, module } of computerModules) {
+		for (const { name, category, enabled, module } of computerModules) {
 			if (!enabled) {
 				logger.debug('Module disabled by config, skipping', { module: name });
 				continue;
 			}
 			if (await module.isSupported()) {
 				defs.push(...module.definitions);
+				categories.push(category);
 			} else {
 				logger.debug('Module not supported on this platform, skipping', { module: name });
 			}
@@ -185,6 +195,7 @@ export class GatewayClient {
 			this.browserModule = await BrowserModuleClass.create(config.browser);
 			if (this.browserModule) {
 				defs.push(...this.browserModule.definitions);
+				categories.push('browser');
 			} else {
 				logger.debug('Module not supported on this platform, skipping', {
 					module: 'Browser',
@@ -198,6 +209,7 @@ export class GatewayClient {
 			logger.debug('Registered tool', { name: def.name, description: def.description });
 		}
 		this.allDefinitions = defs;
+		this.activeToolCategories = categories;
 		this.definitionMap = new Map(defs.map((d) => [d.name, d]));
 		return defs;
 	}
@@ -216,7 +228,12 @@ export class GatewayClient {
 		const response = await fetch(url, {
 			method: 'POST',
 			headers,
-			body: JSON.stringify({ rootPath: this.dir, tools }),
+			body: JSON.stringify({
+				rootPath: this.dir,
+				tools,
+				hostIdentifier: `${os.userInfo().username}@${os.hostname()}`,
+				toolCategories: this.activeToolCategories,
+			}),
 		});
 
 		if (!response.ok) {

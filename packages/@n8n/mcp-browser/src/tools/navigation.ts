@@ -1,26 +1,25 @@
 import { z } from 'zod';
 
-import type { SessionManager } from '../session-manager';
+import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createSessionTool, pageIdField, sessionIdField } from './helpers';
+import { createConnectedTool, pageIdField } from './helpers';
 
 const waitUntilField = z
 	.enum(['load', 'domcontentloaded', 'networkidle'])
 	.optional()
 	.describe('When to consider navigation done (default: "load")');
 
-export function createNavigationTools(sessionManager: SessionManager): ToolDefinition[] {
+export function createNavigationTools(connection: BrowserConnection): ToolDefinition[] {
 	return [
-		browserNavigate(sessionManager),
-		browserBack(sessionManager),
-		browserForward(sessionManager),
-		browserReload(sessionManager),
+		browserNavigate(connection),
+		browserBack(connection),
+		browserForward(connection),
+		browserReload(connection),
 	];
 }
 
 const browserNavigateSchema = z.object({
-	sessionId: sessionIdField,
 	url: z.string().describe('Full URL to navigate to'),
 	waitUntil: waitUntilField,
 	pageId: pageIdField,
@@ -32,14 +31,14 @@ const browserNavigateOutputSchema = z.object({
 	status: z.number(),
 });
 
-function browserNavigate(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserNavigate(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_navigate',
 		'Navigate to a URL and wait for the page to load.',
 		browserNavigateSchema,
-		async (session, input, pageId) => {
-			const result = await session.adapter.navigate(pageId, input.url, input.waitUntil);
+		async (state, input, pageId) => {
+			const result = await state.adapter.navigate(pageId, input.url, input.waitUntil);
 			return formatCallToolResult({ title: result.title, url: result.url, status: result.status });
 		},
 		browserNavigateOutputSchema,
@@ -47,7 +46,6 @@ function browserNavigate(sessionManager: SessionManager): ToolDefinition {
 }
 
 const browserBackSchema = z.object({
-	sessionId: sessionIdField,
 	pageId: pageIdField,
 });
 
@@ -56,14 +54,14 @@ const browserBackOutputSchema = z.object({
 	url: z.string(),
 });
 
-function browserBack(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserBack(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_back',
 		'Navigate back in browser history.',
 		browserBackSchema,
-		async (session, _input, pageId) => {
-			const result = await session.adapter.back(pageId);
+		async (state, _input, pageId) => {
+			const result = await state.adapter.back(pageId);
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserBackOutputSchema,
@@ -71,7 +69,6 @@ function browserBack(sessionManager: SessionManager): ToolDefinition {
 }
 
 const browserForwardSchema = z.object({
-	sessionId: sessionIdField,
 	pageId: pageIdField,
 });
 
@@ -80,14 +77,14 @@ const browserForwardOutputSchema = z.object({
 	url: z.string(),
 });
 
-function browserForward(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserForward(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_forward',
 		'Navigate forward in browser history.',
 		browserForwardSchema,
-		async (session, _input, pageId) => {
-			const result = await session.adapter.forward(pageId);
+		async (state, _input, pageId) => {
+			const result = await state.adapter.forward(pageId);
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserForwardOutputSchema,
@@ -95,7 +92,6 @@ function browserForward(sessionManager: SessionManager): ToolDefinition {
 }
 
 const browserReloadSchema = z.object({
-	sessionId: sessionIdField,
 	waitUntil: waitUntilField,
 	pageId: pageIdField,
 });
@@ -105,14 +101,14 @@ const browserReloadOutputSchema = z.object({
 	url: z.string(),
 });
 
-function browserReload(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserReload(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_reload',
 		'Reload the current page.',
 		browserReloadSchema,
-		async (session, input, pageId) => {
-			const result = await session.adapter.reload(pageId, input.waitUntil);
+		async (state, input, pageId) => {
+			const result = await state.adapter.reload(pageId, input.waitUntil);
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserReloadOutputSchema,

@@ -1,21 +1,21 @@
 import { z } from 'zod';
 
-import type { SessionManager } from '../session-manager';
+import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createSessionTool, elementTargetSchema, pageIdField, sessionIdField } from './helpers';
+import { createConnectedTool, elementTargetSchema, pageIdField } from './helpers';
 
-export function createInteractionTools(sessionManager: SessionManager): ToolDefinition[] {
+export function createInteractionTools(connection: BrowserConnection): ToolDefinition[] {
 	return [
-		browserClick(sessionManager),
-		browserType(sessionManager),
-		browserSelect(sessionManager),
-		browserDrag(sessionManager),
-		browserHover(sessionManager),
-		browserPress(sessionManager),
-		browserScroll(sessionManager),
-		browserUpload(sessionManager),
-		browserDialog(sessionManager),
+		browserClick(connection),
+		browserType(connection),
+		browserSelect(connection),
+		browserDrag(connection),
+		browserHover(connection),
+		browserPress(connection),
+		browserScroll(connection),
+		browserUpload(connection),
+		browserDialog(connection),
 	];
 }
 
@@ -25,7 +25,6 @@ export function createInteractionTools(sessionManager: SessionManager): ToolDefi
 
 const browserClickSchema = z
 	.object({
-		sessionId: sessionIdField,
 		element: elementTargetSchema.describe('Element to click'),
 		button: z
 			.enum(['left', 'right', 'middle'])
@@ -45,14 +44,14 @@ const browserClickOutputSchema = z.object({
 	ref: z.string().optional(),
 });
 
-function browserClick(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserClick(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_click',
 		'Click an element. Use ref from browser_snapshot (preferred) or a selector as fallback.',
 		browserClickSchema,
-		async (session, input, pageId) => {
-			await session.adapter.click(pageId, input.element, {
+		async (state, input, pageId) => {
+			await state.adapter.click(pageId, input.element, {
 				button: input.button,
 				clickCount: input.clickCount,
 				modifiers: input.modifiers,
@@ -72,7 +71,6 @@ function browserClick(sessionManager: SessionManager): ToolDefinition {
 
 const browserTypeSchema = z
 	.object({
-		sessionId: sessionIdField,
 		element: elementTargetSchema.describe('Element to type into'),
 		text: z.string().describe('Text to type'),
 		clear: z.boolean().optional().describe('Clear existing text first'),
@@ -88,14 +86,14 @@ const browserTypeOutputSchema = z.object({
 	text: z.string(),
 });
 
-function browserType(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserType(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_type',
 		'Type text into an element. Use ref from browser_snapshot (preferred) or a selector as fallback.',
 		browserTypeSchema,
-		async (session, input, pageId) => {
-			await session.adapter.type(pageId, input.element, input.text, {
+		async (state, input, pageId) => {
+			await state.adapter.type(pageId, input.element, input.text, {
 				clear: input.clear,
 				submit: input.submit,
 				delay: input.delay,
@@ -116,7 +114,6 @@ function browserType(sessionManager: SessionManager): ToolDefinition {
 
 const browserSelectSchema = z
 	.object({
-		sessionId: sessionIdField,
 		element: elementTargetSchema.describe('Select element to interact with'),
 		values: z.array(z.string()).describe('Option values or labels to select'),
 		pageId: pageIdField,
@@ -127,14 +124,14 @@ const browserSelectOutputSchema = z.object({
 	selected: z.array(z.string()),
 });
 
-function browserSelect(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserSelect(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_select',
 		'Select option(s) in a <select> element. Use ref from browser_snapshot (preferred) or a selector as fallback.',
 		browserSelectSchema,
-		async (session, input, pageId) => {
-			const selected = await session.adapter.select(pageId, input.element, input.values);
+		async (state, input, pageId) => {
+			const selected = await state.adapter.select(pageId, input.element, input.values);
 			return formatCallToolResult({ selected });
 		},
 		browserSelectOutputSchema,
@@ -147,7 +144,6 @@ function browserSelect(sessionManager: SessionManager): ToolDefinition {
 
 const browserDragSchema = z
 	.object({
-		sessionId: sessionIdField,
 		from: elementTargetSchema.describe('Source element to drag from'),
 		to: elementTargetSchema.describe('Target element to drag to'),
 		pageId: pageIdField,
@@ -158,14 +154,14 @@ const browserDragOutputSchema = z.object({
 	dragged: z.boolean(),
 });
 
-function browserDrag(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserDrag(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_drag',
 		'Drag from one element to another. Use refs from browser_snapshot (preferred) or selectors as fallback.',
 		browserDragSchema,
-		async (session, input, pageId) => {
-			await session.adapter.drag(pageId, input.from, input.to);
+		async (state, input, pageId) => {
+			await state.adapter.drag(pageId, input.from, input.to);
 			return formatCallToolResult({ dragged: true });
 		},
 		browserDragOutputSchema,
@@ -178,7 +174,6 @@ function browserDrag(sessionManager: SessionManager): ToolDefinition {
 
 const browserHoverSchema = z
 	.object({
-		sessionId: sessionIdField,
 		element: elementTargetSchema.describe('Element to hover over'),
 		pageId: pageIdField,
 	})
@@ -188,14 +183,14 @@ const browserHoverOutputSchema = z.object({
 	hovered: z.boolean(),
 });
 
-function browserHover(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserHover(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_hover',
 		'Hover over an element. Use ref from browser_snapshot (preferred) or a selector as fallback.',
 		browserHoverSchema,
-		async (session, input, pageId) => {
-			await session.adapter.hover(pageId, input.element);
+		async (state, input, pageId) => {
+			await state.adapter.hover(pageId, input.element);
 			return formatCallToolResult({ hovered: true });
 		},
 		browserHoverOutputSchema,
@@ -208,7 +203,6 @@ function browserHover(sessionManager: SessionManager): ToolDefinition {
 
 const browserPressSchema = z
 	.object({
-		sessionId: sessionIdField,
 		keys: z.string().describe('Key or key combination (e.g. "Enter", "Control+A")'),
 		pageId: pageIdField,
 	})
@@ -218,14 +212,14 @@ const browserPressOutputSchema = z.object({
 	pressed: z.string(),
 });
 
-function browserPress(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserPress(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_press',
 		'Press keyboard key(s). Examples: "Enter", "Control+A", "Escape".',
 		browserPressSchema,
-		async (session, input, pageId) => {
-			await session.adapter.press(pageId, input.keys);
+		async (state, input, pageId) => {
+			await state.adapter.press(pageId, input.keys);
 			return formatCallToolResult({ pressed: input.keys });
 		},
 		browserPressOutputSchema,
@@ -237,14 +231,12 @@ function browserPress(sessionManager: SessionManager): ToolDefinition {
 // ---------------------------------------------------------------------------
 
 const scrollToElementSchema = z.object({
-	sessionId: sessionIdField,
 	mode: z.literal('element').describe('Scroll an element into view'),
 	element: elementTargetSchema.describe('Element to scroll into view'),
 	pageId: pageIdField,
 });
 
 const scrollByDirectionSchema = z.object({
-	sessionId: sessionIdField,
 	mode: z.literal('direction').describe('Scroll the page by direction/amount'),
 	direction: z.enum(['up', 'down']).describe('Scroll direction'),
 	amount: z.number().optional().describe('Pixels to scroll (default: 500)'),
@@ -259,17 +251,17 @@ const browserScrollOutputSchema = z.object({
 	scrolled: z.boolean(),
 });
 
-function browserScroll(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserScroll(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_scroll',
 		'Scroll an element into view (mode: "element"), or scroll the page by direction/amount (mode: "direction").',
 		browserScrollSchema,
-		async (session, input, pageId) => {
+		async (state, input, pageId) => {
 			if (input.mode === 'element') {
-				await session.adapter.scroll(pageId, input.element, {});
+				await state.adapter.scroll(pageId, input.element, {});
 			} else {
-				await session.adapter.scroll(pageId, undefined, {
+				await state.adapter.scroll(pageId, undefined, {
 					direction: input.direction,
 					amount: input.amount,
 				});
@@ -286,7 +278,6 @@ function browserScroll(sessionManager: SessionManager): ToolDefinition {
 
 const browserUploadSchema = z
 	.object({
-		sessionId: sessionIdField,
 		element: elementTargetSchema.describe('File input element'),
 		files: z.array(z.string()).describe('Absolute file paths to upload'),
 		pageId: pageIdField,
@@ -298,14 +289,14 @@ const browserUploadOutputSchema = z.object({
 	files: z.array(z.string()),
 });
 
-function browserUpload(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserUpload(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_upload',
 		'Set files on a file input element. Use ref from browser_snapshot (preferred) or a selector as fallback.',
 		browserUploadSchema,
-		async (session, input, pageId) => {
-			await session.adapter.upload(pageId, input.element, input.files);
+		async (state, input, pageId) => {
+			await state.adapter.upload(pageId, input.element, input.files);
 			return formatCallToolResult({ uploaded: true, files: input.files });
 		},
 		browserUploadOutputSchema,
@@ -318,7 +309,6 @@ function browserUpload(sessionManager: SessionManager): ToolDefinition {
 
 const browserDialogSchema = z
 	.object({
-		sessionId: sessionIdField,
 		action: z.enum(['accept', 'dismiss']).describe('How to handle the dialog'),
 		text: z.string().optional().describe('Text to enter (for prompt dialogs)'),
 		pageId: pageIdField,
@@ -331,14 +321,14 @@ const browserDialogOutputSchema = z.object({
 	dialogType: z.string(),
 });
 
-function browserDialog(sessionManager: SessionManager): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserDialog(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_dialog',
 		'Handle a JavaScript dialog (alert, confirm, prompt, beforeunload). Call before the action that triggers the dialog, or when a dialog is already pending.',
 		browserDialogSchema,
-		async (session, input, pageId) => {
-			const dialogType = await session.adapter.dialog(pageId, input.action, input.text);
+		async (state, input, pageId) => {
+			const dialogType = await state.adapter.dialog(pageId, input.action, input.text);
 			return formatCallToolResult({ handled: true, action: input.action, dialogType });
 		},
 		browserDialogOutputSchema,
