@@ -35,6 +35,8 @@ const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
 			:name="name"
 			:disabled="disabled"
 			:class="$style.switchRoot"
+			:aria-labeledby="label ? uuid : undefined"
+			:aria-label="!label && 'Toggle'"
 		>
 			<SwitchThumb :class="$style.switchThumb" />
 		</SwitchRoot>
