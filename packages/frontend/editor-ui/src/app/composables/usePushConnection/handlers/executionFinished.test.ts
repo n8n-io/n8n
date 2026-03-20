@@ -676,6 +676,7 @@ describe('manual execution stats tracking', () => {
 										message: 'Request failed',
 										name: 'NodeApiError',
 									},
+									data: undefined,
 								}),
 							],
 						},
@@ -692,6 +693,45 @@ describe('manual execution stats tracking', () => {
 			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
 
 			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		});
+
+		it('shows warning toast when upstream node errored but continued execution (onError: continue)', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const executedNodeName = 'Send a text message';
+			const erroredNodeName = 'HTTP Request';
+			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+				executedNode: executedNodeName,
+				data: {
+					resultData: {
+						runData: {
+							[erroredNodeName]: [
+								mock<ITaskData>({
+									error: {
+										message: 'Request failed',
+										name: 'NodeApiError',
+									},
+									data: { main: [[{ json: {} }]] },
+								}),
+							],
+						},
+					},
+				},
+			} as unknown as IExecutionResponse);
+
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
+				mock<INodeUi>({ type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
+			);
+
+			nodeTypesStore.getNodeType = () => mock<INodeTypeDescription>({ polling: undefined });
+
+			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
 		});
 
 		it('does not show warning toast when successToastAlreadyShown is true', () => {
