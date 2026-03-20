@@ -286,7 +286,7 @@ export function listTagsPointingAt(commit) {
  * @param {string} to
  */
 export function listCommitsBetweenRefs(from, to) {
-	return sh('git', ['--no-pager', 'log', '--format="- %s (%h)', `${to}..origin/${from}`]);
+	return sh('git', ['--no-pager', 'log', '--format=%s (%h)', `${to}..origin/${from}`]);
 }
 
 /**
