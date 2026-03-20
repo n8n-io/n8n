@@ -24,15 +24,12 @@ Not every workflow with an AI node is regulated. The EU AI Act classifies AI sys
 
 **Example:** An n8n workflow that uses GPT-4 to summarize meeting notes is minimal risk. The same workflow used to evaluate employee performance is high-risk. The AI model is the same; the use case determines the classification.
 
-## What the scanner found
+## Supported AI providers and models
 
-Running [AI Trace Auditor](https://github.com/BipinRimal314/ai-trace-auditor) against the n8n codebase:
+n8n integrates with a range of AI services. The following are the key ones relevant to compliance:
 
-- **Files scanned:** 10,634
-- **AI providers detected:** OpenAI, Google GenAI, HuggingFace, LangChain
-- **Model identifiers:** 40 (gpt-4o, gemini-2.5-flash, whisper-1, text-embedding-ada-002, etc.)
-- **External services:** 10
-- **Data flows:** 10
+- **AI providers:** OpenAI, Google GenAI, HuggingFace, LangChain
+- **Model identifiers include:** gpt-4o, gemini-2.5-flash, whisper-1, text-embedding-ada-002, and others
 
 These are the AI services n8n *integrates with*. Your workflows use a subset. Document which nodes are active.
 
@@ -64,10 +61,10 @@ graph LR
 ```
 
 **GDPR roles:**
-- **Your organization:** Controller
-- **AI providers (OpenAI, Google, Anthropic):** Processor — requires Data Processing Agreement
-- **Self-hosted vector stores:** Controller — no third-party transfer
-- **n8n Cloud:** Processor if using hosted version; no role if self-hosted
+- **Your organization** is the controller (you determine the purpose and means of processing).
+- **Organizations operating AI providers (OpenAI, Google, Anthropic)** act as processors — requires Data Processing Agreement.
+- **Self-hosted vector stores:** Your organization remains the controller — no third-party transfer.
+- **The organization operating n8n Cloud** acts as a processor if you use the hosted version; no processor relationship if self-hosted.
 
 ## Article 12: Record-keeping
 
@@ -141,22 +138,12 @@ If your n8n workflow processes personal data through AI nodes:
 3. **Automated decision-making** (Article 22): If AI output directly affects individuals without human review, GDPR gives data subjects the right to contest the decision
 4. **Data minimization**: Only send the minimum necessary data to AI providers
 
-## Full compliance scan
-
-Generate a complete compliance package for your n8n deployment:
-
-```bash
-pip install ai-trace-auditor
-aitrace comply ./your-n8n-project --split -o compliance/
-```
-
 ## Resources
 
 - [EU AI Act full text](https://artificialintelligenceact.eu/)
 - [n8n execution data documentation](https://docs.n8n.io/hosting/scaling/execution-data/)
 - [n8n credential management](https://docs.n8n.io/credentials/)
-- [AI Trace Auditor](https://github.com/BipinRimal314/ai-trace-auditor) — open-source compliance scanning
 
 ---
 
-*This guide was generated with assistance from [AI Trace Auditor](https://github.com/BipinRimal314/ai-trace-auditor) and reviewed for accuracy. It is not legal advice. Consult a qualified professional for compliance decisions.*
+*This is not legal advice. Consult a qualified professional for compliance decisions.*
