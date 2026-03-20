@@ -15,6 +15,8 @@ export interface ConsumeWithHitlOptions {
 	waitForConfirmation?: (requestId: string) => Promise<Record<string, unknown>>;
 	/** Drain queued user corrections (mid-flight steering for background tasks). */
 	drainCorrections?: () => string[];
+	onSuspended?: (suspension: { toolCallId: string; requestId: string }) => Promise<void> | void;
+	onResumed?: () => Promise<void> | void;
 }
 
 export interface ConsumeWithHitlResult {
@@ -42,6 +44,8 @@ export async function consumeStreamWithHitl(
 		abortSignal,
 		waitForConfirmation,
 		drainCorrections,
+		onSuspended,
+		onResumed,
 	} = options;
 
 	let subAgentStream: AsyncIterable<unknown> = options.stream.fullStream;
@@ -87,6 +91,8 @@ export async function consumeStreamWithHitl(
 				throw new Error('Sub-agent tool requires confirmation but no HITL handler is available');
 			}
 
+			await onSuspended?.(suspended);
+
 			// Race confirmation against abort signal so cancelled runs don't hang
 			let abortHandler: (() => void) | undefined;
 			const confirmResult = await Promise.race([
@@ -106,6 +112,7 @@ export async function consumeStreamWithHitl(
 				runId: subMastraRunId,
 				toolCallId: suspended.toolCallId,
 			});
+			await onResumed?.();
 			subMastraRunId =
 				(typeof resumedStream.runId === 'string' ? resumedStream.runId : '') || subMastraRunId;
 			subAgentStream = resumedStream.fullStream;

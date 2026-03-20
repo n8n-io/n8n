@@ -119,6 +119,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		),
 	);
 	const hasTaskRuns = computed(() => taskRuns.value.length > 0);
+	const taskRunsByTaskId = computed(
+		() => new Map(taskRuns.value.map((taskRun) => [taskRun.taskId, taskRun])),
+	);
 
 	/**
 	 * Derive a single contextual follow-up suggestion from the last completed
@@ -161,6 +164,18 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		);
 		nextTaskRuns.push(taskRun);
 		replaceTaskRuns(nextTaskRuns);
+	}
+
+	function getTaskRun(taskId?: string | null): InstanceAiTaskRun | null {
+		if (!taskId) return null;
+		return taskRunsByTaskId.value.get(taskId) ?? null;
+	}
+
+	function getTaskRunsForMessageGroup(messageGroupId?: string | null): InstanceAiTaskRun[] {
+		if (!messageGroupId) return [];
+		return taskRuns.value
+			.filter((taskRun) => taskRun.messageGroupId === messageGroupId)
+			.sort((left, right) => left.createdAt - right.createdAt);
 	}
 
 	// --- Event reducer (delegated to pure module) ---
@@ -784,6 +799,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		currentTaskRuns,
 		activeTaskRuns,
 		hasTaskRuns,
+		getTaskRun,
+		getTaskRunsForMessageGroup,
 		resourceRegistry,
 		taskRuns,
 		// Actions

@@ -13,7 +13,7 @@ const METADATA_KEY = 'instanceAiWorkflowLoop';
 const workItemRecordSchema = z.object({
 	state: workflowLoopStateSchema,
 	attempts: z.array(attemptRecordSchema),
-	/** Last build outcome — stored so the service can consume it after (continue) runs. */
+	/** Last build outcome — stored for deterministic workflow-loop state inspection. */
 	lastBuildOutcome: workflowBuildOutcomeSchema.optional(),
 });
 

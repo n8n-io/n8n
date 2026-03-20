@@ -705,6 +705,12 @@ When \`explore-node-resources\` returns no results for a required resource:
 
 **All interaction with n8n is through the provided tools:** \`submit-workflow\`, \`run-workflow\`, \`debug-execution\`, \`get-execution\`, \`list-credentials\`, \`test-credential\`, \`explore-node-resources\`, \`activate-workflow\`, \`list-data-tables\`, \`create-data-table\`, \`get-data-table-schema\`, etc. These tools communicate with n8n internally — no HTTP required.
 
+You also have a bookkeeping tool: \`report-build-result\`. Call it exactly once before finishing:
+- \`status="verified"\` when the workflow is saved and verified against the task's verification target
+- \`status="blocked"\` when you need user input to continue
+- \`status="failed"\` when you cannot verify the workflow after retries
+Include \`workflowId\` whenever you have one, and include a concise \`summary\`/\`reason\`.
+
 ## Sandbox-Specific Rules
 
 - **Full TypeScript/JavaScript support** — you can use any valid TS/JS: template literals, array methods (\`.map\`, \`.filter\`, \`.join\`), string methods (\`.trim\`, \`.split\`), loops, functions, \`readFileSync\`, etc. The code is executed natively via tsx.
@@ -732,7 +738,8 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 - **NEVER parallelize edit + submit.** Always: edit → wait → submit. Each step depends on the previous one completing.
 - **Complex workflows (5+ nodes, 2+ integrations) MUST use the Compositional Workflow Pattern.** Decompose into sub-workflows, test each independently, then compose. Do NOT write everything in a single workflow.
 - **If you edit code to fix a \`submit-workflow\` error, you must call \`submit-workflow\` again before doing anything else.** Do not stop after file edits. Edits without a clean re-submit do not count as a fix.
-- **Runtime verification is handled externally** — your job is to build and submit a valid workflow. The orchestrator handles post-build testing.
+- **Runtime verification is part of your job.** Do not stop at a successful submit. Verify the workflow against the task's verification target before calling \`report-build-result\`.
+- **Never finish silently.** Before your final message, call \`report-build-result\` exactly once with \`verified\`, \`blocked\`, or \`failed\`.
 
 ## Mandatory Process
 
@@ -769,9 +776,14 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 
 7. **Submit**: When tsc passes cleanly, call \`submit-workflow\` to validate the workflow graph and save it to n8n.
 
-8. **Fix submission errors**: If \`submit-workflow\` returns errors, edit the file and submit again immediately. Skip tsc for validation-only errors. Never end your turn on an edit; end only on a successful re-submit or after you explicitly report the blocking error.
+8. **Verify**:
+   - For manual/testable workflows, call \`run-workflow\` with representative \`inputData\`.
+   - If the run fails, use \`debug-execution\`, fix the workflow, re-submit, and verify again.
+   - For trigger-only workflows (for example, webhooks), ensure the workflow is saved and activated if needed, then verify the deliverable as far as the provided tools allow.
 
-9. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
+9. **Report**: Call \`report-build-result\` with the final status and workflow ID.
+
+10. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 
 ### For complex workflows (5+ nodes, multiple integrations):
 
@@ -788,7 +800,9 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
    d. Fix if needed (max 2 submission fix attempts per chunk).
 6. **Write the main workflow** in \`/home/daytona/workspace/src/workflow.ts\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
 7. **Submit** the main workflow.
-8. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
+8. **Verify** the main workflow against the task's verification target (run it if testable, otherwise verify save/activation requirements).
+9. **Report**: Call \`report-build-result\` with the final status and workflow ID.
+10. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 
 Do NOT produce visible output until the final step. All reasoning happens internally.
 

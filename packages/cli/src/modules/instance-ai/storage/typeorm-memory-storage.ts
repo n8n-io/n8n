@@ -30,6 +30,9 @@ import { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.r
 import { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
 import { InstanceAiResourceRepository } from '../repositories/instance-ai-resource.repository';
 import { InstanceAiObservationalMemoryRepository } from '../repositories/instance-ai-observational-memory.repository';
+import { InstanceAiPlanStateRepository } from '../repositories/instance-ai-plan-state.repository';
+import { InstanceAiRunSnapshotRepository } from '../repositories/instance-ai-run-snapshot.repository';
+import { InstanceAiTaskRunRepository } from '../repositories/instance-ai-task-run.repository';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
 import type { InstanceAiObservationalMemory } from '../entities/instance-ai-observational-memory.entity';
 
@@ -42,11 +45,17 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 		private readonly messageRepo: InstanceAiMessageRepository,
 		private readonly resourceRepo: InstanceAiResourceRepository,
 		private readonly omRepo: InstanceAiObservationalMemoryRepository,
+		private readonly planStateRepo: InstanceAiPlanStateRepository,
+		private readonly runSnapshotRepo: InstanceAiRunSnapshotRepository,
+		private readonly taskRunRepo: InstanceAiTaskRunRepository,
 	) {
 		super();
 	}
 
 	async dangerouslyClearAll(): Promise<void> {
+		await this.runSnapshotRepo.clear();
+		await this.taskRunRepo.clear();
+		await this.planStateRepo.clear();
 		await this.omRepo.clear();
 		await this.messageRepo.clear();
 		await this.threadRepo.clear();
@@ -188,6 +197,9 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 	}
 
 	async deleteThread({ threadId }: { threadId: string }): Promise<void> {
+		await this.runSnapshotRepo.delete({ threadId });
+		await this.taskRunRepo.delete({ threadId });
+		await this.planStateRepo.delete({ threadId });
 		await this.threadRepo.delete(threadId);
 		// Messages cascade via FK
 	}

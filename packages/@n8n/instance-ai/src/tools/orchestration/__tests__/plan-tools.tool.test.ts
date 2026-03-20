@@ -197,6 +197,108 @@ describe('plan orchestration tools', () => {
 		);
 	});
 
+	it('create-plan suspends for approval and resumes with feedback', async () => {
+		const context = createMockContext();
+		const tool = createCreatePlanTool(context);
+		const suspend = jest.fn();
+
+		const firstResult = await tool.execute!(
+			{
+				goal: 'Build the workflow',
+				summary: 'Phase-based plan',
+				assumptions: [],
+				externalSystems: [],
+				dataContracts: [],
+				acceptanceCriteria: [],
+				openQuestions: [],
+				phases: [
+					{
+						id: 'phase-1',
+						title: 'Set up trigger',
+						description: 'Create the entry point',
+						objective: 'Receive new submissions',
+						dependsOn: [],
+						inputs: [],
+						deliverable: 'Runnable trigger workflow',
+						verification: {
+							mode: 'run-workflow',
+							expectedOutcome: 'Trigger receives sample input',
+							successCriteria: 'The trigger can be executed with sample input.',
+						},
+						blockingQuestions: [],
+					},
+				],
+			},
+			{
+				agent: {
+					suspend,
+					resumeData: undefined,
+				},
+			} as never,
+		);
+
+		expect(firstResult).toEqual(
+			expect.objectContaining({
+				saved: true,
+				approved: false,
+			}),
+		);
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputType: 'approval',
+			}),
+		);
+
+		const savedPlan = (context.planStorage.save as jest.Mock).mock.calls[0]?.[1] as InstanceAiPlanSpec;
+		(context.planStorage.get as jest.Mock).mockResolvedValue(savedPlan);
+
+		const resumedResult = await tool.execute!(
+			{
+				goal: 'Build the workflow',
+				summary: 'Phase-based plan',
+				assumptions: [],
+				externalSystems: [],
+				dataContracts: [],
+				acceptanceCriteria: [],
+				openQuestions: [],
+				phases: [
+					{
+						id: 'phase-1',
+						title: 'Set up trigger',
+						description: 'Create the entry point',
+						objective: 'Receive new submissions',
+						dependsOn: [],
+						inputs: [],
+						deliverable: 'Runnable trigger workflow',
+						verification: {
+							mode: 'run-workflow',
+							expectedOutcome: 'Trigger receives sample input',
+							successCriteria: 'The trigger can be executed with sample input.',
+						},
+						blockingQuestions: [],
+					},
+				],
+			},
+			{
+				agent: {
+					suspend,
+					resumeData: {
+						approved: false,
+						userInput: 'Use Airtable instead',
+					},
+				},
+			} as never,
+		);
+
+		expect(resumedResult).toEqual({
+			saved: true,
+			planId: savedPlan.planId,
+			approved: false,
+			feedback: 'Use Airtable instead',
+		});
+		expect(context.planStorage.save).toHaveBeenCalledTimes(1);
+	});
+
 	it('request-plan-approval promotes draft plans to awaiting_approval before suspending', async () => {
 		const context = createMockContext({
 			...makePlan(),

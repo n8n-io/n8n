@@ -1,22 +1,34 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { ref } from 'vue';
+import type { InstanceAiAgentNode, InstanceAiTaskRun } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
 import AgentTimeline from './AgentTimeline.vue';
 
 const props = defineProps<{
-	agentNode: InstanceAiAgentNode;
+	agentNode?: InstanceAiAgentNode | null;
+	taskRun?: InstanceAiTaskRun | null;
 }>();
 
 const i18n = useI18n();
 const instanceAiStore = useInstanceAiStore();
+const agentNode = computed(() => props.agentNode ?? null);
+const taskRun = computed(() => props.taskRun ?? null);
+const toolCalls = computed(() => agentNode.value?.toolCalls ?? []);
+const subtitle = computed(() => taskRun.value?.subtitle ?? agentNode.value?.subtitle ?? null);
+const taskError = computed(() => taskRun.value?.error ?? agentNode.value?.error ?? null);
 
 function handleStop() {
-	instanceAiStore.amendAgent(props.agentNode.agentId, props.agentNode.role, props.agentNode.taskId);
+	if (taskRun.value && (taskRun.value.status === 'running' || taskRun.value.status === 'queued')) {
+		void instanceAiStore.cancelBackgroundTask(taskRun.value.taskId);
+		return;
+	}
+
+	if (agentNode.value?.taskId) {
+		instanceAiStore.amendAgent(agentNode.value.agentId, agentNode.value.role, agentNode.value.taskId);
+	}
 }
 const isDetailOpen = ref(false);
 
@@ -45,69 +57,89 @@ const ROW_TOOLS = new Set([
 ]);
 
 const phases = computed((): PhaseState[] => {
-	const tc = props.agentNode.toolCalls;
 	const result: PhaseState[] = [];
 
-	const checkCalls = tc.filter((t) => CHECKING_TOOLS.has(t.toolName));
+	const checkCalls = toolCalls.value.filter((toolCall) => CHECKING_TOOLS.has(toolCall.toolName));
 	if (checkCalls.length > 0) {
 		result.push({
 			key: 'checking',
 			label: i18n.baseText('instanceAi.dataTableCard.phase.checking'),
 			count: checkCalls.length,
-			completedCount: checkCalls.filter((t) => !t.isLoading).length,
-			isActive: checkCalls.some((t) => t.isLoading),
-			isCompleted: checkCalls.every((t) => !t.isLoading),
+			completedCount: checkCalls.filter((toolCall) => !toolCall.isLoading).length,
+			isActive: checkCalls.some((toolCall) => toolCall.isLoading),
+			isCompleted: checkCalls.every((toolCall) => !toolCall.isLoading),
 		});
 	}
 
-	const schemaCalls = tc.filter((t) => SCHEMA_TOOLS.has(t.toolName));
+	const schemaCalls = toolCalls.value.filter((toolCall) => SCHEMA_TOOLS.has(toolCall.toolName));
 	if (schemaCalls.length > 0) {
 		result.push({
 			key: 'schema',
 			label: i18n.baseText('instanceAi.dataTableCard.phase.schema'),
 			count: schemaCalls.length,
-			completedCount: schemaCalls.filter((t) => !t.isLoading).length,
-			isActive: schemaCalls.some((t) => t.isLoading),
-			isCompleted: schemaCalls.every((t) => !t.isLoading),
+			completedCount: schemaCalls.filter((toolCall) => !toolCall.isLoading).length,
+			isActive: schemaCalls.some((toolCall) => toolCall.isLoading),
+			isCompleted: schemaCalls.every((toolCall) => !toolCall.isLoading),
 		});
 	}
 
-	const rowCalls = tc.filter((t) => ROW_TOOLS.has(t.toolName));
+	const rowCalls = toolCalls.value.filter((toolCall) => ROW_TOOLS.has(toolCall.toolName));
 	if (rowCalls.length > 0) {
 		result.push({
 			key: 'rows',
 			label: i18n.baseText('instanceAi.dataTableCard.phase.rows'),
 			count: rowCalls.length,
-			completedCount: rowCalls.filter((t) => !t.isLoading).length,
-			isActive: rowCalls.some((t) => t.isLoading),
-			isCompleted: rowCalls.every((t) => !t.isLoading),
+			completedCount: rowCalls.filter((toolCall) => !toolCall.isLoading).length,
+			isActive: rowCalls.some((toolCall) => toolCall.isLoading),
+			isCompleted: rowCalls.every((toolCall) => !toolCall.isLoading),
 		});
 	}
 
 	return result;
 });
 
-const isActive = computed(() => props.agentNode.status === 'active');
-const isError = computed(() => props.agentNode.status === 'error');
-const isCompleted = computed(
-	() => props.agentNode.status === 'completed' && !props.agentNode.error,
-);
+const isActive = computed(() => {
+	if (taskRun.value) {
+		return (
+			taskRun.value.status === 'queued' ||
+			taskRun.value.status === 'running' ||
+			taskRun.value.status === 'suspended'
+		);
+	}
+
+	return agentNode.value?.status === 'active';
+});
+const isError = computed(() => {
+	if (taskRun.value) {
+		return taskRun.value.status === 'failed' || taskRun.value.status === 'cancelled';
+	}
+
+	return agentNode.value?.status === 'error';
+});
+const isCompleted = computed(() => {
+	if (taskRun.value) {
+		return taskRun.value.status === 'completed' && !taskRun.value.error;
+	}
+
+	return agentNode.value?.status === 'completed' && !agentNode.value.error;
+});
+const hasDetailTimeline = computed(() => !!agentNode.value && toolCalls.value.length > 0);
 </script>
 
 <template>
 	<div :class="$style.root">
 		<!-- Header -->
-		<div :class="$style.header">
-			<div :class="$style.headerLeft">
-				<N8nIcon v-if="isActive" icon="spinner" spin size="small" :class="$style.activeIcon" />
-				<N8nIcon v-else-if="isError" icon="triangle-alert" size="small" :class="$style.errorIcon" />
-				<N8nIcon v-else icon="check" size="small" :class="$style.successIcon" />
-				<span :class="$style.title">{{ i18n.baseText('instanceAi.dataTableCard.title') }}</span>
-				<span v-if="props.agentNode.subtitle" :class="$style.subtitle">
-					{{ props.agentNode.subtitle }}
-				</span>
-			</div>
-			<button v-if="isActive" :class="$style.stopButton" @click="handleStop">
+			<div :class="$style.header">
+				<div :class="$style.headerLeft">
+					<N8nIcon v-if="isActive" icon="spinner" spin size="small" :class="$style.activeIcon" />
+					<N8nIcon v-else-if="isError" icon="triangle-alert" size="small" :class="$style.errorIcon" />
+					<N8nIcon v-else icon="check" size="small" :class="$style.successIcon" />
+					<span :class="$style.title">{{ i18n.baseText('instanceAi.dataTableCard.title') }}</span>
+					<span v-if="subtitle" :class="$style.subtitle">
+						{{ subtitle }}
+					</span>
+				</div>
+				<button v-if="isActive" :class="$style.stopButton" @click="handleStop">
 				<N8nIcon icon="square" size="small" />
 				{{ i18n.baseText('instanceAi.agent.stop') }}
 			</button>
@@ -141,33 +173,33 @@ const isCompleted = computed(
 			</div>
 		</div>
 
-		<!-- Expandable detail -->
-		<CollapsibleRoot
-			v-if="props.agentNode.toolCalls.length > 0"
-			v-model:open="isDetailOpen"
-			:class="$style.detailBlock"
-		>
-			<CollapsibleTrigger :class="$style.detailTrigger">
-				<span>{{ i18n.baseText('instanceAi.dataTableCard.details') }}</span>
-				<N8nIcon :icon="isDetailOpen ? 'chevron-up' : 'chevron-down'" size="small" />
-			</CollapsibleTrigger>
-			<CollapsibleContent :class="$style.detailContent">
-				<AgentTimeline :agent-node="props.agentNode" :compact="true" />
-			</CollapsibleContent>
-		</CollapsibleRoot>
+			<!-- Expandable detail -->
+			<CollapsibleRoot
+				v-if="hasDetailTimeline"
+				v-model:open="isDetailOpen"
+				:class="$style.detailBlock"
+			>
+				<CollapsibleTrigger :class="$style.detailTrigger">
+					<span>{{ i18n.baseText('instanceAi.dataTableCard.details') }}</span>
+					<N8nIcon :icon="isDetailOpen ? 'chevron-up' : 'chevron-down'" size="small" />
+				</CollapsibleTrigger>
+				<CollapsibleContent :class="$style.detailContent">
+					<AgentTimeline v-if="agentNode" :agent-node="agentNode" :compact="true" />
+				</CollapsibleContent>
+			</CollapsibleRoot>
 
-		<!-- Success -->
-		<div v-if="isCompleted" :class="$style.successResult">
-			<N8nIcon icon="check" size="small" :class="$style.successIcon" />
-			<span>{{ i18n.baseText('instanceAi.dataTableCard.success') }}</span>
-		</div>
+			<!-- Success -->
+			<div v-if="isCompleted" :class="$style.successResult">
+				<N8nIcon icon="check" size="small" :class="$style.successIcon" />
+				<span>{{ taskRun?.resultSummary ?? i18n.baseText('instanceAi.dataTableCard.success') }}</span>
+			</div>
 
-		<!-- Error -->
-		<div v-if="props.agentNode.error" :class="$style.errorResult">
-			<N8nIcon icon="triangle-alert" size="small" :class="$style.errorIcon" />
-			<span>{{ props.agentNode.error || i18n.baseText('instanceAi.dataTableCard.failed') }}</span>
+			<!-- Error -->
+			<div v-if="taskError" :class="$style.errorResult">
+				<N8nIcon icon="triangle-alert" size="small" :class="$style.errorIcon" />
+				<span>{{ taskError || i18n.baseText('instanceAi.dataTableCard.failed') }}</span>
+			</div>
 		</div>
-	</div>
 </template>
 
 <style lang="scss" module>

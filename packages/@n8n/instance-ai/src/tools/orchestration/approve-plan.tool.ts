@@ -45,6 +45,10 @@ export function createApprovePlanTool(context: OrchestrationContext) {
 				},
 			});
 
+			if (context.startPlanExecution) {
+				await context.startPlanExecution(plan.planId);
+			}
+
 			return {
 				approved: true,
 				planId: plan.planId,

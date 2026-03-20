@@ -3,7 +3,9 @@ export type { DomainAccessTracker } from './domain-access';
 export { createInstanceAgent } from './agent/instance-agent';
 export { createAllTools, createOrchestrationTools } from './tools';
 export {
+	addPlanArtifact,
 	derivePlanStatus,
+	getPhaseExecution,
 	getRunnablePhaseIds,
 	normalizePhase,
 	normalizePlanStatusForReview,
@@ -13,6 +15,15 @@ export {
 	shouldAutoContinuePlan,
 	updatePlanPhase,
 } from './tools/orchestration/plan-utils';
+export {
+	startBuildWorkflowAgentTask,
+} from './tools/orchestration/build-workflow-agent.tool';
+export {
+	startDataTableAgentTask,
+} from './tools/orchestration/data-table-agent.tool';
+export {
+	startResearchWithAgentTask,
+} from './tools/orchestration/research-with-agent.tool';
 export { createMemory } from './memory/memory-config';
 export { iterationEntrySchema, formatPreviousAttempts } from './storage/iteration-log';
 export type { IterationEntry, IterationLog } from './storage/iteration-log';

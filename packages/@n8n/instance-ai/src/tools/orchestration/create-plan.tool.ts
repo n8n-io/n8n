@@ -37,8 +37,49 @@ export function createCreatePlanTool(context: OrchestrationContext) {
 		outputSchema: z.object({
 			saved: z.boolean(),
 			planId: z.string(),
+			approved: z.boolean().optional(),
+			feedback: z.string().optional(),
 		}),
-		execute: async (input) => {
+		suspendSchema: z.object({
+			requestId: z.string(),
+			message: z.string(),
+			severity: z.literal('info'),
+			inputType: z.literal('approval'),
+		}),
+		resumeSchema: z.object({
+			approved: z.boolean(),
+			userInput: z.string().optional(),
+		}),
+		execute: async (input, ctx) => {
+			const { resumeData, suspend } = ctx?.agent ?? {};
+
+			if (resumeData !== undefined && resumeData !== null) {
+				const existingPlan = await context.planStorage.get(context.threadId);
+				if (!existingPlan) {
+					return {
+						saved: false,
+						planId: '',
+						approved: false,
+						feedback: resumeData.userInput ?? '',
+					};
+				}
+
+				if (!resumeData.approved) {
+					return {
+						saved: true,
+						planId: existingPlan.planId,
+						approved: false,
+						feedback: resumeData.userInput ?? '',
+					};
+				}
+
+				return {
+					saved: true,
+					planId: existingPlan.planId,
+					approved: true,
+				};
+			}
+
 			const plan: InstanceAiPlanSpec = {
 				planId: `plan_${nanoid(8)}`,
 				goal: input.goal,
@@ -61,9 +102,26 @@ export function createCreatePlanTool(context: OrchestrationContext) {
 				payload: { plan },
 			});
 
+			if (suspend) {
+				await suspend?.({
+					requestId: nanoid(),
+					message:
+						'Review the plan, then approve it to start building or request changes to revise it.',
+					severity: 'info' as const,
+					inputType: 'approval' as const,
+				});
+
+				return {
+					saved: true,
+					planId: plan.planId,
+					approved: false,
+				};
+			}
+
 			return {
 				saved: true,
 				planId: plan.planId,
+				approved: false,
 			};
 		},
 	});

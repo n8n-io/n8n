@@ -319,8 +319,8 @@ describe('parseStoredMessages', () => {
 		});
 	});
 
-	describe('internal enrichment stripping', () => {
-		it('should hide auto-follow-up (continue) messages', () => {
+	describe('stored user message handling', () => {
+		it('should preserve messages that used to look like internal control text', () => {
 			const messages: MastraDBMessage[] = [
 				{
 					id: 'msg-u1',
@@ -351,14 +351,19 @@ describe('parseStoredMessages', () => {
 
 			const result = parseStoredMessages(messages);
 
-			expect(result).toHaveLength(3);
+			expect(result).toHaveLength(4);
 			expect(result[0]).toMatchObject({ id: 'msg-u1', role: 'user' });
 			expect(result[1]).toMatchObject({ id: 'msg-a1', role: 'assistant' });
-			// The (continue) user message is hidden; only the assistant response remains
-			expect(result[2]).toMatchObject({ id: 'msg-a2', role: 'assistant' });
+			expect(result[2]).toMatchObject({
+				id: 'msg-u2',
+				role: 'user',
+				content:
+					'<background-tasks>\n[Background task completed — workflow-builder]: Done\n</background-tasks>\n\n(continue)',
+			});
+			expect(result[3]).toMatchObject({ id: 'msg-a2', role: 'assistant' });
 		});
 
-		it('should hide bare (continue) messages without background-tasks block', () => {
+		it('should preserve bare sentinel-like text', () => {
 			const messages: MastraDBMessage[] = [
 				{
 					id: 'msg-u',
@@ -370,10 +375,11 @@ describe('parseStoredMessages', () => {
 
 			const result = parseStoredMessages(messages);
 
-			expect(result).toHaveLength(0);
+			expect(result).toHaveLength(1);
+			expect(result[0].content).toBe('(continue)');
 		});
 
-		it('should strip background-tasks enrichment from real user messages', () => {
+		it('should preserve prefixed text verbatim', () => {
 			const messages: MastraDBMessage[] = [
 				{
 					id: 'msg-u',
@@ -387,10 +393,12 @@ describe('parseStoredMessages', () => {
 			const result = parseStoredMessages(messages);
 
 			expect(result).toHaveLength(1);
-			expect(result[0].content).toBe('Now add error handling');
+			expect(result[0].content).toBe(
+				'<background-tasks>\n[Background task completed — workflow-builder]: Done\n</background-tasks>\n\nNow add error handling',
+			);
 		});
 
-		it('should not strip background-tasks text that appears mid-message', () => {
+		it('should preserve ordinary text containing background-task markup', () => {
 			const messages: MastraDBMessage[] = [
 				{
 					id: 'msg-u',

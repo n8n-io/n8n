@@ -191,9 +191,11 @@ export const instanceAiWorkflowBuildTaskOutcomeSchema = z.object({
 	phaseId: z.string().optional(),
 	workflowId: z.string().optional(),
 	submitted: z.boolean().optional(),
+	verified: z.boolean().optional(),
 	triggerType: z.enum(['manual_or_testable', 'trigger_only']).optional(),
 	needsUserInput: z.boolean().optional(),
 	failureSignature: z.string().optional(),
+	failureReason: z.string().optional(),
 	summary: z.string().optional(),
 	mockedNodeNames: z.array(z.string()).optional(),
 	mockedCredentialTypes: z.array(z.string()).optional(),
@@ -362,6 +364,35 @@ export const instanceAiVerificationSpecSchema = z.object({
 });
 export type InstanceAiVerificationSpec = z.infer<typeof instanceAiVerificationSpecSchema>;
 
+export const instanceAiPhaseExecutionSpecSchema = z.discriminatedUnion('kind', [
+	z.object({
+		kind: z.literal('workflow-build'),
+		task: z.string().describe('Execution briefing for the workflow builder task.'),
+		workflowId: z
+			.string()
+			.optional()
+			.describe('Existing workflow ID to modify. Omit for new workflows.'),
+	}),
+	z.object({
+		kind: z.literal('data-table'),
+		task: z.string().describe('Execution briefing for the data table task.'),
+	}),
+	z.object({
+		kind: z.literal('research'),
+		goal: z.string().describe('Research goal for the background research task.'),
+		constraints: z.string().optional(),
+	}),
+]);
+export type InstanceAiPhaseExecutionSpec = z.infer<typeof instanceAiPhaseExecutionSpecSchema>;
+
+export const instanceAiPlanExecutionContextSchema = z.object({
+	originRunId: z.string(),
+	messageGroupId: z.string().optional(),
+	startedAt: z.number().int().optional(),
+	lastTaskId: z.string().optional(),
+});
+export type InstanceAiPlanExecutionContext = z.infer<typeof instanceAiPlanExecutionContextSchema>;
+
 export const instanceAiPhaseSpecSchema = z.object({
 	id: z.string(),
 	title: z.string(),
@@ -373,6 +404,7 @@ export const instanceAiPhaseSpecSchema = z.object({
 	deliverable: z.string(),
 	targetResource: agentSpawnedTargetResourceSchema.optional(),
 	verification: instanceAiVerificationSpecSchema,
+	execution: instanceAiPhaseExecutionSpecSchema.optional(),
 	blockingQuestions: z.array(z.string()).default([]),
 	status: instanceAiPhaseStatusSchema,
 	blocker: instanceAiPhaseBlockerSchema.optional(),
@@ -393,6 +425,7 @@ export const instanceAiPlanSpecSchema = z.object({
 	acceptanceCriteria: z.array(z.string()).default([]),
 	openQuestions: z.array(z.string()).default([]),
 	status: instanceAiPlanStatusSchema,
+	executionContext: instanceAiPlanExecutionContextSchema.optional(),
 	phases: z.array(instanceAiPhaseSpecSchema),
 	lastUpdatedAt: z.string().optional(),
 });
@@ -928,7 +961,8 @@ export interface InstanceAiModelCredential {
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'update-tasks') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
-	if (toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === 'build-workflow-with-agent' || toolName === 'report-build-result')
+		return 'builder';
 	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (

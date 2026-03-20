@@ -451,7 +451,7 @@ replaying all SSE events.
 1. Load historical messages (GET /threads/:threadId/messages)
    └── Sets messages[], sets SSE cursor to nextEventId - 1
 2. Load thread status (GET /threads/:threadId/status)
-   └── Sets activeRunId if run is active, injects background tasks
+   └── Sets activeRunId if run is active and restores current task/plan runtime state
 3. Connect SSE (GET /events/:threadId?lastEventId=<cursor>)
    └── Only receives live events going forward
 ```

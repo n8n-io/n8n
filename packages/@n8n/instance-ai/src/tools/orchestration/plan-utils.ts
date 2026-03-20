@@ -1,4 +1,5 @@
 import type {
+	InstanceAiPhaseExecutionSpec,
 	InstanceAiPhaseArtifact,
 	InstanceAiPhaseBlocker,
 	InstanceAiPhaseSpec,
@@ -35,6 +36,49 @@ function findFailedDependency(
 	return undefined;
 }
 
+function buildExecutionTaskFromPhase(phase: {
+	description: string;
+	objective: string;
+	deliverable: string;
+	verification: InstanceAiPhaseSpec['verification'];
+}): string {
+	return [
+		phase.description,
+		`Objective: ${phase.objective}`,
+		`Deliverable: ${phase.deliverable}`,
+		`Verification target: ${phase.verification.expectedOutcome}`,
+	].join('\n\n');
+}
+
+function inferPhaseExecution(
+	phase: Pick<
+		InstanceAiPhaseSpec,
+		'description' | 'objective' | 'deliverable' | 'targetResource' | 'verification'
+	>,
+): InstanceAiPhaseExecutionSpec | undefined {
+	const task = buildExecutionTaskFromPhase(phase);
+	if (phase.targetResource?.type === 'data-table') {
+		return {
+			kind: 'data-table',
+			task,
+		};
+	}
+
+	if (phase.targetResource?.type === 'workflow') {
+		return {
+			kind: 'workflow-build',
+			task,
+			...(phase.targetResource.id ? { workflowId: phase.targetResource.id } : {}),
+		};
+	}
+
+	if (phase.verification.mode === 'run-workflow' || phase.verification.mode === 'trigger-only') {
+		return { kind: 'workflow-build', task };
+	}
+
+	return undefined;
+}
+
 export function normalizePhase(
 	phase: Omit<InstanceAiPhaseSpec, 'status' | 'artifacts'> &
 		Partial<
@@ -42,6 +86,7 @@ export function normalizePhase(
 				InstanceAiPhaseSpec,
 				| 'status'
 				| 'artifacts'
+				| 'execution'
 				| 'verificationAttempts'
 				| 'lastVerificationError'
 				| 'lastVerificationFailureSignature'
@@ -51,9 +96,14 @@ export function normalizePhase(
 	return {
 		...phase,
 		status: phase.status ?? (phase.dependsOn.length > 0 ? 'pending' : 'ready'),
+		execution: phase.execution ?? inferPhaseExecution(phase),
 		verificationAttempts: phase.verificationAttempts ?? 0,
 		artifacts: phase.artifacts ?? [],
 	};
+}
+
+export function getPhaseExecution(phase: InstanceAiPhaseSpec): InstanceAiPhaseExecutionSpec | undefined {
+	return phase.execution ?? inferPhaseExecution(phase);
 }
 
 export function normalizePlanStatusForReview(

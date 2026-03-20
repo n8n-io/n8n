@@ -1,9 +1,28 @@
+import type {
+	InstanceAiAttachment,
+	AgentRunState,
+	InstanceAiEvent,
+	InstanceAiThreadStatusResponse,
+	InstanceAiGatewayCapabilities,
+	McpToolCallResult,
+	InstanceAiQuestionResponse,
+	InstanceAiPhaseArtifact,
+	InstanceAiPhaseSpec,
+	InstanceAiPlanExecutionContext,
+	InstanceAiPlanSpec,
+	InstanceAiTaskKind,
+	InstanceAiTaskOutcome,
+	InstanceAiTaskRun,
+	InstanceAiTargetResource,
+} from '@n8n/api-types';
+import { createInitialState, instanceAiTaskOutcomeSchema, reduceEvent, toAgentTree } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
-import { Service } from '@n8n/di';
 import type { User } from '@n8n/db';
+import { Service } from '@n8n/di';
 import {
+	addPlanArtifact,
 	createInstanceAgent,
 	createAllTools,
 	createMemory,
@@ -13,61 +32,44 @@ import {
 	mapMastraChunkToEvent,
 	BuilderSandboxFactory,
 	SnapshotManager,
-	handleBuildOutcome,
-	handleVerificationVerdict,
-	workflowBuildOutcomeSchema,
 	createDomainAccessTracker,
 	derivePlanStatus,
+	getPhaseExecution,
+	getRunnablePhaseIds,
 	patchPlanPhase,
 	reconcilePlanPhases,
-	shouldAutoContinuePlan,
+	startBuildWorkflowAgentTask,
+	startDataTableAgentTask,
+	startResearchWithAgentTask,
 } from '@n8n/instance-ai';
 import type {
-	AttemptRecord,
 	DomainAccessTracker,
 	McpServerConfig,
 	ModelConfig,
 	OrchestrationContext,
 	SandboxConfig,
 	SpawnBackgroundTaskOptions,
-	VerificationResult,
-	WorkflowBuildOutcome,
-	WorkflowLoopState,
-	WorkflowLoopAction,
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
-import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 
-import type {
-	InstanceAiAttachment,
-	InstanceAiEvent,
-	InstanceAiThreadStatusResponse,
-	InstanceAiGatewayCapabilities,
-	McpToolCallResult,
-	InstanceAiQuestionResponse,
-	InstanceAiPhaseSpec,
-	InstanceAiPlanSpec,
-	InstanceAiTaskKind,
-	InstanceAiTaskOutcome,
-	InstanceAiTaskRun,
-	InstanceAiTargetResource,
-} from '@n8n/api-types';
-import { instanceAiTaskOutcomeSchema } from '@n8n/api-types';
-
-import { LocalGateway, LocalFilesystemProvider } from './filesystem';
 import { buildAgentTreeFromEvents } from './agent-tree-builder';
 import { AgentTreeSnapshotStorage } from './agent-tree-snapshot';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
-import { InstanceAiAdapterService } from './instance-ai.adapter.service';
+import { LocalGateway, LocalFilesystemProvider } from './filesystem';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { MastraIterationLogStorage } from './iteration-log-storage';
 import { MastraPlanStorage } from './plan-storage';
-import { MastraTaskStorage } from './task-storage';
-import { MastraTaskRunStorage } from './task-run-storage';
+import {
+	InstanceAiPlanStateRepository,
+	InstanceAiRunSnapshotRepository,
+	InstanceAiTaskRunRepository,
+} from './repositories';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
-import { WorkflowLoopStorage } from './workflow-loop-storage';
+import { MastraTaskRunStorage } from './task-run-storage';
+import { MastraTaskStorage } from './task-storage';
 
 interface ActiveRun {
 	runId: string;
@@ -113,7 +115,7 @@ interface BackgroundTask {
 	subtitle?: string;
 	goal?: string;
 	targetResource?: InstanceAiTargetResource;
-	status: 'running' | 'completed' | 'failed' | 'cancelled';
+	status: 'running' | 'suspended' | 'completed' | 'failed' | 'cancelled';
 	result?: string;
 	error?: string;
 	startedAt: number;
@@ -122,8 +124,6 @@ interface BackgroundTask {
 	abortController: AbortController;
 	/** User corrections queued for mid-flight delivery to the running task. */
 	corrections: string[];
-	/** How many automatic follow-up runs preceded this task (0 = user-initiated). */
-	chainDepth: number;
 	/** The messageGroupId this task belongs to — captured at spawn time, not the thread's current one. */
 	messageGroupId?: string;
 	/** Typed outcome for task-driven coordination. */
@@ -145,17 +145,6 @@ function getErrorMessage(error: unknown): string {
 /** Try to parse a record as a typed task outcome. Returns undefined if invalid. */
 function parseOutcome(raw: unknown): InstanceAiTaskOutcome | undefined {
 	const result = instanceAiTaskOutcomeSchema.safeParse(raw);
-	return result.success ? result.data : undefined;
-}
-
-function toWorkflowBuildOutcome(
-	outcome: InstanceAiTaskOutcome | undefined,
-): WorkflowBuildOutcome | undefined {
-	if (!outcome || outcome.kind !== 'workflow-build') {
-		return undefined;
-	}
-
-	const result = workflowBuildOutcomeSchema.safeParse(outcome);
 	return result.success ? result.data : undefined;
 }
 
@@ -213,20 +202,29 @@ export class InstanceAiService {
 	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
 
-	/** Tracks the last user per thread so background task completions can auto-trigger follow-up runs. */
+	/** Tracks the last user per thread so durable task/plan execution can continue after the chat run ends. */
 	private readonly threadUsers = new Map<string, User>();
 
-	/** Tracks the last researchMode setting per thread for follow-up runs. */
+	/** Tracks the last researchMode setting per thread for detached task/plan execution. */
 	private readonly threadResearchMode = new Map<string, boolean>();
 
-	/** Tracks the current messageGroupId per thread for auto-follow-up run merging. */
+	/** Tracks the current messageGroupId per thread for panel/timeline routing. */
 	private readonly threadMessageGroupId = new Map<string, string>();
 
 	/** Tracks all runIds that belong to each messageGroupId. */
 	private readonly runIdsByMessageGroup = new Map<string, string[]>();
 
-	/** Consecutive auto-follow-up runs on a thread. Reset by user input. */
-	private readonly autoFollowUpRunsByThread = new Map<string, number>();
+	/** Fast lookup from runId to messageGroupId for snapshot/state reconstruction. */
+	private readonly messageGroupIdByRunId = new Map<string, string>();
+
+	/** Live normalized run state per messageGroupId for refresh-safe snapshot persistence. */
+	private readonly runStateByMessageGroup = new Map<string, AgentRunState>();
+
+	/** Thread-scoped event subscriptions that keep runStateByMessageGroup updated. */
+	private readonly threadEventUnsubscribers = new Map<string, () => void>();
+
+	/** Serializes plan execution decisions per thread/plan pair. */
+	private readonly planExecutionQueues = new Map<string, Promise<void>>();
 
 	/** Pre-warmed image manager for builder sandboxes (Daytona only). */
 	private snapshotManager?: SnapshotManager;
@@ -240,6 +238,9 @@ export class InstanceAiService {
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly planStateRepo: InstanceAiPlanStateRepository,
+		private readonly taskRunRepo: InstanceAiTaskRunRepository,
+		private readonly runSnapshotRepo: InstanceAiRunSnapshotRepository,
 		private readonly compositeStore: TypeORMCompositeStore,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -277,21 +278,16 @@ export class InstanceAiService {
 		};
 	}
 
-	private createThreadMemory() {
-		return createMemory({
-			storage: this.compositeStore,
-			embedderModel: this.instanceAiConfig.embedderModel || undefined,
-			lastMessages: this.instanceAiConfig.lastMessages,
-			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
-		});
-	}
-
 	private createPlanStorage() {
-		return new MastraPlanStorage(this.createThreadMemory());
+		return new MastraPlanStorage(this.planStateRepo);
 	}
 
 	private createTaskRunStorage() {
-		return new MastraTaskRunStorage(this.createThreadMemory());
+		return new MastraTaskRunStorage(this.taskRunRepo);
+	}
+
+	private createSnapshotStorage() {
+		return new AgentTreeSnapshotStorage(this.runSnapshotRepo);
 	}
 
 	private toTaskRun(task: BackgroundTask): InstanceAiTaskRun {
@@ -327,13 +323,7 @@ export class InstanceAiService {
 		eventType: 'task-created' | 'task-updated',
 	): Promise<void> {
 		const taskRunStorage = this.createTaskRunStorage();
-		const existingTaskRuns = await taskRunStorage.get(threadId);
-		const nextTaskRuns = existingTaskRuns.filter(
-			(existingTask) => existingTask.taskId !== taskRun.taskId,
-		);
-		nextTaskRuns.push(taskRun);
-		nextTaskRuns.sort((left, right) => right.updatedAt - left.updatedAt);
-		await taskRunStorage.save(threadId, nextTaskRuns);
+		await taskRunStorage.upsert(taskRun);
 
 		const targetRunId = taskRun.originRunId ?? this.getLatestRunIdForThread(threadId);
 		if (!targetRunId) {
@@ -381,53 +371,6 @@ export class InstanceAiService {
 		return reconciledTaskRuns;
 	}
 
-	private async syncPlanPhaseFromTaskRun(task: BackgroundTask): Promise<void> {
-		if (!task.planId || !task.phaseId || task.kind !== 'data-table') {
-			return;
-		}
-
-		const planStorage = this.createPlanStorage();
-		const existingPlan = await planStorage.get(task.threadId);
-		if (!existingPlan || existingPlan.planId !== task.planId) {
-			return;
-		}
-
-		let nextPlan = existingPlan;
-		if (task.status === 'completed') {
-			nextPlan = patchPlanPhase(
-				existingPlan,
-				task.phaseId,
-				{
-					status: 'done',
-					blocker: undefined,
-					lastVerificationError: undefined,
-					lastVerificationFailureSignature: undefined,
-				},
-				'running',
-			);
-		} else if (task.status === 'failed' || task.status === 'cancelled') {
-			nextPlan = patchPlanPhase(
-				existingPlan,
-				task.phaseId,
-				{
-					status: 'failed',
-					blocker: undefined,
-					lastVerificationError: task.error ?? 'Data table task failed',
-				},
-				'running',
-			);
-		}
-
-		if (nextPlan !== existingPlan) {
-			await this.publishPlanUpdate(task.threadId, task.runId, nextPlan);
-		}
-	}
-
-	private countVerificationFailures(attempts: AttemptRecord[]): number {
-		return attempts.filter((attempt) => attempt.action === 'verify' && attempt.result === 'failure')
-			.length;
-	}
-
 	private getPlanPhase(
 		plan: InstanceAiPlanSpec,
 		phaseId?: string,
@@ -437,6 +380,248 @@ export class InstanceAiService {
 		}
 
 		return plan.phases.find((phase) => phase.id === phaseId);
+	}
+
+	private isTaskActive(task: BackgroundTask): boolean {
+		return task.status === 'running' || task.status === 'suspended';
+	}
+
+	private getActiveTasks(threadId: string): BackgroundTask[] {
+		return [...this.backgroundTasks.values()].filter(
+			(task) => task.threadId === threadId && this.isTaskActive(task),
+		);
+	}
+
+	private getActivePlanTasks(threadId: string, planId: string): BackgroundTask[] {
+		return this.getActiveTasks(threadId).filter((task) => task.planId === planId);
+	}
+
+	private async queuePlanExecution(
+		threadId: string,
+		planId: string,
+		execute: () => Promise<void>,
+	): Promise<void> {
+		const key = `${threadId}:${planId}`;
+		const previous = this.planExecutionQueues.get(key) ?? Promise.resolve();
+		const next = previous.catch(() => {}).then(execute);
+		this.planExecutionQueues.set(
+			key,
+			next.finally(() => {
+				if (this.planExecutionQueues.get(key) === next) {
+					this.planExecutionQueues.delete(key);
+				}
+			}),
+		);
+		return await next;
+	}
+
+	private createPhaseArtifactFromTask(task: BackgroundTask): InstanceAiPhaseArtifact | undefined {
+		if (task.kind === 'data-table' && task.outcome?.kind === 'data-table') {
+			const artifactId = task.outcome.tableId ?? task.taskId;
+			return {
+				id: `data-table:${artifactId}`,
+				label: task.outcome.tableName ?? task.title,
+				type: 'data-table',
+				...(task.outcome.tableId ? { resourceId: task.outcome.tableId } : {}),
+			};
+		}
+
+		if (task.kind === 'workflow-build' && task.outcome?.kind === 'workflow-build') {
+			const workflowId = task.outcome.workflowId;
+			if (!workflowId) {
+				return undefined;
+			}
+
+			return {
+				id: `workflow:${workflowId}`,
+				label: task.title,
+				type: 'workflow',
+				resourceId: workflowId,
+			};
+		}
+
+		return undefined;
+	}
+
+	private shouldPersistDetachedSnapshot(threadId: string, runId: string): boolean {
+		const activeRunId =
+			this.activeRuns.get(threadId)?.runId ?? this.suspendedRuns.get(threadId)?.runId;
+		return activeRunId !== runId;
+	}
+
+	private async publishMilestoneSummary(
+		threadId: string,
+		runId: string,
+		text: string,
+		snapshotStorage?: AgentTreeSnapshotStorage,
+		messageGroupId?: string,
+	): Promise<void> {
+		this.eventBus.publish(threadId, {
+			type: 'text-delta',
+			runId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			payload: { text },
+		});
+
+		if (snapshotStorage && this.shouldPersistDetachedSnapshot(threadId, runId)) {
+			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage, true, messageGroupId);
+		}
+	}
+
+	private recordRetryablePhaseFailure(
+		plan: InstanceAiPlanSpec,
+		phase: InstanceAiPhaseSpec,
+		reason: string,
+		failureSignature?: string,
+	): InstanceAiPlanSpec {
+		const attempts = (phase.verificationAttempts ?? 0) + 1;
+		const nextStatus = attempts >= 3 ? 'failed' : 'ready';
+
+		return patchPlanPhase(
+			plan,
+			phase.id,
+			{
+				status: nextStatus,
+				blocker: undefined,
+				verificationAttempts: attempts,
+				lastVerificationError: reason,
+				lastVerificationFailureSignature: failureSignature,
+			},
+			'running',
+		);
+	}
+
+	private async patchPlanFromTaskResult(
+		task: BackgroundTask,
+		planStorage: MastraPlanStorage,
+		snapshotStorage?: AgentTreeSnapshotStorage,
+	): Promise<InstanceAiPlanSpec | null> {
+		if (!task.planId || !task.phaseId) {
+			return null;
+		}
+
+		const existingPlan = await planStorage.get(task.threadId);
+		if (!existingPlan || existingPlan.planId !== task.planId) {
+			return null;
+		}
+
+		const phase = this.getPlanPhase(existingPlan, task.phaseId);
+		if (!phase) {
+			return existingPlan;
+		}
+
+		let nextPlan = existingPlan;
+		let milestone: string | undefined;
+
+		if (task.status === 'completed') {
+			if (task.kind === 'workflow-build') {
+				if (task.outcome?.kind !== 'workflow-build') {
+					nextPlan = this.recordRetryablePhaseFailure(
+						existingPlan,
+						phase,
+						'Workflow build finished without a structured verification result.',
+						'missing_workflow_build_outcome',
+					);
+					const attempts = this.getPlanPhase(nextPlan, phase.id)?.verificationAttempts ?? 0;
+					milestone =
+						attempts >= 3
+							? `Phase "${phase.title}" failed after ${attempts} verification attempts.`
+							: `Phase "${phase.title}" verification failed (${attempts}/3). Retrying.`;
+				} else if (task.outcome.needsUserInput) {
+					nextPlan = patchPlanPhase(
+						existingPlan,
+						phase.id,
+						{
+							status: 'blocked',
+							blocker: {
+								reason: task.outcome.failureReason ?? 'Workflow build is waiting for user input',
+								inputType: 'text',
+							},
+							lastVerificationError: task.outcome.failureReason,
+							lastVerificationFailureSignature: task.outcome.failureSignature,
+						},
+						'blocked',
+					);
+					milestone = `Phase "${phase.title}" is blocked: ${task.outcome.failureReason ?? 'needs user input'}.`;
+				} else if (task.outcome.verified) {
+					nextPlan = patchPlanPhase(
+						existingPlan,
+						phase.id,
+						{
+							status: 'done',
+							blocker: undefined,
+							lastVerificationError: undefined,
+							lastVerificationFailureSignature: undefined,
+						},
+						'running',
+					);
+					milestone = `Phase "${phase.title}" completed.`;
+				} else {
+					const reason = task.outcome.failureReason ?? 'Workflow verification failed';
+					nextPlan = this.recordRetryablePhaseFailure(
+						existingPlan,
+						phase,
+						reason,
+						task.outcome.failureSignature,
+					);
+					const attempts = this.getPlanPhase(nextPlan, phase.id)?.verificationAttempts ?? 0;
+					milestone =
+						attempts >= 3
+							? `Phase "${phase.title}" failed after ${attempts} verification attempts.`
+							: `Phase "${phase.title}" verification failed (${attempts}/3). Retrying.`;
+				}
+			} else {
+				nextPlan = patchPlanPhase(
+					existingPlan,
+					phase.id,
+					{
+						status: 'done',
+						blocker: undefined,
+						lastVerificationError: undefined,
+						lastVerificationFailureSignature: undefined,
+					},
+					'running',
+				);
+				milestone = `Phase "${phase.title}" completed.`;
+			}
+		} else if (task.status === 'failed' || task.status === 'cancelled') {
+			const reason =
+				task.error ??
+				(task.status === 'cancelled' ? 'Task was cancelled before completion' : 'Task failed');
+			nextPlan = this.recordRetryablePhaseFailure(existingPlan, phase, reason);
+			const attempts = this.getPlanPhase(nextPlan, phase.id)?.verificationAttempts ?? 0;
+			milestone =
+				attempts >= 3
+					? `Phase "${phase.title}" failed after ${attempts} attempts.`
+					: `Phase "${phase.title}" failed (${attempts}/3). Retrying.`;
+		} else {
+			return existingPlan;
+		}
+
+		const artifact = this.createPhaseArtifactFromTask(task);
+		if (artifact) {
+			nextPlan = addPlanArtifact(nextPlan, phase.id, artifact);
+		}
+
+		if (existingPlan.status !== 'completed' && nextPlan.status === 'completed') {
+			milestone = milestone ? `${milestone} Plan completed.` : 'Plan completed.';
+		}
+
+		if (nextPlan !== existingPlan) {
+			await this.publishPlanUpdate(task.threadId, task.runId, nextPlan);
+		}
+
+		if (milestone) {
+			await this.publishMilestoneSummary(
+				task.threadId,
+				task.runId,
+				`${milestone} `,
+				snapshotStorage,
+				task.messageGroupId,
+			);
+		}
+
+		return nextPlan;
 	}
 
 	private getLatestRunIdForThread(threadId: string): string | undefined {
@@ -578,7 +763,7 @@ export class InstanceAiService {
 		const isSuspended = this.suspendedRuns.has(threadId);
 		const taskRuns = await this.reconcileStoredTaskRuns(threadId);
 		const bgTasks = taskRuns
-			.filter((taskRun) => taskRun.status === 'running')
+			.filter((taskRun) => taskRun.status === 'running' || taskRun.status === 'suspended')
 			.map((t) => ({
 				taskId: t.taskId,
 				role: t.role,
@@ -606,22 +791,13 @@ export class InstanceAiService {
 		if (researchMode !== undefined) {
 			this.threadResearchMode.set(threadId, researchMode);
 		}
+		this.ensureThreadEventSubscription(threadId);
 
-		// User-initiated runs get a fresh messageGroupId.
-		// Auto-follow-up runs reuse the existing one so the frontend
-		// merges them into the same assistant message bubble.
-		if (message !== AUTO_FOLLOW_UP_MESSAGE) {
-			this.resetChainDepths(threadId);
-			this.autoFollowUpRunsByThread.set(threadId, 0);
-			const newGroupId = `mg_${nanoid()}`;
-			this.threadMessageGroupId.set(threadId, newGroupId);
-			this.runIdsByMessageGroup.set(newGroupId, []);
-		} else {
-			this.autoFollowUpRunsByThread.set(
-				threadId,
-				(this.autoFollowUpRunsByThread.get(threadId) ?? 0) + 1,
-			);
-		}
+		const newGroupId = `mg_${nanoid()}`;
+		this.threadMessageGroupId.set(threadId, newGroupId);
+		this.runIdsByMessageGroup.set(newGroupId, []);
+		this.messageGroupIdByRunId.set(runId, newGroupId);
+		this.ensureRunState(newGroupId);
 
 		const messageGroupId = this.threadMessageGroupId.get(threadId);
 		// Register this runId with its messageGroup
@@ -650,6 +826,75 @@ export class InstanceAiService {
 		return this.threadMessageGroupId.get(threadId);
 	}
 
+	private ensureRunState(messageGroupId: string): AgentRunState {
+		let runState = this.runStateByMessageGroup.get(messageGroupId);
+		if (!runState) {
+			runState = createInitialState(ORCHESTRATOR_AGENT_ID);
+			this.runStateByMessageGroup.set(messageGroupId, runState);
+		}
+
+		return runState;
+	}
+
+	private ensureThreadEventSubscription(threadId: string): void {
+		if (this.threadEventUnsubscribers.has(threadId)) {
+			return;
+		}
+
+		const unsubscribe = this.eventBus.subscribe(threadId, ({ event }) => {
+			this.recordEventForSnapshot(threadId, event);
+		});
+		this.threadEventUnsubscribers.set(threadId, unsubscribe);
+	}
+
+	private findMessageGroupIdForRun(runId: string): string | undefined {
+		const known = this.messageGroupIdByRunId.get(runId);
+		if (known) {
+			return known;
+		}
+
+		for (const [messageGroupId, runIds] of this.runIdsByMessageGroup.entries()) {
+			if (runIds.includes(runId)) {
+				this.messageGroupIdByRunId.set(runId, messageGroupId);
+				return messageGroupId;
+			}
+		}
+
+		return undefined;
+	}
+
+	private resolveMessageGroupIdForEvent(
+		threadId: string,
+		event: InstanceAiEvent,
+	): string | undefined {
+		if (event.type === 'run-start') {
+			const messageGroupId = event.payload.messageGroupId ?? this.threadMessageGroupId.get(threadId);
+			if (!messageGroupId) {
+				return undefined;
+			}
+
+			this.messageGroupIdByRunId.set(event.runId, messageGroupId);
+			const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId) ?? [];
+			if (!groupRunIds.includes(event.runId)) {
+				groupRunIds.push(event.runId);
+				this.runIdsByMessageGroup.set(messageGroupId, groupRunIds);
+			}
+			return messageGroupId;
+		}
+
+		return this.findMessageGroupIdForRun(event.runId);
+	}
+
+	private recordEventForSnapshot(threadId: string, event: InstanceAiEvent): void {
+		const messageGroupId = this.resolveMessageGroupIdForEvent(threadId, event);
+		if (!messageGroupId) {
+			return;
+		}
+
+		const runState = this.ensureRunState(messageGroupId);
+		reduceEvent(runState, event);
+	}
+
 	/**
 	 * Get the messageGroupId for the thread's live activity.
 	 * Prefers the active/suspended run's group, then falls back to the
@@ -665,7 +910,7 @@ export class InstanceAiService {
 		}
 		// Background-only: find the most recent running task's group
 		const runningTask = [...this.backgroundTasks.values()]
-			.filter((t) => t.threadId === threadId && t.status === 'running')
+			.filter((t) => t.threadId === threadId && this.isTaskActive(t))
 			.sort((a, b) => b.startedAt - a.startedAt)[0];
 		return runningTask?.messageGroupId ?? this.threadMessageGroupId.get(threadId);
 	}
@@ -678,15 +923,6 @@ export class InstanceAiService {
 	/** Get the active runId for a thread. */
 	getActiveRunId(threadId: string): string | undefined {
 		return this.activeRuns.get(threadId)?.runId;
-	}
-
-	/** Reset chain depths for all non-running tasks on a thread (called on user-initiated runs). */
-	private resetChainDepths(threadId: string): void {
-		for (const task of this.backgroundTasks.values()) {
-			if (task.threadId === threadId) {
-				task.chainDepth = 0;
-			}
-		}
 	}
 
 	cancelRun(threadId: string): void {
@@ -731,7 +967,7 @@ export class InstanceAiService {
 	/** Cancel a single background task by ID. */
 	cancelBackgroundTask(threadId: string, taskId: string): void {
 		const task = this.backgroundTasks.get(taskId);
-		if (!task || task.threadId !== threadId || task.status !== 'running') return;
+		if (!task || task.threadId !== threadId || !this.isTaskActive(task)) return;
 
 		task.abortController.abort();
 		task.status = 'cancelled';
@@ -746,9 +982,29 @@ export class InstanceAiService {
 		});
 
 		void this.saveTaskRunSnapshot(threadId, this.toTaskRun(task), 'task-updated');
-		void this.syncPlanPhaseFromTaskRun(task);
-
 		this.backgroundTasks.delete(taskId);
+		void (async () => {
+			if (task.planId && task.phaseId) {
+				const planStorage = this.createPlanStorage();
+				const existingPlan = await planStorage.get(threadId);
+				if (existingPlan?.planId === task.planId) {
+					const nextPlan = patchPlanPhase(
+						existingPlan,
+						task.phaseId,
+						{
+							status: 'blocked',
+							blocker: {
+								reason: 'Execution cancelled by user',
+								inputType: 'text',
+							},
+							lastVerificationError: 'Execution cancelled by user',
+						},
+						'blocked',
+					);
+					await this.publishPlanUpdate(threadId, task.runId, nextPlan);
+				}
+			}
+		})();
 	}
 
 	// ── Gateway lifecycle ─────────────────────────────────────────────────
@@ -875,6 +1131,14 @@ export class InstanceAiService {
 			pending.resolve({ approved: false });
 		}
 		this.pendingSubAgentConfirmations.clear();
+		for (const [, unsubscribe] of this.threadEventUnsubscribers) {
+			unsubscribe();
+		}
+		this.threadEventUnsubscribers.clear();
+		this.threadMessageGroupId.clear();
+		this.runIdsByMessageGroup.clear();
+		this.messageGroupIdByRunId.clear();
+		this.runStateByMessageGroup.clear();
 
 		// Destroy all active sandboxes
 		const sandboxCleanups = [...this.sandboxes.keys()].map(
@@ -971,11 +1235,9 @@ export class InstanceAiService {
 				});
 			}
 			const taskStorage = new MastraTaskStorage(memory);
-			const planStorage = new MastraPlanStorage(memory);
+			const planStorage = this.createPlanStorage();
 			const iterationLog = new MastraIterationLogStorage(memory);
-			const snapshotStorage = new AgentTreeSnapshotStorage(memory);
-			const workflowLoopStorage = new WorkflowLoopStorage(memory);
-
+			const snapshotStorage = this.createSnapshotStorage();
 			// Replay existing tasks to the new run's agentTree so the frontend shows them immediately
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {
@@ -987,6 +1249,8 @@ export class InstanceAiService {
 				});
 			}
 			const existingPlan = await planStorage.get(threadId);
+			const runtimeOwnedPlanActive =
+				existingPlan?.status === 'approved' || existingPlan?.status === 'running';
 			if (existingPlan) {
 				this.eventBus.publish(threadId, {
 					type: 'plan-created',
@@ -1021,7 +1285,13 @@ export class InstanceAiService {
 				abortSignal: signal,
 				taskStorage,
 				planStorage,
+				activePlanStatus: existingPlan?.status,
+				runtimeOwnedPlanActive,
+				messageGroupId,
+				planExecutionContext: existingPlan?.executionContext,
 				researchMode,
+				startPlanExecution: async (planId) =>
+					await this.startPlanExecution(threadId, planId, runId, messageGroupId),
 				browserMcpConfig: this.instanceAiConfig.browserMcp
 					? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
 					: undefined,
@@ -1040,13 +1310,6 @@ export class InstanceAiService {
 				spawnBackgroundTask: (opts) => this.spawnBackgroundTask(runId, opts, snapshotStorage),
 				iterationLog,
 				sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
-				reportVerificationVerdict: async (verdict: VerificationResult) =>
-					await this.handleVerificationVerdictFromTool(
-						verdict,
-						threadId,
-						workflowLoopStorage,
-						planStorage,
-					),
 				workspace: sandboxEntry?.workspace,
 				builderSandboxFactory: this.builderSandboxFactory,
 				nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
@@ -1064,14 +1327,6 @@ export class InstanceAiService {
 				disableDeferredTools: true,
 			});
 
-			// Inject completed/running background task context into the message
-			const enrichedMessage = await this.enrichMessageWithBackgroundTasks(
-				threadId,
-				message,
-				workflowLoopStorage,
-				planStorage,
-			);
-
 			// Build multimodal message when attachments are present
 			const streamInput =
 				attachments && attachments.length > 0
@@ -1079,7 +1334,7 @@ export class InstanceAiService {
 							{
 								role: 'user' as const,
 								content: [
-									{ type: 'text' as const, text: enrichedMessage },
+									{ type: 'text' as const, text: message },
 									...attachments.map((a) => ({
 										type: 'file' as const,
 										data: a.data,
@@ -1088,7 +1343,7 @@ export class InstanceAiService {
 								],
 							},
 						]
-					: enrichedMessage;
+					: message;
 
 			const result = await agent.stream(streamInput, {
 				abortSignal: signal,
@@ -1169,7 +1424,6 @@ export class InstanceAiService {
 			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 			if (!signal.aborted) {
 				this.activeRuns.delete(threadId);
-				await this.maybeAutoContinueThread(threadId, 'run-finished');
 			}
 		} catch (error) {
 			// Mastra throws AbortError when the signal is aborted — treat as cancellation
@@ -1251,13 +1505,7 @@ export class InstanceAiService {
 		};
 
 		// Create snapshot storage for saving agent tree after resumed run completes
-		const memory = createMemory({
-			storage: this.compositeStore,
-			embedderModel: this.instanceAiConfig.embedderModel || undefined,
-			lastMessages: this.instanceAiConfig.lastMessages,
-			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
-		});
-		const snapshotStorage = new AgentTreeSnapshotStorage(memory);
+		const snapshotStorage = this.createSnapshotStorage();
 
 		void this.processResumedStream(agent, resumeData, {
 			runId,
@@ -1371,7 +1619,6 @@ export class InstanceAiService {
 			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 			if (!opts.signal.aborted) {
 				this.activeRuns.delete(opts.threadId);
-				await this.maybeAutoContinueThread(opts.threadId, 'run-finished');
 			}
 		} catch (error) {
 			if (opts.signal.aborted) {
@@ -1411,6 +1658,363 @@ export class InstanceAiService {
 	/** Maximum concurrent background tasks per thread to prevent resource exhaustion. */
 	private readonly MAX_BACKGROUND_TASKS_PER_THREAD = 5;
 
+	private async createDetachedOrchestrationContext(
+		user: User,
+		threadId: string,
+		executionContext: InstanceAiPlanExecutionContext,
+		researchMode?: boolean,
+	): Promise<{
+		orchestrationContext: OrchestrationContext;
+		snapshotStorage: AgentTreeSnapshotStorage;
+	}> {
+		const localGatewayDisabled = this.settingsService.isFilesystemDisabled();
+		const localFilesystemService =
+			!localGatewayDisabled && !this.localGateway.isConnected && this.isLocalFilesystemAvailable()
+				? this.getLocalFsProvider()
+				: undefined;
+		const context = this.adapterService.createContext(user, localFilesystemService);
+		if (!localGatewayDisabled && this.localGateway.isConnected) {
+			context.localMcpServer = this.localGateway;
+		}
+		context.permissions = this.settingsService.getPermissions();
+
+		let domainTracker = this.domainAccessTrackersByThread.get(threadId);
+		if (!domainTracker) {
+			domainTracker = createDomainAccessTracker();
+			this.domainAccessTrackersByThread.set(threadId, domainTracker);
+		}
+		context.domainAccessTracker = domainTracker;
+		context.runId = executionContext.originRunId;
+
+		const modelId = await this.resolveModel(user);
+		const titleModel = typeof modelId === 'string' ? modelId : modelId.id;
+		const memory = createMemory({
+			storage: this.compositeStore,
+			embedderModel: this.instanceAiConfig.embedderModel || undefined,
+			lastMessages: this.instanceAiConfig.lastMessages,
+			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
+			titleModel,
+		});
+		const existingThread = await memory.getThreadById({ threadId });
+		if (!existingThread) {
+			const now = new Date();
+			await memory.saveThread({
+				thread: {
+					id: threadId,
+					resourceId: user.id,
+					title: '',
+					createdAt: now,
+					updatedAt: now,
+				},
+			});
+		}
+
+		const taskStorage = new MastraTaskStorage(memory);
+		const planStorage = this.createPlanStorage();
+		const iterationLog = new MastraIterationLogStorage(memory);
+		const snapshotStorage = this.createSnapshotStorage();
+		const existingPlan = await planStorage.get(threadId);
+		const nodeDefDirs = this.adapterService.getNodeDefinitionDirs();
+		if (nodeDefDirs.length > 0) {
+			setSchemaBaseDirs(nodeDefDirs);
+		}
+
+		const domainTools = createAllTools(context);
+		const sandboxEntry = await this.getOrCreateWorkspace(threadId, user);
+
+		return {
+			orchestrationContext: {
+				threadId,
+				runId: executionContext.originRunId,
+				userId: user.id,
+				orchestratorAgentId: ORCHESTRATOR_AGENT_ID,
+				modelId,
+				storage: this.compositeStore,
+				messageGroupId: executionContext.messageGroupId,
+				subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
+				eventBus: this.eventBus,
+				domainTools,
+				abortSignal: new AbortController().signal,
+				taskStorage,
+				planStorage,
+				activePlanStatus: existingPlan?.status,
+				runtimeOwnedPlanActive: existingPlan?.status === 'approved' || existingPlan?.status === 'running',
+				planExecutionContext: executionContext,
+				researchMode,
+				browserMcpConfig: this.instanceAiConfig.browserMcp
+					? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
+					: undefined,
+				oauth2CallbackUrl: this.oauth2CallbackUrl,
+				webhookBaseUrl: this.webhookBaseUrl,
+				waitForConfirmation: async (requestId: string) => {
+					return await new Promise<ConfirmationData>((resolve) => {
+						this.pendingSubAgentConfirmations.set(requestId, {
+							resolve,
+							threadId,
+							userId: user.id,
+						});
+					});
+				},
+				cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
+				spawnBackgroundTask: (opts) =>
+					this.spawnBackgroundTask(executionContext.originRunId, opts, snapshotStorage),
+				iterationLog,
+				sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
+				workspace: sandboxEntry?.workspace,
+				builderSandboxFactory: this.builderSandboxFactory,
+				nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
+				domainContext: context,
+			},
+			snapshotStorage,
+		};
+	}
+
+	private async startPlanExecution(
+		threadId: string,
+		planId: string,
+		runId: string,
+		messageGroupId?: string,
+	): Promise<void> {
+		const user = this.threadUsers.get(threadId);
+		if (!user) {
+			return;
+		}
+
+		const researchMode = this.threadResearchMode.get(threadId);
+		await this.queuePlanExecution(threadId, planId, async () => {
+			const planStorage = this.createPlanStorage();
+			const existingPlan = await planStorage.get(threadId);
+			if (!existingPlan || existingPlan.planId !== planId) {
+				return;
+			}
+
+			const nextPlan: InstanceAiPlanSpec = {
+				...existingPlan,
+				status: 'running',
+				executionContext: {
+					originRunId: runId,
+					messageGroupId,
+					startedAt: existingPlan.executionContext?.startedAt ?? Date.now(),
+					lastTaskId: existingPlan.executionContext?.lastTaskId,
+				},
+				lastUpdatedAt: new Date().toISOString(),
+			};
+
+			await this.publishPlanUpdate(threadId, runId, nextPlan);
+			await this.continuePlanExecutionNow(
+				threadId,
+				planId,
+				user,
+				researchMode,
+				nextPlan.executionContext,
+			);
+		});
+	}
+
+	private async continuePlanExecution(
+		threadId: string,
+		planId: string,
+		user?: User,
+		researchMode?: boolean,
+		executionContextOverride?: InstanceAiPlanExecutionContext,
+	): Promise<void> {
+		const activeUser = user ?? this.threadUsers.get(threadId);
+		if (!activeUser) {
+			return;
+		}
+
+		const activeResearchMode = researchMode ?? this.threadResearchMode.get(threadId);
+		await this.queuePlanExecution(threadId, planId, async () => {
+			await this.continuePlanExecutionNow(
+				threadId,
+				planId,
+				activeUser,
+				activeResearchMode,
+				executionContextOverride,
+			);
+		});
+	}
+
+	private async continuePlanExecutionNow(
+		threadId: string,
+		planId: string,
+		user: User,
+		researchMode?: boolean,
+		executionContextOverride?: InstanceAiPlanExecutionContext,
+	): Promise<void> {
+		const planStorage = this.createPlanStorage();
+		const existingPlan = await planStorage.get(threadId);
+		if (!existingPlan || existingPlan.planId !== planId) {
+			return;
+		}
+
+		const executionContext = executionContextOverride ?? existingPlan.executionContext;
+		if (!executionContext?.originRunId) {
+			this.logger.warn('Cannot continue plan execution without execution context', {
+				threadId,
+				planId,
+			});
+			return;
+		}
+
+		const reconciledPlan = await this.reconcileStoredPlan(threadId, executionContext.originRunId);
+		if (!reconciledPlan || reconciledPlan.planId !== planId) {
+			return;
+		}
+
+		const { orchestrationContext, snapshotStorage } = await this.createDetachedOrchestrationContext(
+			user,
+			threadId,
+			executionContext,
+			researchMode,
+		);
+
+		let currentPlan = reconciledPlan;
+		while (true) {
+			const reconciledCurrentPlan = reconcilePlanPhases(currentPlan);
+			const nextStatus = derivePlanStatus(reconciledCurrentPlan, reconciledCurrentPlan.status);
+			if (
+				reconciledCurrentPlan !== currentPlan ||
+				nextStatus !== reconciledCurrentPlan.status
+			) {
+				currentPlan = {
+					...reconciledCurrentPlan,
+					status: nextStatus,
+					lastUpdatedAt: new Date().toISOString(),
+				};
+				await this.publishPlanUpdate(threadId, executionContext.originRunId, currentPlan);
+			} else {
+				currentPlan = reconciledCurrentPlan;
+			}
+
+			if (
+				currentPlan.status === 'draft' ||
+				currentPlan.status === 'awaiting_approval' ||
+				currentPlan.status === 'blocked' ||
+				currentPlan.status === 'completed'
+			) {
+				return;
+			}
+
+			if (this.getActivePlanTasks(threadId, currentPlan.planId).length > 0) {
+				return;
+			}
+
+			const [runnablePhaseId] = getRunnablePhaseIds(currentPlan);
+			if (!runnablePhaseId) {
+				return;
+			}
+
+			const phase = this.getPlanPhase(currentPlan, runnablePhaseId);
+			if (!phase) {
+				return;
+			}
+
+			currentPlan = await this.startPlanPhaseExecution(
+				currentPlan,
+				phase,
+				orchestrationContext,
+				snapshotStorage,
+			);
+
+			if (this.getActivePlanTasks(threadId, currentPlan.planId).length > 0) {
+				return;
+			}
+		}
+	}
+
+	private async startPlanPhaseExecution(
+		plan: InstanceAiPlanSpec,
+		phase: InstanceAiPhaseSpec,
+		orchestrationContext: OrchestrationContext,
+		snapshotStorage: AgentTreeSnapshotStorage,
+	): Promise<InstanceAiPlanSpec> {
+		const execution = getPhaseExecution(phase);
+		if (!execution) {
+			const nextPlan = this.recordRetryablePhaseFailure(
+				plan,
+				phase,
+				`Phase "${phase.title}" is missing an execution spec.`,
+				'missing_execution_spec',
+			);
+			await this.publishPlanUpdate(orchestrationContext.threadId, orchestrationContext.runId, nextPlan);
+			return nextPlan;
+		}
+
+			let startedTask: { taskId: string; result: string } | undefined;
+			switch (execution.kind) {
+				case 'data-table':
+					startedTask = startDataTableAgentTask(orchestrationContext, {
+						task: execution.task,
+						planId: plan.planId,
+						phaseId: phase.id,
+					});
+					break;
+			case 'workflow-build':
+				startedTask = await startBuildWorkflowAgentTask(orchestrationContext, {
+					task: execution.task,
+					workflowId: execution.workflowId,
+					planId: plan.planId,
+					phaseId: phase.id,
+				});
+				break;
+				case 'research':
+					startedTask = startResearchWithAgentTask(orchestrationContext, {
+						goal: execution.goal,
+						constraints: execution.constraints,
+						planId: plan.planId,
+						phaseId: phase.id,
+				});
+				break;
+		}
+
+		if (!startedTask?.taskId) {
+			const nextPlan = this.recordRetryablePhaseFailure(
+				plan,
+				phase,
+				startedTask?.result ?? `Failed to start phase "${phase.title}".`,
+			);
+			await this.publishPlanUpdate(orchestrationContext.threadId, orchestrationContext.runId, nextPlan);
+			await this.publishMilestoneSummary(
+				orchestrationContext.threadId,
+				orchestrationContext.runId,
+				`Failed to start phase "${phase.title}". `,
+				snapshotStorage,
+				orchestrationContext.messageGroupId,
+			);
+			return nextPlan;
+		}
+
+		const nextPlan: InstanceAiPlanSpec = {
+			...patchPlanPhase(
+				plan,
+				phase.id,
+				{
+					status: 'building',
+					blocker: undefined,
+				},
+				'running',
+			),
+			executionContext: {
+				originRunId: orchestrationContext.runId,
+				messageGroupId: orchestrationContext.messageGroupId,
+				startedAt: plan.executionContext?.startedAt ?? Date.now(),
+				lastTaskId: startedTask.taskId,
+			},
+			lastUpdatedAt: new Date().toISOString(),
+		};
+
+		await this.publishPlanUpdate(orchestrationContext.threadId, orchestrationContext.runId, nextPlan);
+		await this.publishMilestoneSummary(
+			orchestrationContext.threadId,
+			orchestrationContext.runId,
+			`Starting phase "${phase.title}". `,
+			snapshotStorage,
+			orchestrationContext.messageGroupId,
+		);
+		return nextPlan;
+	}
+
 	private spawnBackgroundTask(
 		runId: string,
 		opts: SpawnBackgroundTaskOptions,
@@ -1418,7 +2022,7 @@ export class InstanceAiService {
 	): void {
 		// Enforce per-thread concurrent task limit
 		const runningCount = [...this.backgroundTasks.values()].filter(
-			(t) => t.threadId === opts.threadId && t.status === 'running',
+			(t) => t.threadId === opts.threadId && this.isTaskActive(t),
 		).length;
 		if (runningCount >= this.MAX_BACKGROUND_TASKS_PER_THREAD) {
 			this.eventBus.publish(opts.threadId, {
@@ -1436,15 +2040,9 @@ export class InstanceAiService {
 
 		const abortController = new AbortController();
 
-		// Inherit chain depth from the deepest completed/failed task in this thread,
-		// incremented by 1 so each generation of auto-follow-up tasks advances the counter.
-		// User-initiated runs reset depths to 0 (see startRun), so this only accumulates
-		// during automatic follow-up chains.
-		const currentMaxDepth = this.getMaxChainDepth(opts.threadId) + 1;
-
 		// Capture the messageGroupId at spawn time — NOT the thread's current one,
 		// which may change if the user starts a new turn while this task runs.
-		const messageGroupId = this.threadMessageGroupId.get(opts.threadId);
+		const messageGroupId = opts.messageGroupId ?? this.threadMessageGroupId.get(opts.threadId);
 		const startedAt = Date.now();
 
 		const task: BackgroundTask = {
@@ -1463,7 +2061,6 @@ export class InstanceAiService {
 			updatedAt: startedAt,
 			abortController,
 			corrections: [],
-			chainDepth: currentMaxDepth,
 			messageGroupId,
 			planId: opts.planId,
 			phaseId: opts.phaseId,
@@ -1481,9 +2078,55 @@ export class InstanceAiService {
 		task.workItemId = opts.workItemId;
 
 		// Fire-and-forget — runs detached from the orchestrator stream
+		const planStorage = this.createPlanStorage();
 		void (async () => {
 			try {
-				const raw = await opts.run(abortController.signal, drainCorrections);
+				const raw = await opts.run(abortController.signal, drainCorrections, {
+					suspended: async (requestId?: string) => {
+						task.status = 'suspended';
+						task.updatedAt = Date.now();
+						await this.saveTaskRunSnapshot(opts.threadId, this.toTaskRun(task), 'task-updated');
+						if (task.planId && task.phaseId) {
+							const existingPlan = await planStorage.get(task.threadId);
+							if (existingPlan?.planId === task.planId) {
+								const nextPlan = patchPlanPhase(
+									existingPlan,
+									task.phaseId,
+									{
+										status: 'blocked',
+										blocker: {
+											reason: 'Waiting for user input to continue this task',
+											requestId,
+											inputType: 'approval',
+										},
+									},
+									'blocked',
+								);
+								await this.publishPlanUpdate(task.threadId, task.runId, nextPlan);
+							}
+						}
+					},
+					resumed: async () => {
+						task.status = 'running';
+						task.updatedAt = Date.now();
+						await this.saveTaskRunSnapshot(opts.threadId, this.toTaskRun(task), 'task-updated');
+						if (task.planId && task.phaseId) {
+							const existingPlan = await planStorage.get(task.threadId);
+							if (existingPlan?.planId === task.planId) {
+								const nextPlan = patchPlanPhase(
+									existingPlan,
+									task.phaseId,
+									{
+										status: 'building',
+										blocker: undefined,
+									},
+									'running',
+								);
+								await this.publishPlanUpdate(task.threadId, task.runId, nextPlan);
+							}
+						}
+					},
+				});
 				// Support both plain string and structured result
 				const resultText = typeof raw === 'string' ? raw : raw.text;
 				const outcome = typeof raw === 'string' ? undefined : parseOutcome(raw.outcome);
@@ -1501,7 +2144,9 @@ export class InstanceAiService {
 					payload: { role: opts.role, result: resultText },
 				});
 			} catch (error) {
-				if (abortController.signal.aborted) return;
+				if (abortController.signal.aborted) {
+					return;
+				}
 				const errorMessage = getErrorMessage(error);
 				task.status = 'failed';
 				task.error = errorMessage;
@@ -1515,437 +2160,58 @@ export class InstanceAiService {
 				});
 			}
 			await this.saveTaskRunSnapshot(opts.threadId, this.toTaskRun(task), 'task-updated');
-			await this.syncPlanPhaseFromTaskRun(task);
+			await this.patchPlanFromTaskResult(task, planStorage, snapshotStorage);
 			// Re-save snapshot so the completed/failed background agent is captured.
 			// Use the task's own messageGroupId (captured at spawn time), not the
 			// thread's current one — the user may have started a new turn since.
-			await this.saveAgentTreeSnapshot(
-				opts.threadId,
-				runId,
-				snapshotStorage,
-				true,
-				task.messageGroupId,
-			);
-
-			// Auto-trigger a follow-up orchestrator run so results are delivered without
-			// the user needing to send another message. Plans use phase-aware continuation;
-			// non-plan work falls back to the generic depth-limited behavior.
-			await this.maybeAutoContinueThread(opts.threadId, 'background-task-completed');
+			if (this.shouldPersistDetachedSnapshot(opts.threadId, runId)) {
+				await this.saveAgentTreeSnapshot(
+					opts.threadId,
+					runId,
+					snapshotStorage,
+					true,
+					task.messageGroupId,
+				);
+			}
+			this.backgroundTasks.delete(task.taskId);
+			if (task.planId) {
+				await this.continuePlanExecution(opts.threadId, task.planId);
+			}
 		})();
-	}
-
-	/** Collect and drain completed/failed tasks for a thread. */
-	private drainCompletedTasks(threadId: string): BackgroundTask[] {
-		const completed: BackgroundTask[] = [];
-		for (const [taskId, task] of this.backgroundTasks) {
-			if (task.threadId === threadId && task.status !== 'running') {
-				completed.push(task);
-				this.backgroundTasks.delete(taskId);
-			}
-		}
-		return completed;
-	}
-
-	/** Get running tasks for a thread (for status injection). */
-	private getRunningTasks(threadId: string): BackgroundTask[] {
-		return [...this.backgroundTasks.values()].filter(
-			(t) => t.threadId === threadId && t.status === 'running',
-		);
-	}
-
-	/** Prepend completed/running background task info to a user message.
-	 *  For workflow-builder tasks with structured outcomes, the controller decides
-	 *  what guidance to inject — no more text heuristics. */
-	private async enrichMessageWithBackgroundTasks(
-		threadId: string,
-		message: string,
-		workflowLoopStorage: WorkflowLoopStorage,
-		planStorage: MastraPlanStorage,
-	): Promise<string> {
-		const completedTasks = this.drainCompletedTasks(threadId);
-		const runningTasks = this.getRunningTasks(threadId);
-
-		if (completedTasks.length === 0 && runningTasks.length === 0) return message;
-
-		const parts: string[] = [];
-
-		for (const task of completedTasks) {
-			if (task.status === 'completed') {
-				let resultLine = `[Background task completed — ${task.role}]: ${task.result}`;
-
-				// Workflow-builder tasks: use typed outcome for deterministic guidance
-				if (task.role === 'workflow-builder' && task.outcome) {
-					const guidance = await this.getWorkflowLoopGuidance(
-						task,
-						workflowLoopStorage,
-						planStorage,
-					);
-					resultLine += `\n\n${guidance}`;
-				} else if (task.role === 'workflow-builder') {
-					// Fallback for builders without structured outcome (tool mode)
-					resultLine +=
-						'\n\nVERIFICATION: If a workflow was built, run it to verify before reporting to the user.';
-				}
-
-				parts.push(resultLine);
-			} else if (task.status === 'cancelled') {
-				parts.push(`[Background task stopped by user — ${task.role}, task: ${task.taskId}]`);
-			} else {
-				parts.push(`[Background task failed — ${task.role}]: ${task.error}`);
-			}
-		}
-
-		for (const task of runningTasks) {
-			parts.push(`[Background task in progress — ${task.role}, task: ${task.taskId}]`);
-		}
-
-		return `<background-tasks>\n${parts.join('\n')}\n</background-tasks>\n\n${message}`;
-	}
-
-	/**
-	 * Use the workflow loop controller to determine what guidance to inject
-	 * into the enriched message for a completed workflow-builder task.
-	 * Persists state via WorkflowLoopStorage so that subsequent verification
-	 * verdicts can load the accumulated state and attempt history.
-	 */
-	private async getWorkflowLoopGuidance(
-		task: BackgroundTask,
-		workflowLoopStorage: WorkflowLoopStorage,
-		planStorage: MastraPlanStorage,
-	): Promise<string> {
-		const outcome = toWorkflowBuildOutcome(task.outcome);
-		if (!outcome) return '';
-
-		// Load existing state or create initial state for this work item
-		const existing = await workflowLoopStorage.getWorkItem(task.threadId, outcome.workItemId);
-		const state: WorkflowLoopState = existing?.state ?? {
-			workItemId: outcome.workItemId,
-			threadId: task.threadId,
-			planId: outcome.planId,
-			phaseId: outcome.phaseId,
-			workflowId: outcome.workflowId,
-			phase: 'building',
-			status: 'active',
-			source: outcome.workflowId ? 'modify' : 'create',
-			patchAttempts: 0,
-			rebuildAttempts: 0,
-		};
-		const attempts: AttemptRecord[] = existing?.attempts ?? [];
-
-		const { state: newState, action, attempt } = handleBuildOutcome(state, attempts, outcome);
-
-		// Persist updated state and attempt
-		await workflowLoopStorage.saveWorkItem(
-			task.threadId,
-			newState,
-			[...attempts, attempt],
-			outcome,
-		);
-		await this.syncPlanPhaseFromWorkflowLoop(
-			task.threadId,
-			task.runId,
-			newState,
-			action,
-			planStorage,
-		);
-
-		return this.actionToGuidance(action, outcome.workItemId);
-	}
-
-	/**
-	 * Handle a verification verdict reported by the orchestrator via the
-	 * report-verification-verdict tool. Loads persisted state, runs the
-	 * deterministic controller, and persists the updated state.
-	 */
-	private async handleVerificationVerdictFromTool(
-		verdict: VerificationResult,
-		threadId: string,
-		workflowLoopStorage: WorkflowLoopStorage,
-		planStorage: MastraPlanStorage,
-	): Promise<WorkflowLoopAction> {
-		const existing = await workflowLoopStorage.getWorkItem(threadId, verdict.workItemId);
-		if (!existing) {
-			return { type: 'blocked', reason: `Unknown work item: ${verdict.workItemId}` };
-		}
-
-		const {
-			state: newState,
-			action,
-			attempt,
-		} = handleVerificationVerdict(existing.state, existing.attempts, verdict);
-
-		const nextAttempts = [...existing.attempts, attempt];
-		await workflowLoopStorage.saveWorkItem(threadId, newState, nextAttempts);
-		await this.syncPlanPhaseFromWorkflowLoop(
-			threadId,
-			this.getLatestRunIdForThread(threadId),
-			newState,
-			action,
-			planStorage,
-			this.countVerificationFailures(nextAttempts),
-			verdict,
-		);
-
-		return action;
-	}
-
-	private async syncPlanPhaseFromWorkflowLoop(
-		threadId: string,
-		runId: string | undefined,
-		state: WorkflowLoopState,
-		action: WorkflowLoopAction,
-		planStorage: MastraPlanStorage,
-		verificationAttempts?: number,
-		verdict?: VerificationResult,
-	): Promise<void> {
-		if (!state.planId || !state.phaseId) {
-			return;
-		}
-
-		const existingPlan = await planStorage.get(threadId);
-		if (!existingPlan || existingPlan.planId !== state.planId) {
-			return;
-		}
-
-		const phase = this.getPlanPhase(existingPlan, state.phaseId);
-		if (!phase) {
-			return;
-		}
-
-		const nextVerificationAttempts = verificationAttempts ?? phase.verificationAttempts ?? 0;
-
-		let nextPlan = existingPlan;
-		switch (action.type) {
-			case 'verify':
-				nextPlan = patchPlanPhase(
-					existingPlan,
-					state.phaseId,
-					{
-						status: 'verifying',
-						blocker: undefined,
-					},
-					'running',
-				);
-				break;
-			case 'patch':
-			case 'rebuild':
-				nextPlan = patchPlanPhase(
-					existingPlan,
-					state.phaseId,
-					{
-						status: 'building',
-						blocker: undefined,
-						verificationAttempts: nextVerificationAttempts,
-						lastVerificationError:
-							verdict?.diagnosis ??
-							(action.type === 'patch'
-								? 'Repairing workflow after failed verification'
-								: 'Rebuilding workflow after failed verification'),
-						lastVerificationFailureSignature: verdict?.failureSignature,
-					},
-					'running',
-				);
-				break;
-			case 'done':
-				nextPlan = patchPlanPhase(
-					existingPlan,
-					state.phaseId,
-					{
-						status: 'done',
-						blocker: undefined,
-						lastVerificationError: undefined,
-						lastVerificationFailureSignature: undefined,
-					},
-					'running',
-				);
-				break;
-			case 'failed':
-				nextPlan = patchPlanPhase(
-					existingPlan,
-					state.phaseId,
-					{
-						status: 'failed',
-						blocker: undefined,
-						verificationAttempts: nextVerificationAttempts,
-						lastVerificationError: action.reason,
-						lastVerificationFailureSignature:
-							verdict?.failureSignature ?? state.lastFailureSignature,
-					},
-					'running',
-				);
-				break;
-			case 'blocked':
-				nextPlan = patchPlanPhase(
-					existingPlan,
-					state.phaseId,
-					{
-						status: 'blocked',
-						blocker: {
-							reason: action.reason,
-							inputType: 'text',
-						},
-						verificationAttempts:
-							verdict?.verdict === 'needs_user_input'
-								? (phase.verificationAttempts ?? 0)
-								: nextVerificationAttempts,
-						lastVerificationError:
-							verdict?.verdict === 'needs_user_input' ? undefined : action.reason,
-						lastVerificationFailureSignature:
-							verdict?.verdict === 'needs_user_input'
-								? undefined
-								: (verdict?.failureSignature ?? state.lastFailureSignature),
-					},
-					'blocked',
-				);
-				break;
-		}
-
-		await this.publishPlanUpdate(threadId, runId, nextPlan);
-	}
-
-	/** Convert a controller action to orchestrator guidance text. */
-	private actionToGuidance(action: WorkflowLoopAction, workItemId?: string): string {
-		switch (action.type) {
-			case 'done': {
-				let guidance = `Workflow is ready. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
-				if (action.mockedCredentialTypes && action.mockedCredentialTypes.length > 0) {
-					guidance +=
-						`\n\nCREDENTIALS MOCKED: The following credential types were mocked with pinned data: ${action.mockedCredentialTypes.join(', ')}. ` +
-						'Tell the user that the workflow was verified with mock data and offer to help them set up real credentials using `setup-credentials`. ' +
-						'The workflow will work end-to-end once real credentials are configured.';
-				}
-				return guidance;
-			}
-			case 'failed':
-				return `VERIFICATION FAILED: ${action.reason}. Report this clearly to the user and stop retrying phase "${workItemId ?? 'unknown'}".`;
-			case 'verify':
-				return (
-					`VERIFY: Run workflow ${action.workflowId} using \`run-workflow\`. ` +
-					'If it fails, use `debug-execution` to diagnose. ' +
-					`Then call \`report-verification-verdict\` with workItemId "${workItemId ?? 'unknown'}" and your findings.`
-				);
-			case 'blocked':
-				return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
-			case 'patch':
-				return (
-					`PATCH NEEDED: Apply \`patch-workflow\` to node "${action.nodeName}" in workflow ${action.workflowId}. ` +
-					`After patching, run the workflow again and call \`report-verification-verdict\` with workItemId "${workItemId ?? 'unknown'}" and the result.`
-				);
-			case 'rebuild':
-				return (
-					`REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. ` +
-					`Call \`build-workflow-with-agent\` again with these details: ${action.failureDetails}`
-				);
-		}
-	}
-
-	/** Maximum number of automatic follow-up runs before stopping and waiting for user input. */
-	private readonly MAX_AUTO_FOLLOW_UP_DEPTH = 3;
-
-	/** Emergency guard for consecutive plan auto-follow-up runs without user input. */
-	private readonly MAX_PLAN_AUTO_FOLLOW_UP_RUNS = 20;
-
-	/** Get the maximum chain depth across all non-running tasks for a thread. */
-	private getMaxChainDepth(threadId: string): number {
-		let max = 0;
-		for (const task of this.backgroundTasks.values()) {
-			if (task.threadId === threadId && task.status !== 'running') {
-				max = Math.max(max, task.chainDepth);
-			}
-		}
-		return max;
-	}
-
-	private async maybeAutoContinueThread(
-		threadId: string,
-		trigger: 'background-task-completed' | 'run-finished',
-	): Promise<void> {
-		if (this.activeRuns.has(threadId) || this.suspendedRuns.has(threadId)) {
-			return;
-		}
-
-		const user = this.threadUsers.get(threadId);
-		if (!user) {
-			return;
-		}
-
-		const existingPlan = await this.reconcileStoredPlan(
-			threadId,
-			this.getLatestRunIdForThread(threadId),
-		);
-		if (existingPlan) {
-			const runningTasks = this.getRunningTasks(threadId);
-			if (runningTasks.length > 0) {
-				this.logger.debug('Plan continuation deferred while background work is still running', {
-					threadId,
-					trigger,
-					planId: existingPlan.planId,
-					runningTasks: runningTasks.length,
-				});
-				return;
-			}
-
-			if (shouldAutoContinuePlan(existingPlan)) {
-				const autoFollowUpRuns = this.autoFollowUpRunsByThread.get(threadId) ?? 0;
-				if (autoFollowUpRuns >= this.MAX_PLAN_AUTO_FOLLOW_UP_RUNS) {
-					this.logger.warn('Plan auto-follow-up limit reached, waiting for user input', {
-						threadId,
-						trigger,
-						planId: existingPlan.planId,
-						limit: this.MAX_PLAN_AUTO_FOLLOW_UP_RUNS,
-					});
-					return;
-				}
-
-				this.logger.debug('Auto-triggering follow-up run for active plan', {
-					threadId,
-					trigger,
-					planId: existingPlan.planId,
-					autoFollowUpRuns: autoFollowUpRuns + 1,
-				});
-				const researchMode = this.threadResearchMode.get(threadId);
-				this.startRun(user, threadId, AUTO_FOLLOW_UP_MESSAGE, researchMode);
-				return;
-			}
-
-			if (existingPlan.status === 'completed' || existingPlan.status === 'blocked') {
-				this.autoFollowUpRunsByThread.set(threadId, 0);
-				return;
-			}
-		}
-
-		if (trigger !== 'background-task-completed') {
-			return;
-		}
-
-		const maxDepth = this.getMaxChainDepth(threadId);
-		if (maxDepth >= this.MAX_AUTO_FOLLOW_UP_DEPTH) {
-			this.logger.debug(
-				'Circuit breaker: max auto-follow-up depth reached, waiting for user input',
-				{ threadId, maxDepth, limit: this.MAX_AUTO_FOLLOW_UP_DEPTH },
-			);
-			return;
-		}
-
-		this.logger.debug('Auto-triggering generic follow-up run after background task completion', {
-			threadId,
-			chainDepth: maxDepth + 1,
-		});
-		const researchMode = this.threadResearchMode.get(threadId);
-		this.startRun(user, threadId, AUTO_FOLLOW_UP_MESSAGE, researchMode);
 	}
 
 	/** Cancel all background tasks for a thread. */
 	private cancelBackgroundTasks(threadId: string): void {
 		for (const [taskId, task] of this.backgroundTasks) {
-			if (task.threadId === threadId && task.status === 'running') {
+			if (task.threadId === threadId && this.isTaskActive(task)) {
 				task.abortController.abort();
 				task.status = 'cancelled';
 				task.updatedAt = Date.now();
 				task.completedAt = task.updatedAt;
 				void this.saveTaskRunSnapshot(threadId, this.toTaskRun(task), 'task-updated');
-				void this.syncPlanPhaseFromTaskRun(task);
 				this.backgroundTasks.delete(taskId);
+				void (async () => {
+					if (task.planId && task.phaseId) {
+						const planStorage = this.createPlanStorage();
+						const existingPlan = await planStorage.get(threadId);
+						if (existingPlan?.planId === task.planId) {
+							const nextPlan = patchPlanPhase(
+								existingPlan,
+								task.phaseId,
+								{
+									status: 'blocked',
+									blocker: {
+										reason: 'Execution cancelled by user',
+										inputType: 'text',
+									},
+									lastVerificationError: 'Execution cancelled by user',
+								},
+								'blocked',
+							);
+							await this.publishPlanUpdate(threadId, task.runId, nextPlan);
+						}
+					}
+				})();
 			}
 		}
 	}
@@ -1967,17 +2233,25 @@ export class InstanceAiService {
 		try {
 			const messageGroupId = overrideMessageGroupId ?? this.threadMessageGroupId.get(threadId);
 
-			// Build tree from ALL runs in the message group (not just the latest run)
-			// so the snapshot captures the full merged assistant turn.
-			let events: InstanceAiEvent[];
 			let groupRunIds: string[] | undefined;
+			let agentTree;
 			if (messageGroupId) {
 				groupRunIds = this.getRunIdsForMessageGroup(messageGroupId);
-				events = this.eventBus.getEventsForRuns(threadId, groupRunIds);
-			} else {
-				events = this.eventBus.getEventsForRun(threadId, runId);
+				const runState = this.runStateByMessageGroup.get(messageGroupId);
+				if (runState) {
+					agentTree = toAgentTree(runState);
+				}
 			}
-			const agentTree = buildAgentTreeFromEvents(events);
+
+			if (!agentTree) {
+				// Fallback for legacy or partially restored flows that do not have
+				// an in-memory normalized run state available.
+				const events =
+					groupRunIds && groupRunIds.length > 0
+						? this.eventBus.getEventsForRuns(threadId, groupRunIds)
+						: this.eventBus.getEventsForRun(threadId, runId);
+				agentTree = buildAgentTreeFromEvents(events);
+			}
 
 			if (isUpdate) {
 				await snapshotStorage.updateLast(threadId, agentTree, runId, messageGroupId, groupRunIds);

@@ -211,9 +211,8 @@ export function parseStoredMessages(
 		if (msg.role === 'user') {
 			lastUserMessageId = msg.id;
 
-			// Strip LLM-facing enrichment and hide internal auto-follow-up messages.
+			// Stored user messages are now passed through unchanged.
 			const content = cleanStoredUserMessage(text);
-			if (content === null) continue;
 
 			messages.push({
 				id: msg.id,

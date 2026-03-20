@@ -3,7 +3,11 @@ import { ref, computed, watch } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiTaskRun,
+	InstanceAiWorkflowBuildTaskOutcome,
+} from '@n8n/api-types';
 import type { IWorkflowDb } from '@/Interface';
 import WorkflowMiniCanvas from './WorkflowMiniCanvas.vue';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
@@ -13,20 +17,40 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import AgentTimeline from './AgentTimeline.vue';
 
 const props = defineProps<{
-	agentNode: InstanceAiAgentNode;
+	agentNode?: InstanceAiAgentNode | null;
+	taskRun?: InstanceAiTaskRun | null;
 }>();
 
 const instanceAiStore = useInstanceAiStore();
-
-function handleStop() {
-	instanceAiStore.amendAgent(props.agentNode.agentId, props.agentNode.role, props.agentNode.taskId);
-}
-
 const i18n = useI18n();
 const workflowsListStore = useWorkflowsListStore();
 const isDetailOpen = ref(false);
 const previewWorkflows = ref<Map<string, IWorkflowDb>>(new Map());
 const workflowModalId = ref<string | null>(null);
+
+const agentNode = computed(() => props.agentNode ?? null);
+const taskRun = computed(() => props.taskRun ?? null);
+const toolCalls = computed(() => agentNode.value?.toolCalls ?? []);
+const subtitle = computed(() => taskRun.value?.subtitle ?? agentNode.value?.subtitle ?? null);
+const hasDetailTimeline = computed(() => !!agentNode.value && toolCalls.value.length > 0);
+const buildTaskOutcome = computed<InstanceAiWorkflowBuildTaskOutcome | null>(() => {
+	if (taskRun.value?.outcome?.kind !== 'workflow-build') {
+		return null;
+	}
+
+	return taskRun.value.outcome;
+});
+
+function handleStop() {
+	if (taskRun.value && (taskRun.value.status === 'running' || taskRun.value.status === 'queued')) {
+		void instanceAiStore.cancelBackgroundTask(taskRun.value.taskId);
+		return;
+	}
+
+	if (agentNode.value?.taskId) {
+		instanceAiStore.amendAgent(agentNode.value.agentId, agentNode.value.role, agentNode.value.taskId);
+	}
+}
 
 interface PhaseState {
 	key: string;
@@ -38,58 +62,60 @@ interface PhaseState {
 }
 
 const phases = computed((): PhaseState[] => {
-	const tc = props.agentNode.toolCalls;
 	const result: PhaseState[] = [];
 
-	const searchCalls = tc.filter((t) => t.toolName === 'search-nodes');
+	const searchCalls = toolCalls.value.filter((toolCall) => toolCall.toolName === 'search-nodes');
 	if (searchCalls.length > 0) {
 		result.push({
 			key: 'researching',
 			label: i18n.baseText('instanceAi.builderCard.phase.researching'),
 			count: searchCalls.length,
-			completedCount: searchCalls.filter((t) => !t.isLoading).length,
-			isActive: searchCalls.some((t) => t.isLoading),
-			isCompleted: searchCalls.every((t) => !t.isLoading),
+			completedCount: searchCalls.filter((toolCall) => !toolCall.isLoading).length,
+			isActive: searchCalls.some((toolCall) => toolCall.isLoading),
+			isCompleted: searchCalls.every((toolCall) => !toolCall.isLoading),
 		});
 	}
 
-	const schemaCalls = tc.filter(
-		(t) => t.toolName === 'get-node-type-definition' || t.toolName === 'get-workflow-as-code',
+	const schemaCalls = toolCalls.value.filter(
+		(toolCall) =>
+			toolCall.toolName === 'get-node-type-definition' ||
+			toolCall.toolName === 'get-workflow-as-code',
 	);
 	if (schemaCalls.length > 0) {
 		result.push({
 			key: 'schemas',
 			label: i18n.baseText('instanceAi.builderCard.phase.schemas'),
 			count: schemaCalls.length,
-			completedCount: schemaCalls.filter((t) => !t.isLoading).length,
-			isActive: schemaCalls.some((t) => t.isLoading),
-			isCompleted: schemaCalls.every((t) => !t.isLoading),
+			completedCount: schemaCalls.filter((toolCall) => !toolCall.isLoading).length,
+			isActive: schemaCalls.some((toolCall) => toolCall.isLoading),
+			isCompleted: schemaCalls.every((toolCall) => !toolCall.isLoading),
 		});
 	}
 
-	const buildCalls = tc.filter(
-		(t) => t.toolName === 'build-workflow' || t.toolName === 'submit-workflow',
+	const buildCalls = toolCalls.value.filter(
+		(toolCall) =>
+			toolCall.toolName === 'build-workflow' || toolCall.toolName === 'submit-workflow',
 	);
 	if (buildCalls.length > 0) {
 		result.push({
 			key: 'building',
 			label: i18n.baseText('instanceAi.builderCard.phase.building'),
 			count: buildCalls.length,
-			completedCount: buildCalls.filter((t) => !t.isLoading).length,
-			isActive: buildCalls.some((t) => t.isLoading),
-			isCompleted: buildCalls.every((t) => !t.isLoading),
+			completedCount: buildCalls.filter((toolCall) => !toolCall.isLoading).length,
+			isActive: buildCalls.some((toolCall) => toolCall.isLoading),
+			isCompleted: buildCalls.every((toolCall) => !toolCall.isLoading),
 		});
 	}
 
-	const runCalls = tc.filter((t) => t.toolName === 'run-workflow');
+	const runCalls = toolCalls.value.filter((toolCall) => toolCall.toolName === 'run-workflow');
 	if (runCalls.length > 0) {
 		result.push({
 			key: 'testing',
 			label: 'Testing',
 			count: runCalls.length,
-			completedCount: runCalls.filter((t) => !t.isLoading).length,
-			isActive: runCalls.some((t) => t.isLoading),
-			isCompleted: runCalls.every((t) => !t.isLoading),
+			completedCount: runCalls.filter((toolCall) => !toolCall.isLoading).length,
+			isActive: runCalls.some((toolCall) => toolCall.isLoading),
+			isCompleted: runCalls.every((toolCall) => !toolCall.isLoading),
 		});
 	}
 
@@ -104,61 +130,88 @@ interface BuildResultItem {
 }
 
 const buildResults = computed((): BuildResultItem[] => {
-	return props.agentNode.toolCalls
-		.filter((t) => t.toolName === 'build-workflow' || t.toolName === 'submit-workflow')
-		.filter((t) => t.result && typeof t.result === 'object')
-		.map((t) => {
-			const result = t.result as Record<string, unknown>;
+	const results = toolCalls.value
+		.filter((toolCall) => toolCall.toolName === 'build-workflow' || toolCall.toolName === 'submit-workflow')
+		.filter((toolCall) => toolCall.result && typeof toolCall.result === 'object')
+		.map((toolCall) => {
+			const result = toolCall.result as Record<string, unknown>;
 			return {
 				success: result.success === true,
 				workflowId: typeof result.workflowId === 'string' ? result.workflowId : undefined,
-				workflowName: typeof result.workflowName === 'string' ? result.workflowName : undefined,
+				workflowName:
+					typeof result.workflowName === 'string'
+						? result.workflowName
+						: taskRun.value?.targetResource?.name,
 				errors: Array.isArray(result.errors) ? (result.errors as string[]) : undefined,
 			};
 		});
+
+	if (results.length > 0) {
+		return results;
+	}
+
+	if (!taskRun.value || !buildTaskOutcome.value) {
+		return [];
+	}
+
+	return [
+		{
+			success: buildTaskOutcome.value.submitted === true,
+			workflowId: buildTaskOutcome.value.workflowId,
+			workflowName: taskRun.value.targetResource?.name,
+			errors: buildTaskOutcome.value.failureSignature
+				? [buildTaskOutcome.value.failureSignature]
+				: undefined,
+		},
+	];
 });
 
-/** The last build result — used for overall status (header icon, agent-level error). */
 const lastBuildResult = computed(() => buildResults.value.at(-1));
+const successfulBuilds = computed(() => buildResults.value.filter((result) => result.success && result.workflowId));
 
-/** Only the successful submissions that produced a workflow. */
-const successfulBuilds = computed(() =>
-	buildResults.value.filter((r) => r.success && r.workflowId),
-);
-
-/** Map from toolCallId → { workflowId, workflowName } for successful submit-workflow calls. */
 const submitResults = computed(() => {
 	const map = new Map<string, { workflowId: string; workflowName?: string }>();
-	for (const tc of props.agentNode.toolCalls) {
+
+	for (const toolCall of toolCalls.value) {
 		if (
-			(tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') &&
-			tc.result &&
-			typeof tc.result === 'object'
+			(toolCall.toolName === 'build-workflow' || toolCall.toolName === 'submit-workflow') &&
+			toolCall.result &&
+			typeof toolCall.result === 'object'
 		) {
-			const result = tc.result as Record<string, unknown>;
+			const result = toolCall.result as Record<string, unknown>;
 			if (result.success === true && typeof result.workflowId === 'string') {
-				map.set(tc.toolCallId, {
+				map.set(toolCall.toolCallId, {
 					workflowId: result.workflowId,
-					workflowName: typeof result.workflowName === 'string' ? result.workflowName : undefined,
+					workflowName:
+						typeof result.workflowName === 'string'
+							? result.workflowName
+							: taskRun.value?.targetResource?.name,
 				});
 			}
 		}
 	}
+
+	if (map.size === 0 && taskRun.value && buildTaskOutcome.value?.workflowId) {
+		map.set(`task-${taskRun.value.taskId}`, {
+			workflowId: buildTaskOutcome.value.workflowId,
+			workflowName: taskRun.value.targetResource?.name,
+		});
+	}
+
 	return map;
 });
 
-/** Map from toolCallId → { executionId, workflowId, status } for completed run-workflow calls. */
 const runResults = computed(() => {
 	const map = new Map<
 		string,
 		{ executionId: string; workflowId: string; status: string; error?: string }
 	>();
-	for (const tc of props.agentNode.toolCalls) {
-		if (tc.toolName === 'run-workflow' && tc.result && typeof tc.result === 'object') {
-			const result = tc.result as Record<string, unknown>;
-			const args = tc.args as Record<string, unknown>;
-			if (typeof result.executionId === 'string' && typeof args.workflowId === 'string') {
-				map.set(tc.toolCallId, {
+		for (const toolCall of toolCalls.value) {
+			if (toolCall.toolName === 'run-workflow' && toolCall.result && typeof toolCall.result === 'object') {
+				const result = toolCall.result as Record<string, unknown>;
+				const args = toolCall.args;
+				if (typeof result.executionId === 'string' && typeof args.workflowId === 'string') {
+					map.set(toolCall.toolCallId, {
 					executionId: result.executionId,
 					workflowId: args.workflowId,
 					status: typeof result.status === 'string' ? result.status : 'unknown',
@@ -170,24 +223,42 @@ const runResults = computed(() => {
 	return map;
 });
 
-const isActive = computed(() => props.agentNode.status === 'active');
-const isError = computed(
-	() =>
-		props.agentNode.status === 'error' || (lastBuildResult.value && !lastBuildResult.value.success),
-);
+const isActive = computed(() => {
+	if (taskRun.value) {
+		return (
+			taskRun.value.status === 'queued' ||
+			taskRun.value.status === 'running' ||
+			taskRun.value.status === 'suspended'
+		);
+	}
 
-// Fetch workflow preview for every successful submit.
-// Keyed by toolCallId (not workflowId) so each submit gets its own snapshot —
-// the same workflow may be submitted multiple times (updates), and each version
-// should render independently in the preview.
+	return agentNode.value?.status === 'active';
+});
+
+const isError = computed(() => {
+	if (taskRun.value) {
+		return (
+			taskRun.value.status === 'failed' ||
+			taskRun.value.status === 'cancelled' ||
+			!!(lastBuildResult.value && !lastBuildResult.value.success)
+		);
+	}
+
+	return (
+		agentNode.value?.status === 'error' || !!(lastBuildResult.value && !lastBuildResult.value.success)
+	);
+});
+
+const taskError = computed(() => taskRun.value?.error ?? agentNode.value?.error ?? null);
+
 watch(
-	() => props.agentNode.toolCalls.filter((t) => !t.isLoading && t.result).length,
+	() => submitResults.value.size,
 	async () => {
-		for (const [toolCallId, entry] of submitResults.value) {
-			if (!entry.workflowId || previewWorkflows.value.has(toolCallId)) continue;
+		for (const [taskKey, entry] of submitResults.value) {
+			if (!entry.workflowId || previewWorkflows.value.has(taskKey)) continue;
 			try {
-				const wf = await workflowsListStore.fetchWorkflow(entry.workflowId);
-				previewWorkflows.value.set(toolCallId, wf);
+				const workflow = await workflowsListStore.fetchWorkflow(entry.workflowId);
+				previewWorkflows.value.set(taskKey, workflow);
 			} catch {
 				// Preview is non-critical — silently skip if fetch fails
 			}
@@ -200,19 +271,19 @@ watch(
 <template>
 	<div :class="$style.root">
 		<!-- Header -->
-		<div :class="$style.header">
-			<div :class="$style.headerLeft">
-				<N8nIcon v-if="isActive" icon="spinner" spin size="small" :class="$style.activeIcon" />
-				<N8nIcon v-else-if="isError" icon="triangle-alert" size="small" :class="$style.errorIcon" />
-				<N8nIcon v-else icon="check" size="small" :class="$style.successIcon" />
-				<span :class="$style.title">{{ i18n.baseText('instanceAi.builderCard.title') }}</span>
-				<span v-if="props.agentNode.subtitle" :class="$style.subtitle">
-					{{ props.agentNode.subtitle }}
-				</span>
-			</div>
-			<button v-if="isActive" :class="$style.stopButton" @click="handleStop">
-				<N8nIcon icon="square" size="small" />
-				{{ i18n.baseText('instanceAi.agent.stop') }}
+			<div :class="$style.header">
+				<div :class="$style.headerLeft">
+					<N8nIcon v-if="isActive" icon="spinner" spin size="small" :class="$style.activeIcon" />
+					<N8nIcon v-else-if="isError" icon="triangle-alert" size="small" :class="$style.errorIcon" />
+					<N8nIcon v-else icon="check" size="small" :class="$style.successIcon" />
+					<span :class="$style.title">{{ i18n.baseText('instanceAi.builderCard.title') }}</span>
+					<span v-if="subtitle" :class="$style.subtitle">
+						{{ subtitle }}
+					</span>
+				</div>
+				<button v-if="isActive" :class="$style.stopButton" @click="handleStop">
+					<N8nIcon icon="square" size="small" />
+					{{ i18n.baseText('instanceAi.agent.stop') }}
 			</button>
 		</div>
 
@@ -244,20 +315,20 @@ watch(
 			</div>
 		</div>
 
-		<!-- Tool calls with inline workflow previews -->
-		<CollapsibleRoot
-			v-if="props.agentNode.toolCalls.length > 0"
-			v-model:open="isDetailOpen"
-			:class="$style.detailBlock"
-		>
-			<CollapsibleTrigger :class="$style.detailTrigger">
-				<span>{{ i18n.baseText('instanceAi.builderCard.details') }}</span>
-				<N8nIcon :icon="isDetailOpen ? 'chevron-up' : 'chevron-down'" size="small" />
-			</CollapsibleTrigger>
-			<CollapsibleContent :class="$style.detailContent">
-				<AgentTimeline :agent-node="props.agentNode" :compact="true">
-					<template #after-tool-call="{ toolCall: tc }">
-						<!-- Inline workflow preview after successful submit-workflow -->
+			<!-- Tool calls with inline workflow previews -->
+			<CollapsibleRoot
+				v-if="hasDetailTimeline"
+				v-model:open="isDetailOpen"
+				:class="$style.detailBlock"
+			>
+				<CollapsibleTrigger :class="$style.detailTrigger">
+					<span>{{ i18n.baseText('instanceAi.builderCard.details') }}</span>
+					<N8nIcon :icon="isDetailOpen ? 'chevron-up' : 'chevron-down'" size="small" />
+				</CollapsibleTrigger>
+				<CollapsibleContent :class="$style.detailContent">
+					<AgentTimeline v-if="agentNode" :agent-node="agentNode" :compact="true">
+						<template #after-tool-call="{ toolCall: tc }">
+							<!-- Inline workflow preview after successful submit-workflow -->
 						<div
 							v-if="submitResults.has(tc.toolCallId) && previewWorkflows.has(tc.toolCallId)"
 							:class="$style.previewBlock"
@@ -304,9 +375,9 @@ watch(
 			</CollapsibleContent>
 		</CollapsibleRoot>
 
-		<!-- Success summary (visible when details are collapsed) -->
-		<template v-if="!isDetailOpen">
-			<template v-for="build in successfulBuilds" :key="`summary-${build.workflowId}`">
+			<!-- Success summary (visible when details are collapsed) -->
+			<template v-if="!isDetailOpen">
+				<template v-for="build in successfulBuilds" :key="`summary-${build.workflowId}`">
 				<div :class="$style.successResult">
 					<N8nIcon icon="check" size="small" :class="$style.successIcon" />
 					<span>{{ build.workflowName ?? i18n.baseText('instanceAi.builderCard.success') }}</span>
@@ -318,9 +389,22 @@ watch(
 						{{ i18n.baseText('instanceAi.builderCard.openWorkflow') }}
 						<N8nIcon icon="external-link" size="small" />
 					</a>
+					</div>
+				</template>
+
+				<div
+					v-if="
+						taskRun?.resultSummary &&
+						!isError &&
+						successfulBuilds.length === 0 &&
+						!hasDetailTimeline
+					"
+					:class="$style.successResult"
+				>
+					<N8nIcon icon="check" size="small" :class="$style.successIcon" />
+					<span>{{ taskRun.resultSummary }}</span>
 				</div>
 			</template>
-		</template>
 
 		<!-- Build Error (last result only) -->
 		<div v-if="lastBuildResult && !lastBuildResult.success" :class="$style.errorResult">
@@ -331,13 +415,13 @@ watch(
 					<li v-for="(err, idx) in lastBuildResult.errors" :key="idx">{{ err }}</li>
 				</ul>
 			</div>
-		</div>
+			</div>
 
-		<!-- Agent-level error -->
-		<div v-if="props.agentNode.error && !lastBuildResult" :class="$style.errorResult">
-			<N8nIcon icon="triangle-alert" size="small" :class="$style.errorIcon" />
-			<span>{{ props.agentNode.error }}</span>
-		</div>
+			<!-- Agent-level error -->
+			<div v-if="taskError && !lastBuildResult" :class="$style.errorResult">
+				<N8nIcon icon="triangle-alert" size="small" :class="$style.errorIcon" />
+				<span>{{ taskError }}</span>
+			</div>
 
 		<!-- Workflow detail modal (iframe-based, full NDV support) -->
 		<Teleport to="body">

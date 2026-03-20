@@ -58,13 +58,26 @@ const ALWAYS_LOADED_TOOLS = new Set([
 	'update-plan',
 	'approve-plan',
 	'request-plan-approval',
-	'update-phase-status',
 	'block-phase-with-question',
 	'delegate',
 	'build-workflow-with-agent',
 	'ask-user',
 	'web-search',
 	'fetch-url',
+]);
+
+const RUNTIME_LOCKED_TOOLS = new Set([
+	'ask-plan-questions',
+	'create-plan',
+	'update-plan',
+	'approve-plan',
+	'request-plan-approval',
+	'update-phase-status',
+	'block-phase-with-question',
+	'update-tasks',
+	'build-workflow-with-agent',
+	'manage-data-tables-with-agent',
+	'research-with-agent',
 ]);
 
 function getOrCreateToolSearchProcessor(tools: ToolsInput): ToolSearchProcessor {
@@ -147,6 +160,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		memoryConfig,
 		disableDeferredTools = false,
 	} = options;
+	const runtimeOwnedPlanActive = orchestrationContext?.runtimeOwnedPlanActive ?? false;
 
 	// Build native n8n domain tools (context captured via closures — per-run)
 	const domainTools = createAllTools(context);
@@ -207,16 +221,23 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 	// Build orchestration tools (plan, delegate) — orchestrator-only
 	// Must happen after mcpTools are set on orchestrationContext
-	const orchestrationTools = orchestrationContext
+	const orchestrationTools: ToolsInput = orchestrationContext
 		? createOrchestrationTools(orchestrationContext)
 		: {};
+	const filteredOrchestrationTools: ToolsInput = {};
+	for (const [name, tool] of Object.entries(orchestrationTools)) {
+		if (runtimeOwnedPlanActive && RUNTIME_LOCKED_TOOLS.has(name)) {
+			continue;
+		}
+		filteredOrchestrationTools[name] = tool;
+	}
 
 	// Prevent MCP tools from shadowing domain or orchestration tools.
 	// A malicious/misconfigured MCP server could register a tool named "run-workflow"
 	// which would silently replace the real domain tool via object spread.
 	const reservedToolNames = new Set([
 		...Object.keys(domainTools),
-		...Object.keys(orchestrationTools),
+		...Object.keys(filteredOrchestrationTools),
 	]);
 	const safeMcpTools: ToolsInput = {};
 	for (const [name, tool] of Object.entries(mcpTools)) {
@@ -239,7 +260,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 	const allOrchestratorTools: ToolsInput = {
 		...orchestratorDomainTools,
-		...orchestrationTools,
+		...filteredOrchestrationTools,
 		...orchestratorMcpTools,
 		...localMcpTools,
 	};
@@ -272,6 +293,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 				filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
 				toolSearchEnabled: hasDeferrableTools,
+				runtimeOwnedPlanActive,
 			}),
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },

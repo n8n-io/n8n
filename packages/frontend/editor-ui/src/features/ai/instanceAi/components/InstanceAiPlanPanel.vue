@@ -36,7 +36,7 @@ const i18n = useI18n();
 	top: 0;
 	right: 0;
 	bottom: 0;
-	width: 420px;
+	width: 620px;
 	background: var(--color--background);
 	border-left: var(--border);
 	display: flex;

@@ -18,7 +18,10 @@ jest.mock('@n8n/instance-ai', () => ({
 }));
 
 // Mock GlobalConfig
-function createService(): InstanceAiMemoryService {
+function createService(): {
+	service: InstanceAiMemoryService;
+	runSnapshotRepo: { find: jest.Mock };
+} {
 	const mockConfig = {
 		instanceAi: {
 			embedderModel: '',
@@ -37,8 +40,19 @@ function createService(): InstanceAiMemoryService {
 		},
 	};
 	const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+	const runSnapshotRepo = {
+		find: jest.fn().mockResolvedValue([]),
+	};
 	const mockCompositeStore = {} as never;
-	return new InstanceAiMemoryService(mockLogger as never, mockConfig as never, mockCompositeStore);
+	return {
+		service: new InstanceAiMemoryService(
+			mockLogger as never,
+			mockConfig as never,
+			runSnapshotRepo as never,
+			mockCompositeStore,
+		),
+		runSnapshotRepo,
+	};
 }
 
 function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode {
@@ -81,12 +95,19 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 		mockGetThreadById.mockResolvedValue({
 			id: 'thread-1',
 			title: 'Test',
-			metadata: {
-				instanceAiRunSnapshots: [{ tree, runId: 'run_abc' }],
-			},
+			metadata: {},
 		});
 
-		const service = createService();
+		const { service, runSnapshotRepo } = createService();
+		runSnapshotRepo.find.mockResolvedValue([
+			{
+				tree,
+				runId: 'run_abc',
+				messageGroupId: null,
+				runIds: null,
+				createdAt: new Date('2026-01-01T00:00:01'),
+			},
+		]);
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		expect(result.messages).toHaveLength(2);
@@ -132,7 +153,8 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 			metadata: {},
 		});
 
-		const service = createService();
+		const { service, runSnapshotRepo } = createService();
+		runSnapshotRepo.find.mockResolvedValue([]);
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		expect(result.messages).toHaveLength(2);
@@ -151,7 +173,8 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 			metadata: {},
 		});
 
-		const service = createService();
+		const { service, runSnapshotRepo } = createService();
+		runSnapshotRepo.find.mockResolvedValue([]);
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		expect(result.messages).toEqual([]);
@@ -174,7 +197,7 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
 		});
 
-		const service = createService();
+		const { service } = createService();
 		const result = await service.ensureThread('user-1', 'thread-new');
 
 		expect(mockSaveThread).toHaveBeenCalledWith({
@@ -199,7 +222,7 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
 		});
 
-		const service = createService();
+		const { service } = createService();
 		const result = await service.ensureThread('user-1', 'thread-existing');
 
 		expect(mockSaveThread).not.toHaveBeenCalled();

@@ -14,7 +14,7 @@ export function createCancelBackgroundTaskTool(context: OrchestrationContext) {
 		description:
 			'Cancel a running background task (workflow builder, data table manager) by its task ID. ' +
 			'Use when the user asks to stop a background task. ' +
-			'Running task IDs are listed in the <background-tasks> section of the message.',
+			'Use the task ID from the running task state shown in the UI.',
 		inputSchema: z.object({
 			taskId: z.string().describe('The task ID to cancel (e.g. build-XXXXXXXX)'),
 		}),

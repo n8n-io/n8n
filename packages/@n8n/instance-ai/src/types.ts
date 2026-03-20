@@ -5,6 +5,8 @@ import type { Memory } from '@mastra/memory';
 import type {
 	TaskList,
 	InstanceAiPermissions,
+	InstanceAiPlanExecutionContext,
+	InstanceAiPlanStatus,
 	InstanceAiPlanSpec,
 	InstanceAiTaskKind,
 	InstanceAiTaskOutcome,
@@ -557,6 +559,11 @@ export interface BackgroundTaskResult {
 	outcome?: InstanceAiTaskOutcome;
 }
 
+export interface BackgroundTaskLifecycleReporter {
+	suspended: (requestId?: string) => Promise<void>;
+	resumed: () => Promise<void>;
+}
+
 export interface SpawnBackgroundTaskOptions {
 	taskId: string;
 	threadId: string;
@@ -569,12 +576,14 @@ export interface SpawnBackgroundTaskOptions {
 	targetResource?: InstanceAiTargetResource;
 	planId?: string;
 	phaseId?: string;
-	/** Unique work item ID for workflow loop tracking. When set, the service
-	 *  uses the workflow loop controller to manage verify/repair transitions. */
+	/** Optional execution work item identifier for richer task/phase correlation. */
 	workItemId?: string;
+	/** Stable message group for detached execution started after the original run finished. */
+	messageGroupId?: string;
 	run: (
 		signal: AbortSignal,
 		drainCorrections: () => string[],
+		lifecycle: BackgroundTaskLifecycleReporter,
 	) => Promise<string | BackgroundTaskResult>;
 }
 
@@ -587,12 +596,17 @@ export interface OrchestrationContext {
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
 	storage: MastraCompositeStore;
+	messageGroupId?: string;
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
 	domainTools: ToolsInput;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
 	planStorage: PlanStorage;
+	activePlanStatus?: InstanceAiPlanStatus;
+	runtimeOwnedPlanActive?: boolean;
+	planExecutionContext?: InstanceAiPlanExecutionContext;
+	startPlanExecution?: (planId: string) => Promise<void>;
 	waitForConfirmation?: (requestId: string) => Promise<{
 		approved: boolean;
 		credentialId?: string;
@@ -626,7 +640,7 @@ export interface OrchestrationContext {
 	iterationLog?: IterationLog;
 	/** Send a correction message to a running background task */
 	sendCorrectionToTask?: (taskId: string, correction: string) => void;
-	/** Report a verification verdict to the deterministic workflow loop controller */
+	/** Report a verification verdict to a deterministic runtime coordinator */
 	reportVerificationVerdict?: (verdict: VerificationResult) => Promise<WorkflowLoopAction>;
 }
 

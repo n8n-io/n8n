@@ -61,20 +61,45 @@ const hasInlinePlanningUi = computed(() => {
 	return tree.toolCalls.some(
 		(toolCall) =>
 			toolCall.renderHint === 'plan' &&
-			toolCall.isLoading &&
 			toolCall.confirmation?.inputType === 'questions' &&
 			!tree.plan,
 	);
+});
+
+const hasRootTimelineText = computed(() =>
+	props.message.agentTree?.timeline.some(
+		(entry) => entry.type === 'text' && entry.content.trim().length > 0,
+	) ?? false,
+);
+
+const fallbackNarrationContent = computed(() => {
+	if (!props.message.agentTree || hasRootTimelineText.value) {
+		return '';
+	}
+
+	const content = props.message.content.trim();
+	if (content.length > 0) {
+		return content;
+	}
+
+	return props.message.agentTree.textContent.trim();
 });
 
 /**
  * Background task indicator: shows when the orchestrator run has finished
  * but child agents (e.g., workflow builder) are still working in the background.
  */
-const hasActiveBackgroundTasks = computed(() => {
-	if (!props.message.agentTree || props.message.isStreaming) return false;
-	return props.message.agentTree.children.some((c) => c.status === 'active');
+const activeBackgroundTasks = computed(() => {
+	if (props.message.isStreaming) return [];
+	return store.getTaskRunsForMessageGroup(props.message.messageGroupId).filter(
+		(taskRun) =>
+			taskRun.status === 'queued' ||
+			taskRun.status === 'running' ||
+			taskRun.status === 'suspended',
+	);
 });
+
+const hasActiveBackgroundTasks = computed(() => activeBackgroundTasks.value.length > 0);
 
 function formatJson(value: unknown): string {
 	try {
@@ -114,8 +139,12 @@ function formatJson(value: unknown): string {
 						v-if="props.message.agentTree"
 						:agent-node="props.message.agentTree"
 						:is-root="true"
-						:hide-plan-prefix="!!props.message.agentTree.plan"
+						:message-group-id="props.message.messageGroupId"
 					/>
+
+					<div v-if="fallbackNarrationContent" :class="$style.textContent">
+						<InstanceAiMarkdown :content="fallbackNarrationContent" />
+					</div>
 
 					<!-- Run-level error -->
 					<div v-if="runError" :class="$style.errorBubble" role="alert">

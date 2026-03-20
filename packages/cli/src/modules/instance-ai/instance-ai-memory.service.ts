@@ -15,6 +15,7 @@ import type {
 import { AgentTreeSnapshotStorage } from './agent-tree-snapshot';
 import { parseStoredMessages } from './message-parser';
 import type { MastraDBMessage } from './message-parser';
+import { InstanceAiRunSnapshotRepository } from './repositories';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
 
 @Service()
@@ -24,6 +25,7 @@ export class InstanceAiMemoryService {
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
+		private readonly runSnapshotRepo: InstanceAiRunSnapshotRepository,
 		private readonly compositeStore: TypeORMCompositeStore,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -182,8 +184,8 @@ export class InstanceAiMemoryService {
 			throw error;
 		}
 
-		// Fetch agent tree snapshots from thread metadata
-		const snapshotStorage = new AgentTreeSnapshotStorage(memory);
+		// Fetch agent tree snapshots from dedicated storage
+		const snapshotStorage = new AgentTreeSnapshotStorage(this.runSnapshotRepo);
 		const snapshots = await snapshotStorage.getAll(threadId);
 
 		// Parse into rich messages with agent trees

@@ -81,8 +81,8 @@ fixed taxonomy of sub-agent types.
 ### `cancel-background-task`
 
 Cancel a running background task by its ID. Used when the user asks to stop a
-background agent (e.g., "stop building that workflow"). The orchestrator sees
-running task IDs via the `<background-tasks>` section injected into each message.
+background agent (e.g., "stop building that workflow"). Active task IDs are
+available from the task runtime and surfaced in the Tasks panel/UI state.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -112,9 +112,9 @@ cancelRun (global stop)   ─→ cancelBackgroundTasks(threadId)            ─�
                                               UI auto-collapses section
 ```
 
-**Amend flow**: After cancellation, the cancelled task context is enriched into
-the user's next message (`[Background task cancelled by user — {role}]`), so the
-orchestrator knows what was stopped and can act on new instructions.
+**Amend flow**: After cancellation, the cancelled task remains visible in task
+state and can be referenced by follow-up orchestration logic without injecting
+control text into the next user message.
 
 ### `build-workflow-with-agent`
 
@@ -585,7 +585,7 @@ reads pages to answer a complex question. Same pattern as `build-workflow-with-a
 - Spawns a background task (non-blocking, returns immediately)
 - Sub-agent has tools: `web-search`, `fetch-url`
 - Max 12 steps, stateless (per ADR-011)
-- Publishes `agent-spawned` event; results arrive via `enrichMessageWithBackgroundTasks()`
+- Publishes task lifecycle events; results are stored in durable task state and surfaced in the Tasks/Plan UI
 - **Conditional**: Only registered when `web-search` is available in domain tools
 
 ---

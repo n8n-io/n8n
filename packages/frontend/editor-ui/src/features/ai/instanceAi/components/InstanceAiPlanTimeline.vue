@@ -14,6 +14,7 @@ import type {
 
 import type { PlanMode } from '@/features/ai/assistant/assistant.types';
 import PlanQuestionsMessage from '@/features/ai/assistant/components/Agent/PlanQuestionsMessage.vue';
+import UserAnswersMessage from '@/features/ai/assistant/components/Agent/UserAnswersMessage.vue';
 
 import { useInstanceAiStore } from '../instanceAi.store';
 
@@ -46,6 +47,25 @@ const hiddenPlanConfirmation = computed(() =>
 	),
 );
 
+function toPlanModeQuestion(question: InstanceAiPlannerQuestion): PlanMode.PlannerQuestion {
+	return {
+		id: question.id,
+		question: question.question,
+		type: question.type,
+		options: question.options,
+	};
+}
+
+function hasQuestionAnswersResult(
+	result: unknown,
+): result is { answered?: boolean; answers: InstanceAiQuestionResponse[] } {
+	if (!result || typeof result !== 'object' || !('answers' in result)) {
+		return false;
+	}
+
+	return Array.isArray(Reflect.get(result, 'answers'));
+}
+
 const clarificationToolCall = computed(() => {
 	const toolCall = hiddenPlanConfirmation.value;
 	if (!toolCall || toolCall.confirmation?.inputType !== 'questions') {
@@ -53,6 +73,19 @@ const clarificationToolCall = computed(() => {
 	}
 
 	return toolCall;
+});
+
+const answeredClarificationToolCall = computed(() => {
+	const reversedToolCalls = [...props.agentNode.toolCalls].reverse();
+
+	return (
+		reversedToolCalls.find(
+			(toolCall) =>
+				toolCall.renderHint === 'plan' &&
+				toolCall.confirmation?.inputType === 'questions' &&
+				hasQuestionAnswersResult(toolCall.result),
+		) ?? null
+	);
 });
 
 const approvalToolCall = computed(() => {
@@ -68,8 +101,27 @@ const clarificationQuestions = computed<PlanMode.PlannerQuestion[]>(() =>
 	(clarificationToolCall.value?.confirmation?.questions ?? []).map(toPlanModeQuestion),
 );
 
+const clarificationAnswers = computed<PlanMode.QuestionResponse[]>(() => {
+	const result = answeredClarificationToolCall.value?.result;
+	if (!hasQuestionAnswersResult(result)) {
+		return [];
+	}
+
+	return result.answers.map((answer) => ({
+		questionId: answer.questionId,
+		question: answer.question,
+		selectedOptions: answer.selectedOptions,
+		customText: answer.customText ?? '',
+		skipped: answer.skipped ?? false,
+	}));
+});
+
 const showClarificationCard = computed(
 	() => clarificationToolCall.value && clarificationQuestions.value.length > 0,
+);
+
+const showAnsweredClarificationCard = computed(
+	() => !showClarificationCard.value && clarificationAnswers.value.length > 0,
 );
 
 const showApprovalCard = computed(() => !!approvalToolCall.value);
@@ -88,6 +140,13 @@ const clarificationSummary = computed(
 
 const clarificationIntroMessage = computed(
 	() => clarificationToolCall.value?.confirmation?.introMessage,
+);
+
+const answeredClarificationMessage = computed(
+	() =>
+		answeredClarificationToolCall.value?.confirmation?.introMessage ??
+		answeredClarificationToolCall.value?.confirmation?.message ??
+		'',
 );
 
 const showClarificationSummary = computed(
@@ -179,15 +238,6 @@ const phaseStatusConfig: Record<
 	},
 };
 
-function toPlanModeQuestion(question: InstanceAiPlannerQuestion): PlanMode.PlannerQuestion {
-	return {
-		id: question.id,
-		question: question.question,
-		type: question.type,
-		options: question.options,
-	};
-}
-
 function toInstanceAiAnswers(answers: PlanMode.QuestionResponse[]): InstanceAiQuestionResponse[] {
 	return answers.map((answer) => ({
 		questionId: answer.questionId,
@@ -265,7 +315,7 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 
 <template>
 	<div
-		v-if="plan || showClarificationCard || showApprovalCard"
+		v-if="plan || showClarificationCard || showAnsweredClarificationCard || showApprovalCard"
 		:class="$style.root"
 		data-test-id="instance-ai-plan-timeline"
 	>
@@ -290,6 +340,26 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 				:disabled="clarificationSubmitted"
 				@submit="submitClarificationAnswers"
 			/>
+		</div>
+
+		<div
+			v-else-if="showAnsweredClarificationCard"
+			:class="$style.requestCard"
+			data-test-id="instance-ai-plan-answers"
+		>
+			<div :class="$style.requestHeader">
+				<div :class="$style.requestTitle">
+					<N8nIcon icon="messages-square" size="small" />
+					<span>{{ i18n.baseText('instanceAi.planTimeline.questionsTitle') }}</span>
+				</div>
+				<span :class="$style.requestBadge">{{
+					i18n.baseText('instanceAi.planTimeline.phase.done')
+				}}</span>
+			</div>
+			<p v-if="answeredClarificationMessage" :class="$style.requestSummary">
+				{{ answeredClarificationMessage }}
+			</p>
+			<UserAnswersMessage :answers="clarificationAnswers" />
 		</div>
 
 		<div v-if="plan" :class="$style.planCard">
@@ -628,7 +698,7 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 
 .phaseMeta {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
 	gap: var(--spacing--xs);
 }
 
@@ -637,7 +707,7 @@ function statusSummary(planStatus: InstanceAiPlanSpec['status']): string {
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--xs);
 	border: 1px solid color-mix(in srgb, var(--color--foreground) 80%, transparent);
-	border-radius: var(--radius--md);
+	border-radius: var(--radius--xs);
 	background: color-mix(in srgb, var(--color--background) 92%, transparent);
 }
 

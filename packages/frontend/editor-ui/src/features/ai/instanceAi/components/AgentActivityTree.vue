@@ -10,11 +10,11 @@ const props = withDefaults(
 	defineProps<{
 		agentNode: InstanceAiAgentNode;
 		isRoot?: boolean;
-		hidePlanPrefix?: boolean;
+		messageGroupId?: string | null;
 	}>(),
 	{
 		isRoot: false,
-		hidePlanPrefix: false,
+		messageGroupId: null,
 	},
 );
 
@@ -37,7 +37,10 @@ const hasReasoning = computed(() => props.agentNode.reasoning.length > 0);
 		</CollapsibleRoot>
 
 		<!-- Unified timeline renderer -->
-		<AgentTimeline :agent-node="props.agentNode" :hide-plan-prefix="props.hidePlanPrefix" />
+		<AgentTimeline
+			:agent-node="props.agentNode"
+			:message-group-id="props.messageGroupId"
+		/>
 	</div>
 </template>
 

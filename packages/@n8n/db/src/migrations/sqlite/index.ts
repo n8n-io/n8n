@@ -147,6 +147,7 @@ import { AddRoleColumnToProjectSecretsProviderAccess1772619247761 } from '../com
 import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../common/1772619247762-ChangeWorkflowPublishedVersionFKsToRestrict';
 import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-AddTypeToChatHubSessions';
 import { CreateInstanceAiTables1773000000000 } from '../common/1773000000000-CreateInstanceAiTables';
+import { AddInstanceAiRuntimeTables1773000000001 } from '../common/1773000000001-AddInstanceAiRuntimeTables';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -299,6 +300,7 @@ const sqliteMigrations: Migration[] = [
 	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
 	AddTypeToChatHubSessions1772700000000,
 	CreateInstanceAiTables1773000000000,
+	AddInstanceAiRuntimeTables1773000000001,
 ];
 
 export { sqliteMigrations };
