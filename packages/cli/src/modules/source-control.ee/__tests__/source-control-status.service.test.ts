@@ -58,10 +58,9 @@ describe('getStatus', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		sourceControlScopedService.createContext.mockImplementation(async (user) => {
-			const isAdmin = user.role === GLOBAL_ADMIN_ROLE;
-			return new SourceControlContext(user, [], [], isAdmin);
-		});
+		sourceControlScopedService.createContext.mockImplementation(
+			async (user) => new SourceControlContext(user, [], []),
+		);
 
 		// version ids (workflows)
 		sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);

@@ -199,7 +199,10 @@ export class SourceControlImportService {
 				if (!remote?.id) {
 					return false;
 				}
-				return context.isAdmin || (remote.owner && projectIndex.findByOwner(remote.owner));
+				return (
+					context.hasAccessToAllProjects() ||
+					(remote.owner && projectIndex.findByOwner(remote.owner))
+				);
 			})
 			.map((remote) => {
 				const project = remote.owner ? projectIndex.findByOwner(remote.owner) : undefined;
@@ -342,7 +345,7 @@ export class SourceControlImportService {
 					return false;
 				}
 				const owner = remote.ownedBy;
-				return !owner || context.isAdmin || projectIndex.findByOwner(owner);
+				return !owner || context.hasAccessToAllProjects() || projectIndex.findByOwner(owner);
 			})
 			.map((remote) => {
 				const project = remote.ownedBy ? projectIndex.findByOwner(remote.ownedBy) : null;
@@ -539,7 +542,7 @@ export class SourceControlImportService {
 				fallbackValue: { folders: [] },
 			});
 
-			if (!context.isAdmin) {
+			if (!context.hasAccessToAllProjects()) {
 				const accessibleProjects = context.authorizedProjects;
 				const accessibleProjectIds = new Set(accessibleProjects.map((p) => p.id));
 
@@ -643,7 +646,7 @@ export class SourceControlImportService {
 			}),
 		);
 
-		if (context.isAdmin) {
+		if (context.hasAccessToAllProjects()) {
 			return remoteProjects;
 		}
 

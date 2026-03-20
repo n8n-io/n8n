@@ -67,7 +67,6 @@ describe('SourceControlImportService', () => {
 		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
 		[],
 		[],
-		true,
 	);
 
 	const service = new SourceControlImportService(
@@ -2055,7 +2054,6 @@ describe('SourceControlImportService', () => {
 						Object.assign(new Project(), { id: 'project3' }),
 					],
 					[],
-					false,
 				);
 				fsReadFile.mockResolvedValue(JSON.stringify(mockFoldersData));
 
@@ -2487,7 +2485,6 @@ describe('SourceControlImportService', () => {
 					Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE }),
 					[mock<Project>({ id: mockProjectData2.id, type: 'team' })],
 					[],
-					false,
 				);
 
 				// ACT
