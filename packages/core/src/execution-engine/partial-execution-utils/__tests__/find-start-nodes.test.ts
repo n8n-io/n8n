@@ -9,7 +9,7 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
-import { type IPinData, type IRunData } from 'n8n-workflow';
+import { type IPinData, type IRunData, type ExecutionError } from 'n8n-workflow';
 
 import { createNodeData, toITaskData } from './helpers';
 import { DirectedGraph } from '../directed-graph';
@@ -42,7 +42,7 @@ describe('isDirty', () => {
 		const runData: IRunData = {
 			[node.name]: [
 				toITaskData([{ data: { value: 1 } }], {
-					error: { message: 'Request failed', name: 'NodeApiError' },
+					error: { message: 'Request failed', name: 'NodeApiError' } as unknown as ExecutionError,
 				}),
 			],
 		};
@@ -90,7 +90,7 @@ describe('findStartNodes', () => {
 			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
 			[node1.name]: [
 				toITaskData([{ data: { value: 1 } }], {
-					error: { message: 'Request failed', name: 'NodeApiError' },
+					error: { message: 'Request failed', name: 'NodeApiError' } as unknown as ExecutionError,
 				}),
 			],
 		};
