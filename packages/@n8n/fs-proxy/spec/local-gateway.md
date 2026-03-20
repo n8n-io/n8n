@@ -27,11 +27,68 @@ The AI can read files and navigate the directory structure within a
 user-specified root directory. Access is strictly scoped — the AI cannot access
 files outside the configured root.
 
-Supported operations:
-- Read file contents
-- List files in a directory
-- Get a directory tree
-- Search file contents
+#### Read operations (always available when filesystem is enabled)
+
+- **Read file** — read the text content of a file. Files larger than 512 KB or
+  binary files are rejected. Supports paginated access via a start line and
+  line count (default: 200 lines).
+- **List files** — list the immediate children of a directory. Results can be
+  filtered by type (file, directory, or all) and capped at a maximum count
+  (default: 200).
+- **Get file tree** — get an indented directory tree starting from a given
+  path. Traversal depth is configurable (default: 2 levels). Common
+  generated directories (`node_modules`, `dist`, `.git`, etc.) are excluded
+  automatically.
+- **Search files** — search for a regex pattern across all files under a
+  directory. Supports an optional glob filter (e.g. `**/*.ts`),
+  case-insensitive mode, and a result cap (default: 50 matches). Files
+  larger than 512 KB are skipped.
+
+#### Write operations (requires `writeAccess` to be enabled)
+
+Write operations are disabled by default. They must be explicitly enabled via
+the `writeAccess` configuration property on the filesystem capability. This
+gives the user clear, deliberate control over whether the AI is permitted to
+modify the local filesystem.
+
+When `writeAccess` is enabled, the following additional operations become
+available:
+
+- **Write file** — create a new file with the given content. Overwrites if the
+  file already exists. Parent directories are created automatically.
+  Content must not exceed the maximum file size\*.
+- **Edit file** — apply a targeted search-and-replace to an existing file.
+  Finds the first occurrence of an exact string and replaces it with the
+  provided replacement. Fails if the string is not found. File must not exceed
+  the maximum file size\*.
+- **Create directory** — create a new directory. Idempotent: does nothing if
+  the directory already exists. Parent directories are created automatically.
+- **Delete** — delete a file or directory. Deleting a directory removes it and
+  all of its contents recursively.
+- **Move** — move or rename a file or directory to a new path. Overwrites the
+  destination if it already exists. Parent directories at the destination are
+  created automatically.
+- **Copy file** — copy a file to a new path. Overwrites the destination if it
+  already exists. Parent directories at the destination are created
+  automatically.
+
+All write operations are subject to the same path-scoping rules as read
+operations — paths outside the configured root are rejected.
+
+\* Maximum file size: 512 KB.
+
+#### Configuration
+
+The filesystem capability is configured with two properties:
+
+```
+dir         — the root directory the AI can access (required)
+writeAccess — enables write operations (default: false)
+```
+
+Exposed as CLI flags `--filesystem-dir <path>` and `--filesystem-write-access`,
+and as env vars `N8N_GATEWAY_FILESYSTEM_DIR` and
+`N8N_GATEWAY_FILESYSTEM_WRITE_ACCESS`.
 
 ### 2. Shell Execution
 
@@ -114,7 +171,11 @@ it. Only one active connection is allowed per user at a time.
 
 When connecting, the user specifies a root directory. The AI can only access
 files within that directory and its subdirectories. Access to any path outside
-the root is denied.
+the root is denied — this applies equally to read and write operations.
+
+Write access is an opt-in: even within the root, the AI cannot modify the
+filesystem unless `writeAccess` is explicitly enabled. Read and write access
+are independent — read-only mode remains the default.
 
 ---
 
