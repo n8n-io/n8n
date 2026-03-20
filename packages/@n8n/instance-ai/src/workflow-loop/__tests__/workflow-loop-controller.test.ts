@@ -20,7 +20,6 @@ function makeState(overrides: Partial<WorkflowLoopState> = {}): WorkflowLoopStat
 		phase: 'building',
 		status: 'active',
 		source: 'create',
-		patchAttempts: 0,
 		rebuildAttempts: 0,
 		...overrides,
 	};
@@ -56,7 +55,6 @@ describe('createWorkItem', () => {
 		expect(item.phase).toBe('building');
 		expect(item.status).toBe('active');
 		expect(item.source).toBe('create');
-		expect(item.patchAttempts).toBe(0);
 		expect(item.rebuildAttempts).toBe(0);
 		expect(item.workItemId).toMatch(/^wi_/);
 	});
@@ -203,7 +201,7 @@ describe('handleVerificationVerdict', () => {
 		expect(next.lastFailureSignature).toBe('node:timeout');
 	});
 
-	it('transitions to repairing with patch on needs_patch', () => {
+	it('routes needs_patch through builder-based rebuild', () => {
 		const state = makeState({ phase: 'verifying', workflowId: 'wf_123' });
 		const verdict = makeVerdict({
 			verdict: 'needs_patch',
@@ -215,10 +213,11 @@ describe('handleVerificationVerdict', () => {
 		const { state: next, action } = handleVerificationVerdict(state, [], verdict);
 
 		expect(next.phase).toBe('repairing');
-		expect(next.patchAttempts).toBe(1);
-		expect(action.type).toBe('patch');
-		if (action.type === 'patch') {
-			expect(action.nodeName).toBe('Gmail Send');
+		expect(next.rebuildAttempts).toBe(1);
+		expect(action.type).toBe('rebuild');
+		if (action.type === 'rebuild') {
+			expect(action.failureDetails).toContain('Gmail Send');
+			expect(action.failureDetails).toContain('gmail:invalid_recipient');
 		}
 	});
 
@@ -254,14 +253,14 @@ describe('handleVerificationVerdict', () => {
 // ── Retry policy ────────────────────────────────────────────────────────────
 
 describe('retry policy', () => {
-	it('blocks on repeated patch with same failureSignature', () => {
-		const state = makeState({ phase: 'verifying', workflowId: 'wf_123', patchAttempts: 1 });
+	it('blocks on repeated needs_patch with same failureSignature', () => {
+		const state = makeState({ phase: 'verifying', workflowId: 'wf_123', rebuildAttempts: 1 });
 		const priorAttempts: AttemptRecord[] = [
 			{
 				workItemId: 'wi_test',
 				phase: 'repairing',
 				attempt: 1,
-				action: 'patch',
+				action: 'rebuild',
 				result: 'failure',
 				failureSignature: 'gmail:auth_error',
 				createdAt: new Date().toISOString(),
@@ -304,14 +303,14 @@ describe('retry policy', () => {
 		expect(action.type).toBe('blocked');
 	});
 
-	it('allows patch for a different failureSignature', () => {
-		const state = makeState({ phase: 'verifying', workflowId: 'wf_123', patchAttempts: 1 });
+	it('allows rebuild for a different failureSignature', () => {
+		const state = makeState({ phase: 'verifying', workflowId: 'wf_123', rebuildAttempts: 1 });
 		const priorAttempts: AttemptRecord[] = [
 			{
 				workItemId: 'wi_test',
 				phase: 'repairing',
 				attempt: 1,
-				action: 'patch',
+				action: 'rebuild',
 				result: 'failure',
 				failureSignature: 'gmail:auth_error',
 				createdAt: new Date().toISOString(),
@@ -326,7 +325,7 @@ describe('retry policy', () => {
 
 		const { action } = handleVerificationVerdict(state, priorAttempts, verdict);
 
-		expect(action.type).toBe('patch');
+		expect(action.type).toBe('rebuild');
 	});
 
 	it('parallel work items do not collide in attempt history', () => {

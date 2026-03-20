@@ -26,7 +26,6 @@ export const workflowLoopStateSchema = z.object({
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
-	patchAttempts: z.number().int().min(0),
 	rebuildAttempts: z.number().int().min(0),
 	/** Credential types that were mocked during build (persisted across phases). */
 	mockedCredentialTypes: z.array(z.string()).optional(),
@@ -39,7 +38,7 @@ export type WorkflowLoopState = z.infer<typeof workflowLoopStateSchema>;
 
 // ── AttemptRecord ───────────────────────────────────────────────────────────
 
-export const attemptActionSchema = z.enum(['build', 'verify', 'patch', 'rebuild']);
+export const attemptActionSchema = z.enum(['build', 'verify', 'rebuild']);
 export const attemptResultSchema = z.enum(['success', 'failure', 'blocked']);
 
 export const attemptRecordSchema = z.object({
@@ -117,12 +116,6 @@ export type VerificationResult = z.infer<typeof verificationResultSchema>;
 
 export type WorkflowLoopAction =
 	| { type: 'verify'; workflowId: string }
-	| {
-			type: 'patch';
-			workflowId: string;
-			nodeName: string;
-			patch: Record<string, unknown>;
-	  }
 	| { type: 'rebuild'; workflowId: string; failureDetails: string }
 	| { type: 'done'; workflowId?: string; summary: string; mockedCredentialTypes?: string[] }
 	| { type: 'blocked'; reason: string };
