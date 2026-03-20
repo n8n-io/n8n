@@ -243,10 +243,18 @@ const sharingCountText = computed(() => {
 						<template #fallback>
 							<N8nTooltip>
 								<ElSwitch
+									v-if="state !== undefined"
 									:model-value="personalSpaceSharing"
 									size="large"
 									:disabled="true"
 									data-test-id="security-personal-space-sharing-toggle"
+								/>
+								<ElSwitch
+									v-else
+									:model-value="false"
+									:loading="true"
+									:disabled="true"
+									size="large"
 								/>
 								<template #content>
 									<I18nT :keypath="personalSpaceTooltipKey" tag="span" scope="global">
@@ -299,10 +307,18 @@ const sharingCountText = computed(() => {
 						<template #fallback>
 							<N8nTooltip>
 								<ElSwitch
+									v-if="state !== undefined"
 									:model-value="personalSpacePublishing"
 									size="large"
 									:disabled="true"
 									data-test-id="security-personal-space-publishing-toggle"
+								/>
+								<ElSwitch
+									v-else
+									:model-value="false"
+									:loading="true"
+									:disabled="true"
+									size="large"
 								/>
 								<template #content>
 									<I18nT :keypath="personalSpaceTooltipKey" tag="span" scope="global">
