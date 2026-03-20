@@ -164,6 +164,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 								@keydown.enter="handleTextSubmit(item.toolCall.confirmation!.requestId)"
 							/>
 							<button
+								v-if="!(textInputValues[item.toolCall.confirmation!.requestId] ?? '').trim()"
 								:class="[$style.btn, $style.secondaryBtn]"
 								@click="handleTextSkip(item.toolCall.confirmation!.requestId)"
 							>
@@ -292,7 +293,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 
 .toolLabel {
 	font-weight: var(--font-weight--bold);
-	font-family: monospace;
+	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--3xs);
 	color: var(--color--text);
 	white-space: nowrap;
