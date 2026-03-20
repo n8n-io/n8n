@@ -257,6 +257,8 @@ export type McpToolCallResult = z.infer<typeof mcpToolCallResultSchema>;
 export const instanceAiGatewayCapabilitiesSchema = z.object({
 	rootPath: z.string(),
 	tools: z.array(mcpToolSchema).default([]),
+	hostIdentifier: z.string().optional(),
+	toolCategories: z.array(z.string()).default([]),
 });
 export type InstanceAiGatewayCapabilities = z.infer<typeof instanceAiGatewayCapabilitiesSchema>;
 

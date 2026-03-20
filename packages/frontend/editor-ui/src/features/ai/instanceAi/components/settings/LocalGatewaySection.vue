@@ -26,6 +26,28 @@ async function copyCommand() {
 	}, 2000);
 }
 
+const CATEGORY_META: Record<string, { icon: string; labelKey: string }> = {
+	filesystem: { icon: 'folder-open', labelKey: 'instanceAi.filesystem.category.filesystem' },
+	browser: { icon: 'globe', labelKey: 'instanceAi.filesystem.category.browser' },
+	screenshot: { icon: 'desktop', labelKey: 'instanceAi.filesystem.category.computerUse' },
+	'mouse-keyboard': { icon: 'desktop', labelKey: 'instanceAi.filesystem.category.computerUse' },
+	shell: { icon: 'terminal', labelKey: 'instanceAi.filesystem.category.shell' },
+};
+
+const displayCategories = computed(() => {
+	const seen = new Set<string>();
+	const result: Array<{ key: string; icon: string; label: string }> = [];
+	for (const cat of store.gatewayToolCategories) {
+		const meta = CATEGORY_META[cat];
+		if (!meta) continue;
+		const labelKey = meta.labelKey;
+		if (seen.has(labelKey)) continue;
+		seen.add(labelKey);
+		result.push({ key: cat, icon: meta.icon, label: i18n.baseText(labelKey) });
+	}
+	return result;
+});
+
 onMounted(() => {
 	if (!store.isGatewayConnected) {
 		void store.fetchSetupCommand();
@@ -50,11 +72,19 @@ onMounted(() => {
 
 		<template v-if="!isFilesystemDisabled">
 			<!-- Gateway connected -->
-			<div v-if="store.isGatewayConnected" :class="$style.statusRow">
-				<span :class="[$style.dot, $style.dotConnected]" />
-				<N8nText size="small" color="text-light">
-					{{ store.gatewayDirectory }}
-				</N8nText>
+			<div v-if="store.isGatewayConnected" :class="$style.connectedBlock">
+				<div :class="$style.statusRow">
+					<span :class="[$style.dot, $style.dotConnected]" />
+					<N8nText size="small" :bold="true">
+						{{ store.gatewayHostIdentifier ?? store.gatewayDirectory }}
+					</N8nText>
+				</div>
+				<div v-if="displayCategories.length" :class="$style.toolCategories">
+					<span v-for="cat in displayCategories" :key="cat.key" :class="$style.categoryPill">
+						<N8nIcon :icon="cat.icon" size="xsmall" />
+						{{ cat.label }}
+					</span>
+				</div>
 			</div>
 
 			<!-- Local filesystem (no gateway) -->
@@ -132,13 +162,38 @@ onMounted(() => {
 	color: var(--text-color--subtle);
 }
 
+.connectedBlock {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	background: var(--color--foreground--tint-2);
+	border-radius: var(--radius--lg);
+}
+
 .statusRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background: var(--color--foreground--tint-2);
+}
+
+.toolCategories {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+	padding-left: calc(8px + var(--spacing--3xs));
+}
+
+.categoryPill {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	background: var(--color--background);
+	border: var(--border);
 	border-radius: var(--radius);
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
 }
 
 .dot {

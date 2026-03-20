@@ -473,7 +473,15 @@ export class InstanceAiController {
 			clearInterval(keepAlive);
 			this.instanceAiService.startDisconnectTimer(userId, () => {
 				this.push.sendToUsers(
-					{ type: 'instanceAiGatewayStateChanged', data: { connected: false, directory: null } },
+					{
+						type: 'instanceAiGatewayStateChanged',
+						data: {
+							connected: false,
+							directory: null,
+							hostIdentifier: null,
+							toolCategories: [],
+						},
+					},
 					[userId],
 				);
 			});
@@ -496,7 +504,12 @@ export class InstanceAiController {
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiGatewayStateChanged',
-				data: { connected: true, directory: parsed.data.rootPath },
+				data: {
+					connected: true,
+					directory: parsed.data.rootPath,
+					hostIdentifier: parsed.data.hostIdentifier ?? null,
+					toolCategories: parsed.data.toolCategories ?? [],
+				},
 			},
 			[userId],
 		);
@@ -517,7 +530,10 @@ export class InstanceAiController {
 		this.instanceAiService.disconnectGateway(userId);
 		this.instanceAiService.clearActiveSessionKey(userId);
 		this.push.sendToUsers(
-			{ type: 'instanceAiGatewayStateChanged', data: { connected: false, directory: null } },
+			{
+				type: 'instanceAiGatewayStateChanged',
+				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+			},
 			[userId],
 		);
 		return { ok: true };

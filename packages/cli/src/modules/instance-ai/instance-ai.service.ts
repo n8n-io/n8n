@@ -583,6 +583,8 @@ export class InstanceAiService {
 		connected: boolean;
 		connectedAt: string | null;
 		directory: string | null;
+		hostIdentifier: string | null;
+		toolCategories: string[];
 	} {
 		return this.gatewayRegistry.getGatewayStatus(userId);
 	}

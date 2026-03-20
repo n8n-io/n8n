@@ -148,6 +148,7 @@ export class InstanceAiSettingsService {
 			sandboxTimeout: c.sandboxTimeout,
 			daytonaCredentialId: this.adminDaytonaCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
+			localGatewayDisabled: this.isFilesystemDisabled(),
 		};
 	}
 
@@ -173,6 +174,11 @@ export class InstanceAiSettingsService {
 			this.adminDaytonaCredentialId = update.daytonaCredentialId;
 		if (update.searchCredentialId !== undefined)
 			this.adminSearchCredentialId = update.searchCredentialId;
+		if (update.localGatewayDisabled !== undefined) {
+			const legacy = this.userPreferences.get('__legacy_default__') ?? {};
+			legacy.filesystemDisabled = update.localGatewayDisabled;
+			this.userPreferences.set('__legacy_default__', legacy);
+		}
 		await this.persistAdminSettings();
 		return this.getAdminSettings();
 	}

@@ -47,6 +47,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	);
 	const gatewayConnected = ref(false);
 	const gatewayDirectory = ref<string | null>(null);
+	const gatewayHostIdentifier = ref<string | null>(null);
+	const gatewayToolCategories = ref<string[]>([]);
 	const isGatewayConnected = computed(() => gatewayConnected.value);
 	const localGatewayFallbackDirectory = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayFallbackDirectory ?? null,
@@ -169,6 +171,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			.then((status) => {
 				gatewayConnected.value = status.connected;
 				gatewayDirectory.value = status.directory;
+				gatewayHostIdentifier.value = status.hostIdentifier ?? null;
+				gatewayToolCategories.value = status.toolCategories ?? [];
 			})
 			.catch(() => {});
 
@@ -178,6 +182,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				const wasConnected = gatewayConnected.value;
 				gatewayConnected.value = status.connected;
 				gatewayDirectory.value = status.directory;
+				gatewayHostIdentifier.value = status.hostIdentifier ?? null;
+				gatewayToolCategories.value = status.toolCategories ?? [];
 				if (!status.connected && wasConnected) {
 					daemonConnectAttempted = false;
 					startDaemonProbing();
@@ -264,6 +270,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			if (message.type !== 'instanceAiGatewayStateChanged') return;
 			gatewayConnected.value = message.data.connected;
 			gatewayDirectory.value = message.data.directory;
+			gatewayHostIdentifier.value = message.data.hostIdentifier ?? null;
+			gatewayToolCategories.value = message.data.toolCategories ?? [];
 			if (!message.data.connected) {
 				daemonConnectAttempted = false;
 				startDaemonProbing();
@@ -328,6 +336,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isLocalGatewayEnabled,
 		isGatewayConnected,
 		gatewayDirectory,
+		gatewayHostIdentifier,
+		gatewayToolCategories,
 		localGatewayFallbackDirectory,
 		activeDirectory,
 		isLocalGatewayDisabled,

@@ -50,6 +50,10 @@ export class LocalGateway {
 
 	private _rootPath: string | null = null;
 
+	private _hostIdentifier: string | null = null;
+
+	private _toolCategories: string[] = [];
+
 	private _availableTools: McpTool[] = [];
 
 	get isConnected(): boolean {
@@ -78,6 +82,8 @@ export class LocalGateway {
 	/** Called when the client uploads its MCP tool capabilities. */
 	init(data: InstanceAiGatewayCapabilities): void {
 		this._rootPath = data.rootPath;
+		this._hostIdentifier = data.hostIdentifier ?? null;
+		this._toolCategories = data.toolCategories ?? [];
 		this._availableTools = data.tools;
 		this._connected = true;
 		this._connectedAt = new Date().toISOString();
@@ -113,6 +119,8 @@ export class LocalGateway {
 		this._connected = false;
 		this._connectedAt = null;
 		this._rootPath = null;
+		this._hostIdentifier = null;
+		this._toolCategories = [];
 		this._availableTools = [];
 
 		for (const [id, pending] of this.pendingRequests) {
@@ -123,11 +131,19 @@ export class LocalGateway {
 	}
 
 	/** Return connection status for the frontend. */
-	getStatus(): { connected: boolean; connectedAt: string | null; directory: string | null } {
+	getStatus(): {
+		connected: boolean;
+		connectedAt: string | null;
+		directory: string | null;
+		hostIdentifier: string | null;
+		toolCategories: string[];
+	} {
 		return {
 			connected: this._connected,
 			connectedAt: this._connectedAt,
 			directory: this._rootPath,
+			hostIdentifier: this._hostIdentifier,
+			toolCategories: this._toolCategories,
 		};
 	}
 
