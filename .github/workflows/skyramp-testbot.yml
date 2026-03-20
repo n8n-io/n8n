@@ -41,13 +41,13 @@ jobs:
       - name: Enable corepack
         run: corepack enable
 
-      - uses: skyramp/testbot@SKYR-3625
+      - uses: skyramp/testbot@v0.5.2
         with:
           skyramp_license_file: ${{ secrets.SKYRAMP_LICENSE_FILE }}
           anthropic_api_key: ${{ secrets.SKYRAMP_TESTBOT_API_KEY }}
           github_token: ${{ steps.app-token.outputs.token }}
           skyramp_mcp_version: next
-          skyramp_executor_version: v1.3.13
+          skyramp_executor_version: v1.3.14
           auth_token_command: "./deployment-testbot/get-token.sh"
           target_setup_command: "./deployment-testbot/setup.sh"
 
