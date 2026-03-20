@@ -89,7 +89,7 @@ const {
 	execute,
 	isInListeningState,
 	listeningHint,
-} = useTriggerExecution(executableNode);
+} = useTriggerExecution(executableNode, { telemetrySource: 'aiWorkflowBuilder' });
 
 const { webhookUrls } = useWebhookUrls(executableNode);
 
