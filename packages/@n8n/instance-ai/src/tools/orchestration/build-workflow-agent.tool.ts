@@ -20,7 +20,7 @@ import { z } from 'zod';
 import {
 	BUILDER_AGENT_PROMPT,
 	SANDBOX_BUILDER_AGENT_PROMPT,
-	SANDBOX_PATCH_PROMPT,
+	PATCH_AGENT_PROMPT,
 } from './build-workflow-agent.prompt';
 import { truncateLabel } from './display-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
@@ -181,7 +181,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 						builderTools[name] = context.domainTools[name];
 					}
 				}
-				prompt = isPatch ? SANDBOX_PATCH_PROMPT : SANDBOX_BUILDER_AGENT_PROMPT;
+				prompt = isPatch ? PATCH_AGENT_PROMPT : SANDBOX_BUILDER_AGENT_PROMPT;
 			} else {
 				// Tool mode: original approach with build-workflow + get-node-type-definition
 				builderTools = {};
@@ -215,7 +215,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					return { result: 'Error: build-workflow tool not available.' };
 				}
 
-				prompt = isPatch ? SANDBOX_PATCH_PROMPT : BUILDER_AGENT_PROMPT;
+				prompt = isPatch ? PATCH_AGENT_PROMPT : BUILDER_AGENT_PROMPT;
 			}
 
 			const builderMemory = createSubAgentMemory(context.storage, 'workflow-builder');

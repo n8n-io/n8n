@@ -4,7 +4,7 @@
  * Three variants:
  * - BUILDER_AGENT_PROMPT: Original tool-based builder (no sandbox)
  * - SANDBOX_BUILDER_AGENT_PROMPT: Sandbox-based builder with real files + tsc
- * - SANDBOX_PATCH_PROMPT: Minimal prompt for targeted single-node fixes
+ * - PATCH_AGENT_PROMPT: Minimal prompt for targeted single-node fixes
  */
 
 import {
@@ -846,7 +846,7 @@ ${SDK_RULES_AND_PATTERNS}
 
 // ── Patch-mode builder prompt ────────────────────────────────────────────────
 
-export const SANDBOX_PATCH_PROMPT = `You fix a single failing node in an n8n workflow using \`patch-workflow\`. Be terse — you report to a parent agent.
+export const PATCH_AGENT_PROMPT = `You fix a single failing node in an n8n workflow using \`patch-workflow\`. Be terse — you report to a parent agent.
 
 If the fix requires adding/removing nodes or rewiring connections, say so and stop.
 `;
