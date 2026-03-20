@@ -56,7 +56,10 @@ Structure the description using markdown headers. Use the appropriate template:
 [What should happen]
 
 ## Actual
-[What happens instead — include screenshots/videos if available]
+[What happens instead]
+
+## Attachments
+[Screenshots, videos, or screen recordings that illustrate the problem]
 
 ## Steps to reproduce
 1. [Step-by-step reproduction]
@@ -83,6 +86,25 @@ Structure the description using markdown headers. Use the appropriate template:
 [Explicitly note what this does NOT cover, if helpful]
 ```
 
+**For tech debt:**
+
+```markdown
+## Summary
+[What technical improvement is needed]
+
+## Current state
+[What the code/system looks like today and why it's problematic]
+
+## Proposed improvement
+[What the improved state should look like]
+
+## Motivation
+[Why this matters — maintainability, performance, developer experience, etc.]
+
+## Scope
+[What is included / excluded from this work]
+```
+
 **For spikes / investigations:**
 
 ```markdown
@@ -95,6 +117,16 @@ Structure the description using markdown headers. Use the appropriate template:
 ## Expected output
 [What deliverable is expected — RFC, PoC, decision document, etc.]
 ```
+
+#### Attachments (Screenshots / Videos)
+
+If the user provides screenshots, videos, or screen recordings:
+
+- **URLs** — embed directly in the description using markdown image syntax (`![description](url)`)
+- **File paths** — if the user provides a local file path, ask them to upload it to a hosting service (e.g., GitHub, Imgur) or use `mcp__linear-server__create_attachment` to attach it to the Linear ticket after creation
+- **Pasted images in conversation** — describe what the image shows in the ticket description and note that a screenshot was provided. You cannot upload binary data directly.
+
+Always mention in the description when visual evidence was provided, even if it cannot be directly embedded.
 
 #### Priority
 
@@ -121,8 +153,9 @@ Structure the description using markdown headers. Use the appropriate template:
 
 #### Team
 
-- **Always ask the user which team** if not obvious from context
-- Common teams: `Engineering` (N8N), `AI`, `NODES`, `Identity & Access` (IAM), `Catalysts` (CAT), `Lifecycle & Governance` (LIGO), `Cloud Platform`, `Docs` (DOC)
+- **Try to fetch up-to-date team areas of responsibility from Notion** using `mcp__notion__notion-search` (search for "areas of responsibility" or similar). Use the fetched data to determine the best team for the issue.
+- **If Notion MCP is unavailable or the lookup fails**, fall back to these common teams: `Engineering` (N8N), `AI`, `NODES`, `Identity & Access` (IAM), `Catalysts` (CAT), `Lifecycle & Governance` (LIGO), `Cloud Platform`, `Docs` (DOC)
+- **Always ask the user which team** if not obvious from context or the Notion lookup
 - If the issue is node-specific, it likely belongs to `NODES`
 - If it involves AI/LangChain nodes, it likely belongs to `AI`
 
