@@ -1618,8 +1618,6 @@
 	"mainSidebar.showMessage.handleUnarchive.title": "Workflow '{workflowName}' unarchived",
 	"mainSidebar.showMessage.stopExecution.title": "Execution stopped",
 	"mainSidebar.workflows": "Workflows",
-	"mainSidebar.workflows.readOnlyEnv.tooltip": "Protected instances prevent editing source-controlled resources such as workflows, credentials, variables, and data tables (recommended for production environments). {link}",
-	"mainSidebar.workflows.readOnlyEnv.tooltip.link": "More info",
 	"mainSidebar.executions": "Executions",
 	"mainSidebar.workersView": "Workers",
 	"mainSidebar.whatsNew": "What’s New",
