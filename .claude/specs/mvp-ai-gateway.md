@@ -58,6 +58,10 @@ We considered a dedicated "n8n AI Gateway" node but rejected it because:
 
 Instead, the gateway operates at the **settings and credentials level** — it's a model source that any compatible AI node can consume transparently.
 
+Provider-specific nodes (OpenAI, Anthropic, etc.) also accept the
+`n8nAiGatewayApi` credential via a hidden `useAiGateway` parameter, allowing
+power users to route specific provider nodes through the gateway.
+
 ---
 
 ## Model Selection Strategy
@@ -375,3 +379,204 @@ This MVP is built in a **separate feature branch** for exploration and validatio
 
 - [ ]  Usage metering and credit tracking (?)
 - [ ]  Unified credit pool with AI Builder (?)
+
+---
+
+## Usage in Workflows
+
+### Scenario 1: AI Agent Node (Primary Path)
+
+The AI Agent node gets a gateway model automatically:
+
+1. User creates a workflow with an AI Agent node
+2. The canvas auto-creates an **n8n AI Gateway Model** (`lmChatN8nAiGateway`)
+   sub-node and connects it to the AI Agent's `ai_languageModel` input
+3. No credential setup needed — the gateway node uses the auto-provisioned
+   `n8nAiGatewayApi` credential
+4. At execution, the node resolves the model from the workflow category
+   override or global default (e.g., "Balanced" → `openai/gpt-4.1-nano`)
+5. Changing the global default category affects all future executions without
+   modifying existing workflows
+
+### Scenario 2: Provider-Specific Nodes (OpenAI, Gemini, etc.)
+
+Provider-specific nodes also support the gateway credential (secondary path):
+
+### Scenario 2: Provider-Specific Nodes (implemented)
+
+When using provider-specific nodes (OpenAI, etc.):
+
+1. The credential dropdown shows **n8n AI Gateway** as an option
+2. Selecting it routes requests through OpenRouter via the gateway credential
+3. The user selects the model explicitly in the node UI
+
+### Scenario 3: AI Builder (future)
+
+AI Builder could share the same credit pool as the gateway, so both building
+and running workflows draw from one unified balance.
+
+---
+
+## MVP Provider: OpenRouter
+
+### Why OpenRouter
+
+- **Single integration** gives access to all major models
+- **Native format endpoints** — supports both OpenAI (`/chat/completions`)
+  and Anthropic (`/messages`) response formats
+- **Transparent pricing** — per-token pricing across all models
+
+### Provider is Swappable
+
+From the user's perspective, **n8n provides the AI capability**. Users don't
+need to know about OpenRouter. The integration is an implementation detail.
+See `ai-gateway-cloud-research.md` for provider comparison and hybrid routing
+strategy.
+
+### Backend Implementation (implemented)
+
+LLM nodes call OpenRouter **directly** — no local proxy in the execution path.
+The backend module provides admin endpoints only.
+
+```
+Execution Engine (LLM nodes)              Frontend (Editor UI)
+        │                                     │
+        │ credential: n8nAiGatewayApi        │ session auth
+        │ (apiKey + baseURL)                 │
+        │                                     │
+        ▼                                     ▼
+  OpenRouter API                    ┌──────────────────────┐
+  (direct from node                 │  ai-gateway module   │
+   via LangChain ChatOpenAI)        │                      │
+                                    │  Admin Controller    │
+                                    │  /rest/ai-gateway/*  │
+                                    │       │              │
+                                    │       ▼              │
+                                    │  Services:           │
+                                    │  - GatewayService    │
+                                    │  - ModelService      │
+                                    │  - UsageService      │
+                                    └───────┬──────────────┘
+                                            │ @openrouter/sdk
+                                            ▼
+                                    OpenRouter API
+```
+
+### Admin API Endpoints (implemented)
+
+| Endpoint | Description |
+|---|---|
+| `GET /rest/ai-gateway/settings` | Current gateway config |
+| `PUT /rest/ai-gateway/settings` | Update config |
+| `GET /rest/ai-gateway/model-categories` | List categories with model mappings |
+| `GET /rest/ai-gateway/models` | Available models from OpenRouter |
+| `GET /rest/ai-gateway/usage` | Token usage stats (in-memory) |
+
+### Usage Tracking (implemented)
+
+In-memory tracking wired to the execution path via `EventService`. The module
+listens for `ai-llm-generated-output` events emitted by LangChain's
+`N8nLlmTracing` and records model name + token counts.
+
+Limitations:
+- Data is lost on restart
+- Only LangChain-based nodes emit events (not OpenAI v1 transport)
+- No cost data (would need OpenRouter management key)
+
+### Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `N8N_AI_GATEWAY_ENABLED` | `false` | Enable the AI Gateway module |
+| `N8N_AI_GATEWAY_OPENROUTER_API_KEY` | `''` | OpenRouter API key |
+| `N8N_AI_GATEWAY_OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | OpenRouter base URL |
+| `N8N_AI_GATEWAY_DEFAULT_CATEGORY` | `balanced` | Default model category |
+
+---
+
+## Free Credits & Pricing
+
+### Unified Credit Pool with AI Builder
+
+AI Builder already has a free credit system. The AI Gateway should share the
+same credit pool — one balance that covers both building and running workflows.
+
+> **Exact amounts TBD** — needs product decision on credit amounts, rollover,
+> plan-based tiers.
+
+### What Happens When Credits Run Out
+
+- Workflows fail gracefully with a clear error message
+- Error guides users to add credits or switch to BYOK credentials
+- Existing BYOK workflows are never affected
+
+---
+
+## Open Questions
+
+| # | Question | Status |
+| --- | --- | --- |
+| 1 | Exact monthly free credit amount? | TBD — Product decision |
+| 2 | How does this interact with n8n Cloud vs self-hosted? | TBD — see cloud research doc |
+| 3 | Should model category mapping be remotely configurable? | Likely yes |
+| 4 | Privacy / data processing implications of routing through OpenRouter? | Needs legal review |
+| 5 | Provider strategy — OpenRouter only vs hybrid routing? | See `ai-gateway-cloud-research.md` |
+| 6 | Native Anthropic endpoint support for Anthropic nodes? | OpenRouter supports `/messages` |
+
+---
+
+## Implementation TODO
+
+Detailed frontend checklist is in [mvp-ai-gateway-frontend.md](./mvp-ai-gateway-frontend.md).
+
+### Dedicated Gateway Node
+
+- [x]  `LmChatN8nAiGateway` node at `packages/@n8n/nodes-langchain/nodes/llms/LmChatN8nAiGateway/`
+- [x]  Node registered in `packages/@n8n/nodes-langchain/package.json`
+- [x]  Node uses `n8nAiGatewayApi` credential, resolves model from category at execution time
+- [x]  Node supports workflow-level category override via workflow settings, falls back to global default
+
+### Frontend: Settings
+
+- [x]  AI Gateway settings page at `/settings/ai-gateway` — model source selection
+- [x]  AI Gateway settings page at `/settings/ai-gateway` — category selection
+- [x]  AI Gateway settings page at `/settings/ai-gateway` — usage overview (total tokens, in/out tokens, models by usage)
+- [x]  Global Pinia store (`aiGateway.store.ts`) with category/model state fetched from backend API
+- [x]  i18n labels for all settings page text
+- [x]  Settings sidebar entry and route registration
+- [x]  Workflow settings override for model source / category
+
+### Frontend: Canvas
+
+- [x] Auto-wire `lmChatN8nAiGateway` node when creating AI Agent
+- [x]  Auto-create and connect `lmChatN8nAiGateway` node when AI Agent is created
+- [x] Add "n8n AI Gateway" option to credentials picker
+- [x]  `applyAIGatewayDefaultsToLlmNode` helper wired into `useCanvasOperations.addNode`
+- [x]  Simplify `useAIGatewayDefaults.ts`: `getGatewayLlmNodeData()` returns `lmChatN8nAiGateway` type directly
+- [x]  Simplify `aiGateway.store.ts`: remove `PROVIDER_NODE_MAP` and provider-to-node mapping logic
+
+### Frontend: Credentials / Provider Contracts
+
+- [x]  `N8nAiGatewayApi.credentials.ts` registered in `@n8n/nodes-langchain`
+- [x]  OpenAI Chat Model, OpenAI v1/v2 nodes accept `n8nAiGatewayApi` credential via hidden `useAiGateway` parameter, transport layer routes accordingly (kept for BYOK+gateway)
+
+### Backend
+
+- [x] `ai-gateway` backend module (`packages/cli/src/modules/ai-gateway/`)
+- [x] Config class with env vars (`N8N_AI_GATEWAY_ENABLED`, `N8N_AI_GATEWAY_OPENROUTER_API_KEY`, etc.)
+- [x] Direct execution: nodes call OpenRouter via auto-provisioned credential (no proxy)
+- [x] Models list — `GET /rest/ai-gateway/models` (via `@openrouter/sdk`, with caching)
+- [x] Model category → model resolution service (+ `resolveAiGatewayModel()` in `@n8n/api-types`)
+- [x] Admin endpoints — `GET/PUT /rest/ai-gateway/settings`, `GET /rest/ai-gateway/model-categories`
+- [x] `n8nAiGatewayApi` credential type (auto-provisioned at startup with OpenRouter key+URL)
+- [x] In-memory usage tracking — `GET /rest/ai-gateway/usage` (wired via `ai-llm-generated-output` events)
+- [x] Dedicated `lmChatN8nAiGateway` sub-node with intent-based model selection
+- [x] Unit tests (22 passing: model service, gateway service, usage service)
+
+### Not Yet Done
+
+- [ ] Anthropic node support via OpenRouter native `/messages` endpoint
+- [ ] Persistent usage tracking (database)
+- [ ] Credit system & billing integration
+- [ ] Cloud gateway service (separate from n8n monorepo)
+- [ ] Provider deep-dive & partnership evaluation (see `ai-gateway-cloud-research.md`)

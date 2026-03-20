@@ -102,6 +102,8 @@ const TestRunDetailView = async () =>
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
+const SettingsAIGatewayView = async () =>
+	await import('@/features/ai/gateway/SettingsAIGatewayView.vue');
 const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
 const ResourceCenterSectionView = async () =>
@@ -673,6 +675,22 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'assistant',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'ai-gateway',
+				name: VIEWS.AI_GATEWAY_SETTINGS,
+				component: SettingsAIGatewayView,
+				meta: {
+					middleware: ['authenticated'],
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'ai-gateway',
 							};
 						},
 					},

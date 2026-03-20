@@ -6,7 +6,12 @@ import { Credentials } from 'n8n-core';
 import { OwnershipService } from '@/services/ownership.service';
 
 import { AiGatewayConfig } from './ai-gateway.config';
-import { AI_GATEWAY_CREDENTIAL_TYPE } from './ai-gateway.constants';
+import {
+	AI_GATEWAY_CREDENTIAL_TYPE,
+	MODEL_CATEGORIES,
+	MODEL_CATEGORY_MAP,
+	type ModelCategory,
+} from './ai-gateway.constants';
 
 const CREDENTIAL_NAME = 'n8n AI Gateway';
 
@@ -43,9 +48,15 @@ export class AiGatewayService {
 	 * can call OpenRouter without going through a local proxy.
 	 */
 	async provisionCredential(): Promise<void> {
+		const defaultCategory = MODEL_CATEGORIES.includes(this.config.defaultCategory as ModelCategory)
+			? (this.config.defaultCategory as ModelCategory)
+			: 'balanced';
 		const credentialData = {
 			apiKey: this.config.openRouterApiKey,
 			url: this.config.openRouterBaseUrl,
+			defaultCategory,
+			defaultModel: MODEL_CATEGORY_MAP[defaultCategory],
+			categoryMap: JSON.stringify(MODEL_CATEGORY_MAP),
 		};
 
 		const existing = await this.credentialsRepository.findOne({

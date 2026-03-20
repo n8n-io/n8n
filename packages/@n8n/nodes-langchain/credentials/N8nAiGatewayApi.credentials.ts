@@ -24,9 +24,26 @@ export class N8nAiGatewayApi implements ICredentialType {
 		{
 			displayName: 'Base URL',
 			name: 'url',
-			type: 'string',
-			required: true,
+			type: 'hidden',
 			default: '',
+		},
+		{
+			displayName: 'Default Category',
+			name: 'defaultCategory',
+			type: 'hidden',
+			default: 'balanced',
+		},
+		{
+			displayName: 'Default Model',
+			name: 'defaultModel',
+			type: 'hidden',
+			default: '',
+		},
+		{
+			displayName: 'Category Map',
+			name: 'categoryMap',
+			type: 'hidden',
+			default: '{}',
 		},
 	];
 

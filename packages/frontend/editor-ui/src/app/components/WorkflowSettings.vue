@@ -3,6 +3,8 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, h } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/app/composables/useToast';
 import { usePostHog } from '@/app/stores/posthog.store';
+// eslint-disable-next-line import-x/extensions
+import { useAIGatewayStore } from '@/features/ai/gateway/aiGateway.store';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
@@ -622,6 +624,27 @@ const toggleAvailableInMCP = () => {
 	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
 };
 
+const aiGatewayStore = useAIGatewayStore();
+aiGatewayStore.initialize();
+const aiGatewayCategoryOptions = computed(() => [
+	{ key: 'DEFAULT', value: i18n.baseText('workflowSettings.aiGatewayCategory.default') },
+	...aiGatewayStore.categories.map((cat) => ({ key: cat.id, value: cat.label })),
+]);
+
+const aiGatewayModelOptions = computed(() => aiGatewayStore.availableModels);
+
+const onAiGatewayCategoryChange = (categoryId: string) => {
+	workflowSettings.value.aiGatewayCategory = categoryId;
+	if (categoryId === 'DEFAULT') {
+		workflowSettings.value.aiGatewayModel = undefined;
+		return;
+	}
+	const cat = aiGatewayStore.categories.find((c) => c.id === categoryId);
+	if (cat && cat.id !== 'manual' && cat.defaultModelId) {
+		workflowSettings.value.aiGatewayModel = cat.defaultModelId;
+	}
+};
+
 const updateTimeSavedPerExecution = (value: string) => {
 	const numValue = parseInt(value, 10);
 	workflowSettings.value.timeSavedPerExecution = isNaN(numValue)
@@ -734,6 +757,9 @@ onMounted(async () => {
 	}
 	if (workflowSettingsData.availableInMCP === undefined) {
 		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
+	}
+	if (workflowSettingsData.aiGatewayCategory === undefined) {
+		workflowSettingsData.aiGatewayCategory = 'DEFAULT';
 	}
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
@@ -1242,6 +1268,67 @@ onBeforeUnmount(() => {
 								></ElSwitch>
 							</N8nTooltip>
 						</div>
+					</ElCol>
+				</ElRow>
+				<ElRow data-test-id="workflow-settings-ai-gateway-category">
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.aiGatewayCategory') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div v-text="i18n.baseText('workflowSettings.aiGatewayCategory.tooltip')"></div>
+							</template>
+							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
+						<N8nSelect
+							:model-value="workflowSettings.aiGatewayCategory"
+							size="medium"
+							filterable
+							:disabled="readOnlyEnv || !workflowPermissions.update"
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-ai-gateway-category-select"
+							@update:model-value="onAiGatewayCategoryChange"
+						>
+							<N8nOption
+								v-for="option in aiGatewayCategoryOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							/>
+						</N8nSelect>
+					</ElCol>
+				</ElRow>
+				<ElRow
+					v-if="workflowSettings.aiGatewayCategory === 'manual'"
+					data-test-id="workflow-settings-ai-gateway-model"
+				>
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.aiGatewayModel') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div v-text="i18n.baseText('workflowSettings.aiGatewayModel.tooltip')"></div>
+							</template>
+							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
+						<N8nSelect
+							v-model="workflowSettings.aiGatewayModel"
+							:placeholder="i18n.baseText('settings.aiGateway.model.placeholder')"
+							size="medium"
+							filterable
+							:disabled="readOnlyEnv || !workflowPermissions.update"
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-ai-gateway-model-select"
+						>
+							<N8nOption
+								v-for="model in aiGatewayModelOptions"
+								:key="model.id"
+								:value="model.id"
+								:label="model.name"
+							/>
+						</N8nSelect>
 					</ElCol>
 				</ElRow>
 				<ElRow>

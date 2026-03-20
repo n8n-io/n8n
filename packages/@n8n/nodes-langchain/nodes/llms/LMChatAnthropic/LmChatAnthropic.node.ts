@@ -1,5 +1,6 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
+import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	getProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
@@ -116,10 +117,23 @@ export class LmChatAnthropic implements INodeType {
 			{
 				name: 'anthropicApi',
 				required: true,
+				displayOptions: { hide: { useAiGateway: [true] } },
+			},
+			{
+				name: 'n8nAiGatewayApi',
+				required: true,
+				displayOptions: { show: { useAiGateway: [true] } },
 			},
 		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
+			{
+				displayName: 'Use AI Gateway',
+				name: 'useAiGateway',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+			},
 			{
 				...modelField,
 				displayOptions: {
@@ -267,14 +281,8 @@ export class LmChatAnthropic implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
-			url?: string;
-			apiKey?: string;
-			header?: boolean;
-			headerName?: string;
-			headerValue?: string;
-		}>('anthropicApi');
-		const baseURL = credentials.url ?? 'https://api.anthropic.com';
+		const isGateway = !!this.getNode().credentials?.n8nAiGatewayApi;
+
 		const version = this.getNode().typeVersion;
 		const modelName =
 			version >= 1.3
@@ -295,6 +303,39 @@ export class LmChatAnthropic implements INodeType {
 			thinking?: boolean;
 			thinkingBudget?: number;
 		};
+
+		if (isGateway) {
+			const gatewayCreds = await this.getCredentials<{ apiKey: string; url: string }>(
+				'n8nAiGatewayApi',
+			);
+
+			const clientOptions: ClientOptions = {
+				baseURL: gatewayCreds.url,
+			};
+
+			const model = new ChatOpenAI({
+				openAIApiKey: gatewayCreds.apiKey,
+				model: modelName,
+				maxTokens: options.maxTokensToSample,
+				temperature: options.temperature,
+				topP: options.topP,
+				callbacks: [new N8nLlmTracing(this)],
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+				configuration: clientOptions,
+			});
+
+			return { response: model };
+		}
+
+		const credentials = await this.getCredentials<{
+			url?: string;
+			apiKey?: string;
+			header?: boolean;
+			headerName?: string;
+			headerValue?: string;
+		}>('anthropicApi');
+		const baseURL = credentials.url ?? 'https://api.anthropic.com';
+
 		let invocationKwargs = {};
 
 		const tokensUsageParser = (result: LLMResult) => {
