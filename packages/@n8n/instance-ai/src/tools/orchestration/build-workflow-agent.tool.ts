@@ -185,33 +185,37 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			} else {
 				// Tool mode: original approach with build-workflow + get-node-type-definition
 				builderTools = {};
-				const toolNames = [
-					'build-workflow',
-					'get-node-type-definition',
-					'get-workflow-as-code',
-					'list-workflows',
-					'search-nodes',
-					'get-suggested-nodes',
-					// Data table management
-					'list-data-tables',
-					'create-data-table',
-					'get-data-table-schema',
-					'add-data-table-column',
-					'query-data-table-rows',
-					'insert-data-table-rows',
-					...(context.researchMode ? ['web-search', 'fetch-url'] : []),
-				];
+
+				const isPatch = input.mode === 'patch';
+
+				const toolNames = isPatch
+					? ['patch-workflow', 'list-credentials', 'test-credential']
+					: [
+							'build-workflow',
+							'get-node-type-definition',
+							'get-workflow-as-code',
+							'list-workflows',
+							'search-nodes',
+							'get-suggested-nodes',
+							'list-data-tables',
+							'create-data-table',
+							'get-data-table-schema',
+							'add-data-table-column',
+							'query-data-table-rows',
+							'insert-data-table-rows',
+							...(context.researchMode ? ['web-search', 'fetch-url'] : []),
+						];
 				for (const name of toolNames) {
 					if (name in context.domainTools) {
 						builderTools[name] = context.domainTools[name];
 					}
 				}
 
-				if (!builderTools['build-workflow']) {
+				if (!isPatch && !builderTools['build-workflow']) {
 					return { result: 'Error: build-workflow tool not available.' };
 				}
 
-				prompt = BUILDER_AGENT_PROMPT;
+				prompt = isPatch ? SANDBOX_PATCH_PROMPT : BUILDER_AGENT_PROMPT;
 			}
 
 			const builderMemory = createSubAgentMemory(context.storage, 'workflow-builder');
@@ -446,8 +450,10 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 								}
 							: undefined;
 
+						const toolMaxSteps = input.mode === 'patch' ? PATCH_MAX_STEPS : BUILDER_MAX_STEPS;
+
 						const stream = await subAgent.stream(briefing, {
-							maxSteps: BUILDER_MAX_STEPS,
+							maxSteps: toolMaxSteps,
 							abortSignal: signal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
