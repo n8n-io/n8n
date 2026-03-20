@@ -193,7 +193,7 @@ async function handleSave() {
 
 <template>
 	<div class="pb-3xl" :class="$style.page">
-		<div class="mb-xl" :class="$style.headerRow">
+		<div class="mb-l" :class="$style.headerRow">
 			<div :class="$style.headerTitle">
 				<N8nHeading tag="h1" size="2xlarge">
 					{{ i18n.baseText('settings.credits.title') }}
@@ -444,10 +444,10 @@ async function handleSave() {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing--md) var(--spacing--lg);
+	padding: var(--spacing--md) var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
 	border-radius: var(--radius);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: var(--spacing--sm);
 }
 
 .balanceContent {
@@ -465,7 +465,7 @@ async function handleSave() {
 .settingsSection {
 	border-radius: var(--radius);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: var(--spacing--sm);
 }
 
 .settingsContainer {
@@ -528,7 +528,7 @@ async function handleSave() {
 }
 
 .usageSection {
-	margin-top: var(--spacing--lg);
+	margin-top: var(--spacing--xl);
 }
 
 .usageHeader {
