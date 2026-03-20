@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
@@ -38,19 +38,19 @@ export function detectInputFormat(openApiSchema: OpenAPISchema): {
 } {
 	const invocationUrl = openApiSchema.servers?.[0]?.url;
 	if (!invocationUrl) {
-		throw new ApplicationError('No server URL found in OpenAPI schema');
+		throw new UserError('No server URL found in OpenAPI schema');
 	}
 
 	const pathKeys = Object.keys(openApiSchema.paths);
 	if (!pathKeys.length) {
-		throw new ApplicationError('No paths found in OpenAPI schema');
+		throw new UserError('No paths found in OpenAPI schema');
 	}
 
 	const invocationPath = pathKeys[0];
 	const postOperation = openApiSchema.paths[invocationPath]?.post;
 
 	if (!postOperation?.requestBody?.content?.['application/json']?.schema) {
-		throw new ApplicationError('No request schema found');
+		throw new UserError('No request schema found');
 	}
 
 	const schema = postOperation.requestBody.content['application/json'].schema;
@@ -269,41 +269,39 @@ export function validateRequestBody(
 	switch (detectedFormat) {
 		case 'chat':
 			if (!requestBody.messages || !Array.isArray(requestBody.messages)) {
-				throw new ApplicationError('Invalid chat format: "messages" array is required');
+				throw new UserError('Invalid chat format: "messages" array is required');
 			}
 			break;
 		case 'completions':
 			if (!requestBody.prompt) {
-				throw new ApplicationError('Invalid completions format: "prompt" is required');
+				throw new UserError('Invalid completions format: "prompt" is required');
 			}
 			break;
 		case 'embeddings':
 			if (!requestBody.input) {
-				throw new ApplicationError('Invalid embeddings format: "input" is required');
+				throw new UserError('Invalid embeddings format: "input" is required');
 			}
 			break;
 		case 'dataframe_split':
 			if (!(requestBody.dataframe_split as Record<string, unknown>)?.data) {
-				throw new ApplicationError(
-					'Invalid dataframe_split format: "dataframe_split.data" is required',
-				);
+				throw new UserError('Invalid dataframe_split format: "dataframe_split.data" is required');
 			}
 			break;
 		case 'dataframe_records':
 			if (!requestBody.dataframe_records || !Array.isArray(requestBody.dataframe_records)) {
-				throw new ApplicationError(
+				throw new UserError(
 					'Invalid dataframe_records format: "dataframe_records" array is required',
 				);
 			}
 			break;
 		case 'inputs':
 			if (!requestBody.inputs) {
-				throw new ApplicationError('Invalid inputs format: "inputs" is required');
+				throw new UserError('Invalid inputs format: "inputs" is required');
 			}
 			break;
 		case 'instances':
 			if (!requestBody.instances || !Array.isArray(requestBody.instances)) {
-				throw new ApplicationError('Invalid instances format: "instances" array is required');
+				throw new UserError('Invalid instances format: "instances" array is required');
 			}
 			break;
 	}
