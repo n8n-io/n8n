@@ -3,7 +3,7 @@ import { resolveNodeWebhookId } from 'n8n-workflow';
 import z from 'zod';
 
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
-import { autoPopulateNodeCredentials } from './credentials-auto-assign';
+import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
@@ -157,22 +157,7 @@ export const createCreateWorkflowFromCodeTool = (
 				}
 			}
 
-			// Strip newCredential() stubs from parsed code.
-			// The SDK's newCredential() serializes to undefined via toJSON(), so after
-			// deepCopy the credentials object may contain entries like { slackApi: undefined }.
-			// These would fail the credential permission check, so we remove them here.
-			for (const node of newWorkflow.nodes) {
-				if (node.credentials) {
-					for (const key of Object.keys(node.credentials)) {
-						if (node.credentials[key] == null) {
-							delete node.credentials[key];
-						}
-					}
-					if (Object.keys(node.credentials).length === 0) {
-						node.credentials = undefined;
-					}
-				}
-			}
+			stripNullCredentialStubs(newWorkflow.nodes);
 
 			// Resolve the effective project ID — default to the user's personal project
 			let effectiveProjectId = projectId;
