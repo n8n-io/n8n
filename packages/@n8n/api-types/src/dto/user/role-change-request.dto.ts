@@ -1,5 +1,6 @@
 import { assignableGlobalRoleSchema } from '@n8n/permissions';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 export class RoleChangeRequestDto extends Z.class({
 	newRoleName: assignableGlobalRoleSchema

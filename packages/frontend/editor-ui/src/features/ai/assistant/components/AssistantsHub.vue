@@ -4,13 +4,12 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useDebounce } from '@/app/composables/useDebounce';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
+import { ASK_AI_SLIDE_IN_DURATION_MS, ASK_AI_SLIDE_OUT_DURATION_MS } from '@/app/constants';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
-import { useRoute } from 'vue-router';
-import { BUILDER_ENABLED_VIEWS } from '../constants';
-import type { VIEWS } from '@/app/constants';
+import AskModeCoachmark from './AskModeCoachmark.vue';
+import { useAskModeCoachmark } from '../composables/useAskModeCoachmark';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
 import HubSwitcher from '@/features/ai/assistant/components/HubSwitcher.vue';
@@ -19,24 +18,35 @@ const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const settingsStore = useSettingsStore();
-const route = useRoute();
+
+const {
+	isBuildMode,
+	isMergeAskBuildEnabled,
+	canToggleModes,
+	shouldShowCoachmark,
+	onDismissCoachmark,
+} = useAskModeCoachmark();
+
+// Track when slide animation has completed to prevent coachmark from appearing off-screen
+const slideAnimationComplete = ref(false);
+const canShowCoachmark = computed(() => shouldShowCoachmark.value && slideAnimationComplete.value);
+
+// Reset animation state when panel closes
+watch(
+	() => chatPanelStore.isOpen,
+	(isOpen) => {
+		if (!isOpen) {
+			slideAnimationComplete.value = false;
+		}
+	},
+);
 
 const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
 const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
 
-const isBuildMode = computed(() => chatPanelStore.isBuilderModeActive);
 const chatWidth = computed(() => chatPanelStore.width);
-
-// Show toggle only when both modes are available in current view
-const canToggleModes = computed(() => {
-	const currentRoute = route?.name;
-	return (
-		settingsStore.isAiAssistantEnabled &&
-		builderStore.isAIBuilderEnabled &&
-		currentRoute &&
-		BUILDER_ENABLED_VIEWS.includes(currentRoute as VIEWS)
-	);
-});
+const slideInDuration = `${ASK_AI_SLIDE_IN_DURATION_MS}ms`;
+const slideOutDuration = `${ASK_AI_SLIDE_OUT_DURATION_MS}ms`;
 
 function onResize(data: { direction: string; x: number; width: number }) {
 	chatPanelStore.updateWidth(data.width);
@@ -64,11 +74,7 @@ async function toggleAssistantMode() {
 		chatPanelStore.switchMode(newMode);
 	} else {
 		// Opening from closed state - use full open logic
-		if (switchingToBuild) {
-			await chatPanelStore.open({ mode: 'builder' });
-		} else {
-			await chatPanelStore.open({ mode: 'assistant' });
-		}
+		await chatPanelStore.open({ mode: newMode });
 	}
 }
 
@@ -77,6 +83,7 @@ function onClose() {
 }
 
 function onSlideEnterComplete() {
+	slideAnimationComplete.value = true;
 	if (isBuildMode.value) {
 		askAssistantBuildRef.value?.focusInput();
 	} else {
@@ -86,8 +93,8 @@ function onSlideEnterComplete() {
 
 const unsubscribeAssistantStore = assistantStore.$onAction(({ name }) => {
 	// When assistant is opened from error or credentials help
-	// switch from build mode to chat mode
-	if (['initErrorHelper', 'initCredHelp'].includes(name)) {
+	// switch from build mode to chat mode (unless merge is enabled, which keeps builder mode)
+	if (['initErrorHelper', 'initCredHelp'].includes(name) && !isMergeAskBuildEnabled.value) {
 		chatPanelStore.switchMode('assistant');
 	}
 });
@@ -119,37 +126,67 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<SlideTransition @after-enter="onSlideEnterComplete">
-		<N8nResizeWrapper
+	<Transition
+		:enter-active-class="$style.slideEnterActive"
+		:enter-from-class="$style.slideFrom"
+		:leave-active-class="$style.slideLeaveActive"
+		:leave-to-class="$style.slideFrom"
+		@after-enter="onSlideEnterComplete"
+	>
+		<div
 			v-show="chatPanelStore.isOpen"
-			:supported-directions="['left']"
-			:width="chatWidth"
-			:min-width="chatPanelStore.MIN_CHAT_WIDTH"
-			:max-width="chatPanelStore.MAX_CHAT_WIDTH"
-			:class="$style.resizeWrapper"
-			data-test-id="ask-assistant-sidebar"
-			@resize="onResizeDebounced"
+			:class="$style.slideWrapper"
+			:style="{ width: `${chatWidth}px` }"
 		>
-			<div :style="{ width: `${chatWidth}px` }" :class="$style.wrapper">
-				<div :class="$style.assistantContent">
-					<AskAssistantBuild v-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
-						<template v-if="canToggleModes" #header>
-							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
-						</template>
-					</AskAssistantBuild>
-					<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
-						<!-- Header switcher is only visible when both modes are available in current view -->
-						<template v-if="canToggleModes" #header>
-							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
-						</template>
-					</AskAssistantChat>
+			<N8nResizeWrapper
+				:supported-directions="['left']"
+				:width="chatWidth"
+				:min-width="chatPanelStore.MIN_CHAT_WIDTH"
+				:max-width="chatPanelStore.MAX_CHAT_WIDTH"
+				:class="$style.resizeWrapper"
+				data-test-id="ask-assistant-sidebar"
+				@resize="onResizeDebounced"
+			>
+				<div :style="{ width: `${chatWidth}px` }" :class="$style.wrapper">
+					<div :class="$style.assistantContent">
+						<AskAssistantBuild v-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
+							<template v-if="canToggleModes" #header>
+								<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
+							</template>
+						</AskAssistantBuild>
+						<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
+							<!-- Header switcher is only visible when both modes are available in current view -->
+							<template v-if="canToggleModes" #header>
+								<AskModeCoachmark :visible="canShowCoachmark" @dismiss="onDismissCoachmark">
+									<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
+								</AskModeCoachmark>
+							</template>
+						</AskAssistantChat>
+					</div>
 				</div>
-			</div>
-		</N8nResizeWrapper>
-	</SlideTransition>
+			</N8nResizeWrapper>
+		</div>
+	</Transition>
 </template>
 
 <style lang="scss" module>
+.slideWrapper {
+	overflow: hidden;
+	height: 100%;
+}
+
+.slideEnterActive {
+	transition: width v-bind(slideInDuration) ease-in-out;
+}
+
+.slideLeaveActive {
+	transition: width v-bind(slideOutDuration) ease-in-out;
+}
+
+.slideFrom {
+	width: 0 !important;
+}
+
 .resizeWrapper {
 	z-index: var(--ask-assistant-chat--z);
 }

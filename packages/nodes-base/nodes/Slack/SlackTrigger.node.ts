@@ -322,7 +322,8 @@ export class SlackTrigger implements INodeType {
 		const watchWorkspace = this.getNodeParameter('watchWorkspace', false) as boolean;
 		let eventChannel: string = '';
 
-		if (!(await verifySignature.call(this))) {
+		const isSignatureValid = await verifySignature.call(this);
+		if (!isSignatureValid) {
 			const res = this.getResponseObject();
 			res.status(401).send('Unauthorized').end();
 			return {
@@ -369,7 +370,7 @@ export class SlackTrigger implements INodeType {
 		// Check if user should be ignored
 		if (options.userIds) {
 			const userIds = options.userIds as string[];
-			if (userIds.includes(req.body.event.user)) {
+			if (userIds.includes(req.body.event.user ?? req.body.event.message?.user)) {
 				return {};
 			}
 		}

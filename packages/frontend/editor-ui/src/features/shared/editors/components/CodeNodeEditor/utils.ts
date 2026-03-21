@@ -79,12 +79,6 @@ const pythonInsert = (value: string, mode: CodeExecutionMode): string => {
 	return toBracketNotation(base);
 };
 
-const pyodideInsert = (value: string, mode: CodeExecutionMode): string => {
-	return value
-		.replace('$json', mode === 'runOnceForAllItems' ? '_input.first().json' : '_input.item.json')
-		.replace(/\$\((.*)\)\.item/, mode === 'runOnceForAllItems' ? '_($1).first()' : '_($1).item');
-};
-
 const jsInsertForAllItems = (value: string, binaryMode?: WorkflowSettingsBinaryMode): string => {
 	const isCombinedBinaryMode = binaryMode === BINARY_MODE_COMBINED;
 
@@ -94,8 +88,8 @@ const jsInsertForAllItems = (value: string, binaryMode?: WorkflowSettingsBinaryM
 	return value.replace(jsonTarget, jsonReplacement).replace(/\$\((.*)\)\.item/, '$($1).first()');
 };
 
-const isPyodide = (language: CodeNodeLanguageOption) => language === 'python';
-const isPython = (language: CodeNodeLanguageOption) => language === 'pythonNative';
+const isPython = (language: CodeNodeLanguageOption) =>
+	language === 'python' || language === 'pythonNative';
 
 export const valueToInsert = (
 	value: string,
@@ -104,7 +98,6 @@ export const valueToInsert = (
 	binaryMode: WorkflowSettingsBinaryMode = BINARY_MODE_SEPARATE,
 ): string => {
 	if (isPython(language)) return pythonInsert(value, mode);
-	if (isPyodide(language)) return pyodideInsert(value, mode);
 	if (mode === 'runOnceForAllItems') return jsInsertForAllItems(value, binaryMode);
 
 	return value;

@@ -8,7 +8,7 @@ import { mock } from 'jest-mock-extended';
 import type { IDataObject, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError, NodeApiError } from 'n8n-workflow';
 
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { N8nLlmTracing } from '@n8n/ai-utilities';
 
 describe('N8nLlmTracing', () => {
 	const executionFunctions = mock<ISupplyDataFunctions>({

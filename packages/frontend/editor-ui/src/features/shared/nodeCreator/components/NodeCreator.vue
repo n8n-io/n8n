@@ -40,15 +40,13 @@ const uiStore = useUIStore();
 const bannersStore = useBannersStore();
 const chatPanelStore = useChatPanelStore();
 
-const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
+const { setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
 
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
 	mousedownInsideEvent: null as MouseEvent | null,
 });
-
-const showScrim = computed(() => useNodeCreatorStore().showScrim);
 
 const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 
@@ -117,7 +115,6 @@ watch(
 	() => props.active,
 	(isActive) => {
 		if (!isActive) {
-			setShowScrim(false);
 			resetViewStacks();
 		}
 	},
@@ -127,16 +124,11 @@ watch(
 watch(viewStacksLength, (value) => {
 	if (value === 0) {
 		emit('closeNodeCreator');
-		setShowScrim(false);
 	}
 });
 
 registerKeyHook('NodeCreatorCloseEscape', {
 	keyboardKeys: ['Escape'],
-	handler: () => emit('closeNodeCreator'),
-});
-registerKeyHook('NodeCreatorCloseTab', {
-	keyboardKeys: ['Tab'],
 	handler: () => emit('closeNodeCreator'),
 });
 
@@ -170,16 +162,11 @@ onClickOutside(
 
 <template>
 	<div>
-		<aside
-			:class="{
-				[$style.nodeCreatorScrim]: true,
-				[$style.active]: showScrim,
-			}"
-		/>
+		<aside :class="$style.nodeCreatorScrim" />
 		<N8nIconButton
+			variant="subtle"
 			v-if="active"
 			:class="$style.close"
-			type="secondary"
 			icon="x"
 			aria-label="Close Node Creator"
 			@click="emit('closeNodeCreator')"

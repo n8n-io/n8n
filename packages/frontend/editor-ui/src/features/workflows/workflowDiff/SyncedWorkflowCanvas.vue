@@ -1,16 +1,26 @@
 <script setup lang="ts">
 import CanvasBackground from '@/features/workflows/canvas/components/elements/background/CanvasBackground.vue';
 import { useInjectViewportSync } from '@/features/workflows/workflowDiff/useViewportSync';
-import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
+import type {
+	CanvasConnection,
+	CanvasEventBusEvents,
+	CanvasNode,
+} from '@/features/workflows/canvas/canvas.types';
+import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useVueFlow } from '@vue-flow/core';
 import { watch } from 'vue';
 import Canvas from '@/features/workflows/canvas/components/Canvas.vue';
+import { createEventBus } from '@n8n/utils/event-bus';
 
 const props = defineProps<{
 	id: string;
 	nodes: CanvasNode[];
 	connections: CanvasConnection[];
+	applyLayout?: boolean;
 }>();
+
+// Create eventBus for this canvas to communicate with Canvas component
+const eventBus = createEventBus<CanvasEventBusEvents>();
 const {
 	setViewport,
 	onViewportChange: onLocalViewportChange,
@@ -19,7 +29,52 @@ const {
 	findNode,
 	addSelectedNodes,
 	onPaneClick,
+	onNodesInitialized,
+	updateNode,
 } = useVueFlow({ id: props.id });
+
+// Trigger tidy-up after nodes are initialized if applyLayout is true
+onNodesInitialized(() => {
+	if (props.applyLayout) {
+		eventBus.emit('tidyUp', { source: 'import-workflow-data' });
+	}
+});
+
+/**
+ * Calculate the offset needed to shift nodes so the topmost-leftmost node is at origin.
+ * Finds the anchor node (smallest Y, then smallest X) and returns the negative of its position.
+ */
+function calculateOriginOffset(nodes: Array<{ x: number; y: number }>): { x: number; y: number } {
+	if (nodes.length === 0) return { x: 0, y: 0 };
+
+	let minX = nodes[0].x;
+	let minY = nodes[0].y;
+
+	for (const node of nodes) {
+		if (node.y < minY || (node.y === minY && node.x < minX)) {
+			minX = node.x;
+			minY = node.y;
+		}
+	}
+
+	return { x: -minX, y: -minY };
+}
+
+// Apply calculated positions when Canvas emits tidy-up event
+// Shift all nodes so the leftmost topmost node is at origin {x: 0, y: 0}
+// This ensures both canvases in the diff view have aligned anchor nodes
+async function onTidyUp({ result }: CanvasLayoutEvent) {
+	const offset = calculateOriginOffset(result.nodes);
+
+	result.nodes.forEach(({ id, x, y }) => {
+		updateNode(id, { position: { x: x + offset.x, y: y + offset.y } });
+	});
+
+	// Zoom to fit after positions are updated
+	setTimeout(() => {
+		void fitView({ padding: 1 });
+	}, 100);
+}
 
 const { triggerViewportChange, onViewportChange, selectedDetailId, triggerNodeClick } =
 	useInjectViewportSync();
@@ -75,7 +130,15 @@ watch(selectedDetailId, (id) => {
 
 <template>
 	<div style="width: 100%; height: 100%; position: relative">
-		<Canvas :id :nodes :connections :read-only="true" style="width: 100%; height: 100%">
+		<Canvas
+			:id
+			:nodes
+			:connections
+			:read-only="true"
+			:event-bus="eventBus"
+			style="width: 100%; height: 100%"
+			@tidy-up="onTidyUp"
+		>
 			<template #node="{ nodeProps }">
 				<slot name="node" v-bind="{ nodeProps }" />
 			</template>

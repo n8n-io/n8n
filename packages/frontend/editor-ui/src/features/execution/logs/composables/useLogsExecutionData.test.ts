@@ -4,6 +4,7 @@ import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { nodeTypes } from '../__test__/data';
 import {
@@ -36,12 +37,14 @@ let workflowState: WorkflowState;
 
 describe(useLogsExecutionData, () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
@@ -146,7 +149,7 @@ describe(useLogsExecutionData, () => {
 				typeof useToastMock
 			>);
 
-			workflowsStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
+			workflowsListStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 			workflowsStore.fetchExecutionDataById.mockRejectedValueOnce(
 				new Error('test execution fetch fail'),
 			);

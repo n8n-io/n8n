@@ -29,7 +29,7 @@ import {
 	switchBranchFields,
 	tagFields,
 } from './descriptions';
-import { validateGitReference } from './GenericFunctions';
+import { mapGitConfigList, validateGitReference } from './GenericFunctions';
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -623,13 +623,7 @@ export class Git implements INodeType {
 
 					const config = await git.listConfig();
 
-					const data = [];
-					for (const fileName of Object.keys(config.values)) {
-						data.push({
-							_file: fileName,
-							...config.values[fileName],
-						});
-					}
+					const data = mapGitConfigList(config);
 
 					returnItems.push(
 						...this.helpers.returnJsonArray(data).map((item) => {

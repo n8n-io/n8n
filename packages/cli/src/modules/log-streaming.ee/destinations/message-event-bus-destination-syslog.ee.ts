@@ -84,10 +84,7 @@ export class MessageEventBusDestinationSyslog
 	async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
 		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
-		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
-			if (!this.license.isLogStreamingEnabled()) return sendResult;
-			if (!this.hasSubscribedToEvent(msg)) return sendResult;
-		}
+
 		try {
 			const serializedMessage = msg.serialize();
 			if (this.anonymizeAuditMessages) {
@@ -98,7 +95,7 @@ export class MessageEventBusDestinationSyslog
 				JSON.stringify(serializedMessage),
 				{
 					severity: msg.eventName.toLowerCase().endsWith('error') ? Severity.Error : Severity.Debug,
-					msgid: msg.id,
+					msgid: msg.id.length > 32 ? msg.id.replace(/-/g, '').substring(0, 32) : msg.id,
 					timestamp: msg.ts.toJSDate(),
 				},
 				async (error) => {

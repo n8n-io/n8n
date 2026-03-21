@@ -81,7 +81,7 @@ The monorepo is organized into these key packages:
 - **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
 - **Backend:** Node.js + TypeScript + Express + TypeORM
 - **Testing:** Jest (unit) + Playwright (E2E)
-- **Database:** TypeORM with SQLite/PostgreSQL/MySQL support
+- **Database:** TypeORM with SQLite/PostgreSQL support
 - **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
 
 ### Key Architectural Patterns
@@ -103,10 +103,32 @@ The monorepo is organized into these key packages:
 - Workflow tests are JSON-based for integration testing
 - AI features have dedicated development workflow (`pnpm dev:ai`)
 
+### Workflow Traversal Utilities
+
+The `n8n-workflow` package exports graph traversal utilities from
+`packages/workflow/src/common/`. Use these instead of custom traversal logic.
+
+**Key concept:** `workflow.connections` is indexed by **source node**.
+To find parent nodes, use `mapConnectionsByDestination()` to invert it first.
+
+```typescript
+import { getParentNodes, getChildNodes, mapConnectionsByDestination } from 'n8n-workflow';
+
+// Finding parent nodes (predecessors) - requires inverted connections
+const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+const parents = getParentNodes(connectionsByDestination, 'NodeName', 'main', 1);
+
+// Finding child nodes (successors) - uses connections directly
+const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
+```
+
 ### TypeScript Best Practices
 - **NEVER use `any` type** - use proper types or `unknown`
-- **Avoid type casting with `as`** - use type guards or type predicates instead
+- **Avoid type casting with `as`** - use type guards or type predicates instead (except in test code where `as` is acceptable)
 - **Define shared interfaces in `@n8n/api-types`** package for FE/BE communication
+- **Lazy-load heavy modules** — if a module is only used in a specific code
+  path (not every request), use `await import()` at point of use instead of
+  top-level `import`. Applies especially to native modules and large parsers.
 
 ### Error Handling
 - Don't use `ApplicationError` class in CLI and nodes for throwing errors,
@@ -117,7 +139,9 @@ The monorepo is organized into these key packages:
 ### Frontend Development
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
-- **data-test-id must be a single value** (no spaces or multiple values)
+- **data-testid must be a single value** (no spaces or multiple values)
+- For style changes and design-system updates, follow
+  `.agents/design-system-style-rules.md`
 
 When implementing CSS, refer to @packages/frontend/CLAUDE.md for guidelines on
 CSS variables and styling conventions.
@@ -125,6 +149,7 @@ CSS variables and styling conventions.
 ### Testing Guidelines
 - **Always work from within the package directory** when running tests
 - **Mock all external dependencies** in unit tests
+- **Prefer reusing hoisted shared `mock<T>(...)` fixtures** when a typed mock is immutable and used across tests. This rule exists to avoid massive test slowdowns from repeatedly creating nested proxy mocks while preserving the type contract. Avoid replacing these with `as unknown as T` helpers for entities like `User`.
 - **Confirm test cases with user** before writing unit tests
 - **Typecheck is critical before committing** - always run `pnpm typecheck`
 - **When modifying pinia stores**, check for unused computed properties
@@ -135,6 +160,7 @@ What we use for testing and writing tests:
 - For frontend we use `vitest`
 - For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
   See `packages/testing/playwright/README.md` for details.
+- **For Playwright test maintenance/cleanup**, see @packages/testing/playwright/AGENTS.md (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
 
 ### Common Development Tasks
 
@@ -146,6 +172,23 @@ When implementing features:
 4. Update frontend in `packages/editor-ui` with i18n support
 5. Write tests with proper mocks
 6. Run `pnpm typecheck` to verify types
+
+## Design Principles
+
+### Security Must Not Degrade the Building Experience
+
+Security improvements, whether driven by enterprise requirements or internal
+standards, must NEVER add friction to the common-case building experience. When
+designing security-related features (defaults, behaviors, flows, error
+handling), apply these checks:
+
+- **No friction for the common case:** A community builder's workflow should
+  remain intuitive. Security should be invisible when it can be.
+- **Migration and upgrade paths:** Existing users must have a clear,
+  non-disruptive path forward when defaults or behaviors change.
+- **Security layers on top, not in competition:** Great UX and strong security
+  are not trade-offs. They're both required. If a design forces a choice
+  between them, the design needs more work.
 
 ## Github Guidelines
 - When creating a PR, use the conventions in

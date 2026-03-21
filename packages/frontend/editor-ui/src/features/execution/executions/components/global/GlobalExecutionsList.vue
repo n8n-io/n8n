@@ -7,6 +7,7 @@ import { useToast } from '@/app/composables/useToast';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
@@ -47,6 +48,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -72,7 +74,7 @@ const workflows = computed<IWorkflowDb[]>(() => {
 			id: 'all',
 			name: i18n.baseText('executionsList.allWorkflows'),
 		} as IWorkflowDb,
-		...workflowsStore.allWorkflows,
+		...workflowsListStore.allWorkflows,
 	];
 });
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type {
 	AddColumnResponse,
 	DataTable,
@@ -16,6 +16,8 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import DataTableTable from './components/dataGrid/DataTableTable.vue';
 import { useDebounce } from '@/app/composables/useDebounce';
 import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import {
 	N8nButton,
 	N8nInput,
@@ -25,6 +27,8 @@ import {
 	N8nIcon,
 	N8nTooltip,
 } from '@n8n/design-system';
+import DependencyPill from '@/app/components/DependencyPill.vue';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 type Props = {
 	id: string;
@@ -39,6 +43,12 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 
 const dataTableStore = useDataTableStore();
+const sourceControlStore = useSourceControlStore();
+const { fetchDependencyCounts, hasDependencies } = useDependencies();
+
+const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+const dataTableHasDependents = computed(() => hasDependencies(props.id));
 
 const loading = ref(false);
 const saving = ref(false);
@@ -70,6 +80,7 @@ const initialize = async () => {
 		await showErrorAndGoBackToList(error);
 	} finally {
 		loading.value = false;
+		void fetchDependencyCounts([props.id], 'dataTable');
 	}
 };
 
@@ -107,9 +118,37 @@ const onAddColumn = async (column: DataTableColumnCreatePayload): Promise<AddCol
 	return await dataTableTableRef.value.addColumn(column);
 };
 
+const onCsvImported = async () => {
+	await dataTableTableRef.value?.fetchDataTableRows();
+};
+
+const handleSourceControlPull = async () => {
+	// Bypass cache and fetch fresh data from API after pull
+	loading.value = true;
+	try {
+		const response = await dataTableStore.fetchDataTableDetails(props.id, props.projectId);
+		if (response) {
+			dataTable.value = response;
+			documentTitle.set(`${i18n.baseText('dataTable.dataTables')} > ${response.name}`);
+		} else {
+			await showErrorAndGoBackToList(new Error(i18n.baseText('dataTable.notFound')));
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataTable.getDetails.error'));
+	} finally {
+		loading.value = false;
+	}
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('dataTable.dataTables'));
 	await initialize();
+
+	sourceControlEventBus.on('pull', handleSourceControlPull);
+});
+
+onBeforeUnmount(() => {
+	sourceControlEventBus.off('pull', handleSourceControlPull);
 });
 </script>
 
@@ -127,12 +166,23 @@ onMounted(async () => {
 		</div>
 		<div v-else-if="dataTable">
 			<div :class="$style.header">
-				<DataTableBreadcrumbs :data-table="dataTable" />
+				<DataTableBreadcrumbs
+					:data-table="dataTable"
+					:read-only="readOnlyEnv"
+					@imported="onCsvImported"
+				/>
 				<div v-if="saving" :class="$style.saving">
 					<N8nSpinner />
 					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>
 				</div>
 				<div :class="$style.actions">
+					<DependencyPill
+						v-if="dataTableHasDependents"
+						resource-type="dataTable"
+						:resource-id="id"
+						source="data_table_card"
+						data-test-id="data-table-details-dependents"
+					/>
 					<N8nInput
 						v-model="searchQuery"
 						data-test-id="data-table-search-input"
@@ -156,6 +206,7 @@ onMounted(async () => {
 					</N8nInput>
 					<N8nButton
 						data-test-id="data-table-header-add-row-button"
+						:disabled="readOnlyEnv"
 						@click="dataTableTableRef?.addRow"
 						>{{ i18n.baseText('dataTable.addRow.label') }}</N8nButton
 					>
@@ -163,6 +214,7 @@ onMounted(async () => {
 						:use-text-trigger="true"
 						:popover-id="'ds-details-add-column-popover'"
 						:params="{ onAddColumn }"
+						:disabled="readOnlyEnv"
 					/>
 				</div>
 			</div>
@@ -171,6 +223,7 @@ onMounted(async () => {
 					ref="dataTableTableRef"
 					:data-table="dataTable"
 					:search="searchQuery"
+					:read-only="readOnlyEnv"
 					@toggle-save="onToggleSave"
 				/>
 			</div>

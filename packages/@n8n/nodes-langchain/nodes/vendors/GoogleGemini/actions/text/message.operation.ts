@@ -307,9 +307,9 @@ const properties: INodeProperties[] = [
 				displayName: 'Thinking Budget',
 				name: 'thinkingBudget',
 				type: 'number',
-				default: undefined,
+				default: -1,
 				description:
-					'Controls reasoning tokens for thinking models. Set to 0 to disable automatic thinking. Set to -1 for dynamic thinking. Leave empty for auto mode.',
+					'Controls reasoning tokens for thinking models. Set to 0 to disable automatic thinking. Set to -1 for dynamic thinking (default).',
 				typeOptions: {
 					minValue: -1,
 					numberPrecision: 0,

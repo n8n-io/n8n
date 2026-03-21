@@ -43,6 +43,11 @@ export class ModuleRegistry {
 		'sso-oidc',
 		'sso-saml',
 		'log-streaming',
+		'ldap',
+		'quick-connect',
+		'workflow-builder',
+		'redaction',
+		'instance-registry',
 	];
 
 	private readonly activeModules: string[] = [];
@@ -103,6 +108,8 @@ export class ModuleRegistry {
 			const loadDir = await Container.get(ModuleClass).loadDir?.();
 
 			if (loadDir) this.loadDirs.push(loadDir);
+
+			await Container.get(ModuleClass).commands?.();
 		}
 	}
 

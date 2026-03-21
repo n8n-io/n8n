@@ -83,12 +83,14 @@ export class HttpHeaderExtractor implements IContextEstablishmentHook {
 				displayName: 'Header Name',
 				type: 'string',
 				default: 'authorization',
+				noDataExpression: true,
 				description: 'The name of the HTTP header to extract the value from.',
 			},
 			{
 				name: 'headerValue',
 				displayName: 'Header Value Pattern',
 				type: 'string',
+				noDataExpression: true,
 				default: '[Bb][Ee][Aa][Rr][Ee][Rr]\\s+(.+)',
 				description:
 					'A regular expression pattern to extract the identity from the header value. Use a capturing group to specify the identity part.',
@@ -103,7 +105,7 @@ export class HttpHeaderExtractor implements IContextEstablishmentHook {
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
 		if (!options.triggerItems || options.triggerItems.length === 0) {
 			this.logger.debug('No trigger items found, skipping HttpHeaderExtractor hook.');
-			return {};
+			throw new Error('No trigger items found, to perform header extraction');
 		}
 
 		const httpHeaderOptions = await HttpHeaderExtractorOptionsSchema.safeParseAsync(
@@ -114,7 +116,7 @@ export class HttpHeaderExtractor implements IContextEstablishmentHook {
 			this.logger.error('Invalid options for HttpHeaderExtractor hook.', {
 				error: httpHeaderOptions.error,
 			});
-			return {};
+			throw new Error('Invalid options for HttpHeaderExtractor hook');
 		}
 
 		const normalizedHeaderName = httpHeaderOptions.data.headerName.toLowerCase();
@@ -123,7 +125,7 @@ export class HttpHeaderExtractor implements IContextEstablishmentHook {
 		// Validate pattern safety to prevent ReDoS (defense in depth)
 		if (isUnsafeRegexPattern(pattern)) {
 			this.logger.warn('Potentially unsafe regex pattern rejected', { pattern });
-			return {};
+			throw new Error('Detected unsafe regex pattern, rejecting processing');
 		}
 
 		const [triggerItem] = options.triggerItems;
@@ -159,13 +161,11 @@ export class HttpHeaderExtractor implements IContextEstablishmentHook {
 					}
 				} catch (error) {
 					this.logger.error('Invalid regex pattern', { pattern, error });
-					return {
-						triggerItems: options.triggerItems,
-					};
+					throw new Error('Failed to execute regex pattern, during header extraction');
 				}
 			}
 		}
 
-		return {};
+		throw new Error('Http header not found or invalid');
 	}
 }
