@@ -13,7 +13,7 @@ export function createPatchWorkflowTool(context: InstanceAiContext) {
 		inputSchema: z.object({
 			workflowId: z.string().describe('ID of the workflow to patch'),
 			nodeName: z.string().describe('Exact name of the node to patch'),
-			newName: z.string().optional().describe('Rename the node to this value'),
+			newName: z.string().min(1).optional().describe('Rename the node to this value'),
 			parameterPatch: z
 				.record(z.unknown())
 				.optional()
@@ -48,7 +48,7 @@ export function createPatchWorkflowTool(context: InstanceAiContext) {
 					credentials: credentialPatch,
 					disabled,
 				});
-				return { success: true, workflowId, nodeName: newName || nodeName };
+				return { success: true, workflowId, nodeName: newName ?? nodeName };
 			} catch (error) {
 				return {
 					success: false,
