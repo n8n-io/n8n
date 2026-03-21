@@ -9,8 +9,8 @@ import {
 } from 'reka-ui';
 import { computed, defineComponent, inject, ref, watch } from 'vue';
 
-import type { N8nTooltipProps } from './Tooltip.types';
 import { TOOLTIP_GROUP_INJECTION_KEY } from './constants';
+import type { N8nTooltipProps } from './Tooltip.types';
 import { useInjectTooltipAppendTo } from '../../composables/useTooltipAppendTo';
 import { n8nHtml as vN8nHtml } from '../../directives';
 import N8nButton from '../N8nButton';
