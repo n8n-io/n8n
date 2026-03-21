@@ -71,15 +71,6 @@ describe('MainSidebarHeader', () => {
 		},
 	);
 
-	it('should render beta icon when not collapsed and isBeta is true', () => {
-		const { queryByTestId } = createComponentRenderer(MainSidebarHeader, {
-			pinia,
-			props: { isCollapsed: false, isBeta: true },
-		})();
-
-		expect(queryByTestId('beta-icon') !== null).toBe(true);
-	});
-
 	it('renders the logo link only when not collapsed', async () => {
 		const { container, rerender } = createComponentRenderer(MainSidebarHeader, {
 			pinia,

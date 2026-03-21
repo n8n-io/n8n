@@ -8,14 +8,18 @@ export { CredentialsRepository } from './credentials.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
-export { ExecutionRepository } from './execution.repository';
+export {
+	ExecutionRepository,
+	type ExecutionDeletionCriteria,
+	type UpdateExecutionConditions,
+} from './execution.repository';
 export { FolderRepository } from './folder.repository';
 export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectRelationRepository } from './project-relation.repository';
-export { ProjectRepository } from './project.repository';
+export { ProjectRepository, type ProjectListOptions } from './project.repository';
 export { RoleRepository } from './role.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
@@ -29,6 +33,7 @@ export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository'
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository } from './workflow.repository';
+export { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {
 	WorkflowDependencyRepository,
@@ -36,3 +41,5 @@ export {
 } from './workflow-dependency.repository';
 export { WebhookRepository } from './webhook.repository';
 export { UserRepository } from './user.repository';
+export { SecretsProviderConnectionRepository } from './secrets-provider-connection.repository.ee';
+export { ProjectSecretsProviderAccessRepository } from './project-secrets-provider-access.repository.ee';

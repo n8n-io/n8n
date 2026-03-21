@@ -6,7 +6,6 @@ import {
 	ICredentialResolver,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
@@ -55,9 +54,7 @@ export class DynamicCredentialResolverService {
 	 * @throws {CredentialResolverValidationError} When the resolver type is unknown or config is invalid
 	 */
 	async create(params: CreateResolverParams): Promise<DynamicCredentialResolver> {
-		const canUseExternalSecrets = hasGlobalScope(params.user, 'externalSecret:list');
-
-		await this.validateConfig(params.type, params.config, canUseExternalSecrets);
+		await this.validateConfig(params.type, params.config);
 
 		const encryptedConfig = this.encryptConfig(params.config);
 
@@ -113,19 +110,17 @@ export class DynamicCredentialResolverService {
 			throw new DynamicCredentialResolverNotFoundError(id);
 		}
 
-		const canUseExternalSecrets = hasGlobalScope(params.user, 'externalSecret:list');
-
 		if (params.type !== undefined) {
 			existing.type = params.type;
 			// Re-validate existing config against new type if config wasn't provided
 			if (params.config === undefined) {
 				const existingConfig = this.decryptConfig(existing.config);
-				await this.validateConfig(existing.type, existingConfig, canUseExternalSecrets);
+				await this.validateConfig(existing.type, existingConfig);
 			}
 		}
 
 		if (params.config !== undefined) {
-			await this.validateConfig(existing.type, params.config, canUseExternalSecrets);
+			await this.validateConfig(existing.type, params.config);
 			existing.config = this.encryptConfig(params.config);
 		}
 
@@ -177,7 +172,6 @@ export class DynamicCredentialResolverService {
 	private async validateConfig(
 		type: string,
 		config: CredentialResolverConfiguration,
-		canUseExternalSecrets: boolean = false,
 	): Promise<void> {
 		const resolverImplementation = this.registry.getResolverByTypename(type);
 		if (!resolverImplementation) {
@@ -187,7 +181,7 @@ export class DynamicCredentialResolverService {
 		// Resolve expressions in the config to validate syntax
 		let resolvedConfig = config;
 		try {
-			resolvedConfig = await this.expressionService.resolve(config, canUseExternalSecrets ?? false);
+			resolvedConfig = await this.expressionService.resolve(config);
 		} catch (error) {
 			// If expression resolution fails, it means there's a syntax error
 			throw new CredentialResolverValidationError(

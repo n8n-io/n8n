@@ -1,4 +1,5 @@
 import type { ApiKeyScope } from '@n8n/permissions';
+import { request } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import type { ApiHelpers } from './api-helper';
@@ -103,7 +104,17 @@ export class PublicApiHelper {
 		return userResult.user;
 	}
 
-	/** Create a fully activated user (invites then accepts the invitation). */
+	/**
+	 * Create a fully activated user by inviting them via the Public API and accepting the invitation.
+	 *
+	 * n8n's Public API doesn't have a direct "create user" endpoint. Users must be invited first,
+	 * then accept the invitation to complete registration. The invitation acceptance endpoint
+	 * (`/rest/invitations/accept`) expects a JWT token from the invite link and sets session cookies.
+	 *
+	 * To prevent this from hijacking the current browser session (which would log out the owner),
+	 * we use an isolated request context for the acceptance step. This ensures the owner's session
+	 * remains intact and multiple users can be created consecutively without session interference.
+	 */
 	async createUser(
 		options: {
 			email?: string;
@@ -122,19 +133,51 @@ export class PublicApiHelper {
 		const invited = await this.inviteUser(email, role);
 
 		const url = new URL(invited.inviteAcceptUrl);
-		const inviterId = url.searchParams.get('inviterId');
-		const inviteeId = url.searchParams.get('inviteeId');
+		const token = url.searchParams.get('token');
+		if (!token) {
+			throw new TestError(`Invite URL has no token: ${invited.inviteAcceptUrl}`);
+		}
 
-		const acceptResponse = await this.api.request.post(`/rest/invitations/${inviteeId}/accept`, {
-			data: { inviterId, firstName, lastName, password },
-		});
+		// Use an isolated request context to prevent session cookie contamination.
+		// The accept endpoint sets cookies that would otherwise override the current user's session.
+		const isolatedContext = await request.newContext({ baseURL: url.origin });
+		try {
+			const acceptResponse = await isolatedContext.post('/rest/invitations/accept', {
+				data: { token, firstName, lastName, password },
+			});
 
-		if (!acceptResponse.ok()) {
-			const errorText = await acceptResponse.text();
-			throw new TestError(`Failed to accept invitation: ${acceptResponse.status()} ${errorText}`);
+			if (!acceptResponse.ok()) {
+				const errorText = await acceptResponse.text();
+				throw new TestError(`Failed to accept invitation: ${acceptResponse.status()} ${errorText}`);
+			}
+		} finally {
+			await isolatedContext.dispose();
 		}
 
 		return { id: invited.id, email, password, firstName, lastName, role: role as TestUser['role'] };
+	}
+
+	async getDiscovery(): Promise<{
+		scopes: string[];
+		resources: Record<
+			string,
+			{
+				operations: string[];
+				endpoints: Array<{ method: string; path: string; operationId: string }>;
+			}
+		>;
+		specUrl: string;
+	}> {
+		const headers = await this.getApiHeaders();
+		const response = await this.api.request.get('/api/v1/discover', { headers });
+
+		if (!response.ok()) {
+			const errorText = await response.text();
+			throw new TestError(`Failed to get discovery: ${response.status()} ${errorText}`);
+		}
+
+		const result = await response.json();
+		return result.data;
 	}
 
 	async getUsers(options?: { includeRole?: boolean; limit?: number }): Promise<
@@ -155,15 +198,5 @@ export class PublicApiHelper {
 
 		const result = await response.json();
 		return result.data;
-	}
-
-	async deleteUser(userId: string): Promise<void> {
-		const headers = await this.getApiHeaders();
-		const response = await this.api.request.delete(`/api/v1/users/${userId}`, { headers });
-
-		if (!response.ok()) {
-			const errorText = await response.text();
-			throw new TestError(`Failed to delete user: ${response.status()} ${errorText}`);
-		}
 	}
 }

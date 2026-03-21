@@ -77,7 +77,6 @@ const onLogout = () => {
 	>
 		<MainSidebarHeader
 			hide-create
-			is-beta
 			:is-collapsed="isCollapsed"
 			@collapse="toggleCollapse"
 			@open-command-bar="openCommandBar"

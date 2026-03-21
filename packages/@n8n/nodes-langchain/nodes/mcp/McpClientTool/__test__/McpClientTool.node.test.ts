@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { McpError, ErrorCode, CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { mock, mockDeep } from 'jest-mock-extended';
+import { StructuredToolkit } from 'n8n-core';
 import {
 	type IExecuteFunctions,
 	NodeConnectionTypes,
@@ -13,7 +14,6 @@ import {
 
 import { getTools } from '../loadOptions';
 import { McpClientTool } from '../McpClientTool.node';
-import { McpToolkit } from '../utils';
 
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
@@ -91,9 +91,9 @@ describe('McpClientTool', () => {
 			);
 
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
-			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
+			expect(supplyDataResult.response).toBeInstanceOf(StructuredToolkit);
 
-			const tools = (supplyDataResult.response as McpToolkit).getTools();
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 			expect(tools).toHaveLength(2);
 
 			const toolCallResult = await tools[0].invoke({ input: 'foo' });
@@ -138,9 +138,9 @@ describe('McpClientTool', () => {
 			);
 
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
-			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
+			expect(supplyDataResult.response).toBeInstanceOf(StructuredToolkit);
 
-			const tools = (supplyDataResult.response as McpToolkit).getTools();
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 			expect(tools).toHaveLength(1);
 			expect(tools[0].name).toBe('MyTool2');
 		});
@@ -183,9 +183,9 @@ describe('McpClientTool', () => {
 			);
 
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
-			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
+			expect(supplyDataResult.response).toBeInstanceOf(StructuredToolkit);
 
-			const tools = (supplyDataResult.response as McpToolkit).getTools();
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 			expect(tools).toHaveLength(1);
 			expect(tools[0].name).toBe('MyTool1');
 		});
@@ -222,7 +222,7 @@ describe('McpClientTool', () => {
 			);
 
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
-			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
+			expect(supplyDataResult.response).toBeInstanceOf(StructuredToolkit);
 
 			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
 			const url = new URL('https://my-mcp-endpoint.ai/sse');
@@ -272,7 +272,7 @@ describe('McpClientTool', () => {
 			);
 
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
-			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
+			expect(supplyDataResult.response).toBeInstanceOf(StructuredToolkit);
 
 			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
 			const url = new URL('https://my-mcp-endpoint.ai/sse');
@@ -319,9 +319,9 @@ describe('McpClientTool', () => {
 			);
 
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
-			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
+			expect(supplyDataResult.response).toBeInstanceOf(StructuredToolkit);
 
-			const tools = (supplyDataResult.response as McpToolkit).getTools();
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 			const toolResult = await tools[0].invoke({ location: 'Berlin' });
 			expect(toolResult).toEqual('Sunny');
 		});
@@ -355,9 +355,9 @@ describe('McpClientTool', () => {
 			const supplyDataResult = await new McpClientTool().supplyData.call(supplyDataFunctions, 0);
 
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
-			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
+			expect(supplyDataResult.response).toBeInstanceOf(StructuredToolkit);
 
-			const tools = (supplyDataResult.response as McpToolkit).getTools();
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 			const toolResult = await tools[0].invoke({ location: 'Berlin' });
 			expect(toolResult).toEqual('Weather unknown at location');
 			expect(supplyDataFunctions.addOutputData).toHaveBeenCalledWith(
@@ -400,7 +400,7 @@ describe('McpClientTool', () => {
 				0,
 			);
 
-			const tools = (supplyDataResult.response as McpToolkit).getTools();
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 
 			await expect(tools[0].invoke({ input: 'foo' })).resolves.toEqual(
 				'MCP error -32001: Request timed out',

@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
-import { DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
+import { DiffMetaData, DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
 
 import { WorkflowHistory, WorkflowEntity } from '../entities';
 import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
@@ -20,8 +20,10 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 
 	/**
 	 * Delete workflow history records earlier than a given date, except for current and active workflow versions.
+	 * @param date - Delete records created before this date
+	 * @param preserveNamedVersions - If true, also preserve versions with name set
 	 */
-	async deleteEarlierThanExceptCurrentAndActive(date: Date) {
+	async deleteEarlierThanExceptCurrentAndActive(date: Date, preserveNamedVersions = false) {
 		const currentVersionIdsSubquery = this.manager
 			.createQueryBuilder()
 			.subQuery()
@@ -37,14 +39,19 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.where('w.activeVersionId IS NOT NULL')
 			.getQuery();
 
-		return await this.manager
+		const query = this.manager
 			.createQueryBuilder()
 			.delete()
 			.from(WorkflowHistory)
 			.where('createdAt < :date', { date })
 			.andWhere(`versionId NOT IN (${currentVersionIdsSubquery})`)
-			.andWhere(`versionId NOT IN (${activeVersionIdsSubquery})`)
-			.execute();
+			.andWhere(`versionId NOT IN (${activeVersionIdsSubquery})`);
+
+		if (preserveNamedVersions) {
+			query.andWhere('name IS NULL');
+		}
+
+		return await query.execute();
 	}
 
 	private makeSkipActiveAndNamedVersionsRule(activeVersions: Set<string>) {
@@ -78,6 +85,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		endDate: Date,
 		rules: DiffRule[] = [],
 		skipRules: DiffRule[] = [],
+		metaData?: Partial<Record<keyof DiffMetaData, boolean>>,
 	): Promise<{ seen: number; deleted: number }> {
 		const workflows = await this.manager
 			.createQueryBuilder(WorkflowHistory, 'wh')
@@ -94,11 +102,16 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		// Group by workflowId
 		const publishedVersions =
 			await this.workflowPublishHistoryRepository.getPublishedVersions(workflowId);
-		const grouped = groupWorkflows<WorkflowHistory>(workflows, rules, [
-			this.makeSkipActiveAndNamedVersionsRule(new Set(publishedVersions.map((x) => x.versionId))),
-			SKIP_RULES.skipDifferentUsers,
-			...skipRules,
-		]);
+		const grouped = groupWorkflows<WorkflowHistory>(
+			workflows,
+			rules,
+			[
+				this.makeSkipActiveAndNamedVersionsRule(new Set(publishedVersions.map((x) => x.versionId))),
+				SKIP_RULES.skipDifferentUsers,
+				...skipRules,
+			],
+			metaData,
+		);
 
 		await this.delete({ versionId: In(grouped.removed.map((x) => x.versionId)) });
 		return { seen: workflows.length, deleted: grouped.removed.length };

@@ -7,6 +7,7 @@ import {
 
 const allowedModules = [
 	'n8n-workflow',
+	'ai-node-sdk',
 	'lodash',
 	'moment',
 	'p-limit',
@@ -14,6 +15,7 @@ const allowedModules = [
 	'zod',
 	'crypto',
 	'node:crypto',
+	'@n8n/ai-node-sdk',
 ];
 
 const isModuleAllowed = (modulePath: string): boolean => {

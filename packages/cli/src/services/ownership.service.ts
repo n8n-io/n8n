@@ -4,6 +4,7 @@ import {
 	Project,
 	User,
 	ProjectRelationRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 	Role,
@@ -29,6 +30,7 @@ export class OwnershipService {
 		private logger: Logger,
 		private passwordUtility: PasswordUtility,
 		private projectRelationRepository: ProjectRelationRepository,
+		private projectRepository: ProjectRepository,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private userRepository: UserRepository,
 		private settingsRepository: SettingsRepository,
@@ -136,6 +138,13 @@ export class OwnershipService {
 		}
 
 		return owner;
+	}
+
+	async invalidateProjectOwnerCacheByUserId(userId: string) {
+		const personalProject = await this.projectRepository.getPersonalProjectForUser(userId);
+		if (personalProject) {
+			await this.cacheService.deleteFromHash('project-owner', personalProject.id);
+		}
 	}
 
 	addOwnedByAndSharedWith(

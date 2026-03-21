@@ -5,6 +5,7 @@ import {
 	DEFAULT_SUBCATEGORY,
 	DRAG_EVENT_DATA_KEY,
 	HITL_SUBCATEGORY,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/communityNodes/communityNodes.constants';
 import { computed, ref } from 'vue';
@@ -80,7 +81,11 @@ const showActionArrow = computed(() => {
 
 	return hasActions.value && !isSendAndWaitCategory.value;
 });
-const isSendAndWaitCategory = computed(() => activeViewStack.subcategory === HITL_SUBCATEGORY);
+const isSendAndWaitCategory = computed(
+	() =>
+		activeViewStack.subcategory === HITL_SUBCATEGORY ||
+		activeViewStack.rootView === HUMAN_IN_THE_LOOP_CATEGORY,
+);
 const dataTestId = computed(() =>
 	hasActions.value ? 'node-creator-action-item' : 'node-creator-node-item',
 );

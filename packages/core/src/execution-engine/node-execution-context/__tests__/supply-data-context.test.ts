@@ -9,12 +9,12 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	ICredentialsHelper,
-	Expression,
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 	NodeConnectionType,
 	IRunData,
+	WorkflowExpression,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -45,7 +45,7 @@ describe('SupplyDataContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node = mock<INode>({
 		name: 'Test Node',

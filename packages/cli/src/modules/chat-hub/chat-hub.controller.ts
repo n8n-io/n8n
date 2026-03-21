@@ -1,44 +1,58 @@
 import {
 	ChatHubSendMessageRequest,
+	ChatHubManualSendMessageRequest,
 	ChatModelsResponse,
 	ChatHubConversationsResponse,
 	ChatHubConversationResponse,
 	ChatHubEditMessageRequest,
+	ChatHubManualEditMessageRequest,
 	ChatHubRegenerateMessageRequest,
+	ChatHubManualRegenerateMessageRequest,
 	ChatHubUpdateConversationRequest,
 	ChatSessionId,
 	ChatMessageId,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
+	ChatHubCreateToolRequest,
+	ChatHubUpdateToolRequest,
 	ChatHubConversationsRequest,
 	ViewableMimeTypes,
+	type ChatSendMessageResponse,
+	type ChatReconnectResponse,
+	ChatReconnectRequest,
+	ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES,
+	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	RestController,
 	Post,
 	Body,
 	GlobalScope,
+	ProjectScope,
 	Get,
 	Delete,
 	Param,
 	Patch,
 	Query,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { sanitizeFilename } from '@n8n/utils';
 import type { Response } from 'express';
-import { jsonStringify } from 'n8n-workflow';
-import { strict as assert } from 'node:assert';
-
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import multer from 'multer';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubUploadMiddleware } from './chat-hub-upload.middleware';
+import { ChatHubToolService } from './chat-hub-tool.service';
+import { extractAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
+const chatHubUploadMiddleware = Container.get(ChatHubUploadMiddleware);
 
 @RestController('/chat')
 export class ChatHubController {
@@ -46,8 +60,8 @@ export class ChatHubController {
 		private readonly chatService: ChatHubService,
 		private readonly chatModelsService: ChatHubModelsService,
 		private readonly chatAgentService: ChatHubAgentService,
+		private readonly chatToolService: ChatHubToolService,
 		private readonly chatAttachmentService: ChatHubAttachmentService,
-		private readonly logger: Logger,
 	) {}
 
 	@Post('/models')
@@ -67,7 +81,12 @@ export class ChatHubController {
 		_res: Response,
 		@Query query: ChatHubConversationsRequest,
 	): Promise<ChatHubConversationsResponse> {
-		return await this.chatService.getConversations(req.user.id, query.limit, query.cursor);
+		return await this.chatService.getConversations(
+			req.user.id,
+			query.limit,
+			query.cursor,
+			query.type,
+		);
 	}
 
 	@Get('/conversations/:sessionId')
@@ -131,134 +150,174 @@ export class ChatHubController {
 	@Post('/conversations/send')
 	async sendMessage(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Body payload: ChatHubSendMessageRequest,
-	) {
-		let shouldRethrow = false;
-		try {
-			await this.chatService.sendHumanMessage(res, req.user, {
+	): Promise<ChatSendMessageResponse> {
+		await this.chatService.sendHumanMessage(
+			req.user,
+			{
 				...payload,
 				userId: req.user.id,
-			});
-		} catch (error: unknown) {
-			assert(error instanceof Error);
+			},
+			extractAuthenticationMetadata(req),
+		);
 
-			this.logger.error(`Error in chat send endpoint: ${error}`);
+		return {
+			status: 'streaming',
+		};
+	}
 
-			if (!res.headersSent) {
-				if (error instanceof ResponseError) {
-					shouldRethrow = true;
-					throw error;
-				}
-
-				res.status(500).json({
-					code: 500,
-					message: error.message,
-				});
-			} else if (!res.writableEnded) {
-				res.write(
-					jsonStringify({
-						type: 'error',
-						content: error.message,
-					}) + '\n',
-				);
-				res.flush();
-			}
-		} finally {
-			if (!shouldRethrow && !res.writableEnded) res.end();
+	/**
+	 * Send a message using the draft (unpublished) workflow version.
+	 * Requires workflow:execute — not available to chat-only users.
+	 * Passes pushRef header so the execution sends canvas events.
+	 */
+	@ProjectScope('workflow:execute')
+	@Post('/conversations/manual/:workflowId/send')
+	async sendMessageManual(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body payload: ChatHubManualSendMessageRequest,
+	): Promise<ChatSendMessageResponse> {
+		const pushRef = req.headers['push-ref'] as string | undefined;
+		if (!pushRef) {
+			throw new BadRequestError('push-ref header is required for manual execution');
 		}
+
+		await this.chatService.sendHumanMessageManual(
+			req.user,
+			{
+				...payload,
+				model: { provider: 'n8n' as const, workflowId },
+				credentials: {},
+				userId: req.user.id,
+			},
+			extractAuthenticationMetadata(req),
+			pushRef,
+		);
+
+		return {
+			status: 'streaming',
+		};
 	}
 
 	@GlobalScope('chatHub:message')
 	@Post('/conversations/:sessionId/messages/:messageId/edit')
 	async editMessage(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
 		@Param('messageId') editId: ChatMessageId,
 		@Body payload: ChatHubEditMessageRequest,
-	) {
-		let shouldRethrow = false;
-		try {
-			await this.chatService.editMessage(res, req.user, {
+	): Promise<ChatSendMessageResponse> {
+		await this.chatService.editMessage(
+			req.user,
+			{
 				...payload,
 				sessionId,
 				editId,
 				userId: req.user.id,
-			});
-		} catch (error: unknown) {
-			assert(error instanceof Error);
+			},
+			extractAuthenticationMetadata(req),
+		);
 
-			this.logger.error(`Error in chat edit endpoint: ${error}`);
+		return {
+			status: 'streaming',
+		};
+	}
 
-			if (!res.headersSent) {
-				if (error instanceof ResponseError) {
-					shouldRethrow = true;
-					throw error;
-				}
-
-				res.status(500).json({
-					code: 500,
-					message: error.message,
-				});
-			} else if (!res.writableEnded) {
-				res.write(
-					jsonStringify({
-						type: 'error',
-						content: error.message,
-					}) + '\n',
-				);
-				res.flush();
-			}
-		} finally {
-			if (!shouldRethrow && !res.writableEnded) res.end();
+	@ProjectScope('workflow:execute')
+	@Post('/conversations/manual/:workflowId/:sessionId/messages/:messageId/edit')
+	async editMessageManual(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Param('messageId') editId: ChatMessageId,
+		@Body payload: ChatHubManualEditMessageRequest,
+	): Promise<ChatSendMessageResponse> {
+		const pushRef = req.headers['push-ref'] as string | undefined;
+		if (!pushRef) {
+			throw new BadRequestError('push-ref header is required for manual execution');
 		}
+
+		await this.chatService.editMessageManual(
+			req.user,
+			{
+				...payload,
+				model: { provider: 'n8n' as const, workflowId },
+				credentials: {},
+				sessionId,
+				editId,
+				userId: req.user.id,
+			},
+			extractAuthenticationMetadata(req),
+			pushRef,
+		);
+
+		return {
+			status: 'streaming',
+		};
 	}
 
 	@GlobalScope('chatHub:message')
 	@Post('/conversations/:sessionId/messages/:messageId/regenerate')
 	async regenerateMessage(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
 		@Param('messageId') retryId: ChatMessageId,
 		@Body payload: ChatHubRegenerateMessageRequest,
-	) {
-		let shouldRethrow = false;
-		try {
-			await this.chatService.regenerateAIMessage(res, req.user, {
+	): Promise<ChatSendMessageResponse> {
+		await this.chatService.regenerateAIMessage(
+			req.user,
+			{
 				...payload,
 				sessionId,
 				retryId,
 				userId: req.user.id,
-			});
-		} catch (error: unknown) {
-			assert(error instanceof Error);
+			},
+			extractAuthenticationMetadata(req),
+		);
 
-			this.logger.error(`Error in chat retry endpoint: ${error}`);
+		return {
+			status: 'streaming',
+		};
+	}
 
-			if (!res.headersSent) {
-				if (error instanceof ResponseError) {
-					shouldRethrow = true;
-					throw error;
-				}
-
-				res.status(500).json({
-					code: 500,
-					message: error.message,
-				});
-			} else if (!res.writableEnded) {
-				res.write(
-					jsonStringify({
-						type: 'error',
-						content: error.message,
-					}) + '\n',
-				);
-				res.flush();
-			}
-		} finally {
-			if (!shouldRethrow && !res.writableEnded) res.end();
+	@ProjectScope('workflow:execute')
+	@Post('/conversations/manual/:workflowId/:sessionId/messages/:messageId/regenerate')
+	async regenerateMessageManual(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Param('messageId') retryId: ChatMessageId,
+		@Body payload: ChatHubManualRegenerateMessageRequest,
+	): Promise<ChatSendMessageResponse> {
+		const pushRef = req.headers['push-ref'] as string | undefined;
+		if (!pushRef) {
+			throw new BadRequestError('push-ref header is required for manual execution');
 		}
+
+		await this.chatService.regenerateAIMessageManual(
+			req.user,
+			{
+				...payload,
+				model: { provider: 'n8n' as const, workflowId },
+				credentials: {},
+				sessionId,
+				retryId,
+				userId: req.user.id,
+			},
+			extractAuthenticationMetadata(req),
+			pushRef,
+		);
+
+		return {
+			status: 'streaming',
+		};
 	}
 
 	@GlobalScope('chatHub:message')
@@ -271,6 +330,26 @@ export class ChatHubController {
 	) {
 		await this.chatService.stopGeneration(req.user, sessionId, messageId);
 		res.status(204).send();
+	}
+
+	/**
+	 * Reconnect to an active chat stream after WebSocket reconnection.
+	 * Returns pending chunks for replay.
+	 */
+	@GlobalScope('chatHub:message')
+	@Post('/conversations/:sessionId/reconnect')
+	async reconnectToStream(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Query query: ChatReconnectRequest,
+	): Promise<ChatReconnectResponse> {
+		// Verify user has access to this session
+		await this.chatService.ensureConversation(req.user.id, sessionId);
+
+		const lastReceivedSequence = query.lastSequence ?? 0;
+
+		return await this.chatService.reconnectToStream(sessionId, lastReceivedSequence);
 	}
 
 	@Patch('/conversations/:sessionId')
@@ -300,16 +379,55 @@ export class ChatHubController {
 		res.status(204).send();
 	}
 
-	@Get('/agents')
-	@GlobalScope('chatHubAgent:list')
-	async getAgents(req: AuthenticatedRequest) {
-		return await this.chatAgentService.getAgentsByUserId(req.user.id);
+	@Get('/tools')
+	@GlobalScope('chatHub:message')
+	async getTools(req: AuthenticatedRequest) {
+		const tools = await this.chatToolService.getToolsByUserId(req.user.id);
+		return tools.map((tool) => ChatHubToolService.toDto(tool));
+	}
+
+	@Post('/tools')
+	@GlobalScope('chatHub:message')
+	async createTool(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ChatHubCreateToolRequest,
+	) {
+		this.assertToolTypeAllowed(payload.definition.type, req.user);
+		const tool = await this.chatToolService.createTool(req.user, payload);
+		return ChatHubToolService.toDto(tool);
+	}
+
+	@Patch('/tools/:toolId')
+	@GlobalScope('chatHub:message')
+	async updateTool(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('toolId') toolId: string,
+		@Body payload: ChatHubUpdateToolRequest,
+	) {
+		if (payload.definition?.type) {
+			this.assertToolTypeAllowed(payload.definition.type, req.user);
+		}
+		const tool = await this.chatToolService.updateTool(toolId, req.user, payload);
+		return ChatHubToolService.toDto(tool);
+	}
+
+	@Delete('/tools/:toolId')
+	@GlobalScope('chatHub:message')
+	async deleteTool(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('toolId') toolId: string,
+	): Promise<void> {
+		await this.chatToolService.deleteTool(toolId, req.user.id);
+		res.status(204).send();
 	}
 
 	@Get('/agents/:agentId')
 	@GlobalScope('chatHubAgent:read')
 	async getAgent(req: AuthenticatedRequest, _res: Response, @Param('agentId') agentId: string) {
-		return await this.chatAgentService.getAgentById(agentId, req.user.id);
+		return await this.chatAgentService.getAgentByIdAsDto(agentId, req.user.id);
 	}
 
 	@Post('/agents')
@@ -343,5 +461,54 @@ export class ChatHubController {
 		await this.chatAgentService.deleteAgent(agentId, req.user.id);
 
 		res.status(204).send();
+	}
+
+	@Post('/agents/:agentId/files', {
+		middlewares: [chatHubUploadMiddleware.array('files')],
+	})
+	@GlobalScope('chatHubAgent:update')
+	async uploadAgentFiles(
+		req: AuthenticatedRequest & { files?: Express.Multer.File[]; fileUploadError?: Error },
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		if (req.fileUploadError) {
+			const error = req.fileUploadError;
+			if (error instanceof multer.MulterError) {
+				throw new BadRequestError(`File upload error: ${error.message}`);
+			}
+			throw error instanceof BadRequestError ? error : new BadRequestError('File upload failed');
+		}
+
+		const files = req.files ?? [];
+		if (files.length === 0) {
+			throw new BadRequestError('No files uploaded');
+		}
+
+		return await this.chatAgentService.addFilesToAgent(agentId, req.user, files);
+	}
+
+	@Delete('/agents/:agentId/files/:fileKnowledgeId')
+	@GlobalScope('chatHubAgent:update')
+	async deleteAgentFile(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('agentId') agentId: string,
+		@Param('fileKnowledgeId') fileKnowledgeId: string,
+	): Promise<void> {
+		await this.chatAgentService.deleteAgentFile(agentId, req.user, fileKnowledgeId);
+		res.status(204).send();
+	}
+
+	private assertToolTypeAllowed(type: string, user: AuthenticatedRequest['user']) {
+		if (ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES.includes(type)) {
+			throw new BadRequestError(`Tool type "${type}" is not supported in the Chat Hub`);
+		}
+		if (
+			user.role.slug === 'global:chatUser' &&
+			CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES.includes(type)
+		) {
+			throw new BadRequestError(`Tool type "${type}" is not available for your role`);
+		}
 	}
 }

@@ -15,13 +15,22 @@ export async function msGraphSecurityApiRequest(
 	qs: IDataObject = {},
 	headers: IDataObject = {},
 ) {
-	const {
-		oauthTokenData: { access_token },
-	} = await this.getCredentials<{
+	const credentials = await this.getCredentials<{
 		oauthTokenData: {
 			access_token: string;
 		};
+		graphApiBaseUrl?: string;
 	}>('microsoftGraphSecurityOAuth2Api');
+
+	const {
+		oauthTokenData: { access_token },
+	} = credentials;
+
+	const baseUrl = (
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 
 	const options: IRequestOptions = {
 		headers: {
@@ -30,7 +39,7 @@ export async function msGraphSecurityApiRequest(
 		method,
 		body,
 		qs,
-		uri: `https://graph.microsoft.com/v1.0/security${endpoint}`,
+		uri: `${baseUrl}/v1.0/security${endpoint}`,
 		json: true,
 	};
 
@@ -51,20 +60,23 @@ export async function msGraphSecurityApiRequest(
 	} catch (error) {
 		const nestedMessage = error?.error?.error?.message;
 
-		if (nestedMessage.startsWith('{"')) {
+		if (nestedMessage?.startsWith('{"')) {
 			error = JSON.parse(nestedMessage as string);
 		}
 
-		if (nestedMessage.startsWith('Http request failed with statusCode=BadRequest')) {
+		if (nestedMessage?.startsWith('Http request failed with statusCode=BadRequest')) {
 			error.error.error.message = 'Request failed with bad request';
-		} else if (nestedMessage.startsWith('Http request failed with')) {
-			const stringified = nestedMessage.split(': ').pop();
+		} else if (nestedMessage?.startsWith('Http request failed with')) {
+			const stringified = nestedMessage?.split(': ').pop();
 			if (stringified) {
 				error = JSON.parse(stringified as string);
 			}
 		}
 
-		if (['Invalid filter clause', 'Invalid ODATA query filter'].includes(nestedMessage as string)) {
+		if (
+			typeof nestedMessage === 'string' &&
+			['Invalid filter clause', 'Invalid ODATA query filter'].includes(nestedMessage)
+		) {
 			error.error.error.message +=
 				' - Please check that your query parameter syntax is correct: https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter';
 		}

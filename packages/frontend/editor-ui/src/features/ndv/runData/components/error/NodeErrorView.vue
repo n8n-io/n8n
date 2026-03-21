@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/app/composables/useClipboard';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -49,6 +50,7 @@ const toast = useToast();
 const i18n = useI18n();
 const assistantHelpers = useAIAssistantHelpers();
 
+const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
@@ -57,7 +59,6 @@ const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 
-const workflowId = computed(() => workflowsStore.workflowId);
 const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
 
 const displayCause = computed(() => {
@@ -473,8 +474,8 @@ async function onAskAssistantClick() {
 
 			<div v-if="isSubNodeError">
 				<N8nButton
+					variant="subtle"
 					icon="arrow-right"
-					type="secondary"
 					:label="i18n.baseText('pushConnection.executionError.openNode')"
 					class="node-error-view__button"
 					data-test-id="node-error-view-open-node-button"
@@ -501,14 +502,7 @@ async function onAskAssistantClick() {
 					placement="left"
 				>
 					<div class="copy-button">
-						<N8nIconButton
-							icon="files"
-							type="secondary"
-							size="small"
-							:text="true"
-							transparent-background="transparent"
-							@click="copyErrorDetails"
-						/>
+						<N8nIconButton variant="ghost" icon="files" size="small" @click="copyErrorDetails" />
 					</div>
 				</N8nTooltip>
 			</div>

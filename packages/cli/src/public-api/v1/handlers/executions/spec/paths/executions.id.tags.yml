@@ -1,0 +1,49 @@
+get:
+  x-eov-operation-id: getExecutionTags
+  x-eov-operation-handler: v1/handlers/executions/executions.handler
+  tags:
+    - Execution
+  summary: Get execution tags
+  description: Get annotation tags for an execution.
+  parameters:
+    - $ref: '../schemas/parameters/executionId.yml'
+  responses:
+    '200':
+      description: List of annotation tags
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/executionTags.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+put:
+  x-eov-operation-id: updateExecutionTags
+  x-eov-operation-handler: v1/handlers/executions/executions.handler
+  tags:
+    - Execution
+  summary: Update tags of an execution
+  description: Update annotation tags of an execution.
+  parameters:
+    - $ref: '../schemas/parameters/executionId.yml'
+  requestBody:
+    description: List of annotation tag IDs
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../shared/spec/schemas/tagIds.yml'
+    required: true
+  responses:
+    '200':
+      description: List of tags after updating
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/executionTags.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

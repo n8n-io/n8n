@@ -18,10 +18,10 @@ const title = computed(() =>
 
 <template>
 	<N8nIconButton
+		variant="subtle"
 		icon="square"
 		size="large"
 		class="stop-execution"
-		type="secondary"
 		:title="title"
 		:loading="stopping"
 		data-test-id="stop-execution-button"

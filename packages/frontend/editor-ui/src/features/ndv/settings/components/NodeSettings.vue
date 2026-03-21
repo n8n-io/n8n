@@ -45,6 +45,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import {
@@ -60,11 +61,13 @@ import { useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
+import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 
 const props = withDefaults(
@@ -121,7 +124,8 @@ const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
+const workflowsListStore = useWorkflowsListStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
 
@@ -156,7 +160,7 @@ const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
 const { isPreviewMode } = useSettingsStore();
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(
-	() => workflowsStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
+	() => workflowsListStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
@@ -243,6 +247,27 @@ const isDisplayingCredentials = computed(
 		0,
 );
 
+const displayedCredentialTypes = computed(() =>
+	credentialsStore
+		.getCredentialTypesNodeDescriptions('', nodeType.value)
+		.filter((credentialTypeDescription) => displayCredentials(credentialTypeDescription))
+		.map((desc) => desc.name),
+);
+
+const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
+const quickConnect = computed(() =>
+	getQuickConnectOptionByCredentialTypes(displayedCredentialTypes.value),
+);
+
+const showQuickConnectBanner = computed(
+	() =>
+		quickConnect.value &&
+		!areAllCredentialsSet.value &&
+		!isReadOnly.value &&
+		!isDemoPreview.value &&
+		!props.isEmbeddedInCanvas,
+);
+
 const showNoParametersNotice = computed(
 	() =>
 		!isDisplayingCredentials.value &&
@@ -255,7 +280,7 @@ const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(no
 const packageName = computed(() => node.value?.type.split('.')[0] ?? '');
 
 const usedCredentials = computed(() =>
-	Object.values(workflowsStore.usedCredentials).filter((credential) =>
+	Object.values(workflowDocumentStore?.value?.usedCredentials ?? {}).filter((credential) =>
 		Object.values(node.value?.credentials || []).find(
 			(nodeCredential) => nodeCredential.id === credential.id,
 		),
@@ -305,7 +330,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		return;
 	}
 
-	const _node = workflowsStore.getNodeByName(nodeNameBefore);
+	const _node = workflowDocumentStore?.value?.getNodeByName(nodeNameBefore) ?? null;
 
 	if (_node === null) {
 		return;
@@ -391,7 +416,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				value: nodeParameters,
 			};
 
-			workflowState.setNodeParameters(updateInformation);
+			workflowDocumentStore?.value?.setNodeParameters(updateInformation);
 
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
@@ -421,7 +446,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			value: newValue,
 		};
 
-		workflowState.setNodeValue(updateInformation);
+		workflowDocumentStore?.value?.setNodeValue(updateInformation);
 	}
 };
 
@@ -481,9 +506,9 @@ const onNodeExecute = () => {
 
 const credentialSelected = (updateInformation: INodeUpdatePropertiesInformation) => {
 	// Update the values on the node
-	workflowState.updateNodeProperties(updateInformation);
+	workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
 
-	const node = workflowsStore.getNodeByName(updateInformation.name);
+	const node = workflowDocumentStore?.value?.getNodeByName(updateInformation.name) ?? null;
 
 	if (node) {
 		// Update the issues
@@ -733,6 +758,11 @@ function handleSelectAction(params: INodeParameters) {
 					@activate="onWorkflowActivate"
 					@parameter-blur="onParameterBlur"
 				>
+					<QuickConnectBanner
+						v-if="showQuickConnectBanner"
+						:text="quickConnect?.text ?? ''"
+						:class="$style.quickConnectBanner"
+					/>
 					<NodeCredentials
 						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
@@ -854,6 +884,10 @@ function handleSelectAction(params: INodeParameters) {
 		font-weight: var(--font-weight--bold);
 		color: var(--color--text--tint-1);
 	}
+}
+
+.quickConnectBanner {
+	margin-top: var(--spacing--sm);
 }
 
 .uiBlockerNdvV2 {

@@ -15,9 +15,12 @@ import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { VIEWS } from '@/app/constants';
 import { reactive, nextTick } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { defaultSettings } from '@/__tests__/defaults';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import merge from 'lodash-es/merge';
 
 // Mock vue-router
 const mockRoute = reactive({ name: VIEWS.WORKFLOW });
@@ -48,6 +51,13 @@ describe('chatPanel.store', () => {
 			createTestingPinia({
 				createSpy: vi.fn,
 				stubActions: false, // Don't stub actions so actual store logic runs
+			}),
+		);
+
+		const settingsStore = useSettingsStore();
+		settingsStore.setSettings(
+			merge({}, defaultSettings, {
+				aiAssistant: { enabled: true, setup: true },
 			}),
 		);
 
@@ -103,6 +113,7 @@ describe('chatPanel.store', () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 
 			await chatPanelStore.open({ mode: 'builder' });
+			vi.runAllTimers();
 
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('builder');
@@ -242,6 +253,14 @@ describe('chatPanel.store', () => {
 			expect(chatPanelStore.isBuilderModeActive).toBe(false);
 		});
 
+		it('should set showCoachmark to false when switching modes', () => {
+			expect(chatPanelStateStore.showCoachmark).toBe(true);
+
+			chatPanelStore.switchMode('assistant');
+
+			expect(chatPanelStateStore.showCoachmark).toBe(false);
+		});
+
 		it('should switch from assistant to builder mode', () => {
 			chatPanelStateStore.activeMode = 'assistant';
 
@@ -309,7 +328,7 @@ describe('chatPanel.store', () => {
 
 			await chatPanelStore.openWithCredHelp(credType);
 
-			expect(assistantStore.initCredHelp).toHaveBeenCalledWith(credType);
+			expect(assistantStore.initCredHelp).toHaveBeenCalledWith('', credType);
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
 		});
@@ -335,9 +354,45 @@ describe('chatPanel.store', () => {
 
 			await chatPanelStore.openWithErrorHelper(errorContext);
 
-			expect(assistantStore.initErrorHelper).toHaveBeenCalledWith(errorContext);
+			expect(assistantStore.initErrorHelper).toHaveBeenCalledWith('', errorContext);
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
+		});
+	});
+
+	describe('showCoachmark tracking', () => {
+		it('should set showCoachmark to true by default when opening', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+
+			await chatPanelStore.open({ mode: 'builder' });
+
+			expect(chatPanelStateStore.showCoachmark).toBe(true);
+		});
+
+		it('should allow overriding showCoachmark when opening', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+
+			await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
+
+			expect(chatPanelStateStore.showCoachmark).toBe(false);
+		});
+
+		it('should set showCoachmark to false when closing', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			await chatPanelStore.open({ mode: 'builder' });
+			expect(chatPanelStateStore.showCoachmark).toBe(true);
+
+			chatPanelStore.close();
+
+			expect(chatPanelStateStore.showCoachmark).toBe(false);
+		});
+
+		it('should expose showCoachmark as computed property', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+
+			await chatPanelStore.open({ mode: 'builder' });
+
+			expect(chatPanelStore.showCoachmark).toBe(true);
 		});
 	});
 
@@ -396,6 +451,7 @@ describe('chatPanel.store', () => {
 			// Open in builder mode to set grid width
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 			await chatPanelStore.open({ mode: 'builder' });
+			vi.runAllTimers();
 
 			// Simulate streaming and closing the panel (which resets grid width after timeout)
 			builderStore.streaming = true;
@@ -411,6 +467,7 @@ describe('chatPanel.store', () => {
 
 			// Auto-reopen should restore the grid width offset for the chat
 			expect(chatPanelStateStore.isOpen).toBe(true);
+			vi.runAllTimers();
 			expect(uiStore.appGridDimensions.width).toBe(window.innerWidth - DEFAULT_CHAT_WIDTH);
 		});
 
