@@ -24,6 +24,7 @@ export { createCodeBuilderSearchTool } from './tools/code-builder-search.tool';
 export { createCodeBuilderGetTool } from './tools/code-builder-get.tool';
 export type { CodeBuilderGetToolOptions } from './tools/code-builder-get.tool';
 export { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';
+export { createSdkReferenceTool } from './tools/sdk-reference.tool';
 export { stripImportStatements, SDK_IMPORT_STATEMENT } from './utils/extract-code';
 
 // SDK reference content (raw, unescaped curly braces)
@@ -39,6 +40,7 @@ export {
 	CODE_BUILDER_SEARCH_NODES_TOOL,
 	CODE_BUILDER_GET_NODE_TYPES_TOOL,
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL,
+	CODE_BUILDER_SDK_REFERENCE_TOOL,
 	CODE_BUILDER_VALIDATE_TOOL,
 	MCP_GET_SDK_REFERENCE_TOOL,
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,

@@ -108,11 +108,13 @@ export const CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: BuilderToolBase = {
 	displayTitle: 'Getting suggested nodes',
 };
 
-/** MCP tools — not used by the code-builder agent, only exposed via the MCP server. */
-export const MCP_GET_SDK_REFERENCE_TOOL: BuilderToolBase = {
+export const CODE_BUILDER_SDK_REFERENCE_TOOL: BuilderToolBase = {
 	toolName: 'get_sdk_reference',
 	displayTitle: 'Getting SDK reference',
 };
+
+/** @deprecated Use CODE_BUILDER_SDK_REFERENCE_TOOL instead */
+export const MCP_GET_SDK_REFERENCE_TOOL = CODE_BUILDER_SDK_REFERENCE_TOOL;
 
 export const MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: BuilderToolBase = {
 	toolName: 'create_workflow_from_code',

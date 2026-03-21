@@ -11,7 +11,6 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { IRunExecutionData, NodeExecutionSchema } from 'n8n-workflow';
 
 import {
-	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
 } from '../../shared/code-builder-and-mcp-prompt-constants';
@@ -620,7 +619,13 @@ If you have everything you need to build a workflow, continue to step 3, plannin
 // ── Step 3 variants ──────────────────────────────────────────────────────────
 
 const DESIGN_WORKFLOW_BUILD = `
-Make design decisions internally based on the reviewed results. Do NOT produce visible output in this step.
+**First**, call \`get_sdk_reference\` to get workflow patterns and expression syntax:
+
+\`\`\`
+get_sdk_reference()
+\`\`\`
+
+**Then** make design decisions internally based on the reviewed results and SDK reference. Do NOT produce visible output in this step.
 
 1. **Select Nodes**: Based on search results AND suggested nodes, choose specific nodes:
    - Use dedicated integration nodes when available (from search)
@@ -630,7 +635,7 @@ Make design decisions internally based on the reviewed results. Do NOT produce v
    - Review node notes from all categories for recommended additions the user may not have explicitly requested (e.g., a storage step, memory for agents)
    - **If you identified \`scraping_and_research\` in Step 1, you MUST include a data-fetching node or tool** (e.g., SerpApi tool, Perplexity, HTTP Request). Do not rely on the AI model's training data for real-world information — commit to the data source you identified earlier
 
-2. **Map Node Connections**:
+2. **Map Node Connections** (refer to the workflow patterns from \`get_sdk_reference\`):
    - Is this linear, branching, parallel, or looped? Or merge to combine parallel branches?
    - **Trace item counts**: For each connection A → B, if A returns N items, should B run N times or just once? If B doesn't need A's items (e.g., it fetches from an independent source), either set \`executeOnce: true\` on B or use parallel branches + Merge to combine results.
    - Which nodes connect to which?
@@ -644,7 +649,13 @@ It's OK for this section to be quite long as you work through the design.
 `;
 
 const DESIGN_WORKFLOW_PLAN = `
-Use thinking to make design decisions based on the search results and the approved plan's steps. Do NOT produce visible output in this step.
+**First**, call \`get_sdk_reference\` to get workflow patterns and expression syntax:
+
+\`\`\`
+get_sdk_reference()
+\`\`\`
+
+**Then** use thinking to make design decisions based on the search results, SDK reference, and the approved plan's steps. Do NOT produce visible output in this step.
 
 1. **Select Nodes**: Based on search results and the plan's steps, choose specific nodes:
    - Use dedicated integration nodes when available (from search)
@@ -900,8 +911,6 @@ export function buildCodeBuilderPrompt(
 		`<role>\n${ROLE}\n</role>`,
 		`<response_style>\n${RESPONSE_STYLE}\n</response_style>`,
 		`<workflow_rules>\n${WORKFLOW_RULES}\n</workflow_rules>`,
-		`<workflow_patterns>\n${WORKFLOW_PATTERNS}\n</workflow_patterns>`,
-		`<expression_reference>\n${EXPRESSION_REFERENCE}\n</expression_reference>`,
 		`<additional_functions>\n${ADDITIONAL_FUNCTIONS}\n</additional_functions>`,
 		`<mandatory_workflow_process>\n${mandatoryWorkflow}\n</mandatory_workflow_process>`,
 	];
