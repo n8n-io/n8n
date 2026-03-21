@@ -688,7 +688,10 @@ const fetchWorkflows = async () => {
 
 		// Toggle ownership cards visibility only after we have fetched the workflows
 		showCardsBadge.value =
-			projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters.value.search !== '';
+			projectPages.isOverviewSubPage ||
+			projectPages.isSharedSubPage ||
+			filters.value.search !== '' ||
+			filters.value.tags.length > 0;
 
 		return fetchedResources;
 	} catch (error) {
@@ -719,6 +722,11 @@ const getParentFolderId = (routeId?: string) => {
 
 	// If we're on overview/shared page or searching, don't filter by parent folder
 	if (projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters?.value.search) {
+		return undefined;
+	}
+
+	// If filtering by tags, search across all folders
+	if (filters.value.tags.length > 0) {
 		return undefined;
 	}
 

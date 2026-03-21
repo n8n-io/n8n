@@ -1,5 +1,4 @@
 import {
-	countCommitsBetweenRefs,
 	ensureEnvVar,
 	listCommitsBetweenRefs,
 	resolveRcBranchForTrack,
@@ -25,12 +24,26 @@ function main() {
 	console.log(`Commits between ${releaseCandidateBranch} and ${currentTag.tag}:`);
 	console.log(listCommitsBetweenRefs(releaseCandidateBranch, currentTag.tag));
 
-	const commitCount = countCommitsBetweenRefs(releaseCandidateBranch, currentTag.tag);
+	const commitList = listCommitsBetweenRefs(releaseCandidateBranch, currentTag.tag)
+		.split('\n')
+		.filter((commit) => commit.trim().length > 0);
+	const actionableCommitList = filterActionableCommits(commitList);
 
-	writeGithubOutput({
+	const output = {
 		release_candidate_branch: releaseCandidateBranch,
-		should_update: commitCount > 0 ? 'true' : 'false',
-	});
+		should_update: actionableCommitList.length > 0 ? 'true' : 'false',
+	};
+
+	console.log(output);
+
+	writeGithubOutput(output);
+}
+
+/**
+ * @param { string[] } commitList
+ * */
+export function filterActionableCommits(commitList) {
+	return commitList.filter((commit) => !commit.trimStart().startsWith('ci:'));
 }
 
 // only run when executed directly, not when imported by tests
