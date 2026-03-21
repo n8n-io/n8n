@@ -211,6 +211,9 @@ describe('HttpRequestV2', () => {
 
 			const result = await node.execute.call(executeFunctions);
 			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
+			const requestArgs = (executeFunctions.helpers.request as jest.Mock).mock.calls[0][0];
+			expect(requestArgs.uri ?? requestArgs.url).toBe('http://example.com');
 		});
 	});
 });
