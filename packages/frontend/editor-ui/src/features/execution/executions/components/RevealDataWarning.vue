@@ -22,5 +22,10 @@ defineProps<{
 .list {
 	text-align: left;
 	margin-top: var(--spacing--2xs);
+	padding-left: var(--spacing--xl);
+
+	li + li {
+		margin-top: var(--spacing--4xs);
+	}
 }
 </style>

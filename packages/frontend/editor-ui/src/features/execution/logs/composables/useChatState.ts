@@ -289,6 +289,7 @@ export function useChatState(
 		restoreChatHistory(
 			workflowsStore.workflowExecutionData,
 			locale.baseText('chat.window.chat.response.empty'),
+			locale.baseText('chat.window.chat.response.redacted'),
 		),
 	);
 

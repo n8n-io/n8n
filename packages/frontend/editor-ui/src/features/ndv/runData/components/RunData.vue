@@ -436,7 +436,10 @@ const isTrimmedManualExecutionDataItem = computed(() =>
 );
 
 const isExecutionRedacted = computed(
-	() => workflowExecution.value?.redactionInfo?.isRedacted === true && !pinnedData.hasData.value,
+	() =>
+		hasNodeRun.value &&
+		workflowExecution.value?.redactionInfo?.isRedacted === true &&
+		!pinnedData.hasData.value,
 );
 
 const unfilteredDataCount = computed(() =>
@@ -1595,7 +1598,12 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div
-				v-if="maxRunIndex > 0 && !displaysMultipleNodes && !props.disableRunIndexSelection"
+				v-if="
+					maxRunIndex > 0 &&
+					!displaysMultipleNodes &&
+					!props.disableRunIndexSelection &&
+					!isExecutionRedacted
+				"
 				v-show="!editMode.enabled"
 				:class="$style.runSelector"
 			>
@@ -1667,7 +1675,11 @@ defineExpose({ enterEditMode });
 				<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 			</N8nCallout>
 
-			<div v-if="showBranchSwitch" :class="$style.outputs" data-test-id="branches">
+			<div
+				v-if="showBranchSwitch && !isExecutionRedacted"
+				:class="$style.outputs"
+				data-test-id="branches"
+			>
 				<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
 				<ViewSubExecution
 					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
@@ -1692,7 +1704,8 @@ defineExpose({ enterEditMode });
 					!isSearchInSchemaView &&
 					((dataCount > 0 && maxRunIndex === 0) || search) &&
 					!isArtificialRecoveredEventItem &&
-					!displaysMultipleNodes
+					!displaysMultipleNodes &&
+					!isExecutionRedacted
 				"
 				v-show="!editMode.enabled"
 				:class="$style.itemsCount"
@@ -1770,63 +1783,32 @@ defineExpose({ enterEditMode });
 				<slot name="node-waiting">xxx</slot>
 			</div>
 
-			<div v-else-if="shouldShowNodeNotRunState" :class="$style.center">
-				<slot name="node-not-run"></slot>
-			</div>
-
-			<div v-else-if="shouldShowDisabledNodeHint && node" :class="$style.center">
-				<N8nText>
-					{{ i18n.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
-					<N8nLink @click="enableNode">
-						{{ i18n.baseText('ndv.input.disabled.cta') }}
-					</N8nLink>
-				</N8nText>
-			</div>
-
-			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
-				<slot name="recovered-artificial-output-data"></slot>
-			</div>
-
-			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
-				<NDVEmptyState
-					v-if="isPaneTypeInput"
-					:class="$style.center"
-					:title="
-						i18n.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
-							interpolate: { nodeName: node?.name ?? '' },
-						})
-					"
-				/>
-				<div v-else-if="$slots['content']">
-					<NodeErrorView
-						v-if="workflowRunErrorAsNodeError"
-						:error="workflowRunErrorAsNodeError"
-						:class="$style.inlineError"
-						:compact="compact"
-					/>
-					<slot name="content"></slot>
-				</div>
-				<NodeErrorView
-					v-else-if="workflowRunErrorAsNodeError"
-					:error="workflowRunErrorAsNodeError"
-					:class="$style.dataDisplay"
-					:compact="compact"
-					show-details
-				/>
-				<NDVEmptyState
-					v-else-if="hasRedactedError"
-					:class="$style.center"
-					icon="triangle-alert"
-					:title="i18n.baseText('ndv.redacted.error.title')"
-					data-test-id="ndv-redacted-error"
-				>
-					{{ i18n.baseText('ndv.redacted.error.description') }}
-				</NDVEmptyState>
-			</div>
-
-			<div v-else-if="hasNodeRun && isExecutionRedacted" :class="$style.redactedContainer">
+			<div v-else-if="isExecutionRedacted" :class="$style.redactedContainer">
 				<div :class="$style.redactedFakeData">
-					<table :class="$style.redactedTable">
+					<!-- Text-like fake content for AI / text output -->
+					<div
+						v-if="displayMode === 'ai' || node?.type?.includes('langchain')"
+						:class="$style.redactedText"
+					>
+						<p>
+							The process completed successfully and generated the following results based on the
+							provided input parameters. The analysis identified several key patterns in the dataset
+							that are worth highlighting.
+						</p>
+						<p>
+							First, the primary metrics showed a consistent upward trend across all measured
+							dimensions. The correlation between input variables and output quality remained strong
+							throughout the evaluation period, with confidence intervals well within acceptable
+							ranges.
+						</p>
+						<p>
+							Additionally, the secondary analysis revealed three distinct clusters within the data,
+							each exhibiting unique characteristics that align with the expected theoretical
+							framework. These findings suggest that the underlying model is performing as intended.
+						</p>
+					</div>
+					<!-- Table-like fake content for structured data -->
+					<table v-else :class="$style.redactedTable">
 						<thead>
 							<tr>
 								<th>id</th>
@@ -1899,7 +1881,55 @@ defineExpose({ enterEditMode });
 						</tbody>
 					</table>
 				</div>
-				<div :class="$style.redactedOverlay">
+				<div v-if="$slots['data-redacted']" :class="$style.redactedOverlay">
+					<slot name="data-redacted"></slot>
+				</div>
+			</div>
+
+			<div v-else-if="shouldShowNodeNotRunState" :class="$style.center">
+				<slot name="node-not-run"></slot>
+			</div>
+
+			<div v-else-if="shouldShowDisabledNodeHint && node" :class="$style.center">
+				<N8nText>
+					{{ i18n.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
+					<N8nLink @click="enableNode">
+						{{ i18n.baseText('ndv.input.disabled.cta') }}
+					</N8nLink>
+				</N8nText>
+			</div>
+
+			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
+				<slot name="recovered-artificial-output-data"></slot>
+			</div>
+
+			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
+				<NDVEmptyState
+					v-if="isPaneTypeInput"
+					:class="$style.center"
+					:title="
+						i18n.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
+							interpolate: { nodeName: node?.name ?? '' },
+						})
+					"
+				/>
+				<div v-else-if="$slots['content']">
+					<NodeErrorView
+						v-if="workflowRunErrorAsNodeError"
+						:error="workflowRunErrorAsNodeError"
+						:class="$style.inlineError"
+						:compact="compact"
+					/>
+					<slot name="content"></slot>
+				</div>
+				<NodeErrorView
+					v-else-if="workflowRunErrorAsNodeError"
+					:error="workflowRunErrorAsNodeError"
+					:class="$style.dataDisplay"
+					:compact="compact"
+					show-details
+				/>
+				<div v-else-if="hasRedactedError" :class="$style.center" data-test-id="ndv-redacted-error">
 					<slot name="data-redacted"></slot>
 				</div>
 			</div>
@@ -2443,6 +2473,73 @@ defineExpose({ enterEditMode });
 	width: 100%;
 	align-items: center;
 }
+
+.redactedContainer {
+	position: relative;
+	height: 100%;
+	overflow: hidden;
+}
+
+.redactedFakeData {
+	padding: var(--spacing--sm);
+	opacity: 0.6;
+	pointer-events: none;
+	user-select: none;
+	filter: blur(3px);
+}
+
+.redactedText {
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	line-height: var(--line-height--xl);
+
+	p {
+		margin-bottom: var(--spacing--sm);
+	}
+}
+
+.redactedTable {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+
+	th,
+	td {
+		padding: var(--spacing--3xs) var(--spacing--xs);
+		text-align: left;
+		border-bottom: 1px solid var(--color--foreground);
+	}
+
+	th {
+		font-weight: var(--font-weight--bold);
+	}
+}
+
+.redactedOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: 1;
+	backdrop-filter: blur(2px);
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background: var(--color--foreground--tint-2);
+		opacity: 0.5;
+		z-index: -1;
+	}
+}
 </style>
 
 <style lang="scss" scoped>
@@ -2461,62 +2558,5 @@ defineExpose({ enterEditMode });
 	padding: 0 1px;
 	font-weight: var(--font-weight--regular);
 	font-style: normal;
-}
-
-.redactedContainer {
-	position: relative;
-	height: 100%;
-	overflow: hidden;
-}
-
-.redactedFakeData {
-	padding: var(--spacing--sm);
-	opacity: 0.6;
-	pointer-events: none;
-	user-select: none;
-}
-
-.redactedTable {
-	width: 100%;
-	border-collapse: collapse;
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
-
-	th,
-	td {
-		padding: var(--spacing--3xs) var(--spacing--xs);
-		text-align: left;
-		border-bottom: 1px solid var(--color--foreground);
-	}
-
-	th {
-		font-weight: var(--font-weight--bold);
-		color: var(--color--text--tint-1);
-	}
-}
-
-.redactedOverlay {
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	z-index: 1;
-	backdrop-filter: blur(10px);
-
-	&::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		background: var(--color--foreground--tint-2);
-		opacity: 0.5;
-		z-index: -1;
-	}
 }
 </style>

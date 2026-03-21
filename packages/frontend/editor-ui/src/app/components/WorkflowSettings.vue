@@ -1151,8 +1151,8 @@ onBeforeUnmount(() => {
 						</N8nSelect>
 					</ElCol>
 				</ElRow>
-				<div v-if="isRedactionSettingVisible" data-test-id="workflow-settings-redaction-policy">
-					<ElRow>
+				<template v-if="isRedactionSettingVisible">
+					<ElRow data-test-id="workflow-settings-redaction-policy">
 						<ElCol :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.redactProductionData') }}
 							<N8nTooltip placement="top">
@@ -1210,7 +1210,7 @@ onBeforeUnmount(() => {
 							</N8nSelect>
 						</ElCol>
 					</ElRow>
-				</div>
+				</template>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.timeoutWorkflow') }}

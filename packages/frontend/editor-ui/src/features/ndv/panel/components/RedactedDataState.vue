@@ -8,6 +8,7 @@ defineProps<{
 	title: string;
 	isDynamicCredentials: boolean;
 	canReveal: boolean;
+	wide?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -19,7 +20,7 @@ const i18n = useI18n();
 </script>
 
 <template>
-	<NDVEmptyState icon="lock" :title="title" data-test-id="ndv-data-redacted">
+	<NDVEmptyState icon="lock" :title="title" :wide="wide" data-test-id="ndv-data-redacted">
 		<template v-if="isDynamicCredentials">
 			{{ i18n.baseText('ndv.redacted.dynamicCredentials.description') }}
 		</template>
