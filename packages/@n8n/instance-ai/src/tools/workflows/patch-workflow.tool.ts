@@ -48,7 +48,7 @@ export function createPatchWorkflowTool(context: InstanceAiContext) {
 					credentials: credentialPatch,
 					disabled,
 				});
-				return { success: true, workflowId, nodeName: newName ?? nodeName };
+				return { success: true, workflowId, nodeName: newName || nodeName };
 			} catch (error) {
 				return {
 					success: false,

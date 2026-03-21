@@ -79,6 +79,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	isSafeObjectProperty,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -344,8 +345,12 @@ export class InstanceAiAdapterService {
 					throw new Error(`Node "${nodeName}" not found in workflow ${workflowId}`);
 				}
 
-				// Rename node (also update references in connections)
+				// Rename node (also update references in connections and pinData)
 				if (patch.name && patch.name !== node.name) {
+					if (!isSafeObjectProperty(patch.name)) {
+						throw new Error(`Invalid node name "${patch.name}"`);
+					}
+
 					const oldName = node.name;
 					node.name = patch.name;
 
@@ -366,6 +371,12 @@ export class InstanceAiAdapterService {
 								}
 							}
 						}
+					}
+
+					// Update pinData that references the old name
+					if (workflow.pinData?.[oldName]) {
+						workflow.pinData[patch.name] = workflow.pinData[oldName];
+						delete workflow.pinData[oldName];
 					}
 				}
 
@@ -389,7 +400,7 @@ export class InstanceAiAdapterService {
 
 				const updateData = workflowRepository.create({
 					nodes,
-					...(patch.name ? { connections: workflow.connections } : {}),
+					...(patch.name ? { connections: workflow.connections, pinData: workflow.pinData } : {}),
 				} as Partial<WorkflowEntity>);
 
 				const updated = await workflowService.update(user, updateData, workflowId);
