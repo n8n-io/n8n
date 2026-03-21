@@ -9,6 +9,7 @@ const meta = {
 	component: N8nAlertDialog,
 	parameters: {
 		docs: {
+			description: { component: 'A confirmation dialog for destructive or high-impact actions.' },
 			source: { type: 'dynamic' },
 		},
 	},
