@@ -29,6 +29,15 @@ export class CalendlyApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 		},
+		{
+			displayName: 'Webhook Signing Key',
+			name: 'webhookSigningKey',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				'A unique key shared between your app and Calendly used to verify events sent to your endpoints',
+		},
 	];
 
 	async authenticate(
