@@ -45,8 +45,18 @@ export class CalendlyOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden',
+			type: 'string',
+			default: 'user:read bookings:read bookings:manage webhooks:read webhooks:write',
+			description: 'The scopes required to run your integration. Space-separated.',
+		},
+		{
+			displayName: 'Webhook Signing Key',
+			name: 'webhookSigningKey',
+			type: 'string',
+			typeOptions: { password: true },
 			default: '',
+			description:
+				'A unique key shared between your app and Calendly used to verify events sent to your endpoints',
 		},
 	];
 }

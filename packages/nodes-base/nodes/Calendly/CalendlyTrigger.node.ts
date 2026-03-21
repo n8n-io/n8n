@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -5,8 +6,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { calendlyApiRequest, getAuthenticationType } from './GenericFunctions';
 
@@ -286,6 +288,68 @@ export class CalendlyTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
+		const headerData = this.getHeaderData() as IDataObject;
+
+		const calendlySignature = headerData['calendly-webhook-signature'] as string | undefined;
+
+		const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+		const credentialName = authenticationMethod === 'oAuth2' ? 'calendlyOAuth2Api' : 'calendlyApi';
+		const credentials = await this.getCredentials(credentialName);
+		const webhookSigningKey = credentials?.webhookSigningKey as string | undefined;
+
+		if (webhookSigningKey) {
+			if (!calendlySignature) {
+				throw new NodeApiError(this.getNode(), {
+					message: 'Missing Calendly-Webhook-Signature header',
+					httpCode: '401',
+				} as JsonObject);
+			}
+
+			const signatureParts = calendlySignature.split(',');
+			const tPart = signatureParts.find((part) => part.startsWith('t='));
+			const v1Part = signatureParts.find((part) => part.startsWith('v1='));
+
+			const t = tPart?.slice(2); // skip 't='
+			const v1 = v1Part?.slice(3); // skip 'v1='
+
+			if (!t || !v1) {
+				throw new NodeApiError(this.getNode(), {
+					message: 'Malformed Calendly-Webhook-Signature header',
+					httpCode: '401',
+				} as JsonObject);
+			}
+
+			// Replay attack protection: reject webhooks older than 5 minutes
+			const eventTimestampMs = Number(t) * 1000;
+			const fiveMinutesMs = 5 * 60 * 1000;
+			if (Number.isNaN(eventTimestampMs) || Date.now() - eventTimestampMs > fiveMinutesMs) {
+				throw new NodeApiError(this.getNode(), {
+					message: 'Webhook timestamp is too old \u2014 possible replay attack',
+					httpCode: '401',
+				} as JsonObject);
+			}
+
+			const req = this.getRequestObject() as { rawBody?: Buffer };
+			const rawBody = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(bodyData);
+			const payload = `${t}.${rawBody}`;
+
+			const expectedSignature = crypto
+				.createHmac('sha256', webhookSigningKey)
+				.update(payload)
+				.digest('hex');
+
+			// Guard: timingSafeEqual throws if buffers differ in length
+			if (
+				expectedSignature.length !== v1.length ||
+				!crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(v1))
+			) {
+				throw new NodeApiError(this.getNode(), {
+					message: 'Calendly Webhook Signature Mismatch - Please check your Signing Key.',
+					httpCode: '401',
+				} as JsonObject);
+			}
+		}
+
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
