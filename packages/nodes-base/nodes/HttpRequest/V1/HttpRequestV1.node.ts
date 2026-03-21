@@ -676,7 +676,13 @@ export class HttpRequestV1 implements INodeType {
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex);
 
 			const options = this.getNodeParameter('options', itemIndex, {});
-			const url = this.getNodeParameter('url', itemIndex) as string;
+			let url = this.getNodeParameter('url', itemIndex) as string;
+
+			url = url.trim();
+
+			if (!url) {
+				throw new NodeOperationError(this.getNode(), 'URL parameter cannot be empty');
+			}
 
 			if (!url.startsWith('http://') && !url.startsWith('https://')) {
 				throw new NodeOperationError(
