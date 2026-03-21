@@ -1,9 +1,10 @@
 /**
  * System prompts for the preconfigured workflow builder agent.
  *
- * Two variants:
+ * Three variants:
  * - BUILDER_AGENT_PROMPT: Original tool-based builder (no sandbox)
  * - SANDBOX_BUILDER_AGENT_PROMPT: Sandbox-based builder with real files + tsc
+ * - PATCH_AGENT_PROMPT: Minimal prompt for targeted single-node fixes
  */
 
 import {
@@ -495,6 +496,9 @@ export const BUILDER_AGENT_PROMPT = `You are an expert n8n workflow builder. You
 - No emojis, no filler phrases, no markdown headers in your text output.
 - Only output text for: errors that need attention, or a final one-line summary of what was built.
 
+## Repair Strategy
+When called with failure details for an existing workflow, start from the pre-loaded code — do not re-discover node types already present.
+
 ## Escalation
 - If you are stuck or need information only a human can provide (e.g., a chat ID, API key, external resource name), use the \`ask-user\` tool to ask a clear question.
 - Do NOT retry the same failing approach more than twice — ask the user instead.
@@ -708,6 +712,9 @@ When \`explore-node-resources\` returns no results for a required resource:
 
 **For resources that can't be created via n8n** (e.g., Slack channels, external API resources), explain clearly in your summary what the user needs to create manually and what ID to put where.
 
+## Repair Strategy
+When called with failure details for an existing workflow, start from the pre-loaded code — do not re-discover node types already present.
+
 ## Escalation
 - If you are stuck or need information only a human can provide (e.g., a chat ID, API key, external resource name), use the \`ask-user\` tool to ask a clear question.
 - Do NOT retry the same failing approach more than twice — ask the user instead.
@@ -835,4 +842,11 @@ Keep entries short (one bullet each). Remove stale entries when updating.
 If your memory contains sections not in the current template, discard them and retain only matching facts.
 
 ${SDK_RULES_AND_PATTERNS}
+`;
+
+// ── Patch-mode builder prompt ────────────────────────────────────────────────
+
+export const PATCH_AGENT_PROMPT = `You fix a single failing node in an n8n workflow using \`patch-workflow\`. Be terse — you report to a parent agent.
+
+If the fix requires adding/removing nodes or rewiring connections, say so and stop.
 `;

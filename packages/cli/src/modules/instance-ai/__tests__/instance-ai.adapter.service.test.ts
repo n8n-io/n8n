@@ -748,6 +748,8 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as License,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 	);
 
 	const adapter = service.createContext(mockUser).dataTableService;
@@ -926,6 +928,8 @@ function createWorkflowAdapterForTests(overrides?: {
 				return false;
 			}),
 		} as unknown as License,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 	);
 
 	const context = service.createContext(mockUser);

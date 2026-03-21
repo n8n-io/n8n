@@ -79,11 +79,14 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	isSafeObjectProperty,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -129,6 +132,8 @@ export class InstanceAiAdapterService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly license: License,
+		private readonly executionPersistence: ExecutionPersistence,
+		private readonly eventService: EventService,
 	) {
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
 	}
@@ -328,6 +333,84 @@ export class InstanceAiAdapterService {
 				return toWorkflowDetail(updated);
 			},
 
+			async patchNode(workflowId, nodeName, patch) {
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:update',
+				]);
+
+				if (!workflow) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
+
+				const nodes = workflow.nodes ?? [];
+				const node = nodes.find((n) => n.name === nodeName);
+
+				if (!node) {
+					throw new Error(`Node "${nodeName}" not found in workflow ${workflowId}`);
+				}
+
+				// Rename node (also update references in connections and pinData)
+				if (patch.name && patch.name !== node.name) {
+					if (!isSafeObjectProperty(patch.name)) {
+						throw new Error(`Invalid node name "${patch.name}"`);
+					}
+
+					const oldName = node.name;
+					node.name = patch.name;
+
+					// Update connections that reference the old name
+					const connections = workflow.connections ?? {};
+					if (connections[oldName]) {
+						connections[patch.name] = connections[oldName];
+						delete connections[oldName];
+					}
+					for (const conns of Object.values(connections)) {
+						for (const outputGroup of Object.values(conns)) {
+							for (const outputs of outputGroup) {
+								if (!outputs) continue;
+								for (const conn of outputs) {
+									if (conn.node === oldName) {
+										conn.node = patch.name;
+									}
+								}
+							}
+						}
+					}
+
+					// Update pinData that references the old name
+					if (workflow.pinData?.[oldName]) {
+						workflow.pinData[patch.name] = workflow.pinData[oldName];
+						delete workflow.pinData[oldName];
+					}
+				}
+
+				// Shallow-merge parameters
+				if (patch.parameters) {
+					node.parameters = {
+						...node.parameters,
+						...(patch.parameters as INodeParameters),
+					};
+				}
+
+				// Override credentials
+				if (patch.credentials) {
+					node.credentials = { ...node.credentials, ...patch.credentials };
+				}
+
+				// Override disabled
+				if (patch.disabled !== undefined) {
+					node.disabled = patch.disabled;
+				}
+
+				const updateData = workflowRepository.create({
+					nodes,
+					...(patch.name ? { connections: workflow.connections, pinData: workflow.pinData } : {}),
+				} as Partial<WorkflowEntity>);
+
+				const updated = await workflowService.update(user, updateData, workflowId);
+				return toWorkflowDetail(updated);
+			},
+
 			async listVersions(workflowId, options) {
 				const take = options?.limit ?? 20;
 				const skip = options?.skip ?? 0;
@@ -427,16 +510,21 @@ export class InstanceAiAdapterService {
 		 * Verify that the user has access to the workflow that owns this execution.
 		 * Returns the execution or throws "not found" if unauthorized/missing.
 		 */
-		const assertExecutionAccess = async (executionId: string) => {
+		const assertExecutionAccess = async (
+			executionId: string,
+			scopes: Scope[] = ['workflow:read'],
+		) => {
 			const execution = await executionRepository.findSingleExecution(executionId, {
 				includeData: false,
 			});
 			if (!execution) {
 				throw new Error(`Execution ${executionId} not found`);
 			}
-			const workflow = await workflowFinderService.findWorkflowForUser(execution.workflowId, user, [
-				'workflow:read',
-			]);
+			const workflow = await workflowFinderService.findWorkflowForUser(
+				execution.workflowId,
+				user,
+				scopes,
+			);
 			if (!workflow) {
 				throw new Error(`Execution ${executionId} not found`);
 			}
@@ -623,7 +711,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async stop(executionId: string) {
-				await assertExecutionAccess(executionId);
+				await assertExecutionAccess(executionId, ['workflow:execute']);
 				if (!activeExecutions.has(executionId)) {
 					return {
 						success: false,
@@ -1081,7 +1169,12 @@ export class InstanceAiAdapterService {
 	}
 
 	private createNodeAdapter(user: User): InstanceAiNodeService {
-		const { loadNodesAndCredentials, dynamicNodeParametersService, projectRepository } = this;
+		const {
+			loadNodesAndCredentials,
+			dynamicNodeParametersService,
+			projectRepository,
+			credentialsFinderService,
+		} = this;
 
 		// Cache the promise (not the result) to prevent concurrent collectTypes() calls.
 		// Multiple parallel tool calls would otherwise race on the null check, fire
@@ -1226,6 +1319,16 @@ export class InstanceAiAdapterService {
 			},
 
 			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {
+				// Validate credential ownership before using it to query external resources
+				const credential = await credentialsFinderService.findCredentialForUser(
+					params.credentialId,
+					user,
+					['credential:read'],
+				);
+				if (!credential || credential.type !== params.credentialType) {
+					throw new Error(`Credential ${params.credentialId} not found or not accessible`);
+				}
+
 				const nodeTypeAndVersion = {
 					name: params.nodeType,
 					version: params.version,
@@ -1233,7 +1336,7 @@ export class InstanceAiAdapterService {
 
 				const currentNodeParameters = (params.currentNodeParameters ?? {}) as INodeParameters;
 				const credentials = {
-					[params.credentialType]: { id: params.credentialId, name: '' },
+					[credential.type]: { id: credential.id, name: credential.name },
 				};
 
 				// Auto-detect the authentication parameter value from the credential type.
@@ -1329,7 +1432,10 @@ export class InstanceAiAdapterService {
 			workflowFinderService,
 			workflowService,
 			executionRepository,
+			executionPersistence,
+			eventService,
 		} = this;
+		const { assertProjectScope } = this.createProjectScopeHelpers(user);
 
 		const adapter: InstanceAiWorkspaceService = {
 			async getProject(projectId: string): Promise<ProjectSummary | null> {
@@ -1350,6 +1456,7 @@ export class InstanceAiAdapterService {
 			...(this.license.isLicensed('feat:folders')
 				? {
 						async listFolders(projectId: string): Promise<FolderSummary[]> {
+							await assertProjectScope(['folder:list'], projectId);
 							const [folders] = await folderService.getManyAndCount(projectId, { take: 100 });
 							return (
 								folders as Array<{ id: string; name: string; parentFolderId: string | null }>
@@ -1365,6 +1472,7 @@ export class InstanceAiAdapterService {
 							projectId: string,
 							parentFolderId?: string,
 						): Promise<FolderSummary> {
+							await assertProjectScope(['folder:create'], projectId);
 							const folder = await folderService.createFolder(
 								{ name, parentFolderId: parentFolderId ?? undefined },
 								projectId,
@@ -1381,6 +1489,7 @@ export class InstanceAiAdapterService {
 							projectId: string,
 							transferToFolderId?: string,
 						): Promise<void> {
+							await assertProjectScope(['folder:delete'], projectId);
 							await folderService.deleteFolder(user, folderId, projectId, {
 								transferToFolderId: transferToFolderId ?? undefined,
 							});
@@ -1443,9 +1552,9 @@ export class InstanceAiAdapterService {
 				workflowId: string,
 				options?: { olderThanHours?: number },
 			): Promise<{ deletedCount: number }> {
-				// Access-check the workflow first
+				// Access-check the workflow with execute scope (matches controller behavior)
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-					'workflow:read',
+					'workflow:execute',
 				]);
 				if (!workflow) {
 					throw new Error(`Workflow ${workflowId} not found or not accessible`);
@@ -1454,6 +1563,7 @@ export class InstanceAiAdapterService {
 				const olderThanHours = options?.olderThanHours ?? 1;
 				const cutoff = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
 
+				// Count executions before deletion (hardDeleteBy returns void)
 				const executions = await executionRepository.find({
 					select: ['id'],
 					where: {
@@ -1468,7 +1578,27 @@ export class InstanceAiAdapterService {
 				}
 
 				const ids = executions.map((e) => e.id);
-				await executionRepository.deleteByIds(ids);
+
+				// Use the canonical deletion pipeline (handles binary data and fs blobs)
+				await executionPersistence.hardDeleteBy({
+					filters: { workflowId, mode: 'manual' },
+					accessibleWorkflowIds: [workflowId],
+					deleteConditions: { deleteBefore: cutoff },
+				});
+
+				// Emit audit event (matches controller behavior)
+				eventService.emit('execution-deleted', {
+					user: {
+						id: user.id,
+						email: user.email,
+						firstName: user.firstName,
+						lastName: user.lastName,
+						role: user.role,
+					},
+					executionIds: ids,
+					deleteBefore: cutoff,
+				});
+
 				return { deletedCount: ids.length };
 			},
 		};
