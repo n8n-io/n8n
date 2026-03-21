@@ -79,6 +79,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	isSafeObjectProperty,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -344,6 +345,41 @@ export class InstanceAiAdapterService {
 					throw new Error(`Node "${nodeName}" not found in workflow ${workflowId}`);
 				}
 
+				// Rename node (also update references in connections and pinData)
+				if (patch.name && patch.name !== node.name) {
+					if (!isSafeObjectProperty(patch.name)) {
+						throw new Error(`Invalid node name "${patch.name}"`);
+					}
+
+					const oldName = node.name;
+					node.name = patch.name;
+
+					// Update connections that reference the old name
+					const connections = workflow.connections ?? {};
+					if (connections[oldName]) {
+						connections[patch.name] = connections[oldName];
+						delete connections[oldName];
+					}
+					for (const conns of Object.values(connections)) {
+						for (const outputGroup of Object.values(conns)) {
+							for (const outputs of outputGroup) {
+								if (!outputs) continue;
+								for (const conn of outputs) {
+									if (conn.node === oldName) {
+										conn.node = patch.name;
+									}
+								}
+							}
+						}
+					}
+
+					// Update pinData that references the old name
+					if (workflow.pinData?.[oldName]) {
+						workflow.pinData[patch.name] = workflow.pinData[oldName];
+						delete workflow.pinData[oldName];
+					}
+				}
+
 				// Shallow-merge parameters
 				if (patch.parameters) {
 					node.parameters = {
@@ -364,6 +400,7 @@ export class InstanceAiAdapterService {
 
 				const updateData = workflowRepository.create({
 					nodes,
+					...(patch.name ? { connections: workflow.connections, pinData: workflow.pinData } : {}),
 				} as Partial<WorkflowEntity>);
 
 				const updated = await workflowService.update(user, updateData, workflowId);

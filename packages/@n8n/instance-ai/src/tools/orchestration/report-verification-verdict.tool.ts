@@ -47,6 +47,14 @@ function actionToGuidance(action: WorkflowLoopAction): string {
 				`Call \`build-workflow-with-agent\` again with these details: ${action.failureDetails}. ` +
 				'The build outcome will trigger verification automatically.'
 			);
+		case 'patch':
+			return (
+				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
+				`Diagnosis: ${action.diagnosis}. ` +
+				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
+				`Call \`build-workflow-with-agent\` with mode "patch", workflowId "${action.workflowId}", and these details in the task. ` +
+				'The build outcome will trigger verification automatically.'
+			);
 	}
 }
 

@@ -1363,6 +1363,12 @@ export class InstanceAiService {
 					`REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. ` +
 					`Call \`build-workflow-with-agent\` again with these details: ${action.failureDetails}`
 				);
+			case 'patch':
+				return (
+					`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
+					`Diagnosis: ${action.diagnosis}. ` +
+					`Call \`build-workflow-with-agent\` with mode "patch" and workflowId "${action.workflowId}".`
+				);
 		}
 	}
 

@@ -38,7 +38,7 @@ export type WorkflowLoopState = z.infer<typeof workflowLoopStateSchema>;
 
 // ── AttemptRecord ───────────────────────────────────────────────────────────
 
-export const attemptActionSchema = z.enum(['build', 'verify', 'rebuild']);
+export const attemptActionSchema = z.enum(['build', 'verify', 'rebuild', 'patch']);
 export const attemptResultSchema = z.enum(['success', 'failure', 'blocked']);
 
 export const attemptRecordSchema = z.object({
@@ -117,5 +117,12 @@ export type VerificationResult = z.infer<typeof verificationResultSchema>;
 export type WorkflowLoopAction =
 	| { type: 'verify'; workflowId: string }
 	| { type: 'rebuild'; workflowId: string; failureDetails: string }
+	| {
+			type: 'patch';
+			workflowId: string;
+			failedNodeName: string;
+			diagnosis: string;
+			patch?: Record<string, unknown>;
+	  }
 	| { type: 'done'; workflowId?: string; summary: string; mockedCredentialTypes?: string[] }
 	| { type: 'blocked'; reason: string };

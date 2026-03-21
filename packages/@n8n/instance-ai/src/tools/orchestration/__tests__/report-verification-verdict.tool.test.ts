@@ -81,14 +81,15 @@ describe('report-verification-verdict tool', () => {
 		expect((result as { guidance: string }).guidance).toContain('run-workflow');
 	});
 
-	it('returns rebuild guidance when needs_patch routes through builder', async () => {
-		const rebuildAction: WorkflowLoopAction = {
-			type: 'rebuild',
+	it('returns patch guidance when needs_patch produces patch action', async () => {
+		const patchAction: WorkflowLoopAction = {
+			type: 'patch',
 			workflowId: 'wf-123',
-			failureDetails:
-				'Failed node: HTTP Request. Suggested parameter fix: {"url":"https://example.com"}',
+			failedNodeName: 'HTTP Request',
+			diagnosis: 'Invalid URL',
+			patch: { url: 'https://example.com' },
 		};
-		const reportVerificationVerdict = jest.fn().mockResolvedValue(rebuildAction);
+		const reportVerificationVerdict = jest.fn().mockResolvedValue(patchAction);
 		const context = createMockContext({ reportVerificationVerdict });
 		const tool = createReportVerificationVerdictTool(context);
 
@@ -102,8 +103,9 @@ describe('report-verification-verdict tool', () => {
 			{} as never,
 		);
 
-		expect((result as { guidance: string }).guidance).toContain('REBUILD NEEDED');
-		expect((result as { guidance: string }).guidance).toContain('build-workflow-with-agent');
+		expect((result as { guidance: string }).guidance).toContain('PATCH NEEDED');
+		expect((result as { guidance: string }).guidance).toContain('mode');
+		expect((result as { guidance: string }).guidance).toContain('patch');
 	});
 
 	it('returns rebuild guidance when action is rebuild', async () => {
