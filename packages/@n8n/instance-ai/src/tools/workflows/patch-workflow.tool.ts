@@ -7,12 +7,13 @@ export function createPatchWorkflowTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'patch-workflow',
 		description:
-			'Patch a single node in a workflow: update parameters, swap credentials, or enable/disable. ' +
-			'Use for quick fixes (placeholder IDs, credential swaps, toggling nodes). ' +
+			'Patch a single node in a workflow: rename, update parameters, swap credentials, or enable/disable. ' +
+			'Use for quick fixes (renaming, placeholder IDs, credential swaps, toggling nodes). ' +
 			'For structural changes (add/remove nodes, rewire connections), use build-workflow-with-agent instead.',
 		inputSchema: z.object({
 			workflowId: z.string().describe('ID of the workflow to patch'),
 			nodeName: z.string().describe('Exact name of the node to patch'),
+			newName: z.string().optional().describe('Rename the node to this value'),
 			parameterPatch: z
 				.record(z.unknown())
 				.optional()
@@ -30,7 +31,7 @@ export function createPatchWorkflowTool(context: InstanceAiContext) {
 			error: z.string().optional(),
 		}),
 		execute: async (input) => {
-			const { workflowId, nodeName, parameterPatch, credentialPatch, disabled } = input;
+			const { workflowId, nodeName, newName, parameterPatch, credentialPatch, disabled } = input;
 			if (!context.workflowService.patchNode) {
 				return {
 					success: false,
@@ -42,11 +43,12 @@ export function createPatchWorkflowTool(context: InstanceAiContext) {
 
 			try {
 				await context.workflowService.patchNode(workflowId, nodeName, {
+					name: newName,
 					parameters: parameterPatch,
 					credentials: credentialPatch,
 					disabled,
 				});
-				return { success: true, workflowId, nodeName };
+				return { success: true, workflowId, nodeName: newName ?? nodeName };
 			} catch (error) {
 				return {
 					success: false,

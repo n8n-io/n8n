@@ -163,6 +163,7 @@ export interface InstanceAiWorkflowService {
 		workflowId: string,
 		nodeName: string,
 		patch: {
+			name?: string;
 			parameters?: Record<string, unknown>;
 			credentials?: Record<string, { id: string; name: string }>;
 			disabled?: boolean;

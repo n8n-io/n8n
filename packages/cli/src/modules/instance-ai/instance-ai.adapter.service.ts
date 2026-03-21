@@ -344,6 +344,31 @@ export class InstanceAiAdapterService {
 					throw new Error(`Node "${nodeName}" not found in workflow ${workflowId}`);
 				}
 
+				// Rename node (also update references in connections)
+				if (patch.name && patch.name !== node.name) {
+					const oldName = node.name;
+					node.name = patch.name;
+
+					// Update connections that reference the old name
+					const connections = workflow.connections ?? {};
+					if (connections[oldName]) {
+						connections[patch.name] = connections[oldName];
+						delete connections[oldName];
+					}
+					for (const conns of Object.values(connections)) {
+						for (const outputGroup of Object.values(conns)) {
+							for (const outputs of outputGroup) {
+								if (!outputs) continue;
+								for (const conn of outputs) {
+									if (conn.node === oldName) {
+										conn.node = patch.name;
+									}
+								}
+							}
+						}
+					}
+				}
+
 				// Shallow-merge parameters
 				if (patch.parameters) {
 					node.parameters = {
@@ -364,6 +389,7 @@ export class InstanceAiAdapterService {
 
 				const updateData = workflowRepository.create({
 					nodes,
+					...(patch.name ? { connections: workflow.connections } : {}),
 				} as Partial<WorkflowEntity>);
 
 				const updated = await workflowService.update(user, updateData, workflowId);
