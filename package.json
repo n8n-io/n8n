@@ -120,8 +120,6 @@
       "js-yaml": "4.1.1",
       "lodash": "4.17.23",
       "lodash-es": "4.17.23",
-      "undici@6": "6.23.0",
-      "undici@7": "7.18.2",
       "node-forge": "1.3.2",
       "body-parser": "2.2.1",
       "@isaacs/brace-expansion@5": "5.0.1",
@@ -143,11 +141,12 @@
       "word-wrap@<=1.2.4": "1.2.4",
       "langsmith@<=0.4.6": "0.4.6",
       "minimatch@<=5.1.8": "5.1.8",
-      "fast-xml-parser": "5.3.8",
       "hono@<=4.12.7": "4.12.7",
       "multer": "2.1.1",
       "express-rate-limit@<=8.2.2": "8.2.2",
-      "tar": "7.5.11"
+      "tar": "7.5.11",
+      "undici@<=7.24.1": "7.24.1",
+      "fast-xml-parser": "5.5.6"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
