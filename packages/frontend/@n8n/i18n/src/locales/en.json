@@ -4971,6 +4971,7 @@
 	"instanceAi.credential.finalize.applied": "Credentials applied",
 	"instanceAi.credential.finalize.deferred": "Skipped — add credentials later",
 	"instanceAi.credential.setupButton": "Set up credentials",
+	"instanceAi.credential.continueButton": "Continue",
 	"instanceAi.credential.modal.title": "Set up credentials",
 	"instanceAi.memory.title": "Working Memory",
 	"instanceAi.memory.placeholder": "No working memory content yet",
