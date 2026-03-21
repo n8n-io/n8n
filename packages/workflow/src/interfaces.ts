@@ -2470,6 +2470,23 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	 * permissions and are never revealable.
 	 */
 	sensitiveOutputFields?: string[];
+
+	/** When `true`, execute this node inside a secure-exec V8 isolate. */
+	thirdPartyDeps?: boolean;
+
+	/** Fine-grained sandbox permissions. Only meaningful when `thirdPartyDeps` is `true`. */
+	permissions?: NodePermissionDescriptor;
+}
+
+export interface NodePermissionDescriptor {
+	/** Allow direct outbound network access (http, fetch, net, dns) from within the isolate. */
+	network?: boolean | { allowedHosts?: string[] };
+	/** Allow direct filesystem access (fs module) from within the isolate. */
+	filesystem?: boolean | { paths?: string[]; readonly?: boolean };
+	/** Allow spawning child processes from within the isolate. */
+	childProcess?: boolean | { allowedCommands?: string[] };
+	/** Allow reading host environment variables from within the isolate. */
+	env?: boolean | { allowedKeys?: string[] };
 }
 
 export type TriggerPanelDefinition = {

@@ -80,6 +80,7 @@ import {
 } from './partial-execution-utils';
 import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-response';
 import { RoutingNode } from './routing-node';
+import { executeSandboxed } from './sandboxed-node-executor';
 import { TriggersAndPollers } from './triggers-and-pollers';
 import { convertBinaryData } from '../utils/convert-binary-data';
 
@@ -1034,7 +1035,9 @@ export class WorkflowExecute {
 
 		let data: INodeExecutionData[][] | EngineRequest | null;
 
-		if (customOperation) {
+		if (nodeType.description.thirdPartyDeps) {
+			data = await executeSandboxed(nodeType, context, nodeType.description.permissions);
+		} else if (customOperation) {
 			data = await customOperation.call(context);
 		} else if (nodeType.execute) {
 			data =

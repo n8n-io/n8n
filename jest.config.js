@@ -22,6 +22,8 @@ const esmDependencies = [
 	'p-retry',
 	'is-network-error',
 	'uuid',
+	'secure-exec',
+	'@secure-exec',
 	// Add other ESM dependencies that need to be transformed here
 ];
 
@@ -39,7 +41,7 @@ const config = {
 		[esmDependenciesRegex]: [
 			'babel-jest',
 			{
-				presets: ['@babel/preset-env'],
+				presets: [['@babel/preset-env', { targets: { node: 'current' } }]],
 				plugins: ['babel-plugin-transform-import-meta'],
 			},
 		],
@@ -47,6 +49,20 @@ const config = {
 	transformIgnorePatterns: [`/node_modules/(?!${esmDependenciesPattern})/`],
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
 	moduleNameMapper: {
+		'^secure-exec$': resolve(__dirname, 'node_modules/secure-exec/dist/index.js'),
+		'^@secure-exec/(\\w+)/internal/shared/(.+)$': resolve(
+			__dirname,
+			'node_modules/@secure-exec/$1/dist/shared/$2.js',
+		),
+		'^@secure-exec/(\\w+)/internal/generated/(.+)$': resolve(
+			__dirname,
+			'node_modules/@secure-exec/$1/dist/generated/$2.js',
+		),
+		'^@secure-exec/(\\w+)/internal/(.+)$': resolve(
+			__dirname,
+			'node_modules/@secure-exec/$1/dist/$2.js',
+		),
+		'^@secure-exec/(\\w+)$': resolve(__dirname, 'node_modules/@secure-exec/$1/dist/index.js'),
 		'^@n8n/utils$': resolve(__dirname, 'packages/@n8n/utils/dist/index.cjs'),
 		...(compilerOptions?.paths
 			? pathsToModuleNameMapper(compilerOptions.paths, {

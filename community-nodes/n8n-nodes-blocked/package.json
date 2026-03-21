@@ -1,0 +1,24 @@
+{
+	"name": "n8n-nodes-blocked",
+	"version": "0.1.0",
+	"description": "Demo community node that tries to make network requests without declaring permissions — should be blocked by sandbox",
+	"license": "MIT",
+	"main": "dist/nodes/Blocked/Blocked.node.js",
+	"scripts": {
+		"build": "tsc",
+		"prepublishOnly": "npm run build"
+	},
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"nodes": [
+			"dist/nodes/Blocked/Blocked.node.js"
+		]
+	},
+	"devDependencies": {
+		"n8n-workflow": "file:../../packages/workflow",
+		"typescript": "~5.7.0"
+	},
+	"peerDependencies": {
+		"n8n-workflow": ">=1.0.0"
+	}
+}

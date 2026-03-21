@@ -134,6 +134,8 @@ minimumReleaseAgeExclude:
   - '@n8n_io/*'
   - 'tsdown@0.16.5'
   - eslint-plugin-storybook
+  - secure-exec
+  - '@secure-exec/*'
   - eslint-plugin-n8n-nodes-base
   - '@langchain/*'
   - 'langchain'
