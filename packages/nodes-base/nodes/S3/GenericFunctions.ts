@@ -144,6 +144,10 @@ export async function s3ApiRequestSOAP(
 		option,
 		region,
 	);
+	// Empty responses (e.g. HTTP 204 No Content) are valid and should return undefined,
+	// not swallow a parse error silently.
+	if (!response) return undefined;
+
 	try {
 		return await new Promise((resolve, reject) => {
 			parseString(response as string, { explicitArray: false }, (err, data) => {
@@ -154,7 +158,7 @@ export async function s3ApiRequestSOAP(
 			});
 		});
 	} catch (error) {
-		return error;
+		throw error;
 	}
 }
 

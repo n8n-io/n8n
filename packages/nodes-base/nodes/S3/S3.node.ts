@@ -162,6 +162,16 @@ export class S3 implements INodeType {
 						returnData.push(...executionData);
 						// returnData.push({ success: true });
 					}
+					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucket.html
+					if (operation === 'delete') {
+						const name = this.getNodeParameter('name', i) as string;
+						await s3ApiRequestSOAP.call(this, `${name}`, 'DELETE', '');
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', 0);
@@ -548,7 +558,11 @@ export class S3 implements INodeType {
 							).toUpperCase();
 						}
 
-						const destinationParts = destinationPath.split('/');
+						// Normalize: ensure destinationPath starts with '/' (e.g. '/bucket/key')
+						const normalizedDestination = destinationPath.startsWith('/')
+							? destinationPath
+							: `/${destinationPath}`;
+						const destinationParts = normalizedDestination.split('/');
 
 						const bucketName = destinationParts[1];
 
