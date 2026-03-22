@@ -133,16 +133,24 @@ For n8n workflows that serve end users:
 
 ## Article 14: Human oversight
 
-For high-risk workflows, a human must be able to:
-- Understand the AI output before it takes effect
-- Override or halt the workflow
-- Review decisions made by AI nodes
+Article 14 requires that high-risk AI systems be designed so that natural persons can effectively oversee them — including the ability to understand, monitor, interpret, and intervene in the system's operation.
 
-n8n provides:
-- **Manual execution mode** — run workflows step by step
-- **Wait nodes** — pause execution for human review
-- **Error handling** — route failures to human review queues
-- **Webhook triggers** — enable approval gates before AI-driven actions
+n8n provides **automated technical safeguards** and **workflow controls** that support human oversight:
+
+| n8n Feature | What It Does | Oversight Role |
+|------------|-------------|----------------|
+| Manual execution mode | Run workflows step by step | **Direct oversight** — human inspects each step before proceeding |
+| Wait nodes | Pause execution for human review | **Oversight enabler** — creates approval gates in the workflow |
+| Error handling | Route failures to human review queues | **Automated safeguard** — ensures failures are surfaced rather than silently dropped |
+| Webhook triggers | Enable approval gates before AI-driven actions | **Oversight enabler** — allows external human-in-the-loop integration |
+
+These controls are necessary building blocks, but Article 14 compliance requires **human oversight procedures** on top of them:
+- **Escalation procedures** — define what happens when errors or edge cases arise (who is notified, what action is taken)
+- **Human review pipeline** — for high-stakes decisions, route AI outputs to a qualified person before they take effect
+- **Override mechanism** — a human must be able to halt AI responses or override the workflow's output
+- **Competence requirements** — the human overseer must understand the system's capabilities, limitations, and the context of its outputs
+
+The distinction matters: automated safeguards reduce risk, but Article 14 requires a natural person who can exercise judgment and intervene.
 
 ### Recommended pattern for high-risk workflows
 
@@ -172,6 +180,7 @@ If your n8n workflow processes personal data through AI nodes:
 2. **Data Processing Agreements** (Article 28): Required for each AI provider
 3. **Automated decision-making** (Article 22): If AI output directly affects individuals without human review, GDPR gives data subjects the right to contest the decision
 4. **Data minimization**: Only send the minimum necessary data to AI providers
+5. **Cross-border transfers**: Providers based outside the EEA — including US-based providers (OpenAI, Anthropic), and any other non-EEA providers you route to — require Standard Contractual Clauses (SCCs) or equivalent safeguards under Chapter V of the GDPR. Review each provider's transfer mechanism individually.
 
 ## Resources
 
