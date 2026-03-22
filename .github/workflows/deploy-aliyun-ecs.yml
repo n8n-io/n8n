@@ -4,6 +4,7 @@
 # Infisical 中至少配置：
 #   - ECS_HOST / ECS_USER / ECS_SSH_PRIVATE_KEY  （仅部署用，不会写入 .env）
 #   - ECS_DEPLOY_PATH （可选，仅部署用）
+#   - ACR_USERNAME / ACR_PASSWORD （可选，用于 ECS 上 docker login 拉取阿里云 ACR 私有镜像；不写入 .env）
 #   - 其余在 /n8n 路径下、compose 需要的变量（如 DB_POSTGRESDB_PASSWORD、N8N_SMTP_PASS 等），
 #     名称与 docker-compose 里 ${VAR} 一致即可。
 #
@@ -87,6 +88,16 @@ jobs:
 
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
             "$LOCAL_ENV" "${ECS_USER}@${ECS_HOST}:${DEPLOY_PATH}/.env"
+
+          # 拉取 ACR 私有镜像前在 ECS 上登录（凭据来自 Infisical，不写入 .env）
+          if [ -n "${ACR_USERNAME:-}" ] && [ -n "${ACR_PASSWORD:-}" ]; then
+            echo "::notice::正在登录 registry.cn-hangzhou.aliyuncs.com …"
+            printf '%s\n' "$ACR_PASSWORD" | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${ECS_USER}@${ECS_HOST}" \
+              "docker login $(printf '%q' "$ACR_REGISTRY") --username $(printf '%q' "$ACR_USERNAME") --password-stdin"
+          else
+            echo "::notice::未设置 ACR_USERNAME/ACR_PASSWORD，跳过 docker login（公开镜像可直接 pull）"
+          fi
 
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
             "${ECS_USER}@${ECS_HOST}" bash -s -- "$DEPLOY_PATH" << 'REMOTE'

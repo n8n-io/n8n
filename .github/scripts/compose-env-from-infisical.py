@@ -21,6 +21,9 @@ _DENY_EXACT = frozenset(
         "ECS_USER",
         "ECS_SSH_PRIVATE_KEY",
         "ECS_DEPLOY_PATH",
+        # 阿里云 ACR：仅用于 ECS 上 docker login，不应写入 compose .env
+        "ACR_USERNAME",
+        "ACR_PASSWORD",
     }
 )
 
