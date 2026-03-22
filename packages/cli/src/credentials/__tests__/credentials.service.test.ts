@@ -2017,6 +2017,81 @@ describe('CredentialsService', () => {
 				await service.prepareUpdateData(ownerUser, payload, existingCredential);
 			});
 		});
+
+		describe('validateOAuthCredentialUrls during prepareUpdateData', () => {
+			beforeEach(() => {
+				jest.spyOn(service, 'decrypt').mockReturnValue({});
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+			});
+
+			it('should allow valid http/https URLs', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+				const payload = {
+					name: 'Test Credential',
+					type: 'mcpOAuth2Api',
+					data: {
+						authUrl: 'https://example.com/auth',
+						accessTokenUrl: 'http://example.com/token',
+					},
+					projectId: 'project-1',
+				};
+				const existingCredential = mockExistingCredential({
+					name: 'Test Credential',
+					type: 'mcpOAuth2Api',
+					data: {},
+					projectId: 'project-1',
+				});
+				await expect(
+					service.prepareUpdateData(ownerUser, payload, existingCredential),
+				).resolves.toBeDefined();
+			});
+
+			it('should throw BadRequestError for invalid URLs', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+				const payload = {
+					name: 'Test Credential',
+					type: 'mcpOAuth2Api',
+					data: {
+						authUrl: 'not-a-url',
+					},
+					projectId: 'project-1',
+				};
+				const existingCredential = mockExistingCredential({
+					name: 'Test Credential',
+					type: 'mcpOAuth2Api',
+					data: {},
+					projectId: 'project-1',
+				});
+				await expect(
+					service.prepareUpdateData(ownerUser, payload, existingCredential),
+				).rejects.toThrow('OAuth url is not a valid URL.');
+			});
+
+			it('should skip validation for expressions (starting with "=")', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+				const payload = {
+					name: 'Test Credential',
+					type: 'mcpOAuth2Api',
+					data: {
+						authUrl: '={{ $vars.mcp_auth }}',
+						accessTokenUrl: '={{ $vars.token_url }}',
+					},
+					projectId: 'project-1',
+				};
+				const existingCredential = mockExistingCredential({
+					name: 'Test Credential',
+					type: 'mcpOAuth2Api',
+					data: {},
+					projectId: 'project-1',
+				});
+				await expect(
+					service.prepareUpdateData(ownerUser, payload, existingCredential),
+				).resolves.toBeDefined();
+			});
+		});
 	});
 
 	describe('checkCredentialData', () => {
@@ -2256,6 +2331,39 @@ describe('CredentialsService', () => {
 			await expect(
 				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
 			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
+		});
+
+		describe('validateOAuthCredentialUrls', () => {
+			it('should allow valid http/https URLs', () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+				const data = {
+					authUrl: 'https://example.com/auth',
+					accessTokenUrl: 'http://example.com/token',
+				};
+				expect(() => service.checkCredentialData('mcpOAuth2Api', data, ownerUser)).not.toThrow();
+			});
+
+			it('should throw BadRequestError for invalid URLs', () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+				const data = {
+					authUrl: 'not-a-url',
+				};
+				expect(() => service.checkCredentialData('mcpOAuth2Api', data, ownerUser)).toThrow(
+					'OAuth url is not a valid URL.',
+				);
+			});
+
+			it('should skip validation for expressions (starting with "=")', () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+				const data = {
+					authUrl: '={{ $vars.mcp_auth }}',
+					accessTokenUrl: '={{ $vars.token_url }}',
+				};
+				expect(() => service.checkCredentialData('mcpOAuth2Api', data, ownerUser)).not.toThrow();
+			});
 		});
 	});
 });
