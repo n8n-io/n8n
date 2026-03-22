@@ -12,6 +12,9 @@
 name: 'Deploy: Aliyun ECS (Infisical)'
 
 on:
+  push:
+    branches:
+      - develop
   workflow_dispatch:
     inputs:
       ref:
@@ -38,7 +41,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
+          # push 时无 inputs；手动运行时填了 ref 则用指定，否则用触发提交的 SHA
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref != '' && inputs.ref || github.sha }}
 
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
