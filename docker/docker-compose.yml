@@ -13,51 +13,22 @@ services:
   n8n:
     image: registry.cn-hangzhou.aliyuncs.com/rexqin/n8n:latest
     user: root:root
-    environment:
-      - N8N_DIAGNOSTICS_ENABLED=false
-      - N8N_NODES_DEBUG_ENABLED=false
-      - N8N_HOST=0.0.0.0
-      - N8N_PORT=80
-      - N8N_PROTOCOL=http
-      - N8N_LOG_LEVEL=info
-      - N8N_DEFAULT_LOCALE=zh-CN
-
-      # 数据库（PostgreSQL 示例）
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=localhost
-      - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=gtw
-      - DB_POSTGRESDB_USER=postgres
-      - DB_POSTGRESDB_PASSWORD=${DB_POSTGRESDB_PASSWORD:-password}
-
-      - N8N_SMTP_USER=40061167@qq.com
-      - N8N_SMTP_PASS=${N8N_SMTP_PASS}
-      - N8N_SMTP_HOST=smtp.qq.com
-      - N8N_SMTP_PORT=465
-      - N8N_SMTP_SSL=true
-      - N8N_SMTP_SENDER=40061167@qq.com
-      - N8N_SMTP_STARTTLS=true
-        # Task Runner config
-      - N8N_RUNNERS_MODE=external
-      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
-      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN:-test}
-      - N8N_METRICS=true
+    env_file:
+      - .env
     ports:
       - 5678:5678
     volumes:
       - n8n-data:/n8n
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://n8n:80/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget --spider -q http://n8n:5678/healthz || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   runners:
     image: registry.cn-hangzhou.aliyuncs.com/rexqin/runners:latest
-    environment:
-      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
-      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN:-test}
-      - NO_COLOR=1
+    env_file:
+      - .env
     depends_on:
       n8n:
         condition: service_healthy
