@@ -194,9 +194,9 @@ describe('CredentialsController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
 
 			// ACT
-			await expect(credentialsController.updateCredentials(ownerReq)).rejects.toThrowError(
-				'You are not licensed for sharing credentials',
-			);
+			await expect(
+				credentialsController.updateCredentials(ownerReq, res, ownerReq.body),
+			).rejects.toThrowError('You are not licensed for sharing credentials');
 
 			// ASSERT
 			expect(credentialsService.update).not.toHaveBeenCalled();
@@ -225,7 +225,7 @@ describe('CredentialsController', () => {
 			});
 
 			// ACT
-			await credentialsController.updateCredentials(ownerReq);
+			await credentialsController.updateCredentials(ownerReq, res, ownerReq.body);
 
 			// ASSERT
 			expect(credentialsService.update).toHaveBeenCalledWith(
@@ -268,7 +268,7 @@ describe('CredentialsController', () => {
 			});
 
 			// ACT
-			await credentialsController.updateCredentials(ownerReq);
+			await credentialsController.updateCredentials(ownerReq, res, ownerReq.body);
 
 			// ASSERT
 			expect(credentialsService.update).toHaveBeenCalledWith(
@@ -297,9 +297,9 @@ describe('CredentialsController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
 
 			// ACT
-			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrowError(
-				'You do not have permission to change global sharing for credentials',
-			);
+			await expect(
+				credentialsController.updateCredentials(memberReq, res, memberReq.body),
+			).rejects.toThrowError('You do not have permission to change global sharing for credentials');
 
 			// ASSERT
 			expect(credentialsService.update).not.toHaveBeenCalled();
@@ -326,9 +326,9 @@ describe('CredentialsController', () => {
 			});
 
 			// ACT
-			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrowError(
-				'You do not have permission to change global sharing for credentials',
-			);
+			await expect(
+				credentialsController.updateCredentials(memberReq, res, memberReq.body),
+			).rejects.toThrowError('You do not have permission to change global sharing for credentials');
 
 			// ASSERT
 			expect(credentialsService.update).not.toHaveBeenCalled();
@@ -354,7 +354,7 @@ describe('CredentialsController', () => {
 			});
 
 			// ACT
-			await credentialsController.updateCredentials(ownerReq);
+			await credentialsController.updateCredentials(ownerReq, res, ownerReq.body);
 
 			// ASSERT
 			// Should not include isGlobal in update when not provided
@@ -403,7 +403,7 @@ describe('CredentialsController', () => {
 			});
 
 			// ACT
-			await credentialsController.updateCredentials(ownerReq);
+			await credentialsController.updateCredentials(ownerReq, res, ownerReq.body);
 
 			// ASSERT
 			expect(credentialsService.update).toHaveBeenCalledWith(
@@ -450,7 +450,7 @@ describe('CredentialsController', () => {
 			});
 
 			// ACT
-			await credentialsController.updateCredentials(ownerReq);
+			await credentialsController.updateCredentials(ownerReq, res, ownerReq.body);
 
 			// ASSERT
 			expect(credentialsService.update).toHaveBeenCalledWith(
@@ -483,9 +483,9 @@ describe('CredentialsController', () => {
 			// Mock setup: existing credential already has a secret expression
 			jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: '$secrets.oldKey' });
 
-			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
-				'Lacking permissions to reference external secrets in credentials',
-			);
+			await expect(
+				credentialsController.updateCredentials(memberReq, undefined, memberReq.body),
+			).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
 			expect(validateExternalSecretsPermissionsSpy).toHaveBeenCalledWith({
 				user: memberReq.user,
 				projectId: existingCredential.shared[0].projectId,
@@ -513,9 +513,9 @@ describe('CredentialsController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
 			jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-key' });
 
-			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
-				'Lacking permissions to reference external secrets in credentials',
-			);
+			await expect(
+				credentialsController.updateCredentials(memberReq, undefined, memberReq.body),
+			).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
 			expect(validateExternalSecretsPermissionsSpy).toHaveBeenCalledWith({
 				user: memberReq.user,
 				projectId: existingCredential.shared[0].projectId,

@@ -1808,6 +1808,7 @@ describe('POST /credentials/test', () => {
 		const response = await authOwnerAgent.post('/credentials/test').send({
 			credentials: {
 				id: savedCredential.id,
+				name: savedCredential.name,
 				type: savedCredential.type,
 				data: credential.data,
 			},
@@ -1817,6 +1818,7 @@ describe('POST /credentials/test', () => {
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][1]).toBe(savedCredential.type);
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
 			id: savedCredential.id,
+			name: savedCredential.name,
 			type: savedCredential.type,
 			data: credential.data,
 		});
@@ -1836,6 +1838,7 @@ describe('POST /credentials/test', () => {
 		const response = await authOwnerAgent.post('/credentials/test').send({
 			credentials: {
 				id: savedCredential.id,
+				name: savedCredential.name,
 				type: savedCredential.type,
 				data: {
 					accessToken: CREDENTIAL_BLANKING_VALUE,
@@ -1847,6 +1850,7 @@ describe('POST /credentials/test', () => {
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][1]).toBe(savedCredential.type);
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
 			id: savedCredential.id,
+			name: savedCredential.name,
 			type: savedCredential.type,
 			data: credential.data,
 		});
