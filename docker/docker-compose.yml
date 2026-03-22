@@ -1,6 +1,9 @@
 # 本地部署：n8n + PostgreSQL
 # 使用方式：在项目根目录执行 docker compose up -d
 # 访问：http://localhost:80
+#
+# 阿里云 ECS 自动部署：GitHub Actions → .github/workflows/deploy-aliyun-ecs.yml
+# （SSH/Infisical：CI 将 Infisical 注入的环境变量汇总为 .env，compose 启动后从服务器删除 .env）
 
 volumes:
   postgres-data:
@@ -40,7 +43,7 @@ services:
       - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN:-test}
       - N8N_METRICS=true
     ports:
-      - 80:80
+      - 5678:5678
     volumes:
       - n8n-data:/n8n
     depends_on:
@@ -63,29 +66,4 @@ services:
     depends_on:
       n8n:
         condition: service_healthy
-  redis:
-    image: redis:6.2.14-alpine
-    ports:
-      - 6379:6379
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 1s
-      timeout: 3s
-
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: gtw
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-    command: postgres -c listen_addresses='*'
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d gtw"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+  

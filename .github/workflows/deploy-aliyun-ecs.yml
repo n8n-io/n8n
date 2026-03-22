@@ -1,0 +1,102 @@
+# 将 n8n 栈部署到阿里云 ECS（通过 SSH）
+# Infisical OIDC 注入的密钥会作为「环境变量」进入本 job；再汇总写入 .env 供 compose 使用。
+#
+# Infisical 中至少配置：
+#   - ECS_HOST / ECS_USER / ECS_SSH_PRIVATE_KEY  （仅部署用，不会写入 .env）
+#   - ECS_DEPLOY_PATH （可选，仅部署用）
+#   - 其余在 /n8n 路径下、compose 需要的变量（如 DB_POSTGRESDB_PASSWORD、N8N_SMTP_PASS 等），
+#     名称与 docker-compose 里 ${VAR} 一致即可。
+#
+# 生成规则：.github/scripts/compose-env-from-infisical.py（排除 ECS_* / GitHub / Runner 等，其余环境变量全部写入 .env）
+
+name: 'Deploy: Aliyun ECS (Infisical)'
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to deploy (branch/tag/commit)，留空则用当前触发提交'
+        required: false
+        default: ''
+
+concurrency:
+  group: deploy-aliyun-ecs
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy to Aliyun ECS
+    runs-on: ubuntu-latest
+    environment:
+      name: aliyun-ecs
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
+
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
+
+      - name: Validate required secrets
+        run: |
+          test -n "${ECS_HOST:-}" || { echo "::error::Infisical 缺少 ECS_HOST"; exit 1; }
+          test -n "${ECS_USER:-}" || { echo "::error::Infisical 缺少 ECS_USER"; exit 1; }
+          test -n "${ECS_SSH_PRIVATE_KEY:-}" || { echo "::error::Infisical 缺少 ECS_SSH_PRIVATE_KEY"; exit 1; }
+
+      - name: Build .env from Infisical env, stop, start, remove remote .env
+        run: |
+          set -euo pipefail
+          DEPLOY_PATH="${ECS_DEPLOY_PATH:-/opt/n8n}"
+
+          LOCAL_ENV="$(mktemp)"
+          python3 .github/scripts/compose-env-from-infisical.py > "$LOCAL_ENV"
+          trap 'rm -f "$LOCAL_ENV"' EXIT
+
+          if ! grep -q '^[A-Za-z_][A-Za-z0-9_]*=' "$LOCAL_ENV" 2>/dev/null; then
+            echo "::error::生成的 .env 为空。请在 Infisical /n8n 中配置 compose 所需变量（脚本会排除 ECS_* / GITHUB_* 等，其余均写入）。"
+            exit 1
+          fi
+          echo "::notice::.env 行数（供 compose 使用，已排除部署/CI 变量）: $(grep -c '^[A-Za-z_][A-Za-z0-9_]*=' "$LOCAL_ENV" || true)"
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$ECS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$ECS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            "${ECS_USER}@${ECS_HOST}" "mkdir -p '${DEPLOY_PATH}'"
+
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            docker/docker-compose.yml "${ECS_USER}@${ECS_HOST}:${DEPLOY_PATH}/docker-compose.yml"
+
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            "$LOCAL_ENV" "${ECS_USER}@${ECS_HOST}:${DEPLOY_PATH}/.env"
+
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            "${ECS_USER}@${ECS_HOST}" bash -s -- "$DEPLOY_PATH" << 'REMOTE'
+          set -euo pipefail
+          DEPLOY_PATH="$1"
+          cd "$DEPLOY_PATH"
+          docker compose --env-file .env down --remove-orphans || true
+          docker compose --env-file .env pull
+          docker compose --env-file .env up -d --remove-orphans
+          docker compose ps
+          rm -f .env
+          echo "Remote .env removed."
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
