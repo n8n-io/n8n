@@ -54,10 +54,11 @@ function onUpdateModelValue(tab: string, event: MouseEvent): void {
 	border-radius: var(--radius);
 	transition: all 150ms ease-in-out;
 	z-index: 100; // Should float above other layout components in any page
+	align-items: center;
 }
 
 .floating {
-	transform: translateX(-50%) translateY(150%);
+	top: var(--spacing--4xs);
 }
 
 @media screen and (max-width: 430px) {
