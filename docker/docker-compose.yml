@@ -4,6 +4,9 @@
 #
 # 阿里云 ECS 自动部署：GitHub Actions → .github/workflows/deploy-aliyun-ecs.yml
 # （SSH/Infisical：CI 将 Infisical 注入的环境变量汇总为 .env，compose 启动后从服务器删除 .env）
+#
+# 使用 Swarm overlay 网络 ibb8-net（需已存在，例如：docker network create -d overlay ibb8-net）
+# 若希望由 compose 创建 overlay，可将 networks.ibb8-net 改为 driver: overlay（通常需 swarm init）
 
 volumes:
   postgres-data:
@@ -24,6 +27,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - ibb8-net
 
   runners:
     image: registry.cn-hangzhou.aliyuncs.com/rexqin/runners:latest
@@ -32,4 +37,10 @@ services:
     depends_on:
       n8n:
         condition: service_healthy
-  
+    networks:
+      - ibb8-net
+
+networks:
+  ibb8-net:
+    external: true
+    name: ibb8-net
