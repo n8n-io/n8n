@@ -12,6 +12,7 @@ import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useDependencies } from '@/app/composables/useDependencies';
 import type { DragTarget, DropTarget, FolderListItem } from '@/features/core/folders/folders.types';
 import { useFolders } from '@/features/core/folders/composables/useFolders';
 import { useMessage } from '@/app/composables/useMessage';
@@ -19,8 +20,10 @@ import { useProjectPages } from '@/features/collaboration/projects/composables/u
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import {
+	DEBOUNCE_TIME,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	EnterpriseEditionFeature,
+	getDebounceTime,
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/app/constants';
@@ -92,7 +95,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-const SEARCH_DEBOUNCE_TIME = 300;
+
+const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
 const FILTERS_DEBOUNCE_TIME = 100;
 
 interface Filters extends BaseFilters {
@@ -145,6 +149,7 @@ const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
 const { next: nextFetch } = useLatestFetch();
+const { fetchDependencyCounts } = useDependencies();
 const {
 	showRecommendedTemplatesInline,
 	emptyStateHeading: emptyListHeading,
@@ -672,9 +677,21 @@ const fetchWorkflows = async () => {
 
 		workflowsAndFolders.value = fetchedResources;
 
+		// Async-fetch dependency counts for visible workflows (fire-and-forget)
+		// in the overview page we don't have a resource type
+		const workflowIds = fetchedResources
+			.filter((r) => r.resource === 'workflow' || r.resource === undefined)
+			.map((r) => r.id);
+		if (workflowIds.length > 0) {
+			void fetchDependencyCounts(workflowIds, 'workflow');
+		}
+
 		// Toggle ownership cards visibility only after we have fetched the workflows
 		showCardsBadge.value =
-			projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters.value.search !== '';
+			projectPages.isOverviewSubPage ||
+			projectPages.isSharedSubPage ||
+			filters.value.search !== '' ||
+			filters.value.tags.length > 0;
 
 		return fetchedResources;
 	} catch (error) {
@@ -705,6 +722,11 @@ const getParentFolderId = (routeId?: string) => {
 
 	// If we're on overview/shared page or searching, don't filter by parent folder
 	if (projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters?.value.search) {
+		return undefined;
+	}
+
+	// If filtering by tags, search across all folders
+	if (filters.value.tags.length > 0) {
 		return undefined;
 	}
 
@@ -1816,7 +1838,7 @@ const onNameSubmit = async (name: string) => {
 				</template>
 				<N8nButton
 					variant="outline"
-					size="small"
+					size="medium"
 					iconOnly
 					icon="folder-plus"
 					:aria-label="i18n.baseText('workflows.addFolder')"
@@ -2225,11 +2247,6 @@ const onNameSubmit = async (name: string) => {
 	gap: var(--spacing--2xl);
 	align-items: center;
 	justify-content: center;
-}
-
-.add-folder-button {
-	width: 30px;
-	height: 30px;
 }
 
 .breadcrumbs-container {

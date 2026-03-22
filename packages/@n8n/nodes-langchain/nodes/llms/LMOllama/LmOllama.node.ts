@@ -7,10 +7,12 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
 import { ollamaDescription, ollamaModel, ollamaOptions } from './description';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 export class LmOllama implements INodeType {
 	description: INodeTypeDescription = {

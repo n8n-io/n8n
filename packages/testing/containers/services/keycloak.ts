@@ -2,7 +2,7 @@ import getPort from 'get-port';
 import { setTimeout as wait } from 'node:timers/promises';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
-import { Agent } from 'undici';
+import { Agent, request as undiciRequest } from 'undici';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
@@ -47,6 +47,8 @@ export interface KeycloakMeta {
 export type KeycloakResult = ServiceResult<KeycloakMeta>;
 
 function generateRealmJson(callbackUrl: string): string {
+	// Derive the n8n base URL from the OIDC callback URL
+	const n8nBaseUrl = callbackUrl.split('/rest/')[0];
 	return JSON.stringify({
 		realm: KEYCLOAK_TEST_REALM,
 		enabled: true,
@@ -63,7 +65,12 @@ function generateRealmJson(callbackUrl: string): string {
 				enabled: true,
 				clientAuthenticatorType: 'client-secret',
 				secret: KEYCLOAK_TEST_CLIENT_SECRET,
-				redirectUris: [callbackUrl, `${callbackUrl}/*`],
+				redirectUris: [
+					callbackUrl,
+					`${callbackUrl}/*`,
+					// Allow the n8n OAuth2 credential callback for dynamic credential authorization flow
+					`${n8nBaseUrl}/rest/oauth2-credential/callback`,
+				],
 				webOrigins: ['*'],
 				standardFlowEnabled: true,
 				directAccessGrantsEnabled: true,
@@ -358,6 +365,132 @@ export class KeycloakHelper {
 
 	get testUser() {
 		return this.meta.testUser;
+	}
+
+	/**
+	 * Obtain an access token for a user via the Resource Owner Password Credentials (ROPC) grant.
+	 * Keycloak's test realm has directAccessGrantsEnabled=true, so no browser redirect is needed.
+	 */
+	async getAccessToken(email: string, password: string): Promise<string> {
+		const tokenEndpoint = `https://localhost:${this.meta.hostPort}/realms/${KEYCLOAK_TEST_REALM}/protocol/openid-connect/token`;
+		const agent = new Agent({ connect: { ca: this.meta.certPem } });
+
+		const body = new URLSearchParams({
+			grant_type: 'password',
+			client_id: KEYCLOAK_TEST_CLIENT_ID,
+			client_secret: KEYCLOAK_TEST_CLIENT_SECRET,
+			username: email,
+			password,
+			scope: 'openid',
+		});
+
+		try {
+			const response = await fetch(tokenEndpoint, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: body.toString(),
+				// @ts-expect-error - dispatcher is an undici-specific option
+				dispatcher: agent,
+			});
+
+			if (!response.ok) {
+				const text = await response.text();
+				throw new Error(`Keycloak token request failed (${response.status}): ${text}`);
+			}
+
+			const data = (await response.json()) as { access_token: string };
+			return data.access_token;
+		} finally {
+			await agent.close();
+		}
+	}
+
+	/**
+	 * Programmatically completes the OAuth2 authorization code flow for the test user.
+	 * Uses undici (with the Keycloak CA cert) to:
+	 *   1. GET the Keycloak authorization page
+	 *   2. Extract the login form action URL
+	 *   3. POST test user credentials to Keycloak
+	 *
+	 * Returns the n8n OAuth2 callback URL (with `code` and `state` query params).
+	 * The caller should then GET this URL using the n8n API request context (which holds
+	 * the n8n session cookie) so that n8n exchanges the code for tokens and stores them.
+	 */
+	async completeAuthorizationCodeFlow(authorizationUrl: string): Promise<string> {
+		const agent = new Agent({ connect: { ca: this.meta.certPem } });
+
+		try {
+			// Step 1: GET the Keycloak authorization page (HTML with login form).
+			// Use undiciRequest to access raw set-cookie headers for forwarding.
+			const authPageResult = await undiciRequest(authorizationUrl, {
+				method: 'GET',
+				dispatcher: agent,
+			});
+
+			if (authPageResult.statusCode < 200 || authPageResult.statusCode >= 300) {
+				await authPageResult.body.text();
+				throw new Error(
+					`Failed to load Keycloak authorization page: HTTP ${authPageResult.statusCode}`,
+				);
+			}
+
+			// Extract session cookies from the response to forward with the login POST.
+			// Keycloak sets cookies like AUTH_SESSION_ID, KC_RESTART that are required
+			// for the login form submission to succeed.
+			const rawCookies = authPageResult.headers['set-cookie'];
+			const cookieHeader = (Array.isArray(rawCookies) ? rawCookies : [rawCookies])
+				.filter(Boolean)
+				.map((c) => (c as string).split(';')[0])
+				.join('; ');
+
+			const html = await authPageResult.body.text();
+
+			// Step 2: Extract the Keycloak login form action URL.
+			// Keycloak's login form action always contains 'login-actions/authenticate'.
+			const rawFormAction = html.match(/action="([^"]*login-actions\/authenticate[^"]*)"/)?.[1];
+			if (!rawFormAction) {
+				throw new Error('Could not find Keycloak login form action in authorization page HTML');
+			}
+			const formAction = rawFormAction.replace(/&amp;/g, '&');
+
+			// Step 3: POST credentials with session cookies — Keycloak responds with 302
+			// to the n8n callback URL. undiciRequest does NOT follow redirects by default.
+			const loginBody = new URLSearchParams({
+				username: this.meta.testUser.email,
+				password: this.meta.testUser.password,
+			});
+
+			const loginHeaders: Record<string, string> = {
+				'Content-Type': 'application/x-www-form-urlencoded',
+			};
+			if (cookieHeader) {
+				loginHeaders['Cookie'] = cookieHeader;
+			}
+
+			const { headers, body } = await undiciRequest(formAction, {
+				method: 'POST',
+				headers: loginHeaders,
+				body: loginBody.toString(),
+				dispatcher: agent,
+			});
+
+			// Consume the body to prevent resource leaks
+			await body.text();
+
+			const location = headers.location;
+			const redirectUrl = Array.isArray(location) ? location[0] : location;
+
+			if (!redirectUrl) {
+				throw new Error(
+					'Keycloak did not redirect after login. ' +
+						'Ensure the OAuth2 credential callback URL is registered in Keycloak redirectUris.',
+				);
+			}
+
+			return redirectUrl; // e.g. http://localhost:{n8n_port}/rest/oauth2-credential/callback?code=...&state=...
+		} finally {
+			await agent.close();
+		}
 	}
 
 	async waitForFromContainer(

@@ -114,7 +114,15 @@ If the issue is node-specific:
    - Tool variants: `n8n-nodes-base.<name>Tool` (e.g. "Google Sheets Tool" → `n8n-nodes-base.googleSheetsTool`)
    - LangChain/AI nodes: `@n8n/n8n-nodes-langchain.<camelCaseName>` (e.g. "OpenAI Chat Model" → `@n8n/n8n-nodes-langchain.lmChatOpenAi`)
 
-2. **Look up the node's popularity score** from `packages/frontend/editor-ui/data/node-popularity.json`. Use `Grep` to search for the node ID in that file. The popularity score is a value between 0 and 1, where 1 means the most popular node. Include this in the summary to help gauge the impact/reach of the issue.
+2. **Look up the node's popularity score** from `packages/frontend/editor-ui/data/node-popularity.json`. Use `Grep` to search for the node ID in that file. The popularity score is a log-scale value between 0 and 1. Use these thresholds to classify:
+
+   | Score | Level | Description | Examples |
+   |-------|-------|-------------|----------|
+   | ≥ 0.8 | **High** | Core/widely-used nodes, top ~5% | HTTP Request (0.98), Google Sheets (0.95), Postgres (0.83), Gmail Trigger (0.80) |
+   | 0.4–0.8 | **Medium** | Regularly used integrations | Slack (0.78), GitHub (0.64), Jira (0.65), MongoDB (0.63) |
+   | < 0.4 | **Low** | Niche or rarely used nodes | Amqp (0.34), Wise (0.36), CraftMyPdf (0.33) |
+
+   Include the raw score and the level (high/medium/low) in the summary.
 
 3. If the node is **not found** in the popularity file, note that it may be a community node or a very new/niche node.
 
@@ -155,7 +163,7 @@ After gathering all context, present a comprehensive summary including:
 1. **Issue Overview**: Title, status, priority, assignee, labels
 2. **Description**: Full issue description with any clarifications from comments
 3. **Visual Context**: Summary of screenshots/videos (what you observed in each)
-4. **Affected Node** (if applicable): Node name, node type ID (`n8n-nodes-base.xxx`), and popularity score (e.g. `0.414` — higher means more widely used, so bugs have broader impact)
+4. **Affected Node** (if applicable): Node name, node type ID (`n8n-nodes-base.xxx`), popularity score with level (e.g. `0.64 — medium popularity`)
 5. **Related Issues**: How this connects to other work
 6. **Technical Context**: Any PRs, code references, or documentation
 7. **Effort Estimate**: T-shirt size (XS/S/M/L/XL) with justification

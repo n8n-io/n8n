@@ -184,6 +184,8 @@ describe('SamlService', () => {
 		await validator.init();
 	});
 
+	const originalEnv = process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+
 	beforeEach(async () => {
 		jest.resetAllMocks();
 		Container.reset();
@@ -215,6 +217,39 @@ describe('SamlService', () => {
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
+	});
+
+	afterEach(() => {
+		// Restore original environment variable
+		if (originalEnv !== undefined) {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = originalEnv;
+		} else {
+			delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+		}
+	});
+
+	describe('isSignedSamlRequestsEnabled', () => {
+		it.each([
+			['not set', undefined],
+			['"false"', 'false'],
+			['empty string', ''],
+			['"0"', '0'],
+			['"no"', 'no'],
+		])('should return false when N8N_ENV_FEAT_SIGNED_SAML_REQUESTS is %s', (_, value) => {
+			if (value === undefined) {
+				delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+			} else {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = value;
+			}
+
+			expect(samlService.isSignedSamlRequestsEnabled()).toBe(false);
+		});
+
+		it('should return true when N8N_ENV_FEAT_SIGNED_SAML_REQUESTS is "true"', () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			expect(samlService.isSignedSamlRequestsEnabled()).toBe(true);
+		});
 	});
 
 	describe('getAttributesFromLoginResponse', () => {
@@ -445,7 +480,7 @@ describe('SamlService', () => {
 			});
 		});
 
-		it('logs in the user if just-in-time provisioning is enabled', async () => {
+		it('requires onboarding for JIT-provisioned user when SAML does not provide name', async () => {
 			const samlAttributes = {
 				email: 'foo@bar.com',
 				firstName: '',
@@ -453,6 +488,8 @@ describe('SamlService', () => {
 				userPrincipalName: 'foo@bar.com',
 			};
 			const mockUser = mock<User>();
+			mockUser.firstName = '';
+			mockUser.lastName = '';
 
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
@@ -465,6 +502,31 @@ describe('SamlService', () => {
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
 				onboardingRequired: true,
+			});
+		});
+
+		it('skips onboarding for JIT-provisioned user when SAML provides name', async () => {
+			const samlAttributes = {
+				email: 'newuser@bar.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+				userPrincipalName: 'newuser@bar.com',
+			};
+			const mockUser = mock<User>();
+			mockUser.firstName = 'Jane';
+			mockUser.lastName = 'Doe';
+
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
+			jest.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
+			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
+
+			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(loginResult).toEqual({
+				authenticatedUser: mockUser,
+				attributes: samlAttributes,
+				onboardingRequired: false,
 			});
 		});
 

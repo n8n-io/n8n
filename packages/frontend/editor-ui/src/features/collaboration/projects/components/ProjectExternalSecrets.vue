@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, reactive, ref, onMounted, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '../projects.store';
@@ -32,7 +32,7 @@ const uiStore = useUIStore();
 const rbacStore = useRBACStore();
 const settingsStore = useSettingsStore();
 const secretsProviders = useSecretsProvidersList();
-const secretsProviderConnection = useSecretsProviderConnection();
+const secretsProviderConnection = useSecretsProviderConnection(projectsStore.currentProjectId);
 
 interface ConnectionRow {
 	id: string;
@@ -115,7 +115,7 @@ const emptyStateConfig = computed(() => {
 });
 
 const sortedConnections = computed(() =>
-	[...projectSecretConnections.value].sort((a, b) => b.secretsCount - a.secretsCount),
+	[...projectSecretConnections.value].sort((a, b) => a.name.localeCompare(b.name)),
 );
 
 const filteredConnections = computed(() => {
@@ -259,27 +259,31 @@ watch([currentPage, itemsPerPage], async () => {
 	await fetchSecretsForCurrentPage();
 });
 
-// Fetch project secret providers when currentProjectId is available
+// Fetch project secret providers when currentProjectId is available and section is visible
 watch(
-	() => projectsStore.currentProjectId,
-	async (newProjectId) => {
-		if (newProjectId && showExternalSecretsSection.value) {
+	[() => projectsStore.currentProjectId, showExternalSecretsSection],
+	async ([newProjectId, showSection]) => {
+		if (newProjectId && showSection) {
 			await fetchProjectSecretConnections();
 		}
 	},
 	{ immediate: true },
 );
 
-onMounted(async () => {
-	if (!showExternalSecretsSection.value) return;
-	await Promise.all([
-		secretsProviders.fetchProviderTypes(),
-		secretsProviders.fetchActiveConnections(),
-	]);
-	if (canCreateGlobalSecretsStore.value) {
-		await projectsStore.getAllProjects();
-	}
-});
+watch(
+	showExternalSecretsSection,
+	async (showSection) => {
+		if (!showSection) return;
+		await Promise.allSettled([
+			secretsProviders.fetchProviderTypes(),
+			secretsProviders.fetchActiveConnections(),
+		]);
+		if (canCreateGlobalSecretsStore.value) {
+			await projectsStore.getAllProjects();
+		}
+	},
+	{ immediate: true },
+);
 
 defineExpose({
 	fetchProjectSecretConnections,
@@ -513,7 +517,7 @@ defineExpose({
 .secretName {
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
-	background-color: var(--color--neutral-125);
+	background-color: var(--code--color--background--readonly);
 	padding: var(--spacing--4xs);
 }
 

@@ -82,8 +82,8 @@ describe('WorkflowPublishModal', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
-		docStore.setActiveState({
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
+		workflowDocumentStore.setActiveState({
 			activeVersionId: 'old-version',
 			activeVersion: {
 				versionId: 'old-version',

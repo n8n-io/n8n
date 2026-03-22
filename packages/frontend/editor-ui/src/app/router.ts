@@ -107,6 +107,8 @@ const ResourceCenterSectionView = async () =>
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
 
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
+
 const MigrationReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRules.vue');
 
@@ -555,6 +557,12 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'migration-report',
 				component: RouterView,
+				beforeEnter: () => {
+					if (!MIGRATION_REPORT_TARGET_VERSION) {
+						return { name: VIEWS.HOMEPAGE };
+					}
+					return true;
+				},
 				children: [
 					{
 						path: '',
@@ -673,8 +681,17 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.RESOLVERS,
 				component: SettingsResolversView,
 				meta: {
-					middleware: ['authenticated', 'custom'],
+					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
+						rbac: {
+							scope: [
+								'credentialResolver:read',
+								'credentialResolver:list',
+								'credentialResolver:create',
+								'credentialResolver:update',
+								'credentialResolver:delete',
+							],
+						},
 						custom: () => {
 							const { isEnabled } = useDynamicCredentials();
 							return isEnabled.value;

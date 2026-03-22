@@ -716,7 +716,7 @@ describe('useWorkflowUpdate', () => {
 				});
 			});
 
-			it('should not emit tidyUp event when there are no structural changes', async () => {
+			it('should emit tidyUp event even when there are no structural changes', async () => {
 				const existingNode = createTestNode({
 					id: 'node-1',
 					name: 'HTTP Request',
@@ -749,7 +749,13 @@ describe('useWorkflowUpdate', () => {
 					connections: {},
 				});
 
-				expect(canvasEventBusEmitMock).not.toHaveBeenCalled();
+				expect(canvasEventBusEmitMock).toHaveBeenCalledWith('tidyUp', {
+					source: 'builder-update',
+					nodeIdsFilter: undefined,
+					trackEvents: false,
+					trackHistory: true,
+					trackBulk: false,
+				});
 			});
 		});
 

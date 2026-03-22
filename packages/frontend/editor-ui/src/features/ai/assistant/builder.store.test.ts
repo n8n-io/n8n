@@ -36,6 +36,10 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
 
 // Mock useI18n to return the keys instead of translations
@@ -155,6 +159,7 @@ describe('AI Builder store', () => {
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
 				posthog: DEFAULT_POSTHOG_SETTINGS,
+				aiAssistant: { enabled: true, setup: true },
 			}),
 		);
 		window.posthog = {
@@ -173,7 +178,6 @@ describe('AI Builder store', () => {
 		workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 		workflowsStore.workflow.nodes = [];
 		workflowsStore.workflow.connections = {};
-		workflowsStore.allNodes = [];
 		workflowsStore.nodesByName = {};
 		workflowsStore.workflowExecutionData = null;
 
@@ -1222,6 +1226,80 @@ describe('AI Builder store', () => {
 		});
 	});
 
+	describe('isLowCredits', () => {
+		it('should return false when credits are undefined', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.isLowCredits).toBe(false);
+		});
+
+		it('should return false when credits are above 10%', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 89);
+			expect(builderStore.isLowCredits).toBe(false);
+		});
+
+		it('should return true when credits are exactly 10%', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 90);
+			expect(builderStore.isLowCredits).toBe(true);
+		});
+
+		it('should return true when credits are below 10%', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 95);
+			expect(builderStore.isLowCredits).toBe(true);
+		});
+
+		it('should return false when quota is unlimited (-1)', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(-1, 50);
+			expect(builderStore.isLowCredits).toBe(false);
+		});
+
+		it('should return true when quota is 0', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(0, 0);
+			expect(builderStore.isLowCredits).toBe(true);
+		});
+
+		it('should return true when all credits are consumed', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 100);
+			expect(builderStore.isLowCredits).toBe(true);
+		});
+	});
+
+	describe('creditsPercentageRemaining', () => {
+		it('should return undefined when credits are not initialized', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.creditsPercentageRemaining).toBeUndefined();
+		});
+
+		it('should return undefined when quota is unlimited (-1)', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(-1, 50);
+			expect(builderStore.creditsPercentageRemaining).toBeUndefined();
+		});
+
+		it('should return 0 when quota is 0', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(0, 0);
+			expect(builderStore.creditsPercentageRemaining).toBe(0);
+		});
+
+		it('should return correct percentage', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 30);
+			expect(builderStore.creditsPercentageRemaining).toBe(70);
+		});
+
+		it('should return 0 when all credits consumed', () => {
+			const builderStore = useBuilderStore();
+			builderStore.updateBuilderCredits(100, 100);
+			expect(builderStore.creditsPercentageRemaining).toBe(0);
+		});
+	});
+
 	describe('fetchBuilderCredits', () => {
 		const mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
 
@@ -1766,6 +1844,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+
 			workflowsStore.workflowValidationIssues = [];
 
 			const builderStore = useBuilderStore();
@@ -1792,6 +1871,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+
 			workflowsStore.workflowValidationIssues = [];
 
 			const builderStore = useBuilderStore();
@@ -2595,7 +2675,10 @@ describe('AI Builder store', () => {
 			workflowsStore.workflowId = 'test-workflow-123';
 			workflowsStore.isNewWorkflow = false;
 			workflowsStore.workflowVersionId = 'version-1';
-			workflowsStore.workflow.updatedAt = '2024-01-01T00:00:00Z';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
 
 			await builderStore.sendChatMessage({ text: 'Build a workflow' });
 
@@ -2995,7 +3078,7 @@ describe('AI Builder store', () => {
 			// Add focused nodes
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3004,7 +3087,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			];
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3028,7 +3111,7 @@ describe('AI Builder store', () => {
 
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3037,7 +3120,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			];
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3073,7 +3156,7 @@ describe('AI Builder store', () => {
 
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3082,7 +3165,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			];
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3105,7 +3188,7 @@ describe('AI Builder store', () => {
 
 			const { useFocusedNodesStore } = await import('./focusedNodes.store');
 			const focusedNodesStore = useFocusedNodesStore();
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				{
 					id: 'test-node-1',
 					name: 'HTTP Request',
@@ -3114,7 +3197,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 					parameters: {},
 				},
-			] as unknown as typeof workflowsStore.allNodes;
+			];
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 
 			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {

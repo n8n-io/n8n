@@ -6,7 +6,12 @@ import MessageWrapper from './messages/MessageWrapper.vue';
 import ThinkingMessage from './messages/ThinkingMessage.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
-import { isTaskAbortedMessage, isToolMessage, isThinkingGroupMessage } from '../../types/assistant';
+import {
+	isTaskAbortedMessage,
+	isToolMessage,
+	isThinkingGroupMessage,
+	isWorkflowUpdatedMessage,
+} from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
@@ -334,16 +339,27 @@ const showFooterRating = computed(() => {
 		return false;
 	}
 
-	// Check if there's a workflow-updated message in the original messages
+	// Find the last workflow-updated message index.
 	// (workflow-updated is filtered out of normalizedMessages since it's not rendered visually)
-	// and check the last visible message (from normalizedMessages)
-	const hasWorkflowUpdate = props.messages.some((msg) => msg.type === 'workflow-updated');
-	if (!hasWorkflowUpdate || !normalizedMessages.value.length) {
+	const lastWorkflowUpdateIdx = props.messages.findLastIndex(isWorkflowUpdatedMessage);
+	if (lastWorkflowUpdateIdx === -1 || !normalizedMessages.value.length) {
 		return false;
 	}
 
+	// Don't show rating if the user has responded since the last workflow update
+	const hasUserAfterWorkflowUpdate = props.messages.some(
+		(msg, i) => i > lastWorkflowUpdateIdx && msg.role === 'user',
+	);
+	if (hasUserAfterWorkflowUpdate) {
+		return false;
+	}
+
+	// Show rating when the last visible message is from the assistant.
+	// This handles both the multi-agent builder (last visible message is a text response after
+	// workflow-updated) and the code builder (workflow-updated is the last real message and gets
+	// filtered from normalizedMessages, leaving a thinking-group with role 'assistant' as last).
 	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
-	return lastMsg.role !== 'user' && lastMsg.type !== 'thinking-group';
+	return lastMsg.role !== 'user';
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
@@ -468,6 +484,7 @@ defineExpose({
 				</div>
 				<slot name="header" />
 			</div>
+			<slot name="headerActions" />
 			<N8nIconButton
 				icon="x"
 				variant="ghost"
@@ -651,9 +668,9 @@ defineExpose({
 					</div>
 				</template>
 			</div>
-		</div>
-		<div v-if="showFooterRating" :class="$style.feedbackWrapper" data-test-id="footer-rating">
-			<MessageRating minimal @feedback="onRateMessage" />
+			<div v-if="showFooterRating" :class="$style.feedbackWrapper" data-test-id="footer-rating">
+				<MessageRating minimal @feedback="onRateMessage" />
+			</div>
 		</div>
 		<div
 			v-if="$slots.inputHeader && (showBottomInput || showSuggestions)"
@@ -707,7 +724,6 @@ defineExpose({
 	position: relative;
 	display: grid;
 	grid-template-rows: auto 1fr auto;
-	background-color: var(--color--background--light-2);
 }
 
 .header {
@@ -741,19 +757,6 @@ defineExpose({
 	code {
 		text-wrap: wrap;
 	}
-
-	// Add a gradient fade at the bottom of the messages area
-	&::after {
-		content: '';
-		position: absolute;
-		bottom: 0;
-		left: 0;
-		right: var(--spacing--xs);
-		height: var(--spacing--md);
-		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
-		pointer-events: none;
-		z-index: 1;
-	}
 }
 
 .placeholder {
@@ -783,7 +786,7 @@ defineExpose({
 
 .messagesContent {
 	padding: var(--spacing--xs);
-	padding-bottom: var(--spacing--lg);
+	padding-bottom: var(--spacing--3xl);
 
 	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
 	:global(p) {
@@ -843,12 +846,19 @@ defineExpose({
 }
 
 .feedbackWrapper {
+	position: absolute;
+	bottom: 0;
+	left: 0;
 	display: flex;
 	justify-content: start;
-	padding: 0 var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs);
-	border-left: var(--border);
-	border-right: var(--border);
-	background-color: var(--color--background--light-2);
+	padding: var(--spacing--2xs);
+	z-index: 1;
+
+	&:has([data-feedback-expanded]) {
+		right: 0;
+		padding-top: 0;
+		background-color: var(--color--background--light-2);
+	}
 }
 
 .inputHeaderWrapper {
@@ -857,7 +867,7 @@ defineExpose({
 	width: 100%;
 	border-left: var(--border);
 	border-right: var(--border);
-	background-color: transparent;
+	background-color: var(--color--background--light-2);
 
 	> :first-child {
 		width: 90%;
@@ -866,7 +876,7 @@ defineExpose({
 
 .inputWrapper {
 	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--xs);
-	background-color: transparent;
+	background-color: var(--color--background--light-2);
 	width: 100%;
 	position: relative;
 	border-left: var(--border);

@@ -6,6 +6,11 @@ on:
     branches:
       - main
 
+# Cancel in-progress runs for the same branch/PR to avoid wasting CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,10 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: 'lts/*'
+          cache: '{{packageManager.name}}'
 
       - name: Install dependencies
         run: '{{packageManager.name}} {{packageManager.installCommand}}'

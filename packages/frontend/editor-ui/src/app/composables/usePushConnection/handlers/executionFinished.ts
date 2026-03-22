@@ -145,7 +145,7 @@ export async function executionFinished(
 	uiStore.setProcessingExecutionResults(false);
 
 	if (execution.data?.waitTill !== undefined) {
-		handleExecutionFinishedWithWaitTill(options);
+		handleExecutionFinishedWithWaitTill(data.workflowId, options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
@@ -266,15 +266,21 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
  * Handle the case when the workflow execution finished with `waitTill`,
  * meaning that it's in a waiting state.
  */
-export function handleExecutionFinishedWithWaitTill(options: {
-	router: ReturnType<typeof useRouter>;
-}) {
+export function handleExecutionFinishedWithWaitTill(
+	workflowId: string,
+	options: {
+		router: ReturnType<typeof useRouter>;
+	},
+) {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 	const workflowSaving = useWorkflowSaving(options);
 	const workflowObject = workflowsStore.workflowObject;
 
-	const workflowSettings = workflowsStore.workflowSettings;
+	const workflowDocumentStore = workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId))
+		: undefined;
+	const workflowSettings = workflowDocumentStore?.settings ?? {};
 	const saveManualExecutions =
 		workflowSettings.saveManualExecutions ?? settingsStore.saveManualExecutions;
 
@@ -410,11 +416,15 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	const workflowObject = workflowsStore.workflowObject;
 	const workflowName = workflowObject.name ?? '';
 
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
+
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {
-		const node = workflowsStore.getNodeByName(workflowExecution.executedNode);
+		const node = workflowDocumentStore?.getNodeByName(workflowExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		const nodeOutput =
 			workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];
@@ -432,6 +442,12 @@ export function handleExecutionFinishedWithSuccessOrOther(
 					},
 				}),
 				type: 'success',
+			});
+		} else if (!nodeOutput && !successToastAlreadyShown) {
+			toast.showMessage({
+				title: i18n.baseText('pushConnection.nodeNotExecuted'),
+				message: i18n.baseText('pushConnection.nodeNotExecuted.message'),
+				type: 'warning',
 			});
 		} else if (!successToastAlreadyShown) {
 			handleExecutionFinishedSuccessfully(
@@ -461,7 +477,7 @@ export function setRunExecutionData(
 	workflowState: WorkflowState,
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const nodeHelpers = useNodeHelpers({ workflowState });
+	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 

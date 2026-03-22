@@ -280,6 +280,33 @@ describe('Test Chat Node', () => {
 			expect(memory.chatHistory.addUserMessage).toHaveBeenCalledWith('user message');
 		});
 
+		it('v1.3 should return [[data]] (original message) instead of input data when not waiting for reply', async () => {
+			const chatNode = mock<INode>({
+				name: 'Chat',
+				type: CHAT_NODE_TYPE,
+				parameters: {},
+				typeVersion: 1.3,
+			});
+			const message = { json: { chatInput: 'user message' } };
+			const differentInputData = [{ json: { chatInput: 'other input' } }];
+			mockExecuteFunctions.getInputData.mockReturnValue(differentInputData);
+			mockExecuteFunctions.getNode.mockReturnValue(chatNode);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName) => {
+				switch (parameterName) {
+					case 'operation':
+						return 'send';
+					case 'options':
+						return { memoryConnection: false };
+					default:
+						return undefined;
+				}
+			});
+
+			const result = await chat.onMessage(mockExecuteFunctions, message);
+
+			expect(result).toEqual([[message]]);
+		});
+
 		it('v1.2 should return output data directly without nesting into `data` field (except `approved`)', async () => {
 			const chatNode = mock<INode>({
 				name: 'Chat',

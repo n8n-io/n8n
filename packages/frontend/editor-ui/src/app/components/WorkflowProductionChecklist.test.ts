@@ -27,13 +27,14 @@ import {
 	ERROR_WORKFLOW_DOCS_URL,
 	TIME_SAVED_DOCS_URL,
 	EVALUATIONS_DOCS_URL,
+	ERROR_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 
 vi.mock('vue-router', async (importOriginal) => {
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -160,9 +161,11 @@ describe('WorkflowProductionChecklist', () => {
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(mockWorkflow.id));
-		docStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
-		workflowDocumentStoreRef.value = docStore;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(mockWorkflow.id),
+		);
+		workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+		workflowDocumentStoreRef.value = workflowDocumentStore;
 
 		router = {
 			push: vi.fn(),
@@ -191,7 +194,7 @@ describe('WorkflowProductionChecklist', () => {
 		(useTelemetry as ReturnType<typeof vi.fn>).mockReturnValue(telemetry);
 
 		mcpComposable = {
-			isEligibleForMcpAccess: vi.fn().mockReturnValue(false),
+			isEligibleForMcpAccess: vi.fn().mockReturnValue(true),
 		} as unknown as ReturnType<typeof useMcp>;
 		(useMcp as ReturnType<typeof vi.fn>).mockReturnValue(mcpComposable);
 	});
@@ -376,6 +379,63 @@ describe('WorkflowProductionChecklist', () => {
 				expect(
 					container.querySelector('[data-test-id="n8n-suggested-actions-stub"]'),
 				).not.toBeInTheDocument();
+			});
+		});
+
+		it('should not show error workflow action when workflow contains an enabled Error Trigger node', async () => {
+			renderComponent({
+				props: {
+					workflow: {
+						...mockWorkflow,
+						nodes: [createTestNode({ type: ERROR_TRIGGER_NODE_TYPE, typeVersion: 1 })],
+					},
+				},
+				pinia: createTestingPinia(),
+			});
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.actions).toEqual([
+					{
+						id: 'timeSaved',
+						title: 'workflowProductionChecklist.timeSaved.title',
+						description: 'workflowProductionChecklist.timeSaved.description',
+						moreInfoLink: TIME_SAVED_DOCS_URL,
+						completed: false,
+					},
+				]);
+			});
+		});
+
+		it('should show error workflow action when workflow contains a disabled Error Trigger node', async () => {
+			renderComponent({
+				props: {
+					workflow: {
+						...mockWorkflow,
+						nodes: [
+							createTestNode({ type: ERROR_TRIGGER_NODE_TYPE, typeVersion: 1, disabled: true }),
+						],
+					},
+				},
+				pinia: createTestingPinia(),
+			});
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.actions).toEqual([
+					{
+						id: 'errorWorkflow',
+						title: 'workflowProductionChecklist.errorWorkflow.title',
+						description: 'workflowProductionChecklist.errorWorkflow.description',
+						moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
+						completed: false,
+					},
+					{
+						id: 'timeSaved',
+						title: 'workflowProductionChecklist.timeSaved.title',
+						description: 'workflowProductionChecklist.timeSaved.description',
+						moreInfoLink: TIME_SAVED_DOCS_URL,
+						completed: false,
+					},
+				]);
 			});
 		});
 	});

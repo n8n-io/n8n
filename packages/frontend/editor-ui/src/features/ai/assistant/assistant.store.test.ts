@@ -69,6 +69,7 @@ describe('AI Assistant store', () => {
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
 				posthog: DEFAULT_POSTHOG_SETTINGS,
+				aiAssistant: { enabled: true, setup: true },
 			}),
 		);
 		window.posthog = {
@@ -277,7 +278,7 @@ describe('AI Assistant store', () => {
 		assistantStore.addAssistantMessages([message], '1');
 		expect(assistantStore.chatMessages.length).toBe(1);
 
-		assistantStore.resetAssistantChat();
+		assistantStore.resetAssistantChat('test-workflow-id');
 		expect(assistantStore.chatMessages).toEqual([]);
 		expect(assistantStore.currentSessionId).toBeUndefined();
 	});
@@ -371,7 +372,7 @@ describe('AI Assistant store', () => {
 			},
 		};
 		const assistantStore = useAssistantStore();
-		await assistantStore.initErrorHelper(context);
+		await assistantStore.initErrorHelper('test-workflow', context);
 		expect(apiSpy).toHaveBeenCalled();
 	});
 
@@ -401,7 +402,7 @@ describe('AI Assistant store', () => {
 			});
 		});
 
-		await assistantStore.initErrorHelper(context);
+		await assistantStore.initErrorHelper('test-workflow', context);
 		expect(apiSpy).toHaveBeenCalled();
 		expect(assistantStore.currentSessionId).toEqual(mockSessionId);
 
@@ -528,7 +529,7 @@ describe('AI Assistant store', () => {
 		const assistantStore = useAssistantStore();
 		setAssistantEnabled(true);
 
-		await assistantStore.initSupportChat('hello');
+		await assistantStore.initSupportChat('test-workflow', 'hello');
 
 		expect(apiSpy).toHaveBeenCalledWith(
 			expect.anything(),
@@ -558,7 +559,7 @@ describe('AI Assistant store', () => {
 		};
 
 		const assistantStore = useAssistantStore();
-		await assistantStore.initErrorHelper(context);
+		await assistantStore.initErrorHelper('test-workflow', context);
 
 		expect(apiSpy).toHaveBeenCalledWith(
 			expect.anything(),
@@ -582,7 +583,7 @@ describe('AI Assistant store', () => {
 			// Don't call onDone to simulate ongoing streaming
 		});
 
-		await assistantStore.initSupportChat('hello');
+		await assistantStore.initSupportChat('test-workflow', 'hello');
 		expect(assistantStore.streaming).toBe(true);
 
 		assistantStore.abortStreaming();
@@ -615,13 +616,13 @@ describe('AI Assistant store', () => {
 			onDone();
 		});
 
-		await assistantStore.initSupportChat('hello');
+		await assistantStore.initSupportChat('test-workflow', 'hello');
 
 		expect(assistantStore.chatMessages.length).toBe(2);
 		expect(assistantStore.chatMessages[0].type).toBe('text');
 		expect(assistantStore.chatMessages[1].type).toBe('text');
 
-		await assistantStore.sendMessage({ text: 'test' });
+		await assistantStore.sendMessage('test-workflow', { text: 'test' });
 
 		expect(assistantStore.chatMessages.length).toBe(4);
 		expect(assistantStore.chatMessages[0].type).toBe('text');

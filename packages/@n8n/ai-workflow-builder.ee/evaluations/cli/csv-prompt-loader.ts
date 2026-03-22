@@ -74,9 +74,24 @@ export function loadTestCasesFromCsv(csvPath: string): TestCase[] {
 	const idIdx = findColumn('id');
 	const dosIdx = findColumn('dos', 'do');
 	const dontsIdx = findColumn('donts', 'dont');
+	const annotationsIdx = findColumn('annotations');
 
 	const getCell = (row: ParsedCsvRow, idx: number | undefined): string =>
 		idx !== undefined ? sanitizeValue(row[idx]) : '';
+
+	const parseAnnotations = (raw: string, rowIndex: number): Record<string, unknown> | undefined => {
+		try {
+			const parsed: unknown = JSON.parse(raw);
+			if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+				return parsed as Record<string, unknown>;
+			}
+		} catch {
+			console.warn(
+				`Warning: invalid JSON in annotations column for row ${rowIndex + (hasHeader ? 1 : 0)}, skipping`,
+			);
+		}
+		return undefined;
+	};
 
 	const testCases: TestCase[] = [];
 
@@ -94,10 +109,18 @@ export function loadTestCasesFromCsv(csvPath: string): TestCase[] {
 			prompt,
 		};
 
-		if (dos || donts) {
+		const annotationsRaw = getCell(row, annotationsIdx);
+
+		if (dos || donts || annotationsRaw) {
 			testCase.context = {};
 			if (dos) testCase.context.dos = dos;
 			if (donts) testCase.context.donts = donts;
+			if (annotationsRaw) {
+				const annotations = parseAnnotations(annotationsRaw, i + 1);
+				if (annotations) {
+					testCase.context.annotations = annotations;
+				}
+			}
 		}
 
 		testCases.push(testCase);

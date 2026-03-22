@@ -385,10 +385,7 @@ export function useWorkflowUpdate() {
 
 			builderStore.setBuilderMadeEdits(true);
 
-			const hasStructuralChanges = nodesToAdd.length > 0 || nodesToRemove.length > 0;
-			if (hasStructuralChanges) {
-				tidyUpNodes();
-			}
+			tidyUpNodes();
 
 			return { success: true, newNodeIds };
 		} catch (error) {

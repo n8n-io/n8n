@@ -19,10 +19,10 @@ export class ChatHubPersonalAgentsPage extends BasePage {
 	}
 
 	getEditButtonAt(index: number): Locator {
-		return this.page.getByTestId('chat-agent-card').nth(index).getByTitle('Edit');
+		return this.getAgentCards().nth(index).getByTitle('Edit');
 	}
 
 	getMenuAt(index: number): Locator {
-		return this.page.getByTestId('chat-agent-card').nth(index).getByTitle('More options');
+		return this.getAgentCards().nth(index).getByTitle('More options');
 	}
 }

@@ -103,6 +103,11 @@ export function removeDefaultValues(
 		delete cleanedSettings.executionTimeout;
 	}
 
+	// Remove credentialResolverId if it was cleared (empty string from UI clear action)
+	if (!cleanedSettings.credentialResolverId) {
+		delete cleanedSettings.credentialResolverId;
+	}
+
 	return cleanedSettings;
 }
 
@@ -125,6 +130,10 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflo
 		// extract credentials types
 		const allNodeCredentials = Object.entries(node.credentials);
 		for (const [nodeCredentialType, nodeCredentials] of allNodeCredentials) {
+			// Skip undefined/null credentials (e.g. from SDK's newCredential() which serializes to undefined)
+			if (nodeCredentials === null || nodeCredentials === undefined) {
+				continue;
+			}
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {
 				const name = typeof nodeCredentials === 'string' ? nodeCredentials : nodeCredentials.name;
@@ -331,4 +340,24 @@ export function getActiveVersionUpdateValue(
 	}
 
 	return dbWorkflow.activeVersionId ? updatedVersion : null;
+}
+
+/**
+ * Removes the last run data entry so the node is not displayed as executed twice
+ * when resuming. If the entry had an inputOverride (e.g. for chat tool or HITL
+ * nodes), a placeholder entry is pushed back preserving only the inputOverride
+ * and source so the LLM's input stays visible in logs after the execution resumes.
+ */
+export function preserveInputOverride(runDataArray: ITaskData[]): void {
+	const entryToPop = runDataArray.pop()!;
+	const preservedInputOverride = entryToPop.inputOverride;
+	if (preservedInputOverride) {
+		runDataArray.push({
+			startTime: 0,
+			executionTime: 0,
+			executionIndex: 0,
+			source: entryToPop.source,
+			inputOverride: preservedInputOverride,
+		});
+	}
 }

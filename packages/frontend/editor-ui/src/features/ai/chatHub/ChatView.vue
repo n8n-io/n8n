@@ -7,10 +7,9 @@ import {
 } from '@/app/constants';
 import {
 	findOneFromModelsResponse,
+	flattenModel,
 	isLlmProvider,
 	unflattenModel,
-	createMimeTypes,
-	isWaitingForApproval,
 } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
@@ -27,23 +26,14 @@ import {
 	type ChatHubLLMProvider,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubConversationModel,
-	type ChatMessageId,
 	type ChatHubSendMessageRequest,
 	type ChatModelDto,
 	chatHubConversationModelSchema,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nResizeWrapper, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useElementSize, useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
+import { useElementSize, useLocalStorage, useMediaQuery } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import {
-	computed,
-	nextTick,
-	onBeforeMount,
-	onBeforeUnmount,
-	ref,
-	useTemplateRef,
-	watch,
-} from 'vue';
+import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -55,18 +45,21 @@ import {
 	type ChatHubConversationModelWithCachedDisplayName,
 	chatHubConversationModelWithCachedDisplayNameSchema,
 	type ChatMessage as ChatMessageType,
-	type MessagingState,
 } from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import ChatGreetings from './components/ChatGreetings.vue';
-import { useChatPushHandler } from './composables/useChatPushHandler';
+import { useChatSession } from './composables/useChatSession';
 import ChatArtifactViewer from './components/ChatArtifactViewer.vue';
+import DynamicCredentialsDrawer from './components/DynamicCredentialsDrawer.vue';
 import { useChatArtifacts } from './composables/useChatArtifacts';
 import { useChatInputFocus } from './composables/useChatInputFocus';
+import { useDynamicCredentialsStatus } from './composables/useDynamicCredentialsStatus';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 const router = useRouter();
 const route = useRoute();
@@ -78,17 +71,10 @@ const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const documentTitle = useDocumentTitle();
 const uiStore = useUIStore();
 const i18n = useI18n();
-
-// Initialize WebSocket push handler for chat streaming
-const chatPushHandler = useChatPushHandler();
+const telemetry = useTelemetry();
 
 onBeforeMount(async () => {
-	chatPushHandler.initialize();
 	await chatStore.fetchConfiguredTools();
-});
-
-onBeforeUnmount(() => {
-	chatPushHandler.terminate();
 });
 
 const headerRef = useTemplateRef('headerRef');
@@ -105,10 +91,8 @@ const { userCanClaimOpenAiCredits, aiCreditsQuota, claimCredits } = useFreeAiCre
 const sessionId = computed<string>(() =>
 	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
 );
-const isResponding = computed(() => chatStore.isResponding(sessionId.value));
-const isNewSession = computed(() => sessionId.value !== route.params.id);
-const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
-const scrollContainerSize = useElementSize(scrollContainerRef);
+const isNewSessionOverride = computed(() => sessionId.value !== route.params.id);
+const shouldSkipNextScrollTrigger = ref(false);
 const currentConversation = computed(() =>
 	sessionId.value ? chatStore.sessions.byId[sessionId.value] : undefined,
 );
@@ -140,11 +124,6 @@ const showWelcomeScreen = computed<boolean | undefined>(() => {
 	);
 });
 
-const { arrivedState, measure } = useScroll(scrollContainerRef, {
-	throttle: 100,
-	offset: { bottom: 100 },
-});
-
 const defaultModel = useLocalStorage<ChatHubConversationModelWithCachedDisplayName | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
@@ -168,15 +147,13 @@ const defaultAgent = computed(() =>
 	defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined,
 );
 
-const shouldSkipNextScrollTrigger = ref(false);
-
 const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
 	const workflowId = route.query.workflowId;
 	const provider = route.query.provider;
 	const model = route.query.model;
 
-	if (!isNewSession.value) {
+	if (!isNewSessionOverride.value) {
 		return null;
 	}
 
@@ -203,7 +180,7 @@ const modelFromQuery = computed<ChatModelDto | null>(() => {
 });
 
 const selectedModel = computed<ChatModelDto | null>(() => {
-	if (!isNewSession.value) {
+	if (!isNewSessionOverride.value) {
 		const model = currentConversation.value ? unflattenModel(currentConversation.value) : null;
 
 		if (!model) {
@@ -234,6 +211,10 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 	});
 });
 
+const isAgentModel = computed(
+	() => !!selectedModel.value && !isLlmProvider(selectedModel.value.model.provider),
+);
+
 const customAgentId = computed(() =>
 	selectedModel.value?.model.provider === 'custom-agent'
 		? selectedModel.value.model.agentId
@@ -259,10 +240,29 @@ const { credentialsByProvider, selectCredential } = useChatCredentials(
 	usersStore.currentUserId ?? 'anonymous',
 );
 
-const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
-const artifacts = useChatArtifacts(chatLayoutElement, chatMessages);
+// Dynamic credentials
+const { isEnabled: dynamicCredentialsEnabled } = useDynamicCredentials();
+const dynamicCredsWorkflowId = computed(() =>
+	selectedModel.value?.model.provider === 'n8n' && dynamicCredentialsEnabled.value
+		? selectedModel.value.model.workflowId
+		: null,
+);
+const dynamicCreds = useDynamicCredentialsStatus(dynamicCredsWorkflowId);
+const isDynamicCredentialsDrawerOpen = ref(false);
 
-const isMainPanelNarrow = computed(() => scrollContainerSize.width.value < 600);
+const showDynamicCredentialsMissingCallout = computed(
+	() => messagingState.value === 'missingDynamicCredentials',
+);
+
+// Auto-close drawer when all credentials become connected
+watch(
+	() => dynamicCreds.allAuthenticated.value,
+	(allConnected) => {
+		if (allConnected && isDynamicCredentialsDrawerOpen.value) {
+			isDynamicCredentialsDrawerOpen.value = false;
+		}
+	},
+);
 
 const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['credentials'] | null>(
 	() => {
@@ -291,26 +291,48 @@ const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['crede
 	},
 );
 const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvider.value);
-const messagingState = computed<MessagingState>(() => {
-	if (chatStore.streaming?.sessionId === sessionId.value) {
-		return chatStore.streaming.messageId ? 'receiving' : 'waitingFirstChunk';
-	}
 
-	// Check if waiting for approval (button click)
-	if (isWaitingForApproval(chatStore.lastMessage(sessionId.value))) {
-		return 'waitingForApproval';
-	}
+const {
+	chatMessages,
+	isResponding,
+	isNewSession,
+	messagingState,
+	scrollContainerRef,
+	arrivedState,
+	scrollToBottom,
+	loadSession,
+} = useChatSession({
+	sessionId,
+	scrollableRef,
+	isNewSession: isNewSessionOverride,
+	extendMessagingState: () => {
+		if (chatStore.agentsReady && !selectedModel.value) {
+			return 'missingAgent';
+		}
 
-	if (chatStore.agentsReady && !selectedModel.value) {
-		return 'missingAgent';
-	}
+		if (chatStore.agentsReady && isMissingSelectedCredential.value) {
+			return 'missingCredentials';
+		}
 
-	if (chatStore.agentsReady && isMissingSelectedCredential.value) {
-		return 'missingCredentials';
-	}
+		if (dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value) {
+			return 'missingDynamicCredentials';
+		}
 
-	return 'idle';
+		return null;
+	},
+	shouldSkipScroll: () => {
+		if (shouldSkipNextScrollTrigger.value) {
+			shouldSkipNextScrollTrigger.value = false;
+			return true;
+		}
+		return false;
+	},
 });
+
+const scrollContainerSize = useElementSize(scrollContainerRef);
+const artifacts = useChatArtifacts(chatLayoutElement, chatMessages);
+
+const isMainPanelNarrow = computed(() => scrollContainerSize.width.value < 600);
 
 const editingMessageId = ref<string>();
 const messageElementsRef = useTemplateRef('messages');
@@ -318,8 +340,7 @@ const didSubmitInCurrentSession = ref(false);
 
 const canAcceptFiles = computed(() => {
 	const baseCondition =
-		!!createMimeTypes(selectedModel.value?.metadata.inputModalities ?? []) &&
-		!isMissingSelectedCredential.value;
+		(selectedModel.value?.metadata.allowFileUploads ?? false) && !isMissingSelectedCredential.value;
 
 	if (!baseCondition) return false;
 
@@ -337,46 +358,6 @@ const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 useChatInputFocus(inputRef, {
 	disabled: computed(() => showWelcomeScreen.value === true || messagingState.value !== 'idle'),
 });
-
-function scrollToBottom(smooth: boolean) {
-	scrollContainerRef.value?.scrollTo({
-		top: scrollableRef.value?.scrollHeight,
-		behavior: smooth ? 'smooth' : 'instant',
-	});
-}
-
-function scrollToMessage(messageId: ChatMessageId) {
-	scrollableRef.value?.querySelector(`[data-message-id="${messageId}"]`)?.scrollIntoView({
-		behavior: 'smooth',
-	});
-}
-
-// Scroll to the bottom when a new message is added
-watch(
-	() => chatMessages.value[chatMessages.value.length - 1]?.id,
-	(lastMessageId) => {
-		if (!lastMessageId) {
-			return;
-		}
-
-		if (shouldSkipNextScrollTrigger.value) {
-			shouldSkipNextScrollTrigger.value = false;
-			return;
-		}
-
-		// Prevent "scroll to bottom" button from appearing when not necessary
-		void nextTick(measure);
-
-		if (chatStore.streaming?.sessionId === sessionId.value) {
-			// Scroll to user's prompt when the message is being generated
-			scrollToMessage(chatStore.streaming.promptId);
-			return;
-		}
-
-		scrollToBottom(false);
-	},
-	{ immediate: true, flush: 'post' },
-);
 
 // Preselect a model
 watch(
@@ -402,21 +383,9 @@ watch(
 		didSubmitInCurrentSession.value = false;
 		editingMessageId.value = undefined;
 
-		if (!isNew && !chatStore.getConversation(id)) {
+		if (!isNew) {
 			try {
-				await chatStore.fetchMessages(id);
-
-				// Check for active stream after loading messages (handles page refresh during streaming)
-				const reconnectResult = await chatStore.reconnectToStream(id, 0);
-				if (reconnectResult?.hasActiveStream && reconnectResult.currentMessageId) {
-					// Initialize push handler to receive future chunks
-					chatPushHandler.initializeStreamState(
-						id,
-						reconnectResult.currentMessageId,
-						reconnectResult.lastSequenceNumber,
-					);
-					// Pending chunks are already replayed by reconnectToStream()
-				}
+				await loadSession(id);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('chatHub.error.fetchConversationFailed'));
 				await router.push({ name: CHAT_VIEW });
@@ -516,7 +485,8 @@ async function onSubmit(message: string, attachments: File[]) {
 		!message.trim() ||
 		isResponding.value ||
 		!selectedModel.value ||
-		!credentialsForSelectedProvider.value
+		!credentialsForSelectedProvider.value ||
+		(dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value)
 	) {
 		return;
 	}
@@ -561,7 +531,8 @@ async function handleEditMessage(
 		!editingMessageId.value ||
 		isResponding.value ||
 		!selectedModel.value ||
-		!credentialsForSelectedProvider.value
+		!credentialsForSelectedProvider.value ||
+		(dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value)
 	) {
 		return;
 	}
@@ -584,7 +555,8 @@ async function handleRegenerateMessage(message: ChatMessageType) {
 		isResponding.value ||
 		message.type !== 'ai' ||
 		!selectedModel.value ||
-		!credentialsForSelectedProvider.value
+		!credentialsForSelectedProvider.value ||
+		(dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value)
 	) {
 		return;
 	}
@@ -669,6 +641,18 @@ function handleOpenWorkflow(workflowId: string) {
 	window.open(routeData.href, '_blank');
 }
 
+function handleSelectPrompt(prompt: string) {
+	if (selectedModel.value) {
+		telemetry.track('User clicked chat hub suggested prompt', {
+			...flattenModel(selectedModel.value.model),
+			source: 'chat_hub',
+		});
+	}
+
+	inputRef.value?.setText(prompt);
+	inputRef.value?.focus();
+}
+
 function onFilesDropped(files: File[]) {
 	if (!editingMessageId.value) {
 		inputRef.value?.addAttachments(files);
@@ -687,6 +671,7 @@ function onFilesDropped(files: File[]) {
 		:class="{
 			[$style.chatLayout]: true,
 			[$style.isNewSession]: isNewSession,
+			[$style.isAgentNewSession]: isNewSession && isAgentModel,
 			[$style.isExistingSession]: !isNewSession,
 			[$style.isMobileDevice]: isMobileDevice,
 			[$style.isDraggingFile]: fileDrop.isDragging.value,
@@ -709,7 +694,11 @@ function onFilesDropped(files: File[]) {
 			:class="$style.mainContentResizer"
 			:width="artifacts.viewerSize.value"
 			:style="{
-				width: artifacts.isViewerVisible.value ? `${artifacts.viewerSize.value}px` : '100%',
+				width: artifacts.isViewerVisible.value
+					? `${artifacts.viewerSize.value}px`
+					: isDynamicCredentialsDrawerOpen
+						? 'calc(100% - 340px)'
+						: '100%',
 			}"
 			:supported-directions="['right']"
 			:is-resizing-enabled="true"
@@ -742,7 +731,13 @@ function onFilesDropped(files: File[]) {
 					:class="$style.scrollArea"
 				>
 					<div ref="scrollable" :class="$style.scrollable">
-						<ChatGreetings v-if="isNewSession" :selected-agent="selectedModel" />
+						<ChatGreetings
+							v-if="isNewSession"
+							:class="{ [$style.greetingsCentered]: !isAgentModel }"
+							:selected-agent="selectedModel"
+							:loading="!chatStore.agentsReady"
+							@select-prompt="handleSelectPrompt"
+						/>
 
 						<div v-else role="log" aria-live="polite" :class="$style.messageList">
 							<ChatMessage
@@ -756,6 +751,7 @@ function onFilesDropped(files: File[]) {
 								:has-session-streaming="isResponding"
 								:cached-agent-display-name="selectedModel?.name ?? null"
 								:cached-agent-icon="selectedModel?.icon ?? null"
+								:accepted-mime-types="selectedModel?.metadata.allowedFilesMimeTypes ?? ''"
 								:min-height="
 									didSubmitInCurrentSession &&
 									message.type === 'ai' &&
@@ -787,7 +783,6 @@ function onFilesDropped(files: File[]) {
 
 							<ChatPrompt
 								ref="inputRef"
-								:class="$style.prompt"
 								:selected-model="selectedModel"
 								:checked-tool-ids="canSelectTools ? checkedToolIds : []"
 								:session-id="isNewSession ? undefined : sessionId"
@@ -796,6 +791,7 @@ function onFilesDropped(files: File[]) {
 								:is-tools-selectable="canSelectTools"
 								:is-new-session="isNewSession"
 								:show-credits-claimed-callout="showCreditsClaimedCallout"
+								:show-dynamic-credentials-missing-callout="showDynamicCredentialsMissingCallout"
 								:ai-credits-quota="String(aiCreditsQuota)"
 								@submit="onSubmit"
 								@stop="onStop"
@@ -803,6 +799,7 @@ function onFilesDropped(files: File[]) {
 								@set-credentials="handleConfigureCredentials"
 								@edit-agent="handleEditAgent"
 								@dismiss-credits-callout="handleDismissCreditsCallout"
+								@open-dynamic-credentials="isDynamicCredentialsDrawerOpen = true"
 							/>
 						</div>
 					</div>
@@ -818,6 +815,17 @@ function onFilesDropped(files: File[]) {
 				/>
 			</div>
 		</N8nResizeWrapper>
+		<DynamicCredentialsDrawer
+			v-if="isDynamicCredentialsDrawerOpen && dynamicCreds.hasDynamicCredentials.value"
+			:class="$style.dynamicCredentialsDrawer"
+			:credentials="dynamicCreds.credentials.value"
+			:connected-count="dynamicCreds.connectedCount.value"
+			:total-count="dynamicCreds.totalCount.value"
+			data-testid="dynamic-credentials-drawer"
+			@close="isDynamicCredentialsDrawerOpen = false"
+			@authorize="dynamicCreds.authorize"
+			@revoke="dynamicCreds.revoke"
+		/>
 		<ChatArtifactViewer
 			v-if="artifacts.isViewerVisible.value"
 			:key="sessionId"
@@ -864,6 +872,13 @@ function onFilesDropped(files: File[]) {
 	flex: 1;
 }
 
+.dynamicCredentialsDrawer {
+	flex: 0 0 340px;
+	min-width: 300px;
+	max-width: 400px;
+	overflow: hidden;
+}
+
 .artifactViewer {
 	flex: 1;
 	min-width: 300px;
@@ -890,8 +905,19 @@ function onFilesDropped(files: File[]) {
 	gap: var(--spacing--xl);
 
 	.isNewSession & {
-		justify-content: center;
+		justify-content: space-between;
 	}
+
+	.isAgentNewSession & {
+		padding-top: var(--spacing--2xl);
+	}
+}
+
+.greetingsCentered {
+	flex: 1;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 
 .header {
@@ -913,20 +939,21 @@ function onFilesDropped(files: File[]) {
 .promptContainer {
 	display: flex;
 	justify-content: center;
+	padding-block: var(--spacing--md);
+	background: var(--color--background--light-2);
+	align-self: center;
 
 	.isMobileDevice &,
 	.isExistingSession & {
 		position: absolute;
 		bottom: 0;
-		left: 0;
-		width: 100%;
-		padding-block: var(--spacing--md);
-		background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
+		left: 50%;
+		transform: translateX(-50%);
 	}
 }
 
 .messageList,
-.prompt {
+.promptContainer {
 	width: 100%;
 	max-width: 88ch;
 	padding-inline: 64px;
@@ -938,7 +965,7 @@ function onFilesDropped(files: File[]) {
 
 .scrollToBottomButton {
 	position: absolute;
-	bottom: 100%;
+	bottom: calc(100% + var(--spacing--md));
 	left: auto;
 	box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
 	border-radius: 50%;
