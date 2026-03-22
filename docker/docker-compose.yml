@@ -46,11 +46,6 @@ services:
       - 5678:5678
     volumes:
       - n8n-data:/n8n
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://n8n:80/healthz || exit 1"]
       interval: 5s
