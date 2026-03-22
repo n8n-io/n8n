@@ -111,7 +111,7 @@ n8n's execution log provides a foundation for Article 12 compliance:
 
 ## Article 13: Transparency to deployers
 
-Article 13 requires providers of high-risk AI systems to supply deployers with the information needed to understand and operate the system correctly. For n8n workflows, this means the upstream AI providers (OpenAI, Google, Anthropic) must give you:
+Article 13 requires providers of high-risk AI systems to supply deployers with the information needed to understand and operate the system correctly. This is a **documentation obligation**, not a logging obligation. For n8n workflows, this means the upstream AI providers (OpenAI, Google, Anthropic) must give you:
 
 - Instructions for use, including intended purpose and known limitations
 - Accuracy metrics and performance benchmarks
@@ -120,13 +120,15 @@ Article 13 requires providers of high-risk AI systems to supply deployers with t
 
 As a deployer, collect model cards, system documentation, and accuracy reports from each AI provider your workflows use. Maintain these as part of your Annex IV technical documentation.
 
+n8n's execution logs provide **supporting evidence** that can inform Article 13 documentation (e.g., which models are in use, how workflows behave under failure), but execution logs alone do not satisfy Article 13. You must independently produce system documentation covering how your specific workflows use AI, their intended purpose, performance characteristics, and residual risks.
+
 ## Article 50: End-user transparency
 
 Article 50 requires deployers to inform end users that they are interacting with an AI system. This is a separate obligation from Article 13 and applies even to limited-risk systems.
 
 For n8n workflows that serve end users:
-- Add a disclosure in any user-facing output that AI was involved
-- Document which AI model generated or influenced the content
+- Add a disclosure in any user-facing output that AI was involved in generating the response
+- A mechanism for users to identify when an AI-generated response has been delivered (e.g., clear labeling in the UI or output)
 - If using AI for customer support, inform the customer they are interacting with an automated system
 
 > **Note:** Article 50 applies to chatbots and systems interacting directly with natural persons. It has a separate scope from the high-risk designation under Annex III — it applies even to limited-risk systems.
