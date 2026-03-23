@@ -28,17 +28,13 @@ export async function wordpressApiRequest(
 	if (isOAuth2) {
 		const credentials = await this.getCredentials('wordpressOAuth2Api');
 		credentialType = 'wordpressOAuth2Api';
-		let sitePrefix = '';
-		if (credentials.customDomain && credentials.customDomainUrl) {
-			let domain = credentials.customDomainUrl as string;
-			try {
-				domain = new URL(domain).hostname;
-			} catch {
-				domain = domain.replace(/\/+$/, '');
-			}
-			sitePrefix = `/sites/${domain}`;
+		let site = credentials.wordpressSite as string;
+		try {
+			site = new URL(site).hostname;
+		} catch {
+			site = site.split('/')[0];
 		}
-		baseUri = `https://public-api.wordpress.com/wp/v2${sitePrefix}`;
+		baseUri = `https://public-api.wordpress.com/wp/v2/sites/${site}`;
 	} else {
 		const credentials = await this.getCredentials('wordpressApi');
 		credentialType = 'wordpressApi';

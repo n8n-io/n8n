@@ -50,27 +50,14 @@ export class WordpressOAuth2Api implements ICredentialType {
 			default: 'header',
 		},
 		{
-			displayName: 'Use Custom Domain',
-			name: 'customDomain',
-			type: 'boolean',
-			default: false,
-			description:
-				'Whether your WordPress.com site uses a custom domain instead of a .wordpress.com subdomain',
-		},
-		{
-			displayName: 'Custom Domain',
-			name: 'customDomainUrl',
+			displayName: 'WordPress.com Site',
+			name: 'wordpressSite',
 			type: 'string',
-			displayOptions: {
-				show: {
-					customDomain: [true],
-				},
-			},
 			default: '',
 			required: true,
-			placeholder: 'myblog.com',
+			placeholder: 'myblog.wordpress.com',
 			description:
-				"Your WordPress.com site's custom domain. Used as the site identifier in API requests — calls still route through public-api.wordpress.com.",
+				'Your WordPress.com site identifier — either a .wordpress.com subdomain (e.g. myblog.wordpress.com) or a custom domain (e.g. myblog.com). Used in API requests that still route through public-api.wordpress.com.',
 		},
 		{
 			displayName: 'Custom Scopes',

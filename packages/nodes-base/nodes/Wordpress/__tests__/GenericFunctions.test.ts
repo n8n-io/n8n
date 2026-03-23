@@ -58,8 +58,7 @@ describe('Wordpress > GenericFunctions', () => {
 		beforeEach(() => {
 			mockFunctions.getNodeParameter.mockReturnValue('oAuth2');
 			mockFunctions.getCredentials.mockResolvedValue({
-				customDomain: false,
-				customDomainUrl: '',
+				wordpressSite: 'myblog.wordpress.com',
 			});
 			mockFunctions.helpers.requestWithAuthentication.mockResolvedValue({ data: 'testData' });
 		});
@@ -74,21 +73,20 @@ describe('Wordpress > GenericFunctions', () => {
 			);
 		});
 
-		it('should use public-api.wordpress.com base URL without custom domain', async () => {
+		it('should always include /sites/{site} in the URL', async () => {
 			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
 
 			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'wordpressOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://public-api.wordpress.com/wp/v2/posts',
+					uri: 'https://public-api.wordpress.com/wp/v2/sites/myblog.wordpress.com/posts',
 				}),
 			);
 		});
 
-		it('should include site prefix when custom domain is set', async () => {
+		it('should use /sites/{site} for a custom domain site', async () => {
 			mockFunctions.getCredentials.mockResolvedValue({
-				customDomain: true,
-				customDomainUrl: 'myblog.com',
+				wordpressSite: 'myblog.com',
 			});
 
 			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
@@ -106,24 +104,22 @@ describe('Wordpress > GenericFunctions', () => {
 			['https://myblog.com', 'myblog.com'],
 			['http://myblog.com/', 'myblog.com'],
 			['myblog.com/', 'myblog.com'],
-		])(
-			'should normalize custom domain input "%s" to "%s" in site prefix',
-			async (input, expected) => {
-				mockFunctions.getCredentials.mockResolvedValue({
-					customDomain: true,
-					customDomainUrl: input,
-				});
+			['myblog.com/path', 'myblog.com'],
+			['myblog.wordpress.com', 'myblog.wordpress.com'],
+		])('should normalize wordpressSite input "%s" to "%s" in the URL', async (input, expected) => {
+			mockFunctions.getCredentials.mockResolvedValue({
+				wordpressSite: input,
+			});
 
-				await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
+			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
 
-				expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
-					'wordpressOAuth2Api',
-					expect.objectContaining({
-						uri: `https://public-api.wordpress.com/wp/v2/sites/${expected}/posts`,
-					}),
-				);
-			},
-		);
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'wordpressOAuth2Api',
+				expect.objectContaining({
+					uri: `https://public-api.wordpress.com/wp/v2/sites/${expected}/posts`,
+				}),
+			);
+		});
 
 		it('should not set rejectUnauthorized for OAuth2 path', async () => {
 			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
