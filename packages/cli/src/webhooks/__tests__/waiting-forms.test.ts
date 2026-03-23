@@ -16,7 +16,14 @@ class TestWaitingForms extends WaitingForms {
 
 describe('WaitingForms', () => {
 	const executionRepository = mock<ExecutionRepository>();
-	const waitingForms = new TestWaitingForms(mock(), mock(), executionRepository, mock(), mock());
+	const waitingForms = new TestWaitingForms(
+		mock(),
+		mock(),
+		executionRepository,
+		mock(),
+		mock(),
+		mock(),
+	);
 
 	beforeEach(() => {
 		jest.restoreAllMocks();

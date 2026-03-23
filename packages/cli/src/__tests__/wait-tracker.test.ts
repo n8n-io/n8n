@@ -562,6 +562,7 @@ describe('WaitTracker', () => {
 				activeExecutions,
 				workflowRunner,
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
+				mock(),
 			);
 
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
