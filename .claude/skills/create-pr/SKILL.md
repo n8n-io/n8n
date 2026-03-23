@@ -167,7 +167,7 @@ Describe **what the code does**, not what threat it prevents.
 | PR title | `fix(core): Prevent SSRF` | `fix(core): Validate outgoing URLs` |
 | Commit msg | `fix: prevent denial of service` | `fix: add payload size validation` |
 | PR body | *"attacker could trigger SSRF…"* | *"validates URL protocol and host"* |
-| Linear ref | full URL (slug leaks title) | ticket ID only: `Linear: N8N-1234` |
+| Linear ref | URL with slug (leaks title) | URL without slug or ticket ID only |
 | Test name | `'should prevent SQL injection'` | `'should sanitize query parameters'` |
 
 **Before pushing a security fix, verify:** no branch name, commit, PR title,

@@ -211,8 +211,8 @@ titles, test descriptions, and Linear URLs.
   (e.g. `'should sanitize query parameters'`, not
   `'should prevent SQL injection'`).
 - **Code comments:** Do not describe the attack scenario in comments.
-- **Linear references:** Use only the ticket ID (`Linear: N8N-1234`), never the
-  full URL — the URL slug often contains the vulnerability description.
+- **Linear references:** Never include the URL slug
+  (e.g. `.../N8N-1234/fix-ssrf-vulnerability`).
 
 ## Github Guidelines
 - When creating a PR, use the conventions in
