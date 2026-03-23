@@ -66,6 +66,8 @@ describe('AuthService', () => {
 		globalConfig.userManagement.jwtRefreshTimeoutHours = 0;
 		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
 		license.isWithinUsersLimit.mockReturnValue(true);
+		// Clear the in-memory user cache to prevent cross-test interference
+		(authService as any).userCache.clear();
 	});
 
 	describe('createJWTHash', () => {

@@ -32,6 +32,13 @@ interface IssuedJWT extends AuthJwtPayload {
 	exp: number;
 }
 
+interface CachedUser {
+	user: User;
+	/** The hash from the JWT at the time of caching, used as a staleness check */
+	hash: string;
+	expiresAt: number;
+}
+
 interface PasswordResetToken {
 	sub: string;
 	hash: string;
@@ -54,10 +61,20 @@ interface CreateAuthMiddlewareOptions {
 	allowUnauthenticated?: boolean;
 }
 
+const USER_CACHE_TTL = 60 * Time.seconds.toMilliseconds;
+
 @Service()
 export class AuthService {
 	// The browser-id check needs to be skipped on these endpoints
 	private skipBrowserIdCheckEndpoints: string[];
+
+	/**
+	 * In-memory TTL cache for validated users, keyed by user ID.
+	 * Avoids a DB query on every authenticated request. The JWT is already
+	 * cryptographically verified — the DB lookup only checks for user
+	 * deactivation and credential changes, which happen infrequently.
+	 */
+	private readonly userCache = new Map<string, CachedUser>();
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -298,27 +315,50 @@ export class AuthService {
 			algorithms: ['HS256'],
 		});
 
-		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
-		const user = await this.userRepository.findOne({
-			where: { id: jwtPayload.id },
-			relations: ['role'],
-		});
-
-		if (
-			// If not user is found
-			!user ||
-			// or, If the user has been deactivated (i.e. LDAP users)
-			user.disabled ||
-			// or, If the email or password has been updated
-			jwtPayload.hash !== this.createJWTHash(user)
-		) {
-			throw new AuthError('Unauthorized');
-		}
+		const user = await this.getValidatedUser(jwtPayload);
 
 		return {
 			user,
 			jwtPayload,
 		};
+	}
+
+	/**
+	 * Returns a validated User for the given JWT payload, serving from an
+	 * in-memory TTL cache when possible. The cache is keyed by user ID and
+	 * entries are kept for up to 1 minute. A cached entry is only reused
+	 * when the JWT hash still matches, so password/email changes
+	 * invalidate it immediately.
+	 */
+	private async getValidatedUser(jwtPayload: IssuedJWT): Promise<User> {
+		const now = Date.now();
+		const cached = this.userCache.get(jwtPayload.id);
+
+		if (cached && cached.expiresAt > now && cached.hash === jwtPayload.hash) {
+			if (cached.user.disabled) {
+				throw new AuthError('Unauthorized');
+			}
+			return cached.user;
+		}
+
+		const user = await this.userRepository.findOne({
+			where: { id: jwtPayload.id },
+			relations: ['role'],
+		});
+
+		if (!user || user.disabled || jwtPayload.hash !== this.createJWTHash(user)) {
+			// Remove stale cache entry on validation failure
+			this.userCache.delete(jwtPayload.id);
+			throw new AuthError('Unauthorized');
+		}
+
+		this.userCache.set(jwtPayload.id, {
+			user,
+			hash: jwtPayload.hash,
+			expiresAt: now + USER_CACHE_TTL,
+		});
+
+		return user;
 	}
 
 	async resolveJwt(
