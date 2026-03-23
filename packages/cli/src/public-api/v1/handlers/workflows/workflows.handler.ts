@@ -14,6 +14,7 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { addNodeIds, replaceInvalidCredentials, resolveNodeWebhookIds } from '@/workflow-helpers';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -378,6 +379,51 @@ export = {
 				}
 				throw error;
 			}
+		},
+	],
+	executeWorkflow: [
+		apiKeyHasScope('workflow:execute'),
+		projectScope('workflow:execute', 'workflow'),
+		async (req: WorkflowRequest.Execute, res: express.Response): Promise<express.Response> => {
+			const { id: workflowId } = req.params;
+
+			const workflow = await Container.get(WorkflowRepository).get({ id: workflowId });
+			if (!workflow) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			// Find the first trigger node to start execution from
+			const triggerNode = (workflow.nodes ?? []).find(
+				(node) => node.type.includes('Trigger') || node.type.includes('trigger'),
+			);
+
+			if (!triggerNode) {
+				return res.status(400).json({ message: 'Workflow has no trigger node' });
+			}
+
+			const result = await Container.get(WorkflowExecutionService).executeManually(
+				workflow,
+				{ triggerToStartFrom: { name: triggerNode.name } },
+				req.user,
+			);
+
+			if ('executionId' in result) {
+				Container.get(EventService).emit('workflow-executed', {
+					user: {
+						id: req.user.id,
+						email: req.user.email,
+						firstName: req.user.firstName,
+						lastName: req.user.lastName,
+						role: req.user.role,
+					},
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					executionId: result.executionId,
+					source: 'integrated',
+				});
+			}
+
+			return res.json(result);
 		},
 	],
 	getWorkflowTags: [

@@ -35,6 +35,7 @@ import { STARTING_NODES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 mockInstance(Telemetry);
 
@@ -53,6 +54,7 @@ const license = testServer.license;
 const globalConfig = Container.get(GlobalConfig);
 
 mockInstance(ExecutionService);
+const workflowExecutionService = mockInstance(WorkflowExecutionService);
 
 beforeAll(async () => {
 	owner = await createOwnerWithApiKey();
@@ -2333,5 +2335,47 @@ return [{ json: result }];
 		expect(retrievedUpdatedNode.parameters.jsCode).toBe(updatedCode);
 		expect(retrievedUpdatedNode.parameters.mode).toBe('runOnceForEachItem');
 		expect(retrievedUpdatedNode.parameters.language).toBe('javaScript');
+	});
+});
+
+describe('POST /workflows/:id/execute', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows/2/execute', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/workflows/2/execute', 'abcXYZ'),
+	);
+
+	test('should fail due to non-existing workflow', async () => {
+		const response = await authOwnerAgent.post('/workflows/2/execute');
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should execute a workflow and return executionId', async () => {
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						name: 'Start',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+					},
+				],
+			},
+			member,
+		);
+
+		workflowExecutionService.executeManually.mockResolvedValueOnce({
+			executionId: 'test-execution-id',
+		});
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/execute`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('executionId');
+		expect(response.body.executionId).toBe('test-execution-id');
 	});
 });
