@@ -38,6 +38,7 @@ describe('eligibleModules', () => {
 			'workflow-builder',
 			'redaction',
 			'instance-registry',
+			'instance-version-history',
 		]);
 	});
 
@@ -62,6 +63,7 @@ describe('eligibleModules', () => {
 			'workflow-builder',
 			'redaction',
 			'instance-registry',
+			'instance-version-history',
 		]);
 	});
 
