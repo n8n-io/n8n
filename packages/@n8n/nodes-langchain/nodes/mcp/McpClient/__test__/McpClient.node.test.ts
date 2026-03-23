@@ -33,6 +33,10 @@ describe('McpClient', () => {
 		});
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		getAuthHeaders.mockResolvedValue({ headers: {} });
+		// Mock transport to return undefined sessionId (no real MCP session in tests)
+		(client as unknown as { transport: { sessionId: undefined } }).transport = {
+			sessionId: undefined,
+		};
 		connectMcpClient.mockResolvedValue({
 			ok: true,
 			result: client,
@@ -52,7 +56,10 @@ describe('McpClient', () => {
 		expect(result).toEqual([
 			[
 				{
-					json: { content: [{ type: 'text', text: 'Weather in Berlin is sunny' }] },
+					json: {
+						content: [{ type: 'text', text: 'Weather in Berlin is sunny' }],
+						sessionId: undefined,
+					},
 					pairedItem: { item: 0 },
 				},
 			],
@@ -83,7 +90,10 @@ describe('McpClient', () => {
 		expect(result).toEqual([
 			[
 				{
-					json: { content: [{ type: 'text', text: 'Weather in Berlin is sunny' }] },
+					json: {
+						content: [{ type: 'text', text: 'Weather in Berlin is sunny' }],
+						sessionId: undefined,
+					},
 					pairedItem: { item: 0 },
 				},
 			],
@@ -108,7 +118,10 @@ describe('McpClient', () => {
 		expect(result).toEqual([
 			[
 				{
-					json: { content: [{ type: 'text', text: { answer: 'Weather in Berlin is sunny' } }] },
+					json: {
+						content: [{ type: 'text', text: { answer: 'Weather in Berlin is sunny' } }],
+						sessionId: undefined,
+					},
 					pairedItem: { item: 0 },
 				},
 			],
@@ -144,7 +157,7 @@ describe('McpClient', () => {
 		expect(result).toEqual([
 			[
 				{
-					json: {},
+					json: { sessionId: undefined },
 					binary: {
 						data_0: {
 							mimeType: 'image/jpeg',
@@ -187,6 +200,7 @@ describe('McpClient', () => {
 							{ type: 'image', data: 'abcdef', mimeType: 'image/jpeg' },
 							{ type: 'audio', data: 'ghijkl', mimeType: 'audio/mpeg' },
 						],
+						sessionId: undefined,
 					},
 					pairedItem: { item: 0 },
 				},
