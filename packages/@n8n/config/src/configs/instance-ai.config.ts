@@ -93,4 +93,8 @@ export class InstanceAiConfig {
 	/** Retention period in minutes for orphaned workflow snapshots before pruning. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
 	snapshotRetention: number = 1440;
+
+	/** Timeout in minutes for HITL confirmation requests. 0 = no timeout. */
+	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
+	confirmationTimeout: number = 60;
 }

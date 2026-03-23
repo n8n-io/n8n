@@ -7,6 +7,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -70,6 +71,7 @@ interface SuspendedRun {
 	toolCallId: string;
 	requestId: string;
 	abortController: AbortController;
+	createdAt: number;
 }
 
 interface ConfirmationData {
@@ -85,6 +87,7 @@ interface PendingConfirmation {
 	resolve: (data: ConfirmationData) => void;
 	threadId: string;
 	userId: string;
+	createdAt: number;
 }
 
 interface BackgroundTask {
@@ -177,6 +180,9 @@ export class InstanceAiService {
 	/** Factory for creating per-builder ephemeral sandboxes. */
 	private builderSandboxFactory?: BuilderSandboxFactory;
 
+	/** Periodic sweep that auto-rejects timed-out HITL confirmations. */
+	private confirmationTimeoutInterval?: NodeJS.Timeout;
+
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
@@ -200,6 +206,34 @@ export class InstanceAiService {
 		} else if (sbxConfig.enabled) {
 			this.builderSandboxFactory = new BuilderSandboxFactory(sbxConfig);
 		}
+
+		this.startConfirmationTimeoutSweep();
+	}
+
+	private startConfirmationTimeoutSweep(): void {
+		const timeoutMs = this.instanceAiConfig.confirmationTimeout * Time.minutes.toMilliseconds;
+		if (timeoutMs <= 0) return;
+
+		this.confirmationTimeoutInterval = setInterval(() => {
+			const now = Date.now();
+
+			for (const [threadId, run] of this.suspendedRuns) {
+				if (now - run.createdAt >= timeoutMs) {
+					this.logger.debug('Auto-rejecting timed-out suspended run', { threadId });
+					this.cancelRun(threadId, 'confirmation_timeout');
+				}
+			}
+
+			for (const [reqId, pending] of this.pendingSubAgentConfirmations) {
+				if (now - pending.createdAt >= timeoutMs) {
+					this.logger.debug('Auto-rejecting timed-out sub-agent confirmation', {
+						requestId: reqId,
+					});
+					pending.resolve({ approved: false });
+					this.pendingSubAgentConfirmations.delete(reqId);
+				}
+			}
+		}, Time.minutes.toMilliseconds);
 	}
 
 	private getSandboxConfigFromEnv(): SandboxConfig {
@@ -409,7 +443,7 @@ export class InstanceAiService {
 		}
 	}
 
-	cancelRun(threadId: string): void {
+	cancelRun(threadId: string, reason = 'user_cancelled'): void {
 		// Clean up sub-agent confirmations for this thread
 		for (const [reqId, pending] of this.pendingSubAgentConfirmations) {
 			if (pending.threadId === threadId) {
@@ -436,8 +470,11 @@ export class InstanceAiService {
 				type: 'run-finish',
 				runId: suspended.runId,
 				agentId: ORCHESTRATOR_AGENT_ID,
-				payload: { status: 'cancelled', reason: 'user_cancelled' },
+				payload: { status: 'cancelled', reason },
 			});
+			if (suspended.mastraRunId) {
+				void this.cleanupMastraSnapshots(suspended.mastraRunId);
+			}
 		}
 	}
 
@@ -534,6 +571,11 @@ export class InstanceAiService {
 	}
 
 	async shutdown(): Promise<void> {
+		if (this.confirmationTimeoutInterval) {
+			clearInterval(this.confirmationTimeoutInterval);
+			this.confirmationTimeoutInterval = undefined;
+		}
+
 		for (const [, run] of this.activeRuns) run.abortController.abort();
 		this.activeRuns.clear();
 
@@ -698,6 +740,7 @@ export class InstanceAiService {
 							resolve,
 							threadId,
 							userId: user.id,
+							createdAt: Date.now(),
 						});
 					});
 				},
@@ -843,6 +886,7 @@ export class InstanceAiService {
 					toolCallId: lastSuspension.toolCallId,
 					requestId: lastSuspension.requestId,
 					abortController,
+					createdAt: Date.now(),
 				});
 				return;
 			}
@@ -1043,6 +1087,7 @@ export class InstanceAiService {
 					toolCallId: lastSuspension.toolCallId,
 					requestId: lastSuspension.requestId,
 					abortController: opts.abortController,
+					createdAt: Date.now(),
 				});
 				return;
 			}
