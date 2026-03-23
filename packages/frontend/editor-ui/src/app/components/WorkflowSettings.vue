@@ -52,7 +52,6 @@ import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
@@ -66,7 +65,6 @@ const telemetry = useTelemetry();
 const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow, mcpTriggerMap } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
-const credentialsStore = useCredentialsStore();
 const canListCredentialResolvers = hasPermission(['rbac'], {
 	rbac: { scope: 'credentialResolver:list' },
 });
@@ -214,19 +212,9 @@ const isRedactionSettingVisible = computed(
 		workflowPermissions.value.updateRedactionSetting,
 );
 
-const workflowHasDynamicCredentials = computed(() => {
-	if (!isCredentialResolverEnabled.value) return false;
-	const nodes = workflowsStore.workflowObject.nodes;
-	return Object.values(nodes).some((node) => {
-		const nodeCredentials = node.credentials;
-		if (!nodeCredentials) return false;
-		return Object.values(nodeCredentials).some((cred) => {
-			if (!cred?.id) return false;
-			const credential = credentialsStore.getCredentialById(cred.id);
-			return credential?.isResolvable === true;
-		});
-	});
-});
+const workflowHasDynamicCredentials = computed(
+	() => isCredentialResolverEnabled.value && !!workflowSettings.value.credentialResolverId,
+);
 
 /**
  * Maps the two independent redaction toggles to/from the single `redactionPolicy` field.
@@ -240,6 +228,7 @@ const workflowHasDynamicCredentials = computed(() => {
  */
 const redactProductionData = computed({
 	get(): string {
+		if (workflowHasDynamicCredentials.value) return 'redact';
 		const policy = workflowSettings.value.redactionPolicy;
 		return policy === 'all' || policy === 'non-manual' ? 'redact' : 'default';
 	},
@@ -1182,7 +1171,11 @@ onBeforeUnmount(() => {
 						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nSelect
 								v-model="redactProductionData"
-								:disabled="readOnlyEnv || !workflowPermissions.updateRedactionSetting"
+								:disabled="
+									readOnlyEnv ||
+									!workflowPermissions.updateRedactionSetting ||
+									workflowHasDynamicCredentials
+								"
 								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
 								:limit-popper-width="true"

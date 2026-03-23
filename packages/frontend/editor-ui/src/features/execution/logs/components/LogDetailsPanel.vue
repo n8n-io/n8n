@@ -281,7 +281,8 @@ function handleResizeEnd() {
 	height: 100%;
 	display: flex;
 	justify-content: center;
-	align-items: center;
+	align-items: flex-start;
+	padding-top: var(--spacing--3xl);
 	z-index: 1;
 }
 

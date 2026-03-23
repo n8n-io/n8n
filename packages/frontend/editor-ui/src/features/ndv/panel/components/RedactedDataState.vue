@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nLink } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nLink } from '@n8n/design-system';
 import NDVEmptyState from './NDVEmptyState.vue';
 import { I18nT } from 'vue-i18n';
 
@@ -8,7 +8,6 @@ defineProps<{
 	title: string;
 	isDynamicCredentials: boolean;
 	canReveal: boolean;
-	wide?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -20,14 +19,18 @@ const i18n = useI18n();
 </script>
 
 <template>
-	<NDVEmptyState icon="lock" :title="title" :wide="wide" data-test-id="ndv-data-redacted">
+	<NDVEmptyState :class="$style.root" :title="title" data-test-id="ndv-data-redacted">
+		<template #icon>
+			<N8nIcon icon="shredder" size="xxlarge" color="text-light" />
+		</template>
 		<template v-if="isDynamicCredentials">
 			{{ i18n.baseText('ndv.redacted.dynamicCredentials.description') }}
 		</template>
 		<template v-else>
-			<I18nT keypath="ndv.redacted.description" tag="span" scope="global">
+			{{ i18n.baseText('ndv.redacted.description.sentence1') }}<br />
+			<I18nT keypath="ndv.redacted.description.sentence2" tag="span" scope="global">
 				<template #link>
-					<N8nLink size="small" style="white-space: nowrap" @click="emit('openSettings')">{{
+					<N8nLink size="medium" style="white-space: nowrap" @click="emit('openSettings')">{{
 						i18n.baseText('ndv.redacted.description.link')
 					}}</N8nLink>
 				</template>
@@ -44,3 +47,9 @@ const i18n = useI18n();
 		</template>
 	</NDVEmptyState>
 </template>
+
+<style lang="css" module>
+.root p {
+	max-width: 300px;
+}
+</style>
