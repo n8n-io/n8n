@@ -42,7 +42,6 @@ export interface DiscoverResponse {
 
 export interface DiscoverOptions {
 	includeSchemas?: boolean;
-	scopesEnabled?: boolean;
 	resource?: string;
 	operation?: string;
 }
@@ -161,13 +160,8 @@ export async function buildDiscoverResponse(
 	const allEndpoints = await parseEndpointsFromSpec();
 	const scopeSet = new Set(callerScopes);
 	const includeSchemas = options?.includeSchemas === true;
-	const scopesEnabled = options?.scopesEnabled !== false;
 
-	// When scopes are not licensed (community edition), show all endpoints
-	// since all API keys have unrestricted access regardless of stored scopes
-	const filtered = scopesEnabled
-		? allEndpoints.filter((ep) => ep.scope === null || scopeSet.has(ep.scope))
-		: allEndpoints;
+	const filtered = allEndpoints.filter((ep) => ep.scope === null || scopeSet.has(ep.scope));
 
 	const resources: Record<string, ResourceInfo> = {};
 

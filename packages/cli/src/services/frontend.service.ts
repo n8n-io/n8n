@@ -319,7 +319,7 @@ export class FrontendService {
 				binaryDataS3: false,
 				workerView: false,
 				advancedPermissions: false,
-				apiKeyScopes: false,
+
 				workflowDiffs: false,
 				namedVersions: false,
 				provisioning: false,
@@ -469,7 +469,7 @@ export class FrontendService {
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
-			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
+
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
 			namedVersions: this.license.isLicensed(LICENSE_FEATURES.NAMED_VERSIONS),
 			customRoles: this.licenseState.isCustomRolesLicensed(),

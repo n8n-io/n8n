@@ -4,6 +4,10 @@ import { ApiKey } from './api-key';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
+import {
+	CredentialDependency,
+	type CredentialDependencyType,
+} from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
@@ -51,6 +55,8 @@ export {
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
+	CredentialDependency,
+	type CredentialDependencyType,
 	Folder,
 	Project,
 	ProjectRelation,
@@ -92,6 +98,7 @@ export const entities = {
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
+	CredentialDependency,
 	Folder,
 	Project,
 	ProjectRelation,

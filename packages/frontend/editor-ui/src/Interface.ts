@@ -945,7 +945,6 @@ export type EnterpriseEditionFeatureKey =
 	| 'DebugInEditor'
 	| 'WorkerView'
 	| 'AdvancedPermissions'
-	| 'ApiKeyScopes'
 	| 'EnforceMFA'
 	| 'NamedVersions'
 	| 'Provisioning'
