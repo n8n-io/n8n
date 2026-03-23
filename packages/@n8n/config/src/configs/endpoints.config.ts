@@ -68,6 +68,10 @@ class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_NAME_LABEL')
 	includeWorkflowNameLabel: boolean = false;
 
+	/** Whether to include a histogram metric for workflow execution duration. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_EXECUTION_DURATION')
+	includeWorkflowExecutionDuration: boolean = true;
+
 	/** Whether to include workflow execution statistics as metrics. */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_STATISTICS')
 	includeWorkflowStatistics: boolean = false;
@@ -79,11 +83,11 @@ class PrometheusMetricsConfig {
 
 @Config
 export class EndpointsConfig {
-	/** Max payload size in MiB */
+	/** Maximum request payload size in MiB for the API. */
 	@Env('N8N_PAYLOAD_SIZE_MAX')
 	payloadSizeMax: number = 16;
 
-	/** Max payload size for files in form-data webhook payloads in MiB */
+	/** Maximum size in MiB for a single file in multipart/form-data webhook payloads. */
 	@Env('N8N_FORMDATA_FILE_SIZE_MAX')
 	formDataFileSizeMax: number = 200;
 
@@ -126,6 +130,10 @@ export class EndpointsConfig {
 	@Env('N8N_ENDPOINT_MCP_TEST')
 	mcpTest: string = 'mcp-test';
 
+	/** Whether to enable workflow builder tools in the MCP server. */
+	@Env('N8N_MCP_BUILDER_ENABLED')
+	mcpBuilderEnabled: boolean = true;
+
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')
 	disableUi: boolean = false;
@@ -134,7 +142,7 @@ export class EndpointsConfig {
 	@Env('N8N_DISABLE_PRODUCTION_MAIN_PROCESS')
 	disableProductionWebhooksOnMainProcess: boolean = false;
 
-	/** Colon-delimited list of additional endpoints to not open the UI on. */
+	/** Colon-separated list of path segments that should not serve the UI (for example, health or webhook-only routes). */
 	@Env('N8N_ADDITIONAL_NON_UI_ROUTES')
 	additionalNonUIRoutes: string = '';
 

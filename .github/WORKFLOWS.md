@@ -200,7 +200,6 @@ These only run if specific files changed:
 
 | Command            | Workflow                     | Permissions         |
 |--------------------|------------------------------|---------------------|
-| `/build-unit-test` | `ci-manual-unit-tests.yml`   | admin/write/maintain|
 | `/test-workflows`  | `test-workflows-callable.yml`| admin/write/maintain|
 
 **Why:** Re-run tests without pushing commits. Useful for flaky test investigation.
@@ -260,9 +259,6 @@ test-workflows-nightly.yml
     └──────────────────────────▶  test-workflows-callable.yml
 
 PR Comment Dispatchers (triggered by /command in PR comments):
-build-unit-test-pr-comment.yml
-    └──────────────────────────▶  ci-manual-unit-tests.yml
-
 test-workflows-pr-comment.yml
     └──────────────────────────▶  test-workflows-callable.yml
 ```
@@ -422,7 +418,6 @@ Workflows with `workflow_call` trigger:
 | `test-e2e-ci-reusable.yml`         | `branch`                                      | E2E orchestrator      |
 | `test-e2e-docker-pull-reusable.yml`| `branch`, `n8n_version`                       | E2E with pulled image |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
-| `ci-check-eligibility-reusable.yml`| (internal)                                    | PR eligibility checks |
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled` | Docker build          |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
@@ -599,10 +594,10 @@ npm audit signatures n8n@VERSION
 
 VEX documents which CVEs actually affect n8n vs false positives from scanners.
 
-- **File:** `vex.openvex.json` (repo root)
+- **File:** `security/vex.openvex.json`
 - **Format:** OpenVEX (broad scanner compatibility - Trivy, Docker Scout, etc.)
 - **Attached to:** GitHub Release, Docker image attestations
-- **Used by:** Trivy scans (via `.github/trivy.yaml`)
+- **Used by:** Trivy scans (via `security/trivy.yaml`)
 
 **VEX Status Types:**
 | Status | Meaning |
@@ -620,7 +615,7 @@ cosign verify-attestation --type openvex \
   ghcr.io/n8n-io/n8n:VERSION
 ```
 
-**Adding a CVE statement to vex.openvex.json:**
+**Adding a CVE statement to security/vex.openvex.json:**
 ```json
 {
   "statements": [
@@ -664,7 +659,7 @@ cosign verify-attestation --type openvex \
 
 ### Redundancy Review
 
-Comment triggers (`/build-unit-test`, `/test-workflows`) are workarounds.
+Comment trigger (`/test-workflows`) is a workaround.
 
 Long-term: Main CI should be reliable enough to not need these.
 

@@ -75,6 +75,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'workflow:read',
 	'workflow:update',
 	'workflow:publish',
+	'workflow:unpublish',
 	'workflow:delete',
 	'workflow:list',
 	'workflow:share',
@@ -82,6 +83,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'workflow:execute',
 	'workflow:execute-chat',
 	'workflow:move',
+	'workflow:updateRedactionSetting',
 	'workersView:manage',
 	'project:list',
 	'project:create',
@@ -155,6 +157,7 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
 	'apiKey:manage',
+	'credentialResolver:list',
 ];
 
 export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [

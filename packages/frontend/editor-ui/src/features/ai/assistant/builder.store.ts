@@ -49,8 +49,12 @@ import { useBrowserNotifications } from '@/app/composables/useBrowserNotificatio
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
 import type { PlanMode } from '@/features/ai/assistant/assistant.types';
 import {
+	type ChatRequest,
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
+	isWebFetchApprovalCustomMessage,
+	isWebFetchApprovalMessage,
+	isToolMessage as isApiToolMessage,
 } from '@/features/ai/assistant/assistant.types';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
@@ -74,7 +78,19 @@ export type WorkflowBuilderJourneyEventType =
 	| 'user_switched_builder_mode'
 	| 'user_clicked_implement_plan'
 	| 'user_opened_review_changes'
-	| 'user_closed_review_changes';
+	| 'user_closed_review_changes'
+	| 'user_expanded_review_changes'
+	| 'user_collapsed_review_changes'
+	| 'setup_wizard_shown'
+	| 'setup_wizard_step_navigated'
+	| 'setup_wizard_step_completed'
+	| 'setup_wizard_all_complete'
+	| 'web_fetch_approval_prompted'
+	| 'web_fetch_decision'
+	| 'web_fetch_completed'
+	| 'qa_question_answered'
+	| 'qa_question_skipped'
+	| 'qa_answers_submitted';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -86,6 +102,18 @@ interface WorkflowBuilderJourneyEventProperties {
 	no_versions_reverted?: number;
 	completion_type?: 'workflow-ready' | 'input-needed';
 	mode?: 'plan' | 'build';
+	step?: number;
+	total?: number;
+	direction?: 'next' | 'prev';
+	domain?: string;
+	url?: string;
+	decision?: 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
+	status?: string;
+	question_type?: 'single' | 'multi' | 'text';
+	question_index?: number;
+	total_questions?: number;
+	input_method?: 'click' | 'keyboard_number' | 'keyboard_enter';
+	custom_answer_used?: boolean;
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -140,8 +168,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		error: 0,
 	});
 
-	// Track whether a successful full execution has occurred in this session
+	// Track whether any successful execution (full workflow or per-node) has occurred in this session
 	const hasHadSuccessfulExecution = ref(false);
+
+	// Setup wizard state
+	const wizardCurrentStep = ref(0);
+	const wizardClearedPlaceholders = ref(new Set<string>());
+	const wizardHasExecutedWorkflow = ref(false);
+
+	function resetWizardState() {
+		wizardCurrentStep.value = 0;
+		wizardClearedPlaceholders.value.clear();
+		wizardHasExecutedWorkflow.value = false;
+	}
 
 	// Track whether AI Builder made edits since last save (resets after each save)
 	const aiBuilderMadeEdits = ref(false);
@@ -255,6 +294,22 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
 	});
 
+	const creditsPercentageRemaining = computed(() => {
+		if (
+			creditsQuota.value === undefined ||
+			creditsQuota.value === INFINITE_CREDITS ||
+			creditsRemaining.value === undefined
+		) {
+			return undefined;
+		}
+		if (creditsQuota.value === 0) return 0;
+		return (creditsRemaining.value / creditsQuota.value) * 100;
+	});
+
+	const isLowCredits = computed(() => {
+		return creditsPercentageRemaining.value !== undefined && creditsPercentageRemaining.value <= 10;
+	});
+
 	const hasMessages = computed(() => chatMessages.value.length > 0);
 
 	const latestRevertVersion = computed(() => {
@@ -275,7 +330,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const pendingInterruptMessage = computed(() => {
 		for (let i = chatMessages.value.length - 1; i >= 0; i--) {
 			const msg = chatMessages.value[i];
-			if (isPlanModeQuestionsMessage(msg) || isPlanModePlanMessage(msg)) {
+			if (
+				isPlanModeQuestionsMessage(msg) ||
+				isPlanModePlanMessage(msg) ||
+				isWebFetchApprovalCustomMessage(msg)
+			) {
 				return msg;
 			}
 			// Stop searching if we hit a user message — any interrupt before that is already resolved
@@ -302,7 +361,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	const shouldDisableChatInput = computed(() => {
 		const msg = pendingInterruptMessage.value;
-		return msg ? isPlanModeQuestionsMessage(msg) : false;
+		if (!msg) return false;
+		return isPlanModeQuestionsMessage(msg) || isWebFetchApprovalCustomMessage(msg);
 	});
 
 	// Chat management functions
@@ -319,6 +379,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		loadedSessionsForWorkflowId.value = undefined;
 		hasHadSuccessfulExecution.value = false;
 		builderMode.value = 'build';
+		resetWizardState();
 	}
 
 	/**
@@ -472,6 +533,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const { revertVersion } = currentStreamingMessage.value ?? {};
 		currentStreamingMessage.value = undefined;
 
+		// Reset wizard state when streaming ends with a workflow update (AI changed the workflow)
+		if (userMessageId && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
+			resetWizardState();
+		}
+
 		// Only show "Restore version" on user messages that triggered a workflow modification.
 		// During planning or question phases no workflow changes happen, so skip it.
 		if (userMessageId && revertVersion && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
@@ -553,11 +619,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		messageId: string,
 		focusedNodeNames?: string[],
 		planAnswers?: PlanMode.QuestionResponse[],
+		skipUserMessage?: boolean,
 	) {
-		const userMsg = planAnswers
-			? createUserAnswersMessage(planAnswers, messageId)
-			: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
-		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
+		if (!skipUserMessage) {
+			const userMsg = planAnswers
+				? createUserAnswersMessage(planAnswers, messageId)
+				: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
+			chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
+		}
 		const thinkingKey =
 			userMessage.trim() === '/compact'
 				? 'aiAssistant.thinkingSteps.compacting'
@@ -686,7 +755,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Use workflow updatedAt as version timestamp
 		// might not be the same as "version.createdAt" but close enough
-		const updatedAt = workflowsStore.workflow.updatedAt;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		const updatedAt = workflowDocumentStore.updatedAt;
 		return {
 			id: versionId,
 			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
@@ -716,6 +788,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		planAnswers?: PlanMode.QuestionResponse[];
 		/** Whether this is a help question (e.g. credential or error help) that should not lock the canvas */
 		helpMessage?: boolean;
+		/** When true, skip adding the user message bubble to chat (e.g. web_fetch_approval decisions handled via buttons) */
+		skipUserMessage?: boolean;
 	}) {
 		isHelpStreaming.value = Boolean(options.helpMessage);
 		if (streaming.value) {
@@ -788,7 +862,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		resetManualExecutionStats();
 
-		prepareForStreaming(text, userMessageId, focusedNodeNames, options.planAnswers);
+		prepareForStreaming(
+			text,
+			userMessageId,
+			focusedNodeNames,
+			options.planAnswers,
+			options.skipUserMessage,
+		);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
 		const modeForPayload =
@@ -796,6 +876,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				? mode
 				: (mode ?? (builderMode.value === 'plan' ? 'plan' : undefined));
 		const payload = await createBuilderPayload(text, userMessageId, {
+			workflowId: workflowsStore.workflowId,
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
@@ -841,6 +922,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 						retry,
 					);
 					chatMessages.value = result.messages;
+
+					trackWebFetchEvents(response.messages);
 
 					if (result.shouldClearThinking) {
 						builderThinkingMessage.value = undefined;
@@ -1136,6 +1219,26 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		telemetry.track('Workflow builder journey', payload);
 	}
 
+	function trackWebFetchEvents(messages: ChatRequest.MessageResponse[]) {
+		for (const msg of messages) {
+			if (isWebFetchApprovalMessage(msg)) {
+				trackWorkflowBuilderJourney('web_fetch_approval_prompted', {
+					domain: msg.domain,
+					url: msg.url,
+				});
+			}
+			if (
+				isApiToolMessage(msg) &&
+				msg.toolName === 'web_fetch' &&
+				(msg.status === 'completed' || msg.status === 'error')
+			) {
+				trackWorkflowBuilderJourney('web_fetch_completed', {
+					status: msg.status,
+				});
+			}
+		}
+	}
+
 	// Version management for workflow history
 	const workflowHistoryStore = useWorkflowHistoryStore();
 
@@ -1168,7 +1271,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// version id is important to update, because otherwise the next time user saves,
 		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
 		workflowState.setWorkflowProperty('versionId', updatedWorkflow.versionId);
-		workflowState.setWorkflowProperty('updatedAt', updatedWorkflow.updatedAt);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		workflowDocumentStore.setUpdatedAt(updatedWorkflow.updatedAt);
 
 		// 2. Truncate messages in backend session (removes message with messageId and all after)
 		await truncateBuilderMessages(
@@ -1237,12 +1341,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
 		hasNoCreditsRemaining,
+		creditsPercentageRemaining,
+		isLowCredits,
 		hasMessages,
 		latestRevertVersion,
 		workflowTodos,
 		hasTodosHiddenByPinnedData,
 		hasHadSuccessfulExecution,
 		lastUserMessageId,
+		wizardCurrentStep,
+		wizardClearedPlaceholders,
+		wizardHasExecutedWorkflow,
 
 		// Methods
 		unpinAllNodes,

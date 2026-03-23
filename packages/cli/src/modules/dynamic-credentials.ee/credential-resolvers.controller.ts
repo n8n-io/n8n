@@ -21,12 +21,13 @@ import {
 } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
-import { DynamicCredentialResolverService } from './services/credential-resolver.service';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { CredentialResolutionError } from './errors/credential-resolution.error';
+import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
+import { DynamicCredentialResolverService } from './services/credential-resolver.service';
 
 @RestController('/credential-resolvers')
 export class CredentialResolversController {
@@ -36,7 +37,8 @@ export class CredentialResolversController {
 	@GlobalScope('credentialResolver:list')
 	async listResolvers(_req: AuthenticatedRequest, _res: Response): Promise<CredentialResolver[]> {
 		try {
-			return credentialResolversSchema.parse(await this.service.findAll());
+			const resolvers = credentialResolversSchema.parse(await this.service.findAll());
+			return resolvers.map(({ decryptedConfig: _, ...rest }) => ({ ...rest, config: '' }));
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -76,6 +78,9 @@ export class CredentialResolversController {
 			return credentialResolverSchema.parse(createdResolver);
 		} catch (e: unknown) {
 			if (e instanceof CredentialResolverValidationError) {
+				throw new BadRequestError(e.message);
+			}
+			if (e instanceof CredentialResolutionError) {
 				throw new BadRequestError(e.message);
 			}
 			if (e instanceof Error) {
@@ -128,6 +133,9 @@ export class CredentialResolversController {
 				throw new NotFoundError(e.message);
 			}
 			if (e instanceof CredentialResolverValidationError) {
+				throw new BadRequestError(e.message);
+			}
+			if (e instanceof CredentialResolutionError) {
 				throw new BadRequestError(e.message);
 			}
 			if (e instanceof Error) {

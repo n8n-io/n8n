@@ -44,14 +44,16 @@ export class UserApiHelper {
 		const inviteData = await inviteResponse.json();
 		const { id, inviteAcceptUrl } = inviteData.data[0].user;
 
-		// Accept invitation
+		// Accept invitation (invite URL contains token, e.g. /signup?token=...)
 		const url = new URL(inviteAcceptUrl);
-		const inviterId = url.searchParams.get('inviterId');
-		const inviteeId = url.searchParams.get('inviteeId');
+		const token = url.searchParams.get('token');
+		if (!token) {
+			throw new TestError(`Invite URL has no token: ${inviteAcceptUrl}`);
+		}
 
-		const acceptResponse = await this.api.request.post(`/rest/invitations/${inviteeId}/accept`, {
+		const acceptResponse = await this.api.request.post('/rest/invitations/accept', {
 			data: {
-				inviterId,
+				token,
 				firstName: user.firstName,
 				lastName: user.lastName,
 				password: user.password,
