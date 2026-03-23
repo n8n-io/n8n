@@ -10,12 +10,9 @@
 #
 # 生成规则：.github/scripts/compose-env-from-infisical.py（排除 ECS_* / GitHub / Runner 等，其余环境变量全部写入 .env）
 
-name: 'Deploy: Aliyun ECS (Infisical)'
+name: 'Deploy: Aliyun ECS (n8n)'
 
 on:
-  push:
-    branches:
-      - develop
   workflow_dispatch:
     inputs:
       ref:
