@@ -6,6 +6,7 @@ import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import type express from 'express';
+import { isTriggerLikeNode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -393,9 +394,15 @@ export = {
 			}
 
 			// Find the first trigger node to start execution from
-			const triggerNode = (workflow.nodes ?? []).find(
-				(node) => node.type.includes('Trigger') || node.type.includes('trigger'),
-			);
+			const nodeTypes = Container.get(NodeTypes);
+			const triggerNode = (workflow.nodes ?? []).find((node) => {
+				try {
+					const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+					return isTriggerLikeNode(nodeType);
+				} catch {
+					return false;
+				}
+			});
 
 			if (!triggerNode) {
 				return res.status(400).json({ message: 'Workflow has no trigger node' });
