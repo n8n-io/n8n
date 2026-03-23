@@ -504,6 +504,124 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		expect(utils.isJSON).toHaveBeenCalledTimes(1);
 		expect(utils.stringToArray).toHaveBeenCalledTimes(1);
 	});
+
+	// GHC-5181: Postgres (v2) "Query Parameters" don't recognize above 5 parameters ($6, $7 and so on)
+	it('should handle query with 6 parameters', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'INSERT INTO test_table VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;',
+			options: {
+				queryReplacement: '1,2,3,4,5,6',
+				nodeVersion: 2.6,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'INSERT INTO test_table VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;',
+					values: ['1', '2', '3', '4', '5', '6'],
+					options: { partial: true },
+				},
+			],
+			nodeOptions,
+		);
+	});
+
+	// GHC-5181: Postgres (v2) "Query Parameters" don't recognize above 5 parameters ($6, $7 and so on)
+	it('should handle query with 10 parameters', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query:
+				'INSERT INTO test_table VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *;',
+			options: {
+				queryReplacement: '1,2,3,4,5,6,7,8,9,10',
+				nodeVersion: 2.6,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query:
+						'INSERT INTO test_table VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *;',
+					values: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+					options: { partial: true },
+				},
+			],
+			nodeOptions,
+		);
+	});
+
+	// GHC-5181: Test with expressions (similar to user's real-world scenario)
+	it('should handle query with 13 parameters using expressions', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: `INSERT INTO financas (
+				id_financas, tipo, valor, categoria, data, status,
+				descricao, ultima_mensagem, id_planocontas, categoriaconta,
+				whatsapp, id_cliente, other_field
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`,
+			options: {
+				queryReplacement:
+					'uuid1,tipo1,100.50,cat1,2025-01-01,active,desc1,msg1,uuid2,catconta1,123456789,42,extra',
+				nodeVersion: 2.6,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: `INSERT INTO financas (
+				id_financas, tipo, valor, categoria, data, status,
+				descricao, ultima_mensagem, id_planocontas, categoriaconta,
+				whatsapp, id_cliente, other_field
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`,
+					values: [
+						'uuid1',
+						'tipo1',
+						'100.50',
+						'cat1',
+						'2025-01-01',
+						'active',
+						'desc1',
+						'msg1',
+						'uuid2',
+						'catconta1',
+						'123456789',
+						'42',
+						'extra',
+					],
+					options: { partial: true },
+				},
+			],
+			nodeOptions,
+		);
+	});
 });
 
 describe('Test PostgresV2, insert operation', () => {

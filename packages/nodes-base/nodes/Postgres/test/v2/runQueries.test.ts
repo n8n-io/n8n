@@ -52,4 +52,69 @@ describe('Test PostgresV2, runQueries', () => {
 		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 		expect(dbMultiSpy).toHaveBeenCalledWith('SELECT * FROM table');
 	});
+
+	// GHC-5181: Postgres (v2) "Query Parameters" don't recognize above 5 parameters ($6, $7 and so on)
+	it('should execute query with 6 parameters', async () => {
+		const pgp = pgPromise();
+		const db = createMockDb([{ id: 1 }]);
+
+		const dbMultiSpy = jest.spyOn(db, 'multi');
+
+		const thisArg = mock<IExecuteFunctions>();
+		thisArg.helpers = {
+			constructExecutionMetaData: jest.fn((data) => data),
+		} as any;
+
+		const runQueries = configureQueryRunner.call(thisArg, node, false, pgp, db);
+
+		const result = await runQueries(
+			[
+				{
+					query: 'INSERT INTO test_table VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+					values: ['1', '2', '3', '4', '5', '6'],
+				},
+			],
+			{ nodeVersion: 2.6 },
+		);
+
+		expect(result).toBeDefined();
+		expect(dbMultiSpy).toHaveBeenCalled();
+		// Verify the concatenated query includes all 6 parameters
+		const calledQuery = dbMultiSpy.mock.calls[0][0];
+		expect(calledQuery).toContain('$1');
+		expect(calledQuery).toContain('$6');
+	});
+
+	// GHC-5181: Postgres (v2) "Query Parameters" don't recognize above 5 parameters ($6, $7 and so on)
+	it('should execute query with 13 parameters', async () => {
+		const pgp = pgPromise();
+		const db = createMockDb([{ id: 1 }]);
+
+		const dbMultiSpy = jest.spyOn(db, 'multi');
+
+		const thisArg = mock<IExecuteFunctions>();
+		thisArg.helpers = {
+			constructExecutionMetaData: jest.fn((data) => data),
+		} as any;
+
+		const runQueries = configureQueryRunner.call(thisArg, node, false, pgp, db);
+
+		const result = await runQueries(
+			[
+				{
+					query:
+						'INSERT INTO financas (c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *',
+					values: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13'],
+				},
+			],
+			{ nodeVersion: 2.6 },
+		);
+
+		expect(result).toBeDefined();
+		expect(dbMultiSpy).toHaveBeenCalled();
+		// Verify the concatenated query includes all 13 parameters
+		const calledQuery = dbMultiSpy.mock.calls[0][0];
+		expect(calledQuery).toContain('$1');
+		expect(calledQuery).toContain('$13');
+	});
 });
