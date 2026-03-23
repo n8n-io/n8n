@@ -276,6 +276,9 @@ describe('GlobalConfig', () => {
 			filesystemPath: '',
 			gatewayApiKey: '',
 			threadTtlDays: 90,
+			snapshotPruneInterval: 60,
+			snapshotRetention: 1440,
+			confirmationTimeout: 60,
 		},
 		queue: {
 			health: {
