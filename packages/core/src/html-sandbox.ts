@@ -5,6 +5,10 @@ export const isWebhookHtmlSandboxingDisabled = () => {
 	return Container.get(SecurityConfig).disableWebhookHtmlSandboxing;
 };
 
+export const isFormHtmlSandboxingDisabled = () => {
+	return Container.get(SecurityConfig).disableFormHtmlSandboxing;
+};
+
 /**
  * Returns the CSP header value that sandboxes the HTML page into a separate origin.
  */

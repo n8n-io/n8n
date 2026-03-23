@@ -65,6 +65,12 @@ export class SecurityConfig {
 	disableWebhookHtmlSandboxing: boolean = false;
 
 	/**
+	 * Whether to disable CSP sandboxing for form pages (Form Trigger, Send and Wait).
+	 */
+	@Env('N8N_INSECURE_DISABLE_FORM_HTML_SANDBOX')
+	disableFormHtmlSandboxing: boolean = false;
+
+	/**
 	 * Whether to disable bare repositories support in the Git node.
 	 */
 	@Env('N8N_GIT_NODE_DISABLE_BARE_REPOS')
