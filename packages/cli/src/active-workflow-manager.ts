@@ -608,7 +608,7 @@ export class ActiveWorkflowManager {
 				});
 			}
 
-			void this.publisher.publishCommand({
+			await this.publisher.publishCommand({
 				command: 'add-webhooks-triggers-and-pollers',
 				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId, activationMode },
 			});
@@ -899,7 +899,7 @@ export class ActiveWorkflowManager {
 				);
 			}
 
-			void this.publisher.publishCommand({
+			await this.publisher.publishCommand({
 				command: 'remove-triggers-and-pollers',
 				payload: { workflowId },
 			});
