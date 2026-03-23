@@ -95,15 +95,15 @@ const classes = computed(() => {
 }
 
 .text-dark {
-	color: var(--color--text--shade-1);
+	color: var(--text-color--default);
 }
 
 .text-base {
-	color: var(--color--text);
+	color: var(--text-color--subtle);
 }
 
 .text-light {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 }
 
 .text-xlight {
