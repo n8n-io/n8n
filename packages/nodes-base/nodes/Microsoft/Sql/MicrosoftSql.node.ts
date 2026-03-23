@@ -10,7 +10,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
@@ -321,12 +320,6 @@ export class MicrosoftSql implements INodeType {
 
 					if (Array.isArray(queryReplacement)) {
 						queryValues = queryReplacement;
-					} else if (queryReplacement) {
-						throw new NodeOperationError(
-							this.getNode(),
-							'Query Parameters must be a string of comma-separated values or an array of values',
-							{ itemIndex: i },
-						);
 					}
 
 					const results = await executeSqlQueryAndPrepareResults(pool, rawQuery, i, queryValues);
