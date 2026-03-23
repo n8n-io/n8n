@@ -3690,8 +3690,8 @@ importers:
         specifier: 2.1.0
         version: 2.1.0(asn1.js@5.4.1)(encoding@0.1.13)
       ssh2-sftp-client:
-        specifier: 12.0.1
-        version: 12.0.1
+        specifier: 12.1.0
+        version: 12.1.0
       tmp-promise:
         specifier: 3.0.3
         version: 3.0.3
@@ -17620,8 +17620,8 @@ packages:
   ssh-remote-port-forward@1.0.4:
     resolution: {integrity: sha512-x0LV1eVDwjf1gmG7TTnfqIzf+3VPRz7vrNIjX6oYLbeCrf/PeVY6hkT68Mg+q02qXxQhrLjB0jfgvhevoCRmLQ==}
 
-  ssh2-sftp-client@12.0.1:
-    resolution: {integrity: sha512-ICJ1L2PmBel2Q2ctbyxzTFZCPKSHYYD6s2TFZv7NXmZDrDNGk8lHBb/SK2WgXLMXNANH78qoumeJzxlWZqSqWg==}
+  ssh2-sftp-client@12.1.0:
+    resolution: {integrity: sha512-f8+EylryHXPg+pMHYqtK+jPOPXJTBDOdgwOPYNS7mJTkk5bPsLQfOFUVl99PQvUkE5MkbyR5jThBlfeQMXcvrA==}
     engines: {node: '>=18.20.4'}
 
   ssh2@1.15.0:
@@ -37419,7 +37419,7 @@ snapshots:
       '@types/ssh2': 0.5.52
       ssh2: 1.15.0
 
-  ssh2-sftp-client@12.0.1:
+  ssh2-sftp-client@12.1.0:
     dependencies:
       concat-stream: 2.0.0
       ssh2: 1.16.0
