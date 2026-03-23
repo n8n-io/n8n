@@ -3,6 +3,10 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class SettingsLogStreamingPage extends BasePage {
+	async goto(): Promise<void> {
+		await this.page.goto('/settings/log-streaming');
+	}
+
 	getActionBoxUnlicensed(): Locator {
 		return this.page.getByTestId('action-box-unlicensed');
 	}

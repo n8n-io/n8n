@@ -238,10 +238,18 @@ export class LmChatAwsBedrock implements INodeType {
 			maxTokensToSample: number;
 		};
 
+		// If the model is specified as a full ARN, extract the region from it
+		// ARN format: arn:aws:bedrock:<region>:<account-id>:inference-profile/<profile-id>
+		let region = credentials.region;
+		const arnMatch = modelName.match(/^arn:aws:bedrock:([a-z0-9-]+):/);
+		if (arnMatch) {
+			region = arnMatch[1];
+		}
+
 		// We set-up client manually to pass httpAgent and httpsAgent
 		const proxyAgent = getNodeProxyAgent();
 		const clientConfig: BedrockRuntimeClientConfig = {
-			region: credentials.region,
+			region,
 			credentials: {
 				secretAccessKey: credentials.secretAccessKey,
 				accessKeyId: credentials.accessKeyId,
@@ -262,7 +270,7 @@ export class LmChatAwsBedrock implements INodeType {
 		const model = new ChatBedrockConverse({
 			client,
 			model: modelName,
-			region: credentials.region,
+			region,
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
 			callbacks: [new N8nLlmTracing(this)],
