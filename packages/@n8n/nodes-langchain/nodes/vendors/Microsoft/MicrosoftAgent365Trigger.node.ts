@@ -248,6 +248,9 @@ export class MicrosoftAgent365Trigger implements INodeType {
 					input: activityCapture.input,
 					output: activityCapture.output,
 					...activity,
+					...(activityCapture.mcpToolLogs?.length
+						? { microsoftMcpToolLogs: activityCapture.mcpToolLogs }
+						: {}),
 				};
 			}
 

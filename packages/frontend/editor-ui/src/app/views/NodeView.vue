@@ -101,6 +101,7 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
+import { isChatNode } from '@/app/utils/aiUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -403,6 +404,13 @@ const containsTriggerNodes = computed(() => triggerNodes.value.length > 0);
 const allTriggerNodesDisabled = computed(() => {
 	const disabledTriggerNodes = triggerNodes.value.filter((node) => node.disabled);
 	return disabledTriggerNodes.length === triggerNodes.value.length;
+});
+
+const isRunButtonSplit = computed(() => {
+	const selectableTriggerNodes = triggerNodes.value.filter(
+		(node) => !node.disabled && !isChatNode(node),
+	);
+	return selectableTriggerNodes.length > 1 && workflowsStore.selectedTriggerNodeName !== undefined;
 });
 
 function onTidyUp(
@@ -1864,10 +1872,12 @@ onBeforeUnmount(() => {
 				<CanvasStopCurrentExecutionButton
 					v-if="isStopExecutionButtonVisible"
 					:stopping="isStoppingExecution"
+					:size="isRunButtonSplit ? 'xlarge' : 'large'"
 					@click="onStopExecution"
 				/>
 				<CanvasStopWaitingForWebhookButton
 					v-if="isStopWaitingForWebhookButtonVisible"
+					:size="isRunButtonSplit ? 'xlarge' : 'large'"
 					@click="onStopWaitingForWebhook"
 				/>
 			</div>
