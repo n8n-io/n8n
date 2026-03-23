@@ -1,33 +1,38 @@
-import type {
-	InstanceAiAdminSettingsUpdateRequest,
-	InstanceAiUserPreferencesUpdateRequest,
-} from '@n8n/api-types';
 import {
 	InstanceAiConfirmRequestDto,
 	instanceAiGatewayCapabilitiesSchema,
 	instanceAiFilesystemResponseSchema,
 	InstanceAiRenameThreadRequestDto,
 	InstanceAiSendMessageRequest,
+	InstanceAiEventsQuery,
+	InstanceAiGatewayEventsQuery,
+	instanceAiGatewayKeySchema,
+	InstanceAiCorrectTaskRequest,
+	InstanceAiUpdateMemoryRequest,
+	InstanceAiEnsureThreadRequest,
+	InstanceAiThreadMessagesQuery,
+	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiUserPreferencesUpdateRequest,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Get, Post, Put, Patch, Delete, Param, Body } from '@n8n/decorators';
+import { RestController, Get, Post, Put, Patch, Delete, Param, Body, Query } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import type { Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
-
-import { buildAgentTreeFromEvents } from './agent-tree-builder';
-import { InProcessEventBus } from './event-bus/in-process-event-bus';
-import { InstanceAiMemoryService } from './instance-ai-memory.service';
-import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { InstanceAiService } from './instance-ai.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
+
+import { buildAgentTreeFromEvents } from './agent-tree-builder';
+import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiService } from './instance-ai.service';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -81,9 +86,10 @@ export class InstanceAiController {
 	// usesTemplates bypasses the send() wrapper so we can write SSE frames directly
 	@Get('/events/:threadId', { usesTemplates: true })
 	async events(
-		req: AuthenticatedRequest<{}, {}, {}, { lastEventId?: string }>,
+		req: AuthenticatedRequest,
 		res: FlushableResponse,
 		@Param('threadId') threadId: string,
+		@Query query: InstanceAiEventsQuery,
 	) {
 		// Verify the requesting user owns this thread before streaming events.
 		// A thread that doesn't exist yet is allowed — the frontend opens the SSE
@@ -101,11 +107,12 @@ export class InstanceAiController {
 		res.flushHeaders();
 
 		// 2. Determine replay cursor
-		//    Last-Event-ID header (auto-reconnect) or ?lastEventId query param
-		const lastEventIdHeader = req.headers['last-event-id'];
-		const lastEventIdQuery = req.query.lastEventId;
-		const rawCursor = lastEventIdHeader ?? lastEventIdQuery;
-		const cursor = rawCursor ? parseInt(String(rawCursor), 10) : 0;
+		//    Last-Event-ID header (browser auto-reconnect) takes precedence over query param.
+		//    Both are validated as non-negative integers; invalid values fall back to 0.
+		const headerValue = req.headers['last-event-id'];
+		const parsedHeader = headerValue ? parseInt(String(headerValue), 10) : NaN;
+		const cursor =
+			Number.isFinite(parsedHeader) && parsedHeader >= 0 ? parsedHeader : (query.lastEventId ?? 0);
 
 		// 3. Replay missed events then subscribe in the same tick.
 		//    Since InProcessEventBus is synchronous and single-threaded (Node.js
@@ -239,13 +246,10 @@ export class InstanceAiController {
 		_res: Response,
 		@Param('threadId') threadId: string,
 		@Param('taskId') taskId: string,
+		@Body payload: InstanceAiCorrectTaskRequest,
 	) {
 		await this.assertThreadAccess(req.user.id, threadId);
-		const { message } = req.body as { message?: string };
-		if (!message?.trim()) {
-			throw new BadRequestError('Correction message is required');
-		}
-		this.instanceAiService.sendCorrectionToTask(taskId, message);
+		this.instanceAiService.sendCorrectionToTask(taskId, payload.message);
 		return { ok: true };
 	}
 
@@ -258,10 +262,13 @@ export class InstanceAiController {
 	}
 
 	@Put('/settings')
-	async updateAdminSettings(req: AuthenticatedRequest) {
+	async updateAdminSettings(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiAdminSettingsUpdateRequest,
+	) {
 		this.assertAdmin(req);
-		const body = req.body as InstanceAiAdminSettingsUpdateRequest;
-		return await this.settingsService.updateAdminSettings(body);
+		return await this.settingsService.updateAdminSettings(payload);
 	}
 
 	// ── User preferences (per-user, self-service) ──────────────────────────
@@ -272,10 +279,13 @@ export class InstanceAiController {
 	}
 
 	@Put('/preferences')
-	async updateUserPreferences(req: AuthenticatedRequest) {
-		const body = req.body as InstanceAiUserPreferencesUpdateRequest;
-		const result = await this.settingsService.updateUserPreferences(req.user, body);
-		if (body.filesystemDisabled !== undefined) {
+	async updateUserPreferences(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiUserPreferencesUpdateRequest,
+	) {
+		const result = await this.settingsService.updateUserPreferences(req.user, payload);
+		if (payload.filesystemDisabled !== undefined) {
 			await this.moduleRegistry.refreshModuleSettings('instance-ai');
 		}
 		return result;
@@ -302,12 +312,9 @@ export class InstanceAiController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiUpdateMemoryRequest,
 	) {
-		const { content } = req.body as { content: string };
-		if (typeof content !== 'string') {
-			throw new BadRequestError('Content is required');
-		}
-		await this.memoryService.updateWorkingMemory(req.user.id, threadId, content);
+		await this.memoryService.updateWorkingMemory(req.user.id, threadId, payload.content);
 		return { ok: true };
 	}
 
@@ -317,11 +324,12 @@ export class InstanceAiController {
 	}
 
 	@Post('/threads')
-	async ensureThread(req: AuthenticatedRequest) {
-		const { threadId } = req.body as { threadId?: string };
-		const requestedThreadId =
-			typeof threadId === 'string' && threadId.trim().length > 0 ? threadId : randomUUID();
-
+	async ensureThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEnsureThreadRequest,
+	) {
+		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
 		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
 	}
@@ -351,21 +359,22 @@ export class InstanceAiController {
 
 	@Get('/threads/:threadId/messages')
 	async getThreadMessages(
-		req: AuthenticatedRequest<{}, {}, {}, { limit?: string; page?: string; raw?: string }>,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
+		@Query query: InstanceAiThreadMessagesQuery,
 	) {
 		// ?raw=true returns the old format for the thread inspector
-		if (req.query.raw === 'true') {
+		if (query.raw === 'true') {
 			return await this.memoryService.getThreadMessages(req.user.id, threadId, {
-				limit: req.query.limit ? Number(req.query.limit) : 50,
-				page: req.query.page ? Number(req.query.page) : 0,
+				limit: query.limit,
+				page: query.page,
 			});
 		}
 
 		const result = await this.memoryService.getRichMessages(req.user.id, threadId, {
-			limit: req.query.limit ? Number(req.query.limit) : 50,
-			page: req.query.page ? Number(req.query.page) : 0,
+			limit: query.limit,
+			page: query.page,
 		});
 
 		// Include the next SSE event ID so the frontend can skip past events
@@ -405,8 +414,12 @@ export class InstanceAiController {
 	}
 
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
-	async gatewayEvents(req: Request<{}, {}, {}, { apiKey?: string }>, res: FlushableResponse) {
-		const userId = this.validateGatewayApiKey(req.query.apiKey);
+	async gatewayEvents(
+		req: Request,
+		res: FlushableResponse,
+		@Query query: InstanceAiGatewayEventsQuery,
+	) {
+		const userId = this.validateGatewayApiKey(query.apiKey);
 
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 		res.setHeader('Cache-Control', 'no-cache');
@@ -441,7 +454,7 @@ export class InstanceAiController {
 
 	@Post('/gateway/init', { skipAuth: true })
 	gatewayInit(req: Request) {
-		const key = req.headers['x-gateway-key'] as string | undefined;
+		const key = this.getGatewayKeyHeader(req);
 		const userId = this.validateGatewayApiKey(key);
 
 		const parsed = instanceAiGatewayCapabilitiesSchema.safeParse(req.body);
@@ -468,7 +481,7 @@ export class InstanceAiController {
 
 	@Post('/gateway/disconnect', { skipAuth: true })
 	gatewayDisconnect(req: Request) {
-		const userId = this.validateGatewayApiKey(req.headers['x-gateway-key'] as string | undefined);
+		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
 		this.instanceAiService.clearDisconnectTimer(userId);
 		this.instanceAiService.disconnectGateway(userId);
@@ -482,7 +495,7 @@ export class InstanceAiController {
 
 	@Post('/gateway/response/:requestId', { skipAuth: true })
 	gatewayResponse(req: Request, _res: Response, @Param('requestId') requestId: string) {
-		const userId = this.validateGatewayApiKey(req.headers['x-gateway-key'] as string | undefined);
+		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
 		const parsed = instanceAiFilesystemResponseSchema.safeParse(req.body);
 		if (!parsed.success) {
@@ -531,6 +544,18 @@ export class InstanceAiController {
 		if (slug !== 'global:owner' && slug !== 'global:admin') {
 			throw new ForbiddenError('Admin access required');
 		}
+	}
+
+	/**
+	 * Safely extract and validate the x-gateway-key header value.
+	 * Headers can be string | string[] | undefined — take only the first value
+	 * and validate against the shared gateway key schema.
+	 */
+	private getGatewayKeyHeader(req: Request): string | undefined {
+		const raw = req.headers['x-gateway-key'];
+		const value = Array.isArray(raw) ? raw[0] : raw;
+		const parsed = instanceAiGatewayKeySchema.safeParse(value);
+		return parsed.success ? parsed.data : undefined;
 	}
 
 	/**

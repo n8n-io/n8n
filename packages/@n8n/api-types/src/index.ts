@@ -272,6 +272,15 @@ export {
 	domainAccessMetaSchema,
 	credentialFlowSchema,
 	InstanceAiSendMessageRequest,
+	instanceAiGatewayKeySchema,
+	InstanceAiGatewayEventsQuery,
+	InstanceAiEventsQuery,
+	InstanceAiCorrectTaskRequest,
+	InstanceAiUpdateMemoryRequest,
+	InstanceAiEnsureThreadRequest,
+	InstanceAiThreadMessagesQuery,
+	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiUserPreferencesUpdateRequest,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -323,9 +332,7 @@ export type {
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
 	InstanceAiAdminSettingsResponse,
-	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesResponse,
-	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiModelCredential,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
