@@ -7,7 +7,6 @@ export {
 	dbType,
 	JsonColumn,
 	DateTimeColumn,
-	BinaryColumn,
 } from './entities/abstract-entity';
 
 export { generateNanoId } from '@n8n/utils';
