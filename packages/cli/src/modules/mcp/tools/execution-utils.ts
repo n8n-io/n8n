@@ -50,6 +50,10 @@ export const waitForExecutionResult = async (
 		}
 
 		if (error instanceof McpExecutionTimeoutError) {
+			// Known limitation: In queue mode, activeExecutions.stopExecution() only affects
+			// local executions. Remote worker executions require cancellation via
+			// ScalingService.stopJob() with a Bull Job reference, which is not available here.
+			// This is a pre-existing gap in ExecutionService.stopInScalingMode() as well.
 			try {
 				const cancellationError = new TimeoutExecutionCancelledError(error.executionId!);
 				activeExecutions.stopExecution(error.executionId!, cancellationError);
