@@ -1,0 +1,46 @@
+import type { MigrationContext, ReversibleMigration } from '../migration-types';
+
+const ruleTable = 'role_mapping_rule';
+const joinTable = 'role_mapping_rule_project';
+
+/**
+ * IAM-396: Role mapping rules — expression → role assignment with ordered
+ * evaluation (first match wins) within a rule type. Rules apply to many projects
+ * via join table `role_mapping_rule_project`.
+ */
+export class CreateRoleMappingRuleTable1772800000000 implements ReversibleMigration {
+	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
+		await createTable(ruleTable)
+			.withColumns(
+				column('id').uuid.primary.notNull,
+				column('expression').text.notNull,
+				column('role').varchar(128).notNull, // matches slug length of role table
+				column('type').varchar(64).notNull,
+				column('order').int.notNull,
+			)
+			.withIndexOn('role')
+			.withIndexOn(['type', 'order']);
+
+		await createTable(joinTable)
+			.withColumns(
+				column('roleMappingRuleId').uuid.primary.notNull,
+				column('projectId').varchar(36).primary.notNull,
+			)
+			.withIndexOn('projectId')
+			.withForeignKey('roleMappingRuleId', {
+				tableName: ruleTable,
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('projectId', {
+				tableName: 'project',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			});
+	}
+
+	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
+		await dropTable(joinTable);
+		await dropTable(ruleTable);
+	}
+}
