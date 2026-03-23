@@ -116,7 +116,7 @@ export const createExecuteWorkflowTool = (
 			title: 'Execute Workflow',
 			readOnlyHint: false, // Can read and write data via workflows
 			destructiveHint: true, // Can cause changes in external systems via workflows
-			idempotentHint: true, // Safe to retry multiple times
+			idempotentHint: false, // Executions can trigger side effects in external systems
 			openWorldHint: true, // Can access external systems via workflows
 		},
 	},

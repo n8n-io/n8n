@@ -73,7 +73,7 @@ export const createTestWorkflowTool = (
 			title: 'Test Workflow',
 			readOnlyHint: false,
 			destructiveHint: true,
-			idempotentHint: true,
+			idempotentHint: false, // Nodes like Execute Command, file write, and Code execute for real even with pin data
 			openWorldHint: false,
 		},
 	},
