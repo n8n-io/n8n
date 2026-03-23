@@ -1487,6 +1487,9 @@ importers:
       linkedom:
         specifier: ^0.18.9
         version: 0.18.12
+      luxon:
+        specifier: 'catalog:'
+        version: 3.7.2
       nanoid:
         specifier: 'catalog:'
         version: 3.3.8
@@ -1506,6 +1509,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/luxon':
+        specifier: 3.2.0
+        version: 3.2.0
       '@types/turndown':
         specifier: ^5.0.5
         version: 5.0.6

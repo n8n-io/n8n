@@ -1,3 +1,5 @@
+import { DateTime } from 'luxon';
+
 interface SystemPromptOptions {
 	researchMode?: boolean;
 	webhookBaseUrl?: string;
@@ -5,13 +7,27 @@ interface SystemPromptOptions {
 	toolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
+	/** IANA time zone identifier for the current user (e.g. "Europe/Helsinki"). */
+	timeZone?: string;
 }
 
 export function getSystemPrompt(options: SystemPromptOptions = {}): string {
-	const { researchMode, webhookBaseUrl, filesystemAccess, toolSearchEnabled, licenseHints } =
-		options;
+	const {
+		researchMode,
+		webhookBaseUrl,
+		filesystemAccess,
+		toolSearchEnabled,
+		licenseHints,
+		timeZone,
+	} = options;
+
+	const now = timeZone ? DateTime.now().setZone(timeZone) : DateTime.now();
+	const isoTime = now.toISO({ includeOffset: true });
+	const tzLabel = timeZone ? ` (timezone: ${timeZone})` : '';
+	const dateTimeBlock = `\n## Current Date and Time\n\nThe user's current local date and time is: ${isoTime}${tzLabel}.\nWhen you need to reference "now", use this date and time.\n`;
+
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
-${webhookBaseUrl ? `\n## Instance Info\n\nWebhook base URL: ${webhookBaseUrl}\nWhen a workflow has webhook triggers, its live URL is: ${webhookBaseUrl}/{path} (where {path} is the webhook path parameter). Always share the full webhook URL with the user after a workflow with webhooks is created.\n\n**This URL is for sharing with the user only.** Do NOT include it in \`build-workflow-with-agent\` task descriptions — the builder cannot reach the n8n instance via HTTP and will fail if it tries to curl/fetch this URL.\n` : ''}
+${dateTimeBlock}${webhookBaseUrl ? `\n## Instance Info\n\nWebhook base URL: ${webhookBaseUrl}\nWhen a workflow has webhook triggers, its live URL is: ${webhookBaseUrl}/{path} (where {path} is the webhook path parameter). Always share the full webhook URL with the user after a workflow with webhooks is created.\n\n**This URL is for sharing with the user only.** Do NOT include it in \`build-workflow-with-agent\` task descriptions — the builder cannot reach the n8n instance via HTTP and will fail if it tries to curl/fetch this URL.\n` : ''}
 
 You have access to workflow, execution, and credential tools plus a specialized workflow builder. You also have delegation capabilities for complex tasks, and may have access to MCP tools for extended capabilities.
 

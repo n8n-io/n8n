@@ -376,6 +376,8 @@ export interface InstanceAiSendMessageRequest {
 	message: string;
 	researchMode?: boolean;
 	attachments?: InstanceAiAttachment[];
+	/** IANA time zone identifier from the client (e.g. "Europe/Helsinki") */
+	timeZone?: string;
 }
 
 export interface InstanceAiSendMessageResponse {

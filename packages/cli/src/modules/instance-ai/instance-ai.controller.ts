@@ -54,7 +54,8 @@ export class InstanceAiController {
 
 	@Post('/chat/:threadId')
 	async chat(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
-		const { message, researchMode, attachments } = req.body as InstanceAiSendMessageRequest;
+		const { message, researchMode, attachments, timeZone } =
+			req.body as InstanceAiSendMessageRequest;
 
 		if (!message?.trim()) {
 			throw new BadRequestError('Message is required');
@@ -70,12 +71,14 @@ export class InstanceAiController {
 
 		const safeResearchMode = typeof researchMode === 'boolean' ? researchMode : undefined;
 		const safeAttachments = Array.isArray(attachments) ? attachments : undefined;
+		const safeTimeZone = this.sanitizeTimeZone(timeZone);
 		const runId = this.instanceAiService.startRun(
 			req.user,
 			threadId,
 			message,
 			safeResearchMode,
 			safeAttachments,
+			safeTimeZone,
 		);
 		return { runId };
 	}
@@ -559,6 +562,22 @@ export class InstanceAiController {
 		if (userId) return userId;
 
 		throw new ForbiddenError('Invalid API key');
+	}
+
+	/**
+	 * Validate and sanitize a client-supplied IANA time zone string.
+	 * Returns `undefined` for missing or invalid values so the server can fall back.
+	 */
+	private sanitizeTimeZone(tz: unknown): string | undefined {
+		if (typeof tz !== 'string' || tz.length === 0 || tz.length > 50) return undefined;
+		// Only allow safe IANA characters to prevent prompt injection
+		if (!/^[A-Za-z0-9_/+-]+$/.test(tz)) return undefined;
+		try {
+			new Intl.DateTimeFormat('en-US', { timeZone: tz });
+			return tz;
+		} catch {
+			return undefined;
+		}
 	}
 
 	private writeSseEvent(res: FlushableResponse, stored: StoredEvent): void {
