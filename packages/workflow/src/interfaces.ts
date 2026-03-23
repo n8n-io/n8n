@@ -2754,6 +2754,16 @@ export interface ITaskMetadata {
 		/** Time saved in minutes */
 		minutes: number;
 	};
+
+	/**
+	 * Runtime override for the execution save decision. Set by the SaveExecution node.
+	 * When true, forces the execution to be saved regardless of workflow settings.
+	 * When false, forces the execution to be discarded. If multiple nodes set
+	 * conflicting values (parallel branches), false wins as a safety default.
+	 * When undefined, the workflow-level save settings apply (default behavior).
+	 * Note: This only controls persistence — error workflows still fire on failure.
+	 */
+	saveExecution?: boolean;
 }
 
 /** The data that gets returned when a node execution starts */

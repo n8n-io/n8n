@@ -46,6 +46,31 @@ import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
 import { getDataLastExecutedNodeData } from '@/workflow-helpers';
 
+/**
+ * Scans per-node metadata in resultData.runData for a saveExecution override
+ * set by the SaveExecution node. If multiple nodes set conflicting values
+ * (e.g. parallel branches), `false` (discard) takes priority as a safety default.
+ */
+function getSaveExecutionOverride(fullRunData: IRun): boolean | undefined {
+	const runData = fullRunData.data?.resultData?.runData;
+	if (!runData) return undefined;
+
+	let override: boolean | undefined;
+	for (const taskDataList of Object.values(runData)) {
+		for (const taskData of taskDataList) {
+			if (taskData.metadata?.saveExecution !== undefined) {
+				if (!taskData.metadata.saveExecution) return false;
+				override = taskData.metadata.saveExecution;
+			}
+		}
+	}
+	return override;
+}
+
+function workflowHasSaveExecutionNode(workflowData: IWorkflowBase): boolean {
+	return workflowData.nodes.some((n) => n.type === 'n8n-nodes-base.saveExecution');
+}
+
 @Service()
 class ModulesHooksRegistry {
 	addHooks(hooks: ExecutionLifecycleHooks) {
@@ -481,6 +506,7 @@ function hookFunctionsSave(
 	const binaryDataService = Container.get(BinaryDataService);
 	const workflowStaticDataService = Container.get(WorkflowStaticDataService);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
+	const hasSaveExecutionNode = workflowHasSaveExecutionNode(hooks.workflowData);
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData, newStaticData) {
 		logger.debug('Executing hook (hookFunctionsSave)', {
 			executionId: this.executionId,
@@ -528,9 +554,15 @@ function hookFunctionsSave(
 				return;
 			}
 
+			const runtimeSaveOverride = hasSaveExecutionNode
+				? getSaveExecutionOverride(fullRunData)
+				: undefined;
+
 			const shouldNotSave =
-				(fullRunData.status === 'success' && !saveSettings.success) ||
-				(fullRunData.status !== 'success' && !saveSettings.error);
+				runtimeSaveOverride !== undefined
+					? !runtimeSaveOverride
+					: (fullRunData.status === 'success' && !saveSettings.success) ||
+						(fullRunData.status !== 'success' && !saveSettings.error);
 
 			if (shouldNotSave && !fullRunData.waitTill && !isManualMode) {
 				executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, retryOf);
@@ -720,6 +752,7 @@ export function getLifecycleHooksForScalingMain(
 	hookFunctionsExternalHooks(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 
+	const hasSaveExecutionNode = workflowHasSaveExecutionNode(workflowData);
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
 		// Don't delete executions before they are finished
 		if (!fullRunData.finished) return;
@@ -741,9 +774,15 @@ export function getLifecycleHooksForScalingMain(
 			return;
 		}
 
+		const runtimeSaveOverride = hasSaveExecutionNode
+			? getSaveExecutionOverride(fullRunData)
+			: undefined;
+
 		const shouldNotSave =
-			(fullRunData.status === 'success' && !saveSettings.success) ||
-			(fullRunData.status !== 'success' && !saveSettings.error);
+			runtimeSaveOverride !== undefined
+				? !runtimeSaveOverride
+				: (fullRunData.status === 'success' && !saveSettings.success) ||
+					(fullRunData.status !== 'success' && !saveSettings.error);
 
 		if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
 			await executionPersistence.hardDelete({
