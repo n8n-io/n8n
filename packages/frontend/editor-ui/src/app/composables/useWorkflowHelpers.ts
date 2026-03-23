@@ -584,7 +584,7 @@ export function useWorkflowHelpers() {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 
-		const workflowNodes = workflowsStore.allNodes;
+		const workflowNodes = workflowDocumentStore.allNodes;
 		const workflowConnections = workflowDocumentStore.connectionsBySourceNode;
 
 		let nodeData;
