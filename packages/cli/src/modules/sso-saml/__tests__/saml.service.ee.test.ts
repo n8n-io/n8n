@@ -905,11 +905,23 @@ describe('SamlService', () => {
 					metadata: mockSamlConfig.metadata,
 				});
 
+				// @ts-expect-error -- accessing private method for testing
 				const decrypted = samlService.getDecryptedSigningPrivateKey();
 				expect(decrypted).toBe(RSA_TEST_PRIVATE_KEY);
 			});
 
 			it('should return undefined when no signing key is stored', () => {
+				// @ts-expect-error -- accessing private method for testing
+				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+			});
+
+			it('should return undefined when feature flag is disabled', async () => {
+				delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+				await samlService.loadPreferencesWithoutValidation({
+					signingPrivateKey: 'encrypted:some-key',
+				});
+
+				// @ts-expect-error -- accessing private method for testing
 				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			});
 
@@ -922,6 +934,7 @@ describe('SamlService', () => {
 					throw new Error('Decryption failed');
 				});
 
+				// @ts-expect-error -- accessing private method for testing
 				expect(() => samlService.getDecryptedSigningPrivateKey()).toThrow(
 					'Failed to decrypt SAML signing private key',
 				);
@@ -958,6 +971,42 @@ describe('SamlService', () => {
 				// The encrypted key should be stored as-is (not re-encrypted)
 				expect(samlService.samlPreferences.signingPrivateKey).toBe(encryptedKey);
 				expect(cipher.encrypt).not.toHaveBeenCalled();
+			});
+
+			it('should survive loadFromDbAndApplySamlPreferences after saving encrypted key', async () => {
+				// Mock methods needed for setSamlPreferences and loadFromDbAndApplySamlPreferences
+				jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+				jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
+				jest
+					.spyOn(samlService, 'saveSamlPreferencesToDb')
+					.mockResolvedValue(mockSamlConfig as SamlPreferences);
+
+				// Step 1: Save preferences with a valid PEM key+cert (simulating API call)
+				await samlService.setSamlPreferences({
+					authnRequestsSigned: true,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				// Step 2: Capture what would be stored in DB (encrypted key, plaintext cert)
+				const storedPrefs = samlService.samlPreferences;
+				expect(storedPrefs.signingPrivateKey).toContain('encrypted:');
+
+				// Step 3: Mock DB to return the stored (encrypted) preferences
+				settingsRepository.findOne = jest.fn().mockResolvedValue({
+					key: SAML_PREFERENCES_DB_KEY,
+					value: JSON.stringify(storedPrefs),
+					loadOnStartup: true,
+				});
+
+				// Step 4: Simulate server restart — loadFromDbAndApplySamlPreferences(true)
+				// This should NOT throw even though the key in DB is encrypted (not PEM)
+				await expect(samlService.loadFromDbAndApplySamlPreferences(true)).resolves.not.toThrow();
+
+				// Step 5: Verify the key can still be decrypted back to the original PEM
+				// @ts-expect-error -- accessing private method for testing
+				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 			});
 		});
 
@@ -1041,6 +1090,7 @@ describe('SamlService', () => {
 					metadata: mockSamlConfig.metadata,
 				});
 
+				// @ts-expect-error -- accessing private method for testing
 				const decrypted = samlService.getDecryptedSigningPrivateKey();
 				expect(decrypted).toBe(EC_TEST_PRIVATE_KEY);
 			});
@@ -1069,6 +1119,7 @@ describe('SamlService', () => {
 
 				// Key should remain unchanged
 				expect(samlService.samlPreferences.signingPrivateKey).toBe(encryptedBefore);
+				// @ts-expect-error -- accessing private method for testing
 				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 			});
 
@@ -1108,6 +1159,7 @@ describe('SamlService', () => {
 					metadata: mockSamlConfig.metadata,
 				});
 
+				// @ts-expect-error -- accessing private method for testing
 				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 
 				// Clear the key
@@ -1117,6 +1169,7 @@ describe('SamlService', () => {
 				});
 
 				expect(samlService.samlPreferences.signingPrivateKey).toBeUndefined();
+				// @ts-expect-error -- accessing private method for testing
 				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			});
 
@@ -1331,22 +1384,20 @@ describe('SamlService', () => {
 				.mockResolvedValue(undefined);
 		});
 
-		test('should call setSamlPreferences with broadcastReload=true by default', async () => {
+		test('should broadcast reload by default', async () => {
 			settingsRepository.findOne = jest.fn().mockResolvedValue(mockConfigFromDB);
-			jest.spyOn(samlService, 'setSamlPreferences');
 
 			await samlService.loadFromDbAndApplySamlPreferences(true);
 
-			expect(samlService.setSamlPreferences).toHaveBeenCalledWith(mockSamlConfig, true, true);
+			expect((samlService as any).broadcastReloadSAMLConfigurationCommand).toHaveBeenCalledTimes(1);
 		});
 
-		test('should call setSamlPreferences with broadcastReload=false when specified', async () => {
+		test('should not broadcast reload when broadcastReload=false', async () => {
 			settingsRepository.findOne = jest.fn().mockResolvedValue(mockConfigFromDB);
-			jest.spyOn(samlService, 'setSamlPreferences');
 
 			await samlService.loadFromDbAndApplySamlPreferences(true, false);
 
-			expect(samlService.setSamlPreferences).toHaveBeenCalledWith(mockSamlConfig, true, false);
+			expect((samlService as any).broadcastReloadSAMLConfigurationCommand).not.toHaveBeenCalled();
 		});
 	});
 

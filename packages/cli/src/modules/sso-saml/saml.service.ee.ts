@@ -106,7 +106,8 @@ export class SamlService {
 	 * Returns the decrypted signing private key for internal use (e.g., signing SAML requests).
 	 * @throws BadRequestError if decryption fails
 	 */
-	getDecryptedSigningPrivateKey(): string | undefined {
+	private getDecryptedSigningPrivateKey(): string | undefined {
+		if (!this.isSignedSamlRequestsEnabled()) return undefined;
 		if (!this._samlPreferences.signingPrivateKey) return undefined;
 		try {
 			return this.cipher.decrypt(this._samlPreferences.signingPrivateKey);
@@ -118,13 +119,13 @@ export class SamlService {
 	}
 
 	private isValidPemPrivateKey(pem: string): boolean {
-		return /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----[\s\S]+-----END (?:RSA |EC )?PRIVATE KEY-----/.test(
+		return /^-----BEGIN (?:RSA |EC )?PRIVATE KEY-----[\s\S]+-----END (?:RSA |EC )?PRIVATE KEY-----/.test(
 			pem.trim(),
 		);
 	}
 
 	private isValidPemCertificate(pem: string): boolean {
-		return /-----BEGIN CERTIFICATE-----[\s\S]+-----END CERTIFICATE-----/.test(pem.trim());
+		return /^-----BEGIN CERTIFICATE-----[\s\S]+-----END CERTIFICATE-----/.test(pem.trim());
 	}
 
 	private validateKeyPairMatch(privateKeyPem: string, certificatePem: string): boolean {
@@ -435,6 +436,20 @@ export class SamlService {
 		this.validateSigningKeyConfiguration(prefs);
 		const previousMetadataUrl = this._samlPreferences.metadataUrl;
 		await this.loadPreferencesWithoutValidation(prefs);
+		await this.applyLoadedPreferences(prefs, previousMetadataUrl, tryFallback);
+		const result = await this.saveSamlPreferencesToDb();
+
+		if (broadcastReload) {
+			await this.broadcastReloadSAMLConfigurationCommand();
+		}
+		return result;
+	}
+
+	private async applyLoadedPreferences(
+		prefs: Partial<SamlPreferences>,
+		previousMetadataUrl: string | undefined,
+		tryFallback: boolean = true,
+	): Promise<void> {
 		if (prefs.metadataUrl) {
 			try {
 				const fetchedMetadata = await this.fetchMetadataFromUrl();
@@ -484,12 +499,6 @@ export class SamlService {
 			}
 		}
 		this.getIdentityProviderInstance(true);
-		const result = await this.saveSamlPreferencesToDb();
-
-		if (broadcastReload) {
-			await this.broadcastReloadSAMLConfigurationCommand();
-		}
-		return result;
 	}
 
 	async loadPreferencesWithoutValidation(prefs: Partial<SamlPreferences>) {
@@ -550,7 +559,18 @@ export class SamlService {
 
 			if (prefs) {
 				if (apply) {
-					await this.setSamlPreferences(prefs, true, broadcastReload);
+					// DB data was already validated when originally saved via setSamlPreferences().
+					// We must NOT re-validate here because signing keys are stored encrypted
+					// and would fail PEM validation. Instead, load preferences directly and
+					// apply the SAML configuration (metadata, identity provider, etc.).
+					await this.loadSamlify();
+					const previousMetadataUrl = this._samlPreferences.metadataUrl;
+					await this.loadPreferencesWithoutValidation(prefs);
+					await this.applyLoadedPreferences(prefs, previousMetadataUrl);
+
+					if (broadcastReload) {
+						await this.broadcastReloadSAMLConfigurationCommand();
+					}
 				} else {
 					await this.loadPreferencesWithoutValidation(prefs);
 				}

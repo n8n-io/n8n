@@ -499,6 +499,7 @@ describe('Signing key configuration via API', () => {
 				.expect(200);
 
 			const samlService = Container.get(SamlService);
+			// @ts-expect-error -- accessing private method for testing
 			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
 			expect(decryptedKey).toBe(RSA_TEST_PRIVATE_KEY);
 		});
@@ -516,6 +517,7 @@ describe('Signing key configuration via API', () => {
 				.expect(200);
 
 			const samlService = Container.get(SamlService);
+			// @ts-expect-error -- accessing private method for testing
 			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
 			expect(decryptedKey).toBe(EC_TEST_PRIVATE_KEY);
 		});
@@ -535,6 +537,7 @@ describe('Signing key configuration via API', () => {
 
 			// Verify key is stored
 			const samlService = Container.get(SamlService);
+			// @ts-expect-error -- accessing private method for testing
 			expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 
 			// Clear both fields
@@ -548,6 +551,7 @@ describe('Signing key configuration via API', () => {
 				.expect(200);
 
 			// Key should be cleared
+			// @ts-expect-error -- accessing private method for testing
 			expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			expect(samlService.samlPreferences.signingCertificate).toBeUndefined();
 
@@ -582,6 +586,7 @@ describe('Signing key configuration via API', () => {
 
 			// Key should still be decryptable to original value
 			const samlService = Container.get(SamlService);
+			// @ts-expect-error -- accessing private method for testing
 			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
 			expect(decryptedKey).toBe(RSA_TEST_PRIVATE_KEY);
 		});
