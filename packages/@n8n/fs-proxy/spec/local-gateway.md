@@ -224,12 +224,13 @@ the matching resources.
 When a tool group operates in `Ask` mode, confirmation is scoped to a
 **resource**. The resource is defined by the tool itself. For Browser
 Automation the resource is the **domain** (e.g. `github.com`). For Shell
-Execution the resource is the **command** (e.g. `npm`). For other tool groups
-the resource is determined by the respective tool.
-
-A single tool call may involve multiple resources (e.g. a chained shell
-command `npm install && git push` involves two resources: `npm` and `git`).
-Each resource must be confirmed independently before the tool executes.
+Execution the resource is the **normalized command**: wrapper commands
+(`sudo`, `env`, etc.) and environment variable assignments are stripped, and
+the executable basename replaces an absolute path (e.g. `sudo apt install foo`
+→ `apt install foo`). Compound or otherwise unrecognizable commands (chained
+operators, command substitution, variable-indirect execution, relative paths)
+are returned as-is so the full command is visible in the confirmation prompt.
+For other tool groups the resource is determined by the respective tool.
 
 Resource-level `always deny` rules take precedence over the tool group
 permission mode. A resource with a stored `always deny` rule is blocked

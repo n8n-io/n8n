@@ -3,14 +3,13 @@ import { z } from 'zod';
 
 import type { CallToolResult, ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
+import { buildShellResource } from './build-shell-resource';
 
 const inputSchema = z.object({
 	command: z.string().describe('Shell command to execute'),
 	timeout: z.number().int().optional().describe('Timeout in milliseconds (default: 30000)'),
 	cwd: z.string().optional().describe('Working directory for the command'),
 });
-
-const SHELL_RESOURCE = '*';
 
 export const shellExecuteTool: ToolDefinition<typeof inputSchema> = {
 	name: 'shell_execute',
@@ -21,7 +20,7 @@ export const shellExecuteTool: ToolDefinition<typeof inputSchema> = {
 		return [
 			{
 				toolGroup: 'shell' as const,
-				resource: SHELL_RESOURCE,
+				resource: buildShellResource(command),
 				description: `Execute shell command: ${command}`,
 			},
 		];
