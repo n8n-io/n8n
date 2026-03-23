@@ -1991,6 +1991,7 @@ function toWorkflowDetail(workflow: WorkflowEntity): WorkflowDetail {
 				type: n.type,
 				parameters: n.parameters,
 				position: n.position,
+				webhookId: n.webhookId,
 			}),
 		),
 		connections: workflow.connections as Record<string, unknown>,

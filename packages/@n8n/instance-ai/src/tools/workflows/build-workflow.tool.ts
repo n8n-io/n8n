@@ -3,6 +3,7 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
+import { ensureWebhookIds } from './submit-workflow.tool';
 import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
 import { extractWorkflowCode } from '../../workflow-builder/extract-code';
@@ -148,6 +149,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// newCredential() produces NewCredentialImpl which serializes to undefined.
 			const credentialMap = await buildCredentialMap(context.credentialService);
 			await resolveCredentials(json, workflowId, context, credentialMap);
+
+			// Ensure webhook nodes have a webhookId so n8n registers clean paths
+			await ensureWebhookIds(json, workflowId, context);
 
 			try {
 				const opts = projectId ? { projectId } : undefined;
