@@ -66,14 +66,14 @@ export class ExecutionPersistence {
 	}
 
 	/**
-	 * Delete an execution that is not meant to be saved.
+	 * Delete an in-flight execution that is not meant to be saved.
 	 *
 	 * - When pruning is enabled, soft-deletes with a backdated `deletedAt` so the
 	 * execution is immediately eligible for the next pruning hard-delete batch.
 	 * - When pruning is disabled, hard-deletes immediately so the execution
 	 * is not persisted indefinitely.
 	 */
-	async deleteUnsaved(target: DeletionTarget) {
+	async deleteInFlightExecution(target: DeletionTarget) {
 		if (this.executionsConfig.pruneData) {
 			const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
 			const deletedAt = new Date(Date.now() - bufferMs);

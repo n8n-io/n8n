@@ -974,7 +974,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await testHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-				expect(executionPersistence.deleteUnsaved).toHaveBeenCalledWith({
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
 					workflowId,
 					executionId,
 					storedAt: 'db',
@@ -998,7 +998,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await testHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
-				expect(executionPersistence.deleteUnsaved).toHaveBeenCalledWith({
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
 					workflowId,
 					executionId,
 					storedAt: 'db',
@@ -1036,7 +1036,7 @@ describe('Execution Lifecycle Hooks', () => {
 					// Metadata should not be saved before deletion
 					expect(executionMetadataService.save).not.toHaveBeenCalled();
 					// Execution should be deleted
-					expect(executionPersistence.deleteUnsaved).toHaveBeenCalledWith({
+					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
 						workflowId,
 						executionId,
 						storedAt: 'db',

@@ -220,7 +220,7 @@ describe('ExecutionPersistence', () => {
 			const executionPersistence = createPersistenceService('db');
 
 			const before = Date.now();
-			await executionPersistence.deleteUnsaved(target);
+			await executionPersistence.deleteInFlightExecution(target);
 
 			expect(executionRepository.update).toHaveBeenCalledWith('exec-1', {
 				deletedAt: expect.any(Date),
@@ -236,7 +236,7 @@ describe('ExecutionPersistence', () => {
 			executionsConfig.pruneData = false;
 			const executionPersistence = createPersistenceService('db');
 
-			await executionPersistence.deleteUnsaved(target);
+			await executionPersistence.deleteInFlightExecution(target);
 
 			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
 			expect(executionRepository.update).not.toHaveBeenCalled();
