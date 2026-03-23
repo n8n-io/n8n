@@ -45,6 +45,7 @@ describe('ProjectController', () => {
 				{ id: 'p2', name: 'Project 2' },
 			];
 			(projectsService.getAccessibleProjectsAndCount as jest.Mock).mockResolvedValue([projects, 2]);
+			(projectsService.addUserScopes as jest.Mock).mockResolvedValue(projects);
 
 			const res = makeRes();
 			const query = { skip: 0, take: 10, search: 'test', type: 'team' as const };
@@ -52,6 +53,7 @@ describe('ProjectController', () => {
 			await controller.getAllProjects(req, res, query as any);
 
 			expect(projectsService.getAccessibleProjectsAndCount).toHaveBeenCalledWith(req.user, query);
+			expect(projectsService.addUserScopes).toHaveBeenCalledWith(req.user, projects);
 			expect(res.json).toHaveBeenCalledWith({ count: 2, data: projects });
 		});
 

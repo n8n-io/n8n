@@ -3,7 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { INodeUi } from '@/Interface';
-import { useNodeExecution } from '@/app/composables/useNodeExecution';
+import { useNodeExecution, type UseNodeExecutionOptions } from '@/app/composables/useNodeExecution';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
@@ -13,7 +13,10 @@ import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
  * Returns everything a card needs: execution state for the button + listening
  * hint text for the callout.
  */
-export function useTriggerExecution(node: MaybeRef<INodeUi | null>) {
+export function useTriggerExecution(
+	node: MaybeRef<INodeUi | null>,
+	options?: UseNodeExecutionOptions,
+) {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
@@ -27,7 +30,7 @@ export function useTriggerExecution(node: MaybeRef<INodeUi | null>) {
 		disabledReason,
 		hasIssues,
 		execute,
-	} = useNodeExecution(node);
+	} = useNodeExecution(node, options);
 
 	const nodeValue = computed(() => toValue(node));
 

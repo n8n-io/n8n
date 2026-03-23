@@ -201,6 +201,7 @@ const goToUpgrade = () => {
 			<ExecutionsFilter
 				popover-side="right"
 				popover-align="start"
+				:workflow-id="props.workflow?.id"
 				@filter-changed="onFilterChanged"
 			/>
 		</div>

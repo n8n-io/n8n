@@ -649,21 +649,23 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('public API events', () => {
-		it('should track on `public-api-invoked` event', () => {
+		it('should buffer on `public-api-invoked` event', () => {
 			const event: RelayEventMap['public-api-invoked'] = {
 				userId: 'user123',
 				path: '/api/v1/workflows',
 				method: 'GET',
 				apiVersion: 'v1',
+				userAgent: 'n8n-cli',
 			};
 
 			eventService.emit('public-api-invoked', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User invoked API', {
+			expect(telemetry.trackApiInvocation).toHaveBeenCalledWith({
 				user_id: 'user123',
 				path: '/api/v1/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				user_agent: 'n8n-cli',
 			});
 		});
 
