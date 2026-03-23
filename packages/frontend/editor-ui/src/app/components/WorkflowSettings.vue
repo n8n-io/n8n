@@ -1191,7 +1191,7 @@ onBeforeUnmount(() => {
 							</N8nSelect>
 						</ElCol>
 					</ElRow>
-					<ElRow :class="$style['dynamic-credentials-hint']">
+					<ElRow v-if="workflowHasDynamicCredentials" :class="$style['dynamic-credentials-hint']">
 						<ElCol :span="10" />
 						<ElCol :span="14">
 							<N8nText size="small" color="text-light" :class="$style.dataRedactionHint">

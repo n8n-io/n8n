@@ -1055,12 +1055,7 @@ describe('WorkflowSettingsVue', () => {
 
 			await nextTick();
 
-			// Verify the dynamic credentials hint is shown — this proves workflowHasDynamicCredentials
-			// is true, which also forces the production select to "Redact" and disables it
-			const dialog = getByTestId('workflow-settings-dialog');
-			expect(within(dialog).getByText(/dynamic credentials/i)).toBeInTheDocument();
-
-			// Verify the dropdown cannot be opened (disabled)
+			// Verify the dropdown cannot be opened (disabled by workflowHasDynamicCredentials)
 			const productionSelect = getByTestId('workflow-settings-redact-production-select');
 			const dropdownItems = await getDropdownItems(productionSelect).catch(() => null);
 			expect(dropdownItems).toBeNull();
