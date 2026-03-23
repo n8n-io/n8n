@@ -113,65 +113,63 @@ test('should have a running logwriter process', () => {
 	expect(thread).toBeDefined();
 });
 
-test('should confirm messages immediately when no destination is listening', async () => {
-	// Remove the log-streaming listener to simulate an unlicensed instance
-	eventBus.removeAllListeners('message');
-
-	const testMessage = new EventMessageGeneric({
-		eventName: 'n8n.test.message' as EventNamesTypes,
-		id: uuid(),
+describe('message confirmation', () => {
+	afterEach(async () => {
+		// Restore the log-streaming destination listener for subsequent tests
+		destinationService['isListening'] = false;
+		await destinationService.initialize();
 	});
 
-	await eventBus.send(testMessage);
-	await new Promise((resolve) => {
-		eventBus.logWriter.worker?.on(
-			'message',
-			async function handler(msg: { command: string; data: any }) {
-				if (msg.command === 'confirmMessageSent') {
-					await confirmIdSent(testMessage.id);
-					eventBus.logWriter.worker?.removeListener('message', handler);
-					resolve(true);
-				}
-			},
-		);
+	test('should confirm messages immediately when no listener is registered', async () => {
+		// Simulate an unlicensed instance: remove all message listeners
+		eventBus.removeAllListeners('message');
+
+		const testMessage = new EventMessageGeneric({
+			eventName: 'n8n.test.message' as EventNamesTypes,
+			id: uuid(),
+		});
+
+		await eventBus.send(testMessage);
+		await new Promise((resolve) => {
+			eventBus.logWriter.worker?.on(
+				'message',
+				async function handler(msg: { command: string; data: any }) {
+					if (msg.command === 'confirmMessageSent') {
+						await confirmIdSent(testMessage.id);
+						eventBus.logWriter.worker?.removeListener('message', handler);
+						resolve(true);
+					}
+				},
+			);
+		});
 	});
 
-	// Restore the listener for subsequent tests
-	destinationService['isListening'] = false;
-	await destinationService.initialize();
-});
+	test('should delegate confirmation to listener when one is registered', async () => {
+		const testMessage = new EventMessageGeneric({
+			eventName: 'n8n.test.message' as EventNamesTypes,
+			id: uuid(),
+		});
 
-test('should not confirm messages in send() when a destination is listening', async () => {
-	// Verify that the log-streaming destination service is listening
-	expect(eventBus.listenerCount('message')).toBeGreaterThan(0);
-
-	const testMessage = new EventMessageGeneric({
-		eventName: 'n8n.test.message' as EventNamesTypes,
-		id: uuid(),
-	});
-
-	await eventBus.send(testMessage);
-	// The first worker message should be appendMessageToLog, not confirmMessageSent.
-	// This proves send() did not inline-confirm — it delegated to the listener.
-	await new Promise((resolve) => {
-		const workerMessages: string[] = [];
-		eventBus.logWriter.worker?.on(
-			'message',
-			function handler(msg: { command: string; data: unknown }) {
-				workerMessages.push(msg.command);
-				// Wait for both the append and the confirm from the destination service
-				if (
-					workerMessages.includes('appendMessageToLog') &&
-					workerMessages.includes('confirmMessageSent')
-				) {
-					// The first message must be appendMessageToLog, proving send() did not
-					// inline-confirm before emitting to listeners
-					expect(workerMessages[0]).toBe('appendMessageToLog');
-					eventBus.logWriter.worker?.removeListener('message', handler);
-					resolve(true);
-				}
-			},
-		);
+		await eventBus.send(testMessage);
+		// The first worker message should be appendMessageToLog, not confirmMessageSent.
+		// This proves the event bus delegated to the handler instead of auto-confirming.
+		await new Promise((resolve) => {
+			const workerMessages: string[] = [];
+			eventBus.logWriter.worker?.on(
+				'message',
+				function handler(msg: { command: string; data: unknown }) {
+					workerMessages.push(msg.command);
+					if (
+						workerMessages.includes('appendMessageToLog') &&
+						workerMessages.includes('confirmMessageSent')
+					) {
+						expect(workerMessages[0]).toBe('appendMessageToLog');
+						eventBus.logWriter.worker?.removeListener('message', handler);
+						resolve(true);
+					}
+				},
+			);
+		});
 	});
 });
 
@@ -346,7 +344,7 @@ test('should send message to sentry ', async () => {
 
 	const mockedSentryCaptureMessage = jest.spyOn(sentryDestination.sentryClient!, 'captureMessage');
 	mockedSentryCaptureMessage.mockImplementation((_m, _level, _hint, _scope) => {
-		eventBus.confirmSent(testMessage, {
+		eventBus.confirmMessageDelivered(testMessage, {
 			id: sentryDestination.id,
 			name: sentryDestination.label,
 		});
