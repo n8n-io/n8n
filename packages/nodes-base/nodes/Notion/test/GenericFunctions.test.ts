@@ -8,6 +8,7 @@ import {
 	extractPageId,
 	formatBlocks,
 	getPageId,
+	mapFilters,
 	notionApiRequest,
 } from '../shared/GenericFunctions';
 
@@ -104,6 +105,235 @@ describe('Test Notion', () => {
 				const result = extractPageId(extractIdFromUrl(page));
 				expect(result).toBe(testId);
 			}
+		});
+	});
+});
+
+describe('Test NotionV2, mapFilters', () => {
+	const timezone = 'America/New_York';
+
+	describe('formula filters', () => {
+		it('should map text formula filter with "contains" to use "string" sub-type', () => {
+			const filters = [
+				{
+					key: 'My Formula|formula',
+					type: 'formula',
+					returnType: 'text',
+					condition: 'contains',
+					textValue: 'search term',
+				},
+			];
+
+			const result = mapFilters(filters, timezone);
+
+			expect(result).toEqual({
+				property: 'My Formula',
+				formula: { string: { contains: 'search term' } },
+			});
+		});
+
+		it('should map text formula filter with "equals" to use "string" sub-type', () => {
+			const filters = [
+				{
+					key: 'Title Formula|formula',
+					type: 'formula',
+					returnType: 'text',
+					condition: 'equals',
+					textValue: 'exact match',
+				},
+			];
+
+			const result = mapFilters(filters, timezone);
+
+			expect(result).toEqual({
+				property: 'Title Formula',
+				formula: { string: { equals: 'exact match' } },
+			});
+		});
+
+		it('should map number formula filter preserving "number" sub-type', () => {
+			const filters = [
+				{
+					key: 'Score|formula',
+					type: 'formula',
+					returnType: 'number',
+					condition: 'greater_than',
+					numberValue: 50,
+				},
+			];
+
+			const result = mapFilters(filters, timezone);
+
+			expect(result).toEqual({
+				property: 'Score',
+				formula: { number: { greater_than: 50 } },
+			});
+		});
+
+		it('should map checkbox formula filter preserving "checkbox" sub-type', () => {
+			const filters = [
+				{
+					key: 'Is Active|formula',
+					type: 'formula',
+					returnType: 'checkbox',
+					condition: 'equals',
+					checkboxValue: true,
+				},
+			];
+
+			const result = mapFilters(filters, timezone);
+
+			expect(result).toEqual({
+				property: 'Is Active',
+				formula: { checkbox: { equals: true } },
+			});
+		});
+
+		it('should map date formula filter preserving "date" sub-type', () => {
+			const filters = [
+				{
+					key: 'Due Date|formula',
+					type: 'formula',
+					returnType: 'date',
+					condition: 'after',
+					dateValue: '2026-01-01',
+				},
+			];
+
+			const result = mapFilters(filters, timezone);
+
+			expect(result).toEqual({
+				property: 'Due Date',
+				formula: { date: { after: '2026-01-01' } },
+			});
+		});
+
+		it('should map text formula "is_empty" with formula wrapper and "string" sub-type', () => {
+			const filters = [
+				{
+					key: 'Notes Formula|formula',
+					type: 'formula',
+					returnType: 'text',
+					condition: 'is_empty',
+				},
+			];
+
+			const result = mapFilters(filters, timezone);
+
+			expect(result).toEqual({
+				property: 'Notes Formula',
+				formula: { string: { is_empty: true } },
+			});
+		});
+
+		it('should map text formula "is_not_empty" with formula wrapper and "string" sub-type', () => {
+			const filters = [
+				{
+					key: 'Notes Formula|formula',
+					type: 'formula',
+					returnType: 'text',
+					condition: 'is_not_empty',
+				},
+			];
+
+			const result = mapFilters(filters, timezone);
+
+			expect(result).toEqual({
+				property: 'Notes Formula',
+				formula: { string: { is_not_empty: true } },
+			});
+		});
+
+		it('should map number formula "is_empty" with formula wrapper', () => {
+			const filters = [
+				{
+					key: 'Count|formula',
+					type: 'formula',
+					returnType: 'number',
+					condition: 'is_empty',
+				},
+			];
+
+			const result = mapFilters(filters, timezone);
+
+			expect(result).toEqual({
+				property: 'Count',
+				formula: { number: { is_empty: true } },
+			});
+		});
+
+		it('should map checkbox formula "is_not_empty" with formula wrapper', () => {
+			const filters = [
+				{
+					key: 'Flag|formula',
+					type: 'formula',
+					returnType: 'checkbox',
+					condition: 'is_not_empty',
+				},
+			];
+
+			const result = mapFilters(filters, timezone);
+
+			expect(result).toEqual({
+				property: 'Flag',
+				formula: { checkbox: { is_not_empty: true } },
+			});
+		});
+	});
+
+	describe('non-formula filters', () => {
+		it('should map rich_text filter', () => {
+			const filters = [
+				{
+					key: 'Description|rich_text',
+					type: 'rich_text',
+					condition: 'contains',
+					richTextValue: 'hello',
+				},
+			];
+
+			const result = mapFilters(filters, timezone);
+
+			expect(result).toEqual({
+				property: 'Description',
+				text: { contains: 'hello' },
+			});
+		});
+
+		it('should map number filter', () => {
+			const filters = [
+				{
+					key: 'Amount|number',
+					type: 'number',
+					condition: 'equals',
+					numberValue: 42,
+				},
+			];
+
+			const result = mapFilters(filters, timezone);
+
+			expect(result).toEqual({
+				property: 'Amount',
+				number: { equals: 42 },
+			});
+		});
+
+		it('should map checkbox filter', () => {
+			const filters = [
+				{
+					key: 'Done|checkbox',
+					type: 'checkbox',
+					condition: 'equals',
+					checkboxValue: true,
+				},
+			];
+
+			const result = mapFilters(filters, timezone);
+
+			expect(result).toEqual({
+				property: 'Done',
+				checkbox: { equals: true },
+			});
 		});
 	});
 });
