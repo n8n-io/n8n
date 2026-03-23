@@ -222,6 +222,74 @@ describe('SlackSignatureExtractor', () => {
 			await expect(extractor.execute(options)).rejects.toThrow('Could not extract user_id');
 		});
 
+		it('should extract enterprise_id from interactive payload', async () => {
+			const body = {
+				user: { id: 'U99999', name: 'testuser' },
+				team: { id: 'TAAAAA' },
+				enterprise: { id: 'EAAAAA' },
+				type: 'block_actions',
+			};
+
+			const triggerItem = createSlackTriggerItem({ body, rawBody: JSON.stringify(body) });
+			const options = createOptions({ triggerItems: [triggerItem] });
+			const result = await extractor.execute(options);
+
+			expect(result.contextUpdate?.credentials?.metadata?.enterprise_id).toBe('EAAAAA');
+		});
+
+		it('should extract enterprise_id from event payload', async () => {
+			const body = {
+				event: { type: 'message', user: 'UEVENT1' },
+				team_id: 'TEVENT1',
+				enterprise_id: 'EEVENT1',
+			};
+
+			const triggerItem = createSlackTriggerItem({ body, rawBody: JSON.stringify(body) });
+			const options = createOptions({ triggerItems: [triggerItem] });
+			const result = await extractor.execute(options);
+
+			expect(result.contextUpdate?.credentials?.metadata?.enterprise_id).toBe('EEVENT1');
+		});
+
+		it('should fall back to body string for rawBody when rawBody field is not present', async () => {
+			const triggerItem: INodeExecutionData = {
+				json: {
+					headers: {
+						'x-slack-request-timestamp': '1234567890',
+						'x-slack-signature': 'v0=somesignature',
+					},
+					// body is a parsed object (identity comes from here),
+					// but rawBody is a string fallback used for signature verification
+					body: { user_id: 'U12345', team_id: 'T67890' },
+					// no rawBody field — triggers the URL-encoded reconstruction fallback
+				},
+				pairedItem: { item: 0 },
+			};
+
+			const options = createOptions({ triggerItems: [triggerItem] });
+			const result = await extractor.execute(options);
+
+			// Should reconstruct the raw body from the object
+			expect(result.contextUpdate?.credentials?.metadata?.rawBody).toBeDefined();
+			expect(result.contextUpdate?.credentials?.identity).toBe('U12345');
+		});
+
+		it('should throw when no raw body can be determined', async () => {
+			const triggerItem: INodeExecutionData = {
+				json: {
+					headers: {
+						'x-slack-request-timestamp': '1234567890',
+						'x-slack-signature': 'v0=somesignature',
+					},
+					body: null,
+				},
+				pairedItem: { item: 0 },
+			};
+
+			const options = createOptions({ triggerItems: [triggerItem] });
+			await expect(extractor.execute(options)).rejects.toThrow('Could not retrieve raw body');
+		});
+
 		it('should throw when headers are missing entirely', async () => {
 			const triggerItem: INodeExecutionData = {
 				json: {

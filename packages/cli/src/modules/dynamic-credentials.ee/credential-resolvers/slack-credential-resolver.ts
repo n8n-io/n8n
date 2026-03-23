@@ -100,11 +100,11 @@ export class SlackCredentialResolver implements ICredentialResolver {
 			throw new CredentialResolverDataNotFoundError();
 		}
 
-		const plaintext = this.cipher.decrypt(data);
 		try {
+			const plaintext = this.cipher.decrypt(data);
 			return jsonParse<ICredentialDataDecryptedObject>(plaintext);
 		} catch (error) {
-			this.logger.error('Failed to parse decrypted credential data', { error });
+			this.logger.error('Failed to decrypt or parse credential data');
 			throw new CredentialResolverDataNotFoundError();
 		}
 	}

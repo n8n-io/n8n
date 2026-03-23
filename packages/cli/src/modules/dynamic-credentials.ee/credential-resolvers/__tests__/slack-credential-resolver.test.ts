@@ -148,10 +148,21 @@ describe('SlackCredentialResolver', () => {
 				mockCipher.decrypt.mockReturnValue('invalid-json{{{');
 
 				await expect(resolver.getSecret(credentialId, context, handle)).rejects.toThrow();
-				expect(mockLogger.error).toHaveBeenCalledWith(
-					'Failed to parse decrypted credential data',
-					expect.any(Object),
-				);
+				expect(mockLogger.error).toHaveBeenCalledWith('Failed to decrypt or parse credential data');
+			});
+
+			it('should throw CredentialResolverDataNotFoundError when decryption fails', async () => {
+				const credentialId = 'cred-123';
+				const context = testHelpers.createContext('U12345');
+				const handle = testHelpers.createHandle(validOptions);
+
+				mockStorage.getCredentialData.mockResolvedValue('corrupted-encrypted-data');
+				mockCipher.decrypt.mockImplementation(() => {
+					throw new Error('ERR_OSSL_BAD_DECRYPT');
+				});
+
+				await expect(resolver.getSecret(credentialId, context, handle)).rejects.toThrow();
+				expect(mockLogger.error).toHaveBeenCalledWith('Failed to decrypt or parse credential data');
 			});
 		});
 
@@ -260,6 +271,25 @@ describe('SlackCredentialResolver', () => {
 					validOptions,
 				);
 			});
+		});
+	});
+
+	describe('parseOptions error path', () => {
+		it('should throw CredentialResolverValidationError when getSecret receives invalid options', async () => {
+			const resolver = new SlackCredentialResolver(
+				mockLogger,
+				mockIdentifier,
+				mockStorage,
+				mockCipher,
+			);
+			const context = testHelpers.createContext('U12345');
+			const handle = testHelpers.createHandle({ signingSecret: '' }); // invalid: empty
+
+			await expect(resolver.getSecret('cred-123', context, handle)).rejects.toThrow();
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				expect.stringContaining('Invalid options'),
+				expect.any(Object),
+			);
 		});
 	});
 

@@ -266,6 +266,51 @@ describe('SlackSignatureIdentifier', () => {
 				}),
 			).rejects.toThrow(IdentifierValidationError);
 		});
+
+		it('should throw when timestamp is not a valid number', async () => {
+			const rawBody = 'user_id=U12345';
+			const signature = computeSlackSignature(TEST_SIGNING_SECRET, 'not-a-number', rawBody);
+
+			const context = {
+				identity: 'U12345',
+				version: 1 as const,
+				metadata: { rawBody, timestamp: 'not-a-number', signature },
+			};
+
+			await expect(
+				identifier.resolve(context, {
+					signingSecret: TEST_SIGNING_SECRET,
+					subjectClaim: 'user_id',
+				}),
+			).rejects.toThrow(IdentifierValidationError);
+		});
+
+		it('should throw when resolve is called with invalid options', async () => {
+			const timestamp = Math.floor(Date.now() / 1000).toString();
+			const rawBody = 'user_id=U12345';
+			const signature = computeSlackSignature(TEST_SIGNING_SECRET, timestamp, rawBody);
+
+			const context = {
+				identity: 'U12345',
+				version: 1 as const,
+				metadata: { rawBody, timestamp, signature },
+			};
+
+			await expect(identifier.resolve(context, { signingSecret: '' })).rejects.toThrow(
+				IdentifierValidationError,
+			);
+		});
+
+		it('should throw when resolveKey is called with invalid options', () => {
+			const context = {
+				identity: 'U12345',
+				version: 1 as const,
+			};
+
+			expect(() => identifier.resolveKey(context, { signingSecret: '' })).toThrow(
+				IdentifierValidationError,
+			);
+		});
 	});
 
 	describe('resolveKey', () => {
