@@ -23,6 +23,32 @@ export interface BuilderWorkspace {
 	cleanup: () => Promise<void>;
 }
 
+async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<void> {
+	const processManager = workspace.sandbox?.processes;
+	if (!processManager) return;
+
+	let processes: Awaited<ReturnType<typeof processManager.list>>;
+	try {
+		processes = await processManager.list();
+	} catch {
+		return;
+	}
+
+	// Dismiss finished handles and stop any lingering processes so the workspace
+	// does not keep stdout/stderr listener closures alive after builder cleanup.
+	for (const process of processes) {
+		try {
+			if (process.running) {
+				await processManager.kill(process.pid);
+			} else {
+				await processManager.get(process.pid);
+			}
+		} catch {
+			// Best-effort cleanup
+		}
+	}
+}
+
 export class BuilderSandboxFactory {
 	private daytona: Daytona | null = null;
 
@@ -108,6 +134,7 @@ export class BuilderSandboxFactory {
 		return {
 			workspace,
 			cleanup: async () => {
+				await cleanupTrackedSandboxProcesses(workspace);
 				try {
 					await daytona.delete(sandbox);
 				} catch {
@@ -133,7 +160,8 @@ export class BuilderSandboxFactory {
 		return {
 			workspace,
 			cleanup: async () => {
-				// Local cleanup: no-op (directories persist for debugging)
+				await cleanupTrackedSandboxProcesses(workspace);
+				// Local cleanup keeps the directory for debugging.
 			},
 		};
 	}
