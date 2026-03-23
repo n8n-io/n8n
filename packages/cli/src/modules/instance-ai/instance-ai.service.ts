@@ -217,15 +217,26 @@ export class InstanceAiService {
 		this.confirmationTimeoutInterval = setInterval(() => {
 			const now = Date.now();
 
+			const timedOutThreads: string[] = [];
 			for (const [threadId, run] of this.suspendedRuns) {
 				if (now - run.createdAt >= timeoutMs) {
-					this.logger.debug('Auto-rejecting timed-out suspended run', { threadId });
-					this.cancelRun(threadId, 'confirmation_timeout');
+					timedOutThreads.push(threadId);
 				}
 			}
+			for (const threadId of timedOutThreads) {
+				this.logger.debug('Auto-rejecting timed-out suspended run', { threadId });
+				this.cancelRun(threadId, 'confirmation_timeout');
+			}
 
+			const timedOutConfirmations: string[] = [];
 			for (const [reqId, pending] of this.pendingSubAgentConfirmations) {
 				if (now - pending.createdAt >= timeoutMs) {
+					timedOutConfirmations.push(reqId);
+				}
+			}
+			for (const reqId of timedOutConfirmations) {
+				const pending = this.pendingSubAgentConfirmations.get(reqId);
+				if (pending) {
 					this.logger.debug('Auto-rejecting timed-out sub-agent confirmation', {
 						requestId: reqId,
 					});
