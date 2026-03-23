@@ -28,7 +28,7 @@ export interface NodeSetupState {
 
 	/** Parameter names from the upstream template that should always be shown
 	 * (resource locators and missing required parameters in the template). */
-	templateParameterNames?: string[];
+	additionalParameterNames?: string[];
 
 	// Credential fields — present when the node requires credentials
 	credentialType?: string;
