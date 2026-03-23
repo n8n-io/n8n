@@ -81,11 +81,12 @@ describe('report-verification-verdict tool', () => {
 		expect((result as { guidance: string }).guidance).toContain('run-workflow');
 	});
 
-	it('returns patch guidance when action is patch', async () => {
+	it('returns patch guidance when needs_patch produces patch action', async () => {
 		const patchAction: WorkflowLoopAction = {
 			type: 'patch',
 			workflowId: 'wf-123',
-			nodeName: 'HTTP Request',
+			failedNodeName: 'HTTP Request',
+			diagnosis: 'Invalid URL',
 			patch: { url: 'https://example.com' },
 		};
 		const reportVerificationVerdict = jest.fn().mockResolvedValue(patchAction);
@@ -103,7 +104,8 @@ describe('report-verification-verdict tool', () => {
 		);
 
 		expect((result as { guidance: string }).guidance).toContain('PATCH NEEDED');
-		expect((result as { guidance: string }).guidance).toContain('HTTP Request');
+		expect((result as { guidance: string }).guidance).toContain('mode');
+		expect((result as { guidance: string }).guidance).toContain('patch');
 	});
 
 	it('returns rebuild guidance when action is rebuild', async () => {

@@ -54,6 +54,12 @@ const formattedTechnicalDetails = computed(() => {
 
 const attachments = computed(() => props.message.attachments ?? []);
 
+/** Transient status message from the backend (e.g. "Recalling conversation..."). */
+const statusMessage = computed(() => {
+	if (!isStreaming.value || !props.message.agentTree) return '';
+	return props.message.agentTree.statusMessage ?? '';
+});
+
 /**
  * Background task indicator: shows when the orchestrator run has finished
  * but child agents (e.g., workflow builder) are still working in the background.
@@ -143,9 +149,15 @@ function formatJson(value: unknown): string {
 						<InstanceAiMarkdown v-if="props.message.content" :content="props.message.content" />
 					</div>
 
+					<!-- Status indicator while preparing context -->
+					<div v-if="statusMessage && !props.message.content" :class="$style.statusIndicator">
+						<span :class="$style.statusDot" />
+						<span>{{ statusMessage }}</span>
+					</div>
+
 					<!-- Blinking cursor while waiting for response -->
 					<span
-						v-if="isStreaming && !props.message.content && !props.message.agentTree"
+						v-else-if="isStreaming && !props.message.content && !props.message.agentTree"
 						:class="$style.blinkingCursor"
 					/>
 
@@ -272,6 +284,43 @@ function formatJson(value: unknown): string {
 	margin-top: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text);
+}
+
+.statusIndicator {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	padding: var(--spacing--4xs) 0;
+	animation: status-fade-in 0.2s ease;
+}
+
+.statusDot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--color--primary);
+	animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes status-fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.3;
+	}
 }
 
 .blinkingCursor {

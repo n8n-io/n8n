@@ -120,6 +120,18 @@ export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
 } from './schemas/workflow-version.schema';
+export type {
+	DependencyType,
+	DependencyResourceType,
+	ResolvedDependency,
+	ResolvedDependenciesResult,
+	DependenciesBatchResponse,
+} from './schemas/dependency.schema';
+
+export type {
+	DependencyTypeCounts,
+	DependencyCountsBatchResponse,
+} from './schemas/dependency-counts.schema';
 
 export type {
 	ProjectType,
@@ -261,6 +273,8 @@ export {
 	workflowArchivedPayloadSchema,
 	triggerManualRunPayloadSchema,
 	stopManualRunPayloadSchema,
+	statusPayloadSchema,
+	credentialFlowSchema,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -292,6 +306,7 @@ export type {
 	InstanceAiWorkflowArchivedEvent,
 	InstanceAiTriggerManualRunEvent,
 	InstanceAiStopManualRunEvent,
+	InstanceAiStatusEvent,
 	InstanceAiFilesystemRequestEvent,
 	InstanceAiFilesystemResponse,
 	InstanceAiGatewayCapabilities,
@@ -328,6 +343,7 @@ export type {
 	InstanceAiTargetResource,
 	DomainAccessAction,
 	DomainAccessMeta,
+	InstanceAiCredentialFlow,
 } from './schemas/instance-ai.schema';
 
 export {

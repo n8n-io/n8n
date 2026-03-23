@@ -344,7 +344,7 @@ export type WorkflowListItem = Omit<
 	IWorkflowDb,
 	'nodes' | 'connections' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
-	resource: 'workflow';
+	resource?: 'workflow'; // only included if list may contain folders
 	description?: string;
 	hasResolvableCredentials?: boolean;
 };
@@ -640,6 +640,7 @@ export type ModalState = {
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
+	projectId?: string;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';

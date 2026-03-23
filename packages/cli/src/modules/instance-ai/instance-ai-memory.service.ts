@@ -12,6 +12,8 @@ import type {
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import { AgentTreeSnapshotStorage } from './agent-tree-snapshot';
 import { parseStoredMessages } from './message-parser';
 import type { MastraDBMessage } from './message-parser';
@@ -242,6 +244,29 @@ export class InstanceAiMemoryService {
 		const thread = await memory.getThreadById({ threadId });
 		if (!thread) return 'not_found';
 		return thread.resourceId === userId ? 'owned' : 'other_user';
+	}
+
+	async deleteThread(_userId: string, threadId: string): Promise<void> {
+		const memory = this.createMemoryInstance();
+		await memory.deleteThread(threadId);
+	}
+
+	async renameThread(
+		_userId: string,
+		threadId: string,
+		title: string,
+	): Promise<InstanceAiThreadInfo> {
+		const memory = this.createMemoryInstance();
+		const thread = await memory.getThreadById({ threadId });
+		if (!thread) {
+			throw new NotFoundError(`Thread ${threadId} not found`);
+		}
+		const updated = await memory.updateThread({
+			id: threadId,
+			title,
+			metadata: thread.metadata ?? {},
+		});
+		return this.toThreadInfo(updated);
 	}
 
 	async getThreadMetadata(

@@ -74,7 +74,9 @@ export function determineTrack(packageVersion) {
 
 	writeGithubOutput(output);
 	console.log(
-		`Determined track info: track=${track}, version=${packageVersion}, previous_version=${previousVersion}, new_stable_version=${newStable}, release_type=${releaseType}, rc_branch=${rc_branch}`,
+		`Determined track info: ${Object.entries(output)
+			.map(([key, val]) => `${key}=${val}`)
+			.join(', ')}`,
 	);
 
 	return output;

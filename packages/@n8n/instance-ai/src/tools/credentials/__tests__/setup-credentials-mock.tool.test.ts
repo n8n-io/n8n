@@ -26,7 +26,6 @@ function createToolCtx(options?: {
 		approved: boolean;
 		credentials?: Record<string, string>;
 		autoSetup?: { credentialType: string };
-		mockCredentials?: boolean;
 	};
 }) {
 	return {
@@ -41,85 +40,91 @@ function createToolCtx(options?: {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('setup-credentials tool — credential flow', () => {
-	it('returns mocked result when approved=false with mockCredentials=true', async () => {
+describe('setup-credentials tool', () => {
+	it('returns deferred result when approved=false', async () => {
 		const context = createMockContext();
 		const tool = createSetupCredentialsTool(context);
-		const ctx = createToolCtx({
-			resumeData: { approved: false, mockCredentials: true },
-		});
-
-		const result = await tool.execute!(
-			{
-				credentials: [
-					{ credentialType: 'slackApi', reason: 'Send messages' },
-					{ credentialType: 'gmailOAuth2Api', reason: 'Send emails' },
-				],
-			},
-			ctx,
-		);
-
-		expect(result).toMatchObject({
-			success: false,
-			mocked: true,
-			mockedCredentialTypes: ['slackApi', 'gmailOAuth2Api'],
-		});
-		expect((result as { reason: string }).reason).toContain('pinned data');
-	});
-
-	it('returns denied result when approved=false without mockCredentials', async () => {
-		const context = createMockContext();
-		const tool = createSetupCredentialsTool(context);
-		const ctx = createToolCtx({
-			resumeData: { approved: false },
-		});
+		const ctx = createToolCtx({ resumeData: { approved: false } });
 
 		const result = await tool.execute!({ credentials: [{ credentialType: 'slackApi' }] }, ctx);
 
-		expect(result).toMatchObject({ success: false });
-		expect(result).not.toHaveProperty('mocked');
-		expect((result as { reason: string }).reason).toContain('declined');
+		expect(result).toMatchObject({ success: true, deferred: true });
+		expect((result as { reason: string }).reason).toContain('skipped');
 	});
 
-	it('returns all credential types in mockedCredentialTypes when mocking', async () => {
+	it('includes projectId in suspend payload when input has projectId', async () => {
 		const context = createMockContext();
 		const tool = createSetupCredentialsTool(context);
-		const ctx = createToolCtx({
-			resumeData: { approved: false, mockCredentials: true },
-		});
+		const suspendFn = jest.fn();
+		const ctx = {
+			agent: { suspend: suspendFn, resumeData: undefined },
+		} as never;
 
-		const result = await tool.execute!(
+		await tool.execute!(
 			{
-				credentials: [
-					{ credentialType: 'openAiApi' },
-					{ credentialType: 'slackApi' },
-					{ credentialType: 'gmailOAuth2Api' },
-				],
+				credentials: [{ credentialType: 'slackApi', reason: 'Send messages' }],
+				projectId: 'proj-123',
 			},
 			ctx,
 		);
 
-		expect(result).toMatchObject({
-			mocked: true,
-			mockedCredentialTypes: ['openAiApi', 'slackApi', 'gmailOAuth2Api'],
-		});
+		expect(suspendFn).toHaveBeenCalled();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const payload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
+		expect(payload).toHaveProperty('projectId', 'proj-123');
+	});
+
+	it('omits projectId from suspend payload when input has no projectId', async () => {
+		const context = createMockContext();
+		const tool = createSetupCredentialsTool(context);
+		const suspendFn = jest.fn();
+		const ctx = {
+			agent: { suspend: suspendFn, resumeData: undefined },
+		} as never;
+
+		await tool.execute!(
+			{ credentials: [{ credentialType: 'slackApi', reason: 'Send messages' }] },
+			ctx,
+		);
+
+		expect(suspendFn).toHaveBeenCalled();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const payload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
+		expect(payload).not.toHaveProperty('projectId');
 	});
 
 	it('returns success with credentials when approved=true', async () => {
 		const context = createMockContext();
 		const tool = createSetupCredentialsTool(context);
 		const ctx = createToolCtx({
-			resumeData: {
-				approved: true,
-				credentials: { slackApi: 'cred-123' },
-			},
+			resumeData: { approved: true, credentials: { slackApi: 'cred-123' } },
 		});
 
 		const result = await tool.execute!({ credentials: [{ credentialType: 'slackApi' }] }, ctx);
 
-		expect(result).toEqual({
-			success: true,
-			credentials: { slackApi: 'cred-123' },
-		});
+		expect(result).toEqual({ success: true, credentials: { slackApi: 'cred-123' } });
+	});
+
+	it('includes credentialFlow in suspend payload for finalize mode', async () => {
+		const context = createMockContext();
+		const tool = createSetupCredentialsTool(context);
+		const suspendFn = jest.fn();
+		const ctx = {
+			agent: { suspend: suspendFn, resumeData: undefined },
+		} as never;
+
+		await tool.execute!(
+			{
+				credentials: [{ credentialType: 'slackApi' }],
+				credentialFlow: { stage: 'finalize' },
+			},
+			ctx,
+		);
+
+		expect(suspendFn).toHaveBeenCalled();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const payload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
+		expect(payload).toHaveProperty('credentialFlow', { stage: 'finalize' });
+		expect((payload as { message: string }).message).toContain('verified');
 	});
 });

@@ -58,6 +58,8 @@ vi.mock('../instanceAi.memory.api', () => ({
 	fetchThreadStatus: vi
 		.fn()
 		.mockResolvedValue({ hasActiveRun: false, isSuspended: false, backgroundTasks: [] }),
+	deleteThread: vi.fn().mockResolvedValue(undefined),
+	renameThread: vi.fn().mockResolvedValue({ thread: {} }),
 }));
 
 // Mock EventSource globally
@@ -307,7 +309,7 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 			}),
 		);
 
-		store.deleteThread(deletedThreadId);
+		await store.deleteThread(deletedThreadId);
 
 		await vi.waitFor(() => {
 			expect(capturedInstance).not.toBe(previousEventSource);

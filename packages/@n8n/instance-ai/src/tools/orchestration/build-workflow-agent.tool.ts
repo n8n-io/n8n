@@ -5,8 +5,6 @@
  * Two modes:
  * - Sandbox mode (when workspace is available): agent works with real files + tsc
  * - Tool mode (fallback): agent uses build-workflow tool with string-based code
- *
- * Pattern follows browser-credential-setup.tool.ts — direct Agent instantiation.
  */
 
 import { Agent } from '@mastra/core/agent';
@@ -29,9 +27,9 @@ import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import {
 	createSubmitWorkflowTool,
-	type CredentialMap,
 	type SubmitWorkflowAttempt,
 } from '../workflows/submit-workflow.tool';
 
@@ -75,12 +73,13 @@ function buildOutcome(
 		needsUserInput: false,
 		mockedNodeNames: attempt.mockedNodeNames,
 		mockedCredentialTypes: attempt.mockedCredentialTypes,
+		mockedCredentialsByNode: attempt.mockedCredentialsByNode,
+		verificationPinData: attempt.verificationPinData,
 		summary: finalText,
 	};
 }
 
 const BUILDER_MAX_STEPS = 30;
-
 function hashContent(content: string | null): string {
 	return createHash('sha256')
 		.update(content ?? '', 'utf8')
@@ -127,35 +126,24 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			let credMap: CredentialMap | undefined;
 
 			if (useSandbox) {
-				credMap = new Map();
-				try {
-					const allCreds = await domainContext.credentialService.list();
-					for (const cred of allCreds) {
-						credMap.set(cred.type, { id: cred.id, name: cred.name });
-					}
-				} catch {
-					// Non-fatal — credentials will be unresolved (user adds in UI)
-				}
+				credMap = await buildCredentialMap(domainContext.credentialService);
 
-				// Sandbox mode: node discovery, credential/execution tools
-				// submit-workflow is created per-builder inside run: (needs the builder's workspace)
-				const sandboxToolNames = [
-					// Node discovery
+				const toolNames = [
+					// Full build/rebuild mode: node discovery, credential/execution tools
+					// submit-workflow is created per-builder inside run: (needs the builder's workspace)
 					'search-nodes',
 					'get-suggested-nodes',
 					'get-workflow-as-code',
 					'get-node-type-definition',
 					'explore-node-resources',
-					// Credential awareness
+					'list-workflows',
 					'list-credentials',
 					'test-credential',
-					// Execution & debugging
 					'run-workflow',
 					'get-execution',
 					'debug-execution',
-					// Workflow lifecycle
-					'activate-workflow',
-					// Data table management (create/inspect tables used by workflows)
+					'publish-workflow',
+					'unpublish-workflow',
 					'list-data-tables',
 					'create-data-table',
 					'get-data-table-schema',
@@ -165,22 +153,23 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				];
 
 				builderTools = {};
-				for (const name of sandboxToolNames) {
+				for (const name of toolNames) {
 					if (context.domainTools[name]) {
 						builderTools[name] = context.domainTools[name];
 					}
 				}
 				prompt = SANDBOX_BUILDER_AGENT_PROMPT;
 			} else {
-				// Tool mode: original approach with build-workflow + get-node-type-definition
+				// Tool mode: original approach (no sandbox)
 				builderTools = {};
+
 				const toolNames = [
 					'build-workflow',
 					'get-node-type-definition',
 					'get-workflow-as-code',
+					'list-workflows',
 					'search-nodes',
 					'get-suggested-nodes',
-					// Data table management
 					'list-data-tables',
 					'create-data-table',
 					'get-data-table-schema',
@@ -242,9 +231,12 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				}
 			}
 
-			const briefing = workflowId
-				? `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`
-				: `${input.task}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+			let briefing: string;
+			if (workflowId) {
+				briefing = `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
+			} else {
+				briefing = `${input.task}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+			}
 
 			// Spawn builder as a background task — returns immediately
 			context.spawnBackgroundTask({
@@ -293,7 +285,6 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 								}
 							}
 
-							// Create submit tool scoped to THIS builder's workspace
 							builderTools['submit-workflow'] = createSubmitWorkflowTool(
 								domainContext,
 								workspace,
@@ -328,8 +319,10 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 									}
 								: undefined;
 
+							const maxSteps = BUILDER_MAX_STEPS;
+
 							const stream = await subAgent.stream(briefing, {
-								maxSteps: BUILDER_MAX_STEPS,
+								maxSteps,
 								abortSignal: signal,
 								providerOptions: {
 									anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -354,6 +347,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 							});
 
 							const finalText = await hitlResult.text;
+
 							const root = await getWorkspaceRoot(workspace);
 							const mainWorkflowPath = `${root}/src/workflow.ts`;
 							const mainWorkflowAttempt = submitAttempts.get(mainWorkflowPath);
@@ -419,8 +413,10 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 								}
 							: undefined;
 
+						const maxSteps = BUILDER_MAX_STEPS;
+
 						const stream = await subAgent.stream(briefing, {
-							maxSteps: BUILDER_MAX_STEPS,
+							maxSteps,
 							abortSignal: signal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },

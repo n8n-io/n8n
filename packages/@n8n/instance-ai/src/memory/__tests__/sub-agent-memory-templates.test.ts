@@ -43,12 +43,17 @@ describe('MEMORY_ENABLED_ROLES', () => {
 
 describe('template content', () => {
 	it('builder template has key sections', () => {
-		expect(BUILDER_MEMORY_TEMPLATE).toContain('# Credential Map');
-		expect(BUILDER_MEMORY_TEMPLATE).toContain('# Node Gotchas');
-		expect(BUILDER_MEMORY_TEMPLATE).toContain('# Workflow Topology');
-		expect(BUILDER_MEMORY_TEMPLATE).toContain('# Recurring Errors & Fixes');
-		expect(BUILDER_MEMORY_TEMPLATE).toContain('# User Conventions');
-		expect(BUILDER_MEMORY_TEMPLATE).toContain('# SDK & Build Patterns');
+		expect(BUILDER_MEMORY_TEMPLATE).toContain('# User Preferences');
+		expect(BUILDER_MEMORY_TEMPLATE).toContain('# Instance Knowledge');
+	});
+
+	it('builder template does not contain removed sections', () => {
+		expect(BUILDER_MEMORY_TEMPLATE).not.toContain('# Credential Map');
+		expect(BUILDER_MEMORY_TEMPLATE).not.toContain('# Node Gotchas');
+		expect(BUILDER_MEMORY_TEMPLATE).not.toContain('# Workflow Topology');
+		expect(BUILDER_MEMORY_TEMPLATE).not.toContain('# SDK & Build Patterns');
+		expect(BUILDER_MEMORY_TEMPLATE).not.toContain('# Recurring Errors & Fixes');
+		expect(BUILDER_MEMORY_TEMPLATE).not.toContain('# User Conventions');
 	});
 
 	it('debugger template has key sections', () => {

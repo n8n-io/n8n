@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, watch, onBeforeMount } from 'vue';
+import { computed, watch } from 'vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
+import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import type { BaseFilters } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 
@@ -44,6 +45,8 @@ const projectsStore = useProjectsStore();
 
 const i18n = useI18n();
 
+const searchFn = useAvailableProjectSearch();
+
 const selectedProject = computed<ProjectSharingData | null>({
 	get: () => {
 		return (
@@ -52,7 +55,9 @@ const selectedProject = computed<ProjectSharingData | null>({
 			) ?? null
 		);
 	},
-	set: (value) => setKeyValue('homeProject', value?.id ?? ''),
+	set: (value) => {
+		setKeyValue('homeProject', value?.id ?? '');
+	},
 });
 
 const filtersLength = computed(() => {
@@ -114,10 +119,6 @@ const shouldBeIconButton = computed(() => {
 watch(filtersLength, (value) => {
 	emit('update:filtersLength', value);
 });
-
-onBeforeMount(async () => {
-	await projectsStore.getAvailableProjects();
-});
 </script>
 
 <template>
@@ -170,7 +171,7 @@ onBeforeMount(async () => {
 					/>
 					<ProjectSharing
 						v-model="selectedProject"
-						:projects="projectsStore.availableProjects"
+						:search-fn="searchFn"
 						:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 						:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 						@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"

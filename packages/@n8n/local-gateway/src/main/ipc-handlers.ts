@@ -1,10 +1,8 @@
+import { configure, logger } from '@n8n/fs-proxy/logger';
 import { ipcMain } from 'electron';
 
-import { configure, logger } from '@n8n/fs-proxy/logger';
-
-import type { AppSettings } from './settings-store';
 import type { DaemonController } from './daemon-controller';
-import type { SettingsStore } from './settings-store';
+import type { AppSettings, SettingsStore } from './settings-store';
 
 export function registerIpcHandlers(
 	controller: DaemonController,

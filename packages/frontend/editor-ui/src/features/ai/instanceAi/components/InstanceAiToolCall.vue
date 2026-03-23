@@ -6,8 +6,6 @@ import { useI18n } from '@n8n/i18n';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
-import DomainAccessApproval from './DomainAccessApproval.vue';
-import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import ToolResultRenderer from './ToolResultRenderer.vue';
 import ToolResultJson from './ToolResultJson.vue';
 
@@ -19,8 +17,6 @@ const i18n = useI18n();
 const store = useInstanceAiStore();
 const { getToolLabel } = useToolLabel();
 const isOpen = ref(false);
-const localConfirmStatus = ref<'approved' | 'denied' | null>(null);
-const textInputValue = ref('');
 
 const displayName = computed(() => {
 	const { toolName, args } = props.toolCall;
@@ -38,58 +34,21 @@ const showConfirmation = computed(
 	() =>
 		props.toolCall.confirmation &&
 		props.toolCall.isLoading &&
-		!localConfirmStatus.value &&
-		!props.toolCall.confirmationStatus,
+		props.toolCall.confirmationStatus !== 'approved' &&
+		props.toolCall.confirmationStatus !== 'denied' &&
+		!store.resolvedConfirmationIds.has(props.toolCall.confirmation.requestId),
 );
 
-const isDomainAccessConfirmation = computed(() => !!props.toolCall.confirmation?.domainAccess);
-
-const isTextInputConfirmation = computed(() => props.toolCall.confirmation?.inputType === 'text');
-
-const isCredentialConfirmation = computed(() => {
-	if (!props.toolCall.confirmation) return false;
-	// Multi-credential: credentialRequests present in the confirmation payload
-	if (
-		props.toolCall.confirmation.credentialRequests &&
-		props.toolCall.confirmation.credentialRequests.length > 0
-	) {
-		return true;
-	}
-	return false;
+/** Resolved confirmation action — from backend or local optimistic state. */
+const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null => {
+	// Local optimistic state takes priority (has richer semantics like 'deferred')
+	const rid = props.toolCall.confirmation?.requestId;
+	const local = rid ? store.resolvedConfirmationIds.get(rid) : undefined;
+	if (local) return local;
+	const status = props.toolCall.confirmationStatus;
+	if (status === 'approved' || status === 'denied') return status;
+	return null;
 });
-
-const severityIcon = computed(() => {
-	if (!props.toolCall.confirmation) return 'info';
-	const s = props.toolCall.confirmation.severity;
-	return s === 'info' ? 'info' : 'triangle-alert';
-});
-
-function handleConfirm(approved: boolean) {
-	if (!props.toolCall.confirmation) return;
-	localConfirmStatus.value = approved ? 'approved' : 'denied';
-	void store.confirmAction(props.toolCall.confirmation.requestId, approved);
-}
-
-function handleTextSubmit() {
-	if (!props.toolCall.confirmation) return;
-	const value = textInputValue.value.trim();
-	if (!value) return;
-	localConfirmStatus.value = 'approved';
-	void store.confirmAction(
-		props.toolCall.confirmation.requestId,
-		true,
-		undefined,
-		undefined,
-		undefined,
-		value,
-	);
-}
-
-function handleTextSkip() {
-	if (!props.toolCall.confirmation) return;
-	localConfirmStatus.value = 'denied';
-	void store.confirmAction(props.toolCall.confirmation.requestId, false);
-}
 </script>
 
 <template>
@@ -138,102 +97,37 @@ function handleTextSkip() {
 			</div>
 		</CollapsibleContent>
 
-		<!-- Domain access confirmation (HITL) -->
-		<DomainAccessApproval
-			v-if="showConfirmation && isDomainAccessConfirmation"
-			:request-id="props.toolCall.confirmation!.requestId"
-			:url="props.toolCall.confirmation!.domainAccess!.url"
-			:host="props.toolCall.confirmation!.domainAccess!.host"
-		/>
-
-		<!-- Credential setup confirmation (HITL) -->
-		<InstanceAiCredentialSetup
-			v-else-if="showConfirmation && !isDomainAccessConfirmation && isCredentialConfirmation"
-			:request-id="props.toolCall.confirmation!.requestId"
-			:credential-requests="props.toolCall.confirmation!.credentialRequests!"
-			:message="props.toolCall.confirmation!.message"
-		/>
-
-		<!-- Text input prompt (ask-user HITL) -->
-		<div
-			v-else-if="showConfirmation && !isDomainAccessConfirmation && isTextInputConfirmation"
-			:class="$style.confirmationSection"
-		>
-			<div :class="$style.confirmationMessage">
-				<N8nIcon icon="circle-help" :class="$style.infoIcon" size="small" />
-				<span>{{ props.toolCall.confirmation?.message }}</span>
-			</div>
-			<div :class="$style.textInputWrapper">
-				<input
-					v-model="textInputValue"
-					:class="$style.textInput"
-					type="text"
-					:placeholder="i18n.baseText('instanceAi.askUser.placeholder')"
-					@keydown.enter="handleTextSubmit"
-				/>
-			</div>
-			<div :class="$style.confirmationActions">
-				<button :class="[$style.confirmButton, $style.denyButton]" @click="handleTextSkip">
-					{{ i18n.baseText('instanceAi.askUser.skip') }}
-				</button>
-				<button
-					:class="[$style.confirmButton, $style.approveButton]"
-					:disabled="!textInputValue.trim()"
-					@click="handleTextSubmit"
-				>
-					{{ i18n.baseText('instanceAi.askUser.submit') }}
-				</button>
-			</div>
+		<!-- Compact pending indicator — full confirmation UI is in the top-level panel -->
+		<div v-if="showConfirmation" :class="$style.pendingIndicator">
+			<N8nIcon icon="circle-pause" size="small" :class="$style.pendingIcon" />
+			<span>{{ i18n.baseText('instanceAi.confirmation.pendingInline') }}</span>
 		</div>
 
-		<!-- Generic confirmation prompt (HITL) -->
-		<div v-else-if="showConfirmation" :class="$style.confirmationSection">
-			<div :class="$style.confirmationMessage">
-				<N8nIcon
-					:icon="severityIcon"
-					:class="[
-						props.toolCall.confirmation?.severity === 'destructive' ? $style.destructiveIcon : '',
-						props.toolCall.confirmation?.severity === 'warning' ? $style.warningIcon : '',
-						props.toolCall.confirmation?.severity === 'info' ? $style.infoIcon : '',
-					]"
-					size="small"
-				/>
-				<span>{{ props.toolCall.confirmation?.message }}</span>
-			</div>
-			<div :class="$style.confirmationActions">
-				<button
-					:class="[$style.confirmButton, $style.denyButton]"
-					data-test-id="instance-ai-confirm-deny"
-					@click="handleConfirm(false)"
-				>
-					{{ i18n.baseText('instanceAi.confirmation.deny') }}
-				</button>
-				<button
-					:class="[
-						$style.confirmButton,
-						props.toolCall.confirmation?.severity === 'destructive'
-							? $style.approveDestructive
-							: $style.approveButton,
-					]"
-					data-test-id="instance-ai-confirm-approve"
-					@click="handleConfirm(true)"
-				>
-					{{ i18n.baseText('instanceAi.confirmation.approve') }}
-				</button>
-			</div>
-		</div>
-
-		<!-- Confirmation status indicator -->
-		<div v-else-if="localConfirmStatus" :class="$style.confirmationStatus">
+		<!-- Confirmation status indicator (after panel resolution or backend response) -->
+		<div v-else-if="resolvedAction" :class="$style.confirmationStatus">
 			<N8nIcon
-				:icon="localConfirmStatus === 'approved' ? 'check' : 'x'"
+				:icon="
+					resolvedAction === 'approved'
+						? 'check'
+						: resolvedAction === 'deferred'
+							? 'arrow-right'
+							: 'x'
+				"
 				size="small"
-				:class="localConfirmStatus === 'approved' ? $style.successIcon : $style.errorIcon"
+				:class="
+					resolvedAction === 'approved'
+						? $style.successIcon
+						: resolvedAction === 'deferred'
+							? $style.deferredIcon
+							: $style.errorIcon
+				"
 			/>
 			<span>{{
-				localConfirmStatus === 'approved'
+				resolvedAction === 'approved'
 					? i18n.baseText('instanceAi.confirmation.approved')
-					: i18n.baseText('instanceAi.confirmation.denied')
+					: resolvedAction === 'deferred'
+						? i18n.baseText('instanceAi.confirmation.deferred')
+						: i18n.baseText('instanceAi.confirmation.denied')
 			}}</span>
 		</div>
 	</CollapsibleRoot>
@@ -333,100 +227,23 @@ function handleTextSkip() {
 	color: var(--color--danger);
 }
 
-.confirmationSection {
+.pendingIndicator {
 	border-top: var(--border);
-	padding: var(--spacing--xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--warning);
 	background: var(--color--background--shade-1);
 }
 
-.confirmationMessage {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text);
-	margin-bottom: var(--spacing--2xs);
-}
-
-.destructiveIcon {
-	color: var(--color--danger);
-}
-
-.warningIcon {
+.pendingIcon {
 	color: var(--color--warning);
 }
 
-.infoIcon {
-	color: var(--color--primary);
-}
-
-.confirmationActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	justify-content: flex-end;
-}
-
-.confirmButton {
-	padding: var(--spacing--4xs) var(--spacing--xs);
-	border-radius: var(--radius);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	cursor: pointer;
-	border: var(--border);
-	background: var(--color--background);
-	color: var(--color--text);
-
-	&:hover {
-		background: var(--color--background--shade-1);
-	}
-}
-
-.denyButton {
-	color: var(--color--text--tint-1);
-}
-
-.approveButton {
-	background: var(--color--primary);
-	color: var(--button--color--text--primary);
-	border-color: var(--color--primary);
-
-	&:hover {
-		background: var(--color--primary--shade-1);
-	}
-}
-
-.approveDestructive {
-	background: var(--color--danger);
-	color: var(--button--color--text--primary);
-	border-color: var(--color--danger);
-
-	&:hover {
-		background: var(--color--danger--shade-1);
-	}
-}
-
-.textInputWrapper {
-	margin-bottom: var(--spacing--2xs);
-}
-
-.textInput {
-	width: 100%;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	background: var(--color--background);
-	color: var(--color--text);
-	outline: none;
-
-	&:focus {
-		border-color: var(--color--primary);
-	}
-
-	&::placeholder {
-		color: var(--color--text--tint-1);
-	}
+.deferredIcon {
+	color: var(--color--text--tint-2);
 }
 
 .confirmationStatus {

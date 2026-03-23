@@ -18,6 +18,7 @@ import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiSettingsPanel from './components/settings/InstanceAiSettingsPanel.vue';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
+import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
@@ -308,6 +309,7 @@ function handleStop() {
 							:message="message"
 						/>
 					</TransitionGroup>
+					<InstanceAiConfirmationPanel />
 				</div>
 			</N8nScrollArea>
 

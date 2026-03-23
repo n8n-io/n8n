@@ -16,6 +16,7 @@ const resolved = ref(false);
 
 function handleAction(approved: boolean, domainAccessAction?: string) {
 	resolved.value = true;
+	store.resolveConfirmation(props.requestId, approved ? 'approved' : 'denied');
 	void store.confirmAction(
 		props.requestId,
 		approved,

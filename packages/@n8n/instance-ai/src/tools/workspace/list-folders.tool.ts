@@ -21,7 +21,7 @@ export function createListFoldersTool(context: InstanceAiContext) {
 			),
 		}),
 		execute: async (input) => {
-			const folders = await context.workspaceService!.listFolders(input.projectId);
+			const folders = await context.workspaceService!.listFolders!(input.projectId);
 			return { folders };
 		},
 	});

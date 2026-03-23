@@ -492,6 +492,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'workflow-archived':
 		case 'trigger-manual-run':
 		case 'stop-manual-run':
+		case 'status':
 		case 'filesystem-request':
 			// Handled externally (store captures the payload) — no tree mutation needed
 			return state.activeRunId;

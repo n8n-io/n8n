@@ -20,7 +20,6 @@ function makeState(overrides: Partial<WorkflowLoopState> = {}): WorkflowLoopStat
 		phase: 'building',
 		status: 'active',
 		source: 'create',
-		patchAttempts: 0,
 		rebuildAttempts: 0,
 		...overrides,
 	};
@@ -56,7 +55,6 @@ describe('createWorkItem', () => {
 		expect(item.phase).toBe('building');
 		expect(item.status).toBe('active');
 		expect(item.source).toBe('create');
-		expect(item.patchAttempts).toBe(0);
 		expect(item.rebuildAttempts).toBe(0);
 		expect(item.workItemId).toMatch(/^wi_/);
 	});
@@ -203,36 +201,43 @@ describe('handleVerificationVerdict', () => {
 		expect(next.lastFailureSignature).toBe('node:timeout');
 	});
 
-	it('transitions to repairing with patch on needs_patch', () => {
+	it('produces a patch action for needs_patch verdict', () => {
 		const state = makeState({ phase: 'verifying', workflowId: 'wf_123' });
 		const verdict = makeVerdict({
 			verdict: 'needs_patch',
 			failedNodeName: 'Gmail Send',
+			diagnosis: 'Invalid recipient address',
 			patch: { parameters: { to: 'fix@example.com' } },
 			failureSignature: 'gmail:invalid_recipient',
 		});
 
-		const { state: next, action } = handleVerificationVerdict(state, [], verdict);
+		const { state: next, action, attempt } = handleVerificationVerdict(state, [], verdict);
 
 		expect(next.phase).toBe('repairing');
-		expect(next.patchAttempts).toBe(1);
+		expect(next.rebuildAttempts).toBe(1);
 		expect(action.type).toBe('patch');
 		if (action.type === 'patch') {
-			expect(action.nodeName).toBe('Gmail Send');
+			expect(action.workflowId).toBe('wf_123');
+			expect(action.failedNodeName).toBe('Gmail Send');
+			expect(action.diagnosis).toBe('Invalid recipient address');
+			expect(action.patch).toEqual({ parameters: { to: 'fix@example.com' } });
 		}
+		expect(attempt.action).toBe('patch');
 	});
 
-	it('escalates to rebuild when patch lacks required info', () => {
+	it('produces patch action with fallback node name when failedNodeName is missing', () => {
 		const state = makeState({ phase: 'verifying', workflowId: 'wf_123' });
 		const verdict = makeVerdict({
 			verdict: 'needs_patch',
 			failureSignature: 'gmail:error',
-			// Missing failedNodeName and patch — insufficient for targeted fix
 		});
 
 		const { action } = handleVerificationVerdict(state, [], verdict);
 
-		expect(action.type).toBe('rebuild');
+		expect(action.type).toBe('patch');
+		if (action.type === 'patch') {
+			expect(action.failedNodeName).toBe('unknown');
+		}
 	});
 
 	it('transitions to repairing with rebuild on needs_rebuild', () => {
@@ -254,8 +259,8 @@ describe('handleVerificationVerdict', () => {
 // ── Retry policy ────────────────────────────────────────────────────────────
 
 describe('retry policy', () => {
-	it('blocks on repeated patch with same failureSignature', () => {
-		const state = makeState({ phase: 'verifying', workflowId: 'wf_123', patchAttempts: 1 });
+	it('blocks on repeated needs_patch with same failureSignature', () => {
+		const state = makeState({ phase: 'verifying', workflowId: 'wf_123', rebuildAttempts: 1 });
 		const priorAttempts: AttemptRecord[] = [
 			{
 				workItemId: 'wi_test',
@@ -305,7 +310,7 @@ describe('retry policy', () => {
 	});
 
 	it('allows patch for a different failureSignature', () => {
-		const state = makeState({ phase: 'verifying', workflowId: 'wf_123', patchAttempts: 1 });
+		const state = makeState({ phase: 'verifying', workflowId: 'wf_123', rebuildAttempts: 1 });
 		const priorAttempts: AttemptRecord[] = [
 			{
 				workItemId: 'wi_test',
@@ -327,6 +332,31 @@ describe('retry policy', () => {
 		const { action } = handleVerificationVerdict(state, priorAttempts, verdict);
 
 		expect(action.type).toBe('patch');
+	});
+
+	it('blocks when patch follows a rebuild with the same failureSignature', () => {
+		const state = makeState({ phase: 'verifying', workflowId: 'wf_123', rebuildAttempts: 1 });
+		const priorAttempts: AttemptRecord[] = [
+			{
+				workItemId: 'wi_test',
+				phase: 'repairing',
+				attempt: 1,
+				action: 'rebuild',
+				result: 'failure',
+				failureSignature: 'node:error',
+				createdAt: new Date().toISOString(),
+			},
+		];
+		const verdict = makeVerdict({
+			verdict: 'needs_patch',
+			failureSignature: 'node:error',
+			failedNodeName: 'Code',
+		});
+
+		const { state: next, action } = handleVerificationVerdict(state, priorAttempts, verdict);
+
+		expect(next.phase).toBe('blocked');
+		expect(action.type).toBe('blocked');
 	});
 
 	it('parallel work items do not collide in attempt history', () => {

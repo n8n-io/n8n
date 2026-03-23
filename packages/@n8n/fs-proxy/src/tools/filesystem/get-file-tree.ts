@@ -14,7 +14,7 @@ export const getFileTreeTool: ToolDefinition<typeof inputSchema> = {
 	inputSchema,
 	annotations: { defaultPermission: 'allow', readOnlyHint: true },
 	async execute({ dirPath, maxDepth }, { dir }) {
-		const resolvedDir = resolveSafePath(dir, dirPath || '.');
+		const resolvedDir = await resolveSafePath(dir, dirPath || '.');
 		const depth = maxDepth ?? 2;
 		const { rootPath, tree, truncated } = await scanDirectory(resolvedDir, depth);
 

@@ -60,7 +60,7 @@ export function createCreateFolderTool(context: InstanceAiContext) {
 			}
 
 			// State 3: Approved or always_allow — execute
-			return await context.workspaceService!.createFolder(
+			return await context.workspaceService!.createFolder!(
 				input.name,
 				input.projectId,
 				input.parentFolderId,

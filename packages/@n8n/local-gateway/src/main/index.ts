@@ -1,14 +1,12 @@
+import { configure, logger } from '@n8n/fs-proxy/logger';
+import { app, dialog } from 'electron';
 import * as path from 'node:path';
 
-import { app, dialog } from 'electron';
-
-import { configure, logger } from '@n8n/fs-proxy/logger';
-
 import { DaemonController } from './daemon-controller';
-import { SettingsStore } from './settings-store';
-import { createTray } from './tray';
-import { openSettingsWindow, notifySettingsWindow } from './settings-window';
 import { registerIpcHandlers } from './ipc-handlers';
+import { SettingsStore } from './settings-store';
+import { openSettingsWindow, notifySettingsWindow } from './settings-window';
+import { createTray } from './tray';
 
 // Windows: required for proper taskbar/notification grouping
 if (process.platform === 'win32') {
@@ -40,11 +38,11 @@ app
 		const preloadPath = path.join(__dirname, 'preload.js');
 		const rendererPath = path.join(__dirname, '..', 'renderer', 'index.html');
 
-		function confirmConnect(url: string): Promise<boolean> {
+		function confirmConnect(url: string): boolean {
 			const lastUrl = settingsStore.getLastConnectedUrl();
 			if (lastUrl !== null && lastUrl === url) {
 				logger.info('Auto-approving connection from known URL', { url });
-				return Promise.resolve(true);
+				return true;
 			}
 			const result = dialog.showMessageBoxSync({
 				type: 'question',
@@ -55,7 +53,7 @@ app
 				message: `Allow n8n to connect?\n\n${url}`,
 				detail: 'Confirm only if you initiated this connection from n8n.',
 			});
-			return Promise.resolve(result === 0);
+			return result === 0;
 		}
 
 		function restartDaemon(): void {
@@ -66,16 +64,16 @@ app
 				.then(() => {
 					controller.start(config, confirmConnect);
 				})
-				.catch((err: unknown) => {
-					logger.error('Failed to restart daemon', { error: String(err) });
+				.catch((e: unknown) => {
+					logger.error('Failed to restart daemon', { e: String(e) });
 				});
 		}
 
 		registerIpcHandlers(controller, settingsStore, restartDaemon);
 
 		// Propagate status changes to the settings window (if open) and persist connection URL
-		controller.on('status-changed', (snapshot) => {
-			notifySettingsWindow('status-changed', snapshot);
+		controller.on('statusChanged', (snapshot) => {
+			notifySettingsWindow('statusChanged', snapshot);
 			if (snapshot.status === 'connected' && snapshot.connectedUrl) {
 				settingsStore.setLastConnectedUrl(snapshot.connectedUrl);
 			}
