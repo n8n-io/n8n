@@ -156,7 +156,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		'search-template-parameters',
 		'build-workflow',
 		'get-workflow-as-code',
-		'patch-workflow',
 	]);
 
 	// Write/mutate data-table tools stay behind manage-data-tables-with-agent.

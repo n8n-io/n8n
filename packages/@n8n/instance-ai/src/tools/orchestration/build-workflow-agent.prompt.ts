@@ -1,10 +1,9 @@
 /**
  * System prompts for the preconfigured workflow builder agent.
  *
- * Three variants:
+ * Two variants:
  * - BUILDER_AGENT_PROMPT: Original tool-based builder (no sandbox)
  * - SANDBOX_BUILDER_AGENT_PROMPT: Sandbox-based builder with real files + tsc
- * - PATCH_AGENT_PROMPT: Minimal prompt for targeted single-node fixes
  */
 
 import {
@@ -24,7 +23,6 @@ const SDK_RULES_AND_PATTERNS = `## SDK Code Rules
 - Use \`expr('{{ $json.field }}')\` for n8n expressions. Variables MUST be inside \`{{ }}\`.
 - Do NOT use \`as const\` assertions — the workflow parser only supports JavaScript syntax, not TypeScript-only features. Just use plain string literals.
 - Use string values directly for discriminator fields like \`resource\` and \`operation\` (e.g., \`resource: 'message'\` not \`resource: 'message' as const\`).
-- **Fields with \`@displayOptions.show\` MUST use expression format** \`'={{ "value" }}'\` instead of plain strings. This applies to conditional fields like \`size\`, \`dalleQuality\`, \`style\` on DALL-E nodes. Example: \`size: '={{ "1792x1024" }}'\` NOT \`size: '1792x1024'\`.
 - When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.
 - **No em-dash (\`—\`) or other special Unicode characters in node names or string values.** Use plain hyphen (\`-\`) instead. The SDK parser cannot handle em-dashes.
 - **IF node combinator** must be \`'and'\` or \`'or'\` (not \`'any'\` or \`'all'\`).
@@ -845,8 +843,3 @@ ${SDK_RULES_AND_PATTERNS}
 `;
 
 // ── Patch-mode builder prompt ────────────────────────────────────────────────
-
-export const PATCH_AGENT_PROMPT = `You fix a single failing node in an n8n workflow using \`patch-workflow\`. Be terse — you report to a parent agent.
-
-If the fix requires adding/removing nodes or rewiring connections, say so and stop.
-`;

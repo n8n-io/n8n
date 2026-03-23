@@ -56,7 +56,6 @@ import { createGetWorkflowVersionTool } from './workflows/get-workflow-version.t
 import { createGetWorkflowTool } from './workflows/get-workflow.tool';
 import { createListWorkflowVersionsTool } from './workflows/list-workflow-versions.tool';
 import { createListWorkflowsTool } from './workflows/list-workflows.tool';
-import { createPatchWorkflowTool } from './workflows/patch-workflow.tool';
 import { createPublishWorkflowTool } from './workflows/publish-workflow.tool';
 import { createRestoreWorkflowVersionTool } from './workflows/restore-workflow-version.tool';
 import { createUnpublishWorkflowTool } from './workflows/unpublish-workflow.tool';
@@ -117,9 +116,6 @@ export function createAllTools(context: InstanceAiContext) {
 		'ask-user': createAskUserTool(),
 		'fetch-url': createFetchUrlTool(context),
 		...(context.webResearchService?.search ? { 'web-search': createWebSearchTool(context) } : {}),
-		...(context.workflowService.patchNode
-			? { 'patch-workflow': createPatchWorkflowTool(context) }
-			: {}),
 		...(context.workflowService.listVersions
 			? {
 					'list-workflow-versions': createListWorkflowVersionsTool(context),

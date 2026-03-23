@@ -5,8 +5,6 @@
  * Two modes:
  * - Sandbox mode (when workspace is available): agent works with real files + tsc
  * - Tool mode (fallback): agent uses build-workflow tool with string-based code
- *
- * Pattern follows browser-credential-setup.tool.ts — direct Agent instantiation.
  */
 
 import { Agent } from '@mastra/core/agent';
@@ -17,11 +15,7 @@ import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import {
-	BUILDER_AGENT_PROMPT,
-	SANDBOX_BUILDER_AGENT_PROMPT,
-	PATCH_AGENT_PROMPT,
-} from './build-workflow-agent.prompt';
+import { BUILDER_AGENT_PROMPT, SANDBOX_BUILDER_AGENT_PROMPT } from './build-workflow-agent.prompt';
 import { truncateLabel } from './display-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
@@ -86,9 +80,6 @@ function buildOutcome(
 }
 
 const BUILDER_MAX_STEPS = 30;
-const PATCH_MAX_STEPS = 8;
-const PATCH_TOOL_NAMES = ['patch-workflow', 'list-credentials', 'test-credential'] as const;
-
 function hashContent(content: string | null): string {
 	return createHash('sha256')
 		.update(content ?? '', 'utf8')
@@ -114,12 +105,6 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				.describe(
 					'Existing workflow ID to modify. When provided, the agent starts with the current workflow code pre-loaded.',
 				),
-			mode: z
-				.enum(['build', 'patch'])
-				.default('build')
-				.describe(
-					'Operation mode. "build" for full builds/rebuilds. "patch" for targeted single-node fixes with reduced tool set and step budget.',
-				),
 		}),
 		outputSchema: z.object({
 			result: z.string(),
@@ -129,13 +114,9 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				return { result: 'Error: background task support not available.' };
 			}
 
-			const isPatch = input.mode === 'patch';
-			if (isPatch && !input.workflowId) {
-				return { result: 'Error: workflowId is required in patch mode.' };
-			}
 			const factory = context.builderSandboxFactory;
 			const domainContext = context.domainContext;
-			const useSandbox = !!factory && !!domainContext && !isPatch;
+			const useSandbox = !!factory && !!domainContext;
 
 			// Build the appropriate tool set based on mode
 			let builderTools: ToolsInput;
@@ -179,40 +160,35 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				}
 				prompt = SANDBOX_BUILDER_AGENT_PROMPT;
 			} else {
-				// Tool mode: original approach, also used for all patch invocations
+				// Tool mode: original approach (no sandbox)
 				builderTools = {};
 
-				const toolNames = isPatch
-					? [...PATCH_TOOL_NAMES]
-					: [
-							'build-workflow',
-							'get-node-type-definition',
-							'get-workflow-as-code',
-							'list-workflows',
-							'search-nodes',
-							'get-suggested-nodes',
-							'list-data-tables',
-							'create-data-table',
-							'get-data-table-schema',
-							'add-data-table-column',
-							'query-data-table-rows',
-							'insert-data-table-rows',
-							...(context.researchMode ? ['web-search', 'fetch-url'] : []),
-						];
+				const toolNames = [
+					'build-workflow',
+					'get-node-type-definition',
+					'get-workflow-as-code',
+					'list-workflows',
+					'search-nodes',
+					'get-suggested-nodes',
+					'list-data-tables',
+					'create-data-table',
+					'get-data-table-schema',
+					'add-data-table-column',
+					'query-data-table-rows',
+					'insert-data-table-rows',
+					...(context.researchMode ? ['web-search', 'fetch-url'] : []),
+				];
 				for (const name of toolNames) {
 					if (name in context.domainTools) {
 						builderTools[name] = context.domainTools[name];
 					}
 				}
 
-				if (isPatch && !builderTools['patch-workflow']) {
-					return { result: 'Error: patch-workflow tool not available.' };
-				}
-				if (!isPatch && !builderTools['build-workflow']) {
+				if (!builderTools['build-workflow']) {
 					return { result: 'Error: build-workflow tool not available.' };
 				}
 
-				prompt = isPatch ? PATCH_AGENT_PROMPT : BUILDER_AGENT_PROMPT;
+				prompt = BUILDER_AGENT_PROMPT;
 			}
 
 			const builderMemory = createSubAgentMemory(context.storage, 'workflow-builder');
@@ -232,7 +208,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					tools: Object.keys(builderTools),
 					taskId,
 					kind: 'builder',
-					title: isPatch ? 'Patching workflow' : 'Building workflow',
+					title: 'Building workflow',
 					subtitle: truncateLabel(input.task),
 					goal: input.task,
 					targetResource: input.workflowId
@@ -256,9 +232,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			}
 
 			let briefing: string;
-			if (isPatch && workflowId) {
-				briefing = `${input.task}\n\n[CONTEXT: Patching workflow ${workflowId}.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
-			} else if (workflowId) {
+			if (workflowId) {
 				briefing = `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
 			} else {
 				briefing = `${input.task}${iterationContext ? `\n\n${iterationContext}` : ''}`;
@@ -439,7 +413,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 								}
 							: undefined;
 
-						const maxSteps = isPatch ? PATCH_MAX_STEPS : BUILDER_MAX_STEPS;
+						const maxSteps = BUILDER_MAX_STEPS;
 
 						const stream = await subAgent.stream(briefing, {
 							maxSteps,
