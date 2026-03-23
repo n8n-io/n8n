@@ -19,6 +19,8 @@ const PROPERTY_VOCABULARY = new Set([
 	'color--text',
 	'color--background',
 	'color--foreground',
+	'background',
+	'text-color',
 	'border-color',
 	'border-width',
 	'border-top-color',
@@ -70,6 +72,9 @@ const STANDALONE_PROPERTIES = new Set([
 	'border-width',
 	'border',
 	'font-family',
+	'background',
+	'icon-color',
+	'text-color',
 ]);
 
 const STATES = new Set([
