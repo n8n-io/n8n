@@ -3,7 +3,10 @@
  * Without this, tools that use suspend() will fail on resumeStream() because
  * Mastra has no storage to persist/retrieve the execution snapshot.
  *
- * Centralizes the Mastra + Observability ceremony that was duplicated 6 times.
+ * Reuses a single Mastra + Observability instance per storage key to avoid
+ * creating throwaway Mastra/LangSmithExporter/Observability objects on every
+ * sub-agent call.  Previous approach created a new Mastra per call, leaking
+ * RunTree trace objects that retained full LLM request bodies (~25 MB+).
  */
 
 import type { Agent } from '@mastra/core/agent';
@@ -28,13 +31,25 @@ function buildLangSmithExporter(tracingConfig?: TracingProxyConfig): LangSmithEx
 	return new LangSmithExporter({ projectName: 'instance-ai' });
 }
 
+let cachedSubAgentMastra: Mastra | null = null;
+let cachedSubAgentStorageKey = '';
+
 export function registerWithMastra(
 	agentId: string,
 	agent: Agent,
 	storage: MastraCompositeStore,
 	tracingConfig?: TracingProxyConfig,
 ) {
-	new Mastra({
+	const key = storage.id ?? 'default';
+
+	if (cachedSubAgentMastra && cachedSubAgentStorageKey === key) {
+		// Mastra.__registerMastra sets the mastra back-reference on the agent,
+		// which is what enables suspend/resume snapshot storage.
+		agent.__registerMastra(cachedSubAgentMastra);
+		return;
+	}
+
+	cachedSubAgentMastra = new Mastra({
 		agents: { [agentId]: agent },
 		storage,
 		observability: new Observability({
@@ -46,4 +61,5 @@ export function registerWithMastra(
 			},
 		}),
 	});
+	cachedSubAgentStorageKey = key;
 }

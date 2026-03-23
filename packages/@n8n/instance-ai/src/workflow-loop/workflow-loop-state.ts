@@ -26,7 +26,6 @@ export const workflowLoopStateSchema = z.object({
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
-	patchAttempts: z.number().int().min(0),
 	rebuildAttempts: z.number().int().min(0),
 	/** Credential types that were mocked during build (persisted across phases). */
 	mockedCredentialTypes: z.array(z.string()).optional(),
@@ -39,7 +38,7 @@ export type WorkflowLoopState = z.infer<typeof workflowLoopStateSchema>;
 
 // ── AttemptRecord ───────────────────────────────────────────────────────────
 
-export const attemptActionSchema = z.enum(['build', 'verify', 'patch', 'rebuild']);
+export const attemptActionSchema = z.enum(['build', 'verify', 'rebuild', 'patch']);
 export const attemptResultSchema = z.enum(['success', 'failure', 'blocked']);
 
 export const attemptRecordSchema = z.object({
@@ -77,6 +76,10 @@ export const workflowBuildOutcomeSchema = z.object({
 	mockedNodeNames: z.array(z.string()).optional(),
 	/** Credential types that were mocked (not resolved to real credentials). */
 	mockedCredentialTypes: z.array(z.string()).optional(),
+	/** Map of node name → credential types that were mocked on that node. */
+	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
+	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
+	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
 	summary: z.string(),
 });
 
@@ -113,12 +116,13 @@ export type VerificationResult = z.infer<typeof verificationResultSchema>;
 
 export type WorkflowLoopAction =
 	| { type: 'verify'; workflowId: string }
+	| { type: 'rebuild'; workflowId: string; failureDetails: string }
 	| {
 			type: 'patch';
 			workflowId: string;
-			nodeName: string;
-			patch: Record<string, unknown>;
+			failedNodeName: string;
+			diagnosis: string;
+			patch?: Record<string, unknown>;
 	  }
-	| { type: 'rebuild'; workflowId: string; failureDetails: string }
 	| { type: 'done'; workflowId?: string; summary: string; mockedCredentialTypes?: string[] }
 	| { type: 'blocked'; reason: string };

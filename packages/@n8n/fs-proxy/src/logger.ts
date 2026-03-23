@@ -135,7 +135,17 @@ export function printModuleStatus(config: ResolvedGatewayConfig): void {
 	// Filesystem
 	if (config.filesystem !== false) {
 		const dir = formatPath(config.filesystem.dir);
-		logger.info(`  ${pc.green('✓')} Filesystem    ${pc.dim(dir)}`, { module: 'Filesystem', dir });
+		const writeAccess = config.filesystem.writeAccess ? ', write access' : '';
+		logger.info(`  ${pc.green('✓')} Filesystem    ${pc.dim(dir + writeAccess)}`, {
+			module: 'Filesystem',
+			dir,
+			writeAccess: config.filesystem.writeAccess,
+		});
+		if (writeAccess) {
+			logger.info(`  ${pc.green('✓')} Filesystem write access`);
+		} else {
+			logger.info(pc.dim('  ✗ Filesystem write access'));
+		}
 	} else {
 		logger.info(pc.dim('  ✗ Filesystem'), { module: 'Filesystem', enabled: false });
 	}
@@ -310,7 +320,18 @@ function groupTools(tools: ToolDefinition[]): Array<[string, string[]]> {
 	return sorted;
 }
 
-const FILESYSTEM_TOOLS = new Set(['read_file', 'list_files', 'get_file_tree', 'search_files']);
+const FILESYSTEM_TOOLS = new Set([
+	'read_file',
+	'list_files',
+	'get_file_tree',
+	'search_files',
+	'write_file',
+	'edit_file',
+	'create_directory',
+	'delete',
+	'move',
+	'copy_file',
+]);
 
 function categorize(toolName: string): string {
 	if (FILESYSTEM_TOOLS.has(toolName)) return 'Filesystem';

@@ -16,8 +16,8 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			updateFromWorkflowJSON: jest.fn(),
 			archive: jest.fn(),
 			delete: jest.fn(),
-			activate: jest.fn(),
-			deactivate: jest.fn(),
+			publish: jest.fn(),
+			unpublish: jest.fn(),
 		},
 		executionService: {
 			list: jest.fn(),
@@ -60,7 +60,8 @@ function makeWorkflowDetail(): WorkflowDetail {
 	return {
 		id: 'wf-123',
 		name: 'Test Workflow',
-		active: true,
+		versionId: 'v-abc-123',
+		activeVersionId: 'v-abc-123',
 		createdAt: '2025-01-01T00:00:00.000Z',
 		updatedAt: '2025-01-02T00:00:00.000Z',
 		nodes: [
@@ -83,7 +84,8 @@ function expectedOutputFromDetail(detail: WorkflowDetail) {
 	return {
 		id: detail.id,
 		name: detail.name,
-		active: detail.active,
+		versionId: detail.versionId,
+		activeVersionId: detail.activeVersionId,
 		nodes: detail.nodes,
 		connections: detail.connections,
 		settings: detail.settings,

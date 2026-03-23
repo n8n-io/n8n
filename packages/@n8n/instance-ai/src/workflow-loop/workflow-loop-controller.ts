@@ -7,9 +7,8 @@
  * Five phases: building → verifying → repairing → done | blocked
  *
  * Retry policy:
- * - At most 1 automatic patch per unique failureSignature
- * - At most 1 automatic rebuild per unique failureSignature
- * - Same failureSignature after same repair mode → blocked (no silent loops)
+ * - At most 1 automatic repair (patch or rebuild) per unique failureSignature
+ * - Same failureSignature after repair → blocked (no silent loops)
  */
 
 import { nanoid } from 'nanoid';
@@ -37,7 +36,6 @@ export function createWorkItem(
 		phase: 'building',
 		status: 'active',
 		source,
-		patchAttempts: 0,
 		rebuildAttempts: 0,
 	};
 }
@@ -184,71 +182,48 @@ export function handleVerificationVerdict(
 
 		case 'needs_patch': {
 			attempt.result = 'failure';
-
-			// Check retry policy: only 1 patch per unique failureSignature
-			if (
-				verdict.failureSignature &&
-				hasRepeatedRepair(attempts, verdict.failureSignature, 'patch')
-			) {
-				return {
-					state: {
-						...state,
-						phase: 'blocked',
-						status: 'blocked',
-						lastFailureSignature: verdict.failureSignature,
-					},
-					action: {
-						type: 'blocked',
-						reason: `Repeated patch failure: ${verdict.failureSignature}`,
-					},
-					attempt,
-				};
-			}
-
-			if (!verdict.failedNodeName || !verdict.patch) {
-				// Insufficient info for a targeted patch — escalate to rebuild
-				return escalateToRebuild(state, attempts, verdict, attempt);
-			}
-
-			return {
-				state: {
-					...state,
-					phase: 'repairing',
-					status: 'active',
-					patchAttempts: state.patchAttempts + 1,
-					lastFailureSignature: verdict.failureSignature,
-					lastExecutionId: verdict.executionId,
-				},
-				action: {
-					type: 'patch',
-					workflowId: verdict.workflowId,
-					nodeName: verdict.failedNodeName,
-					patch: verdict.patch,
-				},
-				attempt,
-			};
+			attempt.action = 'patch';
+			return escalateToRepair(state, attempts, verdict, attempt, {
+				type: 'patch',
+				workflowId: verdict.workflowId,
+				failedNodeName: verdict.failedNodeName ?? 'unknown',
+				diagnosis: verdict.diagnosis ?? verdict.summary,
+				patch: verdict.patch,
+			});
 		}
 
 		case 'needs_rebuild': {
 			attempt.result = 'failure';
-			return escalateToRebuild(state, attempts, verdict, attempt);
+			attempt.action = 'rebuild';
+
+			const failureDetails = [
+				verdict.diagnosis ?? '',
+				verdict.failedNodeName ? `Failed node: ${verdict.failedNodeName}` : '',
+				verdict.failureSignature ? `Signature: ${verdict.failureSignature}` : '',
+			]
+				.filter(Boolean)
+				.join('. ');
+
+			return escalateToRepair(state, attempts, verdict, attempt, {
+				type: 'rebuild',
+				workflowId: verdict.workflowId,
+				failureDetails: failureDetails || verdict.summary,
+			});
 		}
 	}
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function escalateToRebuild(
+function escalateToRepair(
 	state: WorkflowLoopState,
 	attempts: AttemptRecord[],
 	verdict: VerificationResult,
 	attempt: AttemptRecord,
+	action: WorkflowLoopAction,
 ): TransitionResult {
-	// Check retry policy: only 1 rebuild per unique failureSignature
-	if (
-		verdict.failureSignature &&
-		hasRepeatedRepair(attempts, verdict.failureSignature, 'rebuild')
-	) {
+	// Check retry policy: only 1 repair (patch or rebuild) per unique failureSignature
+	if (verdict.failureSignature && hasRepeatedRepair(attempts, verdict.failureSignature)) {
 		return {
 			state: {
 				...state,
@@ -258,19 +233,11 @@ function escalateToRebuild(
 			},
 			action: {
 				type: 'blocked',
-				reason: `Repeated rebuild failure: ${verdict.failureSignature}`,
+				reason: `Repeated repair failure: ${verdict.failureSignature}`,
 			},
 			attempt,
 		};
 	}
-
-	const failureDetails = [
-		verdict.diagnosis ?? '',
-		verdict.failedNodeName ? `Failed node: ${verdict.failedNodeName}` : '',
-		verdict.failureSignature ? `Signature: ${verdict.failureSignature}` : '',
-	]
-		.filter(Boolean)
-		.join('. ');
 
 	return {
 		state: {
@@ -281,26 +248,21 @@ function escalateToRebuild(
 			lastFailureSignature: verdict.failureSignature,
 			lastExecutionId: verdict.executionId,
 		},
-		action: {
-			type: 'rebuild',
-			workflowId: verdict.workflowId,
-			failureDetails: failureDetails || verdict.summary,
-		},
+		action,
 		attempt,
 	};
 }
 
 /**
- * Check if we've already attempted the same repair mode for the same failure signature.
- * Returns true when the same {failureSignature, repairMode} pair exists in prior attempts,
+ * Check if we've already attempted a repair (patch or rebuild) for the same failure signature.
+ * Returns true when a prior repair attempt exists with the same failureSignature,
  * which means we should stop and block to avoid infinite loops.
  */
-function hasRepeatedRepair(
-	attempts: AttemptRecord[],
-	failureSignature: string,
-	repairMode: 'patch' | 'rebuild',
-): boolean {
-	return attempts.some((a) => a.action === repairMode && a.failureSignature === failureSignature);
+function hasRepeatedRepair(attempts: AttemptRecord[], failureSignature: string): boolean {
+	return attempts.some(
+		(a) =>
+			(a.action === 'rebuild' || a.action === 'patch') && a.failureSignature === failureSignature,
+	);
 }
 
 function makeAttempt(

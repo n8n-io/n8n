@@ -337,7 +337,7 @@ describe('GET /executions/:id — Execution Redaction', () => {
 			assertNotRedacted(parseResponseData(response.body));
 		});
 
-		test('project editor without execution:reveal scope gets 403', async () => {
+		test('project editor without execution:reveal scope gets 403 with structured error', async () => {
 			testServer.license.enable('feat:sharing');
 
 			const teamProject = await createTeamProject();
@@ -350,11 +350,21 @@ describe('GET /executions/:id — Execution Redaction', () => {
 				policy: 'all',
 			});
 
-			await testServer
+			const response = await testServer
 				.authAgentFor(member)
 				.get(`/executions/${execution.id}`)
 				.query({ redactExecutionData: 'false' })
 				.expect(403);
+
+			expect(response.body).toMatchObject({
+				code: 403,
+				message: expect.stringContaining('execution:reveal'),
+				hint: expect.any(String),
+				meta: {
+					errorCode: 'EXECUTION_REVEAL_FORBIDDEN',
+					requiredScope: 'execution:reveal',
+				},
+			});
 		});
 
 		test('project editor without execution:reveal scope can still reveal when policy allows it (policy=none)', async () => {

@@ -180,10 +180,10 @@ sequenceDiagram
     Note over D: uploadCapabilities() — resolves tool definitions,<br/>then POSTs rootPath + McpTool[]
     Note over SRV: consumePairingToken(userId, token)<br/>Issues session key sess_...
     SRV-->>D: { ok: true, sessionKey: "sess_..." }
-    Note over D: Stores session key; uses it for all<br/>subsequent requests instead of the pairing token
+    Note over D: Stores session key, uses it for all<br/>subsequent requests instead of the pairing token
 
     D->>SRV: GET /gateway/events?apiKey=sess_... (SSE, persistent)
-    Note over SRV: SSE connection held open;<br/>tool call requests streamed as events
+    Note over SRV: SSE connection held open,<br/>tool call requests streamed as events
     SRV-->>FE: push: instanceAiGatewayStateChanged { connected: true, directory }
 ```
 

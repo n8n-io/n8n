@@ -33,12 +33,12 @@ const store = useInstanceAiSettingsStore();
 
 		<div :class="$style.switchRow">
 			<span :class="$style.switchLabel">{{
-				i18n.baseText('instanceAi.settings.permissions.activateWorkflow.label')
+				i18n.baseText('instanceAi.settings.permissions.publishWorkflow.label')
 			}}</span>
 			<ElSwitch
-				:model-value="store.getPermission('activateWorkflow') === 'always_allow'"
+				:model-value="store.getPermission('publishWorkflow') === 'always_allow'"
 				@update:model-value="
-					store.setPermission('activateWorkflow', $event ? 'always_allow' : 'require_approval')
+					store.setPermission('publishWorkflow', $event ? 'always_allow' : 'require_approval')
 				"
 			/>
 		</div>

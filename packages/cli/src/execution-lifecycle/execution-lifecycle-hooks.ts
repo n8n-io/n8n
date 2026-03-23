@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionRepository, UserRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { stringify } from 'flatted';
@@ -14,6 +15,8 @@ import {
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
 	IRun,
+	IRunData,
+	IRunExecutionData,
 	IWorkflowBase,
 	RelatedExecution,
 	WorkflowExecuteMode,
@@ -21,6 +24,8 @@ import type {
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
+import type { RedactableExecution } from '@/executions/execution-redaction';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -182,15 +187,53 @@ function hookFunctionsNodeEvents(hooks: ExecutionLifecycleHooks) {
 }
 
 /**
+ * Constructs a minimal RedactableExecution from push event data so the existing
+ * redaction pipeline can be reused for real-time push events.
+ */
+function buildRedactableExecution(
+	hooks: ExecutionLifecycleHooks,
+	runData: IRunData,
+	executionData?: IRunExecutionData,
+): RedactableExecution {
+	return {
+		id: hooks.executionId,
+		mode: hooks.mode,
+		workflowId: hooks.workflowData.id,
+		data: {
+			resultData: { runData },
+			executionData: executionData?.executionData,
+		},
+		workflowData: {
+			settings: hooks.workflowData.settings,
+			nodes: hooks.workflowData.nodes,
+		},
+	};
+}
+
+/**
  * Returns hook functions to push data to Editor-UI
  */
 function hookFunctionsPush(
 	hooks: ExecutionLifecycleHooks,
 	{ pushRef, retryOf }: HooksSetupParameters,
+	userId?: string,
 ) {
 	if (!pushRef) return;
 	const logger = Container.get(Logger);
 	const pushInstance = Container.get(Push);
+	const redactionProxy = Container.get(ExecutionRedactionServiceProxy);
+	const userRepository = Container.get(UserRepository);
+
+	// Lazy user resolution — resolved once, reused across all node events in this execution
+	let resolvedUser: User | null | undefined; // undefined = not yet resolved
+	async function getUser(): Promise<User | null> {
+		if (resolvedUser !== undefined) return resolvedUser;
+		resolvedUser = userId
+			? await userRepository.findOne({ where: { id: userId }, relations: ['role'] })
+			: null;
+		return resolvedUser;
+	}
+
 	hooks.addHandler('nodeExecuteBefore', function (nodeName, data) {
 		const { executionId } = this;
 		// Push data to session which started workflow before each
@@ -206,7 +249,7 @@ function hookFunctionsPush(
 			pushRef,
 		);
 	});
-	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
+	hooks.addHandler('nodeExecuteAfter', async function (nodeName, data, executionData) {
 		const { executionId } = this;
 		// Push data to session which started workflow after each rendered node
 		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
@@ -226,6 +269,42 @@ function hookFunctionsPush(
 			pushRef,
 		);
 
+		// Fail-closed redaction: if user cannot be resolved, skip the data push
+		// entirely rather than sending unredacted data to the client.
+		const user = await getUser();
+		if (!user) {
+			logger.warn('Skipping execution data push: unable to resolve user for redaction', {
+				executionId,
+				nodeName,
+				userId,
+			});
+			return;
+		}
+
+		// Apply copy-on-write redaction before sending binary data.
+		// Returns the original data if no redaction is needed (zero-copy),
+		// or a structuredClone with redaction applied.
+		// Fail-closed: if redaction throws, skip the data push rather than
+		// sending unredacted data. The metadata-only push above already fired.
+		let dataToSend = data;
+		try {
+			const dummy = buildRedactableExecution(this, { [nodeName]: [data] }, executionData);
+			const result = await redactionProxy.processExecution(dummy, {
+				user,
+				keepOriginal: true,
+			});
+			if (result !== dummy) {
+				dataToSend = result.data.resultData.runData[nodeName][0];
+			}
+		} catch (error) {
+			logger.error('Failed to redact push data, skipping nodeExecuteAfterData', {
+				executionId,
+				nodeName,
+				error,
+			});
+			return;
+		}
+
 		// We send the node execution data as a WS binary message to the FE. Not
 		// because it's more efficient on the wire: the content is a JSON string
 		// so both text and binary would end the same on the wire. The reason
@@ -236,13 +315,13 @@ function hookFunctionsPush(
 		pushInstance.send(
 			{
 				type: 'nodeExecuteAfterData',
-				data: { executionId, nodeName, itemCountByConnectionType, data },
+				data: { executionId, nodeName, itemCountByConnectionType, data: dataToSend },
 			},
 			pushRef,
 			asBinary,
 		);
 	});
-	hooks.addHandler('workflowExecuteBefore', function (_workflow, data) {
+	hooks.addHandler('workflowExecuteBefore', async function (_workflow, data) {
 		const { executionId } = this;
 		const { id: workflowId, name: workflowName } = this.workflowData;
 		logger.debug('Executing hook (hookFunctionsPush)', {
@@ -250,7 +329,41 @@ function hookFunctionsPush(
 			pushRef,
 			workflowId,
 		});
-		// Push data to session which started the workflow
+
+		// Apply copy-on-write redaction to flattedRunData when retrying/resuming.
+		// Fail-closed: if user cannot be resolved or redaction throws, send
+		// empty runData rather than skipping the push or leaking unredacted data.
+		const user = await getUser();
+		let runDataToStringify: IRunData = {};
+		const hasRunData = data?.resultData.runData && Object.keys(data.resultData.runData).length > 0;
+
+		if (hasRunData && user) {
+			try {
+				const dummy = buildRedactableExecution(this, data.resultData.runData, data);
+				const result = await redactionProxy.processExecution(dummy, {
+					user,
+					keepOriginal: true,
+				});
+				runDataToStringify =
+					result !== dummy ? result.data.resultData.runData : data.resultData.runData;
+			} catch (error) {
+				logger.error('Failed to redact execution start data, sending empty runData', {
+					executionId,
+					workflowId,
+					error,
+				});
+				// runDataToStringify stays {} — fail closed
+			}
+		} else if (hasRunData && !user) {
+			logger.warn('Cannot redact execution start data: unable to resolve user', {
+				executionId,
+				workflowId,
+				userId,
+			});
+			// runDataToStringify stays {} — fail closed
+		}
+
+		// Always send executionStarted so the editor can initialise the execution UI
 		pushInstance.send(
 			{
 				type: 'executionStarted',
@@ -261,9 +374,7 @@ function hookFunctionsPush(
 					retryOf,
 					workflowId,
 					workflowName,
-					flattedRunData: data?.resultData.runData
-						? stringify(data.resultData.runData)
-						: stringify({}),
+					flattedRunData: stringify(runDataToStringify),
 				},
 			},
 			pushRef,
@@ -582,7 +693,7 @@ export function getLifecycleHooksForScalingWorker(
 	hookFunctionsExternalHooks(hooks);
 
 	if (executionMode === 'manual' && Container.get(InstanceSettings).isWorker) {
-		hookFunctionsPush(hooks, optionalParameters);
+		hookFunctionsPush(hooks, optionalParameters, data.userId);
 	}
 
 	Container.get(ModulesHooksRegistry).addHooks(hooks);
@@ -675,7 +786,7 @@ export function getLifecycleHooksForRegularMain(
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, optionalParameters);
-	hookFunctionsPush(hooks, optionalParameters);
+	hookFunctionsPush(hooks, optionalParameters, userId);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);

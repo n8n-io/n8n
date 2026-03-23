@@ -21,6 +21,8 @@ import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadMessages as fetchThreadMessagesApi,
 	fetchThreadStatus as fetchThreadStatusApi,
+	deleteThread as deleteThreadApi,
+	renameThread as renameThreadApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
 import { useResourceRegistry } from './useResourceRegistry';
@@ -31,9 +33,39 @@ import type {
 	InstanceAiEvent,
 	InstanceAiMessage,
 	InstanceAiAgentNode,
+	InstanceAiToolCallState,
 	InstanceAiThreadSummary,
 	InstanceAiSSEConnectionState,
 } from '@n8n/api-types';
+
+export interface PendingConfirmationItem {
+	toolCall: InstanceAiToolCallState;
+	agentNode: InstanceAiAgentNode;
+	messageId: string;
+}
+
+/** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
+function collectPendingConfirmations(
+	node: InstanceAiAgentNode,
+	messageId: string,
+	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
+	out: PendingConfirmationItem[],
+): void {
+	for (const tc of node.toolCalls) {
+		if (
+			tc.confirmation &&
+			tc.isLoading &&
+			tc.confirmationStatus !== 'approved' &&
+			tc.confirmationStatus !== 'denied' &&
+			!resolved.has(tc.confirmation.requestId)
+		) {
+			out.push({ toolCall: tc, agentNode: node, messageId });
+		}
+	}
+	for (const child of node.children) {
+		collectPendingConfirmations(child, messageId, resolved, out);
+	}
+}
 
 // Module-level EventSource reference — not in reactive state (not serializable,
 // not needed for rendering, wrapping in a reactive proxy causes issues).
@@ -69,6 +101,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
 	const creditsQuota = ref<number | undefined>(undefined);
 	const creditsClaimed = ref<number | undefined>(undefined);
+	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied' | 'deferred'>>(new Map());
 	const MAX_DEBUG_EVENTS = 1000;
 
 	// --- Computed ---
@@ -175,6 +208,25 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		} catch {
 			// Non-critical — credits display is optional
 		}
+	}
+
+	/** All pending confirmations across all messages, for the top-level panel. */
+	const pendingConfirmations = computed((): PendingConfirmationItem[] => {
+		const items: PendingConfirmationItem[] = [];
+		for (const msg of messages.value) {
+			if (msg.role !== 'assistant' || !msg.agentTree) continue;
+			collectPendingConfirmations(msg.agentTree, msg.id, resolvedConfirmationIds.value, items);
+		}
+		return items;
+	});
+
+	function resolveConfirmation(
+		requestId: string,
+		action: 'approved' | 'denied' | 'deferred',
+	): void {
+		const next = new Map(resolvedConfirmationIds.value);
+		next.set(requestId, action);
+		resolvedConfirmationIds.value = next;
 	}
 
 	// --- Event reducer (delegated to pure module) ---
@@ -353,6 +405,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
+		resolvedConfirmationIds.value = new Map();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		// 3. Switch thread
@@ -376,6 +429,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
+		resolvedConfirmationIds.value = new Map();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		currentThreadId.value = newThreadId;
@@ -390,8 +444,21 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return newThreadId;
 	}
 
-	function deleteThread(threadId: string): { currentThreadId: string; wasActive: boolean } {
+	async function deleteThread(
+		threadId: string,
+	): Promise<{ currentThreadId: string; wasActive: boolean }> {
 		const wasActive = threadId === currentThreadId.value;
+
+		// Only call API for threads that have been persisted to the backend
+		if (persistedThreadIds.has(threadId)) {
+			try {
+				await deleteThreadApi(rootStore.restApiContext, threadId);
+				persistedThreadIds.delete(threadId);
+			} catch {
+				toast.showError(new Error('Failed to delete thread. Try again.'), 'Delete failed');
+				return { currentThreadId: currentThreadId.value, wasActive };
+			}
+		}
 
 		// Remove thread from list
 		threads.value = threads.value.filter((t) => t.id !== threadId);
@@ -411,6 +478,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				activeRunId.value = null;
 				debugEvents.value = [];
 				resetFeedback();
+				resolvedConfirmationIds.value = new Map();
 				runStateByGroupId = {};
 				groupIdByRunId = {};
 				currentThreadId.value = freshId;
@@ -623,7 +691,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		autoSetup?: { credentialType: string },
 		userInput?: string,
 		domainAccessAction?: string,
-		mockCredentials?: boolean,
 	): Promise<void> {
 		try {
 			await postConfirmation(
@@ -635,7 +702,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				autoSetup,
 				userInput,
 				domainAccessAction,
-				mockCredentials,
 			);
 		} catch {
 			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
@@ -733,10 +799,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		);
 	}
 
-	function renameThread(threadId: string, title: string): void {
+	async function renameThread(threadId: string, title: string): Promise<void> {
 		const thread = threads.value.find((t) => t.id === threadId);
 		if (thread) {
 			thread.title = title;
+		}
+
+		// Only call API for threads that have been persisted to the backend
+		if (persistedThreadIds.has(threadId)) {
+			await renameThreadApi(rootStore.restApiContext, threadId, title);
 		}
 	}
 
@@ -755,6 +826,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		feedbackByResponseId,
 		creditsQuota,
 		creditsClaimed,
+		resolvedConfirmationIds,
 		// Computed
 		isStreaming,
 		hasMessages,
@@ -768,6 +840,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		resourceRegistry,
 		rateableResponseId,
 		creditsRemaining,
+		pendingConfirmations,
 		// Actions
 		newThread,
 		deleteThread,
@@ -782,6 +855,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		amendAgent,
 		toggleResearchMode,
 		confirmAction,
+		resolveConfirmation,
 		copyFullTrace,
 		submitFeedback,
 		fetchCredits,

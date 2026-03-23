@@ -80,7 +80,6 @@ interface ConfirmationData {
 	credentialId?: string;
 	credentials?: Record<string, string>;
 	autoSetup?: { credentialType: string };
-	mockCredentials?: boolean;
 	userInput?: string;
 	domainAccessAction?: string;
 }
@@ -801,6 +800,21 @@ export class InstanceAiService {
 				sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
 				reportVerificationVerdict: async (verdict: VerificationResult) =>
 					await this.handleVerificationVerdictFromTool(verdict, threadId, workflowLoopStorage),
+				getWorkItemBuildOutcome: async (workItemId: string) => {
+					const item = await workflowLoopStorage.getWorkItem(threadId, workItemId);
+					return item?.lastBuildOutcome ?? undefined;
+				},
+				updateWorkItemBuildOutcome: async (workItemId: string, update) => {
+					const item = await workflowLoopStorage.getWorkItem(threadId, workItemId);
+					if (!item?.lastBuildOutcome) return;
+					const updatedOutcome = { ...item.lastBuildOutcome, ...update };
+					await workflowLoopStorage.saveWorkItem(
+						threadId,
+						item.state,
+						item.attempts,
+						updatedOutcome,
+					);
+				},
 				workspace: sandboxEntry?.workspace,
 				builderSandboxFactory: this.builderSandboxFactory,
 				nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
@@ -1022,7 +1036,6 @@ export class InstanceAiService {
 			...(data.credentialId ? { credentialId: data.credentialId } : {}),
 			...(data.credentials ? { credentials: data.credentials } : {}),
 			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
-			...(data.mockCredentials ? { mockCredentials: data.mockCredentials } : {}),
 			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
 			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
 		};
@@ -1376,7 +1389,6 @@ export class InstanceAiService {
 			phase: 'building',
 			status: 'active',
 			source: outcome.workflowId ? 'modify' : 'create',
-			patchAttempts: 0,
 			rebuildAttempts: 0,
 		};
 		const attempts: AttemptRecord[] = existing?.attempts ?? [];
@@ -1424,32 +1436,38 @@ export class InstanceAiService {
 	private actionToGuidance(action: WorkflowLoopAction, workItemId?: string): string {
 		switch (action.type) {
 			case 'done': {
-				let guidance = `Workflow is ready. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
 				if (action.mockedCredentialTypes && action.mockedCredentialTypes.length > 0) {
-					guidance +=
-						`\n\nCREDENTIALS MOCKED: The following credential types were mocked with pinned data: ${action.mockedCredentialTypes.join(', ')}. ` +
-						'Tell the user that the workflow was verified with mock data and offer to help them set up real credentials using `setup-credentials`. ' +
-						'The workflow will work end-to-end once real credentials are configured.';
+					const types = action.mockedCredentialTypes.join(', ');
+					return (
+						'Workflow verified successfully with temporary mock data. ' +
+						`Call \`setup-credentials\` with types [${types}] and ` +
+						'credentialFlow stage "finalize" to let the user add real credentials. ' +
+						'After the user selects credentials, call `apply-workflow-credentials` ' +
+						`with the workItemId "${workItemId ?? 'unknown'}" and workflowId to apply them.`
+					);
 				}
-				return guidance;
+				return `Workflow is ready. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
 			}
 			case 'verify':
 				return (
-					`VERIFY: Run workflow ${action.workflowId} using \`run-workflow\`. ` +
+					`VERIFY: Run workflow ${action.workflowId}. ` +
+					`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${workItemId ?? 'unknown'}". ` +
+					'Otherwise use `run-workflow`. ' +
 					'If it fails, use `debug-execution` to diagnose. ' +
 					`Then call \`report-verification-verdict\` with workItemId "${workItemId ?? 'unknown'}" and your findings.`
 				);
 			case 'blocked':
 				return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
-			case 'patch':
-				return (
-					`PATCH NEEDED: Apply \`patch-workflow\` to node "${action.nodeName}" in workflow ${action.workflowId}. ` +
-					`After patching, run the workflow again and call \`report-verification-verdict\` with workItemId "${workItemId ?? 'unknown'}" and the result.`
-				);
 			case 'rebuild':
 				return (
 					`REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. ` +
 					`Call \`build-workflow-with-agent\` again with these details: ${action.failureDetails}`
+				);
+			case 'patch':
+				return (
+					`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
+					`Diagnosis: ${action.diagnosis}. ` +
+					`Call \`build-workflow-with-agent\` with mode "patch" and workflowId "${action.workflowId}".`
 				);
 		}
 	}

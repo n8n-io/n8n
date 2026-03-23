@@ -164,7 +164,7 @@ Memory-enabled sub-agent roles get their own Mastra working memory:
 
 | Role | Resource ID | Template Focus |
 |------|-------------|---------------|
-| `workflow-builder` | `{userId}:workflow-builder` | Credential mappings, node gotchas, error patterns, conventions |
+| `workflow-builder` | `{userId}:workflow-builder` | User preferences, instance-specific credential disambiguation and quirks |
 | `execution-debugger` | `{userId}:execution-debugger` | Failure patterns, auth issues, environment quirks |
 | `data-table-manager` | `{userId}:data-table-manager` | Table inventory, schema patterns, query patterns |
 

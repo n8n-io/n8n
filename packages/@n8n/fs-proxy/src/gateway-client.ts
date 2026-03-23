@@ -13,7 +13,7 @@ import {
 	printToolResult,
 } from './logger';
 import type { BrowserModule } from './tools/browser';
-import { filesystemTools } from './tools/filesystem';
+import { filesystemReadTools, filesystemWriteTools } from './tools/filesystem';
 import { MouseKeyboardModule } from './tools/mouse-keyboard';
 import { ScreenshotModule } from './tools/screenshot';
 import { ShellModule } from './tools/shell';
@@ -138,7 +138,10 @@ export class GatewayClient {
 
 		// Filesystem
 		if (config.filesystem !== false) {
-			defs.push(...filesystemTools);
+			defs.push(...filesystemReadTools);
+			if (config.filesystem.writeAccess) {
+				defs.push(...filesystemWriteTools);
+			}
 		}
 
 		// Computer use modules — check both config and platform support

@@ -4,13 +4,15 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 } from '@n8n/api-types';
 import {
+	InstanceAiConfirmRequestDto,
 	instanceAiGatewayCapabilitiesSchema,
 	instanceAiFilesystemResponseSchema,
+	InstanceAiRenameThreadRequestDto,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Get, Post, Put, Param } from '@n8n/decorators';
+import { RestController, Get, Post, Put, Patch, Delete, Param, Body } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import type { Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
@@ -194,32 +196,19 @@ export class InstanceAiController {
 	}
 
 	@Post('/confirm/:requestId')
-	async confirm(req: AuthenticatedRequest, _res: Response, @Param('requestId') requestId: string) {
-		const {
-			approved,
-			credentialId,
-			credentials,
-			autoSetup,
-			mockCredentials,
-			userInput,
-			domainAccessAction,
-		} = req.body as {
-			approved: boolean;
-			credentialId?: string;
-			credentials?: Record<string, string>;
-			autoSetup?: { credentialType: string };
-			mockCredentials?: boolean;
-			userInput?: string;
-			domainAccessAction?: string;
-		};
+	async confirm(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('requestId') requestId: string,
+		@Body body: InstanceAiConfirmRequestDto,
+	) {
 		const resolved = await this.instanceAiService.resolveConfirmation(req.user.id, requestId, {
-			approved,
-			credentialId,
-			credentials,
-			autoSetup,
-			mockCredentials,
-			userInput,
-			domainAccessAction,
+			approved: body.approved,
+			credentialId: body.credentialId,
+			credentials: body.credentials,
+			autoSetup: body.autoSetup,
+			userInput: body.userInput,
+			domainAccessAction: body.domainAccessAction,
 		});
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');
@@ -344,6 +333,29 @@ export class InstanceAiController {
 
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
 		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
+	}
+
+	@Delete('/threads/:threadId')
+	async deleteThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		await this.assertThreadAccess(req.user.id, threadId);
+		await this.memoryService.deleteThread(req.user.id, threadId);
+		return { ok: true };
+	}
+
+	@Patch('/threads/:threadId')
+	async renameThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiRenameThreadRequestDto,
+	) {
+		await this.assertThreadAccess(req.user.id, threadId);
+		const thread = await this.memoryService.renameThread(req.user.id, threadId, payload.title);
+		return { thread };
 	}
 
 	@Get('/threads/:threadId/messages')

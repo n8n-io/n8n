@@ -162,6 +162,11 @@ export const credentialRequestSchema = z.object({
 
 export type InstanceAiCredentialRequest = z.infer<typeof credentialRequestSchema>;
 
+export const credentialFlowSchema = z.object({
+	stage: z.enum(['generic', 'finalize']),
+});
+export type InstanceAiCredentialFlow = z.infer<typeof credentialFlowSchema>;
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	toolCallId: z.string().describe('Correlates to the tool-call that needs approval'),
@@ -183,6 +188,11 @@ export const confirmationRequestPayloadSchema = z.object({
 	domainAccess: domainAccessMetaSchema
 		.optional()
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
+	credentialFlow: credentialFlowSchema
+		.optional()
+		.describe(
+			'Credential flow stage — finalize renders post-verification credential picker with different copy',
+		),
 });
 
 export const statusPayloadSchema = z.object({
@@ -377,8 +387,6 @@ export interface InstanceAiConfirmResponse {
 	credentialId?: string;
 	credentials?: Record<string, string>;
 	autoSetup?: { credentialType: string };
-	/** When true, the user chose to continue with mock data instead of providing credentials. */
-	mockCredentials?: boolean;
 	userInput?: string;
 	domainAccessAction?: DomainAccessAction;
 }
@@ -403,6 +411,7 @@ export interface InstanceAiToolCallState {
 		projectId?: string;
 		inputType?: 'approval' | 'text';
 		domainAccess?: DomainAccessMeta;
+		credentialFlow?: InstanceAiCredentialFlow;
 	};
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
 	startedAt?: string;
@@ -564,10 +573,8 @@ export type InstanceAiPermissionMode = 'require_approval' | 'always_allow';
 
 export interface InstanceAiPermissions {
 	runWorkflow: InstanceAiPermissionMode;
-	activateWorkflow: InstanceAiPermissionMode;
+	publishWorkflow: InstanceAiPermissionMode;
 	deleteWorkflow: InstanceAiPermissionMode;
-	buildWorkflow: InstanceAiPermissionMode;
-	patchWorkflow: InstanceAiPermissionMode;
 	deleteCredential: InstanceAiPermissionMode;
 	createFolder: InstanceAiPermissionMode;
 	deleteFolder: InstanceAiPermissionMode;
@@ -579,14 +586,13 @@ export interface InstanceAiPermissions {
 	cleanupTestExecutions: InstanceAiPermissionMode;
 	readFilesystem: InstanceAiPermissionMode;
 	fetchUrl: InstanceAiPermissionMode;
+	restoreWorkflowVersion: InstanceAiPermissionMode;
 }
 
 export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	runWorkflow: 'require_approval',
-	activateWorkflow: 'require_approval',
+	publishWorkflow: 'require_approval',
 	deleteWorkflow: 'require_approval',
-	buildWorkflow: 'require_approval',
-	patchWorkflow: 'require_approval',
 	deleteCredential: 'require_approval',
 	createFolder: 'require_approval',
 	deleteFolder: 'require_approval',
@@ -598,6 +604,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	cleanupTestExecutions: 'require_approval',
 	readFilesystem: 'require_approval',
 	fetchUrl: 'require_approval',
+	restoreWorkflowVersion: 'require_approval',
 };
 
 // ---------------------------------------------------------------------------

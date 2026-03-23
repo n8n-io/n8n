@@ -407,7 +407,16 @@ export class InstanceAiSettingsService {
 		if (persisted.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = persisted.subAgentMaxSteps;
 		if (persisted.browserMcp !== undefined) c.browserMcp = persisted.browserMcp;
 		if (persisted.permissions) {
-			this.permissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS, ...persisted.permissions };
+			// Migrate legacy "activateWorkflow" → "publishWorkflow"
+			const perms = { ...persisted.permissions } as Record<string, unknown>;
+			if ('activateWorkflow' in perms && !('publishWorkflow' in perms)) {
+				perms.publishWorkflow = perms.activateWorkflow;
+				delete perms.activateWorkflow;
+			}
+			this.permissions = {
+				...DEFAULT_INSTANCE_AI_PERMISSIONS,
+				...perms,
+			} as typeof this.permissions;
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
 		if (persisted.sandboxEnabled !== undefined) c.sandboxEnabled = persisted.sandboxEnabled;

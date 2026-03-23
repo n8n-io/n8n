@@ -14,6 +14,12 @@ export default {
 			options: ['small', 'medium', 'large'],
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A text link component for navigation and inline actions.' },
+		},
+	},
 };
 
 const methods = {

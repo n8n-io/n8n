@@ -3,9 +3,8 @@ import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
+import { MAX_FILE_SIZE } from './constants';
 import { resolveSafePath } from './fs-utils';
-
-const MAX_FILE_SIZE = 512 * 1024; // 512 KB
 const DEFAULT_MAX_LINES = 200;
 const BINARY_CHECK_SIZE = 8192;
 
@@ -21,7 +20,7 @@ export const readFileTool: ToolDefinition<typeof inputSchema> = {
 	inputSchema,
 	annotations: { defaultPermission: 'allow', readOnlyHint: true },
 	async execute({ filePath, startLine, maxLines }, { dir }) {
-		const resolvedPath = resolveSafePath(dir, filePath);
+		const resolvedPath = await resolveSafePath(dir, filePath);
 
 		const stat = await fs.stat(resolvedPath);
 		if (stat.size > MAX_FILE_SIZE) {
