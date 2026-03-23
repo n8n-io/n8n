@@ -152,6 +152,7 @@ import { AddSuggestedPromptsToAgentTable1772000000000 } from '../common/17720000
 import { AddRoleColumnToProjectSecretsProviderAccess1772619247761 } from '../common/1772619247761-AddRoleColumnToProjectSecretsProviderAccess';
 import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../common/1772619247762-ChangeWorkflowPublishedVersionFKsToRestrict';
 import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-AddTypeToChatHubSessions';
+import { ChangeWorkflowPublishHistoryVersionIdToSetNull1774273502704 } from '../common/1774273502704-ChangeWorkflowPublishHistoryVersionIdToSetNull';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -309,4 +310,5 @@ export const postgresMigrations: Migration[] = [
 	AddRoleColumnToProjectSecretsProviderAccess1772619247761,
 	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
 	AddTypeToChatHubSessions1772700000000,
+	ChangeWorkflowPublishHistoryVersionIdToSetNull1774273502704,
 ];
