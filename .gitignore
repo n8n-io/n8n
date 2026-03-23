@@ -2,6 +2,7 @@ node_modules
 .DS_Store
 .tmp
 tmp
+**/.excalidraw/
 dist
 coverage
 npm-debug.log*
