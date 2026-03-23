@@ -3,6 +3,10 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useWorkflowUpdate } from './useWorkflowUpdate';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -54,6 +58,7 @@ vi.mock('@/app/utils/nodeTypesUtils', () => ({
 
 describe('useWorkflowUpdate', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
@@ -79,14 +84,16 @@ describe('useWorkflowUpdate', () => {
 			nodes: [],
 			connections: {},
 		} as unknown as ReturnType<typeof useWorkflowsStore>['workflow'];
+		workflowsStore.workflowId = 'test-workflow';
 		workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue({
 			nodes: {},
 			connectionsBySourceNode: {},
 			renameNode: vi.fn(),
 		});
 		workflowsStore.setNodes = vi.fn();
-		workflowsStore.setConnections = vi.fn();
 		workflowsStore.nodesByName = {};
+
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
 
 		builderStore.setBuilderMadeEdits = vi.fn();
 
@@ -348,7 +355,7 @@ describe('useWorkflowUpdate', () => {
 
 				// Should sync state back to store
 				expect(workflowsStore.setNodes).toHaveBeenCalled();
-				expect(workflowsStore.setConnections).toHaveBeenCalled();
+				expect(workflowDocumentStore.setConnections).toHaveBeenCalled();
 			});
 
 			it('should apply executeOnce when updated node has it set', async () => {

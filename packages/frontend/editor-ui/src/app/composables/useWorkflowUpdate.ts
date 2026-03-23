@@ -11,6 +11,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { computed } from 'vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
@@ -46,6 +47,12 @@ export function useWorkflowUpdate() {
 	const uiStore = useUIStore();
 	const canvasOperations = useCanvasOperations();
 	const nodeHelpers = useNodeHelpers();
+
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	/**
 	 * Categorize nodes into those to update, add, or remove.
@@ -169,7 +176,7 @@ export function useWorkflowUpdate() {
 
 		// Sync state back to store
 		workflowsStore.setNodes(Object.values(workflow.nodes));
-		workflowsStore.setConnections(workflow.connectionsBySourceNode);
+		workflowDocumentStore.value?.setConnections(workflow.connectionsBySourceNode);
 		// Revalidate updated nodes to refresh error indicators on canvas
 		for (const { existing } of nodesToUpdate) {
 			const nodeName = renamedNodes.get(existing.id) ?? existing.name;
@@ -236,7 +243,7 @@ export function useWorkflowUpdate() {
 	 * Update connections - remove old, add new
 	 */
 	async function updateConnections(newConnections: IConnections): Promise<void> {
-		const existingConnections = workflowsStore.workflow.connections;
+		const existingConnections = workflowDocumentStore.value?.connectionsBySourceNode ?? {};
 
 		// Convert to canvas format for comparison
 		const existingCanvasConnections = mapLegacyConnectionsToCanvasConnections(

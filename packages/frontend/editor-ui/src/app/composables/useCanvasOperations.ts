@@ -116,7 +116,7 @@ import {
 } from 'n8n-workflow';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowState, useWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
@@ -135,7 +135,6 @@ import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useClipboard } from '@vueuse/core';
 import {
 	useWorkflowDocumentStore,
@@ -380,7 +379,7 @@ export function useCanvasOperations() {
 		workflowsStore.renameNodeSelectedAndExecution({ old: currentName, new: newName });
 
 		workflowDocumentStore?.value?.setNodes(Object.values(workflow.nodes));
-		workflowsStore.setConnections(workflow.connectionsBySourceNode);
+		workflowDocumentStore?.value?.setConnections(workflow.connectionsBySourceNode);
 
 		const isRenamingActiveNode = ndvStore.activeNodeName === currentName;
 		if (isRenamingActiveNode) {
@@ -405,8 +404,10 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		const outputConnectionsByType = workflowsStore.outgoingConnectionsByNodeName(node.name);
-		const incomingConnectionsByType = workflowsStore.incomingConnectionsByNodeName(node.name);
+		const outputConnectionsByType =
+			workflowDocumentStore.value?.outgoingConnectionsByNodeName(node.name) ?? {};
+		const incomingConnectionsByType =
+			workflowDocumentStore.value?.incomingConnectionsByNodeName(node.name) ?? {};
 
 		for (const [type, incomingConnectionsByInputIndex] of Object.entries(
 			incomingConnectionsByType,
@@ -1943,7 +1944,7 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		workflowsStore.addConnection({
+		workflowDocumentStore.value?.addConnection({
 			connection: mappedConnection,
 		});
 
@@ -1983,7 +1984,7 @@ export function useCanvasOperations() {
 			historyStore.startRecordingUndo();
 		}
 
-		const connections = cloneDeep(workflowsStore.workflow.connections);
+		const connections = cloneDeep(workflowDocumentStore.value?.connectionsBySourceNode ?? {});
 		for (const nodeName of Object.keys(connections)) {
 			const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
 			if (!node) {
@@ -2029,7 +2030,7 @@ export function useCanvasOperations() {
 			}
 		}
 
-		delete workflowsStore.workflow.connections[targetNode.name];
+		workflowDocumentStore.value?.removeAllNodeConnection(targetNode);
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -2056,7 +2057,7 @@ export function useCanvasOperations() {
 			historyStore.startRecordingUndo();
 		}
 
-		workflowsStore.removeConnection({
+		workflowDocumentStore.value?.removeConnection({
 			connection: mappedConnection,
 		});
 
@@ -2075,7 +2076,7 @@ export function useCanvasOperations() {
 	}
 
 	function revertDeleteConnection(connection: [IConnection, IConnection]) {
-		workflowsStore.addConnection({
+		workflowDocumentStore.value?.addConnection({
 			connection,
 		});
 	}
@@ -2093,7 +2094,7 @@ export function useCanvasOperations() {
 		}
 
 		const connections = mapLegacyConnectionsToCanvasConnections(
-			workflowsStore.workflow.connections,
+			workflowDocumentStore?.value?.connectionsBySourceNode ?? {},
 			workflowDocumentStore?.value?.allNodes ?? [],
 		);
 
@@ -2343,7 +2344,7 @@ export function useCanvasOperations() {
 		});
 
 		initializedDocumentStore.setNodes(data.nodes);
-		workflowsStore.setConnections(data.connections);
+		workflowDocumentStore?.value?.setConnections(data.connections);
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -2851,7 +2852,8 @@ export function useCanvasOperations() {
 		const connections: Record<string, INodeConnections> = {};
 
 		for (const node of nodes) {
-			const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(node.name);
+			const outgoingConnections =
+				workflowDocumentStore.value?.outgoingConnectionsByNodeName(node.name) ?? {};
 			if (!Object.keys(outgoingConnections).length) continue;
 
 			const filteredConnections = filterConnectionsByNodes(outgoingConnections, includeNodeNames);
@@ -3000,7 +3002,7 @@ export function useCanvasOperations() {
 		}
 
 		if (workflow.connections) {
-			workflowsStore.setConnections(workflow.connections);
+			workflowDocumentStore.value?.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
 		await workflowState.getNewWorkflowData(name, projectsStore.currentProjectId);
