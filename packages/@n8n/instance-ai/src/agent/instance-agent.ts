@@ -111,6 +111,9 @@ function ensureMastraRegistered(agent: Agent, storage: MastraCompositeStore): vo
 	// Only recreate Mastra if the storage instance changed
 	const key = storage.id ?? 'default';
 	if (cachedMastra && cachedMastraStorageKey === key) {
+		// Register the new agent with the existing Mastra so it gets
+		// the #mastra back-reference needed for suspend/resume snapshot storage.
+		agent.__registerMastra(cachedMastra);
 		return;
 	}
 
