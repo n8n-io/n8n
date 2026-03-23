@@ -562,6 +562,13 @@ export class InstanceAiService {
 		if (frame) {
 			this.broadcastFrame(threadId, frame);
 		}
+
+		// After a run finishes, prune stale message group states that have been
+		// persisted to the snapshot store.  This prevents runStateByMessageGroup
+		// from growing indefinitely as users keep chatting in the same thread.
+		if (event.type === 'run-finish') {
+			this.pruneStaleMessageGroupStates(threadId);
+		}
 	}
 
 	private publishTaskUpsert(threadId: string, taskRun: InstanceAiTaskRun): void {
@@ -762,6 +769,62 @@ export class InstanceAiService {
 			}
 		}
 		void this.destroySandbox(threadId);
+	}
+
+	/**
+	 * Remove message-group run states that are no longer active, suspended, or
+	 * running background tasks.  Keeps only the current group + one previous
+	 * group as a small buffer (the previous one may still be referenced by
+	 * late-arriving events from background tasks that just finished).
+	 *
+	 * This is the main defence against runStateByMessageGroup growing
+	 * unboundedly in long-lived threads.
+	 */
+	private pruneStaleMessageGroupStates(threadId: string): void {
+		const runtime = this.getThreadRuntime(threadId);
+		if (!runtime) return;
+
+		const keepGroupIds = new Set<string>();
+
+		// Always keep the current message group
+		if (runtime.currentMessageGroupId) {
+			keepGroupIds.add(runtime.currentMessageGroupId);
+		}
+
+		// Keep any group that still has active/suspended runs or live background tasks
+		for (const groupId of runtime.runStateByMessageGroup.keys()) {
+			const status = this.getMessageGroupSyncStatus(threadId, groupId);
+			if (status !== 'idle') {
+				keepGroupIds.add(groupId);
+			}
+		}
+
+		// Nothing to prune
+		if (keepGroupIds.size >= runtime.runStateByMessageGroup.size) return;
+
+		for (const groupId of runtime.runStateByMessageGroup.keys()) {
+			if (keepGroupIds.has(groupId)) continue;
+
+			runtime.runStateByMessageGroup.delete(groupId);
+			runtime.runIdsByMessageGroup.delete(groupId);
+
+			// Clean up the reverse lookup too
+			for (const [runId, mappedGroup] of runtime.messageGroupIdByRunId.entries()) {
+				if (mappedGroup === groupId) {
+					runtime.messageGroupIdByRunId.delete(runId);
+				}
+			}
+		}
+
+		// Also prune completed task runs that are no longer referenced by any kept group
+		for (const [taskId, taskRun] of runtime.taskRunsById.entries()) {
+			if (taskRun.status === 'completed' || taskRun.status === 'failed') {
+				const bgTask = this.backgroundTasks.get(taskId);
+				if (!bgTask || !this.isTaskActive(bgTask)) {
+					runtime.taskRunsById.delete(taskId);
+				}
+			}
+		}
 	}
 
 	private async resolveRuntimeConfirmationState(

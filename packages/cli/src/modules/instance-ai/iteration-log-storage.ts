@@ -5,6 +5,12 @@ import { z } from 'zod';
 
 const METADATA_KEY = 'instanceAiIterationLog';
 
+/**
+ * Maximum number of iteration entries kept per task key.
+ * Older entries are dropped to prevent thread metadata from growing unboundedly.
+ */
+const MAX_ENTRIES_PER_TASK = 50;
+
 /** Thread-metadata schema: taskKey → IterationEntry[] */
 const logRecordSchema = z.record(z.string(), z.array(iterationEntrySchema));
 
@@ -18,6 +24,10 @@ export class MastraIterationLogStorage implements IterationLog {
 		const existing = this.parseLog(thread.metadata?.[METADATA_KEY]);
 		const entries = existing[taskKey] ?? [];
 		entries.push(entry);
+		// Keep only the most recent entries to prevent metadata inflation
+		if (entries.length > MAX_ENTRIES_PER_TASK) {
+			entries.splice(0, entries.length - MAX_ENTRIES_PER_TASK);
+		}
 		existing[taskKey] = entries;
 
 		await this.memory.updateThread({
