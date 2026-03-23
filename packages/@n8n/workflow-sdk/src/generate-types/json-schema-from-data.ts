@@ -38,9 +38,11 @@ export function generateJsonSchemaFromData(value: unknown): JsonSchema {
 		for (const [key, propValue] of Object.entries(value as Record<string, unknown>)) {
 			properties[key] = generateJsonSchemaFromData(propValue);
 		}
+		const keys = Object.keys(properties);
 		return {
 			type: 'object',
 			properties,
+			...(keys.length > 0 && { required: keys }),
 		};
 	}
 

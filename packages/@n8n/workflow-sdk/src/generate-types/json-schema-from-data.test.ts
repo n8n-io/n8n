@@ -28,6 +28,7 @@ describe('generateJsonSchemaFromData', () => {
 				name: { type: 'string' },
 				count: { type: 'number' },
 			},
+			required: ['name', 'count'],
 		});
 	});
 
@@ -41,8 +42,10 @@ describe('generateJsonSchemaFromData', () => {
 						email: { type: 'string' },
 						active: { type: 'boolean' },
 					},
+					required: ['email', 'active'],
 				},
 			},
+			required: ['user'],
 		});
 	});
 
@@ -54,6 +57,7 @@ describe('generateJsonSchemaFromData', () => {
 				properties: {
 					id: { type: 'number' },
 				},
+				required: ['id'],
 			},
 		});
 	});
