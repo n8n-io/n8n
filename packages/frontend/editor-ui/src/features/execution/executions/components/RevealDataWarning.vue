@@ -29,3 +29,13 @@ defineProps<{
 	}
 }
 </style>
+
+<style lang="scss">
+.reveal-redacted-data-modal {
+	width: 500px;
+
+	.el-message-box__content {
+		padding: var(--spacing--sm) var(--spacing--lg);
+	}
+}
+</style>
