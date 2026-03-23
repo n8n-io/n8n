@@ -35,7 +35,6 @@ export function useExecutionRedaction() {
 			i18n.baseText('ndv.redacted.revealModal.title'),
 			{
 				confirmButtonText: i18n.baseText('ndv.redacted.revealModal.confirmButton'),
-				type: 'warning',
 				showClose: true,
 			},
 		);
