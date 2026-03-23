@@ -3351,4 +3351,73 @@ describe('AI Builder store', () => {
 			expect(builderStore.latestRevertVersion).toEqual(secondRevertVersion);
 		});
 	});
+
+	describe('deferred pin data', () => {
+		it('storeDeferredPinData stores pin data without applying it', () => {
+			const builderStore = useBuilderStore();
+			const pinData = { 'Node A': [{ json: { test: true } }] };
+
+			builderStore.storeDeferredPinData(pinData);
+
+			expect(builderStore.hasDeferredPinData).toBe(true);
+			const wfDocStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			expect(wfDocStore.pinData).toEqual({});
+		});
+
+		it('storeDeferredPinData merges multiple calls', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.storeDeferredPinData({ 'Node A': [{ json: { a: 1 } }] });
+			builderStore.storeDeferredPinData({ 'Node B': [{ json: { b: 2 } }] });
+
+			expect(builderStore.hasDeferredPinData).toBe(true);
+		});
+
+		it('hasDeferredPinData returns false when no data is stored', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.hasDeferredPinData).toBe(false);
+		});
+
+		it('applyDeferredPinData applies data and marks state dirty', () => {
+			const builderStore = useBuilderStore();
+			const uiStore = useUIStore();
+			const pinData = { 'Node A': [{ json: { test: true } }] };
+
+			builderStore.storeDeferredPinData(pinData);
+			builderStore.applyDeferredPinData();
+
+			const wfDocStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			expect(wfDocStore.pinData).toEqual(pinData);
+			expect(uiStore.stateIsDirty).toBe(true);
+			expect(builderStore.hasDeferredPinData).toBe(false);
+			expect(builderStore.testDataWasApplied).toBe(true);
+		});
+
+		it('applyDeferredPinData is a no-op when no data is stored', () => {
+			const builderStore = useBuilderStore();
+			const uiStore = useUIStore();
+
+			builderStore.applyDeferredPinData();
+
+			expect(uiStore.stateIsDirty).toBe(false);
+			expect(builderStore.testDataWasApplied).toBe(false);
+		});
+
+		it('resetBuilderChat clears deferred pin data and testDataWasApplied', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.storeDeferredPinData({ 'Node A': [{ json: { test: true } }] });
+			builderStore.applyDeferredPinData();
+			expect(builderStore.testDataWasApplied).toBe(true);
+
+			builderStore.resetBuilderChat();
+
+			expect(builderStore.hasDeferredPinData).toBe(false);
+			expect(builderStore.testDataWasApplied).toBe(false);
+		});
+	});
 });
