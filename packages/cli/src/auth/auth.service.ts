@@ -54,10 +54,20 @@ interface CreateAuthMiddlewareOptions {
 	allowUnauthenticated?: boolean;
 }
 
+interface CachedUser {
+	user: User;
+	cachedAt: number;
+}
+
 @Service()
 export class AuthService {
 	// The browser-id check needs to be skipped on these endpoints
 	private skipBrowserIdCheckEndpoints: string[];
+
+	/** In-memory TTL cache for validated users, keyed by user ID */
+	private readonly userCache = new Map<string, CachedUser>();
+
+	private readonly USER_CACHE_TTL = Time.minutes.toMilliseconds; // 1 minute
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -290,6 +300,25 @@ export class AuthService {
 		}
 	}
 
+	private getCachedUser(userId: string): User | undefined {
+		const cached = this.userCache.get(userId);
+		if (!cached) return undefined;
+
+		if (Date.now() - cached.cachedAt > this.USER_CACHE_TTL) {
+			this.userCache.delete(userId);
+			return undefined;
+		}
+
+		return cached.user;
+	}
+
+	private cacheUser(user: User): void {
+		this.userCache.set(user.id, {
+			user,
+			cachedAt: Date.now(),
+		});
+	}
+
 	private async validateToken(token: string): Promise<{
 		user: User;
 		jwtPayload: IssuedJWT;
@@ -298,20 +327,31 @@ export class AuthService {
 			algorithms: ['HS256'],
 		});
 
-		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
-		const user = await this.userRepository.findOne({
-			where: { id: jwtPayload.id },
-			relations: ['role'],
-		});
+		// Use in-memory TTL cache to avoid a DB query on every authenticated request
+		let user = this.getCachedUser(jwtPayload.id);
+		if (!user) {
+			const dbUser = await this.userRepository.findOne({
+				where: { id: jwtPayload.id },
+				relations: ['role'],
+			});
+			if (dbUser) {
+				this.cacheUser(dbUser);
+				user = dbUser;
+			}
+		}
 
 		if (
-			// If not user is found
+			// If no user is found
 			!user ||
 			// or, If the user has been deactivated (i.e. LDAP users)
 			user.disabled ||
 			// or, If the email or password has been updated
 			jwtPayload.hash !== this.createJWTHash(user)
 		) {
+			// Evict stale cache entry on hash mismatch
+			if (user) {
+				this.userCache.delete(user.id);
+			}
 			throw new AuthError('Unauthorized');
 		}
 
