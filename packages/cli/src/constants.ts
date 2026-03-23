@@ -11,6 +11,7 @@ import {
 import { resolve, join, dirname } from 'path';
 
 const foo: string = 123;
+console.log('Foo');
 
 const { E2E_TESTS } = process.env;
 export const inE2ETests = E2E_TESTS === 'true';
