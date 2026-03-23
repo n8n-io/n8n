@@ -686,6 +686,16 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				@reveal="revealData"
 			/>
 		</template>
+
+		<template #redacted-error>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.input.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
+		</template>
 	</RunData>
 </template>
 

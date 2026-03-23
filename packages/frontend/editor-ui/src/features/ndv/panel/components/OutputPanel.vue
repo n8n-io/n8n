@@ -513,6 +513,16 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			/>
 		</template>
 
+		<template #redacted-error>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.output.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
+		</template>
+
 		<template v-if="!pinnedData.hasData.value && runsCount > 1" #run-info>
 			<RunInfo :task-data="runTaskData" />
 		</template>

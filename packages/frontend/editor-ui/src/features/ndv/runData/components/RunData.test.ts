@@ -1487,6 +1487,7 @@ describe('RunData', () => {
 			},
 			slots: {
 				'data-redacted': '<div data-test-id="data-redacted-slot">Data is redacted</div>',
+				'redacted-error': '<div data-test-id="redacted-error-slot">Error data is redacted</div>',
 			},
 			pinia,
 		});

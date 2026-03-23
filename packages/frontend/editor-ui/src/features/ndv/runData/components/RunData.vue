@@ -184,6 +184,7 @@ defineSlots<{
 	'no-output-data': {};
 	'recovered-artificial-output-data': {};
 	'data-redacted': {};
+	'redacted-error': {};
 }>();
 
 const emit = defineEmits<{
@@ -439,7 +440,8 @@ const isExecutionRedacted = computed(
 	() =>
 		hasNodeRun.value &&
 		workflowExecution.value?.redactionInfo?.isRedacted === true &&
-		!pinnedData.hasData.value,
+		!pinnedData.hasData.value &&
+		!hasRunError.value,
 );
 
 const unfilteredDataCount = computed(() =>
@@ -1930,7 +1932,7 @@ defineExpose({ enterEditMode });
 					show-details
 				/>
 				<div v-else-if="hasRedactedError" :class="$style.center" data-test-id="ndv-redacted-error">
-					<slot name="data-redacted"></slot>
+					<slot name="redacted-error"></slot>
 				</div>
 			</div>
 
