@@ -132,8 +132,7 @@ function ensureMastraRegistered(agent: Agent, storage: MastraCompositeStore): vo
 	// Only recreate Mastra if the storage instance changed
 	const key = storage.id ?? 'default';
 	if (cachedMastra && cachedMastraStorageKey === key) {
-		// Re-register the new agent instance with the existing Mastra
-		// Mastra constructor is the only way to register — but we can reuse storage
+		return;
 	}
 
 	cachedMastra = new Mastra({
@@ -308,10 +307,11 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		defaultOptions: {
 			tracingOptions: buildTracingOptions(
 				withLangsmithMetadata({ projectName: 'instance-ai' }),
-				// Prevent full tool results (execution output, node data) from being
-				// logged in traces — they can contain PII and API tokens.
-				// Tool names and execution IDs are still recorded via tool-call spans.
-				(opts) => ({ ...opts, recordOutputs: false }),
+				// Prevent full request/response bodies from being retained in RunTree
+				// trace nodes.  LangSmith's RunTree stores inputs/outputs in memory for
+				// the lifetime of the trace — with a 106KB system prompt this causes
+				// ~25MB+ of retained heap per long conversation.
+				(opts) => ({ ...opts, recordInputs: false, recordOutputs: false }),
 			),
 		},
 		memory,

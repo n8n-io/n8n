@@ -60,14 +60,11 @@ export class BuilderSandboxFactory {
 		builderId: string,
 		context: InstanceAiContext,
 	): Promise<BuilderWorkspace> {
-		const t0 = performance.now();
-
 		// Get pre-warmed image (config + deps, no catalog — catalog is too large for API body)
 		const image = this.imageManager!.ensureImage();
 
 		// Start sandbox creation AND catalog generation in parallel
 		const daytona = this.getDaytona();
-		const tCreate = performance.now();
 		const [sandbox, catalog] = await Promise.all([
 			daytona.create(
 				{
