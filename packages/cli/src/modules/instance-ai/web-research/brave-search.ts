@@ -29,6 +29,7 @@ export async function braveSearch(
 		maxResults?: number;
 		includeDomains?: string[];
 		excludeDomains?: string[];
+		proxyConfig?: { apiUrl: string; headers: Record<string, string> };
 	},
 ): Promise<WebSearchResponse> {
 	let searchQuery = query;
@@ -47,13 +48,15 @@ export async function braveSearch(
 		count: String(options.maxResults ?? 5),
 	});
 
-	const response = await fetch(`${BRAVE_SEARCH_URL}?${params}`, {
-		headers: {
-			Accept: 'application/json',
-			'Accept-Encoding': 'gzip',
-			'X-Subscription-Token': apiKey,
-		},
-	});
+	const useProxy = !!options.proxyConfig;
+	const baseUrl = useProxy ? options.proxyConfig!.apiUrl : BRAVE_SEARCH_URL;
+	const headers: Record<string, string> = {
+		Accept: 'application/json',
+		'Accept-Encoding': 'gzip',
+		...(useProxy ? options.proxyConfig!.headers : { 'X-Subscription-Token': apiKey }),
+	};
+
+	const response = await fetch(`${baseUrl}?${params}`, { headers });
 
 	if (!response.ok) {
 		throw new Error(`Brave search failed: ${response.status} ${response.statusText}`);

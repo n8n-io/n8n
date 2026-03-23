@@ -155,4 +155,70 @@ describe('braveSearch', () => {
 
 		expect(result.results).toHaveLength(0);
 	});
+
+	describe('proxy mode', () => {
+		const proxyConfig = {
+			apiUrl: 'https://proxy.example.com/brave-search',
+			headers: { Authorization: 'Bearer proxy-token' },
+		};
+
+		it('uses proxy URL and auth headers when proxyConfig is provided', async () => {
+			mockFetch.mockResolvedValue({
+				ok: true,
+				json: async () => MOCK_BRAVE_RESPONSE,
+			});
+
+			await braveSearch('', 'stripe webhooks', { proxyConfig });
+
+			expect(mockFetch).toHaveBeenCalledTimes(1);
+			const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+			expect(url).toContain('https://proxy.example.com/brave-search');
+			expect(url).not.toContain('api.search.brave.com');
+			const headers = init.headers as Record<string, string>;
+			expect(headers.Authorization).toBe('Bearer proxy-token');
+		});
+
+		it('does not include X-Subscription-Token when using proxy', async () => {
+			mockFetch.mockResolvedValue({
+				ok: true,
+				json: async () => MOCK_BRAVE_RESPONSE,
+			});
+
+			await braveSearch('BSA-key', 'test', { proxyConfig });
+
+			const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+			const headers = init.headers as Record<string, string>;
+			expect(headers).not.toHaveProperty('X-Subscription-Token');
+		});
+
+		it('still appends query parameters to proxy URL', async () => {
+			mockFetch.mockResolvedValue({
+				ok: true,
+				json: async () => ({ web: { results: [] } }),
+			});
+
+			await braveSearch('', 'test query', { maxResults: 10, proxyConfig });
+
+			const [url] = mockFetch.mock.calls[0] as [string];
+			expect(url).toContain('q=test+query');
+			expect(url).toContain('count=10');
+		});
+
+		it('applies domain filtering when using proxy', async () => {
+			mockFetch.mockResolvedValue({
+				ok: true,
+				json: async () => ({ web: { results: [] } }),
+			});
+
+			await braveSearch('', 'webhooks', {
+				includeDomains: ['stripe.com'],
+				proxyConfig,
+			});
+
+			const [url] = mockFetch.mock.calls[0] as [string];
+			const parsed = new URL(url);
+			const q = parsed.searchParams.get('q')!;
+			expect(q).toBe('webhooks (site:stripe.com)');
+		});
+	});
 });

@@ -324,6 +324,22 @@ export class InstanceAiService {
 		};
 	}
 
+	/** Build search proxy config when proxy is enabled. */
+	private async resolveSearchProxyConfig(user: User): Promise<TracingProxyConfig | undefined> {
+		if (!this.aiService.isProxyEnabled()) return undefined;
+		const client = await this.aiService.getClient();
+		const token = await client.getBuilderApiProxyToken(
+			{ id: user.id },
+			{ userMessageId: nanoid() },
+		);
+		return {
+			apiUrl: client.getApiProxyBaseUrl() + '/brave-search',
+			headers: {
+				Authorization: `${token.tokenType} ${token.accessToken}`,
+			},
+		};
+	}
+
 	/**
 	 * Count one credit for the first completed orchestrator run in a thread.
 	 * Subsequent messages in the same thread are free.
@@ -705,7 +721,12 @@ export class InstanceAiService {
 				!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
 					? this.getLocalFsProvider()
 					: undefined;
-			const context = this.adapterService.createContext(user, localFilesystemService);
+			const searchProxyConfig = await this.resolveSearchProxyConfig(user);
+			const context = this.adapterService.createContext(
+				user,
+				localFilesystemService,
+				searchProxyConfig,
+			);
 			if (!localGatewayDisabled && userGateway?.isConnected) {
 				context.localMcpServer = userGateway;
 			}

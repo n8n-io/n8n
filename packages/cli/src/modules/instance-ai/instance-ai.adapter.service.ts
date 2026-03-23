@@ -31,6 +31,7 @@ import type {
 	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
+	TracingProxyConfig,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
@@ -163,7 +164,11 @@ export class InstanceAiAdapterService {
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
 	}
 
-	createContext(user: User, filesystemService?: InstanceAiFilesystemService): InstanceAiContext {
+	createContext(
+		user: User,
+		filesystemService?: InstanceAiFilesystemService,
+		searchProxyConfig?: TracingProxyConfig,
+	): InstanceAiContext {
 		return {
 			userId: user.id,
 			workflowService: this.createWorkflowAdapter(user),
@@ -171,7 +176,7 @@ export class InstanceAiAdapterService {
 			credentialService: this.createCredentialAdapter(user),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user),
-			webResearchService: this.createWebResearchAdapter(user),
+			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
 			...(filesystemService ? { filesystemService } : {}),
@@ -1005,7 +1010,10 @@ export class InstanceAiAdapterService {
 		ttlMs: 15 * 60 * 1000,
 	});
 
-	private createWebResearchAdapter(user: User): InstanceAiWebResearchService {
+	private createWebResearchAdapter(
+		user: User,
+		searchProxyConfig?: TracingProxyConfig,
+	): InstanceAiWebResearchService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
@@ -1020,6 +1028,7 @@ export class InstanceAiAdapterService {
 					config.braveApiKey ?? '',
 					config.searxngUrl ?? '',
 					searchCacheRef,
+					searchProxyConfig,
 				);
 				searchResolved = true;
 			}
@@ -1085,12 +1094,28 @@ export class InstanceAiAdapterService {
 		apiKey: string,
 		searxngUrl: string,
 		cache: LRUCache<WebSearchResponse>,
+		searchProxyConfig?: TracingProxyConfig,
 	) {
 		type SearchOptions = {
 			maxResults?: number;
 			includeDomains?: string[];
 			excludeDomains?: string[];
 		};
+
+		if (searchProxyConfig) {
+			return async (query: string, options?: SearchOptions) => {
+				const cacheKey = JSON.stringify([query, options ?? {}]);
+				const cached = cache.get(cacheKey);
+				if (cached) return cached;
+
+				const result = await braveSearch('', query, {
+					...options,
+					proxyConfig: searchProxyConfig,
+				});
+				cache.set(cacheKey, result);
+				return result;
+			};
+		}
 
 		if (apiKey) {
 			return async (query: string, options?: SearchOptions) => {
