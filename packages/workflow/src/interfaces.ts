@@ -2881,6 +2881,11 @@ export interface IWorkflowExecutionDataProcess {
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**
+	 * When true, forces the execution data to be present in the run data
+	 * ignores N8N_MINIMIZE_EXECUTION_DATA_FETCHING environment variable if set
+	 */
+	forceFullExecutionData?: boolean;
+	/**
 	 * The data that is sent in the body of the webhook that started this
 	 * execution.
 	 */
