@@ -1,7 +1,7 @@
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { INodeUi } from '@/Interface';
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RouteLocationNormalized } from 'vue-router';
 import { useReadyToRunStore } from './readyToRun.store';
 
@@ -32,6 +32,36 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockShowError,
+	}),
+}));
+
+vi.mock('@/app/constants', () => ({
+	VIEWS: {
+		WORKFLOW: 'NodeViewExisting',
+	},
+}));
+
+vi.mock('n8n-workflow', () => ({
+	OPEN_AI_API_CREDENTIAL_TYPE: 'openAiApi',
+	deepCopy: <T>(value: T) => structuredClone(value),
+}));
+
+vi.mock('../workflows/aiWorkflow', () => ({
+	READY_TO_RUN_AI_WORKFLOW: {
+		name: 'AI Agent workflow',
+		meta: { templateId: 'ready-to-run-ai-workflow' },
+		nodes: [
+			{
+				name: 'OpenAI Model',
+				credentials: {},
+			},
+		],
+	},
+}));
+
+vi.mock('@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store', () => ({
+	useReadyToRunWorkflowsV2Store: () => ({
+		getWorkflowForVariant: vi.fn(() => undefined),
 	}),
 }));
 
@@ -108,6 +138,10 @@ vi.mock('../composables/useEmptyStateDetection', () => ({
 
 describe('useReadyToRunStore', () => {
 	let store: ReturnType<typeof useReadyToRunStore>;
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -303,6 +337,27 @@ describe('useReadyToRunStore', () => {
 			const testStore = useReadyToRunStore();
 
 			expect(testStore.getButtonVisibility(true, true, false)).toBe(true);
+		});
+
+		it('should stop showing the button once the user crosses the 14 day threshold', () => {
+			const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+			const initialTime = new Date('2026-03-23T12:00:00.000Z');
+
+			vi.useFakeTimers();
+			vi.setSystemTime(initialTime);
+
+			mockCurrentUser.value = {
+				settings: {},
+				createdAt: new Date(initialTime.getTime() - fourteenDaysMs + 1000).toISOString(),
+			};
+			setActivePinia(createPinia());
+			const testStore = useReadyToRunStore();
+
+			expect(testStore.getButtonVisibility(true, true, false)).toBe(true);
+
+			vi.advanceTimersByTime(1001);
+
+			expect(testStore.getButtonVisibility(true, true, false)).toBe(false);
 		});
 	});
 
