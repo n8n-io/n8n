@@ -535,6 +535,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `external-secrets-connection-created` event with global scope', () => {
 			const event: RelayEventMap['external-secrets-connection-created'] = {
 				userId: 'user123',
+				userRole: 'global:owner',
 				providerKey: 'provider-key-123',
 				vaultType: 'gcp',
 				projects: [],
@@ -544,6 +545,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User created external secrets connection', {
 				user_id: 'user123',
+				user_role: 'global:owner',
 				vault_type: 'gcp',
 				scope: 'global',
 				project_ids: [],
@@ -553,6 +555,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `external-secrets-connection-created` event with project scope', () => {
 			const event: RelayEventMap['external-secrets-connection-created'] = {
 				userId: 'user123',
+				userRole: 'global:member',
 				providerKey: 'provider-key-123',
 				vaultType: 'gcp',
 				projects: [
@@ -565,6 +568,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User created external secrets connection', {
 				user_id: 'user123',
+				user_role: 'global:member',
 				vault_type: 'gcp',
 				scope: 'project',
 				project_ids: ['project1', 'project2'],
@@ -574,6 +578,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `external-secrets-connection-updated` event with global scope', () => {
 			const event: RelayEventMap['external-secrets-connection-updated'] = {
 				userId: 'user123',
+				userRole: 'global:owner',
 				providerKey: 'provider-key-123',
 				vaultType: 'aws',
 				projects: [],
@@ -583,6 +588,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User updated external secrets connection', {
 				user_id: 'user123',
+				user_role: 'global:owner',
 				vault_type: 'aws',
 				scope: 'global',
 				project_ids: [],
@@ -592,6 +598,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `external-secrets-connection-updated` event with project scope', () => {
 			const event: RelayEventMap['external-secrets-connection-updated'] = {
 				userId: 'user123',
+				userRole: 'global:member',
 				providerKey: 'provider-key-123',
 				vaultType: 'aws',
 				projects: [{ id: 'project1', name: 'Project 1' }],
@@ -601,6 +608,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User updated external secrets connection', {
 				user_id: 'user123',
+				user_role: 'global:member',
 				vault_type: 'aws',
 				scope: 'project',
 				project_ids: ['project1'],
@@ -610,6 +618,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `external-secrets-connection-deleted` event with global scope', () => {
 			const event: RelayEventMap['external-secrets-connection-deleted'] = {
 				userId: 'user123',
+				userRole: 'global:owner',
 				providerKey: 'provider-key-123',
 				vaultType: 'vault',
 				projects: [],
@@ -619,6 +628,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User deleted external secrets connection', {
 				user_id: 'user123',
+				user_role: 'global:owner',
 				vault_type: 'vault',
 				scope: 'global',
 				project_ids: [],
@@ -628,6 +638,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `external-secrets-connection-deleted` event with project scope', () => {
 			const event: RelayEventMap['external-secrets-connection-deleted'] = {
 				userId: 'user123',
+				userRole: 'global:member',
 				providerKey: 'provider-key-123',
 				vaultType: 'vault',
 				projects: [
@@ -641,6 +652,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User deleted external secrets connection', {
 				user_id: 'user123',
+				user_role: 'global:member',
 				vault_type: 'vault',
 				scope: 'project',
 				project_ids: ['project1', 'project2', 'project3'],
@@ -839,6 +851,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User created credentials', {
 				user_id: 'user123',
+				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'github',
 				credential_id: 'cred123',
 				project_id: 'project123',

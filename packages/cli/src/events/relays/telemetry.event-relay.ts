@@ -363,11 +363,13 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private externalSecretsConnectionCreated({
 		userId,
+		userRole,
 		vaultType,
 		projects,
 	}: RelayEventMap['external-secrets-connection-created']) {
 		this.telemetry.track('User created external secrets connection', {
 			user_id: userId,
+			user_role: userRole,
 			vault_type: vaultType,
 			scope: projects.length === 0 ? 'global' : 'project',
 			project_ids: projects.map((project) => project.id),
@@ -376,11 +378,13 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private externalSecretsConnectionUpdated({
 		userId,
+		userRole,
 		vaultType,
 		projects,
 	}: RelayEventMap['external-secrets-connection-updated']) {
 		this.telemetry.track('User updated external secrets connection', {
 			user_id: userId,
+			user_role: userRole,
 			vault_type: vaultType,
 			scope: projects.length === 0 ? 'global' : 'project',
 			project_ids: projects.map((project) => project.id),
@@ -389,11 +393,13 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private externalSecretsConnectionDeleted({
 		userId,
+		userRole,
 		vaultType,
 		projects,
 	}: RelayEventMap['external-secrets-connection-deleted']) {
 		this.telemetry.track('User deleted external secrets connection', {
 			user_id: userId,
+			user_role: userRole,
 			vault_type: vaultType,
 			scope: projects.length === 0 ? 'global' : 'project',
 			project_ids: projects.map((project) => project.id),

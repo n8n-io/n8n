@@ -49,6 +49,7 @@ export class SecretsProvidersConnectionsService {
 		proposedConnection: CreateSecretsProviderConnectionDto,
 		userId: string,
 		projectRole: SecretsProviderAccessRole,
+		userRole?: string,
 	): Promise<SecretsProviderConnection> {
 		const existing = await this.repository.findOne({
 			where: { providerKey: proposedConnection.providerKey },
@@ -89,6 +90,7 @@ export class SecretsProvidersConnectionsService {
 
 		this.eventService.emit('external-secrets-connection-created', {
 			userId,
+			userRole,
 			providerKey: result.providerKey,
 			vaultType: result.type,
 			...this.extractProjectInfo(result),
@@ -105,12 +107,13 @@ export class SecretsProvidersConnectionsService {
 			isEnabled?: boolean;
 		},
 		userId: string,
+		userRole?: string,
 	): Promise<SecretsProviderConnection> {
 		const connection = await this.findConnectionOrFail(providerKey);
 		this.applyConnectionUpdates(connection, updates);
 		await this.repository.save(connection);
 
-		return await this.syncAndEmitUpdate(providerKey, userId);
+		return await this.syncAndEmitUpdate(providerKey, userId, userRole);
 	}
 
 	async updateGlobalConnection(
@@ -122,6 +125,7 @@ export class SecretsProvidersConnectionsService {
 			isEnabled?: boolean;
 		},
 		userId: string,
+		userRole?: string,
 	): Promise<SecretsProviderConnection> {
 		const connection = await this.findConnectionOrFail(providerKey);
 		this.applyConnectionUpdates(connection, updates);
@@ -153,7 +157,7 @@ export class SecretsProvidersConnectionsService {
 			);
 		}
 
-		return await this.syncAndEmitUpdate(providerKey, userId);
+		return await this.syncAndEmitUpdate(providerKey, userId, userRole);
 	}
 
 	private applyConnectionUpdates(
@@ -181,6 +185,7 @@ export class SecretsProvidersConnectionsService {
 	private async syncAndEmitUpdate(
 		providerKey: string,
 		userId: string,
+		userRole?: string,
 	): Promise<SecretsProviderConnection> {
 		await this.externalSecretsManager.syncProviderConnection(providerKey);
 
@@ -190,6 +195,7 @@ export class SecretsProvidersConnectionsService {
 
 		this.eventService.emit('external-secrets-connection-updated', {
 			userId,
+			userRole,
 			providerKey: result.providerKey,
 			vaultType: result.type,
 			...this.extractProjectInfo(result),
@@ -198,7 +204,11 @@ export class SecretsProvidersConnectionsService {
 		return result;
 	}
 
-	async deleteConnection(providerKey: string, userId: string): Promise<SecretsProviderConnection> {
+	async deleteConnection(
+		providerKey: string,
+		userId: string,
+		userRole?: string,
+	): Promise<SecretsProviderConnection> {
 		const connection = await this.findConnectionOrFail(providerKey);
 		const projectInfo = this.extractProjectInfo(connection);
 
@@ -209,6 +219,7 @@ export class SecretsProvidersConnectionsService {
 
 		this.eventService.emit('external-secrets-connection-deleted', {
 			userId,
+			userRole,
 			providerKey: connection.providerKey,
 			vaultType: connection.type,
 			...projectInfo,
@@ -324,6 +335,7 @@ export class SecretsProvidersConnectionsService {
 	async testConnection(
 		providerKey: string,
 		userId: string,
+		userRole?: string,
 	): Promise<TestSecretProviderConnectionResponse> {
 		const connection = await this.getConnection(providerKey);
 		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
@@ -335,6 +347,7 @@ export class SecretsProvidersConnectionsService {
 
 		this.eventService.emit('external-secrets-connection-tested', {
 			userId,
+			userRole,
 			providerKey: connection.providerKey,
 			vaultType: connection.type,
 			...this.extractProjectInfo(connection),
@@ -348,6 +361,7 @@ export class SecretsProvidersConnectionsService {
 	async reloadConnectionSecrets(
 		providerKey: string,
 		userId: string,
+		userRole?: string,
 	): Promise<ReloadSecretProviderConnectionResponse> {
 		try {
 			const connection = await this.getConnection(providerKey);
@@ -355,6 +369,7 @@ export class SecretsProvidersConnectionsService {
 
 			this.eventService.emit('external-secrets-connection-reloaded', {
 				userId,
+				userRole,
 				providerKey: connection.providerKey,
 				vaultType: connection.type,
 				...this.extractProjectInfo(connection),

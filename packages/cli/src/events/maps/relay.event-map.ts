@@ -610,6 +610,7 @@ export type RelayEventMap = {
 
 	'external-secrets-connection-created': {
 		userId: string;
+		userRole?: string;
 		providerKey: string;
 		vaultType: string;
 		projects: ProjectSummary[];
@@ -617,6 +618,7 @@ export type RelayEventMap = {
 
 	'external-secrets-connection-updated': {
 		userId: string;
+		userRole?: string;
 		providerKey: string;
 		vaultType: string;
 		projects: ProjectSummary[];
@@ -624,6 +626,7 @@ export type RelayEventMap = {
 
 	'external-secrets-connection-deleted': {
 		userId: string;
+		userRole?: string;
 		providerKey: string;
 		vaultType: string;
 		projects: ProjectSummary[];
@@ -631,6 +634,7 @@ export type RelayEventMap = {
 
 	'external-secrets-connection-tested': {
 		userId: string;
+		userRole?: string;
 		providerKey: string;
 		vaultType: string;
 		projects: ProjectSummary[];
@@ -640,6 +644,7 @@ export type RelayEventMap = {
 
 	'external-secrets-connection-reloaded': {
 		userId: string;
+		userRole?: string;
 		providerKey: string;
 		vaultType: string;
 		projects: ProjectSummary[];
