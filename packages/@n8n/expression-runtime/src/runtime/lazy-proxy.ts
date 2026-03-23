@@ -99,14 +99,43 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 				return value;
 			}
 
+			// Handle errors serialized by host-side callbacks — reconstruct and throw
+			// so the isolate's outer try-catch can serialize them back via __reportError
+			if (value && typeof value === 'object' && value.__isError) {
+				const err = new Error(value.message as string);
+				err.name = (value.name as string) || 'Error';
+				if (value.stack) err.stack = value.stack as string;
+				const extra = value.extra;
+				if (extra && typeof extra === 'object') {
+					for (const k of Object.keys(extra as Record<string, unknown>)) {
+						(err as any)[k] = (extra as Record<string, unknown>)[k];
+					}
+				}
+				throw err;
+			}
+
 			// Handle functions - metadata: { __isFunction: true, __name: string }
 			if (value && typeof value === 'object' && value.__isFunction) {
 				// Create function wrapper that calls back to parent
 				target[prop] = function (...args: any[]) {
-					return globalThis.__callFunctionAtPath.applySync(null, [path, ...args], {
+					const result = globalThis.__callFunctionAtPath.applySync(null, [path, ...args], {
 						arguments: { copy: true },
 						result: { copy: true },
 					});
+					// Check if the host-side function threw — reconstruct and throw
+					if (result && typeof result === 'object' && (result as any).__isError) {
+						const err = new Error((result as any).message);
+						err.name = (result as any).name || 'Error';
+						if ((result as any).stack) err.stack = (result as any).stack;
+						const extra = (result as any).extra;
+						if (extra && typeof extra === 'object') {
+							for (const k of Object.keys(extra)) {
+								(err as any)[k] = extra[k];
+							}
+						}
+						throw err;
+					}
+					return result;
 				};
 				return target[prop];
 			}

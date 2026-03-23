@@ -5,7 +5,7 @@ import { DateTime, Duration, Interval } from 'luxon';
 
 import { UnexpectedError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
-import { ExpressionError } from './errors/expression.error';
+import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import {
 	DollarSignValidator,
@@ -542,6 +542,9 @@ export class Expression {
 			} catch (error) {
 				if (isExpressionError(error)) throw error;
 
+				// Runtime error types (TimeoutError, MemoryLimitError, etc.) must be
+				// checked before the name-based reconstruction below, because they
+				// extend the runtime's ExpressionError and share .name === 'ExpressionError'.
 				if (error instanceof TimeoutError) {
 					const wrapped = new ExpressionError('Expression timed out');
 					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
@@ -559,6 +562,27 @@ export class Expression {
 					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
 					wrapped.cause = error;
 					throw wrapped;
+				}
+
+				// TODO: Move error reconstruction into the bridge once expression-runtime
+				// can depend on workflow error classes (or a shared error package exists).
+				// Currently the bridge can only reconstruct a plain Error with .name set
+				// because it can't import ExpressionError/ExpressionExtensionError from
+				// packages/workflow without creating a circular dependency.
+				if (error instanceof Error && error.name === 'ExpressionExtensionError') {
+					throw new ExpressionExtensionError(error.message);
+				}
+				if (error instanceof Error && error.name === 'ExpressionError') {
+					const err = error as unknown as Record<string, unknown>;
+					const context = err.context;
+					const options: ExpressionErrorOptions =
+						typeof context === 'object' && context !== null
+							? { ...(context as ExpressionErrorOptions) }
+							: {};
+					if (err.functionality === 'pairedItem') {
+						options.functionality = 'pairedItem';
+					}
+					throw new ExpressionError(error.message, options);
 				}
 
 				if (isSyntaxError(error)) throw new ExpressionError('invalid syntax');
