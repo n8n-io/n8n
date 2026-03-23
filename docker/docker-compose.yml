@@ -10,6 +10,7 @@
 
 volumes:
   postgres-data:
+  n8n-data:
 
 services:
   n8n:
@@ -20,7 +21,7 @@ services:
     ports:
       - 5678:5678
     volumes:
-      - /root/n8n/.n8n:/root/.n8n
+      - n8n-data:/home/node/.n8n
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://n8n:5678/healthz || exit 1"]
       interval: 5s
