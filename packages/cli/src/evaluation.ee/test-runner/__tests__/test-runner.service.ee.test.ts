@@ -489,6 +489,7 @@ describe('TestRunnerService', () => {
 				resource: 'dataset',
 				operation: 'getRows',
 			});
+			expect(runCallArg).toHaveProperty('forceFullExecutionData', true);
 		});
 
 		test('should call workflowRunner.run with correct data in queue execution mode and manual offload', async () => {
@@ -575,6 +576,7 @@ describe('TestRunnerService', () => {
 				resource: 'dataset',
 				operation: 'getRows',
 			});
+			expect(runCallArg).toHaveProperty('forceFullExecutionData', true);
 
 			// after reset
 			delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
@@ -742,6 +744,7 @@ describe('TestRunnerService', () => {
 						},
 					},
 					userId: metadata.userId,
+					forceFullExecutionData: true,
 					triggerToStartFrom: {
 						name: triggerNodeName,
 					},
@@ -869,6 +872,7 @@ describe('TestRunnerService', () => {
 				expect(runCallArg).toEqual(
 					expect.objectContaining({
 						executionMode: 'evaluation',
+						forceFullExecutionData: true,
 						pinData: {
 							[triggerNodeName]: [testCase],
 						},
