@@ -127,7 +127,7 @@ describe('countCreditsIfFirst', () => {
 		expect(client.markBuilderSuccess).not.toHaveBeenCalled();
 	});
 
-	it('should not persist when thread is not found in DB', async () => {
+	it('should skip credit counting entirely when thread is not found in DB', async () => {
 		const threadRepo = createMockThreadRepo(null);
 		const ai = createMockAiService();
 		const push = { sendToUsers: jest.fn() };
@@ -135,10 +135,9 @@ describe('countCreditsIfFirst', () => {
 		const service = createService({ threadRepo, aiService: ai, push });
 		await callCountCredits(service);
 
-		// markBuilderSuccess IS called (null thread = not credited)
+		// Neither API call nor save should happen for a missing thread
 		const client = await ai.getClient();
-		expect(client.markBuilderSuccess).toHaveBeenCalledTimes(1);
-		// But save should NOT be called (nothing to update)
+		expect(client.markBuilderSuccess).not.toHaveBeenCalled();
 		expect(threadRepo.save).not.toHaveBeenCalled();
 	});
 

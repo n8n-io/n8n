@@ -34,9 +34,14 @@ documentTitle.set('Instance AI');
 // --- Credit warning banner ---
 const creditBannerDismissed = ref(false);
 watch(
-	() => store.creditsRemaining,
-	() => {
-		creditBannerDismissed.value = false;
+	() => store.isLowCredits,
+	(isLow, wasLow) => {
+		// Only reset dismissal when transitioning INTO low-credits state
+		// (e.g. from >10% to <=10%). Subsequent push updates within the
+		// low-credits zone should not re-show a dismissed banner.
+		if (isLow && !wasLow) {
+			creditBannerDismissed.value = false;
+		}
 	},
 );
 const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);

@@ -12,7 +12,8 @@ import { createMemory } from '../memory/memory-config';
 import { createAllTools, createOrchestrationTools } from '../tools';
 import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-import type { CreateInstanceAgentOptions, McpServerConfig, TracingProxyConfig } from '../types';
+import type { CreateInstanceAgentOptions, McpServerConfig, ServiceProxyConfig } from '../types';
+import { buildLangSmithExporter } from './build-langsmith-exporter';
 import { getSystemPrompt } from './system-prompt';
 
 function buildMcpServers(
@@ -107,12 +108,10 @@ async function getBrowserMcpTools(config: McpServerConfig | undefined): Promise<
 	return cachedBrowserMcpTools;
 }
 
-import { buildLangSmithExporter } from './build-langsmith-exporter';
-
 function ensureMastraRegistered(
 	agent: Agent,
 	storage: MastraCompositeStore,
-	tracingConfig?: TracingProxyConfig,
+	tracingConfig?: ServiceProxyConfig,
 ): void {
 	// Only recreate Mastra if the storage instance changed
 	const key = storage.id ?? 'default';

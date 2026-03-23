@@ -14,7 +14,7 @@ import { Mastra } from '@mastra/core/mastra';
 import type { MastraCompositeStore } from '@mastra/core/storage';
 import { Observability } from '@mastra/observability';
 
-import type { TracingProxyConfig } from '../types';
+import type { ServiceProxyConfig } from '../types';
 
 import { buildLangSmithExporter } from './build-langsmith-exporter';
 
@@ -25,7 +25,7 @@ export function registerWithMastra(
 	agentId: string,
 	agent: Agent,
 	storage: MastraCompositeStore,
-	tracingConfig?: TracingProxyConfig,
+	tracingConfig?: ServiceProxyConfig,
 ) {
 	const key = storage.id ?? 'default';
 

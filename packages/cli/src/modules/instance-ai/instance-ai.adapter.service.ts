@@ -31,7 +31,7 @@ import type {
 	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
-	TracingProxyConfig,
+	ServiceProxyConfig,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
@@ -167,7 +167,7 @@ export class InstanceAiAdapterService {
 	createContext(
 		user: User,
 		filesystemService?: InstanceAiFilesystemService,
-		searchProxyConfig?: TracingProxyConfig,
+		searchProxyConfig?: ServiceProxyConfig,
 	): InstanceAiContext {
 		return {
 			userId: user.id,
@@ -1012,7 +1012,7 @@ export class InstanceAiAdapterService {
 
 	private createWebResearchAdapter(
 		user: User,
-		searchProxyConfig?: TracingProxyConfig,
+		searchProxyConfig?: ServiceProxyConfig,
 	): InstanceAiWebResearchService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
@@ -1094,7 +1094,7 @@ export class InstanceAiAdapterService {
 		apiKey: string,
 		searxngUrl: string,
 		cache: LRUCache<WebSearchResponse>,
-		searchProxyConfig?: TracingProxyConfig,
+		searchProxyConfig?: ServiceProxyConfig,
 	) {
 		type SearchOptions = {
 			maxResults?: number;

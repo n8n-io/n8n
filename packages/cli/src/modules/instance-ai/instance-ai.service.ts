@@ -33,7 +33,7 @@ import type {
 	OrchestrationContext,
 	SandboxConfig,
 	SpawnBackgroundTaskOptions,
-	TracingProxyConfig,
+	ServiceProxyConfig,
 	VerificationResult,
 	WorkflowBuildOutcome,
 	WorkflowLoopState,
@@ -284,80 +284,76 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Fetch a fresh proxy auth token and return the client + Authorization headers.
+	 * Each caller gets a unique token (separate nanoid) for audit tracking.
+	 */
+	private async getProxyAuth(user: User) {
+		const client = await this.aiService.getClient();
+		const token = await client.getBuilderApiProxyToken(
+			{ id: user.id },
+			{ userMessageId: nanoid() },
+		);
+		return {
+			client,
+			headers: { Authorization: `${token.tokenType} ${token.accessToken}` },
+		};
+	}
+
+	/**
 	 * Build model config. When the AI service proxy is enabled, returns a config
 	 * that routes LLM calls through the proxy with fresh auth headers.
 	 * Otherwise returns the direct model config from user/admin settings.
 	 */
 	private async resolveModel(user: User): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
-			const client = await this.aiService.getClient();
-			const token = await client.getBuilderApiProxyToken(
-				{ id: user.id },
-				{ userMessageId: nanoid() },
-			);
+			const { client, headers } = await this.getProxyAuth(user);
 			const modelName = await this.settingsService.resolveModelName(user);
 			return {
 				id: `anthropic/${modelName}` as `${string}/${string}`,
 				url: client.getApiProxyBaseUrl() + '/anthropic',
 				apiKey: 'proxy-managed',
-				headers: {
-					Authorization: `${token.tokenType} ${token.accessToken}`,
-				},
+				headers,
 			};
 		}
 		return await this.settingsService.resolveModelConfig(user);
 	}
 
 	/** Build tracing config when proxy is enabled. */
-	private async resolveTracingConfig(user: User): Promise<TracingProxyConfig | undefined> {
+	private async resolveTracingConfig(user: User): Promise<ServiceProxyConfig | undefined> {
 		if (!this.aiService.isProxyEnabled()) return undefined;
-		const client = await this.aiService.getClient();
-		const token = await client.getBuilderApiProxyToken(
-			{ id: user.id },
-			{ userMessageId: nanoid() },
-		);
-		return {
-			apiUrl: client.getApiProxyBaseUrl() + '/langsmith',
-			headers: {
-				Authorization: `${token.tokenType} ${token.accessToken}`,
-			},
-		};
+		const { client, headers } = await this.getProxyAuth(user);
+		return { apiUrl: client.getApiProxyBaseUrl() + '/langsmith', headers };
 	}
 
 	/** Build search proxy config when proxy is enabled. */
-	private async resolveSearchProxyConfig(user: User): Promise<TracingProxyConfig | undefined> {
+	private async resolveSearchProxyConfig(user: User): Promise<ServiceProxyConfig | undefined> {
 		if (!this.aiService.isProxyEnabled()) return undefined;
-		const client = await this.aiService.getClient();
-		const token = await client.getBuilderApiProxyToken(
-			{ id: user.id },
-			{ userMessageId: nanoid() },
-		);
-		return {
-			apiUrl: client.getApiProxyBaseUrl() + '/brave-search',
-			headers: {
-				Authorization: `${token.tokenType} ${token.accessToken}`,
-			},
-		};
+		const { client, headers } = await this.getProxyAuth(user);
+		return { apiUrl: client.getApiProxyBaseUrl() + '/brave-search', headers };
 	}
 
 	/**
 	 * Count one credit for the first completed orchestrator run in a thread.
 	 * Subsequent messages in the same thread are free.
 	 * The flag is persisted in the thread's metadata column so it survives restarts.
+	 *
+	 * Note: There is a small theoretical race window between reading the thread
+	 * and saving creditCounted=true. Given same-thread concurrent completions are
+	 * extremely unlikely, this is acceptable without an atomic DB update.
 	 */
 	private async countCreditsIfFirst(user: User, threadId: string, runId: string): Promise<void> {
 		if (!this.aiService.isProxyEnabled()) return;
-		if (await this.isThreadCredited(threadId)) return;
+
+		const thread = await this.threadRepo.findOneBy({ id: threadId });
+		if (!thread) return;
+		if (thread.metadata?.creditCounted) return;
 
 		try {
-			const client = await this.aiService.getClient();
-			const token = await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: runId });
-			const authHeaders = {
-				Authorization: `${token.tokenType} ${token.accessToken}`,
-			};
+			const { client, headers: authHeaders } = await this.getProxyAuth(user);
 			const info = await client.markBuilderSuccess({ id: user.id }, authHeaders);
 			if (info) {
-				await this.markThreadCredited(threadId);
+				thread.metadata = { ...thread.metadata, creditCounted: true };
+				await this.threadRepo.save(thread);
 				this.push.sendToUsers(
 					{
 						type: 'updateInstanceAiCredits',
@@ -373,18 +369,6 @@ export class InstanceAiService {
 				runId,
 			});
 		}
-	}
-
-	private async isThreadCredited(threadId: string): Promise<boolean> {
-		const thread = await this.threadRepo.findOneBy({ id: threadId });
-		return !!thread?.metadata?.creditCounted;
-	}
-
-	private async markThreadCredited(threadId: string): Promise<void> {
-		const thread = await this.threadRepo.findOneBy({ id: threadId });
-		if (!thread) return;
-		thread.metadata = { ...thread.metadata, creditCounted: true };
-		await this.threadRepo.save(thread);
 	}
 
 	/** Whether the AI service proxy is enabled for credit counting. */

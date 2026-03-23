@@ -576,11 +576,11 @@ export type ModelConfig =
 	| string
 	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> };
 
-/** Configuration for routing LangSmith traces through a proxy. */
-export interface TracingProxyConfig {
-	/** Proxy endpoint for LangSmith, e.g. '{baseUrl}/langsmith' */
+/** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */
+export interface ServiceProxyConfig {
+	/** Proxy endpoint, e.g. '{baseUrl}/langsmith' or '{baseUrl}/brave-search' */
 	apiUrl: string;
-	/** Auth headers to include in trace requests */
+	/** Auth headers to include in proxied requests */
 	headers: Record<string, string>;
 }
 
@@ -657,7 +657,7 @@ export interface OrchestrationContext {
 	/** Report a verification verdict to the deterministic workflow loop controller */
 	reportVerificationVerdict?: (verdict: VerificationResult) => Promise<WorkflowLoopAction>;
 	/** When provided, LangSmith traces are routed through a proxy instead of direct */
-	tracingConfig?: TracingProxyConfig;
+	tracingConfig?: ServiceProxyConfig;
 	/** Read a work item's build outcome from workflow loop storage */
 	getWorkItemBuildOutcome?: (workItemId: string) => Promise<WorkflowBuildOutcome | undefined>;
 	/** Update a work item's build outcome in workflow loop storage */
@@ -682,5 +682,5 @@ export interface CreateInstanceAgentOptions {
 	/** When true, all tools are loaded eagerly (no ToolSearchProcessor). Workaround for Mastra bug where toModelOutput is not called for deferred tools. */
 	disableDeferredTools?: boolean;
 	/** When provided, LangSmith traces are routed through a proxy instead of direct. */
-	tracingConfig?: TracingProxyConfig;
+	tracingConfig?: ServiceProxyConfig;
 }

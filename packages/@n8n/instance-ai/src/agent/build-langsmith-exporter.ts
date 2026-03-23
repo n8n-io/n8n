@@ -1,8 +1,8 @@
 import { LangSmithExporter } from '@mastra/langsmith';
 
-import type { TracingProxyConfig } from '../types';
+import type { ServiceProxyConfig } from '../types';
 
-export function buildLangSmithExporter(tracingConfig?: TracingProxyConfig): LangSmithExporter {
+export function buildLangSmithExporter(tracingConfig?: ServiceProxyConfig): LangSmithExporter {
 	if (tracingConfig) {
 		return new LangSmithExporter({
 			projectName: 'instance-ai',
