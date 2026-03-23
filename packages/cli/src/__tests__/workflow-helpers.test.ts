@@ -1,7 +1,9 @@
+import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, Variables } from '@n8n/db';
-import type { ITaskData, IWorkflowSettings } from 'n8n-workflow';
+import type { ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import {
@@ -9,6 +11,7 @@ import {
 	preserveInputOverride,
 	removeDefaultValues,
 	shouldRestartParentExecution,
+	validatePinDataSize,
 } from '@/workflow-helpers';
 
 describe('workflow-helpers', () => {
@@ -285,5 +288,62 @@ describe('removeDefaultValues', () => {
 		const originalSettings = { ...settings };
 		removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
 		expect(settings).toEqual(originalSettings);
+	});
+});
+
+describe('validatePinDataSize', () => {
+	const baseWorkflow: IWorkflowBase = {
+		id: '1',
+		name: 'Test',
+		nodes: [],
+		connections: {},
+		active: false,
+		isArchived: false,
+		activeVersionId: null,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	};
+
+	it('should pass when pinData is undefined', () => {
+		expect(() => validatePinDataSize(baseWorkflow)).not.toThrow();
+	});
+
+	it('should pass when pinData is not set', () => {
+		expect(() => validatePinDataSize({ ...baseWorkflow, pinData: undefined })).not.toThrow();
+	});
+
+	it('should pass when pinData is small', () => {
+		expect(() =>
+			validatePinDataSize({
+				...baseWorkflow,
+				pinData: { myNode: [{ json: { key: 'value' } }] },
+			}),
+		).not.toThrow();
+	});
+
+	it('should throw when pinData exceeds MAX_PINNED_DATA_SIZE', () => {
+		const largeValue = 'x'.repeat(MAX_PINNED_DATA_SIZE + 1);
+		expect(() =>
+			validatePinDataSize({
+				...baseWorkflow,
+				pinData: { myNode: [{ json: { data: largeValue } }] },
+			}),
+		).toThrow(BadRequestError);
+	});
+
+	it('should throw when workflow + pinData exceeds total size limit', () => {
+		const limit = MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE;
+		// Make pinData ~10 MB (under 12 MB limit)
+		const pinDataSize = 10 * 1024 * 1024;
+		const largeValue = 'x'.repeat(pinDataSize);
+		// Make the workflow itself large enough so that workflow + pinData > limit
+		const largeNodes = 'y'.repeat(limit - pinDataSize);
+		expect(() =>
+			validatePinDataSize({
+				...baseWorkflow,
+				staticData: { filler: largeNodes },
+				pinData: { myNode: [{ json: { data: largeValue } }] },
+			}),
+		).toThrow(BadRequestError);
 	});
 });

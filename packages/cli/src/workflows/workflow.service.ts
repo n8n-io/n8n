@@ -406,6 +406,11 @@ export class WorkflowService {
 			await validateEntity(workflowUpdateData);
 		}
 
+		// Validate pinData size after all mutations are applied
+		if ('pinData' in workflowUpdateData) {
+			WorkflowHelpers.validatePinDataSize({ ...workflow, ...workflowUpdateData });
+		}
+
 		const fieldsToUpdate = [
 			'name',
 			'nodes',
