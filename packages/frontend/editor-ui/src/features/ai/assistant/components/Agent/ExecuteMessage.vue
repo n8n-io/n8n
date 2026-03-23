@@ -135,6 +135,10 @@ const showUnpinSection = computed(
 
 const showFollowUps = computed(() => builderStore.hasDeferredPinData);
 
+const isExecutionBlocked = computed(
+	() => hasValidationIssues.value || builderStore.hasNoCreditsRemaining,
+);
+
 const hasPinDataApplied = computed(
 	() => Object.keys(workflowDocumentStore.value?.pinData ?? {}).length > 0,
 );
@@ -345,12 +349,12 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 					{{ executeWithMockDataLabel }}
 				</span>
 			</div>
-			<N8nTooltip :disabled="!hasValidationIssues" :content="executeButtonTooltip" placement="left">
+			<N8nTooltip :disabled="!isExecutionBlocked" :content="executeButtonTooltip" placement="left">
 				<div
-					:class="[$style.followUpItem, { [$style.followUpItemDisabled]: hasValidationIssues }]"
+					:class="[$style.followUpItem, { [$style.followUpItemDisabled]: isExecutionBlocked }]"
 					role="button"
-					:tabindex="hasValidationIssues ? -1 : 0"
-					:aria-disabled="hasValidationIssues"
+					:tabindex="isExecutionBlocked ? -1 : 0"
+					:aria-disabled="isExecutionBlocked"
 					data-test-id="follow-up-execute-with-configured-data"
 					@click="onExecute"
 					@keydown.enter="onExecute"
@@ -381,12 +385,12 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 					{{ pinDataToggleLabel }}
 				</span>
 			</div>
-			<N8nTooltip :disabled="!hasValidationIssues" :content="executeButtonTooltip" placement="left">
+			<N8nTooltip :disabled="!isExecutionBlocked" :content="executeButtonTooltip" placement="left">
 				<div
-					:class="[$style.followUpItem, { [$style.followUpItemDisabled]: hasValidationIssues }]"
+					:class="[$style.followUpItem, { [$style.followUpItemDisabled]: isExecutionBlocked }]"
 					role="button"
-					:tabindex="hasValidationIssues ? -1 : 0"
-					:aria-disabled="hasValidationIssues"
+					:tabindex="isExecutionBlocked ? -1 : 0"
+					:aria-disabled="isExecutionBlocked"
 					data-test-id="follow-up-execute-and-refine"
 					@click="onExecute"
 					@keydown.enter="onExecute"
