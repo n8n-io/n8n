@@ -2,6 +2,7 @@
 import Modal from '@/app/components/Modal.vue';
 import ProjectMoveResourceModalCredentialsList from './ProjectMoveResourceModalCredentialsList.vue';
 import ProjectMoveSuccessToastMessage from './ProjectMoveSuccessToastMessage.vue';
+import ProjectSharing from './ProjectSharing.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
@@ -16,7 +17,11 @@ import { useProjectsStore } from '../projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { ProjectTypes } from '../projects.types';
+import type { ProjectListItem, ProjectSharingData } from '../projects.types';
+// ProjectListItem extends ProjectSharingData with `role` - the toast component types
+// expect ProjectListItem but only uses fields from ProjectSharingData (name, type).
 import {
+	useAvailableProjectSearch,
 	getTruncatedProjectName,
 	MAX_NAME_LENGTH,
 	ResourceType,
@@ -24,7 +29,6 @@ import {
 } from '../projects.utils';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { truncate } from '@n8n/utils/string/truncate';
 import { computed, h, onMounted, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
@@ -35,9 +39,6 @@ import {
 	N8nCallout,
 	N8nCheckbox,
 	N8nHeading,
-	N8nIcon,
-	N8nOption,
-	N8nSelect,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -56,12 +57,12 @@ const uiStore = useUIStore();
 const toast = useToast();
 const router = useRouter();
 const projectsStore = useProjectsStore();
+const searchFn = useAvailableProjectSearch();
 const workflowsListStore = useWorkflowsListStore();
 const credentialsStore = useCredentialsStore();
 const telemetry = useTelemetry();
 
-const filter = ref('');
-const projectId = ref<string | null>(null);
+const selectedProject = ref<ProjectSharingData | null>(null);
 const shareUsedCredentials = ref(false);
 const usedCredentials = ref<IUsedCredential[]>([]);
 const allCredentials = ref<ICredentialsResponse[]>([]);
@@ -93,22 +94,10 @@ const unShareableCredentials = computed(() =>
 const homeProjectName = computed(
 	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
 );
-const availableProjects = computed(() =>
-	sortByProperty(
-		'name',
-		projectsStore.availableProjects.filter(
-			(p) =>
-				p.id !== props.data.resource.homeProject?.id &&
-				(!p.scopes || getResourcePermissions(p.scopes)[props.data.resourceType].create),
-		),
-	),
-);
-const filteredProjects = computed(() =>
-	availableProjects.value.filter((p) => p.name?.toLowerCase().includes(filter.value.toLowerCase())),
-);
-const selectedProject = computed(() =>
-	availableProjects.value.find((p) => p.id === projectId.value),
-);
+
+const projectFilterFn = (p: ProjectListItem): boolean =>
+	!p.scopes || !!getResourcePermissions(p.scopes)[props.data.resourceType].create;
+
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
 const targetProjectName = computed(() => {
@@ -121,7 +110,7 @@ const isPersonalSpaceRestricted = computed(
 		props.data.resource.homeProject?.id === projectsStore.personalProject?.id,
 );
 const isTargetPersonalProject = computed(
-	() => projectId.value === projectsStore.personalProject?.id,
+	() => selectedProject.value?.id === projectsStore.personalProject?.id,
 );
 
 const isHomeProjectTeam = (resource: IWorkflowDb | ICredentialsResponse) =>
@@ -132,16 +121,8 @@ const processProjectName = (projectName: string) => {
 	return name ?? email;
 };
 
-const updateProject = (value: string) => {
-	projectId.value = value;
-};
-
 const closeModal = () => {
 	uiStore.closeModal(props.modalName);
-};
-
-const setFilter = (query: string) => {
-	filter.value = query;
 };
 
 const moveResource = async () => {
@@ -172,7 +153,7 @@ const moveResource = async () => {
 			message: h(ProjectMoveSuccessToastMessage, {
 				routeName: isResourceWorkflow.value ? VIEWS.PROJECTS_WORKFLOWS : VIEWS.PROJECTS_CREDENTIALS,
 				resourceType: props.data.resourceType,
-				targetProject: selectedProject.value,
+				targetProject: selectedProject.value as ProjectListItem,
 				isShareCredentialsChecked: shareUsedCredentials.value,
 				areAllUsedCredentialsShareable:
 					shareableCredentials.value.length === usedCredentials.value.length,
@@ -216,8 +197,6 @@ onMounted(async () => {
 		[`${props.data.resourceType}_id`]: props.data.resource.id,
 		project_from_type: projectsStore.currentProject?.type ?? projectsStore.personalProject?.type,
 	});
-
-	await projectsStore.getAvailableProjects();
 
 	if (isResourceWorkflow.value) {
 		const [workflow, credentials] = await Promise.all([
@@ -263,26 +242,21 @@ onMounted(async () => {
 			</N8nText>
 		</template>
 		<template #content>
-			<div v-if="availableProjects.length">
-				<N8nSelect
+			<div>
+				<ProjectSharing
+					v-model="selectedProject"
 					class="mr-2xs mb-xs"
-					:model-value="projectId"
-					:filterable="true"
-					:filter-method="setFilter"
+					:search-fn="searchFn"
+					:home-project="props.data.resource.homeProject"
+					:filter-fn="projectFilterFn"
 					:placeholder="i18n.baseText('projects.move.resource.modal.selectPlaceholder')"
+					:empty-options-text="
+						i18n.baseText('projects.move.resource.modal.message.noProjects', {
+							interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
+						})
+					"
 					data-test-id="project-move-resource-modal-select"
-					@update:model-value="updateProject"
-				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-					<N8nOption
-						v-for="p in filteredProjects"
-						:key="p.id"
-						:value="p.id"
-						:label="p.name ?? ''"
-					></N8nOption>
-				</N8nSelect>
+				/>
 				<N8nText>
 					<I18nT keypath="projects.move.resource.modal.message.sharingNote" scope="global">
 						<template #note
@@ -373,11 +347,6 @@ onMounted(async () => {
 					</N8nCallout>
 				</N8nText>
 			</div>
-			<N8nText v-else>{{
-				i18n.baseText('projects.move.resource.modal.message.noProjects', {
-					interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
-				})
-			}}</N8nText>
 		</template>
 		<template #footer>
 			<div :class="$style.buttons">
@@ -387,7 +356,7 @@ onMounted(async () => {
 				<N8nButton
 					variant="solid"
 					:loading="loading"
-					:disabled="!projectId || loading"
+					:disabled="!selectedProject || loading"
 					data-test-id="project-move-resource-modal-button"
 					@click="moveResource"
 				>

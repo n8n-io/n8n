@@ -1016,6 +1016,36 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
+export type CredentialCheckStatus = {
+	credentialId: string;
+	credentialName: string;
+	credentialType: string;
+	resolverId?: string;
+	status: 'missing' | 'configured' | 'resolver_missing';
+	authorizationUrl?: string;
+	revokeUrl?: string;
+};
+
+export type CredentialCheckResult = {
+	readyToExecute: boolean;
+	credentials: CredentialCheckStatus[];
+};
+
+export type DynamicCredentialCheckProxyProvider = {
+	checkCredentialStatus(
+		workflowId: string,
+		executionContext: IExecutionContext,
+	): Promise<CredentialCheckResult>;
+};
+
+export type CredentialCheckProxyFunctions = {
+	// Optional to account for situations where the dynamic-credentials module is disabled
+	checkCredentialStatus?(
+		workflowId: string,
+		executionContext: IExecutionContext,
+	): Promise<CredentialCheckResult>;
+};
+
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
 	setMetadata(metadata: ITaskMetadata): void;
@@ -1082,7 +1112,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
-			DataTableProxyFunctions & {
+			DataTableProxyFunctions &
+			CredentialCheckProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],
@@ -2866,6 +2897,7 @@ export interface IWorkflowExecutionDataProcess {
 	workflowData: IWorkflowBase;
 	userId?: string;
 	projectId?: string;
+	projectName?: string;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;
@@ -3258,6 +3290,7 @@ export interface ExecutionSummary {
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
+	workflowVersionId?: string | null;
 	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;

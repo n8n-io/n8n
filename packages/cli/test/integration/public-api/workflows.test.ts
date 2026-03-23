@@ -162,6 +162,10 @@ describe('GET /workflows', () => {
 				name,
 				createdAt,
 				updatedAt,
+				isArchived,
+				versionId,
+				triggerCount,
+				meta,
 				tags,
 			} = workflow;
 
@@ -176,6 +180,10 @@ describe('GET /workflows', () => {
 			expect(settings).toBeDefined();
 			expect(createdAt).toBeDefined();
 			expect(updatedAt).toBeDefined();
+			expect(isArchived).toBe(false);
+			expect(versionId).toBeDefined();
+			expect(triggerCount).toBeDefined();
+			expect(meta).toBeDefined();
 		}
 	});
 
@@ -215,6 +223,10 @@ describe('GET /workflows', () => {
 				name,
 				createdAt,
 				updatedAt,
+				isArchived,
+				versionId,
+				triggerCount,
+				meta,
 				tags,
 			} = workflow;
 
@@ -229,6 +241,10 @@ describe('GET /workflows', () => {
 			expect(settings).toBeDefined();
 			expect(createdAt).toBeDefined();
 			expect(updatedAt).toBeDefined();
+			expect(isArchived).toBe(false);
+			expect(versionId).toBeDefined();
+			expect(triggerCount).toBeDefined();
+			expect(meta).toBeDefined();
 		}
 
 		// check that we really received a different result
@@ -578,6 +594,10 @@ describe('GET /workflows/:id', () => {
 			name,
 			createdAt,
 			updatedAt,
+			isArchived,
+			versionId,
+			triggerCount,
+			meta,
 			tags,
 		} = response.body;
 
@@ -592,6 +612,10 @@ describe('GET /workflows/:id', () => {
 		expect(settings).toEqual(workflow.settings);
 		expect(createdAt).toEqual(workflow.createdAt.toISOString());
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+		expect(isArchived).toBe(false);
+		expect(versionId).toBeDefined();
+		expect(triggerCount).toBe(0);
+		expect(meta).toBeDefined();
 	});
 
 	test('should retrieve non-owned workflow for owner', async () => {
@@ -613,6 +637,10 @@ describe('GET /workflows/:id', () => {
 			name,
 			createdAt,
 			updatedAt,
+			isArchived,
+			versionId,
+			triggerCount,
+			meta,
 		} = response.body;
 
 		expect(id).toEqual(workflow.id);
@@ -625,6 +653,10 @@ describe('GET /workflows/:id', () => {
 		expect(settings).toEqual(workflow.settings);
 		expect(createdAt).toEqual(workflow.createdAt.toISOString());
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+		expect(isArchived).toBe(false);
+		expect(versionId).toBeDefined();
+		expect(triggerCount).toBe(0);
+		expect(meta).toBeDefined();
 	});
 
 	test('should retrieve workflow without pinned data', async () => {

@@ -391,7 +391,7 @@ defineExpose({ focus, blur, select });
 	--input--font-size: var(--font-size--sm);
 	--input--padding: var(--spacing--xs);
 
-	--input--color--background: light-dark(var(--color--neutral-white), transparent);
+	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 	--input--shadow: 0 0 0 0 transparent;
 	--input--shadow--hover: 0 0 0 0 transparent;
 	--input--shadow--focus: 0 0 0 0 transparent;
@@ -518,7 +518,7 @@ defineExpose({ focus, blur, select });
 }
 
 .input::placeholder {
-	color: var(--color--text--subtler);
+	color: var(--color--text--tint-1);
 }
 
 .input:read-only {
@@ -527,14 +527,14 @@ defineExpose({ focus, blur, select });
 
 .input:disabled {
 	cursor: not-allowed;
-	color: var(--color--text--subtler);
+	color: var(--color--text--tint-1);
 }
 
 .textarea {
 	flex: 1;
 	min-width: 0;
 	resize: vertical;
-	padding: var(--spacing--xs);
+	padding: var(--input--padding);
 	line-height: var(--line-height--md);
 	border: none;
 	background: transparent;
@@ -544,7 +544,7 @@ defineExpose({ focus, blur, select });
 }
 
 .textarea::placeholder {
-	color: var(--color--text--subtler);
+	color: var(--color--text--tint-1);
 }
 
 .textarea:read-only {
@@ -553,7 +553,7 @@ defineExpose({ focus, blur, select });
 
 .textarea:disabled {
 	cursor: not-allowed;
-	color: var(--color--text--subtler);
+	color: var(--color--text--tint-1);
 }
 
 .prefix,
