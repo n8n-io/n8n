@@ -8,7 +8,6 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
-	copyExecutionData,
 	createLogTree,
 	findSubExecutionLocator,
 	mergeStartData,
@@ -161,7 +160,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 					workflowsStore.workflowExecutionData === null
 						? undefined
 						: {
-								response: copyExecutionData(workflowsStore.workflowExecutionData),
+								response: workflowsStore.workflowExecutionData,
 								startData: workflowsStore.workflowExecutionStartedData?.[1] ?? {},
 							};
 
