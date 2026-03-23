@@ -336,10 +336,16 @@ export const useWorkflowSetupState = (
 					nodeHasTemplateParams(node.name),
 			);
 
+		const allNodeTypes: Record<string, string> = {};
+		for (const node of sourceNodes.value) {
+			allNodeTypes[node.name] = node.type;
+		}
+
 		return sortNodesByExecutionOrder(
 			nodesForSetup,
 			workflowsStore.connectionsBySourceNode,
 			workflowsStore.connectionsByDestinationNode,
+			allNodeTypes,
 		);
 	});
 

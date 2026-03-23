@@ -324,11 +324,14 @@ describe('useWorkflowHelpers', () => {
 			workflowsStore.workflowId = workflowId;
 			workflowsStore.workflowName = 'Test Workflow';
 			workflowsStore.allNodes = [];
-			workflowsStore.allConnections = initialConnections;
 			workflowsStore.workflow.versionId = 'v1';
 
 			const documentId = createWorkflowDocumentId(workflowId);
 			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+			Object.defineProperty(workflowDocumentStore, 'connectionsBySourceNode', {
+				value: initialConnections,
+				configurable: true,
+			});
 			vi.mocked(workflowDocumentStore.getSettingsSnapshot).mockReturnValue({
 				executionOrder: 'v1',
 			});
@@ -353,7 +356,6 @@ describe('useWorkflowHelpers', () => {
 			workflowsStore.workflowId = workflowId;
 			workflowsStore.workflowName = 'Test Workflow';
 			workflowsStore.allNodes = [];
-			workflowsStore.allConnections = {};
 			workflowsStore.isWorkflowActive = false;
 			workflowsStore.workflow.settings = { executionOrder: 'v1' };
 			workflowsStore.workflow.versionId = 'v1';
@@ -361,6 +363,10 @@ describe('useWorkflowHelpers', () => {
 
 			const documentId = createWorkflowDocumentId(workflowId);
 			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+			Object.defineProperty(workflowDocumentStore, 'connectionsBySourceNode', {
+				value: {},
+				configurable: true,
+			});
 
 			// Note: createTestingPinia() stubs actions by default, so setTags()/setSettings() won't work
 			Object.defineProperty(workflowDocumentStore, 'tags', {

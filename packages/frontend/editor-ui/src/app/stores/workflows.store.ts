@@ -1164,13 +1164,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function getFormResumeUrl(node: INode, executionId: string) {
-		const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
-		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
-		const testUrl = `${rootStore.formWaitingUrl}/${executionId}${suffix}`;
-		return testUrl;
-	}
-
 	function addNodeExecutionStartedData(data: NodeExecuteBefore['data']): void {
 		const currentData =
 			workflowExecutionStartedData.value?.[0] === data.executionId
@@ -1191,7 +1184,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			throw new Error('The "workflowExecutionData" is not initialized!');
 		}
 
-		const { nodeName, data, executionId } = pushData;
+		const { nodeName, data } = pushData;
 		const isNodeWaiting = data.executionStatus === 'waiting';
 		const node = getNodeByName(nodeName);
 		if (!node) return;
@@ -1207,12 +1200,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			tasksData.push(data);
 			workflowExecutionResultDataLastUpdate.value = Date.now();
 
-			if (
-				node.type === FORM_NODE_TYPE ||
-				(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
-			) {
-				const testUrl = getFormResumeUrl(node, executionId);
-				openFormPopupWindow(testUrl);
+			if (data.metadata?.resumeFormUrl) {
+				openFormPopupWindow(data.metadata.resumeFormUrl);
 			}
 		} else {
 			// If we process items in parallel on subnodes we get several placeholder taskData items.
