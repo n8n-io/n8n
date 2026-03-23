@@ -471,7 +471,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			{ id: 'p2', name: 'Project 2' },
 		];
 
-		it('should emit external-secrets-connection-created with after creating a connection', async () => {
+		it('should emit created event on createConnection', async () => {
 			mockRepository.findOne
 				.mockResolvedValueOnce(null)
 				.mockResolvedValueOnce(connectionWithProjects);
@@ -499,7 +499,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			});
 		});
 
-		it('should emit external-secrets-connection-updated with userRole after updating a connection', async () => {
+		it('should emit updated event on updateGlobalConnection', async () => {
 			mockRepository.findOne
 				.mockResolvedValueOnce(connectionWithProjects)
 				.mockResolvedValueOnce(connectionWithProjects);
@@ -521,7 +521,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			});
 		});
 
-		it('should emit external-secrets-connection-deleted with userRole after deleting a connection', async () => {
+		it('should emit deleted event on deleteConnection', async () => {
 			mockRepository.findOne.mockResolvedValueOnce(connectionWithProjects);
 			mockRepository.remove.mockResolvedValue(connectionWithProjects);
 
@@ -536,7 +536,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			});
 		});
 
-		it('should emit external-secrets-connection-tested with userRole and isValid after testing a connection', async () => {
+		it('should emit tested event with isValid: true on success', async () => {
 			mockRepository.findOne.mockResolvedValueOnce(connectionWithProjects);
 			mockExternalSecretsManager.testProviderSettings.mockResolvedValue({
 				success: true,
@@ -555,7 +555,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			});
 		});
 
-		it('should emit external-secrets-connection-tested with userRole and errorMessage on failure', async () => {
+		it('should emit tested event with isValid: false and errorMessage on failure', async () => {
 			mockRepository.findOne.mockResolvedValueOnce(connectionWithProjects);
 			mockExternalSecretsManager.testProviderSettings.mockResolvedValue({
 				success: false,
@@ -576,7 +576,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			});
 		});
 
-		it('should emit external-secrets-connection-reloaded with userRole after reloading secrets', async () => {
+		it('should emit reloaded event on reloadConnectionSecrets', async () => {
 			mockRepository.findOne.mockResolvedValueOnce(connectionWithProjects);
 
 			await service.reloadConnectionSecrets('my-aws', 'user-123', 'global:admin');
