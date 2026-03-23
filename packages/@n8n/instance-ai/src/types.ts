@@ -158,17 +158,6 @@ export interface InstanceAiWorkflowService {
 		options?: { versionId?: string; name?: string; description?: string },
 	): Promise<{ activeVersionId: string }>;
 	unpublish(workflowId: string): Promise<void>;
-	/** Patch a single node's parameters, credentials, or disabled state in-place. */
-	patchNode?(
-		workflowId: string,
-		nodeName: string,
-		patch: {
-			name?: string;
-			parameters?: Record<string, unknown>;
-			credentials?: Record<string, { id: string; name: string }>;
-			disabled?: boolean;
-		},
-	): Promise<WorkflowDetail>;
 	/** List version history for a workflow (metadata only, no nodes/connections). */
 	listVersions?(
 		workflowId: string,

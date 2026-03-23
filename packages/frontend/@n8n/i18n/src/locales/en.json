@@ -5116,7 +5116,6 @@
 	"instanceAi.tools.get-workflow-as-code": "Reading workflow code",
 	"instanceAi.tools.build-workflow": "Generating workflow",
 	"instanceAi.tools.submit-workflow": "Submitting workflow",
-	"instanceAi.tools.patch-workflow": "Updating workflow",
 	"instanceAi.tools.list-workflows": "Listing workflows",
 	"instanceAi.tools.get-workflow": "Reading workflow",
 	"instanceAi.tools.delete-workflow": "Archiving workflow",

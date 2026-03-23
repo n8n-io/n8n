@@ -79,7 +79,6 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
-	isSafeObjectProperty,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -327,84 +326,6 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings: (json.settings ?? {}) as IWorkflowSettings,
 					pinData: sdkPinDataToRuntime(json.pinData),
-				} as Partial<WorkflowEntity>);
-
-				const updated = await workflowService.update(user, updateData, workflowId);
-				return toWorkflowDetail(updated);
-			},
-
-			async patchNode(workflowId, nodeName, patch) {
-				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-					'workflow:update',
-				]);
-
-				if (!workflow) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
-				}
-
-				const nodes = workflow.nodes ?? [];
-				const node = nodes.find((n) => n.name === nodeName);
-
-				if (!node) {
-					throw new Error(`Node "${nodeName}" not found in workflow ${workflowId}`);
-				}
-
-				// Rename node (also update references in connections and pinData)
-				if (patch.name && patch.name !== node.name) {
-					if (!isSafeObjectProperty(patch.name)) {
-						throw new Error(`Invalid node name "${patch.name}"`);
-					}
-
-					const oldName = node.name;
-					node.name = patch.name;
-
-					// Update connections that reference the old name
-					const connections = workflow.connections ?? {};
-					if (connections[oldName]) {
-						connections[patch.name] = connections[oldName];
-						delete connections[oldName];
-					}
-					for (const conns of Object.values(connections)) {
-						for (const outputGroup of Object.values(conns)) {
-							for (const outputs of outputGroup) {
-								if (!outputs) continue;
-								for (const conn of outputs) {
-									if (conn.node === oldName) {
-										conn.node = patch.name;
-									}
-								}
-							}
-						}
-					}
-
-					// Update pinData that references the old name
-					if (workflow.pinData?.[oldName]) {
-						workflow.pinData[patch.name] = workflow.pinData[oldName];
-						delete workflow.pinData[oldName];
-					}
-				}
-
-				// Shallow-merge parameters
-				if (patch.parameters) {
-					node.parameters = {
-						...node.parameters,
-						...(patch.parameters as INodeParameters),
-					};
-				}
-
-				// Override credentials
-				if (patch.credentials) {
-					node.credentials = { ...node.credentials, ...patch.credentials };
-				}
-
-				// Override disabled
-				if (patch.disabled !== undefined) {
-					node.disabled = patch.disabled;
-				}
-
-				const updateData = workflowRepository.create({
-					nodes,
-					...(patch.name ? { connections: workflow.connections, pinData: workflow.pinData } : {}),
 				} as Partial<WorkflowEntity>);
 
 				const updated = await workflowService.update(user, updateData, workflowId);
