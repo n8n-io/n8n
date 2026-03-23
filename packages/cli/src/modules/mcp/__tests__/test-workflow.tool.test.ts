@@ -425,6 +425,38 @@ describe('test-workflow MCP tool', () => {
 				{ json: {} },
 			]);
 		});
+
+		test('rejects pin data with unknown node names', async () => {
+			const workflow = createWorkflow({
+				settings: { availableInMCP: true },
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Trigger',
+						type: WEBHOOK_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+					} as INode,
+				],
+			});
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+
+			await expect(
+				testWorkflow(
+					user,
+					workflowFinderService,
+					activeExecutions,
+					workflowRunner,
+					nodeTypes,
+					mcpService,
+					'wf-1',
+					{ Trigger: [{ json: {} }], NonExistentNode: [{ json: { x: 1 } }] },
+					'Trigger',
+				),
+			).rejects.toThrow('Pin data contains unknown node names: NonExistentNode');
+		});
 	});
 
 	describe('execution flow', () => {
@@ -797,6 +829,15 @@ describe('test-workflow MCP tool', () => {
 						type: WEBHOOK_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
+						disabled: false,
+						parameters: {},
+					} as INode,
+					{
+						id: 'node-2',
+						name: 'OtherNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [200, 0],
 						disabled: false,
 						parameters: {},
 					} as INode,
