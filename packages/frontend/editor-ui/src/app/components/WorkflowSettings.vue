@@ -24,6 +24,7 @@ import {
 	N8nIconButton,
 	N8nOption,
 	N8nSelect,
+	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { WorkflowSettings, WorkflowSettingsBinaryMode } from 'n8n-workflow';
@@ -51,6 +52,7 @@ import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
@@ -64,6 +66,7 @@ const telemetry = useTelemetry();
 const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow, mcpTriggerMap } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
+const credentialsStore = useCredentialsStore();
 const canListCredentialResolvers = hasPermission(['rbac'], {
 	rbac: { scope: 'credentialResolver:list' },
 });
@@ -210,6 +213,20 @@ const isRedactionSettingVisible = computed(
 		check.value('EXECUTION_REDACTION') &&
 		workflowPermissions.value.updateRedactionSetting,
 );
+
+const workflowHasDynamicCredentials = computed(() => {
+	if (!isCredentialResolverEnabled.value) return false;
+	const nodes = workflowsStore.workflowObject.nodes;
+	return Object.values(nodes).some((node) => {
+		const nodeCredentials = node.credentials;
+		if (!nodeCredentials) return false;
+		return Object.values(nodeCredentials).some((cred) => {
+			if (!cred?.id) return false;
+			const credential = credentialsStore.getCredentialById(cred.id);
+			return credential?.isResolvable === true;
+		});
+	});
+});
 
 /**
  * Maps the two independent redaction toggles to/from the single `redactionPolicy` field.
@@ -1181,6 +1198,14 @@ onBeforeUnmount(() => {
 							</N8nSelect>
 						</ElCol>
 					</ElRow>
+					<ElRow :class="$style['dynamic-credentials-hint']">
+						<ElCol :span="10" />
+						<ElCol :span="14">
+							<N8nText size="small" color="text-light" :class="$style.dataRedactionHint">
+								{{ i18n.baseText('workflowSettings.redactProductionData.dynamicCredentialsHint') }}
+							</N8nText>
+						</ElCol>
+					</ElRow>
 					<ElRow>
 						<ElCol :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.redactManualData') }}
@@ -1455,6 +1480,11 @@ onBeforeUnmount(() => {
 	:global(.el-switch) {
 		padding: var(--spacing--md) 0;
 	}
+}
+
+.dataRedactionHint {
+	display: block;
+	padding: var(--spacing--5xs) 0 var(--spacing--2xs) var(--spacing--5xs);
 }
 
 .setting-name {

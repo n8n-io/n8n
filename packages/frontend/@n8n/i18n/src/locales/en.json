@@ -3667,6 +3667,7 @@
 	"workflowSettings.saveExecutionProgressOptions.doNotSave": "Do not save",
 	"workflowSettings.saveExecutionProgressOptions.save": "@:_reusableBaseText.save",
 	"workflowSettings.redactProductionData": "Redact production execution data",
+	"workflowSettings.redactProductionData.dynamicCredentialsHint": "Prod. execution data is always redacted in workflows that use dynamic credentials.",
 	"workflowSettings.redactManualData": "Redact manual execution data",
 	"workflowSettings.redactionOptions.default": "Default - Do not redact",
 	"workflowSettings.redactionOptions.redact": "Redact",
