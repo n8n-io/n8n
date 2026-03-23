@@ -120,9 +120,9 @@ export class InstanceAiAdapterService {
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
 
-	private getNodesFromCache() {
+	private async getNodesFromCache() {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
-			return this.nodesCache.promise;
+			return await this.nodesCache.promise;
 		}
 		const promise = this.loadNodesAndCredentials.collectTypes().then((result) => result.nodes);
 		this.nodesCache = { promise, expiresAt: Date.now() + this.NODES_CACHE_TTL_MS };
@@ -130,7 +130,7 @@ export class InstanceAiAdapterService {
 		promise.catch(() => {
 			this.nodesCache = null;
 		});
-		return promise;
+		return await promise;
 	}
 
 	constructor(

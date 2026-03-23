@@ -104,7 +104,7 @@ function hasNonDiscriminatorDisplayCondition(prop: INodeProperties): boolean {
  * and skips the displayOptions condition check.
  */
 function wrapAsExpression(value: unknown): string {
-	if (typeof value === 'string') return `={{ "${value}" }}`;
+	if (typeof value === 'string') return `={{ ${JSON.stringify(value)} }}`;
 	// number or boolean
 	return `={{ ${String(value)} }}`;
 }
