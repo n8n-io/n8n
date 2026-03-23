@@ -167,5 +167,107 @@ describe('LmChatEdenAi', () => {
 			const callArgs = MockedChatOpenAI.mock.calls[0][0];
 			expect(callArgs?.configuration?.baseURL).toBe('https://api.edenai.run/v3/llm');
 		});
+
+		it('should set fallbacks in modelKwargs when provided', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'google/gemini-2.5-pro';
+				if (paramName === 'options')
+					return { fallbacks: 'openai/gpt-4o, anthropic/claude-sonnet-4-5' };
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelKwargs: {
+						fallbacks: ['openai/gpt-4o', 'anthropic/claude-sonnet-4-5'],
+					},
+				}),
+			);
+		});
+
+		it('should not set fallbacks when empty string', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'openai/gpt-4o';
+				if (paramName === 'options') return { fallbacks: '' };
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelKwargs: undefined,
+				}),
+			);
+		});
+
+		it('should set web_search_options in modelKwargs when webSearch is enabled', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'openai/gpt-4o';
+				if (paramName === 'options') return { webSearch: true, webSearchContextSize: 'high' };
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelKwargs: {
+						web_search_options: { search_context_size: 'high' },
+					},
+				}),
+			);
+		});
+
+		it('should default web search context size to medium', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'openai/gpt-4o';
+				if (paramName === 'options') return { webSearch: true };
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelKwargs: {
+						web_search_options: { search_context_size: 'medium' },
+					},
+				}),
+			);
+		});
+
+		it('should combine multiple modelKwargs features', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'openai/gpt-4o';
+				if (paramName === 'options')
+					return {
+						responseFormat: 'json_object',
+						fallbacks: 'anthropic/claude-sonnet-4-5',
+						webSearch: true,
+						webSearchContextSize: 'low',
+					};
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelKwargs: {
+						response_format: { type: 'json_object' },
+						fallbacks: ['anthropic/claude-sonnet-4-5'],
+						web_search_options: { search_context_size: 'low' },
+					},
+				}),
+			);
+		});
 	});
 });

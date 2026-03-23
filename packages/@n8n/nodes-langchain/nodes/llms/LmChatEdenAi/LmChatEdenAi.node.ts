@@ -126,6 +126,15 @@ export class LmChatEdenAi implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Fallback Models',
+						name: 'fallbacks',
+						default: '',
+						description:
+							'Comma-separated list of fallback models (e.g. openai/gpt-4o,anthropic/claude-sonnet-4-5). If the primary model fails, Eden AI retries with each fallback in order.',
+						type: 'string',
+						placeholder: 'openai/gpt-4o,anthropic/claude-sonnet-4-5',
+					},
+					{
 						displayName: 'Frequency Penalty',
 						name: 'frequencyPenalty',
 						default: 0,
@@ -205,6 +214,43 @@ export class LmChatEdenAi implements INodeType {
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
 					},
+					{
+						displayName: 'Web Search',
+						name: 'webSearch',
+						default: false,
+						description:
+							'Whether to enable web search, allowing the model to access real-time information from the internet when generating responses',
+						type: 'boolean',
+					},
+					{
+						displayName: 'Web Search Context Size',
+						name: 'webSearchContextSize',
+						default: 'medium',
+						description: 'Amount of context retrieved from the web when web search is enabled',
+						type: 'options',
+						options: [
+							{
+								name: 'Low',
+								value: 'low',
+								description: 'Minimal web context',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+								description: 'Balanced web context',
+							},
+							{
+								name: 'High',
+								value: 'high',
+								description: 'Maximum web context',
+							},
+						],
+						displayOptions: {
+							show: {
+								webSearch: [true],
+							},
+						},
+					},
 				],
 			},
 		],
@@ -216,6 +262,7 @@ export class LmChatEdenAi implements INodeType {
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			fallbacks?: string;
 			frequencyPenalty?: number;
 			maxTokens?: number;
 			maxRetries: number;
@@ -224,6 +271,8 @@ export class LmChatEdenAi implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
+			webSearch?: boolean;
+			webSearchContextSize?: 'low' | 'medium' | 'high';
 		};
 
 		const timeout = options.timeout;
@@ -237,6 +286,29 @@ export class LmChatEdenAi implements INodeType {
 			},
 		};
 
+		// Build modelKwargs for Eden AI V3-specific features
+		const modelKwargs: Record<string, unknown> = {};
+
+		if (options.responseFormat) {
+			modelKwargs.response_format = { type: options.responseFormat };
+		}
+
+		if (options.fallbacks) {
+			const fallbackList = options.fallbacks
+				.split(',')
+				.map((f) => f.trim())
+				.filter((f) => f.length > 0);
+			if (fallbackList.length > 0) {
+				modelKwargs.fallbacks = fallbackList;
+			}
+		}
+
+		if (options.webSearch) {
+			modelKwargs.web_search_options = {
+				search_context_size: options.webSearchContextSize ?? 'medium',
+			};
+		}
+
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
 			model: modelName,
@@ -245,11 +317,7 @@ export class LmChatEdenAi implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
