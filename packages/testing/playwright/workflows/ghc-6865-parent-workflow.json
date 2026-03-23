@@ -1,0 +1,40 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"path": "test-webhook",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"id": "webhook-trigger",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [0, 0],
+			"webhookId": "test-webhook-id"
+		},
+		{
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"value": "CHILD_WORKFLOW_ID",
+					"mode": "id"
+				},
+				"options": {
+					"waitForSubWorkflow": true
+				}
+			},
+			"id": "execute-workflow",
+			"name": "Execute Workflow",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.3,
+			"position": [200, 0]
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Execute Workflow", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false
+}

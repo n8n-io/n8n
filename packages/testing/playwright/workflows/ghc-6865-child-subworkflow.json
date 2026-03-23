@@ -1,0 +1,59 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"id": "execute-workflow-trigger",
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"url": "https://httpbin.org/delay/3",
+				"options": {}
+			},
+			"id": "http-delay-1",
+			"name": "HTTP Delay 1",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [200, 0]
+		},
+		{
+			"parameters": {
+				"url": "https://httpbin.org/delay/3",
+				"options": {}
+			},
+			"id": "http-delay-2",
+			"name": "HTTP Delay 2",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [400, 0]
+		},
+		{
+			"parameters": {
+				"url": "https://httpbin.org/delay/3",
+				"options": {}
+			},
+			"id": "http-delay-3",
+			"name": "HTTP Delay 3",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [600, 0]
+		}
+	],
+	"connections": {
+		"When Executed by Another Workflow": {
+			"main": [[{ "node": "HTTP Delay 1", "type": "main", "index": 0 }]]
+		},
+		"HTTP Delay 1": {
+			"main": [[{ "node": "HTTP Delay 2", "type": "main", "index": 0 }]]
+		},
+		"HTTP Delay 2": {
+			"main": [[{ "node": "HTTP Delay 3", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false
+}
