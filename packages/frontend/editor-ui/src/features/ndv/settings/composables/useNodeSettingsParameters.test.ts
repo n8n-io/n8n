@@ -171,6 +171,50 @@ describe('useNodeSettingsParameters', () => {
 			});
 		});
 
+		describe('hideOnCloud', () => {
+			it('returns false when hideOnCloud is true and deployment is cloud', async () => {
+				mockNodeHelpers();
+				settingsStore.isCloudDeployment = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, null, {
+					...mockParameter,
+					displayOptions: { hideOnCloud: true },
+				});
+				expect(result).toBe(false);
+			});
+
+			it('does not call displayParameter when hideOnCloud hides the parameter', async () => {
+				mockNodeHelpers();
+				settingsStore.isCloudDeployment = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				await shouldDisplayNodeParameter({}, null, {
+					...mockParameter,
+					displayOptions: { hideOnCloud: true },
+				});
+				expect(displayParameterSpy).not.toHaveBeenCalled();
+			});
+
+			it('continues normal evaluation when hideOnCloud is true but deployment is not cloud', async () => {
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				settingsStore.isCloudDeployment = false;
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, null, {
+					...mockParameter,
+					displayOptions: { hideOnCloud: true },
+				});
+				expect(result).toBe(true);
+				expect(displayParameterSpy).toHaveBeenCalled();
+			});
+		});
+
 		describe('custom API call handling', () => {
 			it('returns false for custom API call with mustHideDuringCustomApiCall', async () => {
 				vi.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall').mockReturnValueOnce(true);

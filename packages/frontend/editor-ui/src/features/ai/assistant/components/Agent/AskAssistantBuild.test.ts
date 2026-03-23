@@ -1680,7 +1680,7 @@ describe('AskAssistantBuild', () => {
 			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
 		});
 
-		it('should keep notification banner visible after streaming ends', async () => {
+		it('should hide notification banner after streaming ends', async () => {
 			mockCanPrompt.value = true;
 
 			const { queryByTestId } = renderComponent();
@@ -1691,11 +1691,11 @@ describe('AskAssistantBuild', () => {
 
 			expect(queryByTestId('notification-permission-banner')).toBeInTheDocument();
 
-			// End streaming - banner should remain visible
+			// End streaming - banner should disappear
 			builderStore.$patch({ streaming: false });
 			await flushPromises();
 
-			expect(queryByTestId('notification-permission-banner')).toBeInTheDocument();
+			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
 		});
 
 		it('should not show notification banner for existing chat sessions without streaming', async () => {

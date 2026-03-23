@@ -48,6 +48,7 @@ import { WorkflowCredentialSetupModal } from './WorkflowCredentialSetupModal';
 import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
+import { BuilderWizardComposer } from '../composables/BuilderWizardComposer';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { CredentialsComposer } from '../composables/CredentialsComposer';
 import { DataTableComposer } from '../composables/DataTablesComposer';
@@ -125,6 +126,7 @@ export class n8nPage {
 	readonly deleteSecretsProviderModal: DeleteSecretsProviderModal;
 
 	// Composables
+	readonly builderWizardComposer: BuilderWizardComposer;
 	readonly workflowComposer: WorkflowComposer;
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
@@ -202,6 +204,7 @@ export class n8nPage {
 		this.deleteSecretsProviderModal = new DeleteSecretsProviderModal(page);
 
 		// Composables
+		this.builderWizardComposer = new BuilderWizardComposer(this);
 		this.workflowComposer = new WorkflowComposer(this);
 		this.projectComposer = new ProjectComposer(this);
 		this.canvasComposer = new CanvasComposer(this);
