@@ -269,7 +269,7 @@ function normalizePinData(pinData: IPinData): IPinData {
 	const normalized: IPinData = {};
 	for (const [nodeName, items] of Object.entries(pinData)) {
 		normalized[nodeName] = items.map((item) => {
-			if ('json' in item && typeof item.json === 'object') {
+			if ('json' in item && typeof item.json === 'object' && item.json !== null) {
 				return item;
 			}
 			// Wrap the flat object in { json: ... }
