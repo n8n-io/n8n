@@ -153,6 +153,9 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 			'history-compacted': (event) => this.historyCompacted(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
+			'custom-role-created': (event) => this.customRoleCreated(event),
+			'custom-role-updated': (event) => this.customRoleUpdated(event),
+			'custom-role-deleted': (event) => this.customRoleDeleted(event),
 		});
 	}
 
@@ -1597,6 +1600,33 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User updated instance policies', {
 			user_id: user.id,
 			[settingName]: value,
+		});
+	}
+
+	// #endregion
+
+	// #region Custom Roles
+
+	private customRoleCreated({ userId, roleSlug, scopes }: RelayEventMap['custom-role-created']) {
+		this.telemetry.track('User created custom role', {
+			user_id: userId,
+			role_slug: roleSlug,
+			scopes,
+		});
+	}
+
+	private customRoleUpdated({ userId, roleSlug, scopes }: RelayEventMap['custom-role-updated']) {
+		this.telemetry.track('User updated custom role', {
+			user_id: userId,
+			role_slug: roleSlug,
+			scopes,
+		});
+	}
+
+	private customRoleDeleted({ userId, roleSlug }: RelayEventMap['custom-role-deleted']) {
+		this.telemetry.track('User deleted custom role', {
+			user_id: userId,
+			role_slug: roleSlug,
 		});
 	}
 

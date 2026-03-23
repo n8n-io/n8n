@@ -674,6 +674,54 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('custom role events', () => {
+		it('should track on `custom-role-created` event', () => {
+			const event: RelayEventMap['custom-role-created'] = {
+				userId: 'user123',
+				roleSlug: 'project:my-role-abc123',
+				scopes: ['workflow:create', 'workflow:read', 'credential:read'],
+			};
+
+			eventService.emit('custom-role-created', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User created custom role', {
+				user_id: 'user123',
+				role_slug: 'project:my-role-abc123',
+				scopes: ['workflow:create', 'workflow:read', 'credential:read'],
+			});
+		});
+
+		it('should track on `custom-role-updated` event', () => {
+			const event: RelayEventMap['custom-role-updated'] = {
+				userId: 'user123',
+				roleSlug: 'project:my-role-abc123',
+				scopes: ['workflow:create', 'workflow:read'],
+			};
+
+			eventService.emit('custom-role-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated custom role', {
+				user_id: 'user123',
+				role_slug: 'project:my-role-abc123',
+				scopes: ['workflow:create', 'workflow:read'],
+			});
+		});
+
+		it('should track on `custom-role-deleted` event', () => {
+			const event: RelayEventMap['custom-role-deleted'] = {
+				userId: 'user123',
+				roleSlug: 'project:my-role-abc123',
+			};
+
+			eventService.emit('custom-role-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted custom role', {
+				user_id: 'user123',
+				role_slug: 'project:my-role-abc123',
+			});
+		});
+	});
+
 	describe('public API events', () => {
 		it('should buffer on `public-api-invoked` event', () => {
 			const event: RelayEventMap['public-api-invoked'] = {
