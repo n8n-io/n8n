@@ -11,7 +11,6 @@ import {
 } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
@@ -31,20 +30,6 @@ export class WaitingForms extends WaitingWebhooks {
 		if (method === 'POST') {
 			execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
 		}
-	}
-
-	protected getWorkflow(execution: IExecutionResponse) {
-		const { workflowData } = execution;
-		return new Workflow({
-			id: workflowData.id,
-			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
-			active: getWorkflowActiveStatusFromWorkflowData(workflowData),
-			nodeTypes: this.nodeTypes,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
-		});
 	}
 
 	findCompletionPage(workflow: Workflow, runData: IRunData, lastNodeExecuted: string) {
@@ -74,7 +59,7 @@ export class WaitingForms extends WaitingWebhooks {
 		req: WaitingWebhookRequest,
 		res: express.Response,
 	): Promise<IWebhookResponseCallbackData> {
-		const { path: executionId, suffix } = req.params;
+		const { path: executionId, suffix: routeSuffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
 
@@ -85,24 +70,21 @@ export class WaitingForms extends WaitingWebhooks {
 
 		const execution = await this.getExecution(executionId);
 
-		if (suffix === WAITING_FORMS_EXECUTION_STATUS) {
-			let status: string = execution?.status ?? 'null';
-			const { node } = execution?.data.executionData?.nodeExecutionStack[0] ?? {};
-
-			if (node && status === 'waiting') {
-				if (node.type === FORM_NODE_TYPE) {
-					status = 'form-waiting';
-				}
-				if (node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form') {
-					status = 'form-waiting';
-				}
+		// Validate token for forms (backwards compat: skip for old executions without resumeToken)
+		let webhookPath: string | undefined;
+		if (execution?.data.resumeToken) {
+			const result = this.validateToken(req, execution);
+			if (!result.valid) {
+				res.status(401).render('form-invalid-token');
+				return { noWebhookResponse: true };
 			}
-
-			applyCors(req, res);
-
-			res.send(status);
-			return { noWebhookResponse: true };
+			webhookPath = result.webhookPath;
 		}
+
+		const suffix = routeSuffix ?? webhookPath;
+
+		const statusResult = this.handleStatusRequest(execution, suffix, req, res);
+		if (statusResult) return statusResult;
 
 		if (!execution) {
 			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
@@ -121,10 +103,7 @@ export class WaitingForms extends WaitingWebhooks {
 		let lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
 		if (execution.finished) {
-			// find the completion page to render
-			// if there is no completion page, render the default page
-			const workflow = this.getWorkflow(execution);
-
+			const workflow = this.createWorkflow(execution.workflowData);
 			const completionPage = this.findCompletionPage(
 				workflow,
 				execution.data.resultData.runData,
@@ -138,13 +117,10 @@ export class WaitingForms extends WaitingWebhooks {
 					message: 'Your response has been recorded',
 					formTitle: 'Form Submitted',
 				});
-
-				return {
-					noWebhookResponse: true,
-				};
-			} else {
-				lastNodeExecuted = completionPage;
+				return { noWebhookResponse: true };
 			}
+
+			lastNodeExecuted = completionPage;
 		}
 
 		applyCors(req, res);
@@ -157,5 +133,36 @@ export class WaitingForms extends WaitingWebhooks {
 			executionId,
 			suffix,
 		});
+	}
+
+	/**
+	 * Checks if the request is a form execution status poll and, if so,
+	 * responds with the current execution status (e.g. 'waiting', 'form-waiting')
+	 * and signals that no further webhook response is needed.
+	 * Returns `undefined` for non-status requests so normal webhook handling continues.
+	 */
+	private handleStatusRequest(
+		execution: IExecutionResponse | undefined,
+		suffix: string | undefined,
+		req: WaitingWebhookRequest,
+		res: express.Response,
+	): IWebhookResponseCallbackData | undefined {
+		if (suffix !== WAITING_FORMS_EXECUTION_STATUS) return undefined;
+
+		let status: string = execution?.status ?? 'null';
+		const { node } = execution?.data.executionData?.nodeExecutionStack[0] ?? {};
+
+		if (node && status === 'waiting') {
+			if (node.type === FORM_NODE_TYPE) {
+				status = 'form-waiting';
+			}
+			if (node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form') {
+				status = 'form-waiting';
+			}
+		}
+
+		applyCors(req, res);
+		res.send(status);
+		return { noWebhookResponse: true };
 	}
 }
