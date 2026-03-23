@@ -737,7 +737,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Use workflow updatedAt as version timestamp
 		// might not be the same as "version.createdAt" but close enough
 		const updatedAt = workflowDocumentStore.value?.updatedAt;
-		if (!updatedAt) throw new Error('Workflow updatedAt is missing');
+		if (!updatedAt) return undefined;
 		return {
 			id: versionId,
 			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
