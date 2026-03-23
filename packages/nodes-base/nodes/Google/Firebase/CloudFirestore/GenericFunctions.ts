@@ -90,14 +90,14 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 		return { booleanValue: value };
 	} else if (value === null) {
 		return { nullValue: null };
-	} else if (value !== '' && !isNaN(value as number)) {
+	} else if (typeof value === 'number' && !Number.isNaN(value)) {
 		if (value.toString().indexOf('.') !== -1) {
 			return { doubleValue: value };
 		} else {
 			return { integerValue: value };
 		}
-	} else if (isValidDate(value as string)) {
-		const date = new Date(Date.parse(value as string));
+	} else if (typeof value === 'string' && /[-T:]/.test(value) && isValidDate(value)) {
+		const date = new Date(Date.parse(value));
 		return { timestampValue: date.toISOString() };
 	} else if (typeof value === 'string') {
 		return { stringValue: value };
