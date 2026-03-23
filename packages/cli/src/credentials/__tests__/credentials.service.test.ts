@@ -2258,4 +2258,57 @@ describe('CredentialsService', () => {
 			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
 		});
 	});
+
+	describe('validateOAuthCredentialUrls', () => {
+		const testProjectId = 'test-project-id';
+
+		beforeEach(() => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			jest.spyOn(validation, 'validateExternalSecretsPermissions').mockResolvedValue();
+		});
+
+		it('should reject an invalid OAuth2 URL', async () => {
+			credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+			const data = { authUrl: 'javascript:alert(1)' };
+
+			await expect(
+				service.checkCredentialData('myOAuth2Cred', data, ownerUser, testProjectId),
+			).rejects.toThrow('OAuth url must use HTTP or HTTPS protocol');
+		});
+
+		it('should accept a valid OAuth2 URL', async () => {
+			credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+			const data = { authUrl: 'https://example.com/oauth/authorize' };
+
+			await expect(
+				service.checkCredentialData('myOAuth2Cred', data, ownerUser, testProjectId),
+			).resolves.toBeUndefined();
+		});
+
+		it('should skip validation for expression-prefixed OAuth2 URLs', async () => {
+			credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+			const data = {
+				authUrl: '=https://example.com/oauth/authorize',
+				accessTokenUrl: '={{ $vars.tokenUrl }}',
+				serverUrl: '={{ $vars.serverUrl }}',
+			};
+
+			await expect(
+				service.checkCredentialData('myOAuth2Cred', data, ownerUser, testProjectId),
+			).resolves.toBeUndefined();
+		});
+
+		it('should skip validation for expression-prefixed OAuth1 URLs', async () => {
+			credentialTypes.getParentTypes.mockReturnValue(['oAuth1Api']);
+			const data = {
+				authUrl: '={{ $vars.authUrl }}',
+				requestTokenUrl: '=https://example.com/request-token',
+				accessTokenUrl: '={{ $vars.tokenUrl }}',
+			};
+
+			await expect(
+				service.checkCredentialData('myOAuth1Cred', data, ownerUser, testProjectId),
+			).resolves.toBeUndefined();
+		});
+	});
 });

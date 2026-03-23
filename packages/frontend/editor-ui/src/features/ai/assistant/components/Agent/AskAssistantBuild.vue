@@ -112,17 +112,7 @@ const chatInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const suggestionsInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const inputText = ref('');
 
-const notificationsPermissionsBannerTriggered = ref(false);
 const creditBannerDismissed = ref(false);
-
-watch(
-	() => builderStore.streaming,
-	(isStreaming) => {
-		if (isStreaming && canPrompt.value) {
-			notificationsPermissionsBannerTriggered.value = true;
-		}
-	},
-);
 
 watch(
 	() => builderStore.creditsRemaining,
@@ -141,7 +131,7 @@ const showUsabilityNotice = computed(
 );
 
 const shouldShowNotificationBanner = computed(() => {
-	return notificationsPermissionsBannerTriggered.value && canPrompt.value;
+	return builderStore.streaming && canPrompt.value;
 });
 
 watch(shouldShowNotificationBanner, (isShown) => {
@@ -191,7 +181,7 @@ const showExecuteMessage = computed(() => {
 	return (
 		!builderStore.streaming &&
 		(workflowDocumentStore.value?.allNodes ?? []).length > 0 &&
-		builderUpdatedWorkflowMessageIndex > -1 &&
+		builderStore.hasMessages &&
 		!hasErrorAfterUpdate &&
 		!hasTaskAbortedAfterUpdate &&
 		!hasPendingInteraction
@@ -355,7 +345,6 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	accumulatedNodeIdsToTidyUp.value = [];
-	notificationsPermissionsBannerTriggered.value = false;
 	mockDataExecutionWatcherStop?.();
 	mockDataExecutionWatcherStop = undefined;
 }
@@ -379,6 +368,17 @@ function onFeedback(feedback: RatingFeedback) {
 }
 
 async function onWorkflowExecuted() {
+	// The wizard executes individual nodes, not the full workflow,
+	// so there's no full execution data to inspect — just send success.
+	if (builderStore.wizardHasExecutedWorkflow) {
+		await builderStore.sendChatMessage({
+			text: i18n.baseText('aiAssistant.builder.executeMessage.wizardSetupSuccess'),
+			type: 'execution',
+			executionStatus: 'success',
+		});
+		return;
+	}
+
 	const executionData = workflowsStore.workflowExecutionData;
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
