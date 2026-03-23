@@ -958,7 +958,7 @@
     "showdown": "2.1.0",
     "simple-git": "catalog:",
     "snowflake-sdk": "2.1.0",
-    "ssh2-sftp-client": "12.0.1",
+    "ssh2-sftp-client": "12.1.0",
     "tmp-promise": "3.0.3",
     "ts-ics": "1.2.2",
     "uuid": "catalog:",
