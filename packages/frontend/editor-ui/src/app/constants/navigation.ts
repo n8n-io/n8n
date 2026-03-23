@@ -81,3 +81,6 @@ export const enum MAIN_HEADER_TABS {
 	SETTINGS = 'settings',
 	EVALUATION = 'evaluation',
 }
+
+/** Query parameter value used to deep-link to the publish timeline tab in workflow history */
+export const WORKFLOW_HISTORY_PUBLISH_TIMELINE_TAB = 'publishTimeline';

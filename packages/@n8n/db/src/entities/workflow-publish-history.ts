@@ -4,7 +4,6 @@ import {
 	Index,
 	JoinColumn,
 	ManyToOne,
-	OneToOne,
 	PrimaryGeneratedColumn,
 	Relation,
 } from '@n8n/typeorm';
@@ -22,8 +21,8 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	@Column({ type: 'varchar' })
 	workflowId: string;
 
-	@Column({ type: 'varchar' })
-	versionId: string;
+	@Column({ type: 'varchar', nullable: true })
+	versionId: string | null;
 
 	// Note that we only track "permanent" deactivations
 	// We don't explicitly track the deactivations of a previous active version
@@ -34,14 +33,17 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;
 
-	@OneToOne('User', {
+	@ManyToOne('User', {
 		onDelete: 'SET NULL',
 		nullable: true,
 	})
 	@JoinColumn({ name: 'userId' })
 	user: User | null;
 
-	@ManyToOne('WorkflowHistory', 'workflowPublishHistory', { nullable: true })
+	@ManyToOne('WorkflowHistory', 'workflowPublishHistory', {
+		nullable: true,
+		onDelete: 'SET NULL',
+	})
 	@JoinColumn({
 		name: 'versionId',
 	})

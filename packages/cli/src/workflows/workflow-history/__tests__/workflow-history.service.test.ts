@@ -1,22 +1,25 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
-import { User, WorkflowHistoryRepository } from '@n8n/db';
+import type { WorkflowHistory } from '@n8n/db';
+import { User, WorkflowHistoryRepository, WorkflowPublishHistoryRepository } from '@n8n/db';
 import type { UpdateResult } from '@n8n/typeorm';
+import { getWorkflow, getWorkflowHistory } from '@test-integration/workflow';
 import { mockClear } from 'jest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
+import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { getWorkflow, getWorkflowHistory } from '@test-integration/workflow';
 
 const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
+const workflowPublishHistoryRepository = mockInstance(WorkflowPublishHistoryRepository);
 const logger = mockLogger();
 const workflowFinderService = mockInstance(WorkflowFinderService);
 const eventService = mockInstance(EventService);
 const workflowHistoryService = new WorkflowHistoryService(
 	logger,
 	workflowHistoryRepository,
+	workflowPublishHistoryRepository,
 	workflowFinderService,
 	eventService,
 );
@@ -40,6 +43,7 @@ describe('WorkflowHistoryService', () => {
 		mockClear(workflowHistoryRepository.update);
 		mockClear(workflowHistoryRepository.find);
 		mockClear(workflowHistoryRepository.findOne);
+		mockClear(workflowPublishHistoryRepository.find);
 		mockClear(workflowFinderService.findWorkflowForUser);
 	});
 
@@ -323,6 +327,85 @@ describe('WorkflowHistoryService', () => {
 				workflowHistoryService.updateVersionForUser(testUser, workflowId, versionId, updateData),
 			).rejects.toThrow(WorkflowHistoryVersionNotFoundError);
 			expect(workflowHistoryRepository.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getPublishTimeline', () => {
+		it('should throw SharedWorkflowNotFoundError when workflow not found for user', async () => {
+			const workflowId = '123';
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(null);
+
+			await expect(workflowHistoryService.getPublishTimeline(testUser, workflowId)).rejects.toThrow(
+				SharedWorkflowNotFoundError,
+			);
+		});
+
+		it('should return publish timeline events with version names', async () => {
+			const workflowId = '123';
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.id = workflowId;
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
+
+			const createdAt = new Date();
+			const mockEvents = [
+				{
+					id: 1,
+					workflowId,
+					versionId: 'v1',
+					event: 'activated' as const,
+					createdAt,
+					userId: null,
+					user: null,
+					workflowHistory: { name: 'Release 1' } as WorkflowHistory,
+				},
+				{
+					id: 2,
+					workflowId,
+					versionId: 'v1',
+					event: 'deactivated' as const,
+					createdAt,
+					userId: null,
+					user: null,
+					workflowHistory: null,
+				},
+			];
+
+			const qb = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoin: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				orderBy: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValueOnce(mockEvents),
+			};
+			workflowPublishHistoryRepository.createQueryBuilder.mockReturnValueOnce(qb as never);
+
+			const result = await workflowHistoryService.getPublishTimeline(testUser, workflowId);
+
+			expect(result).toEqual([
+				{
+					id: 1,
+					workflowId,
+					versionId: 'v1',
+					event: 'activated',
+					createdAt,
+					userId: null,
+					user: null,
+					versionName: 'Release 1',
+				},
+				{
+					id: 2,
+					workflowId,
+					versionId: 'v1',
+					event: 'deactivated',
+					createdAt,
+					userId: null,
+					user: null,
+					versionName: null,
+				},
+			]);
+			expect(qb.leftJoin).toHaveBeenCalledWith('wph.workflowHistory', 'wh');
+			expect(qb.addSelect).toHaveBeenCalledWith('wh.name');
 		});
 	});
 
