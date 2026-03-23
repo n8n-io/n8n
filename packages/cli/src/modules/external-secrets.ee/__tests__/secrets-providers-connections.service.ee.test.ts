@@ -471,7 +471,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			{ id: 'p2', name: 'Project 2' },
 		];
 
-		it('should emit external-secrets-connection-created after creating a connection', async () => {
+		it('should emit external-secrets-connection-created with userRole after creating a connection', async () => {
 			mockRepository.findOne
 				.mockResolvedValueOnce(null)
 				.mockResolvedValueOnce(connectionWithProjects);
@@ -487,57 +487,67 @@ describe('SecretsProvidersConnectionsService', () => {
 				},
 				'user-123',
 				'secretsProviderConnection:user',
+				'global:admin',
 			);
 
 			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-created', {
 				userId: 'user-123',
+				userRole: 'global:admin',
 				providerKey: 'my-aws',
 				vaultType: 'awsSecretsManager',
 				projects: expectedProjects,
 			});
 		});
 
-		it('should emit external-secrets-connection-updated after updating a connection', async () => {
+		it('should emit external-secrets-connection-updated with userRole after updating a connection', async () => {
 			mockRepository.findOne
 				.mockResolvedValueOnce(connectionWithProjects)
 				.mockResolvedValueOnce(connectionWithProjects);
 			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([]);
 
-			await service.updateGlobalConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+			await service.updateGlobalConnection(
+				'my-aws',
+				{ projectIds: ['p1'] },
+				'user-123',
+				'global:admin',
+			);
 
 			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-updated', {
 				userId: 'user-123',
+				userRole: 'global:admin',
 				providerKey: 'my-aws',
 				vaultType: 'awsSecretsManager',
 				projects: expectedProjects,
 			});
 		});
 
-		it('should emit external-secrets-connection-deleted after deleting a connection', async () => {
+		it('should emit external-secrets-connection-deleted with userRole after deleting a connection', async () => {
 			mockRepository.findOne.mockResolvedValueOnce(connectionWithProjects);
 			mockRepository.remove.mockResolvedValue(connectionWithProjects);
 
-			await service.deleteConnection('my-aws', 'user-123');
+			await service.deleteConnection('my-aws', 'user-123', 'global:member');
 
 			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-deleted', {
 				userId: 'user-123',
+				userRole: 'global:member',
 				providerKey: 'my-aws',
 				vaultType: 'awsSecretsManager',
 				projects: expectedProjects,
 			});
 		});
 
-		it('should emit external-secrets-connection-tested with isValid after testing a connection', async () => {
+		it('should emit external-secrets-connection-tested with userRole and isValid after testing a connection', async () => {
 			mockRepository.findOne.mockResolvedValueOnce(connectionWithProjects);
 			mockExternalSecretsManager.testProviderSettings.mockResolvedValue({
 				success: true,
 				testState: 'connected',
 			});
 
-			await service.testConnection('my-aws', 'user-123');
+			await service.testConnection('my-aws', 'user-123', 'global:admin');
 
 			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-tested', {
 				userId: 'user-123',
+				userRole: 'global:admin',
 				providerKey: 'my-aws',
 				vaultType: 'awsSecretsManager',
 				projects: expectedProjects,
@@ -545,7 +555,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			});
 		});
 
-		it('should emit external-secrets-connection-tested with errorMessage on failure', async () => {
+		it('should emit external-secrets-connection-tested with userRole and errorMessage on failure', async () => {
 			mockRepository.findOne.mockResolvedValueOnce(connectionWithProjects);
 			mockExternalSecretsManager.testProviderSettings.mockResolvedValue({
 				success: false,
@@ -553,10 +563,11 @@ describe('SecretsProvidersConnectionsService', () => {
 				error: 'Invalid credentials',
 			});
 
-			await service.testConnection('my-aws', 'user-123');
+			await service.testConnection('my-aws', 'user-123', 'global:member');
 
 			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-tested', {
 				userId: 'user-123',
+				userRole: 'global:member',
 				providerKey: 'my-aws',
 				vaultType: 'awsSecretsManager',
 				projects: expectedProjects,
@@ -565,13 +576,29 @@ describe('SecretsProvidersConnectionsService', () => {
 			});
 		});
 
-		it('should emit external-secrets-connection-reloaded after reloading secrets', async () => {
+		it('should emit external-secrets-connection-reloaded with userRole after reloading secrets', async () => {
 			mockRepository.findOne.mockResolvedValueOnce(connectionWithProjects);
 
-			await service.reloadConnectionSecrets('my-aws', 'user-123');
+			await service.reloadConnectionSecrets('my-aws', 'user-123', 'global:admin');
 
 			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-reloaded', {
 				userId: 'user-123',
+				userRole: 'global:admin',
+				providerKey: 'my-aws',
+				vaultType: 'awsSecretsManager',
+				projects: expectedProjects,
+			});
+		});
+
+		it('should emit events with undefined userRole when not provided', async () => {
+			mockRepository.findOne.mockResolvedValueOnce(connectionWithProjects);
+			mockRepository.remove.mockResolvedValue(connectionWithProjects);
+
+			await service.deleteConnection('my-aws', 'user-123');
+
+			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-deleted', {
+				userId: 'user-123',
+				userRole: undefined,
 				providerKey: 'my-aws',
 				vaultType: 'awsSecretsManager',
 				projects: expectedProjects,
