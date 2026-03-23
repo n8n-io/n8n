@@ -545,22 +545,12 @@ const quickConnectCredentialType = computed(() => {
 	)?.name;
 });
 
-function hasCredentialAssigned(type: INodeCredentialDescription): boolean {
-	return !!props.node?.credentials?.[type.name]?.id;
-}
-
 function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
-	return (
-		!isCredentialExisting(type) &&
-		!hasCredentialAssigned(type) &&
-		!!quickConnectCredentialType.value
-	);
+	return !isCredentialExisting(type) && !!quickConnectCredentialType.value;
 }
 
 function showStandardEmptyState(type: INodeCredentialDescription): boolean {
-	return (
-		!isCredentialExisting(type) && !hasCredentialAssigned(type) && !quickConnectCredentialType.value
-	);
+	return !isCredentialExisting(type) && !quickConnectCredentialType.value;
 }
 
 async function onQuickConnectSignIn(credentialTypeName: string) {
