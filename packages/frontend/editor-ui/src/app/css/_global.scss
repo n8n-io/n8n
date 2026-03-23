@@ -88,6 +88,14 @@
 	}
 }
 
+.reveal-redacted-data-modal {
+	width: 500px;
+
+	.el-message-box__content {
+		padding: var(--spacing--sm) var(--spacing--lg);
+	}
+}
+
 // Notification Message
 .el-message p {
 	line-height: 1.5em;

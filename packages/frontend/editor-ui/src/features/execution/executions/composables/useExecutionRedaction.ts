@@ -36,6 +36,7 @@ export function useExecutionRedaction() {
 			{
 				confirmButtonText: i18n.baseText('ndv.redacted.revealModal.confirmButton'),
 				showClose: true,
+				customClass: 'reveal-redacted-data-modal',
 			},
 		);
 

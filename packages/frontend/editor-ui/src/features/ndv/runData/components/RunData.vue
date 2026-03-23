@@ -1809,7 +1809,78 @@ defineExpose({ enterEditMode });
 							framework. These findings suggest that the underlying model is performing as intended.
 						</p>
 					</div>
-					<!-- Table-like fake content for structured data -->
+					<!-- JSON-like fake content -->
+					<pre v-else-if="displayMode === 'json'" :class="$style.redactedJson">
+[
+  {
+    "id": 1007,
+    "name": "John Smith",
+    "email": "john@example.com",
+    "status": "active",
+    "created_at": "2024-01-15"
+  },
+  {
+    "id": 1014,
+    "name": "Jane Doe",
+    "email": "jane@company.com",
+    "status": "pending",
+    "created_at": "2024-02-20"
+  },
+  {
+    "id": 1021,
+    "name": "Alex Johnson",
+    "email": "alex@mail.com",
+    "status": "active",
+    "created_at": "2024-03-10"
+  },
+  {
+    "id": 1028,
+    "name": "Maria Garcia",
+    "email": "maria@org.com",
+    "status": "inactive",
+    "created_at": "2024-04-05"
+  },
+  {
+    "id": 1035,
+    "name": "Chris Lee",
+    "email": "chris@test.com",
+    "status": "active",
+    "created_at": "2024-05-18"
+  }
+]</pre
+					>
+					<!-- Schema-like fake content -->
+					<div v-else-if="displayMode === 'schema'" :class="$style.redactedSchema">
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">id</span>
+							<span :class="$style.redactedSchemaType">number</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">name</span>
+							<span :class="$style.redactedSchemaType">string</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">email</span>
+							<span :class="$style.redactedSchemaType">string</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">status</span>
+							<span :class="$style.redactedSchemaType">string</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">created_at</span>
+							<span :class="$style.redactedSchemaType">string</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">metadata</span>
+							<span :class="$style.redactedSchemaType">object</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">tags</span>
+							<span :class="$style.redactedSchemaType">array</span>
+						</div>
+					</div>
+					<!-- Table-like fake content for structured data (default) -->
 					<table v-else :class="$style.redactedTable">
 						<thead>
 							<tr>
@@ -2516,6 +2587,41 @@ defineExpose({ enterEditMode });
 	th {
 		font-weight: var(--font-weight--bold);
 	}
+}
+
+.redactedJson {
+	font-family: var(--font-family--monospace, 'Courier New', monospace);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	line-height: var(--line-height--xl);
+	margin: 0;
+	white-space: pre;
+}
+
+.redactedSchema {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding-top: var(--spacing--2xs);
+}
+
+.redactedSchemaField {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border-bottom: 1px solid var(--color--foreground);
+}
+
+.redactedSchemaKey {
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	font-weight: var(--font-weight--bold);
+}
+
+.redactedSchemaType {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-2);
 }
 
 .redactedOverlay {
