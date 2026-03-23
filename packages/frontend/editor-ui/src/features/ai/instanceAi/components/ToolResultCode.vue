@@ -61,6 +61,6 @@ async function handleCopy() {
 	word-break: break-word;
 	margin: 0;
 	padding: var(--spacing--xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 </style>

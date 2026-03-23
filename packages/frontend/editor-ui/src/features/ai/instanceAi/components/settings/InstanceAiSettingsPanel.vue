@@ -110,7 +110,7 @@ watch(
 	align-items: center;
 	justify-content: center;
 	height: 100%;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .sections {
@@ -135,7 +135,7 @@ watch(
 	cursor: pointer;
 	border: var(--border);
 	background: var(--color--background);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 
 	&:hover:not(:disabled) {
 		background: var(--color--background--shade-1);
