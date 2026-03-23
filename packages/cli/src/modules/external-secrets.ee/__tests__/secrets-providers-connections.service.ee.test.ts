@@ -471,7 +471,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			{ id: 'p2', name: 'Project 2' },
 		];
 
-		it('should emit external-secrets-connection-created with userRole after creating a connection', async () => {
+		it('should emit external-secrets-connection-created with after creating a connection', async () => {
 			mockRepository.findOne
 				.mockResolvedValueOnce(null)
 				.mockResolvedValueOnce(connectionWithProjects);
