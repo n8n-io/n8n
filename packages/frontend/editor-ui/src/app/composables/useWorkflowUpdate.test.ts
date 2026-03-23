@@ -967,8 +967,8 @@ describe('useWorkflowUpdate', () => {
 	});
 
 	describe('pin data deferral', () => {
-		it('should defer pin data via storeDeferredPinData instead of applying directly', async () => {
-			builderStore.storeDeferredPinData = vi.fn();
+		it('should defer pin data via storeGeneratedPinData instead of applying directly', async () => {
+			builderStore.storeGeneratedPinData = vi.fn();
 			const { updateWorkflow } = useWorkflowUpdate();
 
 			const pinData = { 'Node A': [{ json: { test: true } }] };
@@ -978,11 +978,11 @@ describe('useWorkflowUpdate', () => {
 				pinData,
 			});
 
-			expect(builderStore.storeDeferredPinData).toHaveBeenCalledWith(pinData);
+			expect(builderStore.storeGeneratedPinData).toHaveBeenCalledWith(pinData);
 		});
 
-		it('should not call storeDeferredPinData when pinData is empty', async () => {
-			builderStore.storeDeferredPinData = vi.fn();
+		it('should not call storeGeneratedPinData when pinData is empty', async () => {
+			builderStore.storeGeneratedPinData = vi.fn();
 			const { updateWorkflow } = useWorkflowUpdate();
 
 			await updateWorkflow({
@@ -991,11 +991,11 @@ describe('useWorkflowUpdate', () => {
 				pinData: {},
 			});
 
-			expect(builderStore.storeDeferredPinData).not.toHaveBeenCalled();
+			expect(builderStore.storeGeneratedPinData).not.toHaveBeenCalled();
 		});
 
-		it('should not call storeDeferredPinData when pinData is undefined', async () => {
-			builderStore.storeDeferredPinData = vi.fn();
+		it('should not call storeGeneratedPinData when pinData is undefined', async () => {
+			builderStore.storeGeneratedPinData = vi.fn();
 			const { updateWorkflow } = useWorkflowUpdate();
 
 			await updateWorkflow({
@@ -1003,7 +1003,7 @@ describe('useWorkflowUpdate', () => {
 				connections: {},
 			});
 
-			expect(builderStore.storeDeferredPinData).not.toHaveBeenCalled();
+			expect(builderStore.storeGeneratedPinData).not.toHaveBeenCalled();
 		});
 	});
 });

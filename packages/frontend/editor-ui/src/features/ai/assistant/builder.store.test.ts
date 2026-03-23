@@ -3352,12 +3352,12 @@ describe('AI Builder store', () => {
 		});
 	});
 
-	describe('deferred pin data', () => {
-		it('storeDeferredPinData stores pin data without applying it', () => {
+	describe('generated pin data', () => {
+		it('storeGeneratedPinData stores pin data without applying it', () => {
 			const builderStore = useBuilderStore();
 			const pinData = { 'Node A': [{ json: { test: true } }] };
 
-			builderStore.storeDeferredPinData(pinData);
+			builderStore.storeGeneratedPinData(pinData);
 
 			expect(builderStore.hasDeferredPinData).toBe(true);
 			const wfDocStore = useWorkflowDocumentStore(
@@ -3366,11 +3366,11 @@ describe('AI Builder store', () => {
 			expect(wfDocStore.pinData).toEqual({});
 		});
 
-		it('storeDeferredPinData merges multiple calls', () => {
+		it('storeGeneratedPinData merges multiple calls', () => {
 			const builderStore = useBuilderStore();
 
-			builderStore.storeDeferredPinData({ 'Node A': [{ json: { a: 1 } }] });
-			builderStore.storeDeferredPinData({ 'Node B': [{ json: { b: 2 } }] });
+			builderStore.storeGeneratedPinData({ 'Node A': [{ json: { a: 1 } }] });
+			builderStore.storeGeneratedPinData({ 'Node B': [{ json: { b: 2 } }] });
 
 			expect(builderStore.hasDeferredPinData).toBe(true);
 		});
@@ -3380,13 +3380,13 @@ describe('AI Builder store', () => {
 			expect(builderStore.hasDeferredPinData).toBe(false);
 		});
 
-		it('applyDeferredPinData applies data and marks state dirty', () => {
+		it('applyGeneratedPinData applies data and marks state dirty', () => {
 			const builderStore = useBuilderStore();
 			const uiStore = useUIStore();
 			const pinData = { 'Node A': [{ json: { test: true } }] };
 
-			builderStore.storeDeferredPinData(pinData);
-			builderStore.applyDeferredPinData();
+			builderStore.storeGeneratedPinData(pinData);
+			builderStore.applyGeneratedPinData();
 
 			const wfDocStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
@@ -3394,30 +3394,30 @@ describe('AI Builder store', () => {
 			expect(wfDocStore.pinData).toEqual(pinData);
 			expect(uiStore.stateIsDirty).toBe(true);
 			expect(builderStore.hasDeferredPinData).toBe(false);
-			expect(builderStore.testDataWasApplied).toBe(true);
+			expect(builderStore.pinDataApplied).toBe(true);
 		});
 
-		it('applyDeferredPinData is a no-op when no data is stored', () => {
+		it('applyGeneratedPinData is a no-op when no data is stored', () => {
 			const builderStore = useBuilderStore();
 			const uiStore = useUIStore();
 
-			builderStore.applyDeferredPinData();
+			builderStore.applyGeneratedPinData();
 
 			expect(uiStore.stateIsDirty).toBe(false);
-			expect(builderStore.testDataWasApplied).toBe(false);
+			expect(builderStore.pinDataApplied).toBe(false);
 		});
 
-		it('resetBuilderChat clears deferred pin data and testDataWasApplied', () => {
+		it('resetBuilderChat clears generated pin data and pinDataApplied', () => {
 			const builderStore = useBuilderStore();
 
-			builderStore.storeDeferredPinData({ 'Node A': [{ json: { test: true } }] });
-			builderStore.applyDeferredPinData();
-			expect(builderStore.testDataWasApplied).toBe(true);
+			builderStore.storeGeneratedPinData({ 'Node A': [{ json: { test: true } }] });
+			builderStore.applyGeneratedPinData();
+			expect(builderStore.pinDataApplied).toBe(true);
 
 			builderStore.resetBuilderChat();
 
 			expect(builderStore.hasDeferredPinData).toBe(false);
-			expect(builderStore.testDataWasApplied).toBe(false);
+			expect(builderStore.pinDataApplied).toBe(false);
 		});
 	});
 });

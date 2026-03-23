@@ -498,36 +498,32 @@ describe('ExecuteMessage', () => {
 			);
 		});
 
-		it('shows post-execution follow-ups after successful mock data execution', () => {
+		it('shows post-execution follow-ups when pin data has been applied', () => {
 			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
-			Object.defineProperty(builderStore, 'testDataWasApplied', { get: () => true });
-			Object.defineProperty(builderStore, 'hasHadSuccessfulExecution', { get: () => true });
-			Object.defineProperty(builderStore, 'hasTodosHiddenByPinnedData', { get: () => true });
+			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => true });
 
 			const { getByTestId } = renderExecuteMessage();
 
-			expect(getByTestId('follow-up-unpin-test-data')).toBeInTheDocument();
+			expect(getByTestId('follow-up-toggle-pin-data')).toBeInTheDocument();
 			expect(getByTestId('follow-up-execute-and-refine')).toBeInTheDocument();
 		});
 
-		it('does not show post-execution follow-ups when testDataWasApplied is false', () => {
+		it('does not show post-execution follow-ups when pinDataApplied is false', () => {
 			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
-			Object.defineProperty(builderStore, 'testDataWasApplied', { get: () => false });
-			Object.defineProperty(builderStore, 'hasHadSuccessfulExecution', { get: () => true });
-			Object.defineProperty(builderStore, 'hasTodosHiddenByPinnedData', { get: () => true });
+			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => false });
 
 			const { queryByTestId } = renderExecuteMessage();
 
-			expect(queryByTestId('follow-up-unpin-test-data')).not.toBeInTheDocument();
+			expect(queryByTestId('follow-up-toggle-pin-data')).not.toBeInTheDocument();
 			expect(queryByTestId('follow-up-execute-and-refine')).not.toBeInTheDocument();
 		});
 
 		it('hides old unpin section and execute button when post-execution follow-ups show', () => {
 			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
-			Object.defineProperty(builderStore, 'testDataWasApplied', { get: () => true });
+			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => true });
+			Object.defineProperty(builderStore, 'isCodeBuilder', { get: () => true });
 			Object.defineProperty(builderStore, 'hasHadSuccessfulExecution', { get: () => true });
 			Object.defineProperty(builderStore, 'hasTodosHiddenByPinnedData', { get: () => true });
-			Object.defineProperty(builderStore, 'isCodeBuilder', { get: () => true });
 
 			const { queryByTestId, queryByText } = renderExecuteMessage();
 

@@ -174,11 +174,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Track whether any successful execution (full workflow or per-node) has occurred in this session
 	const hasHadSuccessfulExecution = ref(false);
 
-	// Holds pin data from the backend until the user explicitly chooses to apply it
-	const deferredPinData = ref<IPinData | null>(null);
+	// AI-generated test data — persists throughout the session for apply/re-apply
+	const generatedPinData = ref<IPinData | null>(null);
 
-	// Tracks whether deferred test data was applied (for showing unpin escape hatch)
-	const testDataWasApplied = ref(false);
+	// Whether the generated pin data has been applied to workflow nodes
+	const pinDataApplied = ref(false);
 
 	// Setup wizard state
 	const wizardCurrentStep = ref(0);
@@ -387,8 +387,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		lastUserMessageId.value = undefined;
 		loadedSessionsForWorkflowId.value = undefined;
 		hasHadSuccessfulExecution.value = false;
-		deferredPinData.value = null;
-		testDataWasApplied.value = false;
+		generatedPinData.value = null;
+		pinDataApplied.value = false;
 		builderMode.value = 'build';
 		resetWizardState();
 	}
@@ -1075,6 +1075,21 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					// Do not include wf updated messages from session
 					.filter((msg) => msg.type !== 'workflow-updated');
 
+				// Restore pin data state if pin data is currently applied on the workflow
+				const isPinDataEnabled =
+					posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name) ===
+					CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
+				if (isPinDataEnabled) {
+					const wfDocStore = workflowsStore.workflowId
+						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+						: undefined;
+					const pinData = wfDocStore?.getPinDataSnapshot();
+					if (pinData && Object.keys(pinData).length > 0) {
+						generatedPinData.value = pinData;
+						pinDataApplied.value = true;
+					}
+				}
+
 				chatMessages.value = convertedMessages;
 
 				// Restore lastUserMessageId from the loaded session for telemetry tracking
@@ -1110,29 +1125,31 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		uiStore.markStateDirty();
 	}
 
-	const hasDeferredPinData = computed(
-		() => deferredPinData.value !== null && Object.keys(deferredPinData.value).length > 0,
+	const hasGeneratedPinData = computed(
+		() => generatedPinData.value !== null && Object.keys(generatedPinData.value).length > 0,
 	);
 
-	function storeDeferredPinData(pinData: IPinData) {
-		deferredPinData.value = {
-			...(deferredPinData.value ?? {}),
+	/** True when generated pin data exists but hasn't been applied yet */
+	const hasDeferredPinData = computed(() => hasGeneratedPinData.value && !pinDataApplied.value);
+
+	function storeGeneratedPinData(pinData: IPinData) {
+		generatedPinData.value = {
+			...(generatedPinData.value ?? {}),
 			...pinData,
 		};
 	}
 
-	function applyDeferredPinData() {
-		if (!deferredPinData.value || !workflowsStore.workflowId) return;
+	function applyGeneratedPinData() {
+		if (!generatedPinData.value || !workflowsStore.workflowId) return;
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.setPinData({
 			...workflowDocumentStore.getPinDataSnapshot(),
-			...deferredPinData.value,
+			...generatedPinData.value,
 		});
 		uiStore.markStateDirty();
-		testDataWasApplied.value = true;
-		deferredPinData.value = null;
+		pinDataApplied.value = true;
 	}
 
 	function clearExistingWorkflow() {
@@ -1385,7 +1402,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasTodosHiddenByPinnedData,
 		hasHadSuccessfulExecution,
 		hasDeferredPinData,
-		testDataWasApplied,
+		hasGeneratedPinData,
+		pinDataApplied,
 		lastUserMessageId,
 		wizardCurrentStep,
 		wizardClearedPlaceholders,
@@ -1393,8 +1411,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Methods
 		unpinAllNodes,
-		storeDeferredPinData,
-		applyDeferredPinData,
+		storeGeneratedPinData,
+		applyGeneratedPinData,
 		abortStreaming,
 		resetBuilderChat,
 		setBuilderMode,

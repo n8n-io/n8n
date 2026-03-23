@@ -381,7 +381,7 @@ export function useWorkflowUpdate() {
 
 			// Defer pin data instead of applying immediately — user chooses via follow-up actions
 			if (workflowData.pinData && Object.keys(workflowData.pinData).length > 0) {
-				builderStore.storeDeferredPinData(workflowData.pinData);
+				builderStore.storeGeneratedPinData(workflowData.pinData);
 			}
 
 			builderStore.setBuilderMadeEdits(true);

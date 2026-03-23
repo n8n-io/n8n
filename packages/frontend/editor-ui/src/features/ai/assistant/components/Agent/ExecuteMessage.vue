@@ -128,19 +128,19 @@ function getNodeTypeByName(nodeName: string) {
 
 const showUnpinSection = computed(
 	() =>
-		(builderStore.isCodeBuilder || builderStore.testDataWasApplied) &&
+		(builderStore.isCodeBuilder || builderStore.pinDataApplied) &&
 		builderStore.hasTodosHiddenByPinnedData &&
 		builderStore.hasHadSuccessfulExecution,
 );
 
 const showFollowUps = computed(() => builderStore.hasDeferredPinData);
 
+const hasPinDataApplied = computed(
+	() => Object.keys(workflowDocumentStore.value?.pinData ?? {}).length > 0,
+);
+
 const showPostExecutionFollowUps = computed(
-	() =>
-		builderStore.testDataWasApplied &&
-		builderStore.hasHadSuccessfulExecution &&
-		builderStore.hasTodosHiddenByPinnedData &&
-		!builderStore.hasDeferredPinData,
+	() => builderStore.pinDataApplied && !builderStore.hasDeferredPinData,
 );
 
 const followUpsTitle = computed(() =>
@@ -149,8 +149,10 @@ const followUpsTitle = computed(() =>
 const executeWithMockDataLabel = computed(() =>
 	i18n.baseText('aiAssistant.builder.followUps.executeWithMockData' as BaseTextKey),
 );
-const unpinTestDataLabel = computed(() =>
-	i18n.baseText('aiAssistant.builder.followUps.unpinTestData' as BaseTextKey),
+const pinDataToggleLabel = computed(() =>
+	hasPinDataApplied.value
+		? i18n.baseText('aiAssistant.builder.followUps.unpinTestData' as BaseTextKey)
+		: i18n.baseText('aiAssistant.builder.followUps.repinTestData' as BaseTextKey),
 );
 const executeAndRefineLabel = computed(() =>
 	i18n.baseText('aiAssistant.builder.followUps.executeAndRefine' as BaseTextKey),
@@ -162,6 +164,14 @@ const executeWithConfiguredDataLabel = computed(() =>
 function onUnpinAll() {
 	builderStore.unpinAllNodes();
 	builderStore.trackWorkflowBuilderJourney('user_clicked_unpin_all');
+}
+
+function onTogglePinData() {
+	if (hasPinDataApplied.value) {
+		onUnpinAll();
+	} else {
+		builderStore.applyGeneratedPinData();
+	}
 }
 
 function onExecuteWithMockData() {
@@ -257,11 +267,14 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 		<template v-else-if="triggerNodes.length > 0">
 			<p :class="$style.noIssuesMessage">
 				{{
-					builderStore.hasTodosHiddenByPinnedData
+					builderStore.hasTodosHiddenByPinnedData || builderStore.pinDataApplied
 						? i18n.baseText('aiAssistant.builder.executeMessage.noIssuesWithPinData')
 						: i18n.baseText('aiAssistant.builder.executeMessage.noIssues')
 				}}
-				<N8nTooltip v-if="builderStore.hasTodosHiddenByPinnedData" placement="top">
+				<N8nTooltip
+					v-if="builderStore.hasTodosHiddenByPinnedData || builderStore.pinDataApplied"
+					placement="top"
+				>
 					<template #content>
 						{{ i18n.baseText('aiAssistant.builder.executeMessage.unpinTooltip') }}
 					</template>
@@ -359,28 +372,31 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 				:class="$style.followUpItem"
 				role="button"
 				tabindex="0"
-				data-test-id="follow-up-unpin-test-data"
-				@click="onUnpinAll"
-				@keydown.enter="onUnpinAll"
+				data-test-id="follow-up-toggle-pin-data"
+				@click="onTogglePinData"
+				@keydown.enter="onTogglePinData"
 			>
 				<N8nIcon :class="$style.followUpIcon" icon="pin" :size="14" />
 				<span :class="$style.followUpText">
-					{{ unpinTestDataLabel }}
+					{{ pinDataToggleLabel }}
 				</span>
 			</div>
-			<div
-				:class="$style.followUpItem"
-				role="button"
-				tabindex="0"
-				data-test-id="follow-up-execute-and-refine"
-				@click="onExecute"
-				@keydown.enter="onExecute"
-			>
-				<N8nIcon :class="$style.followUpIcon" icon="play" :size="14" />
-				<span :class="$style.followUpText">
-					{{ executeAndRefineLabel }}
-				</span>
-			</div>
+			<N8nTooltip :disabled="!hasValidationIssues" :content="executeButtonTooltip" placement="top">
+				<div
+					:class="[$style.followUpItem, { [$style.followUpItemDisabled]: hasValidationIssues }]"
+					role="button"
+					:tabindex="hasValidationIssues ? -1 : 0"
+					:aria-disabled="hasValidationIssues"
+					data-test-id="follow-up-execute-and-refine"
+					@click="onExecute"
+					@keydown.enter="onExecute"
+				>
+					<N8nIcon :class="$style.followUpIcon" icon="play" :size="14" />
+					<span :class="$style.followUpText">
+						{{ executeAndRefineLabel }}
+					</span>
+				</div>
+			</N8nTooltip>
 		</div>
 	</div>
 </template>

@@ -400,7 +400,7 @@ async function onWorkflowExecuted() {
 		// Skip sending to AI when re-executing with test data still applied —
 		// the first mock data execution already informed the AI, and re-executions
 		// are just confirmations that don't need AI responses or workflow modifications.
-		if (builderStore.testDataWasApplied && builderStore.hasTodosHiddenByPinnedData) {
+		if (builderStore.pinDataApplied) {
 			return;
 		}
 
@@ -442,7 +442,7 @@ async function onExecuteWithMockData() {
 		quickReplyType: 'execute_with_mock_data',
 	});
 
-	builderStore.applyDeferredPinData();
+	builderStore.applyGeneratedPinData();
 
 	const triggerNode = (workflowDocumentStore.value?.allNodes ?? []).find((node) =>
 		nodeTypesStore.isTriggerNode(node.type),
