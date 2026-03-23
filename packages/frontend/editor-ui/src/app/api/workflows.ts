@@ -121,7 +121,7 @@ export async function getLastSuccessfulExecution(
 }
 
 export async function getWorkflowWriteLock(context: IRestApiContext, workflowId: string) {
-	return await makeRestApiRequest<{ userId: string | null }>(
+	return await makeRestApiRequest<{ clientId: string; userId: string } | null>(
 		context,
 		'GET',
 		`/workflows/${workflowId}/collaboration/write-lock`,

@@ -1,4 +1,6 @@
+import { computed } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import ParameterInput from './ParameterInput.vue';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
@@ -119,6 +121,11 @@ vi.mock('@/features/ai/assistant/composables/useBuilderTodos', () => {
 
 const renderComponent = createComponentRenderer(ParameterInput, {
 	pinia: createTestingPinia(),
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 });
 
 const settingsStore = mockedStore(useSettingsStore);
@@ -962,6 +969,101 @@ describe('ParameterInput.vue', () => {
 			await waitFor(() => {
 				expect(input.value).toBe('a|||b');
 			});
+		});
+	});
+
+	describe('JSON Password Field Validation', () => {
+		const jsonPasswordParameter = createTestNodeProperties({
+			displayName: 'Service Account Key',
+			name: 'serviceAccountKey',
+			type: 'json',
+			default: '',
+			required: true,
+			typeOptions: {
+				password: true,
+			},
+			noDataExpression: true,
+		});
+
+		it('renders as a password input', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input[type="password"]');
+			expect(input).toBeInTheDocument();
+		});
+
+		it('shows validation error for invalid JSON input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '{invalid');
+
+			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
+		});
+
+		it('does not show validation error for valid JSON input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '{"type": "service_account"}');
+
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+
+		it('does not show validation error for empty input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '');
+
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+
+		it('clears validation error when invalid JSON is corrected', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+
+			await fireEvent.update(input, '{invalid');
+			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
+
+			await fireEvent.update(input, '{"valid": true}');
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
 		});
 	});
 });

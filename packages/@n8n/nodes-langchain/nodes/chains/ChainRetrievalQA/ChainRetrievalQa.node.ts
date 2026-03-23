@@ -12,7 +12,7 @@ import {
 	textFromGuardrailsNode,
 	textFromPreviousNode,
 } from '@utils/descriptions';
-import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
+import { getBatchingOptionFields, getTemplateNoticeField } from '@n8n/ai-utilities';
 
 import { INPUT_TEMPLATE_KEY, LEGACY_INPUT_TEMPLATE_KEY, systemPromptOption } from './constants';
 import { processItem } from './processItem';
@@ -61,6 +61,12 @@ export class ChainRetrievalQa implements INodeType {
 			},
 		],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+				ai_retriever: { required: true },
+			},
+		},
 		credentials: [],
 		properties: [
 			getTemplateNoticeField(1960),

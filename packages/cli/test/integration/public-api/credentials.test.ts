@@ -4,10 +4,11 @@ import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { randomString } from 'n8n-workflow';
-
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import {
+	CREDENTIAL_BLANKING_VALUE,
+	type ICredentialDataDecryptedObject,
+	randomString,
+} from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import {
@@ -190,14 +191,33 @@ describe('GET /credentials', () => {
 		expect(Array.isArray(response.body.data)).toBe(true);
 		expect(response.body.data.length).toBe(2);
 
+		const allowedListItemKeys = ['createdAt', 'id', 'name', 'shared', 'type', 'updatedAt'];
 		response.body.data.forEach((item: Record<string, unknown>) => {
+			expect(Object.keys(item).sort()).toEqual(allowedListItemKeys);
 			expect(item).toHaveProperty('id');
 			expect(item).toHaveProperty('name');
 			expect(item).toHaveProperty('type');
 			expect(item).toHaveProperty('createdAt');
 			expect(item).toHaveProperty('updatedAt');
-			expect(item).not.toHaveProperty('data');
-			expect(item).not.toHaveProperty('shared');
+			expect(item).toHaveProperty('shared');
+			expect(Array.isArray((item as { shared: unknown }).shared)).toBe(true);
+			(
+				item as {
+					shared: {
+						id: string;
+						name: string;
+						role: string;
+						createdAt: string;
+						updatedAt: string;
+					}[];
+				}
+			).shared.forEach((entry) => {
+				expect(entry).toHaveProperty('id');
+				expect(entry).toHaveProperty('name');
+				expect(entry).toHaveProperty('role');
+				expect(entry).toHaveProperty('createdAt');
+				expect(entry).toHaveProperty('updatedAt');
+			});
 		});
 		expect(response.body.data).toContainEqual(
 			expect.objectContaining({ id: saved1.id, name: saved1.name }),

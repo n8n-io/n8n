@@ -20,6 +20,7 @@ import {
 	jsonParse,
 	tryToParseUrl,
 	BINARY_MODE_COMBINED,
+	tryToParseJsonToFormFields,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
@@ -116,20 +117,11 @@ export const handleNewlines = (text: string) => {
 	return text.replace(/\\n|\\\\n/g, (match) => (match === '\\\\n' ? '\\n' : '\n'));
 };
 
-export const prepareFormFields = (context: IWebhookFunctions, fields: FormFieldsParameter) => {
+export const prepareFormFields = (fields: FormFieldsParameter) => {
 	return fields.map((field) => {
-		if (field.fieldType === 'html') {
-			let { html } = field;
-
-			if (!html) return field;
-
-			for (const resolvable of getResolvables(html)) {
-				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
-			}
-
-			field.html = sanitizeHtml(html);
+		if (field.fieldType === 'html' && field.html) {
+			field.html = sanitizeHtml(field.html);
 		}
-
 		if (field.fieldType === 'hiddenField') {
 			field.fieldLabel = field.fieldName as string;
 		}
@@ -141,13 +133,17 @@ export const prepareFormFields = (context: IWebhookFunctions, fields: FormFields
 export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	if (!css) return undefined;
 
-	// Use sanitize-html with custom settings for CSS
-	return sanitize(css, {
-		allowedTags: [], // No HTML tags allowed
-		allowedAttributes: {}, // No attributes allowed
-		// Decode HTML entities that sanitize-html encodes, as they break CSS selectors like ">"
-		textFilter: (text) => text.replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&'),
+	const sanitized = sanitize(css, {
+		allowedTags: [],
+		allowedAttributes: {},
 	});
+
+	// Restore only the entities needed for valid CSS after tag stripping.
+	// &gt; → > is needed for CSS child combinator selectors (div > p).
+	// &amp; → & is needed for CSS values, but NOT when followed by lt;/gt;/amp;
+	// to prevent cascading decode of double-encoded entities.
+	// &lt; is never decoded — < is not valid in CSS and would enable tag injection.
+	return sanitized.replace(/&gt;/g, '>').replace(/&amp;(?!(?:lt|gt|amp);)/g, '&');
 }
 
 /**
@@ -552,7 +548,7 @@ export function renderForm({
 		} catch (error) {}
 	}
 
-	formFields = prepareFormFields(context, formFields);
+	formFields = prepareFormFields(formFields);
 
 	const data = prepareFormData({
 		formTitle,
@@ -742,4 +738,39 @@ export function resolveRawData(context: IWebhookFunctions, rawData: string) {
 		}
 	}
 	return returnData;
+}
+
+type ParseFormFieldsOptions = {
+	defineForm: 'json' | 'fields';
+	fieldsParameterName: string;
+	mode?: 'test' | 'production';
+};
+export function parseFormFields(context: IWebhookFunctions, options: ParseFormFieldsOptions) {
+	let fields: FormFieldsParameter = [];
+	if (options.defineForm === 'json') {
+		try {
+			const jsonOutput = context.getNodeParameter(options.fieldsParameterName, '', {
+				rawExpressions: true,
+			}) as string;
+
+			fields = tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
+		} catch (error) {
+			throw new NodeOperationError(context.getNode(), error.message, {
+				description: error.message,
+				type: options.mode === 'test' ? 'manual-form-test' : undefined,
+			});
+		}
+	} else {
+		fields = context.getNodeParameter(options.fieldsParameterName, []) as FormFieldsParameter;
+		for (const field of fields) {
+			if (field.fieldType === 'html') {
+				let html = field.html ?? '';
+				for (const resolvable of getResolvables(html)) {
+					html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
+				}
+				field.html = html;
+			}
+		}
+	}
+	return fields;
 }

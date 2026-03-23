@@ -9,6 +9,10 @@ import { STORES } from '@n8n/stores';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const mockPublishWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
@@ -58,7 +62,7 @@ const renderComponent = createComponentRenderer(WorkflowPublishModal, {
 				template:
 					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
 			},
-			WorkflowPublishForm: {
+			WorkflowVersionForm: {
 				template: `
 					<div>
 						<input data-test-id="workflow-publish-version-name-input" @input="$emit('update:versionName', $event.target.value)" />
@@ -77,6 +81,20 @@ describe('WorkflowPublishModal', () => {
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
+
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
+		workflowDocumentStore.setActiveState({
+			activeVersionId: 'old-version',
+			activeVersion: {
+				versionId: 'old-version',
+				authors: 'Test Author',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+				name: 'Published Version',
+				description: null,
+			},
+		});
 
 		workflowsStore.workflow = {
 			id: 'workflow-1',

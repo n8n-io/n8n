@@ -5,6 +5,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
+import { useCredentialsAppSelectionStore } from '@/experiments/credentialsAppSelection/stores/credentialsAppSelection.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { IUser } from 'n8n-workflow';
 
@@ -20,6 +21,7 @@ export function useWorkflowsEmptyState() {
 	const sourceControlStore = useSourceControlStore();
 	const recommendedTemplatesStore = useRecommendedTemplatesStore();
 	const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
+	const credentialsAppSelectionStore = useCredentialsAppSelectionStore();
 
 	const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 	const personalProject = computed(() => projectsStore.personalProject);
@@ -46,6 +48,14 @@ export function useWorkflowsEmptyState() {
 	const showBuilderPrompt = computed(() => {
 		return (
 			emptyStateBuilderPromptStore.isFeatureEnabled &&
+			!readOnlyEnv.value &&
+			projectPermissions.value.workflow.create
+		);
+	});
+
+	const showAppSelection = computed(() => {
+		return (
+			credentialsAppSelectionStore.isFeatureEnabled &&
 			!readOnlyEnv.value &&
 			projectPermissions.value.workflow.create
 		);
@@ -92,6 +102,7 @@ export function useWorkflowsEmptyState() {
 	});
 
 	return {
+		showAppSelection,
 		showBuilderPrompt,
 		showRecommendedTemplatesInline,
 		builderHeading,

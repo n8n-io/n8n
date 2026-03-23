@@ -3,34 +3,45 @@ import { Logger } from '@n8n/backend-common';
 import { FolderRepository, TagRepository, type User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { In } from '@n8n/typeorm';
+import pick from 'lodash/pick';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-
+import { SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER } from './constants';
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	hasOwnerChanged,
+	getDataTableExportPath,
 	getFoldersPath,
 	getTagsPath,
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPullResult,
 	getVariablesPath,
 	isWorkflowModified,
+	isDataTableModified,
 	areSameCredentials,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { StatusExportableCredential } from './types/exportable-credential';
-import type { ExportableFolder } from './types/exportable-folders';
+import type {
+	DataTableResourceOwner,
+	ExportableDataTable,
+	StatusExportableDataTable,
+} from './types/exportable-data-table';
+import type { ExportableFolder, FolderPathNode } from './types/exportable-folders';
 import type { ExportableProjectWithFileName } from './types/exportable-project';
 import { ExportableVariable } from './types/exportable-variable';
+import type { StatusResourceOwner } from './types/resource-owner';
 import { SourceControlContext } from './types/source-control-context';
 import type {
 	SourceControlGetStatus,
 	SourceControlGetStatusVerboseResult,
 } from './types/source-control-get-status';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
 
 @Service()
@@ -48,6 +59,66 @@ export class SourceControlStatusService {
 
 	private get gitFolder(): string {
 		return this.sourceControlPreferencesService.gitFolder;
+	}
+
+	private get dataTableExportFolder(): string {
+		return `${this.gitFolder}/${SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER}`;
+	}
+
+	/**
+	 * Converts data table ownership (from file or DB) to StatusResourceOwner (for API).
+	 * Returns undefined for personal projects since IDs don't sync across instances.
+	 */
+	private convertToStatusResourceOwner(
+		owner: DataTableResourceOwner | StatusResourceOwner | null | undefined,
+	): StatusResourceOwner | undefined {
+		if (!owner) {
+			return;
+		}
+
+		if (owner.type === 'personal') {
+			return;
+		}
+
+		if ('teamId' in owner && 'teamName' in owner) {
+			return {
+				type: 'team',
+				projectId: owner.teamId,
+				projectName: owner.teamName,
+			};
+		}
+
+		if ('projectId' in owner) {
+			return owner;
+		}
+
+		return;
+	}
+
+	private buildFolderPath(
+		parentFolderId: string | null | undefined,
+		foldersById: Map<string, FolderPathNode>,
+	): string[] {
+		if (!parentFolderId) {
+			return [];
+		}
+
+		const pathSegments: string[] = [];
+		const visited = new Set<string>();
+		let currentFolderId: string | null | undefined = parentFolderId;
+
+		while (currentFolderId && !visited.has(currentFolderId)) {
+			visited.add(currentFolderId);
+			const folder = foldersById.get(currentFolderId);
+			if (!folder) {
+				break;
+			}
+
+			pathSegments.unshift(folder.name);
+			currentFolderId = folder.parentFolderId;
+		}
+
+		return pathSegments;
 	}
 
 	/**
@@ -109,6 +180,12 @@ export class SourceControlStatusService {
 			collectVerbose,
 		);
 
+		const dataTablesStatus = await this.getStatusDataTables(
+			options,
+			sourceControlledFiles,
+			collectVerbose,
+		);
+
 		const tagsMappingsStatus = await this.getStatusTagsMappings(
 			options,
 			context,
@@ -149,6 +226,7 @@ export class SourceControlStatusService {
 				...workflowsStatus,
 				...credentialsStatus,
 				...variablesStatus,
+				...dataTablesStatus,
 				...tagsMappingsStatus,
 				...foldersMappingStatus,
 				...projectsStatus,
@@ -176,6 +254,61 @@ export class SourceControlStatusService {
 		}
 	}
 
+	/**
+	 * Populates the provided localFoldersById map with all missing parent folder path nodes required by the given workflows.
+	 * For each workflow, traverses up the parent chain and injects any folders missing from localFoldersById.
+	 *
+	 * @param localFoldersById - Map to inject missing folder nodes into.
+	 * @param localWorkflows - List of workflows, each referencing a parent folder.
+	 * @returns Promise<void>
+	 */
+	private async populateMissingLocalFolderPathNodes(
+		localFoldersById: Map<string, FolderPathNode>,
+		localWorkflows: SourceControlWorkflowVersionId[],
+	): Promise<void> {
+		const getMissingFolderIds = (folderIds: Array<string | null>): Set<string> => {
+			const missingFolderIds = folderIds.filter(
+				(id): id is string => id !== null && !localFoldersById.has(id),
+			);
+
+			return new Set<string>(missingFolderIds);
+		};
+
+		const initialParentFolderIds = localWorkflows.map((workflow) => workflow.parentFolderId);
+		const folderIdsToProcessQueue = getMissingFolderIds(initialParentFolderIds);
+
+		while (folderIdsToProcessQueue.size > 0) {
+			const currentBatchFolderIds = Array.from(folderIdsToProcessQueue);
+			folderIdsToProcessQueue.clear();
+
+			const loadedFolders = await this.folderRepository.find({
+				where: { id: In(currentBatchFolderIds) },
+				relations: ['parentFolder'],
+				select: {
+					id: true,
+					name: true,
+					parentFolder: {
+						id: true,
+					},
+				},
+			});
+
+			loadedFolders.forEach((folder) => {
+				localFoldersById.set(folder.id, {
+					name: folder.name,
+					parentFolderId: folder.parentFolder?.id ?? null,
+				});
+			});
+
+			const parentFolderIds = loadedFolders.map((folder) => folder.parentFolder?.id ?? null);
+			const missingParentFolderIds = getMissingFolderIds(parentFolderIds);
+
+			missingParentFolderIds.forEach((folderId) => {
+				folderIdsToProcessQueue.add(folderId);
+			});
+		}
+	}
+
 	private async getStatusWorkflows(
 		options: SourceControlGetStatus,
 		context: SourceControlContext,
@@ -183,10 +316,26 @@ export class SourceControlStatusService {
 		collectVerbose: boolean,
 	) {
 		// TODO: We need to check the case where it exists in the DB (out of scope) but is in GIT
-		const wfRemoteVersionIds =
-			await this.sourceControlImportService.getRemoteVersionIdsFromFiles(context);
-		const wfLocalVersionIds =
-			await this.sourceControlImportService.getLocalVersionIdsFromDb(context);
+		const [wfRemoteVersionIds, wfLocalVersionIds, foldersMappingsRemote, foldersMappingsLocal] =
+			await Promise.all([
+				this.sourceControlImportService.getRemoteVersionIdsFromFiles(context),
+				this.sourceControlImportService.getLocalVersionIdsFromDb(context),
+				this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile(context),
+				this.sourceControlImportService.getLocalFoldersAndMappingsFromDb(context),
+			]);
+		const remoteFoldersById = new Map<string, FolderPathNode>(
+			foldersMappingsRemote.folders.map((folder) => [
+				folder.id,
+				pick(folder, ['name', 'parentFolderId']),
+			]),
+		);
+		const localFoldersById = new Map<string, FolderPathNode>(
+			foldersMappingsLocal.folders.map((folder) => [
+				folder.id,
+				pick(folder, ['name', 'parentFolderId']),
+			]),
+		);
+		await this.populateMissingLocalFolderPathNodes(localFoldersById, wfLocalVersionIds);
 
 		const wfRemoteById = new Map(wfRemoteVersionIds.map((w) => [w.id, w]));
 		const wfRemoteIds = new Set(wfRemoteVersionIds.map((w) => w.id));
@@ -240,6 +389,8 @@ export class SourceControlStatusService {
 					updatedAt: remoteWorkflow.updatedAt ?? new Date().toISOString(),
 					isLocalPublished: false, // New workflow, not published locally
 					isRemoteArchived: archivedWorkflowIds.get(remoteWorkflow.id) ?? false,
+					parentFolderId: remoteWorkflow.parentFolderId,
+					folderPath: this.buildFolderPath(remoteWorkflow.parentFolderId, remoteFoldersById),
 					owner: remoteWorkflow.owner,
 				});
 			}
@@ -263,6 +414,8 @@ export class SourceControlStatusService {
 					updatedAt: localWorkflow.updatedAt ?? new Date().toISOString(),
 					isLocalPublished: publishedWorkflowIds.has(localWorkflow.id),
 					isRemoteArchived: false, // Workflow deleted from remote, no archived status
+					parentFolderId: localWorkflow.parentFolderId,
+					folderPath: this.buildFolderPath(localWorkflow.parentFolderId, localFoldersById),
 					owner: localWorkflow.owner,
 				});
 				continue;
@@ -286,9 +439,18 @@ export class SourceControlStatusService {
 					: (name = `${remoteWorkflowWithSameId.name} (Local: ${localWorkflow.name})`);
 			}
 
+			const preferredParentFolderId = options.preferLocalVersion
+				? localWorkflow.parentFolderId
+				: remoteWorkflowWithSameId.parentFolderId;
+			const preferredFolderPath = this.buildFolderPath(
+				preferredParentFolderId,
+				options.preferLocalVersion ? localFoldersById : remoteFoldersById,
+			);
+
 			const wfModified: SourceControlWorkflowVersionId = {
 				...localWorkflow,
 				name,
+				parentFolderId: preferredParentFolderId,
 				versionId: options.preferLocalVersion
 					? localWorkflow.versionId
 					: remoteWorkflowWithSameId.versionId,
@@ -311,6 +473,8 @@ export class SourceControlStatusService {
 				updatedAt: wfModified.updatedAt ?? new Date().toISOString(),
 				isLocalPublished: publishedWorkflowIds.has(wfModified.id),
 				isRemoteArchived: archivedWorkflowIds.get(wfModified.id) ?? false,
+				parentFolderId: preferredParentFolderId,
+				folderPath: preferredFolderPath,
 				owner: wfModified.owner,
 			});
 		}
@@ -494,6 +658,92 @@ export class SourceControlStatusService {
 			varMissingInLocal,
 			varMissingInRemote,
 			varModifiedInEither,
+		};
+	}
+
+	private async getStatusDataTables(
+		options: SourceControlGetStatus,
+		sourceControlledFiles: SourceControlledFile[],
+		collectVerbose: boolean,
+	) {
+		const dataTablesRemote =
+			(await this.sourceControlImportService.getRemoteDataTablesFromFiles()) ?? [];
+		const dataTablesLocal =
+			(await this.sourceControlImportService.getLocalDataTablesFromDb()) ?? [];
+
+		const dtMissingInLocal: ExportableDataTable[] = [];
+		const dtMissingInRemote: StatusExportableDataTable[] = [];
+		const dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable> = [];
+
+		for (const remote of dataTablesRemote) {
+			if (dataTablesLocal.findIndex((local) => local.id === remote.id) === -1) {
+				if (collectVerbose) {
+					dtMissingInLocal.push(remote);
+				}
+				sourceControlledFiles.push({
+					id: remote.id,
+					name: remote.name,
+					type: 'datatable',
+					status: options.direction === 'push' ? 'deleted' : 'created',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: false,
+					file: getDataTableExportPath(remote.id, this.dataTableExportFolder),
+					updatedAt: new Date().toISOString(),
+					owner: this.convertToStatusResourceOwner(remote.ownedBy),
+				});
+			}
+		}
+
+		for (const local of dataTablesLocal) {
+			const remote = dataTablesRemote.find((r) => r.id === local.id);
+
+			if (!remote) {
+				if (collectVerbose) {
+					dtMissingInRemote.push(local);
+				}
+				sourceControlledFiles.push({
+					id: local.id,
+					name: local.name,
+					type: 'datatable',
+					status: options.direction === 'push' ? 'created' : 'deleted',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: options.direction !== 'push',
+					file: getDataTableExportPath(local.id, this.dataTableExportFolder),
+					updatedAt: new Date().toISOString(),
+					owner: local.ownedBy ?? undefined,
+				});
+				continue;
+			}
+
+			const hasMismatch =
+				(remote.id === local.id && remote.name !== local.name) ||
+				(remote.id !== local.id && remote.name === local.name);
+
+			const isModified = isDataTableModified(local, remote);
+
+			if (hasMismatch || isModified) {
+				const modified = options.preferLocalVersion ? local : remote;
+				if (collectVerbose) {
+					dtModifiedInEither.push(modified);
+				}
+				sourceControlledFiles.push({
+					id: modified.id,
+					name: modified.name,
+					type: 'datatable',
+					status: 'modified',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: true,
+					file: getDataTableExportPath(modified.id, this.dataTableExportFolder),
+					updatedAt: new Date().toISOString(),
+					owner: this.convertToStatusResourceOwner(modified.ownedBy),
+				});
+			}
+		}
+
+		return {
+			dtMissingInLocal,
+			dtMissingInRemote,
+			dtModifiedInEither,
 		};
 	}
 

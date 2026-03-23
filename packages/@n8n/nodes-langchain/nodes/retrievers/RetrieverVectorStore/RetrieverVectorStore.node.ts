@@ -48,6 +48,17 @@ export class RetrieverVectorStore implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiRetriever],
 		outputNames: ['Retriever'],
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+					relationHint: 'Connect to provide vectors for retrieval in RAG workflows',
+				},
+			],
+			inputs: {
+				ai_vectorStore: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName: 'Limit',

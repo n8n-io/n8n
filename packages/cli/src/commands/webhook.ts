@@ -90,6 +90,7 @@ export class Webhook extends BaseCommand {
 		const { ScalingService } = await import('@/scaling/scaling.service');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
+		this.server.markAsReady();
 		this.logger.info('Webhook listener waiting for requests.');
 
 		Container.get(LoadNodesAndCredentials).releaseTypes();

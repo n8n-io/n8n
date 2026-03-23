@@ -20,4 +20,6 @@ export { default as N8nInputNumber2 } from './v2/components/InputNumber/InputNum
 export type * from './v2/components/InputNumber/InputNumber.types';
 export { default as N8nDropdownMenu } from './v2/components/DropdownMenu/DropdownMenu.vue';
 export type * from './v2/components/DropdownMenu/DropdownMenu.types';
+export { default as N8nSwitch2 } from './v2/components/Switch/Switch.vue';
+export type * from './v2/components/Switch/Switch.types';
 export { locale };

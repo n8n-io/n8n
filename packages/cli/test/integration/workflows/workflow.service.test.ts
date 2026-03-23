@@ -5,13 +5,16 @@ import {
 	createActiveWorkflow,
 	createTeamProject,
 	linkUserToProject,
+	createWorkflow,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
 	SharedWorkflowRepository,
 	type WorkflowEntity,
+	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
+	ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -26,6 +29,9 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
@@ -35,6 +41,7 @@ import { WebhookService } from '@/webhooks/webhook.service';
 let globalConfig: GlobalConfig;
 let workflowRepository: WorkflowRepository;
 let workflowService: WorkflowService;
+let workflowPublishedVersionRepository: WorkflowPublishedVersionRepository;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 let workflowHistoryService: WorkflowHistoryService;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
@@ -49,6 +56,7 @@ beforeAll(async () => {
 
 	globalConfig = Container.get(GlobalConfig);
 	workflowRepository = Container.get(WorkflowRepository);
+	workflowPublishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	workflowHistoryService = Container.get(WorkflowHistoryService);
 	workflowService = new WorkflowService(
@@ -57,29 +65,31 @@ beforeAll(async () => {
 		workflowRepository,
 		mock(),
 		mock(),
-		mock(),
+		Container.get(OwnershipService), // ownershipService
 		mock(),
 		workflowHistoryService,
 		mock(),
 		activeWorkflowManager,
-		mock(),
-		mock(),
-		mock(),
-		mock(),
-		mock(),
+		Container.get(RoleService), // roleService
+		Container.get(ProjectService), // projectService
+		mock(), // executionRepository
+		mock(), // eventService
 		globalConfig,
 		mock(),
 		Container.get(WorkflowFinderService),
+		workflowPublishedVersionRepository,
 		workflowPublishHistoryRepository,
 		workflowValidationService,
 		nodeTypes,
 		webhookServiceMock,
 		mock(), // licenseState
+		Container.get(ProjectRepository), // projectRepository
 	);
 });
 
 beforeEach(() => {
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	webhookServiceMock.findWebhookConflicts.mockResolvedValue([]);
 });
@@ -88,6 +98,7 @@ afterEach(async () => {
 	await testDb.truncate([
 		'SharedWorkflow',
 		'ProjectRelation',
+		'WorkflowPublishedVersion',
 		'WorkflowEntity',
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
@@ -450,15 +461,15 @@ describe('activateWorkflow()', () => {
 });
 
 describe('deactivateWorkflow()', () => {
-	test('should not deactivate workflow without workflow:publish permission', async () => {
+	test('should not deactivate workflow without workflow:unpublish permission', async () => {
 		const owner = await createOwner();
 		const member = await createMember();
 
-		// custom role with workflow:update but not workflow:publish
+		// custom role with workflow:update but not workflow:unpublish
 		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
 			roleType: 'project',
 			displayName: 'Custom Workflow Updater',
-			description: 'Can update workflows but not publish them',
+			description: 'Can update workflows but not unpublish them',
 		});
 
 		const project = await createTeamProject('Test Project', owner);
@@ -474,5 +485,293 @@ describe('deactivateWorkflow()', () => {
 		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
 		expect(workflowAfter?.active).toBe(true);
 		expect(workflowAfter?.activeVersionId).toBe(workflow.activeVersionId);
+	});
+});
+
+describe('workflow_published_version table population', () => {
+	describe('when feature flag is enabled', () => {
+		beforeEach(() => {
+			globalConfig.workflows.useWorkflowPublicationService = true;
+		});
+
+		afterEach(() => {
+			globalConfig.workflows.useWorkflowPublicationService = false;
+		});
+
+		test('should write to workflow_published_version on activation', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			const publishedVersion = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersion?.publishedVersionId).toBe(workflow.versionId);
+		});
+
+		test('should update workflow_published_version when activating a new version', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			const newVersionId = uuid();
+			await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+			await workflowService.activateWorkflow(owner, workflow.id, {
+				versionId: newVersionId,
+			});
+
+			const publishedVersion = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersion?.publishedVersionId).toBe(newVersionId);
+		});
+
+		test('should remove workflow_published_version on deactivation', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			await workflowService.deactivateWorkflow(owner, workflow.id);
+
+			const publishedVersion = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersion).toBeNull();
+		});
+
+		test('should remove workflow_published_version on archive', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			const publishedVersionBefore = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersionBefore).not.toBeNull();
+
+			await workflowService.archive(owner, workflow.id);
+
+			const publishedVersionAfter = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersionAfter).toBeNull();
+		});
+	});
+
+	describe('when feature flag is disabled', () => {
+		test('should not write to workflow_published_version on activation', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			const publishedVersion = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersion).toBeNull();
+		});
+
+		test('should not write to workflow_published_version on deactivation', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+			await workflowService.deactivateWorkflow(owner, workflow.id);
+
+			const count = await workflowPublishedVersionRepository.count();
+			expect(count).toBe(0);
+		});
+	});
+});
+
+describe('getMany()', () => {
+	describe('filtering by personal project', () => {
+		test('should return empty when regular user queries another users personal project', async () => {
+			const member1 = await createMember();
+			const member2 = await createMember();
+
+			const projectRepository = Container.get(ProjectRepository);
+			const member2PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+				member2.id,
+			);
+
+			// member2 owns some workflows in their personal project
+			await createWorkflow({ name: 'Member2 Private Workflow 1' }, member2);
+			await createWorkflow({ name: 'Member2 Private Workflow 2' }, member2);
+
+			// member1 (who has NO relation to member2's personal project) tries to query member2's personal project
+			const result = await workflowService.getMany(
+				member1,
+				{ filter: { projectId: member2PersonalProject.id } },
+				false,
+				false,
+				false,
+			);
+
+			// SECURITY: member1 should NOT see any of member2's workflows
+			expect(result.workflows).toHaveLength(0);
+			expect(result.count).toBe(0);
+		});
+
+		test('should allow admin with global workflow:read to query another users personal project', async () => {
+			const owner = await createOwner(); // Owner has global workflow:read scope
+			const member = await createMember();
+
+			const projectRepository = Container.get(ProjectRepository);
+			const memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+				member.id,
+			);
+
+			// member owns some workflows in their personal project
+			const workflow1 = await createWorkflow({ name: 'Member Private Workflow 1' }, member);
+			const workflow2 = await createWorkflow({ name: 'Member Private Workflow 2' }, member);
+
+			// owner (with global workflow:read) can query member's personal project
+			const result = await workflowService.getMany(
+				owner,
+				{ filter: { projectId: memberPersonalProject.id } },
+				false,
+				false,
+				false,
+			);
+
+			// Admin with global scope CAN see the workflows
+			expect(result.workflows).toHaveLength(2);
+			expect(result.count).toBe(2);
+			const workflowIds = result.workflows.map((w) => w.id).sort();
+			expect(workflowIds).toEqual([workflow1.id, workflow2.id].sort());
+		});
+
+		test('should return only workflows owned by user in their personal project', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+
+			const projectRepository = Container.get(ProjectRepository);
+			const memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+				member.id,
+			);
+
+			const memberOwnedWorkflow = await createWorkflow({ name: 'Member Owned Workflow' }, member);
+			const sharedWorkflow = await createWorkflow({ name: 'Shared Workflow' }, owner);
+			await Container.get(SharedWorkflowRepository).save(
+				Container.get(SharedWorkflowRepository).create({
+					projectId: memberPersonalProject.id,
+					workflowId: sharedWorkflow.id,
+					role: 'workflow:editor',
+				}),
+			);
+
+			const result = await workflowService.getMany(
+				owner,
+				{ filter: { projectId: memberPersonalProject.id } },
+				false,
+				false,
+				false,
+			);
+
+			expect(result.workflows).toHaveLength(1);
+			expect(result.workflows[0].id).toBe(memberOwnedWorkflow.id);
+			expect(result.workflows[0].name).toBe('Member Owned Workflow');
+			expect(result.count).toBe(1);
+		});
+
+		test('should return empty when filtering by personal project of user with no owned workflows', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+
+			const projectRepository = Container.get(ProjectRepository);
+			const memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+				member.id,
+			);
+
+			const sharedWorkflow = await createWorkflow({ name: 'Shared Workflow' }, owner);
+			await Container.get(SharedWorkflowRepository).save(
+				Container.get(SharedWorkflowRepository).create({
+					projectId: memberPersonalProject.id,
+					workflowId: sharedWorkflow.id,
+					role: 'workflow:editor',
+				}),
+			);
+
+			const result = await workflowService.getMany(
+				owner,
+				{ filter: { projectId: memberPersonalProject.id } },
+				false,
+				false,
+				false,
+			);
+
+			expect(result.workflows).toHaveLength(0);
+			expect(result.count).toBe(0);
+		});
+
+		test('should return empty when filtering by non-existent project', async () => {
+			const owner = await createOwner();
+
+			const result = await workflowService.getMany(
+				owner,
+				{ filter: { projectId: 'non-existent-project-id' } },
+				false,
+				false,
+				false,
+			);
+
+			expect(result.workflows).toHaveLength(0);
+			expect(result.count).toBe(0);
+		});
+
+		test('should return user owned workflows when user queries their own personal project', async () => {
+			const member = await createMember();
+
+			const projectRepository = Container.get(ProjectRepository);
+			const memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+				member.id,
+			);
+
+			const workflow1 = await createWorkflow({ name: 'Workflow 1' }, member);
+			const workflow2 = await createWorkflow({ name: 'Workflow 2' }, member);
+
+			const result = await workflowService.getMany(
+				member,
+				{ filter: { projectId: memberPersonalProject.id } },
+				false,
+				false,
+				false,
+			);
+
+			expect(result.workflows).toHaveLength(2);
+			expect(result.count).toBe(2);
+			const workflowIds = result.workflows.map((w) => w.id).sort();
+			expect(workflowIds).toEqual([workflow1.id, workflow2.id].sort());
+		});
+
+		test('should handle team project filtering correctly', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+
+			const teamProject = await createTeamProject('Team Project', owner);
+			await linkUserToProject(member, teamProject, 'project:editor');
+
+			const teamWorkflow1 = await createWorkflow({ name: 'Team Workflow 1' }, teamProject);
+			const teamWorkflow2 = await createWorkflow({ name: 'Team Workflow 2' }, teamProject);
+
+			const result = await workflowService.getMany(
+				member,
+				{ filter: { projectId: teamProject.id } },
+				false,
+				false,
+				false,
+			);
+
+			expect(result.workflows).toHaveLength(2);
+			expect(result.count).toBe(2);
+			const workflowIds = result.workflows.map((w) => w.id).sort();
+			expect(workflowIds).toEqual([teamWorkflow1.id, teamWorkflow2.id].sort());
+		});
 	});
 });

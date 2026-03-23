@@ -6,9 +6,10 @@ import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import axios from 'axios';
+import { createPublicKey, X509Certificate } from 'crypto';
 import type express from 'express';
-import { createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { Cipher, createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
+import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 
@@ -58,6 +59,8 @@ export class SamlService {
 		loginBinding: 'redirect',
 		acsBinding: 'post',
 		authnRequestsSigned: false,
+		signingPrivateKey: undefined,
+		signingCertificate: undefined,
 		loginEnabled: false,
 		loginLabel: 'SAML',
 		wantAssertionsSigned: true,
@@ -88,7 +91,116 @@ export class SamlService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly provisioningService: ProvisioningService,
+		private readonly cipher: Cipher,
 	) {}
+
+	/**
+	 * Checks if SAML request signing is enabled via feature flag.
+	 * @returns true if N8N_ENV_FEAT_SIGNED_SAML_REQUESTS is set to 'true', false otherwise
+	 */
+	isSignedSamlRequestsEnabled(): boolean {
+		return process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS === 'true';
+	}
+
+	/**
+	 * Returns the decrypted signing private key for internal use (e.g., signing SAML requests).
+	 * @throws BadRequestError if decryption fails
+	 */
+	private getDecryptedSigningPrivateKey(): string | undefined {
+		if (!this.isSignedSamlRequestsEnabled()) return undefined;
+		if (!this._samlPreferences.signingPrivateKey) return undefined;
+		try {
+			return this.cipher.decrypt(this._samlPreferences.signingPrivateKey);
+		} catch {
+			throw new BadRequestError(
+				'Failed to decrypt SAML signing private key. The key may be corrupted.',
+			);
+		}
+	}
+
+	private isValidPemPrivateKey(pem: string): boolean {
+		return /^-----BEGIN (?:RSA |EC )?PRIVATE KEY-----[\s\S]+-----END (?:RSA |EC )?PRIVATE KEY-----/.test(
+			pem.trim(),
+		);
+	}
+
+	private isValidPemCertificate(pem: string): boolean {
+		return /^-----BEGIN CERTIFICATE-----[\s\S]+-----END CERTIFICATE-----/.test(pem.trim());
+	}
+
+	private validateKeyPairMatch(privateKeyPem: string, certificatePem: string): boolean {
+		try {
+			const pubKeyFromPrivate = createPublicKey(privateKeyPem);
+			const cert = new X509Certificate(certificatePem);
+			const pubKeyFromCert = cert.publicKey;
+
+			return pubKeyFromPrivate
+				.export({ type: 'spki', format: 'der' })
+				.equals(pubKeyFromCert.export({ type: 'spki', format: 'der' }));
+		} catch {
+			return false;
+		}
+	}
+
+	private validateSigningKeyConfiguration(prefs: Partial<SamlPreferences>): void {
+		// Treat the blanking value as "keep existing" — the UI sends it back for redacted fields
+		// Treat empty string as "clear this field"
+		const isClearingKey = prefs.signingPrivateKey === '';
+		const isClearingCert = prefs.signingCertificate === '';
+		const isNewKey =
+			!!prefs.signingPrivateKey && prefs.signingPrivateKey !== CREDENTIAL_BLANKING_VALUE;
+		const isNewCert = !!prefs.signingCertificate;
+		const hasNewSigningFields = isNewKey || isNewCert;
+
+		if (hasNewSigningFields && !this.isSignedSamlRequestsEnabled()) {
+			throw new BadRequestError(
+				'SAML request signing is not enabled. Set N8N_ENV_FEAT_SIGNED_SAML_REQUESTS=true to enable this feature.',
+			);
+		}
+
+		if (!this.isSignedSamlRequestsEnabled()) return;
+
+		if (isNewKey && !this.isValidPemPrivateKey(prefs.signingPrivateKey!)) {
+			throw new BadRequestError(
+				'Invalid signing private key format. Must be a PEM-encoded private key.',
+			);
+		}
+
+		if (isNewCert && !this.isValidPemCertificate(prefs.signingCertificate!)) {
+			throw new BadRequestError(
+				'Invalid signing certificate format. Must be a PEM-encoded certificate.',
+			);
+		}
+
+		const willHaveAuthnRequestsSigned =
+			prefs.authnRequestsSigned ?? this._samlPreferences.authnRequestsSigned;
+
+		if (willHaveAuthnRequestsSigned) {
+			// Determine the effective key/cert after this update would be applied
+			const effectiveKey = isClearingKey
+				? undefined
+				: isNewKey
+					? prefs.signingPrivateKey!
+					: this.getDecryptedSigningPrivateKey();
+			const effectiveCert = isClearingCert
+				? undefined
+				: isNewCert
+					? prefs.signingCertificate!
+					: this._samlPreferences.signingCertificate;
+
+			if (!effectiveKey || !effectiveCert) {
+				throw new BadRequestError(
+					'Both signingPrivateKey and signingCertificate are required when authnRequestsSigned is enabled.',
+				);
+			}
+
+			if (!this.validateKeyPairMatch(effectiveKey, effectiveCert)) {
+				throw new BadRequestError(
+					'The signing private key and certificate do not match. Please provide a matching key/certificate pair.',
+				);
+			}
+		}
+	}
 
 	async init(): Promise<void> {
 		try {
@@ -138,13 +250,18 @@ export class SamlService {
 		if (this.samlify === undefined) {
 			throw new UnexpectedError('Samlify is not initialized');
 		}
+		if (!this._samlPreferences.metadata) {
+			throw new InvalidSamlMetadataError(
+				'No IdP metadata configured. Please provide valid identity provider metadata.',
+			);
+		}
 		if (this.identityProviderInstance === undefined || forceRecreate) {
 			this.identityProviderInstance = this.samlify.IdentityProvider({
 				metadata: this._samlPreferences.metadata,
 			});
 		}
 
-		this.validator.validateIdentiyProvider(this.identityProviderInstance);
+		this.validator.validateIdentityProvider(this.identityProviderInstance);
 
 		return this.identityProviderInstance;
 	}
@@ -156,43 +273,44 @@ export class SamlService {
 		return getServiceProviderInstance(this._samlPreferences, this.samlify);
 	}
 
+	/**
+	 * Generate a login request URL.
+	 * When `metadata` is provided, creates a temporary IdP from it (for testing without saving).
+	 * Otherwise uses the cached IdP from persisted preferences.
+	 */
 	async getLoginRequestUrl(
 		relayState?: string,
 		binding?: SamlLoginBinding,
+		metadata?: string,
 	): Promise<{
 		binding: SamlLoginBinding;
 		context: BindingContext | PostBindingContext;
 	}> {
 		await this.loadSamlify();
-		if (binding === undefined) binding = this._samlPreferences.loginBinding ?? 'redirect';
-		if (binding === 'post') {
-			return {
-				binding,
-				context: this.getPostLoginRequestUrl(relayState),
-			};
-		} else {
-			return {
-				binding,
-				context: this.getRedirectLoginRequestUrl(relayState),
-			};
+		if (this.samlify === undefined) {
+			throw new UnexpectedError('Samlify is not initialized');
 		}
-	}
 
-	private getRedirectLoginRequestUrl(relayState?: string): BindingContext {
+		let idp: IdentityProviderInstance;
+		if (metadata) {
+			const validationResult = await this.validator.validateMetadata(metadata);
+			if (!validationResult) {
+				throw new InvalidSamlMetadataError();
+			}
+			idp = this.samlify.IdentityProvider({ metadata });
+			this.validator.validateIdentityProvider(idp);
+		} else {
+			idp = this.getIdentityProviderInstance();
+		}
+
+		binding ??= this._samlPreferences.loginBinding ?? 'redirect';
 		const sp = this.getServiceProviderInstance();
 		sp.entitySetting.relayState = relayState ?? this.urlService.getInstanceBaseUrl();
-		const loginRequest = sp.createLoginRequest(this.getIdentityProviderInstance(), 'redirect');
-		return loginRequest;
-	}
-
-	private getPostLoginRequestUrl(relayState?: string): PostBindingContext {
-		const sp = this.getServiceProviderInstance();
-		sp.entitySetting.relayState = relayState ?? this.urlService.getInstanceBaseUrl();
-		const loginRequest = sp.createLoginRequest(
-			this.getIdentityProviderInstance(),
-			'post',
-		) as PostBindingContext;
-		return loginRequest;
+		const loginRequest = sp.createLoginRequest(idp, binding);
+		return {
+			binding,
+			context: binding === 'post' ? (loginRequest as PostBindingContext) : loginRequest,
+		};
 	}
 
 	async handleSamlLogin(
@@ -248,7 +366,7 @@ export class SamlService {
 					return {
 						authenticatedUser: newUser,
 						attributes,
-						onboardingRequired: true,
+						onboardingRequired: !newUser.firstName || !newUser.lastName,
 					};
 				}
 			}
@@ -315,8 +433,23 @@ export class SamlService {
 		broadcastReload: boolean = true,
 	): Promise<SamlPreferences | undefined> {
 		await this.loadSamlify();
+		this.validateSigningKeyConfiguration(prefs);
 		const previousMetadataUrl = this._samlPreferences.metadataUrl;
 		await this.loadPreferencesWithoutValidation(prefs);
+		await this.applyLoadedPreferences(prefs, previousMetadataUrl, tryFallback);
+		const result = await this.saveSamlPreferencesToDb();
+
+		if (broadcastReload) {
+			await this.broadcastReloadSAMLConfigurationCommand();
+		}
+		return result;
+	}
+
+	private async applyLoadedPreferences(
+		prefs: Partial<SamlPreferences>,
+		previousMetadataUrl: string | undefined,
+		tryFallback: boolean = true,
+	): Promise<void> {
 		if (prefs.metadataUrl) {
 			try {
 				const fetchedMetadata = await this.fetchMetadataFromUrl();
@@ -366,12 +499,6 @@ export class SamlService {
 			}
 		}
 		this.getIdentityProviderInstance(true);
-		const result = await this.saveSamlPreferencesToDb();
-
-		if (broadcastReload) {
-			await this.broadcastReloadSAMLConfigurationCommand();
-		}
-		return result;
 	}
 
 	async loadPreferencesWithoutValidation(prefs: Partial<SamlPreferences>) {
@@ -388,6 +515,27 @@ export class SamlService {
 			prefs.wantAssertionsSigned ?? this._samlPreferences.wantAssertionsSigned;
 		this._samlPreferences.wantMessageSigned =
 			prefs.wantMessageSigned ?? this._samlPreferences.wantMessageSigned;
+		if (prefs.signingCertificate === '') {
+			this._samlPreferences.signingCertificate = undefined;
+		} else {
+			this._samlPreferences.signingCertificate =
+				prefs.signingCertificate ?? this._samlPreferences.signingCertificate;
+		}
+		if (
+			prefs.signingPrivateKey !== undefined &&
+			prefs.signingPrivateKey !== CREDENTIAL_BLANKING_VALUE
+		) {
+			if (prefs.signingPrivateKey === '') {
+				// Empty string clears the stored key
+				this._samlPreferences.signingPrivateKey = undefined;
+			} else if (this.isValidPemPrivateKey(prefs.signingPrivateKey)) {
+				// Plaintext PEM from API → encrypt
+				this._samlPreferences.signingPrivateKey = this.cipher.encrypt(prefs.signingPrivateKey);
+			} else {
+				// Already-encrypted from DB → store as-is
+				this._samlPreferences.signingPrivateKey = prefs.signingPrivateKey;
+			}
+		}
 		if (prefs.metadataUrl) {
 			this._samlPreferences.metadataUrl = prefs.metadataUrl;
 		} else if (prefs.metadata) {
@@ -411,7 +559,18 @@ export class SamlService {
 
 			if (prefs) {
 				if (apply) {
-					await this.setSamlPreferences(prefs, true, broadcastReload);
+					// DB data was already validated when originally saved via setSamlPreferences().
+					// We must NOT re-validate here because signing keys are stored encrypted
+					// and would fail PEM validation. Instead, load preferences directly and
+					// apply the SAML configuration (metadata, identity provider, etc.).
+					await this.loadSamlify();
+					const previousMetadataUrl = this._samlPreferences.metadataUrl;
+					await this.loadPreferencesWithoutValidation(prefs);
+					await this.applyLoadedPreferences(prefs, previousMetadataUrl);
+
+					if (broadcastReload) {
+						await this.broadcastReloadSAMLConfigurationCommand();
+					}
 				} else {
 					await this.loadPreferencesWithoutValidation(prefs);
 				}
@@ -446,23 +605,27 @@ export class SamlService {
 		return;
 	}
 
-	async fetchMetadataFromUrl(): Promise<string | undefined> {
+	async fetchMetadataFromUrl(
+		metadataUrl?: string,
+		ignoreSSL?: boolean,
+	): Promise<string | undefined> {
 		await this.loadSamlify();
-		if (!this._samlPreferences.metadataUrl)
-			throw new BadRequestError('Error fetching SAML Metadata, no Metadata URL set');
+		const url = metadataUrl ?? this._samlPreferences.metadataUrl;
+		const shouldIgnoreSSL = ignoreSSL ?? this._samlPreferences.ignoreSSL;
+		if (!url) throw new BadRequestError('Error fetching SAML Metadata, no Metadata URL set');
 		try {
 			// Create a proxy-aware HTTPS agent that respects HTTP_PROXY, HTTPS_PROXY, and NO_PROXY
 			// environment variables while also supporting SSL certificate validation options
 			const httpsAgent = createHttpsProxyAgent(
 				null, // Uses proxy from environment variables
-				this._samlPreferences.metadataUrl,
+				url,
 				{
-					rejectUnauthorized: !this._samlPreferences.ignoreSSL,
+					rejectUnauthorized: !shouldIgnoreSSL,
 				},
 			);
-			const httpAgent = createHttpProxyAgent(null, this._samlPreferences.metadataUrl);
+			const httpAgent = createHttpProxyAgent(null, url);
 
-			const response = await axios.get(this._samlPreferences.metadataUrl, {
+			const response = await axios.get(url, {
 				httpsAgent,
 				httpAgent,
 			});
@@ -470,16 +633,13 @@ export class SamlService {
 				const xml = (await response.data) as string;
 				const validationResult = await this.validator.validateMetadata(xml);
 				if (!validationResult) {
-					throw new BadRequestError(
-						`Data received from ${this._samlPreferences.metadataUrl} is not valid SAML metadata.`,
-					);
+					throw new BadRequestError(`Data received from ${url} is not valid SAML metadata.`);
 				}
 				return xml;
 			}
 		} catch (error) {
-			throw new BadRequestError(
-				`Error fetching SAML Metadata from ${this._samlPreferences.metadataUrl}: ${error}`,
-			);
+			if (error instanceof BadRequestError) throw error;
+			throw new BadRequestError(`Error fetching SAML Metadata from ${url}: ${error}`);
 		}
 		return;
 	}

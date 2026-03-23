@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 /**
  * Schema for node type identifier in the format "name@version"

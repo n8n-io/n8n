@@ -201,6 +201,7 @@ const goToUpgrade = () => {
 			<ExecutionsFilter
 				popover-side="right"
 				popover-align="start"
+				:workflow-id="props.workflow?.id"
 				@filter-changed="onFilterChanged"
 			/>
 		</div>
@@ -279,11 +280,6 @@ const goToUpgrade = () => {
 	justify-content: space-between;
 	padding-top: var(--spacing--sm);
 	padding-right: var(--spacing--md);
-
-	button {
-		display: flex;
-		align-items: center;
-	}
 }
 
 .executionList {

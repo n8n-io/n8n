@@ -1,5 +1,5 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
-import type { TagEntity, ICredentialsDb, IWorkflowDb } from '@n8n/db';
+import type { TagEntity, ICredentialsDb } from '@n8n/db';
 import {
 	Project,
 	WorkflowEntity,
@@ -23,6 +23,7 @@ import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 
 @Service()
@@ -43,8 +44,8 @@ export class ImportService {
 			sqlite: 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-pooled': 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-memory': 'PRAGMA defer_foreign_keys = OFF;',
-			postgres: 'SET session_replication_role = DEFAULT;',
-			postgresql: 'SET session_replication_role = DEFAULT;',
+			postgres: 'SET session_replication_role = ORIGIN;',
+			postgresql: 'SET session_replication_role = ORIGIN;',
 		},
 	};
 
@@ -63,7 +64,7 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: IWorkflowDb[], projectId: string) {
+	async importWorkflows(workflows: IWorkflowWithVersionMetadata[], projectId: string) {
 		await this.initRecords();
 
 		const { manager: dbManager } = this.credentialsRepository;
@@ -105,7 +106,7 @@ export class ImportService {
 			}
 		}
 
-		const insertedWorkflows: IWorkflowBase[] = [];
+		const insertedWorkflows: IWorkflowWithVersionMetadata[] = [];
 		await dbManager.transaction(async (tx) => {
 			const workflowsNeedingPublishHistory: Array<{ workflowId: string; versionId: string }> = [];
 
@@ -158,12 +159,15 @@ export class ImportService {
 			// Always create workflow history for the current version
 			// This is needed to be able to activate the workflow later
 			for (const workflow of insertedWorkflows) {
+				const versionMetadata = workflow.versionMetadata;
 				await tx.insert(WorkflowHistory, {
 					versionId: workflow.versionId,
 					workflowId: workflow.id,
 					nodes: workflow.nodes,
 					connections: workflow.connections,
 					authors: 'import',
+					name: versionMetadata?.name ?? null,
+					description: versionMetadata?.description ?? null,
 				});
 			}
 
@@ -368,6 +372,7 @@ export class ImportService {
 		truncateTables: boolean,
 		keyFilePath?: string,
 		skipMigrationChecks = false,
+		skipTogglingForeignKeyConstraints = false,
 	) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
@@ -393,7 +398,9 @@ export class ImportService {
 		}
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
-			await this.disableForeignKeyConstraints(transactionManager);
+			if (!skipTogglingForeignKeyConstraints) {
+				await this.disableForeignKeyConstraints(transactionManager);
+			}
 
 			// Get import metadata after migration validation
 			const importMetadata = await this.getImportMetadata(inputDir);
@@ -430,7 +437,9 @@ export class ImportService {
 				customEncryptionKey,
 			);
 
-			await this.enableForeignKeyConstraints(transactionManager);
+			if (!skipTogglingForeignKeyConstraints) {
+				await this.enableForeignKeyConstraints(transactionManager);
+			}
 		});
 
 		// Cleanup decompressed files after import

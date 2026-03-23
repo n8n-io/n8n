@@ -11,6 +11,8 @@ import {
 	buildWorkflowOverview,
 	buildExecutionContextBlock,
 	buildExecutionSchemaBlock,
+	buildSelectedNodesContextBlock,
+	buildSelectedNodesSummary,
 } from '../context-builders';
 
 // Helper to create mock execution schema with proper typing
@@ -695,5 +697,172 @@ describe('buildWorkflowOverview', () => {
 			expect(result).toContain('https://api.example.com');
 			expect(result).toContain('GET');
 		});
+	});
+});
+
+describe('buildSelectedNodesContextBlock', () => {
+	it('should return empty string when workflowContext is undefined', () => {
+		const result = buildSelectedNodesContextBlock(undefined);
+		expect(result).toBe('');
+	});
+
+	it('should return empty string when selectedNodes is undefined', () => {
+		const result = buildSelectedNodesContextBlock({});
+		expect(result).toBe('');
+	});
+
+	it('should return empty string when selectedNodes is empty', () => {
+		const result = buildSelectedNodesContextBlock({ selectedNodes: [] });
+		expect(result).toBe('');
+	});
+
+	it('should wrap output in selected_nodes tags', () => {
+		const result = buildSelectedNodesContextBlock({
+			selectedNodes: [{ name: 'HTTP Request', incomingConnections: [], outgoingConnections: [] }],
+		});
+		expect(result).toContain('<selected_nodes>');
+		expect(result).toContain('</selected_nodes>');
+	});
+
+	it('should include node with escaped name', () => {
+		const result = buildSelectedNodesContextBlock({
+			selectedNodes: [
+				{ name: 'Node "A" <test>', incomingConnections: [], outgoingConnections: [] },
+			],
+		});
+		expect(result).toContain('<node name="Node &quot;A&quot; &lt;test&gt;">');
+		expect(result).toContain('</node>');
+	});
+
+	it('should include issues when present', () => {
+		const result = buildSelectedNodesContextBlock({
+			selectedNodes: [
+				{
+					name: 'HTTP Request',
+					issues: { url: ['URL is required'], 'credential:httpAuth': ['Creds missing'] },
+					incomingConnections: [],
+					outgoingConnections: [],
+				},
+			],
+		});
+		expect(result).toContain('<issues>');
+		expect(result).toContain('<issue parameter="url">URL is required</issue>');
+		expect(result).toContain('<issue parameter="credential:httpAuth">Creds missing</issue>');
+		expect(result).toContain('</issues>');
+	});
+
+	it('should omit issues when empty', () => {
+		const result = buildSelectedNodesContextBlock({
+			selectedNodes: [{ name: 'Code', incomingConnections: [], outgoingConnections: [] }],
+		});
+		expect(result).not.toContain('<issues>');
+	});
+
+	it('should include incoming connections', () => {
+		const result = buildSelectedNodesContextBlock({
+			selectedNodes: [
+				{
+					name: 'Code',
+					incomingConnections: ['Trigger', 'HTTP Request'],
+					outgoingConnections: [],
+				},
+			],
+		});
+		expect(result).toContain('<incoming_connections>Trigger, HTTP Request</incoming_connections>');
+	});
+
+	it('should include outgoing connections', () => {
+		const result = buildSelectedNodesContextBlock({
+			selectedNodes: [
+				{
+					name: 'Code',
+					incomingConnections: [],
+					outgoingConnections: ['Send Email'],
+				},
+			],
+		});
+		expect(result).toContain('<outgoing_connections>Send Email</outgoing_connections>');
+	});
+
+	it('should omit empty connections', () => {
+		const result = buildSelectedNodesContextBlock({
+			selectedNodes: [{ name: 'Code', incomingConnections: [], outgoingConnections: [] }],
+		});
+		expect(result).not.toContain('<incoming_connections>');
+		expect(result).not.toContain('<outgoing_connections>');
+	});
+
+	it('should escape XML special chars in connections', () => {
+		const result = buildSelectedNodesContextBlock({
+			selectedNodes: [
+				{
+					name: 'Code',
+					incomingConnections: ['Node <A>'],
+					outgoingConnections: [],
+				},
+			],
+		});
+		expect(result).toContain('Node &lt;A&gt;');
+	});
+
+	it('should handle multiple nodes', () => {
+		const result = buildSelectedNodesContextBlock({
+			selectedNodes: [
+				{ name: 'Node A', incomingConnections: [], outgoingConnections: [] },
+				{ name: 'Node B', incomingConnections: ['Node A'], outgoingConnections: [] },
+			],
+		});
+		expect(result).toContain('<node name="Node A">');
+		expect(result).toContain('<node name="Node B">');
+	});
+});
+
+describe('buildSelectedNodesSummary', () => {
+	it('should return empty string when workflowContext is undefined', () => {
+		const result = buildSelectedNodesSummary(undefined);
+		expect(result).toBe('');
+	});
+
+	it('should return empty string when selectedNodes is undefined', () => {
+		const result = buildSelectedNodesSummary({});
+		expect(result).toBe('');
+	});
+
+	it('should return empty string when selectedNodes is empty', () => {
+		const result = buildSelectedNodesSummary({ selectedNodes: [] });
+		expect(result).toBe('');
+	});
+
+	it('should return count and list of nodes', () => {
+		const result = buildSelectedNodesSummary({
+			selectedNodes: [
+				{ name: 'HTTP Request', incomingConnections: [], outgoingConnections: [] },
+				{ name: 'Code', incomingConnections: [], outgoingConnections: [] },
+			],
+		});
+		expect(result).toContain('2 node(s) selected');
+		expect(result).toContain('- "HTTP Request"');
+		expect(result).toContain('- "Code"');
+	});
+
+	it('should note issues when present', () => {
+		const result = buildSelectedNodesSummary({
+			selectedNodes: [
+				{
+					name: 'HTTP Request',
+					issues: { url: ['URL is required'] },
+					incomingConnections: [],
+					outgoingConnections: [],
+				},
+			],
+		});
+		expect(result).toContain('configuration issues');
+	});
+
+	it('should not note issues when none present', () => {
+		const result = buildSelectedNodesSummary({
+			selectedNodes: [{ name: 'HTTP Request', incomingConnections: [], outgoingConnections: [] }],
+		});
+		expect(result).not.toContain('configuration issues');
 	});
 });

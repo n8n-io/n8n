@@ -16,11 +16,11 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, inject, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
-import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
@@ -72,7 +72,10 @@ const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
 const workflow = computed(() => workflowsStore.workflow);
-const workflowId = injectStrict(WorkflowIdKey);
+const workflowId = useInjectWorkflowId();
+const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
+const workflowIsArchived = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 
 const isEnterprise = computed(
@@ -90,13 +93,12 @@ const showGitHubButton = computed(
 );
 
 const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
-	if (!workflow.value.parentFolder) {
-		return undefined;
-	}
+	const folder = workflowDocumentStore?.value?.parentFolder;
+	if (!folder) return undefined;
 	return {
-		id: workflow.value.parentFolder.id,
-		name: workflow.value.parentFolder.name,
-		parentFolder: workflow.value.parentFolder.parentFolderId ?? undefined,
+		id: folder.id,
+		name: folder.name,
+		parentFolder: folder.parentFolderId ?? undefined,
 	};
 });
 
@@ -255,7 +257,10 @@ function hideGithubButton() {
 }
 
 async function onWorkflowDeactivated() {
-	if (settingsStore.isModuleActive('mcp') && workflow.value.settings?.availableInMCP) {
+	if (
+		settingsStore.isModuleActive('mcp') &&
+		workflowDocumentStore?.value?.settings?.availableInMCP
+	) {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
 			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflow.value.id);
@@ -281,13 +286,10 @@ async function onWorkflowDeactivated() {
 				<WorkflowDetails
 					v-if="workflow?.name"
 					:id="workflow.id"
-					:tags="workflow.tags"
+					:tags="workflowTags"
 					:name="workflow.name"
-					:meta="workflow.meta"
-					:scopes="workflow.scopes"
-					:active="workflow.active"
 					:current-folder="parentFolderForBreadcrumbs"
-					:is-archived="workflow.isArchived"
+					:is-archived="workflowIsArchived"
 					:description="workflow.description"
 					@workflow:deactivated="onWorkflowDeactivated"
 				/>

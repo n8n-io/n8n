@@ -1,5 +1,6 @@
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import userEvent from '@testing-library/user-event';
 import type { NodeError } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
@@ -34,7 +35,13 @@ let mockNodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let mockNDVStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 let mockWorkflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 
-const renderComponent = createComponentRenderer(NodeErrorView);
+const renderComponent = createComponentRenderer(NodeErrorView, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 describe('NodeErrorView.vue', () => {
 	let error: NodeError;

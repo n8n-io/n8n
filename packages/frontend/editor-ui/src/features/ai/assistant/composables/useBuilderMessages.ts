@@ -1,13 +1,83 @@
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import type { ChatRequest } from '../assistant.types';
+import type { ChatRequest, PlanMode } from '../assistant.types';
 import { useI18n } from '@n8n/i18n';
-import { isTextMessage, isWorkflowUpdatedMessage, isToolMessage } from '../assistant.types';
+import {
+	isTextMessage,
+	isCodeDiffMessage,
+	isWorkflowUpdatedMessage,
+	isToolMessage,
+	isQuestionsMessage,
+	isPlanMessage,
+	isUserAnswersMessage,
+	isMessagesCompactedEvent,
+	isSummaryMessage,
+	isAgentSuggestionMessage,
+	isWebFetchApprovalMessage,
+} from '../assistant.types';
+import type { WebFetchApproval } from '../assistant.types';
 import { generateShortId } from '../builder.utils';
 
 export interface MessageProcessingResult {
 	messages: ChatUI.AssistantMessage[];
 	thinkingMessage?: string;
 	shouldClearThinking: boolean;
+}
+
+/**
+ * Factory functions for creating custom UI messages.
+ * Shared between streaming (processSingleMessage) and session replay (mapAssistantMessageToUI).
+ */
+function createQuestionsUIMessage(
+	id: string,
+	questions: PlanMode.PlannerQuestion[],
+	introMessage?: string,
+): ChatUI.AssistantMessage {
+	return {
+		id,
+		role: 'assistant',
+		type: 'custom',
+		customType: 'questions',
+		data: { questions, introMessage },
+		read: false,
+	} satisfies ChatUI.AssistantMessage;
+}
+
+function createPlanUIMessage(id: string, plan: PlanMode.PlanOutput): ChatUI.AssistantMessage {
+	return {
+		id,
+		role: 'assistant',
+		type: 'custom',
+		customType: 'plan',
+		data: { plan },
+		read: false,
+	} satisfies ChatUI.AssistantMessage;
+}
+
+function createWebFetchApprovalUIMessage(
+	id: string,
+	data: WebFetchApproval.MessageData,
+): ChatUI.AssistantMessage {
+	return {
+		id,
+		role: 'assistant',
+		type: 'custom',
+		customType: 'web_fetch_approval',
+		data,
+		read: false,
+	} satisfies ChatUI.AssistantMessage;
+}
+
+function createUserAnswersUIMessage(
+	id: string,
+	answers: PlanMode.QuestionResponse[],
+): ChatUI.AssistantMessage {
+	return {
+		id,
+		role: 'user',
+		type: 'custom',
+		customType: 'user_answers',
+		data: { answers },
+	} satisfies ChatUI.AssistantMessage;
 }
 
 export function useBuilderMessages() {
@@ -105,12 +175,13 @@ export function useBuilderMessages() {
 			: -1;
 
 		if (existingIndex !== -1) {
-			// Update existing tool message - merge updates array
+			// Update existing tool message - merge updates array and update display title
 			const existing = messages[existingIndex] as ChatUI.ToolMessage;
 			const toolMessage: ChatUI.ToolMessage = {
 				...existing,
 				id: `${messageId}-${msg.toolCallId}`,
 				status: msg.status,
+				customDisplayTitle: msg.customDisplayTitle ?? existing.customDisplayTitle,
 				updates: [...(existing.updates || []), ...(msg.updates || [])],
 			};
 			messages[existingIndex] = toolMessage as ChatUI.AssistantMessage;
@@ -143,14 +214,89 @@ export function useBuilderMessages() {
 	): boolean {
 		let shouldClearThinking = false;
 
-		if (isTextMessage(msg)) {
+		if (isSummaryMessage(msg)) {
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'block',
+				title: msg.title,
+				content: msg.content,
+				read: false,
+			} satisfies ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isAgentSuggestionMessage(msg)) {
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'block',
+				title: msg.title,
+				content: msg.text,
+				read: false,
+			} satisfies ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isTextMessage(msg)) {
 			messages.push({
 				id: messageId,
 				role: 'assistant',
 				type: 'text',
 				content: msg.text,
+				codeSnippet: msg.codeSnippet,
 				read: false,
 			} satisfies ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isCodeDiffMessage(msg)) {
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'code-diff',
+				description: msg.description,
+				codeDiff: msg.codeDiff,
+				suggestionId: msg.suggestionId,
+				sdkSessionId: msg.sdkSessionId,
+				nodeName: msg.nodeName,
+				quickReplies: msg.quickReplies,
+				read: false,
+			});
+			shouldClearThinking = true;
+		} else if (isQuestionsMessage(msg)) {
+			// Check if we already have a questions message (prevent duplicates from streaming)
+			const existingQuestionsIndex = messages.findIndex(
+				(m) => m.type === 'custom' && 'customType' in m && m.customType === 'questions',
+			);
+			// Only add if no questions message exists, or if there's a user answer after the existing one
+			// (meaning this is a new round of questions)
+			const hasUserAnswerAfterQuestions =
+				existingQuestionsIndex !== -1 &&
+				messages.slice(existingQuestionsIndex + 1).some((m) => m.role === 'user');
+			if (existingQuestionsIndex === -1 || hasUserAnswerAfterQuestions) {
+				messages.push(createQuestionsUIMessage(messageId, msg.questions, msg.introMessage));
+			}
+			shouldClearThinking = true;
+		} else if (isPlanMessage(msg)) {
+			// Find the last existing plan message
+			const existingPlanIndex = messages.findLastIndex(
+				(m) => m.type === 'custom' && 'customType' in m && m.customType === 'plan',
+			);
+			// A plan is new if there's a user message after the last plan (modify flow)
+			const hasUserResponseAfterPlan =
+				existingPlanIndex !== -1 &&
+				messages.slice(existingPlanIndex + 1).some((m) => m.role === 'user');
+			if (existingPlanIndex === -1 || hasUserResponseAfterPlan) {
+				messages.push(createPlanUIMessage(messageId, msg.plan));
+			}
+			shouldClearThinking = true;
+		} else if (isUserAnswersMessage(msg)) {
+			// User answers from session replay - render as custom message
+			messages.push(createUserAnswersUIMessage(messageId, msg.answers));
+			shouldClearThinking = true;
+		} else if (isWebFetchApprovalMessage(msg)) {
+			messages.push(
+				createWebFetchApprovalUIMessage(messageId, {
+					requestId: msg.requestId,
+					url: msg.url,
+					domain: msg.domain,
+				}),
+			);
 			shouldClearThinking = true;
 		} else if (isWorkflowUpdatedMessage(msg)) {
 			messages.push({
@@ -206,13 +352,14 @@ export function useBuilderMessages() {
 			};
 		}
 
-		const hasCompletedTools = getToolMessages(messages).some((msg) => msg.status === 'completed');
+		const isToolDone = (status: string) => status === 'completed' || status === 'error';
+		const hasCompletedTools = getToolMessages(messages).some((msg) => isToolDone(msg.status));
 
-		// Find the last completed tool message
+		// Find the last completed/errored tool message
 		let lastCompletedToolIndex = -1;
 		for (let i = messages.length - 1; i >= 0; i--) {
 			const msg = messages[i];
-			if (msg.type === 'tool' && msg.status === 'completed') {
+			if (msg.type === 'tool' && isToolDone(msg.status)) {
 				lastCompletedToolIndex = i;
 				break;
 			}
@@ -225,7 +372,12 @@ export function useBuilderMessages() {
 		if (lastCompletedToolIndex !== -1) {
 			for (let i = lastCompletedToolIndex + 1; i < messages.length; i++) {
 				const msg = messages[i];
-				if (msg.type === 'text' || msg.type === 'custom') {
+				if (
+					msg.type === 'text' ||
+					msg.type === 'custom' ||
+					msg.type === 'code-diff' ||
+					msg.type === 'block'
+				) {
 					hasResponseAfterTools = true;
 					break;
 				}
@@ -274,6 +426,12 @@ export function useBuilderMessages() {
 		const mutableMessages = [...currentMessages];
 		let shouldClearThinking = false;
 
+		// If this batch contains a compaction event, clear all existing messages first
+		const hasCompaction = newMessages.some(isMessagesCompactedEvent);
+		if (hasCompaction) {
+			mutableMessages.length = 0;
+		}
+
 		const messageGroupId = generateShortId();
 
 		newMessages.forEach((msg, index) => {
@@ -284,7 +442,10 @@ export function useBuilderMessages() {
 			shouldClearThinking = shouldClearThinking || clearThinking;
 		});
 
-		const thinkingMessage = determineThinkingMessage(mutableMessages);
+		// Show "Compacting" while waiting for the responder acknowledgment
+		const thinkingMessage = hasCompaction
+			? locale.baseText('aiAssistant.thinkingSteps.compacting')
+			: determineThinkingMessage(mutableMessages);
 
 		// Rating is now handled in the footer of AskAssistantChat, not per-message
 		// Remove retry from all error messages except the last one
@@ -312,6 +473,7 @@ export function useBuilderMessages() {
 		content: string,
 		id: string,
 		revertVersion?: { id: string; createdAt: string },
+		focusedNodeNames?: string[],
 	): ChatUI.AssistantMessage {
 		return {
 			id,
@@ -319,7 +481,27 @@ export function useBuilderMessages() {
 			type: 'text',
 			content,
 			revertVersion,
+			...(focusedNodeNames && focusedNodeNames.length > 0 ? { focusedNodeNames } : {}),
 			read: true,
+		};
+	}
+
+	/**
+	 * Create a custom user message for displaying answers to plan mode questions.
+	 * This shows the user's answers in a nicely formatted way rather than raw JSON.
+	 */
+	function createUserAnswersMessage(
+		answers: PlanMode.QuestionResponse[],
+		id: string,
+	): PlanMode.UserAnswersMessage {
+		return {
+			id,
+			role: 'user',
+			type: 'custom',
+			customType: 'user_answers',
+			data: {
+				answers,
+			},
 		};
 	}
 
@@ -388,15 +570,73 @@ export function useBuilderMessages() {
 		id: string,
 	): ChatUI.AssistantMessage {
 		// Handle specific message types using type guards
+		if (isSummaryMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'block',
+				title: message.title,
+				content: message.content,
+				read: false,
+			} satisfies ChatUI.AssistantMessage;
+		}
+
+		if (isAgentSuggestionMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'block',
+				title: message.title,
+				content: message.text,
+				read: false,
+			} satisfies ChatUI.AssistantMessage;
+		}
+
 		if (isTextMessage(message)) {
 			return {
 				id,
 				role: message.role ?? 'assistant',
 				type: 'text',
 				content: message.text,
+				codeSnippet: message.codeSnippet,
 				revertVersion: message.revertVersion,
 				read: false,
 			} satisfies ChatUI.AssistantMessage;
+		}
+
+		if (isCodeDiffMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'code-diff',
+				description: message.description,
+				codeDiff: message.codeDiff,
+				suggestionId: message.suggestionId,
+				sdkSessionId: message.sdkSessionId,
+				nodeName: message.nodeName,
+				quickReplies: message.quickReplies,
+				read: false,
+			};
+		}
+
+		if (isQuestionsMessage(message)) {
+			return createQuestionsUIMessage(id, message.questions, message.introMessage);
+		}
+
+		if (isPlanMessage(message)) {
+			return createPlanUIMessage(id, message.plan);
+		}
+
+		if (isUserAnswersMessage(message)) {
+			return createUserAnswersUIMessage(id, message.answers);
+		}
+
+		if (isWebFetchApprovalMessage(message)) {
+			return createWebFetchApprovalUIMessage(id, {
+				requestId: message.requestId,
+				url: message.url,
+				domain: message.domain,
+			});
 		}
 
 		if (isWorkflowUpdatedMessage(message)) {
@@ -444,6 +684,7 @@ export function useBuilderMessages() {
 	return {
 		processAssistantMessages,
 		createUserMessage,
+		createUserAnswersMessage,
 		createAssistantMessage,
 		createErrorMessage,
 		clearMessages,

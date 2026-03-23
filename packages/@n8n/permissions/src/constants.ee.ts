@@ -7,9 +7,9 @@ export const RESOURCES = {
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list', 'manage'] as const,
-	credential: ['share', 'shareGlobally', 'move', ...DEFAULT_OPERATIONS] as const,
+	credential: ['share', 'unshare', 'shareGlobally', 'move', ...DEFAULT_OPERATIONS] as const,
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
-	externalSecret: ['list', 'use'] as const,
+	externalSecret: ['list'] as const,
 	eventBusDestination: ['test', ...DEFAULT_OPERATIONS] as const,
 	ldap: ['sync', 'manage'] as const,
 	license: ['manage'] as const,
@@ -33,12 +33,15 @@ export const RESOURCES = {
 	workersView: ['manage'] as const,
 	workflow: [
 		'share',
+		'unshare',
 		'execute',
 		'execute-chat',
 		'move',
 		'activate',
 		'deactivate',
 		'publish',
+		'unpublish',
+		'updateRedactionSetting',
 		...DEFAULT_OPERATIONS,
 	] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
@@ -46,7 +49,7 @@ export const RESOURCES = {
 	oidc: ['manage'] as const,
 	provisioning: ['manage'] as const,
 	dataTable: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
-	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
+	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage'] as const,
 	mcp: ['manage', 'oauth'] as const,
@@ -65,10 +68,11 @@ export const API_KEY_RESOURCES = {
 	securityAudit: ['generate'] as const,
 	project: ['create', 'update', 'delete', 'list'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete', 'enforceMfa'] as const,
-	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
+	execution: ['delete', 'read', 'retry', 'list', 'get', 'stop'] as const,
 	credential: ['create', 'update', 'move', 'delete', 'list'] as const,
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
+	executionTags: ['update', 'list'] as const,
 	dataTable: ['create', 'read', 'update', 'delete', 'list'] as const,
 	dataTableRow: ['create', 'read', 'update', 'delete', 'upsert'] as const,
 } as const;
@@ -84,5 +88,25 @@ export const PERSONAL_SPACE_PUBLISHING_SETTING = {
 };
 export const PERSONAL_SPACE_SHARING_SETTING = {
 	key: 'security.personalSpaceSharing',
-	scopes: ['workflow:share', 'credential:share', 'credential:move'],
+	scopes: ['workflow:share', 'credential:share'],
+};
+
+export const EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING = {
+	key: 'externalSecrets.systemRolesEnabled',
+	roleScopeMap: {
+		[PROJECT_ADMIN_ROLE_SLUG]: [
+			'externalSecretsProvider:create',
+			'externalSecretsProvider:read',
+			'externalSecretsProvider:update',
+			'externalSecretsProvider:delete',
+			'externalSecretsProvider:list',
+			'externalSecretsProvider:sync',
+			'externalSecret:list',
+		],
+		[PROJECT_EDITOR_ROLE_SLUG]: [
+			'externalSecretsProvider:read',
+			'externalSecretsProvider:list',
+			'externalSecret:list',
+		],
+	} as Record<string, string[]>,
 };

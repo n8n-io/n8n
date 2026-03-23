@@ -33,7 +33,6 @@ jest.mock('langsmith/traceable', () => ({
 	),
 }));
 
-// Mock core/environment module (dynamically imported in runner.ts)
 function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {
 	return { name, nodes: [], connections: {} };
 }

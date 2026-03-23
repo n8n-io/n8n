@@ -69,6 +69,12 @@ watch(
 	},
 );
 
+const fallbackFocusedNodesLabel = computed(() => {
+	const names = props.message.focusedNodeNames;
+	if (!names?.length) return '';
+	return `Focusing on ${names.map((n) => `'${n}'`).join(', ')}`;
+});
+
 async function onCopyButtonClick(content: string, e: MouseEvent) {
 	const button = e.target as HTMLButtonElement;
 	await navigator.clipboard.writeText(content);
@@ -113,8 +119,19 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 				>
 					{{ isExpanded ? t('notice.showLess') : t('notice.showMore') }}
 				</button>
+				<div
+					v-if="message.focusedNodeNames?.length"
+					:class="$style.focusedNodesSlotWrapper"
+					data-test-id="message-focused-nodes"
+				>
+					<slot name="focused-nodes-chips" :message="message">
+						<span :class="$style.focusedNodesFallback">
+							{{ fallbackFocusedNodesLabel }}
+						</span>
+					</slot>
+				</div>
 			</div>
-			<!-- Assistant message - simple text without container -->
+			<!-- Assistant message -->
 			<div
 				v-else
 				v-n8n-html="renderMarkdown(message.content)"
@@ -128,9 +145,8 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			>
 				<header v-if="isClipboardSupported">
 					<N8nButton
-						type="tertiary"
-						:text="true"
-						size="mini"
+						variant="ghost"
+						size="xsmall"
 						data-test-id="assistant-copy-snippet-button"
 						@click="onCopyButtonClick(message.codeSnippet, $event)"
 					>
@@ -247,11 +263,9 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		margin: 0;
 	}
 
-	// Add top padding to strong elements only when there's content before them
-	:not(:first-child) > strong:first-child,
-	* + strong {
-		display: inline-block;
-		padding-top: var(--spacing--md);
+	// Hide horizontal rules - they don't look good in chat messages
+	hr {
+		display: none;
 	}
 
 	h1,
@@ -303,5 +317,18 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			padding: var(--spacing--4xs);
 		}
 	}
+}
+
+.focusedNodesSlotWrapper {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+	margin-top: var(--spacing--4xs);
+}
+
+.focusedNodesFallback {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-2);
+	font-style: italic;
 }
 </style>

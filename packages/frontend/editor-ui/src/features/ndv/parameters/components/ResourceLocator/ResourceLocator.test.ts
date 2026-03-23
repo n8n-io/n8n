@@ -2,10 +2,13 @@ import type { INodeListSearchResult } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import ResourceLocator from './ResourceLocator.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor } from '@testing-library/vue';
+import { computed } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 import { vi } from 'vitest';
 import {
@@ -479,6 +482,46 @@ describe('ResourceLocator', () => {
 		expect(nodeTypesStore.getNodeParameterActionResult).not.toHaveBeenCalled();
 	});
 
+	it('clears cached resources after URL redirect so fresh data is fetched on re-open', async () => {
+		const TEST_ITEMS = [{ name: 'Old Table', value: 'old-table' }];
+		const TEST_ITEMS_UPDATED = [
+			{ name: 'Old Table', value: 'old-table' },
+			{ name: 'New Table', value: 'new-table' },
+		];
+
+		nodeTypesStore.getResourceLocatorResults
+			.mockResolvedValueOnce({ results: TEST_ITEMS, paginationToken: null })
+			.mockResolvedValueOnce({ results: TEST_ITEMS_UPDATED, paginationToken: null });
+
+		const { getByTestId, getByText } = renderComponent({
+			props: {
+				modelValue: { __rl: true, value: '', mode: 'list' },
+				parameter: TEST_PARAMETER_URL_REDIRECT,
+				path: `parameters.${TEST_PARAMETER_URL_REDIRECT.name}`,
+				node: TEST_NODE_URL_REDIRECT,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+			},
+		});
+
+		// Open dropdown — first fetch returns old data
+		await fireEvent.focus(getByTestId('rlc-input'));
+		await waitFor(() => {
+			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalledTimes(1);
+		});
+		expect(getByText('Old Table')).toBeInTheDocument();
+
+		// Click "Create new" — opens URL and clears cache
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+
+		// Re-open dropdown — should fetch fresh data since cache was cleared
+		await fireEvent.focus(getByTestId('rlc-input'));
+		await waitFor(() => {
+			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalledTimes(2);
+		});
+		expect(getByText('New Table')).toBeInTheDocument();
+	});
+
 	describe('slow load notice', () => {
 		it('should pass slowLoadNotice configuration to dropdown component', async () => {
 			vi.useFakeTimers();
@@ -658,6 +701,108 @@ describe('ResourceLocator', () => {
 				resolvePromise({ results: [], paginationToken: null });
 			}
 			vi.useRealTimers();
+		});
+	});
+
+	describe('ExpressionLocalResolveContext injection', () => {
+		const mockResolveExpression = vi.fn().mockImplementation((val) => val);
+		const mockResolveRequiredParameters = vi.fn().mockImplementation((_, params) => params);
+
+		beforeEach(() => {
+			vi.mocked(useWorkflowHelpers).mockReturnValue({
+				resolveExpression: mockResolveExpression,
+				resolveRequiredParameters: mockResolveRequiredParameters,
+			} as unknown as ReturnType<typeof useWorkflowHelpers>);
+		});
+
+		afterEach(() => {
+			mockResolveExpression.mockClear();
+			mockResolveRequiredParameters.mockClear();
+		});
+
+		it('passes injected context to resolveRequiredParameters when loading resources', async () => {
+			const testContext = { localResolve: true, nodeName: 'TestTool' };
+
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [],
+				paginationToken: null,
+			});
+
+			const { getByTestId } = renderComponent({
+				global: {
+					provide: {
+						[ExpressionLocalResolveContextSymbol as symbol]: computed(() => testContext),
+					},
+				},
+			});
+
+			const input = getByTestId('rlc-input');
+			await fireEvent.focus(input);
+
+			await waitFor(() => {
+				expect(mockResolveRequiredParameters).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					testContext,
+				);
+			});
+		});
+
+		it('passes empty object when no context is injected', async () => {
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [],
+				paginationToken: null,
+			});
+
+			const { getByTestId } = renderComponent();
+
+			const input = getByTestId('rlc-input');
+			await fireEvent.focus(input);
+
+			await waitFor(() => {
+				expect(mockResolveRequiredParameters).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					{},
+				);
+			});
+		});
+
+		it('passes injected context to resolveRequiredParameters when adding a resource', async () => {
+			const testContext = { localResolve: true, nodeName: 'TestTool' };
+
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [],
+				paginationToken: null,
+			});
+			nodeTypesStore.getNodeParameterActionResult.mockResolvedValue('new-resource');
+
+			const { getByTestId } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: TEST_PARAMETER_ADD_RESOURCE,
+					path: `parameters.${TEST_PARAMETER_ADD_RESOURCE.name}`,
+					node: TEST_NODE_SINGLE_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+				},
+				global: {
+					provide: {
+						[ExpressionLocalResolveContextSymbol as symbol]: computed(() => testContext),
+					},
+				},
+			});
+
+			await userEvent.click(getByTestId('rlc-input'));
+			await userEvent.click(getByTestId('rlc-item-add-resource'));
+
+			await waitFor(() => {
+				expect(mockResolveRequiredParameters).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					testContext,
+				);
+			});
 		});
 	});
 });

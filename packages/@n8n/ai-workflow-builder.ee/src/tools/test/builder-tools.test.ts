@@ -95,6 +95,13 @@ jest.mock('../validate-configuration.tool', () => ({
 	},
 }));
 
+jest.mock('../introspect.tool', () => ({
+	INTROSPECT_TOOL: {
+		toolName: 'introspect',
+		displayTitle: 'Introspecting',
+	},
+}));
+
 jest.mock('../get-execution-schema.tool', () => ({
 	GET_EXECUTION_SCHEMA_TOOL: {
 		toolName: 'get_execution_schema',
@@ -130,6 +137,29 @@ jest.mock('../get-node-context.tool', () => ({
 	},
 }));
 
+jest.mock('@/code-builder/constants', () => ({
+	CODE_BUILDER_TEXT_EDITOR_TOOL: {
+		toolName: 'str_replace_based_edit_tool',
+		displayTitle: 'Editing workflow',
+	},
+	CODE_BUILDER_VALIDATE_TOOL: {
+		toolName: 'validate_workflow',
+		displayTitle: 'Validating workflow',
+	},
+	CODE_BUILDER_SEARCH_NODES_TOOL: {
+		toolName: 'search_nodes',
+		displayTitle: 'Searching nodes',
+	},
+	CODE_BUILDER_GET_NODE_TYPES_TOOL: {
+		toolName: 'get_node_types',
+		displayTitle: 'Getting node definitions',
+	},
+	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: {
+		toolName: 'get_suggested_nodes',
+		displayTitle: 'Getting suggested nodes',
+	},
+}));
+
 describe('builder-tools', () => {
 	let parsedNodeTypes: INodeTypeDescription[];
 
@@ -139,36 +169,55 @@ describe('builder-tools', () => {
 	});
 
 	describe('getBuilderToolsForDisplay', () => {
-		it('should return all display tools including workflow examples when feature flag is enabled', () => {
+		// Base tools (always included): get_documentation, node_search, node_details, add_node,
+		// connect_nodes, remove_connection, remove_node, rename_node, update_node_parameters,
+		// get_node_parameter, validate_structure, validate_configuration,
+		// get_execution_schema, get_execution_logs, get_expression_data_mapping,
+		// get_workflow_overview, get_node_context
+		const BASE_TOOL_COUNT = 22;
+
+		it('should return base tools when no feature flags are provided', () => {
+			const tools = getBuilderToolsForDisplay({
+				nodeTypes: parsedNodeTypes,
+			});
+
+			expect(tools).toHaveLength(BASE_TOOL_COUNT);
+			expect(tools.map((t) => t.toolName)).not.toContain('get_workflow_examples');
+			expect(tools.map((t) => t.toolName)).not.toContain('introspect');
+			expect(getAddNodeToolBase).toHaveBeenCalledWith(parsedNodeTypes);
+		});
+
+		it('should include workflow examples tool when templateExamples flag is enabled', () => {
 			const tools = getBuilderToolsForDisplay({
 				nodeTypes: parsedNodeTypes,
 				featureFlags: { templateExamples: true },
 			});
 
-			// 18 tools: best_practices, workflow_examples, node_search, node_details, add_node,
-			// connect_nodes, remove_connection, remove_node, rename_node, update_node_parameters,
-			// get_node_parameter, validate_structure, validate_configuration,
-			// get_execution_schema, get_execution_logs, get_expression_data_mapping,
-			// get_workflow_overview, get_node_context
-			expect(tools).toHaveLength(18);
-			expect(getAddNodeToolBase).toHaveBeenCalledWith(parsedNodeTypes);
+			expect(tools).toHaveLength(BASE_TOOL_COUNT + 1);
+			expect(tools.map((t) => t.toolName)).toContain('get_workflow_examples');
+			expect(tools.map((t) => t.toolName)).not.toContain('introspect');
 		});
 
-		it('should exclude workflow examples tool when feature flag is disabled', () => {
+		it('should include introspect tool when enableIntrospection flag is enabled', () => {
 			const tools = getBuilderToolsForDisplay({
 				nodeTypes: parsedNodeTypes,
-				featureFlags: { templateExamples: false },
+				featureFlags: { enableIntrospection: true },
 			});
 
-			expect(tools).toHaveLength(17);
+			expect(tools).toHaveLength(BASE_TOOL_COUNT + 1);
+			expect(tools.map((t) => t.toolName)).toContain('introspect');
+			expect(tools.map((t) => t.toolName)).not.toContain('get_workflow_examples');
 		});
 
-		it('should exclude workflow examples tool when feature flag is not provided', () => {
+		it('should include both conditional tools when both flags are enabled', () => {
 			const tools = getBuilderToolsForDisplay({
 				nodeTypes: parsedNodeTypes,
+				featureFlags: { templateExamples: true, enableIntrospection: true },
 			});
 
-			expect(tools).toHaveLength(17);
+			expect(tools).toHaveLength(BASE_TOOL_COUNT + 2);
+			expect(tools.map((t) => t.toolName)).toContain('get_workflow_examples');
+			expect(tools.map((t) => t.toolName)).toContain('introspect');
 		});
 
 		it('should work with empty node types array', () => {
@@ -176,7 +225,7 @@ describe('builder-tools', () => {
 				nodeTypes: [],
 			});
 
-			expect(tools).toHaveLength(17);
+			expect(tools).toHaveLength(BASE_TOOL_COUNT);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith([]);
 		});
 

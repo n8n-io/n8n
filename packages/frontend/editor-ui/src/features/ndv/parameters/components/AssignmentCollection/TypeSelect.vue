@@ -14,11 +14,11 @@ import {
 interface Props {
 	modelValue: string;
 	isReadOnly?: boolean;
-	stacked?: boolean;
+	isStacked?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-	stacked: false,
+	isStacked: false,
 });
 
 const emit = defineEmits<{
@@ -48,10 +48,7 @@ const onSelect = (type: string): void => {
 </script>
 
 <template>
-	<div
-		:class="{ [$style.wrapper]: true, [$style.stacked]: stacked }"
-		data-test-id="assignment-type-select"
-	>
+	<div :class="$style.wrapper" data-test-id="assignment-type-select">
 		<N8nDropdownMenu
 			:items="menuItems"
 			:disabled="isReadOnly"
@@ -79,14 +76,9 @@ const onSelect = (type: string): void => {
 
 <style lang="scss" module>
 .wrapper {
-	--parameter-input-options--height: 22px;
 	width: 100%;
 	height: 100%;
-	padding-top: var(--parameter-input-options--height);
-
-	&.stacked {
-		padding-top: 0;
-	}
+	padding-top: var(--parameter-input-options--height, 22px);
 }
 
 .trigger {

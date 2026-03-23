@@ -1,4 +1,4 @@
-import { CreateVariableRequestDto } from '@n8n/api-types';
+import { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -34,7 +34,7 @@ export = {
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:update' }),
 		async (req: AuthenticatedRequest<{ id: string }>, res: Response) => {
-			const payload = CreateVariableRequestDto.safeParse(req.body);
+			const payload = UpdateVariableRequestDto.safeParse(req.body);
 			if (payload.error) {
 				return res.status(400).json(payload.error.errors[0]);
 			}

@@ -1,9 +1,10 @@
 import { Logger } from '@n8n/backend-common';
+import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ErrorReporter } from 'n8n-core';
-import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
+import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
+import { DATA_TABLE_NODE_TYPES, ensureError, INode, IWorkflowBase } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 
@@ -21,14 +22,19 @@ const WORKFLOW_INDEXED_PLACEHOLDER_KEY = '__INDEXED__';
  */
 @Service()
 export class WorkflowIndexService {
+	private readonly batchSize: number;
+
 	constructor(
 		private readonly dependencyRepository: WorkflowDependencyRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly eventService: EventService,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly batchSize = 100,
-	) {}
+		private readonly tracing: Tracing,
+		workflowsConfig: WorkflowsConfig,
+	) {
+		this.batchSize = workflowsConfig.indexingBatchSize;
+	}
 
 	init() {
 		this.eventService.on('server-started', async (): Promise<void> => {
@@ -42,7 +48,7 @@ export class WorkflowIndexService {
 			await this.updateIndexForDraft(workflow);
 		});
 		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
-			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
+			await this.removeDependenciesForWorkflow(workflowId);
 		});
 		this.eventService.on('workflow-activated', async ({ workflow }) => {
 			if (workflow.activeVersionId === null) {
@@ -51,24 +57,32 @@ export class WorkflowIndexService {
 				);
 				return;
 			}
-			await this.updateIndexForPublished(workflow, workflow.activeVersionId);
+			// At activation time, the draft nodes are the published nodes.
+			await this.updateIndexForPublished(workflow, workflow.activeVersionId, workflow.nodes);
 		});
 	}
 
 	async buildIndex() {
-		const draftCount = await this.buildIndexInternal(
-			async (batchSize) => await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize),
-			'draft',
-		);
+		return await this.tracing.startSpan(
+			{ name: 'WorkflowIndex build', op: 'workflow-index.build' },
+			async (span) => {
+				const draftCount = await this.buildIndexInternal(
+					async (batchSize) =>
+						await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize),
+					'draft',
+				);
 
-		const publishedCount = await this.buildIndexInternal(
-			async (batchSize) =>
-				await this.workflowRepository.findWorkflowsNeedingPublishedVersionIndexing(batchSize),
-			'published',
-		);
+				const publishedCount = await this.buildIndexInternal(
+					async (batchSize) =>
+						await this.workflowRepository.findWorkflowsNeedingPublishedVersionIndexing(batchSize),
+					'published',
+				);
 
-		this.logger.info(
-			`Finished building workflow dependency index. Processed ${draftCount} draft workflows, ${publishedCount} published workflows.`,
+				this.logger.info(
+					`Finished building workflow dependency index. Processed ${draftCount} draft workflows, ${publishedCount} published workflows.`,
+				);
+				span.setStatus({ code: SpanStatus.ok });
+			},
 		);
 	}
 
@@ -91,9 +105,14 @@ export class WorkflowIndexService {
 				if (dependencyType === 'draft') {
 					await this.updateIndexForDraft(workflow);
 				} else {
-					// We know activeVersionId is not null here because the finder only returns workflows
-					// that have a published version.
-					await this.updateIndexForPublished(workflow, workflow.activeVersionId!);
+					const publishedNodes = workflow.activeVersion?.nodes;
+					if (!publishedNodes) {
+						this.logger.warn(
+							`Workflow ${workflow.id} has activeVersionId but no activeVersion nodes. Skipping published index.`,
+						);
+						continue;
+					}
+					await this.updateIndexForPublished(workflow, workflow.activeVersionId!, publishedNodes);
 				}
 			}
 
@@ -121,17 +140,36 @@ export class WorkflowIndexService {
 			workflow.versionCounter,
 			/*publishedVersionId=*/ null,
 		);
-		return await this.updateIndexInternal(workflow, dependencyUpdates);
+		return await this.updateIndexInternal(dependencyUpdates, workflow.nodes, workflow.name);
 	}
 
-	async updateIndexForPublished(workflow: IWorkflowBase, publishedVersionId: string) {
+	async updateIndexForPublished(
+		workflow: IWorkflowBase,
+		publishedVersionId: string,
+		publishedNodes: INode[],
+	) {
 		const dependencyUpdates = new WorkflowDependencies(
 			workflow.id,
 			workflow.versionCounter,
 			publishedVersionId,
 		);
-		return await this.updateIndexInternal(workflow, dependencyUpdates);
+		return await this.updateIndexInternal(dependencyUpdates, publishedNodes, workflow.name);
 	}
+
+	async removeDependenciesForWorkflow(workflowId: string) {
+		return await this.tracing.startSpan(
+			{
+				name: 'WorkflowIndex remove',
+				op: 'workflow-index.remove',
+				attributes: this.tracing.pickWorkflowAttributes({ id: workflowId }),
+			},
+			async (span) => {
+				await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
+				span.setStatus({ code: SpanStatus.ok });
+			},
+		);
+	}
+
 	/**
 	 * Update the dependency index for a given workflow.
 	 *
@@ -140,41 +178,60 @@ export class WorkflowIndexService {
 	 *
 	 */
 	private async updateIndexInternal(
-		workflow: IWorkflowBase,
 		dependencyUpdates: WorkflowDependencies,
+		nodes: INode[],
+		workflowName?: string,
 	) {
-		workflow.nodes.forEach((node) => {
-			this.addNodeTypeDependencies(node, dependencyUpdates);
-			this.addCredentialDependencies(node, dependencyUpdates);
-			this.addWorkflowCallDependencies(node, dependencyUpdates);
-			this.addWebhookPathDependencies(node, dependencyUpdates);
-		});
+		const indexType = dependencyUpdates.publishedVersionId ? 'published' : 'draft';
+		const workflowId = dependencyUpdates.workflowId;
 
-		// If no dependencies were extracted, add a placeholder to mark the workflow as indexed
-		if (dependencyUpdates.dependencies.length === 0) {
-			dependencyUpdates.add({
-				dependencyType: 'workflowIndexed',
-				dependencyKey: WORKFLOW_INDEXED_PLACEHOLDER_KEY,
-				dependencyInfo: null,
-			});
-		}
+		return await this.tracing.startSpan(
+			{
+				name: 'WorkflowIndex update',
+				op: 'workflow-index.update',
+				attributes: {
+					...this.tracing.pickWorkflowAttributes({ id: workflowId, name: workflowName }),
+					'n8n.workflow-index.type': indexType,
+				},
+			},
+			async (span) => {
+				nodes.forEach((node) => {
+					this.addNodeTypeDependencies(node, dependencyUpdates);
+					this.addCredentialDependencies(node, dependencyUpdates);
+					this.addDataTableDependencies(node, dependencyUpdates);
+					this.addWorkflowCallDependencies(node, dependencyUpdates);
+					this.addWebhookPathDependencies(node, dependencyUpdates);
+				});
 
-		let updated: boolean;
-		try {
-			updated = await this.dependencyRepository.updateDependenciesForWorkflow(
-				workflow.id,
-				dependencyUpdates,
-			);
-		} catch (e) {
-			const error = ensureError(e);
-			this.logger.error(
-				`Failed to update workflow ${dependencyUpdates.publishedVersionId ? 'published' : 'draft'} dependency index for workflow ${workflow.id}: ${error.message}`,
-			);
-			this.errorReporter.error(error);
-			return;
-		}
-		this.logger.debug(
-			`Workflow ${dependencyUpdates.publishedVersionId ? 'published' : 'draft'} dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
+				// If no dependencies were extracted, add a placeholder to mark the workflow as indexed
+				if (dependencyUpdates.dependencies.length === 0) {
+					dependencyUpdates.add({
+						dependencyType: 'workflowIndexed',
+						dependencyKey: WORKFLOW_INDEXED_PLACEHOLDER_KEY,
+						dependencyInfo: null,
+					});
+				}
+
+				let updated: boolean;
+				try {
+					updated = await this.dependencyRepository.updateDependenciesForWorkflow(
+						workflowId,
+						dependencyUpdates,
+					);
+				} catch (e) {
+					const error = ensureError(e);
+					this.logger.error(
+						`Failed to update workflow ${indexType} dependency index for workflow ${workflowId}: ${error.message}`,
+					);
+					this.errorReporter.error(error);
+					span.setStatus({ code: SpanStatus.error });
+					return;
+				}
+				this.logger.debug(
+					`Workflow ${indexType} dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflowId}`,
+				);
+				span.setStatus({ code: SpanStatus.ok });
+			},
 		);
 	}
 
@@ -203,6 +260,28 @@ export class WorkflowIndexService {
 				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
 			});
 		}
+	}
+
+	private addDataTableDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
+		if (!DATA_TABLE_NODE_TYPES.includes(node.type)) {
+			return;
+		}
+		const dataTableId = node.parameters?.['dataTableId'] as
+			| { mode?: string; value?: string }
+			| undefined;
+		if (!dataTableId?.value || typeof dataTableId.value !== 'string') {
+			return;
+		}
+		// Skip expression-based IDs that can't be statically resolved
+		if (dataTableId.value.includes('{')) {
+			return;
+		}
+
+		dependencyUpdates.add({
+			dependencyType: 'dataTableId',
+			dependencyKey: dataTableId.value,
+			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion, mode: dataTableId.mode },
+		});
 	}
 
 	private addWorkflowCallDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
@@ -244,7 +323,11 @@ export class WorkflowIndexService {
 		if (node.parameters?.['source'] === 'url') {
 			return undefined; // The sub-workflow is provided via a URL, so no dependency to track.
 		}
-		// If it's none of those sources, it must be 'workflowId'. This might be either directly as a string, or an object.
+		if (!('workflowId' in node.parameters)) {
+			// This happens when the node is first added to the canvas.
+			return undefined; // The workflowId is not present in the parameters, so no dependency to track.
+		}
+		// We have a workflowId. This might be either directly as a string, or an object.
 		if (typeof node.parameters?.['workflowId'] === 'string') {
 			return node.parameters?.['workflowId'];
 		}

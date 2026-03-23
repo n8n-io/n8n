@@ -1,5 +1,13 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import {
+	filterAuthorsOption,
+	filterBranchesOption,
+	filterGroupsOption,
+	filterTagsOption,
+	projectRLC,
+} from './common.descriptions';
+
 export const specFileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -44,36 +52,13 @@ export const specFileFields: INodeProperties[] = [
 	//         specFile:getAll
 	// ----------------------------------
 	{
-		displayName: 'Project',
-		name: 'projectId',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		required: true,
+		...projectRLC,
 		displayOptions: {
 			show: {
 				resource: ['specFile'],
 				operation: ['getAll'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a project...',
-				typeOptions: {
-					searchListMethod: 'getProjects',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				placeholder: 'e.g. abc123',
-			},
-		],
-		description: 'The Currents project',
 	},
 	{
 		displayName: 'Date Start',
@@ -151,45 +136,9 @@ export const specFileFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Authors',
-				name: 'authors',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'author',
-					},
-				},
-				description: 'Filter by git author names (comma-separated for multiple)',
-			},
-			{
-				displayName: 'Branches',
-				name: 'branches',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'branch',
-					},
-				},
-				description: 'Filter by branch names (comma-separated for multiple)',
-			},
-			{
-				displayName: 'Groups',
-				name: 'groups',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'group',
-					},
-				},
-				description: 'Filter by group names (comma-separated for multiple)',
-			},
+			filterAuthorsOption,
+			filterBranchesOption,
+			filterGroupsOption,
 			{
 				displayName: 'Spec Name',
 				name: 'specNameFilter',
@@ -203,19 +152,7 @@ export const specFileFields: INodeProperties[] = [
 				},
 				description: 'Filter spec files by name (partial match)',
 			},
-			{
-				displayName: 'Tags',
-				name: 'tags',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'tag',
-					},
-				},
-				description: 'Filter by tags (comma-separated for multiple)',
-			},
+			filterTagsOption,
 		],
 	},
 	{

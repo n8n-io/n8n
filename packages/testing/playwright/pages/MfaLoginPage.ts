@@ -6,8 +6,12 @@ import { BasePage } from './BasePage';
  * Page object for the MFA login page that appears after entering email/password when MFA is enabled.
  */
 export class MfaLoginPage extends BasePage {
-	getForm(): Locator {
+	get container(): Locator {
 		return this.page.getByTestId('mfa-login-form');
+	}
+
+	getForm(): Locator {
+		return this.container;
 	}
 
 	getMfaCodeField(): Locator {
@@ -16,18 +20,6 @@ export class MfaLoginPage extends BasePage {
 
 	getMfaRecoveryCodeField(): Locator {
 		return this.getForm().locator('input[name="mfaRecoveryCode"]');
-	}
-
-	getEnterRecoveryCodeButton(): Locator {
-		return this.page.getByTestId('mfa-enter-recovery-code-button');
-	}
-
-	getSubmitButton(): Locator {
-		return this.page.getByRole('button', { name: /^(Continue|Verify)$/ });
-	}
-
-	async goToMfaLogin(): Promise<void> {
-		await this.page.goto('/mfa');
 	}
 
 	async fillMfaCode(code: string): Promise<void> {
@@ -40,10 +32,6 @@ export class MfaLoginPage extends BasePage {
 
 	async clickEnterRecoveryCode(): Promise<void> {
 		await this.clickByTestId('mfa-enter-recovery-code-button');
-	}
-
-	async clickSubmit(): Promise<void> {
-		await this.getSubmitButton().click();
 	}
 
 	/**

@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import dateformat from 'dateformat';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
+import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -11,10 +12,11 @@ import { useCredentialsStore } from '../credentials.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 import {
 	N8nActionToggle,
@@ -51,11 +53,8 @@ const message = useMessage();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
-
-const isDynamicCredentialsEnabled = computed(() =>
-	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
-);
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { hasDependencies } = useDependencies();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() =>
@@ -94,6 +93,8 @@ const formattedCreatedAtDate = computed(() => {
 		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
 });
+
+const credentialHasDependents = computed(() => hasDependencies(props.data.id));
 
 function onClick() {
 	emit('click', props.data.id);
@@ -190,6 +191,13 @@ function moveResource() {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<DependencyPill
+					v-if="credentialHasDependents"
+					resource-type="credential"
+					:resource-id="data.id"
+					source="credential_card"
+					data-test-id="credential-card-dependents"
+				/>
 				<ProjectCardBadge
 					:class="$style.cardBadge"
 					:resource="data"
@@ -239,6 +247,7 @@ function moveResource() {
 
 .cardActions {
 	display: flex;
+	gap: var(--spacing--2xs);
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;

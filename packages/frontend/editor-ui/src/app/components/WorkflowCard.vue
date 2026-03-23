@@ -19,6 +19,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -47,7 +48,8 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -109,7 +111,8 @@ const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
 const mcp = useMcp();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { hasDependencies } = useDependencies();
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -182,11 +185,14 @@ const actions = computed(() => {
 			label: locale.baseText('workflows.item.open'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
 		},
-		{
+	];
+
+	if (workflowPermissions.value.share) {
+		items.push({
 			label: locale.baseText('workflows.item.share'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
-		},
-	];
+		});
+	}
 
 	if (
 		workflowPermissions.value.read &&
@@ -234,7 +240,7 @@ const actions = computed(() => {
 
 	if (
 		isWorkflowPublished.value &&
-		workflowPermissions.value.update &&
+		workflowPermissions.value.unpublish &&
 		!props.readOnly &&
 		!props.data.isArchived
 	) {
@@ -254,13 +260,11 @@ const actions = computed(() => {
 			items.push({
 				label: locale.baseText('workflows.item.disableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
-				disabled: !props.data.active,
 			});
 		} else {
 			items.push({
 				label: locale.baseText('workflows.item.enableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS,
-				disabled: !props.data.active,
 			});
 		}
 	}
@@ -293,10 +297,6 @@ const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
 });
 
-const isDynamicCredentialsEnabled = computed(() =>
-	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
-);
-
 const hasDynamicCredentials = computed(() => {
 	return isDynamicCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
@@ -308,6 +308,8 @@ const isResolverMissing = computed(() => {
 		!props.data.settings?.credentialResolverId
 	);
 });
+
+const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
@@ -670,6 +672,13 @@ const tags = computed(
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<DependencyPill
+					v-if="workflowHasDependencies"
+					resource-type="workflow"
+					:resource-id="data.id"
+					source="workflow_card"
+					data-test-id="workflow-card-dependencies"
+				/>
 				<ProjectCardBadge
 					v-if="showOwnershipBadge"
 					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
@@ -697,7 +706,6 @@ const tags = computed(
 						</N8nBreadcrumbs>
 					</div>
 				</ProjectCardBadge>
-
 				<N8nText
 					v-if="data.isArchived"
 					color="text-light"
@@ -837,7 +845,6 @@ const tags = computed(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	margin-left: var(--spacing--2xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-radius: var(--spacing--4xs);
 	border: var(--border);

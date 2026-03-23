@@ -1,13 +1,15 @@
 import type { Scope } from '@n8n/permissions';
 import {
-	type JINA_AI_TOOL_NODE_TYPE,
-	type SERP_API_TOOL_NODE_TYPE,
-	type INode,
+	CHAT_TOOL_NODE_TYPE,
 	type ChunkType,
+	DATA_TABLE_TOOL_NODE_TYPE,
+	type INode,
 	INodeSchema,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from './zod-class';
 
 /**
  * Supported AI model providers
@@ -28,7 +30,25 @@ export const chatHubLLMProviderSchema = z.enum([
 	'cohere',
 	'mistralCloud',
 ]);
+
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
+
+export const chatHubVectorStoreProviderSchema = z.enum(['pgvector', 'qdrant', 'pinecone']);
+
+export type ChatHubVectorStoreProvider = z.infer<typeof chatHubVectorStoreProviderSchema>;
+
+export type ChatHubAgentKnowledgeItemStatus = 'indexing' | 'indexed' | 'error';
+
+export interface ChatHubAgentKnowledgeItem {
+	id: string;
+	type: 'embedding';
+	provider: ChatHubLLMProvider;
+	fileName: string;
+	mimeType: string;
+	status?: ChatHubAgentKnowledgeItemStatus;
+	error?: string;
+	createdAt?: string;
+}
 
 /**
  * Schema for icon or emoji representation
@@ -52,14 +72,14 @@ export const chatHubProviderSchema = z.enum([
 ] as const);
 export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
 
+export const chatHubSessionTypeSchema = z.enum(['production', 'manual']);
+export type ChatHubSessionType = z.infer<typeof chatHubSessionTypeSchema>;
+
 /**
  * Map of providers to their credential types
  * Only LLM providers (openai, anthropic, google) have credentials
  */
-export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
-	Exclude<ChatHubProvider, 'n8n' | 'custom-agent'>,
-	string
-> = {
+export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubLLMProvider, string> = {
 	openai: 'openAiApi',
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',
@@ -76,7 +96,12 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	mistralCloud: 'mistralCloudApi',
 };
 
-export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE | typeof SERP_API_TOOL_NODE_TYPE;
+export const VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubVectorStoreProvider, string> =
+	{
+		pgvector: 'chatHubVectorStorePGVectorApi',
+		qdrant: 'chatHubVectorStoreQdrantApi',
+		pinecone: 'chatHubVectorStorePineconeApi',
+	};
 
 /**
  * Chat Hub conversation model configuration
@@ -224,10 +249,9 @@ export const chatModelsRequestSchema = z.object({
 
 export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
 
-export type ChatHubInputModality = 'text' | 'image' | 'audio' | 'video' | 'file';
-
 export interface ChatModelMetadataDto {
-	inputModalities: ChatHubInputModality[];
+	allowFileUploads: boolean;
+	allowedFilesMimeTypes: string;
 	priority?: number; // Order on the model picker list, higher means first, default 0
 	capabilities: {
 		functionCalling: boolean;
@@ -246,6 +270,7 @@ export interface ChatModelDto {
 	metadata: ChatModelMetadataDto;
 	groupName: string | null;
 	groupIcon: AgentIconOrEmoji | null;
+	suggestedPrompts?: Array<{ text: string; icon?: AgentIconOrEmoji }>;
 }
 
 /**
@@ -325,7 +350,22 @@ export class ChatHubSendMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
-	tools: z.array(INodeSchema),
+	attachments: z.array(chatAttachmentSchema),
+	agentName: z.string().optional(),
+	timeZone: TimeZoneSchema,
+}) {}
+
+/**
+ * Request schema for sending a message via the manual (draft) execution path.
+ * The workflowId comes from the URL param; model and credentials are not needed
+ * because the draft workflow provides its own configuration.
+ * Requires workflow:execute permission (not available to chat-only users).
+ */
+export class ChatHubManualSendMessageRequest extends Z.class({
+	messageId: z.string().uuid(),
+	sessionId: z.string().uuid(),
+	message: z.string(),
+	previousMessageId: z.string().uuid().nullable(),
 	attachments: z.array(chatAttachmentSchema),
 	agentName: z.string().optional(),
 	timeZone: TimeZoneSchema,
@@ -339,6 +379,13 @@ export class ChatHubRegenerateMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
+	timeZone: TimeZoneSchema,
+}) {}
+
+/**
+ * Manual (draft) regenerate — workflowId comes from the URL param.
+ */
+export class ChatHubManualRegenerateMessageRequest extends Z.class({
 	timeZone: TimeZoneSchema,
 }) {}
 
@@ -357,6 +404,17 @@ export class ChatHubEditMessageRequest extends Z.class({
 	timeZone: TimeZoneSchema,
 }) {}
 
+/**
+ * Manual (draft) edit — workflowId comes from the URL param.
+ */
+export class ChatHubManualEditMessageRequest extends Z.class({
+	message: z.string(),
+	messageId: z.string().uuid(),
+	newAttachments: z.array(chatAttachmentSchema),
+	keepAttachmentIndices: z.array(z.number()),
+	timeZone: TimeZoneSchema,
+}) {}
+
 export class ChatHubUpdateConversationRequest extends Z.class({
 	title: z.string().optional(),
 	credentialId: z.string().max(36).optional(),
@@ -366,7 +424,7 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 			name: z.string(),
 		})
 		.optional(),
-	tools: z.array(INodeSchema).optional(),
+	toolIds: z.array(z.string().uuid()).optional(),
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
@@ -387,9 +445,10 @@ export interface ChatHubSessionDto {
 	agentId: string | null;
 	agentName: string;
 	agentIcon: AgentIconOrEmoji | null;
+	type: ChatHubSessionType;
 	createdAt: string;
 	updatedAt: string;
-	tools: INode[];
+	toolIds: string[];
 }
 
 export type ChatMessageContentChunk =
@@ -439,6 +498,7 @@ export interface ChatHubMessageDto {
 export class ChatHubConversationsRequest extends Z.class({
 	limit: z.coerce.number().int().min(1).max(100),
 	cursor: z.string().uuid().optional(),
+	type: chatHubSessionTypeSchema.optional(),
 }) {}
 
 export interface ChatHubConversationsResponse {
@@ -456,17 +516,28 @@ export interface ChatHubConversationResponse {
 	conversation: ChatHubConversationDto;
 }
 
+export const suggestedPromptSchema = z.object({
+	text: z.string().min(1).max(256),
+	icon: agentIconOrEmojiSchema.optional(),
+});
+
+export const suggestedPromptsSchema = z.array(suggestedPromptSchema).max(6);
+
+export type SuggestedPrompt = z.infer<typeof suggestedPromptSchema>;
+
 export interface ChatHubAgentDto {
 	id: string;
 	name: string;
 	description: string | null;
 	icon: AgentIconOrEmoji | null;
+	suggestedPrompts: SuggestedPrompt[];
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;
 	provider: ChatHubLLMProvider;
 	model: string;
-	tools: INode[];
+	files: ChatHubAgentKnowledgeItem[];
+	toolIds: string[];
 	createdAt: string;
 	updatedAt: string;
 }
@@ -475,22 +546,24 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
 	icon: agentIconOrEmojiSchema,
-	systemPrompt: z.string().min(1),
+	systemPrompt: z.string().default(''),
+	suggestedPrompts: suggestedPromptsSchema.optional(),
 	credentialId: z.string(),
 	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
-	tools: z.array(INodeSchema),
+	toolIds: z.array(z.string().uuid()),
 }) {}
 
 export class ChatHubUpdateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128).optional(),
 	description: z.string().max(512).optional(),
 	icon: agentIconOrEmojiSchema.optional(),
-	systemPrompt: z.string().min(1).optional(),
+	systemPrompt: z.string().optional(),
+	suggestedPrompts: suggestedPromptsSchema.optional(),
 	credentialId: z.string().optional(),
 	provider: chatHubLLMProviderSchema.optional(),
 	model: z.string().max(64).optional(),
-	tools: z.array(INodeSchema).optional(),
+	toolIds: z.array(z.string().uuid()).optional(),
 }) {}
 
 export interface MessageChunk {
@@ -517,6 +590,8 @@ const chatProviderSettingsSchema = z.object({
 			isManual: z.boolean().optional(),
 		}),
 	),
+	responsesApiEnabled: z.boolean().optional(),
+	contextWindowLength: z.number().int().min(1).max(256).optional(),
 	createdAt: z.string(),
 	updatedAt: z.string().nullable(),
 });
@@ -527,9 +602,22 @@ export class UpdateChatSettingsRequest extends Z.class({
 	payload: chatProviderSettingsSchema,
 }) {}
 
+export class ChatHubSemanticSearchSettings extends Z.class({
+	vectorStore: z.object({
+		provider: chatHubVectorStoreProviderSchema,
+		credentialId: z.string().nullable(),
+	}),
+	embeddingModel: z.object({
+		provider: chatHubLLMProviderSchema,
+		credentialId: z.string().nullable(),
+	}),
+}) {}
+
 export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+	semanticSearch: ChatHubSemanticSearchSettings;
+	agentUploadMaxSizeMb: number;
 }
 
 /**
@@ -613,3 +701,35 @@ export const chatHubMessageWithButtonsSchema = z.object({
 });
 
 export type ChatHubMessageWithButtons = z.infer<typeof chatHubMessageWithButtonsSchema>;
+
+/**
+ * DTO for a configured chat hub tool
+ */
+export interface ChatHubToolDto {
+	definition: INode;
+	enabled: boolean;
+}
+
+/** Tool types blocked for ALL users in the Chat Hub. */
+export const ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES: string[] = [CHAT_TOOL_NODE_TYPE];
+
+/** Additional tool types blocked for chat-only users (global:chatUser). */
+export const CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES: string[] = [
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+	DATA_TABLE_TOOL_NODE_TYPE,
+];
+
+/**
+ * Request schema for creating a chat hub tool
+ */
+export class ChatHubCreateToolRequest extends Z.class({
+	definition: INodeSchema,
+}) {}
+
+/**
+ * Request schema for updating a chat hub tool
+ */
+export class ChatHubUpdateToolRequest extends Z.class({
+	definition: INodeSchema.optional(),
+	enabled: z.boolean().optional(),
+}) {}
