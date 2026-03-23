@@ -646,6 +646,20 @@ describe('TelemetryEventRelay', () => {
 				project_ids: ['project1', 'project2', 'project3'],
 			});
 		});
+
+		it('should track on `external-secrets-system-roles-toggled` event', () => {
+			const event: RelayEventMap['external-secrets-system-roles-toggled'] = {
+				userId: 'user123',
+				enabled: true,
+			};
+
+			eventService.emit('external-secrets-system-roles-toggled', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User toggled external secrets system roles', {
+				user_id: 'user123',
+				enabled: true,
+			});
+		});
 	});
 
 	describe('public API events', () => {

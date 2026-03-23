@@ -98,6 +98,8 @@ export class TelemetryEventRelay extends EventRelay {
 				this.externalSecretsConnectionUpdated(event),
 			'external-secrets-connection-deleted': (event) =>
 				this.externalSecretsConnectionDeleted(event),
+			'external-secrets-system-roles-toggled': (event) =>
+				this.externalSecretsSystemRolesToggled(event),
 			'public-api-invoked': (event) => this.publicApiInvoked(event),
 			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
 			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
@@ -395,6 +397,16 @@ export class TelemetryEventRelay extends EventRelay {
 			vault_type: vaultType,
 			scope: projects.length === 0 ? 'global' : 'project',
 			project_ids: projects.map((project) => project.id),
+		});
+	}
+
+	private externalSecretsSystemRolesToggled({
+		userId,
+		enabled,
+	}: RelayEventMap['external-secrets-system-roles-toggled']) {
+		this.telemetry.track('User toggled external secrets system roles', {
+			user_id: userId,
+			enabled,
 		});
 	}
 
