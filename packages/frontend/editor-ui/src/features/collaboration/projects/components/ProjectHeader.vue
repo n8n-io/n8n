@@ -92,10 +92,14 @@ const globalVariablesPermissions = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
 );
 
+const externalSecretsProviderPermissions = computed(
+	() => getResourcePermissions(projectsStore.currentProject?.scopes).externalSecretsProvider,
+);
+
 const showSettings = computed(
 	() =>
 		!!route?.params?.projectId &&
-		!!projectPermissions.value.update &&
+		(!!projectPermissions.value.update || !!externalSecretsProviderPermissions.value.read) &&
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
 

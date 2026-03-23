@@ -359,6 +359,7 @@ export interface ICredentialType {
 	properties: INodeProperties[];
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
+	__skipManagedCreation?: boolean;
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,
@@ -1013,6 +1014,36 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
+export type CredentialCheckStatus = {
+	credentialId: string;
+	credentialName: string;
+	credentialType: string;
+	resolverId?: string;
+	status: 'missing' | 'configured' | 'resolver_missing';
+	authorizationUrl?: string;
+	revokeUrl?: string;
+};
+
+export type CredentialCheckResult = {
+	readyToExecute: boolean;
+	credentials: CredentialCheckStatus[];
+};
+
+export type DynamicCredentialCheckProxyProvider = {
+	checkCredentialStatus(
+		workflowId: string,
+		executionContext: IExecutionContext,
+	): Promise<CredentialCheckResult>;
+};
+
+export type CredentialCheckProxyFunctions = {
+	// Optional to account for situations where the dynamic-credentials module is disabled
+	checkCredentialStatus?(
+		workflowId: string,
+		executionContext: IExecutionContext,
+	): Promise<CredentialCheckResult>;
+};
+
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
 	setMetadata(metadata: ITaskMetadata): void;
@@ -1079,7 +1110,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
-			DataTableProxyFunctions & {
+			DataTableProxyFunctions &
+			CredentialCheckProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],
@@ -1368,9 +1400,42 @@ export type ChatNodeMessageWithButtons = {
 
 export type ChatNodeMessage = ChatNodeMessageWithButtons | string;
 
+/**
+ * Technical metadata preserved when an error is redacted.
+ * Contains only non-PII debugging information.
+ * Deliberately excludes: message, description, messages[], cause,
+ * context, and errorResponse — all of which may contain PII.
+ */
+export interface IRedactedErrorInfo {
+	/** Constructor name of the original error class, e.g. 'NodeApiError' */
+	type: string;
+	/** HTTP status code from NodeApiError, e.g. '404', '500', null */
+	httpCode?: string | null;
+}
+
 export interface INodeExecutionRedactionInfo {
 	redacted: true;
 	reason: string;
+	/**
+	 * When present, indicates the item's `error` field was redacted.
+	 * Contains only non-PII technical metadata. Placeholder for future smart filtering.
+	 */
+	error?: IRedactedErrorInfo;
+}
+
+/**
+ * Marker placed on an `item.json` field when it has been redacted by a
+ * node-declared field redaction strategy.  A typed object (not `null` or a
+ * string) so consumers can distinguish intentional redaction from absent data.
+ *
+ * `canReveal` controls whether the UI should offer an option to unmask the
+ * value.  For credential-equivalent fields (e.g. auth headers) this is always
+ * `false`; future strategies may produce `true` for less-sensitive fields.
+ */
+export interface IRedactedFieldMarker {
+	__redacted: true;
+	reason: 'node_defined_field';
+	canReveal: boolean;
 }
 
 export interface INodeExecutionData {
@@ -2398,6 +2463,13 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	features?: NodeFeaturesDefinition;
 	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
 	builderHint?: IBuilderHint;
+	/**
+	 * Dot-notation paths relative to `item.json` that contain
+	 * credential-equivalent sensitive data (e.g. `'headers.authorization'`).
+	 * These fields are always redacted regardless of workflow policy or user
+	 * permissions and are never revealable.
+	 */
+	sensitiveOutputFields?: string[];
 }
 
 export type TriggerPanelDefinition = {
@@ -2700,6 +2772,11 @@ export interface ITaskData extends ITaskStartedData {
 	data?: ITaskDataConnections;
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
+	/**
+	 * When present, indicates `error` was redacted.
+	 * Contains only non-PII technical metadata from the original error.
+	 */
+	redactedError?: IRedactedErrorInfo;
 	metadata?: ITaskMetadata;
 	/** True when at least one credential used by this node was resolved dynamically */
 	usedDynamicCredentials?: boolean;
@@ -2816,6 +2893,7 @@ export interface IWorkflowExecutionDataProcess {
 	workflowData: IWorkflowBase;
 	userId?: string;
 	projectId?: string;
+	projectName?: string;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;
@@ -3208,6 +3286,7 @@ export interface ExecutionSummary {
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
+	workflowVersionId?: string | null;
 	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;

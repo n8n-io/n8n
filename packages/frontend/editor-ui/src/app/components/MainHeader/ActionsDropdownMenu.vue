@@ -121,7 +121,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		},
 	];
 
-	if (isSharingEnabled.value) {
+	if (isSharingEnabled.value && props.workflowPermissions.share) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.SHARE,
 			label: locale.baseText('workflowDetails.share'),

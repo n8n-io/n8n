@@ -17,6 +17,7 @@ import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
+import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
@@ -33,6 +34,7 @@ import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowPublishHistory } from './workflow-publish-history';
+import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
@@ -65,6 +67,7 @@ export {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,
@@ -75,6 +78,7 @@ export {
 	TestCaseExecution,
 	ExecutionEntity,
 	ProjectSecretsProviderAccess,
+	type SecretsProviderAccessRole,
 	SecretsProviderConnection,
 };
 
@@ -103,6 +107,7 @@ export const entities = {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,

@@ -1,9 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import type { LogMetadata } from 'n8n-workflow';
 
 import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
 
 type RetryOperation = () => Promise<{ success: boolean; error?: Error }>;
+type LogMethod = (message: string, metadata?: LogMetadata) => void;
 
 interface RetryInfo {
 	timeout: NodeJS.Timeout;
@@ -20,8 +22,21 @@ interface RetryInfo {
 export class ExternalSecretsRetryManager {
 	private retries = new Map<string, RetryInfo>();
 
-	constructor(private readonly logger: Logger) {
-		this.logger = this.logger.scoped('external-secrets');
+	private readonly logger: Record<'debug' | 'error' | 'warn' | 'info', LogMethod>;
+
+	constructor(logger: Logger) {
+		const scopedLogger = logger.scoped('external-secrets');
+		const withPrefix =
+			(level: 'debug' | 'error' | 'warn' | 'info'): LogMethod =>
+			(message, metadata?) =>
+				scopedLogger[level](`External secrets: ${message}`, metadata);
+
+		this.logger = {
+			debug: withPrefix('debug'),
+			error: withPrefix('error'),
+			warn: withPrefix('warn'),
+			info: withPrefix('info'),
+		};
 	}
 
 	async runWithRetry(
