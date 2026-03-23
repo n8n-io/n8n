@@ -104,6 +104,11 @@ $--mode-selector-width: 92px;
 	}
 }
 
+/** NOTE (@heymynameisrob): Manual override to match legacy size of Select. Will need removing when sizes are unified **/
+.selectInput {
+	--input--height: 30px !important;
+}
+
 .selectInput input {
 	overflow: hidden;
 	text-overflow: ellipsis;
