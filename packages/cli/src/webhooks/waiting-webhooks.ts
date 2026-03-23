@@ -28,6 +28,8 @@ import type {
 	WaitingWebhookRequest,
 } from './webhook.types';
 
+import { EventService } from '@/events/event.service';
+
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
@@ -52,6 +54,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly webhookService: WebhookService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly eventService: EventService,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
@@ -183,6 +186,8 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		applyCors(req, res);
 
+		this.emitExecutionResumedEvent(execution, executionId, lastNodeExecuted);
+
 		return await this.getWebhookExecutionData({
 			execution,
 			req,
@@ -190,6 +195,25 @@ export class WaitingWebhooks implements IWebhookManager {
 			lastNodeExecuted,
 			executionId,
 			suffix,
+		});
+	}
+
+	private emitExecutionResumedEvent(
+		execution: IExecutionResponse,
+		executionId: string,
+		lastNodeExecuted: string,
+	) {
+		const resumeSource: 'webhook' | 'form' = this.includeForms ? 'form' : 'webhook';
+		const resumedNode = execution.workflowData.nodes.find((n) => n.name === lastNodeExecuted);
+		this.eventService.emit('execution-resumed', {
+			executionId,
+			workflowId: execution.workflowData.id,
+			workflowName: execution.workflowData.name,
+			nodeName: lastNodeExecuted,
+			nodeId: resumedNode?.id,
+			nodeType: resumedNode?.type,
+			resumeSource,
+			responseAt: new Date(),
 		});
 	}
 
@@ -239,6 +263,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
 		});
+
 		const webhookData = this.webhookService
 			.getNodeWebhooks(workflow, workflowStartNode, additionalData)
 			.find(

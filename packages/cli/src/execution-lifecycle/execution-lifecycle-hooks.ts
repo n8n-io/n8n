@@ -22,6 +22,7 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
+import { WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import type { RedactableExecution } from '@/executions/execution-redaction';
@@ -142,7 +143,23 @@ function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: st
 		eventService.emit('workflow-pre-execute', { executionId, data: workflowData, mode });
 	});
 	hooks.addHandler('workflowExecuteAfter', function (runData) {
-		if (runData.status === 'waiting') return;
+		if (runData.status === 'waiting') {
+			const { executionId, workflowData: workflow } = this;
+			const lastNodeName = runData.data.resultData.lastNodeExecuted ?? '';
+			const node = workflow.nodes.find((n) => n.name === lastNodeName);
+			const isIndefinite = runData.waitTill?.getTime() === WAIT_INDEFINITELY.getTime();
+
+			eventService.emit('execution-waiting', {
+				executionId,
+				workflowId: workflow.id,
+				workflowName: workflow.name,
+				nodeName: lastNodeName,
+				nodeId: node?.id,
+				nodeType: node?.type,
+				waitTill: isIndefinite ? null : (runData.waitTill ?? null),
+			});
+			return;
+		}
 
 		const { executionId, workflowData: workflow } = this;
 
