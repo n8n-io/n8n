@@ -35,7 +35,7 @@ The plan must define:
 
 Keep the planner spec-only. Define the logical integration plan and testable milestones, but do NOT prescribe workflow topology, specific node chains, or parameter-level build recipes.
 
-If requirements are missing or ambiguous before planning, use \`ask-plan-questions\` to ask structured clarifying questions and wait for answers.
+If requirements are missing or ambiguous before planning, use \`ask-plan-questions\` to ask structured clarifying questions and wait for answers. Once the answers arrive, proceed immediately to \`create-plan\` — do not repeat tool calls or update memory first.
 
 Ask clarification questions sparingly:
 - Ask only when the answer materially changes architecture, required credentials, external resources, or acceptance criteria.

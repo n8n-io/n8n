@@ -46,7 +46,11 @@ export function createAskPlanQuestionsTool() {
 				),
 		}),
 		outputSchema: z.object({
-			answered: z.boolean(),
+			answered: z
+				.boolean()
+				.describe(
+					'When true, answers are available — proceed immediately to create-plan. Do not call other tools first.',
+				),
 			answers: z.array(instanceAiQuestionResponseSchema).optional(),
 		}),
 		suspendSchema: z.object({
