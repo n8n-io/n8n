@@ -184,6 +184,7 @@ function onExecuteWithMockData() {
 }
 
 async function onExecute() {
+	if (isExecutionBlocked.value) return;
 	await execute(() => emit('workflowExecuted'));
 }
 
