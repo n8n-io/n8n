@@ -598,6 +598,12 @@ export interface SpawnBackgroundTaskOptions {
 	) => Promise<string | BackgroundTaskResult>;
 }
 
+export interface WorkflowTaskService {
+	reportVerificationVerdict(verdict: VerificationResult): Promise<WorkflowLoopAction>;
+	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
+	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
+}
+
 // ── Orchestration context (plan + delegate tools) ───────────────────────────
 
 export interface OrchestrationContext {
@@ -644,15 +650,8 @@ export interface OrchestrationContext {
 	iterationLog?: IterationLog;
 	/** Send a correction message to a running background task */
 	sendCorrectionToTask?: (taskId: string, correction: string) => void;
-	/** Report a verification verdict to the deterministic workflow loop controller */
-	reportVerificationVerdict?: (verdict: VerificationResult) => Promise<WorkflowLoopAction>;
-	/** Read a work item's build outcome from workflow loop storage */
-	getWorkItemBuildOutcome?: (workItemId: string) => Promise<WorkflowBuildOutcome | undefined>;
-	/** Update a work item's build outcome in workflow loop storage */
-	updateWorkItemBuildOutcome?: (
-		workItemId: string,
-		update: Partial<WorkflowBuildOutcome>,
-	) => Promise<void>;
+	/** Shared workflow-task state service for build / verify / credential-finalize flows */
+	workflowTaskService?: WorkflowTaskService;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────

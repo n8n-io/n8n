@@ -60,11 +60,11 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 			guidance: z.string(),
 		}),
 		execute: async (input) => {
-			if (!context.reportVerificationVerdict) {
+			if (!context.workflowTaskService) {
 				return { guidance: 'Error: verification verdict reporting not available.' };
 			}
 
-			const action = await context.reportVerificationVerdict({
+			const action = await context.workflowTaskService.reportVerificationVerdict({
 				workItemId: input.workItemId,
 				workflowId: input.workflowId,
 				executionId: input.executionId,

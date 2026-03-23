@@ -670,11 +670,18 @@ export interface InstanceAiModelCredential {
 	provider: string;
 }
 
+const BUILDER_RENDER_HINT_TOOLS = new Set(['build-workflow-with-agent', 'workflow-build-flow']);
+const DATA_TABLE_RENDER_HINT_TOOLS = new Set([
+	'manage-data-tables-with-agent',
+	'agent-data-table-manager',
+]);
+const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
+
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'update-tasks') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
-	if (toolName === 'build-workflow-with-agent') return 'builder';
-	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
-	if (toolName === 'research-with-agent') return 'researcher';
+	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
+	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';
+	if (RESEARCH_RENDER_HINT_TOOLS.has(toolName)) return 'researcher';
 	return 'default';
 }

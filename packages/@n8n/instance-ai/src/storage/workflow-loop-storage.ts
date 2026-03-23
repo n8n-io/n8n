@@ -1,13 +1,13 @@
 import type { Memory } from '@mastra/memory';
 import { z } from 'zod';
 
-import { attemptRecordSchema } from '../workflow-loop/workflow-loop-state';
 import type {
 	AttemptRecord,
 	WorkflowBuildOutcome,
 	WorkflowLoopState,
 } from '../workflow-loop/workflow-loop-state';
 import {
+	attemptRecordSchema,
 	workflowBuildOutcomeSchema,
 	workflowLoopStateSchema,
 } from '../workflow-loop/workflow-loop-state';

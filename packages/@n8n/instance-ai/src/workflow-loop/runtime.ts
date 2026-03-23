@@ -1,4 +1,3 @@
-import { WorkflowLoopStorage } from '../storage/workflow-loop-storage';
 import { handleBuildOutcome, handleVerificationVerdict } from './workflow-loop-controller';
 import type {
 	WorkflowBuildOutcome,
@@ -6,6 +5,7 @@ import type {
 	WorkflowLoopAction,
 	WorkflowLoopState,
 } from './workflow-loop-state';
+import type { WorkflowLoopStorage } from '../storage/workflow-loop-storage';
 
 function createInitialState(threadId: string, outcome: WorkflowBuildOutcome): WorkflowLoopState {
 	return {

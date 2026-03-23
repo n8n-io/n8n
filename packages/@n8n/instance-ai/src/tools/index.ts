@@ -181,19 +181,17 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 					'browser-credential-setup': createBrowserCredentialSetupTool(context),
 				}
 			: {}),
-		...(context.reportVerificationVerdict
+		...(context.workflowTaskService
 			? {
 					'report-verification-verdict': createReportVerificationVerdictTool(context),
 				}
 			: {}),
-		...(context.getWorkItemBuildOutcome && context.domainContext
+		...(context.workflowTaskService && context.domainContext
 			? {
 					'verify-built-workflow': createVerifyBuiltWorkflowTool(context),
 				}
 			: {}),
-		...(context.getWorkItemBuildOutcome &&
-		context.updateWorkItemBuildOutcome &&
-		context.domainContext
+		...(context.workflowTaskService && context.domainContext
 			? {
 					'apply-workflow-credentials': createApplyWorkflowCredentialsTool(context),
 				}

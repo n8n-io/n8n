@@ -317,6 +317,48 @@ describe('parseStoredMessages', () => {
 			expect(toolCalls[1].renderHint).toBe('builder');
 			expect(toolCalls[2].renderHint).toBe('data-table');
 		});
+
+		it('should apply renderHint correctly for workflow flow aliases in stored messages', () => {
+			const messages: MastraDBMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Go',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: {
+						format: 2,
+						content: '',
+						toolInvocations: [
+							{
+								state: 'result',
+								toolCallId: 'tc-1',
+								toolName: 'workflow-build-flow',
+								args: {},
+								result: { ok: true },
+							},
+							{
+								state: 'result',
+								toolCallId: 'tc-2',
+								toolName: 'agent-data-table-manager',
+								args: {},
+								result: { ok: true },
+							},
+						],
+					},
+					createdAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			const toolCalls = result[1].agentTree?.toolCalls ?? [];
+			expect(toolCalls[0].renderHint).toBe('builder');
+			expect(toolCalls[1].renderHint).toBe('data-table');
+		});
 	});
 
 	describe('internal enrichment stripping', () => {

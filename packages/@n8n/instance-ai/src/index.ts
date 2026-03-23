@@ -55,6 +55,16 @@ export type {
 	StartedRunState,
 	SuspendedRunState,
 } from './runtime/run-state-registry';
+export { executeResumableStream } from './runtime/resumable-stream-executor';
+export type {
+	AutoResumeControl,
+	ExecuteResumableStreamOptions,
+	ExecuteResumableStreamResult,
+	ManualSuspensionControl,
+	ResumableStreamContext,
+	ResumableStreamControl,
+	ResumableStreamSource,
+} from './runtime/resumable-stream-executor';
 export { resumeAgentRun, streamAgentRun } from './runtime/stream-runner';
 export type {
 	StreamableAgent,
@@ -67,6 +77,7 @@ export {
 	handleBuildOutcome,
 	handleVerificationVerdict,
 	formatAttemptHistory,
+	WorkflowTaskCoordinator,
 	workflowBuildOutcomeSchema,
 	attemptRecordSchema,
 	workflowLoopStateSchema,
@@ -99,6 +110,7 @@ export type {
 	OrchestrationContext,
 	SpawnBackgroundTaskOptions,
 	BackgroundTaskResult,
+	WorkflowTaskService,
 	WorkflowSummary,
 	WorkflowDetail,
 	WorkflowNode,

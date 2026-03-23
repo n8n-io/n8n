@@ -19,19 +19,17 @@ import {
 	McpClientManager,
 	BuilderSandboxFactory,
 	SnapshotManager,
-	workflowBuildOutcomeSchema,
 	createDomainAccessTracker,
 	AgentTreeSnapshotStorage,
 	BackgroundTaskManager,
 	buildAgentTreeFromEvents,
 	enrichMessageWithBackgroundTasks,
-	formatWorkflowLoopGuidance,
 	MastraIterationLogStorage,
 	MastraTaskStorage,
 	resumeAgentRun,
 	RunStateRegistry,
 	streamAgentRun,
-	WorkflowLoopRuntime,
+	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 } from '@n8n/instance-ai';
 import type {
@@ -42,8 +40,6 @@ import type {
 	OrchestrationContext,
 	SandboxConfig,
 	SpawnBackgroundTaskOptions,
-	VerificationResult,
-	WorkflowBuildOutcome,
 	StreamableAgent,
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
@@ -60,12 +56,6 @@ import { InstanceAiCompactionService } from './compaction.service';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
-}
-
-/** Try to parse a record as a WorkflowBuildOutcome. Returns undefined if invalid. */
-function parseOutcome(raw: unknown): WorkflowBuildOutcome | undefined {
-	const result = workflowBuildOutcomeSchema.safeParse(raw);
-	return result.success ? result.data : undefined;
 }
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
@@ -504,7 +494,7 @@ export class InstanceAiService {
 			const iterationLog = new MastraIterationLogStorage(memory);
 			const snapshotStorage = new AgentTreeSnapshotStorage(memory);
 			const workflowLoopStorage = new WorkflowLoopStorage(memory);
-			const workflowLoopRuntime = new WorkflowLoopRuntime(workflowLoopStorage);
+			const workflowTasks = new WorkflowTaskCoordinator(threadId, workflowLoopStorage);
 
 			// Replay existing tasks to the new run's agentTree so the frontend shows them immediately
 			const existingTasks = await taskStorage.get(threadId);
@@ -560,23 +550,7 @@ export class InstanceAiService {
 				spawnBackgroundTask: (opts) => this.spawnBackgroundTask(runId, opts, snapshotStorage),
 				iterationLog,
 				sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
-				reportVerificationVerdict: async (verdict: VerificationResult) =>
-					await workflowLoopRuntime.applyVerificationVerdict(threadId, verdict),
-				getWorkItemBuildOutcome: async (workItemId: string) => {
-					const item = await workflowLoopStorage.getWorkItem(threadId, workItemId);
-					return item?.lastBuildOutcome ?? undefined;
-				},
-				updateWorkItemBuildOutcome: async (workItemId: string, update) => {
-					const item = await workflowLoopStorage.getWorkItem(threadId, workItemId);
-					if (!item?.lastBuildOutcome) return;
-					const updatedOutcome = { ...item.lastBuildOutcome, ...update };
-					await workflowLoopStorage.saveWorkItem(
-						threadId,
-						item.state,
-						item.attempts,
-						updatedOutcome,
-					);
-				},
+				workflowTaskService: workflowTasks,
 				workspace: sandboxEntry?.workspace,
 				builderSandboxFactory: this.builderSandboxFactory,
 				nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
@@ -617,7 +591,7 @@ export class InstanceAiService {
 			const enrichedMessage = await this.buildMessageWithBackgroundTasks(
 				threadId,
 				message,
-				workflowLoopRuntime,
+				workflowTasks,
 			);
 
 			// Compose runtime input: conversation summary → background tasks → user message
@@ -905,28 +879,14 @@ export class InstanceAiService {
 	private async buildMessageWithBackgroundTasks(
 		threadId: string,
 		message: string,
-		workflowLoopRuntime: WorkflowLoopRuntime,
+		workflowTasks: WorkflowTaskCoordinator,
 	): Promise<string> {
 		return await enrichMessageWithBackgroundTasks(
 			message,
 			this.backgroundTasks.drainCompletedTasks(threadId),
 			this.backgroundTasks.getRunningTasks(threadId),
 			{
-				formatCompletedTask: async (task) => {
-					let resultLine = `[Background task completed — ${task.role}]: ${task.result ?? ''}`;
-					if (task.role !== 'workflow-builder') return resultLine;
-
-					const outcome = parseOutcome(task.outcome);
-					if (!outcome) {
-						resultLine +=
-							'\n\nVERIFICATION: If a workflow was built, run it to verify before reporting to the user.';
-						return resultLine;
-					}
-
-					const action = await workflowLoopRuntime.applyBuildOutcome(task.threadId, outcome);
-					resultLine += `\n\n${formatWorkflowLoopGuidance(action, { workItemId: outcome.workItemId })}`;
-					return resultLine;
-				},
+				formatCompletedTask: async (task) => await workflowTasks.formatCompletedTaskMessage(task),
 			},
 		);
 	}

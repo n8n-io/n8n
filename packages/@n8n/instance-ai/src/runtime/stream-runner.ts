@@ -1,6 +1,6 @@
 import type { InstanceAiEventBus } from '../event-bus';
-import { mapMastraChunkToEvent } from '../stream/map-chunk';
-import { asResumable, parseSuspension } from '../utils/stream-helpers';
+import { executeResumableStream } from './resumable-stream-executor';
+import { asResumable } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
 export interface StreamableAgent {
@@ -32,7 +32,11 @@ export async function streamAgentRun(
 ): Promise<StreamRunResult> {
 	const result = await agent.stream(input, streamOptions);
 	const mastraRunId = typeof result.runId === 'string' ? result.runId : '';
-	return await consumeStream(result.fullStream, { ...options, mastraRunId });
+	return await consumeStream(
+		agent,
+		{ runId: result.runId, fullStream: result.fullStream },
+		{ ...options, mastraRunId },
+	);
 }
 
 export async function resumeAgentRun(
@@ -43,42 +47,42 @@ export async function resumeAgentRun(
 ): Promise<StreamRunResult> {
 	const resumed = await asResumable(agent).resumeStream(resumeData, resumeOptions);
 	const mastraRunId = (typeof resumed.runId === 'string' && resumed.runId) || options.mastraRunId;
-	return await consumeStream(resumed.fullStream, { ...options, mastraRunId });
+	return await consumeStream(
+		agent,
+		{ runId: resumed.runId, fullStream: resumed.fullStream, text: resumed.text },
+		{ ...options, mastraRunId },
+	);
 }
 
 async function consumeStream(
-	fullStream: AsyncIterable<unknown>,
+	agent: unknown,
+	stream: { runId?: string; fullStream: AsyncIterable<unknown>; text?: Promise<string> },
 	options: StreamRunOptions & { mastraRunId: string },
 ): Promise<StreamRunResult> {
-	let suspension: SuspensionInfo | undefined;
+	const result = await executeResumableStream({
+		agent,
+		stream,
+		context: {
+			threadId: options.threadId,
+			runId: options.runId,
+			agentId: options.agentId,
+			eventBus: options.eventBus,
+			signal: options.signal,
+		},
+		control: { mode: 'manual' },
+		initialMastraRunId: options.mastraRunId,
+	});
 
-	for await (const chunk of fullStream) {
-		if (options.signal.aborted) {
-			return { status: 'cancelled', mastraRunId: options.mastraRunId };
-		}
-
-		const parsedSuspension = parseSuspension(chunk);
-		if (parsedSuspension) {
-			suspension = parsedSuspension;
-		}
-
-		const event = mapMastraChunkToEvent(options.runId, options.agentId, chunk);
-		if (event) {
-			options.eventBus.publish(options.threadId, event);
-		}
-	}
-
-	if (options.signal.aborted) {
-		return { status: 'cancelled', mastraRunId: options.mastraRunId };
-	}
-
-	if (suspension) {
+	if (result.status === 'suspended' && result.suspension) {
 		return {
 			status: 'suspended',
-			mastraRunId: options.mastraRunId,
-			suspension,
+			mastraRunId: result.mastraRunId,
+			suspension: result.suspension,
 		};
 	}
 
-	return { status: 'completed', mastraRunId: options.mastraRunId };
+	return {
+		status: result.status === 'cancelled' ? 'cancelled' : 'completed',
+		mastraRunId: result.mastraRunId,
+	};
 }

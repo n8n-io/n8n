@@ -77,7 +77,7 @@ describe('AgentTreeSnapshotStorage', () => {
 
 			await storage.save('thread-1', newTree, 'run_2');
 
-			const savedMetadata = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			const savedMetadata = memory.updateThread.mock.calls[0][0].metadata;
 			expect(savedMetadata.instanceAiRunSnapshots).toHaveLength(2);
 			expect(savedMetadata.instanceAiRunSnapshots[0].runId).toBe('run_1');
 			expect(savedMetadata.instanceAiRunSnapshots[1].runId).toBe('run_2');
@@ -106,7 +106,7 @@ describe('AgentTreeSnapshotStorage', () => {
 
 			await storage.updateLast('thread-1', updatedTree, 'run_1');
 
-			const savedMetadata = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			const savedMetadata = memory.updateThread.mock.calls[0][0].metadata;
 			expect(savedMetadata.instanceAiRunSnapshots).toHaveLength(1);
 			expect(savedMetadata.instanceAiRunSnapshots[0].tree.textContent).toBe('Updated');
 		});
@@ -119,7 +119,7 @@ describe('AgentTreeSnapshotStorage', () => {
 
 			await storage.updateLast('thread-1', makeTree(), 'run_unknown');
 
-			const savedMetadata = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			const savedMetadata = memory.updateThread.mock.calls[0][0].metadata;
 			expect(savedMetadata.instanceAiRunSnapshots).toHaveLength(2);
 			expect(savedMetadata.instanceAiRunSnapshots[1].runId).toBe('run_unknown');
 		});
@@ -180,7 +180,7 @@ describe('AgentTreeSnapshotStorage', () => {
 
 			await storage.save('thread-1', makeTree(), 'run_2', 'mg_1', ['run_1', 'run_2']);
 
-			const saved = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			const saved = memory.updateThread.mock.calls[0][0].metadata;
 			expect(saved.instanceAiRunSnapshots[0].messageGroupId).toBe('mg_1');
 			expect(saved.instanceAiRunSnapshots[0].runIds).toEqual(['run_1', 'run_2']);
 		});
@@ -204,7 +204,7 @@ describe('AgentTreeSnapshotStorage', () => {
 				'run_2',
 			]);
 
-			const saved = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			const saved = memory.updateThread.mock.calls[0][0].metadata;
 			expect(saved.instanceAiRunSnapshots).toHaveLength(1);
 			expect(saved.instanceAiRunSnapshots[0].runId).toBe('run_2');
 			expect(saved.instanceAiRunSnapshots[0].messageGroupId).toBe('mg_1');
@@ -238,7 +238,7 @@ describe('AgentTreeSnapshotStorage', () => {
 				['run_1', 'run_2', 'run_3'],
 			);
 
-			const saved = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			const saved = memory.updateThread.mock.calls[0][0].metadata;
 			expect(saved.instanceAiRunSnapshots).toHaveLength(2);
 			expect(saved.instanceAiRunSnapshots[0].tree.textContent).toBe('First');
 			expect(saved.instanceAiRunSnapshots[1].tree.textContent).toBe('Updated newest');

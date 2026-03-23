@@ -28,15 +28,11 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 			error: z.string().optional(),
 		}),
 		execute: async (input) => {
-			if (
-				!context.getWorkItemBuildOutcome ||
-				!context.updateWorkItemBuildOutcome ||
-				!context.domainContext
-			) {
+			if (!context.workflowTaskService || !context.domainContext) {
 				return { success: false, error: 'Credential application support not available.' };
 			}
 
-			const buildOutcome = await context.getWorkItemBuildOutcome(input.workItemId);
+			const buildOutcome = await context.workflowTaskService.getBuildOutcome(input.workItemId);
 			if (!buildOutcome?.mockedCredentialsByNode) {
 				return {
 					success: false,
@@ -96,7 +92,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 			}
 
 			// Clear verification context from the build outcome
-			await context.updateWorkItemBuildOutcome(input.workItemId, {
+			await context.workflowTaskService.updateBuildOutcome(input.workItemId, {
 				mockedCredentialsByNode: undefined,
 				verificationPinData: undefined,
 				mockedNodeNames: undefined,
