@@ -6,8 +6,10 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
+	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { wordpressApiRequest, wordpressApiRequestAllItems } from './GenericFunctions';
 import { pageFields, pageOperations } from './PageDescription';
@@ -16,6 +18,8 @@ import { postFields, postOperations } from './PostDescription';
 import type { IPost } from './PostInterface';
 import { userFields, userOperations } from './UserDescription';
 import type { IUser } from './UserInterface';
+import { mediaFields, mediaOperations } from './MediaDescription';
+import type { IMedia } from './MediaInterface';
 
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
@@ -57,6 +61,10 @@ export class Wordpress implements INodeType {
 						name: 'User',
 						value: 'user',
 					},
+					{
+						name: 'Media',
+						value: 'media',
+					},
 				],
 				default: 'post',
 			},
@@ -66,6 +74,8 @@ export class Wordpress implements INodeType {
 			...pageFields,
 			...userOperations,
 			...userFields,
+			...mediaOperations,
+			...mediaFields,
 		],
 	};
 
@@ -605,6 +615,215 @@ export class Wordpress implements INodeType {
 						qs.reassign = reassign;
 						qs.force = true;
 						responseData = await wordpressApiRequest.call(this, 'DELETE', '/users/me', {}, qs);
+					}
+				}
+				if (resource === 'media') {
+					//https://developer.wordpress.org/rest-api/reference/media/#create-a-media-item
+					if (operation === 'create') {
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const fileName = this.getNodeParameter('fileName', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						const binaryData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+						const binaryDataOptions = this.helpers.assertBinaryData(i, binaryPropertyName);
+
+						const body: IDataObject = {};
+
+						if (additionalFields.title) {
+							body.title = additionalFields.title as string;
+						}
+						if (additionalFields.caption) {
+							body.caption = additionalFields.caption as string;
+						}
+						if (additionalFields.description) {
+							body.description = additionalFields.description as string;
+						}
+						if (additionalFields.altText) {
+							body.alt_text = additionalFields.altText as string;
+						}
+						if (additionalFields.postId) {
+							body.post = additionalFields.postId as number;
+						}
+						if (additionalFields.authorId) {
+							body.author = additionalFields.authorId as number;
+						}
+						if (additionalFields.commentStatus) {
+							body.comment_status = additionalFields.commentStatus as string;
+						}
+						if (additionalFields.pingStatus) {
+							body.ping_status = additionalFields.pingStatus as string;
+						}
+
+						const options: IRequestOptions = {
+							headers: {
+								Accept: 'application/json',
+								'Content-Type': binaryDataOptions.mimeType,
+								'Content-Disposition': `attachment; filename="${
+									fileName || binaryDataOptions.fileName
+								}"`,
+								'User-Agent': 'n8n',
+							},
+							body: binaryData,
+							json: false,
+						};
+
+						responseData = await wordpressApiRequest.call(
+							this,
+							'POST',
+							'/media',
+							{},
+							{},
+							undefined,
+							options as IDataObject,
+						);
+
+						if (typeof responseData === 'string') {
+							try {
+								responseData = JSON.parse(responseData);
+							} catch (error) {
+								throw new NodeApiError(this.getNode(), responseData as unknown as JsonObject, {
+									message: 'Invalid JSON response from WordPress',
+								});
+							}
+						}
+
+						if (Object.keys(body).length > 0) {
+							const mediaId = responseData.id;
+							responseData = await wordpressApiRequest.call(
+								this,
+								'POST',
+								`/media/${mediaId}`,
+								body,
+							);
+						}
+					}
+					//https://developer.wordpress.org/rest-api/reference/media/#update-a-media-item
+					if (operation === 'update') {
+						const mediaId = this.getNodeParameter('mediaId', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i);
+						const body: IMedia = {
+							id: parseInt(mediaId, 10),
+						};
+
+						if (updateFields.title) {
+							body.title = updateFields.title as string;
+						}
+						if (updateFields.caption) {
+							body.caption = updateFields.caption as string;
+						}
+						if (updateFields.description) {
+							body.description = updateFields.description as string;
+						}
+						if (updateFields.altText) {
+							body.alt_text = updateFields.altText as string;
+						}
+						if (updateFields.postId) {
+							body.post = parseInt(updateFields.postId as string, 10);
+						}
+						if (updateFields.authorId) {
+							body.author = updateFields.authorId as number;
+						}
+						if (updateFields.commentStatus) {
+							body.comment_status = updateFields.commentStatus as string;
+						}
+						if (updateFields.pingStatus) {
+							body.ping_status = updateFields.pingStatus as string;
+						}
+
+						responseData = await wordpressApiRequest.call(this, 'POST', `/media/${mediaId}`, body);
+					}
+					//https://developer.wordpress.org/rest-api/reference/media/#retrieve-a-media-item
+					if (operation === 'get') {
+						const mediaId = this.getNodeParameter('mediaId', i) as string;
+						const options = this.getNodeParameter('options', i);
+						if (options.context) {
+							qs.context = options.context as string;
+						}
+						responseData = await wordpressApiRequest.call(this, 'GET', `/media/${mediaId}`, {}, qs);
+					}
+					//https://developer.wordpress.org/rest-api/reference/media/#list-media
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
+
+						if (options.context) {
+							qs.context = options.context as string;
+						}
+						if (options.orderBy) {
+							qs.orderby = options.orderBy as string;
+						}
+						if (options.order) {
+							qs.order = options.order as string;
+						}
+						if (options.search) {
+							qs.search = options.search as string;
+						}
+						if (options.after) {
+							qs.after = options.after as string;
+						}
+						if (options.author) {
+							qs.author = options.author as number[];
+						}
+						if (options.before) {
+							qs.before = options.before as string;
+						}
+						if (options.exclude) {
+							qs.exclude = options.exclude as number[];
+						}
+						if (options.include) {
+							qs.include = options.include as number[];
+						}
+						if (options.offset) {
+							qs.offset = options.offset as number;
+						}
+						if (options.parent) {
+							qs.parent = options.parent as number[];
+						}
+						if (options.parentExclude) {
+							qs.parent_exclude = options.parentExclude as number[];
+						}
+						if (options.slug) {
+							qs.slug = options.slug as string;
+						}
+						if (options.status) {
+							qs.status = options.status as string;
+						}
+						if (options.mediaType) {
+							qs.media_type = options.mediaType as string;
+						}
+						if (options.mimeType) {
+							qs.mime_type = options.mimeType as string;
+						}
+
+						if (returnAll) {
+							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/media', {}, qs);
+						} else {
+							qs.per_page = this.getNodeParameter('limit', i);
+							responseData = await wordpressApiRequest.call(this, 'GET', '/media', {}, qs);
+						}
+					}
+					//https://developer.wordpress.org/rest-api/reference/media/#delete-a-media-item
+					if (operation === 'delete') {
+						const mediaId = this.getNodeParameter('mediaId', i) as string;
+						const options = this.getNodeParameter('options', i);
+						if (options.force) {
+							qs.force = options.force as boolean;
+						}
+						try {
+							responseData = await wordpressApiRequest.call(
+								this,
+								'DELETE',
+								`/media/${mediaId}`,
+								{},
+								qs,
+							);
+						} catch (error) {
+							if (error.message.includes('rest_trash_not_supported')) {
+								error.message =
+									"WordPress does not support moving media to trash. Please enable the 'Force' option to delete permanently.";
+							}
+							throw error;
+						}
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
