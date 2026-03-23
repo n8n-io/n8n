@@ -851,7 +851,6 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User created credentials', {
 				user_id: 'user123',
-				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'github',
 				credential_id: 'cred123',
 				project_id: 'project123',
