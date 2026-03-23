@@ -178,6 +178,16 @@ export async function testWorkflow(
 		);
 	}
 
+	// Validate pin data keys match actual workflow node names
+	const nodeNames = new Set(nodes.map((n) => n.name));
+	const unknownKeys = Object.keys(pinData).filter((key) => !nodeNames.has(key));
+	if (unknownKeys.length > 0) {
+		throw new WorkflowAccessError(
+			`Pin data contains unknown node names: ${unknownKeys.join(', ')}. Check for typos — node names must match exactly.`,
+			'invalid_pin_data',
+		);
+	}
+
 	// Normalize pin data: ensure each item has a "json" wrapper
 	const normalizedPinData = normalizePinData(pinData);
 
