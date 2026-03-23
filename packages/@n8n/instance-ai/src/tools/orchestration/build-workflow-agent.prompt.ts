@@ -23,7 +23,6 @@ const SDK_RULES_AND_PATTERNS = `## SDK Code Rules
 - Use \`expr('{{ $json.field }}')\` for n8n expressions. Variables MUST be inside \`{{ }}\`.
 - Do NOT use \`as const\` assertions — the workflow parser only supports JavaScript syntax, not TypeScript-only features. Just use plain string literals.
 - Use string values directly for discriminator fields like \`resource\` and \`operation\` (e.g., \`resource: 'message'\` not \`resource: 'message' as const\`).
-- **Fields with \`@displayOptions.show\` MUST use expression format** \`'={{ "value" }}'\` instead of plain strings. This applies to conditional fields like \`size\`, \`dalleQuality\`, \`style\` on DALL-E nodes. Example: \`size: '={{ "1792x1024" }}'\` NOT \`size: '1792x1024'\`.
 - When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.
 - **No em-dash (\`—\`) or other special Unicode characters in node names or string values.** Use plain hyphen (\`-\`) instead. The SDK parser cannot handle em-dashes.
 - **IF node combinator** must be \`'and'\` or \`'or'\` (not \`'any'\` or \`'all'\`).
