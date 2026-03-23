@@ -19,18 +19,33 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiSettingsPanel from './components/settings/InstanceAiSettingsPanel.vue';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
+import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const i18n = useI18n();
 const route = useRoute();
 const documentTitle = useDocumentTitle();
+const { goToUpgrade } = usePageRedirectionHelper();
 
 documentTitle.set('Instance AI');
+
+// --- Credit warning banner ---
+const creditBannerDismissed = ref(false);
+watch(
+	() => store.creditsRemaining,
+	() => {
+		creditBannerDismissed.value = false;
+	},
+);
+const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
 	void store.loadThreads();
+	void store.fetchCredits();
+	store.startCreditsPushListener();
 
 	// Auto-connect local gateway if enabled
 	void settingsStore
@@ -158,6 +173,7 @@ onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
 	store.closeSSE();
+	store.stopCreditsPushListener();
 	settingsStore.stopDaemonProbing();
 	settingsStore.stopGatewayPolling();
 	settingsStore.stopGatewayPushListener();
@@ -331,6 +347,13 @@ function handleStop() {
 
 			<!-- Floating input -->
 			<div ref="inputContainer" :class="$style.inputContainer">
+				<CreditWarningBanner
+					v-if="showCreditBanner"
+					:credits-remaining="store.creditsRemaining"
+					:credits-quota="store.creditsQuota"
+					@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+					@dismiss="creditBannerDismissed = true"
+				/>
 				<InstanceAiStatusBar />
 				<InstanceAiInput
 					:is-streaming="store.isStreaming"

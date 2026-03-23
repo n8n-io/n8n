@@ -179,6 +179,22 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return Math.max(0, creditsQuota.value - creditsClaimed.value);
 	});
 
+	const creditsPercentageRemaining = computed(() => {
+		if (
+			creditsQuota.value === undefined ||
+			creditsQuota.value === INFINITE_CREDITS ||
+			creditsRemaining.value === undefined
+		) {
+			return undefined;
+		}
+		if (creditsQuota.value === 0) return 0;
+		return (creditsRemaining.value / creditsQuota.value) * 100;
+	});
+
+	const isLowCredits = computed(() => {
+		return creditsPercentageRemaining.value !== undefined && creditsPercentageRemaining.value <= 10;
+	});
+
 	// --- Credits push listener ---
 
 	let removeCreditsPushListener: (() => void) | null = null;
@@ -840,6 +856,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		resourceRegistry,
 		rateableResponseId,
 		creditsRemaining,
+		creditsPercentageRemaining,
+		isLowCredits,
 		pendingConfirmations,
 		// Actions
 		newThread,
