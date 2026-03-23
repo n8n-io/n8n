@@ -4,12 +4,14 @@ import { Container } from '@n8n/di';
 import type {
 	IDataObject,
 	INodeCredentialsDetails,
+	INodeTypes,
 	IRun,
 	ITaskData,
 	IWorkflowBase,
 	IWorkflowSettings,
 	RelatedExecution,
 } from 'n8n-workflow';
+import { resolveNodeWebhookId } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -66,6 +68,25 @@ export function addNodeIds(workflow: IWorkflowBase) {
 			node.id = uuid();
 		}
 	});
+}
+
+/**
+ * Assign webhookId to any webhook node that is missing one.
+ * The UI does this on the frontend when adding nodes to the canvas,
+ * but workflows created via the API skip that step.
+ */
+export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeTypes) {
+	const { nodes } = workflow;
+	if (!nodes) return;
+
+	for (const node of nodes) {
+		try {
+			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			resolveNodeWebhookId(node, nodeType.description);
+		} catch {
+			// node type not found, skip
+		}
+	}
 }
 
 /**
