@@ -21,6 +21,10 @@ const props = withDefaults(
 	},
 );
 
+defineOptions({
+	inheritAttrs: false,
+});
+
 defineEmits<{
 	click: [];
 }>();
@@ -45,11 +49,13 @@ const buttonLabel = computed(() => {
 		<template #default>
 			<GoogleAuthButton
 				v-if="isGoogleOAuthType(credentialTypeName)"
+				v-bind="$attrs"
 				:disabled="disabled"
 				@click="$emit('click')"
 			/>
 			<N8nButton
 				v-else
+				v-bind="$attrs"
 				variant="subtle"
 				:size="size"
 				:class="$style.quickConnectButton"

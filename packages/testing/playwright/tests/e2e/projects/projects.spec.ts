@@ -111,7 +111,7 @@ test.describe(
 				await n8n.canvas.openNode('Append a block');
 
 				// Credential is inaccessible after move, so quick connect empty state is shown
-				await expect(n8n.page.getByTestId('quick-connect-empty-state')).toBeVisible();
+				await expect(n8n.ndv.getQuickConnectEmptyState()).toBeVisible();
 			});
 
 			test('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', async ({

@@ -532,7 +532,7 @@ describe('NodeCredentials', () => {
 			);
 
 			expect(screen.queryByTestId('quick-connect-empty-state')).toBeInTheDocument();
-			expect(screen.queryByTestId('standard-empty-state')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
 		});
 
@@ -556,7 +556,7 @@ describe('NodeCredentials', () => {
 			expect(screen.getByText('Connect to Slack')).toBeInTheDocument();
 		});
 
-		it('should show standard-empty-state for non-OAuth type with no credentials', () => {
+		it('should show node-credentials-empty-state for non-OAuth type with no credentials', () => {
 			setupQuickConnectStores();
 
 			ndvStore.activeNode = openAiNodeNoCreds;
@@ -571,7 +571,7 @@ describe('NodeCredentials', () => {
 				{ merge: true },
 			);
 
-			expect(screen.queryByTestId('standard-empty-state')).toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).toBeInTheDocument();
 			expect(screen.queryByTestId('quick-connect-empty-state')).not.toBeInTheDocument();
 		});
 
@@ -756,7 +756,7 @@ describe('NodeCredentials', () => {
 
 			// Should show the normal dropdown, not the empty states
 			expect(screen.queryByTestId('quick-connect-empty-state')).not.toBeInTheDocument();
-			expect(screen.queryByTestId('standard-empty-state')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('node-credentials-select')).toBeInTheDocument();
 		});
 	});

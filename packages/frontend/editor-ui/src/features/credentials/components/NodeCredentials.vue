@@ -636,7 +636,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				<div
 					v-else-if="showStandardEmptyState(type)"
 					:class="$style.standardEmptyContainer"
-					data-test-id="standard-empty-state"
+					data-test-id="node-credentials-empty-state"
 				>
 					<N8nSelect
 						:class="$style.emptySelect"
