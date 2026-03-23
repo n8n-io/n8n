@@ -12,10 +12,10 @@ import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace
 import { DaytonaSandbox } from '@mastra/daytona';
 
 import type { SandboxConfig } from './create-workspace';
-import type { SnapshotManager } from './snapshot-manager';
-import type { InstanceAiContext } from '../types';
 import { DaytonaFilesystem } from './daytona-filesystem';
 import { writeFileViaSandbox } from './sandbox-fs';
+import type { SnapshotManager } from './snapshot-manager';
+import type { InstanceAiContext } from '../types';
 import { formatNodeCatalogLine, getWorkspaceRoot, setupSandboxWorkspace } from './sandbox-setup';
 
 export interface BuilderWorkspace {
@@ -77,16 +77,11 @@ export class BuilderSandboxFactory {
 					labels: { 'n8n-builder': builderId },
 				},
 				{
-					onSnapshotCreateLogs: (chunk: string) =>
-						console.log(`[BuilderSandboxFactory] image build: ${chunk}`),
 					timeout: 300,
 				},
 			),
 			this.getNodeCatalog(context),
 		]);
-		console.log(
-			`[BuilderSandboxFactory] daytona.create took ${(performance.now() - tCreate).toFixed(0)}ms (builder: ${builderId})`,
-		);
 
 		// Wrap raw Sandbox in DaytonaSandbox for Mastra Workspace compatibility.
 		// DaytonaSandbox.start() reconnects to the existing sandbox by ID.
@@ -103,40 +98,24 @@ export class BuilderSandboxFactory {
 			filesystem: new DaytonaFilesystem(daytonaSandbox),
 		});
 
-		const tInit = performance.now();
 		await workspace.init();
-		console.log(
-			`[BuilderSandboxFactory] workspace.init took ${(performance.now() - tInit).toFixed(0)}ms (builder: ${builderId})`,
-		);
 
 		// Write node-types catalog (too large for dockerfile, written post-creation via filesystem API)
-		const tCatalog = performance.now();
 		const root = await getWorkspaceRoot(workspace);
 		if (workspace.filesystem) {
 			await workspace.filesystem.writeFile(`${root}/node-types/index.txt`, catalog);
 		} else {
 			await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
 		}
-		console.log(
-			`[BuilderSandboxFactory] catalog write took ${(performance.now() - tCatalog).toFixed(0)}ms (builder: ${builderId})`,
-		);
-
-		console.log(
-			`[BuilderSandboxFactory] total create took ${(performance.now() - t0).toFixed(0)}ms (builder: ${builderId})`,
-		);
 
 		return {
 			workspace,
 			cleanup: async () => {
-				const tCleanup = performance.now();
 				try {
 					await daytona.delete(sandbox);
 				} catch {
 					// Best-effort cleanup
 				}
-				console.log(
-					`[BuilderSandboxFactory] cleanup/destroy took ${(performance.now() - tCleanup).toFixed(0)}ms (builder: ${builderId})`,
-				);
 			},
 		};
 	}
@@ -145,7 +124,6 @@ export class BuilderSandboxFactory {
 		builderId: string,
 		context: InstanceAiContext,
 	): Promise<BuilderWorkspace> {
-		const t0 = performance.now();
 		const dir = `./workspace-builders/${builderId}`;
 		const sandbox = new LocalSandbox({ workingDirectory: dir });
 		const workspace = new Workspace({
@@ -153,15 +131,7 @@ export class BuilderSandboxFactory {
 			filesystem: new LocalFilesystem({ basePath: dir }),
 		});
 		await workspace.init();
-
-		const tSetup = performance.now();
 		await setupSandboxWorkspace(workspace, context);
-		console.log(
-			`[BuilderSandboxFactory] local setupSandboxWorkspace took ${(performance.now() - tSetup).toFixed(0)}ms (builder: ${builderId})`,
-		);
-		console.log(
-			`[BuilderSandboxFactory] total local create took ${(performance.now() - t0).toFixed(0)}ms (builder: ${builderId})`,
-		);
 
 		return {
 			workspace,
