@@ -42,6 +42,7 @@ import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
+import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import {
 	N8nBadge,
 	N8nButton,
@@ -131,15 +132,13 @@ const projectAdminCalloutDismissed = useStorage(
 	localStorage,
 );
 
-onBeforeMount(() => {
-	void projectsStore.getAvailableProjects();
-});
+const searchFnForFilters = useAvailableProjectSearch();
+const filterFnForFilters = (project: ProjectListItem) =>
+	!project.role || project.role === 'project:admin';
 
-const projectsForFilters = computed(() => {
-	return projectsStore.availableProjects.filter(
-		// global admins role is empty...
-		(project) => !project.role || project.role === 'project:admin',
-	);
+onBeforeMount(async () => {
+	// Load projects for file→project mapping display and for member search
+	await projectsStore.getAvailableProjects();
 });
 
 const concatenateWithAnd = (messages: string[]) =>
@@ -972,7 +971,8 @@ onMounted(async () => {
 								v-model="filters.project"
 								data-test-id="source-control-push-modal-project-search"
 								clearable
-								:projects="projectsForFilters"
+								:search-fn="searchFnForFilters"
+								:filter-fn="filterFnForFilters"
 								:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 								:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 								@clear="clearProjectFilter"
