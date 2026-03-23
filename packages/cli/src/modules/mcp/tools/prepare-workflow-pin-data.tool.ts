@@ -278,7 +278,9 @@ function inferSchemaFromExecution(
 	const nodeData = executionRunData[nodeName];
 	if (!nodeData?.[0]) return undefined;
 
-	// Use the first item's json payload to infer the schema shape
+	// Use the first item's json payload to infer the schema shape.
+	// Limitation: heterogeneous arrays (items with different fields) will only
+	// reflect the first element's shape. Acceptable for test/pin data generation.
 	const firstItem = nodeData[0].json;
 	if (!firstItem || Object.keys(firstItem).length === 0) return undefined;
 
