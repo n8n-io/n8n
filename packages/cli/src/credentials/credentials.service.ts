@@ -32,6 +32,7 @@ import {
 	CREDENTIAL_EMPTY_VALUE,
 	deepCopy,
 	displayParameter,
+	isExpression,
 	isINodePropertyCollection,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -1073,7 +1074,7 @@ export class CredentialsService {
 			const oauthUrlFields = ['authUrl', 'accessTokenUrl', 'serverUrl'] as const;
 			for (const field of oauthUrlFields) {
 				const value = data[field];
-				if (typeof value === 'string' && value.trim() !== '') {
+				if (typeof value === 'string' && value.trim() !== '' && !isExpression(value)) {
 					validateOAuthUrl(value);
 				}
 			}
@@ -1082,7 +1083,7 @@ export class CredentialsService {
 			const oauthUrlFields = ['authUrl', 'requestTokenUrl', 'accessTokenUrl'] as const;
 			for (const field of oauthUrlFields) {
 				const value = data[field];
-				if (typeof value === 'string' && value.trim() !== '') {
+				if (typeof value === 'string' && value.trim() !== '' && !isExpression(value)) {
 					validateOAuthUrl(value);
 				}
 			}
