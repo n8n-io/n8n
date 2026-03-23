@@ -19,34 +19,83 @@ export function getPromptInputByType(options: {
 	i: number;
 	promptTypeKey: string;
 	inputKey: string;
-}) {
+}): string {
 	const { ctx, i, promptTypeKey, inputKey } = options;
 	const promptType = ctx.getNodeParameter(promptTypeKey, i, 'define') as string;
 
-	let input;
+	// Note: 'guardrails' prompt type is deprecated and no longer shown in
+	// the UI. Kept here for backwards compatibility with existing workflows.
+	const isExpressionBased = promptType === 'auto' || promptType === 'guardrails';
+
+	let rawInput: unknown;
+
 	if (promptType === 'auto') {
-		input = ctx.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
+		rawInput = ctx.evaluateExpression('{{ $json["chatInput"] }}', i);
+
+		// Fallback to guardrailsInput — supports Guardrails node → AI Agent
+		// connections after the guardrails promptType was removed from the
+		// UI in v3.1. chatInput and guardrailsInput are mutually exclusive
+		// in practice since Guardrails drops all incoming fields.
+		if (rawInput === null || rawInput === undefined) {
+			rawInput = ctx.evaluateExpression('{{ $json["guardrailsInput"] }}', i);
+		}
 	} else if (promptType === 'guardrails') {
-		input = ctx.evaluateExpression('{{ $json["guardrailsInput"] }}', i) as string;
+		rawInput = ctx.evaluateExpression('{{ $json["guardrailsInput"] }}', i);
 	} else {
-		input = ctx.getNodeParameter(inputKey, i) as string;
+		rawInput = ctx.getNodeParameter(inputKey, i);
 	}
 
-	if (input === undefined) {
-		if (promptType === 'auto' || promptType === 'guardrails') {
-			const key = promptType === 'auto' ? 'chatInput' : 'guardrailsInput';
-			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
-				description: `Expected to find the prompt in an input field called '${key}' (this is what the ${promptType === 'auto' ? 'chat trigger node' : 'guardrails node'} node outputs). To use something else, change the 'Prompt' parameter`,
-			});
-		} else {
+	// Step 1 — Catch null / undefined
+	if (rawInput === null || rawInput === undefined) {
+		if (isExpressionBased) {
 			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
 				description:
-					'The prompt field is empty or the expression used could not be resolved. Please check the configured prompt value.',
+					'No prompt was found in the incoming data. ' +
+					'If you are not using a Chat Trigger or Guardrails node, change the ' +
+					'"Prompt" parameter to "Define below" and provide ' +
+					'the prompt manually or via an expression.',
+				itemIndex: i,
 			});
 		}
+
+		throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
+			description:
+				'The prompt is empty. Check that the prompt field contains ' +
+				'a value or that your expression resolves to a non-empty text.',
+			itemIndex: i,
+		});
 	}
 
-	return input;
+	// Step 2 — Normalise to string.
+	// Numbers and booleans are silently cast — users expect 42 → "42" to work.
+	// Objects and arrays are rejected — they are never valid prompt values.
+	let prompt: string;
+
+	if (typeof rawInput === 'string') {
+		prompt = rawInput;
+	} else if (typeof rawInput === 'number' || typeof rawInput === 'boolean') {
+		prompt = String(rawInput);
+	} else {
+		throw new NodeOperationError(ctx.getNode(), 'Invalid prompt value', {
+			description:
+				'The prompt must be a text value. Check that your expression ' +
+				'or input field returns plain text, not an object or array.',
+			itemIndex: i,
+		});
+	}
+
+	// Step 3 — Reject empty / whitespace-only strings.
+	// TypeScript fully knows prompt is string here — no cast needed.
+	if (prompt.trim() === '') {
+		throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
+			description:
+				'The prompt is empty or contains only whitespace. ' +
+				'Please provide a prompt with actual text content.',
+			itemIndex: i,
+		});
+	}
+
+	return prompt;
 }
 
 export function getSessionId(
