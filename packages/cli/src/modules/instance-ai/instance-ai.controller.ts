@@ -17,22 +17,33 @@ import {
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Get, Post, Put, Patch, Delete, Param, Body, Query } from '@n8n/decorators';
+import {
+	RestController,
+	GlobalScope,
+	Get,
+	Post,
+	Put,
+	Patch,
+	Delete,
+	Param,
+	Body,
+	Query,
+} from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import type { Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { Push } from '@/push';
 
 import { buildAgentTreeFromEvents } from './agent-tree-builder';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiService } from './instance-ai.service';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { Push } from '@/push';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -58,6 +69,7 @@ export class InstanceAiController {
 	}
 
 	@Post('/chat/:threadId')
+	@GlobalScope('instanceAi:message')
 	async chat(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -85,6 +97,7 @@ export class InstanceAiController {
 
 	// usesTemplates bypasses the send() wrapper so we can write SSE frames directly
 	@Get('/events/:threadId', { usesTemplates: true })
+	@GlobalScope('instanceAi:message')
 	async events(
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
@@ -201,6 +214,7 @@ export class InstanceAiController {
 	}
 
 	@Post('/confirm/:requestId')
+	@GlobalScope('instanceAi:message')
 	async confirm(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -222,6 +236,7 @@ export class InstanceAiController {
 	}
 
 	@Post('/chat/:threadId/cancel')
+	@GlobalScope('instanceAi:message')
 	async cancel(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
 		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.cancelRun(threadId);
@@ -229,6 +244,7 @@ export class InstanceAiController {
 	}
 
 	@Post('/chat/:threadId/tasks/:taskId/cancel')
+	@GlobalScope('instanceAi:message')
 	async cancelTask(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -241,6 +257,7 @@ export class InstanceAiController {
 	}
 
 	@Post('/chat/:threadId/tasks/:taskId/correct')
+	@GlobalScope('instanceAi:message')
 	async correctTask(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -256,29 +273,31 @@ export class InstanceAiController {
 	// ── Admin settings (owner/admin only) ──────────────────────────────────
 
 	@Get('/settings')
-	async getAdminSettings(req: AuthenticatedRequest) {
-		this.assertAdmin(req);
+	@GlobalScope('instanceAi:manage')
+	async getAdminSettings(_req: AuthenticatedRequest) {
 		return this.settingsService.getAdminSettings();
 	}
 
 	@Put('/settings')
+	@GlobalScope('instanceAi:manage')
 	async updateAdminSettings(
-		req: AuthenticatedRequest,
+		_req: AuthenticatedRequest,
 		_res: Response,
 		@Body payload: InstanceAiAdminSettingsUpdateRequest,
 	) {
-		this.assertAdmin(req);
 		return await this.settingsService.updateAdminSettings(payload);
 	}
 
 	// ── User preferences (per-user, self-service) ──────────────────────────
 
 	@Get('/preferences')
+	@GlobalScope('instanceAi:message')
 	async getUserPreferences(req: AuthenticatedRequest) {
 		return await this.settingsService.getUserPreferences(req.user);
 	}
 
 	@Put('/preferences')
+	@GlobalScope('instanceAi:message')
 	async updateUserPreferences(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -292,22 +311,25 @@ export class InstanceAiController {
 	}
 
 	@Get('/settings/credentials')
+	@GlobalScope('instanceAi:message')
 	async listModelCredentials(req: AuthenticatedRequest) {
 		return await this.settingsService.listModelCredentials(req.user);
 	}
 
 	@Get('/settings/service-credentials')
+	@GlobalScope('instanceAi:manage')
 	async listServiceCredentials(req: AuthenticatedRequest) {
-		this.assertAdmin(req);
 		return await this.settingsService.listServiceCredentials(req.user);
 	}
 
 	@Get('/memory/:threadId')
+	@GlobalScope('instanceAi:message')
 	async getMemory(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
 		return await this.memoryService.getWorkingMemory(req.user.id, threadId);
 	}
 
 	@Put('/memory/:threadId')
+	@GlobalScope('instanceAi:message')
 	async updateMemory(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -319,11 +341,13 @@ export class InstanceAiController {
 	}
 
 	@Get('/threads')
+	@GlobalScope('instanceAi:message')
 	async listThreads(req: AuthenticatedRequest) {
 		return await this.memoryService.listThreads(req.user.id);
 	}
 
 	@Post('/threads')
+	@GlobalScope('instanceAi:message')
 	async ensureThread(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -335,6 +359,7 @@ export class InstanceAiController {
 	}
 
 	@Delete('/threads/:threadId')
+	@GlobalScope('instanceAi:message')
 	async deleteThread(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -346,6 +371,7 @@ export class InstanceAiController {
 	}
 
 	@Patch('/threads/:threadId')
+	@GlobalScope('instanceAi:message')
 	async renameThread(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -358,6 +384,7 @@ export class InstanceAiController {
 	}
 
 	@Get('/threads/:threadId/messages')
+	@GlobalScope('instanceAi:message')
 	async getThreadMessages(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -384,6 +411,7 @@ export class InstanceAiController {
 	}
 
 	@Get('/threads/:threadId/status')
+	@GlobalScope('instanceAi:message')
 	async getThreadStatus(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -395,6 +423,7 @@ export class InstanceAiController {
 	}
 
 	@Get('/threads/:threadId/context')
+	@GlobalScope('instanceAi:message')
 	async getThreadContext(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -406,6 +435,7 @@ export class InstanceAiController {
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
 
 	@Post('/gateway/create-link')
+	@GlobalScope('instanceAi:gateway')
 	async createGatewayLink(req: AuthenticatedRequest) {
 		const token = this.instanceAiService.generatePairingToken(req.user.id);
 		const baseUrl = this.instanceBaseUrl.replace(/\/$/, '');
@@ -514,6 +544,7 @@ export class InstanceAiController {
 	}
 
 	@Get('/gateway/status')
+	@GlobalScope('instanceAi:gateway')
 	async gatewayStatus(req: AuthenticatedRequest) {
 		return this.instanceAiService.getGatewayStatus(req.user.id);
 	}
@@ -535,14 +566,6 @@ export class InstanceAiController {
 		}
 		if (!options?.allowNew && ownership === 'not_found') {
 			throw new NotFoundError('Thread not found');
-		}
-	}
-
-	/** Verify the requesting user is an instance owner or admin. */
-	private assertAdmin(req: AuthenticatedRequest): void {
-		const slug = req.user.role?.slug;
-		if (slug !== 'global:owner' && slug !== 'global:admin') {
-			throw new ForbiddenError('Admin access required');
 		}
 	}
 
