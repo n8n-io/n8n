@@ -80,7 +80,6 @@ import {
 	generateContentLengthHeader,
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
-	getUrlFromProxyConfig,
 	isIgnoreStatusErrorConfig,
 	searchForHeader,
 	setAxiosAgents,

@@ -174,11 +174,9 @@ describe('axios-utils', () => {
 		});
 
 		test('should resolve proxy URL from proxyConfig and pass it to agent factories', () => {
-			const httpProxy = jest.requireMock<typeof import('@/http-proxy')>('@/http-proxy');
-			const httpSpy = jest.spyOn(httpProxy, 'createHttpProxyAgent');
-			const httpsSpy = jest.spyOn(httpProxy, 'createHttpsProxyAgent');
-			httpSpy.mockClear();
-			httpsSpy.mockClear();
+			const { createHttpProxyAgent, createHttpsProxyAgent } = jest.requireMock('@/http-proxy');
+			createHttpProxyAgent.mockClear();
+			createHttpsProxyAgent.mockClear();
 
 			const beforeRedirect = getBeforeRedirectFn(
 				agentOptions,
@@ -195,12 +193,12 @@ describe('axios-utils', () => {
 
 			beforeRedirect(redirectedRequest);
 
-			expect(httpSpy).toHaveBeenCalledWith(
+			expect(createHttpProxyAgent).toHaveBeenCalledWith(
 				'http://proxy:8080',
 				'https://example.com/other',
 				expect.objectContaining({ servername: 'example.com' }),
 			);
-			expect(httpsSpy).toHaveBeenCalledWith(
+			expect(createHttpsProxyAgent).toHaveBeenCalledWith(
 				'http://proxy:8080',
 				'https://example.com/other',
 				expect.objectContaining({ servername: 'example.com' }),
