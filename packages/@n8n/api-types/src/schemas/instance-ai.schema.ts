@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+import { Z } from '../zod-class';
+import { TimeZoneSchema } from './timezone.schema';
+
 // ---------------------------------------------------------------------------
 // Branded ID types — prevent swapping runId/agentId/threadId/toolCallId
 // ---------------------------------------------------------------------------
@@ -366,19 +369,20 @@ export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemRe
 // API types
 // ---------------------------------------------------------------------------
 
-export interface InstanceAiAttachment {
-	data: string;
-	mimeType: string;
-	fileName: string;
-}
+const instanceAiAttachmentSchema = z.object({
+	data: z.string(),
+	mimeType: z.string(),
+	fileName: z.string(),
+});
 
-export interface InstanceAiSendMessageRequest {
-	message: string;
-	researchMode?: boolean;
-	attachments?: InstanceAiAttachment[];
-	/** IANA time zone identifier from the client (e.g. "Europe/Helsinki") */
-	timeZone?: string;
-}
+export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
+
+export class InstanceAiSendMessageRequest extends Z.class({
+	message: z.string().min(1),
+	researchMode: z.boolean().optional(),
+	attachments: z.array(instanceAiAttachmentSchema).optional(),
+	timeZone: TimeZoneSchema,
+}) {}
 
 export interface InstanceAiSendMessageResponse {
 	runId: string;

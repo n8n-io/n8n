@@ -84,6 +84,8 @@ export {
 	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
 } from './chat-hub';
 
+export { isValidTimeZone, StrictTimeZoneSchema, TimeZoneSchema } from './schemas/timezone.schema';
+
 export type {
 	ChatHubPushMessage,
 	ChatHubStreamEvent,
@@ -269,6 +271,7 @@ export {
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	credentialFlowSchema,
+	InstanceAiSendMessageRequest,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -303,7 +306,6 @@ export type {
 	McpToolCallResult,
 	InstanceAiEvent,
 	InstanceAiAttachment,
-	InstanceAiSendMessageRequest,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmResponse,
 	InstanceAiToolCallState,

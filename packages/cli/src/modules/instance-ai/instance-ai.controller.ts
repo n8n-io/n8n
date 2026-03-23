@@ -1,5 +1,4 @@
 import type {
-	InstanceAiSendMessageRequest,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 } from '@n8n/api-types';
@@ -8,6 +7,7 @@ import {
 	instanceAiGatewayCapabilitiesSchema,
 	instanceAiFilesystemResponseSchema,
 	InstanceAiRenameThreadRequestDto,
+	InstanceAiSendMessageRequest,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -53,14 +53,12 @@ export class InstanceAiController {
 	}
 
 	@Post('/chat/:threadId')
-	async chat(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
-		const { message, researchMode, attachments, timeZone } =
-			req.body as InstanceAiSendMessageRequest;
-
-		if (!message?.trim()) {
-			throw new BadRequestError('Message is required');
-		}
-
+	async chat(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiSendMessageRequest,
+	) {
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
@@ -69,16 +67,13 @@ export class InstanceAiController {
 			throw new ConflictError('A run is already active for this thread');
 		}
 
-		const safeResearchMode = typeof researchMode === 'boolean' ? researchMode : undefined;
-		const safeAttachments = Array.isArray(attachments) ? attachments : undefined;
-		const safeTimeZone = this.sanitizeTimeZone(timeZone);
 		const runId = this.instanceAiService.startRun(
 			req.user,
 			threadId,
-			message,
-			safeResearchMode,
-			safeAttachments,
-			safeTimeZone,
+			payload.message,
+			payload.researchMode,
+			payload.attachments,
+			payload.timeZone,
 		);
 		return { runId };
 	}
@@ -562,22 +557,6 @@ export class InstanceAiController {
 		if (userId) return userId;
 
 		throw new ForbiddenError('Invalid API key');
-	}
-
-	/**
-	 * Validate and sanitize a client-supplied IANA time zone string.
-	 * Returns `undefined` for missing or invalid values so the server can fall back.
-	 */
-	private sanitizeTimeZone(tz: unknown): string | undefined {
-		if (typeof tz !== 'string' || tz.length === 0 || tz.length > 50) return undefined;
-		// Only allow safe IANA characters to prevent prompt injection
-		if (!/^[A-Za-z0-9_/+-]+$/.test(tz)) return undefined;
-		try {
-			new Intl.DateTimeFormat('en-US', { timeZone: tz });
-			return tz;
-		} catch {
-			return undefined;
-		}
 	}
 
 	private writeSseEvent(res: FlushableResponse, stored: StoredEvent): void {
