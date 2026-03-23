@@ -623,6 +623,104 @@ describe('CommunityPackagesService', () => {
 				communityPackagesService.installPackage('n8n-nodes-package', '0.1.0'),
 			).rejects.toThrow('Installation of unverified community packages is forbidden!');
 		});
+
+		test('should preserve requested dist-tag when reinstalling an exact version', async () => {
+			const packageName = 'n8n-nodes-test';
+			const resolvedPackageVersion = '1.0.0-beta.2';
+			const testBlockDownloadDir = instanceSettings.nodesDownloadDir;
+			const testBlockPackageDir = `${testBlockDownloadDir}/node_modules/${packageName}`;
+			const testBlockTarballName = `${packageName}-${resolvedPackageVersion}.tgz`;
+			const testBlockRegistry = config.registry;
+			const execMockForThisTest = ((...args: Parameters<typeof execFile>) => {
+				const command = args[0];
+				const cmdArgs = args[1];
+				const actualCallback = args[args.length - 1] as ExecFileCallback;
+
+				if (command === 'npm' && cmdArgs?.[0] === 'pack') {
+					actualCallback(null, testBlockTarballName, '');
+				} else {
+					actualCallback(null, 'Done', '');
+				}
+			}) as typeof execFile;
+
+			config.unverifiedEnabled = true;
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			mocked(resolvePackageVersionSpecOrThrow).mockResolvedValue(resolvedPackageVersion);
+			mocked(execFile).mockImplementation(execMockForThisTest);
+			mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
+				if (args[0] === 'pack') {
+					return testBlockTarballName;
+				}
+				return 'Done';
+			});
+			mocked(readFile).mockResolvedValueOnce(
+				JSON.stringify({
+					name: packageName,
+					version: resolvedPackageVersion,
+					dependencies: { 'some-actual-dep': '1.2.3' },
+					devDependencies: { 'a-dev-dep': '1.0.0' },
+					peerDependencies: { 'a-peer-dep': '2.0.0' },
+					optionalDependencies: { 'an-optional-dep': '3.0.0' },
+				}),
+			);
+			mocked(readFile).mockResolvedValue(JSON.stringify({ dependencies: {} }));
+			mocked(writeFile).mockResolvedValue(undefined);
+
+			const packageDirectoryLoader = mock<PackageDirectoryLoader>({
+				loadedNodes: [{ name: 'a-node-from-the-loader', version: 1 }],
+			});
+			const installedPackage = mock<InstalledPackages>({
+				packageName,
+				installedVersion: resolvedPackageVersion,
+			});
+
+			loadNodesAndCredentials.loadPackage.mockResolvedValue(packageDirectoryLoader);
+			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
+			loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+			installedPackageRepository.saveInstalledPackageWithNodes.mockResolvedValue(installedPackage);
+			publisher.publishCommand.mockResolvedValue(undefined);
+
+			await communityPackagesService.installPackage(
+				packageName,
+				resolvedPackageVersion,
+				undefined,
+				'beta',
+			);
+
+			expect(resolvePackageVersionSpecOrThrow).toHaveBeenCalledWith(
+				packageName,
+				resolvedPackageVersion,
+				testBlockRegistry,
+			);
+			expect(executeNpmCommand).toHaveBeenNthCalledWith(
+				1,
+				[
+					'pack',
+					`${packageName}@${resolvedPackageVersion}`,
+					`--registry=${testBlockRegistry}`,
+					'--quiet',
+				],
+				{ cwd: testBlockDownloadDir },
+			);
+			expect(writeFile).toHaveBeenLastCalledWith(
+				path.join(nodesDownloadDir, 'package.json'),
+				expect.stringContaining(`"${packageName}": "beta"`),
+				'utf-8',
+			);
+			expect(installedPackageRepository.saveInstalledPackageWithNodes).toHaveBeenCalledWith(
+				packageDirectoryLoader,
+				'beta',
+			);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'community-package-install',
+				payload: {
+					packageName,
+					packageVersion: resolvedPackageVersion,
+					requestedDistTag: 'beta',
+				},
+			});
+			expect(readFile).toHaveBeenCalledWith(`${testBlockPackageDir}/package.json`, 'utf-8');
+		});
 	});
 
 	describe('ensurePackageJson', () => {
@@ -723,6 +821,7 @@ describe('CommunityPackagesService', () => {
 				'package-1',
 				'1.0.0',
 				undefined,
+				undefined,
 			);
 			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
 			expect(communityPackagesService.missingPackages).toEqual([]);
@@ -746,6 +845,7 @@ describe('CommunityPackagesService', () => {
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				'package-1',
 				'1.0.0',
+				undefined,
 				undefined,
 			);
 			expect(logger.error).toHaveBeenCalledWith(
@@ -773,10 +873,12 @@ describe('CommunityPackagesService', () => {
 				'package-1',
 				'1.0.0',
 				undefined,
+				undefined,
 			);
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				'package-2',
 				'2.0.0',
+				undefined,
 				undefined,
 			);
 			expect(logger.error).toHaveBeenCalledWith(
@@ -808,6 +910,7 @@ describe('CommunityPackagesService', () => {
 				'package-1',
 				'1.0.0',
 				'sha512-abc123',
+				undefined,
 			);
 		});
 
@@ -836,6 +939,7 @@ describe('CommunityPackagesService', () => {
 				'package-1',
 				'1.0.0',
 				'sha512-version-specific',
+				undefined,
 			);
 		});
 
@@ -861,6 +965,7 @@ describe('CommunityPackagesService', () => {
 				'package-1',
 				'1.0.0',
 				undefined,
+				undefined,
 			);
 		});
 
@@ -879,6 +984,7 @@ describe('CommunityPackagesService', () => {
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				'package-1',
 				'1.0.0',
+				undefined,
 				undefined,
 			);
 		});
@@ -911,11 +1017,35 @@ describe('CommunityPackagesService', () => {
 				'package-1',
 				'1.0.0',
 				'sha512-package1',
+				undefined,
 			);
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				'package-2',
 				'2.0.0',
 				'sha512-package2',
+				undefined,
+			);
+		});
+
+		test('should preserve requested dist-tag when reinstalling a missing package', async () => {
+			const tagInstalledPackage = mock<InstalledPackages>({
+				packageName: 'package-1',
+				installedVersion: '1.0.0-beta.2',
+				requestedDistTag: 'beta',
+				installedNodes: [{ type: 'node-type-1' }],
+			});
+
+			installedPackageRepository.find.mockResolvedValue([tagInstalledPackage]);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0-beta.2',
+				undefined,
+				'beta',
 			);
 		});
 

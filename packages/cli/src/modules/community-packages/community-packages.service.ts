@@ -3,7 +3,6 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import axios from 'axios';
-import npa from 'npm-package-arg';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -17,6 +16,7 @@ import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import npa from 'npm-package-arg';
 import { gt as semverGt } from 'semver';
 
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -54,6 +54,19 @@ type PackageJson = {
 
 type PackageVersionSelection = {
 	version: string;
+	requestedDistTag?: string;
+};
+
+type MissingPackage = {
+	packageName: string;
+	version: string;
+	requestedDistTag?: string;
+};
+
+type InstallOrUpdatePackageOptions = {
+	installedPackage?: InstalledPackages;
+	version?: string;
+	checksum?: string;
 	requestedDistTag?: string;
 };
 
@@ -310,15 +323,16 @@ export class CommunityPackagesService {
 
 	async checkForMissingPackages() {
 		const installedPackages = await this.getAllInstalledPackages();
-		const missingPackages = new Set<{ packageName: string; version: string }>();
+		const missingPackages = new Map<string, MissingPackage>();
 
 		installedPackages.forEach((installedPackage) => {
 			installedPackage.installedNodes.forEach((installedNode) => {
 				if (!this.loadNodesAndCredentials.isKnownNode(installedNode.type)) {
 					// Leave the list ready for installing in case we need.
-					missingPackages.add({
+					missingPackages.set(installedPackage.packageName, {
 						packageName: installedPackage.packageName,
 						version: installedPackage.installedVersion,
+						requestedDistTag: this.normalizeRequestedDistTag(installedPackage.requestedDistTag),
 					});
 				}
 			});
@@ -331,11 +345,12 @@ export class CommunityPackagesService {
 		const { reinstallMissing } = this.config;
 		if (reinstallMissing) {
 			this.logger.info('Attempting to reinstall missing packages', {
-				missingPackages: [...missingPackages],
+				missingPackages: [...missingPackages.values()],
 			});
 			const environment = process.env.ENVIRONMENT === 'staging' ? 'staging' : 'production';
 
-			const packageNames = [...missingPackages].map((p) => p.packageName);
+			const missingPackageEntries = [...missingPackages.values()];
+			const packageNames = missingPackageEntries.map((p) => p.packageName);
 
 			let vettedPackages: StrapiCommunityNodeType[] = [];
 			try {
@@ -357,7 +372,7 @@ export class CommunityPackagesService {
 				);
 			}
 
-			for (const missingPackage of missingPackages) {
+			for (const missingPackage of missingPackageEntries) {
 				try {
 					const vettedPackage = vettedPackages.find(
 						(p) => p.packageName === missingPackage.packageName,
@@ -376,8 +391,13 @@ export class CommunityPackagesService {
 						}
 					}
 
-					await this.installPackage(missingPackage.packageName, missingPackage.version, checksum);
-					missingPackages.delete(missingPackage);
+					await this.installPackage(
+						missingPackage.packageName,
+						missingPackage.version,
+						checksum,
+						missingPackage.requestedDistTag,
+					);
+					missingPackages.delete(missingPackage.packageName);
 				} catch (error) {
 					this.logger.error(
 						`Failed to reinstall community package ${missingPackage.packageName}: ${ensureError(error).message}`,
@@ -397,7 +417,7 @@ export class CommunityPackagesService {
 			);
 		}
 
-		this.missingPackages = [...missingPackages].map(
+		this.missingPackages = [...missingPackages.values()].map(
 			(missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`,
 		);
 	}
@@ -406,8 +426,13 @@ export class CommunityPackagesService {
 		packageName: string,
 		version?: string,
 		checksum?: string,
+		requestedDistTag?: string,
 	): Promise<InstalledPackages> {
-		return await this.installOrUpdatePackage(packageName, { version, checksum });
+		return await this.installOrUpdatePackage(packageName, {
+			version,
+			checksum,
+			requestedDistTag,
+		});
 	}
 
 	async updatePackage(
@@ -449,11 +474,9 @@ export class CommunityPackagesService {
 
 	private async installOrUpdatePackage(
 		packageName: string,
-		options:
-			| { version?: string; checksum?: string }
-			| { installedPackage: InstalledPackages; version?: string; checksum?: string } = {},
+		options: InstallOrUpdatePackageOptions = {},
 	) {
-		const isUpdate = 'installedPackage' in options;
+		const isUpdate = options.installedPackage !== undefined;
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
 		this.checkInstallPermissions(shouldValidateChecksum);
 		const requestedVersionSelection = this.getRequestedVersionSelection(packageName, options);
@@ -499,7 +522,7 @@ export class CommunityPackagesService {
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
-				if (isUpdate) {
+				if (options.installedPackage) {
 					await this.removePackageFromDatabase(options.installedPackage);
 				}
 				const installedPackage = await this.persistInstalledPackage(
@@ -661,19 +684,31 @@ export class CommunityPackagesService {
 
 	private getRequestedVersionSelection(
 		packageName: string,
-		options:
-			| { version?: string; checksum?: string }
-			| { installedPackage: InstalledPackages; version?: string; checksum?: string },
+		options: InstallOrUpdatePackageOptions,
 	): PackageVersionSelection {
+		if (options.version) {
+			const requestedVersionSelection = this.parsePackageVersion(packageName, options.version);
+
+			// Missing-package recovery reinstalls the exact version that vanished, but updates
+			// should continue to follow the original dist-tag the user selected.
+			if (!requestedVersionSelection.requestedDistTag && options.requestedDistTag) {
+				requestedVersionSelection.requestedDistTag = options.requestedDistTag;
+			}
+
+			return requestedVersionSelection;
+		}
+
 		const requestedVersion =
-			options.version ??
-			('installedPackage' in options
-				? (options.installedPackage.requestedDistTag ?? undefined)
-				: undefined);
+			options.requestedDistTag ??
+			this.normalizeRequestedDistTag(options.installedPackage?.requestedDistTag);
 
 		if (!requestedVersion) return { version: 'latest' };
 
 		return this.parsePackageVersion(packageName, requestedVersion);
+	}
+
+	private normalizeRequestedDistTag(requestedDistTag: unknown): string | undefined {
+		return typeof requestedDistTag === 'string' ? requestedDistTag : undefined;
 	}
 
 	private createInvalidPackageSpecError(rawString: string) {
