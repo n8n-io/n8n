@@ -351,6 +351,7 @@ defineExpose({ open, close });
 							</template>
 						</template>
 					</div>
+					<slot v-if="slots.footer" name="footer" />
 				</template>
 			</DropdownMenuContent>
 		</component>

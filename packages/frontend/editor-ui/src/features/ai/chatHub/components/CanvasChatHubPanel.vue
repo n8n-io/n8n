@@ -13,6 +13,8 @@ import type {
 	ChatSessionId,
 } from '@n8n/api-types';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { flattenModel } from '@/features/ai/chatHub/chat.utils';
 import { useChatStore } from '../chat.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -43,6 +45,7 @@ const chatStore = useChatStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const chatHubPanelStore = useChatHubPanelStore();
+const telemetry = useTelemetry();
 const clipboard = useClipboard();
 const toast = useToast();
 
@@ -156,6 +159,7 @@ async function copySessionId() {
 }
 
 function handleNewSession() {
+	telemetry.track('User clicked new chat button', { source: 'canvas' });
 	sessionId.value = uuidv4();
 }
 
@@ -236,6 +240,12 @@ async function handleEditMessage(
 }
 
 function handleSelectPrompt(prompt: string) {
+	if (workflowAgent.value) {
+		telemetry.track('User clicked chat hub suggested prompt', {
+			...flattenModel(workflowAgent.value.model),
+			source: 'canvas',
+		});
+	}
 	inputRef.value?.setText(prompt);
 	inputRef.value?.focus();
 }

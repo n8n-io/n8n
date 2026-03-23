@@ -72,6 +72,7 @@ export function useWorkflowState() {
 		}
 	}
 
+	/** @deprecated Use `workflowDocumentStore.removeAllConnections()` instead. */
 	function removeAllConnections(data: { setStateDirty: boolean }): void {
 		if (data?.setStateDirty) {
 			uiStore.markStateDirty();
