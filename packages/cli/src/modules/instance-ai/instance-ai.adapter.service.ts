@@ -105,6 +105,31 @@ import { getBase } from '@/workflow-execute-additional-data';
 export class InstanceAiAdapterService {
 	private readonly allowSendingParameterValues: boolean;
 
+	/**
+	 * Service-level cache for collectTypes().  Shared across all node adapters
+	 * to avoid loading ~31 MB of node descriptions per run.  Expires after
+	 * 5 minutes so hot-reloaded nodes are picked up without a restart.
+	 */
+	private nodesCache: {
+		promise: Promise<Awaited<ReturnType<LoadNodesAndCredentials['collectTypes']>>['nodes']>;
+		expiresAt: number;
+	} | null = null;
+
+	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
+
+	private getNodesFromCache() {
+		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
+			return this.nodesCache.promise;
+		}
+		const promise = this.loadNodesAndCredentials.collectTypes().then((result) => result.nodes);
+		this.nodesCache = { promise, expiresAt: Date.now() + this.NODES_CACHE_TTL_MS };
+		// If the promise rejects, invalidate the cache so the next call retries
+		promise.catch(() => {
+			this.nodesCache = null;
+		});
+		return promise;
+	}
+
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly workflowService: WorkflowService,
@@ -1123,20 +1148,11 @@ export class InstanceAiAdapterService {
 	}
 
 	private createNodeAdapter(user: User): InstanceAiNodeService {
-		const { loadNodesAndCredentials, dynamicNodeParametersService, projectRepository } = this;
+		const { dynamicNodeParametersService, projectRepository } = this;
 
-		// Cache the promise (not the result) to prevent concurrent collectTypes() calls.
-		// Multiple parallel tool calls would otherwise race on the null check, fire
-		// duplicate collectTypes() calls, and one empty resolution poisons the cache.
-		let nodesPromise: Promise<
-			Awaited<ReturnType<typeof loadNodesAndCredentials.collectTypes>>['nodes']
-		> | null = null;
-		const getNodes = async () => {
-			if (!nodesPromise) {
-				nodesPromise = loadNodesAndCredentials.collectTypes().then((result) => result.nodes);
-			}
-			return await nodesPromise;
-		};
+		// Use the service-level cache instead of a per-adapter closure.
+		// This avoids each run retaining its own ~31 MB copy of node descriptions.
+		const getNodes = async () => await this.getNodesFromCache();
 
 		return {
 			async listAvailable(options) {
