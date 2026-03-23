@@ -199,6 +199,7 @@ export namespace ExecutionSummaries {
 		annotationTags: string[]; // tag IDs
 		vote: AnnotationVote;
 		projectId: string;
+		workflowVersionId: string;
 	}>;
 
 	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
