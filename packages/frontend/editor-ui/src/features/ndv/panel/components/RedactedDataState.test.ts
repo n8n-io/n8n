@@ -56,7 +56,7 @@ describe('RedactedDataState', () => {
 			props: { title: 'Redacted', isDynamicCredentials: false, canReveal: true },
 		});
 
-		await getByTestId('ndv-reveal-redacted-data').click();
+		getByTestId('ndv-reveal-redacted-data').click();
 
 		expect(emitted('reveal')).toHaveLength(1);
 	});
@@ -66,7 +66,7 @@ describe('RedactedDataState', () => {
 			props: { title: 'Redacted', isDynamicCredentials: false, canReveal: false },
 		});
 
-		await getByText('workflow settings').click();
+		getByText('workflow settings').click();
 
 		expect(emitted('openSettings')).toHaveLength(1);
 	});
