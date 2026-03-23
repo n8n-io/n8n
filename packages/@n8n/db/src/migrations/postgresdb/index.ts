@@ -153,6 +153,7 @@ import { AddRoleColumnToProjectSecretsProviderAccess1772619247761 } from '../com
 import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../common/1772619247762-ChangeWorkflowPublishedVersionFKsToRestrict';
 import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-AddTypeToChatHubSessions';
 import { CreateRoleMappingRuleTable1772800000000 } from '../common/1772800000000-CreateRoleMappingRuleTable';
+import { CreateCredentialDependencyTable1773000000000 } from '../common/1773000000000-CreateCredentialDependencyTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -311,4 +312,5 @@ export const postgresMigrations: Migration[] = [
 	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
 	AddTypeToChatHubSessions1772700000000,
 	CreateRoleMappingRuleTable1772800000000,
+	CreateCredentialDependencyTable1773000000000,
 ];
