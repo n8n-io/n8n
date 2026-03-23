@@ -301,7 +301,7 @@ const buildRunData = async (
 
 	const triggerPinData = await getPinDataForTrigger(triggerNode, inputs);
 	const workflowPinData = isManualExecution ? (workflow.pinData ?? {}) : {};
-	runData.pinData = { ...triggerPinData, ...workflowPinData };
+	runData.pinData = { ...workflowPinData, ...triggerPinData };
 
 	runData.executionData = createRunExecutionData({
 		startData: {},
