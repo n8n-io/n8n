@@ -10,7 +10,7 @@ describe('components', () => {
 					theme: 'info',
 				},
 				global: {
-					stubs: ['n8n-icon', 'n8n-text'],
+					stubs: ['N8nIcon', 'N8nText'],
 				},
 				slots: {
 					default: '<n8n-text size="small">This is an info callout.</n8n-text>',
@@ -24,7 +24,7 @@ describe('components', () => {
 					theme: 'success',
 				},
 				global: {
-					stubs: ['n8n-icon', 'n8n-text'],
+					stubs: ['N8nIcon', 'N8nText'],
 				},
 				slots: {
 					default: '<n8n-text size="small">This is a success callout.</n8n-text>',
@@ -38,7 +38,7 @@ describe('components', () => {
 					theme: 'warning',
 				},
 				global: {
-					stubs: ['n8n-icon', 'n8n-text'],
+					stubs: ['N8nIcon', 'N8nText'],
 				},
 				slots: {
 					default: '<n8n-text size="small">This is a warning callout.</n8n-text>',
@@ -52,7 +52,7 @@ describe('components', () => {
 					theme: 'danger',
 				},
 				global: {
-					stubs: ['n8n-icon', 'n8n-text'],
+					stubs: ['N8nIcon', 'N8nText'],
 				},
 				slots: {
 					default: '<n8n-text size="small">This is a danger callout.</n8n-text>',
@@ -66,7 +66,7 @@ describe('components', () => {
 					theme: 'secondary',
 				},
 				global: {
-					stubs: ['n8n-icon', 'n8n-text'],
+					stubs: ['N8nIcon', 'N8nText'],
 				},
 				slots: {
 					default: '<n8n-text size="small">This is a secondary callout.</n8n-text>',
@@ -78,10 +78,10 @@ describe('components', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
 					theme: 'custom',
-					icon: 'code-branch',
+					icon: 'git-branch',
 				},
 				global: {
-					stubs: ['n8n-icon', 'n8n-text'],
+					stubs: ['N8nIcon', 'N8nText'],
 				},
 				slots: {
 					default: '<n8n-text size="small">This is a secondary callout.</n8n-text>',
@@ -93,10 +93,10 @@ describe('components', () => {
 			const wrapper = render(N8nCallout, {
 				props: {
 					theme: 'custom',
-					icon: 'code-branch',
+					icon: 'git-branch',
 				},
 				global: {
-					stubs: ['n8n-icon', 'n8n-text', 'n8n-link'],
+					stubs: ['N8nIcon', 'N8nText', 'N8nLink'],
 				},
 				slots: {
 					default: '<n8n-text size="small">This is a secondary callout.</n8n-text>',

@@ -1,9 +1,9 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { DataSource } from '@n8n/typeorm';
-import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
-import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
-import { SqlDatabase } from 'langchain/sql_db';
+import type { SqlCreatePromptArgs } from '@langchain/classic/agents/toolkits/sql';
+import { SqlToolkit, createSqlAgent } from '@langchain/classic/agents/toolkits/sql';
+import { SqlDatabase } from '@langchain/classic/sql_db';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -13,7 +13,8 @@ import {
 } from 'n8n-workflow';
 
 import { getPromptInputByType, serializeChatHistory } from '@utils/helpers';
-import { getTracingConfig } from '@utils/tracing';
+import type { TracingMetadataEntry } from '@utils/tracing';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
 import { getMysqlDataSource } from './other/handlers/mysql';
 import { getPostgresDataSource } from './other/handlers/postgres';
@@ -58,7 +59,9 @@ export async function sqlAgentAgentExecute(
 				throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
 			}
 
-			const options = this.getNodeParameter('options', i, {});
+			const options = this.getNodeParameter('options', i, {}) as IDataObject & {
+				tracingMetadata?: { values?: TracingMetadataEntry[] };
+			};
 			const selectedDataSource = this.getNodeParameter('dataSource', i, 'sqlite') as
 				| 'mysql'
 				| 'postgres'
@@ -126,8 +129,13 @@ export async function sqlAgentAgentExecute(
 			}
 
 			let response: IDataObject;
+			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
+			if (Object.keys(additionalMetadata).length > 0) {
+				this.logger.debug('Tracing metadata', { additionalMetadata });
+			}
+			const tracingConfig = getTracingConfig(this, { additionalMetadata });
 			try {
-				response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
+				response = await agentExecutor.withConfig(tracingConfig).invoke({
 					input,
 					signal: this.getExecutionCancelSignal(),
 					chatHistory,

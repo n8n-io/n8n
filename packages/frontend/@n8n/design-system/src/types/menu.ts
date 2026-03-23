@@ -3,13 +3,17 @@ import type { AnchorHTMLAttributes, Component } from 'vue';
 import type { RouteLocationRaw, RouterLinkProps } from 'vue-router';
 
 import type { IconColor } from './icon';
+import type { IconName } from '../components/N8nIcon/icons';
 
 export type IMenuItem = {
 	id: string;
 	label: string;
-	icon?: string | { type: 'icon' | 'emoji'; value: string; color?: IconColor };
+	icon?:
+		| IconName
+		| { type: 'icon'; value: IconName; color?: IconColor }
+		| { type: 'emoji'; value: string; color?: IconColor };
 	secondaryIcon?: {
-		name: string;
+		name: IconName;
 		size?: 'xsmall' | 'small' | 'medium' | 'large';
 		tooltip?: Partial<ElTooltipProps>;
 	};
@@ -27,12 +31,14 @@ export type IMenuItem = {
 	 */
 	activateOnRouteNames?: string[];
 	activateOnRoutePaths?: string[];
-
 	children?: IMenuElement[];
 	isLoading?: boolean;
 	disabled?: boolean;
+	disabledReason?: string;
 	notification?: boolean;
 	size?: 'medium' | 'small';
+	beta?: boolean;
+	new?: boolean;
 };
 
 export interface ICustomMenuItem {

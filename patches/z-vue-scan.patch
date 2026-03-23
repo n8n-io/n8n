@@ -1,0 +1,44 @@
+diff --git a/dist/shared/z-vue-scan.3fa3a39a.mjs b/dist/shared/z-vue-scan.3fa3a39a.mjs
+index 90c64048960e7e55d0d6798b5bc11fe9099c79b0..c6af398931a3f5efaf6e507a201e65515daf6c58 100644
+--- a/dist/shared/z-vue-scan.3fa3a39a.mjs
++++ b/dist/shared/z-vue-scan.3fa3a39a.mjs
+@@ -1020,7 +1020,7 @@ class HighlightCanvas {
+   render() {
+     const now = Date.now();
+     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+-    this.ctx.font = "12px sans-serif";
++    this.ctx.font = "10px sans-serif";
+     this.ctx.textBaseline = "middle";
+     for (const [uuid, item] of this.highlights.entries()) {
+       if (!isInViewport(item.bounds))
+@@ -1065,7 +1065,7 @@ class HighlightCanvas {
+   drawBorder(item) {
+     const { bounds, flashCount, opacity } = item;
+     this.ctx.strokeStyle = `rgba(${Math.min(255, flashCount * 6)}, ${Math.max(0, 255 - flashCount * 6)}, 0, ${opacity})`;
+-    this.ctx.lineWidth = 2;
++    this.ctx.lineWidth = 1;
+     this.ctx.strokeRect(
+       bounds.left,
+       bounds.top,
+diff --git a/dist/shared/z-vue-scan.e44c49f3.cjs b/dist/shared/z-vue-scan.e44c49f3.cjs
+index 25100c556b300d60f86b81f46e3ae4168a203c14..c8d3ca42cb41d21f2726716d2aa8d8f63e6a85e8 100644
+--- a/dist/shared/z-vue-scan.e44c49f3.cjs
++++ b/dist/shared/z-vue-scan.e44c49f3.cjs
+@@ -1022,7 +1022,7 @@ class HighlightCanvas {
+   render() {
+     const now = Date.now();
+     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+-    this.ctx.font = "12px sans-serif";
++    this.ctx.font = "10px sans-serif";
+     this.ctx.textBaseline = "middle";
+     for (const [uuid, item] of this.highlights.entries()) {
+       if (!isInViewport(item.bounds))
+@@ -1067,7 +1067,7 @@ class HighlightCanvas {
+   drawBorder(item) {
+     const { bounds, flashCount, opacity } = item;
+     this.ctx.strokeStyle = `rgba(${Math.min(255, flashCount * 6)}, ${Math.max(0, 255 - flashCount * 6)}, 0, ${opacity})`;
+-    this.ctx.lineWidth = 2;
++    this.ctx.lineWidth = 1;
+     this.ctx.strokeRect(
+       bounds.left,
+       bounds.top,

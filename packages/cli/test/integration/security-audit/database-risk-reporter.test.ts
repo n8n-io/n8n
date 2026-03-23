@@ -1,6 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { generateNanoId } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { generateNanoId, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
@@ -42,6 +41,7 @@ test('should report expressions in queries', async () => {
 			active: false,
 			connections: {},
 			nodeTypes: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					id: nodeId,
@@ -95,6 +95,7 @@ test('should report expressions in query params', async () => {
 			active: false,
 			connections: {},
 			nodeTypes: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					id: nodeId,
@@ -150,6 +151,7 @@ test('should report unused query params', async () => {
 			active: false,
 			connections: {},
 			nodeTypes: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					id: nodeId,

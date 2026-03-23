@@ -1,5 +1,5 @@
 import { MongoDBChatMessageHistory } from '@langchain/mongodb';
-import { BufferWindowMemory } from 'langchain/memory';
+import { BufferWindowMemory } from '@langchain/classic/memory';
 import { MongoClient } from 'mongodb';
 import type {
 	ISupplyDataFunctions,
@@ -10,8 +10,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
 	sessionIdOption,

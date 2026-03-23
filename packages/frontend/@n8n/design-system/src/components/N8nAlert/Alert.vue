@@ -23,13 +23,13 @@ const props = withDefaults(defineProps<AlertProps>(), {
 const icon = computed(() => {
 	switch (props.type) {
 		case 'success':
-			return 'check-circle';
+			return 'circle-check';
 		case 'warning':
-			return 'exclamation-triangle';
+			return 'triangle-alert';
 		case 'error':
-			return 'times-circle';
+			return 'circle-x';
 		default:
-			return 'info-circle';
+			return 'info';
 	}
 });
 
@@ -78,7 +78,7 @@ const alertBoxClassNames = computed(() => {
 </template>
 
 <style lang="scss" module>
-@import '../../css/common/var.scss';
+@use '../../css/common/var.scss';
 
 .alert {
 	display: flex;
@@ -87,7 +87,7 @@ const alertBoxClassNames = computed(() => {
 	border-bottom: 1px solid transparent;
 	align-items: center;
 	justify-content: space-between;
-	padding: $alert-padding;
+	padding: var.$alert-padding;
 
 	&.center {
 		justify-content: center;
@@ -95,112 +95,112 @@ const alertBoxClassNames = computed(() => {
 
 	&.success {
 		&.light {
-			color: var(--color-success);
+			color: var(--color--success);
 
 			&.background {
-				background-color: $color-success-lighter;
-				border-color: var(--color-success);
+				background-color: var.$color-success-lighter;
+				border-color: var(--color--success);
 			}
 
 			.el-alert__description {
-				color: var(--color-success);
+				color: var(--color--success);
 			}
 		}
 
 		&.dark {
-			color: $color-white;
+			color: var.$color-white;
 
 			&:not(.background) {
-				color: var(--color-success);
+				color: var(--color--success);
 			}
 
 			&.background {
-				background-color: var(--color-success);
-				border-color: $color-white;
+				background-color: var(--color--success);
+				border-color: var.$color-white;
 			}
 		}
 	}
 
 	&.info {
 		&.light {
-			color: var(--color-info);
+			color: var(--color--info);
 
 			&.background {
-				background-color: $alert-info-color;
-				border-color: var(--color-info);
+				background-color: var.$alert-info-color;
+				border-color: var(--color--info);
 			}
 		}
 
 		&.dark {
-			color: $color-white;
+			color: var.$color-white;
 
 			&:not(.background) {
-				color: var(--color-info);
+				color: var(--color--info);
 			}
 
 			&.background {
-				background-color: var(--color-info);
-				border-color: $color-white;
+				background-color: var(--color--info);
+				border-color: var.$color-white;
 			}
 		}
 
 		.el-alert__description {
-			color: var(--color-info);
+			color: var(--color--info);
 		}
 	}
 
 	&.warning {
 		&.light {
-			color: var(--color-warning);
+			color: var(--color--warning);
 
 			&.background {
-				background-color: $alert-warning-color;
-				border-color: var(--color-warning);
+				background-color: var.$alert-warning-color;
+				border-color: var(--color--warning);
 			}
 
 			.el-alert__description {
-				color: var(--color-warning);
+				color: var(--color--warning);
 			}
 		}
 
 		&.dark {
-			color: $color-white;
+			color: var.$color-white;
 
 			&:not(.background) {
-				color: var(--color-warning);
+				color: var(--color--warning);
 			}
 
 			&.background {
-				background-color: var(--color-warning);
-				border-color: $color-white;
+				background-color: var(--color--warning);
+				border-color: var.$color-white;
 			}
 		}
 	}
 
 	&.error {
 		&.light {
-			color: var(--color-danger);
+			color: var(--color--danger);
 
 			&.background {
-				background-color: $alert-danger-color;
-				border-color: var(--color-danger);
+				background-color: var.$alert-danger-color;
+				border-color: var(--color--danger);
 			}
 
 			.el-alert__description {
-				color: var(--color-danger);
+				color: var(--color--danger);
 			}
 		}
 
 		&.dark {
-			color: $color-white;
+			color: var.$color-white;
 
 			&:not(.background) {
-				color: var(--color-danger);
+				color: var(--color--danger);
 			}
 
 			&.background {
-				background-color: var(--color-danger);
-				border-color: $color-white;
+				background-color: var(--color--danger);
+				border-color: var.$color-white;
 			}
 		}
 	}
@@ -215,8 +215,8 @@ const alertBoxClassNames = computed(() => {
 	display: inline-flex;
 	color: inherit;
 	align-items: center;
-	padding-left: var(--spacing-2xs);
-	padding-right: var(--spacing-s);
+	padding-left: var(--spacing--2xs);
+	padding-right: var(--spacing--sm);
 }
 
 .text {
@@ -226,22 +226,22 @@ const alertBoxClassNames = computed(() => {
 }
 
 .title {
-	font-size: $alert-title-font-size;
+	font-size: var.$alert-title-font-size;
 	line-height: 18px;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .description {
-	font-size: $alert-description-font-size;
+	font-size: var.$alert-description-font-size;
 
 	&.hasTitle {
-		margin: 5px 0 0 0;
+		margin: 5px 0 0;
 	}
 }
 
 .aside {
 	display: inline-flex;
 	align-items: center;
-	padding-left: var(--spacing-s);
+	padding-left: var(--spacing--sm);
 }
 </style>

@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
 import type {
 	Workflow,
 	INode,
@@ -12,6 +12,7 @@ import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
+	ExecutionError,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
@@ -74,6 +75,10 @@ export class TriggersAndPollers {
 					if (responsePromise) {
 						hooks.addHandler('sendResponse', () => responsePromise.reject(error));
 					}
+					reject(error);
+				};
+
+				triggerFunctions.saveFailedExecution = (error: ExecutionError) => {
 					reject(error);
 				};
 			});

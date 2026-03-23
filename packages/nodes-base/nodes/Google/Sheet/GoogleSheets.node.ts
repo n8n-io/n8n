@@ -11,9 +11,19 @@ export class GoogleSheets extends VersionedNodeType {
 			name: 'googleSheets',
 			icon: 'file:googleSheets.svg',
 			group: ['input', 'output'],
-			defaultVersion: 4.6,
+			defaultVersion: 4.7,
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Read, update and write data to Google Sheets',
+			builderHint: {
+				message:
+					'For workflow data storage, DataTable with upsert avoids duplicates. Use Google Sheets when spreadsheet collaboration is specifically needed.',
+				relatedNodes: [
+					{
+						nodeType: 'n8n-nodes-base.dataTable',
+						relationHint: 'Prefer for workflow data storage with upsert',
+					},
+				],
+			},
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -27,6 +37,7 @@ export class GoogleSheets extends VersionedNodeType {
 			4.4: new GoogleSheetsV2(baseDescription),
 			4.5: new GoogleSheetsV2(baseDescription),
 			4.6: new GoogleSheetsV2(baseDescription),
+			4.7: new GoogleSheetsV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

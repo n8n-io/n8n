@@ -1,28 +1,27 @@
-import { createTeamProject, linkUserToProject } from '@n8n/backend-test-utils';
 import {
+	createTeamProject,
+	linkUserToProject,
 	randomCredentialPayload as payload,
 	randomCredentialPayload,
 	randomCredentialPayloadWithOauthTokenData,
 	randomName,
+	testDb,
 } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { Project } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { ListQueryDb } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
+import type { Project, User, ListQueryDb } from '@n8n/db';
+import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import * as a from 'assert';
 import { mock } from 'jest-mock-extended';
 import { Credentials } from 'n8n-core';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { randomString } from 'n8n-workflow';
-
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import {
+	CREDENTIAL_BLANKING_VALUE,
+	type ICredentialDataDecryptedObject,
+	randomString,
+} from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
@@ -32,13 +31,22 @@ import {
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createAdmin, createManyUsers, createMember, createOwner } from '../shared/db/users';
+import {
+	createAdmin,
+	createChatUser,
+	createManyUsers,
+	createMember,
+	createOwner,
+} from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+import { initCredentialsTypes, setupTestServer } from '../shared/utils';
 
 const { any } = expect;
 
-const testServer = setupTestServer({ endpointGroups: ['credentials'] });
+const testServer = setupTestServer({
+	endpointGroups: ['credentials'],
+	enabledFeatures: ['feat:sharing'],
+});
 
 let owner: User;
 let member: User;
@@ -47,6 +55,7 @@ let secondMember: User;
 
 let ownerPersonalProject: Project;
 let memberPersonalProject: Project;
+let teamProject: Project;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -54,6 +63,10 @@ let authAdminAgent: SuperAgentTest;
 
 let projectRepository: ProjectRepository;
 let sharedCredentialsRepository: SharedCredentialsRepository;
+
+beforeAll(async () => {
+	await initCredentialsTypes();
+});
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
@@ -106,7 +119,7 @@ describe('GET /credentials', () => {
 
 	test('should return only own creds for member', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		const [savedCredential1] = await Promise.all([
@@ -126,9 +139,31 @@ describe('GET /credentials', () => {
 		expect(member1Credential.id).toBe(savedCredential1.id);
 	});
 
+	test('should return only own creds for chat user', async () => {
+		const [chatUser1, chatUser2] = await createManyUsers(2, {
+			role: { slug: 'global:chatUser' },
+		});
+
+		const [savedCredential1] = await Promise.all([
+			saveCredential(randomCredentialPayload(), { user: chatUser1, role: 'credential:owner' }),
+			saveCredential(randomCredentialPayload(), { user: chatUser2, role: 'credential:owner' }),
+		]);
+
+		const response = await testServer.authAgentFor(chatUser1).get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(1); // member retrieved only own cred
+
+		const [chatUser1Credential] = response.body.data;
+
+		validateMainCredentialData(chatUser1Credential);
+		expect(chatUser1Credential.data).toBeUndefined();
+		expect(chatUser1Credential.id).toBe(savedCredential1.id);
+	});
+
 	test('should return scopes when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		const teamProject = await createTeamProject(undefined, member1);
@@ -161,6 +196,7 @@ describe('GET /credentials', () => {
 					'credential:read',
 					'credential:update',
 					'credential:share',
+					'credential:unshare',
 					'credential:delete',
 				].sort(),
 			);
@@ -194,6 +230,7 @@ describe('GET /credentials', () => {
 					'credential:move',
 					'credential:read',
 					'credential:share',
+					'credential:unshare',
 					'credential:update',
 				].sort(),
 			);
@@ -219,6 +256,8 @@ describe('GET /credentials', () => {
 					'credential:move',
 					'credential:read',
 					'credential:share',
+					'credential:shareGlobally',
+					'credential:unshare',
 					'credential:update',
 				].sort(),
 			);
@@ -233,6 +272,8 @@ describe('GET /credentials', () => {
 					'credential:move',
 					'credential:read',
 					'credential:share',
+					'credential:shareGlobally',
+					'credential:unshare',
 					'credential:update',
 				].sort(),
 			);
@@ -242,7 +283,7 @@ describe('GET /credentials', () => {
 	test('should return data when ?includeData=true', async () => {
 		// ARRANGE
 		const [actor, otherMember] = await createManyUsers(2, {
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		const teamProjectViewer = await createTeamProject(undefined);
@@ -297,6 +338,7 @@ describe('GET /credentials', () => {
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:unshare',
 				'credential:delete',
 			].sort(),
 		);
@@ -359,6 +401,8 @@ describe('GET /credentials', () => {
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -373,6 +417,8 @@ describe('GET /credentials', () => {
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -390,6 +436,8 @@ describe('GET /credentials', () => {
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -790,7 +838,6 @@ describe('POST /credentials', () => {
 		const payload = randomCredentialPayload();
 
 		const response = await authMemberAgent.post('/credentials').send(payload);
-
 		expect(response.statusCode).toBe(200);
 
 		const { id, name, type, data: encryptedData, scopes } = response.body.data;
@@ -805,6 +852,7 @@ describe('POST /credentials', () => {
 				'credential:move',
 				'credential:read',
 				'credential:share',
+				'credential:unshare',
 				'credential:update',
 			].sort(),
 		);
@@ -823,6 +871,25 @@ describe('POST /credentials', () => {
 
 		expect(sharedCredential.project.id).toBe(memberPersonalProject.id);
 		expect(sharedCredential.credentials.name).toBe(payload.name);
+	});
+
+	test('should create cred with uiContext parameter', async () => {
+		const payload = { ...randomCredentialPayload(), uiContext: 'credentials_list' };
+
+		const response = await authMemberAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name, type } = response.body.data;
+
+		expect(name).toBe(payload.name);
+		expect(type).toBe(payload.type);
+
+		const credential = await getCredentialById(id);
+		a.ok(credential);
+
+		expect(credential.name).toBe(payload.name);
+		expect(credential.type).toBe(payload.type);
 	});
 
 	test('should fail with invalid inputs', async () => {
@@ -907,6 +974,125 @@ describe('POST /credentials', () => {
 				code: 400,
 				message: "You don't have the permissions to save the credential in this project.",
 			});
+	});
+
+	test('should fail when viewer user tries to create credential in team project', async () => {
+		const viewer = await createMember();
+		teamProject = await createTeamProject(undefined, admin);
+		await linkUserToProject(viewer, teamProject, 'project:viewer');
+
+		const response = await testServer
+			.authAgentFor(viewer)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), projectId: teamProject.id });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
+	});
+
+	test('should allow viewer user to create credential in their personal project', async () => {
+		const viewer = await createMember();
+		teamProject = await createTeamProject(undefined, admin);
+		await linkUserToProject(viewer, teamProject, 'project:viewer');
+
+		const response = await testServer
+			.authAgentFor(viewer)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload() });
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('should fail when chat user tries to create credential in their personal project', async () => {
+		const chatUser = await createChatUser();
+
+		const response = await testServer
+			.authAgentFor(chatUser)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload() });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
+	});
+
+	test('should fail when member tries to create credential with isGlobal=true', async () => {
+		const response = await authMemberAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isGlobal: true });
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toBe(
+			'You do not have permission to create globally shared credentials',
+		);
+	});
+
+	test('should allow owner to create credential with isGlobal=true', async () => {
+		const response = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isGlobal: true });
+
+		expect(response.statusCode).toBe(200);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: response.body.data.id,
+		});
+		expect(credential.isGlobal).toBe(true);
+	});
+
+	test('should allow member to create credential with isGlobal=false', async () => {
+		const response = await authMemberAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isGlobal: false });
+
+		expect(response.statusCode).toBe(200);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: response.body.data.id,
+		});
+		expect(credential.isGlobal).toBe(false);
+	});
+
+	test('should not allow chat user to create credential with isGlobal=false', async () => {
+		const chatUser = await createChatUser();
+		const response = await testServer
+			.authAgentFor(chatUser)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isGlobal: false });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
+	});
+
+	test('should allow member to create credential without passing isGlobal', async () => {
+		const payload = randomCredentialPayload();
+		delete payload.isGlobal;
+
+		const response = await authMemberAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: response.body.data.id,
+		});
+		expect(credential.isGlobal).toBe(false);
+	});
+
+	test('should not allow chat user to create credential without passing isGlobal', async () => {
+		const chatUser = await createChatUser();
+		const payload = randomCredentialPayload();
+		delete payload.isGlobal;
+
+		const response = await testServer.authAgentFor(chatUser).post('/credentials').send(payload);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
 	});
 });
 
@@ -1055,6 +1241,8 @@ describe('PATCH /credentials/:id', () => {
 				'credential:move',
 				'credential:read',
 				'credential:share',
+				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:update',
 			].sort(),
 		);
@@ -1228,15 +1416,16 @@ describe('PATCH /credentials/:id', () => {
 			.query({ includeData: true })
 			.expect(200);
 
-		const { id, data } = response.body.data;
+		const { id } = response.body.data;
 
 		expect(id).toBe(savedCredential.id);
-		// was overwritten
-		expect(data.accessToken).toBe(patchPayload.data.accessToken);
 		// was not overwritten
 		const dbCredential = await getCredentialById(savedCredential.id);
-		const unencryptedData = Container.get(CredentialsService).decrypt(dbCredential!);
-		expect(unencryptedData.oauthTokenData).toEqual(credential.data.oauthTokenData);
+		const unencryptedData = createCredentialsFromCredentialsEntity(dbCredential!);
+		expect(unencryptedData.getData().oauthTokenData).toEqual(credential.data.oauthTokenData);
+
+		// was overwritten
+		expect(unencryptedData.getData().accessToken).toBe(patchPayload.data.accessToken);
 	});
 
 	test('should fail with invalid inputs', async () => {
@@ -1279,6 +1468,155 @@ describe('PATCH /credentials/:id', () => {
 			.send(randomCredentialPayload());
 
 		expect(response.statusCode).toBe(400);
+	});
+
+	test('should fail when member tries to change isGlobal value', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			user: member,
+			role: 'credential:owner',
+		});
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ ...randomCredentialPayload(), isGlobal: true });
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toBe(
+			'You do not have permission to change global sharing for credentials',
+		);
+	});
+
+	test('should allow owner to set isGlobal to true', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ ...randomCredentialPayload(), isGlobal: true });
+
+		expect(response.statusCode).toBe(200);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(credential.isGlobal).toBe(true);
+	});
+
+	test('should allow member to update credential with same isGlobal value', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload({ isGlobal: false }), {
+			user: member,
+			role: 'credential:owner',
+		});
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ ...randomCredentialPayload(), isGlobal: false });
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('should allow member to update credential without passing isGlobal', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload({ isGlobal: false }), {
+			user: member,
+			role: 'credential:owner',
+		});
+
+		const payload = randomCredentialPayload();
+		delete payload.isGlobal;
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(payload);
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('should create credential with isResolvable set to true', async () => {
+		const response = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: true });
+
+		expect(response.statusCode).toBe(200);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: response.body.data.id,
+		});
+		expect(credential.isResolvable).toBe(true);
+	});
+
+	test('should create credential with isResolvable set to false', async () => {
+		const response = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: false });
+
+		expect(response.statusCode).toBe(200);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: response.body.id,
+		});
+		expect(credential.isResolvable).toBe(false);
+	});
+
+	test('should default isResolvable to false when not provided', async () => {
+		const payload = randomCredentialPayload();
+		delete payload.isResolvable;
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: response.body.id,
+		});
+		expect(credential.isResolvable).toBe(false);
+	});
+
+	test('should allow updating isResolvable field', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload({ isResolvable: false }), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ ...randomCredentialPayload(), isResolvable: true });
+
+		expect(response.statusCode).toBe(200);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(credential.isResolvable).toBe(true);
+	});
+
+	test('should preserve isResolvable value when not provided in update', async () => {
+		// Use saveCredential like the other tests
+		const savedCredential = await saveCredential(randomCredentialPayload({ isResolvable: true }), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		// Create a fresh payload for update without isResolvable
+		const updatePayload = randomCredentialPayload();
+		updatePayload.name = savedCredential.name; // Use same name to avoid conflicts
+		delete updatePayload.isResolvable;
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		// Verify isResolvable is preserved (should be false based on how saveCredential works with test DB)
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		// The controller preserves isResolvable when not provided, verified by controller tests
+		// This integration test verifies the full flow works end-to-end
+		expect(credential.isResolvable).toBe(true);
 	});
 });
 

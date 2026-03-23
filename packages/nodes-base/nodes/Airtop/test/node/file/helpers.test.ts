@@ -1,5 +1,5 @@
 import * as helpers from '../../../actions/file/helpers';
-import { BASE_URL } from '../../../constants';
+import * as GenericFunctions from '../../../GenericFunctions';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
@@ -10,10 +10,6 @@ const mockFileCreateResponse = {
 	},
 };
 
-const mockFileEvent = `
-event: fileEvent
-data: {"event":"file_upload_status","status":"available","fileId":"file-123"}`;
-
 // Mock the transport and other dependencies
 jest.mock('../../../transport', () => {
 	const originalModule = jest.requireActual<typeof transport>('../../../transport');
@@ -23,13 +19,24 @@ jest.mock('../../../transport', () => {
 	};
 });
 
+jest.mock('../../../GenericFunctions', () => {
+	const originalModule = jest.requireActual<typeof GenericFunctions>('../../../GenericFunctions');
+	return {
+		...originalModule,
+		waitForSessionEvent: jest.fn(),
+	};
+});
+
 describe('Test Airtop file helpers', () => {
 	afterAll(() => {
 		jest.unmock('../../../transport');
+		jest.unmock('../../../GenericFunctions');
 	});
 
 	afterEach(() => {
 		jest.clearAllMocks();
+		(transport.apiRequest as jest.Mock).mockReset();
+		(GenericFunctions.waitForSessionEvent as jest.Mock).mockReset();
 	});
 
 	describe('requestAllFiles', () => {
@@ -198,51 +205,75 @@ describe('Test Airtop file helpers', () => {
 	});
 
 	describe('waitForFileInSession', () => {
-		it('should resolve when file is available', async () => {
-			// Create a mock stream
-			const mockStream = {
-				on: jest.fn().mockImplementation((event, callback) => {
-					if (event === 'data') {
-						callback(mockFileEvent);
-					}
-				}),
-				removeAllListeners: jest.fn(),
+		it('should resolve when file_upload_status event with available status is received', async () => {
+			const waitForSessionEventMock = GenericFunctions.waitForSessionEvent as jest.Mock;
+			const mockEvent = {
+				event: 'file_upload_status',
+				status: 'available',
+				fileId: 'file-123',
 			};
+			waitForSessionEventMock.mockResolvedValueOnce(mockEvent);
 
-			const mockHttpRequestWithAuthentication = jest.fn().mockResolvedValueOnce(mockStream);
 			const mockExecuteFunction = createMockExecuteFunction({});
-			mockExecuteFunction.helpers.httpRequestWithAuthentication = mockHttpRequestWithAuthentication;
 
-			await helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 100);
+			await helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 1000);
 
-			expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith('airtopApi', {
-				method: 'GET',
-				url: `${BASE_URL}/sessions/session-123/events?all=true`,
-				encoding: 'stream',
-			});
-
-			expect(mockStream.removeAllListeners).toHaveBeenCalled();
+			expect(waitForSessionEventMock).toHaveBeenCalledTimes(1);
+			expect(waitForSessionEventMock).toHaveBeenCalledWith(
+				'session-123',
+				expect.any(Function),
+				1000,
+			);
 		});
 
-		it('should timeout if no event is received', async () => {
-			// Create a mock stream
-			const mockStream = {
-				on: jest.fn().mockImplementation(() => {}),
-				removeAllListeners: jest.fn(),
+		it('should throw error when uploading a file with invalid file format', async () => {
+			const waitForSessionEventMock = GenericFunctions.waitForSessionEvent as jest.Mock;
+			const mockEvent = {
+				event: 'file_upload_status',
+				status: 'upload_failed',
+				fileId: 'file-123',
+				eventData: {
+					error: 'Upload failed due to invalid file format',
+				},
 			};
-			const mockHttpRequestWithAuthentication = jest.fn().mockResolvedValueOnce(mockStream);
+			waitForSessionEventMock.mockResolvedValueOnce(mockEvent);
 
 			const mockExecuteFunction = createMockExecuteFunction({});
-			mockExecuteFunction.helpers.httpRequestWithAuthentication = mockHttpRequestWithAuthentication;
 
-			const waitPromise = helpers.waitForFileInSession.call(
-				mockExecuteFunction,
-				'session-123',
-				'file-123',
-				100,
-			);
+			await expect(
+				helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 1000),
+			).rejects.toMatchObject({ description: 'Upload failed due to invalid file format' });
+		});
 
-			await expect(waitPromise).rejects.toThrow();
+		it('should throw error when upload_failed status is received', async () => {
+			const waitForSessionEventMock = GenericFunctions.waitForSessionEvent as jest.Mock;
+			const mockEvent = {
+				fileId: 'file-123',
+				event: 'file_upload_status',
+				status: 'upload_failed',
+				eventData: {
+					error: 'Upload failed for File ID: file-123',
+				},
+			};
+			waitForSessionEventMock.mockResolvedValueOnce(mockEvent);
+
+			const mockExecuteFunction = createMockExecuteFunction({});
+
+			// the service should throw an error description 'Upload failed for File ID: file-123'
+			await expect(
+				helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 1000),
+			).rejects.toMatchObject({ description: 'Upload failed for File ID: file-123' });
+		});
+
+		it('should timeout if no matching event is received', async () => {
+			const waitForSessionEventMock = GenericFunctions.waitForSessionEvent as jest.Mock;
+			waitForSessionEventMock.mockRejectedValueOnce(new Error('Timeout reached'));
+
+			const mockExecuteFunction = createMockExecuteFunction({});
+
+			await expect(
+				helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 100),
+			).rejects.toThrow('Timeout reached');
 		});
 	});
 
@@ -280,17 +311,22 @@ describe('Test Airtop file helpers', () => {
 			const mockWindowId = 'window-123';
 			const mockSessionId = 'session-123';
 
-			await helpers.triggerFileInput.call(
-				createMockExecuteFunction({}),
-				mockFileId,
-				mockWindowId,
-				mockSessionId,
-			);
+			await helpers.triggerFileInput.call(createMockExecuteFunction({}), {
+				fileId: mockFileId,
+				windowId: mockWindowId,
+				sessionId: mockSessionId,
+				elementDescription: 'test',
+				includeHiddenElements: false,
+			});
 
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
 				`/sessions/${mockSessionId}/windows/${mockWindowId}/file-input`,
-				{ fileId: mockFileId },
+				{
+					fileId: mockFileId,
+					elementDescription: 'test',
+					includeHiddenElements: false,
+				},
 			);
 		});
 	});

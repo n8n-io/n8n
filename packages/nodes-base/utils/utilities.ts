@@ -7,11 +7,19 @@ import reduce from 'lodash/reduce';
 import type {
 	IDataObject,
 	IDisplayOptions,
+	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
+import {
+	ApplicationError,
+	jsonParse,
+	MYSQL_NODE_TYPE,
+	POSTGRES_NODE_TYPE,
+	randomInt,
+} from 'n8n-workflow';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -479,3 +487,50 @@ export const removeTrailingSlash = (url: string) => {
 	}
 	return url;
 };
+
+export function addExecutionHints(
+	context: IExecuteFunctions,
+	node: INode,
+	items: INodeExecutionData[],
+	operation: string,
+	executeOnce: boolean | undefined,
+) {
+	if (
+		(node.type === POSTGRES_NODE_TYPE || node.type === MYSQL_NODE_TYPE) &&
+		operation === 'select' &&
+		items.length > 1 &&
+		!executeOnce
+	) {
+		context.addExecutionHints({
+			message: `This node ran ${items.length} times, once for each input item. To run for the first item only, enable 'execute once' in the node settings`,
+			location: 'outputPane',
+		});
+	}
+
+	if (
+		node.type === POSTGRES_NODE_TYPE &&
+		operation === 'executeQuery' &&
+		items.length > 1 &&
+		(context.getNodeParameter('options.queryBatching', 0, 'single') as string) === 'single' &&
+		(context.getNodeParameter('query', 0, '') as string).toLowerCase().startsWith('insert')
+	) {
+		context.addExecutionHints({
+			message:
+				"Inserts were batched for performance. If you need to preserve item matching, consider changing 'Query batching' to 'Independent' in the options.",
+			location: 'outputPane',
+		});
+	}
+
+	if (
+		node.type === MYSQL_NODE_TYPE &&
+		operation === 'executeQuery' &&
+		(context.getNodeParameter('options.queryBatching', 0, 'single') as string) === 'single' &&
+		(context.getNodeParameter('query', 0, '') as string).toLowerCase().startsWith('insert')
+	) {
+		context.addExecutionHints({
+			message:
+				"Inserts were batched for performance. If you need to preserve item matching, consider changing 'Query batching' to 'Independent' in the options.",
+			location: 'outputPane',
+		});
+	}
+}

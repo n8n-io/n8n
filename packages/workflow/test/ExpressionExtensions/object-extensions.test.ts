@@ -1,7 +1,6 @@
-import { ApplicationError } from '@/errors';
-import { objectExtensions } from '@/extensions/object-extensions';
-
 import { evaluate } from './helpers';
+import { ApplicationError } from '../../src/errors';
+import { objectExtensions } from '../../src/extensions/object-extensions';
 
 describe('Data Transformation Functions', () => {
 	describe('Object Data Transformation Functions', () => {
@@ -138,6 +137,10 @@ describe('Data Transformation Functions', () => {
 
 		test('.urlEncode should work on an object', () => {
 			expect(evaluate('={{ ({ test1: 1, test2: "2" }).urlEncode() }}')).toEqual('test1=1&test2=2');
+		});
+
+		test('.urlEncode should encode special characters per WHATWG spec', () => {
+			expect(evaluate('={{ ({ name: "hello!()" }).urlEncode() }}')).toEqual('name=hello%21%28%29');
 		});
 
 		describe('.keys', () => {

@@ -1,4 +1,4 @@
-import { createDeferredPromise } from '@/deferred-promise';
+import { createDeferredPromise } from '../src/deferred-promise';
 
 describe('DeferredPromise', () => {
 	it('should resolve the promise with the correct value', async () => {

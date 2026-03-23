@@ -1,0 +1,332 @@
+{
+	"createdAt": "2025-09-08T10:32:07.628Z",
+	"updatedAt": "2025-09-08T10:32:07.628Z",
+	"name": "Tools: Multiple Invocations",
+	"id": "265",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-1024, 432],
+			"id": "7a8be1ce-c648-4695-9075-9ae348da968f",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"jsCode": "const result = [\n  'n8n',\n  'make',\n  'zappier',\n  'workato'\n].map(i => ({ json: {name: i}}))\n\nreturn result;"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [-800, 416],
+			"id": "39ce5cb4-b557-424c-97ad-1f9126e7c45b",
+			"name": "Code"
+		},
+		{
+			"parameters": {
+				"aggregate": "aggregateAllItemData",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.aggregate",
+			"typeVersion": 1,
+			"position": [-304, 176],
+			"id": "8e6d63b9-cb8b-4553-b3df-04424a51a5a2",
+			"name": "Aggregate"
+		},
+		{
+			"parameters": {
+				"content": "## Node as Tool, multiple invocations\n",
+				"height": 240,
+				"width": 560
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-336, 96],
+			"typeVersion": 1,
+			"id": "93172a55-1b27-4e4a-8dce-def58cd08ebc",
+			"name": "Sticky Note1"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "=Search HackerNews for following: {{ $json.data.map(i => i.name).join(', ') }}",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [-96, 176],
+			"id": "1d29875c-b16b-4866-b262-ca6cadc416d2",
+			"name": "AI Agent1"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"value": "gpt-4.1-nano",
+					"mode": "list",
+					"cachedResultName": "gpt-4.1-nano"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [-128, 352],
+			"id": "25727c7c-0195-4405-918e-3fb9335933f4",
+			"name": "OpenAI Chat Model1",
+			"credentials": {
+				"openAiApi": {
+					"id": "Zak03cqeLUOsgkFI",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "all",
+				"limit": 1,
+				"additionalFields": {
+					"keyword": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Keyword', ``, 'string') }}"
+				}
+			},
+			"type": "n8n-nodes-base.hackerNewsTool",
+			"typeVersion": 1,
+			"position": [128, 352],
+			"id": "74491c5a-3d42-4a90-b716-085aae48d03b",
+			"name": "Hacker News1"
+		},
+		{
+			"parameters": {
+				"aggregate": "aggregateAllItemData",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.aggregate",
+			"typeVersion": 1,
+			"position": [-384, 592],
+			"id": "4d2ebdc0-4826-464d-baf2-244ef6ae5754",
+			"name": "Aggregate1"
+		},
+		{
+			"parameters": {
+				"content": "## Workflow Tool, multiple invocations\n",
+				"height": 240,
+				"width": 660
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-400, 512],
+			"typeVersion": 1,
+			"id": "920bda61-45e0-4dda-9533-1118547cf03c",
+			"name": "Sticky Note3"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "=Search HackerNews for following: {{ $json.data.map(i => i.name).join(', ') }}",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [-160, 592],
+			"id": "db68e97c-807a-4e68-a765-8cd03b4bf0e4",
+			"name": "AI Agent3"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"value": "gpt-4.1-nano",
+					"mode": "list",
+					"cachedResultName": "gpt-4.1-nano"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [-192, 768],
+			"id": "b64d6fda-91f3-446c-ad38-0b226ac843d1",
+			"name": "OpenAI Chat Model3",
+			"credentials": {
+				"openAiApi": {
+					"id": "Zak03cqeLUOsgkFI",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"description": "Call this tool to search Hacker News",
+				"workflowId": {
+					"__rl": true,
+					"value": "={{ $workflow.id }}",
+					"mode": "id"
+				},
+				"workflowInputs": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('query', ``, 'string') }}"
+					},
+					"matchingColumns": ["query"],
+					"schema": [
+						{
+							"id": "query",
+							"displayName": "query",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"canBeUsedToMatch": true,
+							"type": "string",
+							"removed": false
+						}
+					],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"typeVersion": 2.2,
+			"position": [48, 784],
+			"id": "c9ad1851-dd8d-4ab8-b987-8649ae7bed6b",
+			"name": "Call n8n Workflow Tool1"
+		},
+		{
+			"parameters": {
+				"workflowInputs": {
+					"values": [
+						{
+							"name": "query"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.1,
+			"position": [-560, -288],
+			"id": "9e3e729b-16a8-4ff2-af41-ad86c44daf89",
+			"name": "When Executed by Another Workflow"
+		},
+		{
+			"parameters": {
+				"resource": "all",
+				"limit": 1,
+				"additionalFields": {
+					"keyword": "={{ $json.query }}"
+				}
+			},
+			"type": "n8n-nodes-base.hackerNews",
+			"typeVersion": 1,
+			"position": [-352, -288],
+			"id": "8d01727b-50bd-4990-807b-91c8dd3942ad",
+			"name": "Hacker News2"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Aggregate1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate": {
+			"main": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hacker News1": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate1": {
+			"main": [
+				[
+					{
+						"node": "AI Agent3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model3": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent3",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Call n8n Workflow Tool1": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent3",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "Hacker News2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": null,
+	"versionId": null,
+	"meta": null,
+	"tags": []
+}

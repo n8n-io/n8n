@@ -33,6 +33,9 @@ export async function readSheet(
 		dataLocationOnSheetOptions.rangeDefinition = 'detectAutomatically';
 	}
 
+	const includeHeadersWithEmptyCells =
+		(additionalOptions?.includeHeadersWithEmptyCells as boolean) ?? false;
+
 	const range = rangeString ?? getRangeString(sheetName, dataLocationOnSheetOptions);
 
 	const valueRenderMode = (outputFormattingOption.general ||
@@ -53,7 +56,7 @@ export async function readSheet(
 		data,
 		headerRow: keyRowIndex,
 		firstDataRow: dataStartRowIndex,
-	} = prepareSheetData(sheetData, dataLocationOnSheetOptions);
+	} = prepareSheetData(sheetData, dataLocationOnSheetOptions as RangeDetectionOptions);
 
 	let responseData = [];
 
@@ -95,7 +98,12 @@ export async function readSheet(
 			combineFilters,
 		});
 	} else {
-		responseData = sheet.structureArrayDataByColumn(inputData, keyRowIndex, dataStartRowIndex);
+		responseData = sheet.structureArrayDataByColumn(
+			inputData,
+			keyRowIndex,
+			dataStartRowIndex,
+			includeHeadersWithEmptyCells,
+		);
 	}
 
 	returnData.push(

@@ -1,19 +1,28 @@
+import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
+import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
-import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
-import type { BaseChatMemory } from 'langchain/memory';
-import type { DynamicStructuredTool, Tool } from 'langchain/tools';
+import {
+	AgentExecutor,
+	type AgentRunnableSequence,
+	createToolCallingAgent,
+} from '@langchain/classic/agents';
+import type { BaseChatMemory } from '@langchain/classic/memory';
+import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { loadMemory } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import {
 	getOptionalOutputParser,
 	type N8nOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
 import {
 	fixEmptyContentMessage,
@@ -25,11 +34,12 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
+import { ChatOpenAI } from '@langchain/openai';
 
 /**
  * Creates an agent executor with the given configuration
  */
-function createAgentExecutor(
+export function createAgentExecutor(
 	model: BaseChatModel,
 	tools: Array<DynamicStructuredTool | Tool>,
 	prompt: ChatPromptTemplate,
@@ -38,19 +48,30 @@ function createAgentExecutor(
 	memory?: BaseChatMemory,
 	fallbackModel?: BaseChatModel | null,
 ) {
-	const modelWithFallback = fallbackModel ? model.withFallbacks([fallbackModel]) : model;
 	const agent = createToolCallingAgent({
-		llm: modelWithFallback,
+		llm: model,
 		tools,
 		prompt,
 		streamRunnable: false,
 	});
 
+	let fallbackAgent: AgentRunnableSequence | undefined;
+	if (fallbackModel) {
+		fallbackAgent = createToolCallingAgent({
+			llm: fallbackModel,
+			tools,
+			prompt,
+			streamRunnable: false,
+		});
+	}
 	const runnableAgent = RunnableSequence.from([
-		agent,
+		fallbackAgent ? agent.withFallbacks([fallbackAgent]) : agent,
 		getAgentStepsParser(outputParser, memory),
 		fixEmptyContentMessage,
-	]);
+	]) as AgentRunnableSequence;
+
+	runnableAgent.singleAction = false;
+	runnableAgent.streamRunnable = false;
 
 	return AgentExecutor.fromAgentAndTools({
 		agent: runnableAgent,
@@ -59,6 +80,106 @@ function createAgentExecutor(
 		returnIntermediateSteps: options.returnIntermediateSteps === true,
 		maxIterations: options.maxIterations ?? 10,
 	});
+}
+
+function isExecuteFunctions(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+): context is IExecuteFunctions {
+	return 'getExecuteData' in context;
+}
+
+async function processEventStream(
+	ctx: IExecuteFunctions,
+	eventStream: IterableReadableStream<StreamEvent>,
+	itemIndex: number,
+	returnIntermediateSteps: boolean = false,
+): Promise<{ output: string; intermediateSteps?: any[] }> {
+	const agentResult: { output: string; intermediateSteps?: any[] } = {
+		output: '',
+	};
+
+	if (returnIntermediateSteps) {
+		agentResult.intermediateSteps = [];
+	}
+
+	ctx.sendChunk('begin', itemIndex);
+	for await (const event of eventStream) {
+		// Stream chat model tokens as they come in
+		switch (event.event) {
+			case 'on_chat_model_stream':
+				const chunk = event.data?.chunk as AIMessageChunk;
+				if (chunk?.content) {
+					const chunkContent = chunk.content;
+					let chunkText = '';
+					if (Array.isArray(chunkContent)) {
+						for (const message of chunkContent) {
+							if (message?.type === 'text') {
+								chunkText += (message as MessageContentText)?.text;
+							}
+						}
+					} else if (typeof chunkContent === 'string') {
+						chunkText = chunkContent;
+					}
+					ctx.sendChunk('item', itemIndex, chunkText);
+
+					agentResult.output += chunkText;
+				}
+				break;
+			case 'on_chat_model_end':
+				// Capture full LLM response with tool calls for intermediate steps
+				if (returnIntermediateSteps && event.data) {
+					const chatModelData = event.data as any;
+					const output = chatModelData.output;
+
+					// Check if this LLM response contains tool calls
+					if (output?.tool_calls && output.tool_calls.length > 0) {
+						for (const toolCall of output.tool_calls) {
+							agentResult.intermediateSteps!.push({
+								action: {
+									tool: toolCall.name,
+									toolInput: toolCall.args,
+									log:
+										output.content ||
+										`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
+									messageLog: [output], // Include the full LLM response
+									toolCallId: toolCall.id,
+									type: toolCall.type,
+								},
+							});
+						}
+					}
+				}
+				break;
+			case 'on_tool_end':
+				// Capture tool execution results and match with action
+				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
+					const toolData = event.data as any;
+					// Find the matching intermediate step for this tool call
+					const matchingStep = agentResult.intermediateSteps!.find(
+						(step) => !step.observation && step.action.tool === event.name,
+					);
+					if (matchingStep) {
+						matchingStep.observation = toolData.output;
+					}
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	ctx.sendChunk('end', itemIndex);
+
+	return agentResult;
+}
+
+function checkIsResponsesApi(model: BaseChatModel | null | undefined): boolean {
+	try {
+		const isUsingResponsesApi =
+			!!model && model instanceof ChatOpenAI && 'useResponsesApi' in model && model.useResponsesApi;
+		return isUsingResponsesApi;
+	} catch (error) {
+		return false;
+	}
 }
 
 /* -----------------------------------------------------------
@@ -71,9 +192,14 @@ function createAgentExecutor(
  * creates the agent, and processes each input item. The error handling for each item is also
  * managed here based on the node's continueOnFail setting.
  *
+ * @param this Execute context. SupplyDataContext is passed when agent is as a tool
+ *
  * @returns The array of execution data for all processed items
  */
-export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+export async function toolsAgentExecute(
+	this: IExecuteFunctions | ISupplyDataFunctions,
+): Promise<INodeExecutionData[][]> {
+	const version = this.getNode().typeVersion;
 	this.logger.debug('Executing Tools Agent V2');
 
 	const returnData: INodeExecutionData[] = [];
@@ -90,12 +216,31 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	assert(model, 'Please connect a model to the Chat Model input');
 	const fallbackModel = needsFallback ? await getChatModel(this, 1) : null;
 
+	// FIXME: remove when this is fixed: https://github.com/langchain-ai/langchainjs/pull/9082
+	// Responses API + tools is broken when using langchain default call handling. In V3 calls are handled differently, so it works.
+	if (checkIsResponsesApi(model)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`This model is not supported in ${version} version of the Agent node. Please upgrade the Agent node to the latest version.`,
+		);
+	}
+
+	if (checkIsResponsesApi(fallbackModel)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`This fallback model is not supported in ${version} version of the Agent node. Please upgrade the Agent node to the latest version.`,
+		);
+	}
+
 	if (needsFallback && !fallbackModel) {
 		throw new NodeOperationError(
 			this.getNode(),
 			'Please connect a model to the Fallback Model input or disable the fallback option',
 		);
 	}
+
+	// Check if streaming is enabled
+	const enableStreaming = this.getNodeParameter('options.enableStreaming', 0, true) as boolean;
 
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
@@ -118,6 +263,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
+				tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
 			};
 
 			// Prepare the prompt messages and prompt template.
@@ -138,6 +284,14 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				memory,
 				fallbackModel,
 			);
+			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
+			if (Object.keys(additionalMetadata).length > 0) {
+				this.logger.debug('Tracing metadata', { additionalMetadata });
+			}
+			const tracingConfig = isExecuteFunctions(this)
+				? getTracingConfig(this, { additionalMetadata })
+				: undefined;
+			const executorWithTracing = tracingConfig ? executor.withConfig(tracingConfig) : executor;
 			// Invoke with fallback logic
 			const invokeParams = {
 				input,
@@ -147,7 +301,38 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			};
 			const executeOptions = { signal: this.getExecutionCancelSignal() };
 
-			return await executor.invoke(invokeParams, executeOptions);
+			// Check if streaming is actually available
+			const isStreamingAvailable = 'isStreaming' in this ? this.isStreaming?.() : undefined;
+
+			if (
+				'isStreaming' in this &&
+				enableStreaming &&
+				isStreamingAvailable &&
+				this.getNode().typeVersion >= 2.1
+			) {
+				// Get chat history respecting the context window length configured in memory
+				const chatHistory = memory ? await loadMemory(memory, model) : undefined;
+				const eventStream = executor.streamEvents(
+					{
+						...invokeParams,
+						chat_history: chatHistory ?? undefined,
+					},
+					{
+						version: 'v2',
+						...executeOptions,
+					},
+				);
+
+				return await processEventStream(
+					this,
+					eventStream,
+					itemIndex,
+					options.returnIntermediateSteps,
+				);
+			} else {
+				// Handle regular execution
+				return await executorWithTracing.invoke(invokeParams, executeOptions);
+			}
 		});
 
 		const batchResults = await Promise.allSettled(batchPromises);

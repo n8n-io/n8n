@@ -94,7 +94,7 @@ export abstract class NodeError extends ExecutionBaseError {
 				if (typeof value === 'number') return value.toString();
 				if (Array.isArray(value)) {
 					const resolvedErrors: string[] = value
-						// eslint-disable-next-line @typescript-eslint/no-shadow
+
 						.map((jsonError) => {
 							if (typeof jsonError === 'string') return jsonError;
 							if (typeof jsonError === 'number') return jsonError.toString();

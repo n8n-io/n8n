@@ -1,7 +1,9 @@
-import * as tiktokenUtils from '../../../../utils/tokenizer/tiktoken';
+import * as aiUtilities from '@n8n/ai-utilities';
+import { OperationalError } from 'n8n-workflow';
+
 import { TokenTextSplitter } from '../TokenTextSplitter';
 
-jest.mock('../../../../utils/tokenizer/tiktoken');
+jest.mock('@n8n/ai-utilities');
 
 describe('TokenTextSplitter', () => {
 	let mockTokenizer: jest.Mocked<{
@@ -14,7 +16,9 @@ describe('TokenTextSplitter', () => {
 			encode: jest.fn(),
 			decode: jest.fn(),
 		};
-		(tiktokenUtils.getEncoding as jest.Mock).mockResolvedValue(mockTokenizer);
+		(aiUtilities.getEncoding as jest.Mock).mockReturnValue(mockTokenizer);
+		// Default mock for hasLongSequentialRepeat - no repetition
+		(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -77,7 +81,7 @@ describe('TokenTextSplitter', () => {
 
 			const result = await splitter.splitText(inputText);
 
-			expect(tiktokenUtils.getEncoding).toHaveBeenCalledWith('cl100k_base');
+			expect(aiUtilities.getEncoding).toHaveBeenCalledWith('cl100k_base');
 			expect(mockTokenizer.encode).toHaveBeenCalledWith(inputText, [], 'all');
 			expect(result).toEqual(['Hello world,', ' this is', ' a test']);
 		});
@@ -121,7 +125,7 @@ describe('TokenTextSplitter', () => {
 
 			await splitter.splitText(inputText);
 
-			expect(tiktokenUtils.getEncoding).toHaveBeenCalledWith('o200k_base');
+			expect(aiUtilities.getEncoding).toHaveBeenCalledWith('o200k_base');
 			expect(mockTokenizer.encode).toHaveBeenCalledWith(inputText, ['<|special|>'], ['<|bad|>']);
 		});
 
@@ -133,7 +137,7 @@ describe('TokenTextSplitter', () => {
 			await splitter.splitText('first call');
 			await splitter.splitText('second call');
 
-			expect(tiktokenUtils.getEncoding).toHaveBeenCalledTimes(1);
+			expect(aiUtilities.getEncoding).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle large text with multiple chunks and overlap', async () => {
@@ -160,6 +164,171 @@ describe('TokenTextSplitter', () => {
 			const result = await splitter.splitText(inputText);
 
 			expect(result).toEqual(['One two', 'two three', 'three four', 'four five', 'five six']);
+		});
+
+		describe('repetitive content handling', () => {
+			it('should use character-based estimation for repetitive content', async () => {
+				const splitter = new TokenTextSplitter({
+					chunkSize: 100,
+					chunkOverlap: 10,
+				});
+
+				const repetitiveText = 'a'.repeat(1000);
+				const estimatedChunks = ['chunk1', 'chunk2', 'chunk3'];
+
+				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(true);
+				(aiUtilities.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(estimatedChunks);
+
+				const result = await splitter.splitText(repetitiveText);
+
+				// Should not call tiktoken
+				expect(aiUtilities.getEncoding).not.toHaveBeenCalled();
+				expect(mockTokenizer.encode).not.toHaveBeenCalled();
+
+				// Should use estimation
+				expect(aiUtilities.hasLongSequentialRepeat).toHaveBeenCalledWith(repetitiveText);
+				expect(aiUtilities.estimateTextSplitsByTokens).toHaveBeenCalledWith(
+					repetitiveText,
+					100,
+					10,
+					'cl100k_base',
+				);
+
+				expect(result).toEqual(estimatedChunks);
+			});
+
+			it('should use tiktoken for non-repetitive content', async () => {
+				const splitter = new TokenTextSplitter({
+					chunkSize: 3,
+					chunkOverlap: 0,
+				});
+
+				const normalText = 'This is normal text without repetition';
+				const mockTokenIds = [1, 2, 3, 4, 5, 6];
+
+				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
+				mockTokenizer.encode.mockReturnValue(mockTokenIds);
+				mockTokenizer.decode.mockImplementation(() => 'chunk');
+
+				await splitter.splitText(normalText);
+
+				// Should check for repetition
+				expect(aiUtilities.hasLongSequentialRepeat).toHaveBeenCalledWith(normalText);
+
+				// Should use tiktoken
+				expect(aiUtilities.getEncoding).toHaveBeenCalled();
+				expect(mockTokenizer.encode).toHaveBeenCalled();
+
+				// Should not use estimation
+				expect(aiUtilities.estimateTextSplitsByTokens).not.toHaveBeenCalled();
+			});
+
+			it('should handle repetitive content with different encodings', async () => {
+				const splitter = new TokenTextSplitter({
+					encodingName: 'o200k_base',
+					chunkSize: 50,
+					chunkOverlap: 5,
+				});
+
+				const repetitiveText = '.'.repeat(500);
+				const estimatedChunks = ['estimated chunk 1', 'estimated chunk 2'];
+
+				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(true);
+				(aiUtilities.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(estimatedChunks);
+
+				const result = await splitter.splitText(repetitiveText);
+
+				expect(aiUtilities.estimateTextSplitsByTokens).toHaveBeenCalledWith(
+					repetitiveText,
+					50,
+					5,
+					'o200k_base',
+				);
+				expect(result).toEqual(estimatedChunks);
+			});
+
+			it('should handle edge case with exactly 100 repeating characters', async () => {
+				const splitter = new TokenTextSplitter();
+				const edgeText = 'x'.repeat(100);
+
+				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(true);
+				(aiUtilities.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(['single chunk']);
+
+				const result = await splitter.splitText(edgeText);
+
+				expect(aiUtilities.hasLongSequentialRepeat).toHaveBeenCalledWith(edgeText);
+				expect(result).toEqual(['single chunk']);
+			});
+
+			it('should handle mixed content with repetitive sections', async () => {
+				const splitter = new TokenTextSplitter();
+				const mixedText = 'Normal text ' + 'z'.repeat(200) + ' more normal text';
+
+				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(true);
+				(aiUtilities.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(['chunk1', 'chunk2']);
+
+				const result = await splitter.splitText(mixedText);
+
+				expect(aiUtilities.hasLongSequentialRepeat).toHaveBeenCalledWith(mixedText);
+				expect(aiUtilities.estimateTextSplitsByTokens).toHaveBeenCalled();
+				expect(result).toEqual(['chunk1', 'chunk2']);
+			});
+		});
+
+		describe('error handling', () => {
+			it('should return empty array for null input', async () => {
+				const splitter = new TokenTextSplitter();
+				const result = await splitter.splitText(null as any);
+				expect(result).toEqual([]);
+			});
+
+			it('should return empty array for undefined input', async () => {
+				const splitter = new TokenTextSplitter();
+				const result = await splitter.splitText(undefined as any);
+				expect(result).toEqual([]);
+			});
+
+			it('should return empty array for non-string input', async () => {
+				const splitter = new TokenTextSplitter();
+				const result = await splitter.splitText(123 as any);
+				expect(result).toEqual([]);
+			});
+
+			it('should fall back to estimation if tiktoken fails', async () => {
+				const splitter = new TokenTextSplitter();
+				const text = 'This will cause tiktoken to fail';
+
+				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
+				(aiUtilities.getEncoding as jest.Mock).mockImplementation(() => {
+					throw new Error('Tiktoken error');
+				});
+				(aiUtilities.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(['fallback chunk']);
+
+				const result = await splitter.splitText(text);
+
+				expect(result).toEqual(['fallback chunk']);
+				expect(aiUtilities.estimateTextSplitsByTokens).toHaveBeenCalledWith(
+					text,
+					splitter.chunkSize,
+					splitter.chunkOverlap,
+					splitter.encodingName,
+				);
+			});
+
+			it('should fall back to estimation if encode fails', async () => {
+				const splitter = new TokenTextSplitter();
+				const text = 'This will cause encode to fail';
+
+				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
+				mockTokenizer.encode.mockImplementation(() => {
+					throw new OperationalError('Encode error');
+				});
+				(aiUtilities.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(['fallback chunk']);
+
+				const result = await splitter.splitText(text);
+
+				expect(result).toEqual(['fallback chunk']);
+			});
 		});
 	});
 });

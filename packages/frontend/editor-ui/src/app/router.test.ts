@@ -1,0 +1,165 @@
+import { createPinia, setActivePinia } from 'pinia';
+import { createComponentRenderer } from '@/__tests__/render';
+import router, { routes } from '@/app/router';
+import { VIEWS } from '@/app/constants';
+import { setupServer } from '@/__tests__/server';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import type { Scope } from '@n8n/permissions';
+import type { RouteRecordName } from 'vue-router';
+import * as init from '@/app/init';
+
+const App = {
+	template: '<div />',
+};
+const renderComponent = createComponentRenderer(App);
+
+let settingsStore: ReturnType<typeof useSettingsStore>;
+
+describe('router', () => {
+	let server: ReturnType<typeof setupServer>;
+	const initializeAuthenticatedFeaturesSpy = vi.spyOn(init, 'initializeAuthenticatedFeatures');
+
+	beforeAll(async () => {
+		server = setupServer();
+
+		const pinia = createPinia();
+		setActivePinia(pinia);
+
+		renderComponent({ pinia });
+	});
+
+	beforeEach(() => {
+		settingsStore = useSettingsStore();
+		const usersStore = useUsersStore();
+		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => {
+			await usersStore.initialize();
+		});
+	});
+
+	afterAll(() => {
+		server.shutdown();
+		vi.restoreAllMocks();
+	});
+
+	test.each([
+		['/', VIEWS.WORKFLOWS],
+		['/workflows', VIEWS.WORKFLOWS],
+		// /workflow and /workflow/new now redirect to VIEWS.WORKFLOW with a generated ID
+		['/workflow', VIEWS.WORKFLOW],
+		['/workflow/new', VIEWS.WORKFLOW],
+		['/workflow/R9JFXwkUCL1jZBuw', VIEWS.WORKFLOW],
+		['/workflow/R9JFXwkUCL1jZBuw/myNodeId', VIEWS.WORKFLOW],
+		['/workflow/R9JFXwkUCL1jZBuw/398-1ewq213', VIEWS.WORKFLOW],
+		['/workflow/R9JFXwkUCL1jZBuw/executions/29021', VIEWS.EXECUTION_PREVIEW],
+		['/workflows/templates/R9JFXwkUCL1jZBuw', VIEWS.TEMPLATE_IMPORT],
+		['/workflows/demo', VIEWS.DEMO],
+	])(
+		'should resolve %s to %s',
+		async (path, name) => {
+			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		10000,
+	);
+
+	test.each([['/workflow/R9JFXwkUCL1jZBuw/debug/29021', VIEWS.WORKFLOWS]])(
+		'should redirect %s to %s if user does not have permissions',
+		async (path, name) => {
+			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		10000,
+	);
+
+	test.each([['/workflow/R9JFXwkUCL1jZBuw/debug/29021', VIEWS.EXECUTION_DEBUG]])(
+		'should resolve %s to %s if user has permissions',
+		async (path, name) => {
+			const settingsStore = useSettingsStore();
+
+			settingsStore.settings.enterprise.debugInEditor = true;
+
+			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		10000,
+	);
+
+	test.each([
+		['/workflow/8IFYawZ9dKqJu8sT/history', VIEWS.WORKFLOW_HISTORY],
+		['/workflow/8IFYawZ9dKqJu8sT/history/6513ed960252b846f3792f0c', VIEWS.WORKFLOW_HISTORY],
+	])(
+		'should resolve %s to %s (available to all users)',
+		async (path, name) => {
+			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		10000,
+	);
+
+	test.each<[string, RouteRecordName, Scope[]]>([
+		['/settings/users', VIEWS.WORKFLOWS, []],
+		['/settings/users', VIEWS.USERS_SETTINGS, ['user:create', 'user:update']],
+		['/settings/environments', VIEWS.WORKFLOWS, []],
+		['/settings/environments', VIEWS.SOURCE_CONTROL, ['sourceControl:manage']],
+		['/settings/external-secrets', VIEWS.WORKFLOWS, []],
+		[
+			'/settings/external-secrets',
+			VIEWS.EXTERNAL_SECRETS_SETTINGS,
+			['externalSecretsProvider:list', 'externalSecretsProvider:update'],
+		],
+		['/settings/sso', VIEWS.WORKFLOWS, []],
+		['/settings/sso', VIEWS.SSO_SETTINGS, ['saml:manage']],
+		['/settings/log-streaming', VIEWS.WORKFLOWS, []],
+		['/settings/log-streaming', VIEWS.LOG_STREAMING_SETTINGS, ['logStreaming:manage']],
+		['/settings/community-nodes', VIEWS.WORKFLOWS, []],
+		[
+			'/settings/community-nodes',
+			VIEWS.COMMUNITY_NODES,
+			['communityPackage:list', 'communityPackage:update'],
+		],
+		['/settings/ldap', VIEWS.WORKFLOWS, []],
+		['/settings/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
+		['/settings/security', VIEWS.WORKFLOWS, []],
+		['/settings/security', VIEWS.SECURITY_SETTINGS, ['securitySettings:manage']],
+	])(
+		'should resolve %s to %s with %s user permissions',
+		async (path, name, scopes) => {
+			const rbacStore = useRBACStore();
+
+			settingsStore.settings.communityNodesEnabled = true;
+			rbacStore.setGlobalScopes(scopes);
+
+			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		10000,
+	);
+
+	test.each([
+		[VIEWS.PERSONAL_SETTINGS, true],
+		[VIEWS.USAGE, false],
+	])('should redirect Settings to %s', async (name, hideUsagePage) => {
+		settingsStore.settings.hideUsagePage = hideUsagePage;
+		await router.push('/settings');
+		expect(router.currentRoute.value.name).toBe(name);
+	});
+
+	test('should set props: true for PROJECT_ROLE_SETTINGS route', () => {
+		const settingsRoute = routes.find((route) => route.path === '/settings');
+		const projectRolesRoute = settingsRoute?.children?.find(
+			(child) => child.path === 'project-roles',
+		);
+		const editRoleRoute = projectRolesRoute?.children?.find(
+			(child) => child.name === VIEWS.PROJECT_ROLE_SETTINGS,
+		);
+		expect(editRoleRoute?.props).toBe(true);
+		expect(editRoleRoute?.path).toBe('edit/:roleSlug');
+	});
+});

@@ -1,0 +1,60 @@
+{
+	"name": "TheHive Query Execute Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "manual-trigger",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "query",
+				"operation": "executeQuery",
+				"queryJson": "[\n  {\n    \"_name\": \"listOrganisation\"\n  }\n]"
+			},
+			"type": "n8n-nodes-base.theHiveProject",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "thehive-node",
+			"name": "TheHive Query Execute",
+			"credentials": {
+				"theHiveProjectApi": {
+					"id": "thehive-creds",
+					"name": "TheHive API Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"TheHive Query Execute": [
+			{
+				"json": {
+					"_id": "~org123",
+					"_type": "Organisation",
+					"name": "Test Organization",
+					"description": "Test organization description"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "TheHive Query Execute",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -7,8 +6,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { TokenTextSplitter } from './TokenTextSplitter';
 
@@ -37,9 +35,9 @@ export class TextSplitterTokenSplitter implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiTextSplitter],
 		outputNames: ['Text Splitter'],
 		properties: [
@@ -49,12 +47,14 @@ export class TextSplitterTokenSplitter implements INodeType {
 				name: 'chunkSize',
 				type: 'number',
 				default: 1000,
+				description: 'Maximum number of tokens per chunk',
 			},
 			{
 				displayName: 'Chunk Overlap',
 				name: 'chunkOverlap',
 				type: 'number',
 				default: 0,
+				description: 'Number of tokens shared between consecutive chunks to preserve context',
 			},
 		],
 	};

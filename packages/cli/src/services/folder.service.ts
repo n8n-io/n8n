@@ -73,7 +73,16 @@ export class FolderService {
 
 			if (parentFolderId !== PROJECT_ROOT) {
 				await this.findFolderInProjectOrFail(parentFolderId, projectId);
+
+				// Ensure that the target parentFolder isn't a descendant of the current folder.
+				const parentFolderPath = await this.getFolderTree(parentFolderId, projectId);
+				if (this.isDescendant(folderId, parentFolderPath)) {
+					throw new UserError(
+						"Cannot set a folder's parent to a folder that is a descendant of the current folder",
+					);
+				}
 			}
+
 			await this.folderRepository.update(
 				{ id: folderId },
 				{ parentFolder: parentFolderId !== PROJECT_ROOT ? { id: parentFolderId } : null },
@@ -144,7 +153,7 @@ export class FolderService {
 		);
 
 		for (const workflowId of workflowIds) {
-			await this.workflowService.archive(user, workflowId, true);
+			await this.workflowService.archive(user, workflowId, { skipArchived: true });
 		}
 
 		await this.workflowRepository.moveToFolder(workflowIds, PROJECT_ROOT);
@@ -219,6 +228,15 @@ export class FolderService {
 		});
 
 		return rootNode ? [rootNode] : [];
+	}
+
+	private isDescendant(folderId: string, tree: SimpleFolderNode[]): boolean {
+		return tree.some((node) => {
+			if (node.id === folderId) {
+				return true;
+			}
+			return this.isDescendant(folderId, node.children);
+		});
 	}
 
 	async getFolderAndWorkflowCount(

@@ -5,11 +5,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-shadow */
+
 import { Logger } from '@n8n/backend-common';
 import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
+	ClientOAuth2Token,
 	ClientOAuth2TokenData,
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
@@ -19,10 +20,8 @@ import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
 import FormData from 'form-data';
-import { IncomingMessage, Agent as HttpAgent } from 'http';
-import { HttpProxyAgent } from 'http-proxy-agent';
-import { type AgentOptions, Agent as HttpsAgent } from 'https';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import { IncomingMessage } from 'http';
+import { type AgentOptions } from 'https';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import merge from 'lodash/merge';
@@ -45,6 +44,7 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
+	IgnoreStatusErrorConfig,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -55,6 +55,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
+	Logger as WorkflowLogger,
 	NodeParameterValueType,
 	PaginationOptions,
 	RequestHelperFunctions,
@@ -63,138 +64,40 @@ import type {
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
-import proxyFromEnv from 'proxy-from-env';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 
+import type { SsrfBridge } from '@/execution-engine';
+import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
-
-axios.defaults.timeout = 300000;
-// Prevent axios from adding x-form-www-urlencoded headers by default
-axios.defaults.headers.post = {};
-axios.defaults.headers.put = {};
-axios.defaults.headers.patch = {};
-axios.defaults.paramsSerializer = (params) => {
-	if (params instanceof URLSearchParams) {
-		return params.toString();
-	}
-	return stringify(params, { arrayFormat: 'indices' });
-};
-// Disable axios proxy, we handle it ourselves
-// Axios proxy option has problems: https://github.com/axios/axios/issues/4531
-axios.defaults.proxy = false;
+// Imported for side effects: sets axios defaults and registers the request interceptor
+import './request-helpers/axios-config';
+import {
+	buildTargetUrl,
+	getUrlFromProxyConfig,
+	setAxiosAgents,
+	tryParseUrl,
+} from './request-helpers/utils';
 
 function validateUrl(url?: string): boolean {
 	if (!url) return false;
 
-	try {
-		new URL(url);
-		return true;
-	} catch (error) {
-		return false;
-	}
+	return tryParseUrl(url) !== null;
 }
 
-function getUrlFromProxyConfig(proxyConfig: IHttpRequestOptions['proxy'] | string): string | null {
-	if (typeof proxyConfig === 'string') {
-		if (!validateUrl(proxyConfig)) {
-			return null;
-		}
-		return proxyConfig;
-	}
-
-	if (!proxyConfig?.host) {
-		return null;
-	}
-
-	const { protocol, host, port, auth } = proxyConfig;
-	const safeProtocol = protocol?.endsWith(':') ? protocol.replace(':', '') : (protocol ?? 'http');
-
-	try {
-		const url = new URL(`${safeProtocol}://${host}`);
-
-		if (port !== undefined) {
-			url.port = String(port);
-		}
-
-		if (auth?.username) {
-			url.username = auth.username;
-			url.password = auth.password ?? '';
-		}
-
-		return url.href;
-	} catch (error) {
-		return null;
-	}
+function isIgnoreStatusErrorConfig(
+	ignoreHttpStatusErrors: unknown,
+): ignoreHttpStatusErrors is IgnoreStatusErrorConfig {
+	return (
+		typeof ignoreHttpStatusErrors === 'object' &&
+		ignoreHttpStatusErrors !== null &&
+		'ignore' in ignoreHttpStatusErrors &&
+		ignoreHttpStatusErrors.ignore === true
+	);
 }
-
-function getTargetUrlFromAxiosConfig(axiosConfig: AxiosRequestConfig): string {
-	const { url, baseURL } = axiosConfig;
-
-	try {
-		return new URL(url ?? '', baseURL).href;
-	} catch {
-		return '';
-	}
-}
-
-type AgentInfo = { protocol: 'http' | 'https'; agent: HttpAgent };
-
-export function getAgentWithProxy({
-	agentOptions,
-	proxyConfig,
-	targetUrl,
-}: {
-	agentOptions?: AgentOptions;
-	proxyConfig?: IHttpRequestOptions['proxy'] | string;
-	targetUrl: string;
-}): AgentInfo {
-	// If no proxy is set in config, use HTTP_PROXY/HTTPS_PROXY/ALL_PROXY from env depending on target URL
-	// Also respect NO_PROXY to disable the proxy for certain hosts
-	const proxyUrl = getUrlFromProxyConfig(proxyConfig) ?? proxyFromEnv.getProxyForUrl(targetUrl);
-	const protocol = targetUrl.startsWith('https://') ? 'https' : 'http';
-
-	if (proxyUrl) {
-		const ProxyAgent = protocol === 'http' ? HttpProxyAgent : HttpsProxyAgent;
-		return { protocol, agent: new ProxyAgent(proxyUrl, agentOptions) };
-	}
-
-	const Agent = protocol === 'http' ? HttpAgent : HttpsAgent;
-	return { protocol, agent: new Agent(agentOptions) };
-}
-
-const applyAgentToAxiosConfig = (
-	config: AxiosRequestConfig,
-	{ agent, protocol }: AgentInfo,
-): AxiosRequestConfig => {
-	if (protocol === 'http') {
-		config.httpAgent = agent;
-	} else {
-		config.httpsAgent = agent;
-	}
-
-	return config;
-};
-
-axios.interceptors.request.use((config) => {
-	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
-	if (config.data === undefined) {
-		config.headers.setContentType(false, false);
-	}
-
-	if (!config.httpsAgent && !config.httpAgent) {
-		const agent = getAgentWithProxy({
-			targetUrl: getTargetUrlFromAxiosConfig(config),
-		});
-
-		applyAgentToAxiosConfig(config, agent);
-	}
-
-	return config;
-});
 
 function searchForHeader(config: AxiosRequestConfig, headerName: string) {
 	if (config.headers === undefined) {
@@ -226,33 +129,51 @@ const getBeforeRedirectFn =
 		agentOptions: AgentOptions,
 		axiosConfig: AxiosRequestConfig,
 		proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
+		sendCredentialsOnCrossOriginRedirect: boolean,
+		ssrfBridge?: SsrfBridge,
 	) =>
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	(redirectedRequest: Record<string, any>) => {
-		const redirectAgentOptions = {
+		// SSRF: validate redirect target synchronously for direct-IP URIs.
+		// Hostname-based redirect targets are caught by secureLookup on the agent.
+		if (ssrfBridge) {
+			ssrfBridge.validateRedirectSync(redirectedRequest.href);
+		}
+
+		const redirectAgentOptions: AgentOptions = {
 			...agentOptions,
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			servername: redirectedRequest.hostname,
 		};
-		const redirectAgent = getAgentWithProxy({
-			agentOptions: redirectAgentOptions,
-			proxyConfig,
-			targetUrl: redirectedRequest.href,
-		});
+		const customProxyUrl = getUrlFromProxyConfig(proxyConfig);
 
-		redirectedRequest.agent = redirectAgent.agent;
-		if (redirectAgent.protocol === 'http') {
-			redirectedRequest.agents.http = redirectAgent.agent;
-		} else {
-			redirectedRequest.agents.https = redirectAgent.agent;
-		}
+		// Inject secureLookup into redirect agents for non-proxy paths
+		const effectiveRedirectOptions =
+			ssrfBridge && !customProxyUrl
+				? { ...redirectAgentOptions, lookup: ssrfBridge.createSecureLookup() }
+				: redirectAgentOptions;
 
-		if (axiosConfig.headers?.Authorization) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
-		}
-		if (axiosConfig.auth) {
-			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
+		// Create both agents and set them
+		const targetUrl = redirectedRequest.href;
+		const httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, effectiveRedirectOptions);
+		const httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, effectiveRedirectOptions);
+
+		redirectedRequest.agent = redirectedRequest.href.startsWith('https://')
+			? httpsAgent
+			: httpAgent;
+		redirectedRequest.agents = { http: httpAgent, https: httpsAgent };
+
+		const originalUrl = axiosConfig.baseURL
+			? new URL(axiosConfig.url ?? '', axiosConfig.baseURL)
+			: new URL(axiosConfig.url ?? '');
+		const originalOrigin = originalUrl.origin;
+		const targetOrigin = new URL(targetUrl).origin;
+		// Copy auth headers
+		if (originalOrigin === targetOrigin || sendCredentialsOnCrossOriginRedirect) {
+			if (axiosConfig.headers?.Authorization) {
+				redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
+			}
+			if (axiosConfig.auth) {
+				redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
+			}
 		}
 	};
 
@@ -327,11 +248,8 @@ export async function invokeAxios(
 	}
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const pushFormDataValue = (form: FormData, key: string, value: any) => {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 	if (value?.hasOwnProperty('value') && value.hasOwnProperty('options')) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 		form.append(key, value.value, value.options);
 	} else {
 		form.append(key, value);
@@ -361,7 +279,6 @@ async function generateContentLengthHeader(config: AxiosRequestConfig) {
 	}
 	try {
 		const length = await new Promise<number>((res, rej) => {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 			config.data.getLength((error: Error | null, dataLength: number) => {
 				if (error) rej(error);
 				else res(dataLength);
@@ -372,7 +289,6 @@ async function generateContentLengthHeader(config: AxiosRequestConfig) {
 			'content-length': length,
 		};
 	} catch (error) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		Container.get(Logger).error('Unable to calculate form data length', { error });
 	}
 }
@@ -385,7 +301,7 @@ async function generateContentLengthHeader(config: AxiosRequestConfig) {
  * @deprecated This is only used by legacy request helpers, that are also deprecated
  */
 // eslint-disable-next-line complexity
-export async function parseRequestObject(requestObject: IRequestOptions) {
+export async function parseRequestObject(requestObject: IRequestOptions, ssrfBridge?: SsrfBridge) {
 	const axiosConfig: AxiosRequestConfig = {};
 
 	if (requestObject.headers !== undefined) {
@@ -416,7 +332,6 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		if (typeof requestObject.body === 'string') {
 			axiosConfig.data = requestObject.body;
 		} else {
-			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			const allData = Object.assign(requestObject.body || {}, requestObject.form || {}) as Record<
 				string,
 				string
@@ -441,9 +356,9 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		// replace the existing header with a new one that
 		// contains the boundary property.
 		delete axiosConfig.headers?.[contentTypeHeaderKeyName!];
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
 		const headers = axiosConfig.data.getHeaders();
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/prefer-nullish-coalescing
+
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
 		await generateContentLengthHeader(axiosConfig);
 	} else {
@@ -482,16 +397,16 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 				axiosConfig.data = createFormDataObject(requestObject.formData as Record<string, unknown>);
 			}
 			// Mix in headers as FormData creates the boundary.
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
 			const headers = axiosConfig.data.getHeaders();
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/prefer-nullish-coalescing
+
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
 			await generateContentLengthHeader(axiosConfig);
 		} else if (requestObject.body !== undefined) {
 			// If we have body and possibly form
 			if (requestObject.form !== undefined && requestObject.body) {
 				// merge both objects when exist.
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 				requestObject.body = Object.assign(requestObject.body, requestObject.form);
 			}
 			axiosConfig.data = requestObject.body as FormData | GenericValue | GenericValue[];
@@ -559,7 +474,6 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 	if (requestObject.auth !== undefined) {
 		// Check support for sendImmediately
 		if (requestObject.auth.bearer !== undefined) {
-			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
 				Authorization: `Bearer ${requestObject.auth.bearer}`,
 			});
@@ -567,9 +481,8 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 			const authObj = requestObject.auth;
 			// Request accepts both user/username and pass/password
 			axiosConfig.auth = {
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 				username: (authObj.user || authObj.username) as string,
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
 				password: (authObj.password || authObj.pass) as string,
 			};
 		}
@@ -586,7 +499,6 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 						.map((headerKey) => headerKey.toLowerCase())
 						.includes('accept');
 		if (!acceptHeaderExists) {
-			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
 				Accept: 'application/json',
 			});
@@ -594,7 +506,7 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 	}
 	if (requestObject.json === false || requestObject.json === undefined) {
 		// Prevent json parsing
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 		axiosConfig.transformResponse = (res) => res;
 	}
 
@@ -624,15 +536,16 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		axiosConfig.timeout = requestObject.timeout;
 	}
 
-	const agent = getAgentWithProxy({
+	const secureLookup = ssrfBridge?.createSecureLookup();
+	setAxiosAgents(axiosConfig, agentOptions, requestObject.proxy, secureLookup);
+
+	axiosConfig.beforeRedirect = getBeforeRedirectFn(
 		agentOptions,
-		proxyConfig: requestObject.proxy,
-		targetUrl: getTargetUrlFromAxiosConfig(axiosConfig),
-	});
-
-	applyAgentToAxiosConfig(axiosConfig, agent);
-
-	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig, requestObject.proxy);
+		axiosConfig,
+		requestObject.proxy,
+		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+		ssrfBridge,
+	);
 
 	if (requestObject.useStream) {
 		axiosConfig.responseType = 'stream';
@@ -647,7 +560,6 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 	// as the service returns XML unless requested otherwise.
 	const allHeaders = axiosConfig.headers ? Object.keys(axiosConfig.headers) : [];
 	if (!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'accept')) {
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, { accept: '*/*' });
 	}
 	if (
@@ -661,7 +573,7 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		// If we don't specify this here, axios will add
 		// application/json; charset=utf-8
 		// and this breaks a lot of stuff
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
 			'content-type': 'application/json',
 		});
@@ -701,7 +613,11 @@ export async function proxyRequestToAxios(
 		configObject = uriOrObject ?? {};
 	}
 
-	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
+	const ssrfBridge = additionalData?.ssrfBridge;
+	const url = resolveLegacyRequestUrl(configObject);
+	await validateUrlSsrf(url, ssrfBridge);
+
+	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject, ssrfBridge));
 
 	try {
 		const response = await invokeAxios(axiosConfig, configObject.auth);
@@ -771,8 +687,10 @@ export async function proxyRequestToAxios(
 	}
 }
 
-// eslint-disable-next-line complexity
-export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
+export function convertN8nRequestToAxios(
+	n8nRequest: IHttpRequestOptions,
+	ssrfBridge?: SsrfBridge,
+): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
 
@@ -812,14 +730,16 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	if (n8nRequest.skipSslCertificateValidation === true) {
 		agentOptions.rejectUnauthorized = false;
 	}
-	const agent = getAgentWithProxy({
-		agentOptions,
-		proxyConfig: proxy,
-		targetUrl: getTargetUrlFromAxiosConfig(axiosRequest),
-	});
-	applyAgentToAxiosConfig(axiosRequest, agent);
+	const secureLookup = ssrfBridge?.createSecureLookup();
+	setAxiosAgents(axiosRequest, agentOptions, proxy, secureLookup);
 
-	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest, n8nRequest.proxy);
+	axiosRequest.beforeRedirect = getBeforeRedirectFn(
+		agentOptions,
+		axiosRequest,
+		n8nRequest.proxy,
+		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
+		ssrfBridge,
+	);
 
 	if (n8nRequest.arrayFormat !== undefined) {
 		axiosRequest.paramsSerializer = (params) => {
@@ -879,10 +799,36 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	}
 
 	if (n8nRequest.ignoreHttpStatusErrors) {
-		axiosRequest.validateStatus = () => true;
+		const ignoreHttpStatusErrors = n8nRequest.ignoreHttpStatusErrors;
+		if (isIgnoreStatusErrorConfig(ignoreHttpStatusErrors)) {
+			axiosRequest.validateStatus = (status) => {
+				return !ignoreHttpStatusErrors.except.includes(status);
+			};
+		} else {
+			axiosRequest.validateStatus = () => true;
+		}
 	}
 
 	return axiosRequest;
+}
+
+/** Validates a URL against SSRF protection rules. Throws UserError if blocked. */
+async function validateUrlSsrf(url: string | undefined, ssrfBridge?: SsrfBridge): Promise<void> {
+	if (!ssrfBridge || !url) return;
+
+	const parsed = tryParseUrl(url);
+	if (!parsed) return;
+
+	const result = await ssrfBridge.validateUrl(parsed);
+	if (!result.ok) {
+		throw result.error;
+	}
+}
+
+function resolveLegacyRequestUrl(requestObject: IRequestOptions): string | undefined {
+	const rawUrl = requestObject.uri?.toString() ?? requestObject.url?.toString();
+	const baseURL = requestObject.baseURL?.toString();
+	return buildTargetUrl(rawUrl, baseURL) ?? rawUrl;
 }
 
 const NoBodyHttpMethods = ['GET', 'HEAD', 'OPTIONS'];
@@ -897,10 +843,14 @@ export const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOp
 
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
+	ssrfBridge?: SsrfBridge,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	removeEmptyBody(requestOptions);
 
-	const axiosRequest = convertN8nRequestToAxios(requestOptions);
+	const url = buildTargetUrl(requestOptions.url, requestOptions.baseURL) ?? requestOptions.url;
+	await validateUrlSsrf(url, ssrfBridge);
+
+	const axiosRequest = convertN8nRequestToAxios(requestOptions, ssrfBridge);
 	if (
 		axiosRequest.data === undefined ||
 		(axiosRequest.method !== undefined && axiosRequest.method.toUpperCase() === 'GET')
@@ -942,6 +892,86 @@ export function applyPaginationRequestData(
 	return merge({}, requestData, preparedPaginationData);
 }
 
+function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
+	return new ClientOAuth2({
+		clientId: credentials.clientId,
+		clientSecret: credentials.clientSecret,
+		accessTokenUri: credentials.accessTokenUrl,
+		scopes: (credentials.scope ?? '').split(' '),
+		ignoreSSLIssues: credentials.ignoreSSLIssues,
+		authentication: credentials.authentication ?? 'header',
+		...(credentials.additionalBodyProperties && {
+			additionalBodyProperties: jsonParse(credentials.additionalBodyProperties, {
+				fallbackValue: {},
+			}),
+		}),
+	});
+}
+
+interface RefreshOAuth2TokenContext {
+	credentials: OAuth2CredentialData;
+	token: ClientOAuth2Token;
+	credentialsType: string;
+	node: INode;
+	additionalData: IWorkflowExecuteAdditionalData;
+	oAuth2Options?: IOAuth2Options;
+	logger: WorkflowLogger;
+}
+
+async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {
+	const { credentials, token, credentialsType, node, additionalData, oAuth2Options, logger } = ctx;
+	const tokenRefreshOptions: IDataObject = {};
+	if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
+		const body: IDataObject = {
+			client_id: credentials.clientId,
+			...(credentials.grantType === 'authorizationCode' && {
+				client_secret: credentials.clientSecret as string,
+			}),
+		};
+		tokenRefreshOptions.body = body;
+		tokenRefreshOptions.headers = { Authorization: '' };
+	}
+
+	logger.debug(
+		`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Revalidating.`,
+	);
+
+	let newToken;
+	if (credentials.grantType === 'clientCredentials') {
+		newToken = await token.client.credentials.getToken();
+	} else {
+		newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
+	}
+
+	logger.debug(
+		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
+	);
+
+	credentials.oauthTokenData = newToken.data;
+	if (!node.credentials?.[credentialsType]) {
+		throw new ApplicationError('Node does not have credential type', {
+			extra: { nodeName: node.name, credentialType: credentialsType },
+		});
+	}
+
+	const nodeCredentials = node.credentials[credentialsType];
+	await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
+		nodeCredentials,
+		credentialsType,
+		credentials as unknown as ICredentialDataDecryptedObject,
+		additionalData,
+	);
+
+	return newToken;
+}
+
+function resolveTokenExpiredStatusCode(
+	oAuth2Options?: IOAuth2Options,
+	credentials?: OAuth2CredentialData,
+): number {
+	return credentials?.tokenExpiredStatusCode ?? oAuth2Options?.tokenExpiredStatusCode ?? 401;
+}
+
 /** @deprecated make these requests using httpRequestWithAuthentication */
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
@@ -963,14 +993,7 @@ export async function requestOAuth2(
 		throw new ApplicationError('OAuth credentials not connected');
 	}
 
-	const oAuthClient = new ClientOAuth2({
-		clientId: credentials.clientId,
-		clientSecret: credentials.clientSecret,
-		accessTokenUri: credentials.accessTokenUrl,
-		scopes: (credentials.scope as string).split(' '),
-		ignoreSSLIssues: credentials.ignoreSSLIssues,
-		authentication: credentials.authentication ?? 'header',
-	});
+	const oAuthClient = createOAuth2Client(credentials);
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
 	// if it's the first time using the credentials, get the access token and save it into the DB.
@@ -993,10 +1016,11 @@ export async function requestOAuth2(
 		credentials.oauthTokenData = data;
 
 		// Save the refreshed token
-		await additionalData.credentialsHelper.updateCredentials(
+		await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
 			nodeCredentials,
 			credentialsType,
 			credentials as unknown as ICredentialDataDecryptedObject,
+			additionalData,
 		);
 
 		oauthTokenData = data;
@@ -1029,73 +1053,40 @@ export async function requestOAuth2(
 			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 		});
 	}
+	const tokenExpiredStatusCode = resolveTokenExpiredStatusCode(oAuth2Options, credentials);
+
+	const refreshCtx: RefreshOAuth2TokenContext = {
+		credentials,
+		token,
+		credentialsType,
+		node,
+		additionalData,
+		oAuth2Options,
+		logger: this.logger,
+	};
+
+	const retryWithNewToken = async (
+		makeRequest: (opts: ClientOAuth2RequestObject) => Promise<any>,
+	) => {
+		const newToken = await refreshOrFetchToken(refreshCtx);
+		const refreshedRequestOptions = newToken.sign(requestOptions as ClientOAuth2RequestObject);
+		refreshedRequestOptions.headers = refreshedRequestOptions.headers ?? {};
+		if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
+			Object.assign(refreshedRequestOptions.headers, {
+				[oAuth2Options.keyToIncludeInAccessTokenHeader]: newToken.accessToken,
+			});
+		}
+		return await makeRequest(refreshedRequestOptions);
+	};
+
 	if (isN8nRequest) {
 		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
-			if (error.response?.status === 401) {
-				this.logger.debug(
-					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
-				);
-				const tokenRefreshOptions: IDataObject = {};
-				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
-					const body: IDataObject = {
-						client_id: credentials.clientId,
-						...(credentials.grantType === 'authorizationCode' && {
-							client_secret: credentials.clientSecret as string,
-						}),
-					};
-					tokenRefreshOptions.body = body;
-					tokenRefreshOptions.headers = {
-						Authorization: '',
-					};
-				}
-
-				let newToken;
-
-				this.logger.debug(
-					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
-				);
-				// if it's OAuth2 with client credentials grant type, get a new token
-				// instead of refreshing it.
-				if (credentials.grantType === 'clientCredentials') {
-					newToken = await token.client.credentials.getToken();
-				} else {
-					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
-				}
-
-				this.logger.debug(
-					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
-				);
-
-				credentials.oauthTokenData = newToken.data;
-				// Find the credentials
-				if (!node.credentials?.[credentialsType]) {
-					throw new ApplicationError('Node does not have credential type', {
-						extra: { nodeName: node.name, credentialType: credentialsType },
-					});
-				}
-				const nodeCredentials = node.credentials[credentialsType];
-				await additionalData.credentialsHelper.updateCredentials(
-					nodeCredentials,
-					credentialsType,
-					credentials as unknown as ICredentialDataDecryptedObject,
-				);
-				const refreshedRequestOption = newToken.sign(requestOptions as ClientOAuth2RequestObject);
-
-				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-					Object.assign(newRequestHeaders, {
-						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
-					});
-				}
-
-				return await this.helpers.httpRequest(refreshedRequestOption);
+			if (error.response?.status === tokenExpiredStatusCode) {
+				return await retryWithNewToken(async (opts) => await this.helpers.httpRequest(opts));
 			}
 			throw error;
 		});
 	}
-	const tokenExpiredStatusCode =
-		oAuth2Options?.tokenExpiredStatusCode === undefined
-			? 401
-			: oAuth2Options?.tokenExpiredStatusCode;
 
 	return await this.helpers
 		.request(newRequestOptions as IRequestOptions)
@@ -1112,72 +1103,10 @@ export async function requestOAuth2(
 		})
 		.catch(async (error: IResponseError) => {
 			if (error.statusCode === tokenExpiredStatusCode) {
-				// Token is probably not valid anymore. So try refresh it.
-				const tokenRefreshOptions: IDataObject = {};
-				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
-					const body: IDataObject = {
-						client_id: credentials.clientId,
-						client_secret: credentials.clientSecret,
-					};
-					tokenRefreshOptions.body = body;
-					// Override authorization property so the credentials are not included in it
-					tokenRefreshOptions.headers = {
-						Authorization: '',
-					};
-				}
-				this.logger.debug(
-					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
+				return await retryWithNewToken(
+					async (opts) => await this.helpers.request(opts as IRequestOptions),
 				);
-
-				let newToken;
-
-				// if it's OAuth2 with client credentials grant type, get a new token
-				// instead of refreshing it.
-				if (credentials.grantType === 'clientCredentials') {
-					newToken = await token.client.credentials.getToken();
-				} else {
-					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
-				}
-				this.logger.debug(
-					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
-				);
-
-				credentials.oauthTokenData = newToken.data;
-
-				// Find the credentials
-				if (!node.credentials?.[credentialsType]) {
-					throw new ApplicationError('Node does not have credential type', {
-						tags: { credentialType: credentialsType },
-						extra: { nodeName: node.name },
-					});
-				}
-				const nodeCredentials = node.credentials[credentialsType];
-
-				// Save the refreshed token
-				await additionalData.credentialsHelper.updateCredentials(
-					nodeCredentials,
-					credentialsType,
-					credentials as unknown as ICredentialDataDecryptedObject,
-				);
-
-				this.logger.debug(
-					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
-				);
-
-				// Make the request again with the new token
-				const newRequestOptions = newToken.sign(requestOptions as ClientOAuth2RequestObject);
-				newRequestOptions.headers = newRequestOptions.headers ?? {};
-
-				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-					Object.assign(newRequestOptions.headers, {
-						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
-					});
-				}
-
-				return await this.helpers.request(newRequestOptions as IRequestOptions);
 			}
-
-			// Unknown error so simply throw it
 			throw error;
 		});
 }
@@ -1255,6 +1184,47 @@ export async function requestOAuth1(
 		});
 }
 
+export async function refreshOAuth2Token(
+	this: IAllExecuteFunctions,
+	credentialsType: string,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	oAuth2Options?: IOAuth2Options,
+) {
+	const credentials = (await this.getCredentials(
+		credentialsType,
+	)) as unknown as OAuth2CredentialData;
+	if (credentials.grantType === 'authorizationCode' && credentials.oauthTokenData === undefined) {
+		throw new ApplicationError('OAuth credentials not connected');
+	}
+
+	const oAuthClient = createOAuth2Client(credentials);
+	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
+	const accessToken =
+		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken;
+	const refreshToken = oauthTokenData.refreshToken;
+	const token = oAuthClient.createToken(
+		{
+			...oauthTokenData,
+			...(accessToken ? { access_token: accessToken } : {}),
+			...(refreshToken ? { refresh_token: refreshToken } : {}),
+		},
+		oAuth2Options?.tokenType || oauthTokenData.tokenType,
+	);
+
+	const newToken = await refreshOrFetchToken({
+		credentials,
+		token,
+		credentialsType,
+		node,
+		additionalData,
+		oAuth2Options,
+		logger: this.logger,
+	});
+
+	return newToken.data;
+}
+
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
@@ -1326,7 +1296,7 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
-		return await httpRequest(requestOptions);
+		return await httpRequest(requestOptions, additionalData.ssrfBridge);
 	} catch (error) {
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
@@ -1360,7 +1330,7 @@ export async function httpRequestWithAuthentication(
 					);
 				}
 				// retry the request
-				return await httpRequest(requestOptions);
+				return await httpRequest(requestOptions, additionalData.ssrfBridge);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}
@@ -1730,7 +1700,8 @@ export const getRequestHelperFunctions = (
 	}
 
 	return {
-		httpRequest,
+		httpRequest: async (requestOptions: IHttpRequestOptions) =>
+			await httpRequest(requestOptions, additionalData.ssrfBridge),
 		requestWithAuthenticationPaginated,
 		async httpRequestWithAuthentication(
 			this,
@@ -1746,6 +1717,20 @@ export const getRequestHelperFunctions = (
 				node,
 				additionalData,
 				additionalCredentialOptions,
+			);
+		},
+
+		async refreshOAuth2Token(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			oAuth2Options?: IOAuth2Options,
+		) {
+			return await refreshOAuth2Token.call(
+				this,
+				credentialsType,
+				node,
+				additionalData,
+				oAuth2Options,
 			);
 		},
 

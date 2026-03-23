@@ -125,29 +125,63 @@ export const responseCodeProperty: INodeProperties = {
 	description: 'The HTTP Response code to return',
 };
 
+const responseModeOptions = [
+	{
+		name: 'Immediately',
+		value: 'onReceived',
+		description: 'As soon as this node executes',
+	},
+	{
+		name: 'When Last Node Finishes',
+		value: 'lastNode',
+		description: 'Returns data of the last-executed node',
+	},
+	{
+		name: "Using 'Respond to Webhook' Node",
+		value: 'responseNode',
+		description: 'Response defined in that node',
+	},
+];
+
 export const responseModeProperty: INodeProperties = {
 	displayName: 'Respond',
 	name: 'responseMode',
 	type: 'options',
+	options: responseModeOptions,
+	default: 'onReceived',
+	description: 'When and how to respond to the webhook',
+	builderHint: {
+		message: "Use 'responseNode' to respond via a 'Respond to Webhook' node later in the workflow",
+	},
+	displayOptions: {
+		show: {
+			'@version': [1, 1.1, 2],
+		},
+	},
+};
+
+export const responseModePropertyStreaming: INodeProperties = {
+	displayName: 'Respond',
+	name: 'responseMode',
+	type: 'options',
 	options: [
+		...responseModeOptions,
 		{
-			name: 'Immediately',
-			value: 'onReceived',
-			description: 'As soon as this node executes',
-		},
-		{
-			name: 'When Last Node Finishes',
-			value: 'lastNode',
-			description: 'Returns data of the last-executed node',
-		},
-		{
-			name: "Using 'Respond to Webhook' Node",
-			value: 'responseNode',
-			description: 'Response defined in that node',
+			name: 'Streaming',
+			value: 'streaming',
+			description: 'Returns data in real time from streaming enabled nodes',
 		},
 	],
 	default: 'onReceived',
 	description: 'When and how to respond to the webhook',
+	builderHint: {
+		message: "Use 'responseNode' to respond via a 'Respond to Webhook' node later in the workflow",
+	},
+	displayOptions: {
+		hide: {
+			'@version': [1, 1.1, 2],
+		},
+	},
 };
 
 export const responseDataProperty: INodeProperties = {
@@ -258,12 +292,13 @@ export const optionsProperty: INodeProperties = {
 			description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 		},
 		{
-			displayName: 'IP(s) Whitelist',
+			displayName: 'IP(s) Allowlist',
 			name: 'ipWhitelist',
 			type: 'string',
-			placeholder: 'e.g. 127.0.0.1',
+			placeholder: 'e.g. 127.0.0.1, 192.168.1.0/24',
 			default: '',
-			description: 'Comma-separated list of allowed IP addresses. Leave empty to allow all IPs.',
+			description:
+				'Comma-separated list of allowed IP addresses or CIDR ranges. Leave empty to allow all IPs.',
 		},
 		{
 			displayName: 'No Response Body',

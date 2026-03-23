@@ -113,7 +113,7 @@ export const createMessage = (
 	instanceId: string,
 ): IHttpRequestOptions => {
 	const buttons = sendAndWaitConfig.options.map((option) => {
-		return `*${option.label}:*\n_${sendAndWaitConfig.url}?approved=${option.value}_\n\n`;
+		return `*${option.label}:*\n_${option.url}_\n\n`;
 	});
 
 	let n8nAttribution: string = '';

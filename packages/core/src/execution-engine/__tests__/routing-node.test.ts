@@ -19,7 +19,8 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Workflow } from 'n8n-workflow';
+import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
+import type { ICredentialsDecrypted } from 'n8n-workflow/src';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
 import { DirectoryLoader } from '@/nodes-loader';
@@ -81,12 +82,27 @@ const getExecuteSingleFunctions = (
 					},
 				};
 			},
+			async httpRequestWithAuthentication(
+				_credentialType: string,
+				requestOptions: IHttpRequestOptions,
+			): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+				return {
+					body: {
+						headers: {},
+						statusCode: 200,
+						requestOptions,
+					},
+				};
+			},
 		}),
 	});
 
 describe('RoutingNode', () => {
 	const nodeTypes = NodeTypes();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>();
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+	});
 
 	describe('getRequestOptionsFromParameters', () => {
 		const tests: Array<{
@@ -707,7 +723,7 @@ describe('RoutingNode', () => {
 		const runIndex = 0;
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
 		const path = '';
 		const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
@@ -1809,6 +1825,159 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
+				description: 'single parameter, postReceive: rootProperty, filter',
+				input: {
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+							url: '/test-url',
+						},
+						properties: [
+							{
+								displayName: 'JSON Data',
+								name: 'jsonData',
+								type: 'string',
+								routing: {
+									send: {
+										property: 'jsonData',
+										type: 'body',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'requestOptions',
+												},
+											},
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'body.jsonData.root',
+												},
+											},
+											{
+												type: 'filter',
+												properties: {
+													pass: '={{ $responseItem.age > 40 }}',
+												},
+											},
+										],
+									},
+								},
+								default: '',
+							},
+						],
+					},
+					node: {
+						parameters: {
+							jsonData: {
+								root: [
+									{
+										name: 'Jim',
+										age: 34,
+									},
+									{
+										name: 'James',
+										age: 44,
+									},
+								],
+							},
+						},
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								name: 'James',
+								age: 44,
+							},
+						},
+					],
+				],
+			},
+			{
+				description:
+					'single parameter, postReceive: rootProperty, filter with expression containing $credentials',
+				input: {
+					nodeType: {
+						credentials: [
+							{
+								name: 'testCredentials',
+								required: true,
+							},
+						],
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+							url: '/test-url',
+						},
+						properties: [
+							{
+								displayName: 'JSON Data',
+								name: 'jsonData',
+								type: 'string',
+								routing: {
+									send: {
+										property: 'jsonData',
+										type: 'body',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'requestOptions',
+												},
+											},
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'body.jsonData.root',
+												},
+											},
+											{
+												type: 'filter',
+												properties: {
+													pass: "={{ $credentials.baseUrl.startsWith('https://example.com') && $responseItem.age > 40 }}",
+												},
+											},
+										],
+									},
+								},
+								default: '',
+							},
+						],
+					},
+					node: {
+						parameters: {
+							jsonData: {
+								root: [
+									{
+										name: 'Jim',
+										age: 34,
+									},
+									{
+										name: 'James',
+										age: 44,
+									},
+								],
+							},
+						},
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								name: 'James',
+								age: 44,
+							},
+						},
+					],
+				],
+			},
+			{
 				description: 'single parameter, multiple postReceive: rootProperty, setKeyValue, sort',
 				input: {
 					nodeType: {
@@ -1903,7 +2072,7 @@ describe('RoutingNode', () => {
 		const runIndex = 0;
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
 		DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
 
@@ -1993,7 +2162,17 @@ describe('RoutingNode', () => {
 						? testData.input.node.parameters[parameterName]
 						: (getNodeParameter(parameterName) ?? {});
 
-				const routingNode = new RoutingNode(executeFunctions, nodeType);
+				const mockCredentials = mock<ICredentialsDecrypted>({
+					data: {
+						apiKey: 'testApiKey',
+						baseUrl: 'https://example.com',
+					},
+				});
+
+				const routingNode = nodeType.description.credentials
+					? new RoutingNode(executeFunctions, nodeType, mockCredentials)
+					: new RoutingNode(executeFunctions, nodeType);
+
 				const result = await routingNode.runNode();
 
 				if (testData.input.specialTestOptions?.sleepCalls) {
@@ -2080,7 +2259,7 @@ describe('RoutingNode', () => {
 
 		const runIndex = 0;
 		const itemIndex = 0;
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
 		const nodeType = mock<INodeType>();
 
 		const inputData: ITaskDataConnections = {

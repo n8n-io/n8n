@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
 import debounce from 'lodash/debounce';
@@ -6,29 +7,60 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { LogMetadata } from 'n8n-workflow';
 
-import config from '@/config';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import { PubSubEventBus } from './pubsub.eventbus';
 import type { PubSub } from './pubsub.types';
+import {
+	COMMAND_PUBSUB_CHANNEL,
+	WORKER_RESPONSE_PUBSUB_CHANNEL,
+	MCP_RELAY_PUBSUB_CHANNEL,
+} from '../constants';
 
 /**
  * Responsible for subscribing to the pubsub channels used by scaling mode.
  */
+/**
+ * MCP relay message format for multi-main queue mode.
+ * Used to relay MCP responses (like list tools) between main instances.
+ */
+export interface McpRelayMessage {
+	sessionId: string;
+	messageId: string;
+	response: unknown;
+}
+
 @Service()
 export class Subscriber {
 	private readonly client: SingleNodeClient | MultiNodeClient;
+
+	private readonly commandChannel: string;
+
+	private readonly workerResponseChannel: string;
+
+	private readonly mcpRelayChannel: string;
+
+	/** Callback for MCP relay messages. Set by ScalingService. */
+	private mcpRelayHandler?: (msg: McpRelayMessage) => void;
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly pubsubEventBus: PubSubEventBus,
 		private readonly redisClientService: RedisClientService,
+		private readonly executionsConfig: ExecutionsConfig,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
-		if (config.getEnv('executions.mode') !== 'queue') return;
+		if (this.executionsConfig.mode !== 'queue') return;
 
 		this.logger = this.logger.scoped(['scaling', 'pubsub']);
+
+		// Build prefixed channel names for proper isolation between deployments
+		const prefix = this.globalConfig.redis.prefix;
+		this.commandChannel = `${prefix}:${COMMAND_PUBSUB_CHANNEL}`;
+		this.workerResponseChannel = `${prefix}:${WORKER_RESPONSE_PUBSUB_CHANNEL}`;
+		this.mcpRelayChannel = `${prefix}:${MCP_RELAY_PUBSUB_CHANNEL}`;
 
 		this.client = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
 
@@ -39,7 +71,13 @@ export class Subscriber {
 
 		const debouncedHandlerFn = debounce(handlerFn, 300);
 
-		this.client.on('message', (channel: PubSub.Channel, str: string) => {
+		this.client.on('message', (channel: string, str: string) => {
+			// Handle MCP relay messages separately
+			if (channel === this.mcpRelayChannel) {
+				this.handleMcpRelayMessage(str);
+				return;
+			}
+
 			const msg = this.parseMessage(str, channel);
 			if (!msg) return;
 			if (msg.debounce) debouncedHandlerFn(msg);
@@ -47,8 +85,45 @@ export class Subscriber {
 		});
 	}
 
+	/**
+	 * Set the handler for MCP relay messages.
+	 * Called by ScalingService to route messages to handleMcpResponse.
+	 */
+	setMcpRelayHandler(handler: (msg: McpRelayMessage) => void): void {
+		this.mcpRelayHandler = handler;
+	}
+
+	private handleMcpRelayMessage(str: string): void {
+		const msg = jsonParse<McpRelayMessage | null>(str, { fallbackValue: null });
+		if (!msg || !msg.sessionId || !msg.messageId) {
+			this.logger.error('Received malformed MCP relay message', { msg: str });
+			return;
+		}
+
+		this.logger.debug('Received MCP relay message', {
+			sessionId: msg.sessionId,
+			messageId: msg.messageId,
+		});
+
+		if (this.mcpRelayHandler) {
+			this.mcpRelayHandler(msg);
+		}
+	}
+
 	getClient() {
 		return this.client;
+	}
+
+	getCommandChannel() {
+		return this.commandChannel;
+	}
+
+	getWorkerResponseChannel() {
+		return this.workerResponseChannel;
+	}
+
+	getMcpRelayChannel() {
+		return this.mcpRelayChannel;
 	}
 
 	// @TODO: Use `@OnShutdown()` decorator
@@ -56,7 +131,7 @@ export class Subscriber {
 		this.client.disconnect();
 	}
 
-	async subscribe(channel: PubSub.Channel) {
+	async subscribe(channel: string) {
 		await this.client.subscribe(channel, (error) => {
 			if (error) {
 				this.logger.error(`Failed to subscribe to channel ${channel}`, { error });
@@ -67,7 +142,7 @@ export class Subscriber {
 		});
 	}
 
-	private parseMessage(str: string, channel: PubSub.Channel) {
+	private parseMessage(str: string, channel: string) {
 		const msg = jsonParse<PubSub.Command | PubSub.WorkerResponse | null>(str, {
 			fallbackValue: null,
 		});

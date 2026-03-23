@@ -7,10 +7,9 @@ import path from 'path';
 import type { MigrationContext, IrreversibleMigration } from '../migration-types';
 
 export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
-	transaction = false as const;
+	withFKsDisabled = true as const;
 
 	async up(context: MigrationContext) {
-		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		await pruneExecutionsData(context);
 
 		const { queryRunner, tablePrefix } = context;

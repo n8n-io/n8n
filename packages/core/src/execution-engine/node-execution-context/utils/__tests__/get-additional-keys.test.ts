@@ -1,5 +1,4 @@
 import { mock } from 'jest-mock-extended';
-import { LoggerProxy } from 'n8n-workflow';
 import type { IDataObject, IRunExecutionData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
@@ -9,6 +8,7 @@ import { getAdditionalKeys } from '../get-additional-keys';
 
 describe('getAdditionalKeys', () => {
 	const externalSecretsProxy = mock<ExternalSecretsProxy>();
+	const providerKeysAccessibleByCredential = new Set(['provider1']);
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		executionId: '123',
 		webhookWaitingBaseUrl: 'https://webhook.test',
@@ -16,6 +16,8 @@ describe('getAdditionalKeys', () => {
 		variables: { testVar: 'value' },
 		externalSecretsProxy,
 	});
+	additionalData.externalSecretProviderKeysAccessibleByCredential =
+		providerKeysAccessibleByCredential;
 
 	const runExecutionData = mock<IRunExecutionData>({
 		resultData: {
@@ -25,7 +27,6 @@ describe('getAdditionalKeys', () => {
 	});
 
 	beforeAll(() => {
-		LoggerProxy.init(mock());
 		externalSecretsProxy.hasProvider.mockReturnValue(true);
 		externalSecretsProxy.hasSecret.mockReturnValue(true);
 		externalSecretsProxy.getSecret.mockReturnValue('secret-value');
@@ -72,17 +73,11 @@ describe('getAdditionalKeys', () => {
 		});
 	});
 
-	it('should include secrets when enabled', () => {
-		const result = getAdditionalKeys(additionalData, 'manual', null, { secretsEnabled: true });
+	it('should include secrets', () => {
+		const result = getAdditionalKeys(additionalData, 'manual', null);
 
 		expect(result.$secrets).toBeDefined();
 		expect((result.$secrets?.provider1 as IDataObject).secret1).toEqual('secret-value');
-	});
-
-	it('should not include secrets when disabled', () => {
-		const result = getAdditionalKeys(additionalData, 'manual', null, { secretsEnabled: false });
-
-		expect(result.$secrets).toBeUndefined();
 	});
 
 	it('should throw errors in manual mode', () => {
@@ -93,12 +88,40 @@ describe('getAdditionalKeys', () => {
 		}).toThrow();
 	});
 
-	it('should correctly set resume URLs', () => {
+	it('should set plain resume URLs when runExecutionData has no resumeToken', () => {
+		const dataWithoutToken = mock<IRunExecutionData>({
+			resumeToken: undefined,
+			resultData: { runData: {}, metadata: {} },
+		});
+		const result = getAdditionalKeys(additionalData, 'manual', dataWithoutToken);
+
+		expect(result.$execution?.resumeUrl).toBe('https://webhook.test/123');
+		expect(result.$execution?.resumeFormUrl).toBe('https://form.test/123');
+		expect(result.$resumeWebhookUrl).toBe('https://webhook.test/123');
+	});
+
+	it('should append resumeToken to resume URLs when runExecutionData has a token', () => {
+		const dataWithToken = mock<IRunExecutionData>({
+			resumeToken: 'a'.repeat(64),
+			resultData: { runData: {}, metadata: {} },
+		});
+
+		const result = getAdditionalKeys(additionalData, 'manual', dataWithToken);
+
+		const resumeUrl = new URL(result.$execution?.resumeUrl ?? '');
+		const resumeFormUrl = new URL(result.$execution?.resumeFormUrl ?? '');
+		const deprecatedUrl = new URL(result.$resumeWebhookUrl ?? '');
+
+		expect(resumeUrl.searchParams.get('signature')).toBe('a'.repeat(64));
+		expect(resumeFormUrl.searchParams.get('signature')).toBe('a'.repeat(64));
+		expect(deprecatedUrl.searchParams.get('signature')).toBe('a'.repeat(64));
+	});
+
+	it('should set plain resume URLs when runExecutionData is null', () => {
 		const result = getAdditionalKeys(additionalData, 'manual', null);
 
 		expect(result.$execution?.resumeUrl).toBe('https://webhook.test/123');
 		expect(result.$execution?.resumeFormUrl).toBe('https://form.test/123');
-		expect(result.$resumeWebhookUrl).toBe('https://webhook.test/123'); // Test deprecated property
 	});
 
 	it('should return test mode when manual', () => {

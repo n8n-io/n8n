@@ -5,7 +5,7 @@ import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } 
 export const node: INode = {
 	id: '11',
 	name: 'Airtable node',
-	typeVersion: 2,
+	typeVersion: 2.2,
 	type: 'n8n-nodes-base.airtable',
 	position: [42, 42],
 	parameters: {
@@ -13,25 +13,31 @@ export const node: INode = {
 	},
 };
 
-export const createMockExecuteFunction = (nodeParameters: IDataObject) => {
+export const createMockExecuteFunction = (
+	nodeParameters: IDataObject,
+	typeVersion = node.typeVersion,
+) => {
+	const mockNode = typeVersion === node.typeVersion ? node : { ...node, typeVersion };
 	const fakeExecuteFunction = {
-		getInputData() {
+		getInputData: jest.fn(() => {
 			return [{ json: {} }];
-		},
-		getNodeParameter(
-			parameterName: string,
-			_itemIndex: number,
-			fallbackValue?: IDataObject | undefined,
-			options?: IGetNodeParameterOptions | undefined,
-		) {
-			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
-			return get(nodeParameters, parameter, fallbackValue);
-		},
-		getNode() {
-			return node;
-		},
-		helpers: { constructExecutionMetaData },
-		continueOnFail: () => false,
+		}),
+		getNodeParameter: jest.fn(
+			(
+				parameterName: string,
+				_itemIndex: number,
+				fallbackValue?: IDataObject,
+				options?: IGetNodeParameterOptions,
+			) => {
+				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
+				return get(nodeParameters, parameter, fallbackValue);
+			},
+		),
+		getNode: jest.fn(() => {
+			return mockNode;
+		}),
+		helpers: { constructExecutionMetaData: jest.fn(constructExecutionMetaData) },
+		continueOnFail: jest.fn(() => false),
 	} as unknown as IExecuteFunctions;
 	return fakeExecuteFunction;
 };

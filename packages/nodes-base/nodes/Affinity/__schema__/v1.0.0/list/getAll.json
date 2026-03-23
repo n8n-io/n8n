@@ -1,0 +1,27 @@
+{
+    "type": "object",
+    "properties": {
+        "creator_id": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "list_size": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "owner_id": {
+            "type": "integer"
+        },
+        "public": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

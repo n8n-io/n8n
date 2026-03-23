@@ -1,0 +1,12 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MessageRating > should render correctly with default props 1`] = `
+"<div class="rating">
+  <div class="buttons">
+    <n8n-button-stub label="assistantChat.builder.thumbsUp" icon="thumbs-up" variant="subtle" size="small" loading="false" icononly="false" disabled="false" class="" data-test-id="message-thumbs-up-button"></n8n-button-stub>
+    <n8n-button-stub label="assistantChat.builder.thumbsDown" icon="thumbs-down" variant="subtle" size="small" loading="false" icononly="false" disabled="false" class="" data-test-id="message-thumbs-down-button"></n8n-button-stub>
+  </div>
+  <!--v-if-->
+  <!--v-if-->
+</div>"
+`;

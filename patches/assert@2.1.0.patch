@@ -1,0 +1,55 @@
+diff --git a/build/assert.js b/build/assert.js
+index b4056fad4efe4508c0bc6dd375334a75ff010d5e..9127af7fa0fce7c3813938f0106f7dd14f4afa0f 100644
+--- a/build/assert.js
++++ b/build/assert.js
+@@ -37,9 +37,9 @@ var _require = require('./internal/errors'),
+   ERR_INVALID_RETURN_VALUE = _require$codes.ERR_INVALID_RETURN_VALUE,
+   ERR_MISSING_ARGS = _require$codes.ERR_MISSING_ARGS;
+ var AssertionError = require('./internal/assert/assertion_error');
+-var _require2 = require('util/'),
++var _require2 = require('util'),
+   inspect = _require2.inspect;
+-var _require$types = require('util/').types,
++var _require$types = require('util').types,
+   isPromise = _require$types.isPromise,
+   isRegExp = _require$types.isRegExp;
+ var objectAssign = require('object.assign/polyfill')();
+diff --git a/build/internal/assert/assertion_error.js b/build/internal/assert/assertion_error.js
+index d30e83ceb76ae8ac65f094a4df2d8bb4354c2b29..2675cf13b28e5308aa78c2b87b8f5e448b7cc74a 100644
+--- a/build/internal/assert/assertion_error.js
++++ b/build/internal/assert/assertion_error.js
+@@ -22,7 +22,7 @@ function _isNativeFunction(fn) { return Function.toString.call(fn).indexOf("[nat
+ function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+ function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf.bind() : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+-var _require = require('util/'),
++var _require = require('util'),
+   inspect = _require.inspect;
+ var _require2 = require('../errors'),
+   ERR_INVALID_ARG_TYPE = _require2.codes.ERR_INVALID_ARG_TYPE;
+diff --git a/build/internal/errors.js b/build/internal/errors.js
+index 17b6b4f36d1a7c639cdb144094dcd4e0b3964c2c..cc7d84d069301a3557b8586b297b68f1bea4f257 100644
+--- a/build/internal/errors.js
++++ b/build/internal/errors.js
+@@ -127,7 +127,7 @@ createErrorType('ERR_INVALID_ARG_TYPE', function (name, expected, actual) {
+ }, TypeError);
+ createErrorType('ERR_INVALID_ARG_VALUE', function (name, value) {
+   var reason = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'is invalid';
+-  if (util === undefined) util = require('util/');
++  if (util === undefined) util = require('util');
+   var inspected = util.inspect(value);
+   if (inspected.length > 128) {
+     inspected = "".concat(inspected.slice(0, 128), "...");
+diff --git a/build/internal/util/comparisons.js b/build/internal/util/comparisons.js
+index fd8180d8c95693695a4a04649bae36ba658cea32..2701a6b25766ada28fc04b83a6a07b7648fad515 100644
+--- a/build/internal/util/comparisons.js
++++ b/build/internal/util/comparisons.js
+@@ -36,7 +36,7 @@ function uncurryThis(f) {
+ var hasOwnProperty = uncurryThis(Object.prototype.hasOwnProperty);
+ var propertyIsEnumerable = uncurryThis(Object.prototype.propertyIsEnumerable);
+ var objectToString = uncurryThis(Object.prototype.toString);
+-var _require$types = require('util/').types,
++var _require$types = require('util').types,
+   isAnyArrayBuffer = _require$types.isAnyArrayBuffer,
+   isArrayBufferView = _require$types.isArrayBufferView,
+   isDate = _require$types.isDate,

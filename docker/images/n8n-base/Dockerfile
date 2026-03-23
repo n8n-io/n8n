@@ -1,35 +1,35 @@
-ARG NODE_VERSION=22
+ARG NODE_VERSION=24.13.1
 
-# ==============================================================================
-# STAGE 1: Builder for Base Dependencies
-# ==============================================================================
-FROM node:${NODE_VERSION}-alpine AS builder
+FROM dhi.io/node:${NODE_VERSION}-alpine3.22-dev
 
-# Install fonts
-RUN \
-  apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
-  update-ms-fonts && \
-  fc-cache -f && \
-  apk del .build-deps-fonts && \
-  find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
+ARG NODE_VERSION
 
-# Install essential OS dependencies
-RUN apk add --no-cache git openssh graphicsmagick tini tzdata ca-certificates libc6-compat jq
-
-# Update npm, install full-icu and npm@11.4.2 to fix brace-expansion vulnerability
-# Remove npm update after vulnerability is fixed in in node image
-RUN npm install -g full-icu@1.5.0 npm@11.4.2
-
-RUN apk del apk-tools && \
-  rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* /var/cache/apk/* /lib/apk/db
-
-# ==============================================================================
-# STAGE 2: Final Base Runtime Image
-# ==============================================================================
-FROM node:${NODE_VERSION}-alpine
-
-COPY --from=builder / /
+# Install all dependencies in a single layer to minimize image size
+RUN apk add --no-cache busybox-binsh && \
+    # Install fonts
+    apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
+    update-ms-fonts && \
+    fc-cache -f && \
+    apk del .build-deps-fonts && \
+    find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; && \
+    # Install OS dependencies
+    apk update && \
+    apk upgrade --no-cache && \
+    apk add --no-cache \
+        git \
+        openssh \
+        openssl \
+        graphicsmagick=1.3.45-r0 `# pinned to avoid ghostscript-fonts (AGPL)` \
+        tini \
+        tzdata \
+        ca-certificates \
+        libc6-compat && \
+    # Cleanup
+    rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
+    apk del apk-tools
 
 WORKDIR /home/node
-ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu
+# DHI images use a non-standard global npm path, so we need to set NODE_PATH
+# to allow externally installed npm packages to be found by require()
+ENV NODE_PATH=/opt/nodejs/node-v${NODE_VERSION}/lib/node_modules
 EXPOSE 5678/tcp

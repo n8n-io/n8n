@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { ShutdownHandler } from '@n8n/decorators';
-import { ShutdownRegistryMetadata } from '@n8n/decorators';
+import { ShutdownMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { assert, UnexpectedError, UserError } from 'n8n-workflow';
@@ -23,17 +23,17 @@ export class ShutdownService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly shutdownRegistry: ShutdownRegistryMetadata,
+		private readonly shutdownMetadata: ShutdownMetadata,
 	) {}
 
 	/** Registers given listener to be notified when the application is shutting down */
 	register(priority: number, handler: ShutdownHandler) {
-		this.shutdownRegistry.register(priority, handler);
+		this.shutdownMetadata.register(priority, handler);
 	}
 
 	/** Validates that all the registered shutdown handlers are properly configured */
 	validate() {
-		const handlers = this.shutdownRegistry.getHandlersByPriority().flat();
+		const handlers = this.shutdownMetadata.getHandlersByPriority().flat();
 
 		for (const { serviceClass, methodName } of handlers) {
 			if (!Container.has(serviceClass)) {
@@ -74,7 +74,7 @@ export class ShutdownService {
 	}
 
 	private async startShutdown() {
-		const handlers = Object.values(this.shutdownRegistry.getHandlersByPriority()).reverse();
+		const handlers = Object.values(this.shutdownMetadata.getHandlersByPriority()).reverse();
 
 		for (const handlerGroup of handlers) {
 			await Promise.allSettled(

@@ -1,4 +1,10 @@
-import type { ApiKeyScope, GlobalRole } from './types.ee';
+import {
+	isApiKeyScope,
+	type ApiKeyScope,
+	type AuthPrincipal,
+	type GlobalRole,
+	type Scope,
+} from './types.ee';
 
 export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'user:read',
@@ -6,6 +12,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'user:create',
 	'user:changeRole',
 	'user:delete',
+	'user:enforceMfa',
 	'sourceControl:pull',
 	'securityAudit:generate',
 	'project:create',
@@ -23,6 +30,8 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'tag:list',
 	'workflowTags:update',
 	'workflowTags:list',
+	'executionTags:update',
+	'executionTags:list',
 	'workflow:create',
 	'workflow:read',
 	'workflow:update',
@@ -33,10 +42,24 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'workflow:deactivate',
 	'execution:delete',
 	'execution:read',
+	'execution:retry',
+	'execution:stop',
 	'execution:list',
 	'credential:create',
+	'credential:update',
 	'credential:move',
 	'credential:delete',
+	'credential:list',
+	'dataTable:create',
+	'dataTable:read',
+	'dataTable:update',
+	'dataTable:delete',
+	'dataTable:list',
+	'dataTableRow:create',
+	'dataTableRow:read',
+	'dataTableRow:update',
+	'dataTableRow:delete',
+	'dataTableRow:upsert',
 ];
 
 export const ADMIN_API_KEY_SCOPES: ApiKeyScope[] = OWNER_API_KEY_SCOPES;
@@ -48,6 +71,8 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'tag:list',
 	'workflowTags:update',
 	'workflowTags:list',
+	'executionTags:update',
+	'executionTags:list',
 	'workflow:create',
 	'workflow:read',
 	'workflow:update',
@@ -58,20 +83,86 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'workflow:deactivate',
 	'execution:delete',
 	'execution:read',
+	'execution:retry',
+	'execution:stop',
 	'execution:list',
 	'credential:create',
+	'credential:update',
 	'credential:move',
 	'credential:delete',
+	'dataTable:create',
+	'dataTable:read',
+	'dataTable:update',
+	'dataTable:delete',
+	'dataTable:list',
+	'dataTableRow:create',
+	'dataTableRow:read',
+	'dataTableRow:update',
+	'dataTableRow:delete',
+	'dataTableRow:upsert',
+];
+
+export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];
+
+/**
+ * This is a bit of a mess, because we are handing out scopes in API keys that are only
+ * valid for the personal project, which is enforced in the public API, because the workflows,
+ * execution endpoints are limited to the personal project.
+ * This is a temporary solution until we have a better way to handle personal projects and API key scopes!
+ */
+export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
+	'workflowTags:update',
+	'workflowTags:list',
+	'executionTags:update',
+	'executionTags:list',
+	'workflow:create',
+	'workflow:read',
+	'workflow:update',
+	'workflow:delete',
+	'workflow:list',
+	'workflow:move',
+	'workflow:activate',
+	'workflow:deactivate',
+	'execution:delete',
+	'execution:read',
+	'execution:retry',
+	'execution:stop',
+	'execution:list',
+	'credential:create',
+	'credential:update',
+	'credential:move',
+	'credential:delete',
+	'dataTable:create',
+	'dataTable:read',
+	'dataTable:update',
+	'dataTable:delete',
+	'dataTable:list',
+	'dataTableRow:create',
+	'dataTableRow:read',
+	'dataTableRow:update',
+	'dataTableRow:delete',
+	'dataTableRow:upsert',
 ];
 
 const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {
 	'global:owner': OWNER_API_KEY_SCOPES,
 	'global:admin': ADMIN_API_KEY_SCOPES,
 	'global:member': MEMBER_API_KEY_SCOPES,
+	'global:chatUser': CHAT_USER_API_KEY_SCOPES,
 };
 
-export const getApiKeyScopesForRole = (role: GlobalRole) => {
-	return MAP_ROLE_SCOPES[role];
+export const getApiKeyScopesForRole = (user: AuthPrincipal) => {
+	if (user.role.slug === 'global:chatUser') {
+		return [];
+	}
+
+	return [
+		...new Set(
+			(user.role.scopes.map((scope) => scope.slug) as Array<Scope | ApiKeyScope>)
+				.concat(API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT)
+				.filter(isApiKeyScope),
+		),
+	];
 };
 
 export const getOwnerOnlyApiKeyScopes = () => {

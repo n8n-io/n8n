@@ -14,7 +14,7 @@ import {
 } from 'n8n-workflow';
 
 import { numberInputsProperty, configuredInputs } from './helpers';
-import { N8nLlmTracing } from '../llms/N8nLlmTracing';
+import { N8nLlmTracing } from '@n8n/ai-utilities';
 import { N8nNonEstimatingTracing } from '../llms/N8nNonEstimatingTracing';
 
 interface ModeleSelectionRule {
@@ -72,6 +72,19 @@ export class ModelSelector implements INodeType {
 					return configuredInputs(parameters)
 				})($parameter)
 			}}`,
+		codex: {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Language Models'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.modelselector/',
+					},
+				],
+			},
+		},
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		requiredInputs: 1,
 		properties: [

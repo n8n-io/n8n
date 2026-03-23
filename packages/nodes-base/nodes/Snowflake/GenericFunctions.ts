@@ -32,14 +32,14 @@ export type SnowflakeCredential = Pick<
 	);
 
 const extractPrivateKey = (credential: { privateKey: string; passphrase?: string }) => {
-	const key = formatPrivateKey(credential.privateKey as string);
+	const key = formatPrivateKey(credential.privateKey);
 
 	if (!credential.passphrase) return key;
 
 	const privateKeyObject = createPrivateKey({
 		key,
 		format: 'pem',
-		passphrase: credential.passphrase as string,
+		passphrase: credential.passphrase,
 	});
 
 	return privateKeyObject.export({

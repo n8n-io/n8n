@@ -1,0 +1,61 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "bd816131-d8ad-4b4c-90d6-59fdab2e6307",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [720, 460]
+		},
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "23fc3930-b8f9-41d9-89db-b647291a2201",
+				"options": {}
+			},
+			"id": "82fe0f6c-854a-4eb9-b311-d7b43025c047",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 1,
+			"position": [460, 460],
+			"webhookId": "23fc3930-b8f9-41d9-89db-b647291a2201"
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Webhook": [
+			{
+				"headers": {
+					"host": "localhost:5678",
+					"content-length": "37",
+					"accept": "*/*",
+					"content-type": "application/json",
+					"accept-encoding": "gzip"
+				},
+				"params": {},
+				"query": {},
+				"body": {
+					"here": "be",
+					"dragons": true
+				},
+				"webhookUrl": "http://localhost:5678/webhook-test/23fc3930-b8f9-41d9-89db-b647291a2201",
+				"executionMode": "test"
+			}
+		]
+	}
+}

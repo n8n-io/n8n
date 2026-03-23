@@ -1,10 +1,10 @@
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import FormData from 'form-data';
-import { Agent as HttpAgent } from 'http';
-import { HttpProxyAgent } from 'http-proxy-agent';
-import { Agent as HttpsAgent } from 'https';
-import { HttpsProxyAgent } from 'https-proxy-agent';
-import { mock } from 'jest-mock-extended';
+import type { Agent as HttpsAgent } from 'https';
+import { mock, mockDeep } from 'jest-mock-extended';
 import type {
+	IAllExecuteFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INode,
@@ -16,18 +16,20 @@ import type {
 import nock from 'nock';
 import type { SecureContextOptions } from 'tls';
 
+import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import {
 	applyPaginationRequestData,
 	convertN8nRequestToAxios,
 	createFormDataObject,
-	getAgentWithProxy,
 	httpRequest,
 	invokeAxios,
 	parseRequestObject,
 	proxyRequestToAxios,
+	refreshOAuth2Token,
 	removeEmptyBody,
+	requestOAuth2,
 } from '../request-helper-functions';
 
 describe('Request Helper Functions', () => {
@@ -35,7 +37,10 @@ describe('Request Helper Functions', () => {
 		const baseUrl = 'https://example.de';
 		const workflow = mock<Workflow>();
 		const hooks = mock<ExecutionLifecycleHooks>();
-		const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
+		const additionalData = mock<IWorkflowExecuteAdditionalData>({
+			hooks,
+			ssrfBridge: undefined,
+		});
 		const node = mock<INode>();
 
 		beforeEach(() => {
@@ -107,7 +112,39 @@ describe('Request Helper Functions', () => {
 		});
 
 		describe('redirects', () => {
-			test('should forward authorization header', async () => {
+			test.each([[undefined], [true]])(
+				'should forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+				async (sendCredentialsOnCrossOriginRedirect) => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: 'https://otherdomain.com/test' });
+					nock('https://otherdomain.com')
+						.get('/test')
+						.reply(200, function () {
+							return this.req.headers;
+						});
+
+					const response = await proxyRequestToAxios(workflow, additionalData, node, {
+						url: `${baseUrl}/redirect`,
+						auth: {
+							username: 'testuser',
+							password: 'testpassword',
+						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
+						resolveWithFullResponse: true,
+						sendCredentialsOnCrossOriginRedirect,
+					});
+
+					expect(response.statusCode).toBe(200);
+					const forwardedHeaders = JSON.parse(response.body);
+					expect(forwardedHeaders.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
+				},
+			);
+
+			test('should not forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is false', async () => {
 				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://otherdomain.com/test' });
 				nock('https://otherdomain.com')
 					.get('/test')
@@ -125,13 +162,46 @@ describe('Request Helper Functions', () => {
 						'X-Other-Header': 'otherHeaderContent',
 					},
 					resolveWithFullResponse: true,
+					sendCredentialsOnCrossOriginRedirect: false,
 				});
 
 				expect(response.statusCode).toBe(200);
 				const forwardedHeaders = JSON.parse(response.body);
-				expect(forwardedHeaders.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+				expect(forwardedHeaders.authorization).toBeUndefined();
 				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 			});
+
+			test.each([[undefined], [true], [false]])(
+				'should forward authorization header on same-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+				async (sendCredentialsOnCrossOriginRedirect) => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: `${baseUrl}/test` });
+					nock(baseUrl)
+						.get('/test')
+						.reply(200, function () {
+							return this.req.headers;
+						});
+
+					const response = await proxyRequestToAxios(workflow, additionalData, node, {
+						url: `${baseUrl}/redirect`,
+						auth: {
+							username: 'testuser',
+							password: 'testpassword',
+						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
+						resolveWithFullResponse: true,
+						sendCredentialsOnCrossOriginRedirect,
+					});
+
+					expect(response.statusCode).toBe(200);
+					const forwardedHeaders = JSON.parse(response.body);
+					expect(forwardedHeaders.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
+				},
+			);
 
 			test('should follow redirects by default', async () => {
 				nock(baseUrl)
@@ -237,6 +307,22 @@ describe('Request Helper Functions', () => {
 			expect(response.status).toBe(200);
 			expect(response.data).toEqual({ success: true });
 		});
+
+		it('should include vendor headers in requests to OpenAi', async () => {
+			const { openAiDefaultHeaders } = Container.get(AiConfig);
+			nock('https://api.openai.com', {
+				reqheaders: openAiDefaultHeaders,
+			})
+				.get('/chat')
+				.reply(200, { success: true });
+
+			const response = await invokeAxios({
+				url: 'https://api.openai.com/chat',
+			});
+
+			expect(response.status).toBe(200);
+			expect(response.data).toEqual({ success: true });
+		});
 	});
 
 	describe('removeEmptyBody', () => {
@@ -338,7 +424,7 @@ describe('Request Helper Functions', () => {
 
 			test('on regular requests', async () => {
 				const axiosOptions = await parseRequestObject(requestObject);
-				expect((axiosOptions.httpsAgent as HttpsAgent).options).toEqual({
+				expect((axiosOptions.httpsAgent as HttpsAgent).options).toMatchObject({
 					servername: 'example.de',
 					...agentOptions,
 					noDelay: true,
@@ -357,7 +443,7 @@ describe('Request Helper Functions', () => {
 				};
 				axiosOptions.beforeRedirect!(redirectOptions, mock());
 				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
-				expect((redirectOptions.agent as HttpsAgent).options).toEqual({
+				expect((redirectOptions.agent as HttpsAgent).options).toMatchObject({
 					servername: 'example.de',
 					...agentOptions,
 					noDelay: true,
@@ -538,6 +624,32 @@ describe('Request Helper Functions', () => {
 
 			expect(axiosConfig.httpsAgent?.options.rejectUnauthorized).toBe(false);
 		});
+
+		test('should ignore HTTP error except for the specified status codes', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				ignoreHttpStatusErrors: { ignore: true, except: [401] },
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+			expect(axiosConfig.validateStatus).toBeDefined();
+			expect(axiosConfig.validateStatus!(401)).toBe(false);
+			expect(axiosConfig.validateStatus!(500)).toBe(true);
+		});
+
+		test('should ignore all HTTP errors', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				ignoreHttpStatusErrors: true,
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+			expect(axiosConfig.validateStatus).toBeDefined();
+			expect(axiosConfig.validateStatus!(401)).toBe(true);
+			expect(axiosConfig.validateStatus!(500)).toBe(true);
+		});
 	});
 
 	describe('applyPaginationRequestData', () => {
@@ -699,6 +811,21 @@ describe('Request Helper Functions', () => {
 			const response = await httpRequest({
 				method: 'GET',
 				url: `${baseUrl}/users`,
+			});
+
+			expect(response).toEqual({ users: ['John', 'Jane'] });
+			scope.done();
+		});
+
+		test('should ignore invalid baseURL when url is absolute', async () => {
+			const scope = nock(baseUrl)
+				.get('/users')
+				.reply(200, { users: ['John', 'Jane'] });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: `${baseUrl}/users`,
+				baseURL: 'not-a-valid-url',
 			});
 
 			expect(response).toEqual({ users: ['John', 'Jane'] });
@@ -869,91 +996,525 @@ describe('Request Helper Functions', () => {
 			expect(response).toEqual({ success: true });
 			scope.done();
 		});
+
+		it('should include vendor headers in requests to OpenAi', async () => {
+			const { openAiDefaultHeaders } = Container.get(AiConfig);
+			const scope = nock('https://api.openai.com', {
+				reqheaders: openAiDefaultHeaders,
+			})
+				.get('/chat')
+				.reply(200, { success: true });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: 'https://api.openai.com/chat',
+				headers: { 'X-Custom-Header': 'custom-value' },
+			});
+			expect(response).toEqual({ success: true });
+			scope.done();
+		});
+
+		describe('redirects', () => {
+			test.each([[undefined], [true]])(
+				'should forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+				async (sendCredentialsOnCrossOriginRedirect) => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: 'https://otherdomain.com/test' });
+					nock('https://otherdomain.com')
+						.get('/test')
+						.reply(200, function () {
+							return this.req.headers;
+						});
+
+					const response = (await httpRequest({
+						url: `${baseUrl}/redirect`,
+						auth: {
+							username: 'testuser',
+							password: 'testpassword',
+						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
+						sendCredentialsOnCrossOriginRedirect,
+					})) as { authorization: string; 'x-other-header': string };
+
+					expect(response.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(response['x-other-header']).toBe('otherHeaderContent');
+				},
+			);
+
+			test('should not forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is false', async () => {
+				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://otherdomain.com/test' });
+				nock('https://otherdomain.com')
+					.get('/test')
+					.reply(200, function () {
+						return this.req.headers;
+					});
+
+				const response = (await httpRequest({
+					url: `${baseUrl}/redirect`,
+					auth: {
+						username: 'testuser',
+						password: 'testpassword',
+					},
+					headers: {
+						'X-Other-Header': 'otherHeaderContent',
+					},
+					sendCredentialsOnCrossOriginRedirect: false,
+				})) as { authorization: undefined; 'x-other-header': string };
+
+				expect(response.authorization).toBeUndefined();
+				expect(response['x-other-header']).toBe('otherHeaderContent');
+			});
+
+			test.each([[undefined], [true], [false]])(
+				'should forward authorization header on same-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+				async (sendCredentialsOnCrossOriginRedirect) => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: `${baseUrl}/test` });
+					nock(baseUrl)
+						.get('/test')
+						.reply(200, function () {
+							return this.req.headers;
+						});
+
+					const response = (await httpRequest({
+						url: `${baseUrl}/redirect`,
+						auth: {
+							username: 'testuser',
+							password: 'testpassword',
+						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
+						sendCredentialsOnCrossOriginRedirect,
+					})) as { authorization: string; 'x-other-header': string };
+
+					expect(response.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(response['x-other-header']).toBe('otherHeaderContent');
+				},
+			);
+		});
 	});
 
-	describe('getAgentWithProxy', () => {
-		const baseUrlHttps = 'https://example.com';
-		const baseUrlHttp = 'http://example.com';
-		const proxyUrlHttps = 'http://proxy-for-https.com:8080/';
-		const proxyUrlHttp = 'http://proxy-for-http.com:8080/';
+	describe('refreshOAuth2Token', () => {
+		const baseUrl = 'https://example.com';
+		const mockThis = mockDeep<IAllExecuteFunctions>();
+		const mockNode = mockDeep<INode>();
+		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+		const mockCredentialData = {
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			grantType: 'authorizationCode',
+			authUrl: 'https://example.com/auth',
+			accessTokenUrl: 'https://example.com/token',
+			authentication: 'body',
+			scope: 'openid',
+			oauthTokenData: {
+				access_token: 'old-token',
+				refresh_token: 'old-refresh-token',
+			},
+		};
 
-		test('should return a regular HTTP agent when no proxy is set', async () => {
-			const { agent, protocol } = getAgentWithProxy({
-				targetUrl: baseUrlHttp,
-			});
-			expect(protocol).toEqual('http');
-			expect(agent).toBeInstanceOf(HttpAgent);
-		});
-
-		test('should return a regular HTTPS agent when no proxy is set', async () => {
-			const { agent, protocol } = getAgentWithProxy({
-				targetUrl: baseUrlHttps,
-			});
-			expect(protocol).toEqual('https');
-			expect(agent).toBeInstanceOf(HttpsAgent);
-		});
-
-		test('should use a proxyConfig object', async () => {
-			const { agent, protocol } = getAgentWithProxy({
-				targetUrl: baseUrlHttps,
-				proxyConfig: {
-					host: 'proxy-for-https.com',
-					port: 8080,
+		beforeEach(() => {
+			nock.cleanAll();
+			jest.resetAllMocks();
+			mockNode.name = 'test-node-name';
+			mockNode.credentials = {
+				'test-credentials-type': {
+					id: 'test-credentials-id',
+					name: 'test-credentials-name',
 				},
-			});
-			expect(protocol).toEqual('https');
-			expect((agent as HttpsProxyAgent<string>).proxy.href).toEqual(proxyUrlHttps);
+			};
 		});
 
-		test('should use a proxyConfig string', async () => {
-			const { agent, protocol } = getAgentWithProxy({
-				targetUrl: baseUrlHttps,
-				proxyConfig: proxyUrlHttps,
+		test('should refresh the OAuth2 token with pkce grant type', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				clientSecret: undefined,
+				grantType: 'pkce',
 			});
-			expect(agent).toBeInstanceOf(HttpsProxyAgent);
-			expect(protocol).toEqual('https');
-			expect((agent as HttpsProxyAgent<string>).proxy.href).toEqual(proxyUrlHttps);
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					grant_type: 'refresh_token',
+					refresh_token: 'old-refresh-token',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+				mockAdditionalData,
+			);
 		});
 
-		describe('environment variables', () => {
-			let originalEnv: NodeJS.ProcessEnv;
-
-			beforeAll(() => {
-				originalEnv = { ...process.env };
-				process.env.HTTP_PROXY = proxyUrlHttp;
-				process.env.HTTPS_PROXY = proxyUrlHttps;
-				process.env.NO_PROXY = 'should-not-proxy.com';
+		test('should refresh the OAuth2 token with client credentials grant type', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				grantType: 'clientCredentials',
 			});
-
-			afterAll(() => {
-				process.env = originalEnv;
-			});
-
-			test('should proxy http requests (HTTP_PROXY)', async () => {
-				const { agent, protocol } = getAgentWithProxy({
-					targetUrl: baseUrlHttp,
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+					grant_type: 'client_credentials',
+					scope: 'openid',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
 				});
-				expect(protocol).toEqual('http');
-				expect(agent).toBeInstanceOf(HttpProxyAgent);
-				expect((agent as HttpsProxyAgent<string>).proxy.href).toEqual(proxyUrlHttp);
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+				mockAdditionalData,
+			);
+		});
+
+		test('should refresh the OAuth2 token with authorization code grant type', async () => {
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+					grant_type: 'refresh_token',
+					refresh_token: 'old-refresh-token',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+				mockAdditionalData,
+			);
+		});
+
+		test('should throw an error if the OAuth2 token is not connected', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				oauthTokenData: undefined,
 			});
 
-			test('should proxy https requests (HTTPS_PROXY)', async () => {
-				const { agent, protocol } = getAgentWithProxy({
-					targetUrl: baseUrlHttps,
-				});
-				expect(protocol).toEqual('https');
-				expect(agent).toBeInstanceOf(HttpsProxyAgent);
-				expect((agent as HttpsProxyAgent<string>).proxy.href).toEqual(proxyUrlHttps);
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toThrow('OAuth credentials not connected');
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
+
+		test('should throw an error if node does not have credentials', async () => {
+			mockNode.credentials!['test-credentials-type'] = undefined!;
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
 			});
 
-			test('should not proxy some hosts based on NO_PROXY', async () => {
-				const { agent, protocol } = getAgentWithProxy({
-					targetUrl: 'https://should-not-proxy.com/foo',
-				});
-				expect(protocol).toEqual('https');
-				expect(agent).toBeInstanceOf(HttpsAgent);
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toThrow('Node does not have credential type');
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('requestOAuth2 - tokenExpiredStatusCode', () => {
+		const baseUrl = 'https://api.example.com';
+		const tokenUrl = 'https://auth.example.com';
+		const mockThis = mockDeep<IAllExecuteFunctions>();
+		const mockNode = mockDeep<INode>();
+		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+
+		const makeCredentialData = (overrides?: Record<string, unknown>) => ({
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			grantType: 'clientCredentials',
+			accessTokenUrl: `${tokenUrl}/token`,
+			authentication: 'body',
+			scope: 'read',
+			oauthTokenData: {
+				access_token: 'expired-token',
+				token_type: 'bearer',
+			},
+			...overrides,
+		});
+
+		beforeEach(() => {
+			nock.cleanAll();
+			jest.resetAllMocks();
+			mockNode.name = 'test-node';
+			mockNode.credentials = {
+				testOAuth2: {
+					id: 'cred-id',
+					name: 'cred-name',
+				},
+			};
+		});
+
+		test('should retry on 401 by default (isN8nRequest path)', async () => {
+			mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+
+			// First call returns 401
+			nock(baseUrl).get('/data').reply(401, 'Unauthorized');
+			// Token re-fetch
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				token_type: 'bearer',
 			});
+			// Retry succeeds
+			nock(baseUrl).get('/data').reply(200, { success: true });
+
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(
+				Object.assign(new Error('401'), { response: { status: 401 } }),
+			);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+
+			const result = await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true, // isN8nRequest
+			);
+
+			expect(result).toEqual({ success: true });
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		});
+
+		test('should retry on custom tokenExpiredStatusCode from credentials (isN8nRequest path)', async () => {
+			mockThis.getCredentials.mockResolvedValue(
+				makeCredentialData({ tokenExpiredStatusCode: 403 }),
+			);
+
+			// Token re-fetch
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				token_type: 'bearer',
+			});
+
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(
+				Object.assign(new Error('403'), { response: { status: 403 } }),
+			);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+
+			const result = await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual({ success: true });
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		});
+
+		test('should NOT retry on 401 when credential sets tokenExpiredStatusCode to 403 (isN8nRequest path)', async () => {
+			mockThis.getCredentials.mockResolvedValue(
+				makeCredentialData({ tokenExpiredStatusCode: 403 }),
+			);
+
+			const error401 = Object.assign(new Error('401'), { response: { status: 401 } });
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(error401);
+
+			await expect(
+				requestOAuth2.call(
+					mockThis,
+					'testOAuth2',
+					{ method: 'GET', url: `${baseUrl}/data` },
+					mockNode,
+					mockAdditionalData,
+					undefined,
+					true,
+				),
+			).rejects.toThrow('401');
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
+		});
+
+		test('credential-level tokenExpiredStatusCode should take priority over oAuth2Options', async () => {
+			mockThis.getCredentials.mockResolvedValue(
+				makeCredentialData({ tokenExpiredStatusCode: 403 }),
+			);
+
+			// Token re-fetch
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				token_type: 'bearer',
+			});
+
+			// credential says 403, oAuth2Options says 429 — 403 should win
+			const error403 = Object.assign(new Error('403'), { response: { status: 403 } });
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(error403);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+
+			const result = await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				{ tokenExpiredStatusCode: 429 },
+				true,
+			);
+
+			expect(result).toEqual({ success: true });
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('SSRF protection wiring', () => {
+		const baseUrl = 'https://example.com';
+		const workflow = mock<Workflow>();
+		const hooks = mock<ExecutionLifecycleHooks>();
+		const node = mock<INode>();
+
+		const createSsrfBridge = (overrides?: Partial<SsrfBridge>): SsrfBridge => ({
+			validateIp: jest.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateUrl: jest.fn().mockResolvedValue({ ok: true, result: undefined }),
+			validateRedirectSync: jest.fn(),
+			createSecureLookup: jest.fn().mockReturnValue(jest.fn()),
+			...overrides,
+		});
+
+		beforeEach(() => {
+			nock.cleanAll();
+			hooks.runHook.mockClear();
+		});
+
+		describe('convertN8nRequestToAxios with ssrfBridge', () => {
+			test('should inject secureLookup into agent options when no proxy', () => {
+				const lookupFn = jest.fn();
+				const ssrfBridge = createSsrfBridge({
+					createSecureLookup: jest.fn().mockReturnValue(lookupFn),
+				});
+
+				const axiosConfig = convertN8nRequestToAxios(
+					{ method: 'GET', url: 'https://example.com/test' },
+					ssrfBridge,
+				);
+
+				expect(ssrfBridge.createSecureLookup).toHaveBeenCalled();
+				expect((axiosConfig.httpsAgent as HttpsAgent).options.lookup).toBe(lookupFn);
+			});
+
+			test('should NOT inject secureLookup when proxy is configured', () => {
+				const lookupFn = jest.fn();
+				const ssrfBridge = createSsrfBridge({
+					createSecureLookup: jest.fn().mockReturnValue(lookupFn),
+				});
+
+				const axiosConfig = convertN8nRequestToAxios(
+					{
+						method: 'GET',
+						url: 'https://example.com/test',
+						proxy: { host: 'my-proxy', port: 8080 },
+					},
+					ssrfBridge,
+				);
+
+				expect((axiosConfig.httpsAgent as HttpsAgent).options.lookup).toBeUndefined();
+			});
+
+			test('should not inject secureLookup when ssrfBridge is absent', () => {
+				const axiosConfig = convertN8nRequestToAxios({
+					method: 'GET',
+					url: 'https://example.com/test',
+				});
+
+				expect((axiosConfig.httpsAgent as HttpsAgent).options.lookup).toBeUndefined();
+			});
+		});
+
+		test('proxyRequestToAxios should resolve baseURL + relative url for validateUrl', async () => {
+			const ssrfBridge = createSsrfBridge();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				hooks,
+				ssrfBridge,
+			});
+
+			nock(baseUrl).get('/test').reply(200, 'ok');
+
+			const response = await proxyRequestToAxios(workflow, additionalData, node, {
+				baseURL: baseUrl,
+				url: '/test',
+			});
+
+			expect(response).toEqual('ok');
+			expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL(`${baseUrl}/test`));
 		});
 	});
 });

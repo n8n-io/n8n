@@ -1,0 +1,68 @@
+{
+	"name": "MCP Available Webhook Test",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "mcp-test-webhook",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"id": "webhook-trigger",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [300, 300],
+			"webhookId": "mcp-test-webhook-id"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "set-data-1",
+							"name": "received",
+							"value": "={{ $json.body }}",
+							"type": "string"
+						},
+						{
+							"id": "set-data-2",
+							"name": "status",
+							"value": "processed",
+							"type": "string"
+						}
+					]
+				}
+			},
+			"id": "process-node",
+			"name": "Process Data",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [500, 300]
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Process Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"availableInMCP": true
+	},
+	"staticData": null,
+	"meta": null,
+	"pinData": {},
+	"versionId": null,
+	"triggerCount": 1,
+	"tags": []
+}

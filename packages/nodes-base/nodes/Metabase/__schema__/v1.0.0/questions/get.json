@@ -4,11 +4,20 @@
         "archived": {
             "type": "boolean"
         },
-        "cache_invalidated_at": {
-            "type": "null"
+        "archived_directly": {
+            "type": "boolean"
         },
         "cache_ttl": {
             "type": "null"
+        },
+        "can_delete": {
+            "type": "boolean"
+        },
+        "can_manage_db": {
+            "type": "boolean"
+        },
+        "can_restore": {
+            "type": "boolean"
         },
         "can_run_adhoc_query": {
             "type": "boolean"
@@ -19,8 +28,17 @@
         "collection": {
             "type": "object",
             "properties": {
+                "archive_operation_id": {
+                    "type": "null"
+                },
                 "archived": {
                     "type": "boolean"
+                },
+                "archived_directly": {
+                    "type": "null"
+                },
+                "authority_level": {
+                    "type": "null"
                 },
                 "created_at": {
                     "type": "string"
@@ -66,9 +84,6 @@
                 "email": {
                     "type": "string"
                 },
-                "first_name": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "integer"
                 },
@@ -78,8 +93,8 @@
                 "is_superuser": {
                     "type": "boolean"
                 },
-                "last_login": {
-                    "type": "string"
+                "tenant_id": {
+                    "type": "null"
                 }
             }
         },
@@ -126,13 +141,13 @@
         "initially_published_at": {
             "type": "null"
         },
+        "last_used_at": {
+            "type": "string"
+        },
         "last-edit-info": {
             "type": "object",
             "properties": {
                 "email": {
-                    "type": "string"
-                },
-                "first_name": {
                     "type": "string"
                 },
                 "id": {
@@ -140,6 +155,73 @@
                 },
                 "timestamp": {
                     "type": "string"
+                }
+            }
+        },
+        "moderation_reviews": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "moderated_item_id": {
+                        "type": "integer"
+                    },
+                    "moderated_item_type": {
+                        "type": "string"
+                    },
+                    "moderator_id": {
+                        "type": "integer"
+                    },
+                    "most_recent": {
+                        "type": "boolean"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "null"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "common_name": {
+                                "type": "string"
+                            },
+                            "date_joined": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            },
+                            "first_name": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "is_qbnewb": {
+                                "type": "boolean"
+                            },
+                            "is_superuser": {
+                                "type": "boolean"
+                            },
+                            "last_login": {
+                                "type": "string"
+                            },
+                            "last_name": {
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -173,5 +255,5 @@
             }
         }
     },
-    "version": 1
+    "version": 4
 }

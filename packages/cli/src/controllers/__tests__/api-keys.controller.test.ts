@@ -1,11 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { AuthenticatedRequest } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { ApiKey } from '@n8n/db';
+import type { AuthenticatedRequest, User, ApiKey } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import { EventService } from '@/events/event.service';
+import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import { ApiKeysController } from '../api-keys.controller';
@@ -13,12 +12,15 @@ import { ApiKeysController } from '../api-keys.controller';
 describe('ApiKeysController', () => {
 	const publicApiKeyService = mockInstance(PublicApiKeyService);
 	const eventService = mockInstance(EventService);
+	const license = mockInstance(License);
 
 	const controller = Container.get(ApiKeysController);
 
 	let req: AuthenticatedRequest;
 	beforeAll(() => {
 		req = { user: { id: '123' } } as AuthenticatedRequest;
+		// Mock license as enabled by default for API key scopes
+		license.isLicensed.mockReturnValue(true);
 	});
 
 	describe('createAPIKey', () => {
@@ -131,7 +133,7 @@ describe('ApiKeysController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				role: 'global:member',
+				role: { slug: 'global:member' },
 				mfaEnabled: false,
 			});
 

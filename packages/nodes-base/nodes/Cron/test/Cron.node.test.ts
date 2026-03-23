@@ -14,8 +14,8 @@ describe('Cron Node', () => {
 		const fakeExecuteFunction = {
 			getNodeParameter(
 				parameterName: string,
-				fallbackValue?: IDataObject | undefined,
-				options?: IGetNodeParameterOptions | undefined,
+				fallbackValue?: IDataObject,
+				options?: IGetNodeParameterOptions,
 			) {
 				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 

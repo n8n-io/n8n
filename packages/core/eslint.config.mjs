@@ -3,7 +3,7 @@ import { nodeConfig } from '@n8n/eslint-config/node';
 
 export default defineConfig(
 	nodeConfig,
-	globalIgnores(['bin/*.js', 'nodes-testing/*.ts']),
+	globalIgnores(['bin/*.js', 'nodes-testing/*.ts', 'coverage/*']),
 	{
 		rules: {
 			// TODO: Lower the complexity threshold

@@ -1,19 +1,24 @@
 import isbot from 'isbot';
-import {
-	NodeOperationError,
-	SEND_AND_WAIT_OPERATION,
-	tryToParseJsonToFormFields,
-	updateDisplayOptions,
-} from 'n8n-workflow';
+import { getWebhookSandboxCSP } from 'n8n-core';
 import type {
-	INodeProperties,
-	IExecuteFunctions,
-	IWebhookFunctions,
-	IDataObject,
 	FormFieldsParameter,
+	IDataObject,
+	IExecuteFunctions,
+	INodeProperties,
+	IWebhookFunctions,
 } from 'n8n-workflow';
+import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
 
-import { limitWaitTimeProperties } from './descriptions';
+import { cssVariables } from '../../nodes/Form/cssVariables';
+import { formFieldsProperties } from '../../nodes/Form/Form.node';
+import {
+	parseFormFields,
+	prepareFormData,
+	prepareFormFields,
+	prepareFormReturnItem,
+} from '../../nodes/Form/utils/utils';
+import { escapeHtml } from '../utilities';
+import { limitWaitTimeOption } from './descriptions';
 import {
 	ACTION_RECORDED_PAGE,
 	BUTTON_STYLE_PRIMARY,
@@ -22,20 +27,11 @@ import {
 	createEmailBodyWithoutN8nAttribution,
 } from './email-templates';
 import type { IEmail } from './interfaces';
-import { cssVariables } from '../../nodes/Form/cssVariables';
-import { formFieldsProperties } from '../../nodes/Form/Form.node';
-import {
-	prepareFormData,
-	prepareFormReturnItem,
-	resolveRawData,
-} from '../../nodes/Form/utils/utils';
-import { escapeHtml } from '../utilities';
 
 export type SendAndWaitConfig = {
 	title: string;
 	message: string;
-	url: string;
-	options: Array<{ label: string; value: string; style: string }>;
+	options: Array<{ label: string; url: string; style: string }>;
 	appendAttribution?: boolean;
 };
 
@@ -49,22 +45,6 @@ type FormResponseTypeOptions = {
 
 const INPUT_FIELD_IDENTIFIER = 'field-0';
 
-const limitWaitTimeOption: INodeProperties = {
-	displayName: 'Limit Wait Time',
-	name: 'limitWaitTime',
-	type: 'fixedCollection',
-	description:
-		'Whether the workflow will automatically resume execution after the specified limit type',
-	default: { values: { limitType: 'afterTimeInterval', resumeAmount: 45, resumeUnit: 'minutes' } },
-	options: [
-		{
-			displayName: 'Values',
-			name: 'values',
-			values: limitWaitTimeProperties,
-		},
-	],
-};
-
 const appendAttributionOption: INodeProperties = {
 	displayName: 'Append n8n Attribution',
 	name: 'appendAttribution',
@@ -77,14 +57,15 @@ const appendAttributionOption: INodeProperties = {
 // Operation Properties ----------------------------------------------------------
 export function getSendAndWaitProperties(
 	targetProperties: INodeProperties[],
-	resource: string = 'message',
+	resource: string | null = 'message',
 	additionalProperties: INodeProperties[] = [],
 	options?: {
 		noButtonStyle?: boolean;
 		defaultApproveLabel?: string;
 		defaultDisapproveLabel?: string;
+		extraOptions?: INodeProperties[];
 	},
-) {
+): INodeProperties[] {
 	const buttonStyle: INodeProperties = {
 		displayName: 'Button Style',
 		name: 'buttonStyle',
@@ -249,7 +230,7 @@ export function getSendAndWaitProperties(
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [limitWaitTimeOption, appendAttributionOption],
+			options: [limitWaitTimeOption, appendAttributionOption, ...(options?.extraOptions ?? [])],
 			displayOptions: {
 				show: {
 					responseType: ['approval'],
@@ -302,6 +283,7 @@ export function getSendAndWaitProperties(
 				},
 				limitWaitTimeOption,
 				appendAttributionOption,
+				...(options?.extraOptions ?? []),
 			],
 			displayOptions: {
 				show: {
@@ -315,7 +297,7 @@ export function getSendAndWaitProperties(
 	return updateDisplayOptions(
 		{
 			show: {
-				resource: [resource],
+				...(resource ? { resource: [resource] } : {}),
 				operation: [SEND_AND_WAIT_OPERATION],
 			},
 		},
@@ -362,7 +344,13 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		| 'freeText'
 		| 'customForm';
 
-	if (responseType === 'approval' && isbot(req.headers['user-agent'])) {
+	if (
+		responseType === 'approval' &&
+		(isbot(req.headers['user-agent']) ||
+			// Microsoft Teams link preview service (SkypeSpaces) automatically fetches
+			// URLs in chat messages for rich previews, which would trigger the approval
+			req.headers['user-agent']?.includes('SkypeSpaces'))
+	) {
 		res.send('');
 		return { noWebhookResponse: true };
 	}
@@ -391,6 +379,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 			res.render('form-trigger', data);
 
 			return {
@@ -412,24 +401,22 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		let fields: FormFieldsParameter = [];
 
 		if (defineForm === 'json') {
-			try {
-				const jsonOutput = this.getNodeParameter('jsonOutput', '', {
-					rawExpressions: true,
-				}) as string;
-
-				fields = tryToParseJsonToFormFields(resolveRawData(this, jsonOutput));
-			} catch (error) {
-				throw new NodeOperationError(this.getNode(), error.message, {
-					description: error.message,
-				});
-			}
+			fields = parseFormFields(this, {
+				defineForm: 'json',
+				fieldsParameterName: 'jsonOutput',
+			});
 		} else {
-			fields = this.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+			fields = parseFormFields(this, {
+				defineForm: 'fields',
+				fieldsParameterName: 'formFields.values',
+			});
 		}
 
 		if (method === 'GET') {
 			const { formTitle, formDescription, buttonLabel, customCss } =
 				getFormResponseCustomizations(this);
+
+			fields = prepareFormFields(fields);
 
 			const data = prepareFormData({
 				formTitle,
@@ -444,6 +431,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 			res.render('form-trigger', data);
 
 			return {
@@ -480,8 +468,6 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		.replace(/\\n/g, '\n')
 		.replace(/<br>/g, '\n');
 	const subject = escapeHtml(context.getNodeParameter('subject', 0, '') as string);
-	const resumeUrl = context.evaluateExpression('{{ $execution?.resumeUrl }}', 0) as string;
-	const nodeId = context.evaluateExpression('{{ $nodeId }}', 0) as string;
 	const approvalOptions = context.getNodeParameter('approvalOptions.values', 0, {}) as {
 		approvalType?: 'single' | 'double';
 		approveLabel?: string;
@@ -495,18 +481,19 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 	const config: SendAndWaitConfig = {
 		title: subject,
 		message,
-		url: `${resumeUrl}/${nodeId}`,
 		options: [],
 		appendAttribution: options?.appendAttribution as boolean,
 	};
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
 
+	const approvedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'true' });
+
 	if (responseType === 'freeText' || responseType === 'customForm') {
 		const label = context.getNodeParameter('options.messageButtonLabel', 0, 'Respond') as string;
 		config.options.push({
 			label,
-			value: 'true',
+			url: approvedSignedResumeUrl,
 			style: 'primary',
 		});
 	} else if (approvalOptions.approvalType === 'double') {
@@ -514,15 +501,16 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		const buttonApprovalStyle = approvalOptions.buttonApprovalStyle || 'primary';
 		const disapproveLabel = escapeHtml(approvalOptions.disapproveLabel || 'Disapprove');
 		const buttonDisapprovalStyle = approvalOptions.buttonDisapprovalStyle || 'secondary';
+		const disapprovedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'false' });
 
 		config.options.push({
 			label: disapproveLabel,
-			value: 'false',
+			url: disapprovedSignedResumeUrl,
 			style: buttonDisapprovalStyle,
 		});
 		config.options.push({
 			label: approveLabel,
-			value: 'true',
+			url: approvedSignedResumeUrl,
 			style: buttonApprovalStyle,
 		});
 	} else {
@@ -530,7 +518,7 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		const style = approvalOptions.buttonApprovalStyle || 'primary';
 		config.options.push({
 			label,
-			value: 'true',
+			url: approvedSignedResumeUrl,
 			style,
 		});
 	}
@@ -538,12 +526,12 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 	return config;
 }
 
-export function createButton(url: string, label: string, approved: string, style: string) {
+export function createButton(url: string, label: string, style: string) {
 	let buttonStyle = BUTTON_STYLE_PRIMARY;
 	if (style === 'secondary') {
 		buttonStyle = BUTTON_STYLE_SECONDARY;
 	}
-	return `<a href="${url}?approved=${approved}" target="_blank" style="${buttonStyle}">${label}</a>`;
+	return `<a href="${url}" target="_blank" style="${buttonStyle}">${label}</a>`;
 }
 
 export function createEmail(context: IExecuteFunctions) {
@@ -560,7 +548,7 @@ export function createEmail(context: IExecuteFunctions) {
 
 	const buttons: string[] = [];
 	for (const option of config.options) {
-		buttons.push(createButton(config.url, option.label, option.value, option.style));
+		buttons.push(createButton(option.url, option.label, option.style));
 	}
 	let emailBody: string;
 	if (config.appendAttribution !== false) {
@@ -579,3 +567,12 @@ export function createEmail(context: IExecuteFunctions) {
 
 	return email;
 }
+
+const sendAndWaitWaitingTooltip = (parameters: { operation: string }) => {
+	if (parameters?.operation === 'sendAndWait') {
+		return "Execution will continue after the user's response";
+	}
+	return '';
+};
+
+export const SEND_AND_WAIT_WAITING_TOOLTIP = `={{ (${sendAndWaitWaitingTooltip})($parameter) }}`;

@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="216"
+   height="216"
+   version="1.1"
+   id="svg41"
+   sodipodi:docname="mistral.svg"
+   inkscape:version="1.3.2 (091e20ef0f, 2023-11-25, custom)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview41"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.936488"
+     inkscape:cx="197.78072"
+     inkscape:cy="79.00901"
+     inkscape:window-width="1920"
+     inkscape:window-height="1017"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg41" />
+  <style
+     id="style1"><![CDATA[.I{fill:#ff7000}.J{fill:#ff4900}.K{fill:#ffa300}.L{fill:#1c1c1b icc-color(adobe-rgb-1998, 0.13299561, 0.13299561, 0.1289978)}]]></style>
+  <defs
+     id="defs10">
+    <clipPath
+       id="A">
+      <path
+         d="M 0,184.252 H 481.89 V 0 H 0 Z"
+         transform="translate(-206.251,-140.139)"
+         id="path1" />
+    </clipPath>
+    <clipPath
+       id="B">
+      <path
+         d="M 0,184.252 H 481.89 V 0 H 0 Z"
+         transform="translate(-247.436,-104.865)"
+         id="path2" />
+    </clipPath>
+    <clipPath
+       id="C">
+      <path
+         d="M 0,184.252 H 481.89 V 0 H 0 Z"
+         transform="translate(-285.938,-102.089)"
+         id="path3" />
+    </clipPath>
+    <clipPath
+       id="D">
+      <path
+         d="M 0,184.252 H 481.89 V 0 H 0 Z"
+         transform="translate(-337.769,-131.877)"
+         id="path4" />
+    </clipPath>
+    <clipPath
+       id="E">
+      <path
+         d="M 0,184.252 H 481.89 V 0 H 0 Z"
+         transform="translate(-377.247,-132.319)"
+         id="path5" />
+    </clipPath>
+    <clipPath
+       id="F">
+      <path
+         d="M 0,184.252 H 481.89 V 0 H 0 Z"
+         transform="translate(-418.107,-114.634)"
+         id="path6" />
+    </clipPath>
+    <clipPath
+       id="G">
+      <path
+         d="M 0,184.252 H 481.89 V 0 H 0 Z"
+         transform="translate(-450.023,-140.139)"
+         id="path7" />
+    </clipPath>
+    <clipPath
+       id="H">
+      <path
+         d="M 0,184.252 H 481.89 V 0 H 0 Z"
+         transform="translate(-217.694,-44.794)"
+         id="path8" />
+    </clipPath>
+    <clipPath
+       id="I">
+      <path
+         d="M 0,184.252 H 481.89 V 0 H 0 Z"
+         transform="translate(-247.436,-35.025)"
+         id="path9" />
+    </clipPath>
+    <clipPath
+       id="J">
+      <path
+         d="M 0,184.252 H 481.89 V 0 H 0 Z"
+         id="path10" />
+    </clipPath>
+    <path
+       id="K"
+       d="m 173.987,134.362 h -37.795 l 9.633,-37.776 h 37.796 z" />
+  </defs>
+  <g
+     transform="matrix(1,0,0.254535,1,-51.362792,-7.4725007)"
+     id="g32">
+    <g
+       class="L"
+       id="g22">
+      <path
+         d="M 98.397,134.362 H 60.602 l 9.633,-37.776 h 37.796 z"
+         id="path11" />
+      <path
+         d="M 126.558,172.138 H 88.763 l 9.633,-37.776 h 37.796 z"
+         id="path12" />
+      <path
+         d="M 136.192,134.362 H 98.397 l 9.633,-37.776 h 37.796 z"
+         id="path13" />
+      <use
+         xlink:href="#K"
+         id="use13" />
+      <path
+         d="M 108.031,96.585 H 70.236 l 9.633,-37.776 h 37.796 z"
+         id="path14" />
+      <use
+         xlink:href="#K"
+         x="9.6339998"
+         y="-37.777"
+         id="use14" />
+      <path
+         d="M 60.602,134.362 H 22.807 L 32.44,96.586 h 37.796 z"
+         id="path15" />
+      <path
+         d="M 70.236,96.585 H 32.441 L 42.074,58.809 H 79.87 Z"
+         id="path16" />
+      <path
+         d="M 79.87,58.809 H 42.075 l 9.633,-37.776 h 37.796 z"
+         id="path17" />
+      <use
+         xlink:href="#K"
+         x="57.063"
+         y="-75.553001"
+         id="use17" />
+      <path
+         d="M 50.968,172.138 H 13.173 l 9.633,-37.776 h 37.796 z"
+         id="path18" />
+      <path
+         d="M 41.334,209.915 H 3.539 l 9.633,-37.776 h 37.796 z"
+         id="path19" />
+      <use
+         xlink:href="#K"
+         x="37.794998"
+         id="use19" />
+      <use
+         xlink:href="#K"
+         x="47.429001"
+         y="-37.777"
+         id="use20" />
+      <use
+         xlink:href="#K"
+         x="28.160999"
+         y="37.776001"
+         id="use21" />
+      <use
+         xlink:href="#K"
+         x="18.527"
+         y="75.553001"
+         id="use22" />
+    </g>
+    <path
+       d="M 114.115,134.359 H 76.321 l 9.633,-37.776 h 37.796 z"
+       class="I"
+       id="path22" />
+    <use
+       xlink:href="#K"
+       x="-31.709999"
+       y="37.772999"
+       class="J"
+       id="use23" />
+    <g
+       class="I"
+       id="g25">
+      <use
+         xlink:href="#K"
+         x="-22.076"
+         y="-0.003"
+         id="use24" />
+      <use
+         xlink:href="#K"
+         x="15.719"
+         y="-0.003"
+         id="use25" />
+    </g>
+    <g
+       class="K"
+       id="g26">
+      <path
+         d="M 123.749,96.582 H 85.955 l 9.633,-37.776 h 37.796 z"
+         id="path25" />
+      <use
+         xlink:href="#K"
+         x="25.353001"
+         y="-37.779999"
+         id="use26" />
+    </g>
+    <path
+       d="M 76.32,134.359 H 38.526 l 9.633,-37.776 h 37.796 z"
+       class="I"
+       id="path26" />
+    <path
+       d="M 85.954,96.582 H 48.16 l 9.633,-37.776 h 37.796 z"
+       class="K"
+       id="path27" />
+    <g
+       fill="#ffce00"
+       id="g28">
+      <path
+         d="M 95.588,58.806 H 57.794 L 67.427,21.03 h 37.796 z"
+         id="path28" />
+      <use
+         xlink:href="#K"
+         x="72.781998"
+         y="-75.556"
+         id="use28" />
+    </g>
+    <path
+       d="M 66.686,172.135 H 28.892 l 9.633,-37.776 h 37.796 z"
+       class="J"
+       id="path29" />
+    <path
+       d="M 57.052,209.912 H 19.258 l 9.633,-37.776 h 37.796 z"
+       fill="#ff0107"
+       id="path30" />
+    <use
+       xlink:href="#K"
+       x="53.514"
+       y="-0.003"
+       class="I"
+       id="use30" />
+    <path
+       d="M 237.135,96.582 H 199.34 l 9.633,-37.776 h 37.796 z"
+       class="K"
+       id="path31" />
+    <use
+       xlink:href="#K"
+       x="43.880001"
+       y="37.772999"
+       class="J"
+       id="use31" />
+    <use
+       xlink:href="#K"
+       x="34.245998"
+       y="75.550003"
+       fill="#ff0107"
+       id="use32" />
+  </g>
+</svg>

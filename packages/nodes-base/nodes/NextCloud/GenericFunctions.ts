@@ -17,7 +17,7 @@ export async function nextCloudApiRequest(
 	endpoint: string,
 	body: object | string | Buffer,
 	headers?: IDataObject,
-	encoding?: null | undefined,
+	encoding?: null,
 	query?: IDataObject,
 ) {
 	const resource = this.getNodeParameter('resource', 0);

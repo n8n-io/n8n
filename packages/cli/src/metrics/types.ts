@@ -1,9 +1,17 @@
-export type MetricCategory = 'default' | 'routes' | 'cache' | 'logs' | 'queue';
+export type MetricCategory =
+	| 'default'
+	| 'routes'
+	| 'cache'
+	| 'logs'
+	| 'queue'
+	| 'workflowExecutionDuration'
+	| 'workflowStatistics';
 
 export type MetricLabel =
 	| 'credentialsType'
 	| 'nodeType'
 	| 'workflowId'
+	| 'workflowName'
 	| 'apiPath'
 	| 'apiMethod'
 	| 'apiStatusCode';

@@ -1,14 +1,11 @@
-/**
- * @jest-environment jsdom
- */
+// @vitest-environment jsdom
 
 /* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
 
-import { ExpressionExtensionError } from '@/errors/expression-extension.error';
-import { extendTransform, extend } from '@/extensions';
-import { joinExpression, splitExpression } from '@/extensions/expression-parser';
-
 import { evaluate } from './helpers';
+import { ExpressionExtensionError } from '../../src/errors/expression-extension.error';
+import { extendTransform, extend } from '../../src/extensions';
+import { joinExpression, splitExpression } from '../../src/extensions/expression-parser';
 
 describe('Expression Extension Transforms', () => {
 	describe('extend() transform', () => {
@@ -167,7 +164,9 @@ describe('Expression Parser', () => {
 );`);
 		});
 
-		expect(evaluate('={{ [1, 2, 3, 4]?.sum((undefined)?.test) }}')).toBe(10);
+		test('Optional chaining with undefined argument', () => {
+			expect(evaluate('={{ [1, 2, 3, 4]?.sum((undefined)?.test) }}')).toBe(10);
+		});
 	});
 
 	describe('Non dot extensions', () => {
@@ -210,7 +209,7 @@ describe('Expression Parser', () => {
 			// This will likely break when sandboxing is implemented but it works for now.
 			// If you're implementing sandboxing maybe provide a way to add functions to
 			// sandbox we can check instead?
-			const mockCallback = jest.fn(() => false);
+			const mockCallback = vi.fn(() => false);
 			evaluate('={{ $if("a"==="a", true, $data.cb()) }}', [{ cb: mockCallback }]);
 			expect(mockCallback.mock.calls.length).toEqual(0);
 

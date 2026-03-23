@@ -1,7 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type {
+	CronContext,
 	INode,
+	IPollFunctions,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	TriggerTime,
@@ -10,15 +12,16 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
 	toCronExpression,
 	TriggerCloseError,
+	UserError,
 	WorkflowActivationError,
 	WorkflowDeactivationError,
 } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/errors/error-reporter';
 import type { IWorkflowData } from '@/interfaces';
+import { SpanStatus, Tracing } from '@/observability';
 
 import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
 import { ScheduledTaskManager } from './scheduled-task-manager';
@@ -31,6 +34,7 @@ export class ActiveWorkflows {
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly errorReporter: ErrorReporter,
+		private readonly tracing: Tracing,
 	) {}
 
 	private activeWorkflows: { [workflowId: string]: IWorkflowData } = {};
@@ -149,43 +153,26 @@ export class ActiveWorkflows {
 		};
 
 		// Get all the trigger times
-		const cronTimes = (pollTimes.item || []).map(toCronExpression);
+		const cronExpressions = (pollTimes.item || []).map(toCronExpression);
 		// The trigger function to execute when the cron-time got reached
-		const executeTrigger = async (testingTrigger = false) => {
-			this.logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
-				workflowName: workflow.name,
-				workflowId: workflow.id,
-			});
-
-			try {
-				const pollResponse = await this.triggersAndPollers.runPoll(workflow, node, pollFunctions);
-
-				if (pollResponse !== null) {
-					pollFunctions.__emit(pollResponse);
-				}
-			} catch (error) {
-				// If the poll function fails in the first activation
-				// throw the error back so we let the user know there is
-				// an issue with the trigger.
-				if (testingTrigger) {
-					throw error;
-				}
-				pollFunctions.__emitError(error as Error);
-			}
-		};
+		const executeTrigger = this.createPollExecuteFn(workflow, node, pollFunctions);
 
 		// Execute the trigger directly to be able to know if it works
 		await executeTrigger(true);
 
-		for (const cronTime of cronTimes) {
-			const cronTimeParts = cronTime.split(' ');
-			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
-				throw new ApplicationError(
-					'The polling interval is too short. It has to be at least a minute.',
-				);
+		for (const expression of cronExpressions) {
+			if (expression.split(' ').at(0)?.includes('*')) {
+				throw new UserError('The polling interval is too short. It has to be at least a minute.');
 			}
 
-			this.scheduledTaskManager.registerCron(workflow, cronTime, executeTrigger);
+			const ctx: CronContext = {
+				workflowId: workflow.id,
+				timezone: workflow.timezone,
+				nodeId: node.id,
+				expression,
+			};
+
+			this.scheduledTaskManager.registerCron(ctx, executeTrigger);
 		}
 	}
 
@@ -245,5 +232,57 @@ export class ActiveWorkflows {
 				{ cause: error, workflowId },
 			);
 		}
+	}
+
+	/**
+	 * Creates a function that executes the poll function for a given workflow
+	 * and node and triggers a workflow execution based on the output.
+	 */
+	private createPollExecuteFn(
+		workflow: Workflow,
+		node: INode,
+		pollFunctions: IPollFunctions,
+	): (testingTrigger?: boolean) => Promise<void> {
+		return async (testingTrigger = false) => {
+			return await this.tracing.startSpan(
+				{
+					name: 'Workflow Trigger Poll',
+					op: 'trigger.poll',
+					attributes: {
+						...this.tracing.pickWorkflowAttributes(workflow),
+						...this.tracing.pickNodeAttributes(node),
+					},
+				},
+				async (span) => {
+					this.logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
+						workflowName: workflow.name,
+						workflowId: workflow.id,
+					});
+
+					try {
+						const pollResponse = await this.triggersAndPollers.runPoll(
+							workflow,
+							node,
+							pollFunctions,
+						);
+
+						if (pollResponse !== null) {
+							pollFunctions.__emit(pollResponse);
+						}
+
+						span.setStatus({ code: SpanStatus.ok });
+					} catch (error) {
+						span.setStatus({ code: SpanStatus.error });
+						// If the poll function fails in the first activation
+						// throw the error back so we let the user know there is
+						// an issue with the trigger.
+						if (testingTrigger) {
+							throw error;
+						}
+						pollFunctions.__emitError(error as Error);
+					}
+				},
+			);
+		};
 	}
 }

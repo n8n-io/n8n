@@ -608,6 +608,33 @@ describe('OutputParserStructured', () => {
 						),
 					).rejects.toThrow('Required');
 				});
+
+				it('should raise schema fit error when passing in empty object', async () => {
+					const jsonExample = `{
+            "user": {
+              "name": "Alice",
+              "email": "alice@example.com",
+              "profile": {
+                "age": 30,
+                "city": "New York"
+              }
+            },
+            "tags": ["work", "important"]
+          }`;
+					thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('fromJson');
+					thisArg.getNodeParameter
+						.calledWith('jsonSchemaExample', 0)
+						.mockReturnValueOnce(jsonExample);
+
+					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+						response: N8nStructuredOutputParser;
+					};
+
+					// @ts-expect-error 2345
+					await expect(response.parse({})).rejects.toThrow(
+						"Model output doesn't fit required format",
+					);
+				});
 			});
 
 			describe('manual schema mode', () => {

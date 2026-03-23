@@ -1,5 +1,5 @@
 import path from 'path';
-import { writeFileSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import shell from 'shelljs';
 import { rawTimeZones } from '@vvo/tzdb';
@@ -18,6 +18,7 @@ generateUserManagementEmailTemplates();
 generateTimezoneData();
 
 if (publicApiEnabled) {
+	createPublicApiDirectory();
 	copySwaggerTheme();
 	bundleOpenApiSpecs();
 }
@@ -33,11 +34,19 @@ function generateUserManagementEmailTemplates() {
 		if (template.startsWith('_')) return;
 		const source = path.resolve(sourceDir, template);
 		const destination = path.resolve(destinationDir, template.replace(/\.mjml$/, '.handlebars'));
-		const command = `pnpm mjml --output ${destination} ${source}`;
+		const command = `pnpm mjml --output "${destination}" "${source}"`;
 		shell.exec(command, { silent: false });
 	});
 
 	shell.cp(path.resolve(sourceDir, 'n8n-logo.png'), destinationDir);
+}
+
+function createPublicApiDirectory() {
+	const publicApiDirectory = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1');
+	if (!existsSync(publicApiDirectory)) {
+		console.log('Creating directory', publicApiDirectory);
+		mkdirSync(publicApiDirectory, { recursive: true });
+	}
 }
 
 function copySwaggerTheme() {
@@ -59,7 +68,8 @@ function bundleOpenApiSpecs() {
 		}, [])
 		.forEach((specPath) => {
 			const distSpecPath = path.resolve(ROOT_DIR, 'dist', specPath);
-			const command = `pnpm openapi bundle src/${specPath} --output ${distSpecPath}`;
+			const command = `pnpm openapi bundle "src/${specPath}" --output "${distSpecPath}"`;
+
 			shell.exec(command, { silent: true });
 		});
 }

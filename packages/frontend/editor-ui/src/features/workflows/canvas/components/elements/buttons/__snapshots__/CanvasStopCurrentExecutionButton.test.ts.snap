@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasStopCurrentExecutionButton > should render correctly 1`] = `"<n8n-icon-button-stub variant="subtle" icon="square" size="large" loading="false" icononly="true" disabled="false" class="stop-execution" title="Stop current execution" data-test-id="stop-execution-button"></n8n-icon-button-stub>"`;

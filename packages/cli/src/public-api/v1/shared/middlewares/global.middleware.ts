@@ -17,7 +17,7 @@ import { decodeCursor } from '../services/pagination.service';
 
 const UNLIMITED_USERS_QUOTA = -1;
 
-export type ProjectScopeResource = 'workflow' | 'credential';
+export type ProjectScopeResource = 'workflow' | 'credential' | 'dataTable';
 
 const buildScopeMiddleware = (
 	scopes: Scope[],
@@ -25,17 +25,19 @@ const buildScopeMiddleware = (
 	{ globalOnly } = { globalOnly: false },
 ) => {
 	return async (
-		req: AuthenticatedRequest<{ id?: string }>,
+		req: AuthenticatedRequest<{ id?: string; dataTableId?: string }>,
 		res: express.Response,
 		next: express.NextFunction,
 	): Promise<express.Response | void> => {
-		const params: { credentialId?: string; workflowId?: string } = {};
+		const params: { credentialId?: string; workflowId?: string; dataTableId?: string } = {};
 		if (req.params.id) {
 			if (resource === 'workflow') {
 				params.workflowId = req.params.id;
 			} else if (resource === 'credential') {
 				params.credentialId = req.params.id;
 			}
+		} else if (req.params.dataTableId && resource === 'dataTable') {
+			params.dataTableId = req.params.dataTableId;
 		}
 
 		try {
@@ -85,25 +87,43 @@ export const validCursor = (
 	return next();
 };
 
-const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
+const emptyMiddleware = (_req: express.Request, _res: express.Response, next: NextFunction) =>
+	next();
+
+export type ScopeTaggedMiddleware = ((...args: unknown[]) => unknown) & {
+	__apiKeyScope: ApiKeyScope;
+};
+
+function tagMiddleware(
+	middleware: (...args: unknown[]) => unknown,
+	apiKeyScope: ApiKeyScope,
+): ScopeTaggedMiddleware {
+	const tagged: ScopeTaggedMiddleware = Object.assign(
+		(req: unknown, res: unknown, next: unknown) => middleware(req, res, next),
+		{ __apiKeyScope: apiKeyScope },
+	);
+	return tagged;
+}
+
 export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
-	return Container.get(License).isApiKeyScopesEnabled()
+	const middleware = Container.get(License).isApiKeyScopesEnabled()
 		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
 		: emptyMiddleware;
+	return tagMiddleware(middleware, apiKeyScope);
 };
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
-	if ('scope' in config) {
-		return Container.get(License).isApiKeyScopesEnabled()
-			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.scope)
-			: globalScope(config.scope);
-	} else {
-		return Container.get(License).isApiKeyScopesEnabled()
-			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.apiKeyScope)
-			: globalScope(config.globalScope);
+	const apiKeyScope = 'scope' in config ? config.scope : config.apiKeyScope;
+	if (!Container.get(License).isApiKeyScopesEnabled()) {
+		const fallbackScope = 'scope' in config ? config.scope : config.globalScope;
+		return tagMiddleware(globalScope(fallbackScope), apiKeyScope);
 	}
+	return tagMiddleware(
+		Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope),
+		apiKeyScope,
+	);
 };
 
 export const validLicenseWithUserQuota = (

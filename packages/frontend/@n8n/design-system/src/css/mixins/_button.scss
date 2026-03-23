@@ -7,19 +7,19 @@
 	&:focus,
 	&:hover {
 		color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
-		background-color: var(--color-foreground-xlight);
+		background-color: var(--color--foreground--tint-2);
 		border-color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
 	}
 
 	@include mixins.when(loading) {
 		color: function.lightness($h, $s, $l, var.$button-hover-tint-percent);
-		background-color: var(--color-foreground-xlight);
+		background-color: var(--color--foreground--tint-2);
 		border-color: function.lightness($h, $s, $l, var.$button-hover-tint-percent);
 	}
 
 	&:active {
 		border-color: function.lightness($h, $s, $l, -(var.$button-active-shade-percent));
-		background-color: var(--color-foreground-xlight);
+		background-color: var(--color--foreground--tint-2);
 		color: function.lightness($h, $s, $l, -(var.$button-active-shade-percent));
 		outline: none;
 	}
@@ -29,17 +29,19 @@
 		&:hover,
 		&:focus,
 		&:active {
-			color: var(--color-text-light);
-			background-color: var(--color-foreground-xlight);
-			border-color: var(--color-foreground-base);
+			color: var(--color--text--tint-1);
+			background-color: var(--color--foreground--tint-2);
+			border-color: var(--color--foreground);
 		}
 	}
 }
 
 @mixin button-variant($color, $background-color, $border-color, $h, $s, $l, $t, $plain: true) {
-	color: $color;
-	background-color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
-	border-color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
+	& {
+		color: $color;
+		background-color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
+		border-color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
+	}
 
 	&:active {
 		background: function.lightness($h, $s, $l, -(var.$button-active-shade-percent));
@@ -65,9 +67,9 @@
 		&:hover,
 		&:focus,
 		&:active {
-			color: var(--color-text-light);
-			background-color: var(--color-foreground-base);
-			border-color: var(--color-foreground-base);
+			color: var(--color--text--tint-1);
+			background-color: var(--color--foreground);
+			border-color: var(--color--foreground);
 		}
 	}
 
@@ -79,16 +81,20 @@
 }
 
 @mixin button-size($padding-vertical, $padding-horizontal, $font-size) {
-	padding: $padding-vertical $padding-horizontal;
-	font-size: $font-size;
-
 	&.is-round {
 		padding: $padding-vertical $padding-horizontal;
+	}
+
+	& {
+		padding: $padding-vertical $padding-horizontal;
+		font-size: $font-size;
 	}
 }
 
 @mixin button-round() {
-	--button-border-radius: 20px;
+	& {
+		--button--radius: 20px;
+	}
 }
 
 // ignore plain overrides
@@ -97,10 +103,10 @@
 		var.$button-primary-font-color,
 		var.$button-primary-background-color,
 		var.$button-primary-border-color,
-		--color-primary-h,
-		--color-primary-s,
-		--color-primary-l,
-		--color-primary-tint-2-l,
+		--color--primary--h,
+		--color--primary--s,
+		--color--primary--l,
+		--color--primary--tint-2-l,
 		$plain: false
 	);
 }
@@ -108,16 +114,16 @@
 @mixin button-outline() {
 	@include button-plain(
 		var.$button-primary-background-color,
-		--color-primary-h,
-		--color-primary-s,
-		--color-primary-l
+		--color--primary--h,
+		--color--primary--s,
+		--color--primary--l
 	);
 }
 
 @mixin button-small() {
-	@include button-size(var(--spacing-3xs), var(--spacing-xs), var(--font-size-2xs));
+	@include button-size(var(--spacing--3xs), var(--spacing--xs), var(--font-size--2xs));
 }
 
 @mixin button-medium() {
-	@include button-size(var(--spacing-2xs), var(--spacing-xs), var(--font-size-2xs));
+	@include button-size(var(--spacing--2xs), var(--spacing--xs), var(--font-size--2xs));
 }

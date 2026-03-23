@@ -13,9 +13,11 @@ import {
 	appendAttributionToForm,
 	formDescription,
 	formFields,
+	formFieldsDynamic,
 	formRespondMode,
 	formTitle,
 	formTriggerPanel,
+	ipAllowlist,
 	respondWithOptions,
 	webhookPath,
 } from '../common.descriptions';
@@ -36,10 +38,20 @@ const descriptionV2: INodeTypeDescription = {
 	name: 'formTrigger',
 	icon: 'file:form.svg',
 	group: ['trigger'],
-	version: [2, 2.1, 2.2],
+	// since trigger and node are sharing descriptions and logic we need to sync the versions
+	// and keep them aligned in both nodes
+	version: [2, 2.1, 2.2, 2.3, 2.4, 2.5],
 	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
 		name: 'On form submission',
+	},
+	builderHint: {
+		relatedNodes: [
+			{
+				nodeType: 'n8n-nodes-base.form',
+				relationHint: 'Add pages and final page to the form',
+			},
+		],
 	},
 
 	inputs: [],
@@ -100,7 +112,8 @@ const descriptionV2: INodeTypeDescription = {
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
 		formDescription,
-		formFields,
+		{ ...formFields, displayOptions: { show: { '@version': [{ _cnd: { lt: 2.5 } }] } } },
+		{ ...formFieldsDynamic, displayOptions: { show: { '@version': [{ _cnd: { gte: 2.5 } }] } } },
 		{ ...formRespondMode, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		{
 			...formRespondMode,
@@ -134,6 +147,7 @@ const descriptionV2: INodeTypeDescription = {
 			default: {},
 			options: [
 				appendAttributionToForm,
+				ipAllowlist,
 				{
 					displayName: 'Button Label',
 					description: 'The label of the submit button in the form',

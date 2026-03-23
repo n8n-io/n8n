@@ -122,7 +122,7 @@ export async function notionApiRequestGetBlockChildrens(
 	for (const block of blocks) {
 		responseData.push(block);
 
-		if (block.type === 'child_page') continue;
+		if (block.type === 'child_page' || block.type === 'unsupported') continue;
 
 		if (block.has_children) {
 			let childrens = await notionApiRequestAllItems.call(
@@ -271,8 +271,7 @@ function getTexts(texts: TextData[]) {
 					type: 'mention',
 					mention: {
 						type: text.mentionType,
-						//@ts-expect-error any
-						[text.mentionType]: { id: text[text.mentionType] as string },
+						[text.mentionType]: { id: text[text.mentionType as keyof TextData] as string },
 					},
 					annotations: text.annotationUi,
 				});

@@ -1,0 +1,82 @@
+{
+	"createdAt": "2024-03-04T20:43:01.452Z",
+	"updatedAt": "2024-03-04T20:43:03.000Z",
+	"id": "237",
+	"name": "BasicLLMChain:AzureChat",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"model": "gpt4",
+				"options": {
+					"temperature": 0
+				}
+			},
+			"id": "982999e9-1191-4c74-8292-9f43d19a602b",
+			"name": "Azure OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+			"typeVersion": 1,
+			"position": [700, 600],
+			"credentials": {
+				"azureOpenAiApi": {
+					"id": "RNAgogiex4JxTr44",
+					"name": "Azure Open AI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "How much is 1+1? Only provide the numerical answer without any other text.\n"
+			},
+			"id": "6684c985-3943-4099-a7b1-c8cc51f3d9f8",
+			"name": "Azure OpenAI Chat",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"typeVersion": 1.5,
+			"position": [680, 460]
+		},
+		{
+			"parameters": {},
+			"id": "fa8334bf-da22-4d69-b3f4-97b62c278158",
+			"name": "When clicking \"Test workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 460]
+		}
+	],
+	"connections": {
+		"Azure OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Azure OpenAI Chat",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking \"Test workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Azure OpenAI Chat",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": {
+		"templateCredsSetupCompleted": true
+	},
+	"pinData": {},
+	"versionId": "3272c26f-5a33-4f48-99ac-bfef95f28dcf",
+	"triggerCount": 0,
+	"tags": []
+}

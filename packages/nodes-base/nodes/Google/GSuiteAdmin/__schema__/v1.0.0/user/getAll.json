@@ -4,12 +4,6 @@
         "agreedToTerms": {
             "type": "boolean"
         },
-        "aliases": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "archived": {
             "type": "boolean"
         },
@@ -32,9 +26,6 @@
                     },
                     "primary": {
                         "type": "boolean"
-                    },
-                    "type": {
-                        "type": "string"
                     }
                 }
             }
@@ -100,12 +91,6 @@
                 }
             }
         },
-        "nonEditableAliases": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "orgUnitPath": {
             "type": "string"
         },
@@ -114,13 +99,7 @@
         },
         "suspended": {
             "type": "boolean"
-        },
-        "thumbnailPhotoEtag": {
-            "type": "string"
-        },
-        "thumbnailPhotoUrl": {
-            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

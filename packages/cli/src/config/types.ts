@@ -50,7 +50,7 @@ type NumericPath = CollectPathsByType<number>;
 
 type BooleanPath = CollectPathsByType<boolean>;
 
-type StringLiteralArrayPath = CollectPathsByType<Readonly<string[]>>;
+type StringLiteralArrayPath = CollectPathsByType<readonly string[]>;
 
 type StringPath = CollectPathsByType<string>;
 
@@ -76,7 +76,6 @@ type ToReturnType<T extends ConfigOptionPath> = T extends NumericPath
 type ExceptionPaths = {
 	'queue.bull.redis': RedisOptions;
 	processedDataManager: IProcessedDataConfig;
-	'userManagement.isInstanceOwnerSetUp': boolean;
 	'ui.banners.dismissed': string[] | undefined;
 	easyAIWorkflowOnboarded: boolean | undefined;
 };

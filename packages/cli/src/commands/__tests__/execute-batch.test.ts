@@ -1,11 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
-import { DbConnection } from '@n8n/db';
+import { WorkflowRepository, DbConnection, AuthRolesService, BinaryDataRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { SelectQueryBuilder } from '@n8n/typeorm';
-import type { Config } from '@oclif/core';
+import { type SelectQueryBuilder } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 
@@ -13,8 +11,10 @@ import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
@@ -35,12 +35,16 @@ mockInstance(MessageEventBus);
 const posthogClient = mockInstance(PostHogClient);
 const telemetryEventRelay = mockInstance(TelemetryEventRelay);
 const externalHooks = mockInstance(ExternalHooks);
+mockInstance(CommunityPackagesService);
+mockInstance(WorkflowFailureNotificationEventRelay);
 
 const dbConnection = mockInstance(DbConnection);
 dbConnection.init.mockResolvedValue(undefined);
 dbConnection.migrate.mockResolvedValue(undefined);
+mockInstance(AuthRolesService);
+mockInstance(BinaryDataRepository);
 
-test('should start a task runner when task runners are enabled', async () => {
+test('should start a task runner', async () => {
 	// arrange
 
 	const workflow = mock<WorkflowEntity>({
@@ -70,14 +74,14 @@ test('should start a task runner when task runners are enabled', async () => {
 	Container.set(
 		GlobalConfig,
 		mock<GlobalConfig>({
-			taskRunners: { enabled: true },
-			nodes: { communityPackages: { enabled: false } },
+			taskRunners: {},
+			nodes: {},
 		}),
 	);
 
-	const cmd = new ExecuteBatch([], {} as Config);
-	// @ts-expect-error Private property
-	cmd.parse = jest.fn().mockResolvedValue({ flags: {} });
+	const cmd = new ExecuteBatch();
+	// @ts-expect-error Protected property
+	cmd.flags = {};
 	// @ts-expect-error Private property
 	cmd.runTests = jest.fn().mockResolvedValue({ summary: { failedExecutions: [] } });
 

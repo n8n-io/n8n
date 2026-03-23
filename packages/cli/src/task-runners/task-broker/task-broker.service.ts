@@ -46,7 +46,7 @@ export interface TaskRequest {
 	requestId: string;
 	requesterId: string;
 	taskType: string;
-
+	timeout?: NodeJS.Timeout;
 	acceptInProgress?: boolean;
 }
 
@@ -72,6 +72,11 @@ export class TaskBroker {
 
 	private tasks: Map<Task['id'], Task> = new Map();
 
+	/**
+	 * While draining, the broker instructs runners to stop sending task offers, rejects incoming task requests, and waits for active tasks to complete, up to a timeout.
+	 */
+	private isDraining = false;
+
 	private runnerAcceptRejects: Map<
 		Task['id'],
 		{ accept: RunnerAcceptCallback; reject: TaskRejectCallback }
@@ -95,6 +100,28 @@ export class TaskBroker {
 		if (this.taskRunnersConfig.taskTimeout <= 0) {
 			throw new UserError('Task timeout must be greater than 0');
 		}
+	}
+
+	private createRequestTimeout(requestId: string): NodeJS.Timeout {
+		return setTimeout(() => {
+			this.handleRequestTimeout(requestId);
+		}, this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds);
+	}
+
+	private handleRequestTimeout(requestId: string) {
+		const requestIndex = this.pendingTaskRequests.findIndex((r) => r.requestId === requestId);
+		if (requestIndex === -1) return;
+
+		const request = this.pendingTaskRequests[requestIndex];
+		this.pendingTaskRequests.splice(requestIndex, 1);
+
+		clearTimeout(request.timeout);
+
+		void this.requesters.get(request.requesterId)?.({
+			type: 'broker:requestexpired',
+			requestId: request.requestId,
+			reason: 'timeout',
+		});
 	}
 
 	expireTasks() {
@@ -306,6 +333,7 @@ export class TaskBroker {
 					taskType: message.taskType,
 					requestId: message.requestId,
 					requesterId,
+					timeout: this.createRequestTimeout(message.requestId),
 				});
 				break;
 			case 'requester:taskdataresponse':
@@ -335,6 +363,7 @@ export class TaskBroker {
 		status: RequesterMessage.ToBroker.RPCResponse['status'],
 		data: unknown,
 	) {
+		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
 		await this.messageRunner(runner.id, {
 			type: 'broker:rpcresponse',
@@ -346,6 +375,7 @@ export class TaskBroker {
 	}
 
 	async handleRequesterDataResponse(taskId: Task['id'], requestId: string, data: unknown) {
+		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
 
 		await this.messageRunner(runner.id, {
@@ -361,6 +391,7 @@ export class TaskBroker {
 		requestId: RequesterMessage.ToBroker.NodeTypesResponse['requestId'],
 		nodeTypes: RequesterMessage.ToBroker.NodeTypesResponse['nodeTypes'],
 	) {
+		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
 
 		await this.messageRunner(runner.id, {
@@ -435,6 +466,7 @@ export class TaskBroker {
 	}
 
 	async sendTaskSettings(taskId: Task['id'], settings: unknown) {
+		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
 
 		const task = this.tasks.get(taskId);
@@ -533,6 +565,8 @@ export class TaskBroker {
 			}
 			if (e instanceof TaskDeferredError) {
 				this.logger.debug(`Task (${taskId}) deferred until runner is ready`);
+				clearTimeout(request.timeout);
+				request.timeout = this.createRequestTimeout(request.requestId);
 				this.pendingTaskRequests.push(request); // will settle on receiving task offer from runner
 				return;
 			}
@@ -542,6 +576,8 @@ export class TaskBroker {
 			}
 			throw e;
 		}
+
+		clearTimeout(request.timeout);
 
 		const task: Task = {
 			id: taskId,
@@ -627,6 +663,15 @@ export class TaskBroker {
 	}
 
 	taskRequested(request: TaskRequest) {
+		if (this.isDraining) {
+			clearTimeout(request.timeout);
+			void this.requesters.get(request.requesterId)?.({
+				type: 'broker:requestexpired',
+				requestId: request.requestId,
+				reason: 'draining',
+			});
+			return;
+		}
 		this.pendingTaskRequests.push(request);
 		this.settleTasks();
 	}
@@ -636,9 +681,21 @@ export class TaskBroker {
 		this.settleTasks();
 	}
 
+	startDraining() {
+		this.isDraining = true;
+	}
+
+	hasActiveTasks() {
+		return this.tasks.size > 0;
+	}
+
 	/**
 	 * For testing only
 	 */
+
+	stopDraining() {
+		this.isDraining = false;
+	}
 
 	getTasks() {
 		return this.tasks;

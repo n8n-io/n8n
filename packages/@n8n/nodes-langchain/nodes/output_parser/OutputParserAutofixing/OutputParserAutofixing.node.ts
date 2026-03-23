@@ -12,7 +12,7 @@ import {
 	N8nOutputFixingParser,
 	type N8nStructuredOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { NAIVE_FIX_PROMPT } from './prompt';
 
@@ -42,7 +42,7 @@ export class OutputParserAutofixing implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			{
 				displayName: 'Model',
@@ -57,9 +57,15 @@ export class OutputParserAutofixing implements INodeType {
 				type: NodeConnectionTypes.AiOutputParser,
 			},
 		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiOutputParser],
 		outputNames: ['Output Parser'],
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+				ai_outputParser: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName:

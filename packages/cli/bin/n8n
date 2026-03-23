@@ -13,11 +13,6 @@ if (versionFlags.includes(process.argv.slice(-1)[0])) {
 	process.exit(0);
 }
 
-if (process.argv.length === 2) {
-	// When no command is given choose by default start
-	process.argv.push('start');
-}
-
 const satisfies = require('semver/functions/satisfies');
 const nodeVersion = process.versions.node;
 const {
@@ -42,7 +37,7 @@ require('reflect-metadata');
 // Also, do not use `inE2ETests` from constants here, because that'd end up code that might read from `process.env` before the values are loaded from an `.env` file.
 if (process.env.E2E_TESTS !== 'true') {
 	// Loading dotenv early ensures that `process.env` is up-to-date everywhere in code
-	require('dotenv').config();
+	require('dotenv').config({ quiet: true });
 }
 
 // Load config early to ensure `N8N_CONFIG_FILES` values are populated into `GlobalConfig`
@@ -63,10 +58,7 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 require('net').setDefaultAutoSelectFamily?.(false);
 
 (async () => {
-	// Collect DB entities from modules _before_ `DbConnectionOptions` is instantiated.
-	const { BaseCommand } = await import('../dist/commands/base-command.js');
-	await new BaseCommand([], { root: __dirname }).loadModules();
-
-	const oclif = await import('@oclif/core');
-	await oclif.execute({ dir: __dirname });
+	const { Container } = await import('@n8n/di');
+	const { CommandRegistry } = await import('../dist/command-registry.js');
+	await Container.get(CommandRegistry).execute();
 })();

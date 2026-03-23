@@ -1,8 +1,6 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseRetriever } from '@langchain/core/retrievers';
-import { MultiQueryRetriever } from 'langchain/retrievers/multi_query';
+import { MultiQueryRetriever } from '@langchain/classic/retrievers/multi_query';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -11,7 +9,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 
 export class RetrieverMultiQuery implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,7 +37,7 @@ export class RetrieverMultiQuery implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			{
 				displayName: 'Model',
@@ -61,6 +59,12 @@ export class RetrieverMultiQuery implements INodeType {
 				type: NodeConnectionTypes.AiRetriever,
 			},
 		],
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+				ai_retriever: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName: 'Options',

@@ -9,12 +9,16 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	ICredentialsHelper,
-	Expression,
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	ApplicationError,
+	ExpressionError,
+	NodeConnectionTypes,
+	type WorkflowExpression,
+} from 'n8n-workflow';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
@@ -41,7 +45,7 @@ describe('ExecuteContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node: INode = {
 		id: 'test-node-id',
@@ -62,7 +66,11 @@ describe('ExecuteContext', () => {
 		nullParameter: null,
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+	});
 	const mode: WorkflowExecuteMode = 'manual';
 	const runExecutionData = mock<IRunExecutionData>();
 	const connectionInputData: INodeExecutionData[] = [];
@@ -292,15 +300,17 @@ describe('ExecuteContext', () => {
 				abortSignal,
 			);
 
-			await testExecuteContext.sendChunk('item', 'test');
+			await testExecuteContext.sendChunk('item', 0, 'test');
 
 			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
 				expect.objectContaining({
 					type: 'item',
-					content: '"test"',
+					content: 'test',
 					metadata: expect.objectContaining({
 						nodeName: 'Test Node',
 						nodeId: 'test-node-id',
+						runIndex: 0,
+						itemIndex: 0,
 						timestamp: expect.any(Number),
 					}),
 				}),
@@ -330,7 +340,7 @@ describe('ExecuteContext', () => {
 				abortSignal,
 			);
 
-			await testExecuteContext.sendChunk('begin');
+			await testExecuteContext.sendChunk('begin', 0);
 
 			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
 				expect.objectContaining({
@@ -339,6 +349,8 @@ describe('ExecuteContext', () => {
 					metadata: expect.objectContaining({
 						nodeName: 'Test Node',
 						nodeId: 'test-node-id',
+						runIndex: 0,
+						itemIndex: 0,
 						timestamp: expect.any(Number),
 					}),
 				}),
@@ -366,7 +378,13 @@ describe('ExecuteContext', () => {
 			);
 
 			// Should not throw error
-			await expect(testExecuteContext.sendChunk('item', 'test')).resolves.toBeUndefined();
+			await expect(testExecuteContext.sendChunk('item', 0, 'test')).resolves.toBeUndefined();
+		});
+	});
+
+	describe('isToolExecution', () => {
+		it('should return false for regular workflow execution', () => {
+			expect(executeContext.isToolExecution()).toBe(false);
 		});
 	});
 });

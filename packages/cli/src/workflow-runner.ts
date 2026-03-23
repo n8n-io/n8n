@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-shadow */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import { ErrorReporter, InstanceSettings, WorkflowExecute } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, StorageConfig, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -16,11 +17,16 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { ExecutionCancelledError, Workflow } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	ExecutionCancelledError,
+	ManualExecutionCancelledError,
+	TimeoutExecutionCancelledError,
+	Workflow,
+} from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 // eslint-disable-next-line import-x/no-cycle
@@ -29,8 +35,9 @@ import {
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExecutionDataService } from '@/executions/execution-data.service';
+import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -44,8 +51,6 @@ import { EventService } from './events/event.service';
 export class WorkflowRunner {
 	private scalingService: ScalingService;
 
-	private executionsMode = config.getEnv('executions.mode');
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -56,13 +61,12 @@ export class WorkflowRunner {
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
-		private readonly executionDataService: ExecutionDataService,
+		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
+		private readonly executionsConfig: ExecutionsConfig,
+		private readonly storageConfig: StorageConfig,
+		private readonly externalHooks: ExternalHooks,
 	) {}
-
-	setExecutionMode(mode: 'regular' | 'queue') {
-		this.executionsMode = mode;
-	}
 
 	/** The process did error */
 	async processError(
@@ -80,7 +84,7 @@ export class WorkflowRunner {
 		if (
 			error instanceof ExecutionNotFoundError ||
 			error instanceof ExecutionCancelledError ||
-			error.message.includes('cancelled')
+			(typeof error.message === 'string' && error.message.includes('cancelled'))
 		) {
 			return;
 		}
@@ -88,7 +92,7 @@ export class WorkflowRunner {
 		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 		this.errorReporter.error(error, { executionId });
 
-		const isQueueMode = config.getEnv('executions.mode') === 'queue';
+		const isQueueMode = this.executionsConfig.mode === 'queue';
 
 		// in queue mode, first do a sanity run for the edge case that the execution was not marked as stalled
 		// by Bull even though it executed successfully, see https://github.com/OptimalBits/bull/issues/1415
@@ -104,7 +108,7 @@ export class WorkflowRunner {
 		}
 
 		const fullRunData: IRun = {
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					error: {
 						...error,
@@ -113,12 +117,13 @@ export class WorkflowRunner {
 					},
 					runData: {},
 				},
-			},
+			}),
 			finished: false,
 			mode: executionMode,
 			startedAt,
 			stoppedAt: new Date(),
 			status: 'error',
+			storedAt: this.storageConfig.modeTag,
 		};
 
 		// Remove from active execution with empty data. That will
@@ -142,11 +147,12 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 
 		const { id: workflowId, nodes } = data.workflowData;
+
 		try {
 			await this.credentialsPermissionChecker.check(workflowId, nodes);
 		} catch (error) {
 			// Create a failed execution with the data for the node, save it and abort execution
-			const runData = this.executionDataService.generateFailedExecutionFromError(
+			const runData = this.failedRunFactory.generateFailedExecutionFromError(
 				data.executionMode,
 				error,
 				error.node,
@@ -166,11 +172,18 @@ export class WorkflowRunner {
 		// @TODO: Reduce to true branch once feature is stable
 		const shouldEnqueue =
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-				? this.executionsMode === 'queue'
-				: this.executionsMode === 'queue' && data.executionMode !== 'manual';
+				? this.executionsConfig.mode === 'queue'
+				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
 
 		if (shouldEnqueue) {
-			await this.enqueueExecution(executionId, workflowId, data, loadStaticData, realtime);
+			await this.enqueueExecution(
+				executionId,
+				workflowId,
+				data,
+				loadStaticData,
+				realtime,
+				restartExecutionId,
+			);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
 		}
@@ -178,9 +191,10 @@ export class WorkflowRunner {
 		// only run these when not in queue mode or when the execution is manual,
 		// since these calls are now done by the worker directly
 		if (
-			this.executionsMode !== 'queue' ||
+			this.executionsConfig.mode !== 'queue' ||
 			this.instanceSettings.instanceType === 'worker' ||
-			data.executionMode === 'manual'
+			data.executionMode === 'manual' ||
+			data.executionMode === 'chat'
 		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			postExecutePromise.catch((error) => {
@@ -192,6 +206,9 @@ export class WorkflowRunner {
 					error,
 					executionId,
 					workflowId,
+					workflowName: data.workflowData.name,
+					...(data.projectId && { projectId: data.projectId }),
+					...(data.projectName && { projectName: data.projectName }),
 				});
 			});
 		}
@@ -200,7 +217,7 @@ export class WorkflowRunner {
 	}
 
 	/** Run the workflow in current process */
-	// eslint-disable-next-line complexity
+
 	private async runMainProcess(
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
@@ -219,9 +236,9 @@ export class WorkflowRunner {
 		let executionTimeout: NodeJS.Timeout;
 
 		const workflowSettings = data.workflowData.settings ?? {};
-		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
+		let workflowTimeout = workflowSettings.executionTimeout ?? this.executionsConfig.timeout; // initialize with default
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
+			workflowTimeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout);
 		}
 
 		let pinData: IPinData | undefined;
@@ -234,20 +251,22 @@ export class WorkflowRunner {
 			name: data.workflowData.name,
 			nodes: data.workflowData.nodes,
 			connections: data.workflowData.connections,
-			active: data.workflowData.active,
+			active: data.workflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 			staticData: data.workflowData.staticData,
 			settings: workflowSettings,
 			pinData,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			data.userId,
-			undefined,
-			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
-		);
-		// TODO: set this in queue mode as well
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			userId: data.userId,
+			workflowId: workflow.id,
+			executionTimeoutTimestamp:
+				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
+			workflowSettings,
+		});
 		additionalData.restartExecutionId = restartExecutionId;
+		additionalData.streamingEnabled = data.streamingEnabled;
 
 		additionalData.executionId = executionId;
 
@@ -267,12 +286,10 @@ export class WorkflowRunner {
 			});
 
 			if (data.streamingEnabled) {
-				if (data.executionMode !== 'manual') {
-					lifecycleHooks.addHandler('sendChunk', (chunk) => {
-						data.httpResponse?.write(JSON.stringify(chunk) + '\n');
-						data.httpResponse?.flush?.();
-					});
-				}
+				lifecycleHooks.addHandler('sendChunk', (chunk) => {
+					data.httpResponse?.write(JSON.stringify(chunk) + '\n');
+					data.httpResponse?.flush?.();
+				});
 			}
 
 			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
@@ -306,10 +323,27 @@ export class WorkflowRunner {
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 			if (workflowTimeout > 0) {
-				const timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as seconds
-				executionTimeout = setTimeout(() => {
-					void this.activeExecutions.stopExecution(executionId);
-				}, timeout);
+				let timeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout) * 1000; // as milliseconds
+				if (data.startedAt && data.startedAt instanceof Date) {
+					// If startedAt is set, we calculate the timeout based on the startedAt time
+					// This is useful for executions that were waiting in a waiting state
+					// and we want to ensure the timeout is relative to when the execution started.
+					const now = Date.now();
+					timeout = Math.max(timeout - (now - data.startedAt.getTime()), 0);
+				}
+				if (timeout === 0) {
+					this.activeExecutions.stopExecution(
+						executionId,
+						new TimeoutExecutionCancelledError(executionId),
+					);
+				} else {
+					executionTimeout = setTimeout(() => {
+						void this.activeExecutions.stopExecution(
+							executionId,
+							new TimeoutExecutionCancelledError(executionId),
+						);
+					}, timeout);
+				}
 			}
 
 			workflowExecution
@@ -318,7 +352,7 @@ export class WorkflowRunner {
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
 					}
-					fullRunData.status = this.activeExecutions.getStatus(executionId);
+
 					this.activeExecutions.resolveExecutionResponsePromise(executionId);
 					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
@@ -351,12 +385,23 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		realtime?: boolean,
+		restartExecutionId?: string,
 	): Promise<void> {
 		const jobData: JobData = {
 			workflowId,
 			executionId,
 			loadStaticData: !!loadStaticData,
 			pushRef: data.pushRef,
+			streamingEnabled: data.streamingEnabled,
+			restartExecutionId,
+			projectId: data.projectId,
+			projectName: data.projectName,
+			// MCP-specific fields for queue mode support
+			isMcpExecution: data.isMcpExecution,
+			mcpType: data.mcpType,
+			mcpSessionId: data.mcpSessionId,
+			mcpMessageId: data.mcpMessageId,
+			mcpToolCall: data.mcpToolCall,
 		};
 
 		if (!this.scalingService) {
@@ -394,7 +439,7 @@ export class WorkflowRunner {
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
-					const error = new ExecutionCancelledError(executionId);
+					const error = new ManualExecutionCancelledError(executionId);
 					await this.processError(
 						error,
 						new Date(),
@@ -411,6 +456,7 @@ export class WorkflowRunner {
 				} catch (error) {
 					if (
 						error instanceof Error &&
+						typeof error.message === 'string' &&
 						error.message.includes('job stalled more than maxStalledCount')
 					) {
 						error = new MaxStalledCountError(error);
@@ -434,26 +480,59 @@ export class WorkflowRunner {
 						lifecycleHooks,
 					);
 
-					reject(error);
+					this.scalingService.popJobResult(executionId);
+
+					return reject(error);
 				}
 
-				const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
-					includeData: true,
-					unflattenData: true,
-				});
-				if (!fullExecutionData) {
-					return reject(new Error(`Could not find execution with id "${executionId}"`));
-				}
+				const jobResult = this.scalingService.popJobResult(executionId);
 
-				const runData: IRun = {
-					finished: fullExecutionData.finished,
-					mode: fullExecutionData.mode,
-					startedAt: fullExecutionData.startedAt,
-					stoppedAt: fullExecutionData.stoppedAt,
-					status: fullExecutionData.status,
-					data: fullExecutionData.data,
-					jobId: job.id.toString(),
-				};
+				let runData: IRun;
+
+				if (
+					!jobResult ||
+					this.needsFullExecutionData(data.executionMode, executionId, data.forceFullExecutionData)
+				) {
+					const fullExecutionData = await this.executionRepository.findSingleExecution(
+						executionId,
+						{
+							includeData: true,
+							unflattenData: true,
+						},
+					);
+					if (!fullExecutionData) {
+						return reject(new Error(`Could not find execution with id "${executionId}"`));
+					}
+
+					runData = {
+						finished: fullExecutionData.finished,
+						mode: fullExecutionData.mode,
+						startedAt: fullExecutionData.startedAt,
+						stoppedAt: fullExecutionData.stoppedAt,
+						status: fullExecutionData.status,
+						data: fullExecutionData.data,
+						jobId: job.id.toString(),
+						storedAt: fullExecutionData.storedAt,
+					};
+				} else {
+					runData = {
+						finished: jobResult.success,
+						mode: data.executionMode,
+						startedAt: jobResult.startedAt,
+						stoppedAt: jobResult.stoppedAt,
+						status: jobResult.status,
+						data: createRunExecutionData({
+							resultData: {
+								runData: {},
+								lastNodeExecuted: jobResult.lastNodeExecuted,
+								error: jobResult.error,
+								metadata: jobResult.metadata,
+							},
+						}),
+						jobId: job.id.toString(),
+						storedAt: this.storageConfig.modeTag,
+					};
+				}
 
 				this.activeExecutions.finalizeExecution(executionId, runData);
 
@@ -472,5 +551,31 @@ export class WorkflowRunner {
 		});
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+	}
+
+	/**
+	 * Whether main must retrieve full execution data from the DB on job completion.
+	 *
+	 * Full data is needed when:
+	 * - `integrated` mode: parent workflow needs child execution output data
+	 * - `lastNode` response mode: webhook response is built from the last node's output
+	 * - `workflow.postExecute` hook: external hooks receive full execution data
+	 *
+	 * In all other cases we can skip the DB fetch and use the lightweight
+	 * result summary sent by the worker via the job progress message.
+	 */
+	private needsFullExecutionData(
+		executionMode: WorkflowExecuteMode,
+		executionId: string,
+		forceFullExecutionData?: boolean,
+	): boolean {
+		if (forceFullExecutionData) return true;
+		if (!process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING) return true;
+
+		return (
+			executionMode === 'integrated' ||
+			this.activeExecutions.getResponseMode(executionId) === 'lastNode' ||
+			this.externalHooks.hasHook('workflow.postExecute')
+		);
 	}
 }

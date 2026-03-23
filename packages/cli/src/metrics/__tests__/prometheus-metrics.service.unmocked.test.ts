@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { WorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -22,16 +22,7 @@ const eventService = mock<EventService>();
 const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 const workflowRepository = mock<WorkflowRepository>();
 const app = mock<express.Application>();
-const eventBus = new MessageEventBus(
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-	mock(),
-);
+const eventBus = new MessageEventBus(mock(), mock(), mock(), mock(), mock());
 
 describe('workflow_success_total', () => {
 	test('support workflow id labels', async () => {
@@ -42,6 +33,7 @@ describe('workflow_success_total', () => {
 					prefix: '',
 					includeMessageEventBusMetrics: true,
 					includeWorkflowIdLabel: true,
+					includeWorkflowNameLabel: false,
 				},
 			},
 		});
@@ -53,6 +45,7 @@ describe('workflow_success_total', () => {
 			eventService,
 			instanceSettings,
 			workflowRepository,
+			mock<LicenseMetricsRepository>(),
 		);
 
 		await prometheusMetricsService.init(app);
@@ -76,6 +69,50 @@ workflow_success_total{workflow_id="1234"} 1"
 `);
 	});
 
+	test('support workflow name labels', async () => {
+		// ARRANGE
+		const globalConfig = mockInstance(GlobalConfig, {
+			endpoints: {
+				metrics: {
+					prefix: '',
+					includeMessageEventBusMetrics: true,
+					includeWorkflowIdLabel: false,
+					includeWorkflowNameLabel: true,
+				},
+			},
+		});
+
+		const prometheusMetricsService = new PrometheusMetricsService(
+			mock(),
+			eventBus,
+			globalConfig,
+			eventService,
+			instanceSettings,
+			workflowRepository,
+			mock<LicenseMetricsRepository>(),
+		);
+
+		await prometheusMetricsService.init(app);
+
+		// ACT
+		const event = new EventMessageWorkflow({
+			eventName: 'n8n.workflow.success',
+			payload: { workflowName: 'wf_1234' },
+		});
+
+		eventBus.emit('metrics.eventBus.event', event);
+
+		// ASSERT
+		const workflowSuccessCounter =
+			await promClient.register.getSingleMetricAsString('workflow_success_total');
+
+		expect(workflowSuccessCounter).toMatchInlineSnapshot(`
+"# HELP workflow_success_total Total number of n8n.workflow.success events.
+# TYPE workflow_success_total counter
+workflow_success_total{workflow_name="wf_1234"} 1"
+`);
+	});
+
 	test('support a custom prefix', async () => {
 		// ARRANGE
 		const globalConfig = mockInstance(GlobalConfig, {
@@ -93,6 +130,7 @@ workflow_success_total{workflow_id="1234"} 1"
 			eventService,
 			instanceSettings,
 			workflowRepository,
+			mock<LicenseMetricsRepository>(),
 		);
 
 		// ACT
@@ -137,6 +175,7 @@ describe('Active workflow count', () => {
 		eventService,
 		instanceSettings,
 		workflowRepository,
+		mock<LicenseMetricsRepository>(),
 	);
 
 	afterEach(() => {

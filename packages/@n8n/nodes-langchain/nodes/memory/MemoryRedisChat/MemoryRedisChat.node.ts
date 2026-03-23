@@ -1,7 +1,6 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { RedisChatMessageHistoryInput } from '@langchain/redis';
 import { RedisChatMessageHistory } from '@langchain/redis';
-import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
+import { BufferMemory, BufferWindowMemory } from '@langchain/classic/memory';
 import {
 	NodeOperationError,
 	type INodeType,
@@ -14,8 +13,7 @@ import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
 	sessionIdOption,
@@ -55,9 +53,9 @@ export class MemoryRedisChat implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
 		properties: [

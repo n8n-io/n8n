@@ -1,6 +1,6 @@
 import type { Channel, Connection, ConsumeMessage, Message } from 'amqplib';
-import { mock } from 'jest-mock-extended';
-import type { ITriggerFunctions } from 'n8n-workflow';
+import { mock, mockDeep } from 'jest-mock-extended';
+import type { INode, IRun, ITriggerFunctions, IWorkflowMetadata } from 'n8n-workflow';
 
 const mockChannel = mock<Channel>();
 const mockConnection = mock<Connection>({ createChannel: async () => mockChannel });
@@ -15,6 +15,7 @@ import {
 	rabbitmqConnectQueue,
 	rabbitmqCreateChannel,
 	MessageTracker,
+	handleMessage,
 } from '../GenericFunctions';
 import type { TriggerOptions } from '../types';
 
@@ -26,7 +27,7 @@ describe('RabbitMQ GenericFunctions', () => {
 		password: 'pass',
 		vhost: '/',
 	};
-	const context = mock<ITriggerFunctions>();
+	const context = mockDeep<ITriggerFunctions>();
 
 	beforeEach(() => jest.clearAllMocks());
 
@@ -187,6 +188,250 @@ describe('RabbitMQ GenericFunctions', () => {
 			expect(mockChannel.cancel).toHaveBeenCalledWith('consumerTag');
 			expect(mockChannel.close).toHaveBeenCalled();
 			expect(mockConnection.close).toHaveBeenCalled();
+		});
+	});
+
+	describe('handleMessage', () => {
+		const mockChannel = mockDeep<Channel>();
+		const messageTracker = mock<MessageTracker>();
+		const message = {
+			content: {
+				foo: 'bar',
+			},
+		} as unknown as Message;
+		const item = { json: message };
+		const options = {} as TriggerOptions;
+
+		it('should ack a message with "acknowledgeMode" set to "immediately"', async () => {
+			await handleMessage.call(
+				context,
+				message,
+				mockChannel,
+				messageTracker,
+				'immediately',
+				options,
+			);
+
+			expect(context.emit).toHaveBeenCalledWith([[item]], undefined, undefined);
+			expect(mockChannel.ack).toHaveBeenCalledWith(message);
+		});
+
+		it('should ack a message with "acknowledgeMode" set to "executionFinishesSuccessfully"', async () => {
+			let resolvePromise: (data: IRun) => void = () => {};
+			const deferredPromise = {
+				promise: new Promise<IRun>((resolve) => {
+					resolvePromise = resolve;
+				}),
+				resolve: jest.fn(),
+				reject: jest.fn(),
+			};
+			context.helpers.createDeferredPromise.mockReturnValue(deferredPromise);
+
+			const handleMessagePromise = handleMessage.call(
+				context,
+				message,
+				mockChannel,
+				messageTracker,
+				'executionFinishesSuccessfully',
+				options,
+			);
+
+			await Promise.resolve(); // yield control to let handleMessage run
+
+			expect(messageTracker.received).toHaveBeenCalledWith(message);
+			expect(context.emit).toHaveBeenCalledWith([[item]], undefined, deferredPromise);
+			expect(mockChannel.ack).not.toHaveBeenCalled();
+			expect(messageTracker.answered).not.toHaveBeenCalled();
+
+			resolvePromise({
+				data: {
+					resultData: {
+						error: undefined,
+					},
+				},
+			} as IRun);
+			await handleMessagePromise;
+
+			expect(mockChannel.ack).toHaveBeenCalledWith(message);
+			expect(messageTracker.answered).toHaveBeenCalledWith(message);
+		});
+
+		it('should nack a message with "acknowledgeMode" set to "executionFinishesSuccessfully" when there is an error', async () => {
+			let resolvePromise: (data: IRun) => void = () => {};
+			const deferredPromise = {
+				promise: new Promise<IRun>((resolve) => {
+					resolvePromise = resolve;
+				}),
+				resolve: jest.fn(),
+				reject: jest.fn(),
+			};
+			context.helpers.createDeferredPromise.mockReturnValue(deferredPromise);
+
+			const handleMessagePromise = handleMessage.call(
+				context,
+				message,
+				mockChannel,
+				messageTracker,
+				'executionFinishesSuccessfully',
+				options,
+			);
+
+			await Promise.resolve(); // yield control to let handleMessage run
+
+			expect(messageTracker.received).toHaveBeenCalledWith(message);
+			expect(context.emit).toHaveBeenCalledWith([[item]], undefined, deferredPromise);
+			expect(mockChannel.nack).not.toHaveBeenCalled();
+			expect(messageTracker.answered).not.toHaveBeenCalled();
+
+			resolvePromise({
+				data: {
+					resultData: {
+						error: new Error('Some error'),
+					},
+				},
+			} as IRun);
+			await handleMessagePromise;
+
+			expect(mockChannel.nack).toHaveBeenCalledWith(message);
+			expect(messageTracker.answered).toHaveBeenCalledWith(message);
+		});
+
+		it('should ack a message with "acknowledgeMode" set to "executionFinishes"', async () => {
+			let resolvePromise: (data: IRun) => void = () => {};
+			const deferredPromise = {
+				promise: new Promise<IRun>((resolve) => {
+					resolvePromise = resolve;
+				}),
+				resolve: jest.fn(),
+				reject: jest.fn(),
+			};
+			context.helpers.createDeferredPromise.mockReturnValue(deferredPromise);
+
+			const handleMessagePromise = handleMessage.call(
+				context,
+				message,
+				mockChannel,
+				messageTracker,
+				'executionFinishes',
+				options,
+			);
+
+			await Promise.resolve(); // yield control to let handleMessage run
+
+			expect(messageTracker.received).toHaveBeenCalledWith(message);
+			expect(context.emit).toHaveBeenCalledWith([[item]], undefined, deferredPromise);
+			expect(mockChannel.ack).not.toHaveBeenCalled();
+			expect(messageTracker.answered).not.toHaveBeenCalled();
+
+			resolvePromise({
+				data: {
+					resultData: {
+						error: undefined,
+					},
+				},
+			} as IRun);
+			await handleMessagePromise;
+
+			expect(mockChannel.ack).toHaveBeenCalledWith(message);
+			expect(messageTracker.answered).toHaveBeenCalledWith(message);
+		});
+
+		it('should ack a message with "acknowledgeMode" set to "laterMessageNode"', async () => {
+			let resolvePromise: (data: IRun) => void = () => {};
+			const deferredPromise = {
+				promise: new Promise<IRun>((resolve) => {
+					resolvePromise = resolve;
+				}),
+				resolve: jest.fn(),
+				reject: jest.fn(),
+			};
+			context.helpers.createDeferredPromise.mockReturnValue(deferredPromise);
+
+			const handleMessagePromise = handleMessage.call(
+				context,
+				message,
+				mockChannel,
+				messageTracker,
+				'laterMessageNode',
+				options,
+			);
+
+			await Promise.resolve(); // yield control to let handleMessage run
+
+			expect(messageTracker.received).toHaveBeenCalledWith(message);
+			expect(context.emit).toHaveBeenCalledWith([[item]], deferredPromise, undefined);
+			expect(mockChannel.ack).not.toHaveBeenCalled();
+			expect(messageTracker.answered).not.toHaveBeenCalled();
+
+			resolvePromise({
+				data: {
+					resultData: {
+						error: undefined,
+					},
+				},
+			} as IRun);
+			await handleMessagePromise;
+
+			expect(mockChannel.ack).toHaveBeenCalledWith(message);
+			expect(messageTracker.answered).toHaveBeenCalledWith(message);
+		});
+
+		it('should handle error when "acknowledgeMode" is set to "immediately"', async () => {
+			mockChannel.ack.mockImplementation(() => {
+				throw new Error('Test error');
+			});
+			context.getWorkflow.mockReturnValue({
+				id: '123',
+			} as IWorkflowMetadata);
+			context.getNode.mockReturnValue({
+				name: 'Test node',
+			} as INode);
+
+			await handleMessage.call(
+				context,
+				message,
+				mockChannel,
+				messageTracker,
+				'immediately',
+				options,
+			);
+
+			expect(context.logger.error).toHaveBeenCalledWith(
+				'There was a problem with the RabbitMQ Trigger node "Test node" in workflow "123": "Test error"',
+				{
+					node: 'Test node',
+					workflowId: '123',
+				},
+			);
+		});
+
+		it('should handle error when "acknowledgeMode" is set to something other than "immediately"', async () => {
+			context.helpers.createDeferredPromise.mockImplementation(() => {
+				throw new Error('Test error');
+			});
+			context.getWorkflow.mockReturnValue({
+				id: '123',
+			} as IWorkflowMetadata);
+			context.getNode.mockReturnValue({
+				name: 'Test node',
+			} as INode);
+
+			await handleMessage.call(
+				context,
+				message,
+				mockChannel,
+				messageTracker,
+				'executionFinishesSuccessfully',
+				options,
+			);
+
+			expect(context.logger.error).toHaveBeenCalledWith(
+				'There was a problem with the RabbitMQ Trigger node "Test node" in workflow "123": "Test error"',
+				{
+					node: 'Test node',
+					workflowId: '123',
+				},
+			);
 		});
 	});
 });

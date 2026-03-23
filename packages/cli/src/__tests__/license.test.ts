@@ -1,5 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import type { SettingsRepository } from '@n8n/db';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -100,10 +101,24 @@ describe('License', () => {
 		);
 	});
 
-	test('attempts to activate license with provided key', async () => {
+	test('attempts to activate license with provided key (initial activation)', async () => {
 		await license.activate(MOCK_ACTIVATION_KEY);
 
-		expect(LicenseManager.prototype.activate).toHaveBeenCalledWith(MOCK_ACTIVATION_KEY);
+		expect(LicenseManager.prototype.activate).toHaveBeenCalledWith(MOCK_ACTIVATION_KEY, {
+			eulaUri: undefined,
+			email: undefined,
+		});
+	});
+
+	test('attempts to activate license with eulaUri and userEmail (EULA acceptance)', async () => {
+		const eulaUri = 'https://n8n.io/legal/eula/';
+		const userEmail = 'user@example.com';
+		await license.activate(MOCK_ACTIVATION_KEY, eulaUri, userEmail);
+
+		expect(LicenseManager.prototype.activate).toHaveBeenCalledWith(MOCK_ACTIVATION_KEY, {
+			eulaUri,
+			email: userEmail,
+		});
 	});
 
 	test('renews license', async () => {
@@ -275,6 +290,97 @@ describe('License', () => {
 });
 
 describe('License', () => {
+	describe('onCertRefresh', () => {
+		let license: License;
+		const instanceSettings = mock<InstanceSettings>({
+			instanceId: 'test-instance',
+			instanceType: 'main',
+			isLeader: true,
+		});
+
+		beforeEach(async () => {
+			jest.restoreAllMocks();
+			const globalConfig = mock<GlobalConfig>({
+				license: licenseConfig,
+				multiMainSetup: { enabled: false },
+			});
+			license = new License(mockLogger(), instanceSettings, mock(), mock(), globalConfig);
+			await license.init();
+		});
+
+		it('should register callback and call it on license reload', async () => {
+			const callback = jest.fn();
+			license.onCertRefresh(callback);
+
+			await license.reload();
+
+			expect(callback).toHaveBeenCalledWith('');
+		});
+
+		it('should call multiple registered callbacks', async () => {
+			const callback1 = jest.fn();
+			const callback2 = jest.fn();
+
+			license.onCertRefresh(callback1);
+			license.onCertRefresh(callback2);
+
+			await license.reload();
+
+			expect(callback1).toHaveBeenCalledTimes(1);
+			expect(callback2).toHaveBeenCalledTimes(1);
+		});
+
+		it('should return unsubscribe function that removes callback', async () => {
+			const callback = jest.fn();
+			const unsubscribe = license.onCertRefresh(callback);
+
+			unsubscribe();
+			await license.reload();
+
+			expect(callback).not.toHaveBeenCalled();
+		});
+
+		it('should continue calling other callbacks if one throws', async () => {
+			const errorCallback = jest.fn().mockImplementation(() => {
+				throw new Error('Callback error');
+			});
+			const callback2 = jest.fn();
+
+			license.onCertRefresh(errorCallback);
+			license.onCertRefresh(callback2);
+
+			await license.reload();
+
+			expect(errorCallback).toHaveBeenCalled();
+			expect(callback2).toHaveBeenCalled();
+		});
+
+		it('should pass the loaded certificate to callbacks', async () => {
+			const settingsRepository = mock<SettingsRepository>();
+			settingsRepository.findOne.mockResolvedValue({ value: 'test-cert-value' } as any);
+
+			const globalConfig = mock<GlobalConfig>({
+				license: licenseConfig,
+				multiMainSetup: { enabled: false },
+			});
+			license = new License(
+				mockLogger(),
+				instanceSettings,
+				settingsRepository,
+				mock(),
+				globalConfig,
+			);
+			await license.init();
+
+			const callback = jest.fn();
+			license.onCertRefresh(callback);
+
+			await license.reload();
+
+			expect(callback).toHaveBeenCalledWith('test-cert-value');
+		});
+	});
+
 	describe('init', () => {
 		it('when leader main with N8N_LICENSE_AUTO_RENEW_ENABLED=true, should enable renewal', async () => {
 			const globalConfig = mock<GlobalConfig>({
@@ -343,6 +449,223 @@ describe('License', () => {
 			expect(LicenseManager).toHaveBeenCalledWith(
 				expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
 			);
+		});
+	});
+
+	describe('getExpiringInDays', () => {
+		let license: License;
+		const instanceSettings = mock<InstanceSettings>({
+			instanceId: MOCK_INSTANCE_ID,
+			instanceType: 'main',
+			isLeader: true,
+		});
+
+		beforeEach(async () => {
+			jest.restoreAllMocks();
+			const globalConfig = mock<GlobalConfig>({
+				license: licenseConfig,
+				multiMainSetup: { enabled: false },
+			});
+			license = new License(mockLogger(), instanceSettings, mock(), mock(), globalConfig);
+			await license.init();
+		});
+
+		it('should return number of days until expiry for future date', () => {
+			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(72)); // 3 days
+
+			const result = license.getExpiringInDays();
+
+			expect(result).toBe(3);
+		});
+
+		it('should return 0 for already expired licenses', () => {
+			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(-24)); // 1 day ago
+
+			const result = license.getExpiringInDays();
+
+			expect(result).toBe(0);
+		});
+
+		it('should return undefined when no expiry date exists', () => {
+			License.prototype.getExpiryDate = jest.fn().mockReturnValue(null);
+
+			const result = license.getExpiringInDays();
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should handle exactly 0 hours remaining', () => {
+			const now = new Date();
+			License.prototype.getExpiryDate = jest.fn().mockReturnValue(now);
+
+			const result = license.getExpiringInDays();
+
+			expect(result).toBe(0);
+		});
+
+		it('should handle dates far in the future', () => {
+			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(365 * 24)); // 1 year
+
+			const result = license.getExpiringInDays();
+
+			expect(result).toBe(365);
+		});
+
+		it('should handle fractional days by ceiling', () => {
+			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(37)); // 1.5+ days
+
+			const result = license.getExpiringInDays();
+
+			expect(result).toBe(2); // ceiling of 1.5 is 2
+		});
+
+		it('should handle invalid date (NaN)', () => {
+			const invalidDate = new Date('invalid');
+			License.prototype.getExpiryDate = jest.fn().mockReturnValue(invalidDate);
+
+			const result = license.getExpiringInDays();
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return maximum 0 for negative day differences', () => {
+			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(-100)); // 4+ days ago
+
+			const result = license.getExpiringInDays();
+
+			expect(result).toBe(0);
+		});
+	});
+
+	describe('getTerminatingInDays', () => {
+		let license: License;
+		const instanceSettings = mock<InstanceSettings>({
+			instanceId: MOCK_INSTANCE_ID,
+			instanceType: 'main',
+			isLeader: true,
+		});
+
+		beforeEach(async () => {
+			jest.restoreAllMocks();
+			const globalConfig = mock<GlobalConfig>({
+				license: licenseConfig,
+				multiMainSetup: { enabled: false },
+			});
+			license = new License(mockLogger(), instanceSettings, mock(), mock(), globalConfig);
+			await license.init();
+		});
+
+		it('should return number of days until termination for future date', () => {
+			License.prototype.getTerminationDate = jest.fn().mockReturnValue(makeDateWithHourOffset(48)); // 2 days
+
+			const result = license.getTerminatingInDays();
+
+			expect(result).toBe(2);
+		});
+
+		it('should return 0 for already terminated licenses', () => {
+			License.prototype.getTerminationDate = jest.fn().mockReturnValue(makeDateWithHourOffset(-48)); // 2 days ago
+
+			const result = license.getTerminatingInDays();
+
+			expect(result).toBe(0);
+		});
+
+		it('should return undefined when no termination date exists', () => {
+			License.prototype.getTerminationDate = jest.fn().mockReturnValue(null);
+
+			const result = license.getTerminatingInDays();
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should handle exactly 0 hours until termination', () => {
+			const now = new Date();
+			License.prototype.getTerminationDate = jest.fn().mockReturnValue(now);
+
+			const result = license.getTerminatingInDays();
+
+			expect(result).toBe(0);
+		});
+
+		it('should handle termination dates far in the future', () => {
+			License.prototype.getTerminationDate = jest
+				.fn()
+				.mockReturnValue(makeDateWithHourOffset(720 * 24)); // 2 years
+
+			const result = license.getTerminatingInDays();
+
+			expect(result).toBe(720);
+		});
+
+		it('should handle fractional days by ceiling', () => {
+			License.prototype.getTerminationDate = jest.fn().mockReturnValue(makeDateWithHourOffset(13)); // 0.5+ days
+
+			const result = license.getTerminatingInDays();
+
+			expect(result).toBe(1); // ceiling of 0.5 is 1
+		});
+
+		it('should handle invalid date (NaN)', () => {
+			const invalidDate = new Date('invalid');
+			License.prototype.getTerminationDate = jest.fn().mockReturnValue(invalidDate);
+
+			const result = license.getTerminatingInDays();
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return maximum 0 for negative day differences', () => {
+			License.prototype.getTerminationDate = jest
+				.fn()
+				.mockReturnValue(makeDateWithHourOffset(-200)); // 8+ days ago
+
+			const result = license.getTerminatingInDays();
+
+			expect(result).toBe(0);
+		});
+	});
+
+	describe('getExpiringInDays vs getTerminatingInDays', () => {
+		let license: License;
+		const instanceSettings = mock<InstanceSettings>({
+			instanceId: MOCK_INSTANCE_ID,
+			instanceType: 'main',
+			isLeader: true,
+		});
+
+		beforeEach(async () => {
+			jest.restoreAllMocks();
+			const globalConfig = mock<GlobalConfig>({
+				license: licenseConfig,
+				multiMainSetup: { enabled: false },
+			});
+			license = new License(mockLogger(), instanceSettings, mock(), mock(), globalConfig);
+			await license.init();
+		});
+
+		it('should handle both dates being set independently', () => {
+			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(72)); // 3 days
+			License.prototype.getTerminationDate = jest.fn().mockReturnValue(makeDateWithHourOffset(168)); // 7 days
+
+			const expiringDays = license.getExpiringInDays();
+			const terminatingDays = license.getTerminatingInDays();
+
+			expect(expiringDays).toBe(3);
+			expect(terminatingDays).toBe(7);
+		});
+
+		it('should handle different precisions for dates', () => {
+			// Expiry in 2.3 days
+			License.prototype.getExpiryDate = jest.fn().mockReturnValue(makeDateWithHourOffset(55));
+			// Termination in 5.7 days
+			License.prototype.getTerminationDate = jest.fn().mockReturnValue(makeDateWithHourOffset(137));
+
+			const expiringDays = license.getExpiringInDays();
+			const terminatingDays = license.getTerminatingInDays();
+
+			expect(expiringDays).toBe(3); // ceiling of 2.3
+			expect(terminatingDays).toBe(6); // ceiling of 5.7
 		});
 	});
 });

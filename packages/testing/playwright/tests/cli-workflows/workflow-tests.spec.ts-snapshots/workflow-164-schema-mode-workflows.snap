@@ -1,0 +1,1303 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "startData": {
+          "type": "object",
+          "properties": {}
+        },
+        "resultData": {
+          "type": "object",
+          "properties": {
+            "runData": {
+              "type": "object",
+              "properties": {
+                "Start": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Set": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp1": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Sleep 0.8 second": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Sleep 0.8 second1": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp7": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp2": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Sleep 0.8 second5": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Set1": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp5": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Sleep 0.8 second2": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Sleep 0.8 second4": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp3": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Set2": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Sleep 0.8 second3": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp8": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp4": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Sleep 0.8 second6": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp9": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Sleep 0.8 second7": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp6": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Sleep 0.8 second8": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp10": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp11": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp12": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ClickUp13": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "lastNodeExecuted": {
+              "type": "string"
+            }
+          }
+        },
+        "executionData": {
+          "type": "object",
+          "properties": {
+            "contextData": {
+              "type": "object",
+              "properties": {}
+            },
+            "nodeExecutionStack": {
+              "type": "array",
+              "items": {}
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {}
+            },
+            "waitingExecution": {
+              "type": "object",
+              "properties": {}
+            },
+            "waitingExecutionSource": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        }
+      }
+    },
+    "mode": {
+      "type": "string"
+    },
+    "startedAt": {
+      "type": "string"
+    },
+    "stoppedAt": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "finished": {
+      "type": "boolean"
+    }
+  }
+}

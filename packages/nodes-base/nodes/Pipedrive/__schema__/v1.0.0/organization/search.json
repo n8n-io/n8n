@@ -1,6 +1,12 @@
 {
     "type": "object",
     "properties": {
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "id": {
             "type": "integer"
         },
@@ -31,5 +37,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

@@ -1,7 +1,7 @@
 import type { Event } from '@sentry/node';
 import callsites from 'callsites';
 
-import type { ErrorTags, ErrorLevel, ReportingOptions } from '../error.types';
+import type { ErrorTags, ErrorLevel, ReportingOptions } from '@n8n/errors';
 
 export type BaseErrorOptions = { description?: string | undefined | null } & ErrorOptions &
 	ReportingOptions;

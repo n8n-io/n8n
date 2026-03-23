@@ -2,16 +2,17 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceType } from '@n8n/constants';
-import { captor, mock } from 'jest-mock-extended';
+import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-
-import config from '@/config';
 
 import { DeprecationService } from '../deprecation.service';
 
 describe('DeprecationService', () => {
 	const logger = mock<Logger>();
-	const globalConfig = mockInstance(GlobalConfig, { nodes: { exclude: [] } });
+	const globalConfig = mockInstance(GlobalConfig, {
+		nodes: { exclude: [] },
+		executions: { mode: 'regular' },
+	});
 	const instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main' });
 	const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
 
@@ -21,27 +22,6 @@ describe('DeprecationService', () => {
 		process.env = {};
 
 		jest.resetAllMocks();
-	});
-
-	describe('N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', () => {
-		test('supports multiple warnings for the same environment variable', () => {
-			// ARRANGE
-			process.env.N8N_PARTIAL_EXECUTION_VERSION_DEFAULT = '1';
-			const dataCaptor = captor();
-
-			// ACT
-			deprecationService.warn();
-
-			// ASSERT
-			expect(logger.warn).toHaveBeenCalledTimes(1);
-			expect(logger.warn).toHaveBeenCalledWith(dataCaptor);
-			expect(dataCaptor.value.split('\n')).toEqual(
-				expect.arrayContaining([
-					' - N8N_PARTIAL_EXECUTION_VERSION_DEFAULT -> Version 1 of partial executions is deprecated and will be removed as early as v1.85.0',
-					' - N8N_PARTIAL_EXECUTION_VERSION_DEFAULT -> This environment variable is internal and should not be set.',
-				]),
-			);
-		});
 	});
 
 	const toTest = (envVar: string, value: string | undefined, mustWarn: boolean) => {
@@ -80,77 +60,22 @@ describe('DeprecationService', () => {
 		['EXECUTIONS_DATA_PRUNE_TIMEOUT', '1', true],
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
-		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', '1', true],
-		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', '2', true],
-		['N8N_PARTIAL_EXECUTION_VERSION_DEFAULT', undefined, false],
+		['N8N_RUNNERS_ENABLED', '1', true],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
-	});
-
-	test.each([
-		['default', true],
-		['filesystem', false],
-		['s3', false],
-	])('should handle N8N_BINARY_DATA_MODE as %s', (mode, mustWarn) => {
-		toTest('N8N_BINARY_DATA_MODE', mode, mustWarn);
-	});
-
-	test.each([
-		['sqlite', false],
-		['postgresdb', false],
-		['mysqldb', true],
-		['mariadb', true],
-	])('should handle DB_TYPE as %s', (dbType, mustWarn) => {
-		toTest('DB_TYPE', dbType, mustWarn);
-	});
-
-	describe('N8N_RUNNERS_ENABLED', () => {
-		const envVar = 'N8N_RUNNERS_ENABLED';
-
-		test.each([
-			['false', true],
-			['', true],
-			['true', false],
-			[undefined /* warnIfMissing */, true],
-		])('should handle value: %s', (value, mustWarn) => {
-			toTest(envVar, value, mustWarn);
-		});
-
-		test('should not warn when Code node is excluded', () => {
-			process.env[envVar] = 'false';
-
-			const globalConfig = mockInstance(GlobalConfig, {
-				nodes: {
-					exclude: ['n8n-nodes-base.code'],
-				},
-			});
-
-			new DeprecationService(logger, globalConfig, instanceSettings).warn();
-
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', () => {
 		const envVar = 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS';
 
 		beforeEach(() => {
-			process.env = { N8N_RUNNERS_ENABLED: 'true' };
-
-			jest.spyOn(config, 'getEnv').mockImplementation((key) => {
-				if (key === 'executions.mode') return 'queue';
-				return undefined;
-			});
+			process.env = {};
 		});
 
 		describe('when executions.mode is not queue', () => {
 			test.each([['main'], ['worker'], ['webhook']])(
 				'should not warn for instanceType %s',
 				(instanceType: InstanceType) => {
-					jest.spyOn(config, 'getEnv').mockImplementation((key) => {
-						if (key === 'executions.mode') return 'regular';
-						return;
-					});
 					process.env[envVar] = 'false';
 					const service = new DeprecationService(
 						logger,
@@ -164,6 +89,11 @@ describe('DeprecationService', () => {
 		});
 
 		describe('when executions.mode is queue', () => {
+			const globalConfig = mockInstance(GlobalConfig, {
+				nodes: { exclude: [] },
+				executions: { mode: 'queue' },
+			});
+
 			describe('when instanceType is worker', () => {
 				test.each([
 					['false', 'false'],

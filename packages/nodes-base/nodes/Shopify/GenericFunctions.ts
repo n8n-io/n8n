@@ -65,7 +65,7 @@ export async function shopifyApiRequest(
 
 	// Only limit and fields are allowed for page_info links
 	// https://shopify.dev/docs/api/usage/pagination-rest#limitations-and-considerations
-	if (uri && uri.includes('page_info')) {
+	if (uri?.includes('page_info')) {
 		options.qs = {};
 
 		if (query.limit) {

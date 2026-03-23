@@ -32,7 +32,12 @@ describe('ExecutionsController', () => {
 	});
 
 	describe('getMany', () => {
-		const NO_EXECUTIONS = { count: 0, estimated: false, results: [] };
+		const NO_EXECUTIONS = {
+			count: 0,
+			estimated: false,
+			results: [],
+			concurrentExecutionsCount: -1,
+		};
 
 		const QUERIES_WITH_EITHER_STATUS_OR_RANGE: ExecutionSummaries.RangeQuery[] = [
 			{
@@ -91,6 +96,7 @@ describe('ExecutionsController', () => {
 
 					expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
 					expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
+					expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
 				},
 			);
 		});
@@ -108,6 +114,7 @@ describe('ExecutionsController', () => {
 
 					expect(executionService.findLatestCurrentAndCompleted).toHaveBeenCalled();
 					expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
+					expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
 				},
 			);
 		});
@@ -130,6 +137,7 @@ describe('ExecutionsController', () => {
 
 				expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
 				expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
+				expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
 			});
 		});
 	});
@@ -153,6 +161,67 @@ describe('ExecutionsController', () => {
 
 			await executionsController.stop(req);
 			expect(executionService.stop).toHaveBeenCalledWith(req.params.id, mockAccessibleWorkflowIds);
+		});
+	});
+
+	describe('getVersions', () => {
+		const workflowId = 'workflow-123';
+		const req = mock<ExecutionRequest.GetVersions>({ params: { workflowId } });
+
+		it('should return empty array when workflow is not accessible', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['other-workflow']);
+
+			const result = await executionsController.getVersions(req);
+
+			expect(result).toEqual([]);
+			expect(executionService.getExecutedVersions).not.toHaveBeenCalled();
+		});
+
+		it('should return empty array when user has no accessible workflows', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+
+			const result = await executionsController.getVersions(req);
+
+			expect(result).toEqual([]);
+			expect(executionService.getExecutedVersions).not.toHaveBeenCalled();
+		});
+
+		it('should delegate to execution service when workflow is accessible', async () => {
+			const versions = [
+				{ versionId: 'v1', name: 'Version 1', createdAt: new Date() },
+				{ versionId: 'v2', name: null, createdAt: new Date() },
+			];
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([workflowId]);
+			executionService.getExecutedVersions.mockResolvedValue(versions);
+
+			const result = await executionsController.getVersions(req);
+
+			expect(result).toEqual(versions);
+			expect(executionService.getExecutedVersions).toHaveBeenCalledWith(workflowId);
+		});
+	});
+
+	describe('stopMany', () => {
+		const req = mock<ExecutionRequest.StopMany>({ body: { filter: { status: ['waiting'] } } });
+
+		it('should not call mock if no workflows are accessible', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+
+			await executionsController.stopMany(req);
+
+			expect(executionService.stopMany).not.toHaveBeenCalled();
+		});
+
+		it('should call execution service with expected data when user has accessible workflows', async () => {
+			const mockAccessibleWorkflowIds = ['1234', '999'];
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(mockAccessibleWorkflowIds);
+
+			await executionsController.stopMany(req);
+
+			expect(executionService.stopMany).toHaveBeenCalledWith(
+				req.body.filter,
+				mockAccessibleWorkflowIds,
+			);
 		});
 	});
 });

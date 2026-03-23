@@ -1,0 +1,16 @@
+{
+	"permissions": {
+		"allow": [
+			"Bash(git log:*)",
+			"Bash(git show:*)",
+			"Bash(grep:*)",
+			"Bash(ls:*)",
+			"Bash(pnpm build)",
+			"Bash(pnpm lint:*)",
+			"Bash(pnpm test:*)",
+			"Bash(pnpm typecheck:*)",
+			"Bash(popd)",
+			"Bash(pushd:*)"
+		]
+	}
+}

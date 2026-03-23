@@ -1,7 +1,7 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
+import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -13,7 +13,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { getBatchingOptionFields } from '@utils/sharedFields';
+import { getBatchingOptionFields } from '@n8n/ai-utilities';
 import { getTracingConfig } from '@utils/tracing';
 
 const DEFAULT_SYSTEM_PROMPT_TEMPLATE =
@@ -64,6 +64,11 @@ export class SentimentAnalysis implements INodeType {
 			},
 		],
 		outputs: `={{(${configuredOutputs})($parameter, "${DEFAULT_CATEGORIES}")}}`,
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName: 'Text to Analyze',
@@ -212,8 +217,12 @@ export class SentimentAnalysis implements INodeType {
 						? OutputFixingParser.fromLLM(llm, structuredParser)
 						: structuredParser;
 
+					const escapedTemplate = (options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE)
+						.replace(/[{}]/g, (match) => match + match)
+						.replaceAll('{{categories}}', '{categories}');
+
 					const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-						`${options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE}
+						`${escapedTemplate}
 				{format_instructions}`,
 					);
 
@@ -292,7 +301,7 @@ export class SentimentAnalysis implements INodeType {
 						} else {
 							throw error;
 						}
-					} else if (result.resultItem && result.sentimentIndex) {
+					} else if (result.resultItem && result.sentimentIndex !== -1) {
 						const sentimentIndex = result.sentimentIndex;
 						const resultItem = result.resultItem;
 						returnData[sentimentIndex].push(resultItem);
@@ -352,8 +361,12 @@ export class SentimentAnalysis implements INodeType {
 						? OutputFixingParser.fromLLM(llm, structuredParser)
 						: structuredParser;
 
+					const escapedTemplate = (options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE)
+						.replace(/[{}]/g, (match) => match + match)
+						.replaceAll('{{categories}}', '{categories}');
+
 					const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-						`${options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE}
+						`${escapedTemplate}
 			{format_instructions}`,
 					);
 

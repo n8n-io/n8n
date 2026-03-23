@@ -61,6 +61,10 @@ export class TemplateConfig {
 	@Env('N8N_UM_EMAIL_TEMPLATES_WORKFLOW_SHARED')
 	'workflow-shared': string = '';
 
+	/** Overrides default HTML template for notifying that a workflow was deactivated (use full path) */
+	@Env('N8N_UM_EMAIL_TEMPLATES_WORKFLOW_AUTODEACTIVATED')
+	'workflow-deactivated': string = '';
+
 	/** Overrides default HTML template for notifying that credentials were shared (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_CREDENTIALS_SHARED')
 	'credentials-shared': string = '';
@@ -68,6 +72,10 @@ export class TemplateConfig {
 	/** Overrides default HTML template for notifying that credentials were shared (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_PROJECT_SHARED')
 	'project-shared': string = '';
+
+	/** Overrides default HTML template for notifying that a workflow failed in production (use full path) */
+	@Env('N8N_UM_EMAIL_TEMPLATES_WORKFLOW_FAILURE')
+	'workflow-failure': string = '';
 }
 
 const emailModeSchema = z.enum(['', 'smtp']);
@@ -75,7 +83,7 @@ type EmailMode = z.infer<typeof emailModeSchema>;
 
 @Config
 class EmailConfig {
-	/** How to send emails */
+	/** Email delivery method: `smtp` or empty (disabled). */
 	@Env('N8N_EMAIL_MODE', emailModeSchema)
 	mode: EmailMode = 'smtp';
 
@@ -86,8 +94,44 @@ class EmailConfig {
 	template: TemplateConfig;
 }
 
+const INVALID_JWT_REFRESH_TIMEOUT_WARNING =
+	'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to be smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0.';
+
 @Config
 export class UserManagementConfig {
 	@Nested
 	emails: EmailConfig;
+
+	/** JWT secret to use. If unset, n8n will generate its own. */
+	@Env('N8N_USER_MANAGEMENT_JWT_SECRET')
+	jwtSecret: string = '';
+
+	/** How long (in hours) before the JWT expires. */
+	@Env('N8N_USER_MANAGEMENT_JWT_DURATION_HOURS')
+	jwtSessionDurationHours: number = 168;
+
+	/**
+	 * Security Control: Invite Link Exposure Prevention
+	 *
+	 * When enabled, prevents exposure of invite URLs in API responses to users
+	 * with 'user:create' permission, mitigating account takeover risks via
+	 * invite link leakage (e.g., compromised admin accounts, network interception).
+	 */
+	@Env('N8N_INVITE_LINKS_EMAIL_ONLY')
+	inviteLinksEmailOnly: boolean = false;
+
+	/**
+	 * How long (in hours) before expiration to automatically refresh it.
+	 * - `0` means 25% of `N8N_USER_MANAGEMENT_JWT_DURATION_HOURS`.
+	 * - `-1` means it will never refresh. This forces users to log back in after expiration.
+	 */
+	@Env('N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS')
+	jwtRefreshTimeoutHours: number = 0;
+
+	sanitize() {
+		if (this.jwtRefreshTimeoutHours >= this.jwtSessionDurationHours) {
+			console.warn(INVALID_JWT_REFRESH_TIMEOUT_WARNING);
+			this.jwtRefreshTimeoutHours = 0;
+		}
+	}
 }

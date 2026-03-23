@@ -1,12 +1,15 @@
 import { defineConfig } from 'vitest/config';
+import type { InlineConfig } from 'vitest/node';
 
-export const createVitestConfig = (options = {}) => {
+export const createVitestConfig = (options: InlineConfig = {}) => {
 	const vitestConfig = defineConfig({
 		test: {
 			silent: true,
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
+			reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
+			outputFile: { junit: './junit.xml' },
 			coverage: {
 				enabled: false,
 				all: false,

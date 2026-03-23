@@ -1,7 +1,11 @@
 import type { DataRequestResponse, TaskDataRequestParams } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
-import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { type INode, type INodeExecutionData } from 'n8n-workflow';
+import {
+	type IWorkflowExecuteAdditionalData,
+	type INode,
+	type INodeExecutionData,
+	createRunExecutionData,
+} from 'n8n-workflow';
 
 import { DataRequestResponseStripper } from '../data-request-response-stripper';
 
@@ -99,9 +103,9 @@ const taskData: DataRequestResponse = {
 	mode: 'manual',
 	envProviderState,
 	node: codeNode,
-	runExecutionData: {
+	runExecutionData: createRunExecutionData({
 		startData: {
-			destinationNode: codeNode.name,
+			destinationNode: { nodeName: codeNode.name, mode: 'inclusive' },
 			runNodeFilter: [triggerNode.name, debugHelperNode.name, codeNode.name],
 		},
 		resultData: {
@@ -146,7 +150,7 @@ const taskData: DataRequestResponse = {
 			waitingExecution: {},
 			waitingExecutionSource: {},
 		},
-	},
+	}),
 	runIndex: 0,
 	selfData: {},
 	siblingParameters: {},
@@ -183,6 +187,23 @@ describe('DataRequestResponseStripper', () => {
 			const { runExecutionData } = dataRequestResponseBuilder.strip();
 
 			expect(runExecutionData).toStrictEqual(taskData.runExecutionData);
+		});
+	});
+
+	describe('resumeToken', () => {
+		it('should preserve resumeToken when all data is requested', () => {
+			const result = new DataRequestResponseStripper(taskData, allDataParam).strip();
+
+			expect(result.runExecutionData.resumeToken).toBe(taskData.runExecutionData.resumeToken);
+		});
+
+		it('should preserve resumeToken when stripping with partial dataOfNodes', () => {
+			const result = new DataRequestResponseStripper(
+				taskData,
+				newRequestParam({ dataOfNodes: [codeNode.name], prevNode: false }),
+			).strip();
+
+			expect(result.runExecutionData.resumeToken).toBe(taskData.runExecutionData.resumeToken);
 		});
 	});
 

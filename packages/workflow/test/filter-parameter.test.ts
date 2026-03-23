@@ -1,8 +1,8 @@
 import merge from 'lodash/merge';
 import { DateTime } from 'luxon';
 
-import type { FilterConditionValue, FilterValue } from '@/interfaces';
-import { arrayContainsValue, executeFilter } from '@/node-parameters/filter-parameter';
+import type { FilterConditionValue, FilterValue } from '../src/interfaces';
+import { arrayContainsValue, executeFilter } from '../src/node-parameters/filter-parameter';
 
 type DeepPartial<T> = {
 	[P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
@@ -20,7 +20,7 @@ const filterFactory = (data: DeepPartial<FilterValue> = {}): FilterValue =>
 			combinator: 'and',
 			conditions: [],
 			options: {
-				version: 1,
+				version: 3,
 				leftValue: '',
 				caseSensitive: false,
 				typeValidation: 'strict',
@@ -578,6 +578,33 @@ describe('FilterParameter', () => {
 			});
 
 			describe('number', () => {
+				describe('loose validation', () => {
+					it.each([
+						{ left: 0, expected: false },
+						{ left: 15, expected: false },
+						{ left: -15.4, expected: false },
+						{ left: NaN, expected: true },
+						{ left: null, expected: true },
+						{ left: '', expected: true },
+						{ left: '  ', expected: true },
+						{ left: [], expected: true },
+					])('number:empty($left) === $expected', ({ left, expected }) => {
+						const result = executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: left,
+										operator: { operation: 'empty', type: 'number' },
+									},
+								],
+								options: { typeValidation: 'loose' },
+							}),
+						);
+						expect(result).toBe(expected);
+					});
+				});
+
 				it.each([
 					{ left: 0, expected: true },
 					{ left: 15, expected: true },

@@ -1,10 +1,7 @@
-/**
- * @jest-environment jsdom
- */
-
-import { numberExtensions } from '@/extensions/number-extensions';
+// @vitest-environment jsdom
 
 import { evaluate } from './helpers';
+import { numberExtensions } from '../../src/extensions/number-extensions';
 
 describe('Data Transformation Functions', () => {
 	describe('Number Data Transformation Functions', () => {

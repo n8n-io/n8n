@@ -5,6 +5,7 @@ import {
 	NodeOperationError,
 	traverseNodeParameters,
 	NodeHelpers,
+	nodeNameToToolName,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -26,7 +27,7 @@ export type CreateNodeAsToolOptions = {
  * @throws {NodeOperationError} When parameter keys are invalid or when duplicate keys have inconsistent definitions
  * @returns {z.ZodObject} A Zod schema object representing the structure and validation rules for the node parameters
  */
-function getSchema(node: INode) {
+export function getSchema(node: INode) {
 	const collectedArguments: FromAIArgument[] = [];
 	try {
 		traverseNodeParameters(node.parameters, collectedArguments);
@@ -89,15 +90,6 @@ function getSchema(node: INode) {
 }
 
 /**
- * Converts a node name to a valid tool name by replacing special characters with underscores
- * and collapsing consecutive underscores into a single one.
- * This method is copied from `packages/@n8n/nodes-langchain/utils/helpers.ts`.
- */
-export function nodeNameToToolName(node: INode): string {
-	return node.name.replace(/[\s.?!=+#@&*()[\]{}:;,<>\/\\'"^%$]/g, '_').replace(/_+/g, '_');
-}
-
-/**
  * Creates a DynamicStructuredTool from a node.
  * @returns A DynamicStructuredTool instance.
  */
@@ -114,6 +106,11 @@ function createTool(options: CreateNodeAsToolOptions) {
 		description,
 		schema,
 		func: async (toolArgs: z.infer<typeof schema>) => await handleToolInvocation(toolArgs),
+		// Include sourceNodeName in metadata for engine request routing
+		// This is required for HITL tools to know which node to execute after approval
+		metadata: {
+			sourceNodeName: node.name,
+		},
 	});
 }
 
