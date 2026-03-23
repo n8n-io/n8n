@@ -34,6 +34,9 @@
     "eval:pairwise": "tsx evaluations/cli/index.ts --suite pairwise",
     "eval:pairwise:langsmith": "tsx evaluations/cli/index.ts --suite pairwise --backend langsmith",
     "eval:introspection": "tsx evaluations/cli/index.ts --suite introspection --agent multi-agent",
+    "eval:checklist": "tsx evaluations/checklist/cli.ts",
+    "eval:checklist:report": "tsx evaluations/checklist/cli.ts report",
+    "eval:checklist:refresh": "tsx evaluations/checklist/cli.ts refresh-checklists",
     "workflow:mermaid": "tsx scripts/workflow-to-mermaid.ts",
     "python:check": "cd evaluations/programmatic/python && just check",
     "python:test": "cd evaluations/programmatic/python && just test",
@@ -67,6 +70,7 @@
     "@n8n/workflow-sdk": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "csv-parse": "5.5.0",
+    "flatted": "catalog:",
     "jsdom": "23.0.1",
     "langchain": "catalog:",
     "langsmith": "^0.4.6",
@@ -77,6 +81,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.71.0",
     "@n8n/typescript-config": "workspace:*",
     "@types/cli-progress": "^3.11.5",
     "@types/turndown": "^5.0.6",
