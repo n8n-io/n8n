@@ -21,12 +21,21 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 	},
 }));
 
-vi.mock('@/features/credentials/components/CredentialPicker/CredentialPicker.vue', () => ({
+vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	default: {
-		template:
-			'<div data-test-id="credential-picker" @click="$emit(\'credentialSelected\', \'cred-123\')" />',
-		props: ['appName', 'credentialType', 'selectedCredentialId', 'projectId'],
-		emits: ['credentialSelected', 'credentialDeselected'],
+		props: ['node', 'overrideCredType', 'projectId', 'standalone', 'hideIssues'],
+		emits: ['credentialSelected'],
+		setup(props: { overrideCredType: string }, { emit }: { emit: Function }) {
+			const onClick = () => {
+				emit('credentialSelected', {
+					properties: {
+						credentials: { [props.overrideCredType]: { id: 'cred-123', name: 'Test Cred' } },
+					},
+				});
+			};
+			return { onClick };
+		},
+		template: '<div data-test-id="credential-picker" @click="onClick" />',
 	},
 }));
 
@@ -70,7 +79,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('navigates between steps', async () => {
 			const requests = makeCredentialRequests(3);
-			const { getByText, getByTestId } = renderComponent({
+			const { getByText, getByLabelText } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					credentialRequests: requests,
@@ -79,19 +88,19 @@ describe('InstanceAiCredentialSetup', () => {
 			});
 
 			// Go to next step
-			await userEvent.click(getByTestId('wizard-nav-next'));
+			await userEvent.click(getByLabelText('Next step'));
 			expect(getByText('2 of 3')).toBeTruthy();
 			expect(getByText('Reason for type 2')).toBeTruthy();
 
 			// Go back
-			await userEvent.click(getByTestId('wizard-nav-prev'));
+			await userEvent.click(getByLabelText('Previous step'));
 			expect(getByText('1 of 3')).toBeTruthy();
 			expect(getByText('Reason for type 1')).toBeTruthy();
 		});
 
 		it('hides navigation arrows for single credential', () => {
 			const requests = makeCredentialRequests(1);
-			const { queryByTestId, getByText } = renderComponent({
+			const { queryByLabelText, getByText } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					credentialRequests: requests,
@@ -100,8 +109,8 @@ describe('InstanceAiCredentialSetup', () => {
 			});
 
 			expect(getByText('1 of 1')).toBeTruthy();
-			expect(queryByTestId('wizard-nav-prev')).toBeNull();
-			expect(queryByTestId('wizard-nav-next')).toBeNull();
+			expect(queryByLabelText('Previous step')).toBeNull();
+			expect(queryByLabelText('Next step')).toBeNull();
 		});
 	});
 
@@ -151,9 +160,9 @@ describe('InstanceAiCredentialSetup', () => {
 	});
 
 	describe('credential selection', () => {
-		it('shows check icon when credential is selected for current step', async () => {
+		it('auto-advances to next step when credential is selected', async () => {
 			const requests = makeCredentialRequests(2);
-			const { getByTestId, queryByTestId } = renderComponent({
+			const { getByTestId, getByText, getByLabelText } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					credentialRequests: requests,
@@ -161,11 +170,16 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
-			expect(queryByTestId('instance-ai-credential-step-check')).toBeNull();
+			expect(getByText('1 of 2')).toBeTruthy();
 
-			// Click the credential picker to select a credential
+			// Click the credential picker to select a credential for step 1
 			await userEvent.click(getByTestId('credential-picker'));
 
+			// Auto-advance should move to step 2
+			expect(getByText('2 of 2')).toBeTruthy();
+
+			// Navigate back to verify step 1 has the check
+			await userEvent.click(getByLabelText('Previous step'));
 			expect(getByTestId('instance-ai-credential-step-check')).toBeTruthy();
 		});
 
