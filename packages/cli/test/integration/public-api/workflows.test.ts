@@ -2351,6 +2351,27 @@ describe('POST /workflows/:id/execute', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should fail due to workflow having no trigger node', async () => {
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						name: 'Set',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+					},
+				],
+			},
+			owner,
+		);
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/execute`);
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should execute a workflow and return executionId', async () => {
 		const workflow = await createWorkflow(
 			{
@@ -2377,5 +2398,33 @@ describe('POST /workflows/:id/execute', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toHaveProperty('executionId');
 		expect(response.body.executionId).toBe('test-execution-id');
+	});
+
+	test('should execute a workflow with a webhook trigger node', async () => {
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						name: 'Webhook',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 1,
+						webhookId: uuid(),
+					},
+				],
+			},
+			member,
+		);
+
+		workflowExecutionService.executeManually.mockResolvedValueOnce({
+			executionId: 'test-execution-id',
+		});
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/execute`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('executionId');
 	});
 });
