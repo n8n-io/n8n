@@ -19,7 +19,7 @@ Before starting, read comparable existing OAuth2 credential files and tests unde
 
 Extract:
 - `NODE_NAME`: the service name (e.g. `GitHub`, `Notion`). Try to infer from the argument;
-  if ambiguous ask with `AskUserQuestion`.
+  if ambiguous, ask the user.
 - `CUSTOM_SCOPES`: whether the credential should support user-defined scopes. If the
   argument does not make this clear, **ask the user** before proceeding:
   > "Should users be able to customise the OAuth2 scopes for this credential, or should
@@ -45,7 +45,7 @@ Read the following (adjust path conventions for the specific service):
 
 ## Step 2 — Research OAuth2 endpoints
 
-Look up the service's OAuth2 documentation (use WebSearch or context7 if available):
+Look up the service's OAuth2 documentation:
 - Authorization URL
 - Access Token URL
 - Required auth query parameters (e.g. `prompt=consent`, `access_type=offline`)
