@@ -39,6 +39,10 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
@@ -50,10 +54,14 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useCanvasStore } from '@/app/stores/canvas.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 export const useActions = () => {
-	const workflowState = injectWorkflowState();
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const i18n = useI18n();
@@ -280,7 +288,7 @@ export const useActions = () => {
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 		if (!isCompatibleNode) return false;
 
-		const { allNodes } = useWorkflowsStore();
+		const allNodes = workflowDocumentStore?.value?.allNodes ?? [];
 		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
 	}
 
@@ -383,7 +391,7 @@ export const useActions = () => {
 		const storeWatcher = onWorkflowStoreAction(({ name, after, args }) => {
 			if (name !== 'addNode' || args[0].type !== action.key) return;
 			after(() => {
-				workflowState.setLastNodeParameters(action);
+				workflowDocumentStore?.value?.setLastNodeParameters(action);
 				if (telemetry) trackActionSelected(action, telemetry, rootView);
 				// Unsubscribe from the store watcher
 				storeWatcher();

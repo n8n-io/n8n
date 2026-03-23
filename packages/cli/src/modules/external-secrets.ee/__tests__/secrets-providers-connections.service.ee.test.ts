@@ -1,9 +1,11 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
+	ProjectSecretsProviderAccess,
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnection,
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
+import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_BLANKING_VALUE, type IDataObject, type INodeProperties } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -13,7 +15,6 @@ import type { ExternalSecretsProviderRegistry } from '@/modules/external-secrets
 import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 import { SecretsProvidersConnectionsService } from '@/modules/external-secrets.ee/secrets-providers-connections.service.ee';
 import type { SecretsProvider } from '@/modules/external-secrets.ee/types';
-
 describe('SecretsProvidersConnectionsService', () => {
 	const mockRepository = mock<SecretsProviderConnectionRepository>();
 	const mockProjectAccessRepository = mock<ProjectSecretsProviderAccessRepository>();
@@ -358,28 +359,95 @@ describe('SecretsProvidersConnectionsService', () => {
 					projectIds: [],
 				},
 				'user-123',
+				'secretsProviderConnection:user',
 			);
 
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
 		});
 
-		it('should sync provider connection after updateConnection', async () => {
+		it('should sync provider connection after updateGlobalConnection', async () => {
+			mockRepository.findOne
+				.mockResolvedValueOnce(savedConnection)
+				.mockResolvedValueOnce(savedConnection);
+			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([]);
+
+			await service.updateGlobalConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
+		});
+
+		it('should sync provider connection after updateProjectConnection', async () => {
 			mockRepository.findOne
 				.mockResolvedValueOnce(savedConnection)
 				.mockResolvedValueOnce(savedConnection);
 
-			await service.updateConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+			await service.updateProjectConnection('my-aws', { isEnabled: false }, 'user-123');
 
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
 		});
 
 		it('should sync provider connection after deleteConnection', async () => {
 			mockRepository.findOne.mockResolvedValueOnce(savedConnection);
-			mockRepository.remove.mockResolvedValue(savedConnection);
+			mockRepository.remove.mockResolvedValueOnce(savedConnection);
 
 			await service.deleteConnection('my-aws', 'user-123');
 
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
+		});
+	});
+
+	describe('cleanupConnectionsForProjectDeletion', () => {
+		it('runs owner and non-owner mutations inside a single transaction', async () => {
+			const entityManager = {
+				delete: jest.fn().mockResolvedValueOnce(undefined),
+				update: jest.fn().mockResolvedValueOnce(undefined),
+			};
+			const transaction = jest.fn(
+				async (callback: (em: typeof entityManager) => Promise<void>) =>
+					await callback(entityManager),
+			);
+			Object.defineProperty(mockRepository, 'manager', {
+				value: { transaction },
+				configurable: true,
+			});
+
+			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
+				mock<ProjectSecretsProviderAccess>({
+					projectId: 'project-1',
+					role: 'secretsProviderConnection:owner',
+					secretsProviderConnectionId: 1,
+					secretsProviderConnection: { providerKey: 'provider-a' },
+				}),
+				mock<ProjectSecretsProviderAccess>({
+					projectId: 'project-1',
+					role: 'secretsProviderConnection:user',
+					secretsProviderConnectionId: 2,
+					secretsProviderConnection: { providerKey: 'provider-b' },
+				}),
+			]);
+
+			await service.cleanupConnectionsForProjectDeletion('project-1');
+
+			expect(transaction).toHaveBeenCalledTimes(1);
+			expect(entityManager.delete).toHaveBeenNthCalledWith(1, mockRepository.target, {
+				id: In([1]),
+			});
+			expect(entityManager.delete).toHaveBeenNthCalledWith(2, mockProjectAccessRepository.target, {
+				projectId: 'project-1',
+				secretsProviderConnectionId: In([2]),
+			});
+			expect(entityManager.update).toHaveBeenCalledWith(
+				mockRepository.target,
+				{ id: In([2]) },
+				{ isEnabled: false },
+			);
+
+			expect(mockRepository.delete).not.toHaveBeenCalled();
+			expect(mockRepository.update).not.toHaveBeenCalled();
+			expect(mockProjectAccessRepository.delete).not.toHaveBeenCalled();
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledTimes(2);
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-a');
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-b');
 		});
 	});
 
@@ -418,6 +486,7 @@ describe('SecretsProvidersConnectionsService', () => {
 					projectIds: ['p1', 'p2'],
 				},
 				'user-123',
+				'secretsProviderConnection:user',
 			);
 
 			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-created', {
@@ -432,8 +501,9 @@ describe('SecretsProvidersConnectionsService', () => {
 			mockRepository.findOne
 				.mockResolvedValueOnce(connectionWithProjects)
 				.mockResolvedValueOnce(connectionWithProjects);
+			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([]);
 
-			await service.updateConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+			await service.updateGlobalConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
 
 			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-updated', {
 				userId: 'user-123',
@@ -640,7 +710,7 @@ describe('SecretsProvidersConnectionsService', () => {
 		});
 	});
 
-	describe('CRUD operations reload providers', () => {
+	describe('role assignment on project access', () => {
 		const savedConnection = {
 			id: 1,
 			providerKey: 'my-aws',
@@ -652,7 +722,7 @@ describe('SecretsProvidersConnectionsService', () => {
 			updatedAt: new Date('2024-01-02'),
 		} as unknown as SecretsProviderConnection;
 
-		it('should sync provider connection after createConnection', async () => {
+		it('should pass the provided role when creating project access entries', async () => {
 			mockRepository.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(savedConnection);
 			mockRepository.create.mockReturnValue(savedConnection);
 			mockRepository.save.mockResolvedValue(savedConnection);
@@ -662,31 +732,84 @@ describe('SecretsProvidersConnectionsService', () => {
 					providerKey: 'my-aws',
 					type: 'awsSecretsManager',
 					settings: { apiKey: 'secret' },
-					projectIds: [],
+					projectIds: ['p1'],
 				},
-				'test-user',
+				'user-123',
+				'secretsProviderConnection:owner',
 			);
 
-			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
+			expect(mockProjectAccessRepository.create).toHaveBeenCalledWith({
+				secretsProviderConnectionId: 1,
+				projectId: 'p1',
+				role: 'secretsProviderConnection:owner',
+			});
 		});
 
-		it('should sync provider connection after updateConnection', async () => {
+		it('should assign user role to newly added projects via updateGlobalConnection', async () => {
+			mockRepository.findOne
+				.mockResolvedValueOnce(savedConnection)
+				.mockResolvedValueOnce(savedConnection);
+			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([]);
+
+			await service.updateGlobalConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+
+			expect(mockProjectAccessRepository.updateProjectAccess).toHaveBeenCalledWith(
+				1,
+				[],
+				[
+					{
+						projectId: 'p1',
+						role: 'secretsProviderConnection:user',
+					},
+				],
+			);
+		});
+
+		it('should preserve existing project roles when updating via updateGlobalConnection', async () => {
+			mockRepository.findOne
+				.mockResolvedValueOnce(savedConnection)
+				.mockResolvedValueOnce(savedConnection);
+			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([
+				{ projectId: 'p1', role: 'secretsProviderConnection:owner' },
+			] as any);
+
+			await service.updateGlobalConnection('my-aws', { projectIds: ['p1', 'p2'] }, 'user-123');
+
+			expect(mockProjectAccessRepository.updateProjectAccess).toHaveBeenCalledWith(
+				1,
+				[],
+				[
+					{
+						projectId: 'p2',
+						role: 'secretsProviderConnection:user',
+					},
+				],
+			);
+		});
+
+		it('should remove projects no longer in the list via updateGlobalConnection', async () => {
+			mockRepository.findOne
+				.mockResolvedValueOnce(savedConnection)
+				.mockResolvedValueOnce(savedConnection);
+			mockProjectAccessRepository.findByConnectionId.mockResolvedValueOnce([
+				{ projectId: 'p1', role: 'secretsProviderConnection:user' },
+				{ projectId: 'p2', role: 'secretsProviderConnection:owner' },
+			] as any);
+
+			await service.updateGlobalConnection('my-aws', { projectIds: ['p1'] }, 'user-123');
+
+			expect(mockProjectAccessRepository.updateProjectAccess).toHaveBeenCalledWith(1, ['p2'], []);
+		});
+
+		it('should not touch project access via updateProjectConnection', async () => {
 			mockRepository.findOne
 				.mockResolvedValueOnce(savedConnection)
 				.mockResolvedValueOnce(savedConnection);
 
-			await service.updateConnection('my-aws', { projectIds: ['p1'] }, 'test-user');
+			await service.updateProjectConnection('my-aws', { isEnabled: false }, 'user-123');
 
-			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
-		});
-
-		it('should sync provider connection after deleteConnection', async () => {
-			mockRepository.findOne.mockResolvedValueOnce(savedConnection);
-			mockRepository.remove.mockResolvedValue(savedConnection);
-
-			await service.deleteConnection('my-aws', 'test-user');
-
-			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
+			expect(mockProjectAccessRepository.updateProjectAccess).not.toHaveBeenCalled();
+			expect(mockProjectAccessRepository.findByConnectionId).not.toHaveBeenCalled();
 		});
 	});
 

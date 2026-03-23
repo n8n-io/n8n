@@ -10,31 +10,7 @@ import type { IHttpRequestOptions, IgnoreStatusErrorConfig } from 'n8n-workflow'
 import type { SsrfBridge } from '@/execution-engine';
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 
-/** Builds a full proxy URL string from a proxy config object or string. Returns `null` if invalid. */
-export function getUrlFromProxyConfig(
-	proxyConfig: IHttpRequestOptions['proxy'] | string,
-): string | null {
-	if (typeof proxyConfig === 'string') {
-		return validateUrl(proxyConfig) ? proxyConfig : null;
-	}
-
-	if (!proxyConfig?.host) return null;
-
-	const { protocol, host, port, auth } = proxyConfig;
-	const safeProtocol = protocol?.endsWith(':') ? protocol.slice(0, -1) : (protocol ?? 'http');
-
-	try {
-		const url = new URL(`${safeProtocol}://${host}`);
-		if (port !== undefined) url.port = String(port);
-		if (auth?.username) {
-			url.username = auth.username;
-			url.password = auth.password ?? '';
-		}
-		return url.href;
-	} catch {
-		return null;
-	}
-}
+import { getUrlFromProxyConfig } from './utils';
 
 /** Checks whether a string is a valid, parseable URL. */
 export function validateUrl(url?: string): boolean {

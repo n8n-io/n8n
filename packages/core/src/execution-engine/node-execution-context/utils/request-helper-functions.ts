@@ -15,7 +15,6 @@ import type {
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
-import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { AxiosError, AxiosHeaders, AxiosRequestConfig } from 'axios';
 import axios from 'axios';
@@ -68,12 +67,14 @@ import { stringify } from 'qs';
 import { Readable } from 'stream';
 
 import type { SsrfBridge } from '@/execution-engine';
-import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
+// Imported for side effects: sets axios defaults and registers the request interceptor
+import './request-helpers/axios-config';
 import {
+	buildTargetUrl,
 	createFormDataObject,
 	digestAuthAxiosConfig,
 	generateContentLengthHeader,
@@ -82,79 +83,10 @@ import {
 	getUrlFromProxyConfig,
 	isIgnoreStatusErrorConfig,
 	searchForHeader,
+	setAxiosAgents,
+	tryParseUrl,
 	validateUrl,
 } from './request-helpers';
-
-axios.defaults.timeout = 300000;
-// Prevent axios from adding x-form-www-urlencoded headers by default
-axios.defaults.headers.post = {};
-axios.defaults.headers.put = {};
-axios.defaults.headers.patch = {};
-axios.defaults.paramsSerializer = (params) => {
-	if (params instanceof URLSearchParams) {
-		return params.toString();
-	}
-	return stringify(params, { arrayFormat: 'indices' });
-};
-// Disable axios proxy, we handle it ourselves
-// Axios proxy option has problems: https://github.com/axios/axios/issues/4531
-axios.defaults.proxy = false;
-
-function buildTargetUrl(url?: string, baseURL?: string): string | undefined {
-	if (!url) return undefined;
-
-	try {
-		return baseURL ? new URL(url, baseURL).href : url;
-	} catch {
-		return undefined;
-	}
-}
-
-function setAxiosAgents(
-	config: AxiosRequestConfig,
-	agentOptions?: AgentOptions,
-	proxyConfig?: IHttpRequestOptions['proxy'] | string,
-	secureLookup?: ReturnType<SsrfBridge['createSecureLookup']>,
-): void {
-	if (config.httpAgent || config.httpsAgent) return;
-
-	const customProxyUrl = getUrlFromProxyConfig(proxyConfig);
-
-	const targetUrl = buildTargetUrl(config.url, config.baseURL);
-
-	if (!targetUrl) return;
-
-	// Inject secureLookup only for non-proxy agents. When a proxy is used,
-	// the lookup option applies to resolving the proxy server hostname, not
-	// the target. Pre-request validateUrl covers the proxy path.
-	const effectiveOptions =
-		secureLookup && !customProxyUrl ? { ...agentOptions, lookup: secureLookup } : agentOptions;
-
-	config.httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, effectiveOptions);
-	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, effectiveOptions);
-}
-
-function applyVendorHeaders(config: AxiosRequestConfig) {
-	if ([config.url, config.baseURL].some((url) => url?.startsWith('https://api.openai.com/'))) {
-		config.headers = {
-			...Container.get(AiConfig).openAiDefaultHeaders,
-			...(config.headers || {}),
-		};
-	}
-}
-
-axios.interceptors.request.use((config) => {
-	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
-	if (config.data === undefined) {
-		config.headers.setContentType(false, false);
-	}
-
-	setAxiosAgents(config);
-	applyVendorHeaders(config);
-
-	return config;
-});
-
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
 	authOptions: IRequestOptions['auth'] = {},
@@ -692,14 +624,6 @@ export function convertN8nRequestToAxios(
 	}
 
 	return axiosRequest;
-}
-
-function tryParseUrl(url: string): URL | null {
-	try {
-		return new URL(url);
-	} catch {
-		return null;
-	}
 }
 
 /** Validates a URL against SSRF protection rules. Throws UserError if blocked. */
