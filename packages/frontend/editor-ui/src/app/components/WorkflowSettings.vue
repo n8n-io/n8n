@@ -24,6 +24,7 @@ import {
 	N8nIconButton,
 	N8nOption,
 	N8nSelect,
+	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { WorkflowSettings, WorkflowSettingsBinaryMode } from 'n8n-workflow';
@@ -92,18 +93,14 @@ const { check } = useEnvFeatureFlag();
 
 const isLoading = ref(true);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
-const redactionPolicyOptions = ref<Array<{ key: string; value: string }>>([
+const redactionToggleOptions = ref<Array<{ key: string; value: string }>>([
 	{
-		key: 'none',
-		value: i18n.baseText('workflowSettings.redactionPolicy.options.none'),
+		key: 'default',
+		value: i18n.baseText('workflowSettings.redactionOptions.default'),
 	},
 	{
-		key: 'all',
-		value: i18n.baseText('workflowSettings.redactionPolicy.options.all'),
-	},
-	{
-		key: 'non-manual',
-		value: i18n.baseText('workflowSettings.redactionPolicy.options.nonManual'),
+		key: 'redact',
+		value: i18n.baseText('workflowSettings.redactionOptions.redact'),
 	},
 ]);
 const saveDataErrorExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
@@ -168,7 +165,8 @@ const helpTexts = computed(() => ({
 	executionTimeout: i18n.baseText('workflowSettings.helpTexts.executionTimeout'),
 	workflowCallerPolicy: i18n.baseText('workflowSettings.helpTexts.workflowCallerPolicy'),
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
-	redactionPolicy: i18n.baseText('workflowSettings.helpTexts.redactionPolicy'),
+	redactProductionData: i18n.baseText('workflowSettings.helpTexts.redactProductionData'),
+	redactManualData: i18n.baseText('workflowSettings.helpTexts.redactManualData'),
 }));
 
 const defaultValues = ref({
@@ -213,6 +211,51 @@ const isRedactionSettingVisible = computed(
 		check.value('EXECUTION_REDACTION') &&
 		workflowPermissions.value.updateRedactionSetting,
 );
+
+const workflowHasDynamicCredentials = computed(
+	() => isCredentialResolverEnabled.value && !!workflowSettings.value.credentialResolverId,
+);
+
+/**
+ * Maps the two independent redaction toggles to/from the single `redactionPolicy` field.
+ *
+ * | Production | Manual | → redactionPolicy |
+ * |-----------|--------|-------------------|
+ * | default   | default| none              |
+ * | redact    | redact | all               |
+ * | redact    | default| non-manual        |
+ * | default   | redact | manual-only       |
+ */
+const redactProductionData = computed({
+	get(): string {
+		if (workflowHasDynamicCredentials.value) return 'redact';
+		const policy = workflowSettings.value.redactionPolicy;
+		return policy === 'all' || policy === 'non-manual' ? 'redact' : 'default';
+	},
+	set(val: string) {
+		const manualRedacted = redactManualData.value === 'redact';
+		if (val === 'redact') {
+			workflowSettings.value.redactionPolicy = manualRedacted ? 'all' : 'non-manual';
+		} else {
+			workflowSettings.value.redactionPolicy = manualRedacted ? 'manual-only' : 'none';
+		}
+	},
+});
+
+const redactManualData = computed({
+	get(): string {
+		const policy = workflowSettings.value.redactionPolicy;
+		return policy === 'all' || policy === 'manual-only' ? 'redact' : 'default';
+	},
+	set(val: string) {
+		const productionRedacted = redactProductionData.value === 'redact';
+		if (val === 'redact') {
+			workflowSettings.value.redactionPolicy = productionRedacted ? 'all' : 'manual-only';
+		} else {
+			workflowSettings.value.redactionPolicy = productionRedacted ? 'non-manual' : 'none';
+		}
+	},
+});
 
 const mcpToggleDisabled = computed(() => {
 	return readOnlyEnv.value || !workflowPermissions.value.update || !isEligibleForMcp.value;
@@ -1114,28 +1157,32 @@ onBeforeUnmount(() => {
 						</N8nSelect>
 					</ElCol>
 				</ElRow>
-				<div v-if="isRedactionSettingVisible" data-test-id="workflow-settings-redaction-policy">
-					<ElRow>
+				<template v-if="isRedactionSettingVisible">
+					<ElRow data-test-id="workflow-settings-redaction-policy">
 						<ElCol :span="10" :class="$style['setting-name']">
-							{{ i18n.baseText('workflowSettings.redactionPolicy') }}
+							{{ i18n.baseText('workflowSettings.redactProductionData') }}
 							<N8nTooltip placement="top">
 								<template #content>
-									<div v-text="helpTexts.redactionPolicy"></div>
+									<div v-text="helpTexts.redactProductionData"></div>
 								</template>
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
 						</ElCol>
 						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nSelect
-								v-model="workflowSettings.redactionPolicy"
-								:disabled="readOnlyEnv || !workflowPermissions.updateRedactionSetting"
+								v-model="redactProductionData"
+								:disabled="
+									readOnlyEnv ||
+									!workflowPermissions.updateRedactionSetting ||
+									workflowHasDynamicCredentials
+								"
 								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
 								:limit-popper-width="true"
-								data-test-id="workflow-settings-redaction-policy-select"
+								data-test-id="workflow-settings-redact-production-select"
 							>
 								<N8nOption
-									v-for="option of redactionPolicyOptions"
+									v-for="option of redactionToggleOptions"
 									:key="option.key"
 									:label="option.value"
 									:value="option.key"
@@ -1144,7 +1191,44 @@ onBeforeUnmount(() => {
 							</N8nSelect>
 						</ElCol>
 					</ElRow>
-				</div>
+					<ElRow v-if="workflowHasDynamicCredentials" :class="$style['dynamic-credentials-hint']">
+						<ElCol :span="10" />
+						<ElCol :span="14">
+							<N8nText size="small" color="text-light" :class="$style.dataRedactionHint">
+								{{ i18n.baseText('workflowSettings.redactProductionData.dynamicCredentialsHint') }}
+							</N8nText>
+						</ElCol>
+					</ElRow>
+					<ElRow>
+						<ElCol :span="10" :class="$style['setting-name']">
+							{{ i18n.baseText('workflowSettings.redactManualData') }}
+							<N8nTooltip placement="top">
+								<template #content>
+									<div v-text="helpTexts.redactManualData"></div>
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</ElCol>
+						<ElCol :span="14" class="ignore-key-press-canvas">
+							<N8nSelect
+								v-model="redactManualData"
+								:disabled="readOnlyEnv || !workflowPermissions.updateRedactionSetting"
+								:placeholder="i18n.baseText('workflowSettings.selectOption')"
+								filterable
+								:limit-popper-width="true"
+								data-test-id="workflow-settings-redact-manual-select"
+							>
+								<N8nOption
+									v-for="option of redactionToggleOptions"
+									:key="option.key"
+									:label="option.value"
+									:value="option.key"
+								>
+								</N8nOption>
+							</N8nSelect>
+						</ElCol>
+					</ElRow>
+				</template>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.timeoutWorkflow') }}
@@ -1389,6 +1473,11 @@ onBeforeUnmount(() => {
 	:global(.el-switch) {
 		padding: var(--spacing--md) 0;
 	}
+}
+
+.dataRedactionHint {
+	display: block;
+	padding: var(--spacing--5xs) 0 var(--spacing--2xs) var(--spacing--5xs);
 }
 
 .setting-name {

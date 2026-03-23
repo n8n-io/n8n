@@ -3056,7 +3056,7 @@ export type WorkflowActivateMode =
 export namespace WorkflowSettings {
 	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
-	export type RedactionPolicy = 'none' | 'all' | 'non-manual';
+	export type RedactionPolicy = 'none' | 'all' | 'non-manual' | 'manual-only';
 }
 
 export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;

@@ -940,7 +940,7 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-redaction-policy')).toBeVisible();
 		});
 
-		it('should render three redaction policy options', async () => {
+		it('should render two redaction dropdowns with correct options', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
 			const workflowWithRedactionScope = createTestWorkflow({
@@ -955,17 +955,22 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 
-			const dropdownItems = await getDropdownItems(
-				getByTestId('workflow-settings-redaction-policy'),
+			const productionItems = await getDropdownItems(
+				getByTestId('workflow-settings-redact-production-select'),
 			);
+			expect(productionItems).toHaveLength(2);
+			expect(productionItems[0]).toHaveTextContent('Default - Do not redact');
+			expect(productionItems[1]).toHaveTextContent('Redact');
 
-			expect(dropdownItems).toHaveLength(3);
-			expect(dropdownItems[0]).toHaveTextContent('No redaction');
-			expect(dropdownItems[1]).toHaveTextContent('Redact all executions');
-			expect(dropdownItems[2]).toHaveTextContent('Redact non-manual executions');
+			const manualItems = await getDropdownItems(
+				getByTestId('workflow-settings-redact-manual-select'),
+			);
+			expect(manualItems).toHaveLength(2);
+			expect(manualItems[0]).toHaveTextContent('Default - Do not redact');
+			expect(manualItems[1]).toHaveTextContent('Redact');
 		});
 
-		it('should save redaction policy when selected', async () => {
+		it('should save redaction policy as non-manual when only production is set to redact', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
 			const workflowWithRedactionScope = createTestWorkflow({
@@ -980,10 +985,45 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await nextTick();
 
-			const dropdownItems = await getDropdownItems(
-				getByTestId('workflow-settings-redaction-policy'),
+			const productionItems = await getDropdownItems(
+				getByTestId('workflow-settings-redact-production-select'),
 			);
-			await userEvent.click(dropdownItems[1]);
+			await userEvent.click(productionItems[1]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ redactionPolicy: 'non-manual' }),
+				}),
+			);
+		});
+
+		it('should save redaction policy as all when both are set to redact', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+			const workflowWithRedactionScope = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const productionItems = await getDropdownItems(
+				getByTestId('workflow-settings-redact-production-select'),
+			);
+			await userEvent.click(productionItems[1]);
+
+			const manualItems = await getDropdownItems(
+				getByTestId('workflow-settings-redact-manual-select'),
+			);
+			await userEvent.click(manualItems[1]);
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
@@ -993,6 +1033,32 @@ describe('WorkflowSettingsVue', () => {
 					settings: expect.objectContaining({ redactionPolicy: 'all' }),
 				}),
 			);
+		});
+
+		it('should disable production redaction select and force "Redact" when dynamic credentials are configured', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			settingsStore.settings.envFeatureFlags.N8N_ENV_FEAT_REDACTION_POLICY = true;
+
+			const workflowWithRedactionScope = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
+
+			workflowDocumentStore.setSettings({ credentialResolverId: 'some-resolver-id' });
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			await nextTick();
+
+			// Verify the dropdown cannot be opened (disabled by workflowHasDynamicCredentials)
+			const productionSelect = getByTestId('workflow-settings-redact-production-select');
+			const dropdownItems = await getDropdownItems(productionSelect).catch(() => null);
+			expect(dropdownItems).toBeNull();
 		});
 	});
 });
