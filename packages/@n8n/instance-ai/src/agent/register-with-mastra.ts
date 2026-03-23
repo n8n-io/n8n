@@ -12,24 +12,11 @@
 import type { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import { LangSmithExporter } from '@mastra/langsmith';
 import { Observability } from '@mastra/observability';
 
 import type { TracingProxyConfig } from '../types';
 
-function buildLangSmithExporter(tracingConfig?: TracingProxyConfig): LangSmithExporter {
-	if (tracingConfig) {
-		return new LangSmithExporter({
-			projectName: 'instance-ai',
-			apiUrl: tracingConfig.apiUrl,
-			apiKey: '-',
-			autoBatchTracing: false,
-			traceBatchConcurrency: 1,
-			fetchOptions: { headers: tracingConfig.headers },
-		});
-	}
-	return new LangSmithExporter({ projectName: 'instance-ai' });
-}
+import { buildLangSmithExporter } from './build-langsmith-exporter';
 
 let cachedSubAgentMastra: Mastra | null = null;
 let cachedSubAgentStorageKey = '';

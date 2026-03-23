@@ -3,7 +3,7 @@ import { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { ToolSearchProcessor, type ToolSearchProcessorOptions } from '@mastra/core/processors';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import { LangSmithExporter, withLangsmithMetadata } from '@mastra/langsmith';
+import { withLangsmithMetadata } from '@mastra/langsmith';
 import { MCPClient } from '@mastra/mcp';
 import { buildTracingOptions, Observability } from '@mastra/observability';
 import { nanoid } from 'nanoid';
@@ -107,19 +107,7 @@ async function getBrowserMcpTools(config: McpServerConfig | undefined): Promise<
 	return cachedBrowserMcpTools;
 }
 
-function buildLangSmithExporter(tracingConfig?: TracingProxyConfig): LangSmithExporter {
-	if (tracingConfig) {
-		return new LangSmithExporter({
-			projectName: 'instance-ai',
-			apiUrl: tracingConfig.apiUrl,
-			apiKey: '-', // proxy manages auth
-			autoBatchTracing: false,
-			traceBatchConcurrency: 1,
-			fetchOptions: { headers: tracingConfig.headers },
-		});
-	}
-	return new LangSmithExporter({ projectName: 'instance-ai' });
-}
+import { buildLangSmithExporter } from './build-langsmith-exporter';
 
 function ensureMastraRegistered(
 	agent: Agent,

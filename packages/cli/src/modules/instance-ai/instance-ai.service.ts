@@ -57,6 +57,7 @@ import { MastraIterationLogStorage } from './iteration-log-storage';
 import { MastraTaskStorage } from './task-storage';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
 import { InstanceAiCompactionService } from './compaction.service';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { WorkflowLoopStorage } from './workflow-loop-storage';
 
 interface ActiveRun {
@@ -180,9 +181,6 @@ export class InstanceAiService {
 	/** Factory for creating per-builder ephemeral sandboxes. */
 	private builderSandboxFactory?: BuilderSandboxFactory;
 
-	/** Threads that have already had credits counted (first completed run only). */
-	private readonly creditedThreads = new Set<string>();
-
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
@@ -193,6 +191,7 @@ export class InstanceAiService {
 		private readonly compactionService: InstanceAiCompactionService,
 		private readonly aiService: AiService,
 		private readonly push: Push,
+		private readonly threadRepo: InstanceAiThreadRepository,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
@@ -328,10 +327,11 @@ export class InstanceAiService {
 	/**
 	 * Count one credit for the first completed orchestrator run in a thread.
 	 * Subsequent messages in the same thread are free.
+	 * The flag is persisted in the thread's metadata column so it survives restarts.
 	 */
 	private async countCreditsIfFirst(user: User, threadId: string, runId: string): Promise<void> {
 		if (!this.aiService.isProxyEnabled()) return;
-		if (this.creditedThreads.has(threadId)) return;
+		if (await this.isThreadCredited(threadId)) return;
 
 		try {
 			const client = await this.aiService.getClient();
@@ -341,7 +341,7 @@ export class InstanceAiService {
 			};
 			const info = await client.markBuilderSuccess({ id: user.id }, authHeaders);
 			if (info) {
-				this.creditedThreads.add(threadId);
+				await this.markThreadCredited(threadId);
 				this.push.sendToUsers(
 					{
 						type: 'updateInstanceAiCredits',
@@ -357,6 +357,18 @@ export class InstanceAiService {
 				runId,
 			});
 		}
+	}
+
+	private async isThreadCredited(threadId: string): Promise<boolean> {
+		const thread = await this.threadRepo.findOneBy({ id: threadId });
+		return !!thread?.metadata?.creditCounted;
+	}
+
+	private async markThreadCredited(threadId: string): Promise<void> {
+		const thread = await this.threadRepo.findOneBy({ id: threadId });
+		if (!thread) return;
+		thread.metadata = { ...thread.metadata, creditCounted: true };
+		await this.threadRepo.save(thread);
 	}
 
 	/** Whether the AI service proxy is enabled for credit counting. */
@@ -648,7 +660,6 @@ export class InstanceAiService {
 		);
 		await Promise.allSettled(sandboxCleanups);
 
-		this.creditedThreads.clear();
 		this.snapshotManager?.invalidate();
 		this.eventBus.clear();
 		await this.mcpClientManager.disconnect();
