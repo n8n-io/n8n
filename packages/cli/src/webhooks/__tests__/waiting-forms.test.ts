@@ -1,8 +1,16 @@
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
-import { getWebhookSandboxCSP } from 'n8n-core';
+import { getWebhookSandboxCSP, isWebhookHtmlSandboxingDisabled } from 'n8n-core';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n8n-workflow';
+
+jest.mock('n8n-core', () => ({
+	...jest.requireActual('n8n-core'),
+	isWebhookHtmlSandboxingDisabled: jest.fn().mockReturnValue(false),
+	getWebhookSandboxCSP: jest
+		.fn()
+		.mockReturnValue('sandbox allow-downloads allow-forms allow-modals'),
+}));
 
 import type { WaitingWebhookRequest } from '../webhook.types';
 
@@ -541,6 +549,61 @@ describe('WaitingForms', () => {
 			expect(res.setHeader).toHaveBeenCalledWith(
 				'Content-Security-Policy',
 				expect.stringContaining('sandbox'),
+			);
+		});
+
+		it('should NOT set Content-Security-Policy header when sandbox is disabled', async () => {
+			jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValueOnce(true);
+
+			const execution = mock<IExecutionResponse>({
+				finished: true,
+				status: 'success',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'LastNode',
+						runData: {},
+						error: undefined,
+					},
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: 'LastNode',
+							type: 'other-node-type',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: undefined,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: {},
+				params: {
+					path: '123',
+					suffix: undefined,
+				},
+			});
+
+			const res = mock<express.Response>();
+
+			await waitingForms.executeWebhook(req, res);
+
+			expect(res.setHeader).not.toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.any(String),
 			);
 		});
 	});
