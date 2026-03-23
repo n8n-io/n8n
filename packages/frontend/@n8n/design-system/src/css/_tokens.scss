@@ -33,7 +33,9 @@
 	--background--focus: var(--color--neutral-150);
 	--background--disabled: var(--color--neutral-200);
 
+	/* stylelint-disable @n8n/css-var-naming */
 	--border-color: var(--border-color-base, var(--color--black-alpha-100));
+	/* stylelint-enable @n8n/css-var-naming */
 	--border-color--subtle: var(--color--black-alpha-50);
 	--border-color--strong: var(--color--black-alpha-200);
 	--border-color--stronger: var(--color--black-alpha-300);
@@ -681,11 +683,12 @@
 	--background--focus: var(--color--white-alpha-150);
 	--background--disabled: var(--color--neutral-800);
 
+	/* stylelint-disable @n8n/css-var-naming */
 	--border-color: var(--border-color-base, var(--color--white-alpha-100));
+	/* stylelint-enable @n8n/css-var-naming */
 	--border-color--subtle: var(--color--white-alpha-50);
 	--border-color--strong: var(--color--white-alpha-200);
 	--border-color--stronger: var(--color--white-alpha-400);
-	--border: var(--border-base, var(--border-width) var(--border-style) var(--border-color));
 
 	--icon-color--subtle: var(--color--neutral-600);
 	--icon-color: var(--color--neutral-300);
