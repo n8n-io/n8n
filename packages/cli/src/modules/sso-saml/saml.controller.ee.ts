@@ -65,7 +65,12 @@ export class SamlController {
 	@Post('/config', { middlewares: [samlLicensedMiddleware] })
 	@GlobalScope('saml:manage')
 	async configPost(_req: AuthenticatedRequest, _res: Response, @Body payload: SamlPreferences) {
-		return await this.samlService.setSamlPreferences(payload);
+		const result = await this.samlService.setSamlPreferences(payload);
+		if (!result) return;
+		return {
+			...result,
+			signingPrivateKey: result.signingPrivateKey ? CREDENTIAL_BLANKING_VALUE : undefined,
+		};
 	}
 
 	/**
