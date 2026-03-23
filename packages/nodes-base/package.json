@@ -485,6 +485,7 @@
       "dist/nodes/Copper/CopperTrigger.node.js",
       "dist/nodes/Cortex/Cortex.node.js",
       "dist/nodes/CrateDb/CrateDb.node.js",
+      "dist/nodes/DynamicCredentialCheck/DynamicCredentialCheck.node.js",
       "dist/nodes/Cron/Cron.node.js",
       "dist/nodes/Crypto/Crypto.node.js",
       "dist/nodes/Currents/Currents.node.js",
