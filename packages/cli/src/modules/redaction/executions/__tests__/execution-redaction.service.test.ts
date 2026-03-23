@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import type { IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
+import type { IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
 import type {
@@ -93,13 +93,19 @@ describe('ExecutionRedactionService', () => {
 			};
 		}
 
+		const runData = withDynamicCredentials
+			? {
+					SomeNode: [{ startTime: 0, executionTime: 0, usedDynamicCredentials: true } as ITaskData],
+				}
+			: {};
+
 		return {
 			id: 'execution-123',
 			mode,
 			workflowId,
 			data: {
 				version: 1,
-				resultData: { runData: {} },
+				resultData: { runData },
 				executionData,
 			},
 			workflowData: {

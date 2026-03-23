@@ -216,9 +216,15 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	/**
 	 * Returns true when the execution used dynamic credential resolution.
 	 * Such executions must always be redacted with canReveal = false.
+	 *
+	 * Checks per-node `usedDynamicCredentials` flag which is only set when
+	 * resolution actually happened at runtime, rather than checking for the
+	 * mere presence of credential context infrastructure.
 	 */
 	private hasDynamicCredentials(execution: RedactableExecution): boolean {
-		return Boolean(execution.data.executionData?.runtimeData?.credentials);
+		return Object.values(execution.data.resultData?.runData ?? {}).some((taskDataList) =>
+			taskDataList.some((taskData) => taskData.usedDynamicCredentials),
+		);
 	}
 
 	/**
