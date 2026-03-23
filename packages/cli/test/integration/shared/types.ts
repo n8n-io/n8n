@@ -47,7 +47,8 @@ type EndpointGroup =
 	| 'security-settings'
 	| 'data-table'
 	| 'third-party-licenses'
-	| 'mcp';
+	| 'mcp'
+	| 'workflowDependencies';
 
 type ModuleName =
 	| 'insights'

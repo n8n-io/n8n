@@ -4,6 +4,7 @@ import {
 	type ChatHubAgentDto,
 	type ChatModelDto,
 	type ChatHubAgentKnowledgeItem,
+	type ChatHubAgentKnowledgeItemStatus,
 } from '@n8n/api-types';
 
 import { Logger } from '@n8n/backend-common';
@@ -337,15 +338,64 @@ export class ChatHubAgentService {
 		files: Express.Multer.File[],
 	): Promise<ChatHubAgentDto> {
 		const agent = await this.getAgentById(agentId, user.id);
-		const items = await this.indexFilesAsKnowledgeItems(user, agentId, files);
+		const { knowledgeItems, pdfFilesToInsert, workflowId } =
+			await this.prepareFilesForIndexing(files);
 
 		const updatedAgent = await this.chatAgentRepository.updateAgent(agentId, {
-			files: agent.files.concat(items),
+			files: agent.files.concat(knowledgeItems),
 		});
+
+		void this.runIndexingInBackground(
+			agentId,
+			knowledgeItems.map((i) => i.id),
+			pdfFilesToInsert,
+			workflowId,
+			user,
+		);
 
 		const toolIds = await this.chatHubToolService.getToolIdsForAgent(agentId);
 		this.logger.debug(`Added ${files.length} file(s) to agent ${agentId} by user ${user.id}`);
 		return this.toDto(updatedAgent, toolIds);
+	}
+
+	private async runIndexingInBackground(
+		agentId: string,
+		knowledgeIds: string[],
+		pdfFilesToInsert: Array<{ attachment: IBinaryData; knowledgeId: string }>,
+		workflowId: string,
+		user: User,
+	): Promise<void> {
+		try {
+			await this.insertEmbeddings(user, agentId, pdfFilesToInsert, workflowId);
+			await this.updateKnowledgeItemStatuses(agentId, knowledgeIds, 'indexed');
+			this.logger.debug(`Indexed ${knowledgeIds.length} file(s) for agent ${agentId}`);
+		} catch (error) {
+			this.logger.error(`Failed to index files for agent ${agentId}`, { error });
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			await this.updateKnowledgeItemStatuses(agentId, knowledgeIds, 'error', errorMessage).catch(
+				(updateError) => {
+					this.logger.error(`Failed to update file statuses to error for agent ${agentId}`, {
+						error: updateError,
+					});
+				},
+			);
+		}
+	}
+
+	private async updateKnowledgeItemStatuses(
+		agentId: string,
+		knowledgeIds: string[],
+		status: ChatHubAgentKnowledgeItemStatus,
+		error?: string,
+	): Promise<void> {
+		const agent = await this.chatAgentRepository.findOne({ where: { id: agentId } });
+		if (!agent) {
+			return;
+		}
+		const updatedFiles = agent.files.map((f) =>
+			knowledgeIds.includes(f.id) ? { ...f, status, error } : f,
+		);
+		await this.chatAgentRepository.updateAgent(agentId, { files: updatedFiles });
 	}
 
 	async deleteAgentFile(agentId: string, user: User, fileKnowledgeId: string): Promise<void> {
@@ -374,11 +424,11 @@ export class ChatHubAgentService {
 		);
 	}
 
-	private async indexFilesAsKnowledgeItems(
-		user: User,
-		agentId: string,
-		files: Express.Multer.File[],
-	): Promise<ChatHubAgentKnowledgeItem[]> {
+	private async prepareFilesForIndexing(files: Express.Multer.File[]): Promise<{
+		knowledgeItems: ChatHubAgentKnowledgeItem[];
+		pdfFilesToInsert: Array<{ attachment: IBinaryData; knowledgeId: string }>;
+		workflowId: string;
+	}> {
 		const knowledgeItems: ChatHubAgentKnowledgeItem[] = [];
 		const pdfFilesToInsert: Array<{ attachment: IBinaryData; knowledgeId: string }> = [];
 		const workflowId = uuidv4();
@@ -421,14 +471,12 @@ export class ChatHubAgentService {
 				mimeType: file.mimetype,
 				fileName: storedFile.fileName ?? originalName,
 				provider: settings.embeddingModel.provider,
+				status: 'indexing',
+				createdAt: new Date().toISOString(),
 			});
 			pdfFilesToInsert.push({ attachment: storedFile, knowledgeId });
 		}
 
-		if (pdfFilesToInsert.length > 0) {
-			await this.insertEmbeddings(user, agentId, pdfFilesToInsert, workflowId);
-		}
-
-		return knowledgeItems;
+		return { knowledgeItems, pdfFilesToInsert, workflowId };
 	}
 }

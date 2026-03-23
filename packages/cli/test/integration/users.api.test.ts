@@ -647,7 +647,7 @@ describe('GET /users', () => {
 				await userRepository.delete({ id: pendingUser.id });
 			});
 
-			test('should include inviteAcceptUrl for pending users', async () => {
+			test('should not include inviteAcceptUrl when listing users', async () => {
 				const response = await ownerAgent.get('/users').expect(200);
 
 				const responseData = response.body.data as {
@@ -658,10 +658,7 @@ describe('GET /users', () => {
 				const pendingUserInResponse = responseData.items.find((user) => user.id === pendingUser.id);
 
 				expect(pendingUserInResponse).toBeDefined();
-				expect(pendingUserInResponse!.inviteAcceptUrl).toBeDefined();
-				expect(pendingUserInResponse!.inviteAcceptUrl).toMatch(
-					new RegExp(`/signup\\?inviterId=${owner.id}&inviteeId=${pendingUser.id}`),
-				);
+				expect(pendingUserInResponse!.inviteAcceptUrl).toBeUndefined();
 
 				const nonPendingUser = responseData.items.find((user) => user.id === member1.id);
 

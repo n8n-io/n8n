@@ -132,7 +132,7 @@ export class EndpointsConfig {
 
 	/** Whether to enable workflow builder tools in the MCP server. */
 	@Env('N8N_MCP_BUILDER_ENABLED')
-	mcpBuilderEnabled: boolean = false;
+	mcpBuilderEnabled: boolean = true;
 
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')
