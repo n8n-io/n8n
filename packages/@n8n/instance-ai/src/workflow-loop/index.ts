@@ -33,3 +33,5 @@ export {
 	handleVerificationVerdict,
 	formatAttemptHistory,
 } from './workflow-loop-controller';
+
+export { formatWorkflowLoopGuidance } from './guidance';

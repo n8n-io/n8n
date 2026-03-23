@@ -5,8 +5,20 @@ export type { DomainAccessTracker } from './domain-access';
 export { createInstanceAgent } from './agent/instance-agent';
 export { createAllTools, createOrchestrationTools } from './tools';
 export { createMemory } from './memory/memory-config';
-export { iterationEntrySchema, formatPreviousAttempts } from './storage/iteration-log';
-export type { IterationEntry, IterationLog } from './storage/iteration-log';
+export {
+	AgentTreeSnapshotStorage,
+	iterationEntrySchema,
+	formatPreviousAttempts,
+	MastraIterationLogStorage,
+	MastraTaskStorage,
+	WorkflowLoopStorage,
+} from './storage';
+export type {
+	AgentTreeSnapshot,
+	IterationEntry,
+	IterationLog,
+	WorkflowLoopWorkItemRecord,
+} from './storage';
 export { WORKING_MEMORY_TEMPLATE } from './memory/working-memory-template';
 export { createSubAgentMemory, subAgentResourceId } from './memory/sub-agent-memory';
 export {
@@ -17,6 +29,7 @@ export { McpClientManager } from './mcp/mcp-client-manager';
 export { mapMastraChunkToEvent } from './stream/map-chunk';
 export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
+export { buildAgentTreeFromEvents, findAgentNodeInTree } from './utils/agent-tree';
 export { registerWithMastra } from './agent/register-with-mastra';
 export { createSandbox, createWorkspace } from './workspace/create-workspace';
 export type { SandboxConfig } from './workspace/create-workspace';
@@ -25,7 +38,32 @@ export type { BuilderWorkspace } from './workspace/builder-sandbox-factory';
 export { SnapshotManager } from './workspace/snapshot-manager';
 export type { InstanceAiEventBus, StoredEvent } from './event-bus';
 export {
+	BackgroundTaskManager,
+	enrichMessageWithBackgroundTasks,
+} from './runtime/background-task-manager';
+export type {
+	BackgroundTaskStatus,
+	ManagedBackgroundTask,
+	SpawnManagedBackgroundTaskOptions,
+} from './runtime/background-task-manager';
+export { RunStateRegistry } from './runtime/run-state-registry';
+export type {
+	ActiveRunState,
+	BackgroundTaskStatusSnapshot,
+	ConfirmationData,
+	PendingConfirmation,
+	StartedRunState,
+	SuspendedRunState,
+} from './runtime/run-state-registry';
+export { resumeAgentRun, streamAgentRun } from './runtime/stream-runner';
+export type {
+	StreamableAgent,
+	StreamRunOptions,
+	StreamRunResult,
+} from './runtime/stream-runner';
+export {
 	createWorkItem,
+	formatWorkflowLoopGuidance,
 	handleBuildOutcome,
 	handleVerificationVerdict,
 	formatAttemptHistory,
@@ -41,6 +79,7 @@ export type {
 	VerificationResult,
 	AttemptRecord,
 } from './workflow-loop';
+export { WorkflowLoopRuntime } from './workflow-loop/runtime';
 export type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,

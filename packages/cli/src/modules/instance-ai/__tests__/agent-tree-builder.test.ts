@@ -1,6 +1,13 @@
-import type { InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 
-import { buildAgentTreeFromEvents, findAgentNodeInTree } from '../agent-tree-builder';
+const { buildAgentTreeFromEvents, findAgentNodeInTree } =
+	require('../../../../../@n8n/instance-ai/src/utils/agent-tree') as {
+		buildAgentTreeFromEvents: (events: InstanceAiEvent[]) => InstanceAiAgentNode;
+		findAgentNodeInTree: (
+			tree: InstanceAiAgentNode,
+			agentId: string,
+		) => InstanceAiAgentNode | undefined;
+	};
 
 describe('buildAgentTreeFromEvents', () => {
 	it('should build a tree from run-start + text-delta + run-finish', () => {
