@@ -195,6 +195,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflowExecutionData.value.data.resultData.runData;
 	});
 
+	/** @deprecated Use `workflowDocumentStore.allConnections` instead. */
 	const allConnections = computed(() => workflow.value.connections);
 
 	/** @deprecated Use `workflowDocumentStore.allNodes` instead. */
@@ -340,7 +341,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	 * This section contains functions migrated from the workflow class
 	 */
 
+	/** @deprecated Use `workflowDocumentStore.connectionsBySourceNode` instead. */
 	const connectionsBySourceNode = computed(() => workflow.value.connections);
+	/** @deprecated Use `workflowDocumentStore.connectionsByDestinationNode` instead. */
 	const connectionsByDestinationNode = computed(() =>
 		workflowUtils.mapConnectionsByDestination(workflow.value.connections),
 	);
@@ -397,6 +400,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return getWorkflowRunData.value[nodeName];
 	}
 
+	/** @deprecated Use `workflowDocumentStore.outgoingConnectionsByNodeName()` instead. */
 	function outgoingConnectionsByNodeName(nodeName: string): INodeConnections {
 		if (workflow.value.connections.hasOwnProperty(nodeName)) {
 			return workflow.value.connections[nodeName] as unknown as INodeConnections;
@@ -404,6 +408,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return {};
 	}
 
+	/** @deprecated Use `workflowDocumentStore.incomingConnectionsByNodeName()` instead. */
 	function incomingConnectionsByNodeName(nodeName: string): INodeConnections {
 		if (connectionsByDestinationNode.value.hasOwnProperty(nodeName)) {
 			return connectionsByDestinationNode.value[nodeName] as unknown as INodeConnections;
@@ -411,10 +416,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return {};
 	}
 
+	/** @deprecated Use `workflowDocumentStore.nodeHasOutputConnection()` instead. */
 	function nodeHasOutputConnection(nodeName: string): boolean {
 		return workflow.value.connections.hasOwnProperty(nodeName);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.isNodeInOutgoingNodeConnections()` instead. */
 	function isNodeInOutgoingNodeConnections(
 		rootNodeName: string,
 		searchNodeName: string,
@@ -845,6 +852,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.addConnection()` instead. */
 	function addConnection(data: { connection: IConnection[] }): void {
 		if (data.connection.length !== 2) {
 			// All connections need two entries
@@ -912,6 +920,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(workflow.value.connections);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.removeConnection()` instead. */
 	function removeConnection(data: { connection: IConnection[] }): void {
 		const sourceData = data.connection[0];
 		const destinationData = data.connection[1];
@@ -953,6 +962,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(workflow.value.connections);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.removeAllNodeConnection()` instead. */
 	function removeAllNodeConnection(
 		node: INodeUi,
 		{ preserveInputConnections = false, preserveOutputConnections = false } = {},
@@ -1080,6 +1090,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setNodes(nodes);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.setConnections()` instead. */
 	function setConnections(value: IConnections): void {
 		workflow.value.connections = value;
 		workflowObject.value.setConnections(value);
