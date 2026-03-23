@@ -267,13 +267,13 @@ export class McpService {
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 
-		// SDK reference as MCP resource — preferred over the tool for clients that support resources.
+		// SDK reference as MCP resource — for clients that support resources.
 		server.resource(
 			'workflow-sdk-reference',
 			'n8n://workflow-sdk/reference',
 			{
 				description:
-					'n8n Workflow SDK reference — patterns, expressions, and rules for building workflows',
+					'n8n Workflow SDK reference — patterns, expressions, and rules for building workflows. Get this FIRST before building workflows to learn the SDK.',
 			},
 			async () => ({
 				contents: [
@@ -286,25 +286,10 @@ export class McpService {
 			}),
 		);
 
-		// SDK reference tool — serves as a fallback for clients that don't support MCP resources.
-		// Registered as disabled; enabled after initialization only if the client lacks resource support.
+		// SDK reference tool — always registered alongside the MCP resource above,
+		// so all clients can access the SDK reference regardless of resource support.
 		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
-		const registeredSdkRefTool = server.registerTool(
-			sdkRefTool.name,
-			sdkRefTool.config,
-			sdkRefTool.handler,
-		);
-		registeredSdkRefTool.disable();
-
-		// After initialization, enable the SDK reference tool only if the client
-		// does not support resources. Clients with resource support get the same
-		// content via the MCP resource registered above, making the tool redundant.
-		server.server.oninitialized = () => {
-			const capabilities = server.server.getClientCapabilities();
-			if (!capabilities || !('resources' in capabilities)) {
-				registeredSdkRefTool.enable();
-			}
-		};
+		server.registerTool(sdkRefTool.name, sdkRefTool.config, sdkRefTool.handler);
 	}
 
 	// #region Queue Mode Support
