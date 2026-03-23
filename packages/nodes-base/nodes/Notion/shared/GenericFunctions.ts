@@ -559,14 +559,19 @@ export function mapFilters(filtersList: IDataObject[], timezone: string) {
 		}
 
 		if (value.type === 'formula') {
+			const returnType = value.returnType === 'text' ? 'string' : value.returnType;
+
 			if (['is_empty', 'is_not_empty'].includes(value.condition as string)) {
-				key = value.returnType;
+				return Object.assign(obj, {
+					['property']: getNameAndType(value.key as string).name,
+					[key]: { [returnType]: { [`${value.condition}`]: true } },
+				});
 			} else {
 				const vpropertyName = value[`${camelCase(value.returnType as string)}Value`];
 
 				return Object.assign(obj, {
 					['property']: getNameAndType(value.key as string).name,
-					[key]: { [value.returnType]: { [`${value.condition}`]: vpropertyName } },
+					[key]: { [returnType]: { [`${value.condition}`]: vpropertyName } },
 				});
 			}
 		}
