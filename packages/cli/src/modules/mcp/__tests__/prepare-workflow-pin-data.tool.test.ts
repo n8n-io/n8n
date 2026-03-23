@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import {
@@ -59,6 +60,7 @@ function createMockNodeTypes() {
 
 describe('prepare-workflow-pin-data MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
+	const logger = { debug: jest.fn(), warn: jest.fn() } as unknown as Logger;
 	let workflowFinderService: WorkflowFinderService;
 	let executionService: ExecutionService;
 	let nodeTypes: ReturnType<typeof createMockNodeTypes>;
@@ -86,6 +88,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				executionService,
 				nodeTypes,
 				telemetry,
+				logger,
 			);
 
 			expect(tool.name).toBe('prepare_test_pin_data');
@@ -102,7 +105,14 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
 
 			await expect(
-				preparePinData('missing-wf', user, workflowFinderService, executionService, nodeTypes),
+				preparePinData(
+					'missing-wf',
+					user,
+					workflowFinderService,
+					executionService,
+					nodeTypes,
+					logger,
+				),
 			).rejects.toThrow(WorkflowAccessError);
 		});
 	});
@@ -131,6 +141,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			// Trigger should need pin data (not in skipped)
@@ -172,6 +183,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			expect(result.nodesSkipped).not.toContain('SlackNode');
@@ -210,6 +222,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			expect(result.nodesSkipped).not.toContain('HTTPRequest');
@@ -257,6 +270,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			expect(result.nodesSkipped).toContain('SetNode');
@@ -295,6 +309,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			expect(result.nodesSkipped).not.toContain('UnknownNode');
@@ -333,6 +348,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			expect(result.nodesSkipped).not.toContain('DisabledNode');
@@ -393,6 +409,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			expect(result.nodeSchemasToGenerate.SlackNode).toEqual(executionSchema);
@@ -436,6 +453,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			expect(result.nodeSchemasToGenerate.SlackNode).toEqual(definitionSchema);
@@ -478,6 +496,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			expect(result.nodeSchemasToGenerate.HttpNode).toEqual(singleSchema);
@@ -518,6 +537,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			expect(result.nodesWithoutSchema).toContain('SlackNode');
@@ -551,6 +571,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			expect(result.coverage.withSchemaFromExecution).toBe(0);
@@ -584,6 +605,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			expect(result.coverage.withSchemaFromExecution).toBe(0);
@@ -632,6 +654,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			// Empty json should not produce a schema from execution
@@ -738,6 +761,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			// Trigger: exec schema (via execution data), SlackNode: exec schema
@@ -773,6 +797,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				executionService,
 				nodeTypes,
 				telemetry,
+				logger,
 			);
 
 			await tool.handler({ workflowId: 'wf-1' }, {} as any);
@@ -800,6 +825,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				executionService,
 				nodeTypes,
 				telemetry,
+				logger,
 			);
 
 			await tool.handler({ workflowId: 'missing' }, {} as any);
@@ -827,6 +853,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 				executionService,
 				nodeTypes,
 				telemetry,
+				logger,
 			);
 
 			const result = await tool.handler({ workflowId: 'missing' }, {} as any);

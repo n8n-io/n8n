@@ -5,6 +5,7 @@ import {
 	generateJsonSchemaFromData,
 	type JsonSchema,
 } from '@n8n/workflow-sdk';
+import type { Logger } from '@n8n/backend-common';
 import type { INode, INodeExecutionData } from 'n8n-workflow';
 import { HTTP_REQUEST_NODE_TYPE, isTriggerNode, jsonStringify } from 'n8n-workflow';
 import z from 'zod';
@@ -59,6 +60,7 @@ export const createPrepareTestPinDataTool = (
 	executionService: ExecutionService,
 	nodeTypes: NodeTypes,
 	telemetry: Telemetry,
+	logger: Logger,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'prepare_test_pin_data',
 	config: {
@@ -88,6 +90,7 @@ export const createPrepareTestPinDataTool = (
 				workflowFinderService,
 				executionService,
 				nodeTypes,
+				logger,
 			);
 
 			telemetryPayload.results = {
@@ -138,13 +141,14 @@ export async function preparePinData(
 	workflowFinderService: WorkflowFinderService,
 	executionService: ExecutionService,
 	nodeTypes: NodeTypes,
+	logger: Logger,
 ): Promise<PreparePinDataResult> {
 	const workflow = await getMcpWorkflow(workflowId, user, ['workflow:read'], workflowFinderService);
 
 	const enabledNodes = (workflow.nodes ?? []).filter((n) => !n.disabled);
 
 	// Tier 1: Try to infer schemas from last successful execution output
-	const executionRunData = await getExecutionRunData(workflowId, user, executionService);
+	const executionRunData = await getExecutionRunData(workflowId, user, executionService, logger);
 
 	const nodeSchemasToGenerate: Record<string, JsonSchema> = {};
 	const nodesWithoutSchema: string[] = [];
@@ -172,7 +176,7 @@ export async function preparePinData(
 		}
 
 		// Tier 2: Schema from node type definition
-		const schema = discoverOutputSchema(node);
+		const schema = discoverOutputSchema(node, logger);
 		if (schema) {
 			nodeSchemasToGenerate[node.name] = schema;
 			withSchemaFromDefinition++;
@@ -246,6 +250,7 @@ async function getExecutionRunData(
 	workflowId: string,
 	user: User,
 	executionService: ExecutionService,
+	logger: Logger,
 ): Promise<Record<string, INodeExecutionData[]> | undefined> {
 	try {
 		const execution = await executionService.getLastSuccessfulExecution(workflowId, user);
@@ -260,8 +265,11 @@ async function getExecutionRunData(
 		}
 
 		return Object.keys(result).length > 0 ? result : undefined;
-	} catch {
-		// Execution fetch failed — fall through to other tiers
+	} catch (error) {
+		logger.debug('Failed to fetch execution data for pin data generation', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
 		return undefined;
 	}
 }
@@ -291,7 +299,7 @@ function inferSchemaFromExecution(
 // Tier 2: Schema Discovery
 // =============================================================================
 
-function discoverOutputSchema(node: INode): JsonSchema | undefined {
+function discoverOutputSchema(node: INode, logger: Logger): JsonSchema | undefined {
 	try {
 		if (!node.type) return undefined;
 
@@ -311,7 +319,11 @@ function discoverOutputSchema(node: INode): JsonSchema | undefined {
 		}
 
 		return match?.schema;
-	} catch {
+	} catch (error) {
+		logger.debug('Failed to discover output schema for node', {
+			nodeType: node.type,
+			error: error instanceof Error ? error.message : String(error),
+		});
 		return undefined;
 	}
 }

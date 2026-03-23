@@ -189,6 +189,7 @@ export class McpService {
 			this.executionService,
 			this.nodeTypes,
 			this.telemetry,
+			this.logger,
 		);
 		server.registerTool(
 			prepareTestPinDataTool.name,
