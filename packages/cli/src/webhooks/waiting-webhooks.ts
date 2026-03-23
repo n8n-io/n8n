@@ -186,8 +186,6 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		applyCors(req, res);
 
-		this.emitExecutionResumedEvent(execution, executionId, lastNodeExecuted);
-
 		return await this.getWebhookExecutionData({
 			execution,
 			req,
@@ -304,6 +302,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		}
 
 		const runExecutionData = execution.data;
+
+		this.emitExecutionResumedEvent(execution, executionId, lastNodeExecuted);
 
 		return await new Promise((resolve, reject) => {
 			void WebhookHelpers.executeWebhook(
