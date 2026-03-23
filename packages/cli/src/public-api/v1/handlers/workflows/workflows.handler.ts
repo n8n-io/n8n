@@ -6,6 +6,7 @@ import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import type express from 'express';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { isTriggerLikeNode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
@@ -399,8 +400,9 @@ export = {
 				try {
 					const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 					return isTriggerLikeNode(nodeType);
-				} catch {
-					return false;
+				} catch (error) {
+					if (error instanceof UnrecognizedNodeTypeError) return false;
+					throw error;
 				}
 			});
 
