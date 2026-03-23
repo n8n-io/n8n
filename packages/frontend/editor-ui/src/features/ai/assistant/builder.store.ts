@@ -153,6 +153,32 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		error: 0,
 	});
 
+	// Version restore state — persisted to DB via workflow_builder_session
+	const activeVersionCardId = ref<string | undefined>(undefined);
+	const resumeAfterRestoreMessageId = ref<string | undefined>(undefined);
+
+	/** IDs of messages that should be collapsed (between restore point and resume point) */
+	const collapsedMessageIds = computed<Set<string>>(() => {
+		if (!activeVersionCardId.value) return new Set();
+		const activeIdx = chatMessages.value.findIndex((m) => m.id === activeVersionCardId.value);
+		if (activeIdx === -1) return new Set();
+
+		let endIdx = chatMessages.value.length;
+		if (resumeAfterRestoreMessageId.value) {
+			const resumeIdx = chatMessages.value.findIndex(
+				(m) => m.id === resumeAfterRestoreMessageId.value,
+			);
+			if (resumeIdx !== -1) endIdx = resumeIdx;
+		}
+
+		return new Set(
+			chatMessages.value
+				.slice(activeIdx + 1, endIdx)
+				.map((m) => m.id)
+				.filter(Boolean) as string[],
+		);
+	});
+
 	// Track whether a successful full execution has occurred in this session
 	const hasHadSuccessfulExecution = ref(false);
 
@@ -869,6 +895,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 		const userMessageId = generateMessageId();
 		lastUserMessageId.value = userMessageId;
+
+		// If sending a message after a restore, freeze the collapsed range
+		if (activeVersionCardId.value && !resumeAfterRestoreMessageId.value) {
+			resumeAfterRestoreMessageId.value = userMessageId;
+		}
+
 		const currentWorkflowJson = getWorkflowSnapshot();
 
 		const planApproved =
@@ -1258,6 +1290,20 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 				chatMessages.value = convertedMessages;
 
+				// Restore collapse state from DB
+				if (
+					latestSession.activeVersionCardId &&
+					convertedMessages.some((m) => m.id === latestSession.activeVersionCardId)
+				) {
+					activeVersionCardId.value = latestSession.activeVersionCardId;
+				}
+				if (
+					latestSession.resumeAfterRestoreMessageId &&
+					convertedMessages.some((m) => m.id === latestSession.resumeAfterRestoreMessageId)
+				) {
+					resumeAfterRestoreMessageId.value = latestSession.resumeAfterRestoreMessageId;
+				}
+
 				// Restore lastUserMessageId from the loaded session for telemetry tracking
 				const lastUserMsg = [...convertedMessages]
 					.reverse()
@@ -1436,8 +1482,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	/**
 	 * Restores the workflow to a previous version and truncates chat messages.
-	 * Finds the version card with the matching versionCardId, then removes
-	 * all messages after it (keeping the version card as the last message).
+	 * Restores the workflow to the given version and collapses messages after
+	 * the version card (non-destructive — messages stay in DB and UI).
 	 *
 	 * @param versionId - The workflow version ID to restore to
 	 * @param versionCardId - The version card message ID to truncate after
@@ -1480,23 +1526,23 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				rootStore.restApiContext,
 				workflowId,
 				nextUserMsg.id,
+				versionCardId,
 				isCodeBuilder.value || undefined,
 			);
 		}
 
-		// 3. Truncate local chat messages - keep up to and including the version card
+		// 3. Mark messages after the version card as collapsed (non-destructive)
+		activeVersionCardId.value = versionCardId;
+		resumeAfterRestoreMessageId.value = undefined;
+
+		builderMode.value = 'build';
+
+		// 4. Track telemetry event for version restore
 		const messagesBeingReverted =
 			versionCardIndex !== -1
 				? chatMessages.value.slice(versionCardIndex + 1).filter((msg) => isVersionCardMessage(msg))
 						.length
 				: 0;
-		if (versionCardIndex !== -1) {
-			chatMessages.value = chatMessages.value.slice(0, versionCardIndex + 1);
-		}
-
-		builderMode.value = 'build';
-
-		// 4. Track telemetry event for version restore
 		trackWorkflowBuilderJourney('revert_version_from_builder', {
 			revert_user_message_id: versionCardId,
 			revert_version_id: versionId,
@@ -1522,6 +1568,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		chatMessages,
 		streaming,
 		isHelpStreaming,
+		activeVersionCardId,
+		collapsedMessageIds,
 		builderThinkingMessage,
 		isAIBuilderEnabled,
 		isCodeBuilder,

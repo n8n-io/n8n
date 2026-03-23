@@ -426,6 +426,37 @@ export function isVersionCardMessage(msg: ChatUI.AssistantMessage): msg is Versi
 	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'version_card';
 }
 
+// ============================================================================
+// Collapsed Group Types (for non-destructive version restore)
+// ============================================================================
+
+export interface CollapsedGroupMessageData {
+	collapsedMessages: ChatUI.AssistantMessage[];
+}
+
+export type CollapsedGroupMessage = ChatUI.CustomMessage & {
+	customType: 'collapsed_group';
+	data: CollapsedGroupMessageData;
+};
+
+export function isCollapsedGroupMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is CollapsedGroupMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'collapsed_group';
+}
+
+export function createCollapsedGroupMessage(
+	messages: ChatUI.AssistantMessage[],
+): CollapsedGroupMessage {
+	return {
+		id: `collapsed-group-${messages[0]?.id ?? 'unknown'}`,
+		role: 'assistant',
+		type: 'custom',
+		customType: 'collapsed_group',
+		data: { collapsedMessages: messages },
+	};
+}
+
 // Type guards for Plan Mode custom messages
 export function isPlanModeQuestionsMessage(
 	msg: ChatUI.AssistantMessage,

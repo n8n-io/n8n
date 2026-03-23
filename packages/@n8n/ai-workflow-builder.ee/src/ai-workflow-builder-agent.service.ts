@@ -444,6 +444,7 @@ export class AiWorkflowBuilderService {
 		workflowId: string,
 		user: IUser,
 		messageId: string,
+		versionCardId?: string,
 		codeBuilder?: boolean,
 	): Promise<boolean> {
 		const agentType = codeBuilder ? 'code-builder' : undefined;
@@ -451,6 +452,7 @@ export class AiWorkflowBuilderService {
 			workflowId,
 			user.id,
 			messageId,
+			versionCardId,
 			agentType,
 		);
 	}

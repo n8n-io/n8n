@@ -151,6 +151,7 @@ import { AddFilesColumnToChatHubAgents1771500000002 } from '../common/1771500000
 import { AddSuggestedPromptsToAgentTable1772000000000 } from '../common/1772000000000-AddSuggestedPromptsToAgentTable';
 import { AddRoleColumnToProjectSecretsProviderAccess1772619247761 } from '../common/1772619247761-AddRoleColumnToProjectSecretsProviderAccess';
 import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../common/1772619247762-ChangeWorkflowPublishedVersionFKsToRestrict';
+import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -307,4 +308,5 @@ export const postgresMigrations: Migration[] = [
 	AddSuggestedPromptsToAgentTable1772000000000,
 	AddRoleColumnToProjectSecretsProviderAccess1772619247761,
 	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
+	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
 ];

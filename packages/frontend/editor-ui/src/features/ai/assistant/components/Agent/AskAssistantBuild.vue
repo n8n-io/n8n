@@ -49,8 +49,11 @@ import {
 	isPlanModeUserAnswersMessage,
 	isVersionCardMessage,
 	isWebFetchApprovalCustomMessage,
+	isCollapsedGroupMessage,
+	createCollapsedGroupMessage,
 	type PlanMode,
 } from '../../assistant.types';
+import CollapsedMessagesGroup from './CollapsedMessagesGroup.vue';
 import PlanDisplayMessage from './PlanDisplayMessage.vue';
 import PlanModeSelector from './PlanModeSelector.vue';
 import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
@@ -219,12 +222,15 @@ function isNonEmptyVersionCard(message: ChatUI.AssistantMessage): boolean {
 
 function isCurrentVersionCard(message: ChatUI.AssistantMessage): boolean {
 	if (!isNonEmptyVersionCard(message)) return false;
-	// Find the last non-empty version card
+	// Explicit active card takes priority (set by restore)
+	if (builderStore.activeVersionCardId) {
+		return message.id === builderStore.activeVersionCardId;
+	}
+	// Default: last non-empty version card
 	const nonEmptyCards = builderStore.chatMessages.filter(
 		(msg) => isVersionCardMessage(msg) && isNonEmptyVersionCard(msg),
 	);
-	const lastNonEmpty = nonEmptyCards[nonEmptyCards.length - 1];
-	return lastNonEmpty?.id === message.id;
+	return nonEmptyCards[nonEmptyCards.length - 1]?.id === message.id;
 }
 
 function getVersionIndex(message: ChatUI.AssistantMessage): number {
@@ -237,6 +243,31 @@ function getVersionIndex(message: ChatUI.AssistantMessage): number {
 	}
 	return count + 1;
 }
+
+/** Messages with collapsed groups substituted for collapsed message ranges */
+const displayMessages = computed(() => {
+	const collapsed = builderStore.collapsedMessageIds;
+	if (!collapsed.size) return builderStore.chatMessages;
+
+	const result: ChatUI.AssistantMessage[] = [];
+	const group: ChatUI.AssistantMessage[] = [];
+
+	for (const msg of builderStore.chatMessages) {
+		if (msg.id && collapsed.has(msg.id)) {
+			group.push(msg);
+		} else {
+			if (group.length > 0) {
+				result.push(createCollapsedGroupMessage([...group]));
+				group.length = 0;
+			}
+			result.push(msg);
+		}
+	}
+	if (group.length > 0) {
+		result.push(createCollapsedGroupMessage(group));
+	}
+	return result;
+});
 
 const codeDiffWorkflowState = injectWorkflowState();
 
@@ -589,7 +620,7 @@ defineExpose({
 		<N8nAskAssistantChat
 			ref="n8nChatRef"
 			:user="user"
-			:messages="builderStore.chatMessages"
+			:messages="displayMessages"
 			:streaming="builderStore.streaming"
 			:loading-message="loadingMessage"
 			:thinking-completion-message="thinkingCompletionMessage"
@@ -633,8 +664,17 @@ defineExpose({
 				<BuildModeEmptyState />
 			</template>
 			<template #custom-message="{ message }">
+				<CollapsedMessagesGroup
+					v-if="isCollapsedGroupMessage(message)"
+					:messages="message.data.collapsedMessages"
+					:version-node-changes-map="versionNodeChangesMap"
+					:get-version-index="getVersionIndex"
+					@restore="onRestoreConfirm"
+					@show-in-history="onShowVersion"
+					@select-node="onSelectChangedNode"
+				/>
 				<VersionCardV2
-					v-if="isVersionCardMessage(message) && isNonEmptyVersionCard(message)"
+					v-else-if="isVersionCardMessage(message) && isNonEmptyVersionCard(message)"
 					:version-id="message.data.versionId"
 					:is-current="isCurrentVersionCard(message)"
 					:node-changes="versionNodeChangesMap.get(message.data.versionId) ?? []"

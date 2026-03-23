@@ -461,6 +461,8 @@ export class SessionManagerService {
 					sessionId: threadId,
 					messages: formattedMessages,
 					lastUpdated: stored.updatedAt.toISOString(),
+					activeVersionCardId: stored.activeVersionCardId,
+					resumeAfterRestoreMessageId: stored.resumeAfterRestoreMessageId,
 				});
 
 				return { sessions };
@@ -550,6 +552,7 @@ export class SessionManagerService {
 		workflowId: string,
 		userId: string | undefined,
 		messageId: string,
+		versionCardId?: string,
 		agentType?: 'code-builder',
 	): Promise<boolean> {
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId, agentType);
@@ -571,19 +574,24 @@ export class SessionManagerService {
 				return false;
 			}
 
-			// Keep messages before the target message
+			// Keep messages before the target message (for LLM context)
 			const truncatedMessages = messages.slice(0, msgIndex);
 
-			// Update persistent storage if available
+			// Update persistent storage with FULL messages + restore markers.
+			// The DB keeps all messages so the frontend can render collapsed versions.
+			// Only the LLM checkpointer is truncated.
 			if (this.storage) {
 				await this.storage.saveSession(threadId, {
-					messages: truncatedMessages,
+					messages,
 					previousSummary,
 					updatedAt: new Date(),
+					activeVersionCardId: versionCardId ?? null,
+					resumeAfterRestoreMessageId: null,
 				});
 			}
 
-			// Also update the in-memory checkpointer
+			// Update the in-memory checkpointer with truncated messages
+			// so the LLM doesn't see collapsed messages
 			const threadConfig: RunnableConfig = {
 				configurable: { thread_id: threadId },
 			};
