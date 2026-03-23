@@ -118,9 +118,11 @@ describe('Expression', () => {
 			expect(evaluate('={{new BigUint64Array(3).length}}')).toEqual(3);
 
 			expect(evaluate('={{new Map()}}')).toEqual(new Map());
-			expect(evaluate('={{new WeakMap()}}')).toEqual(new WeakMap());
+			// WeakMap/WeakSet are not structured-cloneable, so they can't cross
+			// the VM isolate boundary. Verify the constructors are accessible instead.
+			expect(evaluate('={{new WeakMap() instanceof WeakMap}}')).toEqual(true);
 			expect(evaluate('={{new Set()}}')).toEqual(new Set());
-			expect(evaluate('={{new WeakSet()}}')).toEqual(new WeakSet());
+			expect(evaluate('={{new WeakSet() instanceof WeakSet}}')).toEqual(true);
 
 			expect(evaluate('={{new Error()}}')).toEqual(new Error());
 			expect(evaluate('={{new TypeError()}}')).toEqual(new TypeError());
@@ -130,13 +132,16 @@ describe('Expression', () => {
 			expect(evaluate('={{new ReferenceError()}}')).toEqual(new ReferenceError());
 			expect(evaluate('={{new URIError()}}')).toEqual(new URIError());
 
-			expect(evaluate('={{Intl}}')).toEqual(Intl);
+			// Intl from the isolate is a different realm object; verify it's accessible
+			expect(evaluate('={{typeof Intl}}')).toEqual('object');
 
-			expect(evaluate('={{new String()}}')).toEqual(new String());
-			expect(evaluate("={{new RegExp('')}}")).toEqual(new RegExp(''));
+			expect(evaluate('={{new String().toString()}}')).toEqual('');
+			expect(evaluate("={{new RegExp('').source}}")).toEqual('(?:)');
 
-			expect(evaluate('={{Math}}')).toEqual(Math);
-			expect(evaluate('={{new Number()}}')).toEqual(new Number());
+			// Namespace objects (Math, Atomics) come from a different V8 realm in the
+			// VM engine, so toEqual fails despite identical content. Verify accessibility.
+			expect(evaluate('={{typeof Math}}')).toEqual('object');
+			expect(evaluate('={{new Number().valueOf()}}')).toEqual(0);
 			expect(evaluate("={{BigInt('1')}}")).toEqual(BigInt('1'));
 			expect(evaluate('={{Infinity}}')).toEqual(Infinity);
 			expect(evaluate('={{NaN}}')).toEqual(NaN);
@@ -146,12 +151,12 @@ describe('Expression', () => {
 			expect(evaluate("={{parseInt('1', 10)}}")).toEqual(parseInt('1', 10));
 
 			expect(evaluate('={{JSON.stringify({})}}')).toEqual(JSON.stringify({}));
-			expect(evaluate('={{new ArrayBuffer(10)}}')).toEqual(new ArrayBuffer(10));
-			expect(evaluate('={{new SharedArrayBuffer(10)}}')).toEqual(new SharedArrayBuffer(10));
-			expect(evaluate('={{Atomics}}')).toEqual(Atomics);
-			expect(evaluate('={{new DataView(new ArrayBuffer(1))}}')).toEqual(
-				new DataView(new ArrayBuffer(1)),
-			);
+			// ArrayBuffer, SharedArrayBuffer, DataView, and Atomics come from a
+			// different V8 realm in the VM engine. Verify accessibility instead.
+			expect(evaluate('={{new ArrayBuffer(10).byteLength}}')).toEqual(10);
+			expect(evaluate('={{new SharedArrayBuffer(10).byteLength}}')).toEqual(10);
+			expect(evaluate('={{typeof Atomics}}')).toEqual('object');
+			expect(evaluate('={{new DataView(new ArrayBuffer(1)).byteLength}}')).toEqual(1);
 
 			expect(evaluate("={{encodeURI('https://google.com')}}")).toEqual(
 				encodeURI('https://google.com'),
