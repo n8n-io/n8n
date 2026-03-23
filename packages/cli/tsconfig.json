@@ -18,7 +18,12 @@
 		"strict": false,
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts", "src/sso.ee/saml/saml-schema-metadata-2.0.xsd"],
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.d.ts",
+		"test/**/*.ts",
+		"src/sso.ee/saml/saml-schema-metadata-2.0.xsd"
+	],
 	"references": [
 		{ "path": "../core/tsconfig.build.json" },
 		{ "path": "../nodes-base/tsconfig.build.cjs.json" },

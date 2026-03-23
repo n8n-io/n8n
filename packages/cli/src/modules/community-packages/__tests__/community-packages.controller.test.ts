@@ -29,6 +29,7 @@ describe('CommunityPackagesController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		communityPackagesService.toPublicInstalledPackage.mockImplementation((pkg) => pkg as never);
 	});
 
 	describe('installPackage', () => {
@@ -37,18 +38,32 @@ describe('CommunityPackagesController', () => {
 				user: { id: 'user123' },
 				body: { name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
 			});
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test',
+				packageName: 'n8n-nodes-test',
+			});
 			communityNodeTypesService.findVetted.mockReturnValue(undefined);
 			await expect(controller.installPackage(request)).rejects.toThrow(
 				'Package n8n-nodes-test is not vetted for installation',
 			);
 		});
 
-		it.each(['foo', 'echo "hello"', '1.a.b', '0.1.29#;ls'])(
+		it.each(['^1.0.0', 'file:./package.tgz', 'npm:other-package@1.0.0'])(
 			'should throw error if version is invalid',
 			async (version) => {
 				const request = mock<NodeRequest.Post>({
 					user: { id: 'user123' },
-					body: { name: 'n8n-nodes-test', verify: true, version },
+					body: { name: 'n8n-nodes-test', verify: false, version },
+				});
+				communityPackagesService.parseNpmPackageName.mockReturnValue({
+					rawString: 'n8n-nodes-test',
+					packageName: 'n8n-nodes-test',
+				});
+				communityPackagesService.checkNpmPackageStatus.mockResolvedValue({
+					status: 'OK',
+				});
+				communityPackagesService.parsePackageVersion.mockImplementation(() => {
+					throw new Error(`Invalid version: ${version}`);
 				});
 				await expect(controller.installPackage(request)).rejects.toThrow(
 					`Invalid version: ${version}`,
@@ -70,6 +85,9 @@ describe('CommunityPackagesController', () => {
 				rawString: 'n8n-nodes-test',
 				packageName: 'n8n-nodes-test',
 				version: '1.1.1',
+			});
+			communityPackagesService.parsePackageVersion.mockReturnValue({
+				version: '1.0.0',
 			});
 			communityPackagesService.isPackageInstalled.mockResolvedValue(false);
 			communityPackagesService.hasPackageLoaded.mockReturnValue(false);
@@ -123,7 +141,15 @@ describe('CommunityPackagesController', () => {
 			});
 
 			communityPackagesService.findInstalledPackage.mockResolvedValue(previouslyInstalledPackage);
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test',
+				packageName: 'n8n-nodes-test',
+			});
+			communityPackagesService.parsePackageVersion.mockReturnValue({ version: '2.0.0' });
 			communityPackagesService.updatePackage.mockResolvedValue(newInstalledPackage);
+			communityPackagesService.toPublicInstalledPackage.mockReturnValue(
+				newInstalledPackage as never,
+			);
 
 			const result = await controller.updatePackage(req);
 
@@ -137,11 +163,21 @@ describe('CommunityPackagesController', () => {
 			expect(result).toBe(newInstalledPackage);
 		});
 
-		it.each(['foo', 'echo "hello"', '1.a.b', '0.1.29#;ls'])(
+		it.each(['^1.0.0', 'file:./package.tgz', 'npm:other-package@1.0.0'])(
 			'should throw error if version is invalid',
 			async (version) => {
 				const req = mock<NodeRequest.Update>({
 					body: { name: 'n8n-nodes-test', version, checksum: 'a893hfdsy7399' },
+				});
+				communityPackagesService.parseNpmPackageName.mockReturnValue({
+					rawString: 'n8n-nodes-test',
+					packageName: 'n8n-nodes-test',
+				});
+				communityPackagesService.findInstalledPackage.mockResolvedValue(
+					mock<InstalledPackages>({ packageName: 'n8n-nodes-test' }),
+				);
+				communityPackagesService.parsePackageVersion.mockImplementation(() => {
+					throw new Error(`Invalid version: ${version}`);
 				});
 				await expect(controller.updatePackage(req)).rejects.toThrow(`Invalid version: ${version}`);
 			},

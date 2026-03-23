@@ -4,11 +4,12 @@ export namespace CommunityPackages {
 		rawString: string;
 		scope?: string;
 		version?: string;
+		requestedDistTag?: string;
 	};
 
 	export type AvailableUpdates = {
 		[packageName: string]: {
-			current: string;
+			current?: string;
 			wanted: string;
 			latest: string;
 			location: string;

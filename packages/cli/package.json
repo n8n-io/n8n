@@ -165,6 +165,7 @@
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
     "nodemailer": "catalog:",
+    "npm-package-arg": "13.0.2",
     "oauth-1.0a": "2.2.6",
     "open": "7.4.2",
     "openid-client": "6.5.0",
