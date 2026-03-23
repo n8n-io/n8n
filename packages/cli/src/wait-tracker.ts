@@ -131,16 +131,6 @@ export class WaitTracker {
 
 		const lastNodeName = fullExecutionData.data.resultData.lastNodeExecuted ?? '';
 		const resumedNode = fullExecutionData.workflowData.nodes.find((n) => n.name === lastNodeName);
-		this.eventService.emit('execution-resumed', {
-			executionId,
-			workflowId,
-			workflowName: fullExecutionData.workflowData.name,
-			nodeName: lastNodeName,
-			nodeId: resumedNode?.id,
-			nodeType: resumedNode?.type,
-			resumeSource: 'timer',
-			responseAt: new Date(),
-		});
 
 		// Start the execution again
 		try {
@@ -158,6 +148,17 @@ export class WaitTracker {
 			// Rethrow any other errors
 			throw error;
 		}
+
+		this.eventService.emit('execution-resumed', {
+			executionId,
+			workflowId,
+			workflowName: fullExecutionData.workflowData.name,
+			nodeName: lastNodeName,
+			nodeId: resumedNode?.id,
+			nodeType: resumedNode?.type,
+			resumeSource: 'timer',
+			responseAt: new Date(),
+		});
 
 		const { parentExecution } = fullExecutionData.data;
 		if (shouldRestartParentExecution(parentExecution)) {
