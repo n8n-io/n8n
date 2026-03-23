@@ -84,7 +84,7 @@ export class CreateInstanceAiTables1773000000000 implements ReversibleMigration 
 				column('workflowName').varchar().primary.notNull,
 				column('resourceId').varchar(),
 				column('status').varchar(),
-				column('snapshot').binary.notNull,
+				column('snapshot').text.notNull,
 			)
 			.withIndexOn('workflowName')
 			.withIndexOn(['workflowName', 'status']).withTimestamps;
