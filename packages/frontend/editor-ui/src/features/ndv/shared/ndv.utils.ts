@@ -33,6 +33,11 @@ import type { Ref } from 'vue';
 import { omitKey } from '@/app/utils/objectUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 
+export interface ParameterOptionsOverrides {
+	hideExpressionSelector?: boolean;
+	hideFocusPanelButton?: boolean;
+}
+
 export function getNodeSettingsInitialValues(): INodeParameters {
 	return {
 		color: '#ff0000',

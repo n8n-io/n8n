@@ -23,8 +23,10 @@ export {
 	type ChatHubModuleSettings,
 	chatHubProviderSchema,
 	chatHubLLMProviderSchema,
+	chatHubSessionTypeSchema,
 	type ChatHubProvider,
 	type ChatHubLLMProvider,
+	type ChatHubSessionType,
 	type ChatHubMessageType,
 	type ChatHubMessageStatus,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
@@ -35,8 +37,11 @@ export {
 	chatAttachmentSchema,
 	type ChatAttachment,
 	ChatHubSendMessageRequest,
+	ChatHubManualSendMessageRequest,
 	ChatHubRegenerateMessageRequest,
+	ChatHubManualRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
+	ChatHubManualEditMessageRequest,
 	ChatHubUpdateConversationRequest,
 	ChatHubConversationsRequest,
 	type ChatMessageId,
@@ -48,6 +53,7 @@ export {
 	type ChatHubConversationsResponse,
 	type ChatHubAgentDto,
 	type ChatHubAgentKnowledgeItem,
+	type ChatHubAgentKnowledgeItemStatus,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
 	type AgentIconOrEmoji,
@@ -114,6 +120,18 @@ export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
 } from './schemas/workflow-version.schema';
+export type {
+	DependencyType,
+	DependencyResourceType,
+	ResolvedDependency,
+	ResolvedDependenciesResult,
+	DependenciesBatchResponse,
+} from './schemas/dependency.schema';
+
+export type {
+	DependencyTypeCounts,
+	DependencyCountsBatchResponse,
+} from './schemas/dependency-counts.schema';
 
 export type {
 	ProjectType,
@@ -203,6 +221,8 @@ export type {
 	SecretsProviderType,
 	SecretsProviderState,
 	SecretsProviderConnectionTestState,
+	SecretsProviderAccessRole,
+	ConnectionProjectSummary,
 	SecretProviderConnectionListItem,
 	SecretProviderConnection,
 	SecretProviderTypeResponse,

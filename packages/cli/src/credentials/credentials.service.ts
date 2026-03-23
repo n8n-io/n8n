@@ -28,14 +28,15 @@ import type {
 	INodePropertyCollection,
 } from 'n8n-workflow';
 import {
+	CREDENTIAL_BLANKING_VALUE,
 	CREDENTIAL_EMPTY_VALUE,
 	deepCopy,
 	displayParameter,
+	isExpression,
 	isINodePropertyCollection,
 	NodeHelpers,
 } from 'n8n-workflow';
 
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -777,10 +778,15 @@ export class CredentialsService {
 			return props;
 		};
 		const properties = getExtendedProps(credType);
-		return this.redactValues(copiedData, properties);
+		const redacted = this.redactValues(copiedData, properties, credential.type);
+		return redacted;
 	}
 
-	private redactValues(data: ICredentialDataDecryptedObject, props: INodeProperties[]) {
+	private redactValues(
+		data: ICredentialDataDecryptedObject,
+		props: INodeProperties[],
+		credentialType?: string,
+	) {
 		for (const dataKey of Object.keys(data)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
@@ -818,6 +824,14 @@ export class CredentialsService {
 			}
 		}
 
+		// Custom Auth: mask JSON after save (not marked as secret; redacted by type + field)
+		if (credentialType === 'httpCustomAuth' && 'json' in data) {
+			data.json =
+				data.json && String(data.json).length > 0
+					? CREDENTIAL_BLANKING_VALUE
+					: CREDENTIAL_EMPTY_VALUE;
+		}
+
 		return data;
 	}
 
@@ -826,12 +840,17 @@ export class CredentialsService {
 		const values = data?.[collectionValuesKey];
 		if (Array.isArray(values)) {
 			for (let i = 0; i < values.length; i++) {
-				values[i] = this.redactValues(values[i] as ICredentialDataDecryptedObject, option.values);
+				values[i] = this.redactValues(
+					values[i] as ICredentialDataDecryptedObject,
+					option.values,
+					undefined,
+				);
 			}
 		} else if (typeof values === 'object' && values !== null) {
 			data[collectionValuesKey] = this.redactValues(
 				values as ICredentialDataDecryptedObject,
 				option.values,
+				undefined,
 			);
 		}
 	}
@@ -1055,7 +1074,7 @@ export class CredentialsService {
 			const oauthUrlFields = ['authUrl', 'accessTokenUrl', 'serverUrl'] as const;
 			for (const field of oauthUrlFields) {
 				const value = data[field];
-				if (typeof value === 'string' && value.trim() !== '') {
+				if (typeof value === 'string' && value.trim() !== '' && !isExpression(value)) {
 					validateOAuthUrl(value);
 				}
 			}
@@ -1064,7 +1083,7 @@ export class CredentialsService {
 			const oauthUrlFields = ['authUrl', 'requestTokenUrl', 'accessTokenUrl'] as const;
 			for (const field of oauthUrlFields) {
 				const value = data[field];
-				if (typeof value === 'string' && value.trim() !== '') {
+				if (typeof value === 'string' && value.trim() !== '' && !isExpression(value)) {
 					validateOAuthUrl(value);
 				}
 			}

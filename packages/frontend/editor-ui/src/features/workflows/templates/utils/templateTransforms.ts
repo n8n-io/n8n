@@ -10,7 +10,9 @@ import type {
 	INodeCredentialDescription,
 	INodeCredentials,
 	INodeCredentialsDetails,
+	INodeParameters,
 } from 'n8n-workflow';
+import { isResourceLocatorValue } from 'n8n-workflow';
 
 export type IWorkflowTemplateNodeWithCredentials = IWorkflowTemplateNode &
 	Required<Pick<IWorkflowTemplateNode, 'credentials'>>;
@@ -137,3 +139,34 @@ export const replaceAllTemplateNodeCredentials = (
 		};
 	});
 };
+
+/**
+ * Clears resourceLocator parameter values from node parameters.
+ * ResourceLocator values from templates contain IDs specific to the template
+ * creator's account (e.g. Slack channel IDs, Google Sheet IDs) that are useless
+ * for the importing user. Clearing them ensures these parameters show up as
+ * requiring setup in the setup panel.
+ */
+export function clearResourceLocatorValues(parameters: INodeParameters): INodeParameters {
+	const cleaned: INodeParameters = { ...parameters };
+	for (const [key, value] of Object.entries(cleaned)) {
+		if (isResourceLocatorValue(value)) {
+			cleaned[key] = { __rl: true, mode: value.mode, value: '' };
+		} else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+			cleaned[key] = clearResourceLocatorValues(value as INodeParameters);
+		}
+	}
+	return cleaned;
+}
+
+/**
+ * Clears resourceLocator parameter values from all nodes in a list.
+ */
+export function clearAllNodeResourceLocatorValues<T extends { parameters: INodeParameters }>(
+	nodes: T[],
+): T[] {
+	return nodes.map((node) => ({
+		...node,
+		parameters: clearResourceLocatorValues(node.parameters),
+	}));
+}

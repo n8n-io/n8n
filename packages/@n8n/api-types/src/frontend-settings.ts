@@ -54,7 +54,6 @@ export interface IEnterpriseSettings {
 	binaryDataS3: boolean;
 	workerView: boolean;
 	advancedPermissions: boolean;
-	apiKeyScopes: boolean;
 	workflowDiffs: boolean;
 	namedVersions: boolean;
 	provisioning: boolean;
@@ -265,6 +264,7 @@ export type FrontendModuleSettings = {
 		enabled: boolean;
 		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
 		semanticSearch: ChatHubSemanticSearchSettings;
+		agentUploadMaxSizeMb: number;
 	};
 
 	/**
