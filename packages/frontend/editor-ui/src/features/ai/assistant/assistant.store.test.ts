@@ -25,14 +25,14 @@ import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { INodeUi } from '@/Interface';
 
-const { mockDocumentStore } = vi.hoisted(() => ({
-	mockDocumentStore: {
+const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
+	mockWorkflowDocumentStore: {
 		allNodes: [] as INodeUi[],
 	},
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockDocumentStore),
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
@@ -76,7 +76,7 @@ describe('AI Assistant store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		currentRouteParams = {};
-		mockDocumentStore.allNodes = [];
+		mockWorkflowDocumentStore.allNodes = [];
 		setActivePinia(createPinia());
 		settingsStore = useSettingsStore();
 		settingsStore.setSettings(
@@ -482,7 +482,7 @@ describe('AI Assistant store', () => {
 		workflowsStore.workflow.id = 'test-wf';
 
 		// Add a node to the workflow
-		mockDocumentStore.allNodes = [
+		mockWorkflowDocumentStore.allNodes = [
 			{
 				id: '1',
 				type: 'n8n-nodes-base.start',

@@ -737,7 +737,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Use workflow updatedAt as version timestamp
 		// might not be the same as "version.createdAt" but close enough
 		const updatedAt = workflowDocumentStore.value?.updatedAt;
-		if (!updatedAt) return undefined;
+		if (!updatedAt) throw new Error('Workflow updatedAt is missing');
 		return {
 			id: versionId,
 			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
@@ -1064,11 +1064,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function unpinAllNodes() {
-		const store = workflowDocumentStore.value;
-		const pinData = store?.pinData;
+		const pinData = workflowDocumentStore.value?.pinData;
 		if (!pinData) return;
 		for (const nodeName of Object.keys(pinData)) {
-			store.unpinNodeData(nodeName);
+			workflowDocumentStore.value?.unpinNodeData(nodeName);
 			if (workflowsStore.nodeMetadata[nodeName]) {
 				workflowsStore.nodeMetadata[nodeName].pinnedDataLastRemovedAt = Date.now();
 			}

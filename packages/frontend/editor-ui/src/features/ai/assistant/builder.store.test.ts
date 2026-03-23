@@ -17,6 +17,7 @@ const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
+import { createTestNode } from '@/__tests__/mocks';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
@@ -2258,7 +2259,7 @@ describe('AI Builder store', () => {
 				const builderStore = useBuilderStore();
 
 				// Start with nodes, then clear them (simulates workflow load sequence)
-				workflowsStore.allNodes = [{ name: 'Node1' }] as never;
+				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 
@@ -2270,7 +2271,7 @@ describe('AI Builder store', () => {
 			it('should switch to build mode when nodes are added', async () => {
 				enablePlanModeExperiment();
 				// Start with nodes so the watcher can observe changes
-				workflowsStore.allNodes = [{ name: 'Node1' }] as never;
+				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
 
 				const builderStore = useBuilderStore();
 				await nextTick();
@@ -2281,7 +2282,7 @@ describe('AI Builder store', () => {
 				expect(builderStore.builderMode).toBe('plan');
 
 				// Add nodes back to trigger build mode
-				workflowsStore.allNodes = [{ name: 'Node1' }] as never;
+				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 			});
@@ -2301,7 +2302,7 @@ describe('AI Builder store', () => {
 				const builderStore = useBuilderStore();
 
 				// Add nodes first so we can trigger a change later
-				workflowsStore.allNodes = [{ name: 'Node1' }] as never;
+				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
 				await nextTick();
 
 				// Simulate an active conversation
@@ -2336,7 +2337,7 @@ describe('AI Builder store', () => {
 					{ role: 'user', type: 'text', text: 'Build me something' } as never,
 					{ role: 'assistant', type: 'text', text: 'Done' } as never,
 				];
-				workflowsStore.allNodes = [{ name: 'Node1' }] as never;
+				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 
