@@ -54,6 +54,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	jest.resetAllMocks();
+	communityPackagesService.toPublicInstalledPackage.mockImplementation((pkg) => pkg as never);
+	communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 });
 
 describe('GET /community-packages', () => {
@@ -253,7 +255,7 @@ describe('PATCH /community-packages', () => {
 
 	test('should update a package', async () => {
 		communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
-		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+		communityPackagesService.updatePackage.mockResolvedValue(mockPackage());
 
 		await authAgent.patch('/community-packages').send({ name: mockPackageName() });
 

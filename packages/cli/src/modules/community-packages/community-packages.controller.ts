@@ -1,5 +1,5 @@
 import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
-import { valid } from 'semver';
+import { InstanceSettings } from 'n8n-core';
 
 import {
 	RESPONSE_ERROR_MESSAGES,
@@ -17,7 +17,6 @@ import { CommunityPackagesService } from './community-packages.service';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
 import { executeNpmCommand } from './npm-utils';
-import { InstanceSettings } from 'n8n-core';
 
 const {
 	PACKAGE_NOT_INSTALLED,
@@ -55,20 +54,6 @@ export class CommunityPackagesController {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
-		if (version && !valid(version)) {
-			throw new BadRequestError(`Invalid version: ${version}`);
-		}
-
-		let checksum: string | undefined = undefined;
-
-		// Get the checksum for the package if flagged to verify
-		if (verify) {
-			checksum = this.communityNodeTypesService.findVetted(name)?.checksum;
-			if (!checksum) {
-				throw new BadRequestError(`Package ${name} is not vetted for installation`);
-			}
-		}
-
 		let parsed: CommunityPackages.ParsedPackageName;
 
 		try {
@@ -77,6 +62,16 @@ export class CommunityPackagesController {
 			throw new BadRequestError(
 				error instanceof Error ? error.message : 'Failed to parse package name',
 			);
+		}
+
+		let checksum: string | undefined = undefined;
+
+		// Get the checksum for the package if flagged to verify
+		if (verify) {
+			checksum = this.communityNodeTypesService.findVetted(parsed.packageName)?.checksum;
+			if (!checksum) {
+				throw new BadRequestError(`Package ${parsed.packageName} is not vetted for installation`);
+			}
 		}
 
 		if (parsed.packageName === STARTER_TEMPLATE_NAME) {
@@ -89,7 +84,7 @@ export class CommunityPackagesController {
 		}
 
 		const isInstalled = await this.communityPackagesService.isPackageInstalled(parsed.packageName);
-		const hasLoaded = this.communityPackagesService.hasPackageLoaded(name);
+		const hasLoaded = this.communityPackagesService.hasPackageLoaded(parsed.packageName);
 
 		if (isInstalled && hasLoaded) {
 			throw new BadRequestError(
@@ -100,13 +95,28 @@ export class CommunityPackagesController {
 			);
 		}
 
-		const packageStatus = await this.communityPackagesService.checkNpmPackageStatus(name);
+		const packageStatus = await this.communityPackagesService.checkNpmPackageStatus(
+			parsed.packageName,
+		);
 
 		if (packageStatus.status !== 'OK') {
 			throw new BadRequestError(`Package "${name}" is banned so it cannot be installed`);
 		}
 
-		const packageVersion = version ?? parsed.version;
+		let packageVersion = parsed.version;
+		if (version) {
+			try {
+				packageVersion = this.communityPackagesService.parsePackageVersion(
+					parsed.packageName,
+					version,
+				).version;
+			} catch (error) {
+				throw new BadRequestError(
+					error instanceof Error ? error.message : 'Failed to parse package version',
+				);
+			}
+		}
+
 		let installedPackage: InstalledPackages;
 		try {
 			installedPackage = await this.communityPackagesService.installPackage(
@@ -135,7 +145,7 @@ export class CommunityPackagesController {
 			throw new (clientError ? BadRequestError : InternalServerError)(message);
 		}
 
-		if (!hasLoaded) this.communityPackagesService.removePackageFromMissingList(name);
+		if (!hasLoaded) this.communityPackagesService.removePackageFromMissingList(parsed.packageName);
 
 		// broadcast to connected frontends that node list has been updated
 		installedPackage.installedNodes.forEach((node) => {
@@ -159,7 +169,7 @@ export class CommunityPackagesController {
 			packageAuthorEmail: installedPackage.authorEmail,
 		});
 
-		return installedPackage;
+		return this.communityPackagesService.toPublicInstalledPackage(installedPackage);
 	}
 
 	@Get('/')
@@ -210,25 +220,28 @@ export class CommunityPackagesController {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
+		let parsed: CommunityPackages.ParsedPackageName;
 		try {
-			this.communityPackagesService.parseNpmPackageName(name); // sanitize input
+			parsed = this.communityPackagesService.parseNpmPackageName(name);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
 
 			throw new BadRequestError(message);
 		}
 
-		const installedPackage = await this.communityPackagesService.findInstalledPackage(name);
+		const installedPackage = await this.communityPackagesService.findInstalledPackage(
+			parsed.packageName,
+		);
 
 		if (!installedPackage) {
 			throw new BadRequestError(PACKAGE_NOT_INSTALLED);
 		}
 
 		try {
-			await this.communityPackagesService.removePackage(name, installedPackage);
+			await this.communityPackagesService.removePackage(parsed.packageName, installedPackage);
 		} catch (error) {
 			const message = [
-				`Error removing package "${name}"`,
+				`Error removing package "${parsed.packageName}"`,
 				error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON,
 			].join(':');
 
@@ -248,7 +261,7 @@ export class CommunityPackagesController {
 
 		this.eventService.emit('community-package-deleted', {
 			user: req.user,
-			packageName: name,
+			packageName: parsed.packageName,
 			packageVersion: installedPackage.installedVersion,
 			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
 			packageAuthor: installedPackage.authorName,
@@ -265,20 +278,39 @@ export class CommunityPackagesController {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
-		if (version && !valid(version)) {
-			throw new BadRequestError(`Invalid version: ${version}`);
+		let parsed: CommunityPackages.ParsedPackageName;
+		try {
+			parsed = this.communityPackagesService.parseNpmPackageName(name);
+		} catch (error) {
+			throw new BadRequestError(
+				error instanceof Error ? error.message : 'Failed to parse package name',
+			);
 		}
 
-		const previouslyInstalledPackage =
-			await this.communityPackagesService.findInstalledPackage(name);
+		const previouslyInstalledPackage = await this.communityPackagesService.findInstalledPackage(
+			parsed.packageName,
+		);
 
 		if (!previouslyInstalledPackage) {
 			throw new BadRequestError(PACKAGE_NOT_INSTALLED);
 		}
 
+		if (version) {
+			try {
+				this.communityPackagesService.parsePackageVersion(
+					previouslyInstalledPackage.packageName,
+					version,
+				);
+			} catch (error) {
+				throw new BadRequestError(
+					error instanceof Error ? error.message : 'Failed to parse package version',
+				);
+			}
+		}
+
 		try {
 			const newInstalledPackage = await this.communityPackagesService.updatePackage(
-				this.communityPackagesService.parseNpmPackageName(name).packageName,
+				parsed.packageName,
 				previouslyInstalledPackage,
 				version,
 				checksum,
@@ -307,7 +339,7 @@ export class CommunityPackagesController {
 
 			this.eventService.emit('community-package-updated', {
 				user: req.user,
-				packageName: name,
+				packageName: parsed.packageName,
 				packageVersionCurrent: previouslyInstalledPackage.installedVersion,
 				packageVersionNew: newInstalledPackage.installedVersion,
 				packageNodeNames: newInstalledPackage.installedNodes.map((n) => n.name),
@@ -315,7 +347,7 @@ export class CommunityPackagesController {
 				packageAuthorEmail: newInstalledPackage.authorEmail,
 			});
 
-			return newInstalledPackage;
+			return this.communityPackagesService.toPublicInstalledPackage(newInstalledPackage);
 		} catch (error) {
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
 				this.push.broadcast({
@@ -328,7 +360,7 @@ export class CommunityPackagesController {
 			});
 
 			const message = [
-				`Error removing package "${name}"`,
+				`Error removing package "${parsed.packageName}"`,
 				error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON,
 			].join(':');
 

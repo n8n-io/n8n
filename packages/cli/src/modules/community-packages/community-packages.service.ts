@@ -3,6 +3,7 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import axios from 'axios';
+import npa from 'npm-package-arg';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -16,7 +17,7 @@ import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { valid } from 'semver';
+import { gt as semverGt } from 'semver';
 
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -30,7 +31,7 @@ import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
-import { checkIfVersionExistsOrThrow, executeNpmCommand, verifyIntegrity } from './npm-utils';
+import { executeNpmCommand, resolvePackageVersionSpecOrThrow, verifyIntegrity } from './npm-utils';
 
 const asyncExecFile = promisify(execFile);
 
@@ -45,12 +46,21 @@ const NPM_INSTALL_ARGS = [
 
 const { PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
-const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-._/]/;
-
 type PackageJson = {
 	name: 'installed-nodes';
 	private: true;
 	dependencies: Record<string, string>;
+};
+
+type PackageVersionSelection = {
+	version: string;
+	requestedDistTag?: string;
+};
+
+type CommunityPackageInstallEventPayload = {
+	packageName: string;
+	packageVersion: string;
+	requestedDistTag?: string;
 };
 
 @Service()
@@ -99,9 +109,15 @@ export class CommunityPackagesService {
 		return await this.installedPackageRepository.remove(packageName);
 	}
 
-	private async persistInstalledPackage(packageLoader: PackageDirectoryLoader) {
+	private async persistInstalledPackage(
+		packageLoader: PackageDirectoryLoader,
+		requestedDistTag?: string,
+	) {
 		try {
-			return await this.installedPackageRepository.saveInstalledPackageWithNodes(packageLoader);
+			return await this.installedPackageRepository.saveInstalledPackageWithNodes(
+				packageLoader,
+				requestedDistTag,
+			);
 		} catch (maybeError) {
 			const error = toError(maybeError);
 
@@ -117,43 +133,92 @@ export class CommunityPackagesService {
 	parseNpmPackageName(rawString?: string): CommunityPackages.ParsedPackageName {
 		if (!rawString) throw new UnexpectedError(PACKAGE_NAME_NOT_PROVIDED);
 
-		if (INVALID_OR_SUSPICIOUS_PACKAGE_NAME.test(rawString)) {
-			throw new UnexpectedError('Package name must be a single word');
+		const versionSpec = this.extractVersionSpec(rawString);
+
+		let parsedPackageSpec: ReturnType<typeof npa>;
+		try {
+			parsedPackageSpec = npa(rawString);
+		} catch {
+			throw this.createInvalidPackageSpecError(rawString);
 		}
 
-		const scope = rawString.includes('/') ? rawString.split('/')[0] : undefined;
-
-		const packageNameWithoutScope = scope ? rawString.replace(`${scope}/`, '') : rawString;
-
-		if (!packageNameWithoutScope.startsWith(NODE_PACKAGE_PREFIX)) {
-			throw new UnexpectedError(`Package name must start with ${NODE_PACKAGE_PREFIX}`);
+		const packageName = parsedPackageSpec.name;
+		if (!packageName) {
+			throw this.createInvalidPackageSpecError(rawString);
 		}
 
-		const version = packageNameWithoutScope.includes('@')
-			? packageNameWithoutScope.split('@')[1]
-			: undefined;
+		this.assertPackageNamePrefix(packageName);
 
-		if (version && !valid(version)) {
+		const scope = parsedPackageSpec.scope;
+
+		if (rawString === packageName) {
+			return { packageName, rawString, scope };
+		}
+
+		if (!parsedPackageSpec.registry || !this.isSupportedRegistrySpec(parsedPackageSpec.type)) {
+			throw new UnexpectedError(`Invalid version: ${versionSpec ?? parsedPackageSpec.rawSpec}`);
+		}
+
+		const requestedVersion = parsedPackageSpec.rawSpec;
+		if (!requestedVersion) {
+			throw this.createInvalidPackageSpecError(rawString);
+		}
+
+		return {
+			packageName,
+			rawString,
+			scope,
+			version: requestedVersion,
+			requestedDistTag:
+				parsedPackageSpec.type === 'tag' && requestedVersion !== 'latest'
+					? requestedVersion
+					: undefined,
+		};
+	}
+
+	parsePackageVersion(packageName: string, version: string): PackageVersionSelection {
+		const parsedPackage = this.parseNpmPackageName(`${packageName}@${version}`);
+
+		if (!parsedPackage.version) {
 			throw new UnexpectedError(`Invalid version: ${version}`);
 		}
 
-		const packageName = version ? rawString.replace(`@${version}`, '') : rawString;
+		return {
+			version: parsedPackage.version,
+			requestedDistTag: parsedPackage.requestedDistTag,
+		};
+	}
 
-		return { packageName, scope, version, rawString };
+	toPublicInstalledPackage(installedPackage: InstalledPackages): PublicInstalledPackage {
+		return {
+			packageName: installedPackage.packageName,
+			installedVersion: installedPackage.installedVersion,
+			authorName: installedPackage.authorName,
+			authorEmail: installedPackage.authorEmail,
+			installedNodes: installedPackage.installedNodes,
+			createdAt: installedPackage.createdAt,
+			updatedAt: installedPackage.updatedAt,
+		};
 	}
 
 	matchPackagesWithUpdates(
 		packages: InstalledPackages[],
 		updates?: CommunityPackages.AvailableUpdates,
 	) {
-		if (!updates) return packages;
+		if (!updates) return packages.map((pkg) => this.toPublicInstalledPackage(pkg));
 
 		return packages.reduce<PublicInstalledPackage[]>((acc, cur) => {
-			const publicPackage: PublicInstalledPackage = { ...cur };
+			const publicPackage = this.toPublicInstalledPackage(cur);
 
 			const update = updates[cur.packageName];
 
-			if (update) publicPackage.updateAvailable = update.latest;
+			if (update) {
+				const updateVersion = cur.requestedDistTag ? update.wanted : update.latest;
+
+				if (updateVersion && semverGt(updateVersion, cur.installedVersion)) {
+					publicPackage.updateAvailable = updateVersion;
+				}
+			}
 
 			acc.push(publicPackage);
 
@@ -356,6 +421,7 @@ export class CommunityPackagesService {
 
 	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
 		await this.removeNpmPackage(packageName);
+		await this.removePackageJsonDependency(packageName);
 		await this.removePackageFromDatabase(installedPackage);
 		void this.publisher.publishCommand({
 			command: 'community-package-uninstall',
@@ -388,19 +454,27 @@ export class CommunityPackagesService {
 			| { installedPackage: InstalledPackages; version?: string; checksum?: string } = {},
 	) {
 		const isUpdate = 'installedPackage' in options;
-		const packageVersion = !options.version ? 'latest' : options.version;
-
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
 		this.checkInstallPermissions(shouldValidateChecksum);
+		const requestedVersionSelection = this.getRequestedVersionSelection(packageName, options);
+
+		const registry = this.getNpmRegistry();
+		const resolvedPackageVersion = await resolvePackageVersionSpecOrThrow(
+			packageName,
+			requestedVersionSelection.version,
+			registry,
+		);
 
 		if (options.checksum) {
-			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
+			await verifyIntegrity(packageName, resolvedPackageVersion, registry, options.checksum);
 		}
 
-		await checkIfVersionExistsOrThrow(packageName, packageVersion, this.getNpmRegistry());
-
 		try {
-			await this.downloadPackage(packageName, packageVersion);
+			await this.downloadPackage(
+				packageName,
+				resolvedPackageVersion,
+				requestedVersionSelection.requestedDistTag ?? resolvedPackageVersion,
+			);
 		} catch (error) {
 			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 				throw new UserError('npm package not found', { extra: { packageName } });
@@ -428,10 +502,22 @@ export class CommunityPackagesService {
 				if (isUpdate) {
 					await this.removePackageFromDatabase(options.installedPackage);
 				}
-				const installedPackage = await this.persistInstalledPackage(loader);
+				const installedPackage = await this.persistInstalledPackage(
+					loader,
+					requestedVersionSelection.requestedDistTag,
+				);
+				const pubSubPayload: CommunityPackageInstallEventPayload = {
+					packageName,
+					packageVersion: resolvedPackageVersion,
+				};
+
+				if (requestedVersionSelection.requestedDistTag) {
+					pubSubPayload.requestedDistTag = requestedVersionSelection.requestedDistTag;
+				}
+
 				void this.publisher.publishCommand({
 					command: isUpdate ? 'community-package-update' : 'community-package-install',
-					payload: { packageName, packageVersion },
+					payload: pubSubPayload,
 				});
 				await this.loadNodesAndCredentials.postProcessLoaders();
 				this.loadNodesAndCredentials.releaseTypes();
@@ -459,8 +545,13 @@ export class CommunityPackagesService {
 	async handleInstallEvent({
 		packageName,
 		packageVersion,
-	}: { packageName: string; packageVersion: string }) {
-		await this.installOrUpdateNpmPackage(packageName, packageVersion);
+		requestedDistTag,
+	}: CommunityPackageInstallEventPayload) {
+		await this.installOrUpdateNpmPackage(
+			packageName,
+			packageVersion,
+			requestedDistTag ?? packageVersion,
+		);
 	}
 
 	@OnPubSubEvent('community-package-uninstall')
@@ -468,8 +559,12 @@ export class CommunityPackagesService {
 		await this.removeNpmPackage(packageName);
 	}
 
-	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
-		await this.downloadPackage(packageName, packageVersion);
+	private async installOrUpdateNpmPackage(
+		packageName: string,
+		packageVersion: string,
+		dependencyVersion: string,
+	) {
+		await this.downloadPackage(packageName, packageVersion, dependencyVersion);
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
@@ -489,7 +584,11 @@ export class CommunityPackagesService {
 		return `${this.downloadFolder}/node_modules/${packageName}`;
 	}
 
-	private async downloadPackage(packageName: string, packageVersion: string): Promise<string> {
+	private async downloadPackage(
+		packageName: string,
+		packageVersion: string,
+		dependencyVersion: string,
+	): Promise<string> {
 		const registry = this.getNpmRegistry();
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 
@@ -533,7 +632,7 @@ export class CommunityPackagesService {
 			await executeNpmCommand(['install', ...this.getNpmInstallArgs()], {
 				cwd: packageDirectory,
 			});
-			await this.updatePackageJsonDependency(packageName, packageJson.version);
+			await this.updatePackageJsonDependency(packageName, dependencyVersion);
 		} finally {
 			await rm(join(this.downloadFolder, tarballName));
 		}
@@ -551,5 +650,63 @@ export class CommunityPackagesService {
 		const packageJson = jsonParse<PackageJson>(existingContent);
 		packageJson.dependencies[packageName] = version;
 		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
+	}
+
+	async removePackageJsonDependency(packageName: string) {
+		const existingContent = await readFile(this.packageJsonPath, 'utf-8');
+		const packageJson = jsonParse<PackageJson>(existingContent);
+		delete packageJson.dependencies[packageName];
+		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
+	}
+
+	private getRequestedVersionSelection(
+		packageName: string,
+		options:
+			| { version?: string; checksum?: string }
+			| { installedPackage: InstalledPackages; version?: string; checksum?: string },
+	): PackageVersionSelection {
+		const requestedVersion =
+			options.version ??
+			('installedPackage' in options
+				? (options.installedPackage.requestedDistTag ?? undefined)
+				: undefined);
+
+		if (!requestedVersion) return { version: 'latest' };
+
+		return this.parsePackageVersion(packageName, requestedVersion);
+	}
+
+	private createInvalidPackageSpecError(rawString: string) {
+		const versionSpec = this.extractVersionSpec(rawString);
+
+		if (versionSpec) {
+			return new UnexpectedError(`Invalid version: ${versionSpec}`);
+		}
+
+		return new UnexpectedError('Package name must be a single word');
+	}
+
+	private extractVersionSpec(rawString: string) {
+		const versionSeparatorIndex = rawString.startsWith('@')
+			? rawString.indexOf('@', rawString.indexOf('/') + 1)
+			: rawString.indexOf('@');
+
+		if (versionSeparatorIndex <= 0) return undefined;
+
+		return rawString.slice(versionSeparatorIndex + 1);
+	}
+
+	private assertPackageNamePrefix(packageName: string) {
+		const packageNameWithoutScope = packageName.includes('/')
+			? packageName.split('/').at(-1)
+			: packageName;
+
+		if (!packageNameWithoutScope?.startsWith(NODE_PACKAGE_PREFIX)) {
+			throw new UnexpectedError(`Package name must start with ${NODE_PACKAGE_PREFIX}`);
+		}
+	}
+
+	private isSupportedRegistrySpec(type: string): type is 'tag' | 'version' {
+		return type === 'tag' || type === 'version';
 	}
 }

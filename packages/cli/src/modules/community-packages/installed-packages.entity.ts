@@ -11,6 +11,9 @@ export class InstalledPackages extends WithTimestamps {
 	@Column()
 	installedVersion: string;
 
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	requestedDistTag?: string | null;
+
 	@Column()
 	authorName?: string;
 

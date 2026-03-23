@@ -1,8 +1,10 @@
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import axios from 'axios';
+import npa from 'npm-package-arg';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { valid as isValidSemver } from 'semver';
 
 const asyncExecFile = promisify(execFile);
 
@@ -108,9 +110,12 @@ export async function verifyIntegrity(
 	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
 
 	try {
-		const metadata = await axios.get<{ dist: { integrity?: string } }>(`${url}/${version}`, {
-			timeout: REQUEST_TIMEOUT,
-		});
+		const metadata = await axios.get<{ dist: { integrity?: string } }>(
+			`${url}/${encodeURIComponent(version)}`,
+			{
+				timeout: REQUEST_TIMEOUT,
+			},
+		);
 
 		const integrity = metadata?.data?.dist?.integrity;
 		if (integrity !== expectedIntegrity) {
@@ -152,22 +157,47 @@ export async function verifyIntegrity(
 	}
 }
 
-export async function checkIfVersionExistsOrThrow(
+export async function resolvePackageVersionSpecOrThrow(
 	packageName: string,
-	version: string,
+	versionSpec: string,
 	registryUrl: string,
-): Promise<true> {
+): Promise<string> {
 	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
+	let parsedSpec: ReturnType<typeof npa.resolve>;
+	try {
+		parsedSpec = npa.resolve(packageName, versionSpec);
+	} catch {
+		throw new UnexpectedError('Failed to check package version existence');
+	}
+
+	if (!parsedSpec.registry || (parsedSpec.type !== 'version' && parsedSpec.type !== 'tag')) {
+		throw new UnexpectedError('Failed to check package version existence');
+	}
 
 	try {
-		await axios.get(`${url}/${version}`, { timeout: REQUEST_TIMEOUT });
-		return true;
+		if (parsedSpec.type === 'version') {
+			await axios.get(`${url}/${encodeURIComponent(versionSpec)}`, {
+				timeout: REQUEST_TIMEOUT,
+			});
+			return versionSpec;
+		}
+
+		const metadata = await axios.get<{ 'dist-tags'?: Record<string, string> }>(url, {
+			timeout: REQUEST_TIMEOUT,
+		});
+
+		const resolvedVersion = metadata.data?.['dist-tags']?.[versionSpec];
+		if (resolvedVersion && isValidSemver(resolvedVersion)) {
+			return resolvedVersion;
+		}
+
+		throw new UnexpectedError('Failed to check package version existence');
 	} catch (error) {
 		try {
 			const stdout = await executeNpmCommand(
 				[
 					'view',
-					`${packageName}@${version}`,
+					`${packageName}@${versionSpec}`,
 					'version',
 					`--registry=${sanitizeRegistryUrl(registryUrl)}`,
 					'--json',
@@ -175,9 +205,13 @@ export async function checkIfVersionExistsOrThrow(
 				{ doNotHandleError: true },
 			);
 
-			const versionInfo = jsonParse(stdout);
-			if (versionInfo === version) {
-				return true;
+			const versionInfo = jsonParse<string | string[]>(stdout);
+			if (typeof versionInfo === 'string' && isValidSemver(versionInfo)) {
+				if (parsedSpec.type === 'version' && versionInfo !== versionSpec) {
+					throw new UnexpectedError('Failed to check package version existence');
+				}
+
+				return versionInfo;
 			}
 
 			throw new UnexpectedError('Failed to check package version existence');

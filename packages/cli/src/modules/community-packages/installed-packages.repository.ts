@@ -14,7 +14,10 @@ export class InstalledPackagesRepository extends Repository<InstalledPackages> {
 		super(InstalledPackages, dataSource.manager);
 	}
 
-	async saveInstalledPackageWithNodes(packageLoader: PackageDirectoryLoader) {
+	async saveInstalledPackageWithNodes(
+		packageLoader: PackageDirectoryLoader,
+		requestedDistTag?: string,
+	) {
 		const { packageJson, nodeTypes, loadedNodes } = packageLoader;
 		const { name: packageName, version: installedVersion, author } = packageJson;
 
@@ -25,6 +28,7 @@ export class InstalledPackagesRepository extends Repository<InstalledPackages> {
 				this.create({
 					packageName,
 					installedVersion,
+					requestedDistTag: requestedDistTag ?? null,
 					authorName: author?.name,
 					authorEmail: author?.email,
 				}),

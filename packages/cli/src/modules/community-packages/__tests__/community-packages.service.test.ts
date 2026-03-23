@@ -26,7 +26,7 @@ import { InstalledNodes } from '../installed-nodes.entity';
 import { InstalledNodesRepository } from '../installed-nodes.repository';
 import { InstalledPackages } from '../installed-packages.entity';
 import { InstalledPackagesRepository } from '../installed-packages.repository';
-import { executeNpmCommand } from '../npm-utils';
+import { executeNpmCommand, resolvePackageVersionSpecOrThrow } from '../npm-utils';
 
 jest.mock('node:fs/promises');
 jest.mock('node:child_process');
@@ -37,6 +37,7 @@ jest.mock('../community-node-types-utils', () => ({
 jest.mock('../npm-utils', () => ({
 	...jest.requireActual('../npm-utils'),
 	executeNpmCommand: jest.fn(),
+	resolvePackageVersionSpecOrThrow: jest.fn(),
 }));
 
 type ExecFileCallback = NonNullable<Parameters<typeof execFile>[3]>;
@@ -78,6 +79,7 @@ describe('CommunityPackagesService', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 		loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+		mocked(resolvePackageVersionSpecOrThrow).mockResolvedValue(COMMUNITY_PACKAGE_VERSION.CURRENT);
 
 		const nodeName = randomName();
 		installedNodesRepository.create.mockImplementation(() => {
@@ -106,11 +108,14 @@ describe('CommunityPackagesService', () => {
 			).toThrowError();
 		});
 
-		test.each(['invalid', '1.a.b'])('should fail with invalid version', (version) => {
-			expect(() =>
-				communityPackagesService.parseNpmPackageName(`n8n-nodes-test@${version}`),
-			).toThrow(`Invalid version: ${version}`);
-		});
+		test.each(['^1.0.0', 'file:./package.tgz', 'npm:other-package@1.0.0'])(
+			'should fail with unsupported version spec',
+			(version) => {
+				expect(() =>
+					communityPackagesService.parseNpmPackageName(`n8n-nodes-test@${version}`),
+				).toThrow(`Invalid version: ${version}`);
+			},
+		);
 
 		test('should parse valid package name', () => {
 			const name = mockPackageName();
@@ -134,6 +139,17 @@ describe('CommunityPackagesService', () => {
 			expect(parsed.version).toBe(version);
 		});
 
+		test('should parse valid package name and dist-tag', () => {
+			const name = mockPackageName();
+			const fullPackageName = `${name}@beta`;
+			const parsed = communityPackagesService.parseNpmPackageName(fullPackageName);
+
+			expect(parsed.rawString).toBe(fullPackageName);
+			expect(parsed.packageName).toBe(name);
+			expect(parsed.version).toBe('beta');
+			expect(parsed.requestedDistTag).toBe('beta');
+		});
+
 		test('should parse valid package name, scope and version', () => {
 			const scope = '@n8n';
 			const name = mockPackageName();
@@ -145,6 +161,14 @@ describe('CommunityPackagesService', () => {
 			expect(parsed.packageName).toBe(`${scope}/${name}`);
 			expect(parsed.scope).toBe(scope);
 			expect(parsed.version).toBe(version);
+		});
+
+		test('should parse explicit latest without storing a sticky tag', () => {
+			const name = mockPackageName();
+			const parsed = communityPackagesService.parseNpmPackageName(`${name}@latest`);
+
+			expect(parsed.version).toBe('latest');
+			expect(parsed.requestedDistTag).toBeUndefined();
 		});
 	});
 
@@ -199,6 +223,44 @@ describe('CommunityPackagesService', () => {
 
 			expect(crossedPkgA.updateAvailable).toBeUndefined();
 			expect(crossedPkgB.updateAvailable).toBe('0.3.0');
+		});
+
+		test('should use wanted for dist-tag installs', () => {
+			const [pkg] = mockPackagePair();
+			pkg.requestedDistTag = 'beta';
+			pkg.installedVersion = '1.0.0-beta.1';
+
+			const updates: CommunityPackages.AvailableUpdates = {
+				[pkg.packageName]: {
+					current: '1.0.0-beta.1',
+					wanted: '1.0.0-beta.2',
+					latest: '1.0.0',
+					location: pkg.packageName,
+				},
+			};
+
+			const [crossedPkg] = communityPackagesService.matchPackagesWithUpdates([pkg], updates);
+
+			expect(crossedPkg.updateAvailable).toBe('1.0.0-beta.2');
+		});
+
+		test('should not mark stable latest as update for dist-tag installs when wanted equals current', () => {
+			const [pkg] = mockPackagePair();
+			pkg.requestedDistTag = 'beta';
+			pkg.installedVersion = '1.0.0-beta.2';
+
+			const updates: CommunityPackages.AvailableUpdates = {
+				[pkg.packageName]: {
+					current: '1.0.0-beta.2',
+					wanted: '1.0.0-beta.2',
+					latest: '1.0.0',
+					location: pkg.packageName,
+				},
+			};
+
+			const [crossedPkg] = communityPackagesService.matchPackagesWithUpdates([pkg], updates);
+
+			expect(crossedPkg.updateAvailable).toBeUndefined();
 		});
 	});
 
@@ -334,6 +396,8 @@ describe('CommunityPackagesService', () => {
 		const PACKAGE_NAME = 'n8n-nodes-test';
 		const installedPackageForUpdateTest = mock<InstalledPackages>({
 			packageName: PACKAGE_NAME,
+			installedVersion: '0.9.0',
+			requestedDistTag: null,
 		});
 
 		const packageDirectoryLoader = mock<PackageDirectoryLoader>({
@@ -342,7 +406,8 @@ describe('CommunityPackagesService', () => {
 
 		const testBlockDownloadDir = instanceSettings.nodesDownloadDir;
 		const testBlockPackageDir = `${testBlockDownloadDir}/node_modules/${PACKAGE_NAME}`;
-		const testBlockTarballName = `${PACKAGE_NAME}-latest.tgz`;
+		const resolvedPackageVersion = '1.0.0';
+		const testBlockTarballName = `${PACKAGE_NAME}-${resolvedPackageVersion}.tgz`;
 		const testBlockRegistry = config.registry;
 		const testBlockNpmInstallArgs = [
 			'--audit=false',
@@ -376,17 +441,19 @@ describe('CommunityPackagesService', () => {
 				}
 				return 'Done';
 			});
+			mocked(resolvePackageVersionSpecOrThrow).mockResolvedValue(resolvedPackageVersion);
 
-			mocked(readFile).mockResolvedValue(
+			mocked(readFile).mockResolvedValueOnce(
 				JSON.stringify({
 					name: PACKAGE_NAME,
-					version: '1.0.0', // Mocked version from package.json inside tarball
+					version: resolvedPackageVersion,
 					dependencies: { 'some-actual-dep': '1.2.3' },
 					devDependencies: { 'a-dev-dep': '1.0.0' },
 					peerDependencies: { 'a-peer-dep': '2.0.0' },
 					optionalDependencies: { 'an-optional-dep': '3.0.0' },
 				}),
 			);
+			mocked(readFile).mockResolvedValue(JSON.stringify({ dependencies: {} }));
 			mocked(writeFile).mockResolvedValue(undefined);
 
 			loadNodesAndCredentials.loadPackage.mockResolvedValue(packageDirectoryLoader);
@@ -414,16 +481,18 @@ describe('CommunityPackagesService', () => {
 			// ASSERT:
 			expect(rm).toHaveBeenCalledTimes(2);
 			expect(rm).toHaveBeenNthCalledWith(1, testBlockPackageDir, { recursive: true, force: true });
-			expect(rm).toHaveBeenNthCalledWith(
-				2,
-				path.join(nodesDownloadDir, 'n8n-nodes-test-latest.tgz'),
-			);
+			expect(rm).toHaveBeenNthCalledWith(2, path.join(nodesDownloadDir, testBlockTarballName));
 
 			// Check executeNpmCommand was called for npm commands
 			expect(executeNpmCommand).toHaveBeenCalledTimes(2);
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				1,
-				['pack', `${PACKAGE_NAME}@latest`, `--registry=${testBlockRegistry}`, '--quiet'],
+				[
+					'pack',
+					`${PACKAGE_NAME}@${resolvedPackageVersion}`,
+					`--registry=${testBlockRegistry}`,
+					'--quiet',
+				],
 				{ cwd: testBlockDownloadDir },
 			);
 
@@ -449,7 +518,7 @@ describe('CommunityPackagesService', () => {
 				JSON.stringify(
 					{
 						name: PACKAGE_NAME,
-						version: '1.0.0',
+						version: resolvedPackageVersion,
 						dependencies: { 'some-actual-dep': '1.2.3' },
 					},
 					null,
@@ -465,11 +534,12 @@ describe('CommunityPackagesService', () => {
 			expect(installedPackageRepository.remove).toHaveBeenCalledWith(installedPackageForUpdateTest);
 			expect(installedPackageRepository.saveInstalledPackageWithNodes).toHaveBeenCalledWith(
 				packageDirectoryLoader,
+				undefined,
 			);
 
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'community-package-update',
-				payload: { packageName: PACKAGE_NAME, packageVersion: 'latest' },
+				payload: { packageName: PACKAGE_NAME, packageVersion: resolvedPackageVersion },
 			});
 		});
 
@@ -487,15 +557,71 @@ describe('CommunityPackagesService', () => {
 				new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY),
 			);
 		});
+
+		test('should reuse requested dist-tag on update and keep it in package.json', async () => {
+			const tagInstalledPackage = mock<InstalledPackages>({
+				packageName: PACKAGE_NAME,
+				installedVersion: '0.9.0',
+				requestedDistTag: 'beta',
+			});
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+			mocked(readFile).mockResolvedValueOnce(
+				JSON.stringify({
+					name: PACKAGE_NAME,
+					version: resolvedPackageVersion,
+					dependencies: { 'some-actual-dep': '1.2.3' },
+					devDependencies: { 'a-dev-dep': '1.0.0' },
+					peerDependencies: { 'a-peer-dep': '2.0.0' },
+					optionalDependencies: { 'an-optional-dep': '3.0.0' },
+				}),
+			);
+			mocked(readFile).mockResolvedValue(JSON.stringify({ dependencies: {} }));
+
+			await communityPackagesService.updatePackage(PACKAGE_NAME, tagInstalledPackage);
+
+			expect(resolvePackageVersionSpecOrThrow).toHaveBeenCalledWith(
+				PACKAGE_NAME,
+				'beta',
+				testBlockRegistry,
+			);
+			expect(executeNpmCommand).toHaveBeenNthCalledWith(
+				1,
+				[
+					'pack',
+					`${PACKAGE_NAME}@${resolvedPackageVersion}`,
+					`--registry=${testBlockRegistry}`,
+					'--quiet',
+				],
+				{ cwd: testBlockDownloadDir },
+			);
+			expect(writeFile).toHaveBeenLastCalledWith(
+				path.join(nodesDownloadDir, 'package.json'),
+				expect.stringContaining(`"${PACKAGE_NAME}": "beta"`),
+				'utf-8',
+			);
+			expect(installedPackageRepository.saveInstalledPackageWithNodes).toHaveBeenCalledWith(
+				packageDirectoryLoader,
+				'beta',
+			);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'community-package-update',
+				payload: {
+					packageName: PACKAGE_NAME,
+					packageVersion: resolvedPackageVersion,
+					requestedDistTag: 'beta',
+				},
+			});
+		});
 	});
 
 	describe('installPackage', () => {
 		test('should throw when installation of not vetted packages is forbidden', async () => {
 			config.unverifiedEnabled = false;
 			config.registry = 'https://registry.npmjs.org';
-			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
-				'Installation of unverified community packages is forbidden!',
-			);
+			await expect(
+				communityPackagesService.installPackage('n8n-nodes-package', '0.1.0'),
+			).rejects.toThrow('Installation of unverified community packages is forbidden!');
 		});
 	});
 
@@ -875,6 +1001,25 @@ describe('CommunityPackagesService', () => {
 		});
 	});
 
+	describe('removePackageJsonDependency', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			mocked(readFile).mockResolvedValue(
+				JSON.stringify({ dependencies: { 'test-package': '1.0.0', 'other-package': '2.0.0' } }),
+			);
+		});
+
+		test('should remove the requested dependency', async () => {
+			await communityPackagesService.removePackageJsonDependency('test-package');
+
+			expect(writeFile).toHaveBeenCalledWith(
+				path.join(nodesDownloadDir, 'package.json'),
+				JSON.stringify({ dependencies: { 'other-package': '2.0.0' } }, null, 2),
+				'utf-8',
+			);
+		});
+	});
+
 	describe('handleInstallEvent', () => {
 		test('should call unloadPackage before loadPackage to handle already-loaded packages', async () => {
 			const callOrder: string[] = [];
@@ -894,6 +1039,23 @@ describe('CommunityPackagesService', () => {
 			});
 
 			expect(callOrder).toEqual(['unloadPackage', 'loadPackage']);
+		});
+
+		test('should preserve requested dist-tag in package.json when installing from pubsub', async () => {
+			const downloadPackageSpy = jest
+				.spyOn(communityPackagesService as any, 'downloadPackage')
+				.mockResolvedValue(undefined);
+
+			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
+			loadNodesAndCredentials.loadPackage.mockResolvedValue(mock<PackageDirectoryLoader>());
+
+			await communityPackagesService.handleInstallEvent({
+				packageName: 'n8n-nodes-test',
+				packageVersion: '1.0.0-beta.2',
+				requestedDistTag: 'beta',
+			});
+
+			expect(downloadPackageSpy).toHaveBeenCalledWith('n8n-nodes-test', '1.0.0-beta.2', 'beta');
 		});
 	});
 });

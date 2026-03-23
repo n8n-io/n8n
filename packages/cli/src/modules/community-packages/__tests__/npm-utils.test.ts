@@ -21,7 +21,7 @@ jest.mock('node:util', () => {
 	};
 });
 
-import { executeNpmCommand, verifyIntegrity, checkIfVersionExistsOrThrow } from '../npm-utils';
+import { executeNpmCommand, verifyIntegrity, resolvePackageVersionSpecOrThrow } from '../npm-utils';
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 describe('executeNpmCommand', () => {
@@ -513,7 +513,7 @@ describe('verifyIntegrity', () => {
 	});
 });
 
-describe('checkIfVersionExistsOrThrow', () => {
+describe('resolvePackageVersionSpecOrThrow', () => {
 	const registryUrl = 'https://registry.npmjs.org';
 	const packageName = 'test-package';
 	const version = '1.0.0';
@@ -528,7 +528,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should return true when package version exists', async () => {
+	it('should return the exact version when package version exists', async () => {
 		nock(registryUrl)
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.reply(200, {
@@ -536,8 +536,21 @@ describe('checkIfVersionExistsOrThrow', () => {
 				version,
 			});
 
-		const result = await checkIfVersionExistsOrThrow(packageName, version, registryUrl);
-		expect(result).toBe(true);
+		const result = await resolvePackageVersionSpecOrThrow(packageName, version, registryUrl);
+		expect(result).toBe(version);
+	});
+
+	it('should resolve dist-tags from registry metadata', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}`)
+			.reply(200, {
+				'dist-tags': {
+					beta: '1.0.1-beta.1',
+				},
+			});
+
+		const result = await resolvePackageVersionSpecOrThrow(packageName, 'beta', registryUrl);
+		expect(result).toBe('1.0.1-beta.1');
 	});
 
 	it('should throw UnexpectedError when package version does not exist (404) and CLI fallback also fails', async () => {
@@ -547,9 +560,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 
 		mockAsyncExec.mockRejectedValue(new Error('E404 Not Found'));
 
-		await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
-			new UnexpectedError('Package version does not exist'),
-		);
+		await expect(
+			resolvePackageVersionSpecOrThrow(packageName, version, registryUrl),
+		).rejects.toThrow(new UnexpectedError('Package version does not exist'));
 	});
 
 	it('should throw UnexpectedError with proper message on 404 when CLI fallback fails', async () => {
@@ -559,9 +572,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 
 		mockAsyncExec.mockRejectedValue(new Error('Some error'));
 
-		await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
-			new UnexpectedError('Failed to check package version existence'),
-		);
+		await expect(
+			resolvePackageVersionSpecOrThrow(packageName, version, registryUrl),
+		).rejects.toThrow(new UnexpectedError('Failed to check package version existence'));
 	});
 
 	it('should throw UnexpectedError for network failures when CLI fallback fails', async () => {
@@ -571,9 +584,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 
 		mockAsyncExec.mockRejectedValue(new Error('CLI network failure'));
 
-		await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
-			new UnexpectedError('Failed to check package version existence'),
-		);
+		await expect(
+			resolvePackageVersionSpecOrThrow(packageName, version, registryUrl),
+		).rejects.toThrow(new UnexpectedError('Failed to check package version existence'));
 	});
 
 	it('should throw UnexpectedError for server errors (500) when CLI fallback fails', async () => {
@@ -583,9 +596,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 
 		mockAsyncExec.mockRejectedValue(new Error('CLI error'));
 
-		await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
-			UnexpectedError,
-		);
+		await expect(
+			resolvePackageVersionSpecOrThrow(packageName, version, registryUrl),
+		).rejects.toThrow(UnexpectedError);
 	});
 
 	it('should return generic message for DNS getaddrinfo errors when CLI fallback fails', async () => {
@@ -595,7 +608,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 
 		mockAsyncExec.mockRejectedValue(new Error('getaddrinfo ENOTFOUND registry.npmjs.org'));
 
-		await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
+		await expect(
+			resolvePackageVersionSpecOrThrow(packageName, version, registryUrl),
+		).rejects.toThrow(
 			new UnexpectedError(
 				'The community nodes service is temporarily unreachable. Please try again later.',
 			),
@@ -609,7 +624,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 
 		mockAsyncExec.mockRejectedValue(new Error('ENOTFOUND registry.npmjs.org'));
 
-		await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
+		await expect(
+			resolvePackageVersionSpecOrThrow(packageName, version, registryUrl),
+		).rejects.toThrow(
 			new UnexpectedError(
 				'The community nodes service is temporarily unreachable. Please try again later.',
 			),
@@ -617,7 +634,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 	});
 
 	describe('CLI fallback functionality', () => {
-		it('should fallback to npm CLI when HTTP request fails and return true', async () => {
+		it('should fallback to npm CLI when HTTP request fails and return the resolved version', async () => {
 			nock(registryUrl)
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
@@ -627,8 +644,8 @@ describe('checkIfVersionExistsOrThrow', () => {
 				stderr: '',
 			});
 
-			const result = await checkIfVersionExistsOrThrow(packageName, version, registryUrl);
-			expect(result).toBe(true);
+			const result = await resolvePackageVersionSpecOrThrow(packageName, version, registryUrl);
+			expect(result).toBe(version);
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 			expect(mockAsyncExec).toHaveBeenCalledWith(
 				'npm',
@@ -649,37 +666,55 @@ describe('checkIfVersionExistsOrThrow', () => {
 				stderr: '',
 			});
 
-			await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
-				new UnexpectedError('Failed to check package version existence'),
-			);
+			await expect(
+				resolvePackageVersionSpecOrThrow(packageName, version, registryUrl),
+			).rejects.toThrow(new UnexpectedError('Failed to check package version existence'));
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 		});
 
-		it('should handle special characters in package name and version safely for checkIfVersionExistsOrThrow', async () => {
-			const specialPackageName = 'test-package; rm -rf /';
-			const specialVersion = '1.0.0 && echo "hacked"';
-
+		it('should fallback to npm CLI for dist-tags', async () => {
 			nock(registryUrl)
-				.get(`/${encodeURIComponent(specialPackageName)}/${specialVersion}`)
+				.get(`/${encodeURIComponent(packageName)}`)
 				.replyWithError('Network failure');
 
 			mockAsyncExec.mockResolvedValue({
-				stdout: JSON.stringify(specialVersion),
+				stdout: JSON.stringify('1.0.1-beta.1'),
 				stderr: '',
 			});
 
-			const result = await checkIfVersionExistsOrThrow(
+			const result = await resolvePackageVersionSpecOrThrow(packageName, 'beta', registryUrl);
+			expect(result).toBe('1.0.1-beta.1');
+			expect(mockAsyncExec).toHaveBeenCalledWith(
+				'npm',
+				['view', `${packageName}@beta`, 'version', `--registry=${registryUrl}`, '--json'],
+				undefined,
+			);
+		});
+
+		it('should handle special characters in package name safely for resolvePackageVersionSpecOrThrow', async () => {
+			const specialPackageName = '@test/test-package';
+
+			nock(registryUrl)
+				.get(`/${encodeURIComponent(specialPackageName)}/${encodeURIComponent(version)}`)
+				.replyWithError('Network failure');
+
+			mockAsyncExec.mockResolvedValue({
+				stdout: JSON.stringify(version),
+				stderr: '',
+			});
+
+			const result = await resolvePackageVersionSpecOrThrow(
 				specialPackageName,
-				specialVersion,
+				version,
 				registryUrl,
 			);
-			expect(result).toBe(true);
+			expect(result).toBe(version);
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 			expect(mockAsyncExec).toHaveBeenCalledWith(
 				'npm',
 				[
 					'view',
-					`${specialPackageName}@${specialVersion}`,
+					`${specialPackageName}@${version}`,
 					'version',
 					`--registry=${registryUrl}`,
 					'--json',
@@ -697,21 +732,23 @@ describe('checkIfVersionExistsOrThrow', () => {
 				new Error('E404 Not Found - GET https://registry.npmjs.org/nonexistent-package'),
 			);
 
-			await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
-				new UnexpectedError('Package version does not exist'),
-			);
+			await expect(
+				resolvePackageVersionSpecOrThrow(packageName, version, registryUrl),
+			).rejects.toThrow(new UnexpectedError('Package version does not exist'));
 
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 		});
 
-		it('should handle DNS errors in CLI fallback for checkIfVersionExistsOrThrow', async () => {
+		it('should handle DNS errors in CLI fallback for resolvePackageVersionSpecOrThrow', async () => {
 			nock(registryUrl)
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
 			mockAsyncExec.mockRejectedValue(new Error('getaddrinfo ENOTFOUND registry.npmjs.org'));
 
-			await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
+			await expect(
+				resolvePackageVersionSpecOrThrow(packageName, version, registryUrl),
+			).rejects.toThrow(
 				new UnexpectedError(
 					'The community nodes service is temporarily unreachable. Please try again later.',
 				),
@@ -720,14 +757,16 @@ describe('checkIfVersionExistsOrThrow', () => {
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 		});
 
-		it('should handle npm errors in CLI fallback for checkIfVersionExistsOrThrow', async () => {
+		it('should handle npm errors in CLI fallback for resolvePackageVersionSpecOrThrow', async () => {
 			nock(registryUrl)
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
 			mockAsyncExec.mockRejectedValue(new Error('npm ERR! 500 Internal Server Error'));
 
-			await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
+			await expect(
+				resolvePackageVersionSpecOrThrow(packageName, version, registryUrl),
+			).rejects.toThrow(
 				new UnexpectedError(
 					'The community nodes service is temporarily unreachable. Please try again later.',
 				),
@@ -736,16 +775,16 @@ describe('checkIfVersionExistsOrThrow', () => {
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 		});
 
-		it('should handle generic CLI errors for checkIfVersionExistsOrThrow', async () => {
+		it('should handle generic CLI errors for resolvePackageVersionSpecOrThrow', async () => {
 			nock(registryUrl)
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
 			mockAsyncExec.mockRejectedValue(new Error('Some other error'));
 
-			await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
-				new UnexpectedError('Failed to check package version existence'),
-			);
+			await expect(
+				resolvePackageVersionSpecOrThrow(packageName, version, registryUrl),
+			).rejects.toThrow(new UnexpectedError('Failed to check package version existence'));
 
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 		});
@@ -762,8 +801,12 @@ describe('checkIfVersionExistsOrThrow', () => {
 					version,
 				});
 
-			const result = await checkIfVersionExistsOrThrow(packageName, version, registryWithSlashes);
-			expect(result).toBe(true);
+			const result = await resolvePackageVersionSpecOrThrow(
+				packageName,
+				version,
+				registryWithSlashes,
+			);
+			expect(result).toBe(version);
 		});
 	});
 });
