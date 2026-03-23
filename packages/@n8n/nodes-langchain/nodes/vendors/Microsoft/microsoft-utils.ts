@@ -10,6 +10,7 @@ import type {
 import { MemoryStorage, AgentApplication, CloudAdapter } from '@microsoft/agents-hosting';
 import {
 	NodeOperationError,
+	type IDataObject,
 	type IWebhookFunctions,
 	type INodePropertyOptions,
 } from 'n8n-workflow';
@@ -61,10 +62,21 @@ export type ActivityInfo = {
 	locale?: string;
 };
 
+export type McpToolCallLog = {
+	serverName: string;
+	toolName: string;
+	input: IDataObject;
+	output: unknown;
+	isError: boolean;
+	durationMs: number;
+	timestamp: string;
+};
+
 export type ActivityCapture = {
 	input: string;
 	output: string[];
 	activity: ActivityInfo;
+	mcpToolLogs?: McpToolCallLog[];
 };
 
 export function extractActivityInfo(activity: Activity): ActivityInfo {
@@ -92,13 +104,25 @@ export function extractActivityInfo(activity: Activity): ActivityInfo {
 }
 
 export const microsoftMcpServers: INodePropertyOptions[] = [
+	{ name: 'Admin 365', value: 'mcp_Admin365_GraphTools' },
+	{ name: 'Admin Tools', value: 'mcp_AdminTools' },
 	{ name: 'Calendar', value: 'mcp_CalendarTools' },
+	{ name: 'DA Search', value: 'mcp_DASearch' },
+	{ name: 'Excel', value: 'mcp_ExcelServer' },
+	{ name: 'Knowledge', value: 'mcp_KnowledgeTools' },
+	{ name: 'M365 Copilot', value: 'mcp_M365Copilot' },
 	{ name: 'Mail', value: 'mcp_MailTools' },
-	{ name: 'Me', value: 'mcp_MeServer' },
+	{ name: 'OneDrive', value: 'mcp_OneDriveRemoteServer' },
 	{ name: 'OneDrive & SharePoint', value: 'mcp_ODSPRemoteServer' },
+	{ name: 'Planner', value: 'mcp_PlannerServer' },
+	{ name: 'SharePoint', value: 'mcp_SharePointRemoteServer' },
 	{ name: 'SharePoint Lists', value: 'mcp_SharePointListsTools' },
+	{ name: 'Task Personalization', value: 'mcp_TaskPersonalizationServer' },
 	{ name: 'Teams', value: 'mcp_TeamsServer' },
 	{ name: 'Teams Canary', value: 'mcp_TeamsCanaryServer' },
+	{ name: 'Teams V1', value: 'mcp_TeamsServerV1' },
+	{ name: 'Web Search', value: 'mcp_WebSearchTools' },
+	{ name: 'Windows 365 Computer Use', value: 'mcp_W365ComputerUse' },
 	{ name: 'Word', value: 'mcp_WordServer' },
 ];
 
@@ -168,6 +192,7 @@ export async function getMicrosoftMcpTools(
 
 	const toolkits: StructuredToolkit[] = [];
 	const clients: Client[] = [];
+	const mcpToolCallLogs: McpToolCallLog[] = [];
 	const timeout = 60000;
 
 	for (const server of servers) {
@@ -203,12 +228,31 @@ export async function getMicrosoftMcpTools(
 			continue;
 		}
 
+		const serverName = server.mcpServerName;
 		const serverTools = mcpTools.map((tool) => {
-			const prefixedName = buildMcpToolName(server.mcpServerName, tool.name);
-			const callToolFunc = createCallTool(tool.name, client, timeout, (errorMessage) => {
-				console.error(`Tool "${tool.name}" execution error:`, errorMessage);
-			});
-			return mcpToolToDynamicTool({ ...tool, name: prefixedName }, callToolFunc);
+			const prefixedName = buildMcpToolName(serverName, tool.name);
+
+			const callToolWithLogging = async (args: IDataObject) => {
+				let isError = false;
+				const callTool = createCallTool(tool.name, client, timeout, (errorMessage) => {
+					console.error(`Tool "${tool.name}" execution error:`, errorMessage);
+					isError = true;
+				});
+				const start = Date.now();
+				const result = await callTool(args);
+				mcpToolCallLogs.push({
+					serverName,
+					toolName: prefixedName,
+					input: args,
+					output: result,
+					isError,
+					durationMs: Date.now() - start,
+					timestamp: new Date().toISOString(),
+				});
+				return result;
+			};
+
+			return mcpToolToDynamicTool({ ...tool, name: prefixedName }, callToolWithLogging);
 		});
 
 		if (serverTools.length > 0) {
@@ -220,6 +264,7 @@ export async function getMicrosoftMcpTools(
 
 	return {
 		toolkits,
+		logs: mcpToolCallLogs,
 		client: {
 			async close() {
 				await Promise.all(clients.map(async (c) => await c.close()));
@@ -233,6 +278,7 @@ export const configureActivityCallback = (
 	credentials: MicrosoftAgent365Credentials,
 	mcpTokenRef: { token: string | undefined },
 	authorization: Authorization,
+	activityCapture: ActivityCapture,
 ) => {
 	const systemPrompt = nodeContext.getNodeParameter('systemPrompt') as string;
 	const { clientId, tenantId } = credentials;
@@ -273,6 +319,7 @@ export const configureActivityCallback = (
 
 				let mcpClient = undefined;
 				let microsoftMcpToolkits: StructuredToolkit[] | undefined = undefined;
+				let mcpLogs: McpToolCallLog[] | undefined = undefined;
 				if (mcpTokenRef.token) {
 					try {
 						const useMcpTools = nodeContext.getNodeParameter('useMcpTools', false) as boolean;
@@ -297,6 +344,7 @@ export const configureActivityCallback = (
 
 							mcpClient = result?.client;
 							microsoftMcpToolkits = result?.toolkits;
+							mcpLogs = result?.logs;
 						}
 					} catch (error) {
 						console.log('Error retrieving MCP tools');
@@ -318,6 +366,9 @@ export const configureActivityCallback = (
 
 					await turnContext.sendActivity(response);
 				} finally {
+					if (mcpLogs?.length) {
+						activityCapture.mcpToolLogs = mcpLogs;
+					}
 					await disposeActivityResources(invokeAgentScope, mcpClient);
 				}
 			});
@@ -416,6 +467,7 @@ export function configureAdapterProcessCallback(
 				credentials,
 				mcpTokenRef,
 				agent.authorization,
+				activityCapture,
 			);
 			agent.onActivity(ActivityTypes.Message, onActivity, ['agentic']);
 
