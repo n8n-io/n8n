@@ -2,7 +2,13 @@ import { z } from 'zod';
 
 import { McpBrowserError } from '../errors';
 import type { SessionManager } from '../session-manager';
-import type { BrowserSession, ToolContext, ToolDefinition, CallToolResult } from '../types';
+import type {
+	AffectedResource,
+	BrowserSession,
+	ToolContext,
+	ToolDefinition,
+	CallToolResult,
+} from '../types';
 import { formatErrorResponse } from '../utils';
 
 // ---------------------------------------------------------------------------
@@ -53,6 +59,8 @@ export function createSessionTool<
 	inputSchema: TSchema,
 	fn: (session: BrowserSession, input: z.infer<TSchema>, pageId: string) => Promise<CallToolResult>,
 	outputSchema?: z.ZodObject<z.ZodRawShape>,
+	toolGroupId?: string,
+	getResourceFromArgs?: (args: z.infer<TSchema>) => string,
 ): ToolDefinition<TSchema> {
 	return {
 		name,
@@ -77,5 +85,31 @@ export function createSessionTool<
 				);
 			}
 		},
+		getAffectedResources(args: z.infer<TSchema>, _context: ToolContext): AffectedResource[] {
+			const group = toolGroupId ?? 'browser';
+			const resource = getResourceFromArgs
+				? getResourceFromArgs(args)
+				: getSessionResource(sessionManager, args.sessionId);
+			return [{ toolGroup: group, resource, description: `Browser: ${resource}` }];
+		},
 	};
+}
+
+function getSessionResource(sessionManager: SessionManager, sessionId: string): string {
+	try {
+		const session = sessionManager.get(sessionId);
+		const activeUrl = session.pages.get(session.activePageId)?.url;
+		return activeUrl ? extractDomain(activeUrl) : 'browser';
+	} catch {
+		// Session doesn't exist yet or other error — use generic resource
+		return 'browser';
+	}
+}
+
+export function extractDomain(url: string): string {
+	try {
+		return new URL(url).hostname;
+	} catch {
+		return url;
+	}
 }

@@ -10,11 +10,22 @@ const inputSchema = z.object({
 	cwd: z.string().optional().describe('Working directory for the command'),
 });
 
+const SHELL_RESOURCE = '*';
+
 export const shellExecuteTool: ToolDefinition<typeof inputSchema> = {
 	name: 'shell_execute',
 	description: 'Execute a shell command and return stdout, stderr, and exit code',
 	inputSchema,
 	annotations: { defaultPermission: 'confirm', destructiveHint: true },
+	getAffectedResources({ command }) {
+		return [
+			{
+				toolGroup: 'shell' as const,
+				resource: SHELL_RESOURCE,
+				description: `Execute shell command: ${command}`,
+			},
+		];
+	},
 	async execute({ command, timeout = 30_000, cwd }) {
 		return await runCommand(command, { timeout, cwd });
 	},

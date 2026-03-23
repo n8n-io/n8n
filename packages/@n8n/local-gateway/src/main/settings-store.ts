@@ -1,5 +1,4 @@
-import type { GatewayConfig, ResolvedGatewayConfig } from '@n8n/fs-proxy/config';
-import { gatewayConfigSchema } from '@n8n/fs-proxy/config';
+import type { GatewayConfig } from '@n8n/fs-proxy/config';
 import { logger } from '@n8n/fs-proxy/logger';
 import { app } from 'electron';
 import Store from 'electron-store';
@@ -69,21 +68,29 @@ export class SettingsStore {
 		logger.debug('Last connected URL updated', { url });
 	}
 
-	toGatewayConfig(): ResolvedGatewayConfig {
+	toGatewayConfig(): GatewayConfig {
 		const s = this.get();
-		const raw: GatewayConfig = {
+		return {
+			logLevel: s.logLevel,
 			port: s.port,
 			allowedOrigins: s.allowedOrigins,
-			filesystem: s.filesystemEnabled ? { dir: s.filesystemDir } : false,
-			computer: {
-				shell: s.shellEnabled ? {} : false,
-				screenshot: s.screenshotEnabled ? {} : false,
-				mouseKeyboard: s.mouseKeyboardEnabled ? {} : false,
+			filesystem: { dir: s.filesystemDir },
+			computer: { shell: { timeout: 30_000 } },
+			browser: {
+				headless: false,
+				defaultBrowser: 'chromium',
+				viewport: { width: 1280, height: 720 },
+				sessionTtlMs: 1_800_000,
+				maxConcurrentSessions: 5,
 			},
-			browser: s.browserEnabled ? {} : false,
-			logLevel: s.logLevel,
+			permissions: {
+				filesystemRead: s.filesystemEnabled ? 'allow' : 'deny',
+				filesystemWrite: s.filesystemEnabled ? 'ask' : 'deny',
+				shell: s.shellEnabled ? 'ask' : 'deny',
+				computer: s.screenshotEnabled || s.mouseKeyboardEnabled ? 'ask' : 'deny',
+				browser: s.browserEnabled ? 'ask' : 'deny',
+			},
 		};
-		return gatewayConfigSchema.parse(raw);
 	}
 
 	getStorePath(): string {

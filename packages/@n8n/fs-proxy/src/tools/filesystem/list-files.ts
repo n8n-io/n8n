@@ -2,7 +2,7 @@ import * as path from 'node:path';
 import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
-import { resolveSafePath, scanDirectory } from './fs-utils';
+import { buildFilesystemResource, resolveSafePath, scanDirectory } from './fs-utils';
 
 const inputSchema = z.object({
 	dirPath: z.string().describe('Directory path relative to root'),
@@ -18,6 +18,16 @@ export const listFilesTool: ToolDefinition<typeof inputSchema> = {
 	description: 'List immediate children of a directory',
 	inputSchema,
 	annotations: { defaultPermission: 'allow', readOnlyHint: true },
+	async getAffectedResources({ dirPath }, { dir }) {
+		return [
+			await buildFilesystemResource(
+				dir,
+				dirPath ?? '.',
+				'filesystemRead',
+				`List files: ${dirPath ?? '.'}`,
+			),
+		];
+	},
 	async execute({ dirPath, type, maxResults }, { dir }) {
 		const resolvedDir = await resolveSafePath(dir, dirPath || '.');
 		// maxDepth=0 → immediate children only, no recursion

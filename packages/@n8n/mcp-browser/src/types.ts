@@ -47,6 +47,7 @@ export const configSchema = z.object({
 	maxConcurrentSessions: z.number().positive().default(5),
 	profilesDir: z.string().default('~/.n8n-browser/profiles'),
 	browsers: z.record(browserNameSchema, browserOverrideSchema).default({}),
+	toolGroupId: z.string().default('browser'),
 });
 
 export type Config = z.input<typeof configSchema>;
@@ -224,6 +225,16 @@ export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
 	inputSchema: TSchema;
 	outputSchema?: z.ZodObject<z.ZodRawShape>;
 	execute(args: z.infer<TSchema>, context: ToolContext): CallToolResult | Promise<CallToolResult>;
+	getAffectedResources(
+		args: z.infer<TSchema>,
+		context: ToolContext,
+	): AffectedResource[] | Promise<AffectedResource[]>;
+}
+
+export interface AffectedResource {
+	toolGroup: string;
+	resource: string;
+	description: string;
 }
 
 export interface BrowserToolkit {

@@ -5,17 +5,20 @@ import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { createSessionTool, elementTargetSchema, pageIdField, sessionIdField } from './helpers';
 
-export function createInteractionTools(sessionManager: SessionManager): ToolDefinition[] {
+export function createInteractionTools(
+	sessionManager: SessionManager,
+	toolGroupId: string,
+): ToolDefinition[] {
 	return [
-		browserClick(sessionManager),
-		browserType(sessionManager),
-		browserSelect(sessionManager),
-		browserDrag(sessionManager),
-		browserHover(sessionManager),
-		browserPress(sessionManager),
-		browserScroll(sessionManager),
-		browserUpload(sessionManager),
-		browserDialog(sessionManager),
+		browserClick(sessionManager, toolGroupId),
+		browserType(sessionManager, toolGroupId),
+		browserSelect(sessionManager, toolGroupId),
+		browserDrag(sessionManager, toolGroupId),
+		browserHover(sessionManager, toolGroupId),
+		browserPress(sessionManager, toolGroupId),
+		browserScroll(sessionManager, toolGroupId),
+		browserUpload(sessionManager, toolGroupId),
+		browserDialog(sessionManager, toolGroupId),
 	];
 }
 
@@ -45,7 +48,7 @@ const browserClickOutputSchema = z.object({
 	ref: z.string().optional(),
 });
 
-function browserClick(sessionManager: SessionManager): ToolDefinition {
+function browserClick(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_click',
@@ -63,6 +66,7 @@ function browserClick(sessionManager: SessionManager): ToolDefinition {
 			});
 		},
 		browserClickOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -88,7 +92,7 @@ const browserTypeOutputSchema = z.object({
 	text: z.string(),
 });
 
-function browserType(sessionManager: SessionManager): ToolDefinition {
+function browserType(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_type',
@@ -107,6 +111,7 @@ function browserType(sessionManager: SessionManager): ToolDefinition {
 			});
 		},
 		browserTypeOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -127,7 +132,7 @@ const browserSelectOutputSchema = z.object({
 	selected: z.array(z.string()),
 });
 
-function browserSelect(sessionManager: SessionManager): ToolDefinition {
+function browserSelect(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_select',
@@ -138,6 +143,7 @@ function browserSelect(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ selected });
 		},
 		browserSelectOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -158,7 +164,7 @@ const browserDragOutputSchema = z.object({
 	dragged: z.boolean(),
 });
 
-function browserDrag(sessionManager: SessionManager): ToolDefinition {
+function browserDrag(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_drag',
@@ -169,6 +175,7 @@ function browserDrag(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ dragged: true });
 		},
 		browserDragOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -188,7 +195,7 @@ const browserHoverOutputSchema = z.object({
 	hovered: z.boolean(),
 });
 
-function browserHover(sessionManager: SessionManager): ToolDefinition {
+function browserHover(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_hover',
@@ -199,6 +206,7 @@ function browserHover(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ hovered: true });
 		},
 		browserHoverOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -218,7 +226,7 @@ const browserPressOutputSchema = z.object({
 	pressed: z.string(),
 });
 
-function browserPress(sessionManager: SessionManager): ToolDefinition {
+function browserPress(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_press',
@@ -229,6 +237,7 @@ function browserPress(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ pressed: input.keys });
 		},
 		browserPressOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -259,7 +268,7 @@ const browserScrollOutputSchema = z.object({
 	scrolled: z.boolean(),
 });
 
-function browserScroll(sessionManager: SessionManager): ToolDefinition {
+function browserScroll(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_scroll',
@@ -277,6 +286,7 @@ function browserScroll(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ scrolled: true });
 		},
 		browserScrollOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -298,7 +308,7 @@ const browserUploadOutputSchema = z.object({
 	files: z.array(z.string()),
 });
 
-function browserUpload(sessionManager: SessionManager): ToolDefinition {
+function browserUpload(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_upload',
@@ -309,6 +319,7 @@ function browserUpload(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ uploaded: true, files: input.files });
 		},
 		browserUploadOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -331,7 +342,7 @@ const browserDialogOutputSchema = z.object({
 	dialogType: z.string(),
 });
 
-function browserDialog(sessionManager: SessionManager): ToolDefinition {
+function browserDialog(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_dialog',
@@ -342,5 +353,6 @@ function browserDialog(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ handled: true, action: input.action, dialogType });
 		},
 		browserDialogOutputSchema,
+		toolGroupId,
 	);
 }

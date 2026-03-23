@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { MAX_FILE_SIZE } from './constants';
-import { resolveSafePath } from './fs-utils';
+import { buildFilesystemResource, resolveSafePath } from './fs-utils';
 const DEFAULT_MAX_LINES = 200;
 const BINARY_CHECK_SIZE = 8192;
 
@@ -19,6 +19,11 @@ export const readFileTool: ToolDefinition<typeof inputSchema> = {
 	description: 'Read the contents of a file',
 	inputSchema,
 	annotations: { defaultPermission: 'allow', readOnlyHint: true },
+	async getAffectedResources({ filePath }, { dir }) {
+		return [
+			await buildFilesystemResource(dir, filePath, 'filesystemRead', `Read file: ${filePath}`),
+		];
+	},
 	async execute({ filePath, startLine, maxLines }, { dir }) {
 		const resolvedPath = await resolveSafePath(dir, filePath);
 

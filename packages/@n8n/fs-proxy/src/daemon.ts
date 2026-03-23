@@ -1,18 +1,21 @@
 import * as http from 'node:http';
 
-import type { ResolvedGatewayConfig } from './config';
+import type { GatewayConfig } from './config';
 import { GatewayClient } from './gateway-client';
 import {
 	logger,
-	printBanner,
 	printConnected,
 	printDisconnected,
 	printListening,
 	printModuleStatus,
-	printToolList,
 	printShuttingDown,
+	printToolList,
 	printWaiting,
 } from './logger';
+import { SettingsStore } from './settings-store';
+import type { ConfirmResourceAccess } from './tools/types';
+
+export type { ConfirmResourceAccess, ResourceDecision } from './tools/types';
 
 export interface DaemonOptions {
 	/**
@@ -20,6 +23,8 @@ export interface DaemonOptions {
 	 * If omitted, falls back to a CLI readline prompt.
 	 */
 	confirmConnect?: (url: string) => Promise<boolean> | boolean;
+	/** Called when a tool is about to access a resource that requires confirmation. */
+	confirmResourceAccess: ConfirmResourceAccess;
 	/** Called after connect/disconnect for status propagation (e.g. Electron tray). */
 	onStatusChange?: (status: 'connected' | 'disconnected', url?: string) => void;
 	/**
@@ -29,7 +34,10 @@ export interface DaemonOptions {
 	managedMode?: boolean;
 }
 
-let daemonOptions: DaemonOptions = {};
+// Populated by startDaemon before the server handles any requests
+let daemonOptions!: DaemonOptions;
+let settingsStore: SettingsStore | null = null;
+let settingsStorePromise: Promise<SettingsStore>;
 
 async function cliConfirmConnect(url: string): Promise<boolean> {
 	const readline = await import('node:readline');
@@ -44,14 +52,14 @@ async function cliConfirmConnect(url: string): Promise<boolean> {
 }
 
 interface DaemonState {
-	config: ResolvedGatewayConfig;
+	config: GatewayConfig;
 	client: GatewayClient | null;
 	connectedAt: string | null;
 	connectedUrl: string | null;
 }
 
 const state: DaemonState = {
-	config: undefined as unknown as ResolvedGatewayConfig,
+	config: undefined as unknown as GatewayConfig,
 	client: null,
 	connectedAt: null,
 	connectedUrl: null,
@@ -78,8 +86,7 @@ function jsonResponse(
 }
 
 function getDir(): string {
-	const fs = state.config.filesystem;
-	return fs !== false ? fs.dir : process.cwd();
+	return state.config.filesystem.dir;
 }
 
 async function readBody(req: http.IncomingMessage): Promise<string> {
@@ -139,10 +146,15 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 	}
 
 	try {
+		const store = settingsStore ?? (await settingsStorePromise);
+		settingsStore ??= store;
+
 		const client = new GatewayClient({
 			url: url.replace(/\/$/, ''),
 			apiKey: token,
 			config: state.config,
+			settingsStore: store,
+			confirmResourceAccess: daemonOptions.confirmResourceAccess,
 			onPersistentFailure: () => {
 				state.client = null;
 				state.connectedAt = null;
@@ -211,13 +223,24 @@ function handleCors(res: http.ServerResponse): void {
 	res.end();
 }
 
-export function startDaemon(
-	config: ResolvedGatewayConfig,
-	options: DaemonOptions = {},
-): http.Server {
+export function startDaemon(config: GatewayConfig, options: DaemonOptions): http.Server {
 	daemonOptions = options;
 	state.config = config;
 	const port = config.port;
+
+	// SettingsStore is initialized asynchronously; the server starts immediately.
+	// handleConnect awaits this promise before proceeding, eliminating the race condition.
+	settingsStorePromise = SettingsStore.create(config);
+	void settingsStorePromise
+		.then((store) => {
+			settingsStore = store;
+		})
+		.catch((error: unknown) => {
+			logger.error('Failed to initialize settings store', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			process.exit(1);
+		});
 
 	const server = http.createServer((req, res) => {
 		const { method, url: reqUrl } = req;
@@ -252,7 +275,6 @@ export function startDaemon(
 	});
 
 	server.listen(port, '127.0.0.1', () => {
-		printBanner();
 		printModuleStatus(config);
 		printListening(port);
 		printWaiting();
@@ -263,10 +285,11 @@ export function startDaemon(
 		const shutdown = () => {
 			printShuttingDown();
 			const done = () => server.close(() => process.exit(0));
+			const flush = settingsStore ? settingsStore.flush() : Promise.resolve();
 			if (state.client) {
-				void state.client.disconnect().finally(done);
+				void Promise.all([state.client.disconnect(), flush]).finally(done);
 			} else {
-				done();
+				void flush.finally(done);
 			}
 		};
 		process.on('SIGINT', shutdown);

@@ -1,7 +1,7 @@
 import { EventSource } from 'eventsource';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import type { ResolvedGatewayConfig } from './config';
+import type { GatewayConfig } from './config';
 import {
 	logger,
 	printAuthFailure,
@@ -12,12 +12,19 @@ import {
 	printToolCall,
 	printToolResult,
 } from './logger';
+import type { SettingsStore } from './settings-store';
 import type { BrowserModule } from './tools/browser';
 import { filesystemReadTools, filesystemWriteTools } from './tools/filesystem';
 import { MouseKeyboardModule } from './tools/mouse-keyboard';
 import { ScreenshotModule } from './tools/screenshot';
 import { ShellModule } from './tools/shell';
-import type { CallToolResult, McpTool, ToolDefinition } from './tools/types';
+import type {
+	AffectedResource,
+	CallToolResult,
+	ConfirmResourceAccess,
+	McpTool,
+	ToolDefinition,
+} from './tools/types';
 import { formatErrorResult } from './tools/utils';
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
@@ -26,7 +33,9 @@ const MAX_AUTH_RETRIES = 5;
 export interface GatewayClientOptions {
 	url: string;
 	apiKey: string;
-	config: ResolvedGatewayConfig;
+	config: GatewayConfig;
+	settingsStore: SettingsStore;
+	confirmResourceAccess: ConfirmResourceAccess;
 	/** Called when the client gives up reconnecting after persistent auth failures. */
 	onPersistentFailure?: () => void;
 }
@@ -74,10 +83,8 @@ export class GatewayClient {
 		return this.sessionKey ?? this.options.apiKey;
 	}
 
-	/** Resolved filesystem directory, or cwd as fallback. */
 	private get dir(): string {
-		const fs = this.options.config.filesystem;
-		return fs !== false ? fs.dir : process.cwd();
+		return this.options.config.filesystem.dir;
 	}
 
 	/** Start the client: upload capabilities, connect SSE, handle requests. */
@@ -99,6 +106,8 @@ export class GatewayClient {
 	/** Notify the server we're disconnecting, then close the SSE connection. */
 	async disconnect(): Promise<void> {
 		this.shouldReconnect = false;
+		this.options.settingsStore.clearSessionRules();
+
 		// POST the disconnect notification BEFORE closing EventSource.
 		// The EventSource keeps the Node.js event loop alive — if we close it
 		// first, Node may exit before the fetch completes.
@@ -133,18 +142,18 @@ export class GatewayClient {
 	private async getAllDefinitions(): Promise<ToolDefinition[]> {
 		if (this.allDefinitions) return this.allDefinitions;
 
-		const { config } = this.options;
+		const { config, settingsStore } = this.options;
 		const defs: ToolDefinition[] = [];
 
 		// Filesystem
-		if (config.filesystem !== false) {
+		if (settingsStore.getGroupMode('filesystemRead') !== 'deny') {
 			defs.push(...filesystemReadTools);
-			if (config.filesystem.writeAccess) {
-				defs.push(...filesystemWriteTools);
-			}
+		}
+		if (settingsStore.getGroupMode('filesystemWrite') !== 'deny') {
+			defs.push(...filesystemWriteTools);
 		}
 
-		// Computer use modules — check both config and platform support
+		// Computer use modules — check permission mode and platform support
 		const computerModules: Array<{
 			name: string;
 			enabled: boolean;
@@ -152,24 +161,24 @@ export class GatewayClient {
 		}> = [
 			{
 				name: 'Shell',
-				enabled: config.computer.shell !== false,
+				enabled: settingsStore.getGroupMode('shell') !== 'deny',
 				module: ShellModule,
 			},
 			{
 				name: 'Screenshot',
-				enabled: config.computer.screenshot !== false,
+				enabled: settingsStore.getGroupMode('computer') !== 'deny',
 				module: ScreenshotModule,
 			},
 			{
 				name: 'MouseKeyboard',
-				enabled: config.computer.mouseKeyboard !== false,
+				enabled: settingsStore.getGroupMode('computer') !== 'deny',
 				module: MouseKeyboardModule,
 			},
 		];
 
 		for (const { name, enabled, module } of computerModules) {
 			if (!enabled) {
-				logger.debug('Module disabled by config, skipping', { module: name });
+				logger.debug('Module denied by permission, skipping', { module: name });
 				continue;
 			}
 			if (await module.isSupported()) {
@@ -180,7 +189,7 @@ export class GatewayClient {
 		}
 
 		// Browser
-		if (config.browser !== false) {
+		if (settingsStore.getGroupMode('browser') !== 'deny') {
 			const { BrowserModule: BrowserModuleClass } = await import('./tools/browser');
 			this.browserModule = await BrowserModuleClass.create(config.browser);
 			if (this.browserModule) {
@@ -191,7 +200,7 @@ export class GatewayClient {
 				});
 			}
 		} else {
-			logger.debug('Module disabled by config, skipping', { module: 'Browser' });
+			logger.debug('Module denied by permission, skipping', { module: 'Browser' });
 		}
 
 		for (const def of defs) {
@@ -334,12 +343,48 @@ export class GatewayClient {
 		name: string,
 		args: Record<string, unknown>,
 	): Promise<CallToolResult> {
-		// Ensure definitions are initialized (getAllDefinitions is idempotent)
 		await this.getAllDefinitions();
 		const def = this.definitionMap.get(name);
 		if (!def) throw new Error(`Unknown tool: ${name}`);
 		const typedArgs: unknown = def.inputSchema.parse(args);
-		return await def.execute(typedArgs, { dir: this.dir });
+		const context = { dir: this.dir };
+
+		const resources = await def.getAffectedResources(typedArgs, context);
+		await this.checkPermissions(resources);
+
+		return await def.execute(typedArgs, context);
+	}
+
+	private async checkPermissions(resources: AffectedResource[]): Promise<void> {
+		const { settingsStore, confirmResourceAccess } = this.options;
+
+		for (const resource of resources) {
+			const rule = settingsStore.check(resource.toolGroup, resource.resource);
+
+			if (rule === 'deny') {
+				throw new Error(`Access denied to ${resource.toolGroup}: ${resource.resource}`);
+			}
+
+			if (rule === 'allow') continue;
+
+			const decision = await confirmResourceAccess(resource);
+
+			switch (decision) {
+				case 'allowOnce':
+					break;
+				case 'allowForSession':
+					settingsStore.allowForSession(resource.toolGroup, resource.resource);
+					break;
+				case 'alwaysAllow':
+					settingsStore.alwaysAllow(resource.toolGroup, resource.resource);
+					break;
+				case 'denyOnce':
+					throw new Error(`Access denied to ${resource.toolGroup}: ${resource.resource}`);
+				case 'alwaysDeny':
+					settingsStore.alwaysDeny(resource.toolGroup, resource.resource);
+					throw new Error(`Access denied to ${resource.toolGroup}: ${resource.resource}`);
+			}
+		}
 	}
 
 	private async postResponse(requestId: string, result: CallToolResult): Promise<void> {
