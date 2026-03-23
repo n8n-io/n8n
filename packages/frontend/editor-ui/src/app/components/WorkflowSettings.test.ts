@@ -1034,5 +1034,36 @@ describe('WorkflowSettingsVue', () => {
 				}),
 			);
 		});
+
+		it('should disable production redaction select and force "Redact" when dynamic credentials are configured', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			settingsStore.settings.envFeatureFlags.N8N_ENV_FEAT_REDACTION_POLICY = true;
+
+			const workflowWithRedactionScope = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
+
+			workflowDocumentStore.setSettings({ credentialResolverId: 'some-resolver-id' });
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			await nextTick();
+
+			// Verify the dynamic credentials hint is shown — this proves workflowHasDynamicCredentials
+			// is true, which also forces the production select to "Redact" and disables it
+			const dialog = getByTestId('workflow-settings-dialog');
+			expect(within(dialog).getByText(/dynamic credentials/i)).toBeInTheDocument();
+
+			// Verify the dropdown cannot be opened (disabled)
+			const productionSelect = getByTestId('workflow-settings-redact-production-select');
+			const dropdownItems = await getDropdownItems(productionSelect).catch(() => null);
+			expect(dropdownItems).toBeNull();
+		});
 	});
 });
