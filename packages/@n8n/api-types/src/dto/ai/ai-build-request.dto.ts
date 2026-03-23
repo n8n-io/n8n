@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { Z } from '../../zod-class';
 
-export const QUICK_REPLY_TYPES = ['all-good', 'new-suggestion', 'execute_with_mock_data'] as const;
+export const QUICK_REPLY_TYPES = ['all-good', 'new-suggestion'] as const;
 
 export type QuickReplyType = (typeof QUICK_REPLY_TYPES)[number];
 

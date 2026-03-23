@@ -9,7 +9,7 @@ import { AutoSaveState, VIEWS } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots } from 'vue';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
@@ -436,12 +436,6 @@ async function onWorkflowExecuted() {
 }
 
 async function onExecuteWithMockData() {
-	// Persist user bubble in session history (no AI generation)
-	await builderStore.sendChatMessage({
-		text: i18n.baseText('aiAssistant.builder.followUps.executeWithMockData' as BaseTextKey),
-		quickReplyType: 'execute_with_mock_data',
-	});
-
 	builderStore.applyGeneratedPinData();
 
 	const triggerNode = (workflowDocumentStore.value?.allNodes ?? []).find((node) =>

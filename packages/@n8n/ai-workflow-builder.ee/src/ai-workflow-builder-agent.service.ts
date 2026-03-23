@@ -266,12 +266,6 @@ export class AiWorkflowBuilderService {
 
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 
-		// Store-only when user requests execute with mock data: persist user message without AI generation
-		if (payload.quickReplyType === 'execute_with_mock_data') {
-			await this.sessionManager.appendUserMessage(threadId, payload.message, payload.id);
-			return;
-		}
-
 		// Load historical messages from persistent storage to include in initial state.
 		// Degrades gracefully if storage is temporarily unavailable.
 		const historicalMessages = await this.loadSessionMessagesSafe(threadId);

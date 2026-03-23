@@ -1,4 +1,3 @@
-import { HumanMessage } from '@langchain/core/messages';
 import { RunnableConfig } from '@langchain/core/runnables';
 import { type Checkpoint, MemorySaver } from '@langchain/langgraph';
 import { Logger } from '@n8n/backend-common';
@@ -342,30 +341,6 @@ export class SessionManagerService {
 		this.logger?.debug('Saved session from checkpointer', {
 			threadId,
 			messageCount: messages.length,
-		});
-	}
-
-	/**
-	 * Append a user message to persistent storage without going through the AI generation pipeline.
-	 */
-	async appendUserMessage(threadId: string, message: string, messageId?: string): Promise<void> {
-		if (!this.storage) return;
-
-		const humanMessage = new HumanMessage({
-			id: messageId,
-			content: message,
-			additional_kwargs: { messageId },
-		});
-
-		const existing = await this.storage.getSession(threadId);
-		const existingMessages: LangchainMessage[] = isLangchainMessagesArray(existing?.messages)
-			? existing.messages
-			: [];
-
-		await this.storage.saveSession(threadId, {
-			messages: [...existingMessages, humanMessage],
-			previousSummary: existing?.previousSummary,
-			updatedAt: new Date(),
 		});
 	}
 

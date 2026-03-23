@@ -345,7 +345,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 					{{ executeWithMockDataLabel }}
 				</span>
 			</div>
-			<N8nTooltip :disabled="!hasValidationIssues" :content="executeButtonTooltip" placement="top">
+			<N8nTooltip :disabled="!hasValidationIssues" :content="executeButtonTooltip" placement="left">
 				<div
 					:class="[$style.followUpItem, { [$style.followUpItemDisabled]: hasValidationIssues }]"
 					role="button"
@@ -381,7 +381,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 					{{ pinDataToggleLabel }}
 				</span>
 			</div>
-			<N8nTooltip :disabled="!hasValidationIssues" :content="executeButtonTooltip" placement="top">
+			<N8nTooltip :disabled="!hasValidationIssues" :content="executeButtonTooltip" placement="left">
 				<div
 					:class="[$style.followUpItem, { [$style.followUpItemDisabled]: hasValidationIssues }]"
 					role="button"
