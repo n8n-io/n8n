@@ -121,6 +121,7 @@ describe('McpOAuthTokenService', () => {
 				clientId,
 				userId,
 				expiresAt: expect.any(Number),
+				scopes: null,
 			});
 		});
 	});
@@ -134,6 +135,7 @@ describe('McpOAuthTokenService', () => {
 				clientId,
 				userId: 'user-456',
 				expiresAt: Date.now() + 1000000, // Valid
+				scopes: null,
 			});
 
 			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);

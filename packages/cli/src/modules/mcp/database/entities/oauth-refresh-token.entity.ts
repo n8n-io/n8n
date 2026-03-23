@@ -29,4 +29,7 @@ export class RefreshToken extends WithTimestamps {
 	@Index()
 	@Column({ type: 'int' })
 	expiresAt: number;
+
+	@Column({ type: 'text', nullable: true })
+	scopes: string | null;
 }

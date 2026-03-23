@@ -47,6 +47,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 				state,
 				expiresAt: expect.any(Number),
 				used: false,
+				scopes: null,
 			});
 		});
 

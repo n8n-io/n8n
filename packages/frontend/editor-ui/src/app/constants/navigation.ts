@@ -66,6 +66,7 @@ export const enum VIEWS {
 	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
 	AI_SETTINGS = 'AISettingsView',
 	OAUTH_CONSENT = 'OAuthConsent',
+	CLI_OAUTH_CONSENT = 'CliOAuthConsent',
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',

@@ -9,6 +9,7 @@ export interface OAuthSessionPayload {
 	redirectUri: string;
 	codeChallenge: string;
 	state: string | null;
+	scopes?: string[];
 }
 
 const COOKIE_NAME = 'n8n-oauth-session';

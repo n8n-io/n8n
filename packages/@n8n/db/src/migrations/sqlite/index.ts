@@ -148,6 +148,7 @@ import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../com
 import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-AddTypeToChatHubSessions';
 import { CreateRoleMappingRuleTable1772800000000 } from '../common/1772800000000-CreateRoleMappingRuleTable';
 import { CreateCredentialDependencyTable1773000000000 } from '../common/1773000000000-CreateCredentialDependencyTable';
+import { AddOAuthScopesAndSeedCliClient1773100000000 } from '../common/1773100000000-AddOAuthScopesAndSeedCliClient';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -301,6 +302,7 @@ const sqliteMigrations: Migration[] = [
 	AddTypeToChatHubSessions1772700000000,
 	CreateRoleMappingRuleTable1772800000000,
 	CreateCredentialDependencyTable1773000000000,
+	AddOAuthScopesAndSeedCliClient1773100000000,
 ];
 
 export { sqliteMigrations };

@@ -15,6 +15,7 @@ export class McpModule implements ModuleInterface {
 		await import('./mcp.oauth.controller');
 		await import('./mcp.auth.consent.controller');
 		await import('./mcp.oauth-clients.controller');
+		await import('./cli-oauth.controller');
 	}
 
 	/**

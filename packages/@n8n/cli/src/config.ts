@@ -8,6 +8,9 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 export interface CliConfig {
 	url?: string;
 	apiKey?: string;
+	accessToken?: string;
+	refreshToken?: string;
+	tokenExpiresAt?: number; // Unix timestamp in seconds
 }
 
 function ensureConfigDir(): void {
@@ -46,10 +49,19 @@ export function deleteConfig(): void {
 export function resolveConnection(flags: {
 	url?: string;
 	apiKey?: string;
-}): { url?: string; apiKey?: string } {
+}): {
+	url?: string;
+	apiKey?: string;
+	accessToken?: string;
+	refreshToken?: string;
+	tokenExpiresAt?: number;
+} {
 	const config = flags.url && flags.apiKey ? {} : readConfig();
 	return {
 		url: flags.url ?? process.env.N8N_URL ?? config.url,
 		apiKey: flags.apiKey ?? process.env.N8N_API_KEY ?? config.apiKey,
+		accessToken: config.accessToken,
+		refreshToken: config.refreshToken,
+		tokenExpiresAt: config.tokenExpiresAt,
 	};
 }

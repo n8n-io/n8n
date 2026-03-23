@@ -5,8 +5,17 @@ export interface PaginatedResponse<T> {
 
 export interface ClientOptions {
 	baseUrl: string;
-	apiKey: string;
+	apiKey?: string;
+	accessToken?: string;
 	debug?: (message: string) => void;
+}
+
+export interface OAuthTokenResponse {
+	access_token: string;
+	token_type: string;
+	expires_in: number;
+	refresh_token: string;
+	scope?: string;
 }
 
 export class ApiError extends Error {
@@ -23,23 +32,39 @@ export class ApiError extends Error {
 export class N8nClient {
 	private readonly baseUrl: string;
 
+	private readonly instanceBaseUrl: string;
+
 	private readonly headers: Headers;
 
 	private readonly debug?: (message: string) => void;
 
 	constructor(options: ClientOptions) {
 		let url = options.baseUrl.replace(/\/+$/, '');
+		this.instanceBaseUrl = url;
 		if (!url.endsWith('/api/v1')) {
 			url = `${url}/api/v1`;
 		}
 		this.baseUrl = url;
 		this.headers = new Headers({
-			'X-N8N-API-KEY': options.apiKey,
 			'Content-Type': 'application/json',
 			Accept: 'application/json',
 			'User-Agent': 'n8n-cli',
 		});
+
+		// Set auth header based on what's provided
+		if (options.accessToken) {
+			this.headers.set('Authorization', `Bearer ${options.accessToken}`);
+		} else if (options.apiKey) {
+			this.headers.set('X-N8N-API-KEY', options.apiKey);
+		}
+
 		this.debug = options.debug;
+	}
+
+	/** Update the access token header after a token refresh */
+	updateAccessToken(token: string): void {
+		this.headers.set('Authorization', `Bearer ${token}`);
+		this.headers.delete('X-N8N-API-KEY');
 	}
 
 	// ─── Low-level HTTP ────────────────────────────────────────────
@@ -47,9 +72,10 @@ export class N8nClient {
 	private async request<T>(
 		method: string,
 		path: string,
-		options: { body?: unknown; query?: Record<string, string> } = {},
+		options: { body?: unknown; query?: Record<string, string>; useInstanceBase?: boolean } = {},
 	): Promise<T> {
-		const url = new URL(`${this.baseUrl}${path}`);
+		const base = options.useInstanceBase ? this.instanceBaseUrl : this.baseUrl;
+		const url = new URL(`${base}${path}`);
 		if (options.query) {
 			for (const [k, v] of Object.entries(options.query)) {
 				if (v !== undefined && v !== '') url.searchParams.set(k, v);
@@ -69,10 +95,13 @@ export class N8nClient {
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error);
 			this.debug?.(`✗ Connection failed (${Date.now() - start}ms): ${msg}`);
+			const httpsHint = this.instanceBaseUrl.startsWith('https://')
+				? ' If your instance uses HTTP, try http:// instead of https://.'
+				: '';
 			throw new ApiError(
 				0,
-				`Could not connect to n8n at ${this.baseUrl.replace('/api/v1', '')}`,
-				`Connection error: ${msg}. Check the URL and ensure the instance is running.`,
+				`Could not connect to n8n at ${this.instanceBaseUrl}`,
+				`Connection error: ${msg}.${httpsHint} Check the URL and ensure the instance is running.`,
 			);
 		}
 
@@ -93,7 +122,7 @@ export class N8nClient {
 					: `Request failed (${response.status})`;
 			const hint =
 				response.status === 401
-					? "Check your API key. Run 'n8n-cli config set-api-key <key>' or set N8N_API_KEY."
+					? "Check your credentials. Run 'n8n-cli login' or set N8N_API_KEY."
 					: response.status === 404
 						? 'Resource not found. Verify the ID is correct.'
 						: undefined;
@@ -143,6 +172,50 @@ export class N8nClient {
 		} while (cursor && (limit === undefined || results.length < limit));
 
 		return limit !== undefined ? results.slice(0, limit) : results;
+	}
+
+	// ─── OAuth Token Operations ────────────────────────────────────
+
+	/** Exchange authorization code for tokens (hits /oauth/token, not the public API) */
+	async exchangeCodeForTokens(
+		code: string,
+		codeVerifier: string,
+		redirectUri: string,
+	): Promise<OAuthTokenResponse> {
+		return await this.request<OAuthTokenResponse>('POST', '/oauth/token', {
+			body: {
+				grant_type: 'authorization_code',
+				code,
+				code_verifier: codeVerifier,
+				redirect_uri: redirectUri,
+				client_id: 'n8n-cli',
+			},
+			useInstanceBase: true,
+		});
+	}
+
+	/** Refresh an access token using a refresh token */
+	async refreshAccessToken(refreshToken: string): Promise<OAuthTokenResponse> {
+		return await this.request<OAuthTokenResponse>('POST', '/oauth/token', {
+			body: {
+				grant_type: 'refresh_token',
+				refresh_token: refreshToken,
+				client_id: 'n8n-cli',
+			},
+			useInstanceBase: true,
+		});
+	}
+
+	/** Revoke a token (best-effort) */
+	async revokeToken(token: string, tokenTypeHint?: string): Promise<void> {
+		await this.request<unknown>('POST', '/oauth/revoke', {
+			body: {
+				token,
+				token_type_hint: tokenTypeHint,
+				client_id: 'n8n-cli',
+			},
+			useInstanceBase: true,
+		});
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────

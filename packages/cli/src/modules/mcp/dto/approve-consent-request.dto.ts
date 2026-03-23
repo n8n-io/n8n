@@ -3,4 +3,5 @@ import { z } from 'zod';
 
 export class ApproveConsentRequestDto extends Z.class({
 	approved: z.boolean(),
+	approvedScopes: z.array(z.string()).optional(),
 }) {}

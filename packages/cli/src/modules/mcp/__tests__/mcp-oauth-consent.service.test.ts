@@ -184,6 +184,7 @@ describe('McpOAuthConsentService', () => {
 				'https://example.com/callback',
 				'challenge-abc',
 				'state-xyz',
+				undefined,
 			);
 			expect(logger.info).toHaveBeenCalledWith('Consent approved', {
 				clientId: 'client-123',

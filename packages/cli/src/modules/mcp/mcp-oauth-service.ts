@@ -16,6 +16,9 @@ import type { Response } from 'express';
 
 import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
+import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
+import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
+import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthTokenService } from './mcp-oauth-token.service';
@@ -43,6 +46,9 @@ export class McpOAuthService implements OAuthServerProvider {
 		private readonly tokenService: McpOAuthTokenService,
 		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
 		private readonly userConsentRepository: UserConsentRepository,
+		private readonly accessTokenRepository: AccessTokenRepository,
+		private readonly refreshTokenRepository: RefreshTokenRepository,
+		private readonly authorizationCodeRepository: AuthorizationCodeRepository,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -169,6 +175,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		const { accessToken, refreshToken } = this.tokenService.generateTokenPair(
 			authRecord.userId,
 			client.client_id,
+			'mcp-server-api',
 		);
 
 		await this.tokenService.saveTokenPair(
@@ -196,11 +203,15 @@ export class McpOAuthService implements OAuthServerProvider {
 		refreshToken: string,
 		_scopes?: string[],
 	): Promise<OAuthTokens> {
-		return await this.tokenService.validateAndRotateRefreshToken(refreshToken, client.client_id);
+		return await this.tokenService.validateAndRotateRefreshToken(
+			refreshToken,
+			client.client_id,
+			'mcp-server-api',
+		);
 	}
 
 	async verifyAccessToken(token: string): Promise<AuthInfo> {
-		return await this.tokenService.verifyAccessToken(token);
+		return await this.tokenService.verifyAccessToken(token, 'mcp-server-api');
 	}
 
 	async revokeToken(
@@ -245,11 +256,11 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 
 	/**
-	 * Delete an OAuth client and all related data.
-	 * Verifies that the requesting user has a consent relationship with the client.
+	 * Revoke a user's access to an OAuth client (delete consent + tokens)
+	 * Does NOT delete the client itself, so other users' access is unaffected.
 	 */
-	async deleteClient(clientId: string, userId: string): Promise<void> {
-		// First check if the client exists
+	async revokeClientAccess(clientId: string, userId: string): Promise<void> {
+		// Verify the client exists
 		const client = await this.oauthClientRepository.findOne({
 			where: { id: clientId },
 		});
@@ -264,13 +275,20 @@ export class McpOAuthService implements OAuthServerProvider {
 			throw new Error(`OAuth client with ID ${clientId} not found`);
 		}
 
-		this.logger.info('Deleting OAuth client and related data', { clientId });
+		this.logger.info('Revoking user access to OAuth client', { clientId, userId });
 
-		await this.oauthClientRepository.delete({ id: clientId });
+		// Delete user's consent for this client
+		await this.userConsentRepository.delete({ clientId, userId });
+		// Delete user's tokens for this client
+		await this.accessTokenRepository.delete({ clientId, userId });
+		await this.refreshTokenRepository.delete({ clientId, userId });
+		// Delete user's authorization codes for this client
+		await this.authorizationCodeRepository.delete({ clientId, userId });
 
-		this.logger.info('OAuth client deleted successfully', {
+		this.logger.info('User access to OAuth client revoked successfully', {
 			clientId,
 			clientName: client.name,
+			userId,
 		});
 	}
 }

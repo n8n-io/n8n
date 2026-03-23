@@ -1,7 +1,18 @@
+import { createHash } from 'node:crypto';
+
 /**
- * Static utility functions for OAuth URL building
+ * Static utility functions for OAuth URL building and PKCE verification
  */
 export class McpOAuthHelpers {
+	/**
+	 * Verify PKCE S256 code challenge
+	 * Returns true if SHA256(codeVerifier) matches codeChallenge
+	 */
+	static verifyPkceS256(codeVerifier: string, codeChallenge: string): boolean {
+		const hash = createHash('sha256').update(codeVerifier).digest('base64url');
+		return hash === codeChallenge;
+	}
+
 	/**
 	 * Build success redirect URL with authorization code
 	 * Used when user approves consent

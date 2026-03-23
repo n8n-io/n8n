@@ -44,4 +44,7 @@ export class AuthorizationCode extends WithTimestamps {
 
 	@Column({ type: Boolean, default: false })
 	used: boolean;
+
+	@Column({ type: 'text', nullable: true })
+	scopes: string | null;
 }

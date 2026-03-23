@@ -18,7 +18,7 @@ import { UserWithContext } from './mcp.types';
 import { JwtService } from '@/services/jwt.service';
 
 /**
- * Manages OAuth 2.1 token lifecycle for MCP server
+ * Manages OAuth 2.1 token lifecycle for MCP server and CLI OAuth
  * Generates, validates, rotates, and revokes access and refresh tokens
  */
 @Service()
@@ -38,10 +38,12 @@ export class McpOAuthTokenService {
 	generateTokenPair(
 		userId: string,
 		clientId: string,
+		audience: string = this.MCP_AUDIENCE,
+		scopes?: string[],
 	): { accessToken: string; refreshToken: string } {
-		const accessToken = this.jwtService.sign({
+		const payload: Record<string, unknown> = {
 			sub: userId,
-			aud: this.MCP_AUDIENCE,
+			aud: audience,
 			client_id: clientId,
 			jti: randomUUID(),
 			iat: Math.floor(Date.now() / 1000),
@@ -49,7 +51,13 @@ export class McpOAuthTokenService {
 			meta: {
 				isOAuth: true,
 			},
-		});
+		};
+
+		if (scopes && scopes.length > 0) {
+			payload.scope = scopes.join(' ');
+		}
+
+		const accessToken = this.jwtService.sign(payload);
 
 		const refreshToken = randomBytes(32).toString('hex');
 
@@ -61,6 +69,7 @@ export class McpOAuthTokenService {
 		refreshToken: string,
 		clientId: string,
 		userId: string,
+		scopes?: string[],
 	): Promise<void> {
 		await this.accessTokenRepository.manager.transaction(async (transactionManager) => {
 			await transactionManager.insert(this.accessTokenRepository.target, {
@@ -74,6 +83,7 @@ export class McpOAuthTokenService {
 				clientId,
 				userId,
 				expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
+				scopes: scopes ? JSON.stringify(scopes) : null,
 			});
 		});
 	}
@@ -81,6 +91,7 @@ export class McpOAuthTokenService {
 	async validateAndRotateRefreshToken(
 		refreshToken: string,
 		clientId: string,
+		audience: string = this.MCP_AUDIENCE,
 	): Promise<OAuthTokens> {
 		return await withTransaction(this.refreshTokenRepository.manager, undefined, async (trx) => {
 			const now = Date.now();
@@ -107,9 +118,16 @@ export class McpOAuthTokenService {
 				throw new Error('Invalid refresh token');
 			}
 
+			// Preserve scopes from the old refresh token
+			const scopes = refreshTokenRecord.scopes
+				? (JSON.parse(refreshTokenRecord.scopes) as string[])
+				: undefined;
+
 			const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
 				refreshTokenRecord.userId,
 				clientId,
+				audience,
+				scopes,
 			);
 
 			await trx.insert(AccessToken, {
@@ -123,6 +141,7 @@ export class McpOAuthTokenService {
 				clientId,
 				userId: refreshTokenRecord.userId,
 				expiresAt: now + this.REFRESH_TOKEN_EXPIRY_MS,
+				scopes: refreshTokenRecord.scopes,
 			});
 
 			this.logger.info('Refresh token rotated and new access token issued', {
@@ -130,20 +149,26 @@ export class McpOAuthTokenService {
 				userId: refreshTokenRecord.userId,
 			});
 
-			return {
+			const tokenResponse: OAuthTokens = {
 				access_token: accessToken,
 				token_type: 'Bearer',
 				expires_in: this.ACCESS_TOKEN_EXPIRY_SECONDS,
 				refresh_token: newRefreshToken,
 			};
+
+			if (scopes && scopes.length > 0) {
+				(tokenResponse as OAuthTokens & { scope: string }).scope = scopes.join(' ');
+			}
+
+			return tokenResponse;
 		});
 	}
 
-	async verifyAccessToken(token: string): Promise<AuthInfo> {
+	async verifyAccessToken(token: string, audience: string = this.MCP_AUDIENCE): Promise<AuthInfo> {
 		let decoded;
 
 		try {
-			decoded = this.jwtService.verify(token, { audience: this.MCP_AUDIENCE });
+			decoded = this.jwtService.verify(token, { audience });
 		} catch (error) {
 			throw new JWTVerificationError();
 		}
@@ -156,19 +181,24 @@ export class McpOAuthTokenService {
 			throw new AccessTokenNotFoundError();
 		}
 
+		const scopes: string[] = decoded.scope ? (decoded.scope as string).split(' ') : [];
+
 		return {
 			token,
 			clientId: decoded.client_id,
-			scopes: [],
+			scopes,
 			extra: {
 				userId: decoded.sub,
 			},
 		};
 	}
 
-	async verifyOAuthAccessToken(token: string): Promise<UserWithContext> {
+	async verifyOAuthAccessToken(
+		token: string,
+		audience: string = this.MCP_AUDIENCE,
+	): Promise<UserWithContext> {
 		try {
-			const authInfo = await this.verifyAccessToken(token);
+			const authInfo = await this.verifyAccessToken(token, audience);
 
 			const userId = authInfo.extra?.userId as string;
 			if (!userId) {

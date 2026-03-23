@@ -4,6 +4,7 @@ import { makeRestApiRequest } from '../utils';
 export interface ConsentDetails {
 	clientName: string;
 	clientId: string;
+	requestedScopes?: string[];
 }
 
 export interface ConsentApprovalResponse {
@@ -18,6 +19,10 @@ export async function getConsentDetails(context: IRestApiContext): Promise<Conse
 export async function approveConsent(
 	context: IRestApiContext,
 	approved: boolean,
+	approvedScopes?: string[],
 ): Promise<ConsentApprovalResponse> {
-	return await makeRestApiRequest(context, 'POST', '/consent/approve', { approved });
+	return await makeRestApiRequest(context, 'POST', '/consent/approve', {
+		approved,
+		approvedScopes,
+	});
 }

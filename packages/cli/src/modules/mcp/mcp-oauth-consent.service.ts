@@ -29,6 +29,7 @@ export class McpOAuthConsentService {
 	async getConsentDetails(sessionToken: string): Promise<{
 		clientName: string;
 		clientId: string;
+		requestedScopes?: string[];
 	} | null> {
 		try {
 			const sessionPayload = this.oauthSessionService.verifySession(sessionToken);
@@ -44,6 +45,7 @@ export class McpOAuthConsentService {
 			return {
 				clientName: client.name,
 				clientId: client.id,
+				requestedScopes: sessionPayload.scopes,
 			};
 		} catch (error) {
 			this.logger.error('Error getting consent details', { error });
@@ -59,6 +61,7 @@ export class McpOAuthConsentService {
 		sessionToken: string,
 		userId: string,
 		approved: boolean,
+		approvedScopes?: string[],
 	): Promise<{ redirectUrl: string }> {
 		let sessionPayload: OAuthSessionPayload;
 		try {
@@ -83,11 +86,14 @@ export class McpOAuthConsentService {
 			return { redirectUrl };
 		}
 
-		await this.userConsentRepository.insert({
-			userId,
-			clientId: sessionPayload.clientId,
-			grantedAt: Date.now(),
-		});
+		await this.userConsentRepository.upsert(
+			{
+				userId,
+				clientId: sessionPayload.clientId,
+				grantedAt: Date.now(),
+			},
+			['userId', 'clientId'],
+		);
 
 		const code = await this.authorizationCodeService.createAuthorizationCode(
 			sessionPayload.clientId,
@@ -95,6 +101,7 @@ export class McpOAuthConsentService {
 			sessionPayload.redirectUri,
 			sessionPayload.codeChallenge,
 			sessionPayload.state,
+			approvedScopes,
 		);
 
 		const successRedirectUrl = McpOAuthHelpers.buildSuccessRedirectUrl(

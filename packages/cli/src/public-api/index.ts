@@ -9,6 +9,7 @@ import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 
 import { License } from '@/license';
+import { PublicApiBearerAuthService } from '@/services/public-api-bearer-auth.service';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UrlService } from '@/services/url.service';
 
@@ -104,6 +105,7 @@ function createLazyValidatorMiddleware(
 						validateSecurity: {
 							handlers: {
 								ApiKeyAuth: Container.get(PublicApiKeyService).getAuthMiddleware(version),
+								BearerAuth: Container.get(PublicApiBearerAuthService).getAuthMiddleware(version),
 							},
 						},
 					}),
