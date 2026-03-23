@@ -38,11 +38,15 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 			workflowName: args.workflowName,
 		});
 
+		const snapshot = JSON.stringify(args.snapshot);
+		const status = args.snapshot.status ?? null;
+
 		if (existing) {
 			await this.snapshotRepo.update(
 				{ runId: args.runId, workflowName: args.workflowName },
 				{
-					snapshot: JSON.stringify(args.snapshot),
+					snapshot,
+					status,
 					resourceId: args.resourceId ?? null,
 				},
 			);
@@ -51,7 +55,8 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 				runId: args.runId,
 				workflowName: args.workflowName,
 				resourceId: args.resourceId ?? null,
-				snapshot: JSON.stringify(args.snapshot),
+				status,
+				snapshot,
 			});
 			await this.snapshotRepo.save(entity);
 		}
@@ -93,7 +98,13 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 			snapshot.resumeLabels = opts.resumeLabels;
 		}
 
-		await this.snapshotRepo.update({ runId, workflowName }, { snapshot: JSON.stringify(snapshot) });
+		await this.snapshotRepo.update(
+			{ runId, workflowName },
+			{
+				snapshot: JSON.stringify(snapshot),
+				status: snapshot.status ?? null,
+			},
+		);
 		return snapshot;
 	}
 
@@ -115,7 +126,7 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 		});
 		if (!snapshot) return {};
 
-		if (!snapshot.result) snapshot.result = {};
+		snapshot.result ??= {};
 		(snapshot.result as Record<string, unknown>)[stepId] = result;
 
 		await this.snapshotRepo.update({ runId, workflowName }, { snapshot: JSON.stringify(snapshot) });
@@ -130,6 +141,15 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 		}
 		if (args?.resourceId) {
 			qb.andWhere('s.resourceId = :rid', { rid: args.resourceId });
+		}
+		if (args?.status) {
+			qb.andWhere('s.status = :status', { status: args.status });
+		}
+		if (args?.fromDate) {
+			qb.andWhere('s.createdAt >= :fromDate', { fromDate: args.fromDate });
+		}
+		if (args?.toDate) {
+			qb.andWhere('s.createdAt <= :toDate', { toDate: args.toDate });
 		}
 
 		qb.orderBy('s.createdAt', 'DESC');
@@ -182,5 +202,10 @@ export class TypeORMWorkflowsStorage extends WorkflowsStorage {
 		workflowName: string;
 	}): Promise<void> {
 		await this.snapshotRepo.delete({ runId, workflowName });
+	}
+
+	/** Delete all snapshots for a given runId regardless of workflowName. */
+	async deleteAllByRunId(runId: string): Promise<void> {
+		await this.snapshotRepo.delete({ runId });
 	}
 }

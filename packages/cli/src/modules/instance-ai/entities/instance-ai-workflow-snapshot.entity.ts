@@ -12,6 +12,9 @@ export class InstanceAiWorkflowSnapshot extends WithTimestamps {
 	@Column({ type: 'varchar', nullable: true })
 	resourceId: string | null;
 
+	@Column({ type: 'varchar', nullable: true })
+	status: string | null;
+
 	@Column({ type: 'text' })
 	snapshot: string;
 }
