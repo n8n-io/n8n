@@ -120,6 +120,106 @@ return []
 				});
 			});
 
+		test.describe('TypeScript errors in JavaScript mode (GHC-6346)', () => {
+			test('should not show TypeScript errors for valid JavaScript delete operator after execution', async ({
+				n8n,
+			}) => {
+				await n8n.start.fromBlankCanvas();
+				await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+
+				// Add Edit Fields node to create structured data
+				await n8n.canvas.addNode('Edit Fields (Set)');
+				await n8n.ndv.editFields.setSingleFieldValue('Date', 'string', '2024-01-01');
+				await n8n.ndv.close();
+
+				// Add Code node
+				await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
+
+				// Execute workflow first to populate type information
+				await n8n.ndv.execute();
+
+				// Wait for execution to complete
+				await n8n.page.waitForTimeout(1000);
+
+				// Now write code that uses delete operator
+				await n8n.ndv.getCodeEditor().fill(`for (const item of $input.all()) {
+  delete item.json.Date;
+}
+
+return $input.all();`);
+
+				// Wait for linting to process
+				await n8n.page.waitForTimeout(2000);
+
+				// Should NOT show TypeScript error about delete operator
+				const lintErrors = n8n.ndv.getLintErrors();
+				const errorCount = await lintErrors.count();
+
+				// If there are errors, check they're not TypeScript errors about delete
+				if (errorCount > 0) {
+					const firstError = lintErrors.first();
+					await firstError.hover({ force: true });
+					await n8n.page.waitForTimeout(500);
+
+					const tooltip = n8n.ndv.getLintTooltip();
+					const tooltipText = await tooltip.textContent().catch(() => '');
+
+					// This should fail because the bug causes TypeScript error to appear
+					expect(tooltipText).not.toContain('operand of a \'delete\' operator must be optional');
+					expect(tooltipText).not.toContain('delete');
+				}
+			});
+
+			test('should not show TypeScript errors when accessing properties after execution', async ({
+				n8n,
+			}) => {
+				await n8n.start.fromBlankCanvas();
+				await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+
+				// Add Edit Fields node to create structured data with non-optional properties
+				await n8n.canvas.addNode('Edit Fields (Set)');
+				await n8n.ndv.editFields.setSingleFieldValue('requiredField', 'string', 'test');
+				await n8n.ndv.close();
+
+				// Add Code node
+				await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
+
+				// Execute workflow first
+				await n8n.ndv.execute();
+				await n8n.page.waitForTimeout(1000);
+
+				// Write JavaScript code that should be valid
+				await n8n.ndv.getCodeEditor().fill(`for (const item of $input.all()) {
+  const temp = item.json.requiredField;
+  delete item.json.requiredField;
+  item.json.newField = temp;
+}
+
+return $input.all();`);
+
+				// Wait for linting
+				await n8n.page.waitForTimeout(2000);
+
+				// Check for any TypeScript-specific errors
+				const lintErrors = n8n.ndv.getLintErrors();
+				const errorCount = await lintErrors.count();
+
+				if (errorCount > 0) {
+					const firstError = lintErrors.first();
+					await firstError.hover({ force: true });
+					await n8n.page.waitForTimeout(500);
+
+					const tooltip = n8n.ndv.getLintTooltip();
+					const tooltipText = await tooltip.textContent().catch(() => '');
+
+					// Should not show TypeScript errors in JavaScript mode
+					expect(tooltipText).not.toContain('optional');
+					expect(tooltipText).not.toContain('Property');
+					expect(tooltipText).not.toContain('does not exist on type');
+				}
+			});
+		});
+
 		test.describe('Ask AI', () => {
 			test.describe('Enabled', () => {
 				test.beforeEach(async ({ api, n8n }) => {
