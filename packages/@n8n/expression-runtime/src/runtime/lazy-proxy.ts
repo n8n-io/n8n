@@ -36,8 +36,27 @@ export function getProxyPath(obj: object): string[] | undefined {
  * @param basePath - Current path in object tree (e.g., ['$json', 'user'])
  * @returns Proxy object with lazy loading behavior
  */
-export function createDeepLazyProxy(basePath: string[] = []): any {
+export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[]): any {
 	const proxy = new Proxy({} as Record<string, unknown>, {
+		ownKeys(_target: any): string[] {
+			if (knownKeys) return knownKeys;
+			// If no known keys, fetch them from the bridge
+			const value = globalThis.__getValueAtPath.applySync(null, [basePath], {
+				arguments: { copy: true },
+				result: { copy: true },
+			});
+			if (value && typeof value === 'object' && value.__isObject) {
+				return value.__keys as string[];
+			}
+			return [];
+		},
+		getOwnPropertyDescriptor(_target: any, prop: string | symbol): PropertyDescriptor | undefined {
+			if (typeof prop === 'symbol') return undefined;
+			if (knownKeys?.includes(prop as string)) {
+				return { configurable: true, enumerable: true, writable: true };
+			}
+			return undefined;
+		},
 		get(target: any, prop: string | symbol): unknown {
 			// Handle Symbol properties - return undefined
 			// Symbols like Symbol.toStringTag are accessed internally
@@ -152,8 +171,8 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 
 			// Handle objects - metadata: { __isObject: true, __keys: string[] }
 			if (value && typeof value === 'object' && value.__isObject) {
-				// Create nested proxy for recursive lazy loading
-				target[prop] = createDeepLazyProxy(path);
+				// Create nested proxy for recursive lazy loading, passing known keys
+				target[prop] = createDeepLazyProxy(path, value.__keys as string[]);
 				return target[prop];
 			}
 
