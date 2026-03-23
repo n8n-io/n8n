@@ -40,7 +40,7 @@ const i18n = useI18n();
 			<N8nButton
 				:label="i18n.baseText('ndv.redacted.revealButton')"
 				variant="outline"
-				size="small"
+				size="medium"
 				data-test-id="ndv-reveal-redacted-data"
 				@click="emit('reveal')"
 			/>
