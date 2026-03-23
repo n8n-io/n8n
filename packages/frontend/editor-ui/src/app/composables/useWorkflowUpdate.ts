@@ -6,6 +6,10 @@
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
