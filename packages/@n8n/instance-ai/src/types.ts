@@ -115,6 +115,9 @@ export interface NodeDescription extends NodeSummary {
 	credentials?: Array<{ name: string; required?: boolean }>;
 	inputs: string[];
 	outputs: string[];
+	webhooks?: unknown[];
+	polling?: boolean;
+	triggerPanel?: unknown;
 }
 
 // ── Service interfaces ───────────────────────────────────────────────────────
@@ -212,6 +215,8 @@ export interface InstanceAiCredentialService {
 	get(credentialId: string): Promise<CredentialDetail>;
 	delete(credentialId: string): Promise<void>;
 	test(credentialId: string): Promise<{ success: boolean; message?: string }>;
+	/** Whether a credential type has a test function. When false, skip testing. */
+	isTestable?(credentialType: string): Promise<boolean>;
 	getDocumentationUrl?(credentialType: string): Promise<string | null>;
 	getCredentialFields?(
 		credentialType: string,
@@ -250,7 +255,7 @@ export interface ExploreResourcesResult {
 
 export interface InstanceAiNodeService {
 	listAvailable(options?: { query?: string }): Promise<NodeSummary[]>;
-	getDescription(nodeType: string): Promise<NodeDescription>;
+	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
 	/** Return the TypeScript type definition for a node (from dist/node-definitions/). */
@@ -269,6 +274,19 @@ export interface InstanceAiNodeService {
 	): Promise<{ resources: Array<{ name: string; operations: string[] }> } | null>;
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
+	/** Compute parameter issues for a node (mirrors builder's NodeHelpers.getNodeParametersIssues). */
+	getParameterIssues?(
+		nodeType: string,
+		typeVersion: number,
+		parameters: Record<string, unknown>,
+	): Promise<Record<string, string[]>>;
+	/** Return all credential types a node requires (displayable + dynamic + assigned). */
+	getNodeCredentialTypes?(
+		nodeType: string,
+		typeVersion: number,
+		parameters: Record<string, unknown>,
+		existingCredentials?: Record<string, unknown>,
+	): Promise<string[]>;
 }
 
 /** Richer node type shape that includes inputs, outputs, codex, and builderHint.

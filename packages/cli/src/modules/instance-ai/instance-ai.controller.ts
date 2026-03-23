@@ -206,9 +206,13 @@ export class InstanceAiController {
 			approved: body.approved,
 			credentialId: body.credentialId,
 			credentials: body.credentials,
+			nodeCredentials: body.nodeCredentials,
 			autoSetup: body.autoSetup,
 			userInput: body.userInput,
 			domainAccessAction: body.domainAccessAction,
+			action: body.action,
+			nodeParameters: body.nodeParameters,
+			testTriggerNode: body.testTriggerNode,
 		});
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');

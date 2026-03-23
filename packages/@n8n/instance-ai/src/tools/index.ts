@@ -58,6 +58,7 @@ import { createListWorkflowVersionsTool } from './workflows/list-workflow-versio
 import { createListWorkflowsTool } from './workflows/list-workflows.tool';
 import { createPublishWorkflowTool } from './workflows/publish-workflow.tool';
 import { createRestoreWorkflowVersionTool } from './workflows/restore-workflow-version.tool';
+import { createSetupWorkflowTool } from './workflows/setup-workflow.tool';
 import { createUnpublishWorkflowTool } from './workflows/unpublish-workflow.tool';
 import { createUpdateWorkflowVersionTool } from './workflows/update-workflow-version.tool';
 import { createCleanupTestExecutionsTool } from './workspace/cleanup-test-executions.tool';
@@ -80,6 +81,7 @@ export function createAllTools(context: InstanceAiContext) {
 		'get-workflow-as-code': createGetWorkflowAsCodeTool(context),
 		'build-workflow': createBuildWorkflowTool(context),
 		'delete-workflow': createDeleteWorkflowTool(context),
+		'setup-workflow': createSetupWorkflowTool(context),
 		'publish-workflow': createPublishWorkflowTool(context),
 		'unpublish-workflow': createUnpublishWorkflowTool(context),
 		'list-executions': createListExecutionsTool(context),

@@ -307,6 +307,8 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					inputType: event.payload.inputType,
 					domainAccess: event.payload.domainAccess,
 					credentialFlow: event.payload.credentialFlow,
+					setupRequests: event.payload.setupRequests,
+					workflowId: event.payload.workflowId,
 				};
 			}
 			break;

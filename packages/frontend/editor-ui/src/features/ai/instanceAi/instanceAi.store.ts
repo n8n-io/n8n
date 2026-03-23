@@ -643,7 +643,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		autoSetup?: { credentialType: string },
 		userInput?: string,
 		domainAccessAction?: string,
-	): Promise<void> {
+		setupWorkflowData?: {
+			action?: 'apply' | 'test-trigger';
+			nodeCredentials?: Record<string, Record<string, string>>;
+			nodeParameters?: Record<string, Record<string, unknown>>;
+			testTriggerNode?: string;
+		},
+	): Promise<boolean> {
 		try {
 			await postConfirmation(
 				rootStore.restApiContext,
@@ -654,9 +660,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				autoSetup,
 				userInput,
 				domainAccessAction,
+				setupWorkflowData,
 			);
+			return true;
 		} catch {
 			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
+			return false;
 		}
 	}
 

@@ -6,6 +6,7 @@ import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.
 import { useToolLabel } from '../toolLabels';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
+import InstanceAiWorkflowSetup from './InstanceAiWorkflowSetup.vue';
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
@@ -77,7 +78,7 @@ function handleTextSkip(requestId: string) {
 	void store.confirmAction(requestId, false);
 }
 
-/** True when every item in the group is a generic approval (not domain/cred/text). */
+/** True when every item in the group is a generic approval (not domain/cred/text/setup). */
 function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	return items.every(
 		(item) =>
@@ -85,6 +86,10 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 			!(
 				item.toolCall.confirmation!.credentialRequests &&
 				item.toolCall.confirmation!.credentialRequests.length > 0
+			) &&
+			!(
+				item.toolCall.confirmation!.setupRequests &&
+				item.toolCall.confirmation!.setupRequests.length > 0
 			) &&
 			item.toolCall.confirmation!.inputType !== 'text',
 	);
@@ -132,6 +137,20 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						:request-id="item.toolCall.confirmation!.requestId"
 						:url="item.toolCall.confirmation!.domainAccess!.url"
 						:host="item.toolCall.confirmation!.domainAccess!.host"
+					/>
+
+					<!-- Workflow setup (full node credential/parameter/trigger setup) -->
+					<InstanceAiWorkflowSetup
+						v-else-if="
+							item.toolCall.confirmation!.setupRequests &&
+							item.toolCall.confirmation!.setupRequests.length > 0
+						"
+						:request-id="item.toolCall.confirmation!.requestId"
+						:setup-requests="item.toolCall.confirmation!.setupRequests!"
+						:workflow-id="item.toolCall.confirmation!.workflowId ?? ''"
+						:message="item.toolCall.confirmation!.message"
+						:project-id="item.toolCall.confirmation!.projectId"
+						:credential-flow="item.toolCall.confirmation!.credentialFlow"
 					/>
 
 					<!-- Credential setup -->

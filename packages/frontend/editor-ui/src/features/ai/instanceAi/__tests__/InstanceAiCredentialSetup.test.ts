@@ -187,7 +187,7 @@ describe('InstanceAiCredentialSetup', () => {
 	describe('submit actions', () => {
 		it('calls confirmAction with credential map on continue', async () => {
 			const requests = makeCredentialRequests(1);
-			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue();
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
 			const resolveSpy = vi.spyOn(store, 'resolveConfirmation');
 
 			const { getByTestId } = renderComponent({
@@ -210,7 +210,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('calls confirmAction with false on defer', async () => {
 			const requests = makeCredentialRequests(1);
-			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue();
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
 			const resolveSpy = vi.spyOn(store, 'resolveConfirmation');
 
 			const { getByText } = renderComponent({
@@ -230,7 +230,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('shows submitted success state after continue', async () => {
 			const requests = makeCredentialRequests(1);
-			vi.spyOn(store, 'confirmAction').mockResolvedValue();
+			vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
 
 			const { getByTestId, getByText } = renderComponent({
 				props: {
@@ -248,7 +248,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('shows deferred state after skip', async () => {
 			const requests = makeCredentialRequests(1);
-			vi.spyOn(store, 'confirmAction').mockResolvedValue();
+			vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
 
 			const { getByText } = renderComponent({
 				props: {
@@ -281,7 +281,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('shows finalize applied state after submit', async () => {
 			const requests = makeCredentialRequests(1);
-			vi.spyOn(store, 'confirmAction').mockResolvedValue();
+			vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
 
 			const { getByTestId, getByText } = renderComponent({
 				props: {

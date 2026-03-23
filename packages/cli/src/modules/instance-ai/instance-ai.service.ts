@@ -78,9 +78,13 @@ interface ConfirmationData {
 	approved: boolean;
 	credentialId?: string;
 	credentials?: Record<string, string>;
+	nodeCredentials?: Record<string, Record<string, string>>;
 	autoSetup?: { credentialType: string };
 	userInput?: string;
 	domainAccessAction?: string;
+	action?: 'apply' | 'test-trigger';
+	nodeParameters?: Record<string, Record<string, unknown>>;
+	testTriggerNode?: string;
 }
 
 interface PendingConfirmation {
@@ -993,13 +997,19 @@ export class InstanceAiService {
 		this.suspendedRuns.delete(threadId);
 		this.activeRuns.set(threadId, { runId, abortController });
 
+		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
+		// other tools use the flat credentials map. Prefer nodeCredentials when present.
+		const credentialsPayload = data.nodeCredentials ?? data.credentials;
 		const resumeData = {
 			approved: data.approved,
 			...(data.credentialId ? { credentialId: data.credentialId } : {}),
-			...(data.credentials ? { credentials: data.credentials } : {}),
+			...(credentialsPayload ? { credentials: credentialsPayload } : {}),
 			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
 			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
+			...(data.action ? { action: data.action } : {}),
+			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
+			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 		};
 
 		// Create snapshot storage for saving agent tree after resumed run completes
@@ -1405,11 +1415,9 @@ export class InstanceAiService {
 				if (action.mockedCredentialTypes && action.mockedCredentialTypes.length > 0) {
 					const types = action.mockedCredentialTypes.join(', ');
 					return (
-						'Workflow verified successfully with temporary mock data. ' +
-						`Call \`setup-credentials\` with types [${types}] and ` +
-						'credentialFlow stage "finalize" to let the user add real credentials. ' +
-						'After the user selects credentials, call `apply-workflow-credentials` ' +
-						`with the workItemId "${workItemId ?? 'unknown'}" and workflowId to apply them.`
+						`Workflow verified successfully with temporary mock data for credential types [${types}]. ` +
+						'Call `setup-workflow` with the workflowId to let the user configure real credentials, ' +
+						'parameters, and triggers through the setup UI.'
 					);
 				}
 				return `Workflow is ready. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
