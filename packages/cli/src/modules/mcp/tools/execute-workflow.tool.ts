@@ -375,7 +375,7 @@ const getPinDataForTrigger = async (
 			};
 		}
 		case CHAT_TRIGGER_NODE_TYPE:
-			if (!inputs || inputs.type !== 'chat') return {};
+			if (!inputs || inputs.type !== 'chat') return { [node.name]: [{ json: {} }] };
 			return {
 				[node.name]: [
 					{
@@ -388,7 +388,7 @@ const getPinDataForTrigger = async (
 				],
 			};
 		case FORM_TRIGGER_NODE_TYPE:
-			if (!inputs || inputs.type !== 'form') return {};
+			if (!inputs || inputs.type !== 'form') return { [node.name]: [{ json: {} }] };
 			return {
 				[node.name]: [
 					{
@@ -426,7 +426,7 @@ const getPinDataForTrigger = async (
 			};
 		}
 		default:
-			return {};
+			return { [node.name]: [{ json: {} }] };
 	}
 };
 
