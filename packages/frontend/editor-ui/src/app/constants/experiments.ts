@@ -97,6 +97,7 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 	codePinData: 'code-pin-data',
 });
 
+export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_builder_setup_wizard');
 export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
 
 export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hub_semantic_search');
@@ -124,6 +125,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	FOCUSED_NODES_EXPERIMENT.name,
 	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
 	MERGE_ASK_BUILD_EXPERIMENT.name,
+	AI_BUILDER_SETUP_WIZARD_EXPERIMENT.name,
 	AA_EXPERIMENT_CHECK.name,
 	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
