@@ -216,7 +216,7 @@ const groups = computed<SelectItemProps[]>(() => {
 	font-weight: var(--font-weight--regular);
 	line-height: var(--line-height--md);
 	border: 1px solid transparent;
-	background-color: var(--color--background--light-2);
+	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 	height: var(--spacing--lg);
 	position: relative;
 	gap: var(--spacing--3xs);

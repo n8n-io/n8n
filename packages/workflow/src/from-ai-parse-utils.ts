@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { FROM_AI_AUTO_GENERATED_MARKER } from './constants';
 import { isExpression } from './expressions/expression-helpers';
+import type { INodeProperties } from './interfaces';
 import { jsonParse } from './utils';
 
 /**
@@ -453,6 +454,47 @@ export function isFromAIOnlyExpression(expr: string): boolean {
 	return remainder.length === 0;
 }
 
+/**
+ * Recursive helper function to collect default values from node properties and their nested options.
+ */
+function collectDefaults(props: INodeProperties[], defaults: Set<string>) {
+	for (const prop of props) {
+		if (typeof prop.default === 'string' && isExpression(prop.default)) {
+			defaults.add(prop.default);
+		}
+
+		if (prop.options) {
+			for (const option of prop.options) {
+				// INodePropertyCollection has `values: INodeProperties[]`
+				if ('values' in option && Array.isArray(option.values)) {
+					collectDefaults(option.values, defaults);
+				}
+				// INodeProperties has `options` and `default`
+				if ('type' in option && 'default' in option) {
+					const nested = option;
+					if (typeof nested.default === 'string' && isExpression(nested.default)) {
+						defaults.add(nested.default);
+					}
+					if (nested.options) {
+						collectDefaults([nested] as unknown as INodeProperties[], defaults);
+					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Recursively collects all expression default values from node type properties.
+ * Recurses into `options` (which can be INodeProperties[] or INodePropertyCollection[]).
+ */
+export function collectExpressionDefaults(properties: INodeProperties[]): Set<string> {
+	const defaults = new Set<string>();
+	collectDefaults(properties, defaults);
+
+	return defaults;
+}
+
 export type ExpressionViolation = {
 	path: string;
 	value: string;
@@ -462,25 +504,35 @@ export type ExpressionViolation = {
  * Recursively traverses node parameters and finds all string values that are
  * expressions other than supported `$fromAI()`-only expressions supported on Chat hub.
  * Returns an array of violations with their dot-notation paths.
+ *
+ * When `allowedExpressions` is provided, expressions matching a known node-description
+ * default are not flagged as violations.
  */
 export function findDisallowedChatToolExpressions(
 	payload: unknown,
 	path = '',
+	allowedExpressions?: Set<string>,
 ): ExpressionViolation[] {
 	const violations: ExpressionViolation[] = [];
 
 	if (typeof payload === 'string') {
-		if (isExpression(payload) && !isFromAIOnlyExpression(payload)) {
+		if (
+			isExpression(payload) &&
+			!isFromAIOnlyExpression(payload) &&
+			!allowedExpressions?.has(payload)
+		) {
 			violations.push({ path, value: payload });
 		}
 	} else if (Array.isArray(payload)) {
 		payload.forEach((item: unknown, index: number) => {
-			violations.push(...findDisallowedChatToolExpressions(item, `${path}[${index}]`));
+			violations.push(
+				...findDisallowedChatToolExpressions(item, `${path}[${index}]`, allowedExpressions),
+			);
 		});
 	} else if (typeof payload === 'object' && payload !== null) {
 		for (const [key, value] of Object.entries(payload)) {
 			const newPath = path ? `${path}.${key}` : key;
-			violations.push(...findDisallowedChatToolExpressions(value, newPath));
+			violations.push(...findDisallowedChatToolExpressions(value, newPath, allowedExpressions));
 		}
 	}
 

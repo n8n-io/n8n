@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.12.0",
+  "version": "2.13.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -485,6 +485,7 @@
       "dist/nodes/Copper/CopperTrigger.node.js",
       "dist/nodes/Cortex/Cortex.node.js",
       "dist/nodes/CrateDb/CrateDb.node.js",
+      "dist/nodes/DynamicCredentialCheck/DynamicCredentialCheck.node.js",
       "dist/nodes/Cron/Cron.node.js",
       "dist/nodes/Crypto/Crypto.node.js",
       "dist/nodes/Currents/Currents.node.js",

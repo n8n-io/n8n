@@ -68,6 +68,7 @@ const markdownContent = computed(() => ({
 					:class="isMarkdown ? $style.markdown : ''"
 					:single-pre="!isMarkdown"
 					:source="markdownContent"
+					footnote-style="normal"
 				/>
 			</div>
 		</div>

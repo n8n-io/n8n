@@ -6,6 +6,8 @@ import type {
 	ChatHubConversationResponse,
 	MessageChunk,
 	ChatHubModuleSettings,
+	ChatHubAgentDto,
+	ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
 import { emptyChatModelsResponse } from '@n8n/api-types';
 import type { ChatMessage } from '../chat.types';
@@ -73,6 +75,7 @@ export function createMockSession(overrides: Partial<ChatHubSessionDto> = {}): C
 		agentId: null,
 		agentName: 'gpt-4',
 		agentIcon: null,
+		type: 'production',
 		createdAt: '2024-01-15T12:00:00Z',
 		updatedAt: '2024-01-15T12:00:00Z',
 		toolIds: [],
@@ -146,11 +149,50 @@ export function createMockStreamChunk(
 	};
 }
 
+export function createMockKnowledgeItem(
+	overrides: Partial<ChatHubAgentKnowledgeItem> = {},
+): ChatHubAgentKnowledgeItem {
+	return {
+		id: 'file-1',
+		type: 'embedding',
+		provider: 'openai',
+		fileName: 'document.pdf',
+		mimeType: 'application/pdf',
+		status: 'indexed',
+		...overrides,
+	};
+}
+
+export function createMockAgentDto(overrides: Partial<ChatHubAgentDto> = {}): ChatHubAgentDto {
+	return {
+		id: 'agent-1',
+		name: 'Test Agent',
+		description: null,
+		icon: null,
+		suggestedPrompts: [],
+		systemPrompt: '',
+		ownerId: 'user-1',
+		credentialId: null,
+		provider: 'openai',
+		model: 'gpt-4',
+		files: [],
+		toolIds: [],
+		createdAt: '',
+		updatedAt: '',
+		...overrides,
+	};
+}
+
 export function createChatHubModuleSettings(
 	overrides: Partial<ChatHubModuleSettings> = {},
 ): ChatHubModuleSettings {
 	return {
 		enabled: true,
+		semanticSearch: {
+			vectorStore: { provider: 'qdrant', credentialId: null },
+			embeddingModel: { provider: 'openai', credentialId: null },
+		},
+		agentUploadMaxSizeMb: 10,
 		providers: {
 			openai: {
 				provider: 'openai',

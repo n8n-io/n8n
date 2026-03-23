@@ -41,7 +41,10 @@ import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
+import {
+	getParameterTypeOption,
+	type ParameterOptionsOverrides,
+} from '@/features/ndv/shared/ndv.utils';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { captureException } from '@sentry/vue';
 import { throttledWatch } from '@vueuse/core';
@@ -82,6 +85,7 @@ type Props = {
 	removeFirstParameterMargin?: boolean;
 	removeLastParameterMargin?: boolean;
 	newlyAddedParameters?: Set<string>;
+	optionsOverrides?: ParameterOptionsOverrides;
 	layout?: 'inline';
 };
 
@@ -845,6 +849,7 @@ watch(
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
 					:value="getParameterValue(item.parameter.name)"
 					:display-options="item.showOptions"
+					:options-overrides="optionsOverrides"
 					:path="item.path"
 					:is-read-only="isReadOnly || item.isDisabled"
 					:hide-label="layout === 'inline'"
