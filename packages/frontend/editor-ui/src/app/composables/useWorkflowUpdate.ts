@@ -24,7 +24,6 @@ import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/node
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { NodeHelpers, type IConnections, type INode } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
-import { computed } from 'vue';
 
 export interface UpdateWorkflowOptions {
 	isInitialGeneration?: boolean;
