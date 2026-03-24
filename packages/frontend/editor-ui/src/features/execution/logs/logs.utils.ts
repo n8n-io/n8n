@@ -614,15 +614,31 @@ function extractResponseText(responseData?: IDataObject): string | undefined {
 export function restoreChatHistory(
 	workflowExecutionData: IExecutionResponse | null,
 	emptyText?: string,
+	redactedText?: string,
 ): ChatMessage[] {
 	if (!workflowExecutionData?.data) {
 		return [];
 	}
 
+	const isRedacted = workflowExecutionData.data.redactionInfo?.isRedacted === true;
+
 	const userMessage = extractChatInput(
 		workflowExecutionData.workflowData,
 		workflowExecutionData.data.resultData,
 	);
+
+	if (isRedacted) {
+		const messages: ChatMessage[] = userMessage ? [userMessage] : [];
+		if (redactedText) {
+			messages.push({
+				text: redactedText,
+				sender: 'bot',
+				id: workflowExecutionData.id ?? uuid(),
+			});
+		}
+		return messages;
+	}
+
 	const botMessage = extractBotResponse(
 		workflowExecutionData.data.resultData,
 		workflowExecutionData.id,
