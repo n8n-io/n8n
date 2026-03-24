@@ -211,8 +211,12 @@ export class Expression {
 			// Dynamic import to avoid loading expression-runtime in browser environments
 			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
 			const bridge = new IsolatedVmBridge({ timeout: 5000 });
+			const DEFAULT_MAX_CODE_CACHE_SIZE = 1024;
+			const parsed = parseInt(process.env.N8N_EXPRESSION_ENGINE_MAX_CODE_CACHE_SIZE ?? '', 10);
+			const maxCodeCacheSize = parsed || DEFAULT_MAX_CODE_CACHE_SIZE;
 			this.vmEvaluator = new ExpressionEvaluator({
 				bridge,
+				maxCodeCacheSize,
 				hooks: {
 					before: [ThisSanitizer],
 					after: [PrototypeSanitizer, DollarSignValidator],
