@@ -25,10 +25,7 @@ export type IconPickerEmojiRow = IconSectionRowBase & {
 	emojis: DisplayEmojiEntry[];
 };
 
-export type IconPickerVirtualRow =
-	| IconPickerHeaderRow
-	| IconPickerIconRow
-	| IconPickerEmojiRow;
+export type IconPickerVirtualRow = IconPickerHeaderRow | IconPickerIconRow | IconPickerEmojiRow;
 
 function chunkItems<T>(items: T[], columns: number): T[][] {
 	const rows: T[][] = [];
