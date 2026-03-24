@@ -4964,7 +4964,7 @@
 	"instanceAi.error.title": "Something went wrong",
 	"instanceAi.error.technicalDetails": "Technical details",
 	"instanceAi.artifactsPanel.title": "Artifacts",
-	"instanceAi.artifactsPanel.noArtifacts": "No artifacts yet. Tasks and workflows will appear here as the agent works.",
+	"instanceAi.artifactsPanel.noArtifacts": "No artifacts yet",
 	"instanceAi.artifactsPanel.tasks": "Tasks",
 	"instanceAi.artifactsPanel.openWorkflow": "Open",
 	"instanceAi.delegateCard.implementsStep": "Step {step}",

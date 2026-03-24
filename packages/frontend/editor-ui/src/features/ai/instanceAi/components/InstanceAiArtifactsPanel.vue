@@ -203,9 +203,9 @@ const artifactIconMap: Record<string, IconName> = {
 
 .emptyIcon {
 	color: var(--color--text--tint-2);
-	padding: var(--spacing--4xs);
+	padding: var(--spacing--2xs);
 	background: var(--color--foreground--tint-1);
-	border-radius: var(--radius);
+	border-radius: var(--radius--lg);
 }
 
 /* Task list */
