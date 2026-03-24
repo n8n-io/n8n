@@ -901,6 +901,7 @@ export function useCanvasOperations() {
 		const llmNode = addNode(
 			{
 				type: llmData.type,
+				name: llmData.name,
 				typeVersion: resolveNodeVersion(llmTypeDescription),
 				parameters: llmData.parameters,
 				credentials: llmData.credentials,

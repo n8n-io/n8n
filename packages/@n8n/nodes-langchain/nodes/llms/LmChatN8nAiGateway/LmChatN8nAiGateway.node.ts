@@ -90,14 +90,15 @@ function getGatewayConfig() {
 
 export class LmChatN8nAiGateway implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'n8n AI Gateway Model',
+		displayName: 'AI Gateway',
 		name: 'lmChatN8nAiGateway',
 		icon: { light: 'file:n8nAiGateway.svg', dark: 'file:n8nAiGateway.svg' },
 		group: ['transform'],
 		version: [1],
-		description: 'Uses n8n AI Gateway — model is resolved automatically from your gateway settings',
+		description: 'Access hundreds of models through one unified gateway',
+		subtitle: '={{$parameter["model"]}}',
 		defaults: {
-			name: 'n8n AI Gateway Model',
+			name: 'AI Gateway',
 		},
 		codex: {
 			categories: ['AI'],

@@ -28,6 +28,7 @@ export function applyAIGatewayDefaultsToLlmNode(
  */
 export async function getGatewayLlmNodeData(_workflowSettings?: IWorkflowSettings): Promise<{
 	type: string;
+	name: string;
 	parameters: INodeParameters;
 	credentials: Record<string, { id: string | null; name: string }>;
 } | null> {
@@ -38,6 +39,8 @@ export async function getGatewayLlmNodeData(_workflowSettings?: IWorkflowSetting
 
 	return {
 		type: GATEWAY_NODE_TYPE,
+		// Explicit label so canvas name does not depend on stale node type metadata or makeNodeName().
+		name: 'AI Gateway',
 		parameters: {},
 		credentials: {},
 	};

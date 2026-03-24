@@ -22,7 +22,7 @@ describe('LmChatN8nAiGateway', () => {
 
 	const mockNodeDef: INode = {
 		id: '1',
-		name: 'n8n AI Gateway Model',
+		name: 'AI Gateway',
 		typeVersion: 1,
 		type: 'n8n-nodes-langchain.lmChatN8nAiGateway',
 		position: [0, 0],
@@ -63,7 +63,7 @@ describe('LmChatN8nAiGateway', () => {
 	describe('node description', () => {
 		it('should have correct node properties', () => {
 			expect(node.description).toMatchObject({
-				displayName: 'n8n AI Gateway Model',
+				displayName: 'AI Gateway',
 				name: 'lmChatN8nAiGateway',
 				group: ['transform'],
 				version: [1],

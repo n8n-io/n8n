@@ -4971,5 +4971,9 @@
 	"focusedNodes.mentionPlaceholder": "Search nodes...",
 	"focusedNodes.mentionTooltip": "Mention a node",
 	"focusedNodes.allNodes": "All nodes",
-	"focusedNodes.unconfirmedTooltip": "Add as context for the assistant"
+	"focusedNodes.unconfirmedTooltip": "Add as context for the assistant",
+	"headers.lmChatN8nAiGateway.displayName": "AI Gateway",
+	"headers.lmChatN8nAiGateway.description": "Access hundreds of models through one unified gateway",
+	"headers.n8n-nodes-langchain.lmChatN8nAiGateway.displayName": "AI Gateway",
+	"headers.n8n-nodes-langchain.lmChatN8nAiGateway.description": "Access hundreds of models through one unified gateway"
 }

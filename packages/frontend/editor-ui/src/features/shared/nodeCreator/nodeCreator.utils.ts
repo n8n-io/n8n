@@ -98,9 +98,17 @@ export function subcategorizeItems(items: SimplifiedNodeType[]) {
 	}, {});
 }
 
+const AI_GATEWAY_LM_NODE_NAME = 'lmChatN8nAiGateway';
+
 export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 	return nodes.sort((a, b) => {
 		if (a.type !== 'node' || b.type !== 'node') return 0;
+
+		const aIsGateway = a.key === AI_GATEWAY_LM_NODE_NAME;
+		const bIsGateway = b.key === AI_GATEWAY_LM_NODE_NAME;
+		if (aIsGateway && !bIsGateway) return -1;
+		if (!aIsGateway && bIsGateway) return 1;
+
 		const displayNameA = a.properties?.displayName?.toLowerCase() || a.key;
 		const displayNameB = b.properties?.displayName?.toLowerCase() || b.key;
 

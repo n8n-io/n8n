@@ -85,6 +85,19 @@ describe('NodeCreator - utils', () => {
 	});
 
 	describe('sortNodeCreateElements', () => {
+		it('should pin AI Gateway (lmChatN8nAiGateway) before other language models', () => {
+			const gateway = mockNodeCreateElement(
+				{ key: 'lmChatN8nAiGateway' },
+				{ displayName: 'AI Gateway' },
+			);
+			const other = mockNodeCreateElement({ key: 'lmChatOpenAi' }, { displayName: 'OpenAI' });
+			const other2 = mockNodeCreateElement(
+				{ key: 'lmChatAnthropic' },
+				{ displayName: 'Anthropic' },
+			);
+			expect(sortNodeCreateElements([other, gateway, other2])).toEqual([gateway, other2, other]);
+		});
+
 		it('should sort nodes alphabetically by displayName', () => {
 			const node1 = mockNodeCreateElement({ key: 'newNode' }, { displayName: 'xyz' });
 			const node2 = mockNodeCreateElement({ key: 'popularNode' }, { displayName: 'abc' });

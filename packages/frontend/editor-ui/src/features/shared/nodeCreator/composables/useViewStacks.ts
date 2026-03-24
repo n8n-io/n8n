@@ -115,6 +115,11 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	const viewStacks = ref<ViewStack[]>([]);
 
+	/** Connection-compatible stacks (e.g. Language Models) — keep flat list order from baseline sort. */
+	function isConnectionCompatibleStack(stack: ViewStack) {
+		return !!stack.baseFilter;
+	}
+
 	const activeStackItems = computed<INodeCreateElement[]>(() => {
 		const stack = getLastActiveStack();
 		if (!stack?.baselineItems) {
@@ -138,11 +143,21 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				searchBase = filterOutAiNodes(searchBase);
 			}
 
+			// Do not re-rank by global popularity in connection views (e.g. Chat Model picker), or
+			// popular community nodes (e.g. Baseten) float above pinned nodes like AI Gateway.
+			const additionalFactors = isConnectionCompatibleStack(stack)
+				? {}
+				: { popularity: nodePopularityMap };
+
 			const searchResults = finalizeItems(
-				searchNodes(stack.search || '', searchBase, {
-					popularity: nodePopularityMap,
-				}),
+				searchNodes(stack.search || '', searchBase, additionalFactors),
 			);
+
+			if (isConnectionCompatibleStack(stack)) {
+				const flat = sortNodeCreateElements([...searchResults]);
+				stack.activeIndex = 0;
+				return flat;
+			}
 
 			const groupedNodes = groupIfAiNodes(searchResults, stack, false) ?? searchResults;
 			// Set the active index to the second item if there's a section
@@ -151,6 +166,11 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 			return groupedNodes;
 		}
+
+		if (isConnectionCompatibleStack(stack)) {
+			return finalizeItems(stack.baselineItems ?? []);
+		}
+
 		return finalizeItems(groupIfAiNodes(stack.baselineItems, stack, true));
 	});
 
@@ -528,8 +548,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			stackItems = stackItems.map(stack.itemsMapper);
 		}
 
-		// Sort only if non-root view
-		if (!stack.items) {
+		// Sort subcategory views (`!stack.items`), and connection views that pass a precomputed
+		// `items` list plus `baseFilter` (e.g. Language Models) — otherwise `sortNodeCreateElements`
+		// (including AI Gateway pin) is skipped for filtered lists.
+		if (!stack.items || stack.baseFilter) {
 			stackItems = sortNodeCreateElements(stackItems);
 		}
 

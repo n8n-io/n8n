@@ -783,6 +783,15 @@ export function useNodeHelpers() {
 			return data.notes;
 		}
 
+		// n8n AI Gateway chat model: show selected model id on canvas (works even when node type
+		// cache is missing the `subtitle` field until packages are rebuilt).
+		if (data.type === '@n8n/n8n-nodes-langchain.lmChatN8nAiGateway') {
+			const model = data.parameters?.model;
+			if (typeof model === 'string' && model.trim() !== '') {
+				return model;
+			}
+		}
+
 		if (nodeType?.subtitle !== undefined) {
 			try {
 				return workflow.expression.getSimpleParameterValue(
