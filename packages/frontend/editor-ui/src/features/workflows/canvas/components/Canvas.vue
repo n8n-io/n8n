@@ -145,6 +145,7 @@ const props = withDefaults(
 		loading?: boolean;
 		suppressInteraction?: boolean;
 		hideControls?: boolean;
+		initialViewport?: ViewportTransform | null;
 	}>(),
 	{
 		id: 'canvas',
@@ -454,7 +455,7 @@ function onNodeDragStop(event: NodeDragEvent) {
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
-		focusedNodesStore.confirmNodes([node.id], 'canvas_selection');
+		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
 	}
 
 	emit('click:node', node.id, getProjectedPosition(event));
@@ -549,6 +550,10 @@ function onFocusNode(id: string) {
 			setCenter,
 		});
 	}
+}
+
+function onReplaceNode(id: string) {
+	emit('replace:node', id);
 }
 
 function onAddToAi(id: string) {
@@ -955,7 +960,11 @@ onUnmounted(() => {
 });
 
 onPaneReady(async () => {
-	await onFitView();
+	if (props.initialViewport) {
+		await setViewport(props.initialViewport);
+	} else {
+		await onFitView();
+	}
 	isPaneReady.value = true;
 });
 
@@ -1077,6 +1086,7 @@ defineExpose({
 					@move="onUpdateNodePosition"
 					@add="onClickNodeAdd"
 					@focus="onFocusNode"
+					@replace:node="onReplaceNode"
 					@add:ai="onAddToAi"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">

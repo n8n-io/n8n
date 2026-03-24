@@ -43,6 +43,10 @@ export class CanvasPage extends BasePage {
 		return this.page.locator(`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`);
 	}
 
+	nodeOverflowButton(nodeName: string): Locator {
+		return this.nodeByName(nodeName).getByTestId('overflow-node-button');
+	}
+
 	nodeIssuesBadge(nodeName: string) {
 		return this.nodeByName(nodeName).getByTestId('node-issues');
 	}
@@ -168,6 +172,9 @@ export class CanvasPage extends BasePage {
 	}
 
 	async clickExecuteWorkflowButton(triggerNodeName?: string): Promise<void> {
+		if (triggerNodeName) {
+			await this.nodeByName(triggerNodeName).hover();
+		}
 		await this.getExecuteWorkflowButton(triggerNodeName).click();
 	}
 
@@ -177,6 +184,10 @@ export class CanvasPage extends BasePage {
 
 	getRenamePrompt(): Locator {
 		return this.page.locator('.rename-prompt');
+	}
+
+	getRenameInput(): Locator {
+		return this.getRenamePrompt().locator('input');
 	}
 
 	/**

@@ -348,6 +348,103 @@ describe('Telemetry', () => {
 		});
 	});
 
+	describe('trackApiInvocation', () => {
+		beforeEach(() => {
+			jest.setSystemTime(testDateTime);
+		});
+
+		test('should count calls per user and endpoint', () => {
+			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				user_agent: 'n8n-cli/1.0',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				user_agent: 'n8n-cli/1.0',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/executions',
+				method: 'POST',
+				api_version: 'v1',
+				user_agent: 'custom-app/2.0',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+
+			expect(buffer['user1'].total_calls).toBe(3);
+			expect(buffer['user1'].first).toEqual(execTime1);
+			expect(buffer['user1'].endpoints['GET /workflows']).toBe(2);
+			expect(buffer['user1'].endpoints['POST /executions']).toBe(1);
+			expect(buffer['user1'].user_agents['n8n-cli/1.0']).toBe(2);
+			expect(buffer['user1'].user_agents['custom-app/2.0']).toBe(1);
+		});
+
+		test('should handle missing user_agent', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+
+			expect(buffer['user1'].total_calls).toBe(1);
+			expect(buffer['user1'].user_agents).toEqual({});
+		});
+
+		test('should track multiple users independently', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				user_agent: 'n8n-cli/1.0',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user2',
+				path: '/executions',
+				method: 'POST',
+				api_version: 'v1',
+				user_agent: 'custom-app/2.0',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+
+			expect(buffer['user1'].total_calls).toBe(1);
+			expect(buffer['user1'].endpoints['GET /workflows']).toBe(1);
+			expect(buffer['user2'].total_calls).toBe(1);
+			expect(buffer['user2'].endpoints['POST /executions']).toBe(1);
+		});
+
+		test('should not buffer when rudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+			expect(Object.keys(buffer)).toHaveLength(0);
+		});
+	});
+
 	describe('Rudderstack', () => {
 		test("should call rudderStack.identify() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {
 			const traits = {

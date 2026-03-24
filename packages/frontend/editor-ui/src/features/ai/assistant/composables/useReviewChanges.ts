@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import {
 	compareWorkflowsNodes,
 	NodeDiffStatus,
@@ -10,11 +10,29 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { AI_BUILDER_DIFF_MODAL_KEY, AI_BUILDER_REVIEW_CHANGES_EXPERIMENT } from '@/app/constants';
+import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import type { SimplifiedNodeType } from '@/Interface';
+
+const AI_DIFF_CLASS_MAP: Partial<Record<NodeDiffStatus, string>> = {
+	[NodeDiffStatus.Added]: 'ai-diff-added',
+	[NodeDiffStatus.Modified]: 'ai-diff-modified',
+};
+
+export interface NodeChangeEntry {
+	status: NodeDiffStatus;
+	node: INode;
+	nodeType: SimplifiedNodeType | null;
+}
 
 export function useReviewChanges() {
 	const builderStore = useBuilderStore();
@@ -22,8 +40,15 @@ export function useReviewChanges() {
 	const workflowHistoryStore = useWorkflowHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
+	const chatPanelStateStore = useChatPanelStateStore();
 	const posthogStore = usePostHog();
 	const i18n = useI18n();
+
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const isLoadingDiff = ref(false);
 	const cachedVersionNodes = ref<INode[]>([]);
 	const cachedVersionConnections = ref<IConnections>({});
@@ -78,11 +103,112 @@ export function useReviewChanges() {
 		});
 	}
 
-	const editedNodesCount = computed(() => {
-		if (!cachedVersionLoaded.value || builderStore.streaming) return 0;
+	const nodeChanges = computed<NodeChangeEntry[]>(() => {
+		if (!cachedVersionLoaded.value || builderStore.streaming) return [];
 		const normalized = resolveNodeDefaults(cachedVersionNodes.value);
-		const diff = compareWorkflowsNodes(normalized, workflowsStore.workflow.nodes);
-		return [...diff.values()].filter((d) => d.status !== NodeDiffStatus.Eq).length;
+		const currentNodes: INode[] = workflowDocumentStore.value?.allNodes ?? [];
+		const diff = compareWorkflowsNodes(normalized, currentNodes);
+		const currentNodesById = new Map(currentNodes.map((n) => [n.id, n]));
+		return [...diff.values()]
+			.filter((d) => d.status !== NodeDiffStatus.Eq)
+			.map((d) => {
+				// For Added/Modified nodes, use the current version; for Deleted, use the cached version
+				const node =
+					d.status === NodeDiffStatus.Deleted
+						? d.node
+						: (currentNodesById.get(d.node.id) ?? d.node);
+				return {
+					status: d.status,
+					node,
+					nodeType: nodeTypesStore.getNodeType(node.type, node.typeVersion),
+				};
+			});
+	});
+
+	const editedNodesCount = computed(() => nodeChanges.value.length);
+
+	const isExpanded = ref(false);
+
+	function toggleExpanded() {
+		isExpanded.value = !isExpanded.value;
+		builderStore.trackWorkflowBuilderJourney(
+			isExpanded.value ? 'user_expanded_review_changes' : 'user_collapsed_review_changes',
+		);
+	}
+
+	// Track which node IDs currently have highlight classes applied
+	const highlightedNodeIds = ref<string[]>([]);
+
+	function applyCanvasHighlights() {
+		clearCanvasHighlights();
+		for (const change of nodeChanges.value) {
+			const className = AI_DIFF_CLASS_MAP[change.status];
+			if (!className) continue;
+			canvasEventBus.emit('nodes:action', {
+				ids: [change.node.id],
+				action: 'update:node:class',
+				payload: { className, add: true },
+			});
+			highlightedNodeIds.value.push(change.node.id);
+		}
+	}
+
+	function clearCanvasHighlights() {
+		for (const nodeId of highlightedNodeIds.value) {
+			for (const className of Object.values(AI_DIFF_CLASS_MAP)) {
+				canvasEventBus.emit('nodes:action', {
+					ids: [nodeId],
+					action: 'update:node:class',
+					payload: { className, add: false },
+				});
+			}
+		}
+		highlightedNodeIds.value = [];
+	}
+
+	// Toggle canvas highlights with expand/collapse
+	watch(isExpanded, (expanded) => {
+		if (expanded) {
+			applyCanvasHighlights();
+		} else {
+			clearCanvasHighlights();
+		}
+	});
+
+	// Auto-collapse and clear highlights when streaming starts or version changes
+	watch(
+		() => builderStore.streaming,
+		(streaming) => {
+			if (streaming && isExpanded.value) {
+				isExpanded.value = false;
+				clearCanvasHighlights();
+			}
+		},
+	);
+
+	watch(
+		() => builderStore.latestRevertVersion,
+		() => {
+			if (isExpanded.value) {
+				isExpanded.value = false;
+				clearCanvasHighlights();
+			}
+		},
+	);
+
+	// Clear highlights when the builder panel is closed
+	watch(
+		() => chatPanelStateStore.isOpen,
+		(isOpen) => {
+			if (!isOpen) {
+				isExpanded.value = false;
+				clearCanvasHighlights();
+			}
+		},
+	);
+
+	onBeforeUnmount(() => {
+		clearCanvasHighlights();
 	});
 
 	const showReviewChanges = computed(() => {
@@ -119,6 +245,9 @@ export function useReviewChanges() {
 	return {
 		showReviewChanges,
 		editedNodesCount,
+		nodeChanges,
+		isExpanded,
+		toggleExpanded,
 		isLoadingDiff,
 		openDiffView,
 	};

@@ -48,8 +48,6 @@ defineExpose({
 	display: inline-flex;
 
 	:global(> .button) {
-		border-right: 1px solid var(--button--color--text, var(--button--color--text--primary));
-
 		&:not(:first-child) {
 			border-radius: 0;
 		}

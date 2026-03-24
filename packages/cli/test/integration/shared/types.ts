@@ -47,7 +47,8 @@ type EndpointGroup =
 	| 'security-settings'
 	| 'data-table'
 	| 'third-party-licenses'
-	| 'mcp';
+	| 'mcp'
+	| 'workflowDependencies';
 
 type ModuleName =
 	| 'insights'
@@ -58,6 +59,7 @@ type ModuleName =
 	| 'dynamic-credentials'
 	| 'log-streaming'
 	| 'ldap'
+	| 'redaction'
 	| 'source-control';
 
 export interface SetupProps {

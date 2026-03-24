@@ -6,7 +6,7 @@ import N8nButton from '../N8nButton/Button.vue';
 import N8nInput from '../N8nInput/Input.vue';
 
 export default {
-	title: 'Atoms/Popover',
+	title: 'Core/Popover',
 	component: N8nPopover,
 	argTypes: {
 		enableScrolling: {
@@ -18,6 +18,12 @@ export default {
 		},
 		maxHeight: {
 			control: 'text',
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A floating content panel anchored to a trigger element.' },
 		},
 	},
 };
@@ -42,7 +48,7 @@ const Template: StoryFn = (args) => ({
 					<N8nButton type="primary">Open Form</N8nButton>
 				</template>
 				<template #content="{ close }">
-					<div style="display: flex; flex-direction: column; gap: 12px;">
+					<div style="display: flex; flex-direction: column; gap: 12px; padding: var(--spacing--sm);">
 						<h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">User Information</h3>
 						<N8nInput
 							v-model="username"
@@ -86,7 +92,7 @@ const ScrollableTemplate: StoryFn = (args) => ({
 					<N8nButton type="primary">Open Scrollable Menu</N8nButton>
 				</template>
 				<template #content="{ close }">
-					<div style="display: flex; flex-direction: column; gap: 8px;">
+					<div style="display: flex; flex-direction: column; gap: 8px; padding: var(--spacing--sm);">
 						<h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600;">Menu Items</h3>
 						<div v-for="i in 20" :key="i" 
 							style="padding: 8px 12px; background: var(--color--background); border-radius: 4px; cursor: pointer; min-height: 40px; display: flex; align-items: center;"

@@ -31,7 +31,6 @@ jest.spyOn(PyTaskRunnerProcess, 'checkRequirements').mockResolvedValue('python')
 describe('JS TaskRunner execution on internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.mode = 'internal';
-	runnerConfig.enabled = true;
 	runnerConfig.port = 45678;
 
 	const taskRunnerModule = Container.get(TaskRunnerModule);
@@ -137,7 +136,10 @@ describe('JS TaskRunner execution on internal mode', () => {
 		});
 
 		return {
-			additionalData: mock<IWorkflowExecuteAdditionalData>(),
+			additionalData: mock<IWorkflowExecuteAdditionalData>({
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+			}),
 			executeFunctions: mock<IExecuteFunctions>(),
 			taskSettings,
 			codeNode,

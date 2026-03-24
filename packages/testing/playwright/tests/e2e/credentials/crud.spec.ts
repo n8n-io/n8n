@@ -69,11 +69,10 @@ test.describe(
 
 			await n8n.ndv.clickCreateNewCredential();
 
-			// Gmail has 2 auth options (OAuth2 + Service Account), shown as a switch link
+			// Gmail has 2 auth options (OAuth2 + Service Account), shown as a dropdown
 			await expect(n8n.canvas.credentialModal.getModeSelector()).toBeVisible();
-			await expect(n8n.canvas.credentialModal.getModeSwitchLink()).toBeVisible();
 
-			await n8n.canvas.credentialModal.getModeSwitchLink().click();
+			await n8n.canvas.credentialModal.selectAuthTypeFromDropdown(/Service Account/);
 
 			// Fill in the Service Account fields and save
 			await n8n.canvas.credentialModal.addCredential(
@@ -344,9 +343,8 @@ test.describe(
 			await expect(errorNotification).toBeVisible();
 			await expect(n8n.canvas.credentialModal.getModal()).toBeVisible();
 
-			const modalOverlay = n8n.page.locator('.el-overlay').first();
 			await expect(errorNotification).toHaveCSS('z-index', '2100');
-			await expect(modalOverlay).toHaveCSS('z-index', '2001');
+			await expect(n8n.notifications.getModalOverlay()).toHaveCSS('z-index', '2001');
 		});
 	},
 );

@@ -96,6 +96,20 @@ export interface VarNameContext {
 }
 
 /**
+ * Generate a deterministic hash-based fallback name from a node name.
+ * Used when stripping non-ASCII characters leaves an empty string.
+ */
+function hashFallbackName(nodeName: string): string {
+	let hash = 0;
+	for (let i = 0; i < nodeName.length; i++) {
+		hash = ((hash << 5) - hash + nodeName.charCodeAt(i)) | 0;
+	}
+	// Math.abs loses sign bit so distinct strings can map to the same hash,
+	// but makeUnique() in the caller handles collisions via numeric suffixes.
+	return 'node_' + Math.abs(hash).toString(36);
+}
+
+/**
  * Generate variable name from node name
  */
 export function toVarName(nodeName: string): string {
@@ -104,6 +118,11 @@ export function toVarName(nodeName: string): string {
 		.replace(/_+/g, '_')
 		.replace(/_$/g, '') // Only remove trailing underscore, not leading
 		.replace(/^([A-Z])/, (c) => c.toLowerCase());
+
+	// If stripping non-ASCII chars left us empty, generate a hash-based fallback
+	if (!varName || varName === '_') {
+		return hashFallbackName(nodeName);
+	}
 
 	// If starts with digit, prefix with underscore
 	if (/^\d/.test(varName)) {

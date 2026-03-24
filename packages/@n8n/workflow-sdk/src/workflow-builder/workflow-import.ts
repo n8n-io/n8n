@@ -6,14 +6,16 @@
 
 import { deepCopy } from 'n8n-workflow';
 
-import type {
-	WorkflowJSON,
-	NodeInstance,
-	GraphNode,
-	ConnectionTarget,
-	IDataObject,
-	CredentialReference,
-	NewCredentialValue,
+import {
+	normalizeConnections,
+	generateUniqueName,
+	type WorkflowJSON,
+	type NodeInstance,
+	type GraphNode,
+	type ConnectionTarget,
+	type IDataObject,
+	type CredentialReference,
+	type NewCredentialValue,
 } from '../types/base';
 
 /**
@@ -38,9 +40,14 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 	// Map from connection name (how nodes reference each other) to map key
 	const nameToKey = new Map<string, string>();
 
-	// Create node instances from JSON
+	// Create node instances from JSON (shallow-clone each node to avoid mutating the input)
 	let unnamedCounter = 0;
-	for (const n8nNode of json.nodes) {
+	for (const rawNode of json.nodes) {
+		const n8nNode = { ...rawNode };
+		// Normalize typeVersion to number (some workflows store it as a string)
+		if (typeof n8nNode.typeVersion === 'string') {
+			n8nNode.typeVersion = Number(n8nNode.typeVersion);
+		}
 		const version = `v${n8nNode.typeVersion}`;
 
 		// Preserve original credentials exactly - don't transform
@@ -90,8 +97,15 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 		};
 
 		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
-		const mapKey = nodeName || `__unnamed_${unnamedCounter++}`;
-		nameToKey.set(nodeName, mapKey);
+		let mapKey = nodeName || `__unnamed_${unnamedCounter++}`;
+
+		// Handle duplicate node names: generate unique key for duplicates
+		// The first instance keeps the original name (connections reference it)
+		if (nodes.has(mapKey)) {
+			mapKey = generateUniqueName(nodeName, (n) => nodes.has(n));
+		} else {
+			nameToKey.set(nodeName, mapKey);
+		}
 
 		nodes.set(mapKey, {
 			instance,
@@ -99,9 +113,12 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 		});
 	}
 
-	// Rebuild connections
+	// Rebuild connections (deep-clone to avoid mutating the input)
 	if (json.connections) {
-		for (const [sourceName, nodeConns] of Object.entries(json.connections)) {
+		const connections = deepCopy(json.connections);
+		normalizeConnections(connections);
+
+		for (const [sourceName, nodeConns] of Object.entries(connections)) {
 			const mapKey = nameToKey.get(sourceName);
 			const graphNode = mapKey ? nodes.get(mapKey) : undefined;
 			if (!graphNode) continue;

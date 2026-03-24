@@ -144,6 +144,8 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 import { faker } from '@faker-js/faker';
 
@@ -249,7 +251,13 @@ vi.mock('@/app/composables/useDocumentVisibility', () => ({
 const workflowPrompt = 'Create a workflow';
 describe('AskAssistantBuild', () => {
 	const sessionId = faker.string.uuid();
-	const renderComponent = createComponentRenderer(AskAssistantBuild);
+	const renderComponent = createComponentRenderer(AskAssistantBuild, {
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'abc123'),
+			},
+		},
+	});
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
@@ -1672,7 +1680,7 @@ describe('AskAssistantBuild', () => {
 			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
 		});
 
-		it('should keep notification banner visible after streaming ends', async () => {
+		it('should hide notification banner after streaming ends', async () => {
 			mockCanPrompt.value = true;
 
 			const { queryByTestId } = renderComponent();
@@ -1683,11 +1691,11 @@ describe('AskAssistantBuild', () => {
 
 			expect(queryByTestId('notification-permission-banner')).toBeInTheDocument();
 
-			// End streaming - banner should remain visible
+			// End streaming - banner should disappear
 			builderStore.$patch({ streaming: false });
 			await flushPromises();
 
-			expect(queryByTestId('notification-permission-banner')).toBeInTheDocument();
+			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
 		});
 
 		it('should not show notification banner for existing chat sessions without streaming', async () => {

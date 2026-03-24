@@ -15,7 +15,17 @@ import type {
 	ProjectSharingData,
 } from '@/features/collaboration/projects/projects.types';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
-import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '../sourceControl.utils';
+import { useRevealWorkflowInScroller } from '../composables/useRevealWorkflowInScroller';
+import { useSourceControlFileList } from '../composables/useSourceControlFileList';
+import { useWorkflowTreeRows } from '../composables/useWorkflowTreeRows';
+import {
+	buildFolderFilterOptions,
+	formatSourceControlUpdatedAt,
+	getPushPriorityByStatus,
+	getStatusText,
+	getStatusTheme,
+} from '../sourceControl.utils';
+import type { SourceControlTreeRow } from '../sourceControl.types';
 import type { SourceControlledFile, SourceControlledFileStatus } from '@n8n/api-types';
 import {
 	ROLE,
@@ -26,14 +36,13 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { refDebounced, useStorage } from '@vueuse/core';
-import dateformat from 'dateformat';
-import orderBy from 'lodash/orderBy';
 import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
+import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import {
 	N8nBadge,
 	N8nButton,
@@ -123,22 +132,21 @@ const projectAdminCalloutDismissed = useStorage(
 	localStorage,
 );
 
-onBeforeMount(() => {
-	void projectsStore.getAvailableProjects();
-});
+const searchFnForFilters = useAvailableProjectSearch();
+const filterFnForFilters = (project: ProjectListItem) =>
+	!project.role || project.role === 'project:admin';
 
-const projectsForFilters = computed(() => {
-	return projectsStore.availableProjects.filter(
-		// global admins role is empty...
-		(project) => !project.role || project.role === 'project:admin',
-	);
+onBeforeMount(async () => {
+	// Load projects for file→project mapping display and for member search
+	await projectsStore.getAvailableProjects();
 });
 
 const concatenateWithAnd = (messages: string[]) =>
 	new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages);
 
-type SourceControlledFileWithProject = SourceControlledFile & { project?: ProjectListItem };
-
+type SourceControlledFileWithProject = SourceControlledFile & {
+	project?: ProjectListItem;
+};
 type Changes = {
 	tags: SourceControlledFileWithProject[];
 	variables: SourceControlledFileWithProject[];
@@ -271,16 +279,25 @@ const selectedWorkflows = reactive<Set<string>>(new Set());
 const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFileWithProject) =>
 	workflow && selectedWorkflows.add(workflow.id);
 
-const filters = ref<{ status?: SourceControlledFileStatus; project: ProjectSharingData | null }>({
+const filters = ref<{
+	status?: SourceControlledFileStatus;
+	project: ProjectSharingData | null;
+	folder?: string;
+}>({
 	project: null,
+	folder: '',
 });
 const filtersApplied = computed(
 	() => Boolean(search.value) || Boolean(Object.values(filters.value).filter(Boolean).length),
 );
 const resetFilters = () => {
-	filters.value = { project: null };
+	filters.value = { project: null, folder: '' };
 	search.value = '';
 };
+
+function clearProjectFilter() {
+	filters.value.project = null;
+}
 
 const statusFilterOptions: Array<{ label: string; value: SourceControlledFileStatus }> = [
 	{
@@ -304,107 +321,149 @@ const filterCount = computed(() =>
 	Object.values(filters.value).reduce((acc, item) => (item ? acc + 1 : acc), 0),
 );
 
-const filteredWorkflows = computed(() => {
-	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
+const folderFilterOptions = computed(() => buildFolderFilterOptions(changes.value.workflow));
 
-	return changes.value.workflow.filter((workflow) => {
-		if (!workflow.name.toLocaleLowerCase().includes(searchQuery)) {
+const sortedWorkflows = useSourceControlFileList({
+	files: computed(() => changes.value.workflow),
+	sortBy: [
+		({ folderPath }) => folderPath?.join('/') ?? '',
+		({ status }) => getPushPriorityByStatus(status),
+		'updatedAt',
+	],
+	sortOrder: ['asc', 'asc', 'desc'],
+	filter: (workflow) => {
+		const searchQuery = debouncedSearch.value.toLocaleLowerCase().trim();
+		const nameMatches = workflow.name.toLocaleLowerCase().includes(searchQuery);
+		const folderPathMatches = (workflow.folderPath ?? []).some((segment) =>
+			segment.toLocaleLowerCase().includes(searchQuery),
+		);
+
+		if (searchQuery && !nameMatches && !folderPathMatches) {
 			return false;
 		}
 
-		// Project filter logic: if a project filter is set, only show items from that project
-		if (filters.value.project) {
-			// Item must have a project and it must match the filter
-			return workflow.project?.id === filters.value.project.id;
+		if (filters.value.project && workflow.project?.id !== filters.value.project.id) {
+			return false;
 		}
 
-		// Status filter (only applied when no project filter is active)
 		if (filters.value.status && filters.value.status !== workflow.status) {
 			return false;
 		}
 
-		return true;
-	});
+		const folderFilter = filters.value.folder?.trim();
+		if (!folderFilter) {
+			return true;
+		}
+
+		const workflowPath = (workflow.folderPath ?? []).join('/');
+		return workflowPath === folderFilter || workflowPath.startsWith(`${folderFilter}/`);
+	},
 });
 
-const sortedWorkflows = computed(() =>
-	orderBy(
-		filteredWorkflows.value,
-		[
-			// keep the current workflow at the top of the list
-			({ id }) => id === changes.value.currentWorkflow?.id,
-			({ status }) => getPushPriorityByStatus(status),
-			'updatedAt',
-		],
-		['desc', 'asc', 'desc'],
-	),
-);
+const activeTab = ref<
+	| typeof SOURCE_CONTROL_FILE_TYPE.workflow
+	| typeof SOURCE_CONTROL_FILE_TYPE.credential
+	| typeof SOURCE_CONTROL_FILE_TYPE.datatable
+>(SOURCE_CONTROL_FILE_TYPE.workflow);
+
+const workflowScroller = ref<{ scrollToItem: (index: number) => void; $el?: Element } | null>(null);
+
+const {
+	workflowTreeRows,
+	visibleWorkflowRows,
+	isFolderCollapsed,
+	toggleFolderCollapse,
+	expandFolders,
+	getAncestorFolderIdsForWorkflow,
+} = useWorkflowTreeRows(sortedWorkflows);
+
+const { revealAndScrollToCurrentWorkflow } = useRevealWorkflowInScroller({
+	visibleWorkflowRows,
+	workflowScroller,
+	activeTab,
+	workflowTabValue: SOURCE_CONTROL_FILE_TYPE.workflow,
+	currentWorkflowId: computed(() => changes.value.currentWorkflow?.id),
+	isLoading,
+	expandAncestorFolders: (workflowId) => {
+		expandFolders(getAncestorFolderIdsForWorkflow(workflowId));
+	},
+});
+
+const folderChildrenMap = computed(() => {
+	const childrenByFolderId = new Map<string, string[]>();
+	const rows = workflowTreeRows.value;
+
+	for (const [index, row] of rows.entries()) {
+		if (row.type !== 'folder') {
+			continue;
+		}
+
+		const childWorkflowIds: string[] = [];
+		for (let next = index + 1; next < rows.length; next++) {
+			const candidate = rows[next];
+
+			if (candidate.depth <= row.depth) {
+				break;
+			}
+
+			if (candidate.type === 'file') {
+				childWorkflowIds.push(candidate.file.id);
+			}
+		}
+
+		childrenByFolderId.set(row.id, childWorkflowIds);
+	}
+
+	return childrenByFolderId;
+});
 
 const selectedCredentials = reactive<Set<string>>(new Set());
 
 const selectedDataTables = reactive<Set<string>>(new Set());
 
-const filteredCredentials = computed(() => {
-	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
-
-	return changes.value.credential.filter((credential) => {
-		if (!credential.name.toLocaleLowerCase().includes(searchQuery)) {
+const sortedCredentials = useSourceControlFileList({
+	files: computed(() => changes.value.credential),
+	sortBy: [({ status }) => getPushPriorityByStatus(status), 'updatedAt'],
+	sortOrder: ['asc', 'desc'],
+	filter: (credential) => {
+		const searchQuery = debouncedSearch.value.toLocaleLowerCase().trim();
+		if (searchQuery && !credential.name.toLocaleLowerCase().includes(searchQuery)) {
 			return false;
 		}
 
-		// Project filter logic: if a project filter is set, only show items from that project
-		if (filters.value.project) {
-			// Item must have a project and it must match the filter
-			return credential.project?.id === filters.value.project.id;
+		if (filters.value.project && credential.project?.id !== filters.value.project.id) {
+			return false;
 		}
 
-		// Status filter (only applied when no project filter is active)
 		if (filters.value.status && filters.value.status !== credential.status) {
 			return false;
 		}
 
 		return true;
-	});
+	},
 });
 
-const sortedCredentials = computed(() =>
-	orderBy(
-		filteredCredentials.value,
-		[({ status }) => getPushPriorityByStatus(status), 'updatedAt'],
-		['asc', 'desc'],
-	),
-);
-
-const filteredDataTables = computed(() => {
-	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
-
-	return changes.value.datatable.filter((dataTable) => {
-		if (!dataTable.name.toLocaleLowerCase().includes(searchQuery)) {
+const sortedDataTables = useSourceControlFileList({
+	files: computed(() => changes.value.datatable),
+	sortBy: [({ status }) => getPushPriorityByStatus(status), 'updatedAt'],
+	sortOrder: ['asc', 'desc'],
+	filter: (dataTable) => {
+		const searchQuery = debouncedSearch.value.toLocaleLowerCase().trim();
+		if (searchQuery && !dataTable.name.toLocaleLowerCase().includes(searchQuery)) {
 			return false;
 		}
 
-		// Project filter logic: if a project filter is set, only show items from that project
-		if (filters.value.project) {
-			// Item must have a project and it must match the filter
-			return dataTable.project?.id === filters.value.project.id;
+		if (filters.value.project && dataTable.project?.id !== filters.value.project.id) {
+			return false;
 		}
 
-		// Status filter (only applied when no project filter is active)
 		if (filters.value.status && filters.value.status !== dataTable.status) {
 			return false;
 		}
 
 		return true;
-	});
+	},
 });
-
-const sortedDataTables = computed(() =>
-	orderBy(
-		filteredDataTables.value,
-		[({ status }) => getPushPriorityByStatus(status), 'updatedAt'],
-		['asc', 'desc'],
-	),
-);
 
 const commitMessage = ref('');
 const isSubmitDisabled = computed(() => {
@@ -464,17 +523,7 @@ function close() {
 }
 
 function renderUpdatedAt(file: SourceControlledFile) {
-	const currentYear = new Date().getFullYear().toString();
-
-	return i18n.baseText('settings.sourceControl.lastUpdated', {
-		interpolate: {
-			date: dateformat(
-				file.updatedAt,
-				`d mmm${file.updatedAt?.startsWith(currentYear) ? '' : ', yyyy'}`,
-			),
-			time: dateformat(file.updatedAt, 'HH:MM'),
-		},
-	});
+	return formatSourceControlUpdatedAt(file.updatedAt);
 }
 
 async function onCommitKeyDownEnter() {
@@ -588,12 +637,6 @@ watch(refDebounced(search, 500), (term) => {
 	telemetry.track('User searched workflows in commit modal', { search: term });
 });
 
-const activeTab = ref<
-	| typeof SOURCE_CONTROL_FILE_TYPE.workflow
-	| typeof SOURCE_CONTROL_FILE_TYPE.credential
-	| typeof SOURCE_CONTROL_FILE_TYPE.datatable
->(SOURCE_CONTROL_FILE_TYPE.workflow);
-
 const allVisibleItemsSelected = computed(() => {
 	if (!activeSelection.value.size) {
 		return false;
@@ -641,6 +684,42 @@ function toggleSelected(id: string) {
 	}
 }
 
+function isFolderSelected(folderId: string) {
+	const folderChildren = folderChildrenMap.value.get(folderId) ?? [];
+	if (!folderChildren.length) {
+		return false;
+	}
+
+	return folderChildren.every((childId) => selectedWorkflows.has(childId));
+}
+
+function isFolderSelectionIndeterminate(folderId: string) {
+	const folderChildren = folderChildrenMap.value.get(folderId) ?? [];
+	if (!folderChildren.length) {
+		return false;
+	}
+
+	const selectedChildrenCount = folderChildren.filter((childId) =>
+		selectedWorkflows.has(childId),
+	).length;
+
+	return selectedChildrenCount > 0 && selectedChildrenCount < folderChildren.length;
+}
+
+function toggleFolderSelection(folderId: string) {
+	const folderChildren = folderChildrenMap.value.get(folderId) ?? [];
+	if (!folderChildren.length) {
+		return;
+	}
+
+	if (isFolderSelected(folderId)) {
+		folderChildren.forEach((childId) => selectedWorkflows.delete(childId));
+		return;
+	}
+
+	folderChildren.forEach((childId) => selectedWorkflows.add(childId));
+}
+
 const activeDataSource = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		return changes.value.workflow;
@@ -665,6 +744,19 @@ const activeDataSourceFiltered = computed(() => {
 		return sortedDataTables.value;
 	}
 	return [];
+});
+
+const activeRows = computed<Array<SourceControlTreeRow<SourceControlledFileWithProject>>>(() => {
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return visibleWorkflowRows.value;
+	}
+
+	return activeDataSourceFiltered.value.map((file) => ({
+		id: `file:${file.id}`,
+		type: 'file' as const,
+		file,
+		depth: 0,
+	}));
 });
 
 const activeEntityLocale = computed(() => {
@@ -776,6 +868,20 @@ watchEffect(() => {
 	}
 });
 
+watch(
+	[
+		() => changes.value.currentWorkflow?.id,
+		() => activeTab.value,
+		() => visibleWorkflowRows.value.length,
+		() => workflowScroller.value,
+		() => isLoading.value,
+	],
+	() => {
+		void revealAndScrollToCurrentWorkflow();
+	},
+	{ immediate: true, flush: 'post' },
+);
+
 // Load data when modal opens
 onMounted(async () => {
 	// Always load fresh data to ensure workflow names are populated
@@ -864,10 +970,34 @@ onMounted(async () => {
 							<ProjectSharing
 								v-model="filters.project"
 								data-test-id="source-control-push-modal-project-search"
-								:projects="projectsForFilters"
+								clearable
+								:search-fn="searchFnForFilters"
+								:filter-fn="filterFnForFilters"
 								:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 								:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
+								@clear="clearProjectFilter"
 							/>
+							<N8nInputLabel
+								:label="i18n.baseText('generic.folder')"
+								:bold="false"
+								size="small"
+								color="text-base"
+								class="mb-3xs mt-3xs"
+							/>
+							<N8nSelect
+								v-model="filters.folder"
+								data-test-id="source-control-folder-filter"
+								clearable
+								filterable
+								:placeholder="i18n.baseText('generic.folder')"
+							>
+								<N8nOption
+									v-for="option in folderFilterOptions"
+									:key="option.value"
+									:label="option.label"
+									:value="option.value"
+								/>
+							</N8nSelect>
 							<div v-if="filterCount" class="mt-s">
 								<N8nLink @click="resetFilters">
 									{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}
@@ -958,96 +1088,163 @@ onMounted(async () => {
 								{{ filtersNoResultText }}
 							</N8nInfoTip>
 							<DynamicScroller
-								v-if="activeDataSourceFiltered.length"
+								v-if="activeRows.length"
+								ref="workflowScroller"
 								:class="[$style.scroller]"
-								:items="activeDataSourceFiltered"
+								:items="activeRows"
 								:min-item-size="57"
 								item-class="scrollerItem"
 							>
-								<template #default="{ item: file, active, index }">
+								<template #default="{ item: row, active, index }">
 									<DynamicScrollerItem
-										:item="file"
+										:item="row"
 										:active="active"
-										:size-dependencies="[file.name, file.id]"
+										:size-dependencies="[
+											row.type,
+											row.type === 'file' ? row.file.name : row.name,
+											row.id,
+											row.depth,
+										]"
 										:data-index="index"
-										data-test-id="push-modal-item"
 									>
-										<N8nCheckbox
-											:class="[$style.listItem]"
-											data-test-id="source-control-push-modal-file-checkbox"
-											:model-value="activeSelection.has(file.id)"
-											@update:model-value="toggleSelected(file.id)"
+										<div
+											v-if="row.type === 'folder'"
+											:class="[
+												$style.folderRow,
+												{ [$style.rowNoBorder]: index === activeRows.length - 1 },
+											]"
+											:style="{ paddingLeft: `${16 + row.depth * 16}px` }"
 										>
-											<template #label>
-												<div :class="$style.listItemContent">
-													<span>
-														<N8nText
-															tag="div"
-															bold
-															color="text-dark"
-															:class="[$style.listItemName]"
-														>
-															{{ file.name || file.id }}
+											<N8nCheckbox
+												:class="$style.folderCheckbox"
+												data-test-id="source-control-push-modal-folder-checkbox"
+												:model-value="isFolderSelected(row.id)"
+												:indeterminate="isFolderSelectionIndeterminate(row.id)"
+												@update:model-value="toggleFolderSelection(row.id)"
+											>
+												<template #label>
+													<div :class="$style.folderLabel">
+														<N8nIcon icon="folder" color="text-light" size="small" />
+														<N8nText tag="span" color="text-light">
+															{{ row.name }}
 														</N8nText>
-														<N8nText
-															v-if="file.updatedAt"
-															tag="p"
-															class="mt-0"
-															color="text-light"
-															size="small"
+														<button
+															type="button"
+															:class="$style.folderToggle"
+															data-test-id="source-control-push-modal-folder-toggle"
+															@click.stop.prevent="toggleFolderCollapse(row.id)"
+															@mousedown.stop.prevent
+															@mouseup.stop.prevent
+															@pointerdown.stop.prevent
 														>
-															{{ renderUpdatedAt(file) }}
-														</N8nText>
-													</span>
-													<span :class="[$style.badges]">
-														<N8nBadge
-															v-if="
-																changes.currentWorkflow && file.id === changes.currentWorkflow.id
-															"
-															class="mr-2xs"
-														>
-															Current workflow
-														</N8nBadge>
-														<template
-															v-if="
-																file.type === SOURCE_CONTROL_FILE_TYPE.workflow ||
-																file.type === SOURCE_CONTROL_FILE_TYPE.credential ||
-																file.type === SOURCE_CONTROL_FILE_TYPE.datatable
-															"
-														>
-															<ProjectCardBadge
-																v-if="file.project"
-																data-test-id="source-control-push-modal-project-badge"
-																:resource="castProject(file.project)"
-																:resource-type="castType(file.type)"
-																:resource-type-label="
-																	i18n.baseText(`generic.${file.type}`).toLowerCase()
-																"
-																:personal-project="projectsStore.personalProject"
-																:show-badge-border="false"
+															<N8nIcon
+																:icon="isFolderCollapsed(row.id) ? 'chevron-right' : 'chevron-down'"
+																color="text-light"
+																size="small"
 															/>
-														</template>
-														<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
-															{{ getStatusText(file.status) }}
-														</N8nBadge>
-														<template v-if="isWorkflowDiffsEnabled">
-															<N8nTooltip
-																v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
-																:content="i18n.baseText('workflowDiff.compare')"
-																placement="top"
+														</button>
+													</div>
+												</template>
+											</N8nCheckbox>
+										</div>
+										<div
+											v-else
+											:class="[
+												$style.fileRow,
+												{ [$style.rowNoBorder]: index === activeRows.length - 1 },
+											]"
+											:style="{ paddingLeft: `${row.depth * 16}px` }"
+											:data-workflow-id="
+												row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow
+													? row.file.id
+													: undefined
+											"
+										>
+											<N8nCheckbox
+												:class="[$style.listItem]"
+												data-test-id="source-control-push-modal-file-checkbox"
+												:model-value="activeSelection.has(row.file.id)"
+												@update:model-value="toggleSelected(row.file.id)"
+											>
+												<template #label>
+													<div :class="$style.listItemContent">
+														<span>
+															<N8nText
+																tag="div"
+																bold
+																color="text-dark"
+																:class="[$style.listItemName]"
 															>
-																<N8nIconButton
-																	variant="subtle"
-																	data-test-id="source-control-workflow-diff-button"
-																	icon="file-diff"
-																	@click="openDiffModal(file.id, file.status)"
+																{{ row.file.name || row.file.id }}
+															</N8nText>
+															<N8nText
+																v-if="row.file.updatedAt"
+																tag="p"
+																class="mt-0"
+																color="text-light"
+																size="small"
+															>
+																{{ renderUpdatedAt(row.file) }}
+															</N8nText>
+														</span>
+														<span :class="[$style.badges]">
+															<N8nBadge
+																v-if="
+																	changes.currentWorkflow &&
+																	row.file.id === changes.currentWorkflow.id
+																"
+																class="mr-2xs"
+															>
+																{{
+																	i18n.baseText(
+																		'settings.sourceControl.modals.push.currentWorkflow',
+																	)
+																}}
+															</N8nBadge>
+															<template
+																v-if="
+																	row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow ||
+																	row.file.type === SOURCE_CONTROL_FILE_TYPE.credential ||
+																	row.file.type === SOURCE_CONTROL_FILE_TYPE.datatable
+																"
+															>
+																<ProjectCardBadge
+																	v-if="row.file.project"
+																	data-test-id="source-control-push-modal-project-badge"
+																	:resource="castProject(row.file.project)"
+																	:resource-type="castType(row.file.type)"
+																	:resource-type-label="
+																		i18n.baseText(`generic.${row.file.type}`).toLowerCase()
+																	"
+																	:personal-project="projectsStore.personalProject"
+																	:show-badge-border="false"
 																/>
-															</N8nTooltip>
-														</template>
-													</span>
-												</div>
-											</template>
-										</N8nCheckbox>
+															</template>
+															<N8nBadge
+																:theme="getStatusTheme(row.file.status)"
+																style="height: 25px"
+															>
+																{{ getStatusText(row.file.status) }}
+															</N8nBadge>
+															<template v-if="isWorkflowDiffsEnabled">
+																<N8nTooltip
+																	v-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+																	:content="i18n.baseText('workflowDiff.compare')"
+																	placement="top"
+																>
+																	<N8nIconButton
+																		variant="subtle"
+																		data-test-id="source-control-workflow-diff-button"
+																		icon="file-diff"
+																		@click="openDiffModal(row.file.id, row.file.status)"
+																	/>
+																</N8nTooltip>
+															</template>
+														</span>
+													</div>
+												</template>
+											</N8nCheckbox>
+										</div>
 									</DynamicScrollerItem>
 								</template>
 							</DynamicScroller>
@@ -1060,16 +1257,16 @@ onMounted(async () => {
 		<template #footer>
 			<N8nNotice
 				v-if="userNotices.length || hasModifiedCredentialsSelected"
+				id="source-control-push-modal-notice"
 				:compact="false"
 				class="mt-0"
-				id="source-control-push-modal-notice"
 			>
 				<template v-if="userNotices.length">
 					<N8nText bold size="medium">Changes to variables, tags, folders and projects </N8nText>
 					<br />
 					<template v-for="{ title, content } in userNotices" :key="title">
 						<N8nText bold size="small"> {{ title }}</N8nText>
-						<N8nText size="small"> : {{ content }}. </N8nText>
+						<N8nText size="small">: {{ content }}. </N8nText>
 					</template>
 					<br v-if="hasModifiedCredentialsSelected" />
 				</template>
@@ -1141,21 +1338,13 @@ onMounted(async () => {
 	max-height: 100%;
 	scrollbar-color: var(--color--foreground) transparent;
 	outline: var(--border);
-
-	:global(.scrollerItem) {
-		&:last-child {
-			.listItem {
-				border-bottom: 0;
-			}
-		}
-	}
 }
 
 .listItem {
 	align-items: center;
 	padding: 10px 16px;
 	margin: 0;
-	border-bottom: var(--border);
+	border-bottom: 0;
 	width: 100%;
 
 	.listItemContent {
@@ -1174,6 +1363,49 @@ onMounted(async () => {
 		-webkit-box-orient: vertical;
 		word-wrap: break-word; /* Important for long words! */
 	}
+}
+
+.folderRow {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-bottom: var(--border);
+}
+
+.folderCheckbox {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	margin-bottom: 0;
+}
+
+.folderToggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	margin-left: var(--spacing--4xs);
+	cursor: pointer;
+}
+
+.folderLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.fileRow {
+	box-sizing: border-box;
+	width: 100%;
+	border-bottom: var(--border);
+}
+
+.rowNoBorder {
+	border-bottom: 0;
 }
 
 .badges {

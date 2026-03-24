@@ -18,7 +18,7 @@ import {
 	schemaTypeField,
 } from '@utils/descriptions';
 import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
-import { getBatchingOptionFields } from '@utils/sharedFields';
+import { getBatchingOptionFields } from '@n8n/ai-utilities';
 
 import { SYSTEM_PROMPT_TEMPLATE } from './constants';
 import { makeZodSchemaFromAttributes } from './helpers';
