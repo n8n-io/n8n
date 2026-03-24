@@ -27,6 +27,7 @@ import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import { createBuildWorkflowTool } from '../workflows/build-workflow.tool';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import {
 	createSubmitWorkflowTool,
@@ -389,6 +390,16 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 						}
 
 						// Tool mode (no sandbox) — original approach
+						if (!domainContext) {
+							return { text: 'Error: domain context not available for tool mode.' };
+						}
+
+						// Create a per-builder build-workflow tool to isolate lastCode
+						// patching state and track the saved workflow ID.
+						// NOTE: This feels pretty fragile, maybe revisit this.
+						const buildWorkflowTool = createBuildWorkflowTool(domainContext);
+						builderTools['build-workflow'] = buildWorkflowTool;
+
 						const subAgent = new Agent({
 							id: subAgentId,
 							name: 'Workflow Builder Agent',
@@ -441,7 +452,22 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 						});
 
 						const toolFinalText = await hitlResult.text;
-						// Tool mode has no submit tracking — return text only
+
+						// Build a structured outcome from the tool's tracked save result
+						// so the orchestrator gets the workflow ID via actionToGuidance()
+						const savedId = buildWorkflowTool.lastSavedWorkflowId;
+						if (savedId) {
+							const attempt: SubmitWorkflowAttempt = {
+								filePath: 'tool-mode',
+								success: true,
+								workflowId: savedId,
+								sourceHash: '',
+							};
+							return {
+								text: toolFinalText,
+								outcome: buildOutcome(workItemId, taskId, attempt, toolFinalText),
+							};
+						}
 						return { text: toolFinalText };
 					} finally {
 						await builderWs?.cleanup();
