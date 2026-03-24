@@ -15,6 +15,8 @@ export interface ConsumeWithHitlOptions {
 	waitForConfirmation?: (requestId: string) => Promise<Record<string, unknown>>;
 	/** Drain queued user corrections (mid-flight steering for background tasks). */
 	drainCorrections?: () => string[];
+	/** Optional callback invoked for each successful tool result, with the tool name and result. */
+	onToolResult?: (toolName: string, result: unknown) => void;
 }
 
 export interface ConsumeWithHitlResult {
@@ -42,12 +44,17 @@ export async function consumeStreamWithHitl(
 		abortSignal,
 		waitForConfirmation,
 		drainCorrections,
+		onToolResult,
 	} = options;
 
 	let subAgentStream: AsyncIterable<unknown> = options.stream.fullStream;
 	let subMastraRunId = options.stream.runId ?? '';
 	let textPromise: Promise<string> = options.stream.text;
 	let streamCompleted = false;
+
+	// Track toolCallId → toolName so we can pair tool-result chunks with their tool name.
+	// Persists across HITL resumes since a tool call may span a suspend/resume cycle.
+	const toolCallNames = onToolResult ? new Map<string, string>() : undefined;
 
 	while (!streamCompleted) {
 		let suspended: { toolCallId: string; requestId: string } | null = null;
@@ -67,6 +74,18 @@ export async function consumeStreamWithHitl(
 			const event = mapMastraChunkToEvent(runId, agentId, chunk);
 			if (event) {
 				eventBus.publish(threadId, event);
+			}
+
+			// Invoke onToolResult callback for successful tool results
+			if (onToolResult && toolCallNames && event) {
+				if (event.type === 'tool-call') {
+					toolCallNames.set(event.payload.toolCallId, event.payload.toolName);
+				} else if (event.type === 'tool-result') {
+					const toolName = toolCallNames.get(event.payload.toolCallId);
+					if (toolName) {
+						onToolResult(toolName, event.payload.result);
+					}
+				}
 			}
 
 			// Surface queued user corrections in the event stream

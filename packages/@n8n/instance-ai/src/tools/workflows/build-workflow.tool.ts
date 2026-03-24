@@ -19,11 +19,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 	// and always match the LLM's own code — not a roundtripped version.
 	let lastCode: string | null = null;
 
-	// Tracks the workflow ID from the most recent successful save.
-	// Read by the builder agent tool to construct a structured outcome.
-	let lastSavedWorkflowId: string | undefined;
-
-	const tool = createTool({
+	return createTool({
 		id: 'build-workflow',
 		description:
 			'Build a workflow from TypeScript SDK code. Two modes:\n' +
@@ -165,7 +161,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						json,
 						opts,
 					);
-					lastSavedWorkflowId = updated.id;
 					return {
 						success: true,
 						workflowId: updated.id,
@@ -176,7 +171,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					};
 				} else {
 					const created = await context.workflowService.createFromWorkflowJSON(json, opts);
-					lastSavedWorkflowId = created.id;
 					return {
 						success: true,
 						workflowId: created.id,
@@ -194,12 +188,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					],
 				};
 			}
-		},
-	});
-
-	return Object.assign(tool, {
-		get lastSavedWorkflowId() {
-			return lastSavedWorkflowId;
 		},
 	});
 }

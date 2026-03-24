@@ -27,7 +27,6 @@ import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
-import { createBuildWorkflowTool } from '../workflows/build-workflow.tool';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import {
 	createSubmitWorkflowTool,
@@ -46,6 +45,20 @@ function detectTriggerType(attempt: SubmitWorkflowAttempt | undefined): TriggerT
 	}
 	const hasTestable = attempt.triggerNodeTypes.some((t) => TESTABLE_TRIGGERS.has(t));
 	return hasTestable ? 'manual_or_testable' : 'trigger_only';
+}
+
+interface BuildWorkflowResult {
+	success: boolean;
+	workflowId?: string;
+}
+
+function isBuildWorkflowResult(value: unknown): value is BuildWorkflowResult {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		'success' in value &&
+		typeof value.success === 'boolean'
+	);
 }
 
 function buildOutcome(
@@ -390,15 +403,9 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 						}
 
 						// Tool mode (no sandbox) — original approach
-						if (!domainContext) {
-							return { text: 'Error: domain context not available for tool mode.' };
-						}
-
-						// Create a per-builder build-workflow tool to isolate lastCode
-						// patching state and track the saved workflow ID.
-						// NOTE: This feels pretty fragile, maybe revisit this.
-						const buildWorkflowTool = createBuildWorkflowTool(domainContext);
-						builderTools['build-workflow'] = buildWorkflowTool;
+						// Track the last successful build-workflow result from the stream
+						// so we can construct a structured outcome with the workflow ID
+						let lastBuildWorkflowId: string | undefined;
 
 						const subAgent = new Agent({
 							id: subAgentId,
@@ -449,18 +456,22 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 							abortSignal: signal,
 							waitForConfirmation: context.waitForConfirmation,
 							drainCorrections,
+							onToolResult: (toolName, result) => {
+								if (toolName === 'build-workflow' && isBuildWorkflowResult(result)) {
+									lastBuildWorkflowId = result.workflowId;
+								}
+							},
 						});
 
 						const toolFinalText = await hitlResult.text;
 
-						// Build a structured outcome from the tool's tracked save result
-						// so the orchestrator gets the workflow ID via actionToGuidance()
-						const savedId = buildWorkflowTool.lastSavedWorkflowId;
-						if (savedId) {
+						// Build a structured outcome so the orchestrator gets the
+						// workflow ID via actionToGuidance()
+						if (lastBuildWorkflowId) {
 							const attempt: SubmitWorkflowAttempt = {
 								filePath: 'tool-mode',
 								success: true,
-								workflowId: savedId,
+								workflowId: lastBuildWorkflowId,
 								sourceHash: '',
 							};
 							return {
