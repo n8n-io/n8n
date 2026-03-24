@@ -151,7 +151,7 @@ describe('createSetupWorkflowTool', () => {
 			await tool.execute!({ workflowId: 'wf-1' }, makeToolCtx({ suspend }));
 
 			expect(suspend).toHaveBeenCalledTimes(1);
-			const suspendArg = suspend.mock.calls[0][0];
+			const suspendArg = (suspend.mock.calls as unknown[][])[0][0] as Record<string, unknown>;
 			expect(suspendArg.workflowId).toBe('wf-1');
 			expect(suspendArg.setupRequests).toHaveLength(1);
 			expect(suspendArg.requestId).toBeDefined();
@@ -275,8 +275,9 @@ describe('createSetupWorkflowTool', () => {
 			);
 
 			expect(suspend).toHaveBeenCalledTimes(1);
-			const suspendArg = suspend.mock.calls[0][0];
-			expect(suspendArg.setupRequests[0].triggerTestResult).toEqual({ status: 'success' });
+			const suspendArg = (suspend.mock.calls as unknown[][])[0][0] as Record<string, unknown>;
+			const requests = suspendArg.setupRequests as Array<Record<string, unknown>>;
+			expect(requests[0].triggerTestResult).toEqual({ status: 'success' });
 		});
 	});
 
@@ -339,19 +340,19 @@ describe('createSetupWorkflowTool', () => {
 			let callCount = 0;
 			(context.nodeService.getDescription as jest.Mock).mockImplementation(async (type: string) => {
 				if (type === 'n8n-nodes-base.slack') {
-					return { group: [], credentials: [{ name: 'slackApi' }] };
+					return await Promise.resolve({ group: [], credentials: [{ name: 'slackApi' }] });
 				}
-				return { group: [], credentials: [{ name: 'gmailApi' }] };
+				return await Promise.resolve({ group: [], credentials: [{ name: 'gmailApi' }] });
 			});
 			(context.credentialService.list as jest.Mock).mockImplementation(async () => {
 				callCount++;
 				// First batch (apply phase) and second batch (re-analyze)
-				return [{ id: 'cred-1', name: 'Cred', updatedAt: '2025-01-01' }];
+				return await Promise.resolve([{ id: 'cred-1', name: 'Cred', updatedAt: '2025-01-01' }]);
 			});
 			// Gmail credential test fails → needsAction stays true
 			(context.credentialService.test as jest.Mock).mockImplementation(async (credId: string) => {
-				if (credId === 'cred-1') return { success: true };
-				return { success: false, message: 'Failed' };
+				if (credId === 'cred-1') return await Promise.resolve({ success: true });
+				return await Promise.resolve({ success: false, message: 'Failed' });
 			});
 
 			const tool = createSetupWorkflowTool(context);

@@ -313,13 +313,13 @@ describe('analyzeWorkflow', () => {
 		);
 		(context.nodeService.getDescription as jest.Mock).mockImplementation(async (type: string) => {
 			if (type === 'n8n-nodes-base.webhook') {
-				return {
+				return await Promise.resolve({
 					group: ['trigger'],
 					credentials: [],
 					webhooks: [{}],
-				};
+				});
 			}
-			return { group: [], credentials: [{ name: 'slackApi' }] };
+			return await Promise.resolve({ group: [], credentials: [{ name: 'slackApi' }] });
 		});
 		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
 
@@ -348,10 +348,9 @@ describe('applyNodeChanges', () => {
 			makeNode({ name: 'Gmail', id: 'n2', type: 'n8n-nodes-base.gmail' }),
 		]);
 		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
-		(context.credentialService.get as jest.Mock).mockImplementation(async (id: string) => ({
-			id,
-			name: `Cred ${id}`,
-		}));
+		(context.credentialService.get as jest.Mock).mockImplementation(
+			async (id: string) => await Promise.resolve({ id, name: `Cred ${id}` }),
+		);
 		(context.workflowService.updateFromWorkflowJSON as jest.Mock).mockResolvedValue(undefined);
 
 		const result = await applyNodeChanges(
