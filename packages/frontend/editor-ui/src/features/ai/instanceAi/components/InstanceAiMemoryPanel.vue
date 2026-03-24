@@ -107,7 +107,7 @@ function handleSave() {
 	align-items: center;
 	justify-content: center;
 	height: 100%;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .textarea {
@@ -120,7 +120,7 @@ function handleSave() {
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--xl);
 	resize: none;
-	color: var(--color--text);
+	color: var(--text-color);
 	background: var(--color--background);
 
 	&:focus {
@@ -144,7 +144,7 @@ function handleSave() {
 	cursor: pointer;
 	border: var(--border);
 	background: var(--color--background);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 
 	&:hover:not(:disabled) {
 		background: var(--color--background--shade-1);

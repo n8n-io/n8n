@@ -150,11 +150,11 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 .textContent {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
 .compactText {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 </style>
