@@ -215,11 +215,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const telemetry = useTelemetry();
 	const uiStore = useUIStore();
 	const router = useRouter();
-	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
-	);
 	const workflowSaver = useWorkflowSaving({ router });
 	const posthogStore = usePostHog();
 	const focusedNodesStore = useFocusedNodesStore();
