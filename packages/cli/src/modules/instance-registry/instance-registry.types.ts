@@ -6,6 +6,7 @@ export const REGISTRY_CONSTANTS = {
 	REGISTRATION_TTL_SECONDS: 60, // 60 seconds
 	RECONCILIATION_INTERVAL_MS: 180_000, // 3 minutes
 	OPERATION_TIMEOUT_MS: 5_000, // 5 seconds
+	STATE_TTL_SECONDS: 300, // 5 minutes - leadership handoff state
 } as const;
 
 /**
