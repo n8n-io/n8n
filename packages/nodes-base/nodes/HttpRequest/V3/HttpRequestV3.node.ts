@@ -412,9 +412,20 @@ export class HttpRequestV3 implements INodeType {
 						if (!cur.inputDataFieldName) return accumulator;
 						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
 						let uploadData: Buffer | Readable;
+						let knownLength: number | undefined;
 
 						if (binaryData.id) {
-							uploadData = await this.helpers.getBinaryStream(binaryData.id);
+							const resourceId = binaryData.id;
+							if (typeof resourceId !== 'string' || resourceId === '') {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Invalid resource ID for binary data',
+									{ itemIndex },
+								);
+							}
+							uploadData = await this.helpers.getBinaryStream(resourceId);
+							const metadata = await this.helpers.getBinaryMetadata(resourceId);
+							knownLength = metadata.fileSize;
 						} else {
 							uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 						}
@@ -424,6 +435,7 @@ export class HttpRequestV3 implements INodeType {
 							options: {
 								filename: binaryData.fileName,
 								contentType: binaryData.mimeType,
+								knownLength,
 							},
 						};
 						return accumulator;
@@ -479,8 +491,16 @@ export class HttpRequestV3 implements INodeType {
 						const itemBinaryData = this.helpers.assertBinaryData(itemIndex, inputDataFieldName);
 
 						if (itemBinaryData.id) {
-							uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
-							const metadata = await this.helpers.getBinaryMetadata(itemBinaryData.id);
+							const resourceId = itemBinaryData.id;
+							if (typeof resourceId !== 'string' || resourceId === '') {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Invalid resource ID for binary data',
+									{ itemIndex },
+								);
+							}
+							uploadData = await this.helpers.getBinaryStream(resourceId);
+							const metadata = await this.helpers.getBinaryMetadata(resourceId);
 							contentLength = metadata.fileSize;
 						} else {
 							uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
@@ -517,7 +537,7 @@ export class HttpRequestV3 implements INodeType {
 					let additionalHeaders: IDataObject = {};
 					if (specifyHeaders === 'keypair') {
 						additionalHeaders = await reduceAsync(
-							headerParameters.filter((header) => header.name),
+							headerParameters.filter((header) => header && header.name),
 							parametersToKeyValue,
 						);
 					} else if (specifyHeaders === 'json') {

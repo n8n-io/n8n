@@ -250,8 +250,11 @@ export const prepareRequestBody = async (
 	version: number,
 	defaultReducer: BodyParametersReducer,
 ) => {
+	// Filter out null or undefined parameters to prevent crashes
+	const filteredParameters = parameters.filter((parameter) => parameter);
+
 	if (bodyType === 'json' && version >= 4) {
-		return await parameters.reduce(async (acc, entry) => {
+		return await filteredParameters.reduce(async (acc, entry) => {
 			const result = await acc;
 			set(result, entry.name, entry.value);
 			return result;
@@ -260,6 +263,7 @@ export const prepareRequestBody = async (
 		const formData = new FormData();
 
 		for (const parameter of parameters) {
+			if (!parameter) continue;
 			if (parameter.parameterType === 'formBinaryData') {
 				const entry = await defaultReducer({}, parameter);
 				const key = Object.keys(entry)[0];
@@ -273,7 +277,7 @@ export const prepareRequestBody = async (
 
 		return formData;
 	} else {
-		return await reduceAsync(parameters, defaultReducer);
+		return await reduceAsync(filteredParameters, defaultReducer);
 	}
 };
 
