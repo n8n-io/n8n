@@ -1561,9 +1561,18 @@ importers:
 
   packages/@n8n/mcp-browser:
     dependencies:
+      '@joplin/turndown-plugin-gfm':
+        specifier: 1.0.64
+        version: 1.0.64
       '@modelcontextprotocol/sdk':
         specifier: 1.26.0
         version: 1.26.0(zod@3.25.67)
+      '@mozilla/readability':
+        specifier: ^0.6.0
+        version: 0.6.0
+      jsdom:
+        specifier: ^23.0.1
+        version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       nanoid:
         specifier: 'catalog:'
         version: 3.3.8
@@ -1573,6 +1582,9 @@ importers:
       selenium-webdriver:
         specifier: 4.39.0
         version: 4.39.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      turndown:
+        specifier: ^7.2.0
+        version: 7.2.2
       ws:
         specifier: '>=8.17.1'
         version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -1586,6 +1598,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/turndown':
+        specifier: ^5.0.6
+        version: 5.0.6
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)

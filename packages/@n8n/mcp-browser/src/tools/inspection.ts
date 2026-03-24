@@ -1,3 +1,7 @@
+import { gfm } from '@joplin/turndown-plugin-gfm';
+import { Readability } from '@mozilla/readability';
+import { JSDOM, VirtualConsole } from 'jsdom';
+import TurndownService from 'turndown';
 import { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
@@ -9,10 +13,9 @@ export function createInspectionTools(connection: BrowserConnection): ToolDefini
 	return [
 		browserSnapshot(connection),
 		browserScreenshot(connection),
-		browserText(connection),
+		browserContent(connection),
 		browserEvaluate(connection),
 		browserConsole(connection),
-		browserErrors(connection),
 		browserPdf(connection),
 		browserNetwork(connection),
 	];
@@ -82,35 +85,54 @@ function browserScreenshot(connection: BrowserConnection): ToolDefinition {
 }
 
 // ---------------------------------------------------------------------------
-// browser_text
+// browser_content — structured markdown extraction
 // ---------------------------------------------------------------------------
 
-const browserTextSchema = z
+const browserContentSchema = z
 	.object({
 		selector: z
 			.string()
 			.optional()
-			.describe('Element to get text from. If omitted, returns full page text'),
+			.describe(
+				'CSS selector to scope extraction to a specific element. If omitted, extracts full page',
+			),
 		pageId: pageIdField,
 	})
-	.describe('Get the text content of an element or the full page body');
+	.describe('Extract page content as structured markdown');
 
-const browserTextOutputSchema = z.object({
-	text: z.string(),
+const browserContentOutputSchema = z.object({
+	title: z.string(),
+	content: z.string(),
+	url: z.string(),
 });
 
-function browserText(connection: BrowserConnection): ToolDefinition {
+function browserContent(connection: BrowserConnection): ToolDefinition {
 	return createConnectedTool(
 		connection,
-		'browser_text',
-		'Get the text content of an element or the full page body.',
-		browserTextSchema,
+		'browser_content',
+		'Extract page content as structured markdown with headings, links, lists, and tables preserved. Uses readability extraction to strip navigation, ads, and boilerplate. Prefer browser_snapshot for element discovery and interaction; use this when you need to read and understand page text content.',
+		browserContentSchema,
 		async (state, input, pageId) => {
-			const target = input.selector ? { selector: input.selector } : undefined;
-			const text = await state.adapter.getText(pageId, target);
-			return formatCallToolResult({ text });
+			const { html, url } = await state.adapter.getContent(pageId, input.selector);
+
+			const virtualConsole = new VirtualConsole();
+			const dom = new JSDOM(html, { url, virtualConsole });
+			const article = new Readability(dom.window.document, { keepClasses: true }).parse();
+
+			const title = article?.title ?? '';
+			const articleHtml = article?.content ?? '';
+
+			const turndownService = new TurndownService({
+				headingStyle: 'atx',
+				codeBlockStyle: 'fenced',
+			});
+			turndownService.use(gfm);
+
+			const content = articleHtml ? turndownService.turndown(articleHtml) : '';
+
+			return formatCallToolResult({ title, content, url });
 		},
-		browserTextOutputSchema,
+		browserContentOutputSchema,
 	);
 }
 
@@ -152,11 +174,13 @@ const browserConsoleSchema = z
 		level: z
 			.enum(['log', 'warn', 'error', 'info', 'debug'])
 			.optional()
-			.describe('Filter by log level'),
+			.describe(
+				'Filter by log level. Each level includes more severe levels (e.g. "info" includes errors and warnings)',
+			),
 		clear: z.boolean().optional().describe('Clear buffer after reading'),
 		pageId: pageIdField,
 	})
-	.describe('Get console log entries');
+	.describe('Get console messages and page errors');
 
 const browserConsoleOutputSchema = z.object({
 	entries: z.array(
@@ -172,48 +196,13 @@ function browserConsole(connection: BrowserConnection): ToolDefinition {
 	return createConnectedTool(
 		connection,
 		'browser_console',
-		'Get console log entries from the page.',
+		'Get console messages and page errors (uncaught exceptions). Page errors appear as entries with level "error". Use level filter to narrow results.',
 		browserConsoleSchema,
 		async (state, input, pageId) => {
 			const entries = await state.adapter.getConsole(pageId, input.level, input.clear);
 			return formatCallToolResult({ entries });
 		},
 		browserConsoleOutputSchema,
-	);
-}
-
-// ---------------------------------------------------------------------------
-// browser_errors
-// ---------------------------------------------------------------------------
-
-const browserErrorsSchema = z
-	.object({
-		clear: z.boolean().optional().describe('Clear buffer after reading'),
-		pageId: pageIdField,
-	})
-	.describe('Get page errors (uncaught exceptions)');
-
-const browserErrorsOutputSchema = z.object({
-	errors: z.array(
-		z.object({
-			message: z.string(),
-			stack: z.string().optional(),
-			timestamp: z.number(),
-		}),
-	),
-});
-
-function browserErrors(connection: BrowserConnection): ToolDefinition {
-	return createConnectedTool(
-		connection,
-		'browser_errors',
-		'Get page errors (uncaught exceptions).',
-		browserErrorsSchema,
-		async (state, input, pageId) => {
-			const errors = await state.adapter.getErrors(pageId, input.clear);
-			return formatCallToolResult({ errors });
-		},
-		browserErrorsOutputSchema,
 	);
 }
 
