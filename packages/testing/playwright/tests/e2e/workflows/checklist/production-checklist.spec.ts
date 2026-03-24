@@ -167,5 +167,109 @@ test.describe(
 
 			await expect(n8n.canvas.getProductionChecklistButton()).toBeHidden();
 		});
+
+		test('should update checklist when error workflow is configured (GHC-7379)', async ({
+			n8n,
+			api,
+		}) => {
+			// Create and activate an error handler workflow
+			const errorWorkflow = await api.workflows.createWorkflow({
+				name: 'Error Handler',
+				nodes: [
+					{
+						id: 'error-trigger',
+						name: 'Error Trigger',
+						type: 'n8n-nodes-base.errorTrigger',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+				connections: {},
+				settings: {},
+				active: false,
+			});
+			await api.workflows.activate(errorWorkflow.id, errorWorkflow.versionId);
+
+			// Create and activate main workflow
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+			await n8n.canvas.publishWorkflow();
+			await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
+			await n8n.workflowActivationModal.close();
+
+			// Verify production checklist shows incomplete error workflow action
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
+			const errorAction = n8n.canvas.getErrorActionItem();
+			await expect(errorAction).toBeVisible();
+
+			// Verify action is NOT completed (no check icon)
+			await expect(errorAction.locator('svg[data-icon="circle-check"]')).toBeHidden();
+
+			// Close the popover
+			await n8n.page.locator('body').click({ position: { x: 0, y: 0 } });
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeHidden();
+
+			// Open workflow settings and configure error workflow
+			await n8n.workflowSettingsModal.open();
+			await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
+			await n8n.workflowSettingsModal.selectErrorWorkflow('Error Handler');
+			await n8n.workflowSettingsModal.clickSave();
+
+			// Wait for settings to be saved
+			await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeHidden();
+
+			// Re-open the production checklist
+			await n8n.canvas.clickProductionChecklistButton();
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
+
+			// Bug: The error workflow action should now show as completed with a check icon
+			// but it doesn't update after saving the workflow settings
+			const updatedErrorAction = n8n.canvas.getErrorActionItem();
+			await expect(updatedErrorAction).toBeVisible();
+			await expect(updatedErrorAction.locator('svg[data-icon="circle-check"]')).toBeVisible();
+		});
+
+		test('should update checklist when time saved is configured (GHC-7379)', async ({ n8n }) => {
+			// Create and activate workflow
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+			await n8n.canvas.publishWorkflow();
+			await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
+			await n8n.workflowActivationModal.close();
+
+			// Verify production checklist shows incomplete time saved action
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
+			const timeSavedAction = n8n.canvas.getTimeSavedActionItem();
+			await expect(timeSavedAction).toBeVisible();
+
+			// Verify action is NOT completed (no check icon)
+			await expect(timeSavedAction.locator('svg[data-icon="circle-check"]')).toBeHidden();
+
+			// Close the popover
+			await n8n.page.locator('body').click({ position: { x: 0, y: 0 } });
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeHidden();
+
+			// Open workflow settings and configure time saved
+			await n8n.workflowSettingsModal.open();
+			await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
+
+			// Configure time saved (5 minutes)
+			const timeSavedInput = n8n.page.getByTestId('workflow-settings-time-saved-input');
+			await timeSavedInput.fill('5');
+
+			await n8n.workflowSettingsModal.clickSave();
+
+			// Wait for settings to be saved
+			await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeHidden();
+
+			// Re-open the production checklist
+			await n8n.canvas.clickProductionChecklistButton();
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
+
+			// Bug: The time saved action should now show as completed with a check icon
+			// but it doesn't update after saving the workflow settings
+			const updatedTimeSavedAction = n8n.canvas.getTimeSavedActionItem();
+			await expect(updatedTimeSavedAction).toBeVisible();
+			await expect(updatedTimeSavedAction.locator('svg[data-icon="circle-check"]')).toBeVisible();
+		});
 	},
 );
