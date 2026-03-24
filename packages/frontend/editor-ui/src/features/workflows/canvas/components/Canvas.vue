@@ -944,8 +944,15 @@ function onWindowBlur() {
 
 const initialized = ref(false);
 
+let pendingFitViewOnInit = false;
+
+function onRequestFitViewOnInit() {
+	pendingFitViewOnInit = true;
+}
+
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
+	props.eventBus.on('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.on('nodes:select', onSelectNodes);
 	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(graphNodes.value));
 	props.eventBus.on('tidyUp', onTidyUp);
@@ -954,6 +961,7 @@ onMounted(() => {
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
+	props.eventBus.off('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.off('nodes:select', onSelectNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
@@ -970,6 +978,11 @@ onPaneReady(async () => {
 
 onNodesInitialized(() => {
 	initialized.value = true;
+
+	if (pendingFitViewOnInit) {
+		pendingFitViewOnInit = false;
+		void onFitView();
+	}
 });
 
 watch(

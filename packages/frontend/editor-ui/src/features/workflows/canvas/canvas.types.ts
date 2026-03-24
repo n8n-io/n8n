@@ -178,6 +178,8 @@ export type CanvasNodeEventBusEvents = {
 
 export type CanvasEventBusEvents = {
 	fitView: never;
+	/** Deferred fitView — waits for VueFlow's onNodesInitialized before fitting. */
+	'fitView:onNodesInit': never;
 	'saved:workflow': { isFirstSave: boolean };
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };
