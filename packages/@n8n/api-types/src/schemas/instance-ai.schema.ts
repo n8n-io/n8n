@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+import { Z } from '../zod-class';
+import { TimeZoneSchema } from './timezone.schema';
+
 // ---------------------------------------------------------------------------
 // Branded ID types — prevent swapping runId/agentId/threadId/toolCallId
 // ---------------------------------------------------------------------------
@@ -366,17 +369,48 @@ export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemRe
 // API types
 // ---------------------------------------------------------------------------
 
-export interface InstanceAiAttachment {
-	data: string;
-	mimeType: string;
-	fileName: string;
-}
+const instanceAiAttachmentSchema = z.object({
+	data: z.string(),
+	mimeType: z.string(),
+	fileName: z.string(),
+});
 
-export interface InstanceAiSendMessageRequest {
-	message: string;
-	researchMode?: boolean;
-	attachments?: InstanceAiAttachment[];
-}
+export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
+
+export class InstanceAiSendMessageRequest extends Z.class({
+	message: z.string().min(1),
+	researchMode: z.boolean().optional(),
+	attachments: z.array(instanceAiAttachmentSchema).optional(),
+	timeZone: TimeZoneSchema,
+}) {}
+
+export class InstanceAiCorrectTaskRequest extends Z.class({
+	message: z.string().min(1),
+}) {}
+
+export class InstanceAiUpdateMemoryRequest extends Z.class({
+	content: z.string(),
+}) {}
+
+export class InstanceAiEnsureThreadRequest extends Z.class({
+	threadId: z.string().uuid().optional(),
+}) {}
+
+export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
+
+export class InstanceAiGatewayEventsQuery extends Z.class({
+	apiKey: instanceAiGatewayKeySchema,
+}) {}
+
+export class InstanceAiEventsQuery extends Z.class({
+	lastEventId: z.coerce.number().int().nonnegative().optional(),
+}) {}
+
+export class InstanceAiThreadMessagesQuery extends Z.class({
+	limit: z.coerce.number().int().positive().default(50),
+	page: z.coerce.number().int().nonnegative().default(0),
+	raw: z.enum(['true', 'false']).optional(),
+}) {}
 
 export interface InstanceAiSendMessageResponse {
 	runId: string;
@@ -569,25 +603,29 @@ export interface InstanceAiThreadStatusResponse {
 // Settings types (runtime-configurable subset of InstanceAiConfig)
 // ---------------------------------------------------------------------------
 
-export type InstanceAiPermissionMode = 'require_approval' | 'always_allow';
+const instanceAiPermissionModeSchema = z.enum(['require_approval', 'always_allow']);
 
-export interface InstanceAiPermissions {
-	runWorkflow: InstanceAiPermissionMode;
-	publishWorkflow: InstanceAiPermissionMode;
-	deleteWorkflow: InstanceAiPermissionMode;
-	deleteCredential: InstanceAiPermissionMode;
-	createFolder: InstanceAiPermissionMode;
-	deleteFolder: InstanceAiPermissionMode;
-	moveWorkflowToFolder: InstanceAiPermissionMode;
-	tagWorkflow: InstanceAiPermissionMode;
-	createDataTable: InstanceAiPermissionMode;
-	mutateDataTableSchema: InstanceAiPermissionMode;
-	mutateDataTableRows: InstanceAiPermissionMode;
-	cleanupTestExecutions: InstanceAiPermissionMode;
-	readFilesystem: InstanceAiPermissionMode;
-	fetchUrl: InstanceAiPermissionMode;
-	restoreWorkflowVersion: InstanceAiPermissionMode;
-}
+export type InstanceAiPermissionMode = z.infer<typeof instanceAiPermissionModeSchema>;
+
+const instanceAiPermissionsSchema = z.object({
+	runWorkflow: instanceAiPermissionModeSchema,
+	publishWorkflow: instanceAiPermissionModeSchema,
+	deleteWorkflow: instanceAiPermissionModeSchema,
+	deleteCredential: instanceAiPermissionModeSchema,
+	createFolder: instanceAiPermissionModeSchema,
+	deleteFolder: instanceAiPermissionModeSchema,
+	moveWorkflowToFolder: instanceAiPermissionModeSchema,
+	tagWorkflow: instanceAiPermissionModeSchema,
+	createDataTable: instanceAiPermissionModeSchema,
+	mutateDataTableSchema: instanceAiPermissionModeSchema,
+	mutateDataTableRows: instanceAiPermissionModeSchema,
+	cleanupTestExecutions: instanceAiPermissionModeSchema,
+	readFilesystem: instanceAiPermissionModeSchema,
+	fetchUrl: instanceAiPermissionModeSchema,
+	restoreWorkflowVersion: instanceAiPermissionModeSchema,
+});
+
+export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
 
 export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	runWorkflow: 'require_approval',
@@ -628,22 +666,22 @@ export interface InstanceAiAdminSettingsResponse {
 	searchCredentialId: string | null;
 }
 
-export interface InstanceAiAdminSettingsUpdateRequest {
-	lastMessages?: number;
-	embedderModel?: string;
-	semanticRecallTopK?: number;
-	timeout?: number;
-	subAgentMaxSteps?: number;
-	browserMcp?: boolean;
-	permissions?: Partial<InstanceAiPermissions>;
-	mcpServers?: string;
-	sandboxEnabled?: boolean;
-	sandboxProvider?: string;
-	sandboxImage?: string;
-	sandboxTimeout?: number;
-	daytonaCredentialId?: string | null;
-	searchCredentialId?: string | null;
-}
+export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
+	lastMessages: z.number().int().positive().optional(),
+	embedderModel: z.string().optional(),
+	semanticRecallTopK: z.number().int().positive().optional(),
+	timeout: z.number().int().positive().optional(),
+	subAgentMaxSteps: z.number().int().positive().optional(),
+	browserMcp: z.boolean().optional(),
+	permissions: instanceAiPermissionsSchema.partial().optional(),
+	mcpServers: z.string().optional(),
+	sandboxEnabled: z.boolean().optional(),
+	sandboxProvider: z.string().optional(),
+	sandboxImage: z.string().optional(),
+	sandboxTimeout: z.number().int().positive().optional(),
+	daytonaCredentialId: z.string().nullable().optional(),
+	searchCredentialId: z.string().nullable().optional(),
+}) {}
 
 // ---------------------------------------------------------------------------
 // User preferences — per-user, self-service
@@ -657,11 +695,11 @@ export interface InstanceAiUserPreferencesResponse {
 	filesystemDisabled: boolean;
 }
 
-export interface InstanceAiUserPreferencesUpdateRequest {
-	credentialId?: string | null;
-	modelName?: string;
-	filesystemDisabled?: boolean;
-}
+export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
+	credentialId: z.string().nullable().optional(),
+	modelName: z.string().optional(),
+	filesystemDisabled: z.boolean().optional(),
+}) {}
 
 export interface InstanceAiModelCredential {
 	id: string;
