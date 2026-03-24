@@ -124,12 +124,11 @@ export class SlackSignatureExtractor implements IContextEstablishmentHook {
 			return body;
 		}
 
-		// Fallback: reconstruct URL-encoded form body (Slack sends form-urlencoded)
-		if (body !== null && body !== undefined && typeof body === 'object') {
-			return new URLSearchParams(body as Record<string, string>).toString();
-		}
-
-		throw new Error('Could not retrieve raw body for Slack identity extraction');
+		throw new Error(
+			'Could not retrieve raw body for Slack signature verification. ' +
+				'The webhook node must be configured with "Raw Body" enabled so the original ' +
+				'request body is preserved for HMAC signature verification.',
+		);
 	}
 
 	/**
