@@ -65,6 +65,38 @@ export class PlannedTaskStorage {
 		});
 	}
 
+	/**
+	 * Atomically read-modify-write the graph inside a single patchThread call.
+	 * Returns the updated graph, or null if no graph exists.
+	 */
+	async update(
+		threadId: string,
+		updater: (graph: PlannedTaskGraph) => PlannedTaskGraph | null,
+	): Promise<PlannedTaskGraph | null> {
+		let result: PlannedTaskGraph | null = null;
+
+		await patchThread(this.memory, {
+			threadId,
+			update: ({ metadata = {} }) => {
+				const current = parseGraph(metadata[METADATA_KEY]);
+				if (!current) return null;
+
+				const updated = updater(current);
+				result = updated;
+				if (!updated) return null;
+
+				return {
+					metadata: {
+						...metadata,
+						[METADATA_KEY]: updated,
+					},
+				};
+			},
+		});
+
+		return result;
+	}
+
 	async clear(threadId: string): Promise<void> {
 		await patchThread(this.memory, {
 			threadId,

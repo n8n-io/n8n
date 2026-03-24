@@ -102,21 +102,16 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		taskId: string,
 		update: { agentId?: string; backgroundTaskId?: string; startedAt?: number },
 	): Promise<PlannedTaskGraph | null> {
-		const graph = await this.storage.get(threadId);
-		if (!graph) return null;
-
-		const updated = updateTaskRecord(graph, taskId, (task) => ({
-			...task,
-			status: 'running',
-			agentId: update.agentId ?? task.agentId,
-			backgroundTaskId: update.backgroundTaskId ?? task.backgroundTaskId,
-			startedAt: update.startedAt ?? task.startedAt ?? Date.now(),
-			error: undefined,
-		}));
-		if (!updated) return graph;
-
-		await this.storage.save(threadId, updated);
-		return updated;
+		return await this.storage.update(threadId, (graph) =>
+			updateTaskRecord(graph, taskId, (task) => ({
+				...task,
+				status: 'running',
+				agentId: update.agentId ?? task.agentId,
+				backgroundTaskId: update.backgroundTaskId ?? task.backgroundTaskId,
+				startedAt: update.startedAt ?? task.startedAt ?? Date.now(),
+				error: undefined,
+			})),
+		);
 	}
 
 	async markSucceeded(
@@ -124,21 +119,16 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		taskId: string,
 		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
 	): Promise<PlannedTaskGraph | null> {
-		const graph = await this.storage.get(threadId);
-		if (!graph) return null;
-
-		const updated = updateTaskRecord(graph, taskId, (task) => ({
-			...task,
-			status: 'succeeded',
-			result: update.result ?? task.result,
-			outcome: update.outcome ?? task.outcome,
-			finishedAt: update.finishedAt ?? Date.now(),
-			error: undefined,
-		}));
-		if (!updated) return graph;
-
-		await this.storage.save(threadId, updated);
-		return updated;
+		return await this.storage.update(threadId, (graph) =>
+			updateTaskRecord(graph, taskId, (task) => ({
+				...task,
+				status: 'succeeded',
+				result: update.result ?? task.result,
+				outcome: update.outcome ?? task.outcome,
+				finishedAt: update.finishedAt ?? Date.now(),
+				error: undefined,
+			})),
+		);
 	}
 
 	async markFailed(
@@ -146,19 +136,14 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		taskId: string,
 		update: { error?: string; finishedAt?: number },
 	): Promise<PlannedTaskGraph | null> {
-		const graph = await this.storage.get(threadId);
-		if (!graph) return null;
-
-		const updated = updateTaskRecord(graph, taskId, (task) => ({
-			...task,
-			status: 'failed',
-			error: update.error ?? task.error ?? 'Unknown error',
-			finishedAt: update.finishedAt ?? Date.now(),
-		}));
-		if (!updated) return graph;
-
-		await this.storage.save(threadId, updated);
-		return updated;
+		return await this.storage.update(threadId, (graph) =>
+			updateTaskRecord(graph, taskId, (task) => ({
+				...task,
+				status: 'failed',
+				error: update.error ?? task.error ?? 'Unknown error',
+				finishedAt: update.finishedAt ?? Date.now(),
+			})),
+		);
 	}
 
 	async markCancelled(
@@ -166,68 +151,67 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		taskId: string,
 		update?: { error?: string; finishedAt?: number },
 	): Promise<PlannedTaskGraph | null> {
-		const graph = await this.storage.get(threadId);
-		if (!graph) return null;
-
-		const updated = updateTaskRecord(graph, taskId, (task) => ({
-			...task,
-			status: 'cancelled',
-			error: update?.error ?? task.error,
-			finishedAt: update?.finishedAt ?? Date.now(),
-		}));
-		if (!updated) return graph;
-
-		await this.storage.save(threadId, updated);
-		return updated;
+		return await this.storage.update(threadId, (graph) =>
+			updateTaskRecord(graph, taskId, (task) => ({
+				...task,
+				status: 'cancelled',
+				error: update?.error ?? task.error,
+				finishedAt: update?.finishedAt ?? Date.now(),
+			})),
+		);
 	}
 
 	async tick(
 		threadId: string,
 		options: { availableSlots?: number } = {},
 	): Promise<PlannedTaskSchedulerAction> {
-		const graph = await this.storage.get(threadId);
-		if (!graph) {
-			return { type: 'none', graph: null };
-		}
+		// Use atomic update so the graph status transition (active → awaiting_replan
+		// or active → completed) cannot race with concurrent markSucceeded/markFailed.
+		let action: PlannedTaskSchedulerAction = { type: 'none', graph: null };
 
-		if (graph.status !== 'active') {
-			return { type: 'none', graph };
-		}
+		await this.storage.update(threadId, (graph) => {
+			if (graph.status !== 'active') {
+				action = { type: 'none', graph };
+				return graph;
+			}
 
-		const failedTask = graph.tasks.find((task) => task.status === 'failed');
-		if (failedTask) {
-			const nextGraph: PlannedTaskGraph = { ...graph, status: 'awaiting_replan' };
-			await this.storage.save(threadId, nextGraph);
-			return { type: 'replan', graph: nextGraph, failedTask };
-		}
+			const failedTask = graph.tasks.find((task) => task.status === 'failed');
+			if (failedTask) {
+				const nextGraph: PlannedTaskGraph = { ...graph, status: 'awaiting_replan' };
+				action = { type: 'replan', graph: nextGraph, failedTask };
+				return nextGraph;
+			}
 
-		if (graph.tasks.length > 0 && graph.tasks.every(isSuccess)) {
-			const nextGraph: PlannedTaskGraph = { ...graph, status: 'completed' };
-			await this.storage.save(threadId, nextGraph);
-			return { type: 'synthesize', graph: nextGraph };
-		}
+			if (graph.tasks.length > 0 && graph.tasks.every(isSuccess)) {
+				const nextGraph: PlannedTaskGraph = { ...graph, status: 'completed' };
+				action = { type: 'synthesize', graph: nextGraph };
+				return nextGraph;
+			}
 
-		const availableSlots = options.availableSlots ?? graph.tasks.length;
-		if (availableSlots <= 0) {
-			return { type: 'none', graph };
-		}
+			const availableSlots = options.availableSlots ?? graph.tasks.length;
+			if (availableSlots <= 0) {
+				action = { type: 'none', graph };
+				return graph;
+			}
 
-		const successfulIds = new Set(
-			graph.tasks.filter((task) => task.status === 'succeeded').map((task) => task.id),
-		);
-		const readyTasks = graph.tasks.filter(
-			(task) => task.status === 'planned' && task.deps.every((depId) => successfulIds.has(depId)),
-		);
+			const successfulIds = new Set(
+				graph.tasks.filter((task) => task.status === 'succeeded').map((task) => task.id),
+			);
+			const readyTasks = graph.tasks.filter(
+				(task) => task.status === 'planned' && task.deps.every((depId) => successfulIds.has(depId)),
+			);
 
-		if (readyTasks.length === 0) {
-			return { type: 'none', graph };
-		}
+			if (readyTasks.length === 0) {
+				action = { type: 'none', graph };
+				return graph;
+			}
 
-		return {
-			type: 'dispatch',
-			graph,
-			tasks: readyTasks.slice(0, availableSlots),
-		};
+			action = { type: 'dispatch', graph, tasks: readyTasks.slice(0, availableSlots) };
+			return graph;
+		});
+
+		// If no graph exists, storage.update returns null and the updater never runs
+		return action;
 	}
 
 	async clear(threadId: string): Promise<void> {

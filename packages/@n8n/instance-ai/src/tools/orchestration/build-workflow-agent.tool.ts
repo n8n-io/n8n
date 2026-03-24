@@ -86,26 +86,48 @@ const BUILDER_MAX_STEPS = 30;
 
 const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
 
-You are running as a detached background task. Do not stop after a successful submit.
+You are running as a detached background task. Do not stop after a successful submit — verify the workflow works.
 
-Your job is only complete when one of these is true:
-- the main workflow in ~/workspace/src/workflow.ts is verified successfully
-- the workflow is trigger-only and cannot be runtime-tested
-- you are blocked on user input after exhausting one repair attempt per unique failure signature
+### Completion criteria
 
-Rules:
-- Always keep working on the same main workflow file. For fixes, start from the latest submitted code.
-- After each fix, submit the main workflow again before doing anything else.
-- Verify the final workflow before finishing:
-  - if submit-workflow returned mocked credentials, use verify-built-workflow with the provided workItemId
-  - otherwise use run-workflow directly
-- If verification fails, use debug-execution, repair the workflow, re-submit, and retry.
-- Only do one automatic repair per unique failure signature. If the same failure repeats, stop and explain the block clearly.
-- If verification succeeds with mocked credentials, finalize the workflow before finishing:
-  - call setup-credentials with credentialFlow stage "finalize"
-  - if it returns needsBrowserSetup=true and browser-credential-setup is available, call browser-credential-setup and then setup-credentials again
-  - call apply-workflow-credentials with the provided workItemId and the selected credentials
-- Use ask-user if you truly need human input that tools cannot resolve.
+Your job is done when ONE of these is true:
+- the workflow is verified (ran successfully or publish-workflow succeeded)
+- the workflow uses only event triggers (webhook, form, schedule) and cannot be runtime-tested — publish it and stop
+- you are blocked after one repair attempt per unique failure
+
+### Submit discipline
+
+**Every file edit MUST be followed by submit-workflow before you do anything else.**
+The system tracks file hashes. If you edit the code and then call publish-workflow, run-workflow, or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/publish.
+
+### Verification
+
+- If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
+- Otherwise call run-workflow to test (skip for trigger-only workflows)
+- If verification fails, call debug-execution, fix the code, re-submit, and retry once
+- If the same failure signature repeats, stop and explain the block
+
+### Credential finalization
+
+If verification succeeds with mocked credentials:
+1. call setup-credentials with credentialFlow stage "finalize"
+2. if it returns needsBrowserSetup=true, call browser-credential-setup then setup-credentials again
+3. call apply-workflow-credentials with the workItemId and selected credentials
+
+### Resource discovery
+
+Before writing code that uses external services, **resolve real resource IDs**:
+- Call explore-node-resources for any parameter with searchListMethod (calendars, spreadsheets, channels, models, etc.)
+- Do NOT use "primary", "default", or any assumed identifier — look up the actual value
+- Call get-suggested-nodes early if the workflow fits a known category (web_app, form_input, data_persistence, etc.) — the pattern hints prevent common mistakes
+- Check @builderHint annotations in node type definitions for critical configuration guidance
+
+### Publish validation errors
+
+If publish-workflow fails with node configuration issues, the error tells you which node and what's wrong. Fix the parameter, re-submit, then try publishing again. Common causes:
+- Resource list parameters (calendar, spreadsheet) need a real ID from explore-node-resources, not "primary"
+- Expression parameters need the correct n8n expression syntax
+- Required parameters missing from the node config
 `;
 
 function hashContent(content: string | null): string {
@@ -406,12 +428,38 @@ export async function startBuildWorkflowAgentTask(
 					}
 
 					if (mainWorkflowAttempt.sourceHash !== currentMainWorkflowHash) {
-						const text =
-							'Error: workflow builder edited /src/workflow.ts after the last submit-workflow call. It must re-submit the workflow before finishing.';
-						return {
-							text,
-							outcome: buildOutcome(workItemId, taskId, undefined, text),
-						};
+						// Builder edited the file after its last submit — auto-re-submit
+						// instead of discarding the agent's work.
+						const submitTool = builderTools['submit-workflow'];
+						if (submitTool && 'execute' in submitTool) {
+							const resubmit = await (
+								submitTool as {
+									execute: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
+								}
+							).execute({
+								filePath: mainWorkflowPath,
+								workflowId: mainWorkflowAttempt.workflowId,
+							});
+
+							// Refresh attempt after re-submit
+							const refreshedAttempt = submitAttempts.get(mainWorkflowPath);
+							if (refreshedAttempt?.success) {
+								return {
+									text: finalText,
+									outcome: buildOutcome(workItemId, taskId, refreshedAttempt, finalText),
+								};
+							}
+
+							// Re-submit failed — report the failure
+							const resubmitErrors =
+								refreshedAttempt?.errors?.join(' ') ??
+								(typeof resubmit?.errors === 'string' ? resubmit.errors : 'Auto-re-submit failed.');
+							const text = `Error: auto-re-submit of edited /src/workflow.ts failed. ${resubmitErrors}`;
+							return {
+								text,
+								outcome: buildOutcome(workItemId, taskId, refreshedAttempt ?? undefined, text),
+							};
+						}
 					}
 
 					return {

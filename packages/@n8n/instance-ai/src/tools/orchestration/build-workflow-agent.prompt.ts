@@ -753,8 +753,9 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 
 - **NEVER parallelize edit + submit.** Always: edit → wait → submit. Each step depends on the previous one completing.
 - **Complex workflows (5+ nodes, 2+ integrations) MUST use the Compositional Workflow Pattern.** Decompose into sub-workflows, test each independently, then compose. Do NOT write everything in a single workflow.
-- **If you edit code to fix a \`submit-workflow\` error, you must call \`submit-workflow\` again before doing anything else.** Do not stop after file edits. Edits without a clean re-submit do not count as a fix.
+- **If you edit code after submitting, you MUST call \`submit-workflow\` again before doing anything else (publish, verify, run, or finish).** The system tracks file hashes — if the file changed since the last submit, your work is discarded. The sequence is always: edit → submit → then verify/publish/finish.
 - **Follow the runtime verification instructions in your briefing.** If the briefing says verification is required, do not stop after a successful submit.
+- **If \`publish-workflow\` fails with node configuration errors, fix the node parameters, re-submit, then re-publish.** Do not give up — the error message tells you exactly which node and parameter is wrong.
 
 ## Mandatory Process
 
@@ -776,7 +777,9 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 3. **Get node schemas**: Call \`get-node-type-definition\` with ALL the node IDs you need in a single call (up to 5). For nodes with discriminators (from search results), include the \`resource\` and \`operation\` fields. **Read the definitions carefully** — they contain exact parameter names, types, required fields, valid enum values, credential types, displayOptions conditions, and \`@builderHint\` annotations with critical configuration guidance.
    **Important**: Only call \`get-node-type-definition\` for nodes you will actually use in the workflow. Do not speculatively fetch definitions "just in case". If a definition returns empty or an error, do not retry — proceed with the information from \`search-nodes\` results instead.
 
-4. **Resolve real resource IDs**: Check the node schemas from step 3 for parameters with \`searchListMethod\` or \`loadOptionsMethod\`. For each one, call \`explore-node-resources\` with the node type, method name, and the matching credential from step 1 to discover real resource IDs (e.g., actual Google Sheets spreadsheets, Slack channels, OpenAI models).
+4. **Resolve real resource IDs**: Check the node schemas from step 3 for parameters with \`searchListMethod\` or \`loadOptionsMethod\`. For EACH one, call \`explore-node-resources\` with the node type, method name, and the matching credential from step 1 to discover real resource IDs.
+   - **This is mandatory for: calendars, spreadsheets, channels, folders, models, databases, and any other list-based parameter.** Do NOT assume values like "primary", "default", or "General" — always look up the real ID.
+   - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`explore-node-resources\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
    - **NEVER use \`placeholder()\` or fake IDs.** If a resource doesn't exist, build a setup workflow to create it (see "Setup Workflows" section).
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
@@ -791,7 +794,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 
 7. **Submit**: When tsc passes cleanly, call \`submit-workflow\` to validate the workflow graph and save it to n8n.
 
-8. **Fix submission errors**: If \`submit-workflow\` returns errors, edit the file and submit again immediately. Skip tsc for validation-only errors. Never end your turn on an edit; end only on a successful re-submit or after you explicitly report the blocking error.
+8. **Fix submission errors**: If \`submit-workflow\` returns errors, edit the file and submit again immediately. Skip tsc for validation-only errors. **Never end your turn on a file edit — always re-submit first.** The system compares file hashes: if the file changed since the last submit, all your work is discarded. End only on a successful re-submit or after you explicitly report the blocking error.
 
 9. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 
@@ -801,7 +804,7 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
 
 1. **Discover credentials** (same as above).
 2. **Discover nodes and get schemas** (same as above).
-3. **Resolve real resource IDs** (same as above — call \`explore-node-resources\` for any parameter with \`searchListMethod\` or \`loadOptionsMethod\`). If a resource doesn't exist, build a setup workflow to create it.
+3. **Resolve real resource IDs** (same as above — call \`explore-node-resources\` for EVERY parameter with \`searchListMethod\` or \`loadOptionsMethod\`). Never assume IDs like "primary" or "default". If a resource doesn't exist, build a setup workflow to create it.
 4. **Decompose** the workflow into logical chunks. Each chunk is a standalone sub-workflow with 2-4 nodes covering one capability (e.g., "fetch and format weather data", "generate AI recommendation", "store to data table").
 5. **For each chunk**:
    a. Write the chunk to \`/home/daytona/workspace/chunks/<name>.ts\` with an \`executeWorkflowTrigger\` and explicit input schema.

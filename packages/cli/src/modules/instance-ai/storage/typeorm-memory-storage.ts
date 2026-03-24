@@ -34,6 +34,9 @@ import { InstanceAiObservationalMemoryRepository } from '../repositories/instanc
 import { InstanceAiResourceRepository } from '../repositories/instance-ai-resource.repository';
 import { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
+/** Metadata keys that must only be mutated via patchThread (atomic read-modify-write). */
+const PATCH_ONLY_METADATA_KEYS = ['instanceAiPlannedTasks'] as const;
+
 @Service()
 export class TypeORMMemoryStorage extends MemoryStorage {
 	readonly supportsObservationalMemory = true;
@@ -142,21 +145,47 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 	}: {
 		thread: StorageThreadType;
 	}): Promise<StorageThreadType> {
-		const entity = this.threadRepo.create({
-			id: thread.id,
-			resourceId: thread.resourceId,
-			title: thread.title ?? '',
-			metadata: thread.metadata ?? null,
+		return await this.serializeThreadMutation(thread.id, async () => {
+			const existing = await this.threadRepo.findOneBy({ id: thread.id });
+
+			if (existing) {
+				// Strip patch-only keys so stale caller snapshots can't clobber
+				// state that must only be mutated through patchThread.
+				const safeIncoming = { ...(thread.metadata ?? {}) };
+				for (const key of PATCH_ONLY_METADATA_KEYS) {
+					delete safeIncoming[key];
+				}
+
+				// DEBUG: trace metadata overwrites
+				const existingTaskGraph = (existing.metadata as Record<string, unknown> | null)
+					?.instanceAiPlannedTasks;
+				if (existingTaskGraph) {
+					console.log(
+						`[saveThread] threadId=${thread.id.slice(0, 8)}… ` +
+							`preserving graph=${this.debugTaskStatuses(existingTaskGraph)} ` +
+							`(stripped stale incoming)`,
+					);
+				}
+
+				existing.title = thread.title ?? existing.title;
+				existing.resourceId = thread.resourceId ?? existing.resourceId;
+				existing.metadata = {
+					...(existing.metadata ?? {}),
+					...safeIncoming,
+				};
+				const saved = await this.threadRepo.save(existing);
+				return this.toStorageThread(saved);
+			}
+
+			const entity = this.threadRepo.create({
+				id: thread.id,
+				resourceId: thread.resourceId,
+				title: thread.title ?? '',
+				metadata: thread.metadata ?? null,
+			});
+			const saved = await this.threadRepo.save(entity);
+			return this.toStorageThread(saved);
 		});
-		const saved = await this.threadRepo.save(entity);
-		return {
-			id: saved.id,
-			title: saved.title,
-			resourceId: saved.resourceId,
-			metadata: saved.metadata ?? undefined,
-			createdAt: saved.createdAt,
-			updatedAt: saved.updatedAt,
-		};
 	}
 
 	async updateThread({
@@ -170,8 +199,30 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 	}): Promise<StorageThreadType> {
 		return await this.serializeThreadMutation(id, async () => {
 			const entity = await this.threadRepo.findOneByOrFail({ id });
+
+			// Strip patch-only keys so stale caller snapshots can't clobber
+			// state that must only be mutated through patchThread.
+			const safeIncoming = { ...metadata };
+			for (const key of PATCH_ONLY_METADATA_KEYS) {
+				delete safeIncoming[key];
+			}
+
+			// DEBUG: trace metadata overwrites
+			const existingTaskGraph = (entity.metadata as Record<string, unknown> | null)
+				?.instanceAiPlannedTasks;
+			if (existingTaskGraph) {
+				console.log(
+					`[updateThread] threadId=${id.slice(0, 8)}… ` +
+						`preserving graph=${this.debugTaskStatuses(existingTaskGraph)} ` +
+						`(stripped stale incoming)`,
+				);
+			}
+
 			entity.title = title;
-			entity.metadata = metadata;
+			entity.metadata = {
+				...(entity.metadata ?? {}),
+				...safeIncoming,
+			};
 			const updated = await this.threadRepo.save(entity);
 			return this.toStorageThread(updated);
 		});
@@ -191,6 +242,10 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 			if (!entity) return null;
 
 			const current = this.toStorageThread(entity);
+			const beforeStatuses = this.debugTaskStatuses(
+				(current.metadata as Record<string, unknown> | undefined)?.instanceAiPlannedTasks,
+			);
+
 			const patch = update({
 				...current,
 				metadata: { ...(current.metadata ?? {}) },
@@ -204,6 +259,18 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 				entity.metadata = patch.metadata;
 			}
 
+			const afterStatuses = this.debugTaskStatuses(
+				(entity.metadata as Record<string, unknown> | null)?.instanceAiPlannedTasks,
+			);
+
+			// DEBUG: trace planned task graph changes via patchThread
+			if (beforeStatuses !== afterStatuses) {
+				console.log(
+					`[patchThread] threadId=${threadId.slice(0, 8)}… ` +
+						`before=${beforeStatuses} after=${afterStatuses}`,
+				);
+			}
+
 			const updated = await this.threadRepo.save(entity);
 			return this.toStorageThread(updated);
 		});
@@ -212,6 +279,15 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 	async deleteThread({ threadId }: { threadId: string }): Promise<void> {
 		await this.threadRepo.delete(threadId);
 		// Messages cascade via FK
+	}
+
+	// DEBUG helper — summarise planned task statuses for logging
+	private debugTaskStatuses(graph: unknown): string {
+		if (!graph || typeof graph !== 'object') return '(none)';
+		const g = graph as { status?: string; tasks?: Array<{ id?: string; status?: string }> };
+		if (!g.tasks) return '(no tasks)';
+		const taskStates = g.tasks.map((t) => `${t.id}:${t.status}`).join(',');
+		return `[${g.status}|${taskStates}]`;
 	}
 
 	private toStorageThread(entity: InstanceAiThread): StorageThreadType {
