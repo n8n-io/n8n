@@ -5,7 +5,11 @@ import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError, ManualExecutionCancelledError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	ManualExecutionCancelledError,
+	StalledExecutionCancelledError,
+} from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 
@@ -456,6 +460,93 @@ describe('ScalingService', () => {
 			await scalingService.recoverFromQueue();
 
 			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
+		});
+
+		it('should stop active executions tracked in memory when recovering dangling executions', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			activeExecutions.has.mockImplementation((id: string) => id === '123');
+
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				executionRepository,
+				instanceSettings,
+				mock(),
+			);
+			await scalingService.setupQueue();
+
+			executionRepository.getInProgressExecutionIds.mockResolvedValue(['123']);
+			queue.getJobs.mockResolvedValue([]);
+
+			await scalingService.recoverFromQueue();
+
+			expect(executionRepository.markAsCrashed).toHaveBeenCalledWith(['123']);
+			expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+				'123',
+				expect.any(StalledExecutionCancelledError),
+			);
+		});
+
+		it('should not call stopExecution for dangling executions not tracked in memory', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			activeExecutions.has.mockReturnValue(false);
+
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				executionRepository,
+				instanceSettings,
+				mock(),
+			);
+			await scalingService.setupQueue();
+
+			executionRepository.getInProgressExecutionIds.mockResolvedValue(['123']);
+			queue.getJobs.mockResolvedValue([]);
+
+			await scalingService.recoverFromQueue();
+
+			expect(executionRepository.markAsCrashed).toHaveBeenCalledWith(['123']);
+			expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
+		});
+
+		it('should stop multiple active executions when recovering multiple dangling executions', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			activeExecutions.has.mockReturnValue(true);
+
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				executionRepository,
+				instanceSettings,
+				mock(),
+			);
+			await scalingService.setupQueue();
+
+			executionRepository.getInProgressExecutionIds.mockResolvedValue(['exec-1', 'exec-2', 'exec-3']);
+			queue.getJobs.mockResolvedValue([mock<Job>({ data: { executionId: 'exec-2' } })]);
+
+			await scalingService.recoverFromQueue();
+
+			// exec-2 is still in the queue, so only exec-1 and exec-3 should be recovered
+			expect(executionRepository.markAsCrashed).toHaveBeenCalledWith(['exec-1', 'exec-3']);
+			expect(activeExecutions.stopExecution).toHaveBeenCalledTimes(2);
+			expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+				'exec-1',
+				expect.any(StalledExecutionCancelledError),
+			);
+			expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+				'exec-3',
+				expect.any(StalledExecutionCancelledError),
+			);
 		});
 	});
 

@@ -454,6 +454,14 @@ export class WorkflowRunner {
 				try {
 					await job.finished();
 				} catch (error) {
+					// If this execution was already recovered (e.g. by queue recovery
+					// calling stopExecution), skip error processing to avoid overwriting
+					// the `crashed` status in the DB with a duplicate `error` save.
+					if (!this.activeExecutions.has(executionId)) {
+						this.scalingService.popJobResult(executionId);
+						return reject(error);
+					}
+
 					if (
 						error instanceof Error &&
 						typeof error.message === 'string' &&
@@ -483,6 +491,15 @@ export class WorkflowRunner {
 					this.scalingService.popJobResult(executionId);
 
 					return reject(error);
+				}
+
+				// If this execution was already recovered (e.g. by queue recovery
+				// calling stopExecution while job.finished() was pending), skip
+				// finalization and lifecycle hooks to avoid overwriting the `crashed`
+				// status in the DB.
+				if (!this.activeExecutions.has(executionId)) {
+					this.scalingService.popJobResult(executionId);
+					return resolve(undefined as unknown as IRun);
 				}
 
 				const jobResult = this.scalingService.popJobResult(executionId);

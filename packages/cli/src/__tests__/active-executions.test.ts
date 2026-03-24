@@ -14,6 +14,7 @@ import type {
 import {
 	createEmptyRunExecutionData,
 	ManualExecutionCancelledError,
+	StalledExecutionCancelledError,
 	sleep,
 	SystemShutdownExecutionCancelledError,
 } from 'n8n-workflow';
@@ -356,6 +357,35 @@ describe('ActiveExecutions', () => {
 				expect.any(ManualExecutionCancelledError),
 			);
 			expect(workflowExecution.cancel).not.toHaveBeenCalled();
+		});
+
+		test('Should cancel stalled executions and remove them from active executions', async () => {
+			activeExecutions.stopExecution(
+				executionId,
+				new StalledExecutionCancelledError(executionId),
+			);
+
+			expect(responsePromise.reject).toHaveBeenCalledWith(
+				expect.any(StalledExecutionCancelledError),
+			);
+			expect(workflowExecution.cancel).toHaveBeenCalledTimes(1);
+			await expect(postExecutePromise).rejects.toThrow(StalledExecutionCancelledError);
+
+			// Execution should be removed from active executions after .finally() runs
+			await new Promise(setImmediate);
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+		});
+
+		test('Should do nothing for unknown execution IDs', () => {
+			expect(() => {
+				activeExecutions.stopExecution(
+					'non-existent-id',
+					new StalledExecutionCancelledError('non-existent-id'),
+				);
+			}).not.toThrow();
+
+			// Original execution should still be tracked
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 		});
 	});
 
