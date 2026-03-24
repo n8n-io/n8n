@@ -29,6 +29,7 @@ async function promoteGitHubRelease() {
 		owner,
 		repo,
 		release_id: existingRelease.id,
+		prerelease: false,
 		make_latest: 'true',
 	});
 
