@@ -33,6 +33,7 @@ export async function executionStarted(
 	// Initialize or reinitialize workflowExecutionData to clear previous execution's
 	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
 	if (!workflowsStore.workflowExecutionData?.data || needsInit) {
+		const wf = workflowsStore.workflow;
 		options.workflowState.setWorkflowExecutionData({
 			id: data.executionId,
 			finished: false,
@@ -40,13 +41,13 @@ export async function executionStarted(
 			status: 'running',
 			startedAt: new Date(),
 			workflowData: {
-				id: '',
-				name: '',
-				nodes: [],
-				connections: {},
-				createdAt: '',
-				updatedAt: '',
-				versionId: '',
+				id: wf.id,
+				name: wf.name,
+				nodes: wf.nodes,
+				connections: wf.connections,
+				createdAt: wf.createdAt,
+				updatedAt: wf.updatedAt,
+				versionId: wf.versionId ?? '',
 			},
 			data: { resultData: { runData: {}, lastNodeExecuted: '' } },
 		} as never);

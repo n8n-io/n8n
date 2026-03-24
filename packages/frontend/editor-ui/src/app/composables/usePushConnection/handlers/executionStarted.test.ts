@@ -39,15 +39,21 @@ describe('executionStarted', () => {
 		expect(mockOptions.workflowState.setWorkflowExecutionData).not.toHaveBeenCalled();
 	});
 
-	it('should accept execution when activeExecutionId is null', async () => {
+	it('should accept execution when activeExecutionId is null and populate workflowData from store', async () => {
 		workflowsStore.activeExecutionId = null;
 		workflowsStore.workflowExecutionData = null;
+		workflowsStore.workflow.id = 'wf-123';
+		workflowsStore.workflow.name = 'My Workflow';
 
 		await executionStarted(makeEvent('exec-1'), mockOptions);
 
 		expect(mockOptions.workflowState.setActiveExecutionId).toHaveBeenCalledWith('exec-1');
 		expect(mockOptions.workflowState.setWorkflowExecutionData).toHaveBeenCalledWith(
-			expect.objectContaining({ id: 'exec-1', status: 'running' }),
+			expect.objectContaining({
+				id: 'exec-1',
+				status: 'running',
+				workflowData: expect.objectContaining({ id: 'wf-123', name: 'My Workflow' }),
+			}),
 		);
 	});
 
