@@ -1,17 +1,30 @@
 <script lang="ts" setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { ref, computed, watch, provide, onMounted, onUnmounted } from 'vue';
+import { N8nButton, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type {
 	InstanceAiWorkflowSetupNode,
 	InstanceAiCredentialFlow,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
+import { type INodeProperties, NodeHelpers } from 'n8n-workflow';
+import type {
+	INodeUi,
+	IUpdateInformation,
+	INodeUpdatePropertiesInformation,
+	IWorkflowDb,
+} from '@/Interface';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
+import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
+import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
@@ -49,7 +62,10 @@ const i18n = useI18n();
 const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
 const workflowsStore = useWorkflowsStore();
+const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
+const rootStore = useRootStore();
+const ndvStore = useNDVStore();
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -57,6 +73,14 @@ const nodeHelpers = useNodeHelpers();
 
 const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 const HTTP_REQUEST_TOOL_NODE_TYPE = 'n8n-nodes-base.httpRequestTool';
+
+const NESTED_PARAM_TYPES = new Set([
+	'collection',
+	'fixedCollection',
+	'resourceMapper',
+	'filter',
+	'assignmentCollection',
+]);
 
 // ---------------------------------------------------------------------------
 // Card grouping — preserves backend position order, merges same-credential nodes
@@ -166,6 +190,60 @@ const currentCard = computed(() => cards.value[currentStepIndex.value]);
 const showArrows = computed(() => totalSteps.value > 1);
 
 // ---------------------------------------------------------------------------
+// Expression context for ParameterInputList
+// ---------------------------------------------------------------------------
+
+const currentCardNode = computed<INodeUi | null>(() => {
+	if (!currentCard.value) return null;
+	return workflowsStore.getNodeByName(currentCard.value.nodes[0].node.name) ?? null;
+});
+
+const expressionResolveCtx = useExpressionResolveCtx(currentCardNode);
+provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
+
+// ---------------------------------------------------------------------------
+// Workflow store loading — needed so ParameterInputList can resolve nodes
+// ---------------------------------------------------------------------------
+
+let previousWorkflow: IWorkflowDb | null = null;
+
+// ---------------------------------------------------------------------------
+// Parameter computation from node type definitions
+// ---------------------------------------------------------------------------
+
+const isNestedParam = (p: INodeProperties) =>
+	NESTED_PARAM_TYPES.has(p.type) || p.typeOptions?.multipleValues === true;
+
+function getCardParameters(card: SetupCard): INodeProperties[] {
+	if (!card.hasParamIssues) return [];
+	const req = card.nodes[0];
+	const nodeType = nodeTypesStore.getNodeType(req.node.type, req.node.typeVersion);
+	if (!nodeType?.properties) return [];
+
+	const issueParamNames = Object.keys(req.parameterIssues ?? {});
+	const node = workflowsStore.getNodeByName(req.node.name);
+	if (!node) return [];
+
+	return nodeType.properties.filter(
+		(prop) =>
+			issueParamNames.includes(prop.name) &&
+			NodeHelpers.displayParameter(node.parameters, prop, node, nodeType),
+	);
+}
+
+function getCardSimpleParameters(card: SetupCard): INodeProperties[] {
+	return getCardParameters(card).filter((p) => !isNestedParam(p));
+}
+
+function getCardNestedParameterCount(card: SetupCard): number {
+	return getCardParameters(card).filter(isNestedParam).length;
+}
+
+function openNdv(card: SetupCard): void {
+	ndvStore.setActiveNodeName(card.nodes[0].node.name, 'other');
+}
+
+// ---------------------------------------------------------------------------
 // State — selections keyed by CARD ID (not credential type)
 // ---------------------------------------------------------------------------
 
@@ -175,6 +253,7 @@ const isPartial = ref(false);
 const isApplying = ref(false);
 const isStoreReady = ref(false);
 const applyError = ref<string | null>(null);
+const showFullWizard = ref(false);
 const selections = ref<Record<string, string | null>>({});
 const paramValues = ref<Record<string, Record<string, unknown>>>({});
 const credTestOverrides = ref<Record<string, { success: boolean; message?: string } | null>>({});
@@ -229,13 +308,13 @@ function initParamValues() {
 		const nodeName = req.node.name;
 		if (paramValues.value[nodeName]) continue;
 
-		const editableParams = req.editableParameters ?? [];
+		const issueParamNames = Object.keys(req.parameterIssues ?? {});
 		const nodeParams = req.node.parameters;
 		const seeded: Record<string, unknown> = {};
-		for (const param of editableParams) {
-			const existing = nodeParams[param.name];
+		for (const paramName of issueParamNames) {
+			const existing = nodeParams[paramName];
 			if (existing !== undefined && existing !== null && existing !== '') {
-				seeded[param.name] = existing;
+				seeded[paramName] = existing;
 			}
 		}
 		if (Object.keys(seeded).length > 0) {
@@ -249,49 +328,28 @@ initParamValues();
 // Parameter helpers
 // ---------------------------------------------------------------------------
 
-/** Get all editable parameters for a card (from the first node's editableParameters). */
-function getCardEditableParams(
-	card: SetupCard,
-): NonNullable<InstanceAiWorkflowSetupNode['editableParameters']> {
-	if (!card.hasParamIssues) return [];
-	const req = card.nodes[0];
-	return req.editableParameters ?? [];
-}
-
-/** Get parameter issues for a card (from the first node). */
-function getCardParamIssues(card: SetupCard): Record<string, string[]> {
-	if (!card.hasParamIssues) return {};
-	const req = card.nodes[0];
-	return req.parameterIssues ?? {};
-}
-
-/** Get the current value for a node parameter from paramValues. */
-function getParamValue(nodeName: string, paramName: string): unknown {
-	return paramValues.value[nodeName]?.[paramName];
-}
-
-/** Resolve a select option's string value back to its original typed value. */
-function resolveOptionValue(
-	options: Array<{ name: string; value: string | number | boolean }>,
-	stringValue: string,
-): string | number | boolean {
-	const match = options.find((o) => String(o.value) === stringValue);
-	return match ? match.value : stringValue;
-}
-
-/** Parse a number input value — empty string produces undefined, not 0. */
-function parseNumberInput(raw: string): number | undefined {
-	if (raw === '') return undefined;
-	const num = Number(raw);
-	return Number.isNaN(num) ? undefined : num;
-}
-
 /** Set a parameter value. */
 function setParamValue(nodeName: string, paramName: string, value: unknown): void {
 	if (!paramValues.value[nodeName]) {
 		paramValues.value[nodeName] = {};
 	}
 	paramValues.value[nodeName][paramName] = value;
+}
+
+/** Bridge ParameterInputList events to both local paramValues AND the workflow store node. */
+function onParameterValueChanged(card: SetupCard, parameterData: IUpdateInformation): void {
+	const nodeName = card.nodes[0].node.name;
+	const paramName = parameterData.name.replace(/^parameters\./, '');
+
+	// 1. Update local paramValues (used by buildNodeParameters on Apply)
+	setParamValue(nodeName, paramName, parameterData.value);
+
+	// 2. Update workflow store node (needed for ParameterInputList reactivity,
+	//    dependent param resolution, and loadOptions calls)
+	const canvasNode = workflowsStore.getNodeByName(nodeName);
+	if (canvasNode) {
+		canvasNode.parameters = { ...canvasNode.parameters, [paramName]: parameterData.value };
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -305,24 +363,6 @@ function getEffectiveCredTestResult(
 		return credTestOverrides.value[card.id];
 	}
 	return card.credentialTestResult;
-}
-
-// ---------------------------------------------------------------------------
-// Parameter validation helpers
-// ---------------------------------------------------------------------------
-
-function isParamValueValid(
-	param: NonNullable<InstanceAiWorkflowSetupNode['editableParameters']>[number],
-	value: unknown,
-): boolean {
-	if (value === undefined || value === null || value === '') return false;
-	if (param.options && param.options.length > 0) {
-		return param.options.some((opt) => String(opt.value) === String(value));
-	}
-	if (param.type === 'number') {
-		return typeof value === 'number' && !Number.isNaN(value);
-	}
-	return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -348,10 +388,12 @@ function isTriggerTestDisabled(card: SetupCard): boolean {
 	if (testResult !== undefined && testResult !== null && !testResult.success) return true;
 	// Disabled if parameter issues not resolved
 	if (card.hasParamIssues) {
-		const editableParams = getCardEditableParams(card);
+		const params = getCardParameters(card);
 		const nodeName = card.nodes[0].node.name;
-		for (const param of editableParams) {
-			if (!isParamValueValid(param, getParamValue(nodeName, param.name))) return true;
+		const storeNode = workflowsStore.getNodeByName(nodeName);
+		for (const param of params) {
+			const val = paramValues.value[nodeName]?.[param.name] ?? storeNode?.parameters?.[param.name];
+			if (val === undefined || val === null || val === '') return true;
 		}
 	}
 	return false;
@@ -371,13 +413,14 @@ function isCardComplete(card: SetupCard): boolean {
 		if (testResult !== undefined && testResult !== null && !testResult.success) return false;
 	}
 
-	// Parameter issues check — type-aware validation
+	// Parameter issues check
 	if (card.hasParamIssues) {
-		const editableParams = getCardEditableParams(card);
+		const params = getCardParameters(card);
 		const nodeName = card.nodes[0].node.name;
-		for (const param of editableParams) {
-			const val = getParamValue(nodeName, param.name);
-			if (!isParamValueValid(param, val)) return false;
+		const storeNode = workflowsStore.getNodeByName(nodeName);
+		for (const param of params) {
+			const val = paramValues.value[nodeName]?.[param.name] ?? storeNode?.parameters?.[param.name];
+			if (val === undefined || val === null || val === '') return false;
 		}
 	}
 
@@ -394,6 +437,8 @@ function isCardComplete(card: SetupCard): boolean {
 const allCardsComplete = computed(() => cards.value.every((c) => isCardComplete(c)));
 const anyCardComplete = computed(() => cards.value.some((c) => isCardComplete(c)));
 const isPartialApply = computed(() => anyCardComplete.value && !allCardsComplete.value);
+
+const allPreResolved = computed(() => props.setupRequests.every((r) => !r.needsAction));
 
 // ---------------------------------------------------------------------------
 // Auto-advance: only when a card transitions from incomplete -> complete
@@ -445,22 +490,44 @@ const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) =>
 
 onUnmounted(() => {
 	stopDeleteListener();
+	if (previousWorkflow) {
+		workflowsStore.setWorkflow(previousWorkflow);
+	}
 });
 
 onMounted(async () => {
-	// Ensure the credentials store is populated so NodeCredentials can show
-	// existing credentials in the dropdown. The Instance AI page may not have
-	// fetched them yet. We gate rendering on isStoreReady to avoid timing
-	// issues where NodeCredentials renders before options are available.
+	// Deduplicate node type infos for fetching
+	const nodeInfos = props.setupRequests
+		.map((req) => ({ name: req.node.type, version: req.node.typeVersion }))
+		.filter(
+			(info, i, arr) =>
+				arr.findIndex((x) => x.name === info.name && x.version === info.version) === i,
+		);
+
+	// Ensure stores are populated: credentials, credential types, node types,
+	// and the workflow itself (so ParameterInputList can access nodes).
 	try {
 		await Promise.all([
 			credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
+			nodeTypesStore.getNodesInformation(nodeInfos),
 		]);
 	} catch {
-		// Credentials will be unavailable in the dropdown but the user can
-		// still create new ones via the "Set up credential" button.
+		// Credentials/node types may be unavailable but we continue.
 	}
+
+	// Load the AI-created workflow into workflowsStore so ParameterInputList
+	// can access nodes, connections, and the workflow ID for resource locator
+	// API calls. Save and restore previous state on unmount.
+	try {
+		const workflowData = await fetchWorkflowApi(rootStore.restApiContext, props.workflowId);
+		previousWorkflow = { ...workflowsStore.workflow };
+		workflowsStore.setWorkflow(workflowData);
+	} catch {
+		// Workflow fetch failed — ParameterInputList won't have full context
+		// but basic credential selection still works.
+	}
+
 	isStoreReady.value = true;
 
 	const firstIncomplete = cards.value.findIndex((c) => !isCardComplete(c));
@@ -568,20 +635,28 @@ function buildNodeCredentials(): Record<string, Record<string, string>> {
 	return result;
 }
 
-/** Build nodeParameters from paramValues (only include entries with values). */
+/** Build nodeParameters from paramValues + store node (for NDV-edited params). */
 function buildNodeParameters(): Record<string, Record<string, unknown>> | undefined {
 	const result: Record<string, Record<string, unknown>> = {};
 	let hasValues = false;
-	for (const [nodeName, params] of Object.entries(paramValues.value)) {
-		const filtered: Record<string, unknown> = {};
-		for (const [key, val] of Object.entries(params)) {
+
+	for (const card of cards.value) {
+		if (!card.hasParamIssues) continue;
+		const nodeName = card.nodes[0].node.name;
+		const storeNode = workflowsStore.getNodeByName(nodeName);
+		const issueParamNames = Object.keys(card.nodes[0].parameterIssues ?? {});
+
+		const merged: Record<string, unknown> = {};
+		for (const paramName of issueParamNames) {
+			// Prefer paramValues (explicitly edited inline), fall back to store node
+			const val = paramValues.value[nodeName]?.[paramName] ?? storeNode?.parameters?.[paramName];
 			if (val !== undefined && val !== null && val !== '') {
-				filtered[key] = val;
+				merged[paramName] = val;
 				hasValues = true;
 			}
 		}
-		if (Object.keys(filtered).length > 0) {
-			result[nodeName] = filtered;
+		if (Object.keys(merged).length > 0) {
+			result[nodeName] = merged;
 		}
 	}
 	return hasValues ? result : undefined;
@@ -603,6 +678,25 @@ function onCredentialSelected(card: SetupCard, updateInfo: INodeUpdateProperties
 	}
 	// Clear stale backend test result — this credential hasn't been tested
 	credTestOverrides.value[card.id] = null;
+
+	// Sync credential to workflow store node — needed so ResourceLocator
+	// component sends the correct credential in loadOptions API calls
+	if (credentialId && card.credentialType) {
+		for (const req of card.nodes) {
+			const storeNode = workflowsStore.getNodeByName(req.node.name);
+			if (storeNode) {
+				const cred =
+					req.existingCredentials?.find((c) => c.id === credentialId) ??
+					credentialsStore.getCredentialById(credentialId);
+				if (cred) {
+					storeNode.credentials = {
+						...storeNode.credentials,
+						[card.credentialType]: { id: cred.id, name: cred.name },
+					};
+				}
+			}
+		}
+	}
 }
 
 async function handleTestTrigger(nodeName: string) {
@@ -817,8 +911,71 @@ function handleLater() {
 <template>
 	<div :class="$style.root">
 		<template v-if="!isSubmitted && !isApplying">
+			<!-- Streamlined confirm mode: all items pre-resolved by AI -->
 			<div
-				v-if="currentCard"
+				v-if="allPreResolved && !showFullWizard"
+				data-test-id="instance-ai-workflow-setup-confirm"
+				:class="$style.confirmCard"
+			>
+				<header :class="$style.header">
+					<N8nIcon icon="check" size="small" :class="$style.success" />
+					<N8nText :class="$style.title" size="medium" color="text-dark" bold>
+						{{ i18n.baseText('instanceAi.workflowSetup.confirmTitle' as BaseTextKey) }}
+					</N8nText>
+				</header>
+				<div :class="$style.confirmSummary">
+					<N8nText size="small" color="text-light">
+						{{
+							i18n.baseText('instanceAi.workflowSetup.confirmDescription' as BaseTextKey, {
+								interpolate: { count: String(cards.length) },
+							})
+						}}
+					</N8nText>
+					<ul :class="$style.confirmList">
+						<li v-for="card in cards" :key="card.id" :class="$style.confirmItem">
+							<CredentialIcon
+								v-if="useCredentialIcon(card)"
+								:credential-type-name="card.credentialType!"
+								:size="14"
+							/>
+							<N8nIcon v-else icon="check" size="xsmall" :class="$style.success" />
+							<N8nText size="small">{{ getCardTitle(card) }}</N8nText>
+						</li>
+					</ul>
+				</div>
+				<footer :class="$style.footer">
+					<div :class="$style.footerNav">
+						<N8nLink
+							data-test-id="instance-ai-workflow-setup-review-details"
+							:underline="true"
+							theme="text"
+							size="small"
+							@click="showFullWizard = true"
+						>
+							{{ i18n.baseText('instanceAi.workflowSetup.reviewDetails' as BaseTextKey) }}
+						</N8nLink>
+					</div>
+					<div :class="$style.footerActions">
+						<N8nButton
+							variant="ghost"
+							size="small"
+							:class="$style.actionButton"
+							:label="i18n.baseText('instanceAi.workflowSetup.later')"
+							data-test-id="instance-ai-workflow-setup-later"
+							@click="handleLater"
+						/>
+						<N8nButton
+							size="small"
+							:class="$style.actionButton"
+							:label="i18n.baseText('instanceAi.workflowSetup.apply')"
+							data-test-id="instance-ai-workflow-setup-apply-button"
+							@click="handleApply"
+						/>
+					</div>
+				</footer>
+			</div>
+			<div
+				v-else-if="currentCard"
 				data-test-id="instance-ai-workflow-setup-card"
 				:class="[$style.card, { [$style.completed]: isCardComplete(currentCard) }]"
 			>
@@ -900,103 +1057,35 @@ function handleLater() {
 						</NodeCredentials>
 					</div>
 
-					<!-- Inline parameter editing -->
-					<div
-						v-if="currentCard.hasParamIssues && getCardEditableParams(currentCard).length > 0"
-						:class="$style.paramSection"
+					<!-- Parameter editing via ParameterInputList -->
+					<ParameterInputList
+						v-if="currentCard.hasParamIssues && getCardSimpleParameters(currentCard).length > 0"
+						:parameters="getCardSimpleParameters(currentCard)"
+						:node-values="{ parameters: currentCardNode?.parameters ?? {} }"
+						:node="currentCardNode ?? undefined"
+						:hide-delete="true"
+						:remove-first-parameter-margin="true"
+						path="parameters"
+						:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
+						@value-changed="onParameterValueChanged(currentCard, $event)"
+					/>
+
+					<!-- Link to configure complex parameters in NDV -->
+					<N8nLink
+						v-if="currentCard.hasParamIssues && getCardNestedParameterCount(currentCard) > 0"
+						data-test-id="instance-ai-workflow-setup-configure-link"
+						:underline="true"
+						theme="text"
+						size="medium"
+						@click="openNdv(currentCard)"
 					>
-						<N8nText size="small" color="text-light" :class="$style.paramLabel">
-							{{ i18n.baseText('instanceAi.workflowSetup.parameterIssues') }}
-						</N8nText>
-						<div
-							v-for="param in getCardEditableParams(currentCard)"
-							:key="param.name"
-							:class="$style.paramField"
-						>
-							<label :class="$style.paramFieldLabel">
-								<N8nText size="small" color="text-dark">
-									{{ param.displayName }}
-								</N8nText>
-							</label>
-
-							<!-- Options type: select (preserves original value type) -->
-							<select
-								v-if="param.options && param.options.length > 0"
-								:class="$style.paramSelect"
-								:value="String(getParamValue(currentCard.nodes[0].node.name, param.name) ?? '')"
-								data-test-id="instance-ai-workflow-setup-param-select"
-								@change="
-									setParamValue(
-										currentCard.nodes[0].node.name,
-										param.name,
-										resolveOptionValue(param.options!, ($event.target as HTMLSelectElement).value),
-									)
-								"
-							>
-								<option value="" disabled>
-									{{ i18n.baseText('instanceAi.workflowSetup.selectOption') }}
-								</option>
-								<option v-for="opt in param.options" :key="String(opt.value)" :value="opt.value">
-									{{ opt.name }}
-								</option>
-							</select>
-
-							<!-- Boolean type: checkbox -->
-							<input
-								v-else-if="param.type === 'boolean'"
-								type="checkbox"
-								:class="$style.paramCheckbox"
-								:checked="Boolean(getParamValue(currentCard.nodes[0].node.name, param.name))"
-								data-test-id="instance-ai-workflow-setup-param-checkbox"
-								@change="
-									setParamValue(
-										currentCard.nodes[0].node.name,
-										param.name,
-										($event.target as HTMLInputElement).checked,
-									)
-								"
-							/>
-
-							<!-- Number type: number input -->
-							<input
-								v-else-if="param.type === 'number'"
-								type="number"
-								:class="$style.paramInput"
-								:value="getParamValue(currentCard.nodes[0].node.name, param.name) ?? ''"
-								:placeholder="param.default !== undefined ? String(param.default) : ''"
-								data-test-id="instance-ai-workflow-setup-param-number"
-								@input="
-									setParamValue(
-										currentCard.nodes[0].node.name,
-										param.name,
-										parseNumberInput(($event.target as HTMLInputElement).value),
-									)
-								"
-							/>
-
-							<!-- String type: text input -->
-							<input
-								v-else-if="param.type === 'string'"
-								type="text"
-								:class="$style.paramInput"
-								:value="getParamValue(currentCard.nodes[0].node.name, param.name) ?? ''"
-								:placeholder="param.default !== undefined ? String(param.default) : ''"
-								data-test-id="instance-ai-workflow-setup-param-text"
-								@input="
-									setParamValue(
-										currentCard.nodes[0].node.name,
-										param.name,
-										($event.target as HTMLInputElement).value,
-									)
-								"
-							/>
-
-							<!-- Other types: show issue text read-only -->
-							<N8nText v-else size="small" color="text-light">
-								{{ (getCardParamIssues(currentCard)[param.name] ?? []).join(', ') }}
-							</N8nText>
-						</div>
-					</div>
+						{{
+							i18n.baseText('instanceAi.workflowSetup.configureParameters' as BaseTextKey, {
+								adjustToNumber: getCardNestedParameterCount(currentCard),
+								interpolate: { count: String(getCardNestedParameterCount(currentCard)) },
+							})
+						}}
+					</N8nLink>
 				</div>
 
 				<!-- Listening callout for webhook triggers -->
@@ -1133,6 +1222,40 @@ function handleLater() {
 	}
 }
 
+.confirmCard {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: 0;
+	background-color: var(--color--background--light-3);
+	border: var(--border);
+	border-color: var(--color--success);
+	border-radius: var(--radius);
+}
+
+.confirmSummary {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: 0 var(--spacing--sm);
+}
+
+.confirmList {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.confirmItem {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
 .header {
 	display: flex;
 	align-items: center;
@@ -1165,49 +1288,6 @@ function handleLater() {
 	:global(.node-credentials) {
 		margin-top: 0;
 	}
-}
-
-.paramSection {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.paramLabel {
-	margin-bottom: var(--spacing--4xs);
-}
-
-.paramField {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-}
-
-.paramFieldLabel {
-	display: block;
-}
-
-.paramInput,
-.paramSelect {
-	width: 100%;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	font-family: var(--font-family);
-	font-size: var(--font-size--2xs);
-	background-color: var(--color--background);
-	color: var(--color--text);
-
-	&:focus {
-		outline: none;
-		border-color: var(--color--primary);
-	}
-}
-
-.paramCheckbox {
-	width: var(--spacing--sm);
-	height: var(--spacing--sm);
-	cursor: pointer;
 }
 
 .listeningCallout {
