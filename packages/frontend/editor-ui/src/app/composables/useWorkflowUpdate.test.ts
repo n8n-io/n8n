@@ -14,10 +14,6 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
 
 // Mock canvas event bus - using hoisted to ensure proper initialization order
 const canvasEventBusEmitMock = vi.hoisted(() => vi.fn());
