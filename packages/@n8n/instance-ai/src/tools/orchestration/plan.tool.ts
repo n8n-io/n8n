@@ -8,8 +8,17 @@ const plannedTaskSchema = z.object({
 	title: z.string().describe('Short user-facing task title'),
 	kind: z.enum(['delegate', 'build-workflow', 'manage-data-tables', 'research']),
 	spec: z.string().describe('Detailed executor briefing for this task'),
-	deps: z.array(z.string()).describe('Task IDs that must succeed before this task can start'),
+	deps: z
+		.array(z.string())
+		.describe(
+			'Task IDs that must succeed before this task can start. ' +
+				'Data stores before workflows that use them; independent workflows in parallel.',
+		),
 	tools: z.array(z.string()).optional().describe('Required tool subset for delegate tasks'),
+	workflowId: z
+		.string()
+		.optional()
+		.describe('Existing workflow ID to modify (build-workflow tasks only)'),
 });
 
 const planInputSchema = z.object({

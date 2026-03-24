@@ -557,6 +557,8 @@ export interface PlannedTask {
 	spec: string;
 	deps: string[];
 	tools?: string[];
+	/** Existing workflow ID for build-workflow tasks that modify an existing workflow. */
+	workflowId?: string;
 }
 
 export type PlannedTaskStatus = 'planned' | 'running' | 'succeeded' | 'failed' | 'cancelled';

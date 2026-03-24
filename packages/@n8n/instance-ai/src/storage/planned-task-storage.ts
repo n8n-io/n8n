@@ -22,6 +22,7 @@ const plannedTaskRecordSchema = z.object({
 	spec: z.string(),
 	deps: z.array(z.string()),
 	tools: z.array(z.string()).optional(),
+	workflowId: z.string().optional(),
 	status: plannedTaskStatusSchema,
 	agentId: z.string().optional(),
 	backgroundTaskId: z.string().optional(),

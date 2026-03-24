@@ -646,6 +646,7 @@ export class InstanceAiService {
 			case 'build-workflow':
 				started = await startBuildWorkflowAgentTask(context, {
 					task: task.spec,
+					workflowId: task.workflowId,
 					plannedTaskId: task.id,
 				});
 				break;
