@@ -721,54 +721,16 @@ async function handleApply() {
 		applyServerResultToCanvas(toolResult);
 		isSubmitted.value = true;
 		isPartial.value = (toolResult.partial as boolean) ?? false;
+		// Resolve only on success — this unmounts the component
+		store.resolveConfirmation(props.requestId, 'approved');
 	} else if (toolResult) {
+		// Backend returned an error — keep the UI mounted so the user can retry
 		applyError.value = (toolResult.error as string) ?? 'Apply failed';
-		isSubmitted.value = true;
-		isPartial.value = false;
 	} else {
-		// Timeout — degraded fallback: apply local data so the user isn't stuck.
-		// This weakens the "backend-authoritative" guarantee under transport failure
-		// but prevents an indefinite spinner.
-		applyLocalFallback(nodeCredentials, nodeParameters);
-		isSubmitted.value = true;
-		isPartial.value = isPartialApply.value;
-	}
-
-	// Resolve AFTER canvas is updated — this unmounts the component
-	store.resolveConfirmation(props.requestId, 'approved');
-}
-
-/**
- * Fallback: apply local data to canvas when the SSE result times out.
- * This preserves the existing behavior as a safety net.
- */
-function applyLocalFallback(
-	nodeCredentials: Record<string, Record<string, string>>,
-	nodeParameters?: Record<string, Record<string, unknown>>,
-) {
-	for (const [nodeName, credMap] of Object.entries(nodeCredentials)) {
-		const node = workflowsStore.getNodeByName(nodeName);
-		if (!node) continue;
-
-		const updatedCredentials = { ...node.credentials };
-		for (const [credType, credId] of Object.entries(credMap)) {
-			const credential = credentialsStore.getCredentialById(credId);
-			if (credential) {
-				updatedCredentials[credType] = { id: credential.id, name: credential.name };
-			}
-		}
-		node.credentials = updatedCredentials;
-		nodeHelpers.updateNodeParameterIssuesByName(nodeName);
-		nodeHelpers.updateNodeCredentialIssuesByName(nodeName);
-	}
-
-	if (nodeParameters) {
-		for (const [nodeName, params] of Object.entries(nodeParameters)) {
-			const node = workflowsStore.getNodeByName(nodeName);
-			if (!node) continue;
-			node.parameters = { ...node.parameters, ...params } as INodeUi['parameters'];
-			nodeHelpers.updateNodeParameterIssuesByName(nodeName);
-		}
+		// Timeout — keep the UI mounted so the user can retry.
+		// We do NOT fall back to local mutation or mark as submitted,
+		// because the backend state is unknown.
+		applyError.value = 'Apply timed out — please try again.';
 	}
 }
 
@@ -977,6 +939,12 @@ function handleLater() {
 					</N8nText>
 				</div>
 
+				<!-- Error banner (shown when apply fails, user can retry) -->
+				<div v-if="applyError" :class="$style.errorBanner">
+					<N8nIcon icon="triangle-alert" size="small" :class="$style.error" />
+					<N8nText size="small" color="text-dark">{{ applyError }}</N8nText>
+				</div>
+
 				<!-- Footer -->
 				<footer :class="$style.footer">
 					<div :class="$style.footerNav">
@@ -1055,10 +1023,6 @@ function handleLater() {
 			<template v-if="isDeferred">
 				<N8nIcon icon="arrow-right" size="small" :class="$style.skippedIcon" />
 				<span>{{ i18n.baseText('instanceAi.workflowSetup.deferred') }}</span>
-			</template>
-			<template v-else-if="applyError">
-				<N8nIcon icon="triangle-alert" size="small" :class="$style.error" />
-				<span>{{ applyError }}</span>
 			</template>
 			<template v-else-if="isPartial">
 				<N8nIcon icon="check" size="small" :class="$style.partialIcon" />
@@ -1176,6 +1140,16 @@ function handleLater() {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	padding: 0 var(--spacing--sm) var(--spacing--2xs);
+}
+
+.errorBanner {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	background: var(--color--danger--tint-4);
+	border-radius: var(--radius);
+	margin: 0 var(--spacing--sm);
 }
 
 .footer {
