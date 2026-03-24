@@ -247,7 +247,7 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 	} else if (route.name !== routeToNavigateTo.name) {
 		dirtyState.value = uiStore.stateIsDirty;
 		workflowToReturnTo.value = workflowId.value;
-		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
 		await router.push(routeToNavigateTo);
 	}
 }
