@@ -550,9 +550,12 @@ export class InstanceAiAdapterService {
 
 				const nodes = workflow.nodes ?? [];
 
-				// Find trigger node using known trigger type constants first,
+				// Use the explicitly requested trigger node when provided,
+				// otherwise auto-detect using known trigger type constants
 				// then fall back to naive string matching for unknown trigger types
-				const triggerNode = findTriggerNode(nodes);
+				const triggerNode = options?.triggerNodeName
+					? (nodes.find((n) => n.name === options.triggerNodeName) ?? findTriggerNode(nodes))
+					: findTriggerNode(nodes);
 
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: triggerNode

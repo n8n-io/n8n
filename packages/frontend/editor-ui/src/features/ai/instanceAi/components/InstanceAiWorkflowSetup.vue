@@ -1,8 +1,12 @@
 <script lang="ts" setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiWorkflowSetupNode, InstanceAiCredentialFlow } from '@n8n/api-types';
+import type {
+	InstanceAiWorkflowSetupNode,
+	InstanceAiCredentialFlow,
+	InstanceAiToolCallState,
+} from '@n8n/api-types';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -168,6 +172,8 @@ const showArrows = computed(() => totalSteps.value > 1);
 const isSubmitted = ref(false);
 const isDeferred = ref(false);
 const isPartial = ref(false);
+const isApplying = ref(false);
+const applyError = ref<string | null>(null);
 const selections = ref<Record<string, string | null>>({});
 const paramValues = ref<Record<string, Record<string, unknown>>>({});
 const credTestOverrides = ref<Record<string, { success: boolean; message?: string } | null>>({});
@@ -579,63 +585,107 @@ async function handleTestTrigger(nodeName: string) {
 }
 
 /**
- * Optimistically update canvas nodes with the applied credentials and parameters.
- * This ensures the canvas reflects the changes immediately, without waiting
- * for the backend round-trip via the SSE tool-result event.
+ * Apply the server's authoritative updatedNodes to the canvas.
+ * Uses the backend result rather than local data to ensure the canvas
+ * reflects the actual persisted state.
  */
-function applyToCanvas(
-	nodeCredentials: Record<string, Record<string, string>>,
-	nodeParameters?: Record<string, Record<string, unknown>>,
-) {
-	const affectedNodeNames = new Set<string>();
+function applyServerResultToCanvas(toolResult: Record<string, unknown>) {
+	const updatedNodes = toolResult.updatedNodes as
+		| Array<{
+				id: string;
+				name?: string;
+				type: string;
+				typeVersion: number;
+				position: [number, number];
+				parameters?: Record<string, unknown>;
+				credentials?: Record<string, { id?: string; name: string }>;
+		  }>
+		| undefined;
 
-	// Apply credentials to canvas nodes
-	for (const [nodeName, credMap] of Object.entries(nodeCredentials)) {
-		const node = workflowsStore.getNodeByName(nodeName);
-		if (!node) continue;
-		affectedNodeNames.add(nodeName);
+	if (!updatedNodes) return;
 
-		const updatedCredentials = { ...node.credentials };
-		for (const [credType, credId] of Object.entries(credMap)) {
-			const credential = credentialsStore.getCredentialById(credId);
-			if (credential) {
-				updatedCredentials[credType] = { id: credential.id, name: credential.name };
-			}
+	for (const serverNode of updatedNodes) {
+		const canvasNode = workflowsStore.getNodeByName(serverNode.name ?? '');
+		if (!canvasNode) continue;
+
+		if (serverNode.credentials) {
+			canvasNode.credentials = serverNode.credentials as INodeUi['credentials'];
 		}
-		node.credentials = updatedCredentials;
-	}
-
-	// Apply parameters to canvas nodes
-	if (nodeParameters) {
-		for (const [nodeName, params] of Object.entries(nodeParameters)) {
-			const node = workflowsStore.getNodeByName(nodeName);
-			if (!node) continue;
-			affectedNodeNames.add(nodeName);
-
-			// params values are user-entered primitives (string | number | boolean)
-			// which are a subset of NodeParameterValueType
-			node.parameters = {
-				...node.parameters,
-				...params,
-			} as INodeUi['parameters'];
+		if (serverNode.parameters) {
+			canvasNode.parameters = serverNode.parameters as INodeUi['parameters'];
 		}
-	}
 
-	// Refresh issue indicators for all affected nodes
-	for (const nodeName of affectedNodeNames) {
-		nodeHelpers.updateNodeParameterIssuesByName(nodeName);
-		nodeHelpers.updateNodeCredentialIssuesByName(nodeName);
+		if (serverNode.name) {
+			nodeHelpers.updateNodeParameterIssuesByName(serverNode.name);
+			nodeHelpers.updateNodeCredentialIssuesByName(serverNode.name);
+		}
 	}
 }
+
+/** Watch for the tool-result SSE event and resolve when it arrives. */
+function waitForToolResult(
+	requestId: string,
+	timeoutMs = 60_000,
+): { promise: Promise<Record<string, unknown> | null>; cancel: () => void } {
+	let stopWatch: (() => void) | null = null;
+	let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+	const promise = new Promise<Record<string, unknown> | null>((resolve) => {
+		// Check if already available
+		const existing = store.findToolCallByRequestId(requestId);
+		if (existing?.result !== undefined) {
+			resolve(existing.result as Record<string, unknown>);
+			return;
+		}
+
+		// Watch for the tool call result to appear
+		stopWatch = watch(
+			() => {
+				const tc: InstanceAiToolCallState | undefined = store.findToolCallByRequestId(requestId);
+				return tc?.result;
+			},
+			(result) => {
+				if (result !== undefined) {
+					cleanup();
+					resolve(result as Record<string, unknown>);
+				}
+			},
+		);
+
+		timeoutId = setTimeout(() => {
+			cleanup();
+			resolve(null);
+		}, timeoutMs);
+	});
+
+	function cleanup() {
+		if (stopWatch) {
+			stopWatch();
+			stopWatch = null;
+		}
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+			timeoutId = null;
+		}
+	}
+
+	return { promise, cancel: cleanup };
+}
+
+let cancelApplyWait: (() => void) | null = null;
+
+onUnmounted(() => {
+	cancelApplyWait?.();
+});
 
 async function handleApply() {
 	const nodeCredentials = buildNodeCredentials();
 	const nodeParameters = buildNodeParameters();
 
-	isSubmitted.value = true;
-	isPartial.value = isPartialApply.value;
+	isApplying.value = true;
+	applyError.value = null;
 
-	const success = await store.confirmAction(
+	const postSuccess = await store.confirmAction(
 		props.requestId,
 		true,
 		undefined,
@@ -650,14 +700,69 @@ async function handleApply() {
 		},
 	);
 
-	if (success) {
-		// Update canvas only after the backend confirmed the changes persisted
-		applyToCanvas(nodeCredentials, nodeParameters);
-		store.resolveConfirmation(props.requestId, 'approved');
-	} else {
-		// POST failed — revert state so user can retry
-		isSubmitted.value = false;
+	if (!postSuccess) {
+		isApplying.value = false;
+		applyError.value = 'Failed to send confirmation. Try again.';
+		return;
+	}
+
+	store.resolveConfirmation(props.requestId, 'approved');
+
+	// Wait for the actual tool result via SSE before updating the canvas
+	const { promise, cancel } = waitForToolResult(props.requestId);
+	cancelApplyWait = cancel;
+	const toolResult = await promise;
+	cancelApplyWait = null;
+
+	isApplying.value = false;
+
+	if (toolResult && (toolResult.success as boolean)) {
+		applyServerResultToCanvas(toolResult);
+		isSubmitted.value = true;
+		isPartial.value = (toolResult.partial as boolean) ?? false;
+	} else if (toolResult) {
+		applyError.value = (toolResult.error as string) ?? 'Apply failed';
+		isSubmitted.value = true;
 		isPartial.value = false;
+	} else {
+		// Timeout — apply locally as fallback so the user isn't stuck
+		applyLocalFallback(nodeCredentials, nodeParameters);
+		isSubmitted.value = true;
+		isPartial.value = isPartialApply.value;
+	}
+}
+
+/**
+ * Fallback: apply local data to canvas when the SSE result times out.
+ * This preserves the existing behavior as a safety net.
+ */
+function applyLocalFallback(
+	nodeCredentials: Record<string, Record<string, string>>,
+	nodeParameters?: Record<string, Record<string, unknown>>,
+) {
+	for (const [nodeName, credMap] of Object.entries(nodeCredentials)) {
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (!node) continue;
+
+		const updatedCredentials = { ...node.credentials };
+		for (const [credType, credId] of Object.entries(credMap)) {
+			const credential = credentialsStore.getCredentialById(credId);
+			if (credential) {
+				updatedCredentials[credType] = { id: credential.id, name: credential.name };
+			}
+		}
+		node.credentials = updatedCredentials;
+		nodeHelpers.updateNodeParameterIssuesByName(nodeName);
+		nodeHelpers.updateNodeCredentialIssuesByName(nodeName);
+	}
+
+	if (nodeParameters) {
+		for (const [nodeName, params] of Object.entries(nodeParameters)) {
+			const node = workflowsStore.getNodeByName(nodeName);
+			if (!node) continue;
+			node.parameters = { ...node.parameters, ...params } as INodeUi['parameters'];
+			nodeHelpers.updateNodeParameterIssuesByName(nodeName);
+		}
 	}
 }
 
@@ -671,7 +776,7 @@ function handleLater() {
 
 <template>
 	<div :class="$style.root">
-		<template v-if="!isSubmitted">
+		<template v-if="!isSubmitted && !isApplying">
 			<div
 				v-if="currentCard"
 				data-test-id="instance-ai-workflow-setup-card"
@@ -935,10 +1040,19 @@ function handleLater() {
 			</div>
 		</template>
 
+		<div v-else-if="isApplying" :class="$style.submitted">
+			<N8nIcon icon="spinner" size="small" :class="$style.loading" />
+			<span>{{ i18n.baseText('instanceAi.workflowSetup.applying') }}</span>
+		</div>
+
 		<div v-else :class="$style.submitted">
 			<template v-if="isDeferred">
 				<N8nIcon icon="arrow-right" size="small" :class="$style.skippedIcon" />
 				<span>{{ i18n.baseText('instanceAi.workflowSetup.deferred') }}</span>
+			</template>
+			<template v-else-if="applyError">
+				<N8nIcon icon="triangle-alert" size="small" :class="$style.error" />
+				<span>{{ applyError }}</span>
 			</template>
 			<template v-else-if="isPartial">
 				<N8nIcon icon="check" size="small" :class="$style.partialIcon" />

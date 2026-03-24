@@ -65,6 +65,21 @@ function collectPendingConfirmations(
 	}
 }
 
+/** Find a tool call in an agent tree by its confirmation requestId. */
+function findToolCallInTree(
+	node: InstanceAiAgentNode,
+	requestId: string,
+): InstanceAiToolCallState | undefined {
+	for (const tc of node.toolCalls) {
+		if (tc.confirmation?.requestId === requestId) return tc;
+	}
+	for (const child of node.children) {
+		const found = findToolCallInTree(child, requestId);
+		if (found) return found;
+	}
+	return undefined;
+}
+
 // Module-level EventSource reference — not in reactive state (not serializable,
 // not needed for rendering, wrapping in a reactive proxy causes issues).
 let eventSource: EventSource | null = null;
@@ -179,6 +194,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		const next = new Map(resolvedConfirmationIds.value);
 		next.set(requestId, action);
 		resolvedConfirmationIds.value = next;
+	}
+
+	/** Find a tool call by its confirmation requestId across all messages. */
+	function findToolCallByRequestId(requestId: string): InstanceAiToolCallState | undefined {
+		for (const msg of messages.value) {
+			if (!msg.agentTree) continue;
+			const found = findToolCallInTree(msg.agentTree, requestId);
+			if (found) return found;
+		}
+		return undefined;
 	}
 
 	// --- Event reducer (delegated to pure module) ---
@@ -814,6 +839,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		toggleResearchMode,
 		confirmAction,
 		resolveConfirmation,
+		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,
 		connectSSE,

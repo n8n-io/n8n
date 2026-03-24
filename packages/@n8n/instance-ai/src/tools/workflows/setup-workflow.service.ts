@@ -186,6 +186,22 @@ export async function buildSetupRequests(
 		if (!credentialType && !isTrigger && !hasParamIssues) continue;
 		if (!credentialType && isTrigger && !isTestable && !hasParamIssues) continue;
 
+		// Determine whether this request still needs user intervention.
+		// A credential request needs action if no credential is set or the test failed.
+		// A parameter request needs action if issues remain.
+		// A trigger-only request (no credential, no param issues) never blocks apply.
+		let needsAction = false;
+		if (credentialType) {
+			const existingOnNode = node.credentials?.[credentialType];
+			const hasValidCredential =
+				existingOnNode?.id !== undefined &&
+				(credentialTestResult === undefined || credentialTestResult.success);
+			needsAction = !hasValidCredential;
+		}
+		if (hasParamIssues) {
+			needsAction = true;
+		}
+
 		const request: SetupRequest = {
 			node: {
 				name: node.name,
@@ -227,6 +243,7 @@ export async function buildSetupRequests(
 			...(triggerTestResult ? { triggerTestResult } : {}),
 			...(hasParamIssues ? { parameterIssues } : {}),
 			...(editableParameters && editableParameters.length > 0 ? { editableParameters } : {}),
+			needsAction,
 		};
 
 		requests.push(request);

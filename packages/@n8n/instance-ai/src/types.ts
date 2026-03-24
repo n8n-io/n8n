@@ -197,7 +197,12 @@ export interface InstanceAiExecutionService {
 	run(
 		workflowId: string,
 		inputData?: Record<string, unknown>,
-		options?: { timeout?: number; pinData?: Record<string, unknown[]> },
+		options?: {
+			timeout?: number;
+			pinData?: Record<string, unknown[]>;
+			/** When set, execute this specific trigger node instead of auto-detecting. */
+			triggerNodeName?: string;
+		},
 	): Promise<ExecutionResult>;
 	getStatus(executionId: string): Promise<ExecutionResult>;
 	getResult(executionId: string): Promise<ExecutionResult>;

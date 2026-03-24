@@ -157,6 +157,7 @@ export function createSetupWorkflowTool(context: InstanceAiContext) {
 				try {
 					const result = await context.executionService.run(input.workflowId, undefined, {
 						timeout: 30_000,
+						triggerNodeName: resumeData.testTriggerNode,
 					});
 					if (result.status === 'success') {
 						triggerTestResult = { status: 'success' };
@@ -221,22 +222,25 @@ export function createSetupWorkflowTool(context: InstanceAiContext) {
 				}));
 				const updatedConnections = updatedWorkflow.connections as Record<string, unknown>;
 
-				// Re-analyze to determine if any nodes still need setup
+				// Re-analyze to determine if any nodes still need setup.
+				// Filter by needsAction to distinguish "render this card" from
+				// "this still requires user intervention".
 				const remainingRequests = await analyzeWorkflow(context, input.workflowId);
+				const pendingRequests = remainingRequests.filter((r) => r.needsAction);
 				const completedNodes = buildCompletedReport(
 					resumeData.credentials,
 					resumeData.nodeParameters,
 				);
 
-				if (remainingRequests.length > 0) {
-					const skippedNodes = remainingRequests.map((r) => ({
+				if (pendingRequests.length > 0) {
+					const skippedNodes = pendingRequests.map((r) => ({
 						nodeName: r.node.name,
 						credentialType: r.credentialType,
 					}));
 					return {
 						success: true,
 						partial: true,
-						reason: `Applied setup for ${String(completedNodes.length)} node(s), ${String(skippedNodes.length)} node(s) still need configuration.`,
+						reason: `Applied setup for ${String(completedNodes.length)} node(s), ${String(pendingRequests.length)} node(s) still need configuration.`,
 						completedNodes,
 						skippedNodes,
 						failedNodes,

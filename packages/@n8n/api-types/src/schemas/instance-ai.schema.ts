@@ -215,6 +215,13 @@ export const workflowSetupNodeSchema = z.object({
 			}),
 		)
 		.optional(),
+	needsAction: z
+		.boolean()
+		.optional()
+		.describe(
+			'Whether this node still requires user intervention. ' +
+				'False when credentials are set and valid, parameters are resolved, etc.',
+		),
 });
 export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema>;
 
