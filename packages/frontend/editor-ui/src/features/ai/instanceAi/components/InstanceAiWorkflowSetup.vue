@@ -429,6 +429,23 @@ watch(
 	},
 );
 
+// Clear selection when a credential is deleted from the store
+const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) => {
+	if (name !== 'deleteCredential') return;
+	after(() => {
+		const deletedId = (args[0] as { id: string }).id;
+		for (const [cardId, selectedId] of Object.entries(selections.value)) {
+			if (selectedId === deletedId) {
+				selections.value[cardId] = null;
+			}
+		}
+	});
+});
+
+onUnmounted(() => {
+	stopDeleteListener();
+});
+
 onMounted(async () => {
 	// Ensure the credentials store is populated so NodeCredentials can show
 	// existing credentials in the dropdown. The Instance AI page may not have
