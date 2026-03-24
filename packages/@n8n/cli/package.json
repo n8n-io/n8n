@@ -39,7 +39,7 @@
 	},
 	"devDependencies": {
 		"@n8n/typescript-config": "workspace:*",
-		"@types/node": "catalog:",
+		"@types/node": "24.10.1",
 		"vitest": "catalog:"
 	}
 }
