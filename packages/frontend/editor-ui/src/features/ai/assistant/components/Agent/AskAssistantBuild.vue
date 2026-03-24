@@ -222,15 +222,19 @@ function isNonEmptyVersionCard(message: ChatUI.AssistantMessage): boolean {
 
 function isCurrentVersionCard(message: ChatUI.AssistantMessage): boolean {
 	if (!isNonEmptyVersionCard(message)) return false;
-	// Explicit active card takes priority (set by restore)
-	if (builderStore.activeVersionCardId) {
+	// If restore happened but no new messages sent yet, the restored card is current
+	if (builderStore.activeVersionCardId && !builderStore.resumeAfterRestoreMessageId) {
 		return message.id === builderStore.activeVersionCardId;
 	}
-	// Default: last non-empty version card
-	const nonEmptyCards = builderStore.chatMessages.filter(
-		(msg) => isVersionCardMessage(msg) && isNonEmptyVersionCard(msg),
+	// Default (including after resume): last non-empty, non-collapsed version card
+	const collapsed = builderStore.collapsedMessageIds;
+	const nonEmptyVisibleCards = builderStore.chatMessages.filter(
+		(msg) =>
+			isVersionCardMessage(msg) &&
+			isNonEmptyVersionCard(msg) &&
+			(!msg.id || !collapsed.has(msg.id)),
 	);
-	return nonEmptyCards[nonEmptyCards.length - 1]?.id === message.id;
+	return nonEmptyVisibleCards[nonEmptyVisibleCards.length - 1]?.id === message.id;
 }
 
 function getVersionIndex(message: ChatUI.AssistantMessage): number {

@@ -127,10 +127,20 @@ export function useReviewChanges() {
 	 * Per-version node changes. For each version card, computes the diff
 	 * between the PREVIOUS version's nodes and this version's nodes.
 	 * For the first version (no predecessor), all nodes are treated as additions.
+	 *
+	 * After a version restore, collapsed version cards are skipped when finding
+	 * the predecessor for non-collapsed cards. This ensures a new generation
+	 * after restore diffs against the restored version, not a collapsed one.
+	 * Collapsed cards still get their own diffs (using sequential ordering)
+	 * for when the user expands the collapsed group.
 	 */
 	const versionNodeChangesMap = computed<Map<string, NodeChangeEntry[]>>(() => {
 		const cards = builderStore.versionCardMessages;
+		const collapsed = builderStore.collapsedMessageIds;
 		const result = new Map<string, NodeChangeEntry[]>();
+
+		const isCardCollapsed = (id: string | undefined): boolean =>
+			Boolean(id) && collapsed.has(id as string);
 
 		for (let i = 0; i < cards.length; i++) {
 			const vid = cards[i].data.versionId;
@@ -138,15 +148,25 @@ export function useReviewChanges() {
 			if (!targetData) continue;
 
 			let sourceNodes: INode[];
-			if (i > 0) {
-				// Diff from previous version to this version
-				const prevVid = cards[i - 1].data.versionId;
-				const prevData = versionDataCache.value.get(prevVid);
+			if (i === 0) {
+				sourceNodes = [];
+			} else if (isCardCollapsed(cards[i].id)) {
+				// Collapsed cards diff against their immediate predecessor
+				const prevData = versionDataCache.value.get(cards[i - 1].data.versionId);
 				if (!prevData) continue;
 				sourceNodes = prevData.nodes;
 			} else {
-				// First version: no predecessor, so all nodes are additions
-				sourceNodes = [];
+				// Non-collapsed cards skip collapsed predecessors so that
+				// new generations after restore diff against the restored version.
+				let prevSourceNodes: INode[] | undefined;
+				for (let j = i - 1; j >= 0; j--) {
+					if (!isCardCollapsed(cards[j].id)) {
+						const prevData = versionDataCache.value.get(cards[j].data.versionId);
+						if (prevData) prevSourceNodes = prevData.nodes;
+						break;
+					}
+				}
+				sourceNodes = prevSourceNodes ?? [];
 			}
 
 			result.set(vid, computeNodeChanges(sourceNodes, targetData.nodes));

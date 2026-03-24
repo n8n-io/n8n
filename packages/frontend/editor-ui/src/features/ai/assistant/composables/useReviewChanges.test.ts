@@ -51,7 +51,8 @@ const mockBuilderStore = reactive({
 	streaming: false,
 	latestRevertVersion: null as { id: string } | null,
 	trackWorkflowBuilderJourney: vi.fn() as ReturnType<typeof vi.fn>,
-	versionCardMessages: [] as Array<{ data: { versionId: string } }>,
+	versionCardMessages: [] as Array<{ id?: string; data: { versionId: string } }>,
+	collapsedMessageIds: new Set<string>(),
 });
 
 const mockWorkflowsStore = reactive({
@@ -146,6 +147,7 @@ describe('useReviewChanges', () => {
 		mockBuilderStore.latestRevertVersion = null;
 		mockBuilderStore.trackWorkflowBuilderJourney = vi.fn();
 		mockBuilderStore.versionCardMessages = [];
+		mockBuilderStore.collapsedMessageIds = new Set();
 
 		mockWorkflowsStore.workflowId = 'wf-1';
 		mockWorkflowsStore.workflow = { id: 'wf-1', nodes: [], connections: {} };
@@ -811,6 +813,243 @@ describe('useReviewChanges', () => {
 			// Both v-1 and v-2 should have been fetched
 			expect(mockWorkflowHistoryStore.getWorkflowVersion).toHaveBeenCalledWith('wf-1', 'v-1');
 			expect(mockWorkflowHistoryStore.getWorkflowVersion).toHaveBeenCalledWith('wf-1', 'v-2');
+			unmount();
+		});
+	});
+
+	describe('versionNodeChangesMap with collapsed version cards', () => {
+		it('should diff non-collapsed cards against last non-collapsed predecessor, skipping collapsed ones', async () => {
+			// Scenario: vc-1 (visible), vc-2 (collapsed), vc-3 (collapsed), vc-4 (visible/new)
+			// vc-4 should diff against vc-1 (last visible predecessor), not vc-3
+			const nodesV1 = [makeNode({ id: 'n1', name: 'NodeV1' })];
+			const nodesV2 = [
+				makeNode({ id: 'n1', name: 'NodeV2' }),
+				makeNode({ id: 'n2', name: 'Added' }),
+			];
+			const nodesV3 = [
+				makeNode({ id: 'n1', name: 'NodeV3' }),
+				makeNode({ id: 'n2', name: 'Added' }),
+				makeNode({ id: 'n3', name: 'Added3' }),
+			];
+			const nodesV4 = [makeNode({ id: 'n1', name: 'NodeV4' })]; // After restore to v1, then new generation
+
+			mockBuilderStore.versionCardMessages = [
+				{ id: 'vc-1', data: { versionId: 'v-1' } },
+				{ id: 'vc-2', data: { versionId: 'v-2' } },
+				{ id: 'vc-3', data: { versionId: 'v-3' } },
+				{ id: 'vc-4', data: { versionId: 'v-4' } },
+			];
+			mockBuilderStore.collapsedMessageIds = new Set(['vc-2', 'vc-3']);
+			mockBuilderStore.latestRevertVersion = { id: 'v-4' };
+
+			mockWorkflowHistoryStore.getWorkflowVersion = vi
+				.fn()
+				.mockImplementation(async (_wfId: string, versionId: string) => {
+					const map: Record<string, { nodes: INode[]; connections: IConnections }> = {
+						'v-1': { nodes: nodesV1, connections: {} },
+						'v-2': { nodes: nodesV2, connections: {} },
+						'v-3': { nodes: nodesV3, connections: {} },
+						'v-4': { nodes: nodesV4, connections: {} },
+					};
+					return map[versionId];
+				});
+
+			// compareWorkflowsNodes should report what changed between source and target
+			compareWorkflowsNodesMock.mockImplementation((source: INode[], target: INode[]) => {
+				const result = new Map();
+				const sourceById = new Map(source.map((n) => [n.id, n]));
+				const targetById = new Map(target.map((n) => [n.id, n]));
+
+				for (const [id, node] of targetById) {
+					if (!sourceById.has(id)) {
+						result.set(id, { status: 'added', node });
+					} else if (sourceById.get(id)!.name !== node.name) {
+						result.set(id, { status: 'modified', node });
+					} else {
+						result.set(id, { status: 'equal', node });
+					}
+				}
+				for (const [id, node] of sourceById) {
+					if (!targetById.has(id)) {
+						result.set(id, { status: 'deleted', node });
+					}
+				}
+				return result;
+			});
+
+			const { result, unmount } = withSetup();
+			await flushPromises();
+
+			const changesV4 = result.versionNodeChangesMap.value.get('v-4');
+			expect(changesV4).toBeDefined();
+
+			// vc-4 should diff against vc-1 (skipping collapsed vc-2, vc-3)
+			// v-1 has [n1:NodeV1], v-4 has [n1:NodeV4]
+			// So the diff should show n1 as modified (not any additions from v2/v3)
+			const modifiedNodes = changesV4!.filter((c) => c.status === 'modified');
+			const addedNodes = changesV4!.filter((c) => c.status === 'added');
+			expect(modifiedNodes).toHaveLength(1);
+			expect(modifiedNodes[0].node.id).toBe('n1');
+			// No nodes should be "added" since both v1 and v4 only have n1
+			expect(addedNodes).toHaveLength(0);
+
+			unmount();
+		});
+
+		it('should use immediate predecessor for collapsed cards (original timeline)', async () => {
+			const nodesV1 = [makeNode({ id: 'n1', name: 'NodeV1' })];
+			const nodesV2 = [
+				makeNode({ id: 'n1', name: 'NodeV1' }),
+				makeNode({ id: 'n2', name: 'NewNode' }),
+			];
+
+			mockBuilderStore.versionCardMessages = [
+				{ id: 'vc-1', data: { versionId: 'v-1' } },
+				{ id: 'vc-2', data: { versionId: 'v-2' } },
+			];
+			mockBuilderStore.collapsedMessageIds = new Set(['vc-2']);
+			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+
+			mockWorkflowHistoryStore.getWorkflowVersion = vi
+				.fn()
+				.mockImplementation(async (_wfId: string, versionId: string) => {
+					const map: Record<string, { nodes: INode[]; connections: IConnections }> = {
+						'v-1': { nodes: nodesV1, connections: {} },
+						'v-2': { nodes: nodesV2, connections: {} },
+					};
+					return map[versionId];
+				});
+
+			compareWorkflowsNodesMock.mockImplementation((source: INode[], target: INode[]) => {
+				const result = new Map();
+				const sourceById = new Map(source.map((n) => [n.id, n]));
+				const targetById = new Map(target.map((n) => [n.id, n]));
+				for (const [id, node] of targetById) {
+					if (!sourceById.has(id)) {
+						result.set(id, { status: 'added', node });
+					} else {
+						result.set(id, { status: 'equal', node });
+					}
+				}
+				return result;
+			});
+
+			const { result, unmount } = withSetup();
+			await flushPromises();
+
+			// Collapsed vc-2 should still diff against vc-1 (immediate predecessor)
+			const changesV2 = result.versionNodeChangesMap.value.get('v-2');
+			expect(changesV2).toBeDefined();
+			expect(changesV2!).toHaveLength(1);
+			expect(changesV2![0].status).toBe('added');
+			expect(changesV2![0].node.id).toBe('n2');
+
+			unmount();
+		});
+
+		it('should treat first non-collapsed card as having no predecessor when all prior cards are collapsed', async () => {
+			const nodesV1 = [makeNode({ id: 'n1', name: 'NodeV1' })];
+			const nodesV2 = [makeNode({ id: 'n1', name: 'NodeV2' })];
+
+			mockBuilderStore.versionCardMessages = [
+				{ id: 'vc-1', data: { versionId: 'v-1' } },
+				{ id: 'vc-2', data: { versionId: 'v-2' } },
+			];
+			// Both collapsed (edge case)
+			mockBuilderStore.collapsedMessageIds = new Set(['vc-1', 'vc-2']);
+			mockBuilderStore.latestRevertVersion = { id: 'v-2' };
+
+			mockWorkflowHistoryStore.getWorkflowVersion = vi
+				.fn()
+				.mockImplementation(async (_wfId: string, versionId: string) => {
+					const map: Record<string, { nodes: INode[]; connections: IConnections }> = {
+						'v-1': { nodes: nodesV1, connections: {} },
+						'v-2': { nodes: nodesV2, connections: {} },
+					};
+					return map[versionId];
+				});
+
+			compareWorkflowsNodesMock.mockImplementation((source: INode[], target: INode[]) => {
+				const result = new Map();
+				const sourceById = new Map(source.map((n) => [n.id, n]));
+				const targetById = new Map(target.map((n) => [n.id, n]));
+				for (const [id, node] of targetById) {
+					if (!sourceById.has(id)) {
+						result.set(id, { status: 'added', node });
+					} else if (sourceById.get(id)!.name !== node.name) {
+						result.set(id, { status: 'modified', node });
+					} else {
+						result.set(id, { status: 'equal', node });
+					}
+				}
+				return result;
+			});
+
+			const { result, unmount } = withSetup();
+			await flushPromises();
+
+			// Both are collapsed, so both use immediate predecessor logic
+			// v-1 is first → sourceNodes = []
+			const changesV1 = result.versionNodeChangesMap.value.get('v-1');
+			expect(changesV1).toBeDefined();
+			expect(changesV1!).toHaveLength(1);
+			expect(changesV1![0].status).toBe('added');
+
+			// v-2 is collapsed → uses immediate predecessor v-1
+			const changesV2 = result.versionNodeChangesMap.value.get('v-2');
+			expect(changesV2).toBeDefined();
+			expect(changesV2!).toHaveLength(1);
+			expect(changesV2![0].status).toBe('modified');
+
+			unmount();
+		});
+
+		it('should not be affected by collapsed cards when no collapse is active', async () => {
+			const nodesV1 = [makeNode({ id: 'n1', name: 'NodeV1' })];
+			const nodesV2 = [makeNode({ id: 'n1', name: 'NodeV2' })];
+
+			mockBuilderStore.versionCardMessages = [
+				{ id: 'vc-1', data: { versionId: 'v-1' } },
+				{ id: 'vc-2', data: { versionId: 'v-2' } },
+			];
+			mockBuilderStore.collapsedMessageIds = new Set(); // No collapse
+			mockBuilderStore.latestRevertVersion = { id: 'v-2' };
+
+			mockWorkflowHistoryStore.getWorkflowVersion = vi
+				.fn()
+				.mockImplementation(async (_wfId: string, versionId: string) => {
+					const map: Record<string, { nodes: INode[]; connections: IConnections }> = {
+						'v-1': { nodes: nodesV1, connections: {} },
+						'v-2': { nodes: nodesV2, connections: {} },
+					};
+					return map[versionId];
+				});
+
+			compareWorkflowsNodesMock.mockImplementation((source: INode[], target: INode[]) => {
+				const result = new Map();
+				const sourceById = new Map(source.map((n) => [n.id, n]));
+				const targetById = new Map(target.map((n) => [n.id, n]));
+				for (const [id, node] of targetById) {
+					if (!sourceById.has(id)) {
+						result.set(id, { status: 'added', node });
+					} else if (sourceById.get(id)!.name !== node.name) {
+						result.set(id, { status: 'modified', node });
+					} else {
+						result.set(id, { status: 'equal', node });
+					}
+				}
+				return result;
+			});
+
+			const { result, unmount } = withSetup();
+			await flushPromises();
+
+			// Normal sequential diff: v-2 diffs against v-1
+			const changesV2 = result.versionNodeChangesMap.value.get('v-2');
+			expect(changesV2).toBeDefined();
+			expect(changesV2!).toHaveLength(1);
+			expect(changesV2![0].status).toBe('modified');
+
 			unmount();
 		});
 	});

@@ -292,6 +292,7 @@
 	"aiAssistant.builder.collapsedMessages.notVisibleToAI": "These messages are not visible to the AI",
 	"aiAssistant.builder.collapsedMessages.expand": "Show hidden messages",
 	"aiAssistant.builder.collapsedMessages.collapse": "Hide messages",
+	"aiAssistant.builder.collapsedMessages.thinking": "Thinking",
 	"aiAssistant.builder.characterLimit": "You've reached the { limit } character limit",
 	"aiAssistant.builder.generateNew": "Generate new workflow",
 	"aiAssistant.builder.newWorkflowNotice": "The created workflow will be added to the editor",

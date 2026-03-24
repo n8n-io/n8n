@@ -6,7 +6,7 @@ import { N8nActionDropdown, N8nIcon } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
-import RestoreVersionConfirm from '@n8n/design-system/components/AskAssistantChat/messages/RestoreVersionConfirm.vue';
+import { RestoreVersionConfirm } from '@n8n/design-system/components/AskAssistantChat';
 import type { NodeChangeEntry } from '@/features/ai/assistant/composables/useReviewChanges';
 
 type VersionCardAction = 'openDiff' | 'restore' | 'showInHistory';
@@ -109,10 +109,6 @@ function onRestoreConfirm() {
 	emit('restore', props.versionId);
 	showRestoreConfirm.value = false;
 }
-
-function onShowVersion(versionId: string) {
-	emit('showInHistory', versionId);
-}
 </script>
 
 <template>
@@ -127,7 +123,7 @@ function onShowVersion(versionId: string) {
 			<div :class="$style.headerLeft">
 				<N8nIcon
 					icon="chevron-right"
-					size="small"
+					size="large"
 					:class="[$style.chevron, isExpanded && $style.chevronExpanded]"
 				/>
 				<span :class="$style.label">
@@ -137,6 +133,9 @@ function onShowVersion(versionId: string) {
 							interpolate: { number: String(versionIndex) },
 						})
 					}}
+				</span>
+				<span v-if="isCurrent" :class="$style.labelActive">
+					({{ i18n.baseText('aiAssistant.builder.reviewChanges.currentVersion') }})
 				</span>
 			</div>
 			<N8nActionDropdown
@@ -183,7 +182,7 @@ function onShowVersion(versionId: string) {
 					:prune-time-hours="pruneTimeHours"
 					@confirm="onRestoreConfirm"
 					@cancel="showRestoreConfirm = false"
-					@show-version="onShowVersion"
+					@show-version="emit('showInHistory', $event)"
 				/>
 			</div>
 		</Teleport>
@@ -196,11 +195,13 @@ function onShowVersion(versionId: string) {
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 	overflow: hidden;
-	padding: var(--spacing--2xs);
+	padding: var(--spacing--3xs);
+	margin-bottom: var(--spacing--md);
 }
 
 .current {
-	border-color: var(--color--primary);
+	border-color: var(--border-color--info);
+	border-width: 2px;
 	box-shadow: 0 0 0 3px var(--color--primary--tint-3);
 }
 
@@ -229,9 +230,14 @@ function onShowVersion(versionId: string) {
 
 .label {
 	font-size: var(--font-size--sm);
-	font-weight: 500;
-	color: var(--color--text);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text--shade-1);
 	white-space: nowrap;
+}
+
+.labelActive {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 
 .changesList {

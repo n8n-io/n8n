@@ -90,7 +90,7 @@ const groupedMessages = computed<ChatUI.AssistantMessage[]>(() => {
 			role: 'assistant',
 			type: 'thinking-group',
 			items,
-			latestStatusText: 'Thinking',
+			latestStatusText: i18n.baseText('aiAssistant.builder.collapsedMessages.thinking'),
 		};
 
 		result.push(thinkingGroup);
