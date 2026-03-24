@@ -3,6 +3,7 @@ import type { MastraCompositeStore } from '@mastra/core/storage';
 import type { Workspace } from '@mastra/core/workspace';
 import type { Memory } from '@mastra/memory';
 import type {
+	InstanceAiCanvasContext,
 	TaskList,
 	InstanceAiPermissions,
 	McpTool,
@@ -537,6 +538,12 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/** Canvas context from the frontend — unsaved edits, partial executions, selected nodes. */
+	canvasContext?: InstanceAiCanvasContext;
+	/** Event bus for publishing SSE events (available when tools need to emit canvas events). */
+	eventBus?: InstanceAiEventBus;
+	/** Thread ID for event publishing. */
+	threadId?: string;
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -669,4 +676,6 @@ export interface CreateInstanceAgentOptions {
 	workspace?: Workspace;
 	/** When true, all tools are loaded eagerly (no ToolSearchProcessor). Workaround for Mastra bug where toModelOutput is not called for deferred tools. */
 	disableDeferredTools?: boolean;
+	/** Current canvas context from the frontend (selected nodes, workflow info). */
+	canvasContext?: InstanceAiCanvasContext;
 }

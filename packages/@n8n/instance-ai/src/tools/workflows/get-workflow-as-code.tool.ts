@@ -20,7 +20,18 @@ export function createGetWorkflowAsCodeTool(context: InstanceAiContext) {
 		}),
 		execute: async ({ workflowId }) => {
 			try {
-				const json = await context.workflowService.getAsWorkflowJSON(workflowId);
+				// Canvas-first: convert unsaved workflow state to code if available
+				let json: Awaited<ReturnType<typeof context.workflowService.getAsWorkflowJSON>>;
+				if (
+					context.canvasContext?.workflowId === workflowId &&
+					context.canvasContext.currentWorkflow
+				) {
+					json = context.canvasContext.currentWorkflow as unknown as Awaited<
+						ReturnType<typeof context.workflowService.getAsWorkflowJSON>
+					>;
+				} else {
+					json = await context.workflowService.getAsWorkflowJSON(workflowId);
+				}
 				const code = generateWorkflowCode(json);
 				return { workflowId, name: json.name, code };
 			} catch (error) {

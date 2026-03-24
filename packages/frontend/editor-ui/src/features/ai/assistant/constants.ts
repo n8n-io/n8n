@@ -18,3 +18,8 @@ export const ASSISTANT_ENABLED_VIEWS = [
  * Views where the Builder chat panel can be shown
  */
 export const BUILDER_ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
+
+/**
+ * Views where the Instance AI canvas panel can be shown
+ */
+export const INSTANCE_AI_ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS] as const;

@@ -37,6 +37,12 @@ export function createDebugExecutionTool(context: InstanceAiContext) {
 			),
 		}),
 		execute: async (inputData) => {
+			// Canvas-first: return canvas execution data if available
+			if (context.canvasContext?.executionData) {
+				return context.canvasContext.executionData as unknown as Awaited<
+					ReturnType<typeof context.executionService.getDebugInfo>
+				>;
+			}
 			return await context.executionService.getDebugInfo(inputData.executionId);
 		},
 	});

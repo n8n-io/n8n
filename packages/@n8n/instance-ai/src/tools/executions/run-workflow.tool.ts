@@ -74,7 +74,7 @@ export function createRunWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			// Approved or always_allow — execute
+			// Approved or always_allow — always execute via backend (needs synchronous results)
 			return await context.executionService.run(input.workflowId, input.inputData, {
 				timeout: input.timeout,
 			});

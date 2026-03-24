@@ -1,14 +1,55 @@
+import type { InstanceAiCanvasContext } from '@n8n/api-types';
+
 interface SystemPromptOptions {
 	researchMode?: boolean;
 	webhookBaseUrl?: string;
 	filesystemAccess?: boolean;
 	toolSearchEnabled?: boolean;
+	canvasContext?: InstanceAiCanvasContext;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
 }
 
+export function formatCanvasContextSection(canvasContext: InstanceAiCanvasContext): string {
+	const lines: string[] = [
+		'## Current Canvas Context',
+		'',
+		`You are assisting with workflow "${canvasContext.workflowName}" (ID: ${canvasContext.workflowId}).`,
+	];
+
+	if (canvasContext.nodeCount !== undefined) {
+		lines.push(`${String(canvasContext.nodeCount)} nodes in the workflow.`);
+	}
+
+	if (canvasContext.selectedNodes && canvasContext.selectedNodes.length > 0) {
+		lines.push('');
+		lines.push('### Selected Nodes');
+		lines.push('The user has selected the following nodes:');
+		for (const node of canvasContext.selectedNodes) {
+			const parts = [`- ${node.name} (${node.type})`];
+			if (node.issues && Object.keys(node.issues).length > 0) {
+				parts.push(`  Issues: ${JSON.stringify(node.issues)}`);
+			}
+			if (node.incomingConnections && node.incomingConnections.length > 0) {
+				parts.push(`  Incoming: ${node.incomingConnections.join(', ')}`);
+			}
+			if (node.outgoingConnections && node.outgoingConnections.length > 0) {
+				parts.push(`  Outgoing: ${node.outgoingConnections.join(', ')}`);
+			}
+			lines.push(parts.join('\n'));
+		}
+	}
+
+	lines.push('');
+	lines.push(
+		'Use `get-workflow` or `get-workflow-as-code` to read the full workflow state (including unsaved canvas edits). Use execution tools for run data. Canvas writes emit live preview events — the user saves manually.',
+	);
+
+	return lines.join('\n');
+}
+
 export function getSystemPrompt(options: SystemPromptOptions = {}): string {
-	const { researchMode, webhookBaseUrl, filesystemAccess, toolSearchEnabled, licenseHints } =
+	const { researchMode, webhookBaseUrl, filesystemAccess, toolSearchEnabled, canvasContext, licenseHints } =
 		options;
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
 ${webhookBaseUrl ? `\n## Instance Info\n\nWebhook base URL: ${webhookBaseUrl}\nWhen a workflow has webhook triggers, its live URL is: ${webhookBaseUrl}/{path} (where {path} is the webhook path parameter). Always share the full webhook URL with the user after a workflow with webhooks is created.\n\n**This URL is for sharing with the user only.** Do NOT include it in \`build-workflow-with-agent\` task descriptions — the builder cannot reach the n8n instance via HTTP and will fail if it tries to curl/fetch this URL.\n` : ''}
@@ -111,5 +152,5 @@ If the user sends a correction while a build is running, call \`correct-backgrou
 
 ## Sandbox (Code Execution)
 
-When available, \`mastra_workspace_execute_command\` runs shell commands in a persistent isolated sandbox. Use it for code execution, package installation, file processing. The sandbox cannot access the n8n host filesystem — use tool calls for n8n data.`;
+When available, \`mastra_workspace_execute_command\` runs shell commands in a persistent isolated sandbox. Use it for code execution, package installation, file processing. The sandbox cannot access the n8n host filesystem — use tool calls for n8n data.${canvasContext ? `\n\n${formatCanvasContextSection(canvasContext)}` : ''}`;
 }

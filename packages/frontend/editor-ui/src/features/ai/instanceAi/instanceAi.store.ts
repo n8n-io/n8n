@@ -28,6 +28,7 @@ import { useResponseFeedback } from './useResponseFeedback';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import type {
 	InstanceAiAttachment,
+	InstanceAiCanvasContext,
 	InstanceAiEvent,
 	InstanceAiMessage,
 	InstanceAiAgentNode,
@@ -97,6 +98,25 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
+	/** Latest workflow-updated event payload — consumed and cleared by the canvas panel. */
+	const pendingWorkflowUpdate = ref<{
+		workflowId: string;
+		workflowData: Record<string, unknown>;
+	} | null>(null);
+	/** Latest workflow-activated event payload — consumed and cleared by the canvas panel. */
+	const pendingWorkflowActivated = ref<{
+		workflowId: string;
+		active: boolean;
+	} | null>(null);
+	/** Latest workflow-archived event payload — consumed and cleared by the canvas panel. */
+	const pendingWorkflowArchived = ref<{ workflowId: string } | null>(null);
+	/** Latest trigger-manual-run event payload — consumed and cleared by the canvas panel. */
+	const pendingTriggerManualRun = ref<{
+		workflowId: string;
+		inputData?: Record<string, unknown>;
+	} | null>(null);
+	/** Latest stop-manual-run event payload — consumed and cleared by the canvas panel. */
+	const pendingStopManualRun = ref<{ workflowId: string } | null>(null);
 	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied' | 'deferred'>>(new Map());
 	const MAX_DEBUG_EVENTS = 1000;
 
@@ -214,6 +234,31 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				},
 				parsed.data,
 			);
+			// Capture canvas-related events for the canvas panel to consume
+			if (parsed.data.type === 'workflow-updated') {
+				pendingWorkflowUpdate.value = {
+					workflowId: parsed.data.payload.workflowId,
+					workflowData: parsed.data.payload.workflowData,
+				};
+			} else if (parsed.data.type === 'workflow-activated') {
+				pendingWorkflowActivated.value = {
+					workflowId: parsed.data.payload.workflowId,
+					active: parsed.data.payload.active,
+				};
+			} else if (parsed.data.type === 'workflow-archived') {
+				pendingWorkflowArchived.value = {
+					workflowId: parsed.data.payload.workflowId,
+				};
+			} else if (parsed.data.type === 'trigger-manual-run') {
+				pendingTriggerManualRun.value = {
+					workflowId: parsed.data.payload.workflowId,
+					inputData: parsed.data.payload.inputData,
+				};
+			} else if (parsed.data.type === 'stop-manual-run') {
+				pendingStopManualRun.value = {
+					workflowId: parsed.data.payload.workflowId,
+				};
+			}
 			// When a run finishes, refresh thread list to pick up Mastra-generated titles
 			if (previousRunId && activeRunId.value === null) {
 				void loadThreads();
@@ -370,6 +415,49 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			void loadThreadStatus(threadId);
 			connectSSE(threadId);
 		});
+	}
+
+	async function ensureWorkflowThread(workflowId: string): Promise<void> {
+		if (!workflowId) {
+			await switchToGlobalThread();
+			return;
+		}
+
+		const result = await ensureThread(rootStore.restApiContext, undefined, workflowId);
+		const threadId = result.thread.id;
+
+		closeSSE();
+		messages.value = [];
+		activeRunId.value = null;
+		debugEvents.value = [];
+		resetFeedback();
+		runStateByGroupId = {};
+		groupIdByRunId = {};
+		currentThreadId.value = threadId;
+
+		delete lastEventIdByThread.value[threadId];
+		await loadHistoricalMessages(threadId);
+		void loadThreadStatus(threadId);
+		connectSSE(threadId);
+	}
+
+	async function switchToGlobalThread(): Promise<void> {
+		const result = await ensureThread(rootStore.restApiContext);
+		const threadId = result.thread.id;
+
+		closeSSE();
+		messages.value = [];
+		activeRunId.value = null;
+		debugEvents.value = [];
+		resetFeedback();
+		runStateByGroupId = {};
+		groupIdByRunId = {};
+		currentThreadId.value = threadId;
+
+		delete lastEventIdByThread.value[threadId];
+		await loadHistoricalMessages(threadId);
+		void loadThreadStatus(threadId);
+		connectSSE(threadId);
 	}
 
 	// --- Actions ---
@@ -552,7 +640,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function sendMessage(message: string, attachments?: InstanceAiAttachment[]): Promise<void> {
+	async function sendMessage(
+		message: string,
+		attachments?: InstanceAiAttachment[],
+		canvasContext?: InstanceAiCanvasContext,
+	): Promise<void> {
 		// Clear amend context on new message
 		amendContext.value = null;
 
@@ -585,6 +677,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				message,
 				researchMode.value || undefined,
 				attachments,
+				canvasContext,
 			);
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
@@ -658,6 +751,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		} catch {
 			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
 		}
+	}
+
+	/** Consume and clear the pending workflow update. Called by the canvas panel after applying. */
+	function consumeWorkflowUpdate(): {
+		workflowId: string;
+		workflowData: Record<string, unknown>;
+	} | null {
+		const update = pendingWorkflowUpdate.value;
+		pendingWorkflowUpdate.value = null;
+		return update;
 	}
 
 	function toggleResearchMode(): void {
@@ -775,6 +878,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		debugMode,
 		researchMode,
 		amendContext,
+		pendingWorkflowUpdate,
+		pendingWorkflowActivated,
+		pendingWorkflowArchived,
+		pendingTriggerManualRun,
+		pendingStopManualRun,
 		feedbackByResponseId,
 		resolvedConfirmationIds,
 		// Computed
@@ -795,6 +903,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		deleteThread,
 		renameThread,
 		switchThread,
+		ensureWorkflowThread,
+		switchToGlobalThread,
 		loadThreads,
 		loadHistoricalMessages,
 		loadThreadStatus,
@@ -802,6 +912,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		cancelRun,
 		cancelBackgroundTask,
 		amendAgent,
+		consumeWorkflowUpdate,
 		toggleResearchMode,
 		confirmAction,
 		resolveConfirmation,

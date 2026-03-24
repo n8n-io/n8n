@@ -1,5 +1,6 @@
 import type {
 	InstanceAiAttachment,
+	InstanceAiCanvasContext,
 	InstanceAiEvent,
 	InstanceAiThreadStatusResponse,
 	InstanceAiGatewayCapabilities,
@@ -368,6 +369,7 @@ export class InstanceAiService {
 		message: string,
 		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
+		canvasContext?: InstanceAiCanvasContext,
 	): string {
 		const runId = `run_${nanoid()}`;
 		const abortController = new AbortController();
@@ -405,6 +407,7 @@ export class InstanceAiService {
 			researchMode,
 			attachments,
 			messageGroupId,
+			canvasContext,
 		);
 
 		return runId;
@@ -624,6 +627,7 @@ export class InstanceAiService {
 		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
 		messageGroupId?: string,
+		canvasContext?: InstanceAiCanvasContext,
 	): Promise<void> {
 		const signal = abortController.signal;
 		let mastraRunId = '';
@@ -669,6 +673,11 @@ export class InstanceAiService {
 			}
 			context.domainAccessTracker = domainTracker;
 			context.runId = runId;
+			if (canvasContext) {
+				context.canvasContext = canvasContext;
+			}
+			context.eventBus = this.eventBus;
+			context.threadId = threadId;
 
 			const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
 
@@ -791,6 +800,7 @@ export class InstanceAiService {
 				memory,
 				workspace: sandboxEntry?.workspace,
 				disableDeferredTools: true,
+				canvasContext,
 			});
 
 			// Compact older conversation history into a summary (best-effort, non-blocking on failure)

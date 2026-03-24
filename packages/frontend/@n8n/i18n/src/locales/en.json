@@ -4946,6 +4946,8 @@
 	"instanceAi.toolCall.error": "Error",
 	"instanceAi.toolResult.moreRows": "and {count} more rows...",
 	"instanceAi.thread.new": "New thread",
+	"instanceAi.threadPicker.global": "Global",
+	"instanceAi.threadPicker.recentThreads": "Recent threads",
 	"instanceAi.message.reasoning": "Reasoning",
 	"instanceAi.sidebar.noThreads": "No conversations yet",
 	"instanceAi.sidebar.group.thisWeek": "This week",

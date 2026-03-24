@@ -19,6 +19,7 @@ import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
 import { escapeSingleQuotes, readFileViaSandbox, runInSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import { isOnCanvas, publishCanvasEvent } from '../utils/canvas-events';
 
 export interface SubmitWorkflowAttempt {
 	filePath: string;
@@ -171,7 +172,10 @@ export function createSubmitWorkflowTool(
 			errors: z.array(z.string()).optional(),
 			warnings: z.array(z.string()).optional(),
 		}),
-		execute: async ({ filePath: rawFilePath, workflowId, projectId, name }) => {
+		execute: async ({ filePath: rawFilePath, workflowId: rawWorkflowId, projectId, name }) => {
+			// Canvas-aware: when no workflowId specified but we're on canvas, target the canvas workflow
+			const workflowId = rawWorkflowId ?? context.canvasContext?.workflowId;
+
 			// Resolve file path: relative paths resolve against workspace root, ~ is expanded
 			const root = await getWorkspaceRoot(workspace);
 			let filePath: string;
@@ -296,6 +300,39 @@ export function createSubmitWorkflowTool(
 			// (e.g., "{uuid}/dashboard" instead of "{workflowId}/{encodedNodeName}/dashboard").
 			// The SDK's toJSON() doesn't emit webhookId, so we inject it here.
 			await ensureWebhookIds(json, workflowId, context);
+
+			// Canvas-aware: emit event instead of saving to DB when on canvas
+			if (workflowId && isOnCanvas(context, workflowId)) {
+				publishCanvasEvent(context, 'workflow-updated', {
+					workflowId,
+					workflowData: json as unknown as Record<string, unknown>,
+				});
+				reportAttempt({
+					success: true,
+					workflowId,
+					mockedNodeNames:
+						mockResult.mockedNodeNames.length > 0 ? mockResult.mockedNodeNames : undefined,
+					mockedCredentialTypes:
+						mockResult.mockedCredentialTypes.length > 0
+							? mockResult.mockedCredentialTypes
+							: undefined,
+				});
+				return {
+					success: true,
+					workflowId,
+					workflowName: json.name || undefined,
+					mockedNodeNames:
+						mockResult.mockedNodeNames.length > 0 ? mockResult.mockedNodeNames : undefined,
+					mockedCredentialTypes:
+						mockResult.mockedCredentialTypes.length > 0
+							? mockResult.mockedCredentialTypes
+							: undefined,
+					warnings:
+						informational.length > 0
+							? informational.map((w) => `[${w.code}]: ${w.message}`)
+							: undefined,
+				};
+			}
 
 			// Save
 			let savedId: string;

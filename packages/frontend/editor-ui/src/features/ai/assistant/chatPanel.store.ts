@@ -9,7 +9,11 @@ import {
 	EDITABLE_CANVAS_VIEWS,
 } from '@/app/constants';
 import type { VIEWS } from '@/app/constants';
-import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
+import {
+	ASSISTANT_ENABLED_VIEWS,
+	BUILDER_ENABLED_VIEWS,
+	INSTANCE_AI_ENABLED_VIEWS,
+} from './constants';
 import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.store';
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
@@ -36,6 +40,18 @@ function isEnabledView(
 	return typeof route === 'string' && (views as readonly string[]).includes(route);
 }
 
+/** Returns the set of views where the given chat panel mode can be shown */
+function getEnabledViewsForMode(mode: ChatPanelMode): readonly VIEWS[] {
+	switch (mode) {
+		case 'assistant':
+			return ASSISTANT_ENABLED_VIEWS;
+		case 'instance-ai':
+			return INSTANCE_AI_ENABLED_VIEWS;
+		case 'builder':
+			return BUILDER_ENABLED_VIEWS;
+	}
+}
+
 export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const uiStore = useUIStore();
 	const route = useRoute();
@@ -54,24 +70,35 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			useBuilderStore().isAIBuilderEnabled,
 	);
 
-	/** When merge is enabled, redirect assistant mode requests to builder */
+	/** Redirect mode based on active modules and experiments */
 	function resolveMode(mode: ChatPanelMode): ChatPanelMode {
+		// Instance AI takes priority: redirect builder requests when the module is active
+		if (mode === 'builder' && settingsStore.isModuleActive('instance-ai')) {
+			return 'instance-ai';
+		}
+		// When merge experiment is enabled, redirect assistant to builder
 		return mode === 'assistant' && isMergeAskBuildEnabled.value ? 'builder' : mode;
 	}
 
 	// Computed
 	const isAssistantModeActive = computed(() => chatPanelStateStore.activeMode === 'assistant');
 	const isBuilderModeActive = computed(() => chatPanelStateStore.activeMode === 'builder');
+	const isInstanceAiModeActive = computed(() => chatPanelStateStore.activeMode === 'instance-ai');
 
 	const canShowAiButtonOnCanvas = computed(
 		() =>
-			settingsStore.isAiAssistantOrBuilderEnabled &&
+			(settingsStore.isAiAssistantOrBuilderEnabled ||
+				settingsStore.isModuleActive('instance-ai')) &&
 			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
 	// Actions
 	async function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
-		if (!settingsStore.isAiAssistantOrBuilderEnabled) return;
+		if (
+			!settingsStore.isAiAssistantOrBuilderEnabled &&
+			!settingsStore.isModuleActive('instance-ai')
+		)
+			return;
 
 		const mode = options?.mode ? resolveMode(options.mode) : undefined;
 		const showCoachmark = options?.showCoachmark ?? true;
@@ -82,10 +109,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		chatPanelStateStore.showCoachmark = showCoachmark;
 
 		// Check if the mode is enabled in the current view
-		const enabledViews =
-			chatPanelStateStore.activeMode === 'assistant'
-				? ASSISTANT_ENABLED_VIEWS
-				: BUILDER_ENABLED_VIEWS;
+		const enabledViews = getEnabledViewsForMode(chatPanelStateStore.activeMode);
 		const currentRoute = route?.name;
 
 		if (!isEnabledView(currentRoute, enabledViews)) {
@@ -155,7 +179,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		const resolved = resolveMode(mode);
 
 		// Check if the mode is enabled in the current view
-		const enabledViews = resolved === 'assistant' ? ASSISTANT_ENABLED_VIEWS : BUILDER_ENABLED_VIEWS;
+		const enabledViews = getEnabledViewsForMode(resolved);
 		const currentRoute = route?.name;
 
 		if (!isEnabledView(currentRoute, enabledViews)) {
@@ -240,10 +264,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				return;
 			}
 
-			const enabledViews =
-				chatPanelStateStore.activeMode === 'assistant'
-					? ASSISTANT_ENABLED_VIEWS
-					: BUILDER_ENABLED_VIEWS;
+			const enabledViews = getEnabledViewsForMode(chatPanelStateStore.activeMode);
 
 			if (!isEnabledView(newRoute, enabledViews)) {
 				close();
@@ -262,6 +283,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		// Computed
 		isAssistantModeActive,
 		isBuilderModeActive,
+		isInstanceAiModeActive,
 		canShowAiButtonOnCanvas,
 		// Actions
 		open,
