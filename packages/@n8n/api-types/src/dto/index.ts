@@ -11,6 +11,7 @@ export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
 
 export { AiGatewaySettingsUpdateDto } from './ai-gateway/ai-gateway-settings-update.dto';
+export { AiGatewayPrototypeRecordDto } from './ai-gateway/ai-gateway-prototype-record.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';

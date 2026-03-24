@@ -48,6 +48,7 @@ import {
 import type { useRouter } from 'vue-router';
 import { type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { recordAiGatewayPrototypeUsageFromExecution } from '@/features/ai/gateway/aiGatewayPrototypeUsage';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -73,6 +74,15 @@ export async function executionFinished(
 	const readyToRunStore = useReadyToRunStore();
 
 	options.workflowState.executingNode.lastAddedExecutingNode = null;
+
+	// Prototype AI Gateway credits/usage: must run even when activeExecutionId is unset
+	// (e.g. test step from NDV, or timing where the id was cleared before this handler).
+	if (data.status === 'success' && data.executionId) {
+		const executionForPrototype = await fetchExecutionData(data.executionId);
+		if (executionForPrototype?.status === 'success') {
+			void recordAiGatewayPrototypeUsageFromExecution(executionForPrototype);
+		}
+	}
 
 	// No workflow is actively running, therefore we ignore this event
 	if (typeof workflowsStore.activeExecutionId === 'undefined') {
@@ -216,7 +226,9 @@ export async function fetchExecutionData(
 		return {
 			id: executionId,
 			workflowId: executionResponse.workflowId,
-			workflowData: workflowsStore.workflow,
+			// Use the workflow snapshot from the execution so node names/types match runData
+			// (store.workflow can be wrong workflow or out of sync when NDV runs a sub-node).
+			workflowData: executionResponse.workflowData ?? workflowsStore.workflow,
 			data: parse(executionResponse.data as unknown as string),
 			status: executionResponse.status,
 			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,

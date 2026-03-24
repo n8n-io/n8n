@@ -11,6 +11,8 @@ export {
 	type AiGatewaySettingsResponse,
 	type AiGatewayModelCategoryResponse,
 	type AiGatewayUsageResponse,
+	type AiGatewayUsageBucket,
+	type AiGatewayPrototypeRecordResponse,
 } from './ai-gateway';
 export type * from './push';
 export type * from './scaling';

@@ -22,6 +22,11 @@ export const useCreditsStore = defineStore('credits', () => {
 		balance.value += amount;
 	}
 
+	/** Align shell balance with AI Gateway when the server reports credits (settings / prototype usage). */
+	function setBalance(amount: number) {
+		balance.value = amount;
+	}
+
 	function setAutoRecharge(enabled: boolean) {
 		autoRechargeEnabled.value = enabled;
 	}
@@ -59,6 +64,7 @@ export const useCreditsStore = defineStore('credits', () => {
 		perUserLimit,
 		formattedBalance,
 		topUp,
+		setBalance,
 		setAutoRecharge,
 		updateAutoRechargeSettings,
 		setLimitsEnabled,

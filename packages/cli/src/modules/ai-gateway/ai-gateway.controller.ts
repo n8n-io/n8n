@@ -1,18 +1,25 @@
 import type {
 	AiGatewayModelCategoryResponse,
+	AiGatewayPrototypeRecordResponse,
 	AiGatewaySettingsResponse,
 	AiGatewayUsageResponse,
 } from '@n8n/api-types';
-import { AiGatewaySettingsUpdateDto } from '@n8n/api-types';
+import { AiGatewayPrototypeRecordDto, AiGatewaySettingsUpdateDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Put, RestController } from '@n8n/decorators';
+import { Body, Get, Post, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { AiGatewayConfig } from './ai-gateway.config';
 import { AiGatewayModelService } from './ai-gateway-model.service';
 import { AiGatewayUsageService } from './ai-gateway-usage.service';
 import { AiGatewayService } from './ai-gateway.service';
 import { MODEL_CATEGORIES, MODEL_CATEGORY_MAP, type ModelCategory } from './ai-gateway.constants';
+
+const PROTOTYPE_CREDIT_COST_PER_CALL = 0.01;
+const PROTOTYPE_DEFAULT_INPUT_TOKENS = 100;
+const PROTOTYPE_DEFAULT_OUTPUT_TOKENS = 50;
 
 @RestController('/ai-gateway')
 export class AiGatewayController {
@@ -113,5 +120,50 @@ export class AiGatewayController {
 	@Get('/usage')
 	async getUsage(_req: AuthenticatedRequest, _res: Response): Promise<AiGatewayUsageResponse> {
 		return this.usageService.getUsage();
+	}
+
+	/**
+	 * Prototype-only: record a model call for in-memory usage stats and decrement
+	 * credits in-memory. Enabled by default; set N8N_AI_GATEWAY_PROTOTYPE_USAGE=false to disable.
+	 */
+	@Post('/prototype/record-call')
+	async recordPrototypeCall(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: AiGatewayPrototypeRecordDto,
+	): Promise<AiGatewayPrototypeRecordResponse> {
+		if (!this.config.prototypeUsageEnabled) {
+			throw new ForbiddenError(
+				'AI Gateway prototype usage recording is disabled. Set N8N_AI_GATEWAY_PROTOTYPE_USAGE=true to re-enable.',
+			);
+		}
+
+		const calls = payload.calls ?? 1;
+		const inputTokens = payload.inputTokens ?? PROTOTYPE_DEFAULT_INPUT_TOKENS;
+		const outputTokens = payload.outputTokens ?? PROTOTYPE_DEFAULT_OUTPUT_TOKENS;
+		const category = payload.category ?? 'prototype';
+		const resolvedModel = payload.resolvedModel ?? 'openai/gpt-4.1-nano';
+
+		for (let i = 0; i < calls; i++) {
+			this.usageService.track({
+				timestamp: new Date(),
+				category,
+				resolvedModel,
+				inputTokens,
+				outputTokens,
+				workflowId: payload.workflowId,
+				executionId: payload.executionId,
+			});
+		}
+
+		this.config.creditsRemaining = Math.max(
+			0,
+			this.config.creditsRemaining - PROTOTYPE_CREDIT_COST_PER_CALL * calls,
+		);
+
+		return {
+			creditsRemaining: this.config.creditsRemaining,
+			usage: this.usageService.getUsage(),
+		};
 	}
 }

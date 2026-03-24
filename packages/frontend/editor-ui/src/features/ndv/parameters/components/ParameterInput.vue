@@ -101,6 +101,12 @@ import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimenta
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useAIGatewayStore } from '@/features/ai/gateway/aiGateway.store';
+import { AI_GATEWAY_INSTANCE_DEFAULT_MODELS } from '@/features/ai/gateway/aiGatewayInstanceDefaults';
+import {
+	getAiGatewayDefaultModelForResource,
+	isOpenRouterAiGatewayAppNode,
+} from '@/features/ai/gateway/openRouterAiGatewayAppDefaults';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import {
@@ -185,6 +191,7 @@ const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const projectsStore = useProjectsStore();
 const builderStore = useBuilderStore();
+const aiGatewayStore = useAIGatewayStore();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
@@ -266,6 +273,26 @@ const isResourceLocatorParameter = computed<boolean>(() => {
 
 const isModelSelector = computed<boolean>(() => {
 	return props.parameter.type === 'options' && getTypeOption('isModelSelector') === true;
+});
+
+const modelSelectDefaultValue = computed(() => {
+	const fallback = String(props.parameter.default ?? '');
+	if (!isModelSelector.value || !node.value) {
+		return fallback;
+	}
+	const nodeTypeStr = node.value.type;
+	const desc = nodeType.value;
+
+	if (nodeTypeStr.endsWith('lmChatN8nAiGateway')) {
+		return aiGatewayStore.defaultChatModel ?? AI_GATEWAY_INSTANCE_DEFAULT_MODELS.chat;
+	}
+
+	if (isOpenRouterAiGatewayAppNode(desc, nodeTypeStr)) {
+		const resource = (node.value.parameters.resource as string) ?? 'text';
+		return getAiGatewayDefaultModelForResource(resource) ?? fallback;
+	}
+
+	return fallback;
 });
 
 const isSecretParameter = computed<boolean>(() => {
@@ -1908,7 +1935,7 @@ onUpdated(async () => {
 				:model-value="displayValue as string"
 				:loading="remoteParameterOptionsLoading"
 				:disabled="isReadOnly"
-				:default-value="String(parameter.default ?? '')"
+				:default-value="modelSelectDefaultValue"
 				@update:model-value="valueChanged"
 			/>
 

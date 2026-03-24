@@ -31,4 +31,8 @@ export class AiGatewayConfig {
 
 	@Env('N8N_AI_GATEWAY_CREDITS_REMAINING')
 	creditsRemaining: number = 5.0;
+
+	/** When false, POST /ai-gateway/prototype/record-call returns 403. Set N8N_AI_GATEWAY_PROTOTYPE_USAGE=false in production if needed. */
+	@Env('N8N_AI_GATEWAY_PROTOTYPE_USAGE')
+	prototypeUsageEnabled: boolean = true;
 }

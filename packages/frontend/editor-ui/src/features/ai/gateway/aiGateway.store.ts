@@ -5,9 +5,11 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	AiGatewayModelCategoryResponse,
+	AiGatewayPrototypeRecordResponse,
 	AiGatewaySettingsResponse,
 	AiGatewayUsageResponse,
 } from '@n8n/api-types';
+import { useCreditsStore } from '@/features/settings/credits/credits.store';
 import { AI_GATEWAY_STORE } from './aiGateway.constants';
 import { AI_GATEWAY_INSTANCE_DEFAULT_MODELS } from './aiGatewayInstanceDefaults';
 import {
@@ -79,9 +81,15 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 		return await initPromise;
 	}
 
+	function syncShellCreditsBalance(remaining: number | null | undefined) {
+		if (remaining === null || remaining === undefined) return;
+		useCreditsStore().setBalance(remaining);
+	}
+
 	function applySettingsResponse(settings: AiGatewaySettingsResponse) {
 		enabled.value = settings.enabled;
 		creditsRemaining.value = settings.creditsRemaining ?? null;
+		syncShellCreditsBalance(settings.creditsRemaining);
 		defaultChatModel.value = settings.defaultChatModel ?? AI_GATEWAY_INSTANCE_DEFAULT_MODELS.chat;
 		defaultTextModel.value = settings.defaultTextModel ?? AI_GATEWAY_INSTANCE_DEFAULT_MODELS.text;
 		defaultImageModel.value =
@@ -196,6 +204,50 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 		}
 	}
 
+	function applyPrototypeRecordResponse(res: AiGatewayPrototypeRecordResponse) {
+		creditsRemaining.value = res.creditsRemaining;
+		usage.value = res.usage;
+		syncShellCreditsBalance(res.creditsRemaining);
+	}
+
+	async function recordPrototypeUsage(payload: {
+		resolvedModel?: string;
+		category?: string;
+		inputTokens?: number;
+		outputTokens?: number;
+		calls?: number;
+		workflowId?: string;
+		executionId?: string;
+	}) {
+		try {
+			const rootStore = useRootStore();
+			const res = await makeRestApiRequest<AiGatewayPrototypeRecordResponse>(
+				rootStore.restApiContext,
+				'POST',
+				'/ai-gateway/prototype/record-call',
+				payload,
+			);
+			applyPrototypeRecordResponse(res);
+		} catch {
+			// Prototype disabled (403) or gateway not running
+		}
+	}
+
+	async function refreshCreditsAndUsage() {
+		try {
+			const rootStore = useRootStore();
+			const ctx = rootStore.restApiContext;
+			const [settings, usageData] = await Promise.all([
+				makeRestApiRequest<AiGatewaySettingsResponse>(ctx, 'GET', '/ai-gateway/settings'),
+				makeRestApiRequest<AiGatewayUsageResponse>(ctx, 'GET', '/ai-gateway/usage'),
+			]);
+			applySettingsResponse(settings);
+			usage.value = usageData;
+		} catch {
+			// Gateway might not be running
+		}
+	}
+
 	return {
 		initialized,
 		enabled,
@@ -214,5 +266,7 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 		initialize,
 		fetchUsage,
 		updateInstanceModelDefaults,
+		recordPrototypeUsage,
+		refreshCreditsAndUsage,
 	};
 });

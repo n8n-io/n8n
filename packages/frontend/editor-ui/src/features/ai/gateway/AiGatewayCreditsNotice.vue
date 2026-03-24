@@ -8,7 +8,8 @@ const GATEWAY_NODE_TYPES = [
 	'@n8n/n8n-nodes-langchain.lmChatN8nAiGateway',
 	'@n8n/n8n-nodes-langchain.openRouterAiGateway',
 ];
-const SETTINGS_URL = '/settings/credits';
+const AI_GATEWAY_SETTINGS_URL = '/settings/ai-gateway';
+const CREDITS_SETTINGS_URL = '/settings/credits';
 
 const ndvStore = useNDVStore();
 const gatewayStore = useAIGatewayStore();
@@ -41,14 +42,14 @@ function formatCredits(amount: number | null): string {
 		</p>
 		<p :class="$style.credits">
 			You have <strong>{{ formatCredits(credits) }} of free credits</strong> remaining.
-			<a :href="SETTINGS_URL" target="_blank">Learn more</a>
+			<a :href="AI_GATEWAY_SETTINGS_URL" target="_blank">Learn more</a>
 		</p>
 	</div>
 
 	<N8nCallout
 		v-else-if="isVisible && !hasCredits"
 		theme="danger"
-		icon="circle-exclamation"
+		icon="circle-alert"
 		:class="$style.callout"
 		data-test-id="ai-gateway-credits-depleted-notice"
 	>
@@ -56,7 +57,7 @@ function formatCredits(amount: number | null): string {
 			Your free AI Gateway credits have been used up. Top up to continue using models.
 		</N8nText>
 		<template #trailingContent>
-			<a :href="SETTINGS_URL" target="_blank" :class="$style.topUpLink">Top up credits</a>
+			<a :href="CREDITS_SETTINGS_URL" target="_blank" :class="$style.topUpLink">Top up credits</a>
 		</template>
 	</N8nCallout>
 </template>

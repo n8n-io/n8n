@@ -27,6 +27,7 @@ export class AiGatewayUsageService {
 
 	getUsage(): AiGatewayUsageResponse {
 		const byCategory: AiGatewayUsageResponse['byCategory'] = {};
+		const byModel: AiGatewayUsageResponse['byModel'] = {};
 
 		let totalRequests = 0;
 		let totalInputTokens = 0;
@@ -42,9 +43,16 @@ export class AiGatewayUsageService {
 			cat.inputTokens += record.inputTokens;
 			cat.outputTokens += record.outputTokens;
 			byCategory[record.category] = cat;
+
+			const modelKey = record.resolvedModel || 'unknown';
+			const m = byModel[modelKey] ?? { requests: 0, inputTokens: 0, outputTokens: 0 };
+			m.requests++;
+			m.inputTokens += record.inputTokens;
+			m.outputTokens += record.outputTokens;
+			byModel[modelKey] = m;
 		}
 
-		return { totalRequests, totalInputTokens, totalOutputTokens, byCategory };
+		return { totalRequests, totalInputTokens, totalOutputTokens, byCategory, byModel };
 	}
 
 	/**

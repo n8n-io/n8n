@@ -87,16 +87,23 @@ export interface AiGatewayModelCategoryResponse {
 	model: string;
 }
 
+export interface AiGatewayUsageBucket {
+	requests: number;
+	inputTokens: number;
+	outputTokens: number;
+}
+
 export interface AiGatewayUsageResponse {
 	totalRequests: number;
 	totalInputTokens: number;
 	totalOutputTokens: number;
-	byCategory: Record<
-		string,
-		{
-			requests: number;
-			inputTokens: number;
-			outputTokens: number;
-		}
-	>;
+	byCategory: Record<string, AiGatewayUsageBucket>;
+	/** Aggregated by resolved OpenRouter model id (e.g. openai/gpt-4.1-nano). */
+	byModel: Record<string, AiGatewayUsageBucket>;
+}
+
+/** Response from POST /ai-gateway/prototype/record-call (prototype-only). */
+export interface AiGatewayPrototypeRecordResponse {
+	creditsRemaining: number;
+	usage: AiGatewayUsageResponse;
 }

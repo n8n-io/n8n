@@ -76,13 +76,8 @@ const totalTokens = computed(() =>
 );
 
 const usageModels = computed(() => {
-	if (!usage.value) return [];
-	const byModel = (
-		usage.value as {
-			byModel?: Record<string, { inputTokens: number; outputTokens: number; requests: number }>;
-		}
-	).byModel;
-	if (!byModel) return [];
+	if (!usage.value?.byModel) return [];
+	const byModel = usage.value.byModel;
 	return Object.entries(byModel)
 		.map(([id, stats]) => ({
 			id,

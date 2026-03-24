@@ -14,6 +14,7 @@ describe('AiGatewayUsageService', () => {
 			expect(usage.totalInputTokens).toBe(0);
 			expect(usage.totalOutputTokens).toBe(0);
 			expect(usage.byCategory).toEqual({});
+			expect(usage.byModel).toEqual({});
 		});
 
 		it('should aggregate usage by category', () => {
@@ -49,6 +50,16 @@ describe('AiGatewayUsageService', () => {
 				outputTokens: 130,
 			});
 			expect(usage.byCategory.reasoning).toEqual({
+				requests: 1,
+				inputTokens: 500,
+				outputTokens: 300,
+			});
+			expect(usage.byModel['openai/gpt-4.1-mini']).toEqual({
+				requests: 2,
+				inputTokens: 300,
+				outputTokens: 130,
+			});
+			expect(usage.byModel['openai/o4-mini']).toEqual({
 				requests: 1,
 				inputTokens: 500,
 				outputTokens: 300,
