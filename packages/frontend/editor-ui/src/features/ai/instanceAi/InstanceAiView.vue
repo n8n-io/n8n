@@ -106,8 +106,15 @@ const latestExecutionId = computed(() => {
 });
 
 watch(latestExecutionId, (execId) => {
-	if (execId && (isCanvasVisible.value || store.isStreaming)) {
-		activeExecutionId.value = execId;
+	if (!execId) return;
+	if (!isCanvasVisible.value && !store.isStreaming) return;
+
+	activeExecutionId.value = execId;
+
+	// Open the canvas if it's not visible yet (e.g. user closed it, then asked to re-execute)
+	if (!isCanvasVisible.value && latestBuildResult.value) {
+		activeWorkflowId.value = latestBuildResult.value.workflowId;
+		workflowRefreshKey.value++;
 	}
 });
 
