@@ -8,7 +8,7 @@ Extra information specific to the `@n8n/db` package.
 
 1. **Generate a timestamp** for the migration filename:
    ```bash
-   date +%s000
+   node -e "console.log(Date.now())"
    ```
    This gives a Unix timestamp in milliseconds (e.g. `1750252139167`).
 
