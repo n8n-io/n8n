@@ -91,6 +91,8 @@
     "overrides": {
       "@isaacs/brace-expansion": "5.0.1",
       "libphonenumber-js": "npm:empty-npm-package@1.0.0",
+      "@browserbasehq/stagehand": "npm:empty-npm-package@1.0.0",
+      "sharp": "npm:empty-npm-package@1.0.0",
       "ast-types": "0.16.1",
       "@azure/identity": "4.13.0",
       "@lezer/common": "^1.2.0",
