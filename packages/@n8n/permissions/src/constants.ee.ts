@@ -59,6 +59,7 @@ export const RESOURCES = {
 	breakingChanges: ['list'] as const,
 	apiKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
+	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
