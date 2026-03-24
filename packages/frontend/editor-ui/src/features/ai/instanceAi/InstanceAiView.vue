@@ -141,6 +141,17 @@ function handleSidebarResize({ width }: { width: number }) {
 	sidebarWidth.value = width;
 }
 
+// --- Chat area resize (when canvas is visible) ---
+const chatAreaWidth = ref(400);
+const isResizingChat = ref(false);
+function handleChatAreaResize({ width }: { width: number }) {
+	chatAreaWidth.value = width;
+}
+
+const chatAreaStyle = computed(() =>
+	isCanvasVisible.value ? { width: `${chatAreaWidth.value}px`, flex: 'none' } : {},
+);
+
 // --- Scroll management ---
 const scrollableRef = useTemplateRef<HTMLElement>('scrollable');
 // The actual scroll container is the reka-ui viewport inside N8nScrollArea,
@@ -312,8 +323,28 @@ function handleStop() {
 			<InstanceAiThreadList />
 		</N8nResizeWrapper>
 
-		<!-- Main chat area -->
-		<div :class="[$style.chatArea, { [$style.chatAreaNarrow]: isCanvasVisible }]">
+		<!-- Main chat area (resizable when canvas is visible) -->
+		<component
+			:is="isCanvasVisible ? N8nResizeWrapper : 'div'"
+			:class="$style.chatArea"
+			:style="chatAreaStyle"
+			v-bind="
+				isCanvasVisible
+					? {
+							width: chatAreaWidth,
+							minWidth: 300,
+							maxWidth: 700,
+							supportedDirections: ['right'],
+							isResizingEnabled: true,
+							gridSize: 8,
+							outset: true,
+						}
+					: {}
+			"
+			@resize="handleChatAreaResize"
+			@resizestart="isResizingChat = true"
+			@resizeend="isResizingChat = false"
+		>
 			<!-- Header -->
 			<div :class="$style.header">
 				<N8nText tag="h2" size="large" bold>
@@ -418,10 +449,14 @@ function handleStop() {
 					store.debugMode = false;
 				"
 			/>
-		</div>
+		</component>
 
 		<!-- Canvas preview panel (eager mount via v-show) -->
-		<div v-show="isCanvasVisible" :class="$style.canvasArea">
+		<div
+			v-show="isCanvasVisible"
+			:class="$style.canvasArea"
+			:style="isResizingChat ? { pointerEvents: 'none' } : {}"
+		>
 			<InstanceAiWorkflowPreview
 				:workflow-id="activeWorkflowId"
 				:execution-id="activeExecutionId"
@@ -456,12 +491,31 @@ function handleStop() {
 	overflow: hidden;
 	position: relative;
 	background-color: var(--color--background--light-2);
-	transition: flex 0.2s ease;
-}
 
-.chatAreaNarrow {
-	flex: none;
-	width: 400px;
+	// Widen the resize handle hit area for easier grabbing
+	:global([data-test-id='resize-handle']) {
+		width: 12px !important;
+		right: -6px !important;
+
+		// Visible drag indicator line
+		&::after {
+			content: '';
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 2px;
+			height: 32px;
+			border-radius: 1px;
+			background: var(--color--foreground);
+			opacity: 0;
+			transition: opacity 0.15s ease;
+		}
+
+		&:hover::after {
+			opacity: 1;
+		}
+	}
 }
 
 .canvasArea {

@@ -47,18 +47,14 @@ function handleIframeMessage(event: MessageEvent) {
 
 async function fetchWorkflow(id: string) {
 	fetchError.value = null;
+	isLoading.value = true;
 
-	// When re-fetching the same workflow (modification), keep the iframe alive.
-	// Only show loading spinner + clear workflow for a different workflow.
-	const isRefresh = workflow.value?.id === id;
-	if (!isRefresh) {
-		isLoading.value = true;
-		workflow.value = null;
-	}
-
+	// Don't clear workflow.value — keep the iframe mounted so it doesn't
+	// lose its ready state and require a fresh n8nReady handshake.
 	try {
 		workflow.value = await workflowsListStore.fetchWorkflow(id);
 	} catch {
+		workflow.value = null;
 		fetchError.value = i18n.baseText('instanceAi.workflowPreview.fetchError');
 	} finally {
 		isLoading.value = false;
@@ -109,20 +105,15 @@ onBeforeUnmount(() => {
 
 		<!-- Content -->
 		<div :class="$style.content">
-			<!-- Loading -->
-			<div v-if="isLoading" :class="$style.centerState">
-				<N8nSpinner type="dots" />
-			</div>
-
-			<!-- Error -->
-			<div v-else-if="fetchError" :class="$style.centerState">
+			<!-- Error (only when no workflow to show) -->
+			<div v-if="fetchError && !workflow" :class="$style.centerState">
 				<N8nText color="text-light">{{ fetchError }}</N8nText>
 				<N8nIconButton icon="x" variant="outline" size="small" @click="emit('close')" />
 			</div>
 
-			<!-- Preview -->
+			<!-- Preview — stays mounted during re-fetch to keep iframe ready state -->
 			<WorkflowPreview
-				v-else-if="workflow"
+				v-if="workflow"
 				:mode="previewMode"
 				:workflow="workflow"
 				:execution-id="props.executionId ?? undefined"
@@ -130,6 +121,11 @@ onBeforeUnmount(() => {
 				:hide-controls="true"
 				loader-type="spinner"
 			/>
+
+			<!-- Loading overlay (shown during initial load or when no workflow yet) -->
+			<div v-if="isLoading && !workflow" :class="$style.centerState">
+				<N8nSpinner type="dots" />
+			</div>
 		</div>
 	</div>
 </template>
