@@ -88,7 +88,11 @@ const modalTitle = computed(() => {
 			? (uiStore.contextBasedTranslationKeys.workflows.sharing.title as BaseTextKey)
 			: (uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.title as BaseTextKey),
 		{
-			interpolate: { name: workflow.value.name },
+			interpolate: {
+				name:
+					workflow.value.name ||
+					useWorkflowDocumentStore(createWorkflowDocumentId(workflow.value.id)).name,
+			},
 		},
 	);
 });

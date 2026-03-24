@@ -74,6 +74,7 @@ const hideMenuBar = computed(() =>
 const workflow = computed(() => workflowsStore.workflow);
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+const workflowName = computed(() => workflowDocumentStore?.value?.name ?? '');
 const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
 const workflowIsArchived = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
@@ -284,10 +285,10 @@ async function onWorkflowDeactivated() {
 		>
 			<div v-show="!hideMenuBar" :class="$style['top-menu']">
 				<WorkflowDetails
-					v-if="workflow?.name"
+					v-if="workflowName"
 					:id="workflow.id"
 					:tags="workflowTags"
-					:name="workflow.name"
+					:name="workflowName"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflowIsArchived"
 					:description="workflow.description"
