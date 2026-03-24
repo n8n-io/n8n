@@ -11,6 +11,7 @@ import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UrlService } from '@/services/url.service';
 import {
 	createInstanceAgent,
 	createAllTools,
@@ -197,13 +198,14 @@ export class InstanceAiService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly compositeStore: TypeORMCompositeStore,
 		private readonly compactionService: InstanceAiCompactionService,
+		private readonly urlService: UrlService,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 		this.defaultTimeZone = globalConfig.generic.timezone;
 		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
-		this.webhookBaseUrl = `${editorBaseUrl.replace(/\/$/, '')}/${globalConfig.endpoints.webhook}`;
+		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 
 		// Initialize per-builder sandbox factory from env vars (credential-based config resolves at runtime)
 		const sbxConfig = this.getSandboxConfigFromEnv();

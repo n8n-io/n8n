@@ -11,6 +11,29 @@ interface SystemPromptOptions {
 	timeZone?: string;
 }
 
+function getDateTimeSection(timeZone?: string): string {
+	const now = timeZone ? DateTime.now().setZone(timeZone) : DateTime.now();
+	const isoTime = now.toISO({ includeOffset: true });
+	const tzLabel = timeZone ? ` (timezone: ${timeZone})` : '';
+	return `
+## Current Date and Time
+
+The user's current local date and time is: ${isoTime}${tzLabel}.
+When you need to reference "now", use this date and time.`;
+}
+
+function getInstanceInfoSection(webhookBaseUrl: string): string {
+	return `
+## Instance Info
+
+Webhook base URL: ${webhookBaseUrl}
+When a workflow has webhook triggers, its live URL is: ${webhookBaseUrl}/{path} (where {path} is the webhook path parameter). Always share the full webhook URL with the user after a workflow with webhooks is created.
+
+**Chat Trigger nodes** can expose a hosted chat UI when the node's "public" parameter is set to true. Their URL follows a different pattern: ${webhookBaseUrl}/{webhookId}/chat (where {webhookId} is the node's unique webhook ID, visible in the workflow JSON). The chat UI is only accessible when public=true and the workflow is published (active) — otherwise the endpoint returns 404. Do NOT guess the webhookId — after building a workflow with a Chat Trigger, read the workflow to find the node's webhookId and construct the correct URL.
+
+**These URLs are for sharing with the user only.** Do NOT include them in \`build-workflow-with-agent\` task descriptions — the builder cannot reach the n8n instance via HTTP and will fail if it tries to curl/fetch these URLs.`;
+}
+
 export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	const {
 		researchMode,
@@ -21,13 +44,9 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		timeZone,
 	} = options;
 
-	const now = timeZone ? DateTime.now().setZone(timeZone) : DateTime.now();
-	const isoTime = now.toISO({ includeOffset: true });
-	const tzLabel = timeZone ? ` (timezone: ${timeZone})` : '';
-	const dateTimeBlock = `\n## Current Date and Time\n\nThe user's current local date and time is: ${isoTime}${tzLabel}.\nWhen you need to reference "now", use this date and time.\n`;
-
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
-${dateTimeBlock}${webhookBaseUrl ? `\n## Instance Info\n\nWebhook base URL: ${webhookBaseUrl}\nWhen a workflow has webhook triggers, its live URL is: ${webhookBaseUrl}/{path} (where {path} is the webhook path parameter). Always share the full webhook URL with the user after a workflow with webhooks is created.\n\n**This URL is for sharing with the user only.** Do NOT include it in \`build-workflow-with-agent\` task descriptions — the builder cannot reach the n8n instance via HTTP and will fail if it tries to curl/fetch this URL.\n` : ''}
+${getDateTimeSection(timeZone)}
+${webhookBaseUrl ? getInstanceInfoSection(webhookBaseUrl) : ''}
 
 You have access to workflow, execution, and credential tools plus a specialized workflow builder. You also have delegation capabilities for complex tasks, and may have access to MCP tools for extended capabilities.
 

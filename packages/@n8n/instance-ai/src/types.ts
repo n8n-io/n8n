@@ -47,6 +47,7 @@ export interface WorkflowNode {
 	type: string;
 	parameters?: Record<string, unknown>;
 	position: number[];
+	webhookId?: string;
 }
 
 export interface ExecutionResult {
