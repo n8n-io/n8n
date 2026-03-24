@@ -5,9 +5,10 @@ const WRAPPER_COMMANDS = new Set(['sudo', 'env', 'time', 'nice', 'nohup', 'xargs
 /**
  * Returns true when the command contains syntax that makes static program
  * extraction unreliable: shell operators (|, ;, &), command substitution
- * ($(...) or backticks), or process substitution <(...).
+ * ($(...) or backticks), process substitution <(...) / >(...), or newlines
+ * (shell treats them as command separators like ;).
  */
-const COMPLEX_TOKENS = ['|', ';', '&', '$(', '`', '<('];
+const COMPLEX_TOKENS = ['|', ';', '&', '$(', '`', '<(', '>(', '\n'];
 
 function isComplex(command: string): boolean {
 	return COMPLEX_TOKENS.some((token) => command.includes(token));

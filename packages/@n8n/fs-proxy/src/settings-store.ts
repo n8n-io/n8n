@@ -243,8 +243,11 @@ export class SettingsStore {
 
 	private async persist(): Promise<void> {
 		const dir = path.dirname(this.filePath);
-		await fs.mkdir(dir, { recursive: true });
-		await fs.writeFile(this.filePath, JSON.stringify(this.persistent, null, 2), 'utf-8');
+		await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+		await fs.writeFile(this.filePath, JSON.stringify(this.persistent, null, 2), {
+			encoding: 'utf-8',
+			mode: 0o600,
+		});
 	}
 }
 

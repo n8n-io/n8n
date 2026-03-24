@@ -108,8 +108,8 @@ function getSessionResource(sessionManager: SessionManager, sessionId: string): 
 
 export function extractDomain(url: string): string {
 	try {
-		return new URL(url).hostname;
+		return new URL(url).hostname || 'browser';
 	} catch {
-		return url;
+		return 'browser';
 	}
 }

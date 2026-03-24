@@ -49,9 +49,9 @@ function tabOpen(sessionManager: SessionManager, toolGroupId: string): ToolDefin
 		(args: z.infer<typeof tabOpenSchema>) => {
 			if (!args.url) return 'browser';
 			try {
-				return new URL(args.url).hostname;
+				return new URL(args.url).hostname || 'browser';
 			} catch {
-				return args.url;
+				return 'browser';
 			}
 		},
 	);

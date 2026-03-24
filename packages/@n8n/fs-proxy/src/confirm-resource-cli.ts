@@ -1,5 +1,16 @@
 import type { AffectedResource, ResourceDecision } from './tools/types';
 
+/**
+ * Strip control characters (including ANSI escape sequences) from a string
+ * before interpolating it into a terminal prompt to prevent injection attacks.
+ */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional — stripping control chars
+const CONTROL_CHARS_RE = new RegExp('[\\u0000-\\u001f\\u007f]', 'g');
+
+export function sanitizeForTerminal(value: string): string {
+	return value.replace(CONTROL_CHARS_RE, '');
+}
+
 export const RESOURCE_DECISIONS: ResourceDecision[] = [
 	'allowOnce',
 	'allowForSession',
