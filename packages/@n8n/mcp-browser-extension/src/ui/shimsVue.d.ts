@@ -1,3 +1,4 @@
+/* eslint-disable import-x/no-default-export */
 declare module '*.vue' {
 	import type { DefineComponent } from 'vue';
 

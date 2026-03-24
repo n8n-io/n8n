@@ -275,9 +275,14 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				researchMode: orchestrationContext?.researchMode,
 				webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 				filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
+				localGateway: context.localGatewayStatus,
 				toolSearchEnabled: hasDeferrableTools,
 				licenseHints: context.licenseHints,
 				timeZone: options.timeZone,
+				browserAvailable: !!(
+					orchestrationContext?.browserMcpConfig ||
+					context.localMcpServer?.getAvailableTools().some((t) => t.name.startsWith('browser_'))
+				),
 			}),
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },

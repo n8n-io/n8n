@@ -565,6 +565,13 @@ export class InstanceAiController {
 		return this.instanceAiService.getGatewayStatus(req.user.id);
 	}
 
+	@Post('/gateway/pending-approval')
+	async gatewayPendingApproval(req: AuthenticatedRequest) {
+		const { pending, method } = req.body as { pending: boolean; method?: 'cli' | 'app' };
+		this.instanceAiService.setGatewayPendingApproval(req.user.id, pending, method);
+		return { ok: true };
+	}
+
 	// ── Helpers ──────────────────────────────────────────────────────────────
 
 	/**

@@ -44,6 +44,7 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 
 		this.server = startDaemon(config, {
 			managedMode: true,
+			approvalMethod: 'app',
 			confirmConnect,
 			onStatusChange: (status, url) => {
 				if (status === 'connected') {

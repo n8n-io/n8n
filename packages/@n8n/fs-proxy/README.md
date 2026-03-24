@@ -6,7 +6,7 @@ automation — all through a single daemon.
 
 ## Why
 
-n8n's AI agent runs in the cloud but often needs access to your local
+n8n AI runs in the cloud but often needs access to your local
 environment: reading project files, running shell commands, capturing
 screenshots, controlling the browser, or using mouse and keyboard. This
 gateway exposes these capabilities as MCP tools that the agent can call

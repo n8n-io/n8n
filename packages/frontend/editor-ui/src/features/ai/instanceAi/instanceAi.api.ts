@@ -110,6 +110,23 @@ export async function createGatewayLink(
 }
 
 /**
+ * POST /instance-ai/gateway/pending-approval -> { ok }
+ * Notify the backend that the daemon is waiting for user approval.
+ */
+export async function setGatewayPendingApproval(
+	context: IRestApiContext,
+	pending: boolean,
+	method: 'cli' | 'app',
+): Promise<{ ok: boolean }> {
+	return await makeRestApiRequest<{ ok: boolean }>(
+		context,
+		'POST',
+		'/instance-ai/gateway/pending-approval',
+		{ pending, method },
+	);
+}
+
+/**
  * GET /instance-ai/gateway/status -> { connected, connectedAt, directory }
  * Check whether the gateway daemon is currently connected.
  */

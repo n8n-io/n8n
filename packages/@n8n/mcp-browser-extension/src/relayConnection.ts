@@ -1,6 +1,6 @@
 /**
  * Manages the WebSocket connection from the Chrome extension to the CDP relay server.
- * Auto-attaches debugger to all eligible browser tabs and tracks tab lifecycle.
+ * Registers user-selected tabs and lazily attaches debugger on first CDP command.
  * Forwards CDP commands via chrome.debugger and relays CDP events back.
  */
 
@@ -31,7 +31,7 @@ const DEFAULT_SETTINGS: TabManagementSettings = {
 /** URL prefixes to exclude from auto-attach */
 const EXCLUDED_PREFIXES = ['chrome://', 'chrome-extension://', 'about:'];
 
-function isEligibleTab(tab: chrome.tabs.Tab): boolean {
+export function isEligibleTab(tab: chrome.tabs.Tab): boolean {
 	return (
 		tab.id !== undefined &&
 		tab.url !== undefined &&
@@ -42,6 +42,10 @@ function isEligibleTab(tab: chrome.tabs.Tab): boolean {
 export class RelayConnection {
 	/** Map of tabId → debuggee for all controlled tabs */
 	private readonly debuggees = new Map<number, chrome.debugger.Debuggee>();
+	/** Set of tab IDs that have actually been attached via chrome.debugger.attach */
+	private readonly attachedTabs = new Set<number>();
+	/** Set of tab IDs created by the AI agent (via createTab or markAsAgentCreated) */
+	private readonly agentCreatedTabs = new Set<number>();
 	/** The first tab ID, used as default target for commands without explicit tabId */
 	private primaryTabId: number | undefined;
 	private readonly ws: WebSocket;
@@ -67,15 +71,13 @@ export class RelayConnection {
 		chrome.debugger.onDetach.addListener(this.detachListener);
 	}
 
-	/** Auto-discover and register all eligible tabs. */
-	async discoverAndAttachTabs(): Promise<void> {
-		const tabs = await chrome.tabs.query({});
-		const eligible = tabs.filter(isEligibleTab);
-		for (const tab of eligible) {
-			this.debuggees.set(tab.id!, { tabId: tab.id! });
+	/** Register user-selected tabs without attaching debugger (lazy attach). */
+	registerSelectedTabs(tabIds: number[]): void {
+		for (const tabId of tabIds) {
+			this.debuggees.set(tabId, { tabId });
 		}
-		if (eligible.length > 0) {
-			this.primaryTabId = eligible[0].id!;
+		if (tabIds.length > 0) {
+			this.primaryTabId ??= tabIds[0];
 		}
 	}
 
@@ -83,9 +85,7 @@ export class RelayConnection {
 	addTab(tabId: number, title: string, url: string): void {
 		if (this.debuggees.has(tabId)) return;
 		this.debuggees.set(tabId, { tabId });
-		if (!this.primaryTabId) {
-			this.primaryTabId = tabId;
-		}
+		this.primaryTabId ??= tabId;
 		// Notify relay about the new tab
 		this.sendMessage({
 			method: 'tabOpened',
@@ -97,9 +97,13 @@ export class RelayConnection {
 	removeTab(tabId: number): void {
 		if (!this.debuggees.has(tabId)) return;
 
-		// Detach debugger if attached
-		chrome.debugger.detach({ tabId }).catch(() => {});
+		// Detach debugger only if actually attached
+		if (this.attachedTabs.has(tabId)) {
+			chrome.debugger.detach({ tabId }).catch(() => {});
+			this.attachedTabs.delete(tabId);
+		}
 		this.debuggees.delete(tabId);
+		this.agentCreatedTabs.delete(tabId);
 
 		// Update primary tab
 		if (tabId === this.primaryTabId) {
@@ -127,6 +131,26 @@ export class RelayConnection {
 		return [...this.debuggees.keys()];
 	}
 
+	/** Check whether a tab is controlled by this relay. */
+	isControlledTab(tabId: number): boolean {
+		return this.debuggees.has(tabId);
+	}
+
+	/** Check whether tab creation is currently allowed. */
+	isTabCreationAllowed(): boolean {
+		return this.settings.allowTabCreation;
+	}
+
+	/** Check whether a tab was created by the AI agent. */
+	isAgentCreatedTab(tabId: number): boolean {
+		return this.agentCreatedTabs.has(tabId);
+	}
+
+	/** Mark a tab as agent-created so lifecycle listeners track it. */
+	markAsAgentCreated(tabId: number): void {
+		this.agentCreatedTabs.add(tabId);
+	}
+
 	close(message: string): void {
 		this.ws.close(1000, message);
 		this.handleClose();
@@ -138,10 +162,16 @@ export class RelayConnection {
 
 		chrome.debugger.onEvent.removeListener(this.eventListener);
 		chrome.debugger.onDetach.removeListener(this.detachListener);
-		for (const debuggee of this.debuggees.values()) {
-			chrome.debugger.detach(debuggee).catch(() => {});
+		// Only detach tabs that were actually attached
+		for (const tabId of this.attachedTabs) {
+			const debuggee = this.debuggees.get(tabId);
+			if (debuggee) {
+				chrome.debugger.detach(debuggee).catch(() => {});
+			}
 		}
+		this.attachedTabs.clear();
 		this.debuggees.clear();
+		this.agentCreatedTabs.clear();
 		this.onclose?.();
 	}
 
@@ -161,7 +191,9 @@ export class RelayConnection {
 	private onDebuggerDetach(source: chrome.debugger.Debuggee, reason: string): void {
 		if (!source.tabId || !this.debuggees.has(source.tabId)) return;
 
+		this.attachedTabs.delete(source.tabId);
 		this.debuggees.delete(source.tabId);
+		this.agentCreatedTabs.delete(source.tabId);
 
 		// Update primary tab if the detached tab was primary
 		if (source.tabId === this.primaryTabId) {
@@ -210,17 +242,27 @@ export class RelayConnection {
 			case 'closeTab':
 				return await this.handleCloseTab(message.params ?? {});
 			case 'listTabs':
+			case 'listRegisteredTabs':
 				return await this.handleListTabs();
 			default:
 				return undefined;
 		}
 	}
 
+	/** Lazily attach debugger to a tab if not already attached. */
+	private async ensureAttached(tabId: number): Promise<void> {
+		if (this.attachedTabs.has(tabId)) return;
+		const debuggee = this.debuggees.get(tabId);
+		if (!debuggee) return;
+		await chrome.debugger.attach(debuggee, '1.3');
+		this.attachedTabs.add(tabId);
+	}
+
 	private async handleAttachToAllTabs(): Promise<unknown> {
 		// Attach debugger to all controlled tabs
-		for (const debuggee of this.debuggees.values()) {
+		for (const [tabId] of this.debuggees) {
 			try {
-				await chrome.debugger.attach(debuggee, '1.3');
+				await this.ensureAttached(tabId);
 			} catch {
 				// Tab may have been closed or debugger already attached
 			}
@@ -253,6 +295,9 @@ export class RelayConnection {
 			throw new Error('No tab is connected.');
 		}
 
+		// Lazy attach on first CDP command to this tab
+		await this.ensureAttached(targetTabId);
+
 		const debuggee = this.debuggees.get(targetTabId)!;
 		return await chrome.debugger.sendCommand(
 			debuggee,
@@ -273,10 +318,12 @@ export class RelayConnection {
 
 		if (!tab.id) throw new Error('Failed to create tab');
 
-		// Attach debugger to the new tab
+		// Attach debugger to the new tab immediately (agent-created tabs are eager)
 		const debuggee: chrome.debugger.Debuggee = { tabId: tab.id };
 		this.debuggees.set(tab.id, debuggee);
+		this.agentCreatedTabs.add(tab.id);
 		await chrome.debugger.attach(debuggee, '1.3');
+		this.attachedTabs.add(tab.id);
 
 		const result = (await chrome.debugger.sendCommand(debuggee, 'Target.getTargetInfo')) as {
 			targetInfo?: unknown;
@@ -301,10 +348,14 @@ export class RelayConnection {
 		if (!tabId) throw new Error('tabId is required');
 
 		// Detach debugger if attached
-		if (this.debuggees.has(tabId)) {
+		if (this.attachedTabs.has(tabId)) {
 			await chrome.debugger.detach({ tabId }).catch(() => {});
+			this.attachedTabs.delete(tabId);
+		}
+		if (this.debuggees.has(tabId)) {
 			this.debuggees.delete(tabId);
 		}
+		this.agentCreatedTabs.delete(tabId);
 
 		// Close the tab
 		await chrome.tabs.remove(tabId);

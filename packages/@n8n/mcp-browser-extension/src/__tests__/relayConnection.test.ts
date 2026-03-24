@@ -7,6 +7,7 @@ import { RelayConnection } from '../relayConnection';
 const mockAttach = jest.fn().mockResolvedValue(undefined);
 const mockDetach = jest.fn().mockResolvedValue(undefined);
 const mockSendCommand = jest.fn().mockResolvedValue({});
+const mockGetTargets = jest.fn().mockResolvedValue([]);
 
 const eventListeners: Array<(...args: unknown[]) => void> = [];
 const detachListeners: Array<(...args: unknown[]) => void> = [];
@@ -27,6 +28,9 @@ const mockRemoveDetachListener = jest.fn((fn: (...args: unknown[]) => void) => {
 });
 
 const mockTabsQuery = jest.fn().mockResolvedValue([]);
+const mockTabsGet = jest
+	.fn()
+	.mockResolvedValue({ id: 42, title: 'Test Tab', url: 'https://example.com' });
 
 Object.assign(globalThis, {
 	chrome: {
@@ -34,6 +38,7 @@ Object.assign(globalThis, {
 			attach: mockAttach,
 			detach: mockDetach,
 			sendCommand: mockSendCommand,
+			getTargets: mockGetTargets,
 			onEvent: {
 				addListener: mockAddEventListener,
 				removeListener: mockRemoveEventListener,
@@ -46,7 +51,7 @@ Object.assign(globalThis, {
 		tabs: {
 			create: jest.fn().mockResolvedValue({ id: 999, title: 'New Tab', url: 'about:blank' }),
 			remove: jest.fn().mockResolvedValue(undefined),
-			get: jest.fn().mockResolvedValue({ id: 42, title: 'Test Tab', url: 'https://example.com' }),
+			get: mockTabsGet,
 			query: mockTabsQuery,
 		},
 		storage: {
@@ -113,29 +118,14 @@ describe('RelayConnection', () => {
 		expect(mockAddDetachListener).toHaveBeenCalledTimes(1);
 	});
 
-	describe('discoverAndAttachTabs', () => {
-		it('should discover and register eligible tabs', async () => {
-			mockTabsQuery.mockResolvedValueOnce([
-				{ id: 1, url: 'https://example.com' },
-				{ id: 2, url: 'https://google.com' },
-				{ id: 3, url: 'chrome://extensions/' },
-				{ id: 4, url: 'chrome-extension://abc/popup.html' },
-				{ id: 5, url: 'about:blank' },
-			]);
-
-			await relay.discoverAndAttachTabs();
-
-			// Only tabs 1 and 2 are eligible
-			expect(relay.getControlledTabIds()).toEqual([1, 2]);
+	describe('registerSelectedTabs', () => {
+		it('should register only specified tab IDs', () => {
+			relay.registerSelectedTabs([1, 2, 3]);
+			expect(relay.getControlledTabIds()).toEqual([1, 2, 3]);
 		});
 
-		it('should set the first eligible tab as primary', async () => {
-			mockTabsQuery.mockResolvedValueOnce([
-				{ id: 10, url: 'https://example.com' },
-				{ id: 20, url: 'https://google.com' },
-			]);
-
-			await relay.discoverAndAttachTabs();
+		it('should set the first tab as primary', async () => {
+			relay.registerSelectedTabs([10, 20]);
 
 			// Verify by sending a CDP command without tabId — should route to tab 10
 			mockSendCommand.mockResolvedValueOnce({ data: 'ok' });
@@ -147,31 +137,41 @@ describe('RelayConnection', () => {
 			ws.onmessage?.({ data: message });
 			await new Promise((resolve) => setTimeout(resolve, 10));
 
+			// Should lazy-attach and then send command to tab 10
+			expect(mockAttach).toHaveBeenCalledWith({ tabId: 10 }, '1.3');
 			expect(mockSendCommand).toHaveBeenCalledWith({ tabId: 10 }, 'Runtime.evaluate', {
 				expression: '1',
 			});
 		});
+
+		it('should not attach debugger on registration', () => {
+			relay.registerSelectedTabs([1, 2, 3]);
+			expect(mockAttach).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('addTab / removeTab', () => {
-		it('should add a tab and send tabOpened event', () => {
+		it('should add a tab and send tabOpened event', async () => {
 			relay.addTab(42, 'Test', 'https://test.com');
 			expect(relay.getControlledTabIds()).toEqual([42]);
 
+			await new Promise((resolve) => setTimeout(resolve, 10));
 			const sent = JSON.parse(ws.sent[0]);
 			expect(sent.method).toBe('tabOpened');
-			expect(sent.params).toEqual({ tabId: 42, title: 'Test', url: 'https://test.com' });
+			expect(sent.params).toMatchObject({ tabId: 42, title: 'Test', url: 'https://test.com' });
 		});
 
-		it('should not add duplicate tabs', () => {
+		it('should not add duplicate tabs', async () => {
 			relay.addTab(42, 'Test', 'https://test.com');
 			relay.addTab(42, 'Test', 'https://test.com');
 			expect(relay.getControlledTabIds()).toEqual([42]);
+			await new Promise((resolve) => setTimeout(resolve, 10));
 			expect(ws.sent).toHaveLength(1);
 		});
 
-		it('should remove a tab and send tabClosed event', () => {
+		it('should remove a tab and send tabClosed event', async () => {
 			relay.addTab(42, 'Test', 'https://test.com');
+			await new Promise((resolve) => setTimeout(resolve, 10));
 			ws.sent.length = 0; // clear tabOpened message
 
 			relay.removeTab(42);
@@ -180,6 +180,13 @@ describe('RelayConnection', () => {
 			const sent = JSON.parse(ws.sent[0]);
 			expect(sent.method).toBe('tabClosed');
 			expect(sent.params).toEqual({ tabId: 42 });
+		});
+
+		it('should only detach debugger for tabs that were actually attached', () => {
+			relay.addTab(42, 'Test', 'https://test.com');
+			// Tab was never attached via ensureAttached/forwardCDPCommand
+			relay.removeTab(42);
+			expect(mockDetach).not.toHaveBeenCalled();
 		});
 
 		it('should close connection when last tab is removed', () => {
@@ -202,49 +209,35 @@ describe('RelayConnection', () => {
 		});
 	});
 
-	describe('attachToAllTabs', () => {
-		it('should attach debugger to all controlled tabs', async () => {
-			relay.addTab(10, 'A', 'https://a.com');
-			relay.addTab(20, 'B', 'https://b.com');
-			relay.addTab(30, 'C', 'https://c.com');
+	describe('listRegisteredTabs', () => {
+		it('should return tab metadata without attaching debugger', async () => {
+			relay.registerSelectedTabs([42]);
 			ws.sent.length = 0;
 
-			mockAttach.mockResolvedValue(undefined);
-			mockSendCommand.mockResolvedValueOnce({ targetInfo: { targetId: 'first', type: 'page' } });
+			mockTabsGet.mockResolvedValueOnce({
+				id: 42,
+				title: 'Example',
+				url: 'https://example.com',
+			});
 
-			const message = JSON.stringify({ id: 1, method: 'attachToAllTabs' });
+			const message = JSON.stringify({ id: 1, method: 'listRegisteredTabs' });
 			ws.onmessage?.({ data: message });
 
 			await new Promise((resolve) => setTimeout(resolve, 10));
 
-			expect(mockAttach).toHaveBeenCalledTimes(3);
-			expect(mockAttach).toHaveBeenCalledWith({ tabId: 10 }, '1.3');
-			expect(mockAttach).toHaveBeenCalledWith({ tabId: 20 }, '1.3');
-			expect(mockAttach).toHaveBeenCalledWith({ tabId: 30 }, '1.3');
-		});
-
-		it('should return primary tab targetInfo', async () => {
-			relay.addTab(123, 'Test', 'https://test.com');
-			ws.sent.length = 0;
-
-			mockAttach.mockResolvedValueOnce(undefined);
-			mockSendCommand.mockResolvedValueOnce({ targetInfo: { targetId: 'abc', type: 'page' } });
-
-			const message = JSON.stringify({ id: 1, method: 'attachToAllTabs' });
-			ws.onmessage?.({ data: message });
-
-			await new Promise((resolve) => setTimeout(resolve, 10));
-
+			expect(mockAttach).not.toHaveBeenCalled();
 			expect(ws.sent).toHaveLength(1);
 			const response = JSON.parse(ws.sent[0]);
 			expect(response.id).toBe(1);
-			expect(response.result).toEqual({ targetInfo: { targetId: 'abc', type: 'page' } });
+			expect(response.result).toEqual({
+				tabs: [{ tabId: 42, title: 'Example', url: 'https://example.com' }],
+			});
 		});
 	});
 
-	describe('forwardCDPCommand', () => {
-		it('should forward CDP commands via chrome.debugger.sendCommand', async () => {
-			relay.addTab(123, 'Test', 'https://test.com');
+	describe('forwardCDPCommand (lazy attach)', () => {
+		it('should lazy-attach debugger on first CDP command', async () => {
+			relay.registerSelectedTabs([123]);
 			ws.sent.length = 0;
 			mockSendCommand.mockResolvedValueOnce({ data: 'test-result' });
 
@@ -257,18 +250,45 @@ describe('RelayConnection', () => {
 
 			await new Promise((resolve) => setTimeout(resolve, 10));
 
+			// Should have attached first, then sent command
+			expect(mockAttach).toHaveBeenCalledTimes(1);
+			expect(mockAttach).toHaveBeenCalledWith({ tabId: 123 }, '1.3');
 			expect(mockSendCommand).toHaveBeenCalledWith({ tabId: 123 }, 'Runtime.evaluate', {
 				expression: '1+1',
 			});
+		});
 
-			const response = JSON.parse(ws.sent[0]);
-			expect(response.id).toBe(2);
-			expect(response.result).toEqual({ data: 'test-result' });
+		it('should not re-attach on subsequent commands to the same tab', async () => {
+			relay.registerSelectedTabs([123]);
+			ws.sent.length = 0;
+			mockSendCommand.mockResolvedValue({ data: 'result' });
+
+			// First command — triggers attach
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'forwardCDPCommand',
+					params: { method: 'Runtime.evaluate', params: {} },
+				}),
+			});
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			// Second command — should NOT re-attach
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 2,
+					method: 'forwardCDPCommand',
+					params: { method: 'DOM.getDocument', params: {} },
+				}),
+			});
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			expect(mockAttach).toHaveBeenCalledTimes(1);
+			expect(mockSendCommand).toHaveBeenCalledTimes(2);
 		});
 
 		it('should route CDP commands to specific tab when tabId provided', async () => {
-			relay.addTab(10, 'A', 'https://a.com');
-			relay.addTab(20, 'B', 'https://b.com');
+			relay.registerSelectedTabs([10, 20]);
 			ws.sent.length = 0;
 			mockSendCommand.mockResolvedValueOnce({ data: 'result' });
 
@@ -281,6 +301,8 @@ describe('RelayConnection', () => {
 
 			await new Promise((resolve) => setTimeout(resolve, 10));
 
+			// Should attach to tab 20, not tab 10
+			expect(mockAttach).toHaveBeenCalledWith({ tabId: 20 }, '1.3');
 			expect(mockSendCommand).toHaveBeenCalledWith({ tabId: 20 }, 'Page.navigate', {
 				url: 'https://example.com',
 			});
@@ -301,6 +323,34 @@ describe('RelayConnection', () => {
 		});
 	});
 
+	describe('isAgentCreatedTab', () => {
+		it('should return false for non-agent tabs', () => {
+			relay.registerSelectedTabs([42]);
+			expect(relay.isAgentCreatedTab(42)).toBe(false);
+		});
+
+		it('should return true for agent-created tabs after createTab', async () => {
+			relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
+			(globalThis.chrome.tabs.create as jest.Mock).mockResolvedValueOnce({
+				id: 999,
+				title: 'New',
+				url: 'https://new.com',
+			});
+
+			const message = JSON.stringify({
+				id: 1,
+				method: 'createTab',
+				params: { url: 'https://new.com' },
+			});
+			ws.onmessage?.({ data: message });
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			expect(relay.isAgentCreatedTab(999)).toBe(true);
+			// Agent-created tabs are immediately attached
+			expect(mockAttach).toHaveBeenCalledWith({ tabId: 999 }, '1.3');
+		});
+	});
+
 	it('should send error response for malformed JSON', async () => {
 		ws.onmessage?.({ data: 'not-json' });
 
@@ -311,16 +361,29 @@ describe('RelayConnection', () => {
 		expect(response.error).toBeDefined();
 	});
 
-	it('should clean up all listeners and debuggees on close', () => {
-		relay.addTab(42, 'A', 'https://a.com');
-		relay.addTab(43, 'B', 'https://b.com');
+	it('should clean up only attached debuggees on close', async () => {
+		relay.registerSelectedTabs([42, 43]);
+
+		// Attach only tab 42 via a CDP command
+		mockSendCommand.mockResolvedValueOnce({});
+		ws.onmessage?.({
+			data: JSON.stringify({
+				id: 1,
+				method: 'forwardCDPCommand',
+				params: { method: 'Runtime.evaluate', params: {}, tabId: 42 },
+			}),
+		});
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		ws.sent.length = 0;
+
 		relay.close('test');
 
 		expect(ws.closed).toBe(true);
 		expect(mockRemoveEventListener).toHaveBeenCalledTimes(1);
 		expect(mockRemoveDetachListener).toHaveBeenCalledTimes(1);
-		// Should detach all debuggees
-		expect(mockDetach).toHaveBeenCalledTimes(2);
+		// Should only detach tab 42 (the one that was actually attached)
+		expect(mockDetach).toHaveBeenCalledTimes(1);
+		expect(mockDetach).toHaveBeenCalledWith({ tabId: 42 });
 	});
 
 	it('should forward debugger events for matching tab', () => {
@@ -389,6 +452,7 @@ describe('RelayConnection', () => {
 
 	it('should reject closeTab when tab closing is disabled', async () => {
 		relay.addTab(42, 'Test', 'https://test.com');
+		await new Promise((resolve) => setTimeout(resolve, 10));
 		relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
 		ws.sent.length = 0; // clear tabOpened message
 
@@ -403,5 +467,43 @@ describe('RelayConnection', () => {
 
 		const response = JSON.parse(ws.sent[0]);
 		expect(response.error).toContain('Tab closing is disabled');
+	});
+
+	describe('spawned tab helpers', () => {
+		it('isControlledTab returns true for registered tabs', () => {
+			relay.registerSelectedTabs([10, 20]);
+			expect(relay.isControlledTab(10)).toBe(true);
+			expect(relay.isControlledTab(20)).toBe(true);
+			expect(relay.isControlledTab(99)).toBe(false);
+		});
+
+		it('isControlledTab returns true for dynamically added tabs', () => {
+			relay.addTab(42, 'Test', 'https://test.com');
+			expect(relay.isControlledTab(42)).toBe(true);
+		});
+
+		it('isTabCreationAllowed reflects current settings', () => {
+			expect(relay.isTabCreationAllowed()).toBe(true); // default
+			relay.setSettings({ allowTabCreation: false, allowTabClosing: false });
+			expect(relay.isTabCreationAllowed()).toBe(false);
+			relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
+			expect(relay.isTabCreationAllowed()).toBe(true);
+		});
+
+		it('markAsAgentCreated causes isAgentCreatedTab to return true', () => {
+			expect(relay.isAgentCreatedTab(50)).toBe(false);
+			relay.markAsAgentCreated(50);
+			expect(relay.isAgentCreatedTab(50)).toBe(true);
+		});
+
+		it('markAsAgentCreated tabs are cleaned up on removeTab', () => {
+			relay.addTab(50, 'Spawned', 'https://spawned.com');
+			relay.markAsAgentCreated(50);
+			expect(relay.isAgentCreatedTab(50)).toBe(true);
+
+			relay.addTab(51, 'Other', 'https://other.com'); // keep connection alive
+			relay.removeTab(50);
+			expect(relay.isAgentCreatedTab(50)).toBe(false);
+		});
 	});
 });

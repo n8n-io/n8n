@@ -16,6 +16,7 @@ export default defineConfig({
 		},
 	},
 	build: {
+		sourcemap: true,
 		rollupOptions: {
 			input: {
 				connect: resolve(__dirname, 'src/ui/connect.html'),

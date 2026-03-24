@@ -96,8 +96,16 @@ onMounted(() => {
 					</N8nText>
 				</div>
 
-				<!-- Daemon connecting -->
-				<div v-if="store.isDaemonConnecting" :class="$style.connectingRow">
+				<!-- Pending approval -->
+				<div v-if="store.isPendingApproval" :class="$style.connectingRow">
+					<span :class="[$style.dot, $style.dotWarning]" />
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText(`instanceAi.filesystem.pendingApproval.${store.approvalMethod}`) }}
+					</N8nText>
+				</div>
+
+				<!-- Daemon connecting (not yet pending) -->
+				<div v-else-if="store.isDaemonConnecting" :class="$style.connectingRow">
 					<span :class="$style.spinner" />
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('instanceAi.filesystem.connectWaiting') }}
@@ -209,6 +217,22 @@ onMounted(() => {
 
 .dotLocal {
 	background: var(--color--warning);
+}
+
+.dotWarning {
+	background: var(--color--warning);
+	animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0.4;
+	}
 }
 
 .connectingRow {

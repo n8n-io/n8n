@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watchEffect } from 'vue';
+import { createLogger } from '../logger';
+
+const log = createLogger('ui');
 
 type ConnectionStatus = 'disconnected' | 'connected' | 'connecting';
 
@@ -11,6 +14,7 @@ interface TabManagementSettings {
 const status = ref<ConnectionStatus>('disconnected');
 const controlledTabIds = ref<number[]>([]);
 const tabs = ref<chrome.tabs.Tab[]>([]);
+const selectedTabIds = ref<Set<number>>(new Set());
 const errorMessage = ref('');
 const showSettings = ref(false);
 const settings = ref<TabManagementSettings>({
@@ -36,38 +40,81 @@ const statusLabel = computed(() => {
 	return map[status.value];
 });
 
+const allSelected = computed(
+	() =>
+		tabs.value.length > 0 &&
+		tabs.value.every((t) => t.id !== undefined && selectedTabIds.value.has(t.id)),
+);
+
+const someSelected = computed(() => selectedTabIds.value.size > 0);
+
+const selectAllRef = ref<HTMLInputElement | null>(null);
+watchEffect(() => {
+	if (selectAllRef.value) {
+		selectAllRef.value.indeterminate = someSelected.value && !allSelected.value;
+	}
+});
+
+function toggleTab(tabId: number): void {
+	const next = new Set(selectedTabIds.value);
+	if (next.has(tabId)) {
+		next.delete(tabId);
+	} else {
+		next.add(tabId);
+	}
+	selectedTabIds.value = next;
+}
+
+function toggleAll(): void {
+	if (allSelected.value) {
+		selectedTabIds.value = new Set();
+	} else {
+		selectedTabIds.value = new Set(tabs.value.filter((t) => t.id !== undefined).map((t) => t.id!));
+	}
+}
+
 async function loadTabs(): Promise<void> {
-	const result = (await chrome.runtime.sendMessage({ type: 'getTabs' })) as chrome.tabs.Tab[];
-	tabs.value = result;
+	const result = await chrome.runtime.sendMessage({ type: 'getTabs' });
+	log.debug('loadTabs response:', typeof result, Array.isArray(result) ? result.length : result);
+	tabs.value = Array.isArray(result) ? result : [];
 }
 
 async function connect(): Promise<void> {
-	const params = new URLSearchParams(window.location.search);
-	const relayUrl = params.get('mcpRelayUrl');
-
-	if (!relayUrl) {
-		errorMessage.value = 'No relay URL provided. This page should be opened by n8n automatically.';
+	if (!relayUrl.value) {
+		errorMessage.value =
+			'No relay URL provided. Use the browser_connect tool in n8n AI to start a session.';
+		log.warn('connect: no relay URL available');
 		return;
 	}
 
+	log.debug('connect: relay URL =', relayUrl.value, 'selectedTabs:', selectedTabIds.value.size);
 	status.value = 'connecting';
 	errorMessage.value = '';
 
-	const result = (await chrome.runtime.sendMessage({
+	const raw = await chrome.runtime.sendMessage({
 		type: 'connect',
-		relayUrl,
-	})) as { success: boolean; error?: string };
+		relayUrl: relayUrl.value,
+		selectedTabIds: [...selectedTabIds.value],
+	});
+	log.debug('connect response:', raw);
+	const result = (raw && typeof raw === 'object' ? raw : { success: false }) as {
+		success: boolean;
+		error?: string;
+	};
 
 	if (result.success) {
 		status.value = 'connected';
+		await chrome.runtime.sendMessage({ type: 'clearRelayUrl' });
 		await refreshStatus();
 	} else {
 		status.value = 'disconnected';
 		errorMessage.value = result.error ?? 'Unknown error';
+		log.error('connect failed:', result.error);
 	}
 }
 
 async function disconnect(): Promise<void> {
+	log.debug('disconnect');
 	await chrome.runtime.sendMessage({ type: 'disconnect' });
 	status.value = 'disconnected';
 	controlledTabIds.value = [];
@@ -75,11 +122,13 @@ async function disconnect(): Promise<void> {
 }
 
 async function refreshStatus(): Promise<void> {
-	const currentStatus = (await chrome.runtime.sendMessage({ type: 'getStatus' })) as {
-		connected: boolean;
+	const currentStatus = await chrome.runtime.sendMessage({ type: 'getStatus' });
+	log.debug('refreshStatus response:', currentStatus);
+	const statusObj = (currentStatus && typeof currentStatus === 'object' ? currentStatus : {}) as {
+		connected?: boolean;
 		tabIds?: number[];
 	};
-	controlledTabIds.value = currentStatus.tabIds ?? [];
+	controlledTabIds.value = statusObj.tabIds ?? [];
 	await loadTabs();
 }
 
@@ -91,33 +140,65 @@ async function updateSettings(partial: Partial<TabManagementSettings>): Promise<
 	});
 }
 
+const relayUrl = ref<string | null>(null);
+
+const hasRelayUrl = computed(() => !!relayUrl.value);
+
+// Listen for status changes and relay URL updates from background script
+chrome.runtime.onMessage.addListener(
+	(message: { type: string; relayUrl?: string; connected?: boolean; tabIds?: number[] }) => {
+		if (message.type === 'relayUrlReady' && message.relayUrl) {
+			log.debug('relayUrlReady received:', message.relayUrl);
+			relayUrl.value = message.relayUrl;
+			// A new relay URL means the previous session is gone — reset to disconnected
+			if (status.value === 'connected') {
+				status.value = 'disconnected';
+				controlledTabIds.value = [];
+				void loadTabs();
+			}
+		}
+		if (message.type === 'statusChanged') {
+			log.debug('statusChanged received:', message.connected, message.tabIds);
+			if (message.connected) {
+				status.value = 'connected';
+				controlledTabIds.value = message.tabIds ?? [];
+			} else {
+				status.value = 'disconnected';
+				controlledTabIds.value = [];
+			}
+			void loadTabs();
+		}
+	},
+);
+
 onMounted(async () => {
 	// Load settings
-	const savedSettings = (await chrome.runtime.sendMessage({
-		type: 'getSettings',
-	})) as TabManagementSettings;
-	if (savedSettings) {
-		settings.value = savedSettings;
+	const savedSettings = await chrome.runtime.sendMessage({ type: 'getSettings' });
+	log.debug('saved settings:', savedSettings);
+	if (savedSettings && typeof savedSettings === 'object') {
+		settings.value = savedSettings as TabManagementSettings;
 	}
 
-	const currentStatus = (await chrome.runtime.sendMessage({ type: 'getStatus' })) as {
-		connected: boolean;
+	// Load pending relay URL from storage (set by background.ts when Playwright opens connect.html)
+	const storedUrl = await chrome.runtime.sendMessage({ type: 'getRelayUrl' });
+	log.debug('stored relay URL:', storedUrl);
+	if (typeof storedUrl === 'string') {
+		relayUrl.value = storedUrl;
+	}
+
+	const currentStatus = await chrome.runtime.sendMessage({ type: 'getStatus' });
+	log.debug('initial status:', currentStatus);
+	const statusObj = (currentStatus && typeof currentStatus === 'object' ? currentStatus : {}) as {
+		connected?: boolean;
 		tabIds?: number[];
 	};
 
-	if (currentStatus.connected) {
+	if (statusObj.connected) {
 		status.value = 'connected';
-		controlledTabIds.value = currentStatus.tabIds ?? [];
+		controlledTabIds.value = statusObj.tabIds ?? [];
 		await loadTabs();
 	} else {
 		await loadTabs();
-
-		// Auto-connect if relay URL is provided (opened by n8n)
-		const params = new URLSearchParams(window.location.search);
-		const relayUrl = params.get('mcpRelayUrl');
-		if (relayUrl) {
-			void connect();
-		}
 	}
 });
 
@@ -129,8 +210,8 @@ const controlledTabs = computed(() => {
 
 <template>
 	<div class="container">
-		<h1 class="title">n8n Browser Bridge</h1>
-		<p class="subtitle">Controls all browser tabs for n8n's AI agent</p>
+		<h1 class="title">n8n AI Browser Bridge</h1>
+		<p class="subtitle">Let n8n AI control browser tabs</p>
 
 		<div :class="['status', `status--${statusTheme}`]">
 			<span class="status-dot" />
@@ -141,12 +222,54 @@ const controlledTabs = computed(() => {
 		</div>
 
 		<template v-if="status !== 'connected'">
-			<p v-if="tabs.length" class="info-text">
-				All {{ tabs.length }} eligible tabs will be controlled on connect.
+			<template v-if="hasRelayUrl">
+				<!-- Tab selection list -->
+				<div v-if="tabs.length" class="tab-list-container">
+					<div class="tab-list-header">
+						<label class="select-all" @click.prevent="toggleAll">
+							<input ref="selectAllRef" type="checkbox" :checked="allSelected" />
+							<span>Select All ({{ tabs.length }} tabs)</span>
+						</label>
+					</div>
+					<ul class="tab-list">
+						<li
+							v-for="tab in tabs"
+							:key="tab.id"
+							class="tab-item tab-item--selectable"
+							@click="tab.id !== undefined && toggleTab(tab.id)"
+						>
+							<input
+								type="checkbox"
+								:checked="tab.id !== undefined && selectedTabIds.has(tab.id)"
+								@click.stop
+								@change="tab.id !== undefined && toggleTab(tab.id)"
+							/>
+							<img
+								v-if="tab.favIconUrl"
+								:src="tab.favIconUrl"
+								alt=""
+								class="tab-favicon"
+								@error="($event.target as HTMLImageElement).style.display = 'none'"
+							/>
+							<div class="tab-info">
+								<div class="tab-title">{{ tab.title ?? 'Untitled' }}</div>
+								<div class="tab-url">{{ tab.url ?? '' }}</div>
+							</div>
+						</li>
+					</ul>
+				</div>
+				<button class="btn btn--solid" :disabled="status === 'connecting'" @click="connect">
+					Connect{{
+						someSelected
+							? ` (${selectedTabIds.size} tab${selectedTabIds.size !== 1 ? 's' : ''})`
+							: ''
+					}}
+				</button>
+			</template>
+			<p v-else class="info-text">
+				Waiting for n8n AI to open this page with a relay URL. Use the
+				<code>browser_connect</code> tool in n8n to get started.
 			</p>
-			<button class="btn btn--solid" :disabled="status === 'connecting'" @click="connect">
-				Connect
-			</button>
 		</template>
 
 		<template v-else>
@@ -312,7 +435,7 @@ const controlledTabs = computed(() => {
 	font-size: var(--font-size--2xs);
 }
 
-/* ----- Tab list (read-only when connected) ----- */
+/* ----- Tab list ----- */
 
 .tab-list-container {
 	margin-bottom: var(--spacing--sm);
@@ -342,6 +465,29 @@ const controlledTabs = computed(() => {
 	padding: var(--spacing--xs);
 	border-radius: var(--radius--lg);
 	border: var(--border-width) var(--border-style) transparent;
+}
+
+.tab-item--selectable {
+	cursor: pointer;
+
+	&:hover {
+		background: var(--background--surface--hover);
+	}
+}
+
+.select-all {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	cursor: pointer;
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text--tint-1);
+}
+
+input[type='checkbox'] {
+	accent-color: var(--color--primary);
+	cursor: pointer;
 }
 
 .tab-favicon {

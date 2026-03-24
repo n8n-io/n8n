@@ -2,7 +2,7 @@
 	"name": "@n8n/mcp-browser-extension",
 	"version": "0.0.1",
 	"private": true,
-	"description": "Chrome extension that bridges n8n's AI agent to browser tabs via CDP",
+	"description": "Chrome extension that bridges n8n AI to browser tabs via CDP",
 	"scripts": {
 		"clean": "rimraf dist .turbo",
 		"build": "vite build --config vite.sw.config.mts && vite build --config vite.ui.config.mts",

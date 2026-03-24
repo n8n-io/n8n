@@ -513,6 +513,14 @@ export interface InstanceAiWorkspaceService {
 	): Promise<{ deletedCount: number }>;
 }
 
+// ── Local gateway status ─────────────────────────────────────────────────────
+
+export type LocalGatewayStatus =
+	| { status: 'connected' }
+	| { status: 'disconnected'; capabilities: string[] }
+	| { status: 'pending_approval'; approvalMethod: 'cli' | 'app' }
+	| { status: 'disabled' };
+
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 export interface InstanceAiContext {
@@ -529,6 +537,8 @@ export interface InstanceAiContext {
 	 * Connected remote MCP server (e.g. fs-proxy daemon). When set, dynamic tools are created from its advertised capabilities. Takes precedence over `filesystemService`.
 	 */
 	localMcpServer?: LocalMcpServer;
+	/** Connection state of the local gateway — drives system prompt guidance. */
+	localGatewayStatus?: LocalGatewayStatus;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
 	/** Human-readable hints about licensed features that are NOT available on this instance.

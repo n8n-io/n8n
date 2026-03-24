@@ -1,11 +1,14 @@
 /**
  * Chrome extension service worker (background script).
  *
- * Manages the lifecycle of relay connections. Auto-connects to all eligible
- * browser tabs and tracks tab lifecycle (new tabs, closed tabs).
+ * Manages the lifecycle of relay connections. Registers user-selected tabs
+ * and tracks tab lifecycle for agent-created tabs only.
  */
 
-import { RelayConnection, type TabManagementSettings } from './relayConnection';
+import { createLogger } from './logger';
+import { RelayConnection, isEligibleTab, type TabManagementSettings } from './relayConnection';
+
+const log = createLogger('bg');
 
 interface ConnectionState {
 	relay: RelayConnection;
@@ -30,6 +33,13 @@ async function loadSettings(): Promise<TabManagementSettings> {
 }
 
 // ---------------------------------------------------------------------------
+// Relay URL storage (for deduplicating connect.html tabs)
+// ---------------------------------------------------------------------------
+
+const CONNECT_PAGE = '/dist/connect.html';
+const RELAY_URL_KEY = 'pendingRelayUrl';
+
+// ---------------------------------------------------------------------------
 // Message handling from connect.html UI
 // ---------------------------------------------------------------------------
 
@@ -40,6 +50,7 @@ interface GetTabsMessage {
 interface ConnectMessage {
 	type: 'connect';
 	relayUrl: string;
+	selectedTabIds: number[];
 }
 
 interface DisconnectMessage {
@@ -59,13 +70,23 @@ interface GetSettingsMessage {
 	type: 'getSettings';
 }
 
+interface GetRelayUrlMessage {
+	type: 'getRelayUrl';
+}
+
+interface ClearRelayUrlMessage {
+	type: 'clearRelayUrl';
+}
+
 type ExtensionMessage =
 	| GetTabsMessage
 	| ConnectMessage
 	| DisconnectMessage
 	| GetStatusMessage
 	| UpdateSettingsMessage
-	| GetSettingsMessage;
+	| GetSettingsMessage
+	| GetRelayUrlMessage
+	| ClearRelayUrlMessage;
 
 chrome.runtime.onMessage.addListener(
 	(
@@ -73,7 +94,11 @@ chrome.runtime.onMessage.addListener(
 		_sender: chrome.runtime.MessageSender,
 		sendResponse: (response: unknown) => void,
 	) => {
-		void handleMessage(message).then(sendResponse);
+		log.debug('message received:', message.type);
+		void handleMessage(message).then((response) => {
+			log.debug('message response:', message.type, response);
+			sendResponse(response);
+		});
 		return true; // keep message channel open for async response
 	},
 );
@@ -81,10 +106,10 @@ chrome.runtime.onMessage.addListener(
 async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 	switch (message.type) {
 		case 'getTabs':
-			return await getControlledTabs();
+			return await getEligibleTabs();
 
 		case 'connect':
-			return await connectToRelay(message.relayUrl);
+			return await connectToRelay(message.relayUrl, message.selectedTabIds);
 
 		case 'disconnect':
 			disconnect();
@@ -107,6 +132,15 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 		case 'getSettings':
 			return await loadSettings();
 
+		case 'getRelayUrl': {
+			const stored = await chrome.storage.session.get(RELAY_URL_KEY);
+			return (stored[RELAY_URL_KEY] as string) ?? null;
+		}
+
+		case 'clearRelayUrl':
+			await chrome.storage.session.remove(RELAY_URL_KEY);
+			return { success: true };
+
 		default:
 			return { error: 'Unknown message type' };
 	}
@@ -116,46 +150,141 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 // Tab enumeration
 // ---------------------------------------------------------------------------
 
-async function getControlledTabs(): Promise<chrome.tabs.Tab[]> {
+async function getEligibleTabs(): Promise<chrome.tabs.Tab[]> {
 	const tabs = await chrome.tabs.query({});
-	return tabs.filter(
-		(tab) =>
-			tab.id !== undefined &&
-			tab.url !== undefined &&
-			!tab.url.startsWith('chrome://') &&
-			!tab.url.startsWith('chrome-extension://') &&
-			!tab.url.startsWith('about:'),
-	);
+	const eligible = tabs.filter(isEligibleTab);
+	log.debug('getEligibleTabs:', eligible.length, 'of', tabs.length, 'total');
+	return eligible;
 }
 
 // ---------------------------------------------------------------------------
-// Tab lifecycle listeners — auto-attach/detach new/closed tabs
+// Connect-page deduplication — when Playwright opens a new connect.html tab,
+// reuse an existing one if available instead of creating a duplicate.
+// ---------------------------------------------------------------------------
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+	if (!changeInfo.url) return;
+
+	const extOrigin = chrome.runtime.getURL('');
+	if (!changeInfo.url.startsWith(extOrigin) || !changeInfo.url.includes(CONNECT_PAGE)) return;
+
+	const parsed = new URL(changeInfo.url);
+	const relayUrl = parsed.searchParams.get('mcpRelayUrl');
+	if (!relayUrl) return;
+
+	log.info('connect.html tab detected:', tabId, 'relayUrl:', relayUrl);
+
+	void (async () => {
+		// A new relay URL means the server started a new session — disconnect any existing one
+		if (activeConnection) {
+			log.info('new relay URL received while connected, disconnecting old session');
+			disconnect();
+		}
+
+		// Store relay URL for the UI to pick up
+		await chrome.storage.session.set({ [RELAY_URL_KEY]: relayUrl });
+
+		// Check for an existing connect.html tab to reuse
+		const connectUrl = chrome.runtime.getURL('dist/connect.html');
+		const allConnectTabs = await chrome.tabs.query({ url: `${connectUrl}*` });
+		const existing = allConnectTabs.find((t) => t.id !== tabId && t.id !== undefined);
+
+		if (existing?.id !== undefined) {
+			// Reuse existing tab: focus it and close the duplicate
+			log.info('reusing existing connect.html tab:', existing.id);
+			await chrome.tabs.update(existing.id, { active: true });
+			if (existing.windowId !== undefined) {
+				await chrome.windows.update(existing.windowId, { focused: true });
+			}
+			await chrome.tabs.remove(tabId);
+
+			// Notify existing tab about the new relay URL
+			try {
+				await chrome.runtime.sendMessage({ type: 'relayUrlReady', relayUrl });
+			} catch {
+				// Tab may not have a listener ready yet — it will read from storage on next mount
+			}
+		}
+		// If no existing tab, let the new one load normally — App.vue reads relay URL from storage
+	})();
+});
+
+// ---------------------------------------------------------------------------
+// Tab lifecycle listeners — only auto-register agent-created tabs
 // ---------------------------------------------------------------------------
 
 chrome.tabs.onCreated.addListener((tab) => {
 	if (!activeConnection || !tab.id) return;
 
+	const relay = activeConnection.relay;
+	const isAgentCreated = relay.isAgentCreatedTab(tab.id);
+
+	if (!isAgentCreated) return;
+
 	// Wait for URL to be populated, then add if eligible
-	const checkAndAdd = () => {
-		if (!tab.url || tab.url === 'chrome://newtab/') {
-			// URL not yet known — wait for update
-			return;
-		}
-		if (
-			!tab.url.startsWith('chrome://') &&
-			!tab.url.startsWith('chrome-extension://') &&
-			!tab.url.startsWith('about:')
-		) {
-			activeConnection?.relay.addTab(tab.id!, tab.title ?? '', tab.url ?? '');
-		}
-	};
-	checkAndAdd();
+	if (
+		tab.url &&
+		tab.url !== 'chrome://newtab/' &&
+		!tab.url.startsWith('chrome://') &&
+		!tab.url.startsWith('chrome-extension://') &&
+		!tab.url.startsWith('about:')
+	) {
+		log.info('[onCreated] adding agent-created tab:', tab.id, tab.url);
+		relay.addTab(tab.id, tab.title ?? '', tab.url ?? '');
+	}
+});
+
+// Detect tabs spawned by navigation from controlled tabs (e.g., target="_blank", window.open)
+// This uses sourceTabId which correctly identifies the originating tab,
+// unlike chrome.tabs.onCreated's openerTabId which just reflects the focused tab.
+chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
+	if (!activeConnection) return;
+
+	const relay = activeConnection.relay;
+	const sourceIsControlled = relay.isControlledTab(details.sourceTabId);
+	const tabCreationAllowed = relay.isTabCreationAllowed();
+
+	log.info(
+		'[onCreatedNavigationTarget] tabId:',
+		details.tabId,
+		'sourceTabId:',
+		details.sourceTabId,
+		'url:',
+		details.url,
+		'sourceIsControlled:',
+		sourceIsControlled,
+		'tabCreationAllowed:',
+		tabCreationAllowed,
+	);
+
+	if (!sourceIsControlled || !tabCreationAllowed) return;
+
+	// Mark as agent-created so onUpdated listener also tracks URL changes
+	relay.markAsAgentCreated(details.tabId);
+
+	const url = details.url;
+	if (
+		url &&
+		!url.startsWith('chrome://') &&
+		!url.startsWith('chrome-extension://') &&
+		!url.startsWith('about:')
+	) {
+		log.info('[onCreatedNavigationTarget] adding spawned tab:', details.tabId, url);
+		relay.addTab(details.tabId, '', url);
+	} else {
+		log.info(
+			'[onCreatedNavigationTarget] URL not eligible yet, waiting for onUpdated:',
+			details.tabId,
+		);
+	}
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 	if (!activeConnection) return;
 
-	// When a tab's URL is loaded for the first time (new tab navigation)
+	// Only auto-register tabs created by the AI agent (or marked as spawned)
+	if (!activeConnection.relay.isAgentCreatedTab(tabId)) return;
+
 	if (changeInfo.url) {
 		const url = changeInfo.url;
 		if (
@@ -163,8 +292,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 			!url.startsWith('chrome-extension://') &&
 			!url.startsWith('about:')
 		) {
-			// If not already tracked, add it
 			if (!activeConnection.relay.getControlledTabIds().includes(tabId)) {
+				log.info('[onUpdated] adding tab via URL update:', tabId, url);
 				activeConnection.relay.addTab(tabId, changeInfo.title ?? '', url);
 			}
 		}
@@ -173,6 +302,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 
 chrome.tabs.onRemoved.addListener((tabId) => {
 	if (!activeConnection) return;
+	log.debug('tab removed:', tabId);
 	activeConnection.relay.removeTab(tabId);
 });
 
@@ -180,7 +310,11 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // Relay connection management
 // ---------------------------------------------------------------------------
 
-async function connectToRelay(relayUrl: string): Promise<{ success: boolean; error?: string }> {
+async function connectToRelay(
+	relayUrl: string,
+	selectedTabIds: number[],
+): Promise<{ success: boolean; error?: string }> {
+	log.info('connectToRelay:', relayUrl, 'selectedTabs:', selectedTabIds.length);
 	// Clean up existing connection
 	disconnect();
 
@@ -188,15 +322,21 @@ async function connectToRelay(relayUrl: string): Promise<{ success: boolean; err
 		const ws = new WebSocket(relayUrl);
 
 		await new Promise<void>((resolve, reject) => {
-			ws.onopen = () => resolve();
-			ws.onerror = () => reject(new Error('WebSocket connection failed'));
+			ws.onopen = () => {
+				log.debug('WebSocket open');
+				resolve();
+			};
+			ws.onerror = (event) => {
+				log.error('WebSocket error:', event);
+				reject(new Error('WebSocket connection failed'));
+			};
 			setTimeout(() => reject(new Error('Connection timeout')), 10_000);
 		});
 
 		const relay = new RelayConnection(ws);
 
-		// Auto-discover and attach to all eligible tabs
-		await relay.discoverAndAttachTabs();
+		// Register only user-selected tabs (no debugger attachment yet)
+		relay.registerSelectedTabs(selectedTabIds);
 
 		// Load and apply settings
 		const settings = await loadSettings();
@@ -205,13 +345,19 @@ async function connectToRelay(relayUrl: string): Promise<{ success: boolean; err
 		activeConnection = { relay };
 
 		relay.onclose = () => {
+			log.info('relay connection closed');
 			activeConnection = null;
 			updateBadge(0);
+			broadcastStatusChange();
 		};
 
-		updateBadge(relay.getControlledTabIds().length);
+		const tabCount = relay.getControlledTabIds().length;
+		log.info('connected, controlling', tabCount, 'tabs');
+		updateBadge(tabCount);
+		broadcastStatusChange();
 		return { success: true };
 	} catch (error) {
+		log.error('connectToRelay failed:', error);
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
@@ -221,10 +367,20 @@ async function connectToRelay(relayUrl: string): Promise<{ success: boolean; err
 
 function disconnect(): void {
 	if (activeConnection) {
+		log.info('disconnecting');
 		activeConnection.relay.close('User disconnected');
 		activeConnection = null;
 		updateBadge(0);
 	}
+}
+
+/** Notify all extension contexts (popup, connect.html tab) about connection state changes. */
+function broadcastStatusChange(): void {
+	const connected = activeConnection !== null;
+	const tabIds = activeConnection?.relay.getControlledTabIds() ?? [];
+	chrome.runtime.sendMessage({ type: 'statusChanged', connected, tabIds }).catch(() => {
+		// No receivers — this is fine if the popup/tab is not open
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -238,9 +394,23 @@ function updateBadge(tabCount: number): void {
 }
 
 // ---------------------------------------------------------------------------
-// Extension icon click — open the connect popup as a tab
+// Extension icon click — open or focus the connect tab
 // ---------------------------------------------------------------------------
 
 chrome.action.onClicked.addListener(() => {
-	void chrome.tabs.create({ url: chrome.runtime.getURL('dist/connect.html') });
+	void openOrFocusConnectTab();
 });
+
+async function openOrFocusConnectTab(): Promise<void> {
+	const connectUrl = chrome.runtime.getURL('dist/connect.html');
+	const existing = await chrome.tabs.query({ url: `${connectUrl}*` });
+
+	if (existing.length > 0 && existing[0].id !== undefined) {
+		await chrome.tabs.update(existing[0].id, { active: true });
+		if (existing[0].windowId !== undefined) {
+			await chrome.windows.update(existing[0].windowId, { focused: true });
+		}
+	} else {
+		await chrome.tabs.create({ url: connectUrl });
+	}
+}

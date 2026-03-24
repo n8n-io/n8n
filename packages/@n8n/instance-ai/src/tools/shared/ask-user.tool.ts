@@ -7,7 +7,7 @@ export function createAskUserTool() {
 	return createTool({
 		id: 'ask-user',
 		description:
-			'Ask the user a free-text question when you need information only they can provide (e.g., a chat ID, API key, preference). The agent is suspended until the user responds.',
+			'Ask the user a free-text question when you need information only they can provide (e.g., a chat ID, API key, preference, which account to use). The agent is suspended until the user responds.',
 		inputSchema: z.object({
 			question: z
 				.string()

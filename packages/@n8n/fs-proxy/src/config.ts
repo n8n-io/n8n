@@ -65,10 +65,8 @@ const viewportSchema = z.object({
 
 const browserConfigSchema = z.object({
 	headless: z.boolean().default(false),
-	defaultBrowser: z.string().default('chromium'),
+	defaultBrowser: z.string().default('chrome'),
 	viewport: viewportSchema.default({ width: 1280, height: 720 }),
-	sessionTtlMs: z.number().positive().default(1_800_000),
-	maxConcurrentSessions: z.number().positive().default(5),
 });
 
 export const gatewayConfigSchema = z.object({
@@ -154,10 +152,6 @@ function buildEnvConfig(): Partial<GatewayConfig> {
 		if (defaultBrowser) browser.defaultBrowser = defaultBrowser;
 		const viewport = envString('BROWSER_VIEWPORT');
 		if (viewport) browser.viewport = parseViewport(viewport);
-		const sessionTtlMs = envNumber('BROWSER_SESSION_TTL_MS');
-		if (sessionTtlMs !== undefined) browser.sessionTtlMs = sessionTtlMs;
-		const maxSessions = envNumber('BROWSER_MAX_SESSIONS');
-		if (maxSessions !== undefined) browser.maxConcurrentSessions = maxSessions;
 		if (Object.keys(browser).length > 0) {
 			config.browser = browser;
 		}
@@ -222,10 +216,6 @@ function buildCliConfig(args: yargsParser.Arguments): Partial<GatewayConfig> {
 		if (args['browser-default']) browser.defaultBrowser = args['browser-default'];
 		if (args['browser-viewport'])
 			browser.viewport = parseViewport(args['browser-viewport'] as string);
-		if (args['browser-session-ttl-ms'] !== undefined)
-			browser.sessionTtlMs = args['browser-session-ttl-ms'];
-		if (args['browser-max-sessions'] !== undefined)
-			browser.maxConcurrentSessions = args['browser-max-sessions'];
 		if (Object.keys(browser).length > 0) {
 			config.browser = browser;
 		}

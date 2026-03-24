@@ -37,6 +37,11 @@ function formatMeta(meta: Record<string, unknown>): string {
 	return ' ' + JSON.stringify(meta);
 }
 
+/** Append metadata to console output only in debug mode; file log always gets it. */
+function consoleMetaSuffix(meta: Record<string, unknown>): string {
+	return currentLevel === 'debug' ? formatMeta(meta) : '';
+}
+
 function formatMessage(message: string): string {
 	return currentLevel === 'debug' ? stripAnsi(message) : message;
 }
@@ -75,19 +80,19 @@ function writeToFile(level: LogLevel, message: string, meta: Record<string, unkn
 export const logger = {
 	error(message: string, meta: Record<string, unknown> = {}) {
 		if (isEnabled('error')) {
-			console.error(formatMessage(message) + formatMeta(meta));
+			console.error(formatMessage(message) + consoleMetaSuffix(meta));
 			writeToFile('error', message, meta);
 		}
 	},
 	warn(message: string, meta: Record<string, unknown> = {}) {
 		if (isEnabled('warn')) {
-			console.warn(formatMessage(message) + formatMeta(meta));
+			console.warn(formatMessage(message) + consoleMetaSuffix(meta));
 			writeToFile('warn', message, meta);
 		}
 	},
 	info(message: string, meta: Record<string, unknown> = {}) {
 		if (isEnabled('info')) {
-			console.log(formatMessage(message) + formatMeta(meta));
+			console.log(formatMessage(message) + consoleMetaSuffix(meta));
 			writeToFile('info', message, meta);
 		}
 	},

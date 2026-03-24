@@ -3,11 +3,15 @@ import { ref, computed, watch, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiMessage } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useToolLabel } from '../toolLabels';
 
 const store = useInstanceAiStore();
+const settingsStore = useInstanceAiSettingsStore();
 const i18n = useI18n();
 const { getToolLabel } = useToolLabel();
+
+const showApprovalHint = computed(() => settingsStore.isPendingApproval && !store.isStreaming);
 
 const elapsed = ref(0);
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -89,6 +93,14 @@ onUnmounted(() => {
 			<span :class="$style.elapsed">{{ formattedElapsed }}</span>
 		</div>
 	</Transition>
+	<Transition name="status-bar">
+		<div v-if="showApprovalHint" :class="$style.bar" data-test-id="instance-ai-approval-hint">
+			<span :class="[$style.dot, $style.dotWarning]" />
+			<span :class="$style.label">{{
+				i18n.baseText(`instanceAi.approvalHint.${settingsStore.approvalMethod}`)
+			}}</span>
+		</div>
+	</Transition>
 </template>
 
 <style lang="scss" module>
@@ -138,6 +150,10 @@ onUnmounted(() => {
 .elapsed {
 	font-variant-numeric: tabular-nums;
 	color: var(--text-color--subtle);
+}
+
+.dotWarning {
+	background: var(--color--warning);
 }
 </style>
 

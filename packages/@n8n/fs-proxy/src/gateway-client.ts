@@ -177,10 +177,7 @@ export class GatewayClient {
 		];
 
 		for (const { name, category, enabled, module } of computerModules) {
-			if (!enabled) {
-				logger.debug('Module disabled by config, skipping', { module: name });
-				continue;
-			}
+			if (!enabled) continue;
 			if (await module.isSupported()) {
 				defs.push(...module.definitions);
 				categories.push(category);
@@ -192,7 +189,10 @@ export class GatewayClient {
 		// Browser
 		if (config.browser !== false) {
 			const { BrowserModule: BrowserModuleClass } = await import('./tools/browser');
-			this.browserModule = await BrowserModuleClass.create(config.browser);
+			this.browserModule = await BrowserModuleClass.create({
+				...config.browser,
+				logLevel: config.logLevel,
+			});
 			if (this.browserModule) {
 				defs.push(...this.browserModule.definitions);
 				categories.push('browser');
@@ -201,8 +201,6 @@ export class GatewayClient {
 					module: 'Browser',
 				});
 			}
-		} else {
-			logger.debug('Module disabled by config, skipping', { module: 'Browser' });
 		}
 
 		for (const def of defs) {

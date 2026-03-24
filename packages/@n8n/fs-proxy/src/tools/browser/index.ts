@@ -1,12 +1,13 @@
 import type { Config as BrowserConfig } from '@n8n/mcp-browser';
 
-import { logger } from '../../logger';
+import { logger, type LogLevel } from '../../logger';
 import type { ToolDefinition, ToolModule } from '../types';
 
 export interface BrowserModuleConfig {
 	headless?: boolean;
 	defaultBrowser?: string;
 	viewport?: { width: number; height: number };
+	logLevel?: LogLevel;
 }
 
 function toBrowserConfig(config: BrowserModuleConfig): Partial<BrowserConfig> {
@@ -44,7 +45,10 @@ export class BrowserModule implements ToolModule {
 	 */
 	static async create(config: BrowserModuleConfig = {}): Promise<BrowserModule | null> {
 		try {
-			const { createBrowserTools } = await import('@n8n/mcp-browser');
+			const { createBrowserTools, configureLogger } = await import('@n8n/mcp-browser');
+			if (config.logLevel) {
+				configureLogger({ level: config.logLevel });
+			}
 			const { tools, connection } = createBrowserTools(toBrowserConfig(config));
 			return new BrowserModule(tools, connection);
 		} catch {
