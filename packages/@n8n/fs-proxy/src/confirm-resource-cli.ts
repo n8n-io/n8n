@@ -5,6 +5,7 @@ import type { AffectedResource, ResourceDecision } from './tools/types';
  * before interpolating it into a terminal prompt to prevent injection attacks.
  */
 // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional — stripping control chars
+// eslint-disable-next-line no-control-regex
 const CONTROL_CHARS_RE = new RegExp('[\\u0000-\\u001f\\u007f]', 'g');
 
 export function sanitizeForTerminal(value: string): string {
