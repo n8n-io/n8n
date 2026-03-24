@@ -46,6 +46,7 @@ describe('permissions', () => {
 			breakingChanges: {},
 			apiKey: {},
 			credentialResolver: {},
+			roleMappingRule: {},
 		});
 	});
 	it('getResourcePermissions', () => {
