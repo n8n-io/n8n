@@ -68,6 +68,20 @@ description: >-         # max 1024 chars, non-empty — see below
 
 **Rough size:** aim for **well under ~200 lines** in `SKILL.md`; if it grows, split detail out.
 
+### Scope: one job per skill (and parent skills)
+
+- **Single responsibility** — one primary workflow or decision tree per skill. If triggers and steps diverge a lot (e.g. “create issue” vs “create PR” vs “full ticket → PR flow”), split into **smaller dedicated skills**.
+- **Prefer small + compose** — two or three focused skills keep irrelevant detail out of context until needed. A **parent** (orchestrator) skill can say *when* to follow each child workflow and link to their `SKILL.md`; avoid pasting full child content into the parent.
+- **When one large skill is OK** — a single end-to-end flow that always runs together and shares one tight checklist;
+
+### MCPs, CLI tools, and other skills
+
+- **Prefer CLI and repo commands** when they solve the same problem — agents handle them well and they usually add less scaffolding noise to context than MCP tool discovery and schemas. Examples: `gh` for PRs/issues, `pnpm` scripts from `AGENTS.md`.
+- **MCPs are optional per user** — not everyone has the same servers enabled. If a skill **requires** a specific MCP to work as written, say so explicitly:
+  - Put a hint in the **frontmatter description** (e.g. “Requires Linear MCP for …”) so mismatches are obvious early.
+  - Add a short **Prerequisites** (or **Requirements**) block near the top: which integration, what it is used for, and a **fallback** (e.g. web UI, `gh`, or “ask the user to paste …”) when it is missing.
+- **Referencing other skills** — give the path from the **repository root** (e.g. `.claude/skills/create-issue/SKILL.md`) so humans and tools can resolve it. From a sibling folder, a relative link works too: `[create-issue](../create-issue/SKILL.md)`. Name the skill and the task; parent skills should delegate steps instead of duplicating long procedures.
+
 ## Patterns (pick what fits)
 
 - **Template** — give the exact output shape (markdown/code blocks).
@@ -88,6 +102,8 @@ description: >-         # max 1024 chars, non-empty — see below
 - Many equivalent options with no default.
 - Vague names (`helper`, `utils`).
 - Deep chains of linked files.
+- Assuming an MCP or tool is present without stating it or offering a fallback.
+- One oversized skill that mixes unrelated workflows instead of smaller skills + a thin parent.
 
 ## Quick example stub
 
