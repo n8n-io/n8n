@@ -64,6 +64,10 @@ import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/componen
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
+import {
+	isOpenRouterAiGatewayAppNode,
+	getAiGatewayDefaultModelForResource,
+} from '@/features/ai/gateway/openRouterAiGatewayAppDefaults';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
@@ -431,6 +435,24 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			isToolNode.value,
 		);
+
+		// AI Gateway app node: reset model to per-resource default when resource changes
+		if (
+			parameterData.name === 'parameters.resource' &&
+			isOpenRouterAiGatewayAppNode(
+				nodeTypesStore.getNodeType(_node.type, _node.typeVersion),
+				_node.type,
+			)
+		) {
+			const defaultModel = getAiGatewayDefaultModelForResource(newValue as string);
+			if (defaultModel) {
+				valueChanged({
+					node: _node.name,
+					name: 'parameters.model',
+					value: defaultModel,
+				});
+			}
+		}
 	} else {
 		// A property on the node itself changed
 

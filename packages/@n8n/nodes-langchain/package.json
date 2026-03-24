@@ -82,6 +82,7 @@
     "nodes": [
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
       "dist/nodes/vendors/GoogleGemini/GoogleGemini.node.js",
+      "dist/nodes/vendors/AiGateway/AiGateway.node.js",
       "dist/nodes/vendors/Ollama/Ollama.node.js",
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/vendors/Microsoft/MicrosoftAgent365Trigger.node.js",

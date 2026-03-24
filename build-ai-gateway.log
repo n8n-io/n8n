@@ -1,0 +1,11 @@
+
+> @n8n/n8n-nodes-langchain@2.13.0 build /Users/jake/Documents/code/n8n/packages/@n8n/nodes-langchain
+> tsc --build tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata && pnpm n8n-generate-node-defs
+
+
+> @n8n/n8n-nodes-langchain@2.13.0 copy-nodes-json /Users/jake/Documents/code/n8n/packages/@n8n/nodes-langchain
+> node ../../nodes-base/scripts/copy-nodes-json.js .
+
+(node:83147) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Generated node definitions for 91 nodes in /Users/jake/Documents/code/n8n/packages/@n8n/nodes-langchain/dist/node-definitions

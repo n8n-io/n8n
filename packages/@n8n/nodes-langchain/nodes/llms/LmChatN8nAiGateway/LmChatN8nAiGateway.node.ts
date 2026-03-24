@@ -15,6 +15,12 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import {
+	FALLBACK_N8N_AI_GATEWAY_MODEL,
+	fetchN8nAiGatewayOpenRouterModels,
+	getN8nAiGatewayOpenRouterConfig,
+	mapOpenRouterModelsToLoadOptions,
+} from '../../../utils/n8nAiGatewayOpenRouter';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
 interface OpenAIToolCall {
@@ -78,19 +84,9 @@ function createOpenRouterFetch(baseFetch: typeof globalThis.fetch): typeof globa
 	};
 }
 
-const FALLBACK_MODEL = 'openai/gpt-4.1-nano';
-const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
-
-function getGatewayConfig() {
-	return {
-		apiKey: process.env.N8N_AI_GATEWAY_OPENROUTER_API_KEY ?? '',
-		baseUrl: process.env.N8N_AI_GATEWAY_OPENROUTER_BASE_URL ?? DEFAULT_BASE_URL,
-	};
-}
-
 export class LmChatN8nAiGateway implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'AI Gateway',
+		displayName: 'AI Gateway Chat Model',
 		name: 'lmChatN8nAiGateway',
 		icon: { light: 'file:n8nAiGateway.svg', dark: 'file:n8nAiGateway.svg' },
 		group: ['transform'],
@@ -98,7 +94,7 @@ export class LmChatN8nAiGateway implements INodeType {
 		description: 'Access hundreds of models through one unified gateway',
 		subtitle: '={{$parameter["model"]}}',
 		defaults: {
-			name: 'AI Gateway',
+			name: 'AI Gateway Chat Model',
 		},
 		codex: {
 			categories: ['AI'],
@@ -124,7 +120,7 @@ export class LmChatN8nAiGateway implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
-				default: FALLBACK_MODEL,
+				default: FALLBACK_N8N_AI_GATEWAY_MODEL,
 				description: 'The model which will generate the completion',
 				typeOptions: {
 					isModelSelector: true,
@@ -227,57 +223,17 @@ export class LmChatN8nAiGateway implements INodeType {
 	methods = {
 		loadOptions: {
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { apiKey, baseUrl } = getGatewayConfig();
-				const response = await this.helpers.httpRequest({
-					method: 'GET',
-					url: `${baseUrl}/models`,
-					headers: { Authorization: `Bearer ${apiKey}` },
-					json: true,
-				});
-
-				interface OpenRouterModel {
-					id: string;
-					name?: string;
-					pricing?: { prompt?: string; completion?: string };
-					context_length?: number;
-					architecture?: { input_modalities?: string[] };
-					supported_parameters?: string[];
-				}
-
-				const models = (response?.data ?? []) as OpenRouterModel[];
-				return models
-					.map((m) => {
-						const promptPrice = parseFloat(m.pricing?.prompt ?? '0');
-						const completionPrice = parseFloat(m.pricing?.completion ?? '0');
-						const inputModalities = m.architecture?.input_modalities ?? [];
-						const supportedParams = m.supported_parameters ?? [];
-
-						const meta = {
-							inputCost: promptPrice * 1_000_000,
-							outputCost: completionPrice * 1_000_000,
-							contextLength: m.context_length ?? 0,
-							capabilities: {
-								vision: inputModalities.includes('image'),
-								function_calling: supportedParams.includes('tools'),
-								json_mode: supportedParams.includes('response_format'),
-							},
-						};
-
-						return {
-							name: m.name ?? m.id,
-							value: m.id,
-							description: JSON.stringify(meta),
-						};
-					})
-					.sort((a, b) => a.name.localeCompare(b.name));
+				const models = await fetchN8nAiGatewayOpenRouterModels(this.helpers);
+				return mapOpenRouterModelsToLoadOptions(models);
 			},
 		},
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const { apiKey, baseUrl } = getGatewayConfig();
+		const { apiKey, baseUrl } = getN8nAiGatewayOpenRouterConfig();
 
-		const modelName = (this.getNodeParameter('model', itemIndex, '') as string) || FALLBACK_MODEL;
+		const modelName =
+			(this.getNodeParameter('model', itemIndex, '') as string) || FALLBACK_N8N_AI_GATEWAY_MODEL;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			frequencyPenalty?: number;

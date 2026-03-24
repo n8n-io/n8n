@@ -4,7 +4,10 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useAIGatewayStore } from './aiGateway.store';
 import { N8nCallout, N8nText } from '@n8n/design-system';
 
-const GATEWAY_NODE_TYPE = '@n8n/n8n-nodes-langchain.lmChatN8nAiGateway';
+const GATEWAY_NODE_TYPES = [
+	'@n8n/n8n-nodes-langchain.lmChatN8nAiGateway',
+	'@n8n/n8n-nodes-langchain.openRouterAiGateway',
+];
 const SETTINGS_URL = '/settings/credits';
 
 const ndvStore = useNDVStore();
@@ -14,7 +17,9 @@ onMounted(async () => {
 	await gatewayStore.initialize();
 });
 
-const isGatewayNode = computed(() => ndvStore.activeNode?.type === GATEWAY_NODE_TYPE);
+const isGatewayNode = computed(
+	() => !!ndvStore.activeNode && GATEWAY_NODE_TYPES.includes(ndvStore.activeNode.type),
+);
 const credits = computed(() => gatewayStore.creditsRemaining);
 const hasCredits = computed(() => credits.value !== null && credits.value > 0);
 const isVisible = computed(() => isGatewayNode.value && gatewayStore.enabled);

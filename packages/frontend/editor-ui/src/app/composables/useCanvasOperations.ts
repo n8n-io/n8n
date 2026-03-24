@@ -1274,15 +1274,17 @@ export function useCanvasOperations() {
 	}
 
 	function resolveNodeParameters(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		const nodeParameters = NodeHelpers.getNodeParameters(
-			nodeTypeDescription?.properties ?? [],
-			node.parameters,
-			true,
-			false,
-			node,
-			nodeTypeDescription,
-		);
-		node.parameters = nodeParameters ?? {};
+		const nodeParameters =
+			NodeHelpers.getNodeParameters(
+				nodeTypeDescription?.properties ?? [],
+				node.parameters,
+				true,
+				false,
+				node,
+				nodeTypeDescription,
+			) ?? {};
+
+		node.parameters = nodeParameters;
 	}
 
 	function resolveNodePosition(

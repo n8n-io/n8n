@@ -153,15 +153,16 @@ export function useWorkflowUpdate() {
 			// This is necessary because AI builder may send partial parameters without defaults
 			const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 			if (nodeTypeDescription) {
-				const resolvedParameters = NodeHelpers.getNodeParameters(
-					nodeTypeDescription.properties ?? [],
-					node.parameters,
-					true, // returnDefaults
-					false,
-					node,
-					nodeTypeDescription,
-				);
-				node.parameters = resolvedParameters ?? {};
+				const resolvedParameters =
+					NodeHelpers.getNodeParameters(
+						nodeTypeDescription.properties ?? [],
+						node.parameters,
+						true, // returnDefaults
+						false,
+						node,
+						nodeTypeDescription,
+					) ?? {};
+				node.parameters = resolvedParameters;
 			}
 
 			// Mark node as dirty if parameters changed
