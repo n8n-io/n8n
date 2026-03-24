@@ -173,6 +173,7 @@ const isSubmitted = ref(false);
 const isDeferred = ref(false);
 const isPartial = ref(false);
 const isApplying = ref(false);
+const isStoreReady = ref(false);
 const applyError = ref<string | null>(null);
 const selections = ref<Record<string, string | null>>({});
 const paramValues = ref<Record<string, Record<string, unknown>>>({});
@@ -449,7 +450,8 @@ onUnmounted(() => {
 onMounted(async () => {
 	// Ensure the credentials store is populated so NodeCredentials can show
 	// existing credentials in the dropdown. The Instance AI page may not have
-	// fetched them yet.
+	// fetched them yet. We gate rendering on isStoreReady to avoid timing
+	// issues where NodeCredentials renders before options are available.
 	try {
 		await Promise.all([
 			credentialsStore.fetchAllCredentials(),
@@ -459,6 +461,7 @@ onMounted(async () => {
 		// Credentials will be unavailable in the dropdown but the user can
 		// still create new ones via the "Set up credential" button.
 	}
+	isStoreReady.value = true;
 
 	const firstIncomplete = cards.value.findIndex((c) => !isCardComplete(c));
 	if (firstIncomplete > 0) {
@@ -864,7 +867,10 @@ function handleLater() {
 
 				<!-- Content -->
 				<div v-if="!isTriggerOnly(currentCard)" :class="$style.content">
-					<div v-if="currentCard.credentialType" :class="$style.credentialContainer">
+					<div
+						v-if="currentCard.credentialType && isStoreReady"
+						:class="$style.credentialContainer"
+					>
 						<NodeCredentials
 							:node="cardNodeUi(currentCard)"
 							:override-cred-type="currentCard.credentialType"
