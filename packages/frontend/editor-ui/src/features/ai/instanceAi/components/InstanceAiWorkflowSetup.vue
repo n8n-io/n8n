@@ -493,7 +493,20 @@ function toNodeUi(setupNode: InstanceAiWorkflowSetupNode): INodeUi {
 }
 
 function cardNodeUi(card: SetupCard): INodeUi {
-	return toNodeUi(card.nodes[0]);
+	const node = toNodeUi(card.nodes[0]);
+	const selectedId = card.credentialType ? selections.value[card.id] : undefined;
+	if (selectedId && card.credentialType) {
+		const cred =
+			card.nodes[0].existingCredentials?.find((c) => c.id === selectedId) ??
+			credentialsStore.getCredentialById(selectedId);
+		if (cred) {
+			node.credentials = {
+				...node.credentials,
+				[card.credentialType]: { id: cred.id, name: cred.name },
+			};
+		}
+	}
+	return node;
 }
 
 /** True when this card only has a trigger (no credentials and no param issues) */
