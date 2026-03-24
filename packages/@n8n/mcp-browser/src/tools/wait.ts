@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createConnectedTool, pageIdField } from './helpers';
+import { createConnectedTool, pageIdField, withSnapshotEnvelope } from './helpers';
 
 export function createWaitTools(connection: BrowserConnection): ToolDefinition[] {
 	return [browserWait(connection)];
@@ -22,7 +22,7 @@ const browserWaitSchema = z.object({
 	pageId: pageIdField,
 });
 
-const browserWaitOutputSchema = z.object({
+const browserWaitOutputSchema = withSnapshotEnvelope({
 	waited: z.boolean(),
 	elapsedMs: z.number(),
 });
@@ -45,5 +45,6 @@ function browserWait(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ waited: true, elapsedMs });
 		},
 		browserWaitOutputSchema,
+		{ autoSnapshot: true },
 	);
 }

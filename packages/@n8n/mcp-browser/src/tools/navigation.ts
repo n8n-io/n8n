@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createConnectedTool, pageIdField } from './helpers';
+import { createConnectedTool, pageIdField, withSnapshotEnvelope } from './helpers';
 
 const waitUntilField = z
 	.enum(['load', 'domcontentloaded', 'networkidle'])
@@ -25,7 +25,7 @@ const browserNavigateSchema = z.object({
 	pageId: pageIdField,
 });
 
-const browserNavigateOutputSchema = z.object({
+const browserNavigateOutputSchema = withSnapshotEnvelope({
 	title: z.string(),
 	url: z.string(),
 	status: z.number(),
@@ -42,6 +42,7 @@ function browserNavigate(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ title: result.title, url: result.url, status: result.status });
 		},
 		browserNavigateOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
@@ -49,7 +50,7 @@ const browserBackSchema = z.object({
 	pageId: pageIdField,
 });
 
-const browserBackOutputSchema = z.object({
+const browserBackOutputSchema = withSnapshotEnvelope({
 	title: z.string(),
 	url: z.string(),
 });
@@ -65,6 +66,7 @@ function browserBack(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserBackOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
@@ -72,7 +74,7 @@ const browserForwardSchema = z.object({
 	pageId: pageIdField,
 });
 
-const browserForwardOutputSchema = z.object({
+const browserForwardOutputSchema = withSnapshotEnvelope({
 	title: z.string(),
 	url: z.string(),
 });
@@ -88,6 +90,7 @@ function browserForward(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserForwardOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
@@ -96,7 +99,7 @@ const browserReloadSchema = z.object({
 	pageId: pageIdField,
 });
 
-const browserReloadOutputSchema = z.object({
+const browserReloadOutputSchema = withSnapshotEnvelope({
 	title: z.string(),
 	url: z.string(),
 });
@@ -112,5 +115,6 @@ function browserReload(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserReloadOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }

@@ -3,7 +3,12 @@ import { z } from 'zod';
 import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createConnectedTool, elementTargetSchema, pageIdField } from './helpers';
+import {
+	createConnectedTool,
+	elementTargetSchema,
+	pageIdField,
+	withSnapshotEnvelope,
+} from './helpers';
 
 export function createInteractionTools(connection: BrowserConnection): ToolDefinition[] {
 	return [
@@ -39,7 +44,7 @@ const browserClickSchema = z
 	})
 	.describe('Click an element');
 
-const browserClickOutputSchema = z.object({
+const browserClickOutputSchema = withSnapshotEnvelope({
 	clicked: z.boolean(),
 	ref: z.string().optional(),
 });
@@ -62,6 +67,7 @@ function browserClick(connection: BrowserConnection): ToolDefinition {
 			});
 		},
 		browserClickOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
@@ -80,7 +86,7 @@ const browserTypeSchema = z
 	})
 	.describe('Type text into an element');
 
-const browserTypeOutputSchema = z.object({
+const browserTypeOutputSchema = withSnapshotEnvelope({
 	typed: z.boolean(),
 	ref: z.string().optional(),
 	text: z.string(),
@@ -105,6 +111,7 @@ function browserType(connection: BrowserConnection): ToolDefinition {
 			});
 		},
 		browserTypeOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
@@ -120,7 +127,7 @@ const browserSelectSchema = z
 	})
 	.describe('Select option(s) in a <select> element');
 
-const browserSelectOutputSchema = z.object({
+const browserSelectOutputSchema = withSnapshotEnvelope({
 	selected: z.array(z.string()),
 });
 
@@ -135,6 +142,7 @@ function browserSelect(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ selected });
 		},
 		browserSelectOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
@@ -150,7 +158,7 @@ const browserDragSchema = z
 	})
 	.describe('Drag from one element to another');
 
-const browserDragOutputSchema = z.object({
+const browserDragOutputSchema = withSnapshotEnvelope({
 	dragged: z.boolean(),
 });
 
@@ -165,6 +173,7 @@ function browserDrag(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ dragged: true });
 		},
 		browserDragOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
@@ -179,7 +188,7 @@ const browserHoverSchema = z
 	})
 	.describe('Hover over an element');
 
-const browserHoverOutputSchema = z.object({
+const browserHoverOutputSchema = withSnapshotEnvelope({
 	hovered: z.boolean(),
 });
 
@@ -194,6 +203,7 @@ function browserHover(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ hovered: true });
 		},
 		browserHoverOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
@@ -208,7 +218,7 @@ const browserPressSchema = z
 	})
 	.describe('Press keyboard key(s)');
 
-const browserPressOutputSchema = z.object({
+const browserPressOutputSchema = withSnapshotEnvelope({
 	pressed: z.string(),
 });
 
@@ -223,6 +233,7 @@ function browserPress(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ pressed: input.keys });
 		},
 		browserPressOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
@@ -247,7 +258,7 @@ const browserScrollSchema = z
 	.discriminatedUnion('mode', [scrollToElementSchema, scrollByDirectionSchema])
 	.describe('Scroll an element into view, or scroll the page by direction/amount');
 
-const browserScrollOutputSchema = z.object({
+const browserScrollOutputSchema = withSnapshotEnvelope({
 	scrolled: z.boolean(),
 });
 
@@ -269,6 +280,7 @@ function browserScroll(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ scrolled: true });
 		},
 		browserScrollOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
@@ -278,13 +290,15 @@ function browserScroll(connection: BrowserConnection): ToolDefinition {
 
 const browserUploadSchema = z
 	.object({
-		element: elementTargetSchema.describe('File input element'),
+		element: elementTargetSchema
+			.optional()
+			.describe('File input element (not needed when a file chooser dialog is pending)'),
 		files: z.array(z.string()).describe('Absolute file paths to upload'),
 		pageId: pageIdField,
 	})
-	.describe('Set files on a file input element');
+	.describe('Set files on a file input element or fulfill a pending file chooser dialog');
 
-const browserUploadOutputSchema = z.object({
+const browserUploadOutputSchema = withSnapshotEnvelope({
 	uploaded: z.boolean(),
 	files: z.array(z.string()),
 });
@@ -293,13 +307,14 @@ function browserUpload(connection: BrowserConnection): ToolDefinition {
 	return createConnectedTool(
 		connection,
 		'browser_upload',
-		'Set files on a file input element. Use ref from browser_snapshot (preferred) or a selector as fallback.',
+		'Set files on a file input element, or fulfill a pending file chooser dialog. If a file chooser is pending, no element target is needed.',
 		browserUploadSchema,
 		async (state, input, pageId) => {
 			await state.adapter.upload(pageId, input.element, input.files);
 			return formatCallToolResult({ uploaded: true, files: input.files });
 		},
 		browserUploadOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
@@ -315,7 +330,7 @@ const browserDialogSchema = z
 	})
 	.describe('Handle a JavaScript dialog');
 
-const browserDialogOutputSchema = z.object({
+const browserDialogOutputSchema = withSnapshotEnvelope({
 	handled: z.boolean(),
 	action: z.string(),
 	dialogType: z.string(),
@@ -332,5 +347,6 @@ function browserDialog(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ handled: true, action: input.action, dialogType });
 		},
 		browserDialogOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }

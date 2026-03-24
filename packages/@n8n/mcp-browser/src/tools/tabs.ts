@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createConnectedTool } from './helpers';
+import { createConnectedTool, withSnapshotEnvelope } from './helpers';
 
 export function createTabTools(connection: BrowserConnection): ToolDefinition[] {
 	return [tabOpen(connection), tabList(connection), tabFocus(connection), tabClose(connection)];
@@ -13,7 +13,7 @@ const tabOpenSchema = z.object({
 	url: z.string().optional().describe('URL to navigate to (default: about:blank)'),
 });
 
-const tabOpenOutputSchema = z.object({
+const tabOpenOutputSchema = withSnapshotEnvelope({
 	pageId: z.string(),
 	title: z.string(),
 	url: z.string(),
@@ -36,6 +36,7 @@ function tabOpen(connection: BrowserConnection): ToolDefinition {
 			});
 		},
 		tabOpenOutputSchema,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
@@ -93,6 +94,7 @@ function tabFocus(connection: BrowserConnection): ToolDefinition {
 				const { PageNotFoundError } = await import('../errors');
 				throw new PageNotFoundError(input.pageId);
 			}
+			await state.adapter.focusPage(input.pageId);
 			state.activePageId = input.pageId;
 			return formatCallToolResult({ activePageId: input.pageId });
 		},
