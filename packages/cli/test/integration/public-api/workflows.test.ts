@@ -1246,6 +1246,81 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 });
 
+describe('POST /workflows/:id/archive', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows/2/archive', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/workflows/2/archive', 'abcXYZ'),
+	);
+
+	test('should return 404 when workflow does not exist', async () => {
+		const response = await authOwnerAgent.post(
+			'/workflows/00000000-0000-0000-0000-000000000000/archive',
+		);
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should archive workflow and return 200', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isArchived).toBe(true);
+		expect(response.body.id).toBe(workflow.id);
+	});
+
+	test('should return 200 when already archived (idempotent)', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		const second = await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+		expect(second.statusCode).toBe(200);
+		expect(second.body.isArchived).toBe(true);
+	});
+});
+
+describe('POST /workflows/:id/unarchive', () => {
+	test(
+		'should fail due to missing API Key',
+		testWithAPIKey('post', '/workflows/2/unarchive', null),
+	);
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/workflows/2/unarchive', 'abcXYZ'),
+	);
+
+	test('should return 404 when workflow does not exist', async () => {
+		const response = await authOwnerAgent.post(
+			'/workflows/00000000-0000-0000-0000-000000000000/unarchive',
+		);
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 400 when workflow is not archived', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unarchive`);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should unarchive workflow and return 200', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unarchive`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isArchived).toBe(false);
+		expect(response.body.id).toBe(workflow.id);
+	});
+});
+
 describe('POST /workflows', () => {
 	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows', null));
 

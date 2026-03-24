@@ -446,4 +446,42 @@ export = {
 			return res.json(tags);
 		},
 	],
+	archiveWorkflow: [
+		apiKeyHasScope('workflow:delete'),
+		projectScope('workflow:delete', 'workflow'),
+		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+			try {
+				const workflow = await Container.get(WorkflowService).archiveForPublicApi(req.user, id);
+				if (!workflow) {
+					throw new NotFoundError('Workflow not found');
+				}
+				return res.json(workflow);
+			} catch (error) {
+				if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: 'Workflow Not Found' });
+				}
+				throw error;
+			}
+		},
+	],
+	unarchiveWorkflow: [
+		apiKeyHasScope('workflow:delete'),
+		projectScope('workflow:delete', 'workflow'),
+		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+			try {
+				const workflow = await Container.get(WorkflowService).unarchiveForPublicApi(req.user, id);
+				if (!workflow) {
+					throw new NotFoundError('Workflow not found');
+				}
+				return res.json(workflow);
+			} catch (error) {
+				if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: 'Workflow Not Found' });
+				}
+				throw error;
+			}
+		},
+	],
 };
