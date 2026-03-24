@@ -18,7 +18,8 @@
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
     "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test:dev": "jest --watch",
+   "postinstall": "pnpx @vscode/ripgrep"
   },
   "main": "dist/cli.js",
   "exports": {
@@ -33,12 +34,14 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@anthropic-ai/sandbox-runtime": "^0.0.42",
     "@jitsi/robotjs": "^0.6.21",
     "@modelcontextprotocol/sdk": "1.26.0",
     "@n8n/mcp-browser": "workspace:*",
+    "@vscode/ripgrep": "^1.17.1",
     "eventsource": "^3.0.6",
-    "picocolors": "catalog:",
     "node-screenshots": "^0.2.8",
+    "picocolors": "catalog:",
     "sharp": "^0.34.5",
     "yargs-parser": "21.1.1",
     "zod": "catalog:",
