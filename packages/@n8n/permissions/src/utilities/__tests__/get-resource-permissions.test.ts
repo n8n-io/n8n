@@ -169,6 +169,7 @@ describe('permissions', () => {
 				manage: true,
 			},
 			credentialResolver: {},
+			roleMappingRule: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);
