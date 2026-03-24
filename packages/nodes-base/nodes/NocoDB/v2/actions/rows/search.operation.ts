@@ -10,138 +10,12 @@ import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 
-const v3Options: INodeProperties = {
+const searchOptions: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
 	type: 'collection',
 	default: {},
 	placeholder: 'Add option',
-	displayOptions: {
-		show: {
-			version: [3],
-		},
-	},
-	options: [
-		{
-			displayName: 'View Name or ID',
-			name: 'viewId',
-			type: 'resourceLocator',
-			default: { mode: 'list', value: '' },
-			description:
-				'The view to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			typeOptions: {
-				loadOptionsDependsOn: ['table.value'],
-			},
-			modes: [
-				{
-					displayName: 'From List',
-					name: 'list',
-					type: 'list',
-					typeOptions: {
-						searchListMethod: 'getViews',
-						searchable: true,
-					},
-				},
-				{
-					displayName: 'ID',
-					name: 'id',
-					type: 'string',
-					placeholder: 'vw5t20qcex4d5zpk',
-				},
-			],
-		},
-		{
-			displayName: 'Fields',
-			name: 'fields',
-			type: 'string',
-			typeOptions: {
-				multipleValues: true,
-				multipleValueButtonText: 'Add Field',
-			},
-			default: [],
-			placeholder: 'Name',
-			description: 'The select fields of the returned rows',
-		},
-		{
-			displayName: 'Sort',
-			name: 'sort',
-			placeholder: 'Add Sort Rule',
-			description: 'The sorting rules for the returned rows',
-			type: 'fixedCollection',
-			typeOptions: {
-				multipleValues: true,
-			},
-			default: {},
-			options: [
-				{
-					name: 'property',
-					displayName: 'Property',
-					values: [
-						{
-							displayName: 'Field',
-							name: 'field',
-							type: 'string',
-							default: '',
-							description: 'Name of the field to sort on',
-						},
-						{
-							displayName: 'Direction',
-							name: 'direction',
-							type: 'options',
-							options: [
-								{
-									name: 'ASC',
-									value: 'asc',
-									description: 'Sort in ascending order (small -> large)',
-								},
-								{
-									name: 'DESC',
-									value: 'desc',
-									description: 'Sort in descending order (large -> small)',
-								},
-							],
-							default: 'asc',
-							description: 'The sort direction',
-						},
-						{
-							displayName: 'Shuffle',
-							name: 'shuffle',
-							type: 'boolean',
-							default: false,
-							description: 'Whether to shuffle the results',
-						},
-						{
-							displayName: 'Offset',
-							name: 'offset',
-							type: 'number',
-							default: '',
-							description: 'The number of rows to skip from the beginning',
-						},
-					],
-				},
-			],
-		},
-		{
-			displayName: 'Filter By Formula',
-			name: 'where',
-			type: 'string',
-			default: '',
-			placeholder: '(name,like,example%)~or(name,eq,test)',
-			description: 'A formula used to filter rows',
-		},
-	],
-};
-const v4Options: INodeProperties = {
-	displayName: 'Options',
-	name: 'options',
-	type: 'collection',
-	default: {},
-	placeholder: 'Add option',
-	displayOptions: {
-		show: {
-			version: [4],
-		},
-	},
 	options: [
 		{
 			displayName: 'View Name or ID',
@@ -329,13 +203,11 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			description:
 				'Name of the fields of type \'attachment\' that should be downloaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
-		v3Options,
-		v4Options,
+		searchOptions,
 	],
 );
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const version = this.getNodeParameter('version', 0) as number;
 	const items = this.getInputData();
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -360,30 +232,20 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			endPoint = `/api/v3/data/${baseId}/${table}/records`;
 
 			if (qs.sort) {
-				if (version === 3) {
-					const properties = (qs.sort as IDataObject).property as Array<{
-						field: string;
-						direction: string;
-					}>;
-					qs.sort = properties
-						.map((prop) => `${prop.direction === 'asc' ? '' : '-'}${prop.field}`)
-						.join(',');
-				} else {
-					const properties = (qs.sort as IDataObject).property as Array<{
-						field: {
-							value: string;
+				const properties = (qs.sort as IDataObject).property as Array<{
+					field: {
+						value: string;
+					};
+					direction: string;
+				}>;
+				qs.sort = JSON.stringify(
+					properties.map((prop) => {
+						return {
+							field: prop.field.value,
+							direction: prop.direction,
 						};
-						direction: string;
-					}>;
-					qs.sort = JSON.stringify(
-						properties.map((prop) => {
-							return {
-								field: prop.field.value,
-								direction: prop.direction,
-							};
-						}),
-					);
-				}
+					}),
+				);
 			}
 			if (qs.fields) {
 				qs.fields = (qs.fields as IDataObject[]).join(',');

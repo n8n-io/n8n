@@ -21,29 +21,12 @@ export const description: INodeProperties[] = updateDisplayOptions(
 	[
 		...DataToSendOption,
 		{
-			displayName: 'This operation requires the primary key to be included for each row.',
-			name: 'info',
-			type: 'notice',
-			default: '',
-			displayOptions: {
-				show: {
-					dataToSend: ['autoMapInputData', 'defineBelow'],
-					version: [3],
-				},
-			},
-		},
-		{
 			displayName: 'Row ID Value',
 			name: 'id',
 			type: 'string',
 			default: '',
 			required: true,
 			description: 'The value of the ID field',
-			displayOptions: {
-				show: {
-					version: [4],
-				},
-			},
 		},
 
 		...RowCreateUpdateOptions,

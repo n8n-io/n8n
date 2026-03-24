@@ -23,11 +23,6 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			type: 'collection',
 			default: {},
 			placeholder: 'Add option',
-			displayOptions: {
-				show: {
-					version: [4],
-				},
-			},
 			options: [
 				{
 					displayName: 'Filter By Formula',

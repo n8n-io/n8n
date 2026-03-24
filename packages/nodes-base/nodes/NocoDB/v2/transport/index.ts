@@ -12,8 +12,6 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
-import { URL_CLOUD_NOCODB } from '../helpers/constants';
-
 interface IAttachment {
 	url: string;
 	title: string;
@@ -42,7 +40,7 @@ export async function apiRequest(
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
-	const baseUrl = credentials.isCloudNocoDb ? URL_CLOUD_NOCODB : (credentials.host as string);
+	const baseUrl = credentials.host as string;
 
 	query = query ?? {};
 	uri =
@@ -80,38 +78,22 @@ export async function apiRequestAllItems(
 	body: IDataObject,
 	query?: IDataObject,
 ): Promise<any> {
-	const version = this.getNodeParameter('version', 0);
-
 	query = query ?? {};
 	const QUERY_LIMIT = 100;
 	query.limit = QUERY_LIMIT;
 	query.offset = query?.offset ? Number(query.offset) : 0;
 	const returnData: IDataObject[] = [];
 
-	let responseData:
-		| {
-				records: IDataObject[];
-				next?: string;
-		  }
-		| {
-				list: IDataObject[];
-				pageInfo: {
-					isLastPage: boolean;
-				};
-		  };
+	let responseData: {
+		records: IDataObject[];
+		next?: string;
+	};
 
-	let continueFetch;
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		query.offset += QUERY_LIMIT;
-		if (version === 4 && 'records' in responseData) {
-			returnData.push.apply(returnData, responseData.records);
-			continueFetch = !!responseData.next;
-		} else if ('list' in responseData) {
-			returnData.push.apply(returnData, responseData.list);
-			continueFetch = !responseData.pageInfo.isLastPage;
-		}
-	} while (continueFetch);
+		returnData.push.apply(returnData, responseData.records);
+	} while (!!responseData.next);
 
 	return returnData;
 }
@@ -123,9 +105,8 @@ export async function downloadRecordAttachments(
 	pairedItem?: IPairedItemData[],
 ): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
-	const version = this.getNodeParameter('version', 0) as number;
 	const getAttachmentField = (record: any, fieldName: string) => {
-		return version === 4 ? record.fields[fieldName] : record[fieldName];
+		return record.fields[fieldName];
 	};
 
 	for (const record of records) {

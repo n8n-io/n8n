@@ -5,45 +5,12 @@ import { parseToApiNodeOperationError } from '../helpers';
 import { ColumnsFetcher } from '../helpers/columns-fetcher';
 import { apiRequest } from '../transport';
 
-export async function getApiVersions(this: ILoadOptionsFunctions) {
-	const operation = this.getNodeParameter('operation', 0) as string;
-	const resource = this.getNodeParameter('resource', 0) as string;
-	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
-	const credentials = await this.getCredentials(authenticationMethod);
-
-	if (
-		resource === 'row' &&
-		['get', 'search', 'create', 'update', 'delete'].includes(operation) &&
-		!credentials?.isCloudNocoDb
-	) {
-		return [
-			{
-				name: 'v0.200.0 Onwards',
-				value: 3,
-			},
-			{
-				name: 'v0.260.0 Onwards',
-				value: 4,
-			},
-		];
-	} else {
-		return [
-			{
-				name: 'v0.260.0 Onwards',
-				value: 4,
-			},
-		];
-	}
-}
-
 export async function getDownloadFields(this: ILoadOptionsFunctions) {
-	const version = this.getNodeParameter('version', 0) as number;
-
 	const fetcher = new ColumnsFetcher(this);
 	try {
 		const fields = await fetcher.fetchFromDefinedParam();
 		return fields
-			.filter((field: any) => (version === 4 ? field.type : field.uidt) === 'Attachment')
+			.filter((field: any) => field.type === 'Attachment')
 			.map((field: any) => {
 				return {
 					name: field.title,
@@ -61,10 +28,6 @@ export async function getDownloadFields(this: ILoadOptionsFunctions) {
 }
 
 export async function getFields(this: ILoadOptionsFunctions) {
-	const version = this.getNodeParameter('version', 0) as number;
-	if (version === 3) {
-		return { results: [] };
-	}
 	const baseId = this.getNodeParameter('projectId', 0, {
 		extractValue: true,
 	}) as string;

@@ -31,11 +31,6 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			name: 'operation',
 			type: 'options',
 			noDataExpression: true,
-			displayOptions: {
-				show: {
-					version: [4],
-				},
-			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 			options: [
 				{
@@ -86,50 +81,6 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					value: 'upload',
 					description: 'Upload attachment(s) to an existing cell in a row',
 					action: 'Upload attachment to a row cell',
-				},
-			],
-			default: 'get',
-		},
-		{
-			displayName: 'Operation',
-			name: 'operation',
-			type: 'options',
-			noDataExpression: true,
-			displayOptions: {
-				show: {
-					version: [3],
-				},
-			},
-			options: [
-				{
-					name: 'Create',
-					value: 'create',
-					description: 'Create a row',
-					action: 'Create a row',
-				},
-				{
-					name: 'Delete',
-					value: 'delete',
-					description: 'Delete a row',
-					action: 'Delete a row',
-				},
-				{
-					name: 'Get',
-					value: 'get',
-					description: 'Retrieve a row',
-					action: 'Get a row',
-				},
-				{
-					name: 'Search',
-					value: 'search',
-					description: 'Search for specific records or list all',
-					action: 'Search rows',
-				},
-				{
-					name: 'Update',
-					value: 'update',
-					description: 'Update a row',
-					action: 'Update a row',
 				},
 			],
 			default: 'get',

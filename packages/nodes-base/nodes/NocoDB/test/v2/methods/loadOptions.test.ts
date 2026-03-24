@@ -1,4 +1,4 @@
-import { getApiVersions, getDownloadFields } from '../../../v2/methods/loadOptions';
+import { getDownloadFields } from '../../../v2/methods/loadOptions';
 
 // Mock ColumnsFetcher globally
 const mockColumnsFetcher = {
@@ -10,82 +10,6 @@ jest.mock('../../../v2/helpers/columns-fetcher', () => ({
 }));
 
 describe('NocoDB Load Options', () => {
-	describe('getApiVersions', () => {
-		it('should return v0.200.0 and v0.260.0 for row resource and specific operations', async () => {
-			const mockThis = {
-				getNodeParameter: (param: string) => {
-					if (param === 'resource') return 'row';
-					if (param === 'operation') return 'get';
-					if (param === 'authentication') return 'nocodb';
-					return '';
-				},
-				getCredentials: (_authenticationMethod: string) => {
-					return {
-						isCloudNocoDb: false,
-					};
-				},
-			};
-			const result = await getApiVersions.call(mockThis as any);
-			expect(result).toEqual([
-				{ name: 'v0.200.0 Onwards', value: 3 },
-				{ name: 'v0.260.0 Onwards', value: 4 },
-			]);
-		});
-
-		it('should return only v0.260.0 for row resource and non-specific operations', async () => {
-			const mockThis = {
-				getNodeParameter: (param: string) => {
-					if (param === 'resource') return 'row';
-					if (param === 'operation') return 'count'; // Not in ['get', 'search', 'create', 'update', 'delete']
-					if (param === 'authentication') return 'nocodb';
-					return '';
-				},
-				getCredentials: (_authenticationMethod: string) => {
-					return {
-						isCloudNocoDb: false,
-					};
-				},
-			};
-			const result = await getApiVersions.call(mockThis as any);
-			expect(result).toEqual([{ name: 'v0.260.0 Onwards', value: 4 }]);
-		});
-
-		it('should return only v0.260.0 for non-row resource', async () => {
-			const mockThis = {
-				getNodeParameter: (param: string) => {
-					if (param === 'resource') return 'base';
-					if (param === 'authentication') return 'nocodb';
-					return '';
-				},
-				getCredentials: (_authenticationMethod: string) => {
-					return {
-						isCloudNocoDb: false,
-					};
-				},
-			};
-			const result = await getApiVersions.call(mockThis as any);
-			expect(result).toEqual([{ name: 'v0.260.0 Onwards', value: 4 }]);
-		});
-
-		it('should return only v0.260.0 for cloud auth', async () => {
-			const mockThis = {
-				getNodeParameter: (param: string) => {
-					if (param === 'resource') return 'rows';
-					if (param === 'operation') return 'get';
-					if (param === 'authentication') return 'nocodb';
-					return '';
-				},
-				getCredentials: (_authenticationMethod: string) => {
-					return {
-						isCloudNocoDb: true,
-					};
-				},
-			};
-			const result = await getApiVersions.call(mockThis as any);
-			expect(result).toEqual([{ name: 'v0.260.0 Onwards', value: 4 }]);
-		});
-	});
-
 	describe('getDownloadFields', () => {
 		beforeEach(() => {
 			mockColumnsFetcher.fetchFromDefinedParam.mockClear();

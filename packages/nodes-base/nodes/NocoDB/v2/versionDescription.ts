@@ -62,20 +62,6 @@ export const versionDescription: INodeTypeDescription = {
 		authentication,
 
 		{
-			displayName: 'API Version Name or ID',
-			name: 'version',
-			type: 'options',
-			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-			isNodeSetting: true,
-			typeOptions: {
-				loadOptionsDependsOn: ['resource', 'operation', 'authentication'],
-				loadOptionsMethod: 'getApiVersions',
-			},
-
-			default: 4,
-		},
-		{
 			displayName: 'Resource',
 			name: 'resource',
 			type: 'options',
