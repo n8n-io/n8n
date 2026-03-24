@@ -2,6 +2,8 @@ import type { Memory } from '@mastra/memory';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { z } from 'zod';
 
+import { patchThread } from './thread-patch';
+
 const SNAPSHOTS_KEY = 'instanceAiRunSnapshots';
 
 export interface AgentTreeSnapshot {
@@ -46,17 +48,17 @@ export class AgentTreeSnapshotStorage {
 		messageGroupId?: string,
 		runIds?: string[],
 	): Promise<void> {
-		const thread = await this.memory.getThreadById({ threadId });
-		if (!thread) return;
-
-		const existing = parseSnapshots(thread.metadata?.[SNAPSHOTS_KEY]);
-		const snapshot: AgentTreeSnapshot = { tree: agentTree, runId, messageGroupId, runIds };
-		await this.memory.updateThread({
-			id: threadId,
-			title: thread.title ?? threadId,
-			metadata: {
-				...thread.metadata,
-				[SNAPSHOTS_KEY]: [...existing, snapshot],
+		await patchThread(this.memory, {
+			threadId,
+			update: ({ metadata = {} }) => {
+				const existing = parseSnapshots(metadata[SNAPSHOTS_KEY]);
+				const snapshot: AgentTreeSnapshot = { tree: agentTree, runId, messageGroupId, runIds };
+				return {
+					metadata: {
+						...metadata,
+						[SNAPSHOTS_KEY]: [...existing, snapshot],
+					},
+				};
 			},
 		});
 	}
@@ -68,34 +70,37 @@ export class AgentTreeSnapshotStorage {
 		messageGroupId?: string,
 		runIds?: string[],
 	): Promise<void> {
-		const thread = await this.memory.getThreadById({ threadId });
-		if (!thread) return;
+		await patchThread(this.memory, {
+			threadId,
+			update: ({ metadata = {} }) => {
+				const existing = parseSnapshots(metadata[SNAPSHOTS_KEY]);
+				let index = messageGroupId
+					? findLastSnapshotIndex(
+							existing,
+							(snapshot) => snapshot.messageGroupId === messageGroupId,
+						)
+					: -1;
+				if (index < 0) {
+					index = findLastSnapshotIndex(existing, (snapshot) => snapshot.runId === runId);
+				}
 
-		const existing = parseSnapshots(thread.metadata?.[SNAPSHOTS_KEY]);
-		let index = messageGroupId
-			? findLastSnapshotIndex(existing, (snapshot) => snapshot.messageGroupId === messageGroupId)
-			: -1;
-		if (index < 0) {
-			index = findLastSnapshotIndex(existing, (snapshot) => snapshot.runId === runId);
-		}
+				if (index >= 0) {
+					existing[index] = {
+						tree: agentTree,
+						runId,
+						messageGroupId: messageGroupId ?? existing[index].messageGroupId,
+						runIds: runIds ?? existing[index].runIds,
+					};
+				} else {
+					existing.push({ tree: agentTree, runId, messageGroupId, runIds });
+				}
 
-		if (index >= 0) {
-			existing[index] = {
-				tree: agentTree,
-				runId,
-				messageGroupId: messageGroupId ?? existing[index].messageGroupId,
-				runIds: runIds ?? existing[index].runIds,
-			};
-		} else {
-			existing.push({ tree: agentTree, runId, messageGroupId, runIds });
-		}
-
-		await this.memory.updateThread({
-			id: threadId,
-			title: thread.title ?? threadId,
-			metadata: {
-				...thread.metadata,
-				[SNAPSHOTS_KEY]: existing,
+				return {
+					metadata: {
+						...metadata,
+						[SNAPSHOTS_KEY]: existing,
+					},
+				};
 			},
 		});
 	}

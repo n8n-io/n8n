@@ -10,6 +10,7 @@ import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { getRenderableAgentResult } from '../agentResult';
 import AgentTimeline from './AgentTimeline.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
@@ -176,6 +177,7 @@ const isError = computed(
 	() =>
 		props.agentNode.status === 'error' || (lastBuildResult.value && !lastBuildResult.value.success),
 );
+const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 
 // Fetch workflow preview for every successful submit.
 // Keyed by toolCallId (not workflowId) so each submit gets its own snapshot —
@@ -340,8 +342,8 @@ watch(
 			<span>{{ props.agentNode.error }}</span>
 		</div>
 
-		<div v-if="props.agentNode.result && !props.agentNode.error" :class="$style.resultBlock">
-			<InstanceAiMarkdown :content="props.agentNode.result" />
+		<div v-if="displayResult && !props.agentNode.error" :class="$style.resultBlock">
+			<InstanceAiMarkdown :content="displayResult" />
 		</div>
 
 		<!-- Workflow detail modal (iframe-based, full NDV support) -->

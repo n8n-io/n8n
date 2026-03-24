@@ -16,6 +16,7 @@ export interface ManagedBackgroundTask {
 	corrections: string[];
 	messageGroupId?: string;
 	outcome?: Record<string, unknown>;
+	plannedTaskId?: string;
 	workItemId?: string;
 }
 
@@ -26,6 +27,7 @@ export interface SpawnManagedBackgroundTaskOptions {
 	role: string;
 	agentId: string;
 	messageGroupId?: string;
+	plannedTaskId?: string;
 	workItemId?: string;
 	run: (
 		signal: AbortSignal,
@@ -116,6 +118,7 @@ export class BackgroundTaskManager {
 			abortController: new AbortController(),
 			corrections: [],
 			messageGroupId: options.messageGroupId,
+			plannedTaskId: options.plannedTaskId,
 			workItemId: options.workItemId,
 		};
 

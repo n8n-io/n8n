@@ -4,6 +4,10 @@ export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export { createInstanceAgent } from './agent/instance-agent';
 export { createAllTools, createOrchestrationTools } from './tools';
+export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';
+export { startDataTableAgentTask } from './tools/orchestration/data-table-agent.tool';
+export { startDetachedDelegateTask } from './tools/orchestration/delegate.tool';
+export { startResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
 export { createMemory } from './memory/memory-config';
 export {
 	AgentTreeSnapshotStorage,
@@ -11,12 +15,16 @@ export {
 	formatPreviousAttempts,
 	MastraIterationLogStorage,
 	MastraTaskStorage,
+	PlannedTaskStorage,
+	patchThread,
 	WorkflowLoopStorage,
 } from './storage';
 export type {
 	AgentTreeSnapshot,
 	IterationEntry,
 	IterationLog,
+	PatchableThreadMemory,
+	ThreadPatch,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
 export { WORKING_MEMORY_TEMPLATE } from './memory/working-memory-template';
@@ -92,6 +100,7 @@ export type {
 	AttemptRecord,
 } from './workflow-loop';
 export { WorkflowLoopRuntime } from './workflow-loop/runtime';
+export { PlannedTaskCoordinator } from './planned-tasks/planned-task-service';
 export type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -108,6 +117,14 @@ export type {
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,
 	TaskStorage,
+	PlannedTask,
+	PlannedTaskKind,
+	PlannedTaskStatus,
+	PlannedTaskRecord,
+	PlannedTaskGraph,
+	PlannedTaskGraphStatus,
+	PlannedTaskSchedulerAction,
+	PlannedTaskService,
 	OrchestrationContext,
 	SpawnBackgroundTaskOptions,
 	BackgroundTaskResult,
@@ -141,3 +158,7 @@ export type {
 	ProjectSummary,
 	FolderSummary,
 } from './types';
+export type { StartedWorkflowBuildTask } from './tools/orchestration/build-workflow-agent.tool';
+export type { StartedBackgroundAgentTask } from './tools/orchestration/data-table-agent.tool';
+export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
+export type { StartedResearchAgentTask } from './tools/orchestration/research-with-agent.tool';

@@ -45,6 +45,7 @@ export interface StartRunOptions<TUser> {
 	threadId: string;
 	user: TUser;
 	researchMode?: boolean;
+	messageGroupId?: string;
 }
 
 export interface StartedRunState extends ActiveRunState {
@@ -76,10 +77,11 @@ export class RunStateRegistry<TUser = unknown> {
 			this.threadResearchMode.set(options.threadId, options.researchMode);
 		}
 
-		const messageGroupId = `mg_${nanoid()}`;
+		const messageGroupId = options.messageGroupId ?? `mg_${nanoid()}`;
 		this.threadMessageGroupId.set(options.threadId, messageGroupId);
-		this.runIdsByMessageGroup.set(messageGroupId, []);
-
+		if (!this.runIdsByMessageGroup.has(messageGroupId)) {
+			this.runIdsByMessageGroup.set(messageGroupId, []);
+		}
 		const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
 		if (groupRunIds) groupRunIds.push(runId);
 

@@ -5,6 +5,7 @@ import { N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { getRenderableAgentResult } from '../agentResult';
 import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
 import AgentTimeline from './AgentTimeline.vue';
 
@@ -59,6 +60,7 @@ const runResults = computed(() => {
 	}
 	return map;
 });
+const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 </script>
 
 <template>
@@ -123,9 +125,9 @@ const runResults = computed(() => {
 			</div>
 
 			<!-- Result summary -->
-			<div v-if="props.agentNode.result && !props.agentNode.error" :class="$style.resultBlock">
+			<div v-if="displayResult && !props.agentNode.error" :class="$style.resultBlock">
 				<N8nIcon icon="check" size="small" :class="$style.completedIcon" />
-				<span>{{ props.agentNode.result }}</span>
+				<span>{{ displayResult }}</span>
 			</div>
 		</CollapsibleContent>
 	</CollapsibleRoot>

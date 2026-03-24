@@ -34,6 +34,7 @@ import type {
 	InstanceAiToolCallState,
 	InstanceAiThreadSummary,
 	InstanceAiSSEConnectionState,
+	TaskList,
 } from '@n8n/api-types';
 
 export interface PendingConfirmationItem {
@@ -65,6 +66,15 @@ function collectPendingConfirmations(
 	}
 }
 
+function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | null {
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const tasks = messages[i].agentTree?.tasks;
+		if (tasks) return tasks;
+	}
+
+	return null;
+}
+
 // Module-level EventSource reference — not in reactive state (not serializable,
 // not needed for rendering, wrapping in a reactive proxy causes issues).
 let eventSource: EventSource | null = null;
@@ -93,6 +103,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const lastEventIdByThread = ref<Record<string, number>>({});
 	const activeRunId = ref<string | null>(null);
 	const messages = ref<InstanceAiMessage[]>([]);
+	const latestTasks = ref<TaskList | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
@@ -122,14 +133,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
 		useResponseFeedback({ messages, currentThreadId, telemetry });
 
-	/** The latest task list — scans all messages backwards since tasks persist across runs. */
-	const currentTasks = computed(() => {
-		for (let i = messages.value.length - 1; i >= 0; i--) {
-			const tasks = messages.value[i].agentTree?.tasks;
-			if (tasks) return tasks;
-		}
-		return null;
-	});
+	/** The latest task list, preferring explicit tasks-update events over tree snapshots. */
+	const currentTasks = computed(
+		() => latestTasks.value ?? findLatestTasksFromMessages(messages.value),
+	);
 
 	/**
 	 * Derive a single contextual follow-up suggestion from the last completed
@@ -214,6 +221,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				},
 				parsed.data,
 			);
+			if (parsed.data.type === 'tasks-update') {
+				latestTasks.value = parsed.data.payload.tasks;
+			}
 			// When a run finishes, refresh thread list to pick up Mastra-generated titles
 			if (previousRunId && activeRunId.value === null) {
 				void loadThreads();
@@ -260,6 +270,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				msg.agentTree = data.agentTree;
 				msg.runId = data.runId;
 				msg.messageGroupId = groupId;
+				latestTasks.value = findLatestTasksFromMessages(messages.value);
 				const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
 				// For background-only groups, the orchestrator already finished.
 				// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
@@ -354,6 +365,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		closeSSE();
 		// 2. Clear store state
 		messages.value = [];
+		latestTasks.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
@@ -378,6 +390,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		const newThreadId = uuidv4();
 		closeSSE();
 		messages.value = [];
+		latestTasks.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
@@ -427,6 +440,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				const freshId = uuidv4();
 				closeSSE();
 				messages.value = [];
+				latestTasks.value = null;
 				activeRunId.value = null;
 				debugEvents.value = [];
 				resetFeedback();
@@ -495,6 +509,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			// Backend now returns InstanceAiMessage[] directly — no conversion needed
 			if (result.messages.length > 0) {
 				messages.value = result.messages;
+				latestTasks.value = findLatestTasksFromMessages(result.messages);
 
 				// Rebuild reducer routing state from historical messages so SSE
 				// replay events (which arrive before run-sync) can reduce into

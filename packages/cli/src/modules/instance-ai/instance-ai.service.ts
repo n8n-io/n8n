@@ -4,6 +4,7 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiGatewayCapabilities,
 	McpToolCallResult,
+	TaskList,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -26,8 +27,14 @@ import {
 	enrichMessageWithBackgroundTasks,
 	MastraIterationLogStorage,
 	MastraTaskStorage,
+	PlannedTaskCoordinator,
+	PlannedTaskStorage,
 	resumeAgentRun,
 	RunStateRegistry,
+	startBuildWorkflowAgentTask,
+	startDataTableAgentTask,
+	startDetachedDelegateTask,
+	startResearchAgentTask,
 	streamAgentRun,
 	type ConfirmationData,
 	type DomainAccessTracker,
@@ -35,6 +42,8 @@ import {
 	type McpServerConfig,
 	type ModelConfig,
 	type OrchestrationContext,
+	type PlannedTaskGraph,
+	type PlannedTaskRecord,
 	type SandboxConfig,
 	type SpawnBackgroundTaskOptions,
 	type StreamableAgent,
@@ -49,6 +58,7 @@ import type { LocalGateway } from './filesystem';
 import { LocalGatewayRegistry, LocalFilesystemProvider } from './filesystem';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
+import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
 import { InstanceAiCompactionService } from './compaction.service';
 
@@ -56,7 +66,12 @@ function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
+function createInertAbortSignal(): AbortSignal {
+	return new AbortController().signal;
+}
+
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
+const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
 @Service()
 export class InstanceAiService {
@@ -70,7 +85,9 @@ export class InstanceAiService {
 
 	private readonly runState = new RunStateRegistry<User>();
 
-	private readonly backgroundTasks = new BackgroundTaskManager();
+	private readonly backgroundTasks = new BackgroundTaskManager(
+		MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
+	);
 
 	/** Active sandboxes keyed by thread ID — persisted across messages within a conversation. */
 	private readonly sandboxes = new Map<
@@ -277,7 +294,19 @@ export class InstanceAiService {
 	}
 
 	cancelRun(threadId: string): void {
-		this.backgroundTasks.cancelThread(threadId);
+		const cancelledTasks = this.backgroundTasks.cancelThread(threadId);
+		const user = this.runState.getThreadUser(threadId);
+		for (const task of cancelledTasks) {
+			this.eventBus.publish(threadId, {
+				type: 'agent-completed',
+				runId: task.runId,
+				agentId: task.agentId,
+				payload: { role: task.role, result: '', error: 'Cancelled by user' },
+			});
+			if (user) {
+				void this.handlePlannedTaskSettlement(user, task, 'cancelled');
+			}
+		}
 		const { active, suspended } = this.runState.cancelThread(threadId);
 		if (active) {
 			active.abortController.abort();
@@ -311,6 +340,11 @@ export class InstanceAiService {
 			agentId: task.agentId,
 			payload: { role: task.role, result: '', error: 'Cancelled by user' },
 		});
+
+		const user = this.runState.getThreadUser(threadId);
+		if (user) {
+			void this.handlePlannedTaskSettlement(user, task, 'cancelled');
+		}
 	}
 
 	// ── Gateway lifecycle (delegated to LocalGatewayRegistry) ───────────────
@@ -400,6 +434,377 @@ export class InstanceAiService {
 		this.logger.debug('Instance AI service shut down');
 	}
 
+	private createMemoryConfig(titleModel?: string) {
+		return {
+			storage: this.compositeStore,
+			embedderModel: this.instanceAiConfig.embedderModel || undefined,
+			lastMessages: this.instanceAiConfig.lastMessages,
+			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
+			titleModel,
+		};
+	}
+
+	private async ensureThreadExists(
+		memory: ReturnType<typeof createMemory>,
+		threadId: string,
+		resourceId: string,
+	): Promise<void> {
+		const existingThread = await memory.getThreadById({ threadId });
+		if (existingThread) return;
+
+		const now = new Date();
+		await memory.saveThread({
+			thread: {
+				id: threadId,
+				resourceId,
+				title: '',
+				createdAt: now,
+				updatedAt: now,
+			},
+		});
+	}
+
+	private projectPlannedTaskList(graph: PlannedTaskGraph): TaskList {
+		return {
+			tasks: graph.tasks.map((task) => ({
+				id: task.id,
+				description: task.title,
+				status:
+					task.status === 'planned'
+						? 'todo'
+						: task.status === 'running'
+							? 'in_progress'
+							: task.status === 'succeeded'
+								? 'done'
+								: task.status,
+			})),
+		};
+	}
+
+	private buildPlannedTaskFollowUpMessage(
+		type: 'synthesize' | 'replan',
+		graph: PlannedTaskGraph,
+		failedTask?: PlannedTaskRecord,
+	): string {
+		const payload: Record<string, unknown> = {
+			tasks: graph.tasks.map((task) => ({
+				id: task.id,
+				title: task.title,
+				kind: task.kind,
+				status: task.status,
+				result: task.result,
+				error: task.error,
+				outcome: task.outcome,
+			})),
+		};
+
+		if (failedTask) {
+			payload.failedTask = {
+				id: failedTask.id,
+				title: failedTask.title,
+				kind: failedTask.kind,
+				error: failedTask.error,
+				result: failedTask.result,
+			};
+		}
+
+		return `<planned-task-follow-up type="${type}">\n${JSON.stringify(payload, null, 2)}\n</planned-task-follow-up>\n\n${AUTO_FOLLOW_UP_MESSAGE}`;
+	}
+
+	private async createPlannedTaskState(titleModel?: string) {
+		const memory = createMemory(this.createMemoryConfig(titleModel));
+		const taskStorage = new MastraTaskStorage(memory);
+		const plannedTaskStorage = new PlannedTaskStorage(memory);
+		const plannedTaskService = new PlannedTaskCoordinator(plannedTaskStorage);
+		return { memory, taskStorage, plannedTaskService };
+	}
+
+	private async syncPlannedTasksToUi(threadId: string, graph: PlannedTaskGraph): Promise<void> {
+		const { taskStorage } = await this.createPlannedTaskState();
+		const tasks = this.projectPlannedTaskList(graph);
+		await taskStorage.save(threadId, tasks);
+		this.eventBus.publish(threadId, {
+			type: 'tasks-update',
+			runId: graph.planRunId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			payload: { tasks },
+		});
+	}
+
+	private async createExecutionEnvironment(
+		user: User,
+		threadId: string,
+		runId: string,
+		abortSignal: AbortSignal,
+		researchMode?: boolean,
+		messageGroupId?: string,
+	) {
+		const localGatewayDisabled = this.settingsService.isFilesystemDisabled();
+		const userGateway = this.gatewayRegistry.findGateway(user.id);
+		const localFilesystemService =
+			!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
+				? this.getLocalFsProvider()
+				: undefined;
+		const context = this.adapterService.createContext(user, localFilesystemService);
+		if (!localGatewayDisabled && userGateway?.isConnected) {
+			context.localMcpServer = userGateway;
+		}
+		context.permissions = this.settingsService.getPermissions();
+
+		let domainTracker = this.domainAccessTrackersByThread.get(threadId);
+		if (!domainTracker) {
+			domainTracker = createDomainAccessTracker();
+			this.domainAccessTrackersByThread.set(threadId, domainTracker);
+		}
+		context.domainAccessTracker = domainTracker;
+		context.runId = runId;
+
+		const modelId = await this.resolveModel(user);
+		const titleModel = typeof modelId === 'string' ? modelId : modelId.id;
+		const memory = createMemory(this.createMemoryConfig(titleModel));
+		await this.ensureThreadExists(memory, threadId, user.id);
+
+		const taskStorage = new MastraTaskStorage(memory);
+		const iterationLog = new MastraIterationLogStorage(memory);
+		const snapshotStorage = new AgentTreeSnapshotStorage(memory);
+		const workflowLoopStorage = new WorkflowLoopStorage(memory);
+		const workflowTasks = new WorkflowTaskCoordinator(threadId, workflowLoopStorage);
+		const plannedTaskStorage = new PlannedTaskStorage(memory);
+		const plannedTaskService = new PlannedTaskCoordinator(plannedTaskStorage);
+
+		const nodeDefDirs = this.adapterService.getNodeDefinitionDirs();
+		if (nodeDefDirs.length > 0) {
+			setSchemaBaseDirs(nodeDefDirs);
+		}
+
+		const domainTools = createAllTools(context);
+		const sandboxEntry = await this.getOrCreateWorkspace(threadId, user);
+
+		const orchestrationContext: OrchestrationContext = {
+			threadId,
+			runId,
+			messageGroupId,
+			userId: user.id,
+			orchestratorAgentId: ORCHESTRATOR_AGENT_ID,
+			modelId,
+			storage: this.compositeStore,
+			subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
+			eventBus: this.eventBus,
+			domainTools,
+			abortSignal,
+			taskStorage,
+			researchMode,
+			browserMcpConfig: this.instanceAiConfig.browserMcp
+				? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
+				: undefined,
+			oauth2CallbackUrl: this.oauth2CallbackUrl,
+			webhookBaseUrl: this.webhookBaseUrl,
+			waitForConfirmation: async (requestId: string) => {
+				return await new Promise<ConfirmationData>((resolve) => {
+					this.runState.registerPendingConfirmation(requestId, {
+						resolve,
+						threadId,
+						userId: user.id,
+					});
+				});
+			},
+			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
+			spawnBackgroundTask: (opts) =>
+				this.spawnBackgroundTask(runId, opts, snapshotStorage, messageGroupId),
+			plannedTaskService,
+			schedulePlannedTasks: async () => await this.schedulePlannedTasks(user, threadId),
+			iterationLog,
+			sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
+			workflowTaskService: workflowTasks,
+			workspace: sandboxEntry?.workspace,
+			builderSandboxFactory: this.builderSandboxFactory,
+			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
+			domainContext: context,
+		};
+
+		return {
+			context,
+			memory,
+			taskStorage,
+			iterationLog,
+			snapshotStorage,
+			workflowTasks,
+			plannedTaskService,
+			modelId,
+			orchestrationContext,
+			sandboxEntry,
+		};
+	}
+
+	private async dispatchPlannedTask(
+		task: PlannedTaskRecord,
+		context: OrchestrationContext,
+	): Promise<void> {
+		let started: { taskId: string; agentId: string; result: string } | null = null;
+
+		switch (task.kind) {
+			case 'build-workflow':
+				started = await startBuildWorkflowAgentTask(context, {
+					task: task.spec,
+					plannedTaskId: task.id,
+				});
+				break;
+			case 'manage-data-tables':
+				started = startDataTableAgentTask(context, {
+					task: task.spec,
+					plannedTaskId: task.id,
+				});
+				break;
+			case 'research':
+				started = startResearchAgentTask(context, {
+					goal: task.title,
+					constraints: task.spec,
+					plannedTaskId: task.id,
+				});
+				break;
+			case 'delegate':
+				started = await startDetachedDelegateTask(context, {
+					title: task.title,
+					spec: task.spec,
+					tools: task.tools ?? [],
+					plannedTaskId: task.id,
+				});
+				break;
+		}
+
+		if (!started?.taskId) {
+			await context.plannedTaskService?.markFailed(context.threadId, task.id, {
+				error: started?.result || `Failed to start planned task "${task.title}"`,
+			});
+			return;
+		}
+
+		await context.plannedTaskService?.markRunning(context.threadId, task.id, {
+			agentId: started.agentId,
+			backgroundTaskId: started.taskId,
+		});
+
+		const nextGraph = await context.plannedTaskService?.getGraph(context.threadId);
+		if (nextGraph) {
+			await this.syncPlannedTasksToUi(context.threadId, nextGraph);
+		}
+	}
+
+	private async handlePlannedTaskSettlement(
+		user: User,
+		task: ManagedBackgroundTask,
+		status: 'succeeded' | 'failed' | 'cancelled',
+	): Promise<void> {
+		if (!task.plannedTaskId) return;
+
+		const { plannedTaskService } = await this.createPlannedTaskState();
+		let graph: PlannedTaskGraph | null = null;
+
+		if (status === 'succeeded') {
+			graph = await plannedTaskService.markSucceeded(task.threadId, task.plannedTaskId, {
+				result: task.result,
+				outcome: task.outcome,
+			});
+		} else if (status === 'failed') {
+			graph = await plannedTaskService.markFailed(task.threadId, task.plannedTaskId, {
+				error: task.error,
+			});
+		} else {
+			graph = await plannedTaskService.markCancelled(task.threadId, task.plannedTaskId, {
+				error: task.error,
+			});
+		}
+
+		if (graph) {
+			await this.syncPlannedTasksToUi(task.threadId, graph);
+		}
+
+		await this.schedulePlannedTasks(user, task.threadId);
+	}
+
+	private async startInternalFollowUpRun(
+		user: User,
+		threadId: string,
+		message: string,
+		researchMode: boolean | undefined,
+		messageGroupId?: string,
+	): Promise<string> {
+		const { runId, abortController } = this.runState.startRun({
+			threadId,
+			user,
+			researchMode,
+			messageGroupId,
+		});
+
+		void this.executeRun(
+			user,
+			threadId,
+			runId,
+			message,
+			abortController,
+			researchMode,
+			undefined,
+			messageGroupId,
+		);
+
+		return runId;
+	}
+
+	private async schedulePlannedTasks(user: User, threadId: string): Promise<void> {
+		const { plannedTaskService } = await this.createPlannedTaskState();
+		const graph = await plannedTaskService.getGraph(threadId);
+		if (!graph) return;
+
+		await this.syncPlannedTasksToUi(threadId, graph);
+
+		const availableSlots = Math.max(
+			0,
+			MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD -
+				this.backgroundTasks.getRunningTasks(threadId).length,
+		);
+		const action = await plannedTaskService.tick(threadId, { availableSlots });
+		if (action.type === 'none') return;
+
+		if (action.type === 'replan') {
+			await this.syncPlannedTasksToUi(threadId, action.graph);
+			await this.startInternalFollowUpRun(
+				user,
+				threadId,
+				this.buildPlannedTaskFollowUpMessage('replan', action.graph, action.failedTask),
+				this.runState.getThreadResearchMode(threadId),
+				action.graph.messageGroupId,
+			);
+			return;
+		}
+
+		if (action.type === 'synthesize') {
+			await this.syncPlannedTasksToUi(threadId, action.graph);
+			await this.startInternalFollowUpRun(
+				user,
+				threadId,
+				this.buildPlannedTaskFollowUpMessage('synthesize', action.graph),
+				this.runState.getThreadResearchMode(threadId),
+				action.graph.messageGroupId,
+			);
+			return;
+		}
+
+		const environment = await this.createExecutionEnvironment(
+			user,
+			threadId,
+			action.graph.planRunId,
+			createInertAbortSignal(),
+			this.runState.getThreadResearchMode(threadId),
+			action.graph.messageGroupId,
+		);
+
+		for (const task of action.tasks) {
+			await this.dispatchPlannedTask(task, environment.orchestrationContext);
+		}
+
+		await this.schedulePlannedTasks(user, threadId);
+	}
+
 	private async executeRun(
 		user: User,
 		threadId: string,
@@ -433,63 +838,21 @@ export class InstanceAiService {
 				return;
 			}
 
-			const localGatewayDisabled = this.settingsService.isFilesystemDisabled();
-			const userGateway = this.gatewayRegistry.findGateway(user.id);
-			const localFilesystemService =
-				!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
-					? this.getLocalFsProvider()
-					: undefined;
-			const context = this.adapterService.createContext(user, localFilesystemService);
-			if (!localGatewayDisabled && userGateway?.isConnected) {
-				context.localMcpServer = userGateway;
-			}
-			context.permissions = this.settingsService.getPermissions();
-
-			// Domain-access tracker: get or create for this thread, set runId
-			let domainTracker = this.domainAccessTrackersByThread.get(threadId);
-			if (!domainTracker) {
-				domainTracker = createDomainAccessTracker();
-				this.domainAccessTrackersByThread.set(threadId, domainTracker);
-			}
-			context.domainAccessTracker = domainTracker;
-			context.runId = runId;
-
 			const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
 
-			const modelId = await this.resolveModel(user);
-			const titleModel = typeof modelId === 'string' ? modelId : modelId.id;
+			const { context, memory, taskStorage, snapshotStorage, modelId, orchestrationContext } =
+				await this.createExecutionEnvironment(
+					user,
+					threadId,
+					runId,
+					signal,
+					researchMode,
+					messageGroupId,
+				);
+			const memoryConfig = this.createMemoryConfig(
+				typeof modelId === 'string' ? modelId : modelId.id,
+			);
 
-			const memoryConfig = {
-				storage: this.compositeStore,
-				embedderModel: this.instanceAiConfig.embedderModel || undefined,
-				lastMessages: this.instanceAiConfig.lastMessages,
-				semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
-				titleModel,
-			};
-
-			// Create memory instance and share it between agent, task storage, iteration log,
-			// snapshot storage, and workflow loop storage
-			const memory = createMemory(memoryConfig);
-			const existingThread = await memory.getThreadById({ threadId });
-			if (!existingThread) {
-				const now = new Date();
-				await memory.saveThread({
-					thread: {
-						id: threadId,
-						resourceId: user.id,
-						title: '',
-						createdAt: now,
-						updatedAt: now,
-					},
-				});
-			}
-			const taskStorage = new MastraTaskStorage(memory);
-			const iterationLog = new MastraIterationLogStorage(memory);
-			const snapshotStorage = new AgentTreeSnapshotStorage(memory);
-			const workflowLoopStorage = new WorkflowLoopStorage(memory);
-			const workflowTasks = new WorkflowTaskCoordinator(threadId, workflowLoopStorage);
-
-			// Replay existing tasks to the new run's agentTree so the frontend shows them immediately
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {
 				this.eventBus.publish(threadId, {
@@ -500,56 +863,6 @@ export class InstanceAiService {
 				});
 			}
 
-			// Configure workflow-sdk schema validation dirs for build-workflow tool
-			const nodeDefDirs = this.adapterService.getNodeDefinitionDirs();
-			if (nodeDefDirs.length > 0) {
-				setSchemaBaseDirs(nodeDefDirs);
-			}
-
-			// Build domain tools for orchestration context (delegate needs them)
-			const domainTools = createAllTools(context);
-
-			// Get or create sandbox workspace for this thread (persists across messages)
-			const sandboxEntry = await this.getOrCreateWorkspace(threadId, user);
-
-			const orchestrationContext: OrchestrationContext = {
-				threadId,
-				runId,
-				userId: user.id,
-				orchestratorAgentId: ORCHESTRATOR_AGENT_ID,
-				modelId,
-				storage: this.compositeStore,
-				subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
-				eventBus: this.eventBus,
-				domainTools,
-				abortSignal: signal,
-				taskStorage,
-				researchMode,
-				browserMcpConfig: this.instanceAiConfig.browserMcp
-					? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
-					: undefined,
-				oauth2CallbackUrl: this.oauth2CallbackUrl,
-				webhookBaseUrl: this.webhookBaseUrl,
-				waitForConfirmation: async (requestId: string) => {
-					return await new Promise<ConfirmationData>((resolve) => {
-						this.runState.registerPendingConfirmation(requestId, {
-							resolve,
-							threadId,
-							userId: user.id,
-						});
-					});
-				},
-				cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
-				spawnBackgroundTask: (opts) => this.spawnBackgroundTask(runId, opts, snapshotStorage),
-				iterationLog,
-				sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
-				workflowTaskService: workflowTasks,
-				workspace: sandboxEntry?.workspace,
-				builderSandboxFactory: this.builderSandboxFactory,
-				nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
-				domainContext: context,
-			};
-
 			const agent = await createInstanceAgent({
 				modelId,
 				context,
@@ -557,7 +870,7 @@ export class InstanceAiService {
 				mcpServers,
 				memoryConfig,
 				memory,
-				workspace: sandboxEntry?.workspace,
+				workspace: orchestrationContext.workspace,
 				disableDeferredTools: true,
 			});
 
@@ -814,6 +1127,7 @@ export class InstanceAiService {
 		runId: string,
 		opts: SpawnBackgroundTaskOptions,
 		snapshotStorage: AgentTreeSnapshotStorage,
+		messageGroupIdOverride?: string,
 	): void {
 		this.backgroundTasks.spawn({
 			taskId: opts.taskId,
@@ -821,7 +1135,8 @@ export class InstanceAiService {
 			runId,
 			role: opts.role,
 			agentId: opts.agentId,
-			messageGroupId: this.runState.getMessageGroupId(opts.threadId),
+			messageGroupId: messageGroupIdOverride ?? this.runState.getMessageGroupId(opts.threadId),
+			plannedTaskId: opts.plannedTaskId,
 			workItemId: opts.workItemId,
 			run: opts.run,
 			onLimitReached: (errorMessage) => {
@@ -843,6 +1158,11 @@ export class InstanceAiService {
 					agentId: opts.agentId,
 					payload: { role: opts.role, result: task.result ?? '' },
 				});
+
+				const user = this.runState.getThreadUser(opts.threadId);
+				if (user) {
+					await this.handlePlannedTaskSettlement(user, task, 'succeeded');
+				}
 			},
 			onFailed: async (task) => {
 				this.eventBus.publish(opts.threadId, {
@@ -851,6 +1171,11 @@ export class InstanceAiService {
 					agentId: opts.agentId,
 					payload: { role: opts.role, result: '', error: task.error ?? 'Unknown error' },
 				});
+
+				const user = this.runState.getThreadUser(opts.threadId);
+				if (user) {
+					await this.handlePlannedTaskSettlement(user, task, 'failed');
+				}
 			},
 			onSettled: async (task) => {
 				await this.saveAgentTreeSnapshot(

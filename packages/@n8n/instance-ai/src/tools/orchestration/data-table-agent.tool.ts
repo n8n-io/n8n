@@ -35,6 +35,127 @@ const DATA_TABLE_TOOL_NAMES = [
 	'delete-data-table-rows',
 ];
 
+export interface StartDataTableAgentInput {
+	task: string;
+	taskId?: string;
+	agentId?: string;
+	plannedTaskId?: string;
+}
+
+export interface StartedBackgroundAgentTask {
+	result: string;
+	taskId: string;
+	agentId: string;
+}
+
+export function startDataTableAgentTask(
+	context: OrchestrationContext,
+	input: StartDataTableAgentInput,
+): StartedBackgroundAgentTask {
+	// Collect data table tools from the domain tools
+	const dataTableTools: ToolsInput = {};
+	for (const name of DATA_TABLE_TOOL_NAMES) {
+		if (name in context.domainTools) {
+			dataTableTools[name] = context.domainTools[name];
+		}
+	}
+
+	if (Object.keys(dataTableTools).length === 0) {
+		return { result: 'Error: no data table tools available.', taskId: '', agentId: '' };
+	}
+
+	if (!context.spawnBackgroundTask) {
+		return { result: 'Error: background task support not available.', taskId: '', agentId: '' };
+	}
+
+	const subAgentId = input.agentId ?? `agent-datatable-${nanoid(6)}`;
+	const taskId = input.taskId ?? `datatable-${nanoid(8)}`;
+
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'data-table-manager',
+			tools: Object.keys(dataTableTools),
+			taskId,
+			kind: 'data-table',
+			title: 'Managing data table',
+			subtitle: truncateLabel(input.task),
+			goal: input.task,
+			targetResource: { type: 'data-table' as const },
+		},
+	});
+
+	context.spawnBackgroundTask({
+		taskId,
+		threadId: context.threadId,
+		agentId: subAgentId,
+		role: 'data-table-manager',
+		plannedTaskId: input.plannedTaskId,
+		run: async (signal, _drainCorrections) => {
+			const dataTableMemory = createSubAgentMemory(context.storage, 'data-table-manager');
+
+			const subAgent = new Agent({
+				id: subAgentId,
+				name: 'Data Table Agent',
+				instructions: {
+					role: 'system' as const,
+					content: DATA_TABLE_AGENT_PROMPT,
+					providerOptions: {
+						anthropic: { cacheControl: { type: 'ephemeral' } },
+					},
+				},
+				model: context.modelId,
+				tools: dataTableTools,
+				memory: dataTableMemory,
+			});
+
+			registerWithMastra(subAgentId, subAgent, context.storage);
+
+			const dtMemoryOpts = dataTableMemory
+				? {
+						resource: subAgentResourceId(context.userId, 'data-table-manager'),
+						thread: subAgentId,
+					}
+				: undefined;
+
+			const stream = await subAgent.stream(input.task, {
+				maxSteps: DATA_TABLE_MAX_STEPS,
+				abortSignal: signal,
+				providerOptions: {
+					anthropic: { cacheControl: { type: 'ephemeral' } },
+				},
+				...(dtMemoryOpts ? { memory: dtMemoryOpts } : {}),
+			});
+
+			const hitlResult = await consumeStreamWithHitl({
+				agent: subAgent,
+				stream: stream as {
+					runId?: string;
+					fullStream: AsyncIterable<unknown>;
+					text: Promise<string>;
+				},
+				runId: context.runId,
+				agentId: subAgentId,
+				eventBus: context.eventBus,
+				threadId: context.threadId,
+				abortSignal: signal,
+				waitForConfirmation: context.waitForConfirmation,
+			});
+
+			return await hitlResult.text;
+		},
+	});
+
+	return {
+		result: `Data table operation started (task: ${taskId}). Acknowledge briefly and move on.`,
+		taskId,
+		agentId: subAgentId,
+	};
+}
+
 export function createDataTableAgentTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'manage-data-tables-with-agent',
@@ -53,112 +174,9 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 			result: z.string(),
 			taskId: z.string(),
 		}),
-		// eslint-disable-next-line @typescript-eslint/require-await -- framework requires Promise return but body is sync
 		execute: async (input) => {
-			// Collect data table tools from the domain tools
-			const dataTableTools: ToolsInput = {};
-			for (const name of DATA_TABLE_TOOL_NAMES) {
-				if (name in context.domainTools) {
-					dataTableTools[name] = context.domainTools[name];
-				}
-			}
-
-			if (Object.keys(dataTableTools).length === 0) {
-				return { result: 'Error: no data table tools available.', taskId: '' };
-			}
-
-			if (!context.spawnBackgroundTask) {
-				return { result: 'Error: background task support not available.', taskId: '' };
-			}
-
-			const subAgentId = `agent-datatable-${nanoid(6)}`;
-			const taskId = `datatable-${nanoid(8)}`;
-
-			// Publish agent-spawned so the UI shows the data table agent immediately
-			context.eventBus.publish(context.threadId, {
-				type: 'agent-spawned',
-				runId: context.runId,
-				agentId: subAgentId,
-				payload: {
-					parentId: context.orchestratorAgentId,
-					role: 'data-table-manager',
-					tools: Object.keys(dataTableTools),
-					taskId,
-					kind: 'data-table',
-					title: 'Managing data table',
-					subtitle: truncateLabel(input.task),
-					goal: input.task,
-					targetResource: { type: 'data-table' as const },
-				},
-			});
-
-			const task = input.task;
-
-			// Spawn data table agent as a background task — returns immediately
-			context.spawnBackgroundTask({
-				taskId,
-				threadId: context.threadId,
-				agentId: subAgentId,
-				role: 'data-table-manager',
-				run: async (signal, _drainCorrections) => {
-					const dataTableMemory = createSubAgentMemory(context.storage, 'data-table-manager');
-
-					const subAgent = new Agent({
-						id: subAgentId,
-						name: 'Data Table Agent',
-						instructions: {
-							role: 'system' as const,
-							content: DATA_TABLE_AGENT_PROMPT,
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
-						},
-						model: context.modelId,
-						tools: dataTableTools,
-						memory: dataTableMemory,
-					});
-
-					registerWithMastra(subAgentId, subAgent, context.storage);
-
-					const dtMemoryOpts = dataTableMemory
-						? {
-								resource: subAgentResourceId(context.userId, 'data-table-manager'),
-								thread: subAgentId,
-							}
-						: undefined;
-
-					const stream = await subAgent.stream(task, {
-						maxSteps: DATA_TABLE_MAX_STEPS,
-						abortSignal: signal,
-						providerOptions: {
-							anthropic: { cacheControl: { type: 'ephemeral' } },
-						},
-						...(dtMemoryOpts ? { memory: dtMemoryOpts } : {}),
-					});
-
-					const hitlResult = await consumeStreamWithHitl({
-						agent: subAgent,
-						stream: stream as {
-							runId?: string;
-							fullStream: AsyncIterable<unknown>;
-							text: Promise<string>;
-						},
-						runId: context.runId,
-						agentId: subAgentId,
-						eventBus: context.eventBus,
-						threadId: context.threadId,
-						abortSignal: signal,
-						waitForConfirmation: context.waitForConfirmation,
-					});
-
-					return await hitlResult.text;
-				},
-			});
-
-			return {
-				result: `Data table operation started (task: ${taskId}). Acknowledge briefly and move on.`,
-				taskId,
-			};
+			const result = startDataTableAgentTask(context, input);
+			return await Promise.resolve({ result: result.result, taskId: result.taskId });
 		},
 	});
 }

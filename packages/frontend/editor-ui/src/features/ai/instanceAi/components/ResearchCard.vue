@@ -5,6 +5,7 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { getRenderableAgentResult } from '../agentResult';
 import AgentTimeline from './AgentTimeline.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
@@ -69,6 +70,7 @@ const isError = computed(() => props.agentNode.status === 'error');
 const isCompleted = computed(
 	() => props.agentNode.status === 'completed' || props.agentNode.status === 'cancelled',
 );
+const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 
 const allToolCallsDone = computed(
 	() =>
@@ -149,8 +151,8 @@ const headerTitle = computed(() => {
 			<span>{{ i18n.baseText('instanceAi.researchCard.complete') }}</span>
 		</div>
 
-		<div v-if="props.agentNode.result && !props.agentNode.error" :class="$style.resultBlock">
-			<InstanceAiMarkdown :content="props.agentNode.result" />
+		<div v-if="displayResult && !props.agentNode.error" :class="$style.resultBlock">
+			<InstanceAiMarkdown :content="displayResult" />
 		</div>
 
 		<!-- Error -->

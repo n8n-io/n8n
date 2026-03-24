@@ -141,7 +141,8 @@ describe('report-verification-verdict tool', () => {
 		);
 
 		expect((result as { guidance: string }).guidance).toContain('REBUILD NEEDED');
-		expect((result as { guidance: string }).guidance).toContain('build-workflow-with-agent');
+		expect((result as { guidance: string }).guidance).toContain('plan');
+		expect((result as { guidance: string }).guidance).toContain('build-workflow');
 	});
 
 	it('returns blocked guidance when action is blocked', async () => {

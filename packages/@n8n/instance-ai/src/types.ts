@@ -546,6 +546,81 @@ export interface TaskStorage {
 	save(threadId: string, tasks: TaskList): Promise<void>;
 }
 
+// ── Planned task graphs ─────────────────────────────────────────────────────
+
+export type PlannedTaskKind = 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research';
+
+export interface PlannedTask {
+	id: string;
+	title: string;
+	kind: PlannedTaskKind;
+	spec: string;
+	deps: string[];
+	tools?: string[];
+}
+
+export type PlannedTaskStatus = 'planned' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+
+export interface PlannedTaskRecord extends PlannedTask {
+	status: PlannedTaskStatus;
+	agentId?: string;
+	backgroundTaskId?: string;
+	result?: string;
+	error?: string;
+	outcome?: Record<string, unknown>;
+	startedAt?: number;
+	finishedAt?: number;
+}
+
+export type PlannedTaskGraphStatus = 'active' | 'awaiting_replan' | 'completed' | 'cancelled';
+
+export interface PlannedTaskGraph {
+	planRunId: string;
+	messageGroupId?: string;
+	status: PlannedTaskGraphStatus;
+	tasks: PlannedTaskRecord[];
+}
+
+export type PlannedTaskSchedulerAction =
+	| { type: 'none'; graph: PlannedTaskGraph | null }
+	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
+	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
+	| { type: 'synthesize'; graph: PlannedTaskGraph };
+
+export interface PlannedTaskService {
+	createPlan(
+		threadId: string,
+		tasks: PlannedTask[],
+		metadata: { planRunId: string; messageGroupId?: string },
+	): Promise<PlannedTaskGraph>;
+	getGraph(threadId: string): Promise<PlannedTaskGraph | null>;
+	markRunning(
+		threadId: string,
+		taskId: string,
+		update: { agentId?: string; backgroundTaskId?: string; startedAt?: number },
+	): Promise<PlannedTaskGraph | null>;
+	markSucceeded(
+		threadId: string,
+		taskId: string,
+		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
+	): Promise<PlannedTaskGraph | null>;
+	markFailed(
+		threadId: string,
+		taskId: string,
+		update: { error?: string; finishedAt?: number },
+	): Promise<PlannedTaskGraph | null>;
+	markCancelled(
+		threadId: string,
+		taskId: string,
+		update?: { error?: string; finishedAt?: number },
+	): Promise<PlannedTaskGraph | null>;
+	tick(
+		threadId: string,
+		options?: { availableSlots?: number },
+	): Promise<PlannedTaskSchedulerAction>;
+	clear(threadId: string): Promise<void>;
+}
+
 // ── MCP ──────────────────────────────────────────────────────────────────────
 
 export interface McpServerConfig {
@@ -589,6 +664,8 @@ export interface SpawnBackgroundTaskOptions {
 	threadId: string;
 	agentId: string;
 	role: string;
+	/** When set, links the background task back to a planned task in the scheduler. */
+	plannedTaskId?: string;
 	/** Unique work item ID for workflow loop tracking. When set, the service
 	 *  uses the workflow loop controller to manage verify/repair transitions. */
 	workItemId?: string;
@@ -610,6 +687,7 @@ export interface WorkflowTaskService {
 export interface OrchestrationContext {
 	threadId: string;
 	runId: string;
+	messageGroupId?: string;
 	userId: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
@@ -637,6 +715,10 @@ export interface OrchestrationContext {
 	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => void;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
+	/** Persist and inspect dependency-aware planned tasks for this thread. */
+	plannedTaskService?: PlannedTaskService;
+	/** Run one scheduler pass after plan/task state changes. */
+	schedulePlannedTasks?: () => Promise<void>;
 	/** Sandbox workspace — when present, enables sandbox-based workflow building */
 	workspace?: Workspace;
 	/** Factory for creating per-builder ephemeral sandboxes from a pre-warmed snapshot */
@@ -645,7 +727,7 @@ export interface OrchestrationContext {
 	nodeDefinitionDirs?: string[];
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
-	/** When true, the research-with-agent tool is available and the builder gets web-search/fetch-url */
+	/** When true, research guidance may suggest planned research tasks and the builder gets web-search/fetch-url */
 	researchMode?: boolean;
 	/** Thread-scoped iteration log for accumulating attempt history across retries */
 	iterationLog?: IterationLog;

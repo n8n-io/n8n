@@ -1,6 +1,7 @@
 import type { Memory } from '@mastra/memory';
 import { z } from 'zod';
 
+import { patchThread } from './thread-patch';
 import type {
 	AttemptRecord,
 	WorkflowBuildOutcome,
@@ -41,18 +42,17 @@ export class WorkflowLoopStorage {
 		attempts: AttemptRecord[],
 		lastBuildOutcome?: WorkflowBuildOutcome,
 	): Promise<void> {
-		const thread = await this.memory.getThreadById({ threadId });
-		if (!thread) return;
-
-		const all = this.parse(thread.metadata?.[METADATA_KEY]);
-		all[state.workItemId] = { state, attempts, lastBuildOutcome };
-
-		await this.memory.updateThread({
-			id: threadId,
-			title: thread.title ?? threadId,
-			metadata: {
-				...thread.metadata,
-				[METADATA_KEY]: all,
+		await patchThread(this.memory, {
+			threadId,
+			update: ({ metadata = {} }) => {
+				const all = this.parse(metadata[METADATA_KEY]);
+				all[state.workItemId] = { state, attempts, lastBuildOutcome };
+				return {
+					metadata: {
+						...metadata,
+						[METADATA_KEY]: all,
+					},
+				};
 			},
 		});
 	}

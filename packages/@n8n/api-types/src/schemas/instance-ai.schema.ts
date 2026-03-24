@@ -278,7 +278,7 @@ export const instanceAiFilesystemResponseSchema = z.object({
 export const taskItemSchema = z.object({
 	id: z.string().describe('Unique task identifier'),
 	description: z.string().describe('What this task accomplishes'),
-	status: z.enum(['todo', 'in_progress', 'done']).describe('Current status'),
+	status: z.enum(['todo', 'in_progress', 'done', 'failed', 'cancelled']).describe('Current status'),
 });
 
 export type TaskItem = z.infer<typeof taskItemSchema>;

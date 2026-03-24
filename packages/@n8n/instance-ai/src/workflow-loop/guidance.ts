@@ -35,14 +35,16 @@ export function formatWorkflowLoopGuidance(
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. ` +
-				`Call \`build-workflow-with-agent\` again with these details: ${action.failureDetails}`
+				'Submit a new `plan` with one `build-workflow` task. ' +
+				`In the task spec, explain that workflow "${action.workflowId}" needs structural repair and include these details: ${action.failureDetails}`
 			);
 		case 'patch':
 			return (
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				`Call \`build-workflow-with-agent\` with mode "patch" and workflowId "${action.workflowId}".`
+				'Submit a new `plan` with one `build-workflow` task. ' +
+				`In the task spec, set mode "patch", include workflowId "${action.workflowId}", and describe the targeted fix.`
 			);
 	}
 }
