@@ -13,6 +13,7 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	user: TUser;
 	toolCallId: string;
 	requestId: string;
+	createdAt: number;
 }
 
 export interface ConfirmationData {
@@ -28,6 +29,7 @@ export interface PendingConfirmation {
 	resolve: (data: ConfirmationData) => void;
 	threadId: string;
 	userId: string;
+	createdAt: number;
 }
 
 export interface BackgroundTaskStatusSnapshot {
@@ -225,6 +227,43 @@ export class RunStateRegistry<TUser = unknown> {
 
 	getThreadResearchMode(threadId: string): boolean | undefined {
 		return this.threadResearchMode.get(threadId);
+	}
+
+	/**
+	 * Find suspended runs and pending confirmations older than `maxAgeMs`.
+	 * Returns thread IDs and request IDs that should be cancelled/rejected.
+	 * Does NOT mutate state — the caller is responsible for cancelling.
+	 */
+	sweepTimedOut(maxAgeMs: number): {
+		suspendedThreadIds: string[];
+		confirmationRequestIds: string[];
+	} {
+		const now = Date.now();
+		const suspendedThreadIds: string[] = [];
+		for (const [threadId, run] of this.suspendedRuns) {
+			if (now - run.createdAt >= maxAgeMs) {
+				suspendedThreadIds.push(threadId);
+			}
+		}
+		const confirmationRequestIds: string[] = [];
+		for (const [reqId, pending] of this.pendingConfirmations) {
+			if (now - pending.createdAt >= maxAgeMs) {
+				confirmationRequestIds.push(reqId);
+			}
+		}
+		return { suspendedThreadIds, confirmationRequestIds };
+	}
+
+	/**
+	 * Auto-reject a pending confirmation by request ID.
+	 * Returns true if the confirmation existed and was rejected.
+	 */
+	rejectPendingConfirmation(requestId: string): boolean {
+		const pending = this.pendingConfirmations.get(requestId);
+		if (!pending) return false;
+		this.pendingConfirmations.delete(requestId);
+		pending.resolve({ approved: false });
+		return true;
 	}
 
 	shutdown(cancelledConfirmation: ConfirmationData = { approved: false }): {

@@ -8,7 +8,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-// import { Time } from '@n8n/constants';
+import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -65,7 +65,6 @@ import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
 import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storage';
 import { InstanceAiCompactionService } from './compaction.service';
 
-
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
@@ -108,12 +107,14 @@ export class InstanceAiService {
 	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
 
-
 	/** Pre-warmed image manager for builder sandboxes (Daytona only). */
 	private snapshotManager?: SnapshotManager;
 
 	/** Factory for creating per-builder ephemeral sandboxes. */
 	private builderSandboxFactory?: BuilderSandboxFactory;
+
+	/** Periodic sweep that auto-rejects timed-out HITL confirmations. */
+	private confirmationTimeoutInterval?: NodeJS.Timeout;
 
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
@@ -144,6 +145,27 @@ export class InstanceAiService {
 			this.builderSandboxFactory = new BuilderSandboxFactory(sbxConfig);
 		}
 
+		this.startConfirmationTimeoutSweep();
+	}
+
+	private startConfirmationTimeoutSweep(): void {
+		const timeoutMs = 10 * Time.minutes.toMilliseconds;
+
+		this.confirmationTimeoutInterval = setInterval(() => {
+			const { suspendedThreadIds, confirmationRequestIds } = this.runState.sweepTimedOut(timeoutMs);
+
+			for (const threadId of suspendedThreadIds) {
+				this.logger.debug('Auto-rejecting timed-out suspended run', { threadId });
+				this.cancelRun(threadId);
+			}
+
+			for (const reqId of confirmationRequestIds) {
+				this.logger.debug('Auto-rejecting timed-out sub-agent confirmation', {
+					requestId: reqId,
+				});
+				this.runState.rejectPendingConfirmation(reqId);
+			}
+		}, Time.minutes.toMilliseconds);
 	}
 
 	private getSandboxConfigFromEnv(): SandboxConfig {
@@ -262,7 +284,6 @@ export class InstanceAiService {
 			researchMode,
 		});
 
-
 		void this.executeRun(
 			user,
 			threadId,
@@ -319,7 +340,6 @@ export class InstanceAiService {
 			});
 			if (user) {
 				void this.handlePlannedTaskSettlement(user, task, 'cancelled');
-
 			}
 		}
 		const { active, suspended } = this.runState.cancelThread(threadId);
@@ -433,11 +453,15 @@ export class InstanceAiService {
 	}
 
 	async shutdown(): Promise<void> {
+		if (this.confirmationTimeoutInterval) {
+			clearInterval(this.confirmationTimeoutInterval);
+			this.confirmationTimeoutInterval = undefined;
+		}
+
 		const { activeRuns, suspendedRuns } = this.runState.shutdown();
 		for (const run of activeRuns) run.abortController.abort();
 		for (const run of suspendedRuns) run.abortController.abort();
 		for (const task of this.backgroundTasks.cancelAll()) task.abortController.abort();
-
 
 		this.gatewayRegistry.disconnectAll();
 
@@ -624,6 +648,7 @@ export class InstanceAiService {
 						resolve,
 						threadId,
 						userId: user.id,
+						createdAt: Date.now(),
 					});
 				});
 			},
@@ -885,7 +910,6 @@ export class InstanceAiService {
 				});
 			}
 
-
 			const agent = await createInstanceAgent({
 				modelId,
 				context,
@@ -976,6 +1000,7 @@ export class InstanceAiService {
 						toolCallId: result.suspension.toolCallId,
 						requestId: result.suspension.requestId,
 						abortController,
+						createdAt: Date.now(),
 					});
 				}
 
@@ -1117,6 +1142,7 @@ export class InstanceAiService {
 						toolCallId: result.suspension.toolCallId,
 						requestId: result.suspension.requestId,
 						abortController: opts.abortController,
+						createdAt: Date.now(),
 					});
 				}
 
@@ -1149,7 +1175,6 @@ export class InstanceAiService {
 			});
 		} finally {
 			this.runState.clearActiveRun(opts.threadId);
-
 		}
 	}
 
