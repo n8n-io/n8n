@@ -54,7 +54,6 @@ export interface IEnterpriseSettings {
 	binaryDataS3: boolean;
 	workerView: boolean;
 	advancedPermissions: boolean;
-	apiKeyScopes: boolean;
 	workflowDiffs: boolean;
 	namedVersions: boolean;
 	provisioning: boolean;
