@@ -33,18 +33,20 @@ import {
 	type SubmitWorkflowAttempt,
 } from '../workflows/submit-workflow.tool';
 
-/** Node types that can be tested via run-workflow with inputData. */
-const TESTABLE_TRIGGERS = new Set([
-	'n8n-nodes-base.manualTrigger',
-	'n8n-nodes-base.executeWorkflowTrigger',
+/** Trigger types that cannot be test-fired programmatically (need an external request). */
+const UNTESTABLE_TRIGGERS = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.formTrigger',
+	'@n8n/n8n-nodes-langchain.mcpTrigger',
+	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
 
 function detectTriggerType(attempt: SubmitWorkflowAttempt | undefined): TriggerType {
 	if (!attempt?.triggerNodeTypes || attempt.triggerNodeTypes.length === 0) {
 		return 'manual_or_testable';
 	}
-	const hasTestable = attempt.triggerNodeTypes.some((t) => TESTABLE_TRIGGERS.has(t));
-	return hasTestable ? 'manual_or_testable' : 'trigger_only';
+	const allUntestable = attempt.triggerNodeTypes.every((t) => UNTESTABLE_TRIGGERS.has(t));
+	return allUntestable ? 'trigger_only' : 'manual_or_testable';
 }
 
 function buildOutcome(
