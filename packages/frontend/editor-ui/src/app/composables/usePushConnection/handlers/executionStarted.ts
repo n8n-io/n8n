@@ -11,17 +11,28 @@ export async function executionStarted(
 	options: { workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const isIframe = window !== window.parent;
 
-	// No workflow execution is ongoing, so we can ignore this event
-	if (typeof workflowsStore.activeExecutionId === 'undefined') {
+	// In non-iframe context, undefined means "not tracking executions" → skip.
+	// In iframe context, executionFinished resets activeExecutionId to undefined,
+	// but we still want to accept new executions (re-execution scenario).
+	if (typeof workflowsStore.activeExecutionId === 'undefined' && !isIframe) {
 		return;
-	} else if (workflowsStore.activeExecutionId === null) {
+	}
+
+	// Determine if we need to (re)initialize execution tracking state
+	const needsInit =
+		workflowsStore.activeExecutionId === null ||
+		typeof workflowsStore.activeExecutionId === 'undefined' ||
+		(isIframe && workflowsStore.activeExecutionId !== data.executionId);
+
+	if (needsInit) {
 		options.workflowState.setActiveExecutionId(data.executionId);
 	}
 
-	// Initialize workflowExecutionData if not set (e.g. DemoLayout iframe receiving
-	// push events for an execution it didn't trigger).
-	if (!workflowsStore.workflowExecutionData?.data) {
+	// Initialize or reinitialize workflowExecutionData to clear previous execution's
+	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
+	if (!workflowsStore.workflowExecutionData?.data || needsInit) {
 		options.workflowState.setWorkflowExecutionData({
 			id: data.executionId,
 			finished: false,
