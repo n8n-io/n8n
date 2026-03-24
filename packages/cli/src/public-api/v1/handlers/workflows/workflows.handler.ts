@@ -14,11 +14,13 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { addNodeIds, replaceInvalidCredentials, resolveNodeWebhookIds } from '@/workflow-helpers';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
+import { parsePublicApiManualRunPayload } from './spec/manual-run-payload.schema';
 import { createWorkflow, parseTagNames, getWorkflowTags, updateTags } from './workflows.service';
 import type { WorkflowRequest } from '../../../types';
 import {
@@ -26,6 +28,7 @@ import {
 	projectScope,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
+import { respondWithPublicApiError } from '../../shared/public-api-error-response';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 export = {
@@ -444,6 +447,29 @@ export = {
 			}
 
 			return res.json(tags);
+		},
+	],
+	runWorkflow: [
+		apiKeyHasScope('workflow:execute'),
+		projectScope('workflow:execute', 'workflow'),
+		async (req: WorkflowRequest.Run, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+			try {
+				const payload = parsePublicApiManualRunPayload(req.body);
+				const result = await Container.get(WorkflowExecutionService).runStoredWorkflowManually({
+					user: req.user,
+					workflowId: id,
+					payload,
+					pushRef: req.headers['push-ref'] as string | undefined,
+					publicApi: true,
+				});
+				return res.json(result);
+			} catch (error) {
+				if (respondWithPublicApiError(res, error)) {
+					return res;
+				}
+				throw error;
+			}
 		},
 	],
 };

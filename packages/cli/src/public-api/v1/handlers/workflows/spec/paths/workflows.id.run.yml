@@ -1,0 +1,44 @@
+post:
+  x-eov-operation-id: runWorkflow
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Run a workflow
+  description: |
+    Triggers a manual execution of the workflow as stored in the database.
+
+    Send a valid manual execution JSON body (for example
+    `triggerToStartFrom` with the trigger node name). An empty object is not a valid manual payload.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          minProperties: 1
+          description: |
+            Manual execution JSON body (required). Must match one of the shapes used by the editor
+            manual run: `triggerToStartFrom` (run from a known trigger), or `destinationNode` with
+            `runData` and `dirtyNodeNames` (partial execution), or `destinationNode` alone (full run
+            from an inferred trigger). An empty object is invalid.
+          additionalProperties: true
+  responses:
+    '200':
+      description: Execution started, or webhook wait state
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              executionId:
+                type: string
+              waitingForWebhook:
+                type: boolean
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

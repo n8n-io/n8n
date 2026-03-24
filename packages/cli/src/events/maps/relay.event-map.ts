@@ -155,6 +155,7 @@ export type RelayEventMap = {
 			| 'cli'
 			| 'integrated'
 			| 'evaluation'
+			| 'public-api'
 			| 'chat';
 	};
 

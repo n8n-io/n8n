@@ -25,6 +25,7 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
@@ -36,6 +37,14 @@ import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+
+export type RunStoredWorkflowManuallyParams = {
+	user: User;
+	workflowId: string;
+	payload: WorkflowRequest.ManualRunPayload;
+	pushRef?: string;
+	publicApi?: boolean;
+};
 
 @Service()
 export class WorkflowExecutionService {
@@ -257,6 +266,35 @@ export class WorkflowExecutionService {
 		throw new UnexpectedError('`executeManually` was called with an unexpected payload', {
 			extra: { payload },
 		});
+	}
+
+	async runStoredWorkflowManually(
+		params: RunStoredWorkflowManuallyParams,
+	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
+		const { user, workflowId, payload, pushRef, publicApi = false } = params;
+
+		const dbWorkflow = await this.workflowRepository.get({ id: workflowId });
+		if (!dbWorkflow) {
+			throw new NotFoundError(`Workflow with ID "${workflowId}" not found`);
+		}
+
+		const result = await this.executeManually(dbWorkflow, payload, user, pushRef);
+		if ('executionId' in result) {
+			this.eventService.emit('workflow-executed', {
+				user: {
+					id: user.id,
+					email: user.email,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					role: user.role,
+				},
+				workflowId: dbWorkflow.id,
+				workflowName: dbWorkflow.name,
+				executionId: result.executionId,
+				source: publicApi ? 'public-api' : 'user-manual',
+			});
+		}
+		return result;
 	}
 
 	async executeChatWorkflow(

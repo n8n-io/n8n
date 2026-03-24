@@ -35,6 +35,7 @@ import { STARTING_NODES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 mockInstance(Telemetry);
 
@@ -1243,6 +1244,96 @@ describe('POST /workflows/:id/deactivate', () => {
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 
 		expect(await workflowRepository.isActive(workflow.id)).toBe(false);
+	});
+});
+
+describe('POST /workflows/:id/run', () => {
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
+	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows/2/run', null));
+
+	test('should fail due to invalid API Key', testWithAPIKey('post', '/workflows/2/run', 'abcXYZ'));
+
+	test('should return 404 when workflow does not exist', async () => {
+		const workflowId = '00000000';
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflowId}/run`)
+			.send({ triggerToStartFrom: { name: 'Start' } });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 400 when body is empty (same as internal manual execution)', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		const workflowId = workflow.id;
+
+		const response = await authMemberAgent.post(`/workflows/${workflowId}/run`).send({});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 when body is not a valid manual payload', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		const workflowId = workflow.id;
+
+		const response = await authMemberAgent.post(`/workflows/${workflowId}/run`).send({
+			foo: 'bar',
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 200 and start execution with triggerToStartFrom', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		const workflowId = workflow.id;
+
+		const runSpy = jest
+			.spyOn(Container.get(WorkflowExecutionService), 'runStoredWorkflowManually')
+			.mockResolvedValueOnce({ executionId: 'test-execution-id' });
+
+		const response = await authMemberAgent
+			.post(`/workflows/${workflowId}/run`)
+			.send({ triggerToStartFrom: { name: 'Cron' } });
+
+		expect(response.statusCode).toBe(200);
+		expect(runSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				workflowId,
+				payload: expect.objectContaining({
+					triggerToStartFrom: expect.objectContaining({ name: 'Cron' }),
+				}),
+			}),
+		);
+	});
+
+	test('should return 200 and start execution with triggerToStartFrom.data', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		const workflowId = workflow.id;
+
+		const runSpy = jest
+			.spyOn(Container.get(WorkflowExecutionService), 'runStoredWorkflowManually')
+			.mockResolvedValueOnce({ executionId: 'test-execution-id' });
+
+		const triggerData = { json: { answer: 42 } };
+		const response = await authMemberAgent.post(`/workflows/${workflowId}/run`).send({
+			triggerToStartFrom: { name: 'Start', data: triggerData },
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(runSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				workflowId,
+				payload: expect.objectContaining({
+					triggerToStartFrom: expect.objectContaining({
+						name: 'Start',
+						data: triggerData,
+					}),
+				}),
+			}),
+		);
 	});
 });
 

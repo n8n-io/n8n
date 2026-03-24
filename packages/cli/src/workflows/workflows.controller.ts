@@ -515,39 +515,12 @@ export class WorkflowsController {
 	async runManually(req: WorkflowRequest.ManualRun, _res: unknown) {
 		const workflowId = req.params.workflowId;
 
-		// Always load the stored workflow from the database.
-		// This prevents execution of arbitrary workflow definitions —
-		// users can only execute workflows as they exist in the DB.
-		const dbWorkflow = await this.workflowRepository.get({ id: workflowId });
-
-		if (!dbWorkflow) {
-			throw new NotFoundError(`Workflow with ID "${workflowId}" not found`);
-		}
-
-		const result = await this.workflowExecutionService.executeManually(
-			dbWorkflow,
-			req.body,
-			req.user,
-			req.headers['push-ref'],
-		);
-
-		if ('executionId' in result) {
-			this.eventService.emit('workflow-executed', {
-				user: {
-					id: req.user.id,
-					email: req.user.email,
-					firstName: req.user.firstName,
-					lastName: req.user.lastName,
-					role: req.user.role,
-				},
-				workflowId: dbWorkflow.id,
-				workflowName: dbWorkflow.name,
-				executionId: result.executionId,
-				source: 'user-manual',
-			});
-		}
-
-		return result;
+		return await this.workflowExecutionService.runStoredWorkflowManually({
+			user: req.user,
+			workflowId,
+			payload: req.body,
+			pushRef: req.headers['push-ref'] as string | undefined,
+		});
 	}
 
 	@Licensed('feat:sharing')
