@@ -365,11 +365,11 @@ export async function applyNodeCredentials(
 						error: `Credential ${credId} (type: ${credType}) not found — it may have been deleted`,
 					});
 				}
-			} catch (err) {
+			} catch (error) {
 				nodeSucceeded = false;
 				result.failed.push({
 					nodeName: node.name,
-					error: `Failed to resolve credential ${credId} (type: ${credType}): ${err instanceof Error ? err.message : 'Unknown error'}`,
+					error: `Failed to resolve credential ${credId} (type: ${credType}): ${error instanceof Error ? error.message : 'Unknown error'}`,
 				});
 			}
 		}
@@ -380,9 +380,9 @@ export async function applyNodeCredentials(
 
 	try {
 		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
-	} catch (err) {
+	} catch (error) {
 		// If the final save fails, mark all previously-applied nodes as failed
-		const saveError = `Failed to save workflow after credential apply: ${err instanceof Error ? err.message : 'Unknown error'}`;
+		const saveError = `Failed to save workflow after credential apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of result.applied) {
 			result.failed.push({ nodeName, error: saveError });
 		}
@@ -412,18 +412,18 @@ export async function applyNodeParameters(
 				...params,
 			} as IDataObject;
 			result.applied.push(node.name);
-		} catch (err) {
+		} catch (error) {
 			result.failed.push({
 				nodeName: node.name,
-				error: `Failed to merge parameters: ${err instanceof Error ? err.message : 'Unknown error'}`,
+				error: `Failed to merge parameters: ${error instanceof Error ? error.message : 'Unknown error'}`,
 			});
 		}
 	}
 
 	try {
 		await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
-	} catch (err) {
-		const saveError = `Failed to save workflow after parameter apply: ${err instanceof Error ? err.message : 'Unknown error'}`;
+	} catch (error) {
+		const saveError = `Failed to save workflow after parameter apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of result.applied) {
 			result.failed.push({ nodeName, error: saveError });
 		}

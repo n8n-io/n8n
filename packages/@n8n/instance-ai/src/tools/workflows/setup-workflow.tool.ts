@@ -246,10 +246,10 @@ export function createSetupWorkflowTool(context: InstanceAiContext) {
 				}
 
 				return { success: true, completedNodes, failedNodes, updatedNodes, updatedConnections };
-			} catch (err) {
+			} catch (error) {
 				return {
 					success: false,
-					error: `Workflow apply failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+					error: `Workflow apply failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				};
 			}
 		},
