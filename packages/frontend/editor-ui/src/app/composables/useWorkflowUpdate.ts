@@ -332,7 +332,7 @@ export function useWorkflowUpdate() {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		if (workflowDocumentStore.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)) {
-			workflowState.setWorkflowName({ newName: name, setStateDirty: false });
+			workflowDocumentStore.setName(name);
 		}
 	}
 

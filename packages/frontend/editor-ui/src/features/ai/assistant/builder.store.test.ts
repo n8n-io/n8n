@@ -121,7 +121,6 @@ let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
-let setWorkflowNameSpy: ReturnType<typeof vi.fn>;
 let getNodeTypeSpy: ReturnType<typeof vi.fn>;
 let getCredentialsByTypeSpy: ReturnType<typeof vi.fn>;
 
@@ -184,11 +183,6 @@ describe('AI Builder store', () => {
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
-
-		setWorkflowNameSpy = vi.fn().mockImplementation(({ newName }: { newName: string }) => {
-			workflowsStore.workflow.name = newName;
-		});
-		vi.spyOn(workflowState, 'setWorkflowName').mockImplementation(setWorkflowNameSpy);
 
 		getNodeTypeSpy = vi.fn();
 		vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(getNodeTypeSpy);

@@ -20,6 +20,7 @@ import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDo
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 export {
 	getPinDataSize,
@@ -61,7 +62,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
 
-		const workflowDocumentName = useWorkflowDocumentName();
+		const { onNameChange, ...workflowDocumentName } = useWorkflowDocumentName();
 		const workflowDocumentActive = useWorkflowDocumentActive();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
 		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
@@ -94,6 +95,11 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		onNodesStateDirty(() => useUIStore().markStateDirty());
 		onConnectionsStateDirty(() => useUIStore().markStateDirty());
 
+		// Sync document store name → workflowObject (runtime Workflow instance)
+		onNameChange(({ payload }) => {
+			useWorkflowsStore().workflowObject.name = payload.name;
+		});
+
 		function removeAllNodes() {
 			workflowDocumentNodes.removeAllNodes();
 			workflowDocumentConnections.removeAllConnections();
@@ -104,6 +110,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowId,
 			workflowVersion,
 			...workflowDocumentName,
+			onNameChange,
 			...workflowDocumentActive,
 			...workflowDocumentHomeProject,
 			...workflowDocumentChecksum,

@@ -32,7 +32,6 @@ vi.mock('@/features/workflows/canvas/canvas.utils', () => ({
 // Mock useWorkflowState - using hoisted for proper initialization
 const mockWorkflowState = vi.hoisted(() => ({
 	resetParametersLastUpdatedAt: vi.fn(),
-	setWorkflowName: vi.fn(),
 }));
 vi.mock('@/app/composables/useWorkflowState', () => ({
 	injectWorkflowState: vi.fn(() => mockWorkflowState),
@@ -620,12 +619,12 @@ describe('useWorkflowUpdate', () => {
 
 		describe('workflow name update', () => {
 			it('should update workflow name on initial generation when name starts with default', async () => {
-				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 				const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
 				Object.defineProperty(docStore, 'name', {
 					value: DEFAULT_NEW_WORKFLOW_NAME,
 					configurable: true,
 				});
+				const setNameSpy = vi.spyOn(docStore, 'setName');
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -638,19 +637,16 @@ describe('useWorkflowUpdate', () => {
 					{ isInitialGeneration: true },
 				);
 
-				expect(mockWorkflowState.setWorkflowName).toHaveBeenCalledWith({
-					newName: 'My Generated Workflow',
-					setStateDirty: false,
-				});
+				expect(setNameSpy).toHaveBeenCalledWith('My Generated Workflow');
 			});
 
 			it('should not update workflow name when not initial generation', async () => {
-				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 				const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
 				Object.defineProperty(docStore, 'name', {
 					value: DEFAULT_NEW_WORKFLOW_NAME,
 					configurable: true,
 				});
+				const setNameSpy = vi.spyOn(docStore, 'setName');
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -663,16 +659,16 @@ describe('useWorkflowUpdate', () => {
 					{ isInitialGeneration: false },
 				);
 
-				expect(mockWorkflowState.setWorkflowName).not.toHaveBeenCalled();
+				expect(setNameSpy).not.toHaveBeenCalled();
 			});
 
 			it('should not update workflow name when current name does not start with default', async () => {
-				workflowsStore.workflow.name = 'Custom Workflow Name';
 				const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
 				Object.defineProperty(docStore, 'name', {
 					value: 'Custom Workflow Name',
 					configurable: true,
 				});
+				const setNameSpy = vi.spyOn(docStore, 'setName');
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -685,7 +681,7 @@ describe('useWorkflowUpdate', () => {
 					{ isInitialGeneration: true },
 				);
 
-				expect(mockWorkflowState.setWorkflowName).not.toHaveBeenCalled();
+				expect(setNameSpy).not.toHaveBeenCalled();
 			});
 		});
 

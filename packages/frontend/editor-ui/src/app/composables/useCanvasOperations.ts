@@ -2726,7 +2726,10 @@ export function useCanvasOperations() {
 			}
 
 			if (workflowData.name) {
-				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty });
+				workflowDocumentStore.value?.setName(workflowData.name);
+				if (setStateDirty) {
+					uiStore.markStateDirty('metadata');
+				}
 			}
 
 			return workflowData;

@@ -15,7 +15,6 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
@@ -83,7 +82,6 @@ const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const workflowId = useInjectWorkflowId();
-const workflowState = injectWorkflowState();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
 const isTagsEditEnabled = ref(false);
@@ -215,7 +213,8 @@ function onNameSubmit(name: string) {
 	}
 
 	// Update workflow name in store and mark state as dirty
-	workflowState.setWorkflowName({ newName, setStateDirty: true });
+	workflowDocumentStore?.value?.setName(newName);
+	uiStore.markStateDirty('metadata');
 
 	documentTitle.setDocumentTitle(newName, 'IDLE');
 	renameInput.value?.forceCancel();

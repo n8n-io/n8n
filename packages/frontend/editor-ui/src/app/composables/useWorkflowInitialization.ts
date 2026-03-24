@@ -255,17 +255,17 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
-		await workflowState.getNewWorkflowData(
+		workflowState.setWorkflowId(workflowId.value);
+
+		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
+		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+
+		const workflowData = await workflowState.getNewWorkflowData(
 			undefined,
 			projectsStore.currentProjectId,
 			parentFolderId,
 		);
-
-		workflowState.setWorkflowId(workflowId.value);
-
-		// Create document store for new workflow
-		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
-		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+		currentWorkflowDocumentStore.value.setName(workflowData.name);
 		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 
