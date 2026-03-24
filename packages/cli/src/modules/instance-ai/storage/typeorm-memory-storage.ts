@@ -156,17 +156,6 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 					delete safeIncoming[key];
 				}
 
-				// DEBUG: trace metadata overwrites
-				const existingTaskGraph = (existing.metadata as Record<string, unknown> | null)
-					?.instanceAiPlannedTasks;
-				if (existingTaskGraph) {
-					console.log(
-						`[saveThread] threadId=${thread.id.slice(0, 8)}… ` +
-							`preserving graph=${this.debugTaskStatuses(existingTaskGraph)} ` +
-							`(stripped stale incoming)`,
-					);
-				}
-
 				existing.title = thread.title ?? existing.title;
 				existing.resourceId = thread.resourceId ?? existing.resourceId;
 				existing.metadata = {
@@ -207,17 +196,6 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 				delete safeIncoming[key];
 			}
 
-			// DEBUG: trace metadata overwrites
-			const existingTaskGraph = (entity.metadata as Record<string, unknown> | null)
-				?.instanceAiPlannedTasks;
-			if (existingTaskGraph) {
-				console.log(
-					`[updateThread] threadId=${id.slice(0, 8)}… ` +
-						`preserving graph=${this.debugTaskStatuses(existingTaskGraph)} ` +
-						`(stripped stale incoming)`,
-				);
-			}
-
 			entity.title = title;
 			entity.metadata = {
 				...(entity.metadata ?? {}),
@@ -242,10 +220,6 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 			if (!entity) return null;
 
 			const current = this.toStorageThread(entity);
-			const beforeStatuses = this.debugTaskStatuses(
-				(current.metadata as Record<string, unknown> | undefined)?.instanceAiPlannedTasks,
-			);
-
 			const patch = update({
 				...current,
 				metadata: { ...(current.metadata ?? {}) },
@@ -259,18 +233,6 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 				entity.metadata = patch.metadata;
 			}
 
-			const afterStatuses = this.debugTaskStatuses(
-				(entity.metadata as Record<string, unknown> | null)?.instanceAiPlannedTasks,
-			);
-
-			// DEBUG: trace planned task graph changes via patchThread
-			if (beforeStatuses !== afterStatuses) {
-				console.log(
-					`[patchThread] threadId=${threadId.slice(0, 8)}… ` +
-						`before=${beforeStatuses} after=${afterStatuses}`,
-				);
-			}
-
 			const updated = await this.threadRepo.save(entity);
 			return this.toStorageThread(updated);
 		});
@@ -279,15 +241,6 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 	async deleteThread({ threadId }: { threadId: string }): Promise<void> {
 		await this.threadRepo.delete(threadId);
 		// Messages cascade via FK
-	}
-
-	// DEBUG helper — summarise planned task statuses for logging
-	private debugTaskStatuses(graph: unknown): string {
-		if (!graph || typeof graph !== 'object') return '(none)';
-		const g = graph as { status?: string; tasks?: Array<{ id?: string; status?: string }> };
-		if (!g.tasks) return '(no tasks)';
-		const taskStates = g.tasks.map((t) => `${t.id}:${t.status}`).join(',');
-		return `[${g.status}|${taskStates}]`;
 	}
 
 	private toStorageThread(entity: InstanceAiThread): StorageThreadType {
