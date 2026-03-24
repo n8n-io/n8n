@@ -323,7 +323,7 @@ describe('ProjectRepository', () => {
 		it('orders team projects first, then personal projects', async () => {
 			await createOwner();
 			const member = await createMember();
-			const team = await createTeamProject('Alpha Team', member);
+			await createTeamProject('Alpha Team', member);
 
 			const repo = Container.get(ProjectRepository);
 			const [projects] = await repo.getAccessibleProjectsAndCount(member.id, {});
