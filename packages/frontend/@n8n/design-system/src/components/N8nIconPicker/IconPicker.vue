@@ -111,6 +111,9 @@ const selectedCategory = ref<string | null>(null);
 const selectedColor = ref<string | undefined>(
 	model.value.type === 'icon' ? model.value.color : undefined,
 );
+const buttonIconName = computed<IconName>(() =>
+	model.value.type === 'icon' ? (model.value.value as IconName) : 'smile',
+);
 const selectedSkinTone = ref<number>(
 	parseInt(localStorage.getItem(SKIN_TONE_STORAGE_KEY) ?? '0', 10) || 0,
 );
@@ -267,7 +270,7 @@ function humanizeIconName(name: string): string {
 				<N8nIconButton
 					v-if="model.type === 'icon'"
 					:class="$style['icon-button']"
-					:icon="model.value as IconName"
+					:icon="buttonIconName"
 					:size="buttonSize"
 					icon-only
 					:disabled="isReadOnly"
