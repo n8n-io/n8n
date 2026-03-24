@@ -75,20 +75,67 @@ describe('PostHog', () => {
 		});
 	});
 
-	it('gets feature flags', async () => {
+	describe('getFeatureFlags', () => {
 		const createdAt = new Date();
-		const ph = new PostHogClient(instanceSettings, globalConfig);
-		await ph.init();
 
-		await ph.getFeatureFlags({
-			id: userId,
-			createdAt,
+		it('fetches flags from PostHog on first call', async () => {
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await ph.getFeatureFlags({ id: userId, createdAt });
+
+			expect(PostHog.prototype.getAllFlags).toHaveBeenCalledWith(`${instanceId}#${userId}`, {
+				personProperties: {
+					created_at_timestamp: createdAt.getTime().toString(),
+				},
+				groups: { company: instanceId },
+			});
 		});
 
-		expect(PostHog.prototype.getAllFlags).toHaveBeenCalledWith(`${instanceId}#${userId}`, {
-			personProperties: {
-				created_at_timestamp: createdAt.getTime().toString(),
-			},
+		it('returns cached flags on second call', async () => {
+			const mockFlags = { 'test-flag': true };
+			(PostHog.prototype.getAllFlags as jest.Mock).mockResolvedValue(mockFlags);
+
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			const first = await ph.getFeatureFlags({ id: userId, createdAt });
+			const second = await ph.getFeatureFlags({ id: userId, createdAt });
+
+			expect(first).toEqual(mockFlags);
+			expect(second).toEqual(mockFlags);
+			expect(PostHog.prototype.getAllFlags).toHaveBeenCalledTimes(1);
+		});
+
+		it('refetches after cache expires', async () => {
+			const mockFlags = { 'test-flag': true };
+			(PostHog.prototype.getAllFlags as jest.Mock).mockResolvedValue(mockFlags);
+
+			const now = Date.now();
+			jest.spyOn(Date, 'now').mockReturnValue(now);
+
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await ph.getFeatureFlags({ id: userId, createdAt });
+			expect(PostHog.prototype.getAllFlags).toHaveBeenCalledTimes(1);
+
+			jest.spyOn(Date, 'now').mockReturnValue(now + 10 * 60 * 1000 + 1);
+
+			await ph.getFeatureFlags({ id: userId, createdAt });
+			expect(PostHog.prototype.getAllFlags).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not cache empty results', async () => {
+			(PostHog.prototype.getAllFlags as jest.Mock).mockResolvedValue({});
+
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await ph.getFeatureFlags({ id: userId, createdAt });
+			await ph.getFeatureFlags({ id: userId, createdAt });
+
+			expect(PostHog.prototype.getAllFlags).toHaveBeenCalledTimes(2);
 		});
 	});
 });
