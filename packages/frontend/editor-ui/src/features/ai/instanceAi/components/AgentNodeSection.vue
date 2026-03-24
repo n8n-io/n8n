@@ -95,7 +95,7 @@ const statusIconMap = {
 	cursor: pointer;
 	font-family: var(--font-family);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 
 	&:hover {
 		background: var(--color--foreground--tint-1);
@@ -160,7 +160,7 @@ const statusIconMap = {
 }
 
 .cancelledIcon {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .errorIcon {

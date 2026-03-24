@@ -240,7 +240,7 @@ function handleThreadAction(action: string, threadId: string) {
 	flex: 1;
 	min-width: 0;
 	padding: var(--spacing--2xs) var(--spacing--xs);
-	color: var(--color--text);
+	color: var(--text-color);
 	text-decoration: none;
 	outline: none;
 	cursor: pointer;
@@ -248,7 +248,7 @@ function handleThreadAction(action: string, threadId: string) {
 
 .threadIcon {
 	flex-shrink: 0;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .threadTitle {
@@ -290,7 +290,7 @@ function handleThreadAction(action: string, threadId: string) {
 	font-family: var(--font-family);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
-	color: var(--color--text);
+	color: var(--text-color);
 	background: var(--color--background--light-2);
 	border: var(--border);
 	border-color: var(--color--primary);

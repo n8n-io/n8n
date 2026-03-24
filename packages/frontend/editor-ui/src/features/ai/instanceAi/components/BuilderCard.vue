@@ -150,11 +150,11 @@ const isError = computed(
 
 .title {
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
 .subtitle {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	font-weight: var(--font-weight--regular);
 	max-width: 280px;
 	overflow: hidden;

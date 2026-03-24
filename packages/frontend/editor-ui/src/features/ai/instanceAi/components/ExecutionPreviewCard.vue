@@ -218,7 +218,7 @@ watch(
 .modalTitle {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
 .modalClose {
@@ -232,7 +232,7 @@ watch(
 	border: none;
 	border-radius: var(--radius);
 	cursor: pointer;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 
 	&:hover {
 		background: var(--color--background--shade-1);

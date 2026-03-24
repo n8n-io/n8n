@@ -137,13 +137,13 @@ const suggestions = [
 .cardTitle {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--text-color);
 	line-height: var(--line-height--md);
 }
 
 .cardDescription {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	line-height: var(--line-height--lg);
 }
 </style>

@@ -238,7 +238,7 @@ const artifactIconMap: Record<string, IconName> = {
 }
 
 .todoIcon {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .inProgressIcon {
