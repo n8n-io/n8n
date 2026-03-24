@@ -1,0 +1,65 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"public": true,
+				"options": {
+					"responseMode": "responseNodes"
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.4,
+			"position": [0, 0],
+			"id": "chat-trigger-ghc-7329",
+			"name": "When chat message received",
+			"webhookId": "ghc-7329-test-webhook"
+		},
+		{
+			"parameters": {
+				"operation": "sendAndWait",
+				"message": "Do you prefer boat or plane travel?",
+				"responseType": "approval",
+				"blockUserInput": true,
+				"approvalOptions": {
+					"values": {
+						"approvalType": "double",
+						"approveLabel": "Plane",
+						"disapproveLabel": "Boat"
+					}
+				},
+				"options": {
+					"limitWaitTime": {
+						"values": {
+							"resumeAmount": 2,
+							"resumeUnit": "minutes"
+						}
+					}
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.chat",
+			"typeVersion": 1.3,
+			"position": [220, 0],
+			"id": "chat-node-ghc-7329",
+			"name": "Ask",
+			"webhookId": "ghc-7329-chat-webhook"
+		}
+	],
+	"connections": {
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Ask",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "ghc-7329-test-instance"
+	}
+}
