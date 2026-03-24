@@ -8,6 +8,7 @@ import { ref, computed, watch, nextTick } from 'vue';
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
+import type { IconName } from '../N8nIcon/icons';
 import { loadLucideIconBodies } from '../N8nIcon/lucideIconLoader';
 import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
@@ -209,7 +210,7 @@ watch([popupVisible, selectedTab, iconRows], async ([visible, tab, rows]) => {
 
 // Batch-load icon bodies for newly visible rows as the user scrolls
 watch(
-	() => iconScrollerRef.value?.visibleItems as IconPickerVirtualRow[] | undefined,
+	() => iconScrollerRef.value?.visibleItems,
 	async (currentVisible, previousVisible) => {
 		if (!currentVisible || !popupVisible.value || selectedTab.value !== 'icons') return;
 
@@ -266,7 +267,7 @@ function humanizeIconName(name: string): string {
 				<N8nIconButton
 					v-if="model.type === 'icon'"
 					:class="$style['icon-button']"
-					:icon="model.value"
+					:icon="model.value as IconName"
 					:size="buttonSize"
 					icon-only
 					:disabled="isReadOnly"

@@ -9,10 +9,10 @@ async function getLoaders(): Promise<IconLoaders> {
 	if (!loadersPromise) {
 		loadersPromise = import('virtual:lucide-icon-loader').then((mod) => {
 			loaders = mod.default;
-			return loaders!;
+			return loaders;
 		});
 	}
-	return loadersPromise!;
+	return await loadersPromise;
 }
 
 export async function loadLucideIconBody(name: string): Promise<string | null> {
