@@ -232,6 +232,31 @@ export function createSetupWorkflowTool(context: InstanceAiContext) {
 					resumeData.nodeParameters,
 				);
 
+				// Detect credentials that were applied but failed testing.
+				// Move them from completedNodes to failedNodes so the LLM knows
+				// the credential is invalid rather than seeing it in both lists.
+				const credTestFailures: Array<{ nodeName: string; error: string }> = [];
+				for (const req of remainingRequests) {
+					if (
+						req.credentialTestResult &&
+						!req.credentialTestResult.success &&
+						req.credentialType &&
+						resumeData.credentials?.[req.node.name]?.[req.credentialType]
+					) {
+						credTestFailures.push({
+							nodeName: req.node.name,
+							error: `Credential test failed for ${req.credentialType}: ${req.credentialTestResult.message ?? 'Invalid credentials'}`,
+						});
+					}
+				}
+
+				const credFailedNodeNames = new Set(credTestFailures.map((f) => f.nodeName));
+				const validCompletedNodes = completedNodes.filter(
+					(n) => !credFailedNodeNames.has(n.nodeName),
+				);
+				const allFailedNodes = [...(failedNodes ?? []), ...credTestFailures];
+				const mergedFailedNodes = allFailedNodes.length > 0 ? allFailedNodes : undefined;
+
 				if (pendingRequests.length > 0) {
 					const skippedNodes = pendingRequests.map((r) => ({
 						nodeName: r.node.name,
@@ -240,16 +265,22 @@ export function createSetupWorkflowTool(context: InstanceAiContext) {
 					return {
 						success: true,
 						partial: true,
-						reason: `Applied setup for ${String(completedNodes.length)} node(s), ${String(pendingRequests.length)} node(s) still need configuration.`,
-						completedNodes,
+						reason: `Applied setup for ${String(validCompletedNodes.length)} node(s), ${String(pendingRequests.length)} node(s) still need configuration.`,
+						completedNodes: validCompletedNodes,
 						skippedNodes,
-						failedNodes,
+						failedNodes: mergedFailedNodes,
 						updatedNodes,
 						updatedConnections,
 					};
 				}
 
-				return { success: true, completedNodes, failedNodes, updatedNodes, updatedConnections };
+				return {
+					success: true,
+					completedNodes: validCompletedNodes,
+					failedNodes: mergedFailedNodes,
+					updatedNodes,
+					updatedConnections,
+				};
 			} catch (error) {
 				return {
 					success: false,
