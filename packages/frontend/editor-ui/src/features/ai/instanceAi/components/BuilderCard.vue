@@ -1,11 +1,13 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch, inject } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
+
+const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -43,6 +45,17 @@ const buildResults = computed((): BuildResultItem[] => {
 });
 
 const lastBuildResult = computed(() => buildResults.value.at(-1));
+
+// Auto-open canvas preview when a workflow is successfully built
+watch(
+	() => buildResults.value.length,
+	() => {
+		const latest = buildResults.value.at(-1);
+		if (latest?.success && latest.workflowId && openPreview) {
+			openPreview(latest.workflowId);
+		}
+	},
+);
 
 const isActive = computed(() => props.agentNode.status === 'active');
 const isError = computed(
