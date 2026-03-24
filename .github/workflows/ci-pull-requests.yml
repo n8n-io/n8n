@@ -136,7 +136,12 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm -r pack --dry-run
+          build-command: ''
+
+      - name: Check packaging
+        shell: bash
+        run: |
+          pnpm -r pack --dry-run
 
   e2e-tests:
     name: E2E Tests
