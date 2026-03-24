@@ -25,8 +25,8 @@ export async function cliConfirmResourceAccess(
 	const readline = await import('node:readline');
 	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 	const question = [
-		`\nPermission request — ${resource.toolGroup}: ${resource.resource}`,
-		`  ${resource.description}`,
+		`\nPermission request — ${resource.toolGroup}: ${sanitizeForTerminal(resource.resource)}`,
+		`  ${sanitizeForTerminal(resource.description)}`,
 		'  1. Allow once',
 		'  2. Allow for session',
 		'  3. Always allow',

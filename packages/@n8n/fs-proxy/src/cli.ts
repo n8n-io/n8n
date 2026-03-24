@@ -3,7 +3,7 @@
 import * as fs from 'node:fs/promises';
 
 import { parseConfig } from './config';
-import { cliConfirmResourceAccess } from './confirm-resource-cli';
+import { cliConfirmResourceAccess, sanitizeForTerminal } from './confirm-resource-cli';
 import { startDaemon } from './daemon';
 import { GatewayClient } from './gateway-client';
 import {
@@ -26,7 +26,7 @@ async function cliConfirmConnect(url: string): Promise<boolean> {
 	const readline = await import('node:readline');
 	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 	return await new Promise((resolve) => {
-		rl.question(`\nAllow connection to ${url}? [y/N] `, (answer) => {
+		rl.question(`\nAllow connection to ${sanitizeForTerminal(url)}? [y/N] `, (answer) => {
 			rl.close();
 			resolve(answer.trim().toLowerCase() === 'y');
 		});
