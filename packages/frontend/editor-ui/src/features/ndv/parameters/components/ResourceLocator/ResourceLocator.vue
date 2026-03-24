@@ -832,10 +832,10 @@ async function loadResources() {
 		// Store response under the original key to prevent cache pollution
 		setResponse(paramsKey, responseData);
 
-		// If the key changed during the request, also store under current key to prevent infinite loading
-		const currentKey = currentRequestKey.value;
-		if (currentKey !== paramsKey) {
-			setResponse(currentKey, responseData);
+		// Restart if the key changed during the request
+		if (currentRequestKey.value !== paramsKey) {
+			loadResourcesDebounced();
+			return;
 		}
 
 		if (params.filter && !hasCompletedASearch.value) {
@@ -857,10 +857,9 @@ async function loadResources() {
 		// Store error under the original key
 		setResponse(paramsKey, errorData);
 
-		// If the key changed during the request, also store under current key to prevent infinite loading
-		const currentKey = currentRequestKey.value;
-		if (currentKey !== paramsKey) {
-			setResponse(currentKey, errorData);
+		// Restart if the key changed during the request
+		if (currentRequestKey.value !== paramsKey) {
+			loadResourcesDebounced();
 		}
 	}
 }
