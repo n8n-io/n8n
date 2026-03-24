@@ -37,7 +37,9 @@ export function createPlanTool(context: OrchestrationContext) {
 		id: 'plan',
 		description:
 			'Persist a dependency-aware task plan for detached multi-step execution. ' +
-			'Use this when the work has multiple tasks with explicit prerequisites. ' +
+			'Use ONLY when the work requires 2 or more tasks with dependencies ' +
+			'(e.g. data table setup + multiple workflows, parallel builds + consolidation). ' +
+			'Do NOT use for single workflow builds — call build-workflow-with-agent directly instead. ' +
 			'The plan is shown to the user for approval before execution starts. ' +
 			'After calling plan, reply briefly and end your turn.',
 		inputSchema: planInputSchema,

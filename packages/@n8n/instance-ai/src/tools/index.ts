@@ -33,6 +33,7 @@ import { createGetNodeTypeDefinitionTool } from './nodes/get-node-type-definitio
 import { createGetSuggestedNodesTool } from './nodes/get-suggested-nodes.tool';
 import { createListNodesTool } from './nodes/list-nodes.tool';
 import { createSearchNodesTool } from './nodes/search-nodes.tool';
+import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
 import { createBrowserCredentialSetupTool } from './orchestration/browser-credential-setup.tool';
 import { createCancelBackgroundTaskTool } from './orchestration/cancel-background-task.tool';
 import { createCorrectBackgroundTaskTool } from './orchestration/correct-background-task.tool';
@@ -162,6 +163,7 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 		plan: createPlanTool(context),
 		'update-tasks': createUpdateTasksTool(context),
 		delegate: createDelegateTool(context),
+		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),
 		...(context.cancelBackgroundTask
 			? { 'cancel-background-task': createCancelBackgroundTaskTool(context) }
 			: {}),

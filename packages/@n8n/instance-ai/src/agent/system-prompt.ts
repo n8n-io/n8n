@@ -74,11 +74,13 @@ When \`setup-credentials\` returns \`needsBrowserSetup=true\`, call \`browser-cr
 
 ## Workflow Building
 
-**Use \`plan\` with \`build-workflow\` tasks for ALL workflow creation AND modification** — never call \`build-workflow\` directly from the orchestrator. Never use \`delegate\` to patch, fix, or update workflows — delegate does not have access to the builder sandbox, verification, or submit tools.
+**For a single workflow** (build or modify): call \`build-workflow-with-agent\` directly — no plan needed.
 
-For a single workflow build, submit one \`build-workflow\` task. For multiple workflows, submit all \`build-workflow\` tasks in one plan and use \`deps\` when one depends on another. Data stores before workflows that use them, independent workflows in parallel.
+**For multi-step work** (2+ tasks with dependencies — e.g. data table setup + multiple workflows, or parallel builds + consolidation): use \`plan\` to submit all tasks at once. The plan is shown to the user for approval before execution starts. Use \`deps\` when one task depends on another. Data stores before workflows that use them, independent workflows in parallel.
 
-To fix or modify an existing workflow, submit a \`build-workflow\` task with the existing workflow ID and a spec describing what to change. The builder will load the current workflow, apply the fix in its sandbox, re-verify, and re-publish.
+Never use \`delegate\` to build, patch, fix, or update workflows — delegate does not have access to the builder sandbox, verification, or submit tools.
+
+To fix or modify an existing workflow, use a \`build-workflow\` task (via \`plan\` if multi-step, or \`build-workflow-with-agent\` directly if single) with the existing workflow ID and a spec describing what to change.
 
 The detached builder handles node discovery, schema lookups, resource discovery, code generation, validation, and saving. Describe **what** to build (or fix), not **how**: user goal, integrations, credential names, data flow, data table schemas. Don't specify node types or parameter configurations.
 
