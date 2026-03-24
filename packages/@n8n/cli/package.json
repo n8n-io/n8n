@@ -1,45 +1,45 @@
 {
-	"name": "@n8n/cli",
-	"version": "0.1.0",
-	"description": "Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
-	"license": "SEE LICENSE IN LICENSE.md",
-	"bin": {
-		"n8n-cli": "bin/n8n-cli.mjs"
-	},
-	"main": "dist/index.js",
-	"types": "dist/index.d.ts",
-	"files": [
-		"bin",
-		"dist",
-		"skills"
-	],
-	"scripts": {
-		"clean": "rimraf dist .turbo",
-		"dev": "pnpm watch",
-		"typecheck": "tsc --noEmit",
-		"build": "tsc -p tsconfig.build.json",
-		"format": "biome format --write .",
-		"format:check": "biome ci .",
-		"lint": "eslint src --quiet",
-		"lint:fix": "eslint src --fix",
-		"watch": "tsc -p tsconfig.build.json --watch",
-		"test": "vitest run"
-	},
-	"oclif": {
-		"bin": "n8n-cli",
-		"commands": {
-			"strategy": "explicit",
-			"target": "./dist/index.js",
-			"identifier": "commands"
-		},
-		"topicSeparator": " "
-	},
-	"dependencies": {
-		"@oclif/core": "^4.5.2"
-	},
-	"devDependencies": {
-		"@n8n/typescript-config": "workspace:*",
-		"@types/node": "24.10.1",
-		"vitest": "catalog:"
-	}
+  "name": "@n8n/cli",
+  "version": "0.2.0",
+  "description": "Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "bin": {
+    "n8n-cli": "bin/n8n-cli.mjs"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "bin",
+    "dist",
+    "skills"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "vitest run"
+  },
+  "oclif": {
+    "bin": "n8n-cli",
+    "commands": {
+      "strategy": "explicit",
+      "target": "./dist/index.js",
+      "identifier": "commands"
+    },
+    "topicSeparator": " "
+  },
+  "dependencies": {
+    "@oclif/core": "^4.5.2"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/node": "24.10.1",
+    "vitest": "catalog:"
+  }
 }
