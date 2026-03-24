@@ -9,7 +9,8 @@
     "format:check": "biome ci src",
     "test": "jest",
     "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "eval:instance-ai": "tsx evaluations/cli/index.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -42,10 +43,14 @@
     "@joplin/turndown-plugin-gfm": "^1.0.12",
     "linkedom": "^0.18.9",
     "pdf-parse": "^1.1.1",
-    "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5"
+    "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5",
+    "@anthropic-ai/sdk": "^0.39.0",
+    "flatted": "catalog:",
+    "langsmith": "^0.4.6"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/turndown": "^5.0.5"
+    "@types/turndown": "^5.0.5",
+    "tsx": "catalog:"
   }
 }
