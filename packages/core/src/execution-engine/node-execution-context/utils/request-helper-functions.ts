@@ -84,7 +84,6 @@ import {
 	searchForHeader,
 	setAxiosAgents,
 	tryParseUrl,
-	validateUrl,
 } from './request-helpers';
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
@@ -1351,7 +1350,7 @@ export const getRequestHelperFunctions = (
 
 			const tempRequestOptions = applyPaginationRequestData(requestOptions, paginateRequestData);
 
-			if (!validateUrl(tempRequestOptions.uri as string)) {
+			if (!tryParseUrl(tempRequestOptions.uri as string)) {
 				throw new NodeOperationError(node, `'${paginateRequestData.url}' is not a valid URL.`, {
 					itemIndex,
 					runIndex,

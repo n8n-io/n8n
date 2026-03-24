@@ -6,7 +6,8 @@ export {
 	getHostFromRequestObject,
 	isIgnoreStatusErrorConfig,
 	searchForHeader,
-	validateUrl,
+	tryParseUrl,
+	buildTargetUrl,
+	getUrlFromProxyConfig,
+	setAxiosAgents,
 } from './axios-utils';
-
-export { buildTargetUrl, getUrlFromProxyConfig, setAxiosAgents, tryParseUrl } from './utils';
