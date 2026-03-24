@@ -42,7 +42,7 @@ export const defaultSettings: FrontendSettings = {
 		externalSecrets: false,
 		workerView: false,
 		advancedPermissions: false,
-		apiKeyScopes: false,
+
 		workflowDiffs: false,
 		namedVersions: false,
 		provisioning: true,

@@ -100,6 +100,17 @@ vi.mock('@n8n/permissions', () => ({
 	})),
 }));
 
+vi.mock('@/features/execution/executions/executions.utils', async (importOriginal) => {
+	const original = await importOriginal<object>();
+	return {
+		...original,
+		openFormPopupWindow: vi.fn(),
+	};
+});
+
+// Import the mocked function after the mock is set up
+import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
+
 describe('useWorkflowsStore', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowsListStore: ReturnType<typeof useWorkflowsListStore>;
@@ -1264,14 +1275,17 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...runWithExistingRunData,
-				data: createRunExecutionData({
-					resultData: {
-						lastNodeExecuted: 'When clicking ‘Execute workflow’',
-						runData: {
-							[successEvent.nodeName]: [successEvent.data],
+				data: {
+					...createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'When clicking ‘Execute workflow’',
+							runData: {
+								[successEvent.nodeName]: [successEvent.data],
+							},
 						},
-					},
-				}),
+					}),
+					resumeToken: expect.any(String),
+				},
 			});
 		});
 
@@ -1319,14 +1333,17 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
-				data: createRunExecutionData({
-					resultData: {
-						lastNodeExecuted: 'When clicking ‘Execute workflow’',
-						runData: {
-							[successEvent.nodeName]: [successEventWithExecutionIndex.data],
+				data: {
+					...createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'When clicking ‘Execute workflow’',
+							runData: {
+								[successEvent.nodeName]: [successEventWithExecutionIndex.data],
+							},
 						},
-					},
-				}),
+					}),
+					resumeToken: expect.any(String),
+				},
 			});
 		});
 	});
@@ -2445,6 +2462,93 @@ describe('useWorkflowsStore', () => {
 			await workflowsStore.fetchLastSuccessfulExecution();
 
 			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateNodeExecutionStatus - form popup', () => {
+		beforeEach(() => {
+			vi.mocked(openFormPopupWindow).mockClear();
+		});
+
+		it('should open form popup using metadata.resumeFormUrl when present', () => {
+			const nodeName = 'Wait';
+			const executionId = 'exec-123';
+			const signedFormUrl = 'http://localhost:5678/form-waiting/exec-123?signature=abc123';
+
+			// Setup workflow with a node
+			workflowsStore.setNodes([createTestNode({ name: nodeName, type: WAIT_NODE_TYPE })]);
+
+			// Initialize execution data directly
+			workflowsStore.workflowExecutionData = {
+				id: executionId,
+				workflowData: createTestWorkflow(),
+				finished: false,
+				mode: 'manual',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				status: 'running',
+				data: createEmptyRunExecutionData(),
+			} as IExecutionResponse;
+
+			// Call updateNodeExecutionStatus with waiting status and metadata.resumeFormUrl
+			workflowsStore.updateNodeExecutionStatus({
+				executionId,
+				nodeName,
+				data: {
+					executionStatus: 'waiting',
+					startTime: Date.now(),
+					executionTime: 0,
+					executionIndex: 0,
+					source: [],
+					hints: [],
+					metadata: {
+						resumeFormUrl: signedFormUrl,
+					},
+				},
+				itemCountByConnectionType: {},
+			});
+
+			// Should open form popup with the signed URL from metadata
+			expect(openFormPopupWindow).toHaveBeenCalledWith(signedFormUrl);
+		});
+
+		it('should not open form popup when metadata.resumeFormUrl is not present', () => {
+			const nodeName = 'Wait';
+			const executionId = 'exec-456';
+
+			// Setup workflow with a node
+			workflowsStore.setNodes([createTestNode({ name: nodeName, type: WAIT_NODE_TYPE })]);
+
+			// Initialize execution data directly
+			workflowsStore.workflowExecutionData = {
+				id: executionId,
+				workflowData: createTestWorkflow(),
+				finished: false,
+				mode: 'manual',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				status: 'running',
+				data: createEmptyRunExecutionData(),
+			} as IExecutionResponse;
+
+			// Call updateNodeExecutionStatus with waiting status but NO metadata.resumeFormUrl
+			workflowsStore.updateNodeExecutionStatus({
+				executionId,
+				nodeName,
+				data: {
+					executionStatus: 'waiting',
+					startTime: Date.now(),
+					executionTime: 0,
+					executionIndex: 0,
+					source: [],
+					hints: [],
+					// No metadata
+				},
+				itemCountByConnectionType: {},
+			});
+
+			// Should NOT open form popup
+			expect(openFormPopupWindow).not.toHaveBeenCalled();
 		});
 	});
 

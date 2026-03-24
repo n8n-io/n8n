@@ -1,0 +1,207 @@
+{
+	"name": "Databricks Vector Search Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "vectorSearch",
+				"operation": "createIndex",
+				"indexName": "main.default.search_index",
+				"endpointName": "vs-endpoint",
+				"primaryKey": "id",
+				"indexType": "DELTA_SYNC",
+				"deltaSyncIndexSpec": "{\"source_table\":\"main.default.source_table\",\"pipeline_type\":\"TRIGGERED\",\"embedding_source_columns\":[{\"name\":\"text\",\"embedding_model_endpoint_name\":\"e5-small-v2\"}],\"columns_to_sync\":[\"id\",\"text\"]}"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, -300],
+			"id": "vs-create-001",
+			"name": "Create Index",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "vectorSearch",
+				"operation": "getIndex",
+				"indexName": "main.default.search_index"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, -100],
+			"id": "vs-get-001",
+			"name": "Get Index",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "vectorSearch",
+				"operation": "listIndexes",
+				"endpointName": "vs-endpoint"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 100],
+			"id": "vs-list-001",
+			"name": "List Indexes",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "vectorSearch",
+				"operation": "queryIndex",
+				"indexName": "main.default.search_index",
+				"queryType": "text",
+				"queryText": "machine learning",
+				"searchMode": "HYBRID",
+				"numResults": 5,
+				"columns": "id, text",
+				"enableReranking": false,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 300],
+			"id": "vs-query-001",
+			"name": "Query Index",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "vectorSearch",
+				"operation": "queryIndex",
+				"indexName": "main.default.search_index",
+				"queryType": "vector",
+				"queryVector": "[0.1, 0.2, 0.3]",
+				"searchMode": "ANN",
+				"numResults": 5,
+				"columns": "id, text",
+				"enableReranking": false,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 500],
+			"id": "vs-query-vector-001",
+			"name": "Query Index (vector)",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Index": [
+			{
+				"json": {
+					"name": "main.default.search_index",
+					"endpoint_name": "vs-endpoint",
+					"primary_key": "id",
+					"index_type": "DELTA_SYNC",
+					"status": { "ready": false, "index_url": "https://example.com/index" }
+				}
+			}
+		],
+		"Get Index": [
+			{
+				"json": {
+					"name": "main.default.search_index",
+					"endpoint_name": "vs-endpoint",
+					"primary_key": "id",
+					"index_type": "DELTA_SYNC",
+					"status": { "ready": true, "index_url": "https://example.com/index" }
+				}
+			}
+		],
+		"List Indexes": [
+			{
+				"json": {
+					"vector_indexes": [
+						{
+							"name": "main.default.search_index",
+							"endpoint_name": "vs-endpoint",
+							"status": { "ready": true }
+						}
+					],
+					"next_page_token": null
+				}
+			}
+		],
+		"Query Index": [
+			{
+				"json": {
+					"result": {
+						"row_count": 2,
+						"data_array": [
+							["1", "Introduction to machine learning", "0.95"],
+							["2", "Deep learning fundamentals", "0.88"]
+						],
+						"manifest": {
+							"columns": [{ "name": "id" }, { "name": "text" }, { "name": "score" }]
+						}
+					},
+					"next_page_token": null
+				}
+			}
+		],
+		"Query Index (vector)": [
+			{
+				"json": {
+					"result": {
+						"row_count": 1,
+						"data_array": [["1", "Nearest neighbour result", "0.99"]],
+						"manifest": {
+							"columns": [{ "name": "id" }, { "name": "text" }, { "name": "score" }]
+						}
+					},
+					"next_page_token": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Create Index", "type": "main", "index": 0 },
+					{ "node": "Get Index", "type": "main", "index": 0 },
+					{ "node": "List Indexes", "type": "main", "index": 0 },
+					{ "node": "Query Index", "type": "main", "index": 0 },
+					{ "node": "Query Index (vector)", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

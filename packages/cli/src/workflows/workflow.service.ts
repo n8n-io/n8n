@@ -363,6 +363,7 @@ export class WorkflowService {
 		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData);
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
+		WorkflowHelpers.resolveNodeWebhookIds(workflowUpdateData, this.nodeTypes);
 
 		// Strip redactionPolicy if user lacks scope and value is changing
 		if (
