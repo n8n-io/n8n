@@ -9,6 +9,7 @@ Complete reference for n8n's `.github/` folder.
 ```
 .github/
 ├── WORKFLOWS.md                          # This document
+├── CI-TELEMETRY.md                       # Telemetry & metrics guide
 ├── CODEOWNERS                            # Team ownership for PR reviews
 ├── pull_request_template.md              # PR description template
 ├── pull_request_title_conventions.md     # Title format rules (Angular)
@@ -25,6 +26,7 @@ Complete reference for n8n's `.github/` folder.
 │   ├── trim-fe-packageJson.js            # Strip frontend devDeps
 │   ├── ensure-provenance-fields.mjs      # Add license/author fields
 │   ├── validate-docs-links.js            # Check documentation URLs
+│   ├── send-build-stats.mjs              # Turbo build telemetry → webhook
 │   └── docker/
 │       ├── docker-tags.mjs               # Generate image tags
 │       └── docker-config.mjs             # Build context config
@@ -171,7 +173,7 @@ These only run if specific files changed:
 | Files Changed                                                          | Workflow                    | Branch     |
 |------------------------------------------------------------------------|-----------------------------|------------|
 | `packages/@n8n/task-runner-python/**`                                  | `ci-python.yml`             | any        |
-| `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db-postgres-mysql.yml`| any        |
+| `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db.yml`               | any        |
 | `packages/frontend/@n8n/storybook/**`, design-system, chat             | `test-visual-storybook.yml` | master     |
 | `docker/images/n8n-base/Dockerfile`                                    | `build-base-image.yml`      | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
@@ -198,7 +200,6 @@ These only run if specific files changed:
 
 | Command            | Workflow                     | Permissions         |
 |--------------------|------------------------------|---------------------|
-| `/build-unit-test` | `ci-manual-unit-tests.yml`   | admin/write/maintain|
 | `/test-workflows`  | `test-workflows-callable.yml`| admin/write/maintain|
 
 **Why:** Re-run tests without pushing commits. Useful for flaky test investigation.
@@ -258,9 +259,6 @@ test-workflows-nightly.yml
     └──────────────────────────▶  test-workflows-callable.yml
 
 PR Comment Dispatchers (triggered by /command in PR comments):
-build-unit-test-pr-comment.yml
-    └──────────────────────────▶  ci-manual-unit-tests.yml
-
 test-workflows-pr-comment.yml
     └──────────────────────────▶  test-workflows-callable.yml
 ```
@@ -352,8 +350,8 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 20.x, 22.x, 24.3.x)
-│   └─ Coverage only on 22.x
+├─ unit-test (matrix: Node 22.x, 24.13.1, 25.x)
+│   └─ Coverage only on 24.13.1
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -365,7 +363,7 @@ Push to master/1.x
 | Schedule (UTC)            | Workflow                          | Purpose                  |
 |---------------------------|-----------------------------------|--------------------------|
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
-| Daily 00:00               | `test-db-postgres-mysql.yml`      | Database compatibility   |
+| Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
 | Daily 00:00               | `test-visual-storybook.yml`       | Storybook deploy         |
 | Daily 00:00               | `test-visual-chromatic.yml`       | Visual regression        |
@@ -392,7 +390,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '22.x'
+  node-version:        # default: '24.13.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   build-command:       # default: 'pnpm build'
 ```
@@ -420,7 +418,6 @@ Workflows with `workflow_call` trigger:
 | `test-e2e-ci-reusable.yml`         | `branch`                                      | E2E orchestrator      |
 | `test-e2e-docker-pull-reusable.yml`| `branch`, `n8n_version`                       | E2E with pulled image |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
-| `ci-check-eligibility-reusable.yml`| (internal)                                    | PR eligibility checks |
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled` | Docker build          |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
@@ -454,6 +451,19 @@ Scripts in `.github/scripts/`:
 | Script                  | Purpose           | Called By                 |
 |-------------------------|-------------------|---------------------------|
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
+| `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
+
+---
+
+## Telemetry
+
+CI metrics are collected via webhooks to n8n, then stored in BigQuery for analysis.
+
+See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
+- Common data points (git, CI context, runner info)
+- Existing implementations (build stats, container stack)
+- How to add new telemetry
+- BigQuery schema patterns and queries
 
 ---
 
@@ -464,7 +474,6 @@ Team ownership mappings in `CODEOWNERS`:
 | Path Pattern                                                 | Team                       |
 |--------------------------------------------------------------|----------------------------|
 | `packages/@n8n/db/src/migrations/`                           | @n8n-io/migrations-review  |
-| `packages/frontend/editor-ui/data/node-popularity.json`      | @n8n-io/catalysts          |
 
 ---
 
@@ -490,6 +499,17 @@ Team ownership mappings in `CODEOWNERS`:
 **`blacksmith-4vcpu-ubuntu-2204`** - Unit tests (parallelized), linting (parallel file processing), typechecking (CPU-intensive), E2E test shards
 
 **`blacksmith-8vcpu-ubuntu-2204`** - Heavy parallel workloads, full E2E coverage runs
+
+### Runner Provider Toggle
+
+The `RUNNER_PROVIDER` repository variable controls runner selection across workflows:
+
+| Value | Behavior |
+|-------|----------|
+| (unset) | Use Blacksmith runners (default) |
+| `github` | Use GitHub-hosted `ubuntu-latest` |
+
+**Note:** When set to `github`, all jobs use `ubuntu-latest` regardless of any runner inputs or defaults specified in reusable workflows. GitHub runners have fewer vCPUs (2 vs 4), so jobs may run slower.
 
 ---
 
@@ -574,10 +594,10 @@ npm audit signatures n8n@VERSION
 
 VEX documents which CVEs actually affect n8n vs false positives from scanners.
 
-- **File:** `vex.openvex.json` (repo root)
+- **File:** `security/vex.openvex.json`
 - **Format:** OpenVEX (broad scanner compatibility - Trivy, Docker Scout, etc.)
 - **Attached to:** GitHub Release, Docker image attestations
-- **Used by:** Trivy scans (via `.github/trivy.yaml`)
+- **Used by:** Trivy scans (via `security/trivy.yaml`)
 
 **VEX Status Types:**
 | Status | Meaning |
@@ -595,7 +615,7 @@ cosign verify-attestation --type openvex \
   ghcr.io/n8n-io/n8n:VERSION
 ```
 
-**Adding a CVE statement to vex.openvex.json:**
+**Adding a CVE statement to security/vex.openvex.json:**
 ```json
 {
   "statements": [
@@ -639,7 +659,7 @@ cosign verify-attestation --type openvex \
 
 ### Redundancy Review
 
-Comment triggers (`/build-unit-test`, `/test-workflows`) are workarounds.
+Comment trigger (`/test-workflows`) is a workaround.
 
 Long-term: Main CI should be reliable enough to not need these.
 

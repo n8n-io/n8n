@@ -12,7 +12,8 @@ import { z } from 'zod';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
+import { NodeTypes } from '@/node-types';
+import { addNodeIds, replaceInvalidCredentials, resolveNodeWebhookIds } from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -39,6 +40,7 @@ export = {
 			await replaceInvalidCredentials(workflow);
 
 			addNodeIds(workflow);
+			resolveNodeWebhookIds(workflow, Container.get(NodeTypes));
 
 			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 				req.user.id,
@@ -195,14 +197,19 @@ export = {
 				}
 
 				if (projectId) {
-					const workflows = await Container.get(WorkflowFinderService).findAllWorkflowsForUser(
+					const workflowIds = await Container.get(WorkflowFinderService).findAllWorkflowIdsForUser(
 						req.user,
 						['workflow:read'],
+						undefined,
+						projectId,
 					);
 
-					const workflowIds = workflows
-						.filter((workflow) => workflow.projectId === projectId)
-						.map((workflow) => workflow.id);
+					if (workflowIds.length === 0) {
+						return res.status(200).json({
+							data: [],
+							nextCursor: null,
+						});
+					}
 
 					where.id = In(workflowIds);
 				}
@@ -215,29 +222,25 @@ export = {
 					);
 				}
 
-				let workflows = await Container.get(WorkflowFinderService).findAllWorkflowsForUser(
+				let workflowIds = await Container.get(WorkflowFinderService).findAllWorkflowIdsForUser(
 					req.user,
 					['workflow:read'],
+					undefined,
+					projectId,
 				);
 
 				if (options.workflowIds) {
-					const workflowIds = options.workflowIds;
-					workflows = workflows.filter((wf) => workflowIds.includes(wf.id));
+					workflowIds = options.workflowIds.filter((id) => workflowIds.includes(id));
 				}
 
-				if (projectId) {
-					workflows = workflows.filter((w) => w.projectId === projectId);
-				}
-
-				if (!workflows.length) {
+				if (!workflowIds.length) {
 					return res.status(200).json({
 						data: [],
 						nextCursor: null,
 					});
 				}
 
-				const workflowsIds = workflows.map((wf) => wf.id);
-				where.id = In(workflowsIds);
+				where.id = In(workflowIds);
 			}
 
 			const selectFields: Array<keyof WorkflowEntity> = [
@@ -356,16 +359,14 @@ export = {
 	],
 	deactivateWorkflow: [
 		apiKeyHasScope('workflow:deactivate'),
-		projectScope('workflow:publish', 'workflow'),
+		projectScope('workflow:unpublish', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
 			try {
-				const workflow = await Container.get(WorkflowService).deactivateWorkflow(
-					req.user,
-					id,
-					true,
-				);
+				const workflow = await Container.get(WorkflowService).deactivateWorkflow(req.user, id, {
+					publicApi: true,
+				});
 
 				return res.json(workflow);
 			} catch (error) {

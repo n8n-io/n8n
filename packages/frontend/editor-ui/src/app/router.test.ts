@@ -125,6 +125,8 @@ describe('router', () => {
 		],
 		['/settings/ldap', VIEWS.WORKFLOWS, []],
 		['/settings/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
+		['/settings/security', VIEWS.WORKFLOWS, []],
+		['/settings/security', VIEWS.SECURITY_SETTINGS, ['securitySettings:manage']],
 	])(
 		'should resolve %s to %s with %s user permissions',
 		async (path, name, scopes) => {

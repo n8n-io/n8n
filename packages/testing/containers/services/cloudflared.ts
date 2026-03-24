@@ -2,7 +2,7 @@ import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { Service, ServiceResult, StartContext } from './types';
+import { EXTERNAL_HOST, type Service, type ServiceResult, type StartContext } from './types';
 
 export interface CloudflaredMeta {
 	publicUrl: string;
@@ -14,6 +14,9 @@ export type CloudflaredResult = ServiceResult<CloudflaredMeta>;
 const METRICS_PORT = 2000;
 
 function getTunnelTarget(ctx: StartContext): string {
+	if (ctx.external) {
+		return `${EXTERNAL_HOST}:5678`;
+	}
 	if (ctx.needsLoadBalancer) {
 		return `${ctx.projectName}-caddy-lb:80`;
 	}
@@ -38,12 +41,17 @@ export const cloudflared: Service<CloudflaredResult> = {
 		};
 	},
 
-	async start(network, projectName, config?: unknown): Promise<CloudflaredResult> {
+	async start(
+		network,
+		projectName,
+		config?: unknown,
+		ctx?: StartContext,
+	): Promise<CloudflaredResult> {
 		const { tunnelTarget, proxyHops } = config as { tunnelTarget: string; proxyHops: number };
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 		try {
-			const container = await new GenericContainer(TEST_CONTAINER_IMAGES.cloudflared)
+			let builder = new GenericContainer(TEST_CONTAINER_IMAGES.cloudflared)
 				.withNetwork(network)
 				.withNetworkAliases('cloudflared')
 				.withName(`${projectName}-cloudflared`)
@@ -62,8 +70,14 @@ export const cloudflared: Service<CloudflaredResult> = {
 					'com.docker.compose.service': 'cloudflared',
 				})
 				.withReuse()
-				.withLogConsumer(consumer)
-				.start();
+				.withLogConsumer(consumer);
+
+			// On Linux, host.docker.internal is not available without explicit mapping
+			if (ctx?.external) {
+				builder = builder.withExtraHosts([{ host: EXTERNAL_HOST, ipAddress: 'host-gateway' }]);
+			}
+
+			const container = await builder.start();
 
 			const hostPort = container.getMappedPort(METRICS_PORT);
 			const response = await fetch(`http://${container.getHost()}:${hostPort}/quicktunnel`);

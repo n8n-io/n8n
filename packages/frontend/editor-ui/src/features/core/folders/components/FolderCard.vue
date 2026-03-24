@@ -256,7 +256,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	cursor: pointer;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+		box-shadow: var(--shadow--card-hover);
 	}
 }
 

@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { computed, ref } from 'vue';
-import { N8nAskAssistantChat } from '@n8n/design-system';
+import { computed, ref, useSlots } from 'vue';
+import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import AskModeEmptyState from './AskModeEmptyState.vue';
 
 const emit = defineEmits<{
@@ -13,9 +14,11 @@ const emit = defineEmits<{
 }>();
 
 const assistantStore = useAssistantStore();
-const workflowState = injectWorkflowState();
+const workflowId = useInjectWorkflowId();
+const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
+const slots = useSlots();
 const i18n = useI18n();
 
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
@@ -27,12 +30,17 @@ const user = computed(() => ({
 
 const loadingMessage = computed(() => assistantStore.assistantThinkingMessage);
 
+const showUsabilityNotice = computed(
+	() =>
+		assistantStore.canManageAISettings && !settingsStore.settings.ai.allowSendingParameterValues,
+);
+
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	// If there is no current session running, initialize the support chat session
 	if (!assistantStore.currentSessionId) {
-		await assistantStore.initSupportChat(content);
+		await assistantStore.initSupportChat(workflowId.value, content);
 	} else {
-		await assistantStore.sendMessage({ text: content, quickReplyType });
+		await assistantStore.sendMessage(workflowId.value, { text: content, quickReplyType });
 	}
 	const task = assistantStore.chatSessionTask;
 	const solutionCount = assistantStore.chatMessages.filter(
@@ -51,14 +59,14 @@ async function onUserMessage(content: string, quickReplyType?: string, isFeedbac
 }
 
 async function onCodeReplace(index: number) {
-	await assistantStore.applyCodeDiff(workflowState, index);
+	await assistantStore.applyCodeDiff(workflowId.value, index);
 	telemetry.track('User clicked solution card action', {
 		action: 'replace_code',
 	});
 }
 
 async function undoCodeDiff(index: number) {
-	await assistantStore.undoCodeDiff(workflowState, index);
+	await assistantStore.undoCodeDiff(workflowId.value, index);
 	telemetry.track('User clicked solution card action', {
 		action: 'undo_code_replace',
 	});
@@ -72,7 +80,7 @@ defineExpose({
 </script>
 
 <template>
-	<div data-test-id="ask-assistant-chat" tabindex="0" class="wrapper" @keydown.stop>
+	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.wrapper" @keydown.stop>
 		<N8nAskAssistantChat
 			ref="n8nChatRef"
 			:user="user"
@@ -83,11 +91,15 @@ defineExpose({
 			:input-placeholder="i18n.baseText('aiAssistant.askMode.inputPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
+			@stop="assistantStore.abortStreaming"
 			@code-replace="onCodeReplace"
 			@code-undo="undoCodeDiff"
 		>
-			<template #header>
+			<template v-if="slots.header || showUsabilityNotice" #header>
 				<slot name="header" />
+				<N8nInfoTip v-if="showUsabilityNotice" theme="warning" type="tooltip">
+					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
+				</N8nInfoTip>
 			</template>
 			<template #placeholder>
 				<AskModeEmptyState />
@@ -96,7 +108,7 @@ defineExpose({
 	</div>
 </template>
 
-<style scoped>
+<style module lang="scss">
 .wrapper {
 	height: 100%;
 	width: 100%;

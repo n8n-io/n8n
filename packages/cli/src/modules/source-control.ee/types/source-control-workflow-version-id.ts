@@ -10,4 +10,5 @@ export interface SourceControlWorkflowVersionId {
 	parentFolderId: string | null;
 	updatedAt?: string;
 	owner?: StatusResourceOwner;
+	isRemoteArchived?: boolean;
 }

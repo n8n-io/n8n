@@ -17,6 +17,7 @@
     "@n8n/utils": "workspace:*",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
   },
   "devDependencies": {
@@ -38,6 +39,7 @@
     "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
+    "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
   },

@@ -22,8 +22,8 @@ import { Container } from '@n8n/di';
 import express, { json } from 'express';
 import { mock } from 'jest-mock-extended';
 import { agent as testAgent } from 'supertest';
+import { Z } from '@n8n/api-types';
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';

@@ -8,6 +8,10 @@ import type {
 	SchemaType,
 } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { generatePath, getNodeParentExpression } from '@/app/utils/mappingUtils';
 import { isObject } from '@/app/utils/objectUtils';
 import { isObj } from '@/app/utils/typeGuards';
@@ -206,8 +210,11 @@ export function useDataSchema() {
 	): INodeExecutionData[] {
 		if (!node) return [];
 
-		const { pinDataByNodeName } = useWorkflowsStore();
-		const pinnedData = pinDataByNodeName(node.name);
+		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+		const pinnedData = workflowDocumentStore?.getNodePinData(node.name)?.map((item) => item.json);
 		let inputData = getNodeInputData(node, runIndex, outputIndex);
 
 		if (pinnedData) {

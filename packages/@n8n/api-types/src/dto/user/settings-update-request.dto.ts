@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 export class SettingsUpdateRequestDto extends Z.class({
 	userActivated: z.boolean().optional(),

@@ -3,6 +3,10 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class SettingsLogStreamingPage extends BasePage {
+	async goto(): Promise<void> {
+		await this.page.goto('/settings/log-streaming');
+	}
+
 	getActionBoxUnlicensed(): Locator {
 		return this.page.getByTestId('action-box-unlicensed');
 	}
@@ -53,22 +57,6 @@ export class SettingsLogStreamingPage extends BasePage {
 
 	getDestinationCards(): Locator {
 		return this.page.getByTestId('destination-card');
-	}
-
-	getInlineEditPreview(): Locator {
-		return this.page.getByTestId('inline-edit-preview');
-	}
-
-	getInlineEditInput(): Locator {
-		return this.page.getByTestId('inline-edit-input');
-	}
-
-	getModalOverlay(): Locator {
-		return this.page.locator('.el-overlay');
-	}
-
-	getDropdownMenu(): Locator {
-		return this.page.locator('.el-dropdown-menu');
 	}
 
 	getDropdownMenuItem(index: number): Locator {
@@ -211,11 +199,12 @@ export class SettingsLogStreamingPage extends BasePage {
 
 		await hostInput.clear();
 		await hostInput.fill(config.host);
-		await this.page.waitForTimeout(200);
+		await this.page.waitForTimeout(300);
 		await portInput.clear();
 		await portInput.fill(config.port.toString());
 
-		await this.page.waitForTimeout(150);
+		// Wait for debounced input update (200ms debounce in ParameterInput.vue)
+		await this.page.waitForTimeout(200);
 		await this.saveDestination();
 	}
 
@@ -231,6 +220,8 @@ export class SettingsLogStreamingPage extends BasePage {
 	 * Must be called while the destination modal is open and the destination has been saved.
 	 */
 	async sendTestEvent(): Promise<void> {
-		await this.getSendTestEventButton().click();
+		const testButton = this.getSendTestEventButton();
+		await testButton.waitFor({ state: 'visible' });
+		await testButton.click();
 	}
 }

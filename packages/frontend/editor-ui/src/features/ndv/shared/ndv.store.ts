@@ -21,9 +21,12 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { computed, ref } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 const DEFAULT_MAIN_PANEL_DIMENSIONS = {
 	relativeLeft: 1,
@@ -93,10 +96,13 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const lastSetActiveNodeSource = ref<TelemetryNdvSource>();
 
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
-
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const activeNode = computed(() => {
-		return workflowsStore.getNodeByName(activeNodeName.value || '');
+		return workflowDocumentStore.value?.getNodeByName(activeNodeName.value || '') ?? null;
 	});
 
 	const ndvInputData = computed(() => {
@@ -128,7 +134,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const ndvInputDataWithPinnedData = computed(() => {
 		const data = ndvInputData.value;
 		return ndvInputNodeName.value
-			? (workflowsStore.pinDataByNodeName(ndvInputNodeName.value) ?? data)
+			? (workflowDocumentStore.value?.pinData?.[ndvInputNodeName.value] ?? data)
 			: data;
 	});
 
@@ -151,7 +157,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const ndvNodeInputNumber = computed(() => {
 		const returnData: { [nodeName: string]: number[] } = {};
 		const activeNodeConections = (
-			workflowsStore.connectionsByDestinationNode[activeNode.value?.name || ''] ?? {}
+			workflowDocumentStore.value?.connectionsByDestinationNode[activeNode.value?.name || ''] ?? {}
 		).main;
 
 		if (!activeNodeConections || activeNodeConections.length < 2) return returnData;
@@ -364,16 +370,12 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	};
 
 	const updateNodeParameterIssues = (issues: INodeIssues): void => {
-		const activeNode = workflowsStore.getNodeByName(activeNodeName.value || '');
+		const node = workflowDocumentStore.value?.getNodeByName(activeNodeName.value || '');
 
-		if (activeNode) {
-			const nodeIndex = workflowsStore.workflow.nodes.findIndex((node) => {
-				return node.name === activeNode.name;
-			});
-
-			workflowState.updateNodeAtIndex(nodeIndex, {
+		if (node?.id) {
+			workflowDocumentStore.value?.updateNodeById(node.id, {
 				issues: {
-					...activeNode.issues,
+					...node.issues,
 					...issues,
 				},
 			});

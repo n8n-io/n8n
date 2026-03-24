@@ -43,7 +43,9 @@ const getInput = (e: HTMLElement): HTMLInputElement => {
 };
 
 const getAssignmentType = (assignment: HTMLElement): string => {
-	return getInput(within(assignment).getByTestId('assignment-type-select')).value;
+	const typeSelect = within(assignment).getByTestId('assignment-type-select');
+	const button = within(typeSelect).getByRole('button');
+	return button.textContent?.trim() ?? '';
 };
 
 async function dropAssignment({

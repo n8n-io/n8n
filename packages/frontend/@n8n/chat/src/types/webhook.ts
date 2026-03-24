@@ -1,3 +1,5 @@
+import { type ChatMessageText } from './messages';
+
 export interface LoadPreviousSessionResponseItem {
 	id: string[];
 	kwargs: {
@@ -15,7 +17,8 @@ export interface LoadPreviousSessionResponse {
 export interface SendMessageResponse {
 	output?: string;
 	text?: string;
-	message?: string;
+	message?: string | ChatMessageText;
 	executionId?: string;
 	executionStarted?: boolean;
+	hasReceivedChunks?: boolean;
 }

@@ -87,6 +87,17 @@ export class ExecutionsController {
 		};
 	}
 
+	@Get('/versions/:workflowId')
+	async getVersions(req: ExecutionRequest.GetVersions) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+
+		if (!accessibleWorkflowIds.includes(req.params.workflowId)) {
+			return [];
+		}
+
+		return await this.executionService.getExecutedVersions(req.params.workflowId);
+	}
+
 	@Get('/:id')
 	async getOne(req: ExecutionRequest.GetOne) {
 		if (!isPositiveInteger(req.params.id)) {

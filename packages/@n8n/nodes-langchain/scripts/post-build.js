@@ -17,7 +17,6 @@ function runCommand(command) {
 
 // Run all post-build tasks
 runCommand('npx tsc-alias -p tsconfig.build.json');
-runCommand('node scripts/copy-tokenizer-json.js .');
 runCommand('node ../../nodes-base/scripts/copy-nodes-json.js .');
 runCommand('pnpm n8n-copy-static-files');
 runCommand('pnpm n8n-generate-metadata');

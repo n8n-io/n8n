@@ -12,7 +12,6 @@ describe('TaskRunnerModule in internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.port = 0; // Random port
 	runnerConfig.mode = 'internal';
-	runnerConfig.enabled = true;
 	const module = Container.get(TaskRunnerModule);
 
 	afterEach(async () => {
@@ -20,16 +19,7 @@ describe('TaskRunnerModule in internal mode', () => {
 	});
 
 	describe('start', () => {
-		it('should throw if the task runner is disabled', async () => {
-			runnerConfig.enabled = false;
-
-			// Act
-			await expect(module.start()).rejects.toThrow('Task runner is disabled');
-		});
-
 		it('should start the task runner', async () => {
-			runnerConfig.enabled = true;
-
 			// Act
 			await module.start();
 		});

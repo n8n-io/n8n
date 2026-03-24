@@ -4,7 +4,6 @@ import FromAiParametersModal from '@/app/components/FromAiParametersModal.vue';
 import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRouter } from 'vue-router';
@@ -15,6 +14,17 @@ import { nextTick } from 'vue';
 import { mock } from 'vitest-mock-extended';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
+
+const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
+	mockWorkflowDocumentStore: {
+		getNodeByName: vi.fn(),
+	},
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+}));
 
 const ModalStub = {
 	template: `
@@ -61,7 +71,9 @@ const mockRunData = {
 				['Test Node']: [
 					{
 						inputOverride: {
-							[NodeConnectionTypes.AiTool]: [[{ json: { query: { testParam: 'override' } } }]],
+							[NodeConnectionTypes.AiTool]: [
+								[{ json: { query: { testParam: 'override', testBoolean: true } } }],
+							],
 						},
 					},
 				],
@@ -96,7 +108,6 @@ const mockTools = [
 
 const renderModal = createComponentRenderer(FromAiParametersModal);
 let pinia: ReturnType<typeof createTestingPinia>;
-let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 let agentRequestStore: ReturnType<typeof useAgentRequestStore>;
 let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
@@ -123,8 +134,7 @@ describe('FromAiParametersModal', () => {
 				},
 			},
 		});
-		workflowsStore = useWorkflowsStore();
-		workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
+		mockWorkflowDocumentStore.getNodeByName.mockImplementation((name: string) => {
 			switch (name) {
 				case 'Test Node':
 					return mockNode;
@@ -206,7 +216,7 @@ describe('FromAiParametersModal', () => {
 		await userEvent.click(toolOption);
 		await nextTick();
 		const inputs = getByTestId('from-ai-parameters-modal-inputs');
-		const inputByName = inputs.querySelector('input[name="query.query"]');
+		const inputByName = inputs.querySelector('input[name="node_test-tool_query.query"]');
 		expect(inputByName).toBeTruthy();
 	});
 
@@ -227,12 +237,14 @@ describe('FromAiParametersModal', () => {
 		});
 
 		await userEvent.click(getByTestId('execute-workflow-button'));
-
 		expect(agentRequestStore.setAgentRequestForNode).toHaveBeenCalledWith('test-workflow', 'id1', {
 			query: {
-				testBoolean: true,
-				testParam: 'override',
+				Test_Node: {
+					testBoolean: true,
+					testParam: 'override',
+				},
 			},
+			toolName: 'Test_Node',
 		});
 	});
 
@@ -272,21 +284,25 @@ describe('FromAiParametersModal', () => {
 			},
 			pinia,
 		});
-
+		await nextTick();
 		const inputs = getByTestId('from-ai-parameters-modal-inputs');
-		await userEvent.click(getByTestId('query.testBoolean'));
-		await userEvent.clear(inputs.querySelector('input[name="query.testParam"]') as Element);
-		await userEvent.type(
-			inputs.querySelector('input[name="query.testParam"]') as Element,
-			'given value',
-		);
+		const booleanInput = getByTestId('query.testBoolean') as Element;
+		const paramInput = inputs.querySelector('input[name="query.testParam"]') as Element;
+		expect(booleanInput).toBeTruthy();
+		expect(paramInput).toBeTruthy();
+		await userEvent.click(booleanInput); // uncheck the checkbox
+		await userEvent.clear(paramInput);
+		await userEvent.type(paramInput, 'given value');
 		await userEvent.click(getByTestId('execute-workflow-button'));
 
 		expect(agentRequestStore.setAgentRequestForNode).toHaveBeenCalledWith('test-workflow', 'id1', {
 			query: {
-				testBoolean: false,
-				testParam: 'given value',
+				Test_Node: {
+					testBoolean: false,
+					testParam: 'given value',
+				},
 			},
+			toolName: 'Test_Node',
 		});
 	});
 
@@ -318,6 +334,7 @@ describe('FromAiParametersModal', () => {
 			currentNodeParameters: {},
 			credentials: undefined,
 			projectId: 'test-project-id',
+			workflowId: 'test-workflow',
 		});
 	});
 

@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "date": {
+            "type": "string"
+        },
         "dimensionHeaders": {
             "type": "array",
             "items": {
@@ -39,7 +42,13 @@
                     }
                 }
             }
+        },
+        "sessions": {
+            "type": "string"
+        },
+        "totalUsers": {
+            "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }
