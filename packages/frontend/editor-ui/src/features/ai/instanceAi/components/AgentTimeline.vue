@@ -13,25 +13,43 @@ import ArtifactCard from './ArtifactCard.vue';
 
 const i18n = useI18n();
 
+function extractResourceId(node: InstanceAiAgentNode): string | undefined {
+	if (node.targetResource?.id) return node.targetResource.id;
+	// Fallback: extract from tool call results
+	for (const tc of node.toolCalls) {
+		if (!tc.result || typeof tc.result !== 'object') continue;
+		const result = tc.result as Record<string, unknown>;
+		if (typeof result.workflowId === 'string') return result.workflowId;
+		if (typeof result.tableId === 'string') return result.tableId;
+		if (typeof result.dataTableId === 'string') return result.dataTableId;
+	}
+	for (const child of node.children) {
+		const id = extractResourceId(child);
+		if (id !== undefined) return id;
+	}
+	return undefined;
+}
+
 function shouldShowArtifact(node: InstanceAiAgentNode): boolean {
 	return (
 		node.status === 'completed' &&
-		node.targetResource?.id !== undefined &&
-		(node.targetResource.type === 'workflow' || node.targetResource.type === 'data-table')
+		(node.targetResource?.type === 'workflow' || node.targetResource?.type === 'data-table') &&
+		extractResourceId(node) !== undefined
 	);
 }
 
 function extractWorkflowName(node: InstanceAiAgentNode): string | undefined {
-	// Check build-workflow / submit-workflow results for workflowName
 	for (const tc of node.toolCalls) {
-		if (
-			(tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') &&
-			tc.result &&
-			typeof tc.result === 'object'
-		) {
-			const result = tc.result as Record<string, unknown>;
-			if (typeof result.workflowName === 'string') {
-				return result.workflowName;
+		if (tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') {
+			// Check result for workflowName
+			if (tc.result && typeof tc.result === 'object') {
+				const result = tc.result as Record<string, unknown>;
+				if (typeof result.workflowName === 'string') return result.workflowName;
+			}
+			// Check args for name (build-workflow args contain { name, code })
+			if (tc.args && typeof tc.args === 'object') {
+				const args = tc.args as Record<string, unknown>;
+				if (typeof args.name === 'string') return args.name;
 			}
 		}
 	}
@@ -39,9 +57,7 @@ function extractWorkflowName(node: InstanceAiAgentNode): string | undefined {
 	for (const tc of node.toolCalls) {
 		if (tc.toolName === 'get-workflow-as-code' && tc.result && typeof tc.result === 'object') {
 			const result = tc.result as Record<string, unknown>;
-			if (typeof result.name === 'string') {
-				return result.name;
-			}
+			if (typeof result.name === 'string') return result.name;
 		}
 	}
 	for (const child of node.children) {
@@ -227,9 +243,13 @@ const childrenById = computed(() => {
 				<!-- Artifact card for completed subagents with a target resource -->
 				<ArtifactCard
 					v-if="shouldShowArtifact(childrenById[entry.agentId])"
-					:type="childrenById[entry.agentId].targetResource!.type as 'workflow' | 'data-table'"
+					:type="
+						(childrenById[entry.agentId].targetResource?.type ?? 'workflow') as
+							| 'workflow'
+							| 'data-table'
+					"
 					:name="getArtifactName(childrenById[entry.agentId])"
-					:resource-id="childrenById[entry.agentId].targetResource!.id!"
+					:resource-id="extractResourceId(childrenById[entry.agentId]) ?? ''"
 					:metadata="formatArtifactMetadata(childrenById[entry.agentId])"
 				/>
 			</template>
